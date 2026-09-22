@@ -1,12 +1,11 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package httpconnector provides bounded HTTP queries and idempotent actions.
+// Package httpconnector provides bounded HTTP queries and idempotent mutations.
 package httpconnector
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -24,6 +23,11 @@ import (
 const (
 	defaultMaxResponseBytes = int64(2 << 20)
 	defaultTimeout          = 15 * time.Second
+)
+
+var (
+	queryDefinition    = connector.QueryDefinition{Operation: connector.OperationRef{ConnectorID: "http", OperationID: "query"}}
+	mutationDefinition = connector.MutationDefinition{Operation: connector.OperationRef{ConnectorID: "http", OperationID: "mutation"}}
 )
 
 type Config struct {
@@ -47,11 +51,11 @@ type Client struct {
 }
 
 type Request struct {
-	Connection connector.ConnectionRef
-	Path       string
-	Query      url.Values
-	Headers    map[string]string
-	Body       any
+	Method  string
+	Path    string
+	Query   url.Values
+	Headers map[string]string
+	Body    any
 }
 
 type Response struct {
@@ -59,6 +63,10 @@ type Response struct {
 	Header     http.Header
 	Body       []byte
 }
+
+type QueryOperation struct{ client *Client }
+
+type MutationOperation struct{ client *Client }
 
 func New(config Config, credentials connector.CredentialProvider) (*Client, error) {
 	baseURL, err := url.Parse(config.BaseURL)
@@ -84,93 +92,100 @@ func New(config Config, credentials connector.CredentialProvider) (*Client, erro
 	if maxBytes == 0 {
 		maxBytes = defaultMaxResponseBytes
 	}
-	client := config.Client
-	if client == nil {
-		client = &http.Client{Timeout: timeout}
+	httpClient := config.Client
+	if httpClient == nil {
+		httpClient = &http.Client{Timeout: timeout}
 	}
 	idempotencyHeader := config.IdempotencyHeader
 	if idempotencyHeader == "" {
 		idempotencyHeader = "Idempotency-Key"
 	}
 	return &Client{
-		baseURL:           baseURL,
-		allowedHosts:      allowedHosts,
-		maxResponseBytes:  maxBytes,
-		credentialHeaders: config.CredentialHeaders,
-		idempotencyHeader: idempotencyHeader,
-		httpClient:        client,
-		credentials:       credentials,
+		baseURL: baseURL, allowedHosts: allowedHosts, maxResponseBytes: maxBytes,
+		credentialHeaders: config.CredentialHeaders, idempotencyHeader: idempotencyHeader,
+		httpClient: httpClient, credentials: credentials,
 	}, nil
 }
 
-func (client *Client) Query(ctx context.Context, method string, input Request) (connector.Result[Response], error) {
-	if method != http.MethodGet && method != http.MethodHead {
-		return connector.Result[Response]{}, connector.NewError(connector.ErrorValidation, "http", "query", "query method must be GET or HEAD", nil)
+func (client *Client) Query() QueryOperation { return QueryOperation{client: client} }
+
+func (client *Client) Mutation() MutationOperation { return MutationOperation{client: client} }
+
+func (QueryOperation) Definition() connector.QueryDefinition { return queryDefinition }
+
+func (operation QueryOperation) Invoke(call connector.Call, input Request) (connector.QueryResult[Response], error) {
+	if input.Method != http.MethodGet && input.Method != http.MethodHead {
+		return connector.QueryResult[Response]{}, validationError("query", "query method must be GET or HEAD", nil)
 	}
-	response, requestID, err := client.do(ctx, method, input, "")
+	response, requestID, dispatched, err := operation.client.do(call, input, "")
 	if err != nil {
-		return connector.Result[Response]{}, classifyTransportError(connector.OperationQuery, "query", connector.CallID(""), err)
+		if !dispatched {
+			return connector.QueryResult[Response]{}, err
+		}
+		return connector.QueryResult[Response]{}, classifyTransportError(false, "query", call, err)
 	}
-	if err := statusError("query", response, requestID, ""); err != nil {
-		return connector.Result[Response]{}, err
+	if err := statusError(false, "query", response, requestID, call); err != nil {
+		return connector.QueryResult[Response]{}, err
 	}
-	return connector.Result[Response]{Value: response, Meta: map[string]string{"providerRequestId": requestID}}, nil
+	return connector.QueryResult[Response]{
+		Value:   response,
+		Receipt: connector.Receipt{CallID: call.ID, Provider: "http", ProviderRequestID: requestID, ObservedAt: time.Now().UTC()},
+	}, nil
 }
 
-func (client *Client) Action(ctx context.Context, method string, callID connector.CallID, input Request) (connector.Result[Response], error) {
-	if method != http.MethodPost && method != http.MethodPut && method != http.MethodPatch && method != http.MethodDelete {
-		return connector.Result[Response]{}, connector.NewError(connector.ErrorValidation, "http", "action", "unsupported action method", nil)
+func (MutationOperation) Definition() connector.MutationDefinition { return mutationDefinition }
+
+func (operation MutationOperation) Invoke(call connector.Call, input Request) (connector.MutationResult[Response], error) {
+	if input.Method != http.MethodPost && input.Method != http.MethodPut && input.Method != http.MethodPatch && input.Method != http.MethodDelete {
+		return connector.MutationResult[Response]{}, validationError("mutation", "unsupported mutation method", nil)
 	}
-	if err := callID.Validate(); err != nil {
-		return connector.Result[Response]{}, connector.NewError(connector.ErrorValidation, "http", "action", "a UUID call ID is required", err)
-	}
-	response, requestID, err := client.do(ctx, method, input, callID)
+	response, requestID, dispatched, err := operation.client.do(call, input, call.ID)
 	if err != nil {
-		return connector.Result[Response]{}, classifyTransportError(connector.OperationAction, "action", callID, err)
+		if !dispatched {
+			return connector.MutationResult[Response]{}, err
+		}
+		return connector.MutationResult[Response]{}, classifyTransportError(true, "mutation", call, err)
 	}
-	if err := statusError("action", response, requestID, callID); err != nil {
-		return connector.Result[Response]{}, err
+	if err := statusError(true, "mutation", response, requestID, call); err != nil {
+		return connector.MutationResult[Response]{}, err
 	}
-	receipt := connector.Receipt{
-		CallID: callID, Provider: "http", ProviderRequestID: requestID,
-		Outcome: connector.ActionSucceeded, ObservedAt: time.Now().UTC(),
-	}
-	return connector.Result[Response]{Value: response, Receipt: &receipt}, nil
+	return connector.MutationResult[Response]{
+		Outcome: connector.MutationSucceeded,
+		Value:   response,
+		Receipt: connector.Receipt{CallID: call.ID, Provider: "http", ProviderRequestID: requestID, ObservedAt: time.Now().UTC()},
+	}, nil
 }
 
-func (client *Client) do(ctx context.Context, method string, input Request, callID connector.CallID) (Response, string, error) {
-	if err := input.Connection.Validate(); err != nil {
-		return Response{}, "", httpValidationError(method, "connection is required", err)
-	}
+func (client *Client) do(call connector.Call, input Request, callID connector.CallID) (Response, string, bool, error) {
 	target, err := client.baseURL.Parse(input.Path)
 	if err != nil || !client.allowedHosts[strings.ToLower(target.Hostname())] {
-		return Response{}, "", httpValidationError(method, "request target is outside the host allowlist", err)
+		return Response{}, "", false, validationError(strings.ToLower(input.Method), "request target is outside the host allowlist", err)
 	}
 	target.RawQuery = input.Query.Encode()
 	var body io.Reader
 	if input.Body != nil {
 		encoded, encodeErr := json.Marshal(input.Body)
 		if encodeErr != nil {
-			return Response{}, "", httpValidationError(method, "request body is not JSON serializable", encodeErr)
+			return Response{}, "", false, validationError(strings.ToLower(input.Method), "request body is not JSON serializable", encodeErr)
 		}
 		body = bytes.NewReader(encoded)
 	}
-	request, err := http.NewRequestWithContext(ctx, method, target.String(), body)
+	request, err := http.NewRequestWithContext(call.Context, input.Method, target.String(), body)
 	if err != nil {
-		return Response{}, "", httpValidationError(method, "request is invalid", err)
+		return Response{}, "", false, validationError(strings.ToLower(input.Method), "request is invalid", err)
 	}
 	if input.Body != nil {
 		request.Header.Set("Content-Type", "application/json")
 	}
 	for name, value := range input.Headers {
 		if isSecretHeader(name) {
-			return Response{}, "", httpValidationError(method, "secret headers must come from CredentialProvider", nil)
+			return Response{}, "", false, validationError(strings.ToLower(input.Method), "secret headers must come from CredentialProvider", nil)
 		}
 		request.Header.Set(name, value)
 	}
-	credential, err := client.credentials.Resolve(ctx, input.Connection)
+	credential, err := client.credentials.Resolve(call)
 	if err != nil {
-		return Response{}, "", err
+		return Response{}, "", false, err
 	}
 	for field, header := range client.credentialHeaders {
 		value, ok := credential.Value(field)
@@ -183,38 +198,42 @@ func (client *Client) do(ctx context.Context, method string, input Request, call
 	}
 	response, err := client.httpClient.Do(request)
 	if err != nil {
-		return Response{}, "", err
+		return Response{}, "", true, err
 	}
 	defer response.Body.Close()
+	requestID := firstHeader(response.Header, "X-Request-Id", "Request-Id", "Traceparent")
 	limited := io.LimitReader(response.Body, client.maxResponseBytes+1)
 	responseBody, err := io.ReadAll(limited)
 	if err != nil {
-		return Response{}, "", err
+		return Response{}, requestID, true, err
 	}
 	if int64(len(responseBody)) > client.maxResponseBytes {
-		return Response{}, "", connector.NewError(connector.ErrorTerminalRejection, "http", strings.ToLower(method), "provider response exceeds the configured size limit", nil)
+		if callID != "" {
+			receipt := connector.Receipt{CallID: call.ID, Provider: "http", ProviderRequestID: requestID, ObservedAt: time.Now().UTC()}
+			return Response{}, requestID, true, connector.NewError(connector.ErrorUnknownMutation, "http", "mutation", "provider outcome is unknown", nil).WithReceipt(receipt)
+		}
+		return Response{}, requestID, true, connector.NewError(connector.ErrorTerminalRejection, "http", strings.ToLower(input.Method), "provider response exceeds the configured size limit", nil)
 	}
-	requestID := firstHeader(response.Header, "X-Request-Id", "Request-Id", "Traceparent")
-	return Response{StatusCode: response.StatusCode, Header: safeResponseHeaders(response.Header), Body: responseBody}, requestID, nil
+	return Response{StatusCode: response.StatusCode, Header: safeResponseHeaders(response.Header), Body: responseBody}, requestID, true, nil
 }
 
-func httpValidationError(operation, message string, cause error) error {
-	return connector.NewError(connector.ErrorValidation, "http", strings.ToLower(operation), message, cause)
+func validationError(operation, message string, cause error) error {
+	return connector.NewError(connector.ErrorValidation, "http", operation, message, cause)
 }
 
-func classifyTransportError(kind connector.OperationKind, operation string, callID connector.CallID, cause error) error {
+func classifyTransportError(mutation bool, operation string, call connector.Call, cause error) error {
 	var connectorErr *connector.Error
 	if errors.As(cause, &connectorErr) {
 		return connectorErr
 	}
-	if kind == connector.OperationAction {
-		receipt := connector.Receipt{CallID: callID, Provider: "http", Outcome: connector.ActionUnknown, ObservedAt: time.Now().UTC()}
+	if mutation {
+		receipt := connector.Receipt{CallID: call.ID, Provider: "http", ObservedAt: time.Now().UTC()}
 		return connector.NewError(connector.ErrorUnknownMutation, "http", operation, "provider outcome is unknown", cause).WithReceipt(receipt)
 	}
 	return connector.NewError(connector.ErrorRetryableAvailability, "http", operation, "provider is unavailable", cause)
 }
 
-func statusError(operation string, response Response, requestID string, callID connector.CallID) error {
+func statusError(mutation bool, operation string, response Response, requestID string, call connector.Call) error {
 	if response.StatusCode >= 200 && response.StatusCode < 300 {
 		return nil
 	}
@@ -232,7 +251,11 @@ func statusError(operation string, response Response, requestID string, callID c
 		kind = connector.ErrorRateLimit
 	default:
 		if response.StatusCode >= 500 {
-			kind = connector.ErrorRetryableAvailability
+			if mutation {
+				kind = connector.ErrorUnknownMutation
+			} else {
+				kind = connector.ErrorRetryableAvailability
+			}
 		}
 	}
 	err := connector.NewError(kind, "http", operation, "provider returned HTTP "+strconv.Itoa(response.StatusCode), nil)
@@ -241,12 +264,10 @@ func statusError(operation string, response Response, requestID string, callID c
 			err.WithRetryAfter(time.Duration(seconds) * time.Second)
 		}
 	}
-	if callID != "" && kind != connector.ErrorRateLimit && kind != connector.ErrorRetryableAvailability {
-		receipt := connector.Receipt{
-			CallID: callID, Provider: "http", ProviderRequestID: requestID,
-			Outcome: connector.ActionFailed, ObservedAt: time.Now().UTC(),
-		}
-		err.WithReceipt(receipt)
+	if mutation && kind != connector.ErrorRateLimit && kind != connector.ErrorRetryableAvailability {
+		err.WithReceipt(connector.Receipt{
+			CallID: call.ID, Provider: "http", ProviderRequestID: requestID, ObservedAt: time.Now().UTC(),
+		})
 	}
 	return err
 }
@@ -276,9 +297,8 @@ func firstHeader(header http.Header, names ...string) string {
 func safeResponseHeaders(header http.Header) http.Header {
 	safe := make(http.Header)
 	for _, name := range []string{
-		"Content-Type", "ETag", "Last-Modified", "Retry-After",
-		"X-Request-Id", "Request-Id", "Traceparent",
-		"X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset",
+		"Content-Type", "ETag", "Last-Modified", "Retry-After", "X-Request-Id", "Request-Id",
+		"Traceparent", "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset",
 	} {
 		if values := header.Values(name); len(values) > 0 {
 			safe[name] = append([]string(nil), values...)

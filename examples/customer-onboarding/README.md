@@ -1,12 +1,16 @@
 # Customer onboarding connector example
 
-This Flow performs one safe profile Query and one credit-grant Action. The
-Action receives a UUID `CallID` created by the previous Step and persisted in
-both the next Step input and the `CreditGrantCallID` Attribute. A transport
-timeout transitions to a receipt lookup Step instead of blindly repeating the
-mutation.
+This Flow performs a profile Query and a credit-grant Mutation in separate
+concrete Dex Steps. `RunMutation` derives its stable CallID from the Flow and
+Step execution identities. The application never creates or persists a call
+key before invoking the connector.
 
-Run the acceptance test against a Dex Server:
+`GrantCustomerCreditsStep` persists `CreditGrantReceipt` in the same Dex
+commit that completes or transitions. `FAILED` enters an explicit failure
+Step. `UNKNOWN` enters `ReconcileCreditGrantStep`, which reads the committed
+receipt and queries provider status without repeating the Mutation.
+
+Run the acceptance test against Dex Server 0.11.1:
 
 ```bash
 dexcli dev

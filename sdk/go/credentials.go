@@ -4,7 +4,7 @@
 package connector
 
 import (
-	"context"
+	"errors"
 	"fmt"
 )
 
@@ -30,16 +30,28 @@ func (Credential) String() string { return "[REDACTED]" }
 
 func (Credential) GoString() string { return "connector.Credential{[REDACTED]}" }
 
+func (Credential) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("connector credentials cannot be serialized")
+}
+
+func (Credential) MarshalText() ([]byte, error) {
+	return nil, errors.New("connector credentials cannot be serialized")
+}
+
+func (Credential) MarshalYAML() (any, error) {
+	return nil, errors.New("connector credentials cannot be serialized")
+}
+
 type CredentialProvider interface {
-	Resolve(context.Context, ConnectionRef) (Credential, error)
+	Resolve(Call) (Credential, error)
 }
 
 type StaticCredentialProvider map[ConnectionRef]Credential
 
-func (provider StaticCredentialProvider) Resolve(_ context.Context, ref ConnectionRef) (Credential, error) {
-	credential, ok := provider[ref]
+func (provider StaticCredentialProvider) Resolve(call Call) (Credential, error) {
+	credential, ok := provider[call.Connection]
 	if !ok {
-		return Credential{}, NewError(ErrorAuthentication, ref.Provider, "resolve credential", "connection is not configured", nil)
+		return Credential{}, NewError(ErrorAuthentication, call.Operation.ConnectorID, call.Operation.OperationID, "connection is not configured", nil)
 	}
 	return credential, nil
 }

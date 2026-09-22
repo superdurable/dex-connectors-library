@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"time"
+
+	"github.com/superdurable/dex/sdk-go/dex"
 )
 
 type ErrorKind string
@@ -33,6 +35,15 @@ type Error struct {
 	RetryAfter time.Duration
 	receipt    *Receipt
 	cause      error
+}
+
+// Failure is the serializable, secret-free form of a confirmed or unknown mutation failure.
+type Failure struct {
+	Kind       ErrorKind     `json:"kind"`
+	Provider   string        `json:"provider"`
+	Operation  string        `json:"operation"`
+	Message    string        `json:"message"`
+	RetryAfter time.Duration `json:"retryAfter,omitempty"`
 }
 
 func NewError(kind ErrorKind, provider, operation, safeMessage string, cause error) *Error {
@@ -69,3 +80,50 @@ func IsRetryable(err error) bool {
 }
 
 func IsUnknownMutation(err error) bool { return IsKind(err, ErrorUnknownMutation) }
+
+// DexRetry converts only connector failures that are safe for Dex to retry.
+func DexRetry(err error, fallback time.Duration) (*dex.RetryAfterError, bool) {
+	var connectorErr *Error
+	if !errors.As(err, &connectorErr) || !IsRetryable(connectorErr) {
+		return nil, false
+	}
+	delay := connectorErr.RetryAfter
+	if delay <= 0 {
+		delay = fallback
+	}
+	if delay <= 0 {
+		return nil, false
+	}
+	return dex.RetryAfter(delay, err), true
+}
+
+func normalizeMutationError[T any](call Call, err error) (MutationResult[T], error) {
+	var connectorErr *Error
+	if !errors.As(err, &connectorErr) {
+		return MutationResult[T]{}, err
+	}
+	if IsRetryable(connectorErr) || connectorErr.Kind == ErrorValidation || connectorErr.Kind == ErrorLocalDefect {
+		return MutationResult[T]{}, err
+	}
+	outcome := MutationFailed
+	if connectorErr.Kind == ErrorUnknownMutation {
+		outcome = MutationUnknown
+	}
+	receipt := Receipt{}
+	if existing, ok := connectorErr.Receipt(); ok {
+		receipt = *existing
+	}
+	receipt, receiptErr := completeReceipt(receipt, call)
+	if receiptErr != nil {
+		return MutationResult[T]{}, receiptErr
+	}
+	return MutationResult[T]{
+		Outcome: outcome,
+		Receipt: receipt,
+		Failure: &Failure{
+			Kind: connectorErr.Kind, Provider: connectorErr.Provider,
+			Operation: connectorErr.Operation, Message: connectorErr.Message,
+			RetryAfter: connectorErr.RetryAfter,
+		},
+	}, nil
+}

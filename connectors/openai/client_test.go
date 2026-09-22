@@ -4,7 +4,6 @@
 package openai_test
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -12,6 +11,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	openai "github.com/superdurable/dex-connectors-library/connectors/openai"
+	"github.com/superdurable/dex-connectors-library/internal/testsupport"
 	connector "github.com/superdurable/dex-connectors-library/sdk/go"
 )
 
@@ -33,16 +33,20 @@ func TestCreateStructuredResponseCapturesUsageAndReceipt(t *testing.T) {
 	}))
 	defer server.Close()
 	client := newClient(t, server.URL)
-	result, err := client.CreateResponse(context.Background(), openai.CreateRequest{
-		Connection: openAIConnection, CallID: connector.NewCallID(), Model: "gpt-test", Input: "profile",
-		StructuredOutput: &openai.StructuredOutput{Name: "evaluation", Strict: true, Schema: map[string]any{"type": "object"}},
-	})
+	result, err := connector.RunMutation(
+		testsupport.NewDexContext("flow-1", "create-response-1"), client.CreateResponse(), openAIConnection,
+		openai.CreateRequest{
+			Model: "gpt-test", Input: "profile",
+			StructuredOutput: &openai.StructuredOutput{Name: "evaluation", Strict: true, Schema: map[string]any{"type": "object"}},
+		},
+	)
 	require.NoError(t, err)
+	require.Equal(t, connector.MutationSucceeded, result.Outcome)
 	require.Equal(t, "resp_123", result.Value.ID)
 	require.Equal(t, 3, result.Value.Usage.CachedInputTokens)
 	require.Equal(t, 2, result.Value.Usage.ReasoningOutputTokens)
 	require.Equal(t, "req_123", result.Receipt.ProviderRequestID)
-	require.Equal(t, "900", result.Meta["x-ratelimit-remaining-tokens"])
+	require.Equal(t, "900", result.Receipt.Metadata["x-ratelimit-remaining-tokens"])
 	text, ok := requestBody["text"].(map[string]any)
 	require.True(t, ok)
 	require.NotNil(t, text["format"])
@@ -55,9 +59,13 @@ func TestRetrieveResponseSupportsReceiptRecovery(t *testing.T) {
 	}))
 	defer server.Close()
 	client := newClient(t, server.URL)
-	result, err := client.RetrieveResponse(context.Background(), openAIConnection, "resp_known")
+	result, err := connector.RunQuery(
+		testsupport.NewDexContext("flow-1", "retrieve-response-1"), client.RetrieveResponse(), openAIConnection,
+		openai.RetrieveRequest{ResponseID: "resp_known"},
+	)
 	require.NoError(t, err)
 	require.Equal(t, "resp_known", result.Value.ID)
+	require.Equal(t, "resp_known", result.Receipt.ProviderObjectID)
 }
 
 func TestMalformedSuccessResponseLeavesMutationUnknown(t *testing.T) {
@@ -67,36 +75,31 @@ func TestMalformedSuccessResponseLeavesMutationUnknown(t *testing.T) {
 	}))
 	defer server.Close()
 	client := newClient(t, server.URL)
-	callID := connector.NewCallID()
-	_, err := client.CreateResponse(context.Background(), openai.CreateRequest{
-		Connection: openAIConnection, CallID: callID, Model: "gpt-test", Input: "profile",
-	})
-	require.True(t, connector.IsUnknownMutation(err))
-	var typed *connector.Error
-	require.ErrorAs(t, err, &typed)
-	receipt, ok := typed.Receipt()
-	require.True(t, ok)
-	require.Equal(t, callID, receipt.CallID)
+	result, err := connector.RunMutation(
+		testsupport.NewDexContext("flow-1", "malformed-response-1"), client.CreateResponse(), openAIConnection,
+		openai.CreateRequest{Model: "gpt-test", Input: "profile"},
+	)
+	require.NoError(t, err)
+	require.Equal(t, connector.MutationUnknown, result.Outcome)
+	require.Equal(t, connector.ErrorUnknownMutation, result.Failure.Kind)
+	require.NotEmpty(t, result.Receipt.CallID)
 }
 
-func TestConfirmedRejectionHasFailedReceipt(t *testing.T) {
+func TestConfirmedRejectionIsFailedResult(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
 		response.Header().Set("X-Request-Id", "req_rejected")
 		response.WriteHeader(http.StatusUnauthorized)
 	}))
 	defer server.Close()
 	client := newClient(t, server.URL)
-	callID := connector.NewCallID()
-	_, err := client.CreateResponse(context.Background(), openai.CreateRequest{
-		Connection: openAIConnection, CallID: callID, Model: "gpt-test", Input: "profile",
-	})
-	require.True(t, connector.IsKind(err, connector.ErrorAuthentication))
-	var typed *connector.Error
-	require.ErrorAs(t, err, &typed)
-	receipt, ok := typed.Receipt()
-	require.True(t, ok)
-	require.Equal(t, connector.ActionFailed, receipt.Outcome)
-	require.Equal(t, "req_rejected", receipt.ProviderRequestID)
+	result, err := connector.RunMutation(
+		testsupport.NewDexContext("flow-1", "rejected-response-1"), client.CreateResponse(), openAIConnection,
+		openai.CreateRequest{Model: "gpt-test", Input: "profile"},
+	)
+	require.NoError(t, err)
+	require.Equal(t, connector.MutationFailed, result.Outcome)
+	require.Equal(t, connector.ErrorAuthentication, result.Failure.Kind)
+	require.Equal(t, "req_rejected", result.Receipt.ProviderRequestID)
 }
 
 func newClient(t *testing.T, endpoint string) *openai.Client {

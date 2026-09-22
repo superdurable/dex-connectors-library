@@ -6,7 +6,6 @@ package openai
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -21,6 +20,11 @@ import (
 )
 
 const defaultEndpoint = "https://api.openai.com/v1"
+
+var (
+	createResponseDefinition   = connector.MutationDefinition{Operation: connector.OperationRef{ConnectorID: "openai", OperationID: "createResponse"}}
+	retrieveResponseDefinition = connector.QueryDefinition{Operation: connector.OperationRef{ConnectorID: "openai", OperationID: "retrieveResponse"}}
+)
 
 type Config struct {
 	Endpoint string
@@ -41,12 +45,14 @@ type StructuredOutput struct {
 }
 
 type CreateRequest struct {
-	Connection       connector.ConnectionRef
-	CallID           connector.CallID
 	Model            string
 	Input            any
 	Instructions     string
 	StructuredOutput *StructuredOutput
+}
+
+type RetrieveRequest struct {
+	ResponseID string
 }
 
 type Usage struct {
@@ -64,6 +70,10 @@ type Response struct {
 	OutputText string `json:"outputText"`
 	Usage      Usage  `json:"usage"`
 }
+
+type CreateResponseOperation struct{ client *Client }
+
+type RetrieveResponseOperation struct{ client *Client }
 
 func New(config Config, credentials connector.CredentialProvider) (*Client, error) {
 	endpointText := config.Endpoint
@@ -87,15 +97,21 @@ func New(config Config, credentials connector.CredentialProvider) (*Client, erro
 	return &Client{endpoint: endpoint, httpClient: httpClient, credentials: credentials}, nil
 }
 
-func (client *Client) CreateResponse(ctx context.Context, input CreateRequest) (connector.Result[Response], error) {
-	if err := input.Connection.Validate(); err != nil {
-		return connector.Result[Response]{}, validationError("createResponse", "connection is required", err)
-	}
-	if err := input.CallID.Validate(); err != nil {
-		return connector.Result[Response]{}, validationError("createResponse", "a UUID call ID is required", err)
-	}
+func (client *Client) CreateResponse() CreateResponseOperation {
+	return CreateResponseOperation{client: client}
+}
+
+func (client *Client) RetrieveResponse() RetrieveResponseOperation {
+	return RetrieveResponseOperation{client: client}
+}
+
+func (CreateResponseOperation) Definition() connector.MutationDefinition {
+	return createResponseDefinition
+}
+
+func (operation CreateResponseOperation) Invoke(call connector.Call, input CreateRequest) (connector.MutationResult[Response], error) {
 	if input.Model == "" || input.Input == nil {
-		return connector.Result[Response]{}, validationError("createResponse", "model and input are required", nil)
+		return connector.MutationResult[Response]{}, validationError("createResponse", "model and input are required", nil)
 	}
 	payload := map[string]any{"model": input.Model, "input": input.Input}
 	if input.Instructions != "" {
@@ -109,60 +125,79 @@ func (client *Client) CreateResponse(ctx context.Context, input CreateRequest) (
 		}}
 	}
 	var wire wireResponse
-	requestID, headers, err := client.do(ctx, http.MethodPost, "/responses", input.Connection, input.CallID, payload, &wire)
+	requestID, headers, dispatched, err := operation.client.do(call, http.MethodPost, "/responses", call.ID, payload, &wire)
 	if err != nil {
-		var typed *connector.Error
-		if errors.As(err, &typed) && typed.Kind != connector.ErrorLocalDefect {
-			return connector.Result[Response]{}, typed
+		if !dispatched {
+			return connector.MutationResult[Response]{}, err
 		}
-		receipt := connector.Receipt{CallID: input.CallID, Provider: "openai", Outcome: connector.ActionUnknown, ObservedAt: time.Now().UTC()}
-		return connector.Result[Response]{}, connector.NewError(connector.ErrorUnknownMutation, "openai", "createResponse", "provider outcome is unknown", err).WithReceipt(receipt)
-	}
-	result := convertResponse(wire)
-	receipt := connector.Receipt{
-		CallID: input.CallID, Provider: "openai", ProviderObjectID: result.ID,
-		ProviderRequestID: requestID, Outcome: connector.ActionSucceeded, ObservedAt: time.Now().UTC(),
-	}
-	return connector.Result[Response]{Value: result, Receipt: &receipt, Meta: rateLimitMetadata(headers)}, nil
-}
-
-func (client *Client) RetrieveResponse(ctx context.Context, connection connector.ConnectionRef, responseID string) (connector.Result[Response], error) {
-	if err := connection.Validate(); err != nil || responseID == "" {
-		return connector.Result[Response]{}, validationError("retrieveResponse", "connection and response ID are required", err)
-	}
-	var wire wireResponse
-	requestID, headers, err := client.do(ctx, http.MethodGet, "/responses/"+url.PathEscape(responseID), connection, "", nil, &wire)
-	if err != nil {
 		var typed *connector.Error
 		if errors.As(err, &typed) {
-			return connector.Result[Response]{}, typed
+			return connector.MutationResult[Response]{}, typed
 		}
-		return connector.Result[Response]{}, connector.NewError(connector.ErrorRetryableAvailability, "openai", "retrieveResponse", "provider is unavailable", err)
+		receipt := connector.Receipt{CallID: call.ID, Provider: "openai", ObservedAt: time.Now().UTC()}
+		return connector.MutationResult[Response]{}, connector.NewError(connector.ErrorUnknownMutation, "openai", "createResponse", "provider outcome is unknown", err).WithReceipt(receipt)
 	}
-	return connector.Result[Response]{Value: convertResponse(wire), Meta: mergeMetadata(rateLimitMetadata(headers), map[string]string{"providerRequestId": requestID})}, nil
+	result := convertResponse(wire)
+	return connector.MutationResult[Response]{
+		Outcome: connector.MutationSucceeded,
+		Value:   result,
+		Receipt: connector.Receipt{
+			CallID: call.ID, Provider: "openai", ProviderObjectID: result.ID,
+			ProviderRequestID: requestID, ObservedAt: time.Now().UTC(), Metadata: rateLimitMetadata(headers),
+		},
+	}, nil
 }
 
-func (client *Client) do(ctx context.Context, method, path string, connection connector.ConnectionRef, callID connector.CallID, payload any, output any) (string, http.Header, error) {
-	credential, err := client.credentials.Resolve(ctx, connection)
+func (RetrieveResponseOperation) Definition() connector.QueryDefinition {
+	return retrieveResponseDefinition
+}
+
+func (operation RetrieveResponseOperation) Invoke(call connector.Call, input RetrieveRequest) (connector.QueryResult[Response], error) {
+	if input.ResponseID == "" {
+		return connector.QueryResult[Response]{}, validationError("retrieveResponse", "response ID is required", nil)
+	}
+	var wire wireResponse
+	requestID, headers, dispatched, err := operation.client.do(call, http.MethodGet, "/responses/"+url.PathEscape(input.ResponseID), "", nil, &wire)
 	if err != nil {
-		return "", nil, err
+		if !dispatched {
+			return connector.QueryResult[Response]{}, err
+		}
+		var typed *connector.Error
+		if errors.As(err, &typed) {
+			return connector.QueryResult[Response]{}, typed
+		}
+		return connector.QueryResult[Response]{}, connector.NewError(connector.ErrorRetryableAvailability, "openai", "retrieveResponse", "provider is unavailable", err)
+	}
+	return connector.QueryResult[Response]{
+		Value: convertResponse(wire),
+		Receipt: connector.Receipt{
+			CallID: call.ID, Provider: "openai", ProviderObjectID: input.ResponseID,
+			ProviderRequestID: requestID, ObservedAt: time.Now().UTC(), Metadata: rateLimitMetadata(headers),
+		},
+	}, nil
+}
+
+func (client *Client) do(call connector.Call, method, path string, callID connector.CallID, payload any, output any) (string, http.Header, bool, error) {
+	credential, err := client.credentials.Resolve(call)
+	if err != nil {
+		return "", nil, false, err
 	}
 	apiKey, err := connector.RequiredCredentialValue(credential, "api_key")
 	if err != nil {
-		return "", nil, connector.NewError(connector.ErrorAuthentication, "openai", path, "API key is not configured", err)
+		return "", nil, false, connector.NewError(connector.ErrorAuthentication, "openai", path, "API key is not configured", err)
 	}
 	var body io.Reader
 	if payload != nil {
 		encoded, encodeErr := json.Marshal(payload)
 		if encodeErr != nil {
-			return "", nil, validationError(path, "request is not JSON serializable", encodeErr)
+			return "", nil, false, validationError(path, "request is not JSON serializable", encodeErr)
 		}
 		body = bytes.NewReader(encoded)
 	}
 	target := strings.TrimRight(client.endpoint.String(), "/") + path
-	request, err := http.NewRequestWithContext(ctx, method, target, body)
+	request, err := http.NewRequestWithContext(call.Context, method, target, body)
 	if err != nil {
-		return "", nil, validationError(path, "build request", err)
+		return "", nil, false, validationError(path, "build request", err)
 	}
 	request.Header.Set("Authorization", "Bearer "+apiKey)
 	request.Header.Set("Content-Type", "application/json")
@@ -171,18 +206,18 @@ func (client *Client) do(ctx context.Context, method, path string, connection co
 	}
 	response, err := client.httpClient.Do(request)
 	if err != nil {
-		return "", nil, err
+		return "", nil, true, err
 	}
 	defer response.Body.Close()
 	requestID := response.Header.Get("X-Request-Id")
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return requestID, response.Header, openAIStatusError(path, response.StatusCode, response.Header, requestID, callID)
+		return requestID, response.Header, true, openAIStatusError(path, response.StatusCode, response.Header, requestID, call, callID != "")
 	}
 	decoder := json.NewDecoder(io.LimitReader(response.Body, 8<<20))
 	if err := decoder.Decode(output); err != nil {
-		return requestID, response.Header, connector.NewError(connector.ErrorLocalDefect, "openai", path, "provider returned an invalid response", err)
+		return requestID, response.Header, true, fmt.Errorf("decode provider response: %w", err)
 	}
-	return requestID, response.Header, nil
+	return requestID, response.Header, true, nil
 }
 
 type wireResponse struct {
@@ -231,7 +266,7 @@ func validationError(operation, message string, cause error) error {
 	return connector.NewError(connector.ErrorValidation, "openai", operation, message, cause)
 }
 
-func openAIStatusError(operation string, status int, header http.Header, requestID string, callID connector.CallID) error {
+func openAIStatusError(operation string, status int, header http.Header, requestID string, call connector.Call, mutation bool) error {
 	kind := connector.ErrorTerminalRejection
 	switch status {
 	case http.StatusUnauthorized:
@@ -246,7 +281,11 @@ func openAIStatusError(operation string, status int, header http.Header, request
 		kind = connector.ErrorRateLimit
 	default:
 		if status >= 500 {
-			kind = connector.ErrorRetryableAvailability
+			if mutation {
+				kind = connector.ErrorUnknownMutation
+			} else {
+				kind = connector.ErrorRetryableAvailability
+			}
 		}
 	}
 	err := connector.NewError(kind, "openai", operation, "provider returned HTTP "+strconv.Itoa(status), nil)
@@ -255,29 +294,23 @@ func openAIStatusError(operation string, status int, header http.Header, request
 			err.WithRetryAfter(time.Duration(seconds) * time.Second)
 		}
 	}
-	if callID != "" && kind != connector.ErrorRateLimit && kind != connector.ErrorRetryableAvailability {
-		receipt := connector.Receipt{
-			CallID: callID, Provider: "openai", ProviderRequestID: requestID,
-			Outcome: connector.ActionFailed, ObservedAt: time.Now().UTC(),
-		}
-		err.WithReceipt(receipt)
+	if mutation && kind != connector.ErrorRateLimit && kind != connector.ErrorRetryableAvailability {
+		err.WithReceipt(connector.Receipt{
+			CallID: call.ID, Provider: "openai", ProviderRequestID: requestID, ObservedAt: time.Now().UTC(),
+		})
 	}
 	return err
 }
 
 func rateLimitMetadata(header http.Header) map[string]string {
 	metadata := map[string]string{}
-	for _, name := range []string{"x-ratelimit-limit-requests", "x-ratelimit-remaining-requests", "x-ratelimit-reset-requests", "x-ratelimit-limit-tokens", "x-ratelimit-remaining-tokens", "x-ratelimit-reset-tokens"} {
+	for _, name := range []string{
+		"x-ratelimit-limit-requests", "x-ratelimit-remaining-requests", "x-ratelimit-reset-requests",
+		"x-ratelimit-limit-tokens", "x-ratelimit-remaining-tokens", "x-ratelimit-reset-tokens",
+	} {
 		if value := header.Get(name); value != "" {
 			metadata[name] = value
 		}
 	}
 	return metadata
-}
-
-func mergeMetadata(left, right map[string]string) map[string]string {
-	for key, value := range right {
-		left[key] = value
-	}
-	return left
 }

@@ -7,7 +7,7 @@ provider calls stable identities, and makes mutation outcomes explicit.
 The first alpha includes:
 
 - a versioned connector manifest and `connectorctl` validation/catalog CLI;
-- a Go runtime contract for credentials, calls, results, receipts, and errors;
+- a Dex-native Go SDK contract for credentials, calls, results, receipts, and errors;
 - generic HTTP/Webhook and OpenAI Responses API connectors;
 - React connection-state components that never receive credential values;
 - a deterministic mock provider and a runnable Dex Flow example.

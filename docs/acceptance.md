@@ -4,6 +4,8 @@
 
 ```bash
 make check
+go test -race ./...
+go vet ./...
 go run ./cmd/connectorctl validate connectors/http/connector.yaml connectors/openai/connector.yaml
 go run ./cmd/connectorctl catalog connectors
 ```
@@ -13,36 +15,45 @@ Expected results:
 - every legal manifest prints `valid <name> <version>`;
 - malformed or unknown manifest fields fail validation;
 - catalog output is deterministic and contains HTTP and OpenAI;
-- HTTP tests cover Query, idempotent Action, rate limiting, unknown transport
-  outcome, safe headers, webhook verification, and replay rejection;
-- OpenAI tests cover structured output, response/request IDs, all token usage
-  fields, rate-limit metadata, and retrieve-by-response-ID recovery;
+- CallID is stable across attempt, run, and Worker changes and changes when
+  Flow, Step execution, connector, or operation identity changes;
+- RPC contexts are rejected before a CredentialProvider or provider is called;
+- HTTP tests cover Query, idempotent Mutation, rate limiting, unknown outcome,
+  safe headers, webhook verification, and replay rejection;
+- OpenAI tests cover structured output, response/request IDs, token usage,
+  rate-limit metadata, confirmed failure, and unknown response recovery;
+- credentials fail JSON serialization and redact `%v` and `%#v` formatting;
 - React tests cover connection and reconnect states without credential props.
 
-## Real Dex Flow
+## Real Dex Server 0.11.1
 
-Use Dex Server 0.11.1 and the independently published Go SDK 0.10.2:
+Install Temporal CLI 1.9.1, then start Dex Server 0.11.1 while the Go SDK
+remains pinned to v0.10.2:
 
 ```bash
 dexcli dev
 make test-integration
 ```
 
-The test starts a Worker and mock provider, runs a profile Query and credit
-Action, waits for Flow completion, verifies the result receipt, and confirms
-the provider observed one idempotent mutation.
+The integration suite verifies:
+
+- a Query retries after availability failure and then succeeds;
+- a rate-limited Mutation retry retains one CallID and executes once;
+- a lost Mutation response returns `UNKNOWN` and enters its recovery Step;
+- the receipt Attribute is visible when the recovery transition runs, proving
+  that the receipt write and transition committed together;
+- a Flow continues after its Worker stops and restarts at the same target;
+- a real Flow RPC is rejected before it can contact the provider.
 
 ## Secret inspection
 
 Search test output for the fixtures `super-secret`, `test-key`, and
-`webhook-secret`. They must not appear in returned connector errors or normal
-logs. Credential formatting tests enforce redaction for `%v` and `%#v`.
+`webhook-secret`. They must not appear in connector errors or normal logs.
 
 ## Documentation
 
-Architecture changes must update `docs/architecture.md`, contract changes must
-update `runtime-contract/README.md`, and provider-specific behavior belongs
-next to its connector manifest.
+Architecture changes update `docs/architecture.md`; contract changes update
+`docs/connector-contract.md`; provider behavior belongs next to its manifest.
 
 ## UI/UX
 

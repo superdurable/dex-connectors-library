@@ -112,14 +112,14 @@ func (manifest Manifest) Validate() error {
 			problems = append(problems, "operation names must be lower camel case and unique")
 		}
 		seenOperations[operation.Name] = true
-		if operation.Kind != "query" && operation.Kind != "action" {
-			problems = append(problems, operation.Name+": kind must be query or action")
+		if operation.Kind != "query" && operation.Kind != "mutation" {
+			problems = append(problems, operation.Name+": kind must be query or mutation")
 		}
 		if operation.Idempotency != "none" && operation.Idempotency != "required" && operation.Idempotency != "provider" {
 			problems = append(problems, operation.Name+": invalid idempotency")
 		}
-		if operation.Kind == "action" && operation.Idempotency == "none" {
-			problems = append(problems, operation.Name+": actions must declare required or provider idempotency")
+		if operation.Kind == "mutation" && operation.Idempotency == "none" {
+			problems = append(problems, operation.Name+": mutations must declare required or provider idempotency")
 		}
 	}
 	if len(problems) > 0 {

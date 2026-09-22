@@ -15,7 +15,7 @@ spec:
         sensitive: true
   operations:
     - name: createResponse
-      kind: action
+      kind: mutation
       description: Create an ordinary or structured model response.
       idempotency: provider
     - name: retrieveResponse

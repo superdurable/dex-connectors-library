@@ -25,13 +25,13 @@ spec:
   auth: {type: none, fields: []}
   operations:
     - {name: getProfile, kind: query, description: read profile, idempotency: none}
-    - {name: grantCredit, kind: action, description: grant credit, idempotency: required}
+    - {name: grantCredit, kind: mutation, description: grant credit, idempotency: required}
 `))
 	require.NoError(t, err)
 	require.Equal(t, "mock-provider", manifest.Metadata.Name)
 }
 
-func TestRejectActionWithoutIdempotency(t *testing.T) {
+func TestRejectMutationWithoutIdempotency(t *testing.T) {
 	_, err := schema.Decode(strings.NewReader(`
 apiVersion: connectors.dex.dev/v1alpha1
 kind: Connector
@@ -40,7 +40,7 @@ spec:
   provider: bad
   auth: {type: none, fields: []}
   operations:
-    - {name: mutateThing, kind: action, description: unsafe, idempotency: none}
+    - {name: mutateThing, kind: mutation, description: unsafe, idempotency: none}
 `))
-	require.ErrorContains(t, err, "actions must declare")
+	require.ErrorContains(t, err, "mutations must declare")
 }
