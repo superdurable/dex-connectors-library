@@ -51,7 +51,7 @@ type StaticCredentialProvider map[ConnectionRef]Credential
 func (provider StaticCredentialProvider) Resolve(call Call) (Credential, error) {
 	credential, ok := provider[call.Connection]
 	if !ok {
-		return Credential{}, NewError(ErrorAuthentication, call.Operation.ConnectorID, call.Operation.OperationID, "connection is not configured", nil)
+		return Credential{}, errors.New("connection is not configured")
 	}
 	return credential, nil
 }

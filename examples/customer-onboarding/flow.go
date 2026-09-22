@@ -46,6 +46,10 @@ type creditGrantFailureState struct {
 	Failure connector.Failure `json:"failure"`
 }
 
+type profileReadFailureState struct {
+	Failure connector.Failure `json:"failure"`
+}
+
 type Output struct {
 	CustomerID string                    `json:"customerId"`
 	CallID     connector.CallID          `json:"callId"`
@@ -69,6 +73,7 @@ func (flow *CustomerOnboardingConnectorFlow) GetSteps() []dex.StepDef {
 		dex.DefineStartStep(ReadCustomerProfileStep{client: flow.client}),
 		dex.DefineStep(GrantCustomerCreditsStep{client: flow.client}),
 		dex.DefineStep(ReconcileCreditGrantStep{client: flow.client}),
+		dex.DefineStep(ProfileReadFailedStep{}),
 		dex.DefineStep(CreditGrantFailedStep{}),
 	}
 }
@@ -127,10 +132,10 @@ func (step ReadCustomerProfileStep) Execute(ctx dex.Context, input Input) (*dex.
 		Path:   "/profiles/" + input.CustomerID,
 	})
 	if err != nil {
-		if retry, ok := connector.DexRetry(err, time.Second); ok {
-			return nil, retry
-		}
 		return nil, err
+	}
+	if result.Outcome == connector.QueryFailed {
+		return dex.GoTo(ProfileReadFailedStep{}, profileReadFailureState{Failure: *result.Failure}), nil
 	}
 	var customerProfile profile
 	if err := json.Unmarshal(result.Value.Body, &customerProfile); err != nil {
@@ -160,9 +165,6 @@ func (step GrantCustomerCreditsStep) Execute(ctx dex.Context, state grantCredits
 		},
 	})
 	if err != nil {
-		if retry, ok := connector.DexRetry(err, time.Second); ok {
-			return nil, retry
-		}
 		return nil, err
 	}
 	if err := CreditGrantReceipt.Set(ctx, result.Receipt); err != nil {
@@ -206,13 +208,13 @@ func (step ReconcileCreditGrantStep) Execute(ctx dex.Context, state reconcileCre
 		Path:   "/mutations/" + string(state.Receipt.CallID),
 	})
 	if err != nil {
-		if connector.IsKind(err, connector.ErrorNotFound) {
-			return nil, dex.RetryAfter(time.Second, err)
-		}
-		if retry, ok := connector.DexRetry(err, time.Second); ok {
-			return nil, retry
-		}
 		return nil, err
+	}
+	if result.Outcome == connector.QueryFailed {
+		if result.Failure.Kind == connector.FailureNotFound {
+			return nil, dex.RetryAfter(time.Second, fmt.Errorf("credit grant is not visible yet"))
+		}
+		return dex.ForceFail(fmt.Sprintf("credit grant reconciliation failed: %s", result.Failure.Kind)), nil
 	}
 	var status struct {
 		Status string `json:"status"`
@@ -233,6 +235,16 @@ func (step ReconcileCreditGrantStep) Execute(ctx dex.Context, state reconcileCre
 		CallID:     state.Receipt.CallID,
 		Outcome:    connector.MutationSucceeded,
 	}), nil
+}
+
+// dex:group group-id:failure group-label:"Failure"
+// dex:explanation text:"Close the process after a confirmed profile query failure."
+type ProfileReadFailedStep struct {
+	dex.StepDefaultsNoWaitFor[profileReadFailureState]
+}
+
+func (ProfileReadFailedStep) Execute(_ dex.Context, state profileReadFailureState) (*dex.StepDecision, error) {
+	return dex.ForceFail(fmt.Sprintf("profile read failed: %s", state.Failure.Kind)), nil
 }
 
 // dex:group group-id:failure group-label:"Failure"

@@ -11,14 +11,18 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 	httpconnector "github.com/superdurable/dex-connectors-library/connectors/http"
+	openai "github.com/superdurable/dex-connectors-library/connectors/openai"
 	customeronboarding "github.com/superdurable/dex-connectors-library/examples/customer-onboarding"
 	connector "github.com/superdurable/dex-connectors-library/sdk/go"
 	mockprovider "github.com/superdurable/dex-connectors-library/test/mock-provider"
@@ -105,8 +109,343 @@ func TestFlowRPCCannotCallProvider(t *testing.T) {
 	require.NoError(t, err)
 	var output bool
 	err = harness.client.InvokeRPC(ctx, flowID, flow.AttemptProviderQuery, connection, &output)
-	require.ErrorContains(t, err, "RPC invocation is not allowed")
+	require.NoError(t, err)
+	require.False(t, output)
 	require.Zero(t, provider.ProfileRequests())
+}
+
+var (
+	openAIProgress = dex.DefineStream[connector.ProgressUpdate]("openai-progress", 1<<20)
+	openAIText     = dex.DefineStream[string]("openai-text", 1<<20)
+	retryProgress  = dex.DefineStream[connector.ProgressUpdate]("retry-progress", 1<<20)
+)
+
+func TestOpenAIStreamingWritesRealDexStreams(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		require.Equal(t, "Bearer test-key", request.Header.Get("Authorization"))
+		require.NotEmpty(t, request.Header.Get("Idempotency-Key"))
+		response.Header().Set("Content-Type", "text/event-stream")
+		response.Header().Set("X-Request-Id", "req_stream")
+		_, _ = response.Write([]byte(strings.Join([]string{
+			`data: {"type":"response.created","sequence_number":1,"response":{"id":"resp_stream","status":"in_progress"}}`,
+			`data: {"type":"response.output_text.delta","sequence_number":2,"delta":"hel"}`,
+			`data: {"type":"response.output_text.delta","sequence_number":3,"delta":"lo"}`,
+			`data: {"type":"response.completed","sequence_number":4,"response":{"id":"resp_stream","model":"gpt-test","status":"completed","output":[{"content":[{"type":"output_text","text":"hello"}]}],"usage":{"input_tokens":2,"output_tokens":1,"total_tokens":3}}}`,
+		}, "\n\n") + "\n\n"))
+	}))
+	defer server.Close()
+	connection := connector.ConnectionRef{Provider: "openai", Name: "default"}
+	client, err := openai.New(openai.Config{Endpoint: server.URL}, connector.StaticCredentialProvider{
+		connection: connector.NewCredential(map[string]string{"api_key": "test-key"}),
+	})
+	require.NoError(t, err)
+	flow := &openAIStreamingFlow{client: client, connection: connection}
+	harness := newDexHarness(t, []dex.Flow{flow})
+	harness.startWorker(t)
+	flowID := uniqueFlowID("openai-stream")
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	_, err = harness.client.StartFlow(ctx, flow, flowID, struct{}{}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, result.Status)
+	var output openAIStreamingOutput
+	require.NoError(t, result.DecodeSingleOutput(&output))
+	require.Equal(t, connector.MutationSucceeded, output.Outcome)
+	require.Equal(t, "hello", output.Text)
+	require.Equal(t, 3, output.TotalTokens)
+
+	var progressPage dex.StreamMessagesPage[connector.ProgressUpdate]
+	require.NoError(t, harness.client.ListStreamMessages(ctx, flowID, openAIProgress, 10, "", &progressPage))
+	require.Len(t, progressPage.Messages, 1)
+	update := progressPage.Messages[0].Value
+	require.Equal(t, output.CallID, update.CallID)
+	require.Equal(t, int32(1), update.Attempt)
+	require.Equal(t, uint64(1), update.Sequence)
+	require.Equal(t, "response.created", update.Phase)
+
+	var textPage dex.StreamMessagesPage[string]
+	require.NoError(t, harness.client.ListStreamMessages(ctx, flowID, openAIText, 10, "", &textPage))
+	require.Len(t, textPage.Messages, 2)
+	require.Equal(t, "hello", textPage.Messages[1].Value+textPage.Messages[0].Value)
+}
+
+func TestProgressStreamDistinguishesDexRetryAttempts(t *testing.T) {
+	flow := retryProgressFlow{}
+	harness := newDexHarness(t, []dex.Flow{flow})
+	harness.startWorker(t)
+	flowID := uniqueFlowID("retry-progress")
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	_, err := harness.client.StartFlow(ctx, flow, flowID, struct{}{}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, result.Status)
+	var callID connector.CallID
+	require.NoError(t, result.DecodeSingleOutput(&callID))
+
+	var page dex.StreamMessagesPage[connector.ProgressUpdate]
+	require.NoError(t, harness.client.ListStreamMessages(ctx, flowID, retryProgress, 10, "", &page))
+	require.Len(t, page.Messages, 2)
+	require.Equal(t, callID, page.Messages[0].Value.CallID)
+	require.Equal(t, callID, page.Messages[1].Value.CallID)
+	require.Equal(t, []int32{2, 1}, []int32{page.Messages[0].Value.Attempt, page.Messages[1].Value.Attempt})
+	require.Equal(t, uint64(1), page.Messages[0].Value.Sequence)
+	require.Equal(t, uint64(1), page.Messages[1].Value.Sequence)
+}
+
+func TestQueryFailureDoesNotUseDexRetry(t *testing.T) {
+	var calls atomic.Int32
+	flow := queryFailureFlow{calls: &calls}
+	harness := newDexHarness(t, []dex.Flow{flow})
+	harness.startWorker(t)
+	flowID := uniqueFlowID("query-failure")
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	_, err := harness.client.StartFlow(ctx, flow, flowID, struct{}{}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Equal(t, int32(1), calls.Load())
+}
+
+func TestOpenAIEarlyEOFReconcilesByResponseID(t *testing.T) {
+	var creates atomic.Int32
+	var retrieves atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		switch {
+		case request.Method == http.MethodPost && request.URL.Path == "/responses":
+			creates.Add(1)
+			response.Header().Set("Content-Type", "text/event-stream")
+			_, _ = response.Write([]byte("data: {\"type\":\"response.created\",\"sequence_number\":1,\"response\":{\"id\":\"resp_recover\",\"status\":\"in_progress\"}}\n\n"))
+		case request.Method == http.MethodGet && request.URL.Path == "/responses/resp_recover":
+			retrieves.Add(1)
+			_, _ = response.Write([]byte(`{"id":"resp_recover","model":"gpt-test","status":"completed","output":[{"content":[{"type":"output_text","text":"recovered"}]}],"usage":{"total_tokens":5}}`))
+		default:
+			response.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+	connection := connector.ConnectionRef{Provider: "openai", Name: "default"}
+	client, err := openai.New(openai.Config{Endpoint: server.URL}, connector.StaticCredentialProvider{
+		connection: connector.NewCredential(map[string]string{"api_key": "test-key"}),
+	})
+	require.NoError(t, err)
+	flow := &openAIRecoveryFlow{client: client, connection: connection}
+	harness := newDexHarness(t, []dex.Flow{flow})
+	harness.startWorker(t)
+	flowID := uniqueFlowID("openai-recovery")
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	_, err = harness.client.StartFlow(ctx, flow, flowID, struct{}{}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, result.Status)
+	var output openai.Response
+	require.NoError(t, result.DecodeSingleOutput(&output))
+	require.Equal(t, "resp_recover", output.ID)
+	require.Equal(t, "recovered", output.OutputText)
+	require.Equal(t, int32(1), creates.Load())
+	require.Equal(t, int32(1), retrieves.Load())
+}
+
+type openAIStreamingOutput struct {
+	CallID      connector.CallID          `json:"callId"`
+	Outcome     connector.MutationOutcome `json:"outcome"`
+	Text        string                    `json:"text"`
+	TotalTokens int                       `json:"totalTokens"`
+}
+
+type openAIStreamingFlow struct {
+	dex.FlowDefaults
+	client     *openai.Client
+	connection connector.ConnectionRef
+}
+
+func (flow *openAIStreamingFlow) GetSteps() []dex.StepDef {
+	return []dex.StepDef{dex.DefineStartStep(openAIStreamingStep{client: flow.client, connection: flow.connection})}
+}
+
+func (*openAIStreamingFlow) GetPersistenceSchema() dex.PersistenceSchema {
+	return dex.PersistenceSchema{Streams: []dex.StreamDef{openAIProgress, openAIText}}
+}
+
+type openAIStreamingStep struct {
+	dex.StepDefaultsNoWaitFor[struct{}]
+	client     *openai.Client
+	connection connector.ConnectionRef
+}
+
+func (step openAIStreamingStep) Execute(ctx dex.Context, _ struct{}) (*dex.StepDecision, error) {
+	result, err := connector.RunMutation(
+		ctx, step.client.CreateResponse(), step.connection,
+		openai.CreateRequest{Model: "gpt-test", Input: "stream this"},
+		connector.WithProgressStream(openAIProgress),
+		connector.WithTextStream(openAIText, dex.BufferedTextStreamMaxBytes(1)),
+	)
+	if err != nil {
+		return nil, err
+	}
+	if result.Outcome != connector.MutationSucceeded {
+		return dex.ForceFail("OpenAI streaming did not complete"), nil
+	}
+	return dex.GracefulComplete(openAIStreamingOutput{
+		CallID: result.Receipt.CallID, Outcome: result.Outcome,
+		Text: result.Value.OutputText, TotalTokens: result.Value.Usage.TotalTokens,
+	}), nil
+}
+
+type retryProgressFlow struct{ dex.FlowDefaults }
+
+func (retryProgressFlow) GetSteps() []dex.StepDef {
+	return []dex.StepDef{dex.DefineStartStep(retryProgressStep{})}
+}
+
+func (retryProgressFlow) GetPersistenceSchema() dex.PersistenceSchema {
+	return dex.PersistenceSchema{Streams: []dex.StreamDef{retryProgress}}
+}
+
+type retryProgressStep struct {
+	dex.StepDefaultsNoWaitFor[struct{}]
+}
+
+func (retryProgressStep) Execute(ctx dex.Context, _ struct{}) (*dex.StepDecision, error) {
+	result, err := connector.RunQuery(
+		ctx, retryProgressQuery{}, connector.ConnectionRef{Provider: "mock", Name: "default"}, struct{}{},
+		connector.WithProgressStream(retryProgress),
+	)
+	if err != nil {
+		return nil, err
+	}
+	return dex.GracefulComplete(result.Receipt.CallID), nil
+}
+
+type retryProgressQuery struct{}
+
+func (retryProgressQuery) Definition() connector.QueryDefinition {
+	return connector.QueryDefinition{Operation: connector.OperationRef{ConnectorID: "mock", OperationID: "retryProgress"}}
+}
+
+func (retryProgressQuery) Invoke(call connector.Call, _ struct{}) connector.QueryAttempt[struct{}] {
+	if err := call.ReportProgress(connector.Progress{Phase: "attempt"}); err != nil {
+		return connector.NewQueryRetry[struct{}](connector.Failure{
+			Kind: connector.FailureAvailability, Provider: "mock", Operation: "retryProgress", Message: "progress delivery failed",
+		}, 0)
+	}
+	if call.Context.Attempt() == 1 {
+		return connector.NewQueryRetry[struct{}](connector.Failure{
+			Kind: connector.FailureAvailability, Provider: "mock", Operation: "retryProgress", Message: "retry fixture",
+		}, 10*time.Millisecond)
+	}
+	return connector.NewQuerySuccess(struct{}{}, connector.Receipt{})
+}
+
+type queryFailureFlow struct {
+	dex.FlowDefaults
+	calls *atomic.Int32
+}
+
+func (flow queryFailureFlow) GetSteps() []dex.StepDef {
+	return []dex.StepDef{dex.DefineStartStep(queryFailureStep{calls: flow.calls})}
+}
+
+func (queryFailureFlow) GetPersistenceSchema() dex.PersistenceSchema {
+	return dex.PersistenceSchema{}
+}
+
+type queryFailureStep struct {
+	dex.StepDefaultsNoWaitFor[struct{}]
+	calls *atomic.Int32
+}
+
+func (step queryFailureStep) Execute(ctx dex.Context, _ struct{}) (*dex.StepDecision, error) {
+	result, err := connector.RunQuery(
+		ctx, terminalFailureQuery{calls: step.calls},
+		connector.ConnectionRef{Provider: "mock", Name: "default"}, struct{}{},
+	)
+	if err != nil {
+		return nil, err
+	}
+	if result.Outcome == connector.QueryFailed {
+		return dex.ForceFail("confirmed query failure"), nil
+	}
+	return dex.GracefulComplete(struct{}{}), nil
+}
+
+type terminalFailureQuery struct{ calls *atomic.Int32 }
+
+func (terminalFailureQuery) Definition() connector.QueryDefinition {
+	return connector.QueryDefinition{Operation: connector.OperationRef{ConnectorID: "mock", OperationID: "terminalFailure"}}
+}
+
+func (operation terminalFailureQuery) Invoke(connector.Call, struct{}) connector.QueryAttempt[struct{}] {
+	operation.calls.Add(1)
+	return connector.NewQueryFailure(struct{}{}, connector.Failure{
+		Kind: connector.FailureNotFound, Provider: "mock", Operation: "terminalFailure", Message: "object was not found",
+	}, connector.Receipt{})
+}
+
+type openAIRecoveryFlow struct {
+	dex.FlowDefaults
+	client     *openai.Client
+	connection connector.ConnectionRef
+}
+
+func (flow *openAIRecoveryFlow) GetSteps() []dex.StepDef {
+	return []dex.StepDef{
+		dex.DefineStartStep(openAIRecoveryStartStep{client: flow.client, connection: flow.connection}),
+		dex.DefineStep(openAIRetrieveStep{client: flow.client, connection: flow.connection}),
+	}
+}
+
+func (*openAIRecoveryFlow) GetPersistenceSchema() dex.PersistenceSchema {
+	return dex.PersistenceSchema{Streams: []dex.StreamDef{openAIProgress}}
+}
+
+type openAIRecoveryStartStep struct {
+	dex.StepDefaultsNoWaitFor[struct{}]
+	client     *openai.Client
+	connection connector.ConnectionRef
+}
+
+func (step openAIRecoveryStartStep) Execute(ctx dex.Context, _ struct{}) (*dex.StepDecision, error) {
+	result, err := connector.RunMutation(
+		ctx, step.client.CreateResponse(), step.connection,
+		openai.CreateRequest{Model: "gpt-test", Input: "recover this"},
+		connector.WithProgressStream(openAIProgress),
+	)
+	if err != nil {
+		return nil, err
+	}
+	if result.Outcome != connector.MutationUnknown || result.Value.ID == "" {
+		return dex.ForceFail("expected a recoverable unknown OpenAI response"), nil
+	}
+	return dex.GoTo(openAIRetrieveStep{}, openai.RetrieveRequest{ResponseID: result.Value.ID}), nil
+}
+
+type openAIRetrieveStep struct {
+	dex.StepDefaultsNoWaitFor[openai.RetrieveRequest]
+	client     *openai.Client
+	connection connector.ConnectionRef
+}
+
+func (step openAIRetrieveStep) Execute(ctx dex.Context, input openai.RetrieveRequest) (*dex.StepDecision, error) {
+	result, err := connector.RunQuery(ctx, step.client.RetrieveResponse(), step.connection, input)
+	if err != nil {
+		return nil, err
+	}
+	if result.Outcome == connector.QueryFailed {
+		return dex.ForceFail("OpenAI response reconciliation failed"), nil
+	}
+	return dex.GracefulComplete(result.Value), nil
 }
 
 type rpcBoundaryFlow struct {
@@ -127,10 +466,10 @@ func (*rpcBoundaryFlow) GetPersistenceSchema() dex.PersistenceSchema {
 }
 
 func (flow *rpcBoundaryFlow) AttemptProviderQuery(ctx dex.Context, connection connector.ConnectionRef) (*dex.RPCResult[bool], error) {
-	_, err := connector.RunQuery(ctx, flow.query, connection, httpconnector.Request{
+	result, err := connector.RunQuery(ctx, flow.query, connection, httpconnector.Request{
 		Method: http.MethodGet, Path: "/profiles/customer-rpc",
 	})
-	return &dex.RPCResult[bool]{Output: err == nil}, err
+	return &dex.RPCResult[bool]{Output: err == nil && result.Outcome == connector.QuerySucceeded}, err
 }
 
 type rpcBoundaryStartStep struct {

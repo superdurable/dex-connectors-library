@@ -46,6 +46,7 @@ func TestCreateStructuredResponseCapturesUsageAndReceipt(t *testing.T) {
 	require.Equal(t, 3, result.Value.Usage.CachedInputTokens)
 	require.Equal(t, 2, result.Value.Usage.ReasoningOutputTokens)
 	require.Equal(t, "req_123", result.Receipt.ProviderRequestID)
+	require.NotEmpty(t, result.Receipt.IdempotencyKey)
 	require.Equal(t, "900", result.Receipt.Metadata["x-ratelimit-remaining-tokens"])
 	text, ok := requestBody["text"].(map[string]any)
 	require.True(t, ok)
@@ -64,6 +65,7 @@ func TestRetrieveResponseSupportsReceiptRecovery(t *testing.T) {
 		openai.RetrieveRequest{ResponseID: "resp_known"},
 	)
 	require.NoError(t, err)
+	require.Equal(t, connector.QuerySucceeded, result.Outcome)
 	require.Equal(t, "resp_known", result.Value.ID)
 	require.Equal(t, "resp_known", result.Receipt.ProviderObjectID)
 }
@@ -81,7 +83,7 @@ func TestMalformedSuccessResponseLeavesMutationUnknown(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.Equal(t, connector.MutationUnknown, result.Outcome)
-	require.Equal(t, connector.ErrorUnknownMutation, result.Failure.Kind)
+	require.Equal(t, connector.FailureProtocol, result.Failure.Kind)
 	require.NotEmpty(t, result.Receipt.CallID)
 }
 
@@ -98,7 +100,7 @@ func TestConfirmedRejectionIsFailedResult(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.Equal(t, connector.MutationFailed, result.Outcome)
-	require.Equal(t, connector.ErrorAuthentication, result.Failure.Kind)
+	require.Equal(t, connector.FailureAuthentication, result.Failure.Kind)
 	require.Equal(t, "req_rejected", result.Receipt.ProviderRequestID)
 }
 

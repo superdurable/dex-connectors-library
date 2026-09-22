@@ -57,7 +57,12 @@
               "name": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]+$" },
               "kind": { "enum": ["query", "mutation"] },
               "description": { "type": "string", "minLength": 1 },
-              "idempotency": { "enum": ["none", "required", "provider"] }
+              "idempotency": { "enum": ["none", "required"] },
+              "progress": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": { "enum": ["structured", "text"] }
+              }
             }
           }
         }

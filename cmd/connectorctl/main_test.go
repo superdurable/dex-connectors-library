@@ -16,4 +16,5 @@ func TestCatalogLoadsRepositoryManifests(t *testing.T) {
 	require.Len(t, manifests, 2)
 	require.Equal(t, "http", manifests[0].Metadata.Name)
 	require.Equal(t, "openai", manifests[1].Metadata.Name)
+	require.Equal(t, []string{"structured", "text"}, manifests[1].Spec.Operations[0].Progress)
 }

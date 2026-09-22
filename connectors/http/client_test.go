@@ -17,6 +17,7 @@ import (
 	"github.com/superdurable/dex-connectors-library/internal/testsupport"
 	connector "github.com/superdurable/dex-connectors-library/sdk/go"
 	mockprovider "github.com/superdurable/dex-connectors-library/test/mock-provider"
+	"github.com/superdurable/dex/sdk-go/dex"
 )
 
 var mockConnection = connector.ConnectionRef{Provider: "mock", Name: "default"}
@@ -42,6 +43,7 @@ func TestQueryAndIdempotentMutation(t *testing.T) {
 		httpconnector.Request{Method: http.MethodGet, Path: "/profiles/customer-1"},
 	)
 	require.NoError(t, err)
+	require.Equal(t, connector.QuerySucceeded, query.Outcome)
 	require.Equal(t, http.StatusOK, query.Value.StatusCode)
 	require.Empty(t, query.Value.Header.Get("Set-Cookie"))
 	require.Equal(t, "mock-request-1", query.Value.Header.Get("X-Request-Id"))
@@ -59,6 +61,7 @@ func TestQueryAndIdempotentMutation(t *testing.T) {
 			firstCallID = result.Receipt.CallID
 		}
 		require.Equal(t, firstCallID, result.Receipt.CallID)
+		require.Equal(t, connector.IdempotencyKey(firstCallID), result.Receipt.IdempotencyKey)
 		var mutation mockprovider.Mutation
 		require.NoError(t, json.Unmarshal(result.Value.Body, &mutation))
 		require.Equal(t, string(firstCallID), mutation.CallID)
@@ -66,7 +69,7 @@ func TestQueryAndIdempotentMutation(t *testing.T) {
 	require.Equal(t, 1, provider.MutationCount(firstCallID))
 }
 
-func TestRateLimitIsTypedAndConvertsToDexRetry(t *testing.T) {
+func TestQueryRateLimitIsTheOnlyGoErrorPath(t *testing.T) {
 	provider := mockprovider.Start()
 	defer provider.Close()
 	client := newClient(t, provider.URL())
@@ -74,10 +77,12 @@ func TestRateLimitIsTypedAndConvertsToDexRetry(t *testing.T) {
 		testsupport.NewDexContext("flow-1", "rate-limit-1"), client.Query(), mockConnection,
 		httpconnector.Request{Method: http.MethodGet, Path: "/rate-limit"},
 	)
-	require.True(t, connector.IsKind(err, connector.ErrorRateLimit))
-	retry, ok := connector.DexRetry(err, time.Second)
-	require.True(t, ok)
-	require.Equal(t, 3*time.Second, retry.After)
+	var retry *connector.RetryError
+	require.ErrorAs(t, err, &retry)
+	require.Equal(t, connector.FailureRateLimit, retry.Failure.Kind)
+	var retryAfter *dex.RetryAfterError
+	require.ErrorAs(t, err, &retryAfter)
+	require.Equal(t, 3*time.Second, retryAfter.After)
 }
 
 func TestConfirmedMutationRejectionIsFailedResult(t *testing.T) {
@@ -90,8 +95,45 @@ func TestConfirmedMutationRejectionIsFailedResult(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.Equal(t, connector.MutationFailed, result.Outcome)
-	require.Equal(t, connector.ErrorNotFound, result.Failure.Kind)
+	require.Equal(t, connector.FailureNotFound, result.Failure.Kind)
 	require.Equal(t, "mock-request-1", result.Receipt.ProviderRequestID)
+}
+
+func TestQueryStatusClassificationIsExplicit(t *testing.T) {
+	for _, test := range []struct {
+		name      string
+		status    int
+		wantKind  connector.FailureKind
+		wantRetry bool
+	}{
+		{name: "authentication", status: http.StatusUnauthorized, wantKind: connector.FailureAuthentication},
+		{name: "not found", status: http.StatusNotFound, wantKind: connector.FailureNotFound},
+		{name: "availability", status: http.StatusServiceUnavailable, wantKind: connector.FailureAvailability, wantRetry: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var requests atomic.Int32
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+				requests.Add(1)
+				response.WriteHeader(test.status)
+			}))
+			defer server.Close()
+			client := newClient(t, server.URL)
+			result, err := connector.RunQuery(
+				testsupport.NewDexContext("flow-1", "status-query-1"), client.Query(), mockConnection,
+				httpconnector.Request{Method: http.MethodGet, Path: "/resource"},
+			)
+			if test.wantRetry {
+				var retry *connector.RetryError
+				require.ErrorAs(t, err, &retry)
+				require.Equal(t, test.wantKind, retry.Failure.Kind)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, connector.QueryFailed, result.Outcome)
+				require.Equal(t, test.wantKind, result.Failure.Kind)
+			}
+			require.Equal(t, int32(1), requests.Load())
+		})
+	}
 }
 
 func TestCommittedMutationWithLostResponseIsUnknownAndRecoverable(t *testing.T) {
@@ -107,13 +149,14 @@ func TestCommittedMutationWithLostResponseIsUnknownAndRecoverable(t *testing.T) 
 	)
 	require.NoError(t, err)
 	require.Equal(t, connector.MutationUnknown, result.Outcome)
-	require.Equal(t, connector.ErrorUnknownMutation, result.Failure.Kind)
+	require.Equal(t, connector.FailureTransport, result.Failure.Kind)
 
 	recovered, recoverErr := connector.RunQuery(
 		testsupport.NewDexContext("flow-1", "recover-mutation-1"), client.Query(), mockConnection,
 		httpconnector.Request{Method: http.MethodGet, Path: "/mutations/" + string(result.Receipt.CallID)},
 	)
 	require.NoError(t, recoverErr)
+	require.Equal(t, connector.QuerySucceeded, recovered.Outcome)
 	var mutation mockprovider.Mutation
 	require.NoError(t, json.Unmarshal(recovered.Value.Body, &mutation))
 	require.Equal(t, "succeeded", mutation.Status)
@@ -124,15 +167,18 @@ func TestRejectsSecretHeaderInFlowInput(t *testing.T) {
 	provider := mockprovider.Start()
 	defer provider.Close()
 	client := newClient(t, provider.URL())
-	_, err := connector.RunQuery(
+	result, err := connector.RunQuery(
 		testsupport.NewDexContext("flow-1", "secret-header-1"), client.Query(), mockConnection,
 		httpconnector.Request{
 			Method: http.MethodGet, Path: "/profiles/customer-1",
 			Headers: map[string]string{"Authorization": "Bearer leaked"},
 		},
 	)
-	require.ErrorContains(t, err, "CredentialProvider")
-	require.NotContains(t, err.Error(), "leaked")
+	require.NoError(t, err)
+	require.Equal(t, connector.QueryFailed, result.Outcome)
+	require.Equal(t, connector.FailureValidation, result.Failure.Kind)
+	require.Contains(t, result.Failure.Message, "CredentialProvider")
+	require.NotContains(t, result.Failure.Message, "leaked")
 }
 
 func TestCredentialFailureBeforeDispatchIsNotUnknown(t *testing.T) {
@@ -147,9 +193,35 @@ func TestCredentialFailureBeforeDispatchIsNotUnknown(t *testing.T) {
 		testsupport.NewDexContext("flow-1", "credential-failure-1"), client.Mutation(), mockConnection,
 		httpconnector.Request{Method: http.MethodPost, Path: "/credits", Body: map[string]int{"credits": 1}},
 	)
-	require.ErrorContains(t, err, "credential store unavailable")
-	require.NotEqual(t, connector.MutationUnknown, result.Outcome)
+	require.NoError(t, err)
+	require.Equal(t, connector.MutationFailed, result.Outcome)
+	require.Equal(t, connector.FailureAuthentication, result.Failure.Kind)
+	require.NotContains(t, result.Failure.Message, "credential store unavailable")
 	require.Zero(t, requests.Load())
+}
+
+func TestProviderSpecificIdempotencyKeyIsSentAndReceipted(t *testing.T) {
+	var key string
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		key = request.Header.Get("Idempotency-Key")
+		response.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+	client, err := httpconnector.New(httpconnector.Config{
+		BaseURL: server.URL,
+		IdempotencyKey: func(callID connector.CallID, _ httpconnector.Request) connector.IdempotencyKey {
+			return connector.IdempotencyKey("provider_" + string(callID))
+		},
+	}, connector.StaticCredentialProvider{mockConnection: connector.NewCredential(nil)})
+	require.NoError(t, err)
+	result, err := connector.RunMutation(
+		testsupport.NewDexContext("flow-1", "provider-key-1"), client.Mutation(), mockConnection,
+		httpconnector.Request{Method: http.MethodPost, Path: "/credits"},
+	)
+	require.NoError(t, err)
+	require.Equal(t, connector.MutationSucceeded, result.Outcome)
+	require.Equal(t, key, string(result.Receipt.IdempotencyKey))
+	require.Contains(t, key, "provider_")
 }
 
 type failingCredentialProvider struct{}

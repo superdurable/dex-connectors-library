@@ -25,10 +25,26 @@ spec:
   auth: {type: none, fields: []}
   operations:
     - {name: getProfile, kind: query, description: read profile, idempotency: none}
-    - {name: grantCredit, kind: mutation, description: grant credit, idempotency: required}
+    - {name: grantCredit, kind: mutation, description: grant credit, idempotency: required, progress: [text, structured]}
 `))
 	require.NoError(t, err)
 	require.Equal(t, "mock-provider", manifest.Metadata.Name)
+	require.Equal(t, []string{"structured", "text"}, manifest.Spec.Operations[1].Progress)
+}
+
+func TestRejectProviderIdempotencyAndInvalidProgress(t *testing.T) {
+	_, err := schema.Decode(strings.NewReader(`
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata: {name: bad-provider, displayName: Bad, version: v0.1.0, description: bad}
+spec:
+  provider: bad
+  auth: {type: none, fields: []}
+  operations:
+    - {name: mutateThing, kind: mutation, description: unsafe, idempotency: provider, progress: [video]}
+`))
+	require.ErrorContains(t, err, "invalid idempotency")
+	require.ErrorContains(t, err, "progress must contain only")
 }
 
 func TestRejectMutationWithoutIdempotency(t *testing.T) {

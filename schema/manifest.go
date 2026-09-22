@@ -48,10 +48,11 @@ type AuthField struct {
 }
 
 type Operation struct {
-	Name        string `yaml:"name" json:"name"`
-	Kind        string `yaml:"kind" json:"kind"`
-	Description string `yaml:"description" json:"description"`
-	Idempotency string `yaml:"idempotency" json:"idempotency"`
+	Name        string   `yaml:"name" json:"name"`
+	Kind        string   `yaml:"kind" json:"kind"`
+	Description string   `yaml:"description" json:"description"`
+	Idempotency string   `yaml:"idempotency" json:"idempotency"`
+	Progress    []string `yaml:"progress,omitempty" json:"progress,omitempty"`
 }
 
 var (
@@ -69,6 +70,9 @@ func Decode(reader io.Reader) (Manifest, error) {
 	}
 	if err := manifest.Validate(); err != nil {
 		return Manifest{}, err
+	}
+	for index := range manifest.Spec.Operations {
+		sort.Strings(manifest.Spec.Operations[index].Progress)
 	}
 	return manifest, nil
 }
@@ -115,11 +119,21 @@ func (manifest Manifest) Validate() error {
 		if operation.Kind != "query" && operation.Kind != "mutation" {
 			problems = append(problems, operation.Name+": kind must be query or mutation")
 		}
-		if operation.Idempotency != "none" && operation.Idempotency != "required" && operation.Idempotency != "provider" {
+		if operation.Idempotency != "none" && operation.Idempotency != "required" {
 			problems = append(problems, operation.Name+": invalid idempotency")
 		}
 		if operation.Kind == "mutation" && operation.Idempotency == "none" {
-			problems = append(problems, operation.Name+": mutations must declare required or provider idempotency")
+			problems = append(problems, operation.Name+": mutations must declare required idempotency")
+		}
+		seenProgress := map[string]bool{}
+		for _, capability := range operation.Progress {
+			if capability != "structured" && capability != "text" {
+				problems = append(problems, operation.Name+": progress must contain only structured or text")
+			}
+			if seenProgress[capability] {
+				problems = append(problems, operation.Name+": progress capabilities must be unique")
+			}
+			seenProgress[capability] = true
 		}
 	}
 	if len(problems) > 0 {

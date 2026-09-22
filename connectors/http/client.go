@@ -30,6 +30,8 @@ var (
 	mutationDefinition = connector.MutationDefinition{Operation: connector.OperationRef{ConnectorID: "http", OperationID: "mutation"}}
 )
 
+type IdempotencyKeyFunc func(connector.CallID, Request) connector.IdempotencyKey
+
 type Config struct {
 	BaseURL           string
 	AllowedHosts      []string
@@ -37,6 +39,7 @@ type Config struct {
 	MaxResponseBytes  int64
 	CredentialHeaders map[string]string
 	IdempotencyHeader string
+	IdempotencyKey    IdempotencyKeyFunc
 	Client            *http.Client
 }
 
@@ -46,6 +49,7 @@ type Client struct {
 	maxResponseBytes  int64
 	credentialHeaders map[string]string
 	idempotencyHeader string
+	idempotencyKey    IdempotencyKeyFunc
 	httpClient        *http.Client
 	credentials       connector.CredentialProvider
 }
@@ -67,6 +71,13 @@ type Response struct {
 type QueryOperation struct{ client *Client }
 
 type MutationOperation struct{ client *Client }
+
+type requestError struct {
+	kind    connector.FailureKind
+	message string
+}
+
+func (err *requestError) Error() string { return err.message }
 
 func New(config Config, credentials connector.CredentialProvider) (*Client, error) {
 	baseURL, err := url.Parse(config.BaseURL)
@@ -103,7 +114,7 @@ func New(config Config, credentials connector.CredentialProvider) (*Client, erro
 	return &Client{
 		baseURL: baseURL, allowedHosts: allowedHosts, maxResponseBytes: maxBytes,
 		credentialHeaders: config.CredentialHeaders, idempotencyHeader: idempotencyHeader,
-		httpClient: httpClient, credentials: credentials,
+		idempotencyKey: config.IdempotencyKey, httpClient: httpClient, credentials: credentials,
 	}, nil
 }
 
@@ -113,79 +124,98 @@ func (client *Client) Mutation() MutationOperation { return MutationOperation{cl
 
 func (QueryOperation) Definition() connector.QueryDefinition { return queryDefinition }
 
-func (operation QueryOperation) Invoke(call connector.Call, input Request) (connector.QueryResult[Response], error) {
+func (operation QueryOperation) Invoke(call connector.Call, input Request) connector.QueryAttempt[Response] {
 	if input.Method != http.MethodGet && input.Method != http.MethodHead {
-		return connector.QueryResult[Response]{}, validationError("query", "query method must be GET or HEAD", nil)
+		return connector.NewQueryFailure(Response{}, queryFailure(connector.FailureValidation, "query method must be GET or HEAD"), connector.Receipt{})
 	}
 	response, requestID, dispatched, err := operation.client.do(call, input, "")
 	if err != nil {
 		if !dispatched {
-			return connector.QueryResult[Response]{}, err
+			return connector.NewQueryFailure(Response{}, requestFailure("query", err), connector.Receipt{})
 		}
-		return connector.QueryResult[Response]{}, classifyTransportError(false, "query", call, err)
+		return connector.NewQueryRetry[Response](queryFailure(connector.FailureAvailability, "provider is unavailable"), 0)
 	}
-	if err := statusError(false, "query", response, requestID, call); err != nil {
-		return connector.QueryResult[Response]{}, err
+	receipt := responseReceipt(call, requestID)
+	if int64(len(response.Body)) > operation.client.maxResponseBytes {
+		return connector.NewQueryFailure(Response{}, queryFailure(connector.FailureResponseTooLarge, "provider response exceeds the configured size limit"), receipt)
 	}
-	return connector.QueryResult[Response]{
-		Value:   response,
-		Receipt: connector.Receipt{CallID: call.ID, Provider: "http", ProviderRequestID: requestID, ObservedAt: time.Now().UTC()},
-	}, nil
+	if response.StatusCode >= 200 && response.StatusCode < 300 {
+		return connector.NewQuerySuccess(response, receipt)
+	}
+	failure, retryAfter, retry := classifyStatus("query", response)
+	if retry {
+		return connector.NewQueryRetry[Response](failure, retryAfter)
+	}
+	return connector.NewQueryFailure(Response{}, failure, receipt)
 }
 
 func (MutationOperation) Definition() connector.MutationDefinition { return mutationDefinition }
 
-func (operation MutationOperation) Invoke(call connector.Call, input Request) (connector.MutationResult[Response], error) {
-	if input.Method != http.MethodPost && input.Method != http.MethodPut && input.Method != http.MethodPatch && input.Method != http.MethodDelete {
-		return connector.MutationResult[Response]{}, validationError("mutation", "unsupported mutation method", nil)
+func (operation MutationOperation) IdempotencyKey(callID connector.CallID, input Request) connector.IdempotencyKey {
+	if operation.client.idempotencyKey == nil {
+		return connector.IdempotencyKey(callID)
 	}
-	response, requestID, dispatched, err := operation.client.do(call, input, call.ID)
-	if err != nil {
-		if !dispatched {
-			return connector.MutationResult[Response]{}, err
-		}
-		return connector.MutationResult[Response]{}, classifyTransportError(true, "mutation", call, err)
-	}
-	if err := statusError(true, "mutation", response, requestID, call); err != nil {
-		return connector.MutationResult[Response]{}, err
-	}
-	return connector.MutationResult[Response]{
-		Outcome: connector.MutationSucceeded,
-		Value:   response,
-		Receipt: connector.Receipt{CallID: call.ID, Provider: "http", ProviderRequestID: requestID, ObservedAt: time.Now().UTC()},
-	}, nil
+	return operation.client.idempotencyKey(callID, input)
 }
 
-func (client *Client) do(call connector.Call, input Request, callID connector.CallID) (Response, string, bool, error) {
+func (operation MutationOperation) Invoke(call connector.Call, input Request) connector.MutationAttempt[Response] {
+	if input.Method != http.MethodPost && input.Method != http.MethodPut && input.Method != http.MethodPatch && input.Method != http.MethodDelete {
+		return connector.NewMutationFailure(Response{}, mutationFailure(connector.FailureValidation, "unsupported mutation method"), connector.Receipt{})
+	}
+	response, requestID, dispatched, err := operation.client.do(call, input, call.IdempotencyKey)
+	receipt := responseReceipt(call, requestID)
+	if err != nil {
+		if !dispatched {
+			return connector.NewMutationFailure(Response{}, requestFailure("mutation", err), receipt)
+		}
+		return connector.NewMutationUnknown(Response{}, mutationFailure(connector.FailureTransport, "provider outcome is unknown"), receipt)
+	}
+	if int64(len(response.Body)) > operation.client.maxResponseBytes {
+		return connector.NewMutationUnknown(Response{}, mutationFailure(connector.FailureResponseTooLarge, "provider outcome is unknown"), receipt)
+	}
+	if response.StatusCode >= 200 && response.StatusCode < 300 {
+		return connector.NewMutationSuccess(response, receipt)
+	}
+	failure, retryAfter, retry := classifyStatus("mutation", response)
+	if retry {
+		return connector.NewMutationRetry[Response](failure, retryAfter)
+	}
+	if response.StatusCode >= 500 {
+		return connector.NewMutationUnknown(Response{}, failure, receipt)
+	}
+	return connector.NewMutationFailure(Response{}, failure, receipt)
+}
+
+func (client *Client) do(call connector.Call, input Request, idempotencyKey connector.IdempotencyKey) (Response, string, bool, error) {
 	target, err := client.baseURL.Parse(input.Path)
 	if err != nil || !client.allowedHosts[strings.ToLower(target.Hostname())] {
-		return Response{}, "", false, validationError(strings.ToLower(input.Method), "request target is outside the host allowlist", err)
+		return Response{}, "", false, &requestError{kind: connector.FailureValidation, message: "request target is outside the host allowlist"}
 	}
 	target.RawQuery = input.Query.Encode()
 	var body io.Reader
 	if input.Body != nil {
 		encoded, encodeErr := json.Marshal(input.Body)
 		if encodeErr != nil {
-			return Response{}, "", false, validationError(strings.ToLower(input.Method), "request body is not JSON serializable", encodeErr)
+			return Response{}, "", false, &requestError{kind: connector.FailureValidation, message: "request body is not JSON serializable"}
 		}
 		body = bytes.NewReader(encoded)
 	}
 	request, err := http.NewRequestWithContext(call.Context, input.Method, target.String(), body)
 	if err != nil {
-		return Response{}, "", false, validationError(strings.ToLower(input.Method), "request is invalid", err)
+		return Response{}, "", false, &requestError{kind: connector.FailureValidation, message: "request is invalid"}
 	}
 	if input.Body != nil {
 		request.Header.Set("Content-Type", "application/json")
 	}
 	for name, value := range input.Headers {
 		if isSecretHeader(name) {
-			return Response{}, "", false, validationError(strings.ToLower(input.Method), "secret headers must come from CredentialProvider", nil)
+			return Response{}, "", false, &requestError{kind: connector.FailureValidation, message: "secret headers must come from CredentialProvider"}
 		}
 		request.Header.Set(name, value)
 	}
 	credential, err := client.credentials.Resolve(call)
 	if err != nil {
-		return Response{}, "", false, err
+		return Response{}, "", false, &requestError{kind: connector.FailureAuthentication, message: "connection credentials are unavailable"}
 	}
 	for field, header := range client.credentialHeaders {
 		value, ok := credential.Value(field)
@@ -193,8 +223,8 @@ func (client *Client) do(call connector.Call, input Request, callID connector.Ca
 			request.Header.Set(header, value)
 		}
 	}
-	if callID != "" {
-		request.Header.Set(client.idempotencyHeader, string(callID))
+	if idempotencyKey != "" {
+		request.Header.Set(client.idempotencyHeader, string(idempotencyKey))
 	}
 	response, err := client.httpClient.Do(request)
 	if err != nil {
@@ -207,69 +237,67 @@ func (client *Client) do(call connector.Call, input Request, callID connector.Ca
 	if err != nil {
 		return Response{}, requestID, true, err
 	}
-	if int64(len(responseBody)) > client.maxResponseBytes {
-		if callID != "" {
-			receipt := connector.Receipt{CallID: call.ID, Provider: "http", ProviderRequestID: requestID, ObservedAt: time.Now().UTC()}
-			return Response{}, requestID, true, connector.NewError(connector.ErrorUnknownMutation, "http", "mutation", "provider outcome is unknown", nil).WithReceipt(receipt)
-		}
-		return Response{}, requestID, true, connector.NewError(connector.ErrorTerminalRejection, "http", strings.ToLower(input.Method), "provider response exceeds the configured size limit", nil)
-	}
 	return Response{StatusCode: response.StatusCode, Header: safeResponseHeaders(response.Header), Body: responseBody}, requestID, true, nil
 }
 
-func validationError(operation, message string, cause error) error {
-	return connector.NewError(connector.ErrorValidation, "http", operation, message, cause)
-}
-
-func classifyTransportError(mutation bool, operation string, call connector.Call, cause error) error {
-	var connectorErr *connector.Error
-	if errors.As(cause, &connectorErr) {
-		return connectorErr
-	}
-	if mutation {
-		receipt := connector.Receipt{CallID: call.ID, Provider: "http", ObservedAt: time.Now().UTC()}
-		return connector.NewError(connector.ErrorUnknownMutation, "http", operation, "provider outcome is unknown", cause).WithReceipt(receipt)
-	}
-	return connector.NewError(connector.ErrorRetryableAvailability, "http", operation, "provider is unavailable", cause)
-}
-
-func statusError(mutation bool, operation string, response Response, requestID string, call connector.Call) error {
-	if response.StatusCode >= 200 && response.StatusCode < 300 {
-		return nil
-	}
-	kind := connector.ErrorTerminalRejection
+func classifyStatus(operation string, response Response) (connector.Failure, time.Duration, bool) {
+	kind := connector.FailureProviderRejection
+	retry := false
 	switch response.StatusCode {
 	case http.StatusUnauthorized:
-		kind = connector.ErrorAuthentication
+		kind = connector.FailureAuthentication
 	case http.StatusForbidden:
-		kind = connector.ErrorAuthorization
+		kind = connector.FailureAuthorization
 	case http.StatusNotFound:
-		kind = connector.ErrorNotFound
+		kind = connector.FailureNotFound
 	case http.StatusConflict:
-		kind = connector.ErrorConflict
+		kind = connector.FailureConflict
 	case http.StatusTooManyRequests:
-		kind = connector.ErrorRateLimit
+		kind = connector.FailureRateLimit
+		retry = true
 	default:
 		if response.StatusCode >= 500 {
-			if mutation {
-				kind = connector.ErrorUnknownMutation
-			} else {
-				kind = connector.ErrorRetryableAvailability
-			}
+			kind = connector.FailureAvailability
+			retry = operation == "query"
 		}
 	}
-	err := connector.NewError(kind, "http", operation, "provider returned HTTP "+strconv.Itoa(response.StatusCode), nil)
-	if kind == connector.ErrorRateLimit {
-		if seconds, parseErr := strconv.Atoi(response.Header.Get("Retry-After")); parseErr == nil {
-			err.WithRetryAfter(time.Duration(seconds) * time.Second)
+	var retryAfter time.Duration
+	if kind == connector.FailureRateLimit {
+		if seconds, err := strconv.Atoi(response.Header.Get("Retry-After")); err == nil && seconds > 0 {
+			retryAfter = time.Duration(seconds) * time.Second
 		}
 	}
-	if mutation && kind != connector.ErrorRateLimit && kind != connector.ErrorRetryableAvailability {
-		err.WithReceipt(connector.Receipt{
-			CallID: call.ID, Provider: "http", ProviderRequestID: requestID, ObservedAt: time.Now().UTC(),
-		})
+	failure := connector.Failure{
+		Kind: kind, Provider: "http", Operation: operation,
+		Message: "provider returned HTTP " + strconv.Itoa(response.StatusCode),
 	}
-	return err
+	return failure, retryAfter, retry
+}
+
+func queryFailure(kind connector.FailureKind, message string) connector.Failure {
+	return connector.Failure{Kind: kind, Provider: "http", Operation: "query", Message: message}
+}
+
+func mutationFailure(kind connector.FailureKind, message string) connector.Failure {
+	return connector.Failure{Kind: kind, Provider: "http", Operation: "mutation", Message: message}
+}
+
+func requestFailure(operation string, err error) connector.Failure {
+	kind := connector.FailureLocalDefect
+	message := "request could not be prepared"
+	var classified *requestError
+	if errors.As(err, &classified) {
+		kind = classified.kind
+		message = classified.message
+	}
+	return connector.Failure{Kind: kind, Provider: "http", Operation: operation, Message: message}
+}
+
+func responseReceipt(call connector.Call, requestID string) connector.Receipt {
+	return connector.Receipt{
+		CallID: call.ID, IdempotencyKey: call.IdempotencyKey, Provider: "http",
+		ProviderRequestID: requestID, ObservedAt: time.Now().UTC(),
+	}
 }
 
 func isLoopback(host string) bool {

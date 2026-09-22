@@ -17,7 +17,8 @@ spec:
     - name: createResponse
       kind: mutation
       description: Create an ordinary or structured model response.
-      idempotency: provider
+      idempotency: required
+      progress: [structured, text]
     - name: retrieveResponse
       kind: query
       description: Retrieve a response by provider response ID.

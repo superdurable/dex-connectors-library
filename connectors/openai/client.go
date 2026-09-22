@@ -7,7 +7,6 @@ package openai
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -19,7 +18,11 @@ import (
 	connector "github.com/superdurable/dex-connectors-library/sdk/go"
 )
 
-const defaultEndpoint = "https://api.openai.com/v1"
+const (
+	defaultEndpoint         = "https://api.openai.com/v1"
+	defaultMaxResponseBytes = int64(8 << 20)
+	defaultMaxSSEEventBytes = 1 << 20
+)
 
 var (
 	createResponseDefinition   = connector.MutationDefinition{Operation: connector.OperationRef{ConnectorID: "openai", OperationID: "createResponse"}}
@@ -27,14 +30,18 @@ var (
 )
 
 type Config struct {
-	Endpoint string
-	Client   *http.Client
+	Endpoint         string
+	Client           *http.Client
+	MaxResponseBytes int64
+	MaxSSEEventBytes int
 }
 
 type Client struct {
-	endpoint    *url.URL
-	httpClient  *http.Client
-	credentials connector.CredentialProvider
+	endpoint         *url.URL
+	httpClient       *http.Client
+	credentials      connector.CredentialProvider
+	maxResponseBytes int64
+	maxSSEEventBytes int
 }
 
 type StructuredOutput struct {
@@ -75,6 +82,12 @@ type CreateResponseOperation struct{ client *Client }
 
 type RetrieveResponseOperation struct{ client *Client }
 
+type requestFailure struct {
+	failure connector.Failure
+}
+
+func (failure *requestFailure) Error() string { return failure.failure.Message }
+
 func New(config Config, credentials connector.CredentialProvider) (*Client, error) {
 	endpointText := config.Endpoint
 	if endpointText == "" {
@@ -94,7 +107,21 @@ func New(config Config, credentials connector.CredentialProvider) (*Client, erro
 	if credentials == nil {
 		return nil, fmt.Errorf("credential provider is required")
 	}
-	return &Client{endpoint: endpoint, httpClient: httpClient, credentials: credentials}, nil
+	maxResponseBytes := config.MaxResponseBytes
+	if maxResponseBytes == 0 {
+		maxResponseBytes = defaultMaxResponseBytes
+	}
+	maxSSEEventBytes := config.MaxSSEEventBytes
+	if maxSSEEventBytes == 0 {
+		maxSSEEventBytes = defaultMaxSSEEventBytes
+	}
+	if maxResponseBytes < 1 || maxSSEEventBytes < 1 {
+		return nil, fmt.Errorf("OpenAI response limits must be positive")
+	}
+	return &Client{
+		endpoint: endpoint, httpClient: httpClient, credentials: credentials,
+		maxResponseBytes: maxResponseBytes, maxSSEEventBytes: maxSSEEventBytes,
+	}, nil
 }
 
 func (client *Client) CreateResponse() CreateResponseOperation {
@@ -109,9 +136,13 @@ func (CreateResponseOperation) Definition() connector.MutationDefinition {
 	return createResponseDefinition
 }
 
-func (operation CreateResponseOperation) Invoke(call connector.Call, input CreateRequest) (connector.MutationResult[Response], error) {
+func (CreateResponseOperation) IdempotencyKey(callID connector.CallID, _ CreateRequest) connector.IdempotencyKey {
+	return connector.IdempotencyKey(callID)
+}
+
+func (operation CreateResponseOperation) Invoke(call connector.Call, input CreateRequest) connector.MutationAttempt[Response] {
 	if input.Model == "" || input.Input == nil {
-		return connector.MutationResult[Response]{}, validationError("createResponse", "model and input are required", nil)
+		return connector.NewMutationFailure(Response{}, openAIFailure(connector.FailureValidation, "createResponse", "model and input are required"), connector.Receipt{})
 	}
 	payload := map[string]any{"model": input.Model, "input": input.Input}
 	if input.Instructions != "" {
@@ -124,100 +155,170 @@ func (operation CreateResponseOperation) Invoke(call connector.Call, input Creat
 			"schema":      input.StructuredOutput.Schema, "strict": input.StructuredOutput.Strict,
 		}}
 	}
-	var wire wireResponse
-	requestID, headers, dispatched, err := operation.client.do(call, http.MethodPost, "/responses", call.ID, payload, &wire)
+	streaming := call.HasProgressStream() || call.HasTextStream()
+	if streaming {
+		payload["stream"] = true
+	}
+	request, failure := operation.client.newRequest(call, http.MethodPost, "/responses", call.IdempotencyKey, payload)
+	if failure != nil {
+		return connector.NewMutationFailure(Response{}, failure.failure, connector.Receipt{})
+	}
+	response, err := operation.client.httpClient.Do(request)
 	if err != nil {
-		if !dispatched {
-			return connector.MutationResult[Response]{}, err
-		}
-		var typed *connector.Error
-		if errors.As(err, &typed) {
-			return connector.MutationResult[Response]{}, typed
-		}
-		receipt := connector.Receipt{CallID: call.ID, Provider: "openai", ObservedAt: time.Now().UTC()}
-		return connector.MutationResult[Response]{}, connector.NewError(connector.ErrorUnknownMutation, "openai", "createResponse", "provider outcome is unknown", err).WithReceipt(receipt)
+		return connector.NewMutationUnknown(Response{}, openAIFailure(connector.FailureTransport, "createResponse", "provider outcome is unknown"), responseReceipt(call, "", http.Header{}, ""))
+	}
+	defer response.Body.Close()
+	requestID := response.Header.Get("X-Request-Id")
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		return createStatusAttempt(call, response.StatusCode, response.Header, requestID)
+	}
+	if streaming {
+		return operation.readStream(call, response.Body, response.Header, requestID)
+	}
+	wire, readFailure := operation.client.readResponse(response.Body, "createResponse")
+	if readFailure != nil {
+		return connector.NewMutationUnknown(Response{}, *readFailure, responseReceipt(call, requestID, response.Header, ""))
 	}
 	result := convertResponse(wire)
-	return connector.MutationResult[Response]{
-		Outcome: connector.MutationSucceeded,
-		Value:   result,
-		Receipt: connector.Receipt{
-			CallID: call.ID, Provider: "openai", ProviderObjectID: result.ID,
-			ProviderRequestID: requestID, ObservedAt: time.Now().UTC(), Metadata: rateLimitMetadata(headers),
-		},
-	}, nil
+	return connector.NewMutationSuccess(result, responseReceipt(call, requestID, response.Header, result.ID))
 }
 
 func (RetrieveResponseOperation) Definition() connector.QueryDefinition {
 	return retrieveResponseDefinition
 }
 
-func (operation RetrieveResponseOperation) Invoke(call connector.Call, input RetrieveRequest) (connector.QueryResult[Response], error) {
+func (operation RetrieveResponseOperation) Invoke(call connector.Call, input RetrieveRequest) connector.QueryAttempt[Response] {
 	if input.ResponseID == "" {
-		return connector.QueryResult[Response]{}, validationError("retrieveResponse", "response ID is required", nil)
+		return connector.NewQueryFailure(Response{}, openAIFailure(connector.FailureValidation, "retrieveResponse", "response ID is required"), connector.Receipt{})
 	}
-	var wire wireResponse
-	requestID, headers, dispatched, err := operation.client.do(call, http.MethodGet, "/responses/"+url.PathEscape(input.ResponseID), "", nil, &wire)
+	request, failure := operation.client.newRequest(call, http.MethodGet, "/responses/"+url.PathEscape(input.ResponseID), "", nil)
+	if failure != nil {
+		return connector.NewQueryFailure(Response{}, failure.failure, connector.Receipt{})
+	}
+	response, err := operation.client.httpClient.Do(request)
 	if err != nil {
-		if !dispatched {
-			return connector.QueryResult[Response]{}, err
-		}
-		var typed *connector.Error
-		if errors.As(err, &typed) {
-			return connector.QueryResult[Response]{}, typed
-		}
-		return connector.QueryResult[Response]{}, connector.NewError(connector.ErrorRetryableAvailability, "openai", "retrieveResponse", "provider is unavailable", err)
+		return connector.NewQueryRetry[Response](openAIFailure(connector.FailureAvailability, "retrieveResponse", "provider is unavailable"), 0)
 	}
-	return connector.QueryResult[Response]{
-		Value: convertResponse(wire),
-		Receipt: connector.Receipt{
-			CallID: call.ID, Provider: "openai", ProviderObjectID: input.ResponseID,
-			ProviderRequestID: requestID, ObservedAt: time.Now().UTC(), Metadata: rateLimitMetadata(headers),
-		},
-	}, nil
+	defer response.Body.Close()
+	requestID := response.Header.Get("X-Request-Id")
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		failure, retryAfter, retry := classifyOpenAIStatus("retrieveResponse", response.StatusCode, response.Header)
+		if retry {
+			return connector.NewQueryRetry[Response](failure, retryAfter)
+		}
+		return connector.NewQueryFailure(Response{}, failure, responseReceipt(call, requestID, response.Header, input.ResponseID))
+	}
+	wire, readFailure := operation.client.readResponse(response.Body, "retrieveResponse")
+	if readFailure != nil {
+		if readFailure.Kind == connector.FailureResponseTooLarge || readFailure.Kind == connector.FailureProtocol {
+			return connector.NewQueryFailure(Response{}, *readFailure, responseReceipt(call, requestID, response.Header, input.ResponseID))
+		}
+		return connector.NewQueryRetry[Response](*readFailure, 0)
+	}
+	result := convertResponse(wire)
+	return connector.NewQuerySuccess(result, responseReceipt(call, requestID, response.Header, result.ID))
 }
 
-func (client *Client) do(call connector.Call, method, path string, callID connector.CallID, payload any, output any) (string, http.Header, bool, error) {
+func (client *Client) newRequest(call connector.Call, method, path string, key connector.IdempotencyKey, payload any) (*http.Request, *requestFailure) {
 	credential, err := client.credentials.Resolve(call)
 	if err != nil {
-		return "", nil, false, err
+		return nil, &requestFailure{failure: openAIFailure(connector.FailureAuthentication, call.Operation.OperationID, "connection credentials are unavailable")}
 	}
 	apiKey, err := connector.RequiredCredentialValue(credential, "api_key")
 	if err != nil {
-		return "", nil, false, connector.NewError(connector.ErrorAuthentication, "openai", path, "API key is not configured", err)
+		return nil, &requestFailure{failure: openAIFailure(connector.FailureAuthentication, call.Operation.OperationID, "API key is not configured")}
 	}
 	var body io.Reader
 	if payload != nil {
 		encoded, encodeErr := json.Marshal(payload)
 		if encodeErr != nil {
-			return "", nil, false, validationError(path, "request is not JSON serializable", encodeErr)
+			return nil, &requestFailure{failure: openAIFailure(connector.FailureValidation, call.Operation.OperationID, "request is not JSON serializable")}
 		}
 		body = bytes.NewReader(encoded)
 	}
 	target := strings.TrimRight(client.endpoint.String(), "/") + path
 	request, err := http.NewRequestWithContext(call.Context, method, target, body)
 	if err != nil {
-		return "", nil, false, validationError(path, "build request", err)
+		return nil, &requestFailure{failure: openAIFailure(connector.FailureLocalDefect, call.Operation.OperationID, "request could not be built")}
 	}
 	request.Header.Set("Authorization", "Bearer "+apiKey)
 	request.Header.Set("Content-Type", "application/json")
-	if callID != "" {
-		request.Header.Set("Idempotency-Key", string(callID))
+	if key != "" {
+		request.Header.Set("Idempotency-Key", string(key))
 	}
-	response, err := client.httpClient.Do(request)
+	return request, nil
+}
+
+func (client *Client) readResponse(body io.Reader, operation string) (wireResponse, *connector.Failure) {
+	data, err := io.ReadAll(io.LimitReader(body, client.maxResponseBytes+1))
 	if err != nil {
-		return "", nil, true, err
+		failure := openAIFailure(connector.FailureTransport, operation, "provider response could not be read")
+		return wireResponse{}, &failure
 	}
-	defer response.Body.Close()
-	requestID := response.Header.Get("X-Request-Id")
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return requestID, response.Header, true, openAIStatusError(path, response.StatusCode, response.Header, requestID, call, callID != "")
+	if int64(len(data)) > client.maxResponseBytes {
+		failure := openAIFailure(connector.FailureResponseTooLarge, operation, "provider response exceeds the configured size limit")
+		return wireResponse{}, &failure
 	}
-	decoder := json.NewDecoder(io.LimitReader(response.Body, 8<<20))
-	if err := decoder.Decode(output); err != nil {
-		return requestID, response.Header, true, fmt.Errorf("decode provider response: %w", err)
+	var wire wireResponse
+	if err := json.Unmarshal(data, &wire); err != nil {
+		failure := openAIFailure(connector.FailureProtocol, operation, "provider response is invalid")
+		return wireResponse{}, &failure
 	}
-	return requestID, response.Header, true, nil
+	return wire, nil
+}
+
+func createStatusAttempt(call connector.Call, status int, header http.Header, requestID string) connector.MutationAttempt[Response] {
+	failure, retryAfter, retry := classifyOpenAIStatus("createResponse", status, header)
+	if retry {
+		return connector.NewMutationRetry[Response](failure, retryAfter)
+	}
+	receipt := responseReceipt(call, requestID, header, "")
+	if status >= 500 {
+		return connector.NewMutationUnknown(Response{}, failure, receipt)
+	}
+	return connector.NewMutationFailure(Response{}, failure, receipt)
+}
+
+func classifyOpenAIStatus(operation string, status int, header http.Header) (connector.Failure, time.Duration, bool) {
+	kind := connector.FailureProviderRejection
+	retry := false
+	switch status {
+	case http.StatusUnauthorized:
+		kind = connector.FailureAuthentication
+	case http.StatusForbidden:
+		kind = connector.FailureAuthorization
+	case http.StatusNotFound:
+		kind = connector.FailureNotFound
+	case http.StatusConflict:
+		kind = connector.FailureConflict
+	case http.StatusTooManyRequests:
+		kind = connector.FailureRateLimit
+		retry = true
+	default:
+		if status >= 500 {
+			kind = connector.FailureAvailability
+			retry = operation == "retrieveResponse"
+		}
+	}
+	var retryAfter time.Duration
+	if kind == connector.FailureRateLimit {
+		if seconds, err := strconv.Atoi(header.Get("Retry-After")); err == nil && seconds > 0 {
+			retryAfter = time.Duration(seconds) * time.Second
+		}
+	}
+	return openAIFailure(kind, operation, "provider returned HTTP "+strconv.Itoa(status)), retryAfter, retry
+}
+
+func openAIFailure(kind connector.FailureKind, operation, message string) connector.Failure {
+	return connector.Failure{Kind: kind, Provider: "openai", Operation: operation, Message: message}
+}
+
+func responseReceipt(call connector.Call, requestID string, header http.Header, responseID string) connector.Receipt {
+	return connector.Receipt{
+		CallID: call.ID, IdempotencyKey: call.IdempotencyKey, Provider: "openai",
+		ProviderObjectID: responseID, ProviderRequestID: requestID,
+		ObservedAt: time.Now().UTC(), Metadata: rateLimitMetadata(header),
+	}
 }
 
 type wireResponse struct {
@@ -260,46 +361,6 @@ func convertResponse(wire wireResponse) Response {
 			TotalTokens: wire.Usage.TotalTokens,
 		},
 	}
-}
-
-func validationError(operation, message string, cause error) error {
-	return connector.NewError(connector.ErrorValidation, "openai", operation, message, cause)
-}
-
-func openAIStatusError(operation string, status int, header http.Header, requestID string, call connector.Call, mutation bool) error {
-	kind := connector.ErrorTerminalRejection
-	switch status {
-	case http.StatusUnauthorized:
-		kind = connector.ErrorAuthentication
-	case http.StatusForbidden:
-		kind = connector.ErrorAuthorization
-	case http.StatusNotFound:
-		kind = connector.ErrorNotFound
-	case http.StatusConflict:
-		kind = connector.ErrorConflict
-	case http.StatusTooManyRequests:
-		kind = connector.ErrorRateLimit
-	default:
-		if status >= 500 {
-			if mutation {
-				kind = connector.ErrorUnknownMutation
-			} else {
-				kind = connector.ErrorRetryableAvailability
-			}
-		}
-	}
-	err := connector.NewError(kind, "openai", operation, "provider returned HTTP "+strconv.Itoa(status), nil)
-	if kind == connector.ErrorRateLimit {
-		if seconds, parseErr := strconv.Atoi(header.Get("Retry-After")); parseErr == nil {
-			err.WithRetryAfter(time.Duration(seconds) * time.Second)
-		}
-	}
-	if mutation && kind != connector.ErrorRateLimit && kind != connector.ErrorRetryableAvailability {
-		err.WithReceipt(connector.Receipt{
-			CallID: call.ID, Provider: "openai", ProviderRequestID: requestID, ObservedAt: time.Now().UTC(),
-		})
-	}
-	return err
 }
 
 func rateLimitMetadata(header http.Header) map[string]string {
