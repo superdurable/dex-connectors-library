@@ -1,0 +1,28 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: http
+  displayName: HTTP and Webhook
+  version: v0.1.0-alpha.1
+  description: Bounded HTTP queries, idempotent actions, and signed webhooks.
+spec:
+  provider: http
+  auth:
+    type: apiKey
+    fields:
+      - name: api_key
+        required: false
+        sensitive: true
+  operations:
+    - name: query
+      kind: query
+      description: Perform a bounded GET or HEAD request.
+      idempotency: none
+    - name: action
+      kind: action
+      description: Perform a mutation with a stable idempotency key.
+      idempotency: required
+    - name: verifyWebhook
+      kind: query
+      description: Verify signature, timestamp, and replay protection.
+      idempotency: none

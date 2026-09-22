@@ -1,0 +1,24 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: openai
+  displayName: OpenAI
+  version: v0.1.0-alpha.1
+  description: OpenAI Responses API with structured output, usage, and recovery metadata.
+spec:
+  provider: openai
+  auth:
+    type: apiKey
+    fields:
+      - name: api_key
+        required: true
+        sensitive: true
+  operations:
+    - name: createResponse
+      kind: action
+      description: Create an ordinary or structured model response.
+      idempotency: provider
+    - name: retrieveResponse
+      kind: query
+      description: Retrieve a response by provider response ID.
+      idempotency: none
