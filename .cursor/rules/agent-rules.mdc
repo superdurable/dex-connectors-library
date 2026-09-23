@@ -1,0 +1,14 @@
+---
+description: Agent rule synchronization, branches, and commits
+alwaysApply: true
+---
+
+# Agent Work
+
+- Keep AGENTS.md, CLAUDE.md, and Cursor rules equivalent in one commit.
+- Every plan includes Tests, Documentation, and UI/UX.
+- Fetch and branch from the latest origin/main.
+- End each changing turn with one commit and a clean working tree.
+- Preserve unrelated user files and changes.
+- Never add an AI tool as author, committer, or co-author.
+- Never bypass hooks with --no-verify.

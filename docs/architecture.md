@@ -4,10 +4,14 @@
 
 - `schema/` owns the strict v1alpha1 manifest model and JSON Schema.
 - `internal/codegen/` turns one manifest into connector Go types.
-- `sdk/go/` owns branch Attempts, Dex identity, Step factories, credentials,
-  receipts, idempotency, and Stream options.
+- `sdk/go/` is an independently released module owning branch Attempts, Dex
+  identity, generic Step factories, generated-factory markers, typed targets,
+  credentials, receipts, idempotency, and Stream options.
 - `sdk/react/` owns credential-free connection-status primitives.
-- `connectors/` owns provider adapters and their source manifests.
+- `connectors/` owns provider adapters and their source manifests. The next
+  staged delivery converts each connector into an independently released
+  module. Connectors from one company are grouped below one company directory
+  without sharing a module or release.
 - `cmd/connectorctl/` validates, generates, checks, and catalogs manifests.
 - `examples/customer-onboarding/` exercises factories against real Dex.
 
@@ -83,10 +87,20 @@ Each manifest supplies:
 - operation branches, defect and uncertainty branch identities;
 - Result Attribute requirement and Stream capabilities;
 - Execute timeout, heartbeat, retry, and durability defaults.
+- Go operation input/output types used to generate its public Step factory.
 
-`connectorctl generate` writes `zz_generated_connector.go`. Provider code
-contains only transport and classification logic. Constructor options carry
-code dependencies such as HTTP clients and idempotency derivation functions.
+`connectorctl generate` writes `zz_generated_connector.go`, including one
+strongly typed config and constructor per operation. Generated configs embed a
+canonical SDK marker and use metadata tags for branches and resources so Dex
+CLI can identify factories by Go type identity instead of connector-specific
+function names. Provider code contains only transport and classification
+logic. Constructor options carry code dependencies such as HTTP clients and
+idempotency derivation functions.
+
+The SDK now uses its own Go module and directory-prefixed tags. Connector
+modules adopt the same model in the next staged delivery. An SDK contract
+change is published first; connector modules then pin that exact release in
+later PRs. Git tags, not source manifests, define published versions.
 
 ## HTTP connector
 

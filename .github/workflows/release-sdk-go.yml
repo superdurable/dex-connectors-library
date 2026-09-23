@@ -1,0 +1,91 @@
+name: Release Connector Go SDK
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Semantic version component to increment
+        required: true
+        default: minor
+        type: choice
+        options:
+          - minor
+          - patch
+          - major
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: release-connector-go-sdk
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: sdk/go/go.mod
+          cache-dependency-path: sdk/go/go.sum
+      - name: Test standalone SDK module
+        working-directory: sdk/go
+        env:
+          GOWORK: "off"
+        run: |
+          go test -race ./...
+          go vet ./...
+      - name: Plan SDK release
+        id: plan
+        run: |
+          python3 script/release/component_release.py plan \
+            --component-path sdk/go \
+            --tag-prefix sdk/go/ \
+            --bump "${{ inputs.bump }}" \
+            --ref "${GITHUB_REF}" \
+            --json-output /tmp/connector-sdk-release-plan.json \
+            --github-output "${GITHUB_OUTPUT}"
+      - name: Build path-scoped release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 script/release/component_release.py notes \
+            --plan /tmp/connector-sdk-release-plan.json \
+            --repository "${GITHUB_REPOSITORY}" \
+            --output /tmp/connector-sdk-release-notes.md
+      - name: Create SDK release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.plan.outputs.tag }}
+          RELEASE_VERSION: ${{ steps.plan.outputs.version }}
+        run: |
+          gh release create "${RELEASE_TAG}" \
+            --target "${GITHUB_SHA}" \
+            --title "Connector Go SDK ${RELEASE_VERSION}" \
+            --notes-file /tmp/connector-sdk-release-notes.md
+      - name: Verify published module
+        env:
+          MODULE_PATH: ${{ steps.plan.outputs.module_path }}
+          RELEASE_VERSION: ${{ steps.plan.outputs.version }}
+        run: |
+          deadline=$((SECONDS + 120))
+          until GOWORK=off GOPROXY=direct go mod download "${MODULE_PATH}@${RELEASE_VERSION}"; do
+            if (( SECONDS >= deadline )); then
+              echo "Published SDK module did not become downloadable before the deadline" >&2
+              exit 1
+            fi
+            sleep 2
+          done
+
+  reject-non-main:
+    if: github.ref != 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "SDK releases can run only from main" >&2
+          exit 1

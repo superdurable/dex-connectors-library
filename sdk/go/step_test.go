@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/internal/testsupport"
 	connector "github.com/superdurable/dex-connectors-library/sdk/go"
+	"github.com/superdurable/dex-connectors-library/sdk/go/internal/testsupport"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -20,6 +20,25 @@ func TestWrongFactoryTargetInputDoesNotCompile(t *testing.T) {
 	output, err := command.CombinedOutput()
 	require.Error(t, err)
 	require.Contains(t, string(output), "cannot use")
+}
+
+func TestTypedTargetBindsGeneratedBranch(t *testing.T) {
+	target := connector.GoTo(factoryTarget{})
+	operation := &factoryQuery{definition: queryDefinition(testQueryRef)}
+	step, err := connector.NewQueryStep(connector.QueryStepConfig[string, string, string]{
+		StepType:     "GeneratedFactoryTarget",
+		Presentation: connector.StepPresentation{GroupID: "test", GroupLabel: "Test", Explanation: "test query"},
+		Operation:    operation,
+		Connection:   testConnection,
+		BuildInput:   func(input string) (string, error) { return input, nil },
+		Branches: []connector.BranchTarget[connector.QueryStepOutput[string, string]]{
+			target.BranchTarget(testQuerySucceeded),
+			connector.GoTo(factoryTarget{}).BranchTarget(testQueryFailed),
+			connector.GoTo(factoryTarget{}).BranchTarget(testQueryDefect),
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, "GeneratedFactoryTarget", step.GetStepType())
 }
 
 type factoryQuery struct {

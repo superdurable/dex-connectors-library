@@ -17,6 +17,18 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+          cache-dependency-path: |
+            go.sum
+            sdk/go/go.sum
+      - name: Test standalone Connector Go SDK module
+        working-directory: sdk/go
+        env:
+          GOWORK: "off"
+        run: |
+          go test -race ./...
+          go vet ./...
+      - name: Test component release planning
+        run: python3 -m unittest script/release/component_release_test.py
       - run: go test -race ./...
       - run: go vet ./...
       - run: go run ./cmd/connectorctl validate connectors/http/connector.yaml connectors/openai/connector.yaml

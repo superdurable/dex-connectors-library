@@ -30,6 +30,27 @@ type MutationStepOutput[IN, OUT any] struct {
 	Result MutationResult[OUT] `json:"result"`
 }
 
+// QueryFactoryConfigMarker identifies generated Query Step factory configs.
+type QueryFactoryConfigMarker struct{}
+
+// MutationFactoryConfigMarker identifies generated Mutation Step factory configs.
+type MutationFactoryConfigMarker struct{}
+
+// Target is one typed destination supplied to an operation-specific factory.
+type Target[T any] struct {
+	target dex.Step[T]
+}
+
+// GoTo creates a typed target for an operation-specific factory branch.
+func GoTo[T any](target dex.Step[T]) Target[T] {
+	return Target[T]{target: target}
+}
+
+// BranchTarget binds this target to a generated operation branch.
+func (target Target[T]) BranchTarget(branch BranchID) BranchTarget[T] {
+	return GoToBranch(branch, target.target)
+}
+
 type BranchTarget[T any] struct {
 	branch BranchID
 	target dex.Step[T]

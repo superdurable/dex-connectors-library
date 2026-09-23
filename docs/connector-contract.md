@@ -7,12 +7,24 @@ database.
 ## Operation and Step factory boundary
 
 A Connector exposes typed `Query[IN, OUT]` and `Mutation[IN, OUT]`
-operations. The normal application API is an execute-only Dex Step factory:
+operations. The normal application API is an operation-specific, execute-only
+Dex Step factory such as:
 
 ```go
-connector.MustNewQueryStep(connector.QueryStepConfig[StepInput, OperationInput, Output]{...})
-connector.MustNewMutationStep(connector.MutationStepConfig[StepInput, OperationInput, Output]{...})
+openai.NewCreateResponseStep(openai.CreateResponseStepConfig[Input]{
+    Completed: connector.GoTo(CompletedStep{}),
+    Failed:    connector.GoTo(FailedStep{}),
+    Uncertain: connector.GoTo(ReconcileStep{}),
+    Defect:    connector.GoTo(FailedStep{}),
+})
 ```
+
+Generated configs embed the canonical SDK Query or Mutation factory marker.
+Each declared operation branch becomes one named, strongly typed config field.
+`connector.GoTo` binds its target input type at compile time; the generated
+constructor converts it to the operation's internal branch target. The generic
+`MustNewQueryStep` and `MustNewMutationStep` APIs remain available only for
+custom or dynamic operations.
 
 The factory owns one provider invocation and one `dex.GoTo`. The application
 supplies a stable Step type, presentation metadata, registration-time
@@ -27,7 +39,7 @@ type QueryStepOutput[IN, OUT any] struct {
 }
 ```
 
-`GoToBranch` enforces the target input type at Go compile time. `StepRef[T]`
+`GoTo` and `GoToBranch` enforce the target input type at Go compile time. `StepRef[T]`
 provides a lightweight reference to another factory by stable Step type; the
 real target must be registered and its registered options remain authoritative.
 A StepRef fails if it is ever executed as a handler.
@@ -163,8 +175,15 @@ start Mutation -> Timer or webhook Channel -> status Query -> complete
 
 `connector.yaml` is the source for `zz_generated_connector.go`. It generates
 typed `Config`, connector-specific `Credentials`, defaults, validation,
-branch constants, operation definitions, Step defaults, and identity
-constants. CI runs `connectorctl generate --check` to reject drift.
+branch constants, operation definitions, operation-specific factory configs,
+Step defaults, and identity constants. CI runs `connectorctl generate --check`
+to reject drift.
+
+The provider-neutral SDK is an independently released Go module. Connector
+modules are migrated in the subsequent delivery and must pin an
+already-published SDK version. Directory-prefixed Git tags are the published
+version source of truth; migrated manifests and generated files do not carry a
+manually maintained release version.
 
 Non-sensitive serializable fields belong in `Config`. HTTP clients,
 transports, clocks, test hooks, and idempotency functions are constructor

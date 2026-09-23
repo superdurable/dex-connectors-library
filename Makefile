@@ -3,6 +3,9 @@
 check: test react
 
 test:
+	cd sdk/go && GOWORK=off go test -race ./...
+	cd sdk/go && GOWORK=off go vet ./...
+	python3 -m unittest script/release/component_release_test.py
 	go test ./...
 	go run ./cmd/connectorctl generate --check connectors/http/connector.yaml
 	go run ./cmd/connectorctl generate --check connectors/openai/connector.yaml

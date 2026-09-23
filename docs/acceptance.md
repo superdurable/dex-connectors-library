@@ -3,6 +3,11 @@
 ## Automated checks
 
 ```bash
+cd sdk/go
+GOWORK=off go test -race ./...
+GOWORK=off go vet ./...
+cd ../..
+
 make check
 go test -race ./...
 go vet ./...
@@ -14,6 +19,11 @@ go run ./cmd/connectorctl catalog connectors
 
 The suite must prove:
 
+- the SDK compiles and tests independently of `go.work`;
+- typed `connector.GoTo` targets can be converted into generic branch targets
+  without exposing their underlying Dex Step;
+- component release planning handles first, minor, patch, major, no-change,
+  path-scoped, and breaking-change cases;
 - branch definitions reject empty, duplicate, invalid, missing defect, and
   missing Mutation uncertainty branches;
 - factories reject missing, duplicate, and unknown targets and require every
