@@ -11,11 +11,10 @@
     "metadata": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "displayName", "version", "description"],
+      "required": ["name", "displayName", "description"],
       "properties": {
         "name": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,62}$" },
         "displayName": { "type": "string", "minLength": 1 },
-        "version": { "type": "string", "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+([+-].*)?$" },
         "description": { "type": "string", "minLength": 1 }
       }
     },
@@ -143,10 +142,12 @@
     "operation": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "goName", "kind", "description", "idempotency", "branches", "defectBranch", "resultAttribute", "execution"],
+      "required": ["name", "goName", "inputType", "outputType", "kind", "description", "idempotency", "branches", "defectBranch", "resultAttribute", "execution"],
       "properties": {
         "name": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]+$" },
         "goName": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
+        "inputType": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
+        "outputType": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
         "kind": { "enum": ["query", "mutation"] },
         "description": { "type": "string", "minLength": 1 },
         "idempotency": { "enum": ["none", "required"] },

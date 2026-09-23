@@ -10,7 +10,51 @@ import (
 	"fmt"
 	"strconv"
 	"time"
+
+	connector "github.com/superdurable/dex-connectors-library/sdk/go"
 )
+
+type WebhookRequest struct {
+	Timestamp string `json:"timestamp"`
+	Signature string `json:"signature"`
+	Body      []byte `json:"body"`
+}
+
+type WebhookResult struct {
+	Verified bool `json:"verified"`
+}
+
+type VerifyWebhookOperation struct {
+	client *Client
+}
+
+func (VerifyWebhookOperation) Definition() connector.QueryDefinition {
+	return VerifyWebhookDefinition
+}
+
+func (operation VerifyWebhookOperation) Invoke(call connector.Call, input WebhookRequest) connector.QueryAttempt[WebhookResult] {
+	if input.Timestamp == "" || input.Signature == "" || len(input.Body) == 0 {
+		failure := connector.Failure{Kind: connector.FailureValidation, Provider: "http", Operation: "verifyWebhook", Message: "timestamp, signature, and body are required"}
+		return connector.NewQueryBranch(VerifyWebhookBranchDefect, WebhookResult{}, &failure, connector.Receipt{})
+	}
+	if operation.client.webhookReplay == nil {
+		failure := connector.Failure{Kind: connector.FailureLocalDefect, Provider: "http", Operation: "verifyWebhook", Message: "webhook replay protection is not configured"}
+		return connector.NewQueryBranch(VerifyWebhookBranchDefect, WebhookResult{}, &failure, connector.Receipt{})
+	}
+	credentials, err := operation.client.credentials.Resolve(call)
+	if err != nil || credentials.WebhookSecret.Reveal() == "" {
+		failure := connector.Failure{Kind: connector.FailureAuthentication, Provider: "http", Operation: "verifyWebhook", Message: "webhook credentials are unavailable"}
+		return connector.NewQueryBranch(VerifyWebhookBranchRejected, WebhookResult{}, &failure, connector.Receipt{})
+	}
+	verifier := WebhookVerifier{
+		Secret: []byte(credentials.WebhookSecret.Reveal()), Replay: operation.client.webhookReplay, Now: operation.client.now,
+	}
+	if err := verifier.Verify(input.Timestamp, input.Signature, input.Body); err != nil {
+		failure := connector.Failure{Kind: connector.FailureProviderRejection, Provider: "http", Operation: "verifyWebhook", Message: "webhook verification failed"}
+		return connector.NewQueryBranch(VerifyWebhookBranchRejected, WebhookResult{}, &failure, connector.Receipt{})
+	}
+	return connector.NewQueryBranch(VerifyWebhookBranchVerified, WebhookResult{Verified: true}, nil, connector.Receipt{})
+}
 
 type ReplayGuard interface {
 	Use(key string, expiresAt time.Time) bool

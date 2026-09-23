@@ -27,6 +27,8 @@ type Option func(*clientOptions)
 type clientOptions struct {
 	httpClient     *http.Client
 	idempotencyKey IdempotencyKeyFunc
+	webhookReplay  ReplayGuard
+	now            func() time.Time
 }
 
 func WithHTTPClient(client *http.Client) Option {
@@ -35,6 +37,14 @@ func WithHTTPClient(client *http.Client) Option {
 
 func WithIdempotencyKeyFunc(derive IdempotencyKeyFunc) Option {
 	return func(options *clientOptions) { options.idempotencyKey = derive }
+}
+
+func WithWebhookReplayGuard(guard ReplayGuard) Option {
+	return func(options *clientOptions) { options.webhookReplay = guard }
+}
+
+func WithClock(now func() time.Time) Option {
+	return func(options *clientOptions) { options.now = now }
 }
 
 type Client struct {
@@ -46,6 +56,8 @@ type Client struct {
 	idempotencyKey    IdempotencyKeyFunc
 	httpClient        *http.Client
 	credentials       connector.CredentialProvider[Credentials]
+	webhookReplay     ReplayGuard
+	now               func() time.Time
 }
 
 type Request struct {
@@ -113,12 +125,17 @@ func New(config Config, credentials connector.CredentialProvider[Credentials], o
 		baseURL: baseURL, allowedHosts: allowedHosts, maxResponseBytes: config.MaxResponseBytes,
 		credentialHeaders: config.CredentialHeaders, idempotencyHeader: config.IdempotencyHeader,
 		idempotencyKey: dependencies.idempotencyKey, httpClient: httpClient, credentials: credentials,
+		webhookReplay: dependencies.webhookReplay, now: dependencies.now,
 	}, nil
 }
 
 func (client *Client) Query() QueryOperation { return QueryOperation{client: client} }
 
 func (client *Client) Mutation() MutationOperation { return MutationOperation{client: client} }
+
+func (client *Client) VerifyWebhook() VerifyWebhookOperation {
+	return VerifyWebhookOperation{client: client}
+}
 
 func (QueryOperation) Definition() connector.QueryDefinition { return QueryDefinition }
 

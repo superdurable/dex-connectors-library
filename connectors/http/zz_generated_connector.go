@@ -13,10 +13,7 @@ import (
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
-const (
-	ConnectorID      = "http"
-	ConnectorVersion = "v0.1.0-alpha.1"
-)
+const ConnectorID = "http"
 
 type Config struct {
 	BaseURL           string            `json:"baseUrl,omitempty" yaml:"baseUrl,omitempty"`
@@ -28,8 +25,43 @@ type Config struct {
 }
 
 type Credentials struct {
-	APIKey connector.SecretString
+	APIKey        connector.SecretString
+	WebhookSecret connector.SecretString
 }
+
+type Connection struct {
+	client    *Client
+	reference connector.ConnectionRef
+}
+
+func NewConnection(client *Client, reference connector.ConnectionRef) (Connection, error) {
+	if client == nil {
+		return Connection{}, fmt.Errorf("http connector client is required")
+	}
+	if err := reference.Validate(); err != nil {
+		return Connection{}, fmt.Errorf("http connector connection: %w", err)
+	}
+	return Connection{client: client, reference: reference}, nil
+}
+
+func (connection Connection) validate() error {
+	if connection.client == nil {
+		return fmt.Errorf("http connector connection is required")
+	}
+	return connection.reference.Validate()
+}
+
+func (Connection) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("http connector connections cannot be serialized")
+}
+func (Connection) MarshalText() ([]byte, error) {
+	return nil, fmt.Errorf("http connector connections cannot be serialized")
+}
+func (Connection) MarshalYAML() (any, error) {
+	return nil, fmt.Errorf("http connector connections cannot be serialized")
+}
+func (Connection) String() string   { return "httpconnector.Connection{[REDACTED]}" }
+func (Connection) GoString() string { return "httpconnector.Connection{[REDACTED]}" }
 
 func DefaultConfig() Config {
 	return Config{
@@ -97,6 +129,39 @@ var QueryDefinition = connector.QueryDefinition{
 	Progress:        connector.ProgressCapabilities{Structured: false, Text: false},
 }
 
+type QueryStepOutput[IN any] = connector.QueryStepOutput[IN, Response]
+
+type QueryStepConfig[IN any] struct {
+	connector.QueryFactoryConfigMarker `connector:"factory=query"`
+	StepType                           string                                          `connector:"stepType"`
+	Presentation                       connector.StepPresentation                      `connector:"presentation"`
+	Connection                         Connection                                      `connector:"connection"`
+	BuildInput                         func(IN) (Request, error)                       `connector:"buildInput"`
+	Succeeded                          connector.Target[QueryStepOutput[IN]]           `connector:"branch=succeeded"`
+	Failed                             connector.Target[QueryStepOutput[IN]]           `connector:"branch=failed"`
+	Defect                             connector.Target[QueryStepOutput[IN]]           `connector:"branch=defect"`
+	ResultAttribute                    *dex.Attribute[connector.QueryResult[Response]] `connector:"resultAttribute"`
+	StepOptionsOverride                *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewQueryStep[IN any](config QueryStepConfig[IN]) connector.QueryStep[IN, Request, Response] {
+	if err := config.Connection.validate(); err != nil {
+		panic(err)
+	}
+	return connector.MustNewQueryStep(connector.QueryStepConfig[IN, Request, Response]{
+		StepType: config.StepType, Presentation: config.Presentation,
+		Operation: config.Connection.client.Query(), Connection: config.Connection.reference,
+		BuildInput: config.BuildInput,
+		Branches: []connector.BranchTarget[QueryStepOutput[IN]]{
+			config.Succeeded.BranchTarget(QueryBranchSucceeded),
+			config.Failed.BranchTarget(QueryBranchFailed),
+			config.Defect.BranchTarget(QueryBranchDefect),
+		},
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
 const MutationBranchSucceeded connector.BranchID = "succeeded"
 const MutationBranchRejected connector.BranchID = "rejected"
 const MutationBranchUncertain connector.BranchID = "uncertain"
@@ -121,6 +186,41 @@ var MutationDefinition = connector.MutationDefinition{
 	Progress:        connector.ProgressCapabilities{Structured: false, Text: false},
 }
 
+type MutationStepOutput[IN any] = connector.MutationStepOutput[IN, Response]
+
+type MutationStepConfig[IN any] struct {
+	connector.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	StepType                              string                                             `connector:"stepType"`
+	Presentation                          connector.StepPresentation                         `connector:"presentation"`
+	Connection                            Connection                                         `connector:"connection"`
+	BuildInput                            func(IN) (Request, error)                          `connector:"buildInput"`
+	Succeeded                             connector.Target[MutationStepOutput[IN]]           `connector:"branch=succeeded"`
+	Rejected                              connector.Target[MutationStepOutput[IN]]           `connector:"branch=rejected"`
+	Uncertain                             connector.Target[MutationStepOutput[IN]]           `connector:"branch=uncertain"`
+	Defect                                connector.Target[MutationStepOutput[IN]]           `connector:"branch=defect"`
+	ResultAttribute                       *dex.Attribute[connector.MutationResult[Response]] `connector:"resultAttribute"`
+	StepOptionsOverride                   *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewMutationStep[IN any](config MutationStepConfig[IN]) connector.MutationStep[IN, Request, Response] {
+	if err := config.Connection.validate(); err != nil {
+		panic(err)
+	}
+	return connector.MustNewMutationStep(connector.MutationStepConfig[IN, Request, Response]{
+		StepType: config.StepType, Presentation: config.Presentation,
+		Operation: config.Connection.client.Mutation(), Connection: config.Connection.reference,
+		BuildInput: config.BuildInput,
+		Branches: []connector.BranchTarget[MutationStepOutput[IN]]{
+			config.Succeeded.BranchTarget(MutationBranchSucceeded),
+			config.Rejected.BranchTarget(MutationBranchRejected),
+			config.Uncertain.BranchTarget(MutationBranchUncertain),
+			config.Defect.BranchTarget(MutationBranchDefect),
+		},
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
 const VerifyWebhookBranchVerified connector.BranchID = "verified"
 const VerifyWebhookBranchRejected connector.BranchID = "rejected"
 const VerifyWebhookBranchDefect connector.BranchID = "defect"
@@ -140,4 +240,35 @@ var VerifyWebhookDefinition = connector.QueryDefinition{
 	},
 	ResultAttribute: connector.RequirementNone,
 	Progress:        connector.ProgressCapabilities{Structured: false, Text: false},
+}
+
+type VerifyWebhookStepOutput[IN any] = connector.QueryStepOutput[IN, WebhookResult]
+
+type VerifyWebhookStepConfig[IN any] struct {
+	connector.QueryFactoryConfigMarker `connector:"factory=query"`
+	StepType                           string                                        `connector:"stepType"`
+	Presentation                       connector.StepPresentation                    `connector:"presentation"`
+	Connection                         Connection                                    `connector:"connection"`
+	BuildInput                         func(IN) (WebhookRequest, error)              `connector:"buildInput"`
+	Verified                           connector.Target[VerifyWebhookStepOutput[IN]] `connector:"branch=verified"`
+	Rejected                           connector.Target[VerifyWebhookStepOutput[IN]] `connector:"branch=rejected"`
+	Defect                             connector.Target[VerifyWebhookStepOutput[IN]] `connector:"branch=defect"`
+	StepOptionsOverride                *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewVerifyWebhookStep[IN any](config VerifyWebhookStepConfig[IN]) connector.QueryStep[IN, WebhookRequest, WebhookResult] {
+	if err := config.Connection.validate(); err != nil {
+		panic(err)
+	}
+	return connector.MustNewQueryStep(connector.QueryStepConfig[IN, WebhookRequest, WebhookResult]{
+		StepType: config.StepType, Presentation: config.Presentation,
+		Operation: config.Connection.client.VerifyWebhook(), Connection: config.Connection.reference,
+		BuildInput: config.BuildInput,
+		Branches: []connector.BranchTarget[VerifyWebhookStepOutput[IN]]{
+			config.Verified.BranchTarget(VerifyWebhookBranchVerified),
+			config.Rejected.BranchTarget(VerifyWebhookBranchRejected),
+			config.Defect.BranchTarget(VerifyWebhookBranchDefect),
+		},
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }

@@ -5,11 +5,11 @@ reconciliation Query directly with Connector Dex Step factories. It defines no
 provider concrete Step. Generated operation branches each have one typed GoTo
 target; Retry is the only Connector path returned as a Go error to Dex.
 
-The public Flow input contains only customer business data. A trusted logical
-`ConnectionRef` is fixed when the Flow is registered and injected into every
-provider Step; a StartFlow caller cannot select another account's connection.
-SuperVerse can resolve that logical slot to typed HTTP Credentials without
-putting credentials or connection identifiers in input.
+The public Flow input contains only customer business data. A trusted typed
+`httpconnector.Connection` is fixed when the Flow is registered and injected
+into every provider Step; a StartFlow caller cannot select another account's
+connection. The Connection binds the client and logical `ConnectionRef` while
+keeping both out of durable input.
 
 The Mutation factory derives stable Call ID and provider idempotency key from
 Flow and Step execution identity. It persists `CreditGrantResult` in the same

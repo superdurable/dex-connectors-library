@@ -19,7 +19,6 @@ kind: Connector
 metadata:
   name: mock-provider
   displayName: Mock Provider
-  version: v0.1.0-alpha.1
   description: deterministic test provider
 spec:
   provider: mock
@@ -31,6 +30,8 @@ spec:
   operations:
     - name: getProfile
       goName: GetProfile
+      inputType: GetProfileInput
+      outputType: GetProfileOutput
       kind: query
       description: read profile
       idempotency: none
@@ -45,6 +46,8 @@ spec:
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
     - name: grantCredit
       goName: GrantCredit
+      inputType: GrantCreditInput
+      outputType: GrantCreditOutput
       kind: mutation
       description: grant credit
       idempotency: required
@@ -79,7 +82,7 @@ func TestRejectProviderIdempotencyAndInvalidProgress(t *testing.T) {
 	_, err := schema.Decode(strings.NewReader(`
 apiVersion: connectors.dex.dev/v1alpha1
 kind: Connector
-metadata: {name: bad-provider, displayName: Bad, version: v0.1.0, description: bad}
+metadata: {name: bad-provider, displayName: Bad, description: bad}
 spec:
   provider: bad
   codegen: {go: {package: badprovider}}
@@ -88,6 +91,8 @@ spec:
   operations:
     - name: mutateThing
       goName: MutateThing
+      inputType: MutateThingInput
+      outputType: MutateThingOutput
       kind: mutation
       description: unsafe
       idempotency: provider
@@ -108,7 +113,7 @@ func TestRejectMutationWithoutIdempotency(t *testing.T) {
 	_, err := schema.Decode(strings.NewReader(`
 apiVersion: connectors.dex.dev/v1alpha1
 kind: Connector
-metadata: {name: bad-provider, displayName: Bad, version: v0.1.0, description: bad}
+metadata: {name: bad-provider, displayName: Bad, description: bad}
 spec:
   provider: bad
   codegen: {go: {package: badprovider}}
@@ -117,6 +122,8 @@ spec:
   operations:
     - name: mutateThing
       goName: MutateThing
+      inputType: MutateThingInput
+      outputType: MutateThingOutput
       kind: mutation
       description: unsafe
       idempotency: none
@@ -129,4 +136,42 @@ spec:
       execution: {executeMethodTimeout: 30s, durability: sync, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}}
 `))
 	require.ErrorContains(t, err, "mutations must declare")
+}
+
+func TestRejectMissingOperationGoTypesAndSourceVersion(t *testing.T) {
+	_, err := schema.Decode(strings.NewReader(`
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata: {name: bad-provider, displayName: Bad, description: bad, version: v0.1.0}
+spec:
+  provider: bad
+  codegen: {go: {package: badprovider}}
+  configuration: {fields: []}
+  auth: {type: none, fields: []}
+  operations: []
+`))
+	require.ErrorContains(t, err, "field version not found")
+
+	_, err = schema.Decode(strings.NewReader(`
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata: {name: bad-provider, displayName: Bad, description: bad}
+spec:
+  provider: bad
+  codegen: {go: {package: badprovider}}
+  configuration: {fields: []}
+  auth: {type: none, fields: []}
+  operations:
+    - name: getThing
+      goName: GetThing
+      kind: query
+      description: get thing
+      idempotency: none
+      branches:
+        - {id: defect, goName: Defect, description: defect}
+      defectBranch: defect
+      resultAttribute: none
+      execution: {executeMethodTimeout: 30s, durability: sync, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}}
+`))
+	require.ErrorContains(t, err, "inputType and outputType")
 }

@@ -3,7 +3,6 @@ kind: Connector
 metadata:
   name: http
   displayName: HTTP and Webhook
-  version: v0.1.0-alpha.1
   description: Bounded HTTP queries, idempotent mutations, and signed webhooks.
 spec:
   provider: http
@@ -54,9 +53,16 @@ spec:
         type: secretString
         description: API key injected through the configured credential header.
         required: false
+      - name: webhook_secret
+        goName: WebhookSecret
+        type: secretString
+        description: Secret used to verify webhook signatures.
+        required: false
   operations:
     - name: query
       goName: Query
+      inputType: Request
+      outputType: Response
       kind: query
       description: Perform a bounded GET or HEAD request.
       idempotency: none
@@ -72,6 +78,8 @@ spec:
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
     - name: mutation
       goName: Mutation
+      inputType: Request
+      outputType: Response
       kind: mutation
       description: Perform a mutation with a stable idempotency key.
       idempotency: required
@@ -86,6 +94,8 @@ spec:
       execution: *httpExecution
     - name: verifyWebhook
       goName: VerifyWebhook
+      inputType: WebhookRequest
+      outputType: WebhookResult
       kind: query
       description: Verify signature, timestamp, and replay protection.
       idempotency: none

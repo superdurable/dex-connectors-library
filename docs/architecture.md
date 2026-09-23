@@ -8,11 +8,11 @@
   identity, generic Step factories, generated-factory markers, typed targets,
   credentials, receipts, idempotency, and Stream options.
 - `sdk/react/` owns credential-free connection-status primitives.
-- `connectors/` owns provider adapters and their source manifests. The next
-  staged delivery converts each connector into an independently released
-  module. Connectors from one company are grouped below one company directory
-  without sharing a module or release.
-- `cmd/connectorctl/` validates, generates, checks, and catalogs manifests.
+- `connectors/` owns independently released provider modules and their source
+  manifests. Connectors from one company are grouped below one company
+  directory without sharing a module or release.
+- `cmd/connectorctl/` validates, generates, checks, and catalogs manifests,
+  generates the release dropdown, and creates versioned release artifacts.
 - `examples/customer-onboarding/` exercises factories against real Dex.
 
 G2a adds no database schema or migration.
@@ -42,8 +42,9 @@ Step types, pure business-to-operation input mapping, every branch target,
 Result Attributes, Streams, Execute failure policy, and terminal behavior.
 Non-connector Steps remain ordinary application Steps.
 
-The trusted `ConnectionRef` is constructor-injected when the Flow registers;
-it is not public start input. `StepRef[T]` connects one factory to a later
+The trusted connector-specific `Connection` is constructor-injected when the
+Flow registers; its internal `ConnectionRef` is not public start input.
+`StepRef[T]` connects one factory to a later
 factory without constructing that factory twice. Dex resolves the registered
 target by stable type and input type, so the registered target's options apply.
 
@@ -97,10 +98,10 @@ function names. Provider code contains only transport and classification
 logic. Constructor options carry code dependencies such as HTTP clients and
 idempotency derivation functions.
 
-The SDK now uses its own Go module and directory-prefixed tags. Connector
-modules adopt the same model in the next staged delivery. An SDK contract
-change is published first; connector modules then pin that exact release in
-later PRs. Git tags, not source manifests, define published versions.
+The SDK and connectors use independent Go modules and directory-prefixed tags.
+An SDK contract change is published first; connector modules then pin that
+exact release in later PRs. Git tags, not source manifests, define published
+versions.
 
 ## HTTP connector
 

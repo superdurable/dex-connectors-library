@@ -22,7 +22,9 @@ func TestFlowDefinitionRegistersDurableAttribute(t *testing.T) {
 		connection: {APIKey: connector.NewSecretString("test-key")},
 	})
 	require.NoError(t, err)
-	flow := customeronboarding.NewCustomerOnboardingConnectorFlow(client, connection)
+	typedConnection, err := httpconnector.NewConnection(client, connection)
+	require.NoError(t, err)
+	flow := customeronboarding.NewCustomerOnboardingConnectorFlow(typedConnection)
 	registry, err := dex.NewRegistry([]dex.Flow{flow})
 	require.NoError(t, err)
 	require.NotNil(t, registry)
@@ -30,14 +32,10 @@ func TestFlowDefinitionRegistersDurableAttribute(t *testing.T) {
 	require.Len(t, flow.GetRPCs(), 2)
 }
 
-func TestFlowRejectsInvalidProviderConnection(t *testing.T) {
-	connection := connector.ConnectionRef{Provider: "mock", Name: "default"}
-	client, err := httpconnector.New(httpconnector.Config{
-		BaseURL: "http://127.0.0.1:1",
-	}, connector.StaticCredentialProvider[httpconnector.Credentials]{connection: {}})
-	require.NoError(t, err)
-	require.PanicsWithValue(t, "customer onboarding connector Flow requires a valid provider connection", func() {
-		customeronboarding.NewCustomerOnboardingConnectorFlow(client, connector.ConnectionRef{})
+func TestFlowRejectsZeroTypedConnection(t *testing.T) {
+	flow := customeronboarding.NewCustomerOnboardingConnectorFlow(httpconnector.Connection{})
+	require.Panics(t, func() {
+		flow.GetSteps()
 	})
 }
 

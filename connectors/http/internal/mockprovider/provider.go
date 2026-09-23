@@ -1,7 +1,6 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package mockprovider supplies deterministic provider behavior for connector tests.
 package mockprovider
 
 import (
@@ -40,9 +39,7 @@ type Options struct {
 	RecoveryFailures   int
 }
 
-func Start() *Provider {
-	return StartWithOptions(Options{})
-}
+func Start() *Provider { return StartWithOptions(Options{}) }
 
 func StartWithOptions(options Options) *Provider {
 	provider := &Provider{
@@ -55,8 +52,7 @@ func StartWithOptions(options Options) *Provider {
 }
 
 func (provider *Provider) URL() string { return provider.server.URL }
-
-func (provider *Provider) Close() { provider.server.Close() }
+func (provider *Provider) Close()      { provider.server.Close() }
 
 func (provider *Provider) Mutation(callID string) (Mutation, bool) {
 	provider.mu.Lock()
@@ -111,75 +107,79 @@ func (provider *Provider) serveHTTP(response http.ResponseWriter, request *http.
 			return
 		}
 		customerID := strings.TrimPrefix(request.URL.Path, "/profiles/")
-		_ = json.NewEncoder(response).Encode(map[string]any{
-			"customerId": customerID,
-			"name":       "Ada Lovelace",
-			"headline":   "AI platform builder",
-		})
+		_ = json.NewEncoder(response).Encode(map[string]any{"customerId": customerID, "name": "Ada Lovelace", "headline": "AI platform builder"})
 	case request.Method == http.MethodPost && (request.URL.Path == "/credits" || request.URL.Path == "/credits-unknown"):
-		callID := request.Header.Get("Idempotency-Key")
-		provider.mu.Lock()
-		provider.mutationAttempts[callID]++
-		shouldRateLimit := provider.mutationRateLimitsLeft > 0
-		if shouldRateLimit {
-			provider.mutationRateLimitsLeft--
-		}
-		provider.mu.Unlock()
-		if shouldRateLimit {
-			response.Header().Set("Retry-After", "1")
-			response.WriteHeader(http.StatusTooManyRequests)
-			return
-		}
-		var input Mutation
-		if err := json.NewDecoder(request.Body).Decode(&input); err != nil {
-			response.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		provider.mu.Lock()
-		mutation, exists := provider.mutations[callID]
-		if !exists {
-			mutation = Mutation{CallID: callID, CustomerID: input.CustomerID, Credits: input.Credits, Status: "succeeded"}
-			provider.mutations[callID] = mutation
-			provider.mutationExecutions[callID]++
-		}
-		provider.mu.Unlock()
-		if request.URL.Path == "/credits-unknown" {
-			hijacker, ok := response.(http.Hijacker)
-			if !ok {
-				response.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			connection, _, err := hijacker.Hijack()
-			if err == nil {
-				_ = connection.Close()
-			}
-			return
-		}
-		response.WriteHeader(http.StatusCreated)
-		_ = json.NewEncoder(response).Encode(mutation)
+		provider.serveMutation(response, request)
 	case request.Method == http.MethodGet && strings.HasPrefix(request.URL.Path, "/mutations/"):
-		provider.mu.Lock()
-		provider.recoveryRequests++
-		shouldFail := provider.recoveryFailuresLeft > 0
-		if shouldFail {
-			provider.recoveryFailuresLeft--
-		}
-		provider.mu.Unlock()
-		if shouldFail {
-			response.WriteHeader(http.StatusServiceUnavailable)
-			return
-		}
-		callID := strings.TrimPrefix(request.URL.Path, "/mutations/")
-		mutation, ok := provider.Mutation(callID)
-		if !ok {
-			response.WriteHeader(http.StatusNotFound)
-			return
-		}
-		_ = json.NewEncoder(response).Encode(mutation)
+		provider.serveMutationQuery(response, request)
 	case request.Method == http.MethodGet && request.URL.Path == "/rate-limit":
 		response.Header().Set("Retry-After", "3")
 		response.WriteHeader(http.StatusTooManyRequests)
 	default:
 		response.WriteHeader(http.StatusNotFound)
 	}
+}
+
+func (provider *Provider) serveMutation(response http.ResponseWriter, request *http.Request) {
+	callID := request.Header.Get("Idempotency-Key")
+	provider.mu.Lock()
+	provider.mutationAttempts[callID]++
+	shouldRateLimit := provider.mutationRateLimitsLeft > 0
+	if shouldRateLimit {
+		provider.mutationRateLimitsLeft--
+	}
+	provider.mu.Unlock()
+	if shouldRateLimit {
+		response.Header().Set("Retry-After", "1")
+		response.WriteHeader(http.StatusTooManyRequests)
+		return
+	}
+	var input Mutation
+	if err := json.NewDecoder(request.Body).Decode(&input); err != nil {
+		response.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	provider.mu.Lock()
+	mutation, exists := provider.mutations[callID]
+	if !exists {
+		mutation = Mutation{CallID: callID, CustomerID: input.CustomerID, Credits: input.Credits, Status: "succeeded"}
+		provider.mutations[callID] = mutation
+		provider.mutationExecutions[callID]++
+	}
+	provider.mu.Unlock()
+	if request.URL.Path == "/credits-unknown" {
+		hijacker, ok := response.(http.Hijacker)
+		if !ok {
+			response.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		connection, _, err := hijacker.Hijack()
+		if err == nil {
+			_ = connection.Close()
+		}
+		return
+	}
+	response.WriteHeader(http.StatusCreated)
+	_ = json.NewEncoder(response).Encode(mutation)
+}
+
+func (provider *Provider) serveMutationQuery(response http.ResponseWriter, request *http.Request) {
+	provider.mu.Lock()
+	provider.recoveryRequests++
+	shouldFail := provider.recoveryFailuresLeft > 0
+	if shouldFail {
+		provider.recoveryFailuresLeft--
+	}
+	provider.mu.Unlock()
+	if shouldFail {
+		response.WriteHeader(http.StatusServiceUnavailable)
+		return
+	}
+	callID := strings.TrimPrefix(request.URL.Path, "/mutations/")
+	mutation, ok := provider.Mutation(callID)
+	if !ok {
+		response.WriteHeader(http.StatusNotFound)
+		return
+	}
+	_ = json.NewEncoder(response).Encode(mutation)
 }

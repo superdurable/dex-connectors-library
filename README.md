@@ -23,10 +23,19 @@ GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
 cd ../..
 
+cd connectors/http
+GOWORK=off go test -race ./...
+GOWORK=off go vet ./...
+cd ../openai
+GOWORK=off go test -race ./...
+GOWORK=off go vet ./...
+cd ../..
+
 go test ./...
 go run ./cmd/connectorctl validate connectors/http/connector.yaml connectors/openai/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/http/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/openai/connector.yaml
+go run ./cmd/connectorctl release-workflow --check connectors .github/workflows/release-connector.yml
 go run ./cmd/connectorctl catalog connectors
 
 cd sdk/react
@@ -35,13 +44,13 @@ npm test
 npm run build
 ```
 
-The Go SDK is an independently versioned module using tags such as
-`sdk/go/v0.1.0`. Connector modules migrate in the next delivery and will use
-their module directory, for example `connectors/openai/v0.1.0`. The historical
-root `v0.1.0` tag does not version the standalone SDK. Git tags are the release
-version source of truth.
+The Go SDK, HTTP connector, and OpenAI connector are independent Go modules.
+Their tags are `sdk/go/vX.Y.Z`, `connectors/http/vX.Y.Z`, and
+`connectors/openai/vX.Y.Z`. The historical root `v0.1.0` tag does not version
+any standalone component. Git tags are the release version source of truth.
 
-The SDK must be released before a connector can pin the new SDK version. See
+The SDK must be released before a connector can pin a new SDK version. Each
+connector currently pins the published SDK `v0.1.0`. See
 [the versioning and release guide](docs/versioning-and-releases.md).
 
 The Connector Go SDK uses `github.com/superdurable/dex/sdk-go v0.10.2` and verifies
@@ -53,5 +62,6 @@ API is intentionally held in Draft for manual acceptance before a separate Dex
 CLI analyzer patch.
 
 Read [the Connector contract](docs/connector-contract.md),
-[architecture](docs/architecture.md), and
+[architecture](docs/architecture.md),
+[manifest authoring guide](docs/manifest-authoring.md), and
 [acceptance guide](docs/acceptance.md) before adding a provider.

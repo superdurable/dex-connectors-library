@@ -14,9 +14,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 	httpconnector "github.com/superdurable/dex-connectors-library/connectors/http"
-	"github.com/superdurable/dex-connectors-library/internal/testsupport"
+	mockprovider "github.com/superdurable/dex-connectors-library/connectors/http/internal/mockprovider"
+	"github.com/superdurable/dex-connectors-library/connectors/http/internal/testsupport"
 	connector "github.com/superdurable/dex-connectors-library/sdk/go"
-	mockprovider "github.com/superdurable/dex-connectors-library/test/mock-provider"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 

@@ -12,6 +12,9 @@ Dex Step factory such as:
 
 ```go
 openai.NewCreateResponseStep(openai.CreateResponseStepConfig[Input]{
+    StepType:  "GenerateSummary",
+    Connection: openAIConnection,
+    BuildInput: buildRequest,
     Completed: connector.GoTo(CompletedStep{}),
     Failed:    connector.GoTo(FailedStep{}),
     Uncertain: connector.GoTo(ReconcileStep{}),
@@ -26,9 +29,14 @@ constructor converts it to the operation's internal branch target. The generic
 `MustNewQueryStep` and `MustNewMutationStep` APIs remain available only for
 custom or dynamic operations.
 
+Each connector exposes its own non-serializable `Connection` type. It binds a
+configured client to a validated logical `ConnectionRef`, so an HTTP, OpenAI,
+Gmail, or Sheets connection cannot be passed to another connector factory.
+The same typed connection can be reused by operations from that connector.
+
 The factory owns one provider invocation and one `dex.GoTo`. The application
 supplies a stable Step type, presentation metadata, registration-time
-`ConnectionRef`, pure `BuildInput`, and one typed target for every declared
+typed Connection, pure `BuildInput`, and one typed target for every declared
 branch. A target receives the original Step input and the full Connector
 Result:
 
@@ -179,11 +187,10 @@ branch constants, operation definitions, operation-specific factory configs,
 Step defaults, and identity constants. CI runs `connectorctl generate --check`
 to reject drift.
 
-The provider-neutral SDK is an independently released Go module. Connector
-modules are migrated in the subsequent delivery and must pin an
-already-published SDK version. Directory-prefixed Git tags are the published
-version source of truth; migrated manifests and generated files do not carry a
-manually maintained release version.
+The provider-neutral SDK and every connector are independently released Go
+modules. Connector modules pin an already-published SDK version. Directory-
+prefixed Git tags are the published version source of truth; manifests and
+generated files do not carry a manually maintained release version.
 
 Non-sensitive serializable fields belong in `Config`. HTTP clients,
 transports, clocks, test hooks, and idempotency functions are constructor
