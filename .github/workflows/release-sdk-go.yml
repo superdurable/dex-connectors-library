@@ -1,0 +1,130 @@
+name: Release Connector Go SDK
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Semantic version component to increment
+        required: true
+        default: minor
+        type: choice
+        options:
+          - minor
+          - patch
+          - major
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: release-connector-go-sdk
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: sdk/go/go.mod
+          cache-dependency-path: sdk/go/go.sum
+      - name: Test standalone SDK module
+        working-directory: sdk/go
+        env:
+          GOWORK: "off"
+        run: |
+          go test -race ./...
+          go vet ./...
+      - name: Download Dex and Temporal CLIs
+        run: |
+          curl --fail --location --output dexcli.tar.gz \
+            https://github.com/superdurable/dex/releases/download/cli-v0.11.1/dexcli_v0.11.1_linux_amd64.tar.gz
+          echo "92ca91c5fec9cb1315c9e3f006f37e8f5f6711dd5d0ac1efb8d682da9ee64ac0  dexcli.tar.gz" | sha256sum --check
+          tar --extract --gzip --file dexcli.tar.gz
+          curl --fail --location --output temporal.tar.gz \
+            https://github.com/temporalio/cli/releases/download/v1.9.1/temporal_cli_1.9.1_linux_amd64.tar.gz
+          echo "09a0326a51db84d02735e53542b9ebd8c4758daf47482a9ab0abce15844e60d5  temporal.tar.gz" | sha256sum --check
+          mkdir temporal-cli
+          tar --extract --gzip --file temporal.tar.gz --directory temporal-cli
+          echo "$PWD/temporal-cli" >> "$GITHUB_PATH"
+      - name: Test fixture connector with real Dex
+        run: |
+          ./dexcli dev -dex-port 18801 -web-port 18802 -open=false \
+            -blob-store-dir /tmp/dex-connectors-sdk/blobs \
+            -sqlite-db-filename /tmp/dex-connectors-sdk/dex.sqlite.db \
+            -server-log-folder /tmp/dex-connectors-sdk/logs > /tmp/dex-connectors-sdk-server.log 2>&1 &
+          dex_pid=$!
+          trap 'kill "$dex_pid" 2>/dev/null || true' EXIT
+          ready=false
+          for _ in $(seq 1 120); do
+            if (echo > /dev/tcp/127.0.0.1/18801) 2>/dev/null; then
+              ready=true
+              break
+            fi
+            if ! kill -0 "$dex_pid" 2>/dev/null; then
+              cat /tmp/dex-connectors-sdk-server.log
+              exit 1
+            fi
+            sleep 0.25
+          done
+          if [ "$ready" != true ]; then
+            cat /tmp/dex-connectors-sdk-server.log
+            exit 1
+          fi
+          cd sdk/go
+          DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:18801 GOWORK=off \
+            go test -race -tags=integration ./integrationtest/... -count=1 -v
+      - name: Plan SDK release
+        id: plan
+        run: |
+          python3 script/release/component_release.py plan \
+            --component-path sdk/go \
+            --tag-prefix sdk/go/ \
+            --bump "${{ inputs.bump }}" \
+            --ref "${GITHUB_REF}" \
+            --json-output /tmp/connector-sdk-release-plan.json \
+            --github-output "${GITHUB_OUTPUT}"
+      - name: Build path-scoped release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 script/release/component_release.py notes \
+            --plan /tmp/connector-sdk-release-plan.json \
+            --repository "${GITHUB_REPOSITORY}" \
+            --output /tmp/connector-sdk-release-notes.md
+      - name: Create SDK release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.plan.outputs.tag }}
+          RELEASE_VERSION: ${{ steps.plan.outputs.version }}
+        run: |
+          gh release create "${RELEASE_TAG}" \
+            --target "${GITHUB_SHA}" \
+            --title "Connector Go SDK ${RELEASE_VERSION}" \
+            --notes-file /tmp/connector-sdk-release-notes.md
+      - name: Verify published module
+        env:
+          MODULE_PATH: ${{ steps.plan.outputs.module_path }}
+          RELEASE_VERSION: ${{ steps.plan.outputs.version }}
+        run: |
+          deadline=$((SECONDS + 120))
+          until GOWORK=off GOPROXY=direct go mod download "${MODULE_PATH}@${RELEASE_VERSION}"; do
+            if (( SECONDS >= deadline )); then
+              echo "Published SDK module did not become downloadable before the deadline" >&2
+              exit 1
+            fi
+            sleep 2
+          done
+
+  reject-non-main:
+    if: github.ref != 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "SDK releases can run only from main" >&2
+          exit 1

@@ -17,6 +17,18 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+          cache-dependency-path: |
+            go.sum
+            sdk/go/go.sum
+      - name: Test standalone Connector Go SDK module
+        working-directory: sdk/go
+        env:
+          GOWORK: "off"
+        run: |
+          go test -race ./...
+          go vet ./...
+      - name: Test component release planning
+        run: python3 -m unittest script/release/component_release_test.py
       - run: go test -race ./...
       - run: go vet ./...
       - run: go run ./cmd/connectorctl validate connectors/http/connector.yaml connectors/openai/connector.yaml
@@ -71,6 +83,9 @@ jobs:
           fi
           DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:18801 \
             go test -race -tags=integration ./examples/customer-onboarding -count=1 -v
+          cd sdk/go
+          DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:18801 GOWORK=off \
+            go test -race -tags=integration ./integrationtest/... -count=1 -v
 
   react:
     runs-on: ubuntu-latest

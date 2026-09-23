@@ -3,6 +3,11 @@
 ## Automated checks
 
 ```bash
+cd sdk/go
+GOWORK=off go test -race ./...
+GOWORK=off go vet ./...
+cd ../..
+
 make check
 go test -race ./...
 go vet ./...
@@ -14,6 +19,11 @@ go run ./cmd/connectorctl catalog connectors
 
 The suite must prove:
 
+- the SDK compiles and tests independently of `go.work`;
+- typed `connector.GoTo` targets can be converted into generic branch targets
+  without exposing their underlying Dex Step;
+- component release planning handles first, minor, patch, major, no-change,
+  path-scoped, and breaking-change cases;
 - branch definitions reject empty, duplicate, invalid, missing defect, and
   missing Mutation uncertainty branches;
 - factories reject missing, duplicate, and unknown targets and require every
@@ -50,6 +60,11 @@ make test-integration
 
 The integration suite verifies:
 
+- a standalone fixture connector consumes only the public SDK API to define
+  typed Connection/Credentials, Query/Mutation operations, and
+  operation-specific factories;
+- the fixture connector registers those factories in a real Dex Flow and
+  preserves Call ID, idempotency, Attribute, Stream, and retry behavior;
 - Customer Onboarding registers factory Steps with typed `StepRef` targets;
 - Query Retry succeeds under the generated Dex retry defaults;
 - terminal Query branch does not use Dex retry;

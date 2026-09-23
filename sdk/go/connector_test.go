@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/internal/testsupport"
 	connector "github.com/superdurable/dex-connectors-library/sdk/go"
+	"github.com/superdurable/dex-connectors-library/sdk/go/internal/testsupport"
 	"github.com/superdurable/dex/sdk-go/dex"
 	"gopkg.in/yaml.v3"
 )

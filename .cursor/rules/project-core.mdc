@@ -1,0 +1,20 @@
+---
+description: Dex connector repository architecture and authoring rules
+alwaysApply: true
+---
+
+# Dex Connectors Library
+
+- Keep the Go SDK in sdk/go; keep every connector in its own Go module.
+- Group one company's connectors under one directory.
+- Keep provider calls in Dex Step Execute; never call providers from RPCs.
+- Register every Attribute and Stream in the consuming Flow schema.
+- Keep secrets out of durable state, Results, receipts, Streams, logs, generated
+  values, and release artifacts.
+- Treat connector.yaml as the source for generated connector APIs.
+- Prefer operation-specific factories; generic Query/Mutation factories are
+  advanced escape hatches.
+- Every connector needs its own go.mod, README, manifest, generated code, and
+  provider tests.
+- Regenerate and check the release-workflow choice list whenever connectors are
+  added, moved, or removed. Never edit the generated choice list manually.

@@ -18,6 +18,11 @@ The first alpha includes:
 ## Quick start
 
 ```bash
+cd sdk/go
+GOWORK=off go test -race ./...
+GOWORK=off go vet ./...
+cd ../..
+
 go test ./...
 go run ./cmd/connectorctl validate connectors/http/connector.yaml connectors/openai/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/http/connector.yaml
@@ -30,7 +35,16 @@ npm test
 npm run build
 ```
 
-The repository uses `github.com/superdurable/dex/sdk-go v0.10.2` and verifies
+The Go SDK is an independently versioned module using tags such as
+`sdk/go/v0.1.0`. Connector modules migrate in the next delivery and will use
+their module directory, for example `connectors/openai/v0.1.0`. The historical
+root `v0.1.0` tag does not version the standalone SDK. Git tags are the release
+version source of truth.
+
+The SDK must be released before a connector can pin the new SDK version. See
+[the versioning and release guide](docs/versioning-and-releases.md).
+
+The Connector Go SDK uses `github.com/superdurable/dex/sdk-go v0.10.2` and verifies
 integration behavior against Dex Server/dexcli 0.11.1. Those releases are
 versioned independently.
 
