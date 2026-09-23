@@ -67,12 +67,52 @@ func (ref OperationRef) Validate() error {
 	return nil
 }
 
+// BranchID is one stable, operation-defined process route.
+type BranchID string
+
+type BranchDefinition struct {
+	ID          BranchID `json:"id" yaml:"id"`
+	Description string   `json:"description" yaml:"description"`
+}
+
+type Requirement string
+
+const (
+	RequirementNone     Requirement = "none"
+	RequirementOptional Requirement = "optional"
+	RequirementRequired Requirement = "required"
+)
+
+type ProgressCapabilities struct {
+	Structured bool `json:"structured" yaml:"structured"`
+	Text       bool `json:"text" yaml:"text"`
+}
+
+// StepDefaults are the execute-only Dex options owned by an operation definition.
+type StepDefaults struct {
+	ExecuteMethodTimeout time.Duration      `json:"executeMethodTimeout" yaml:"executeMethodTimeout"`
+	HeartbeatTimeout     time.Duration      `json:"heartbeatTimeout,omitempty" yaml:"heartbeatTimeout,omitempty"`
+	ExecuteRetry         *dex.RetryPolicy   `json:"executeRetry,omitempty" yaml:"executeRetry,omitempty"`
+	ExecuteDurability    dex.StepDurability `json:"executeDurability" yaml:"executeDurability"`
+}
+
 type QueryDefinition struct {
-	Operation OperationRef `json:"operation" yaml:"operation"`
+	Operation       OperationRef         `json:"operation" yaml:"operation"`
+	Branches        []BranchDefinition   `json:"branches" yaml:"branches"`
+	DefectBranch    BranchID             `json:"defectBranch" yaml:"defectBranch"`
+	StepDefaults    StepDefaults         `json:"stepDefaults" yaml:"stepDefaults"`
+	ResultAttribute Requirement          `json:"resultAttribute" yaml:"resultAttribute"`
+	Progress        ProgressCapabilities `json:"progress" yaml:"progress"`
 }
 
 type MutationDefinition struct {
-	Operation OperationRef `json:"operation" yaml:"operation"`
+	Operation       OperationRef         `json:"operation" yaml:"operation"`
+	Branches        []BranchDefinition   `json:"branches" yaml:"branches"`
+	DefectBranch    BranchID             `json:"defectBranch" yaml:"defectBranch"`
+	UncertainBranch BranchID             `json:"uncertainBranch" yaml:"uncertainBranch"`
+	StepDefaults    StepDefaults         `json:"stepDefaults" yaml:"stepDefaults"`
+	ResultAttribute Requirement          `json:"resultAttribute" yaml:"resultAttribute"`
+	Progress        ProgressCapabilities `json:"progress" yaml:"progress"`
 }
 
 type Query[IN, OUT any] interface {
@@ -97,33 +137,18 @@ type Call struct {
 	text           *dex.BufferedTextStream
 }
 
-type QueryOutcome string
-
-const (
-	QuerySucceeded QueryOutcome = "SUCCEEDED"
-	QueryFailed    QueryOutcome = "FAILED"
-)
-
 type QueryResult[T any] struct {
-	Outcome QueryOutcome `json:"outcome"`
-	Value   T            `json:"value"`
-	Receipt Receipt      `json:"receipt"`
-	Failure *Failure     `json:"failure,omitempty"`
+	Branch  BranchID `json:"branch"`
+	Value   T        `json:"value"`
+	Receipt Receipt  `json:"receipt"`
+	Failure *Failure `json:"failure,omitempty"`
 }
 
-type MutationOutcome string
-
-const (
-	MutationSucceeded MutationOutcome = "SUCCEEDED"
-	MutationFailed    MutationOutcome = "FAILED"
-	MutationUnknown   MutationOutcome = "UNKNOWN"
-)
-
 type MutationResult[T any] struct {
-	Outcome MutationOutcome `json:"outcome"`
-	Value   T               `json:"value"`
-	Receipt Receipt         `json:"receipt"`
-	Failure *Failure        `json:"failure,omitempty"`
+	Branch  BranchID `json:"branch"`
+	Value   T        `json:"value"`
+	Receipt Receipt  `json:"receipt"`
+	Failure *Failure `json:"failure,omitempty"`
 }
 
 // Receipt contains only safe provider correlation data.
@@ -238,26 +263,32 @@ func WithTextStream(stream dex.Stream[string], options ...dex.BufferedTextStream
 }
 
 func RunQuery[IN, OUT any](ctx dex.Context, operation Query[IN, OUT], connection ConnectionRef, input IN, options ...RunOption) (QueryResult[OUT], error) {
-	if operation == nil {
-		return failedQuery[OUT](OperationRef{}, "connector query is required"), nil
+	if nilValue(operation) {
+		return failedQuery[OUT](QueryDefinition{}, "connector query is required"), nil
 	}
-	definition := operation.Definition().Operation
-	call, err := newCall(ctx, definition, connection)
+	definition := operation.Definition()
+	if err := definition.Validate(); err != nil {
+		return failedQuery[OUT](definition, "invalid query definition: "+err.Error()), nil
+	}
+	call, err := newCall(ctx, definition.Operation, connection)
 	if err != nil {
 		return failedQuery[OUT](definition, err.Error()), nil
 	}
 	if err := configureCall(&call, options); err != nil {
-		return failedQueryForCall[OUT](call, err.Error()), nil
+		return failedQueryForCall[OUT](definition, call, err.Error()), nil
 	}
-	return queryResult(call, operation.Invoke(call, input))
+	return queryResult(call, definition, operation.Invoke(call, input))
 }
 
 func RunMutation[IN, OUT any](ctx dex.Context, operation Mutation[IN, OUT], connection ConnectionRef, input IN, options ...RunOption) (MutationResult[OUT], error) {
-	if operation == nil {
-		return failedMutation[OUT](OperationRef{}, "connector mutation is required"), nil
+	if nilValue(operation) {
+		return uncertainMutation[OUT](MutationDefinition{}, "connector mutation is required"), nil
 	}
-	definition := operation.Definition().Operation
-	call, err := newCall(ctx, definition, connection)
+	definition := operation.Definition()
+	if err := definition.Validate(); err != nil {
+		return uncertainMutation[OUT](definition, "invalid mutation definition: "+err.Error()), nil
+	}
+	call, err := newCall(ctx, definition.Operation, connection)
 	if err != nil {
 		return failedMutation[OUT](definition, err.Error()), nil
 	}
@@ -267,69 +298,80 @@ func RunMutation[IN, OUT any](ctx dex.Context, operation Mutation[IN, OUT], conn
 	}
 	if strings.TrimSpace(string(call.IdempotencyKey)) == "" {
 		call.IdempotencyKey = ""
-		return failedMutationForCall[OUT](call, "mutation returned an invalid idempotency key"), nil
+		return failedMutationForCall[OUT](definition, call, "mutation returned an invalid idempotency key"), nil
 	}
 	if err := configureCall(&call, options); err != nil {
-		return failedMutationForCall[OUT](call, err.Error()), nil
+		return failedMutationForCall[OUT](definition, call, err.Error()), nil
 	}
-	return mutationResult(call, operation.Invoke(call, input))
+	return mutationResult(call, definition, operation.Invoke(call, input))
 }
 
-func queryResult[T any](call Call, attempt QueryAttempt[T]) (QueryResult[T], error) {
+func queryResult[T any](call Call, definition QueryDefinition, attempt QueryAttempt[T]) (QueryResult[T], error) {
 	switch attempt.kind {
-	case queryAttemptSucceeded:
+	case queryAttemptBranch:
+		if !definition.hasBranch(attempt.branch) {
+			return failedQueryForCall[T](definition, call, "query returned an unknown branch"), nil
+		}
+		if attempt.hasFailure {
+			if err := attempt.failure.validate(); err != nil {
+				return failedQueryForCall[T](definition, call, "query returned an invalid failure: "+err.Error()), nil
+			}
+		}
 		receipt, err := completeReceipt(attempt.receipt, call)
 		if err != nil {
-			return failedQueryForCall[T](call, err.Error()), nil
+			return failedQueryForCall[T](definition, call, err.Error()), nil
 		}
-		return QueryResult[T]{Outcome: QuerySucceeded, Value: attempt.value, Receipt: receipt}, nil
-	case queryAttemptFailed:
-		if err := attempt.failure.validate(); err != nil {
-			return failedQueryForCall[T](call, "query returned an invalid failure: "+err.Error()), nil
+		result := QueryResult[T]{Branch: attempt.branch, Value: attempt.value, Receipt: receipt}
+		if attempt.hasFailure {
+			result.Failure = &attempt.failure
 		}
-		receipt, err := completeReceipt(attempt.receipt, call)
-		if err != nil {
-			return failedQueryForCall[T](call, err.Error()), nil
-		}
-		return QueryResult[T]{Outcome: QueryFailed, Value: attempt.value, Receipt: receipt, Failure: &attempt.failure}, nil
+		return result, nil
 	case queryAttemptRetry:
 		if err := attempt.failure.validate(); err != nil || attempt.retryAfter < 0 {
-			return failedQueryForCall[T](call, "query returned an invalid retry attempt"), nil
+			return failedQueryForCall[T](definition, call, "query returned an invalid retry attempt"), nil
 		}
 		return QueryResult[T]{}, retryError(attempt.failure, attempt.retryAfter)
 	default:
-		return failedQueryForCall[T](call, "query returned an invalid attempt"), nil
+		return failedQueryForCall[T](definition, call, "query returned an invalid attempt"), nil
 	}
 }
 
-func mutationResult[T any](call Call, attempt MutationAttempt[T]) (MutationResult[T], error) {
+func mutationResult[T any](call Call, definition MutationDefinition, attempt MutationAttempt[T]) (MutationResult[T], error) {
 	switch attempt.kind {
-	case mutationAttemptSucceeded:
+	case mutationAttemptBranch:
+		if !definition.hasBranch(attempt.branch) {
+			return uncertainMutationForCall[T](definition, call, "mutation returned an unknown branch"), nil
+		}
+		if attempt.hasFailure {
+			if err := attempt.failure.validate(); err != nil {
+				return uncertainMutationForCall[T](definition, call, "mutation returned an invalid failure: "+err.Error()), nil
+			}
+		}
 		receipt, err := completeReceipt(attempt.receipt, call)
 		if err != nil {
-			return unknownMutationForCall[T](call, err.Error()), nil
+			return uncertainMutationForCall[T](definition, call, err.Error()), nil
 		}
-		return MutationResult[T]{Outcome: MutationSucceeded, Value: attempt.value, Receipt: receipt}, nil
-	case mutationAttemptFailed, mutationAttemptUnknown:
+		result := MutationResult[T]{Branch: attempt.branch, Value: attempt.value, Receipt: receipt}
+		if attempt.hasFailure {
+			result.Failure = &attempt.failure
+		}
+		return result, nil
+	case mutationAttemptUncertain:
 		if err := attempt.failure.validate(); err != nil {
-			return unknownMutationForCall[T](call, "mutation returned an invalid failure: "+err.Error()), nil
+			return uncertainMutationForCall[T](definition, call, "mutation returned an invalid failure: "+err.Error()), nil
 		}
 		receipt, err := completeReceipt(attempt.receipt, call)
 		if err != nil {
-			return unknownMutationForCall[T](call, err.Error()), nil
+			return uncertainMutationForCall[T](definition, call, err.Error()), nil
 		}
-		outcome := MutationFailed
-		if attempt.kind == mutationAttemptUnknown {
-			outcome = MutationUnknown
-		}
-		return MutationResult[T]{Outcome: outcome, Value: attempt.value, Receipt: receipt, Failure: &attempt.failure}, nil
+		return MutationResult[T]{Branch: definition.UncertainBranch, Value: attempt.value, Receipt: receipt, Failure: &attempt.failure}, nil
 	case mutationAttemptRetry:
 		if err := attempt.failure.validate(); err != nil || attempt.retryAfter < 0 {
-			return unknownMutationForCall[T](call, "mutation returned an invalid retry attempt"), nil
+			return uncertainMutationForCall[T](definition, call, "mutation returned an invalid retry attempt"), nil
 		}
 		return MutationResult[T]{}, retryError(attempt.failure, attempt.retryAfter)
 	default:
-		return unknownMutationForCall[T](call, "mutation returned an invalid attempt"), nil
+		return uncertainMutationForCall[T](definition, call, "mutation returned an invalid attempt"), nil
 	}
 }
 
@@ -420,32 +462,37 @@ func completeReceipt(receipt Receipt, call Call) (Receipt, error) {
 	return receipt, nil
 }
 
-func failedQuery[T any](operation OperationRef, message string) QueryResult[T] {
-	failure := localFailure(operation, message)
-	return QueryResult[T]{Outcome: QueryFailed, Failure: &failure}
+func failedQuery[T any](definition QueryDefinition, message string) QueryResult[T] {
+	failure := localFailure(definition.Operation, message)
+	return QueryResult[T]{Branch: definition.DefectBranch, Failure: &failure}
 }
 
-func failedQueryForCall[T any](call Call, message string) QueryResult[T] {
-	result := failedQuery[T](call.Operation, message)
+func failedQueryForCall[T any](definition QueryDefinition, call Call, message string) QueryResult[T] {
+	result := failedQuery[T](definition, message)
 	result.Receipt, _ = completeReceipt(Receipt{}, call)
 	return result
 }
 
-func failedMutation[T any](operation OperationRef, message string) MutationResult[T] {
-	failure := localFailure(operation, message)
-	return MutationResult[T]{Outcome: MutationFailed, Failure: &failure}
+func failedMutation[T any](definition MutationDefinition, message string) MutationResult[T] {
+	failure := localFailure(definition.Operation, message)
+	return MutationResult[T]{Branch: definition.DefectBranch, Failure: &failure}
 }
 
-func failedMutationForCall[T any](call Call, message string) MutationResult[T] {
-	result := failedMutation[T](call.Operation, message)
+func failedMutationForCall[T any](definition MutationDefinition, call Call, message string) MutationResult[T] {
+	result := failedMutation[T](definition, message)
 	result.Receipt, _ = completeReceipt(Receipt{}, call)
 	return result
 }
 
-func unknownMutationForCall[T any](call Call, message string) MutationResult[T] {
+func uncertainMutation[T any](definition MutationDefinition, message string) MutationResult[T] {
+	failure := localFailure(definition.Operation, message)
+	return MutationResult[T]{Branch: definition.UncertainBranch, Failure: &failure}
+}
+
+func uncertainMutationForCall[T any](definition MutationDefinition, call Call, message string) MutationResult[T] {
 	failure := localFailure(call.Operation, message)
 	receipt, _ := completeReceipt(Receipt{}, call)
-	return MutationResult[T]{Outcome: MutationUnknown, Receipt: receipt, Failure: &failure}
+	return MutationResult[T]{Branch: definition.UncertainBranch, Receipt: receipt, Failure: &failure}
 }
 
 func localFailure(operation OperationRef, message string) Failure {

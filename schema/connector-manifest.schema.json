@@ -22,26 +22,53 @@
     "spec": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["provider", "auth", "operations"],
+      "required": ["provider", "codegen", "configuration", "auth", "operations"],
       "properties": {
         "provider": { "type": "string", "minLength": 1 },
+        "codegen": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["go"],
+          "properties": {
+            "go": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["package"],
+              "properties": { "package": { "type": "string", "pattern": "^[a-z][a-z0-9]*$" } }
+            }
+          }
+        },
+        "configuration": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["fields"],
+          "properties": {
+            "fields": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/configField" }
+            }
+          }
+        },
         "auth": {
           "type": "object",
           "additionalProperties": false,
           "required": ["type", "fields"],
           "properties": {
             "type": { "enum": ["none", "apiKey", "oauth2"] },
+            "connectionKind": { "type": "string" },
             "fields": {
               "type": "array",
-              "items": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": ["name", "required", "sensitive"],
-                "properties": {
-                  "name": { "type": "string", "minLength": 1 },
-                  "required": { "type": "boolean" },
-                  "sensitive": { "type": "boolean" }
-                }
+              "items": { "$ref": "#/$defs/authField" }
+            },
+            "oauth2": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["authorizationEndpoint", "tokenEndpoint", "scopes", "pkce"],
+              "properties": {
+                "authorizationEndpoint": { "type": "string", "format": "uri" },
+                "tokenEndpoint": { "type": "string", "format": "uri" },
+                "scopes": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+                "pkce": { "type": "boolean" }
               }
             }
           }
@@ -49,24 +76,97 @@
         "operations": {
           "type": "array",
           "minItems": 1,
-          "items": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["name", "kind", "description", "idempotency"],
-            "properties": {
-              "name": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]+$" },
-              "kind": { "enum": ["query", "mutation"] },
-              "description": { "type": "string", "minLength": 1 },
-              "idempotency": { "enum": ["none", "required"] },
-              "progress": {
-                "type": "array",
-                "uniqueItems": true,
-                "items": { "enum": ["structured", "text"] }
-              }
-            }
+          "items": { "$ref": "#/$defs/operation" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "fieldBase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "goName", "type", "description", "required"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "goName": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
+        "type": { "type": "string" },
+        "description": { "type": "string", "minLength": 1 },
+        "required": { "type": "boolean" },
+        "default": {},
+        "enum": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string" } }
+      }
+    },
+    "configField": {
+      "allOf": [
+        { "$ref": "#/$defs/fieldBase" },
+        { "properties": { "type": { "enum": ["string", "url", "integer", "boolean", "duration", "stringList", "stringMap", "enum"] } } }
+      ]
+    },
+    "authField": {
+      "allOf": [
+        { "$ref": "#/$defs/fieldBase" },
+        { "properties": { "type": { "enum": ["string", "url", "integer", "boolean", "duration", "stringList", "stringMap", "enum", "secretString"] } } }
+      ]
+    },
+    "branch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "goName", "description"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]+$" },
+        "goName": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
+        "description": { "type": "string", "minLength": 1 }
+      }
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["executeMethodTimeout", "durability", "retry"],
+      "properties": {
+        "executeMethodTimeout": { "type": "string", "minLength": 1 },
+        "heartbeatTimeout": { "type": "string", "minLength": 1 },
+        "durability": { "enum": ["sync", "async"] },
+        "retry": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["initialInterval", "backoffCoefficient", "maximumInterval", "maximumAttempts", "totalDuration"],
+          "properties": {
+            "initialInterval": { "type": "string", "minLength": 1 },
+            "backoffCoefficient": { "type": "number", "minimum": 1 },
+            "maximumInterval": { "type": "string", "minLength": 1 },
+            "maximumAttempts": { "type": "integer", "minimum": 1 },
+            "totalDuration": { "type": "string", "minLength": 1 }
           }
         }
       }
+    },
+    "operation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "goName", "kind", "description", "idempotency", "branches", "defectBranch", "resultAttribute", "execution"],
+      "properties": {
+        "name": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]+$" },
+        "goName": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
+        "kind": { "enum": ["query", "mutation"] },
+        "description": { "type": "string", "minLength": 1 },
+        "idempotency": { "enum": ["none", "required"] },
+        "branches": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/branch" } },
+        "defectBranch": { "type": "string", "minLength": 1 },
+        "uncertainBranch": { "type": "string", "minLength": 1 },
+        "resultAttribute": { "enum": ["none", "optional", "required"] },
+        "progress": { "type": "array", "uniqueItems": true, "items": { "enum": ["structured", "text"] } },
+        "execution": { "$ref": "#/$defs/execution" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "mutation" } } },
+          "then": { "required": ["uncertainBranch"], "properties": { "idempotency": { "const": "required" } } }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "query" } } },
+          "then": { "properties": { "idempotency": { "const": "none" } }, "not": { "required": ["uncertainBranch"] } }
+        }
+      ]
     }
   }
 }

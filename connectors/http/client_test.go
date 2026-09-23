@@ -26,8 +26,8 @@ func newClient(t *testing.T, baseURL string) *httpconnector.Client {
 	t.Helper()
 	client, err := httpconnector.New(httpconnector.Config{
 		BaseURL: baseURL, CredentialHeaders: map[string]string{"api_key": "X-Mock-Api-Key"},
-	}, connector.StaticCredentialProvider{
-		mockConnection: connector.NewCredential(map[string]string{"api_key": "test-key"}),
+	}, connector.StaticCredentialProvider[httpconnector.Credentials]{
+		mockConnection: {APIKey: connector.NewSecretString("test-key")},
 	})
 	require.NoError(t, err)
 	return client
@@ -43,7 +43,7 @@ func TestQueryAndIdempotentMutation(t *testing.T) {
 		httpconnector.Request{Method: http.MethodGet, Path: "/profiles/customer-1"},
 	)
 	require.NoError(t, err)
-	require.Equal(t, connector.QuerySucceeded, query.Outcome)
+	require.Equal(t, httpconnector.QueryBranchSucceeded, query.Branch)
 	require.Equal(t, http.StatusOK, query.Value.StatusCode)
 	require.Empty(t, query.Value.Header.Get("Set-Cookie"))
 	require.Equal(t, "mock-request-1", query.Value.Header.Get("X-Request-Id"))
@@ -56,7 +56,7 @@ func TestQueryAndIdempotentMutation(t *testing.T) {
 			Body: mockprovider.Mutation{CustomerID: "customer-1", Credits: 100},
 		})
 		require.NoError(t, mutationErr)
-		require.Equal(t, connector.MutationSucceeded, result.Outcome)
+		require.Equal(t, httpconnector.MutationBranchSucceeded, result.Branch)
 		if firstCallID == "" {
 			firstCallID = result.Receipt.CallID
 		}
@@ -94,7 +94,7 @@ func TestConfirmedMutationRejectionIsFailedResult(t *testing.T) {
 		httpconnector.Request{Method: http.MethodPost, Path: "/missing", Body: map[string]any{"credits": 1}},
 	)
 	require.NoError(t, err)
-	require.Equal(t, connector.MutationFailed, result.Outcome)
+	require.Equal(t, httpconnector.MutationBranchRejected, result.Branch)
 	require.Equal(t, connector.FailureNotFound, result.Failure.Kind)
 	require.Equal(t, "mock-request-1", result.Receipt.ProviderRequestID)
 }
@@ -128,7 +128,7 @@ func TestQueryStatusClassificationIsExplicit(t *testing.T) {
 				require.Equal(t, test.wantKind, retry.Failure.Kind)
 			} else {
 				require.NoError(t, err)
-				require.Equal(t, connector.QueryFailed, result.Outcome)
+				require.Equal(t, httpconnector.QueryBranchFailed, result.Branch)
 				require.Equal(t, test.wantKind, result.Failure.Kind)
 			}
 			require.Equal(t, int32(1), requests.Load())
@@ -148,7 +148,7 @@ func TestCommittedMutationWithLostResponseIsUnknownAndRecoverable(t *testing.T) 
 		},
 	)
 	require.NoError(t, err)
-	require.Equal(t, connector.MutationUnknown, result.Outcome)
+	require.Equal(t, httpconnector.MutationBranchUncertain, result.Branch)
 	require.Equal(t, connector.FailureTransport, result.Failure.Kind)
 
 	recovered, recoverErr := connector.RunQuery(
@@ -156,7 +156,7 @@ func TestCommittedMutationWithLostResponseIsUnknownAndRecoverable(t *testing.T) 
 		httpconnector.Request{Method: http.MethodGet, Path: "/mutations/" + string(result.Receipt.CallID)},
 	)
 	require.NoError(t, recoverErr)
-	require.Equal(t, connector.QuerySucceeded, recovered.Outcome)
+	require.Equal(t, httpconnector.QueryBranchSucceeded, recovered.Branch)
 	var mutation mockprovider.Mutation
 	require.NoError(t, json.Unmarshal(recovered.Value.Body, &mutation))
 	require.Equal(t, "succeeded", mutation.Status)
@@ -175,7 +175,7 @@ func TestRejectsSecretHeaderInFlowInput(t *testing.T) {
 		},
 	)
 	require.NoError(t, err)
-	require.Equal(t, connector.QueryFailed, result.Outcome)
+	require.Equal(t, httpconnector.QueryBranchDefect, result.Branch)
 	require.Equal(t, connector.FailureValidation, result.Failure.Kind)
 	require.Contains(t, result.Failure.Message, "CredentialProvider")
 	require.NotContains(t, result.Failure.Message, "leaked")
@@ -194,7 +194,7 @@ func TestCredentialFailureBeforeDispatchIsNotUnknown(t *testing.T) {
 		httpconnector.Request{Method: http.MethodPost, Path: "/credits", Body: map[string]int{"credits": 1}},
 	)
 	require.NoError(t, err)
-	require.Equal(t, connector.MutationFailed, result.Outcome)
+	require.Equal(t, httpconnector.MutationBranchRejected, result.Branch)
 	require.Equal(t, connector.FailureAuthentication, result.Failure.Kind)
 	require.NotContains(t, result.Failure.Message, "credential store unavailable")
 	require.Zero(t, requests.Load())
@@ -209,23 +209,24 @@ func TestProviderSpecificIdempotencyKeyIsSentAndReceipted(t *testing.T) {
 	defer server.Close()
 	client, err := httpconnector.New(httpconnector.Config{
 		BaseURL: server.URL,
-		IdempotencyKey: func(callID connector.CallID, _ httpconnector.Request) connector.IdempotencyKey {
+	}, connector.StaticCredentialProvider[httpconnector.Credentials]{mockConnection: {}}, httpconnector.WithIdempotencyKeyFunc(
+		func(callID connector.CallID, _ httpconnector.Request) connector.IdempotencyKey {
 			return connector.IdempotencyKey("provider_" + string(callID))
 		},
-	}, connector.StaticCredentialProvider{mockConnection: connector.NewCredential(nil)})
+	))
 	require.NoError(t, err)
 	result, err := connector.RunMutation(
 		testsupport.NewDexContext("flow-1", "provider-key-1"), client.Mutation(), mockConnection,
 		httpconnector.Request{Method: http.MethodPost, Path: "/credits"},
 	)
 	require.NoError(t, err)
-	require.Equal(t, connector.MutationSucceeded, result.Outcome)
+	require.Equal(t, httpconnector.MutationBranchSucceeded, result.Branch)
 	require.Equal(t, key, string(result.Receipt.IdempotencyKey))
 	require.Contains(t, key, "provider_")
 }
 
 type failingCredentialProvider struct{}
 
-func (failingCredentialProvider) Resolve(connector.Call) (connector.Credential, error) {
-	return connector.Credential{}, errors.New("credential store unavailable")
+func (failingCredentialProvider) Resolve(connector.Call) (httpconnector.Credentials, error) {
+	return httpconnector.Credentials{}, errors.New("credential store unavailable")
 }

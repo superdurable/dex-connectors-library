@@ -20,27 +20,21 @@ import (
 	connector "github.com/superdurable/dex-connectors-library/sdk/go"
 )
 
-const (
-	defaultMaxResponseBytes = int64(2 << 20)
-	defaultTimeout          = 15 * time.Second
-)
-
-var (
-	queryDefinition    = connector.QueryDefinition{Operation: connector.OperationRef{ConnectorID: "http", OperationID: "query"}}
-	mutationDefinition = connector.MutationDefinition{Operation: connector.OperationRef{ConnectorID: "http", OperationID: "mutation"}}
-)
-
 type IdempotencyKeyFunc func(connector.CallID, Request) connector.IdempotencyKey
 
-type Config struct {
-	BaseURL           string
-	AllowedHosts      []string
-	Timeout           time.Duration
-	MaxResponseBytes  int64
-	CredentialHeaders map[string]string
-	IdempotencyHeader string
-	IdempotencyKey    IdempotencyKeyFunc
-	Client            *http.Client
+type Option func(*clientOptions)
+
+type clientOptions struct {
+	httpClient     *http.Client
+	idempotencyKey IdempotencyKeyFunc
+}
+
+func WithHTTPClient(client *http.Client) Option {
+	return func(options *clientOptions) { options.httpClient = client }
+}
+
+func WithIdempotencyKeyFunc(derive IdempotencyKeyFunc) Option {
+	return func(options *clientOptions) { options.idempotencyKey = derive }
 }
 
 type Client struct {
@@ -51,7 +45,7 @@ type Client struct {
 	idempotencyHeader string
 	idempotencyKey    IdempotencyKeyFunc
 	httpClient        *http.Client
-	credentials       connector.CredentialProvider
+	credentials       connector.CredentialProvider[Credentials]
 }
 
 type Request struct {
@@ -79,7 +73,11 @@ type requestError struct {
 
 func (err *requestError) Error() string { return err.message }
 
-func New(config Config, credentials connector.CredentialProvider) (*Client, error) {
+func New(config Config, credentials connector.CredentialProvider[Credentials], options ...Option) (*Client, error) {
+	config = withConfigDefaults(config)
+	if err := config.Validate(); err != nil {
+		return nil, err
+	}
 	baseURL, err := url.Parse(config.BaseURL)
 	if err != nil || baseURL.Scheme == "" || baseURL.Hostname() == "" {
 		return nil, fmt.Errorf("base URL must be absolute: %w", err)
@@ -95,26 +93,26 @@ func New(config Config, credentials connector.CredentialProvider) (*Client, erro
 	for _, host := range config.AllowedHosts {
 		allowedHosts[strings.ToLower(host)] = true
 	}
-	timeout := config.Timeout
-	if timeout == 0 {
-		timeout = defaultTimeout
+	dependencies := clientOptions{}
+	for _, option := range options {
+		if option == nil {
+			return nil, fmt.Errorf("HTTP connector option is nil")
+		}
+		option(&dependencies)
 	}
-	maxBytes := config.MaxResponseBytes
-	if maxBytes == 0 {
-		maxBytes = defaultMaxResponseBytes
-	}
-	httpClient := config.Client
+	httpClient := dependencies.httpClient
 	if httpClient == nil {
-		httpClient = &http.Client{Timeout: timeout}
+		httpClient = &http.Client{Timeout: config.Timeout}
 	}
-	idempotencyHeader := config.IdempotencyHeader
-	if idempotencyHeader == "" {
-		idempotencyHeader = "Idempotency-Key"
+	for field := range config.CredentialHeaders {
+		if field != "api_key" {
+			return nil, fmt.Errorf("unsupported credential field %q", field)
+		}
 	}
 	return &Client{
-		baseURL: baseURL, allowedHosts: allowedHosts, maxResponseBytes: maxBytes,
-		credentialHeaders: config.CredentialHeaders, idempotencyHeader: idempotencyHeader,
-		idempotencyKey: config.IdempotencyKey, httpClient: httpClient, credentials: credentials,
+		baseURL: baseURL, allowedHosts: allowedHosts, maxResponseBytes: config.MaxResponseBytes,
+		credentialHeaders: config.CredentialHeaders, idempotencyHeader: config.IdempotencyHeader,
+		idempotencyKey: dependencies.idempotencyKey, httpClient: httpClient, credentials: credentials,
 	}, nil
 }
 
@@ -122,34 +120,37 @@ func (client *Client) Query() QueryOperation { return QueryOperation{client: cli
 
 func (client *Client) Mutation() MutationOperation { return MutationOperation{client: client} }
 
-func (QueryOperation) Definition() connector.QueryDefinition { return queryDefinition }
+func (QueryOperation) Definition() connector.QueryDefinition { return QueryDefinition }
 
 func (operation QueryOperation) Invoke(call connector.Call, input Request) connector.QueryAttempt[Response] {
 	if input.Method != http.MethodGet && input.Method != http.MethodHead {
-		return connector.NewQueryFailure(Response{}, queryFailure(connector.FailureValidation, "query method must be GET or HEAD"), connector.Receipt{})
+		failure := queryFailure(connector.FailureValidation, "query method must be GET or HEAD")
+		return connector.NewQueryBranch(QueryBranchDefect, Response{}, &failure, connector.Receipt{})
 	}
 	response, requestID, dispatched, err := operation.client.do(call, input, "")
 	if err != nil {
 		if !dispatched {
-			return connector.NewQueryFailure(Response{}, requestFailure("query", err), connector.Receipt{})
+			failure := requestFailure("query", err)
+			return connector.NewQueryBranch(queryFailureBranch(failure), Response{}, &failure, connector.Receipt{})
 		}
 		return connector.NewQueryRetry[Response](queryFailure(connector.FailureAvailability, "provider is unavailable"), 0)
 	}
 	receipt := responseReceipt(call, requestID)
 	if int64(len(response.Body)) > operation.client.maxResponseBytes {
-		return connector.NewQueryFailure(Response{}, queryFailure(connector.FailureResponseTooLarge, "provider response exceeds the configured size limit"), receipt)
+		failure := queryFailure(connector.FailureResponseTooLarge, "provider response exceeds the configured size limit")
+		return connector.NewQueryBranch(QueryBranchFailed, Response{}, &failure, receipt)
 	}
 	if response.StatusCode >= 200 && response.StatusCode < 300 {
-		return connector.NewQuerySuccess(response, receipt)
+		return connector.NewQueryBranch(QueryBranchSucceeded, response, nil, receipt)
 	}
 	failure, retryAfter, retry := classifyStatus("query", response)
 	if retry {
 		return connector.NewQueryRetry[Response](failure, retryAfter)
 	}
-	return connector.NewQueryFailure(Response{}, failure, receipt)
+	return connector.NewQueryBranch(QueryBranchFailed, Response{}, &failure, receipt)
 }
 
-func (MutationOperation) Definition() connector.MutationDefinition { return mutationDefinition }
+func (MutationOperation) Definition() connector.MutationDefinition { return MutationDefinition }
 
 func (operation MutationOperation) IdempotencyKey(callID connector.CallID, input Request) connector.IdempotencyKey {
 	if operation.client.idempotencyKey == nil {
@@ -160,30 +161,32 @@ func (operation MutationOperation) IdempotencyKey(callID connector.CallID, input
 
 func (operation MutationOperation) Invoke(call connector.Call, input Request) connector.MutationAttempt[Response] {
 	if input.Method != http.MethodPost && input.Method != http.MethodPut && input.Method != http.MethodPatch && input.Method != http.MethodDelete {
-		return connector.NewMutationFailure(Response{}, mutationFailure(connector.FailureValidation, "unsupported mutation method"), connector.Receipt{})
+		failure := mutationFailure(connector.FailureValidation, "unsupported mutation method")
+		return connector.NewMutationBranch(MutationBranchDefect, Response{}, &failure, connector.Receipt{})
 	}
 	response, requestID, dispatched, err := operation.client.do(call, input, call.IdempotencyKey)
 	receipt := responseReceipt(call, requestID)
 	if err != nil {
 		if !dispatched {
-			return connector.NewMutationFailure(Response{}, requestFailure("mutation", err), receipt)
+			failure := requestFailure("mutation", err)
+			return connector.NewMutationBranch(mutationFailureBranch(failure), Response{}, &failure, receipt)
 		}
-		return connector.NewMutationUnknown(Response{}, mutationFailure(connector.FailureTransport, "provider outcome is unknown"), receipt)
+		return connector.NewMutationUncertain(Response{}, mutationFailure(connector.FailureTransport, "provider outcome is unknown"), receipt)
 	}
 	if int64(len(response.Body)) > operation.client.maxResponseBytes {
-		return connector.NewMutationUnknown(Response{}, mutationFailure(connector.FailureResponseTooLarge, "provider outcome is unknown"), receipt)
+		return connector.NewMutationUncertain(Response{}, mutationFailure(connector.FailureResponseTooLarge, "provider outcome is unknown"), receipt)
 	}
 	if response.StatusCode >= 200 && response.StatusCode < 300 {
-		return connector.NewMutationSuccess(response, receipt)
+		return connector.NewMutationBranch(MutationBranchSucceeded, response, nil, receipt)
 	}
 	failure, retryAfter, retry := classifyStatus("mutation", response)
 	if retry {
 		return connector.NewMutationRetry[Response](failure, retryAfter)
 	}
 	if response.StatusCode >= 500 {
-		return connector.NewMutationUnknown(Response{}, failure, receipt)
+		return connector.NewMutationUncertain(Response{}, failure, receipt)
 	}
-	return connector.NewMutationFailure(Response{}, failure, receipt)
+	return connector.NewMutationBranch(MutationBranchRejected, Response{}, &failure, receipt)
 }
 
 func (client *Client) do(call connector.Call, input Request, idempotencyKey connector.IdempotencyKey) (Response, string, bool, error) {
@@ -217,10 +220,12 @@ func (client *Client) do(call connector.Call, input Request, idempotencyKey conn
 	if err != nil {
 		return Response{}, "", false, &requestError{kind: connector.FailureAuthentication, message: "connection credentials are unavailable"}
 	}
+	if err := credential.Validate(); err != nil {
+		return Response{}, "", false, &requestError{kind: connector.FailureAuthentication, message: "connection credentials are invalid"}
+	}
 	for field, header := range client.credentialHeaders {
-		value, ok := credential.Value(field)
-		if ok && value != "" {
-			request.Header.Set(header, value)
+		if field == "api_key" && credential.APIKey.Reveal() != "" {
+			request.Header.Set(header, credential.APIKey.Reveal())
 		}
 	}
 	if idempotencyKey != "" {
@@ -238,6 +243,20 @@ func (client *Client) do(call connector.Call, input Request, idempotencyKey conn
 		return Response{}, requestID, true, err
 	}
 	return Response{StatusCode: response.StatusCode, Header: safeResponseHeaders(response.Header), Body: responseBody}, requestID, true, nil
+}
+
+func queryFailureBranch(failure connector.Failure) connector.BranchID {
+	if failure.Kind == connector.FailureLocalDefect || failure.Kind == connector.FailureValidation {
+		return QueryBranchDefect
+	}
+	return QueryBranchFailed
+}
+
+func mutationFailureBranch(failure connector.Failure) connector.BranchID {
+	if failure.Kind == connector.FailureLocalDefect || failure.Kind == connector.FailureValidation {
+		return MutationBranchDefect
+	}
+	return MutationBranchRejected
 }
 
 func classifyStatus(operation string, response Response) (connector.Failure, time.Duration, bool) {

@@ -5,61 +5,45 @@ package connector
 
 import (
 	"errors"
-	"fmt"
 )
 
-// Credential is intentionally not serializable and never renders its values.
-type Credential struct {
-	values map[string]string
+// SecretString is intentionally not serializable and always renders redacted.
+type SecretString struct {
+	value string
 }
 
-func NewCredential(values map[string]string) Credential {
-	copyValues := make(map[string]string, len(values))
-	for key, value := range values {
-		copyValues[key] = value
-	}
-	return Credential{values: copyValues}
+func NewSecretString(value string) SecretString { return SecretString{value: value} }
+
+// Reveal returns the secret only at the provider request boundary.
+func (secret SecretString) Reveal() string { return secret.value }
+
+func (SecretString) String() string { return "[REDACTED]" }
+
+func (SecretString) GoString() string { return "connector.SecretString{[REDACTED]}" }
+
+func (SecretString) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("connector secrets cannot be serialized")
 }
 
-func (credential Credential) Value(name string) (string, bool) {
-	value, ok := credential.values[name]
-	return value, ok
+func (SecretString) MarshalText() ([]byte, error) {
+	return nil, errors.New("connector secrets cannot be serialized")
 }
 
-func (Credential) String() string { return "[REDACTED]" }
-
-func (Credential) GoString() string { return "connector.Credential{[REDACTED]}" }
-
-func (Credential) MarshalJSON() ([]byte, error) {
-	return nil, errors.New("connector credentials cannot be serialized")
+func (SecretString) MarshalYAML() (any, error) {
+	return nil, errors.New("connector secrets cannot be serialized")
 }
 
-func (Credential) MarshalText() ([]byte, error) {
-	return nil, errors.New("connector credentials cannot be serialized")
+type CredentialProvider[C any] interface {
+	Resolve(Call) (C, error)
 }
 
-func (Credential) MarshalYAML() (any, error) {
-	return nil, errors.New("connector credentials cannot be serialized")
-}
+type StaticCredentialProvider[C any] map[ConnectionRef]C
 
-type CredentialProvider interface {
-	Resolve(Call) (Credential, error)
-}
-
-type StaticCredentialProvider map[ConnectionRef]Credential
-
-func (provider StaticCredentialProvider) Resolve(call Call) (Credential, error) {
+func (provider StaticCredentialProvider[C]) Resolve(call Call) (C, error) {
 	credential, ok := provider[call.Connection]
 	if !ok {
-		return Credential{}, errors.New("connection is not configured")
+		var zero C
+		return zero, errors.New("connection is not configured")
 	}
 	return credential, nil
-}
-
-func RequiredCredentialValue(credential Credential, name string) (string, error) {
-	value, ok := credential.Value(name)
-	if !ok || value == "" {
-		return "", fmt.Errorf("required credential field %q is missing", name)
-	}
-	return value, nil
 }

@@ -18,28 +18,18 @@ import (
 	connector "github.com/superdurable/dex-connectors-library/sdk/go"
 )
 
-const (
-	defaultEndpoint         = "https://api.openai.com/v1"
-	defaultMaxResponseBytes = int64(8 << 20)
-	defaultMaxSSEEventBytes = 1 << 20
-)
+type Option func(*clientOptions)
 
-var (
-	createResponseDefinition   = connector.MutationDefinition{Operation: connector.OperationRef{ConnectorID: "openai", OperationID: "createResponse"}}
-	retrieveResponseDefinition = connector.QueryDefinition{Operation: connector.OperationRef{ConnectorID: "openai", OperationID: "retrieveResponse"}}
-)
+type clientOptions struct{ httpClient *http.Client }
 
-type Config struct {
-	Endpoint         string
-	Client           *http.Client
-	MaxResponseBytes int64
-	MaxSSEEventBytes int
+func WithHTTPClient(client *http.Client) Option {
+	return func(options *clientOptions) { options.httpClient = client }
 }
 
 type Client struct {
 	endpoint         *url.URL
 	httpClient       *http.Client
-	credentials      connector.CredentialProvider
+	credentials      connector.CredentialProvider[Credentials]
 	maxResponseBytes int64
 	maxSSEEventBytes int
 }
@@ -88,39 +78,38 @@ type requestFailure struct {
 
 func (failure *requestFailure) Error() string { return failure.failure.Message }
 
-func New(config Config, credentials connector.CredentialProvider) (*Client, error) {
-	endpointText := config.Endpoint
-	if endpointText == "" {
-		endpointText = defaultEndpoint
+func New(config Config, credentials connector.CredentialProvider[Credentials], options ...Option) (*Client, error) {
+	config = withConfigDefaults(config)
+	if err := config.Validate(); err != nil {
+		return nil, err
 	}
-	endpoint, err := url.Parse(endpointText)
+	endpoint, err := url.Parse(config.Endpoint)
 	if err != nil || endpoint.Scheme == "" || endpoint.Hostname() == "" {
 		return nil, fmt.Errorf("OpenAI endpoint must be absolute: %w", err)
 	}
 	if endpoint.Scheme != "https" && endpoint.Hostname() != "127.0.0.1" && endpoint.Hostname() != "localhost" {
 		return nil, fmt.Errorf("OpenAI endpoint must use HTTPS")
 	}
-	httpClient := config.Client
+	dependencies := clientOptions{}
+	for _, option := range options {
+		if option == nil {
+			return nil, fmt.Errorf("OpenAI connector option is nil")
+		}
+		option(&dependencies)
+	}
+	httpClient := dependencies.httpClient
 	if httpClient == nil {
 		httpClient = &http.Client{Timeout: 2 * time.Minute}
 	}
 	if credentials == nil {
 		return nil, fmt.Errorf("credential provider is required")
 	}
-	maxResponseBytes := config.MaxResponseBytes
-	if maxResponseBytes == 0 {
-		maxResponseBytes = defaultMaxResponseBytes
-	}
-	maxSSEEventBytes := config.MaxSSEEventBytes
-	if maxSSEEventBytes == 0 {
-		maxSSEEventBytes = defaultMaxSSEEventBytes
-	}
-	if maxResponseBytes < 1 || maxSSEEventBytes < 1 {
+	if config.MaxResponseBytes < 1 || config.MaxSSEEventBytes < 1 {
 		return nil, fmt.Errorf("OpenAI response limits must be positive")
 	}
 	return &Client{
 		endpoint: endpoint, httpClient: httpClient, credentials: credentials,
-		maxResponseBytes: maxResponseBytes, maxSSEEventBytes: maxSSEEventBytes,
+		maxResponseBytes: config.MaxResponseBytes, maxSSEEventBytes: int(config.MaxSSEEventBytes),
 	}, nil
 }
 
@@ -133,7 +122,7 @@ func (client *Client) RetrieveResponse() RetrieveResponseOperation {
 }
 
 func (CreateResponseOperation) Definition() connector.MutationDefinition {
-	return createResponseDefinition
+	return CreateResponseDefinition
 }
 
 func (CreateResponseOperation) IdempotencyKey(callID connector.CallID, _ CreateRequest) connector.IdempotencyKey {
@@ -142,7 +131,8 @@ func (CreateResponseOperation) IdempotencyKey(callID connector.CallID, _ CreateR
 
 func (operation CreateResponseOperation) Invoke(call connector.Call, input CreateRequest) connector.MutationAttempt[Response] {
 	if input.Model == "" || input.Input == nil {
-		return connector.NewMutationFailure(Response{}, openAIFailure(connector.FailureValidation, "createResponse", "model and input are required"), connector.Receipt{})
+		failure := openAIFailure(connector.FailureValidation, "createResponse", "model and input are required")
+		return connector.NewMutationBranch(CreateResponseBranchDefect, Response{}, &failure, connector.Receipt{})
 	}
 	payload := map[string]any{"model": input.Model, "input": input.Input}
 	if input.Instructions != "" {
@@ -161,11 +151,15 @@ func (operation CreateResponseOperation) Invoke(call connector.Call, input Creat
 	}
 	request, failure := operation.client.newRequest(call, http.MethodPost, "/responses", call.IdempotencyKey, payload)
 	if failure != nil {
-		return connector.NewMutationFailure(Response{}, failure.failure, connector.Receipt{})
+		branch := CreateResponseBranchFailed
+		if failure.failure.Kind == connector.FailureLocalDefect || failure.failure.Kind == connector.FailureValidation {
+			branch = CreateResponseBranchDefect
+		}
+		return connector.NewMutationBranch(branch, Response{}, &failure.failure, connector.Receipt{})
 	}
 	response, err := operation.client.httpClient.Do(request)
 	if err != nil {
-		return connector.NewMutationUnknown(Response{}, openAIFailure(connector.FailureTransport, "createResponse", "provider outcome is unknown"), responseReceipt(call, "", http.Header{}, ""))
+		return connector.NewMutationUncertain(Response{}, openAIFailure(connector.FailureTransport, "createResponse", "provider outcome is unknown"), responseReceipt(call, "", http.Header{}, ""))
 	}
 	defer response.Body.Close()
 	requestID := response.Header.Get("X-Request-Id")
@@ -177,23 +171,28 @@ func (operation CreateResponseOperation) Invoke(call connector.Call, input Creat
 	}
 	wire, readFailure := operation.client.readResponse(response.Body, "createResponse")
 	if readFailure != nil {
-		return connector.NewMutationUnknown(Response{}, *readFailure, responseReceipt(call, requestID, response.Header, ""))
+		return connector.NewMutationUncertain(Response{}, *readFailure, responseReceipt(call, requestID, response.Header, ""))
 	}
 	result := convertResponse(wire)
-	return connector.NewMutationSuccess(result, responseReceipt(call, requestID, response.Header, result.ID))
+	return connector.NewMutationBranch(CreateResponseBranchCompleted, result, nil, responseReceipt(call, requestID, response.Header, result.ID))
 }
 
 func (RetrieveResponseOperation) Definition() connector.QueryDefinition {
-	return retrieveResponseDefinition
+	return RetrieveResponseDefinition
 }
 
 func (operation RetrieveResponseOperation) Invoke(call connector.Call, input RetrieveRequest) connector.QueryAttempt[Response] {
 	if input.ResponseID == "" {
-		return connector.NewQueryFailure(Response{}, openAIFailure(connector.FailureValidation, "retrieveResponse", "response ID is required"), connector.Receipt{})
+		failure := openAIFailure(connector.FailureValidation, "retrieveResponse", "response ID is required")
+		return connector.NewQueryBranch(RetrieveResponseBranchDefect, Response{}, &failure, connector.Receipt{})
 	}
 	request, failure := operation.client.newRequest(call, http.MethodGet, "/responses/"+url.PathEscape(input.ResponseID), "", nil)
 	if failure != nil {
-		return connector.NewQueryFailure(Response{}, failure.failure, connector.Receipt{})
+		branch := RetrieveResponseBranchFailed
+		if failure.failure.Kind == connector.FailureLocalDefect || failure.failure.Kind == connector.FailureValidation {
+			branch = RetrieveResponseBranchDefect
+		}
+		return connector.NewQueryBranch(branch, Response{}, &failure.failure, connector.Receipt{})
 	}
 	response, err := operation.client.httpClient.Do(request)
 	if err != nil {
@@ -206,17 +205,17 @@ func (operation RetrieveResponseOperation) Invoke(call connector.Call, input Ret
 		if retry {
 			return connector.NewQueryRetry[Response](failure, retryAfter)
 		}
-		return connector.NewQueryFailure(Response{}, failure, responseReceipt(call, requestID, response.Header, input.ResponseID))
+		return connector.NewQueryBranch(RetrieveResponseBranchFailed, Response{}, &failure, responseReceipt(call, requestID, response.Header, input.ResponseID))
 	}
 	wire, readFailure := operation.client.readResponse(response.Body, "retrieveResponse")
 	if readFailure != nil {
 		if readFailure.Kind == connector.FailureResponseTooLarge || readFailure.Kind == connector.FailureProtocol {
-			return connector.NewQueryFailure(Response{}, *readFailure, responseReceipt(call, requestID, response.Header, input.ResponseID))
+			return connector.NewQueryBranch(RetrieveResponseBranchFailed, Response{}, readFailure, responseReceipt(call, requestID, response.Header, input.ResponseID))
 		}
 		return connector.NewQueryRetry[Response](*readFailure, 0)
 	}
 	result := convertResponse(wire)
-	return connector.NewQuerySuccess(result, responseReceipt(call, requestID, response.Header, result.ID))
+	return connector.NewQueryBranch(RetrieveResponseBranchFound, result, nil, responseReceipt(call, requestID, response.Header, result.ID))
 }
 
 func (client *Client) newRequest(call connector.Call, method, path string, key connector.IdempotencyKey, payload any) (*http.Request, *requestFailure) {
@@ -224,10 +223,10 @@ func (client *Client) newRequest(call connector.Call, method, path string, key c
 	if err != nil {
 		return nil, &requestFailure{failure: openAIFailure(connector.FailureAuthentication, call.Operation.OperationID, "connection credentials are unavailable")}
 	}
-	apiKey, err := connector.RequiredCredentialValue(credential, "api_key")
-	if err != nil {
-		return nil, &requestFailure{failure: openAIFailure(connector.FailureAuthentication, call.Operation.OperationID, "API key is not configured")}
+	if err := credential.Validate(); err != nil {
+		return nil, &requestFailure{failure: openAIFailure(connector.FailureAuthentication, call.Operation.OperationID, "connection credentials are invalid")}
 	}
+	apiKey := credential.APIKey.Reveal()
 	var body io.Reader
 	if payload != nil {
 		encoded, encodeErr := json.Marshal(payload)
@@ -274,9 +273,9 @@ func createStatusAttempt(call connector.Call, status int, header http.Header, re
 	}
 	receipt := responseReceipt(call, requestID, header, "")
 	if status >= 500 {
-		return connector.NewMutationUnknown(Response{}, failure, receipt)
+		return connector.NewMutationUncertain(Response{}, failure, receipt)
 	}
-	return connector.NewMutationFailure(Response{}, failure, receipt)
+	return connector.NewMutationBranch(CreateResponseBranchFailed, Response{}, &failure, receipt)
 }
 
 func classifyOpenAIStatus(operation string, status int, header http.Header) (connector.Failure, time.Duration, bool) {

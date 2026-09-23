@@ -67,26 +67,29 @@ type queryAttemptKind uint8
 
 const (
 	queryAttemptInvalid queryAttemptKind = iota
-	queryAttemptSucceeded
-	queryAttemptFailed
+	queryAttemptBranch
 	queryAttemptRetry
 )
 
 // QueryAttempt is constructed only through NewQuery* constructors.
 type QueryAttempt[T any] struct {
 	kind       queryAttemptKind
+	branch     BranchID
 	value      T
 	receipt    Receipt
 	failure    Failure
+	hasFailure bool
 	retryAfter time.Duration
 }
 
-func NewQuerySuccess[T any](value T, receipt Receipt) QueryAttempt[T] {
-	return QueryAttempt[T]{kind: queryAttemptSucceeded, value: value, receipt: receipt}
-}
-
-func NewQueryFailure[T any](value T, failure Failure, receipt Receipt) QueryAttempt[T] {
-	return QueryAttempt[T]{kind: queryAttemptFailed, value: value, failure: failure, receipt: receipt}
+// NewQueryBranch returns a terminal provider result for a declared branch.
+func NewQueryBranch[T any](branch BranchID, value T, failure *Failure, receipt Receipt) QueryAttempt[T] {
+	attempt := QueryAttempt[T]{kind: queryAttemptBranch, branch: branch, value: value, receipt: receipt}
+	if failure != nil {
+		attempt.failure = *failure
+		attempt.hasFailure = true
+	}
+	return attempt
 }
 
 func NewQueryRetry[T any](failure Failure, retryAfter time.Duration) QueryAttempt[T] {
@@ -97,31 +100,37 @@ type mutationAttemptKind uint8
 
 const (
 	mutationAttemptInvalid mutationAttemptKind = iota
-	mutationAttemptSucceeded
-	mutationAttemptFailed
-	mutationAttemptUnknown
+	mutationAttemptBranch
+	mutationAttemptUncertain
 	mutationAttemptRetry
 )
 
 // MutationAttempt is constructed only through NewMutation* constructors.
 type MutationAttempt[T any] struct {
 	kind       mutationAttemptKind
+	branch     BranchID
 	value      T
 	receipt    Receipt
 	failure    Failure
+	hasFailure bool
 	retryAfter time.Duration
 }
 
-func NewMutationSuccess[T any](value T, receipt Receipt) MutationAttempt[T] {
-	return MutationAttempt[T]{kind: mutationAttemptSucceeded, value: value, receipt: receipt}
+// NewMutationBranch returns a terminal provider result for a declared branch.
+func NewMutationBranch[T any](branch BranchID, value T, failure *Failure, receipt Receipt) MutationAttempt[T] {
+	attempt := MutationAttempt[T]{kind: mutationAttemptBranch, branch: branch, value: value, receipt: receipt}
+	if failure != nil {
+		attempt.failure = *failure
+		attempt.hasFailure = true
+	}
+	return attempt
 }
 
-func NewMutationFailure[T any](value T, failure Failure, receipt Receipt) MutationAttempt[T] {
-	return MutationAttempt[T]{kind: mutationAttemptFailed, value: value, failure: failure, receipt: receipt}
-}
-
-func NewMutationUnknown[T any](value T, failure Failure, receipt Receipt) MutationAttempt[T] {
-	return MutationAttempt[T]{kind: mutationAttemptUnknown, value: value, failure: failure, receipt: receipt}
+// NewMutationUncertain records that a dispatched mutation's outcome cannot be confirmed.
+func NewMutationUncertain[T any](value T, failure Failure, receipt Receipt) MutationAttempt[T] {
+	return MutationAttempt[T]{
+		kind: mutationAttemptUncertain, value: value, failure: failure, receipt: receipt, hasFailure: true,
+	}
 }
 
 func NewMutationRetry[T any](failure Failure, retryAfter time.Duration) MutationAttempt[T] {

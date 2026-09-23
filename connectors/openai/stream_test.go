@@ -14,12 +14,24 @@ import (
 
 var streamTestRef = connector.OperationRef{ConnectorID: "openai", OperationID: "streamFixture"}
 
+var streamTestDefinition = connector.MutationDefinition{
+	Operation: streamTestRef,
+	Branches: []connector.BranchDefinition{
+		{ID: CreateResponseBranchCompleted, Description: "completed"},
+		{ID: CreateResponseBranchFailed, Description: "failed"},
+		{ID: CreateResponseBranchUncertain, Description: "uncertain"},
+		{ID: CreateResponseBranchDefect, Description: "defect"},
+	},
+	DefectBranch: CreateResponseBranchDefect, UncertainBranch: CreateResponseBranchUncertain,
+	ResultAttribute: connector.RequirementOptional,
+}
+
 type streamAttemptOperation struct {
 	attempt connector.MutationAttempt[Response]
 }
 
 func (streamAttemptOperation) Definition() connector.MutationDefinition {
-	return connector.MutationDefinition{Operation: streamTestRef}
+	return streamTestDefinition
 }
 
 func (streamAttemptOperation) IdempotencyKey(id connector.CallID, _ struct{}) connector.IdempotencyKey {
@@ -39,7 +51,7 @@ func TestOpenAIStreamCompletedUsesFinalResponse(t *testing.T) {
 		`{"type":"response.completed","sequence_number":5,"response":{"id":"resp_1","model":"gpt-test","status":"completed","output":[{"content":[{"type":"output_text","text":"hello"}]}],"usage":{"input_tokens":2,"output_tokens":1,"total_tokens":3}}}`,
 	))
 	result := runStreamAttempt(t, body)
-	require.Equal(t, connector.MutationSucceeded, result.Outcome)
+	require.Equal(t, CreateResponseBranchCompleted, result.Branch)
 	require.Equal(t, "resp_1", result.Value.ID)
 	require.Equal(t, "hello", result.Value.OutputText)
 	require.Equal(t, 3, result.Value.Usage.TotalTokens)
@@ -52,7 +64,7 @@ func TestOpenAIStreamTerminalFailuresPreserveKnownResponse(t *testing.T) {
 			result := runStreamAttempt(t, strings.NewReader(sse(
 				`{"type":"`+eventType+`","sequence_number":2,"response":{"id":"resp_failed","model":"gpt-test","status":"failed","usage":{"total_tokens":7}}}`,
 			)))
-			require.Equal(t, connector.MutationFailed, result.Outcome)
+			require.Equal(t, CreateResponseBranchFailed, result.Branch)
 			require.Equal(t, connector.FailureProviderRejection, result.Failure.Kind)
 			require.Equal(t, "resp_failed", result.Value.ID)
 			require.Equal(t, 7, result.Value.Usage.TotalTokens)
@@ -63,7 +75,7 @@ func TestOpenAIStreamTerminalFailuresPreserveKnownResponse(t *testing.T) {
 
 func TestOpenAIStreamErrorEventIsFailed(t *testing.T) {
 	result := runStreamAttempt(t, strings.NewReader(sse(`{"type":"error","sequence_number":1,"error":{"message":"secret provider body"}}`)))
-	require.Equal(t, connector.MutationFailed, result.Outcome)
+	require.Equal(t, CreateResponseBranchFailed, result.Branch)
 	require.Equal(t, connector.FailureProviderRejection, result.Failure.Kind)
 	require.NotContains(t, result.Failure.Message, "secret provider body")
 }
@@ -89,7 +101,7 @@ func TestOpenAIStreamEarlyEOFAndBoundsAreUnknown(t *testing.T) {
 				streamAttemptOperation{attempt: attempt}, connector.ConnectionRef{Provider: "openai", Name: "default"}, struct{}{},
 			)
 			require.NoError(t, err)
-			require.Equal(t, connector.MutationUnknown, result.Outcome)
+			require.Equal(t, CreateResponseBranchUncertain, result.Branch)
 			require.Equal(t, connector.FailureProtocol, result.Failure.Kind)
 		})
 	}

@@ -20,6 +20,8 @@ jobs:
       - run: go test -race ./...
       - run: go vet ./...
       - run: go run ./cmd/connectorctl validate connectors/http/connector.yaml connectors/openai/connector.yaml
+      - run: go run ./cmd/connectorctl generate --check connectors/http/connector.yaml
+      - run: go run ./cmd/connectorctl generate --check connectors/openai/connector.yaml
       - run: go run ./cmd/connectorctl catalog connectors
 
   dex-integration:

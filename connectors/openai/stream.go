@@ -35,26 +35,28 @@ func (operation CreateResponseOperation) readStream(call connector.Call, body io
 			if err := call.ReportProgress(connector.Progress{
 				Phase: event.Type, Message: event.Response.Status, ProviderSequence: event.SequenceNumber,
 			}); err != nil {
-				return true, connector.NewMutationUnknown(Response{}, openAIFailure(connector.FailureTransport, "createResponse", "progress delivery failed after dispatch"), receipt())
+				return true, connector.NewMutationUncertain(Response{}, openAIFailure(connector.FailureTransport, "createResponse", "progress delivery failed after dispatch"), receipt())
 			}
 		case "response.output_text.delta":
 			if err := call.WriteText(event.Delta); err != nil {
-				return true, connector.NewMutationUnknown(Response{}, openAIFailure(connector.FailureTransport, "createResponse", "text progress delivery failed after dispatch"), receipt())
+				return true, connector.NewMutationUncertain(Response{}, openAIFailure(connector.FailureTransport, "createResponse", "text progress delivery failed after dispatch"), receipt())
 			}
 		case "response.completed":
 			result := convertResponse(event.Response)
-			return true, connector.NewMutationSuccess(result, responseReceipt(call, requestID, header, result.ID))
+			return true, connector.NewMutationBranch(CreateResponseBranchCompleted, result, nil, responseReceipt(call, requestID, header, result.ID))
 		case "response.failed", "response.incomplete":
 			result := convertResponse(event.Response)
-			return true, connector.NewMutationFailure(result, openAIFailure(connector.FailureProviderRejection, "createResponse", "provider returned "+event.Type), responseReceipt(call, requestID, header, result.ID))
+			failure := openAIFailure(connector.FailureProviderRejection, "createResponse", "provider returned "+event.Type)
+			return true, connector.NewMutationBranch(CreateResponseBranchFailed, result, &failure, responseReceipt(call, requestID, header, result.ID))
 		case "error":
-			return true, connector.NewMutationFailure(Response{ID: responseID}, openAIFailure(connector.FailureProviderRejection, "createResponse", "provider returned a streaming error"), receipt())
+			failure := openAIFailure(connector.FailureProviderRejection, "createResponse", "provider returned a streaming error")
+			return true, connector.NewMutationBranch(CreateResponseBranchFailed, Response{ID: responseID}, &failure, receipt())
 		}
 		return false, connector.MutationAttempt[Response]{}
 	}
 	attempt, err := readSSE(body, operation.client.maxResponseBytes, operation.client.maxSSEEventBytes, handler)
 	if err != nil {
-		return connector.NewMutationUnknown(Response{ID: responseID}, openAIFailure(connector.FailureProtocol, "createResponse", err.Error()), receipt())
+		return connector.NewMutationUncertain(Response{ID: responseID}, openAIFailure(connector.FailureProtocol, "createResponse", err.Error()), receipt())
 	}
 	return attempt
 }

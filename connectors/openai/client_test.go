@@ -41,7 +41,7 @@ func TestCreateStructuredResponseCapturesUsageAndReceipt(t *testing.T) {
 		},
 	)
 	require.NoError(t, err)
-	require.Equal(t, connector.MutationSucceeded, result.Outcome)
+	require.Equal(t, openai.CreateResponseBranchCompleted, result.Branch)
 	require.Equal(t, "resp_123", result.Value.ID)
 	require.Equal(t, 3, result.Value.Usage.CachedInputTokens)
 	require.Equal(t, 2, result.Value.Usage.ReasoningOutputTokens)
@@ -65,7 +65,7 @@ func TestRetrieveResponseSupportsReceiptRecovery(t *testing.T) {
 		openai.RetrieveRequest{ResponseID: "resp_known"},
 	)
 	require.NoError(t, err)
-	require.Equal(t, connector.QuerySucceeded, result.Outcome)
+	require.Equal(t, openai.RetrieveResponseBranchFound, result.Branch)
 	require.Equal(t, "resp_known", result.Value.ID)
 	require.Equal(t, "resp_known", result.Receipt.ProviderObjectID)
 }
@@ -82,7 +82,7 @@ func TestMalformedSuccessResponseLeavesMutationUnknown(t *testing.T) {
 		openai.CreateRequest{Model: "gpt-test", Input: "profile"},
 	)
 	require.NoError(t, err)
-	require.Equal(t, connector.MutationUnknown, result.Outcome)
+	require.Equal(t, openai.CreateResponseBranchUncertain, result.Branch)
 	require.Equal(t, connector.FailureProtocol, result.Failure.Kind)
 	require.NotEmpty(t, result.Receipt.CallID)
 }
@@ -99,15 +99,15 @@ func TestConfirmedRejectionIsFailedResult(t *testing.T) {
 		openai.CreateRequest{Model: "gpt-test", Input: "profile"},
 	)
 	require.NoError(t, err)
-	require.Equal(t, connector.MutationFailed, result.Outcome)
+	require.Equal(t, openai.CreateResponseBranchFailed, result.Branch)
 	require.Equal(t, connector.FailureAuthentication, result.Failure.Kind)
 	require.Equal(t, "req_rejected", result.Receipt.ProviderRequestID)
 }
 
 func newClient(t *testing.T, endpoint string) *openai.Client {
 	t.Helper()
-	client, err := openai.New(openai.Config{Endpoint: endpoint}, connector.StaticCredentialProvider{
-		openAIConnection: connector.NewCredential(map[string]string{"api_key": "test-key"}),
+	client, err := openai.New(openai.Config{Endpoint: endpoint}, connector.StaticCredentialProvider[openai.Credentials]{
+		openAIConnection: {APIKey: connector.NewSecretString("test-key")},
 	})
 	require.NoError(t, err)
 	return client

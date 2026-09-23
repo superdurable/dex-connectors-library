@@ -1,25 +1,30 @@
 # Customer onboarding connector example
 
-This Flow performs a profile Query and a credit-grant Mutation in separate
-concrete Dex Steps. Query Failure and all three Mutation outcomes have explicit
-branches. A Retry is the only connector path returned as a Go error to Dex.
+This Flow constructs the profile Query, credit-grant Mutation, and
+reconciliation Query directly with Connector Dex Step factories. It defines no
+provider concrete Step. Generated operation branches each have one typed GoTo
+target; Retry is the only Connector path returned as a Go error to Dex.
 
 The public Flow input contains only customer business data. A trusted logical
 `ConnectionRef` is fixed when the Flow is registered and injected into every
 provider Step; a StartFlow caller cannot select another account's connection.
-SuperVerse can resolve that logical slot to the authenticated account's
-credential without putting credentials or connection identifiers in input.
+SuperVerse can resolve that logical slot to typed HTTP Credentials without
+putting credentials or connection identifiers in input.
 
-`RunMutation` derives stable Call ID and provider idempotency key from Flow and
-Step execution identity. `GrantCustomerCreditsStep` persists
-`CreditGrantReceipt` in the same Dex commit as completion or transition.
-Failed enters `CreditGrantFailedStep`; Unknown enters
-`ReconcileCreditGrantStep`, which queries provider status without repeating the
-Mutation.
+The Mutation factory derives stable Call ID and provider idempotency key from
+Flow and Step execution identity. It persists `CreditGrantResult` in the same
+Dex commit as its selected transition. `rejected` enters a business failure
+Step; `uncertain` enters the reconciliation Query factory without repeating
+the Mutation. `StepRef[T]` links factories by stable type while Dex uses the
+registered target's Step options.
 
-The integration fixture also contains a minimal OpenAI streaming Flow. It
-registers application-owned structured and text Streams, verifies buffered text
-order and final flush, and keeps the completed Step result authoritative.
+The integration fixture also creates OpenAI streaming through a Mutation
+factory. It directly registers the required Result Attribute and
+application-owned structured/text Streams, verifies buffered text order and
+final flush, and keeps the committed Result authoritative.
+
+Dex CLI 0.11.1 cannot yet render these factory nodes in Dex Web 2.0. A separate
+Dex CLI patch follows manual acceptance of this factory API.
 
 Run the suite against Dex Server 0.11.1:
 

@@ -2,139 +2,133 @@
 
 ## Repository boundaries
 
-- `schema/` owns the portable manifest schema and strict loader.
-- `sdk/go/` owns Dex identity, strict Attempts, credentials, receipts,
-  idempotency keys, and Stream options.
-- `sdk/react/` owns credential-free connection status UI primitives.
-- `connectors/` owns provider adapters and one manifest per adapter.
-- `cmd/connectorctl/` validates manifests and emits a deterministic catalog.
-- `test/mock-provider/` supplies deterministic provider behavior.
-- `examples/customer-onboarding/` proves the contract against a real Dex
-  Server.
+- `schema/` owns the strict v1alpha1 manifest model and JSON Schema.
+- `internal/codegen/` turns one manifest into connector Go types.
+- `sdk/go/` owns branch Attempts, Dex identity, Step factories, credentials,
+  receipts, idempotency, and Stream options.
+- `sdk/react/` owns credential-free connection-status primitives.
+- `connectors/` owns provider adapters and their source manifests.
+- `cmd/connectorctl/` validates, generates, checks, and catalogs manifests.
+- `examples/customer-onboarding/` exercises factories against real Dex.
 
-No database schema or migration is introduced by G2a.
+G2a adds no database schema or migration.
 
 ## Dex composition
 
 ```text
-ReadCustomerProfileStep
-  Execute -> RunQuery(http.query)
-      SUCCEEDED -> GrantCustomerCreditsStep
-      FAILED    -> ProfileReadFailedStep
+ReadCustomerProfile factory Query
+  succeeded -> GrantCustomerCredits factory Mutation
+  failed    -> ProfileReadFailed
+  defect    -> ProfileReadFailed
 
-GrantCustomerCreditsStep
-  Execute -> RunMutation(http.mutation)
-      SUCCEEDED -> complete
-      FAILED    -> CreditGrantFailedStep
-      UNKNOWN   -> ReconcileCreditGrantStep
+GrantCustomerCredits factory Mutation
+  succeeded -> CreditGrantSucceeded
+  rejected  -> CreditGrantFailed
+  uncertain -> ReconcileCreditGrant factory Query
+  defect    -> CreditGrantFailed
 
-ReconcileCreditGrantStep
-  Execute -> RunQuery(http.query) -> complete, retry visibility, or fail
+ReconcileCreditGrant factory Query
+  succeeded -> CreditGrantReconciled
+  failed    -> CreditGrantReconcileFailed
+  defect    -> CreditGrantReconcileFailed
 ```
 
-Every provider call runs in a concrete Dex Step `Execute`. One Step execution
-invokes at most one operation. The application owns stable Step types and
-inputs, retry policy, receipt Attributes, recovery, transitions, and terminal
-behavior. The SDK does not create generic Query or Mutation Steps.
+The application writes no provider-specific Step handler. It still owns stable
+Step types, pure business-to-operation input mapping, every branch target,
+Result Attributes, Streams, Execute failure policy, and terminal behavior.
+Non-connector Steps remain ordinary application Steps.
 
-Customer Onboarding does not expose `ConnectionRef` in its public start input.
-Its trusted logical provider connection is fixed by the application when the
-Flow is registered and constructor-injected into all provider Steps. The
-binding must remain stable while open executions can reference those Steps.
+The trusted `ConnectionRef` is constructor-injected when the Flow registers;
+it is not public start input. `StepRef[T]` connects one factory to a later
+factory without constructing that factory twice. Dex resolves the registered
+target by stable type and input type, so the registered target's options apply.
 
-`RunQuery` and `RunMutation` build a Call from `dex.Context`. The Flow ID and
-Step execution ID produce stable provider-call identity. An RPC has no Step
-execution ID and receives a local failed result before any credential or
-provider access.
-
-Provider Query and Dex RPC are different. Provider Query reads an external
-system inside a Step. RPC synchronously reads or changes an existing Flow,
-receives an Event, exposes a permission-checked Dex Action, or schedules later
-work. Studio provider previews use the SuperVerse Connector Service backend
-API, not a Flow RPC.
-
-## Operation data flow
+## Factory data flow
 
 ```text
-dex.Context
+STEP_IN
    |
-   +-- validate FlowID + StepExecutionID + operation + connection
+   +-- BuildInput (pure) --error--> DefectBranch
    |
-   +-- UUIDv5 CallID
-   |
-   +-- Mutation.IdempotencyKey(CallID, input)
-   |
+   +-- validate Dex identity + operation + connection
+   +-- derive UUIDv5 CallID
+   +-- Mutation derives IdempotencyKey
    +-- configure application Streams
-   |
-   +-- CredentialProvider.Resolve(Call)
-   |
+   +-- CredentialProvider[C].Resolve(Call)
    +-- provider request
-   |
    +-- strict Attempt
-          +-- Retry --------------------> Go error / Dex retry policy
-          +-- Failure or Unknown ------> Result / explicit Flow branch
-          +-- Success -----------------> Result / next transition
+          +-- Retry --------------------> Go error / Dex policy
+          +-- Uncertain Mutation ------> UncertainBranch
+          +-- declared branch ---------> same branch
+   |
+   +-- set typed Result Attribute
+   +-- one typed dex.GoTo
 ```
 
-The idempotency key is finalized before credential resolution. Receipt
-completion validates Call ID and idempotency key and fills them automatically.
+Attribute write and branch transition share the Execute commit. Stream writes
+are immediate best-effort messages and remain outside that commit.
 
-## Progress path
+`RunQuery` and `RunMutation` implement the provider-call portion and remain
+available to advanced concrete Steps. RPC is rejected because it lacks a Step
+execution ID.
 
-`WithProgressStream` writes typed `ProgressUpdate` messages. Each message has
-the stable Call ID, Dex attempt, per-attempt sequence, phase, safe message,
-optional fraction, and optional provider sequence. `WithTextStream` creates
-one invocation-managed `dex.BufferedTextStream` and preserves output bytes.
+## Generated provider surface
 
-The Flow registers both Stream definitions. No library-global Stream exists.
-Stream messages are best-effort UI and observability data; they are not part of
-the Attribute/transition commit and never determine terminal status.
+Each manifest supplies:
+
+- Go package and field names;
+- non-sensitive configuration fields, defaults, and validation metadata;
+- connector-specific secret/OAuth fields and connection kind;
+- OAuth endpoints, scopes, and PKCE when applicable;
+- operation branches, defect and uncertainty branch identities;
+- Result Attribute requirement and Stream capabilities;
+- Execute timeout, heartbeat, retry, and durability defaults.
+
+`connectorctl generate` writes `zz_generated_connector.go`. Provider code
+contains only transport and classification logic. Constructor options carry
+code dependencies such as HTTP clients and idempotency derivation functions.
 
 ## HTTP connector
 
-The generic HTTP connector allows `GET`/`HEAD` Queries and
-`POST`/`PUT`/`PATCH`/`DELETE` Mutations. Targets stay inside an explicit host
-allowlist, non-loopback transport uses HTTPS, response bodies are bounded,
-secret request headers come only from `CredentialProvider`, and response
-headers are reduced to a safe allowlist before entering Flow state.
+HTTP Query supports GET/HEAD; Mutation supports POST/PUT/PATCH/DELETE. The
+connector enforces an explicit host allowlist, HTTPS outside loopback, bounded
+responses, safe persisted response headers, credential-only secret headers,
+and a stable provider idempotency key.
 
-The default provider key is Call ID. `Config.IdempotencyKey` can adapt it and
-the configured idempotency header receives the final `Call.IdempotencyKey`.
-HTTP 429 is a safe Retry. A Mutation connection loss or 5xx after dispatch is
-Unknown; Query availability is retryable. Generic Query 404 is Failed. A
-domain-specific connector may instead return successful `Found=false`.
+Branches are generated as:
 
-Webhook verification covers an HMAC-SHA256 signature over timestamp and body,
-a bounded timestamp window, and caller-supplied replay storage.
+- Query: `succeeded`, `failed`, `defect`;
+- Mutation: `succeeded`, `rejected`, `uncertain`, `defect`.
 
-## OpenAI Responses connector
+Query availability and rate limits may Retry. Mutation retries only when the
+connector can confirm no provider write occurred. Post-dispatch connection
+loss and ambiguous 5xx responses are uncertain.
 
-Non-streaming Create and Retrieve return response ID, model, request ID,
-rate-limit headers, output text, and input/cached/output/reasoning/total token
-usage.
+## OpenAI connector
 
-When either progress option is present, Create sends `stream=true`. The SSE
-reader bounds total and per-event bytes, ignores unknown event types, writes
-text deltas through the buffered text Stream, and maps created/queued/
-in-progress states to structured progress. The final `response.completed`
-object is authoritative for value and usage. Event handling follows the
-[OpenAI Responses streaming contract](https://platform.openai.com/docs/api-reference/responses-streaming).
+OpenAI Create branches are `completed`, `failed`, `uncertain`, and `defect`;
+Retrieve branches are `found`, `failed`, and `defect`. Generated credentials
+contain only `SecretString APIKey`.
 
-`response.failed` and `response.incomplete` are non-retry Failures and retain
-known response identity and usage. Early EOF, connection loss, missing terminal
-event, or post-dispatch progress failure is Unknown. An explicit
-RetrieveResponse Query reconciles a known response ID.
+When a factory supplies progress or text Streams, Create sends `stream=true`.
+The bounded SSE reader handles created/queued/in-progress, text delta,
+completed, failed, incomplete, and error events while ignoring unknown event
+types. The completed Response object is authoritative for value and usage.
+Early EOF or a missing terminal event is uncertain and can be reconciled with
+RetrieveResponse.
 
-## Manifest and catalog
+## Static visualization boundary
 
-Operations use only `query` and `mutation`. Idempotency is `none` for Query and
-`required` for Mutation. Optional progress capabilities are `structured` and
-`text`; the loader validates uniqueness and sorts them for deterministic
-catalog output. `action` is reserved for a Dex permissioned Action RPC.
+Runtime factory execution works with Dex Server 0.11.1 and SDK v0.10.2. Dex
+CLI 0.11.1 does not yet statically render factory calls in schema 2.0 Flow
+Definition. Until the separate Dex CLI patch lands, factory Steps are a known
+Dex Web 2.0 visualization limitation. Dynamic Step type, branch collection,
+or target construction will remain unsupported even after that patch; use the
+canonical static factory form documented in the example.
 
 ## UI/UX
 
-G2a does not change the React package or SuperVerse Studio. React continues to
-normalize credential-safe connection states. A later Studio can inspect
-manifest progress capabilities and subscribe to the application Streams, but
-must render final state from the Flow snapshot/result rather than Stream data.
+G2a changes no Studio or React configuration page. The manifest is UI-ready,
+but OAuth callbacks and actual Gmail/Sheets/OpenAI configuration forms belong
+to G2c/G6a. Studio must use Streams only for live feedback and Flow
+snapshot/Result for authoritative status.

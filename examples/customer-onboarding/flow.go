@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package customeronboarding demonstrates Query, Mutation, and explicit recovery in Dex Steps.
+// Package customeronboarding demonstrates Connector Step factories and explicit recovery.
 package customeronboarding
 
 import (
@@ -9,14 +9,19 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"time"
 
 	httpconnector "github.com/superdurable/dex-connectors-library/connectors/http"
 	connector "github.com/superdurable/dex-connectors-library/sdk/go"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
-var CreditGrantReceipt = dex.DefineAttribute[connector.Receipt]("CreditGrantReceipt")
+const (
+	readCustomerProfileStepType  = "ReadCustomerProfile"
+	grantCustomerCreditsStepType = "GrantCustomerCredits"
+	reconcileCreditGrantStepType = "ReconcileCreditGrant"
+)
+
+var CreditGrantResult = dex.DefineAttribute[connector.MutationResult[httpconnector.Response]]("CreditGrantResult")
 
 type Input struct {
 	CustomerID      string `json:"customerId"`
@@ -24,36 +29,21 @@ type Input struct {
 	SimulateUnknown bool   `json:"simulateUnknown,omitempty"`
 }
 
-type profile struct {
+type Profile struct {
 	CustomerID string `json:"customerId"`
 	Name       string `json:"name"`
 	Headline   string `json:"headline"`
 }
 
-type grantCreditsState struct {
-	Input   Input   `json:"input"`
-	Profile profile `json:"profile"`
-}
-
-type reconcileCreditGrantState struct {
-	Grant   grantCreditsState `json:"grant"`
-	Receipt connector.Receipt `json:"receipt"`
-}
-
-type creditGrantFailureState struct {
-	Receipt connector.Receipt `json:"receipt"`
-	Failure connector.Failure `json:"failure"`
-}
-
-type profileReadFailureState struct {
-	Failure connector.Failure `json:"failure"`
-}
-
 type Output struct {
-	CustomerID string                    `json:"customerId"`
-	CallID     connector.CallID          `json:"callId"`
-	Outcome    connector.MutationOutcome `json:"outcome"`
+	CustomerID string             `json:"customerId"`
+	CallID     connector.CallID   `json:"callId"`
+	Branch     connector.BranchID `json:"branch"`
 }
+
+type profileStepOutput = connector.QueryStepOutput[Input, httpconnector.Response]
+type grantStepOutput = connector.MutationStepOutput[profileStepOutput, httpconnector.Response]
+type reconcileStepOutput = connector.QueryStepOutput[grantStepOutput, httpconnector.Response]
 
 type CustomerOnboardingConnectorFlow struct {
 	dex.FlowDefaults
@@ -61,10 +51,7 @@ type CustomerOnboardingConnectorFlow struct {
 	providerConnection connector.ConnectionRef
 }
 
-func NewCustomerOnboardingConnectorFlow(
-	client *httpconnector.Client,
-	providerConnection connector.ConnectionRef,
-) *CustomerOnboardingConnectorFlow {
+func NewCustomerOnboardingConnectorFlow(client *httpconnector.Client, providerConnection connector.ConnectionRef) *CustomerOnboardingConnectorFlow {
 	if client == nil {
 		panic("customer onboarding connector Flow requires an HTTP connector")
 	}
@@ -76,194 +63,222 @@ func NewCustomerOnboardingConnectorFlow(
 
 func (flow *CustomerOnboardingConnectorFlow) GetSteps() []dex.StepDef {
 	return []dex.StepDef{
-		dex.DefineStartStep(ReadCustomerProfileStep{client: flow.client, providerConnection: flow.providerConnection}),
-		dex.DefineStep(GrantCustomerCreditsStep{client: flow.client, providerConnection: flow.providerConnection}),
-		dex.DefineStep(ReconcileCreditGrantStep{client: flow.client, providerConnection: flow.providerConnection}),
+		dex.DefineStartStep(connector.MustNewQueryStep(connector.QueryStepConfig[Input, httpconnector.Request, httpconnector.Response]{
+			StepType: readCustomerProfileStepType,
+			Presentation: connector.StepPresentation{
+				GroupID: "onboarding", GroupLabel: "Onboarding",
+				Explanation: "Read the customer profile from the configured provider.",
+			},
+			Operation: flow.client.Query(), Connection: flow.providerConnection, BuildInput: buildProfileQuery,
+			Branches: []connector.BranchTarget[profileStepOutput]{
+				connector.GoToBranch(httpconnector.QueryBranchSucceeded, connector.StepRef[profileStepOutput](grantCustomerCreditsStepType)),
+				connector.GoToBranch(httpconnector.QueryBranchFailed, ProfileReadFailedStep{}),
+				connector.GoToBranch(httpconnector.QueryBranchDefect, ProfileReadFailedStep{}),
+			},
+		})),
+		dex.DefineStep(connector.MustNewMutationStep(connector.MutationStepConfig[profileStepOutput, httpconnector.Request, httpconnector.Response]{
+			StepType: grantCustomerCreditsStepType,
+			Presentation: connector.StepPresentation{
+				GroupID: "onboarding", GroupLabel: "Onboarding",
+				Explanation: "Grant credits through an idempotent provider mutation.",
+			},
+			Operation: flow.client.Mutation(), Connection: flow.providerConnection, BuildInput: buildGrantMutation,
+			Branches: []connector.BranchTarget[grantStepOutput]{
+				connector.GoToBranch(httpconnector.MutationBranchSucceeded, CreditGrantSucceededStep{}),
+				connector.GoToBranch(httpconnector.MutationBranchRejected, CreditGrantFailedStep{}),
+				connector.GoToBranch(httpconnector.MutationBranchUncertain, connector.StepRef[grantStepOutput](reconcileCreditGrantStepType)),
+				connector.GoToBranch(httpconnector.MutationBranchDefect, CreditGrantFailedStep{}),
+			},
+			ResultAttribute: &CreditGrantResult,
+			StepOptionsOverride: &dex.StepOptions{
+				ExecuteFailure: dex.ProceedToOnExecuteFailure(GrantExecuteFailedStep{}, nil),
+			},
+		})),
+		dex.DefineStep(connector.MustNewQueryStep(connector.QueryStepConfig[grantStepOutput, httpconnector.Request, httpconnector.Response]{
+			StepType: reconcileCreditGrantStepType,
+			Presentation: connector.StepPresentation{
+				GroupID: "recovery", GroupLabel: "Recovery",
+				Explanation: "Reconcile an uncertain credit grant without repeating the mutation.",
+			},
+			Operation: flow.client.Query(), Connection: flow.providerConnection, BuildInput: buildReconciliationQuery,
+			Branches: []connector.BranchTarget[reconcileStepOutput]{
+				connector.GoToBranch(httpconnector.QueryBranchSucceeded, CreditGrantReconciledStep{}),
+				connector.GoToBranch(httpconnector.QueryBranchFailed, CreditGrantReconcileFailedStep{}),
+				connector.GoToBranch(httpconnector.QueryBranchDefect, CreditGrantReconcileFailedStep{}),
+			},
+		})),
 		dex.DefineStep(ProfileReadFailedStep{}),
+		dex.DefineStep(CreditGrantSucceededStep{}),
 		dex.DefineStep(CreditGrantFailedStep{}),
-	}
-}
-
-func (flow *CustomerOnboardingConnectorFlow) GetRPCs() []dex.RPCDef {
-	return []dex.RPCDef{
-		dex.DefineRPC(flow.GetDexSummary, nil),
-		dex.DefineRPC(flow.GetDexDisplay, nil),
+		dex.DefineStep(CreditGrantReconciledStep{}),
+		dex.DefineStep(CreditGrantReconcileFailedStep{}),
+		dex.DefineStep(GrantExecuteFailedStep{}),
 	}
 }
 
 func (*CustomerOnboardingConnectorFlow) GetPersistenceSchema() dex.PersistenceSchema {
-	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{CreditGrantReceipt}}
+	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{CreditGrantResult}}
 }
 
-// dex:field attribute-key:CreditGrantReceipt value-type:json editable:false description:"Credit grant provider receipt"
+func (flow *CustomerOnboardingConnectorFlow) GetRPCs() []dex.RPCDef {
+	return []dex.RPCDef{dex.DefineRPC(flow.GetDexSummary, nil), dex.DefineRPC(flow.GetDexDisplay, nil)}
+}
+
+// dex:field attribute-key:CreditGrantResult value-type:json editable:false description:"Credit grant connector result"
 func (*CustomerOnboardingConnectorFlow) GetDexSummary(ctx dex.Context, _ dex.None) (*dex.RPCResult[map[string]any], error) {
-	receipt, err := optionalCreditGrantReceipt(ctx)
+	result, err := optionalCreditGrantResult(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return &dex.RPCResult[map[string]any]{Output: map[string]any{"CreditGrantReceipt": receipt}}, nil
+	return &dex.RPCResult[map[string]any]{Output: map[string]any{"CreditGrantResult": result}}, nil
 }
 
-// dex:field attribute-key:CreditGrantReceipt value-type:json editable:false description:"Credit grant provider receipt"
+// dex:field attribute-key:CreditGrantResult value-type:json editable:false description:"Credit grant connector result"
 func (*CustomerOnboardingConnectorFlow) GetDexDisplay(ctx dex.Context, _ dex.None) (*dex.RPCResult[map[string]any], error) {
-	receipt, err := optionalCreditGrantReceipt(ctx)
+	result, err := optionalCreditGrantResult(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return &dex.RPCResult[map[string]any]{Output: map[string]any{"CreditGrantReceipt": receipt}}, nil
+	return &dex.RPCResult[map[string]any]{Output: map[string]any{"CreditGrantResult": result}}, nil
 }
 
-func optionalCreditGrantReceipt(ctx dex.Context) (connector.Receipt, error) {
-	receipt, err := CreditGrantReceipt.Get(ctx)
+func optionalCreditGrantResult(ctx dex.Context) (connector.MutationResult[httpconnector.Response], error) {
+	result, err := CreditGrantResult.Get(ctx)
 	var missing *dex.AttributeNotFoundError
 	if errors.As(err, &missing) {
-		return connector.Receipt{}, nil
+		return connector.MutationResult[httpconnector.Response]{}, nil
 	}
-	return receipt, err
+	return result, err
 }
 
-// dex:group group-id:onboarding group-label:"Onboarding"
-// dex:explanation text:"Read the customer profile from the configured provider."
-type ReadCustomerProfileStep struct {
-	dex.StepDefaultsNoWaitFor[Input]
-	client             *httpconnector.Client
-	providerConnection connector.ConnectionRef
-}
-
-func (step ReadCustomerProfileStep) Execute(ctx dex.Context, input Input) (*dex.StepDecision, error) {
+func buildProfileQuery(input Input) (httpconnector.Request, error) {
 	if input.CustomerID == "" || input.Credits <= 0 {
-		return nil, fmt.Errorf("customer ID and positive credits are required")
+		return httpconnector.Request{}, fmt.Errorf("customer ID and positive credits are required")
 	}
-	result, err := connector.RunQuery(ctx, step.client.Query(), step.providerConnection, httpconnector.Request{
-		Method: http.MethodGet,
-		Path:   "/profiles/" + input.CustomerID,
-	})
-	if err != nil {
-		return nil, err
-	}
-	if result.Outcome == connector.QueryFailed {
-		return dex.GoTo(ProfileReadFailedStep{}, profileReadFailureState{Failure: *result.Failure}), nil
-	}
-	var customerProfile profile
-	if err := json.Unmarshal(result.Value.Body, &customerProfile); err != nil {
-		return nil, fmt.Errorf("decode profile: %w", err)
-	}
-	return dex.GoTo(GrantCustomerCreditsStep{}, grantCreditsState{Input: input, Profile: customerProfile}), nil
+	return httpconnector.Request{Method: http.MethodGet, Path: "/profiles/" + input.CustomerID}, nil
 }
 
-// dex:group group-id:onboarding group-label:"Onboarding"
-// dex:explanation text:"Grant credits through an idempotent provider mutation."
-type GrantCustomerCreditsStep struct {
-	dex.StepDefaultsNoWaitFor[grantCreditsState]
-	client             *httpconnector.Client
-	providerConnection connector.ConnectionRef
-}
-
-func (step GrantCustomerCreditsStep) Execute(ctx dex.Context, state grantCreditsState) (*dex.StepDecision, error) {
+func buildGrantMutation(output profileStepOutput) (httpconnector.Request, error) {
+	var customerProfile Profile
+	if err := json.Unmarshal(output.Result.Value.Body, &customerProfile); err != nil {
+		return httpconnector.Request{}, fmt.Errorf("decode profile: %w", err)
+	}
 	path := "/credits"
-	if state.Input.SimulateUnknown {
+	if output.Input.SimulateUnknown {
 		path = "/credits-unknown"
 	}
-	result, err := connector.RunMutation(ctx, step.client.Mutation(), step.providerConnection, httpconnector.Request{
-		Method: http.MethodPost,
-		Path:   path,
-		Body: map[string]any{
-			"customerId": state.Profile.CustomerID,
-			"credits":    state.Input.Credits,
-		},
-	})
-	if err != nil {
-		return nil, err
-	}
-	if err := CreditGrantReceipt.Set(ctx, result.Receipt); err != nil {
-		return nil, err
-	}
-	switch result.Outcome {
-	case connector.MutationSucceeded:
-		return dex.GracefulComplete(Output{
-			CustomerID: state.Input.CustomerID, CallID: result.Receipt.CallID, Outcome: result.Outcome,
-		}), nil
-	case connector.MutationFailed:
-		return dex.GoTo(CreditGrantFailedStep{}, creditGrantFailureState{
-			Receipt: result.Receipt, Failure: *result.Failure,
-		}), nil
-	case connector.MutationUnknown:
-		return dex.GoTo(ReconcileCreditGrantStep{}, reconcileCreditGrantState{
-			Grant: state, Receipt: result.Receipt,
-		}), nil
-	default:
-		return nil, fmt.Errorf("unsupported mutation outcome %q", result.Outcome)
-	}
+	return httpconnector.Request{
+		Method: http.MethodPost, Path: path,
+		Body: map[string]any{"customerId": customerProfile.CustomerID, "credits": output.Input.Credits},
+	}, nil
 }
 
-// dex:group group-id:recovery group-label:"Recovery"
-// dex:explanation text:"Reconcile an unknown credit grant without repeating the mutation."
-type ReconcileCreditGrantStep struct {
-	dex.StepDefaultsNoWaitFor[reconcileCreditGrantState]
-	client             *httpconnector.Client
-	providerConnection connector.ConnectionRef
+func buildReconciliationQuery(output grantStepOutput) (httpconnector.Request, error) {
+	if output.Result.Receipt.CallID == "" {
+		return httpconnector.Request{}, fmt.Errorf("credit grant receipt is missing")
+	}
+	return httpconnector.Request{
+		Method: http.MethodGet, Path: "/mutations/" + string(output.Result.Receipt.CallID),
+	}, nil
 }
 
-func (step ReconcileCreditGrantStep) Execute(ctx dex.Context, state reconcileCreditGrantState) (*dex.StepDecision, error) {
-	committedReceipt, err := CreditGrantReceipt.Get(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("load committed credit grant receipt: %w", err)
-	}
-	if committedReceipt.CallID != state.Receipt.CallID {
-		return nil, fmt.Errorf("credit grant receipt does not match recovery state")
-	}
-	result, err := connector.RunQuery(ctx, step.client.Query(), step.providerConnection, httpconnector.Request{
-		Method: http.MethodGet,
-		Path:   "/mutations/" + string(state.Receipt.CallID),
-	})
-	if err != nil {
-		return nil, err
-	}
-	if result.Outcome == connector.QueryFailed {
-		if result.Failure.Kind == connector.FailureNotFound {
-			return nil, dex.RetryAfter(time.Second, fmt.Errorf("credit grant is not visible yet"))
-		}
-		return dex.ForceFail(fmt.Sprintf("credit grant reconciliation failed: %s", result.Failure.Kind)), nil
-	}
-	var status struct {
-		Status string `json:"status"`
-	}
-	if err := json.Unmarshal(result.Value.Body, &status); err != nil {
-		return nil, fmt.Errorf("decode mutation recovery result: %w", err)
-	}
-	if status.Status != "succeeded" {
-		return nil, dex.RetryAfter(time.Second, fmt.Errorf("credit grant remains unresolved"))
-	}
-	state.Receipt.ProviderRequestID = result.Receipt.ProviderRequestID
-	state.Receipt.ObservedAt = result.Receipt.ObservedAt
-	if err := CreditGrantReceipt.Set(ctx, state.Receipt); err != nil {
+// dex:group group-id:failure group-label:"Failure"
+// dex:explanation text:"Close after a profile query failure or local input defect."
+type ProfileReadFailedStep struct {
+	dex.StepDefaultsNoWaitFor[profileStepOutput]
+}
+
+func (ProfileReadFailedStep) Execute(_ dex.Context, output profileStepOutput) (*dex.StepDecision, error) {
+	return dex.ForceFail(resultFailure("profile read", output.Result.Failure)), nil
+}
+
+// dex:group group-id:onboarding group-label:"Onboarding"
+// dex:explanation text:"Complete after the provider confirms the credit grant."
+type CreditGrantSucceededStep struct {
+	dex.StepDefaultsNoWaitFor[grantStepOutput]
+}
+
+func (CreditGrantSucceededStep) Execute(ctx dex.Context, output grantStepOutput) (*dex.StepDecision, error) {
+	if err := validateCommittedCreditGrant(ctx, output.Result.Receipt.CallID); err != nil {
 		return nil, err
 	}
 	return dex.GracefulComplete(Output{
-		CustomerID: state.Grant.Input.CustomerID,
-		CallID:     state.Receipt.CallID,
-		Outcome:    connector.MutationSucceeded,
+		CustomerID: output.Input.Input.CustomerID,
+		CallID:     output.Result.Receipt.CallID,
+		Branch:     output.Result.Branch,
 	}), nil
 }
 
 // dex:group group-id:failure group-label:"Failure"
-// dex:explanation text:"Close the process after a confirmed profile query failure."
-type ProfileReadFailedStep struct {
-	dex.StepDefaultsNoWaitFor[profileReadFailureState]
+// dex:explanation text:"Close after a confirmed credit grant rejection or local defect."
+type CreditGrantFailedStep struct {
+	dex.StepDefaultsNoWaitFor[grantStepOutput]
 }
 
-func (ProfileReadFailedStep) Execute(_ dex.Context, state profileReadFailureState) (*dex.StepDecision, error) {
-	return dex.ForceFail(fmt.Sprintf("profile read failed: %s", state.Failure.Kind)), nil
+func (CreditGrantFailedStep) Execute(_ dex.Context, output grantStepOutput) (*dex.StepDecision, error) {
+	return dex.ForceFail(resultFailure("credit grant", output.Result.Failure)), nil
+}
+
+// dex:group group-id:recovery group-label:"Recovery"
+// dex:explanation text:"Complete after reconciliation confirms the original mutation."
+type CreditGrantReconciledStep struct {
+	dex.StepDefaultsNoWaitFor[reconcileStepOutput]
+}
+
+func (CreditGrantReconciledStep) Execute(ctx dex.Context, output reconcileStepOutput) (*dex.StepDecision, error) {
+	var status struct {
+		Status string `json:"status"`
+	}
+	if err := json.Unmarshal(output.Result.Value.Body, &status); err != nil || status.Status != "succeeded" {
+		return dex.ForceFail("credit grant reconciliation returned an invalid status"), nil
+	}
+	grant := output.Input
+	if err := validateCommittedCreditGrant(ctx, grant.Result.Receipt.CallID); err != nil {
+		return nil, err
+	}
+	return dex.GracefulComplete(Output{
+		CustomerID: grant.Input.Input.CustomerID,
+		CallID:     grant.Result.Receipt.CallID,
+		Branch:     httpconnector.MutationBranchSucceeded,
+	}), nil
 }
 
 // dex:group group-id:failure group-label:"Failure"
-// dex:explanation text:"Close the process after a confirmed credit grant failure."
-type CreditGrantFailedStep struct {
-	dex.StepDefaultsNoWaitFor[creditGrantFailureState]
+// dex:explanation text:"Close after reconciliation cannot confirm the original mutation."
+type CreditGrantReconcileFailedStep struct {
+	dex.StepDefaultsNoWaitFor[reconcileStepOutput]
 }
 
-func (CreditGrantFailedStep) Execute(_ dex.Context, state creditGrantFailureState) (*dex.StepDecision, error) {
-	return dex.ForceFail(fmt.Sprintf("credit grant failed: %s", state.Failure.Kind)), nil
+func (CreditGrantReconcileFailedStep) Execute(_ dex.Context, output reconcileStepOutput) (*dex.StepDecision, error) {
+	return dex.ForceFail(resultFailure("credit grant reconciliation", output.Result.Failure)), nil
+}
+
+// dex:group group-id:failure group-label:"Failure"
+// dex:explanation text:"Close after the credit grant Step exhausts its Dex retry policy."
+type GrantExecuteFailedStep struct {
+	dex.StepDefaultsNoWaitFor[profileStepOutput]
+}
+
+func (GrantExecuteFailedStep) Execute(_ dex.Context, _ profileStepOutput) (*dex.StepDecision, error) {
+	return dex.ForceFail("credit grant connector Step exhausted retries"), nil
+}
+
+func resultFailure(operation string, failure *connector.Failure) string {
+	if failure == nil {
+		return operation + " failed without a classified failure"
+	}
+	return fmt.Sprintf("%s failed: %s", operation, failure.Kind)
+}
+
+func validateCommittedCreditGrant(ctx dex.Context, callID connector.CallID) error {
+	result, err := CreditGrantResult.Get(ctx)
+	if err != nil {
+		return fmt.Errorf("load committed credit grant Result: %w", err)
+	}
+	if result.Receipt.CallID != callID {
+		return fmt.Errorf("committed credit grant Result does not match transition input")
+	}
+	return nil
 }
 
 var _ dex.Flow = (*CustomerOnboardingConnectorFlow)(nil)

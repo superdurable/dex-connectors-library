@@ -14,13 +14,47 @@ import (
 	"github.com/superdurable/dex-connectors-library/internal/testsupport"
 	connector "github.com/superdurable/dex-connectors-library/sdk/go"
 	"github.com/superdurable/dex/sdk-go/dex"
+	"gopkg.in/yaml.v3"
 )
 
 var (
-	testConnection  = connector.ConnectionRef{Provider: "mock", Name: "default"}
-	testQueryRef    = connector.OperationRef{ConnectorID: "mock-provider", OperationID: "getProfile"}
-	testMutationRef = connector.OperationRef{ConnectorID: "mock-provider", OperationID: "grantCredit"}
+	testConnection        = connector.ConnectionRef{Provider: "mock", Name: "default"}
+	testQueryRef          = connector.OperationRef{ConnectorID: "mock-provider", OperationID: "getProfile"}
+	testMutationRef       = connector.OperationRef{ConnectorID: "mock-provider", OperationID: "grantCredit"}
+	testQuerySucceeded    = connector.BranchID("succeeded")
+	testQueryFailed       = connector.BranchID("failed")
+	testQueryDefect       = connector.BranchID("defect")
+	testMutationSucceeded = connector.BranchID("succeeded")
+	testMutationRejected  = connector.BranchID("rejected")
+	testMutationUncertain = connector.BranchID("uncertain")
+	testMutationDefect    = connector.BranchID("defect")
 )
+
+func queryDefinition(ref connector.OperationRef) connector.QueryDefinition {
+	return connector.QueryDefinition{
+		Operation: ref,
+		Branches: []connector.BranchDefinition{
+			{ID: testQuerySucceeded, Description: "succeeded"},
+			{ID: testQueryFailed, Description: "failed"},
+			{ID: testQueryDefect, Description: "defect"},
+		},
+		DefectBranch: testQueryDefect, ResultAttribute: connector.RequirementOptional,
+	}
+}
+
+func mutationDefinition(ref connector.OperationRef) connector.MutationDefinition {
+	return connector.MutationDefinition{
+		Operation: ref,
+		Branches: []connector.BranchDefinition{
+			{ID: testMutationSucceeded, Description: "succeeded"},
+			{ID: testMutationRejected, Description: "rejected"},
+			{ID: testMutationUncertain, Description: "uncertain"},
+			{ID: testMutationDefect, Description: "defect"},
+		},
+		DefectBranch: testMutationDefect, UncertainBranch: testMutationUncertain,
+		ResultAttribute: connector.RequirementOptional,
+	}
+}
 
 type queryOperation struct {
 	call    connector.Call
@@ -29,7 +63,7 @@ type queryOperation struct {
 }
 
 func (*queryOperation) Definition() connector.QueryDefinition {
-	return connector.QueryDefinition{Operation: testQueryRef}
+	return queryDefinition(testQueryRef)
 }
 
 func (operation *queryOperation) Invoke(call connector.Call, input string) connector.QueryAttempt[string] {
@@ -37,7 +71,7 @@ func (operation *queryOperation) Invoke(call connector.Call, input string) conne
 	if operation.useSet {
 		return operation.attempt
 	}
-	return connector.NewQuerySuccess(input, connector.Receipt{})
+	return connector.NewQueryBranch(testQuerySucceeded, input, nil, connector.Receipt{})
 }
 
 type mutationOperation struct {
@@ -48,7 +82,7 @@ type mutationOperation struct {
 }
 
 func (*mutationOperation) Definition() connector.MutationDefinition {
-	return connector.MutationDefinition{Operation: testMutationRef}
+	return mutationDefinition(testMutationRef)
 }
 
 func (operation *mutationOperation) IdempotencyKey(connector.CallID, string) connector.IdempotencyKey {
@@ -60,7 +94,7 @@ func (operation *mutationOperation) Invoke(call connector.Call, _ string) connec
 	if operation.useSet {
 		return operation.attempt
 	}
-	return connector.NewMutationSuccess("ok", connector.Receipt{})
+	return connector.NewMutationBranch(testMutationSucceeded, "ok", nil, connector.Receipt{})
 }
 
 var (
@@ -73,7 +107,7 @@ func TestCallIDUsesStableDexAndOperationIdentity(t *testing.T) {
 	operation := &queryOperation{}
 	first, err := connector.RunQuery(ctx, operation, testConnection, "profile")
 	require.NoError(t, err)
-	require.Equal(t, connector.QuerySucceeded, first.Outcome)
+	require.Equal(t, testQuerySucceeded, first.Branch)
 	firstID := first.Receipt.CallID
 	require.Equal(t, connector.CallID("8fe78557-483c-5b53-ace7-7d6a13eb30db"), firstID)
 
@@ -115,11 +149,11 @@ func TestCallIDUsesStableDexAndOperationIdentity(t *testing.T) {
 type queryOperationWithRef struct{ ref connector.OperationRef }
 
 func (operation *queryOperationWithRef) Definition() connector.QueryDefinition {
-	return connector.QueryDefinition{Operation: operation.ref}
+	return queryDefinition(operation.ref)
 }
 
 func (*queryOperationWithRef) Invoke(connector.Call, string) connector.QueryAttempt[string] {
-	return connector.NewQuerySuccess("ok", connector.Receipt{})
+	return connector.NewQueryBranch(testQuerySucceeded, "ok", nil, connector.Receipt{})
 }
 
 func TestMutationDerivesStableProviderIdempotencyKey(t *testing.T) {
@@ -127,7 +161,7 @@ func TestMutationDerivesStableProviderIdempotencyKey(t *testing.T) {
 	operation := &mutationOperation{derivedKey: "provider-prefix-stable"}
 	first, err := connector.RunMutation(ctx, operation, testConnection, "credits")
 	require.NoError(t, err)
-	require.Equal(t, connector.MutationSucceeded, first.Outcome)
+	require.Equal(t, testMutationSucceeded, first.Branch)
 	require.Equal(t, operation.call.ID, first.Receipt.CallID)
 	require.Equal(t, connector.IdempotencyKey("provider-prefix-stable"), operation.call.IdempotencyKey)
 	require.Equal(t, operation.call.IdempotencyKey, first.Receipt.IdempotencyKey)
@@ -154,7 +188,7 @@ func TestMutationDerivesStableProviderIdempotencyKey(t *testing.T) {
 	invalid := &mutationOperation{derivedKey: " "}
 	result, err = connector.RunMutation(ctx, invalid, testConnection, "credits")
 	require.NoError(t, err)
-	require.Equal(t, connector.MutationFailed, result.Outcome)
+	require.Equal(t, testMutationDefect, result.Branch)
 	require.Equal(t, connector.FailureLocalDefect, result.Failure.Kind)
 	require.Empty(t, result.Receipt.IdempotencyKey)
 	require.Equal(t, connector.Call{}, invalid.call)
@@ -165,7 +199,7 @@ func TestRPCContextFailsBeforeOperationInvocation(t *testing.T) {
 	query := &queryOperation{}
 	queryResult, err := connector.RunQuery(ctx, query, testConnection, "profile")
 	require.NoError(t, err)
-	require.Equal(t, connector.QueryFailed, queryResult.Outcome)
+	require.Equal(t, testQueryDefect, queryResult.Branch)
 	require.Equal(t, connector.FailureLocalDefect, queryResult.Failure.Kind)
 	require.Contains(t, queryResult.Failure.Message, "RPC invocation is not allowed")
 	require.Equal(t, connector.Call{}, query.call)
@@ -173,7 +207,7 @@ func TestRPCContextFailsBeforeOperationInvocation(t *testing.T) {
 	mutation := &mutationOperation{}
 	mutationResult, err := connector.RunMutation(ctx, mutation, testConnection, "credits")
 	require.NoError(t, err)
-	require.Equal(t, connector.MutationFailed, mutationResult.Outcome)
+	require.Equal(t, testMutationDefect, mutationResult.Branch)
 	require.Equal(t, connector.Call{}, mutation.call)
 }
 
@@ -183,7 +217,7 @@ func TestCredentialProviderReceivesCompleteCallMetadata(t *testing.T) {
 	operation := credentialQuery{provider: provider}
 	result, err := connector.RunQuery(ctx, operation, testConnection, "profile")
 	require.NoError(t, err)
-	require.Equal(t, connector.QuerySucceeded, result.Outcome)
+	require.Equal(t, testQuerySucceeded, result.Branch)
 	require.Same(t, ctx, provider.call.Context)
 	require.Equal(t, testConnection, provider.call.Connection)
 	require.Equal(t, testQueryRef, provider.call.Operation)
@@ -192,41 +226,51 @@ func TestCredentialProviderReceivesCompleteCallMetadata(t *testing.T) {
 	require.NotContains(t, fmt.Sprintf("%+v", provider.call), "super-secret")
 }
 
+type testCredentials struct{ APIKey connector.SecretString }
+
 type capturingCredentialProvider struct{ call connector.Call }
 
-func (provider *capturingCredentialProvider) Resolve(call connector.Call) (connector.Credential, error) {
+func (provider *capturingCredentialProvider) Resolve(call connector.Call) (testCredentials, error) {
 	provider.call = call
-	return connector.NewCredential(map[string]string{"api_key": "super-secret"}), nil
+	return testCredentials{APIKey: connector.NewSecretString("super-secret")}, nil
 }
 
-type credentialQuery struct{ provider connector.CredentialProvider }
+type credentialQuery struct {
+	provider connector.CredentialProvider[testCredentials]
+}
 
 func (credentialQuery) Definition() connector.QueryDefinition {
-	return connector.QueryDefinition{Operation: testQueryRef}
+	return queryDefinition(testQueryRef)
 }
 
 func (operation credentialQuery) Invoke(call connector.Call, _ string) connector.QueryAttempt[string] {
 	if _, err := operation.provider.Resolve(call); err != nil {
-		return connector.NewQueryFailure("", failure(connector.FailureAuthentication, "credentials unavailable"), connector.Receipt{})
+		providerFailure := failure(connector.FailureAuthentication, "credentials unavailable")
+		return connector.NewQueryBranch(testQueryFailed, "", &providerFailure, connector.Receipt{})
 	}
-	return connector.NewQuerySuccess("ok", connector.Receipt{})
+	return connector.NewQueryBranch(testQuerySucceeded, "ok", nil, connector.Receipt{})
 }
 
-func TestCredentialCannotSerializeOrFormatSecret(t *testing.T) {
-	credential := connector.NewCredential(map[string]string{"api_key": "super-secret"})
-	require.NotContains(t, fmt.Sprintf("%v", credential), "super-secret")
-	require.NotContains(t, fmt.Sprintf("%#v", credential), "super-secret")
-	_, err := json.Marshal(credential)
+func TestSecretStringCannotSerializeOrFormatSecret(t *testing.T) {
+	secret := connector.NewSecretString("super-secret")
+	require.NotContains(t, fmt.Sprintf("%v", secret), "super-secret")
+	require.NotContains(t, fmt.Sprintf("%#v", secret), "super-secret")
+	_, err := json.Marshal(secret)
+	require.ErrorContains(t, err, "cannot be serialized")
+	_, err = secret.MarshalText()
+	require.ErrorContains(t, err, "cannot be serialized")
+	_, err = yaml.Marshal(secret)
 	require.ErrorContains(t, err, "cannot be serialized")
 }
 
 func TestStrictAttemptsAndRetryMapping(t *testing.T) {
 	ctx := testsupport.NewDexContext("customer/42", "step-execution-1")
 
-	queryFailure := &queryOperation{useSet: true, attempt: connector.NewQueryFailure("", failure(connector.FailureNotFound, "missing"), connector.Receipt{})}
+	queryFailureValue := failure(connector.FailureNotFound, "missing")
+	queryFailure := &queryOperation{useSet: true, attempt: connector.NewQueryBranch(testQueryFailed, "", &queryFailureValue, connector.Receipt{})}
 	result, err := connector.RunQuery(ctx, queryFailure, testConnection, "profile")
 	require.NoError(t, err)
-	require.Equal(t, connector.QueryFailed, result.Outcome)
+	require.Equal(t, testQueryFailed, result.Branch)
 	require.Equal(t, connector.FailureNotFound, result.Failure.Kind)
 
 	queryRetry := &queryOperation{useSet: true, attempt: connector.NewQueryRetry[string](failure(connector.FailureNotFound, "eventually consistent"), 3*time.Second)}
@@ -249,18 +293,19 @@ func TestMutationAttemptsAreDistinctResults(t *testing.T) {
 
 	succeeded, err := connector.RunMutation(ctx, &mutationOperation{}, testConnection, "credits")
 	require.NoError(t, err)
-	require.Equal(t, connector.MutationSucceeded, succeeded.Outcome)
+	require.Equal(t, testMutationSucceeded, succeeded.Branch)
 
-	failedAttempt := connector.NewMutationFailure("", failure(connector.FailureAuthorization, "denied"), connector.Receipt{})
+	failedValue := failure(connector.FailureAuthorization, "denied")
+	failedAttempt := connector.NewMutationBranch(testMutationRejected, "", &failedValue, connector.Receipt{})
 	failed, err := connector.RunMutation(ctx, &mutationOperation{useSet: true, attempt: failedAttempt}, testConnection, "credits")
 	require.NoError(t, err)
-	require.Equal(t, connector.MutationFailed, failed.Outcome)
+	require.Equal(t, testMutationRejected, failed.Branch)
 	require.Equal(t, connector.FailureAuthorization, failed.Failure.Kind)
 
-	unknownAttempt := connector.NewMutationUnknown("provider-response-id", failure(connector.FailureTransport, "response lost"), connector.Receipt{})
+	unknownAttempt := connector.NewMutationUncertain("provider-response-id", failure(connector.FailureTransport, "response lost"), connector.Receipt{})
 	unknown, err := connector.RunMutation(ctx, &mutationOperation{useSet: true, attempt: unknownAttempt}, testConnection, "credits")
 	require.NoError(t, err)
-	require.Equal(t, connector.MutationUnknown, unknown.Outcome)
+	require.Equal(t, testMutationUncertain, unknown.Branch)
 	require.Equal(t, "provider-response-id", unknown.Value)
 
 	_, err = connector.RunMutation(ctx, &mutationOperation{useSet: true, attempt: connector.NewMutationRetry[string](failure(connector.FailureRateLimit, "try later"), 0)}, testConnection, "credits")
@@ -273,32 +318,44 @@ func TestZeroAttemptsFailClosed(t *testing.T) {
 
 	queryResult, err := connector.RunQuery(ctx, invalidQuery{}, testConnection, "profile")
 	require.NoError(t, err)
-	require.Equal(t, connector.QueryFailed, queryResult.Outcome)
+	require.Equal(t, testQueryDefect, queryResult.Branch)
 	require.Equal(t, connector.FailureLocalDefect, queryResult.Failure.Kind)
 
 	mutationResult, err := connector.RunMutation(ctx, invalidMutation{}, testConnection, "credits")
 	require.NoError(t, err)
-	require.Equal(t, connector.MutationUnknown, mutationResult.Outcome)
+	require.Equal(t, testMutationUncertain, mutationResult.Branch)
 	require.Equal(t, connector.FailureLocalDefect, mutationResult.Failure.Kind)
+
+	queryResult, err = connector.RunQuery(ctx, &queryOperation{
+		useSet: true, attempt: connector.NewQueryBranch("unknown", "", nil, connector.Receipt{}),
+	}, testConnection, "profile")
+	require.NoError(t, err)
+	require.Equal(t, testQueryDefect, queryResult.Branch)
+
+	mutationResult, err = connector.RunMutation(ctx, &mutationOperation{
+		useSet: true, attempt: connector.NewMutationBranch("unknown", "", nil, connector.Receipt{}),
+	}, testConnection, "credits")
+	require.NoError(t, err)
+	require.Equal(t, testMutationUncertain, mutationResult.Branch)
 
 	invalidRetry := connector.Failure{Kind: "MADE_UP", Provider: "mock", Operation: "query", Message: "invalid"}
 	queryResult, err = connector.RunQuery(ctx, &queryOperation{
 		useSet: true, attempt: connector.NewQueryRetry[string](invalidRetry, 0),
 	}, testConnection, "profile")
 	require.NoError(t, err)
-	require.Equal(t, connector.QueryFailed, queryResult.Outcome)
+	require.Equal(t, testQueryDefect, queryResult.Branch)
 
 	mutationResult, err = connector.RunMutation(ctx, &mutationOperation{
 		useSet: true, attempt: connector.NewMutationRetry[string](invalidRetry, 0),
 	}, testConnection, "credits")
 	require.NoError(t, err)
-	require.Equal(t, connector.MutationUnknown, mutationResult.Outcome)
+	require.Equal(t, testMutationUncertain, mutationResult.Branch)
 }
 
 type invalidQuery struct{}
 
 func (invalidQuery) Definition() connector.QueryDefinition {
-	return connector.QueryDefinition{Operation: testQueryRef}
+	return queryDefinition(testQueryRef)
 }
 
 func (invalidQuery) Invoke(connector.Call, string) connector.QueryAttempt[string] {
@@ -308,7 +365,7 @@ func (invalidQuery) Invoke(connector.Call, string) connector.QueryAttempt[string
 type invalidMutation struct{}
 
 func (invalidMutation) Definition() connector.MutationDefinition {
-	return connector.MutationDefinition{Operation: testMutationRef}
+	return mutationDefinition(testMutationRef)
 }
 
 func (invalidMutation) IdempotencyKey(connector.CallID, string) connector.IdempotencyKey { return "" }
@@ -321,7 +378,7 @@ func TestProgressMethodsAreNoOpWithoutStreams(t *testing.T) {
 	operation := &queryOperation{}
 	result, err := connector.RunQuery(testsupport.NewDexContext("customer/42", "step-execution-1"), operation, testConnection, "profile")
 	require.NoError(t, err)
-	require.Equal(t, connector.QuerySucceeded, result.Outcome)
+	require.Equal(t, testQuerySucceeded, result.Branch)
 	require.False(t, operation.call.HasProgressStream())
 	require.False(t, operation.call.HasTextStream())
 	require.NoError(t, operation.call.ReportProgress(connector.Progress{Phase: "started"}))

@@ -1,193 +1,192 @@
 # Dex-native Connector contract v1alpha1
 
-The Go types in `sdk/go` are the executable form of this contract. Dex Server
-and dexcli stay at 0.11.1 and the library depends on `sdk-go v0.10.2`.
+The Go types in `sdk/go` are the executable form of this contract. G2a uses
+Dex Server 0.11.1 and `sdk-go v0.10.2`; it does not change Dex Server or its
+database.
 
-## Operation boundary
+## Operation and Step factory boundary
 
 A Connector exposes typed `Query[IN, OUT]` and `Mutation[IN, OUT]`
-operations. Applications invoke an operation only from a concrete Dex Step
-`Execute` through `RunQuery` or `RunMutation`.
-
-One Step execution invokes one Connector operation. A second invocation in the
-same Step deliberately reuses the same `CallID`; this is prohibited. Put the
-second call in another Step. A loop uses `GoTo` to create the next Step
-execution.
-
-Provider Query is not a Dex RPC. RPC has no Step execution ID, provider retry
-boundary, or recovery boundary. An empty Flow ID or Step execution ID produces
-a `LOCAL_DEFECT` result before credential resolution or a provider request.
-
-## Strict Attempt model
-
-Operation implementations cannot return an unclassified Go error:
+operations. The normal application API is an execute-only Dex Step factory:
 
 ```go
-type Query[IN, OUT any] interface {
-    Definition() QueryDefinition
-    Invoke(Call, IN) QueryAttempt[OUT]
-}
+connector.MustNewQueryStep(connector.QueryStepConfig[StepInput, OperationInput, Output]{...})
+connector.MustNewMutationStep(connector.MutationStepConfig[StepInput, OperationInput, Output]{...})
+```
 
-type Mutation[IN, OUT any] interface {
-    Definition() MutationDefinition
-    IdempotencyKey(CallID, IN) IdempotencyKey
-    Invoke(Call, IN) MutationAttempt[OUT]
+The factory owns one provider invocation and one `dex.GoTo`. The application
+supplies a stable Step type, presentation metadata, registration-time
+`ConnectionRef`, pure `BuildInput`, and one typed target for every declared
+branch. A target receives the original Step input and the full Connector
+Result:
+
+```go
+type QueryStepOutput[IN, OUT any] struct {
+    Input  IN
+    Result QueryResult[OUT]
 }
 ```
 
-An implementation converts credential, HTTP, encoding, decoding, and provider
-errors into one of the SDK constructors before returning:
+`GoToBranch` enforces the target input type at Go compile time. `StepRef[T]`
+provides a lightweight reference to another factory by stable Step type; the
+real target must be registered and its registered options remain authoritative.
+A StepRef fails if it is ever executed as a handler.
 
-- Query: `NewQuerySuccess`, `NewQueryFailure`, or `NewQueryRetry`.
-- Mutation: `NewMutationSuccess`, `NewMutationFailure`,
-  `NewMutationUnknown`, or `NewMutationRetry`.
+`RunQuery` and `RunMutation` remain the lower-level escape hatch for a complex
+business Step. They preserve the same identity, attempt, retry, credential,
+and Stream contracts. Provider calls occur only in `Execute`, never in
+`WaitFor` or RPC.
 
-Attempt fields are private. A zero or invalid Query Attempt becomes
-`LOCAL_DEFECT / FAILED`; a zero or invalid Mutation Attempt becomes
-`LOCAL_DEFECT / UNKNOWN`. Invalid combinations never reach a provider retry
-policy.
+One Step execution invokes one Connector operation. A second call in the same
+execution reuses the same Call ID and is prohibited. Use another Step
+execution for a second provider call or polling iteration.
 
-`RunQuery` and `RunMutation` return a non-nil Go error only for an explicit
-Retry Attempt. A positive provider delay becomes `dex.RetryAfter`; a zero
-delay returns `*connector.RetryError` and lets the Step retry policy choose its
-backoff. `FAILED` and `UNKNOWN` always return `error == nil`.
+## Branch-only Result and strict Attempt
 
-The Process must inspect every result outcome. It may transition to a failure
-Step, reconcile an unknown write, or force-fail. It must not treat `error ==
-nil` as provider success.
-
-## Failure facts and Process policy
-
-`FailureKind` records a fact, not retry policy. The same fact can be a Failure
-or a Retry depending on the operation contract. For example, `NOT_FOUND` may
-be a successful `Found=false`, a terminal Failure, or a Retry during a known
-eventual-consistency window.
-
-| Kind | Fact |
-| --- | --- |
-| `VALIDATION` | Connector input or request shape is invalid |
-| `AUTHENTICATION` | Credentials are missing, expired, or rejected |
-| `AUTHORIZATION` | Required provider permission is absent |
-| `NOT_FOUND` | The provider object is absent |
-| `CONFLICT` | Provider state conflicts with the request |
-| `RATE_LIMIT` | Provider explicitly throttled the request |
-| `AVAILABILITY` | Provider availability prevented confirmation |
-| `PROVIDER_REJECTION` | Provider explicitly rejected or terminated work |
-| `TRANSPORT` | Transport failed before an outcome was confirmed |
-| `RESPONSE_TOO_LARGE` | A configured response bound was exceeded |
-| `PROTOCOL` | Provider response or event shape was unusable |
-| `LOCAL_DEFECT` | The local Connector contract was violated |
-
-`Failure` contains only kind, provider, operation, and a safe message. It does
-not implement `error` and must never contain a credential, authorization
-header, provider body, or arbitrary metadata.
-
-## Mutation outcomes and reconciliation
-
-| Outcome | Meaning | Process policy |
-| --- | --- | --- |
-| `SUCCEEDED` | Provider confirmed the write | continue or complete |
-| `FAILED` | Provider confirmed rejection or the request never dispatched | explicit failure branch |
-| `UNKNOWN` | The request may have executed but confirmation was lost | explicit reconciliation Query |
-
-Only a connector that can prove a Mutation was not executed may return Retry.
-After dispatch, connection loss, truncated response, or an ambiguous server
-error returns Unknown. This prevents the Dex retry policy from blindly
-repeating a provider write.
-
-Reconciliation is visible Process behavior. The application defines a
-recovery Step and uses a Query operation to inspect the original Call ID,
-provider object ID, provider request ID, or deterministic marker. The SDK does
-not hide or automatically run reconciliation.
-
-## CallID compatibility contract
-
-The SDK derives `CallID` as UUIDv5/SHA-1 using:
-
-1. namespace `UUIDv5(URL namespace, "https://superdurable.dev/dex-connectors/call-id/v1")`;
-2. UTF-8 fields in this order: `FlowID`, `StepExecutionID`, `ConnectorID`,
-   `OperationID`;
-3. each field prefixed by its unsigned 32-bit big-endian byte length.
-
-Run ID, attempt, Worker identity, current time, randomness, and connection name
-are excluded. Dex retries, Worker restart, Flow retry, and time travel into the
-same Step execution retain the Call ID. A new Step execution gets a new ID.
-Changing this derivation is a compatibility-breaking change.
-
-## Provider IdempotencyKey
-
-Every Mutation derives a provider-specific `IdempotencyKey` from the stable
-`CallID` and input before credential resolution or provider dispatch. Returning
-an empty key selects `IdempotencyKey(CallID)`. The final key is present on
-`Call` and automatically copied to `Receipt`.
-
-An operation may adapt the Call ID to a provider's namespace, character set,
-or length, but it must not use attempt, Run ID, Worker identity, time, or
-randomness. The key guarantees retry identity only within one Step execution;
-it does not provide cross-Flow business deduplication.
-
-All manifest Mutations declare `idempotency: required`. A provider without an
-idempotency header must map the key to a deterministic resource ID, request
-field, or queryable marker and use it for every write.
-
-## Progress Streams
-
-Applications define and register their own Dex Streams in the Flow
-`PersistenceSchema`, then opt in per call:
+An operation declares stable branches in its manifest and generated
+definition. Query identifies a `DefectBranch`; Mutation additionally identifies
+an `UncertainBranch`.
 
 ```go
-connector.WithProgressStream(Progress)
-connector.WithTextStream(Text, dex.BufferedTextStreamMaxBytes(16<<10))
+type QueryResult[T any] struct {
+    Branch  BranchID
+    Value   T
+    Receipt Receipt
+    Failure *Failure
+}
 ```
 
-`Call.ReportProgress` writes `ProgressUpdate`; `Call.WriteText` writes through
-`dex.BufferedTextStream`. Without the matching option both methods are no-ops,
-so one Connector works in Processes with or without live UI.
+There is no public fixed Outcome enum. Provider-specific branches may express
+`found`, `notFound`, `completed`, `rejected`, or other durable Process
+vocabulary. Every branch must have exactly one GoTo target; missing, duplicate,
+and unknown targets reject factory construction.
 
-Structured progress adds `CallID`, Dex attempt, and a sequence starting at one
-for each attempt. Retries may duplicate provider progress. Consumers group by
-`CallID + Attempt + Sequence`; they do not deduplicate only by sequence.
-Buffered text preserves byte order and the Dex invocation finalizer flushes the
-tail before the Step result or error is sent.
+Operation implementations cannot return an unclassified Go error. They return:
 
-Stream writes are best-effort, immediately visible, and outside the Step
-commit. Connectors do not emit an authoritative `COMPLETED` message. Final
-success, failure, unknown outcome, receipts, and transitions come from the
-Step result, Attributes, and Flow snapshot. A Stream write is activity, but an
-operation that can remain silent longer than its timeout must adjust the Step
-timeout or record a real checkpoint instead of manufacturing progress.
+- `NewQueryBranch` or `NewQueryRetry`;
+- `NewMutationBranch`, `NewMutationUncertain`, or `NewMutationRetry`.
 
-If progress delivery fails after a Mutation dispatched, the outcome is
-Unknown, not Retry.
+Only Retry becomes a non-nil Go error and enters the Dex Execute retry policy.
+A positive provider delay becomes `dex.RetryAfter`; zero delay uses the Step
+policy. A branch or uncertainty returns `error == nil` and must be routed by
+the Process.
 
-## Long connections and provider jobs
+Mutation uncertainty is not an ordinary caller-selected branch. After a
+request dispatch, a lost connection, truncated response, ambiguous server
+error, or missing terminal event uses `NewMutationUncertain`; the SDK selects
+the generated `UncertainBranch`. A zero or invalid Mutation Attempt also fails
+closed to that branch. Invalid Query Attempt and pre-dispatch local input
+construction fail closed to `DefectBranch`.
 
-A provider connection that continuously yields bounded events may stay inside
-one `Execute`; OpenAI Responses SSE is the initial example. A provider job that
-runs independently must not keep a Step open indefinitely. Model it as:
+`FailureKind` records a safe fact, not retry policy. Authentication,
+authorization, not-found, rate-limit, transport, protocol, provider rejection,
+response limit, validation, availability, and local defect may accompany a
+branch. The concrete operation alone decides whether a fact is terminal or is
+safe to Retry. `Failure` never contains credentials, authorization headers,
+provider bodies, or arbitrary metadata.
+
+## Result Attributes and atomic transition
+
+Each operation declares `resultAttribute: none|optional|required`. A factory
+accepts only the exact typed Attribute:
+
+```go
+dex.Attribute[connector.QueryResult[OUT]]
+dex.Attribute[connector.MutationResult[OUT]]
+```
+
+The factory writes the complete Result before choosing its branch. Attribute
+write and `GoTo` are returned in one Dex Execute response and commit together.
+If a post-mutation Attribute write must be retried, the same Step execution
+retains its Call ID and idempotency key.
+
+`PersistenceRequirements()` lists configured Attributes and Streams for tests
+and future schema aggregation. The application still explicitly registers
+every resource in `GetPersistenceSchema`; the factory creates no global
+durable primitive.
+
+## Step defaults and overrides
+
+Manifest execution defaults generate `StepDefaults`: Execute timeout,
+optional heartbeat timeout, retry policy, and durability. HTTP defaults are
+30 seconds and a five-attempt/two-minute window. OpenAI defaults are 150
+seconds and a five-attempt/five-minute window. Both use synchronous
+durability.
+
+`StepOptionsOverride` overlays non-zero Execute fields and can add
+`dex.ProceedToOnExecuteFailure`. That recovery target accepts the original
+`STEP_IN`, whereas Connector branch targets accept the factory output
+envelope. Execute-only factories reject every WaitFor-specific option.
+
+## Call ID and provider idempotency
+
+Call ID is UUIDv5/SHA-1 over length-prefixed UTF-8 fields in this order:
+
+1. Flow ID;
+2. Step execution ID;
+3. Connector ID;
+4. Operation ID.
+
+The namespace is UUIDv5 of the URL namespace and
+`https://superdurable.dev/dex-connectors/call-id/v1`. Run ID, attempt, Worker,
+time, randomness, and connection are excluded. Retries and Worker restart in
+the same Step execution retain identity; a new Step execution gets a new ID.
+This algorithm is a compatibility contract.
+
+Every Mutation derives `IdempotencyKey` from Call ID and input before
+credential resolution or dispatch. An empty derivation falls back to Call ID.
+Provider adaptation may change namespace, length, or alphabet but cannot use
+attempt, Run ID, Worker, time, or randomness. The key covers retries of one
+Step execution, not cross-Flow business deduplication.
+
+## Streams
+
+Operations advertise `structured` and/or `text` progress capabilities.
+Applications define and register `dex.Stream[connector.ProgressUpdate]` and
+`dex.Stream[string]`, then pass them to a factory. Unsupported capability,
+wrong Go type, or empty name rejects construction.
+
+Structured messages add Call ID, Dex attempt, and a sequence starting at one
+per attempt. Text uses `dex.BufferedTextStream` and flushes before the handler
+returns. Streams are best-effort and outside the Step commit; they cannot
+select a branch or represent authoritative completion. Consumers group retry
+duplicates by `CallID + Attempt + Sequence`.
+
+A bounded long response such as OpenAI SSE may remain inside one Execute. A
+provider-owned asynchronous job is modeled as separate Steps:
 
 ```text
-StartJob Mutation -> wait with Timer or webhook Channel -> QueryJob -> complete
+start Mutation -> Timer or webhook Channel -> status Query -> complete
 ```
 
-The job ID and start receipt are durable state. Polling and webhook handling
-are separate Step executions with their own Call IDs.
+## Generated Config and Credentials
 
-## Receipts and credentials
+`connector.yaml` is the source for `zz_generated_connector.go`. It generates
+typed `Config`, connector-specific `Credentials`, defaults, validation,
+branch constants, operation definitions, Step defaults, and identity
+constants. CI runs `connectorctl generate --check` to reject drift.
 
-Receipts contain safe correlation data only. Applications persist a Mutation
-receipt in an Attribute in the same Dex commit as the next transition.
+Non-sensitive serializable fields belong in `Config`. HTTP clients,
+transports, clocks, test hooks, and idempotency functions are constructor
+options. Secret and OAuth fields belong in generated Credentials and are
+resolved through `CredentialProvider[C]`.
 
-`ConnectionRef` never contains a secret or OAuth token. A public Flow input
-must not accept a caller-selected connection unless the application boundary
-has already authorized that exact binding. Customer Onboarding instead fixes a
-logical connection when its Flow is registered and injects it into provider
-Steps. `CredentialProvider.Resolve(Call)` may authorize against Flow identity,
-Step execution identity, connector/operation identity, connection, Call ID,
-and idempotency key. Credential values cannot be JSON, text, or YAML serialized
-and are redacted by normal Go formatting.
+`SecretString` has private storage, redacted formatting, and rejects JSON,
+YAML, and text serialization. Connector-specific credential types prevent a
+Google Sheets connection from being accidentally passed to Gmail, even when
+both use one Google account.
 
-Connector Mutation means a provider write. Dex Action means a permissioned RPC
-whose availability can depend on Flow state. The two terms are not aliases.
-Hosted credential resolution and provider preview belong to the SuperVerse
-Connector Service.
+The manifest also carries OAuth endpoints, scopes, PKCE, connection kind, and
+field descriptions for future SuperVerse configuration UI. G2a does not load
+provider React code or implement OAuth callbacks.
+
+## Query, RPC, and Action
+
+Provider Query reads an external system inside a Step. Dex RPC reads or
+changes an existing Flow, accepts events, exposes permissioned Actions, or
+schedules Steps. RPC has no Step execution ID; Connector calls from RPC fail
+before credential resolution or provider access.
+
+Connector Mutation means a provider write. Dex Action means a permissioned
+Flow RPC. Studio provider preview belongs to the SuperVerse Connector Service,
+not a Flow RPC.

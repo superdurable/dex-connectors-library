@@ -41,7 +41,7 @@ func TestQueryAndMutationRetriesUseRealDexIdentity(t *testing.T) {
 	output := runCustomerOnboarding(t, harness.client, flow, uniqueFlowID("retry"), customeronboarding.Input{
 		CustomerID: "customer-1", Credits: 100,
 	})
-	require.Equal(t, connector.MutationSucceeded, output.Outcome)
+	require.Equal(t, httpconnector.MutationBranchSucceeded, output.Branch)
 	require.Equal(t, 2, provider.ProfileRequests())
 	require.Equal(t, 2, provider.MutationAttempts(output.CallID))
 	require.Equal(t, 1, provider.MutationCount(output.CallID))
@@ -61,7 +61,7 @@ func TestUnknownMutationUsesExplicitRecoveryAndCommittedReceipt(t *testing.T) {
 	output := runCustomerOnboarding(t, harness.client, flow, uniqueFlowID("unknown"), customeronboarding.Input{
 		CustomerID: "customer-2", Credits: 200, SimulateUnknown: true,
 	})
-	require.Equal(t, connector.MutationSucceeded, output.Outcome)
+	require.Equal(t, httpconnector.MutationBranchSucceeded, output.Branch)
 	require.Equal(t, 1, provider.MutationCount(output.CallID))
 	require.GreaterOrEqual(t, provider.RecoveryRequests(), 1)
 }
@@ -90,7 +90,7 @@ func TestFlowContinuesAfterWorkerRestart(t *testing.T) {
 	require.Equal(t, dex.FlowCompleted, result.Status)
 	var output customeronboarding.Output
 	require.NoError(t, result.DecodeSingleOutput(&output))
-	require.Equal(t, connector.MutationSucceeded, output.Outcome)
+	require.Equal(t, httpconnector.MutationBranchSucceeded, output.Branch)
 	require.Equal(t, 1, provider.MutationCount(output.CallID))
 }
 
@@ -115,10 +115,28 @@ func TestFlowRPCCannotCallProvider(t *testing.T) {
 }
 
 var (
-	openAIProgress = dex.DefineStream[connector.ProgressUpdate]("openai-progress", 1<<20)
-	openAIText     = dex.DefineStream[string]("openai-text", 1<<20)
-	retryProgress  = dex.DefineStream[connector.ProgressUpdate]("retry-progress", 1<<20)
+	openAIProgress                  = dex.DefineStream[connector.ProgressUpdate]("openai-progress", 1<<20)
+	openAIText                      = dex.DefineStream[string]("openai-text", 1<<20)
+	openAIResult                    = dex.DefineAttribute[connector.MutationResult[openai.Response]]("openai-result")
+	retryProgress                   = dex.DefineStream[connector.ProgressUpdate]("retry-progress", 1<<20)
+	integrationQueryBranchSucceeded = connector.BranchID("succeeded")
+	integrationQueryBranchFailed    = connector.BranchID("failed")
+	integrationQueryBranchDefect    = connector.BranchID("defect")
 )
+
+func integrationQueryDefinition(operationID string, progress bool) connector.QueryDefinition {
+	return connector.QueryDefinition{
+		Operation: connector.OperationRef{ConnectorID: "mock", OperationID: operationID},
+		Branches: []connector.BranchDefinition{
+			{ID: integrationQueryBranchSucceeded, Description: "succeeded"},
+			{ID: integrationQueryBranchFailed, Description: "failed"},
+			{ID: integrationQueryBranchDefect, Description: "defect"},
+		},
+		DefectBranch:    integrationQueryBranchDefect,
+		ResultAttribute: connector.RequirementOptional,
+		Progress:        connector.ProgressCapabilities{Structured: progress},
+	}
+}
 
 func TestOpenAIStreamingWritesRealDexStreams(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
@@ -135,8 +153,8 @@ func TestOpenAIStreamingWritesRealDexStreams(t *testing.T) {
 	}))
 	defer server.Close()
 	connection := connector.ConnectionRef{Provider: "openai", Name: "default"}
-	client, err := openai.New(openai.Config{Endpoint: server.URL}, connector.StaticCredentialProvider{
-		connection: connector.NewCredential(map[string]string{"api_key": "test-key"}),
+	client, err := openai.New(openai.Config{Endpoint: server.URL}, connector.StaticCredentialProvider[openai.Credentials]{
+		connection: {APIKey: connector.NewSecretString("test-key")},
 	})
 	require.NoError(t, err)
 	flow := &openAIStreamingFlow{client: client, connection: connection}
@@ -153,7 +171,7 @@ func TestOpenAIStreamingWritesRealDexStreams(t *testing.T) {
 	require.Equal(t, dex.FlowCompleted, result.Status)
 	var output openAIStreamingOutput
 	require.NoError(t, result.DecodeSingleOutput(&output))
-	require.Equal(t, connector.MutationSucceeded, output.Outcome)
+	require.Equal(t, openai.CreateResponseBranchCompleted, output.Branch)
 	require.Equal(t, "hello", output.Text)
 	require.Equal(t, 3, output.TotalTokens)
 
@@ -215,6 +233,21 @@ func TestQueryFailureDoesNotUseDexRetry(t *testing.T) {
 	require.Equal(t, int32(1), calls.Load())
 }
 
+func TestFactoryFailsWhenResultAttributeIsNotRegistered(t *testing.T) {
+	flow := missingSchemaFlow{}
+	harness := newDexHarness(t, []dex.Flow{flow})
+	harness.startWorker(t)
+	flowID := uniqueFlowID("missing-schema")
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	_, err := harness.client.StartFlow(ctx, flow, flowID, struct{}{}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowFailed, result.Status)
+}
+
 func TestOpenAIEarlyEOFReconcilesByResponseID(t *testing.T) {
 	var creates atomic.Int32
 	var retrieves atomic.Int32
@@ -233,8 +266,8 @@ func TestOpenAIEarlyEOFReconcilesByResponseID(t *testing.T) {
 	}))
 	defer server.Close()
 	connection := connector.ConnectionRef{Provider: "openai", Name: "default"}
-	client, err := openai.New(openai.Config{Endpoint: server.URL}, connector.StaticCredentialProvider{
-		connection: connector.NewCredential(map[string]string{"api_key": "test-key"}),
+	client, err := openai.New(openai.Config{Endpoint: server.URL}, connector.StaticCredentialProvider[openai.Credentials]{
+		connection: {APIKey: connector.NewSecretString("test-key")},
 	})
 	require.NoError(t, err)
 	flow := &openAIRecoveryFlow{client: client, connection: connection}
@@ -258,10 +291,10 @@ func TestOpenAIEarlyEOFReconcilesByResponseID(t *testing.T) {
 }
 
 type openAIStreamingOutput struct {
-	CallID      connector.CallID          `json:"callId"`
-	Outcome     connector.MutationOutcome `json:"outcome"`
-	Text        string                    `json:"text"`
-	TotalTokens int                       `json:"totalTokens"`
+	CallID      connector.CallID   `json:"callId"`
+	Branch      connector.BranchID `json:"branch"`
+	Text        string             `json:"text"`
+	TotalTokens int                `json:"totalTokens"`
 }
 
 type openAIStreamingFlow struct {
@@ -271,36 +304,56 @@ type openAIStreamingFlow struct {
 }
 
 func (flow *openAIStreamingFlow) GetSteps() []dex.StepDef {
-	return []dex.StepDef{dex.DefineStartStep(openAIStreamingStep{client: flow.client, connection: flow.connection})}
+	step := connector.MustNewMutationStep(connector.MutationStepConfig[struct{}, openai.CreateRequest, openai.Response]{
+		StepType: "OpenAIStreaming",
+		Presentation: connector.StepPresentation{
+			GroupID: "openai", GroupLabel: "OpenAI", Explanation: "Create a streaming OpenAI response.",
+		},
+		Operation: flow.client.CreateResponse(), Connection: flow.connection,
+		BuildInput: func(struct{}) (openai.CreateRequest, error) {
+			return openai.CreateRequest{Model: "gpt-test", Input: "stream this"}, nil
+		},
+		Branches: []connector.BranchTarget[connector.MutationStepOutput[struct{}, openai.Response]]{
+			connector.GoToBranch(openai.CreateResponseBranchCompleted, openAIStreamingSucceededStep{}),
+			connector.GoToBranch(openai.CreateResponseBranchFailed, openAIStreamingFailedStep{}),
+			connector.GoToBranch(openai.CreateResponseBranchUncertain, openAIStreamingFailedStep{}),
+			connector.GoToBranch(openai.CreateResponseBranchDefect, openAIStreamingFailedStep{}),
+		},
+		ResultAttribute: &openAIResult, ProgressStream: &openAIProgress, TextStream: &openAIText,
+		TextOptions: []dex.BufferedTextStreamOption{dex.BufferedTextStreamMaxBytes(1)},
+	})
+	return []dex.StepDef{
+		dex.DefineStartStep(step),
+		dex.DefineStep(openAIStreamingSucceededStep{}),
+		dex.DefineStep(openAIStreamingFailedStep{}),
+	}
 }
 
 func (*openAIStreamingFlow) GetPersistenceSchema() dex.PersistenceSchema {
-	return dex.PersistenceSchema{Streams: []dex.StreamDef{openAIProgress, openAIText}}
+	return dex.PersistenceSchema{
+		Attributes: []dex.AttributeDef{openAIResult},
+		Streams:    []dex.StreamDef{openAIProgress, openAIText},
+	}
 }
 
-type openAIStreamingStep struct {
-	dex.StepDefaultsNoWaitFor[struct{}]
-	client     *openai.Client
-	connection connector.ConnectionRef
+type openAIStreamingSucceededStep struct {
+	dex.StepDefaultsNoWaitFor[connector.MutationStepOutput[struct{}, openai.Response]]
 }
 
-func (step openAIStreamingStep) Execute(ctx dex.Context, _ struct{}) (*dex.StepDecision, error) {
-	result, err := connector.RunMutation(
-		ctx, step.client.CreateResponse(), step.connection,
-		openai.CreateRequest{Model: "gpt-test", Input: "stream this"},
-		connector.WithProgressStream(openAIProgress),
-		connector.WithTextStream(openAIText, dex.BufferedTextStreamMaxBytes(1)),
-	)
-	if err != nil {
-		return nil, err
-	}
-	if result.Outcome != connector.MutationSucceeded {
-		return dex.ForceFail("OpenAI streaming did not complete"), nil
-	}
+func (openAIStreamingSucceededStep) Execute(_ dex.Context, output connector.MutationStepOutput[struct{}, openai.Response]) (*dex.StepDecision, error) {
+	result := output.Result
 	return dex.GracefulComplete(openAIStreamingOutput{
-		CallID: result.Receipt.CallID, Outcome: result.Outcome,
+		CallID: result.Receipt.CallID, Branch: result.Branch,
 		Text: result.Value.OutputText, TotalTokens: result.Value.Usage.TotalTokens,
 	}), nil
+}
+
+type openAIStreamingFailedStep struct {
+	dex.StepDefaultsNoWaitFor[connector.MutationStepOutput[struct{}, openai.Response]]
+}
+
+func (openAIStreamingFailedStep) Execute(_ dex.Context, output connector.MutationStepOutput[struct{}, openai.Response]) (*dex.StepDecision, error) {
+	return dex.ForceFail("OpenAI streaming ended on branch " + string(output.Result.Branch)), nil
 }
 
 type retryProgressFlow struct{ dex.FlowDefaults }
@@ -331,7 +384,7 @@ func (retryProgressStep) Execute(ctx dex.Context, _ struct{}) (*dex.StepDecision
 type retryProgressQuery struct{}
 
 func (retryProgressQuery) Definition() connector.QueryDefinition {
-	return connector.QueryDefinition{Operation: connector.OperationRef{ConnectorID: "mock", OperationID: "retryProgress"}}
+	return integrationQueryDefinition("retryProgress", true)
 }
 
 func (retryProgressQuery) Invoke(call connector.Call, _ struct{}) connector.QueryAttempt[struct{}] {
@@ -345,12 +398,57 @@ func (retryProgressQuery) Invoke(call connector.Call, _ struct{}) connector.Quer
 			Kind: connector.FailureAvailability, Provider: "mock", Operation: "retryProgress", Message: "retry fixture",
 		}, 10*time.Millisecond)
 	}
-	return connector.NewQuerySuccess(struct{}{}, connector.Receipt{})
+	return connector.NewQueryBranch(integrationQueryBranchSucceeded, struct{}{}, nil, connector.Receipt{})
 }
 
 type queryFailureFlow struct {
 	dex.FlowDefaults
 	calls *atomic.Int32
+}
+
+var missingSchemaResult = dex.DefineAttribute[connector.QueryResult[struct{}]]("missing-schema-result")
+
+type missingSchemaFlow struct{ dex.FlowDefaults }
+
+func (missingSchemaFlow) GetSteps() []dex.StepDef {
+	step := connector.MustNewQueryStep(connector.QueryStepConfig[struct{}, struct{}, struct{}]{
+		StepType: "MissingSchemaQuery",
+		Presentation: connector.StepPresentation{
+			GroupID: "test", GroupLabel: "Test", Explanation: "Verify missing schema registration fails.",
+		},
+		Operation: missingSchemaQuery{}, Connection: connector.ConnectionRef{Provider: "mock", Name: "default"},
+		BuildInput: func(struct{}) (struct{}, error) { return struct{}{}, nil },
+		Branches: []connector.BranchTarget[connector.QueryStepOutput[struct{}, struct{}]]{
+			connector.GoToBranch(integrationQueryBranchSucceeded, missingSchemaTerminalStep{}),
+			connector.GoToBranch(integrationQueryBranchFailed, missingSchemaTerminalStep{}),
+			connector.GoToBranch(integrationQueryBranchDefect, missingSchemaTerminalStep{}),
+		},
+		ResultAttribute:     &missingSchemaResult,
+		StepOptionsOverride: &dex.StepOptions{ExecuteRetry: &dex.RetryPolicy{MaximumAttempts: 1}},
+	})
+	return []dex.StepDef{dex.DefineStartStep(step), dex.DefineStep(missingSchemaTerminalStep{})}
+}
+
+func (missingSchemaFlow) GetPersistenceSchema() dex.PersistenceSchema { return dex.PersistenceSchema{} }
+
+type missingSchemaQuery struct{}
+
+func (missingSchemaQuery) Definition() connector.QueryDefinition {
+	definition := integrationQueryDefinition("missingSchema", false)
+	definition.ResultAttribute = connector.RequirementRequired
+	return definition
+}
+
+func (missingSchemaQuery) Invoke(connector.Call, struct{}) connector.QueryAttempt[struct{}] {
+	return connector.NewQueryBranch(integrationQueryBranchSucceeded, struct{}{}, nil, connector.Receipt{})
+}
+
+type missingSchemaTerminalStep struct {
+	dex.StepDefaultsNoWaitFor[connector.QueryStepOutput[struct{}, struct{}]]
+}
+
+func (missingSchemaTerminalStep) Execute(dex.Context, connector.QueryStepOutput[struct{}, struct{}]) (*dex.StepDecision, error) {
+	return dex.GracefulComplete(struct{}{}), nil
 }
 
 func (flow queryFailureFlow) GetSteps() []dex.StepDef {
@@ -374,7 +472,7 @@ func (step queryFailureStep) Execute(ctx dex.Context, _ struct{}) (*dex.StepDeci
 	if err != nil {
 		return nil, err
 	}
-	if result.Outcome == connector.QueryFailed {
+	if result.Branch == integrationQueryBranchFailed {
 		return dex.ForceFail("confirmed query failure"), nil
 	}
 	return dex.GracefulComplete(struct{}{}), nil
@@ -383,14 +481,15 @@ func (step queryFailureStep) Execute(ctx dex.Context, _ struct{}) (*dex.StepDeci
 type terminalFailureQuery struct{ calls *atomic.Int32 }
 
 func (terminalFailureQuery) Definition() connector.QueryDefinition {
-	return connector.QueryDefinition{Operation: connector.OperationRef{ConnectorID: "mock", OperationID: "terminalFailure"}}
+	return integrationQueryDefinition("terminalFailure", false)
 }
 
 func (operation terminalFailureQuery) Invoke(connector.Call, struct{}) connector.QueryAttempt[struct{}] {
 	operation.calls.Add(1)
-	return connector.NewQueryFailure(struct{}{}, connector.Failure{
+	failure := connector.Failure{
 		Kind: connector.FailureNotFound, Provider: "mock", Operation: "terminalFailure", Message: "object was not found",
-	}, connector.Receipt{})
+	}
+	return connector.NewQueryBranch(integrationQueryBranchFailed, struct{}{}, &failure, connector.Receipt{})
 }
 
 type openAIRecoveryFlow struct {
@@ -425,7 +524,7 @@ func (step openAIRecoveryStartStep) Execute(ctx dex.Context, _ struct{}) (*dex.S
 	if err != nil {
 		return nil, err
 	}
-	if result.Outcome != connector.MutationUnknown || result.Value.ID == "" {
+	if result.Branch != openai.CreateResponseBranchUncertain || result.Value.ID == "" {
 		return dex.ForceFail("expected a recoverable unknown OpenAI response"), nil
 	}
 	return dex.GoTo(openAIRetrieveStep{}, openai.RetrieveRequest{ResponseID: result.Value.ID}), nil
@@ -442,7 +541,7 @@ func (step openAIRetrieveStep) Execute(ctx dex.Context, input openai.RetrieveReq
 	if err != nil {
 		return nil, err
 	}
-	if result.Outcome == connector.QueryFailed {
+	if result.Branch == openai.RetrieveResponseBranchFailed {
 		return dex.ForceFail("OpenAI response reconciliation failed"), nil
 	}
 	return dex.GracefulComplete(result.Value), nil
@@ -469,7 +568,7 @@ func (flow *rpcBoundaryFlow) AttemptProviderQuery(ctx dex.Context, connection co
 	result, err := connector.RunQuery(ctx, flow.query, connection, httpconnector.Request{
 		Method: http.MethodGet, Path: "/profiles/customer-rpc",
 	})
-	return &dex.RPCResult[bool]{Output: err == nil && result.Outcome == connector.QuerySucceeded}, err
+	return &dex.RPCResult[bool]{Output: err == nil && result.Branch == httpconnector.QueryBranchSucceeded}, err
 }
 
 type rpcBoundaryStartStep struct {
@@ -543,7 +642,9 @@ func connectorClient(t *testing.T, provider *mockprovider.Provider) (connector.C
 	connection := connector.ConnectionRef{Provider: "mock", Name: "default"}
 	client, err := httpconnector.New(httpconnector.Config{
 		BaseURL: provider.URL(), CredentialHeaders: map[string]string{"api_key": "X-Mock-Api-Key"},
-	}, connector.StaticCredentialProvider{connection: connector.NewCredential(map[string]string{"api_key": "test-key"})})
+	}, connector.StaticCredentialProvider[httpconnector.Credentials]{
+		connection: {APIKey: connector.NewSecretString("test-key")},
+	})
 	require.NoError(t, err)
 	return connection, client
 }

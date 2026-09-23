@@ -7,22 +7,92 @@ metadata:
   description: Bounded HTTP queries, idempotent mutations, and signed webhooks.
 spec:
   provider: http
+  codegen:
+    go:
+      package: httpconnector
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Absolute provider base URL.
+        required: true
+      - name: allowedHosts
+        goName: AllowedHosts
+        type: stringList
+        description: Additional provider host names allowed for redirects and absolute paths.
+        required: false
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: HTTP client timeout.
+        required: false
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum response body size.
+        required: false
+        default: 2097152
+      - name: credentialHeaders
+        goName: CredentialHeaders
+        type: stringMap
+        description: Credential field to HTTP header mapping.
+        required: false
+      - name: idempotencyHeader
+        goName: IdempotencyHeader
+        type: string
+        description: Provider idempotency header name.
+        required: false
+        default: Idempotency-Key
   auth:
     type: apiKey
+    connectionKind: http-api-key
     fields:
       - name: api_key
+        goName: APIKey
+        type: secretString
+        description: API key injected through the configured credential header.
         required: false
-        sensitive: true
   operations:
     - name: query
+      goName: Query
       kind: query
       description: Perform a bounded GET or HEAD request.
       idempotency: none
+      branches:
+        - {id: succeeded, goName: Succeeded, description: The provider returned a successful response.}
+        - {id: failed, goName: Failed, description: The provider rejected the query or returned a terminal response.}
+        - {id: defect, goName: Defect, description: Local input or connector definition is invalid.}
+      defectBranch: defect
+      resultAttribute: optional
+      execution: &httpExecution
+        executeMethodTimeout: 30s
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
     - name: mutation
+      goName: Mutation
       kind: mutation
       description: Perform a mutation with a stable idempotency key.
       idempotency: required
+      branches:
+        - {id: succeeded, goName: Succeeded, description: The provider confirmed the mutation.}
+        - {id: rejected, goName: Rejected, description: The provider definitely rejected the mutation.}
+        - {id: uncertain, goName: Uncertain, description: The provider outcome cannot be confirmed.}
+        - {id: defect, goName: Defect, description: Local input or connector definition is invalid.}
+      defectBranch: defect
+      uncertainBranch: uncertain
+      resultAttribute: required
+      execution: *httpExecution
     - name: verifyWebhook
+      goName: VerifyWebhook
       kind: query
       description: Verify signature, timestamp, and replay protection.
       idempotency: none
+      branches:
+        - {id: verified, goName: Verified, description: The webhook signature and replay checks passed.}
+        - {id: rejected, goName: Rejected, description: The webhook could not be verified.}
+        - {id: defect, goName: Defect, description: Local input or connector definition is invalid.}
+      defectBranch: defect
+      resultAttribute: none
+      execution: *httpExecution

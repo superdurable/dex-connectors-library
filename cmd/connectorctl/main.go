@@ -4,6 +4,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	"path/filepath"
 	"sort"
 
+	"github.com/superdurable/dex-connectors-library/internal/codegen"
 	"github.com/superdurable/dex-connectors-library/schema"
 )
 
@@ -24,7 +26,7 @@ func main() {
 
 func run(args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: connectorctl <validate|catalog> [path ...]")
+		return errors.New("usage: connectorctl <validate|catalog|generate> [path ...]")
 	}
 	switch args[0] {
 	case "validate":
@@ -51,9 +53,45 @@ func run(args []string) error {
 		encoder := json.NewEncoder(os.Stdout)
 		encoder.SetIndent("", "  ")
 		return encoder.Encode(manifests)
+	case "generate":
+		return generate(args[1:])
 	default:
 		return fmt.Errorf("unknown command %q", args[0])
 	}
+}
+
+func generate(args []string) error {
+	check := false
+	if len(args) > 0 && args[0] == "--check" {
+		check = true
+		args = args[1:]
+	}
+	if len(args) != 1 {
+		return errors.New("usage: connectorctl generate [--check] <manifest>")
+	}
+	manifest, err := load(args[0])
+	if err != nil {
+		return err
+	}
+	generated, err := codegen.Generate(manifest)
+	if err != nil {
+		return err
+	}
+	output := filepath.Join(filepath.Dir(args[0]), codegen.OutputFile)
+	if check {
+		current, readErr := os.ReadFile(output)
+		if readErr != nil {
+			return fmt.Errorf("generated connector is missing: %s", output)
+		}
+		if !bytes.Equal(current, generated) {
+			return fmt.Errorf("generated connector is stale: %s", output)
+		}
+		return nil
+	}
+	if err := os.WriteFile(output, generated, 0o644); err != nil {
+		return fmt.Errorf("write %s: %w", output, err)
+	}
+	return nil
 }
 
 func load(path string) (schema.Manifest, error) {

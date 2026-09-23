@@ -7,41 +7,41 @@ make check
 go test -race ./...
 go vet ./...
 go run ./cmd/connectorctl validate connectors/http/connector.yaml connectors/openai/connector.yaml
+go run ./cmd/connectorctl generate --check connectors/http/connector.yaml
+go run ./cmd/connectorctl generate --check connectors/openai/connector.yaml
 go run ./cmd/connectorctl catalog connectors
 ```
 
-Expected results:
+The suite must prove:
 
-- manifests reject `idempotency: provider`, Mutation `idempotency: none`,
-  unknown progress capabilities, duplicates, and unknown fields;
-- catalog output is deterministic and reports OpenAI `structured` and `text`;
-- operation interfaces compile only with strict Attempt returns;
-- zero/invalid Query Attempt becomes `LOCAL_DEFECT/FAILED` and zero/invalid
-  Mutation Attempt becomes `LOCAL_DEFECT/UNKNOWN`;
-- Failure and Unknown return nil Go error; explicit Retry is the only non-nil
-  connector error path;
-- a Retry delay becomes `dex.RetryAfter`; no delay uses the Step's policy;
-- the same Failure kind can be either Failure or Retry;
-- Call ID remains stable across attempt, Run, and Worker changes and changes
-  with Flow, Step execution, connector, or operation identity;
-- provider idempotency derivation is stable, empty derivation falls back to
-  Call ID, and Mutation Call/Receipt contain the final key;
-- RPC invocation fails before credential or provider access;
-- Customer Onboarding start input cannot select a connection, while all of its
-  provider Steps use the registration-time logical binding;
-- HTTP tests cover auth, not-found, rejection, Query retry, safe Mutation
-  retry, post-dispatch Unknown, provider-specific key derivation, response
-  bounds, safe headers, webhook signature, and replay rejection;
-- OpenAI tests cover non-streaming usage, SSE created/deltas/completed/failed/
-  incomplete/error, unknown events, early EOF, bounds, and reconciliation;
-- credential values, API keys, authorization headers, and provider bodies do
-  not enter Failure, Receipt, Stream, or test output;
-- React tests remain green with no credential values in browser props.
+- branch definitions reject empty, duplicate, invalid, missing defect, and
+  missing Mutation uncertainty branches;
+- factories reject missing, duplicate, and unknown targets and require every
+  target to accept the typed factory output;
+- Query invalid Attempt routes to defect, while Mutation invalid Attempt and
+  explicit uncertainty route to uncertainty;
+- Retry is the only Attempt that returns a Go error;
+- Result Attribute requirement and Stream capability/name checks fail during
+  factory construction;
+- operation defaults merge with non-zero application Execute overrides and
+  WaitFor-only options are rejected;
+- Call ID and idempotency key are stable across Dex attempt, Run, and Worker
+  changes and change with Step execution or operation identity;
+- RPC fails before credentials and providers;
+- manifest generation is deterministic, `--check` catches drift, and generated
+  Config/Credentials/branches/definitions compile;
+- OAuth fixture preserves connection kind, endpoints, scopes, PKCE, and typed
+  secret fields without implementing provider OAuth;
+- `SecretString`, API keys, OAuth tokens, authorization headers, and provider
+  bodies do not enter Result, Failure, Receipt, Stream, or logs;
+- HTTP and OpenAI provider classification, idempotency, response bounds, SSE,
+  and recovery tests remain green;
+- React connection-state tests and build remain unchanged.
 
 ## Real Dex Server 0.11.1
 
-Install Temporal CLI 1.9.1, then start Dex Server 0.11.1 while the Go SDK
-remains pinned to v0.10.2:
+Install Temporal CLI 1.9.1 and start Dex Server/dexcli 0.11.1 while the Go SDK
+remains v0.10.2:
 
 ```bash
 dexcli dev
@@ -50,47 +50,44 @@ make test-integration
 
 The integration suite verifies:
 
-- a Query Retry is executed by the real Dex retry policy and then succeeds;
-- a Query Failure does not retry and enters an explicit failure path;
-- a rate-limited Mutation retry retains one Call ID and idempotency key and
-  produces one provider write;
-- a lost Mutation response returns Unknown and enters recovery without
-  repeating the write;
-- the receipt Attribute is readable in recovery, proving the receipt write and
-  transition committed together;
-- a Flow continues reconciliation after its Worker restarts;
-- a real Flow RPC cannot contact a provider;
-- OpenAI mock SSE writes structured and buffered text Streams through a real
-  Worker, preserves text order, and flushes the final chunk;
-- progress messages contain the same Call ID and retries are distinguishable by
-  Attempt and Sequence.
+- Customer Onboarding registers factory Steps with typed `StepRef` targets;
+- Query Retry succeeds under the generated Dex retry defaults;
+- terminal Query branch does not use Dex retry;
+- Mutation rate-limit retry retains Call ID/idempotency key and creates one
+  provider write;
+- post-dispatch uncertainty routes to a reconciliation factory Query without
+  repeating the Mutation;
+- Result Attribute and branch transition commit together;
+- a registered target's real Step options apply after StepRef resolution;
+- Worker restart resumes recovery;
+- Flow RPC cannot invoke a provider;
+- a factory OpenAI Mutation writes structured/text Streams, preserves text
+  order, flushes the tail, and persists its typed Result Attribute;
+- retry Stream messages retain Call ID and separate Attempt/Sequence.
 
-## Manual provider checks
+## Manual API acceptance before Dex CLI work
 
-1. Run `connectorctl catalog` twice and diff the output.
-2. Confirm OpenAI Create reports `idempotency: required` and progress
-   capabilities `structured`, `text`.
-3. Configure a provider-specific HTTP key derivation and verify the same key is
-   sent for every retry and copied to the receipt.
-4. Disconnect a Mutation after accepting its body and verify the Process enters
-   reconciliation rather than repeating the Mutation.
-5. Interrupt an OpenAI SSE stream after `response.created`; verify Unknown
-   retains the response ID for RetrieveResponse.
+1. Read the generated HTTP/OpenAI files and confirm YAML is the only source of
+   Config, Credentials, branch constants, definitions, and defaults.
+2. Confirm a Flow can be authored with factory values directly inside
+   `dex.DefineStep`/`dex.DefineStartStep`, without provider concrete Steps.
+3. Confirm every branch has one target and Mutation uncertainty cannot be
+   mistaken for a provider rejection.
+4. Confirm `ConnectionRef` is bound at Flow registration, not accepted from
+   public start input.
+5. Confirm `PersistenceRequirements()` matches resources explicitly registered
+   by the Flow.
+6. Accept the known limitation that dexcli 0.11.1 cannot yet render factory
+   Steps in Dex Web 2.0.
 
-## Secret inspection
+Only after this API acceptance should the separate Dex CLI analyzer patch
+begin. After its patch release, regenerate Customer Onboarding schema 2.0,
+add the deterministic golden, inspect nodes/branches/Attribute/Stream edges in
+Dex Web 2.0, and then move Connector PR #1 from Draft to Ready.
 
-Search captured test output for `super-secret`, `test-key`,
-`credential store unavailable`, authorization values, and mock provider error
-bodies. None may appear in Failure, Receipt, Stream messages, or normal logs.
+## Documentation and UI/UX
 
-## Documentation
-
-Contract changes update `docs/connector-contract.md`; component and data-flow
-changes update `docs/architecture.md`; provider behavior is documented beside
-its manifest and in this acceptance guide.
-
-## UI/UX
-
-No React or Studio behavior changes in G2a. Existing React tests and build must
-remain green. A later Studio uses Streams only for live feedback and Flow
-snapshot/results for authoritative status.
+Contract changes update `connector-contract.md`; component/data flow changes
+update `architecture.md`; provider manifests and the Customer Onboarding README
+show canonical authoring. G2a adds no React form, OAuth callback, or Studio
+page. Manifest metadata is consumed by later G2c/G6a UI work.

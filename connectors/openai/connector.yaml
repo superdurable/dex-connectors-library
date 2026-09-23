@@ -7,19 +7,66 @@ metadata:
   description: OpenAI Responses API with structured output, usage, and recovery metadata.
 spec:
   provider: openai
+  codegen:
+    go:
+      package: openai
+  configuration:
+    fields:
+      - name: endpoint
+        goName: Endpoint
+        type: url
+        description: OpenAI Responses API endpoint.
+        required: false
+        default: https://api.openai.com/v1
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum total response size.
+        required: false
+        default: 8388608
+      - name: maxSseEventBytes
+        goName: MaxSSEEventBytes
+        type: integer
+        description: Maximum size of one server-sent event.
+        required: false
+        default: 1048576
   auth:
     type: apiKey
+    connectionKind: openai-api-key
     fields:
       - name: api_key
+        goName: APIKey
+        type: secretString
+        description: OpenAI API key.
         required: true
-        sensitive: true
   operations:
     - name: createResponse
+      goName: CreateResponse
       kind: mutation
       description: Create an ordinary or structured model response.
       idempotency: required
+      branches:
+        - {id: completed, goName: Completed, description: OpenAI completed the response.}
+        - {id: failed, goName: Failed, description: OpenAI returned a terminal failed or incomplete response.}
+        - {id: uncertain, goName: Uncertain, description: The dispatched response outcome cannot be confirmed.}
+        - {id: defect, goName: Defect, description: Local input or connector definition is invalid.}
+      defectBranch: defect
+      uncertainBranch: uncertain
+      resultAttribute: required
       progress: [structured, text]
+      execution: &openaiExecution
+        executeMethodTimeout: 150s
+        durability: sync
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 5m}
     - name: retrieveResponse
+      goName: RetrieveResponse
       kind: query
       description: Retrieve a response by provider response ID.
       idempotency: none
+      branches:
+        - {id: found, goName: Found, description: The response exists and was returned.}
+        - {id: failed, goName: Failed, description: OpenAI returned a terminal query failure.}
+        - {id: defect, goName: Defect, description: Local input or connector definition is invalid.}
+      defectBranch: defect
+      resultAttribute: optional
+      execution: *openaiExecution
