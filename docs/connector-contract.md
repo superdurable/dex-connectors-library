@@ -178,8 +178,11 @@ are separate Step executions with their own Call IDs.
 Receipts contain safe correlation data only. Applications persist a Mutation
 receipt in an Attribute in the same Dex commit as the next transition.
 
-Flow input and durable state contain `ConnectionRef`, never a secret or OAuth
-token. `CredentialProvider.Resolve(Call)` may authorize against Flow identity,
+`ConnectionRef` never contains a secret or OAuth token. A public Flow input
+must not accept a caller-selected connection unless the application boundary
+has already authorized that exact binding. Customer Onboarding instead fixes a
+logical connection when its Flow is registered and injects it into provider
+Steps. `CredentialProvider.Resolve(Call)` may authorize against Flow identity,
 Step execution identity, connector/operation identity, connection, Call ID,
 and idempotency key. Credential values cannot be JSON, text, or YAML serialized
 and are redacted by normal Go formatting.

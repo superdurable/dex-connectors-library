@@ -19,10 +19,9 @@ import (
 var CreditGrantReceipt = dex.DefineAttribute[connector.Receipt]("CreditGrantReceipt")
 
 type Input struct {
-	CustomerID      string                  `json:"customerId"`
-	Connection      connector.ConnectionRef `json:"connection"`
-	Credits         int                     `json:"credits"`
-	SimulateUnknown bool                    `json:"simulateUnknown,omitempty"`
+	CustomerID      string `json:"customerId"`
+	Credits         int    `json:"credits"`
+	SimulateUnknown bool   `json:"simulateUnknown,omitempty"`
 }
 
 type profile struct {
@@ -58,21 +57,28 @@ type Output struct {
 
 type CustomerOnboardingConnectorFlow struct {
 	dex.FlowDefaults
-	client *httpconnector.Client
+	client             *httpconnector.Client
+	providerConnection connector.ConnectionRef
 }
 
-func NewCustomerOnboardingConnectorFlow(client *httpconnector.Client) *CustomerOnboardingConnectorFlow {
+func NewCustomerOnboardingConnectorFlow(
+	client *httpconnector.Client,
+	providerConnection connector.ConnectionRef,
+) *CustomerOnboardingConnectorFlow {
 	if client == nil {
 		panic("customer onboarding connector Flow requires an HTTP connector")
 	}
-	return &CustomerOnboardingConnectorFlow{client: client}
+	if err := providerConnection.Validate(); err != nil {
+		panic("customer onboarding connector Flow requires a valid provider connection")
+	}
+	return &CustomerOnboardingConnectorFlow{client: client, providerConnection: providerConnection}
 }
 
 func (flow *CustomerOnboardingConnectorFlow) GetSteps() []dex.StepDef {
 	return []dex.StepDef{
-		dex.DefineStartStep(ReadCustomerProfileStep{client: flow.client}),
-		dex.DefineStep(GrantCustomerCreditsStep{client: flow.client}),
-		dex.DefineStep(ReconcileCreditGrantStep{client: flow.client}),
+		dex.DefineStartStep(ReadCustomerProfileStep{client: flow.client, providerConnection: flow.providerConnection}),
+		dex.DefineStep(GrantCustomerCreditsStep{client: flow.client, providerConnection: flow.providerConnection}),
+		dex.DefineStep(ReconcileCreditGrantStep{client: flow.client, providerConnection: flow.providerConnection}),
 		dex.DefineStep(ProfileReadFailedStep{}),
 		dex.DefineStep(CreditGrantFailedStep{}),
 	}
@@ -120,14 +126,15 @@ func optionalCreditGrantReceipt(ctx dex.Context) (connector.Receipt, error) {
 // dex:explanation text:"Read the customer profile from the configured provider."
 type ReadCustomerProfileStep struct {
 	dex.StepDefaultsNoWaitFor[Input]
-	client *httpconnector.Client
+	client             *httpconnector.Client
+	providerConnection connector.ConnectionRef
 }
 
 func (step ReadCustomerProfileStep) Execute(ctx dex.Context, input Input) (*dex.StepDecision, error) {
 	if input.CustomerID == "" || input.Credits <= 0 {
 		return nil, fmt.Errorf("customer ID and positive credits are required")
 	}
-	result, err := connector.RunQuery(ctx, step.client.Query(), input.Connection, httpconnector.Request{
+	result, err := connector.RunQuery(ctx, step.client.Query(), step.providerConnection, httpconnector.Request{
 		Method: http.MethodGet,
 		Path:   "/profiles/" + input.CustomerID,
 	})
@@ -148,7 +155,8 @@ func (step ReadCustomerProfileStep) Execute(ctx dex.Context, input Input) (*dex.
 // dex:explanation text:"Grant credits through an idempotent provider mutation."
 type GrantCustomerCreditsStep struct {
 	dex.StepDefaultsNoWaitFor[grantCreditsState]
-	client *httpconnector.Client
+	client             *httpconnector.Client
+	providerConnection connector.ConnectionRef
 }
 
 func (step GrantCustomerCreditsStep) Execute(ctx dex.Context, state grantCreditsState) (*dex.StepDecision, error) {
@@ -156,7 +164,7 @@ func (step GrantCustomerCreditsStep) Execute(ctx dex.Context, state grantCredits
 	if state.Input.SimulateUnknown {
 		path = "/credits-unknown"
 	}
-	result, err := connector.RunMutation(ctx, step.client.Mutation(), state.Input.Connection, httpconnector.Request{
+	result, err := connector.RunMutation(ctx, step.client.Mutation(), step.providerConnection, httpconnector.Request{
 		Method: http.MethodPost,
 		Path:   path,
 		Body: map[string]any{
@@ -192,7 +200,8 @@ func (step GrantCustomerCreditsStep) Execute(ctx dex.Context, state grantCredits
 // dex:explanation text:"Reconcile an unknown credit grant without repeating the mutation."
 type ReconcileCreditGrantStep struct {
 	dex.StepDefaultsNoWaitFor[reconcileCreditGrantState]
-	client *httpconnector.Client
+	client             *httpconnector.Client
+	providerConnection connector.ConnectionRef
 }
 
 func (step ReconcileCreditGrantStep) Execute(ctx dex.Context, state reconcileCreditGrantState) (*dex.StepDecision, error) {
@@ -203,7 +212,7 @@ func (step ReconcileCreditGrantStep) Execute(ctx dex.Context, state reconcileCre
 	if committedReceipt.CallID != state.Receipt.CallID {
 		return nil, fmt.Errorf("credit grant receipt does not match recovery state")
 	}
-	result, err := connector.RunQuery(ctx, step.client.Query(), state.Grant.Input.Connection, httpconnector.Request{
+	result, err := connector.RunQuery(ctx, step.client.Query(), step.providerConnection, httpconnector.Request{
 		Method: http.MethodGet,
 		Path:   "/mutations/" + string(state.Receipt.CallID),
 	})

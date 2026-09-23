@@ -34,12 +34,12 @@ func TestQueryAndMutationRetriesUseRealDexIdentity(t *testing.T) {
 	provider := mockprovider.StartWithOptions(mockprovider.Options{ProfileFailures: 1, MutationRateLimits: 1})
 	defer provider.Close()
 	connection, httpClient := connectorClient(t, provider)
-	flow := customeronboarding.NewCustomerOnboardingConnectorFlow(httpClient)
+	flow := customeronboarding.NewCustomerOnboardingConnectorFlow(httpClient, connection)
 	harness := newDexHarness(t, []dex.Flow{flow})
 	harness.startWorker(t)
 
 	output := runCustomerOnboarding(t, harness.client, flow, uniqueFlowID("retry"), customeronboarding.Input{
-		CustomerID: "customer-1", Connection: connection, Credits: 100,
+		CustomerID: "customer-1", Credits: 100,
 	})
 	require.Equal(t, connector.MutationSucceeded, output.Outcome)
 	require.Equal(t, 2, provider.ProfileRequests())
@@ -54,12 +54,12 @@ func TestUnknownMutationUsesExplicitRecoveryAndCommittedReceipt(t *testing.T) {
 	provider := mockprovider.Start()
 	defer provider.Close()
 	connection, httpClient := connectorClient(t, provider)
-	flow := customeronboarding.NewCustomerOnboardingConnectorFlow(httpClient)
+	flow := customeronboarding.NewCustomerOnboardingConnectorFlow(httpClient, connection)
 	harness := newDexHarness(t, []dex.Flow{flow})
 	harness.startWorker(t)
 
 	output := runCustomerOnboarding(t, harness.client, flow, uniqueFlowID("unknown"), customeronboarding.Input{
-		CustomerID: "customer-2", Connection: connection, Credits: 200, SimulateUnknown: true,
+		CustomerID: "customer-2", Credits: 200, SimulateUnknown: true,
 	})
 	require.Equal(t, connector.MutationSucceeded, output.Outcome)
 	require.Equal(t, 1, provider.MutationCount(output.CallID))
@@ -70,7 +70,7 @@ func TestFlowContinuesAfterWorkerRestart(t *testing.T) {
 	provider := mockprovider.StartWithOptions(mockprovider.Options{RecoveryFailures: 1})
 	defer provider.Close()
 	connection, httpClient := connectorClient(t, provider)
-	flow := customeronboarding.NewCustomerOnboardingConnectorFlow(httpClient)
+	flow := customeronboarding.NewCustomerOnboardingConnectorFlow(httpClient, connection)
 	harness := newDexHarness(t, []dex.Flow{flow})
 	harness.startWorker(t)
 
@@ -78,7 +78,7 @@ func TestFlowContinuesAfterWorkerRestart(t *testing.T) {
 	defer cancel()
 	flowID := uniqueFlowID("restart")
 	_, err := harness.client.StartFlow(ctx, flow, flowID, customeronboarding.Input{
-		CustomerID: "customer-3", Connection: connection, Credits: 300, SimulateUnknown: true,
+		CustomerID: "customer-3", Credits: 300, SimulateUnknown: true,
 	}, dex.StartFlowOptions{})
 	require.NoError(t, err)
 	require.Eventually(t, func() bool { return provider.RecoveryRequests() >= 1 }, 20*time.Second, 20*time.Millisecond)

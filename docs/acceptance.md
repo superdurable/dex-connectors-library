@@ -27,6 +27,8 @@ Expected results:
 - provider idempotency derivation is stable, empty derivation falls back to
   Call ID, and Mutation Call/Receipt contain the final key;
 - RPC invocation fails before credential or provider access;
+- Customer Onboarding start input cannot select a connection, while all of its
+  provider Steps use the registration-time logical binding;
 - HTTP tests cover auth, not-found, rejection, Query retry, safe Mutation
   retry, post-dispatch Unknown, provider-specific key derivation, response
   bounds, safe headers, webhook signature, and replay rejection;

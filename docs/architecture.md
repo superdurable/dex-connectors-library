@@ -37,6 +37,11 @@ invokes at most one operation. The application owns stable Step types and
 inputs, retry policy, receipt Attributes, recovery, transitions, and terminal
 behavior. The SDK does not create generic Query or Mutation Steps.
 
+Customer Onboarding does not expose `ConnectionRef` in its public start input.
+Its trusted logical provider connection is fixed by the application when the
+Flow is registered and constructor-injected into all provider Steps. The
+binding must remain stable while open executions can reference those Steps.
+
 `RunQuery` and `RunMutation` build a Call from `dex.Context`. The Flow ID and
 Step execution ID produce stable provider-call identity. An RPC has no Step
 execution ID and receives a local failed result before any credential or
