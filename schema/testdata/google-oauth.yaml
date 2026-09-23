@@ -1,0 +1,79 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: google-sheets-fixture
+  displayName: Google Sheets Fixture
+  version: v0.1.0-alpha.1
+  description: OAuth manifest fixture for generated connector metadata.
+spec:
+  provider: google
+  codegen:
+    go:
+      package: googlesheetsfixture
+  configuration:
+    fields:
+      - name: applicationName
+        goName: ApplicationName
+        type: string
+        description: OAuth application display name.
+        required: true
+      - name: environment
+        goName: Environment
+        type: enum
+        description: Google API environment.
+        required: false
+        enum: [production, sandbox]
+        default: production
+      - name: scopesOverride
+        goName: ScopesOverride
+        type: stringList
+        description: Optional scope override fixture.
+        required: false
+        default: [scope-b, scope-a]
+      - name: labels
+        goName: Labels
+        type: stringMap
+        description: Optional deterministic label fixture.
+        required: false
+        default: {team: onboarding, owner: platform}
+  auth:
+    type: oauth2
+    connectionKind: google-sheets-oauth
+    fields:
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        description: OAuth access token.
+        required: true
+      - name: refresh_token
+        goName: RefreshToken
+        type: secretString
+        description: OAuth refresh token.
+        required: true
+    oauth2:
+      authorizationEndpoint: https://accounts.google.com/o/oauth2/v2/auth
+      tokenEndpoint: https://oauth2.googleapis.com/token
+      scopes: [https://www.googleapis.com/auth/spreadsheets]
+      pkce: true
+  operations:
+    - name: appendRows
+      goName: AppendRows
+      kind: mutation
+      description: Append rows to one spreadsheet.
+      idempotency: required
+      branches:
+        - {id: appended, goName: Appended, description: Rows were appended.}
+        - {id: uncertain, goName: Uncertain, description: Append outcome is unknown.}
+        - {id: defect, goName: Defect, description: Local input is invalid.}
+      defectBranch: defect
+      uncertainBranch: uncertain
+      resultAttribute: required
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+        retry:
+          initialInterval: 1s
+          backoffCoefficient: 2
+          maximumInterval: 30s
+          maximumAttempts: 5
+          totalDuration: 2m
