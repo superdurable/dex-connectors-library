@@ -41,71 +41,58 @@ type Output struct {
 	Branch     connector.BranchID `json:"branch"`
 }
 
-type profileStepOutput = connector.QueryStepOutput[Input, httpconnector.Response]
-type grantStepOutput = connector.MutationStepOutput[profileStepOutput, httpconnector.Response]
-type reconcileStepOutput = connector.QueryStepOutput[grantStepOutput, httpconnector.Response]
+type profileStepOutput = httpconnector.QueryStepOutput[Input]
+type grantStepOutput = httpconnector.MutationStepOutput[profileStepOutput]
+type reconcileStepOutput = httpconnector.QueryStepOutput[grantStepOutput]
 
 type CustomerOnboardingConnectorFlow struct {
 	dex.FlowDefaults
-	client             *httpconnector.Client
-	providerConnection connector.ConnectionRef
+	connection httpconnector.Connection
 }
 
-func NewCustomerOnboardingConnectorFlow(client *httpconnector.Client, providerConnection connector.ConnectionRef) *CustomerOnboardingConnectorFlow {
-	if client == nil {
-		panic("customer onboarding connector Flow requires an HTTP connector")
-	}
-	if err := providerConnection.Validate(); err != nil {
-		panic("customer onboarding connector Flow requires a valid provider connection")
-	}
-	return &CustomerOnboardingConnectorFlow{client: client, providerConnection: providerConnection}
+func NewCustomerOnboardingConnectorFlow(connection httpconnector.Connection) *CustomerOnboardingConnectorFlow {
+	return &CustomerOnboardingConnectorFlow{connection: connection}
 }
 
 func (flow *CustomerOnboardingConnectorFlow) GetSteps() []dex.StepDef {
 	return []dex.StepDef{
-		dex.DefineStartStep(connector.MustNewQueryStep(connector.QueryStepConfig[Input, httpconnector.Request, httpconnector.Response]{
+		dex.DefineStartStep(httpconnector.NewQueryStep(httpconnector.QueryStepConfig[Input]{
 			StepType: readCustomerProfileStepType,
 			Presentation: connector.StepPresentation{
 				GroupID: "onboarding", GroupLabel: "Onboarding",
 				Explanation: "Read the customer profile from the configured provider.",
 			},
-			Operation: flow.client.Query(), Connection: flow.providerConnection, BuildInput: buildProfileQuery,
-			Branches: []connector.BranchTarget[profileStepOutput]{
-				connector.GoToBranch(httpconnector.QueryBranchSucceeded, connector.StepRef[profileStepOutput](grantCustomerCreditsStepType)),
-				connector.GoToBranch(httpconnector.QueryBranchFailed, ProfileReadFailedStep{}),
-				connector.GoToBranch(httpconnector.QueryBranchDefect, ProfileReadFailedStep{}),
-			},
+			Connection: flow.connection, BuildInput: buildProfileQuery,
+			Succeeded: connector.GoTo(connector.StepRef[profileStepOutput](grantCustomerCreditsStepType)),
+			Failed:    connector.GoTo(ProfileReadFailedStep{}),
+			Defect:    connector.GoTo(ProfileReadFailedStep{}),
 		})),
-		dex.DefineStep(connector.MustNewMutationStep(connector.MutationStepConfig[profileStepOutput, httpconnector.Request, httpconnector.Response]{
+		dex.DefineStep(httpconnector.NewMutationStep(httpconnector.MutationStepConfig[profileStepOutput]{
 			StepType: grantCustomerCreditsStepType,
 			Presentation: connector.StepPresentation{
 				GroupID: "onboarding", GroupLabel: "Onboarding",
 				Explanation: "Grant credits through an idempotent provider mutation.",
 			},
-			Operation: flow.client.Mutation(), Connection: flow.providerConnection, BuildInput: buildGrantMutation,
-			Branches: []connector.BranchTarget[grantStepOutput]{
-				connector.GoToBranch(httpconnector.MutationBranchSucceeded, CreditGrantSucceededStep{}),
-				connector.GoToBranch(httpconnector.MutationBranchRejected, CreditGrantFailedStep{}),
-				connector.GoToBranch(httpconnector.MutationBranchUncertain, connector.StepRef[grantStepOutput](reconcileCreditGrantStepType)),
-				connector.GoToBranch(httpconnector.MutationBranchDefect, CreditGrantFailedStep{}),
-			},
+			Connection: flow.connection, BuildInput: buildGrantMutation,
+			Succeeded:       connector.GoTo(CreditGrantSucceededStep{}),
+			Rejected:        connector.GoTo(CreditGrantFailedStep{}),
+			Uncertain:       connector.GoTo(connector.StepRef[grantStepOutput](reconcileCreditGrantStepType)),
+			Defect:          connector.GoTo(CreditGrantFailedStep{}),
 			ResultAttribute: &CreditGrantResult,
 			StepOptionsOverride: &dex.StepOptions{
 				ExecuteFailure: dex.ProceedToOnExecuteFailure(GrantExecuteFailedStep{}, nil),
 			},
 		})),
-		dex.DefineStep(connector.MustNewQueryStep(connector.QueryStepConfig[grantStepOutput, httpconnector.Request, httpconnector.Response]{
+		dex.DefineStep(httpconnector.NewQueryStep(httpconnector.QueryStepConfig[grantStepOutput]{
 			StepType: reconcileCreditGrantStepType,
 			Presentation: connector.StepPresentation{
 				GroupID: "recovery", GroupLabel: "Recovery",
 				Explanation: "Reconcile an uncertain credit grant without repeating the mutation.",
 			},
-			Operation: flow.client.Query(), Connection: flow.providerConnection, BuildInput: buildReconciliationQuery,
-			Branches: []connector.BranchTarget[reconcileStepOutput]{
-				connector.GoToBranch(httpconnector.QueryBranchSucceeded, CreditGrantReconciledStep{}),
-				connector.GoToBranch(httpconnector.QueryBranchFailed, CreditGrantReconcileFailedStep{}),
-				connector.GoToBranch(httpconnector.QueryBranchDefect, CreditGrantReconcileFailedStep{}),
-			},
+			Connection: flow.connection, BuildInput: buildReconciliationQuery,
+			Succeeded: connector.GoTo(CreditGrantReconciledStep{}),
+			Failed:    connector.GoTo(CreditGrantReconcileFailedStep{}),
+			Defect:    connector.GoTo(CreditGrantReconcileFailedStep{}),
 		})),
 		dex.DefineStep(ProfileReadFailedStep{}),
 		dex.DefineStep(CreditGrantSucceededStep{}),

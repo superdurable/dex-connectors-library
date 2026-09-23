@@ -28,7 +28,6 @@ type Manifest struct {
 type Metadata struct {
 	Name        string `yaml:"name" json:"name"`
 	DisplayName string `yaml:"displayName" json:"displayName"`
-	Version     string `yaml:"version" json:"version"`
 	Description string `yaml:"description" json:"description"`
 }
 
@@ -79,6 +78,8 @@ type Field struct {
 type Operation struct {
 	Name            string            `yaml:"name" json:"name"`
 	GoName          string            `yaml:"goName" json:"goName"`
+	InputType       string            `yaml:"inputType" json:"inputType"`
+	OutputType      string            `yaml:"outputType" json:"outputType"`
 	Kind            string            `yaml:"kind" json:"kind"`
 	Description     string            `yaml:"description" json:"description"`
 	Idempotency     string            `yaml:"idempotency" json:"idempotency"`
@@ -116,7 +117,6 @@ var (
 	operationPattern = regexp.MustCompile(`^[a-z][A-Za-z0-9]+$`)
 	goNamePattern    = regexp.MustCompile(`^[A-Z][A-Za-z0-9]*$`)
 	fieldNamePattern = regexp.MustCompile(`^[a-z][A-Za-z0-9_]*$`)
-	versionPattern   = regexp.MustCompile(`^v[0-9]+\.[0-9]+\.[0-9]+([+-].*)?$`)
 )
 
 func Decode(reader io.Reader) (Manifest, error) {
@@ -148,9 +148,6 @@ func (manifest Manifest) Validate() error {
 	}
 	if strings.TrimSpace(manifest.Metadata.DisplayName) == "" || strings.TrimSpace(manifest.Metadata.Description) == "" {
 		problems = append(problems, "metadata.displayName and metadata.description are required")
-	}
-	if !versionPattern.MatchString(manifest.Metadata.Version) {
-		problems = append(problems, "metadata.version must be a v-prefixed semantic version")
 	}
 	if strings.TrimSpace(manifest.Spec.Provider) == "" {
 		problems = append(problems, "spec.provider is required")
@@ -203,6 +200,9 @@ func (manifest Manifest) Validate() error {
 			problems = append(problems, operation.Name+": goName must be exported and unique")
 		}
 		seenOperationGoNames[operation.GoName] = true
+		if !goNamePattern.MatchString(operation.InputType) || !goNamePattern.MatchString(operation.OutputType) {
+			problems = append(problems, operation.Name+": inputType and outputType must name exported local Go types")
+		}
 		if operation.Kind != "query" && operation.Kind != "mutation" {
 			problems = append(problems, operation.Name+": kind must be query or mutation")
 		}

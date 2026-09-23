@@ -209,6 +209,50 @@ def write_github_output(path: Path, plan: ReleasePlan) -> None:
     )
 
 
+def validate_connector(component_path: str, sdk_module: str) -> str:
+    path = Path(component_path)
+    if not (path / "go.mod").is_file():
+        raise ValueError(f"connector is not a Go module: {component_path}")
+    environment = dict(os.environ)
+    environment["GOWORK"] = "off"
+    result = subprocess.run(
+        ("go", "mod", "edit", "-json"),
+        cwd=path,
+        env=environment,
+        check=True,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    module = json.loads(result.stdout)
+    if module.get("Replace"):
+        raise ValueError("connector modules cannot contain replace directives")
+    sdk_requirements = [
+        requirement
+        for requirement in module.get("Require") or []
+        if requirement.get("Path") == sdk_module
+    ]
+    if len(sdk_requirements) != 1:
+        raise ValueError(f"connector must require exactly one {sdk_module} version")
+    version = str(sdk_requirements[0].get("Version") or "")
+    parse_version(version)
+    sdk_tag = f"sdk/go/{version}"
+    if git("show-ref", "--verify", "--quiet", f"refs/tags/{sdk_tag}", check=False).returncode != 0:
+        raise ValueError(f"connector SDK release tag is missing: {sdk_tag}")
+    if git("merge-base", "--is-ancestor", sdk_tag, "HEAD", check=False).returncode != 0:
+        raise ValueError(f"connector SDK release is not reachable from HEAD: {sdk_tag}")
+    subprocess.run(
+        ("go", "mod", "download", f"{sdk_module}@{version}"),
+        cwd=path,
+        env=environment,
+        check=True,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    return version
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -223,6 +267,9 @@ def main() -> int:
     notes_parser.add_argument("--plan", type=Path, required=True)
     notes_parser.add_argument("--repository", required=True)
     notes_parser.add_argument("--output", type=Path, required=True)
+    validate_parser = subparsers.add_parser("validate-connector")
+    validate_parser.add_argument("--component-path", required=True)
+    validate_parser.add_argument("--sdk-module", required=True)
     arguments = parser.parse_args()
     try:
         if arguments.command == "plan":
@@ -231,13 +278,15 @@ def main() -> int:
             plan = create_plan(arguments.component_path, arguments.tag_prefix, arguments.bump)
             arguments.json_output.write_text(json.dumps(asdict(plan), indent=2) + "\n", encoding="utf-8")
             write_github_output(arguments.github_output, plan)
-        else:
+        elif arguments.command == "notes":
             raw = json.loads(arguments.plan.read_text(encoding="utf-8"))
             raw["commits"] = tuple(raw["commits"])
             plan = ReleasePlan(**raw)
             notes, has_breaking_changes = release_notes(plan, arguments.repository)
             validate_breaking_bump(plan, has_breaking_changes)
             arguments.output.write_text(notes, encoding="utf-8")
+        else:
+            validate_connector(arguments.component_path, arguments.sdk_module)
     except (OSError, ValueError, subprocess.CalledProcessError, json.JSONDecodeError) as error:
         print(error, file=sys.stderr)
         return 1

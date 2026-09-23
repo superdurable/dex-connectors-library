@@ -3,7 +3,6 @@ kind: Connector
 metadata:
   name: openai
   displayName: OpenAI
-  version: v0.1.0-alpha.1
   description: OpenAI Responses API with structured output, usage, and recovery metadata.
 spec:
   provider: openai
@@ -42,6 +41,8 @@ spec:
   operations:
     - name: createResponse
       goName: CreateResponse
+      inputType: CreateRequest
+      outputType: Response
       kind: mutation
       description: Create an ordinary or structured model response.
       idempotency: required
@@ -60,6 +61,8 @@ spec:
         retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 5m}
     - name: retrieveResponse
       goName: RetrieveResponse
+      inputType: RetrieveRequest
+      outputType: Response
       kind: query
       description: Retrieve a response by provider response ID.
       idempotency: none

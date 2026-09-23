@@ -13,10 +13,7 @@ import (
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
-const (
-	ConnectorID      = "openai"
-	ConnectorVersion = "v0.1.0-alpha.1"
-)
+const ConnectorID = "openai"
 
 type Config struct {
 	Endpoint         string `json:"endpoint,omitempty" yaml:"endpoint,omitempty"`
@@ -27,6 +24,40 @@ type Config struct {
 type Credentials struct {
 	APIKey connector.SecretString
 }
+
+type Connection struct {
+	client    *Client
+	reference connector.ConnectionRef
+}
+
+func NewConnection(client *Client, reference connector.ConnectionRef) (Connection, error) {
+	if client == nil {
+		return Connection{}, fmt.Errorf("openai connector client is required")
+	}
+	if err := reference.Validate(); err != nil {
+		return Connection{}, fmt.Errorf("openai connector connection: %w", err)
+	}
+	return Connection{client: client, reference: reference}, nil
+}
+
+func (connection Connection) validate() error {
+	if connection.client == nil {
+		return fmt.Errorf("openai connector connection is required")
+	}
+	return connection.reference.Validate()
+}
+
+func (Connection) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("openai connector connections cannot be serialized")
+}
+func (Connection) MarshalText() ([]byte, error) {
+	return nil, fmt.Errorf("openai connector connections cannot be serialized")
+}
+func (Connection) MarshalYAML() (any, error) {
+	return nil, fmt.Errorf("openai connector connections cannot be serialized")
+}
+func (Connection) String() string   { return "openai.Connection{[REDACTED]}" }
+func (Connection) GoString() string { return "openai.Connection{[REDACTED]}" }
 
 func DefaultConfig() Config {
 	return Config{
@@ -97,6 +128,46 @@ var CreateResponseDefinition = connector.MutationDefinition{
 	Progress:        connector.ProgressCapabilities{Structured: true, Text: true},
 }
 
+type CreateResponseStepOutput[IN any] = connector.MutationStepOutput[IN, Response]
+
+type CreateResponseStepConfig[IN any] struct {
+	connector.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	StepType                              string                                             `connector:"stepType"`
+	Presentation                          connector.StepPresentation                         `connector:"presentation"`
+	Connection                            Connection                                         `connector:"connection"`
+	BuildInput                            func(IN) (CreateRequest, error)                    `connector:"buildInput"`
+	Completed                             connector.Target[CreateResponseStepOutput[IN]]     `connector:"branch=completed"`
+	Failed                                connector.Target[CreateResponseStepOutput[IN]]     `connector:"branch=failed"`
+	Uncertain                             connector.Target[CreateResponseStepOutput[IN]]     `connector:"branch=uncertain"`
+	Defect                                connector.Target[CreateResponseStepOutput[IN]]     `connector:"branch=defect"`
+	ResultAttribute                       *dex.Attribute[connector.MutationResult[Response]] `connector:"resultAttribute"`
+	ProgressStream                        *dex.Stream[connector.ProgressUpdate]              `connector:"progressStream"`
+	TextStream                            *dex.Stream[string]                                `connector:"textStream"`
+	TextOptions                           []dex.BufferedTextStreamOption                     `connector:"textOptions"`
+	StepOptionsOverride                   *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewCreateResponseStep[IN any](config CreateResponseStepConfig[IN]) connector.MutationStep[IN, CreateRequest, Response] {
+	if err := config.Connection.validate(); err != nil {
+		panic(err)
+	}
+	return connector.MustNewMutationStep(connector.MutationStepConfig[IN, CreateRequest, Response]{
+		StepType: config.StepType, Presentation: config.Presentation,
+		Operation: config.Connection.client.CreateResponse(), Connection: config.Connection.reference,
+		BuildInput: config.BuildInput,
+		Branches: []connector.BranchTarget[CreateResponseStepOutput[IN]]{
+			config.Completed.BranchTarget(CreateResponseBranchCompleted),
+			config.Failed.BranchTarget(CreateResponseBranchFailed),
+			config.Uncertain.BranchTarget(CreateResponseBranchUncertain),
+			config.Defect.BranchTarget(CreateResponseBranchDefect),
+		},
+		ResultAttribute: config.ResultAttribute,
+		ProgressStream:  config.ProgressStream,
+		TextStream:      config.TextStream, TextOptions: config.TextOptions,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
 const RetrieveResponseBranchFound connector.BranchID = "found"
 const RetrieveResponseBranchFailed connector.BranchID = "failed"
 const RetrieveResponseBranchDefect connector.BranchID = "defect"
@@ -116,4 +187,37 @@ var RetrieveResponseDefinition = connector.QueryDefinition{
 	},
 	ResultAttribute: connector.RequirementOptional,
 	Progress:        connector.ProgressCapabilities{Structured: false, Text: false},
+}
+
+type RetrieveResponseStepOutput[IN any] = connector.QueryStepOutput[IN, Response]
+
+type RetrieveResponseStepConfig[IN any] struct {
+	connector.QueryFactoryConfigMarker `connector:"factory=query"`
+	StepType                           string                                           `connector:"stepType"`
+	Presentation                       connector.StepPresentation                       `connector:"presentation"`
+	Connection                         Connection                                       `connector:"connection"`
+	BuildInput                         func(IN) (RetrieveRequest, error)                `connector:"buildInput"`
+	Found                              connector.Target[RetrieveResponseStepOutput[IN]] `connector:"branch=found"`
+	Failed                             connector.Target[RetrieveResponseStepOutput[IN]] `connector:"branch=failed"`
+	Defect                             connector.Target[RetrieveResponseStepOutput[IN]] `connector:"branch=defect"`
+	ResultAttribute                    *dex.Attribute[connector.QueryResult[Response]]  `connector:"resultAttribute"`
+	StepOptionsOverride                *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewRetrieveResponseStep[IN any](config RetrieveResponseStepConfig[IN]) connector.QueryStep[IN, RetrieveRequest, Response] {
+	if err := config.Connection.validate(); err != nil {
+		panic(err)
+	}
+	return connector.MustNewQueryStep(connector.QueryStepConfig[IN, RetrieveRequest, Response]{
+		StepType: config.StepType, Presentation: config.Presentation,
+		Operation: config.Connection.client.RetrieveResponse(), Connection: config.Connection.reference,
+		BuildInput: config.BuildInput,
+		Branches: []connector.BranchTarget[RetrieveResponseStepOutput[IN]]{
+			config.Found.BranchTarget(RetrieveResponseBranchFound),
+			config.Failed.BranchTarget(RetrieveResponseBranchFailed),
+			config.Defect.BranchTarget(RetrieveResponseBranchDefect),
+		},
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }

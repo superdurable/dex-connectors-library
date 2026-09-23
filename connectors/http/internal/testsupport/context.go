@@ -10,27 +10,18 @@ import (
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
-// DexContext supplies deterministic Dex identity for connector unit tests.
 type DexContext struct {
 	context.Context
-	Flow       string
-	Run        string
-	Step       string
-	FromStep   string
-	AttemptNo  int32
-	StartedAt  time.Time
-	FirstAt    time.Time
-	Recovery   *dex.RecoveryErrorInfo
-	TimerFired bool
-	WaitFailed bool
+	Flow, Run, Step, FromStep string
+	AttemptNo                 int32
+	StartedAt, FirstAt        time.Time
+	Recovery                  *dex.RecoveryErrorInfo
+	TimerFired, WaitFailed    bool
 }
 
 func NewDexContext(flowID, stepExecutionID string) *DexContext {
 	now := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
-	return &DexContext{
-		Context: context.Background(), Flow: flowID, Run: "run-1", Step: stepExecutionID,
-		AttemptNo: 1, StartedAt: now, FirstAt: now,
-	}
+	return &DexContext{Context: context.Background(), Flow: flowID, Run: "run-1", Step: stepExecutionID, AttemptNo: 1, StartedAt: now, FirstAt: now}
 }
 
 func (ctx *DexContext) FlowID() string                              { return ctx.Flow }

@@ -24,8 +24,8 @@ import (
 	httpconnector "github.com/superdurable/dex-connectors-library/connectors/http"
 	openai "github.com/superdurable/dex-connectors-library/connectors/openai"
 	customeronboarding "github.com/superdurable/dex-connectors-library/examples/customer-onboarding"
+	mockprovider "github.com/superdurable/dex-connectors-library/examples/customer-onboarding/internal/mockprovider"
 	connector "github.com/superdurable/dex-connectors-library/sdk/go"
-	mockprovider "github.com/superdurable/dex-connectors-library/test/mock-provider"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -33,8 +33,8 @@ import (
 func TestQueryAndMutationRetriesUseRealDexIdentity(t *testing.T) {
 	provider := mockprovider.StartWithOptions(mockprovider.Options{ProfileFailures: 1, MutationRateLimits: 1})
 	defer provider.Close()
-	connection, httpClient := connectorClient(t, provider)
-	flow := customeronboarding.NewCustomerOnboardingConnectorFlow(httpClient, connection)
+	_, connection, _ := connectorClient(t, provider)
+	flow := customeronboarding.NewCustomerOnboardingConnectorFlow(connection)
 	harness := newDexHarness(t, []dex.Flow{flow})
 	harness.startWorker(t)
 
@@ -53,8 +53,8 @@ func TestQueryAndMutationRetriesUseRealDexIdentity(t *testing.T) {
 func TestUnknownMutationUsesExplicitRecoveryAndCommittedReceipt(t *testing.T) {
 	provider := mockprovider.Start()
 	defer provider.Close()
-	connection, httpClient := connectorClient(t, provider)
-	flow := customeronboarding.NewCustomerOnboardingConnectorFlow(httpClient, connection)
+	_, connection, _ := connectorClient(t, provider)
+	flow := customeronboarding.NewCustomerOnboardingConnectorFlow(connection)
 	harness := newDexHarness(t, []dex.Flow{flow})
 	harness.startWorker(t)
 
@@ -69,8 +69,8 @@ func TestUnknownMutationUsesExplicitRecoveryAndCommittedReceipt(t *testing.T) {
 func TestFlowContinuesAfterWorkerRestart(t *testing.T) {
 	provider := mockprovider.StartWithOptions(mockprovider.Options{RecoveryFailures: 1})
 	defer provider.Close()
-	connection, httpClient := connectorClient(t, provider)
-	flow := customeronboarding.NewCustomerOnboardingConnectorFlow(httpClient, connection)
+	_, connection, _ := connectorClient(t, provider)
+	flow := customeronboarding.NewCustomerOnboardingConnectorFlow(connection)
 	harness := newDexHarness(t, []dex.Flow{flow})
 	harness.startWorker(t)
 
@@ -97,7 +97,7 @@ func TestFlowContinuesAfterWorkerRestart(t *testing.T) {
 func TestFlowRPCCannotCallProvider(t *testing.T) {
 	provider := mockprovider.Start()
 	defer provider.Close()
-	connection, httpClient := connectorClient(t, provider)
+	connection, _, httpClient := connectorClient(t, provider)
 	flow := &rpcBoundaryFlow{query: httpClient.Query()}
 	harness := newDexHarness(t, []dex.Flow{flow})
 	harness.startWorker(t)
@@ -157,7 +157,9 @@ func TestOpenAIStreamingWritesRealDexStreams(t *testing.T) {
 		connection: {APIKey: connector.NewSecretString("test-key")},
 	})
 	require.NoError(t, err)
-	flow := &openAIStreamingFlow{client: client, connection: connection}
+	typedConnection, err := openai.NewConnection(client, connection)
+	require.NoError(t, err)
+	flow := &openAIStreamingFlow{connection: typedConnection}
 	harness := newDexHarness(t, []dex.Flow{flow})
 	harness.startWorker(t)
 	flowID := uniqueFlowID("openai-stream")
@@ -299,26 +301,23 @@ type openAIStreamingOutput struct {
 
 type openAIStreamingFlow struct {
 	dex.FlowDefaults
-	client     *openai.Client
-	connection connector.ConnectionRef
+	connection openai.Connection
 }
 
 func (flow *openAIStreamingFlow) GetSteps() []dex.StepDef {
-	step := connector.MustNewMutationStep(connector.MutationStepConfig[struct{}, openai.CreateRequest, openai.Response]{
+	step := openai.NewCreateResponseStep(openai.CreateResponseStepConfig[struct{}]{
 		StepType: "OpenAIStreaming",
 		Presentation: connector.StepPresentation{
 			GroupID: "openai", GroupLabel: "OpenAI", Explanation: "Create a streaming OpenAI response.",
 		},
-		Operation: flow.client.CreateResponse(), Connection: flow.connection,
+		Connection: flow.connection,
 		BuildInput: func(struct{}) (openai.CreateRequest, error) {
 			return openai.CreateRequest{Model: "gpt-test", Input: "stream this"}, nil
 		},
-		Branches: []connector.BranchTarget[connector.MutationStepOutput[struct{}, openai.Response]]{
-			connector.GoToBranch(openai.CreateResponseBranchCompleted, openAIStreamingSucceededStep{}),
-			connector.GoToBranch(openai.CreateResponseBranchFailed, openAIStreamingFailedStep{}),
-			connector.GoToBranch(openai.CreateResponseBranchUncertain, openAIStreamingFailedStep{}),
-			connector.GoToBranch(openai.CreateResponseBranchDefect, openAIStreamingFailedStep{}),
-		},
+		Completed:       connector.GoTo(openAIStreamingSucceededStep{}),
+		Failed:          connector.GoTo(openAIStreamingFailedStep{}),
+		Uncertain:       connector.GoTo(openAIStreamingFailedStep{}),
+		Defect:          connector.GoTo(openAIStreamingFailedStep{}),
 		ResultAttribute: &openAIResult, ProgressStream: &openAIProgress, TextStream: &openAIText,
 		TextOptions: []dex.BufferedTextStreamOption{dex.BufferedTextStreamMaxBytes(1)},
 	})
@@ -637,7 +636,7 @@ func (harness *dexHarness) stopWorker(t *testing.T) {
 	harness.workerResult = nil
 }
 
-func connectorClient(t *testing.T, provider *mockprovider.Provider) (connector.ConnectionRef, *httpconnector.Client) {
+func connectorClient(t *testing.T, provider *mockprovider.Provider) (connector.ConnectionRef, httpconnector.Connection, *httpconnector.Client) {
 	t.Helper()
 	connection := connector.ConnectionRef{Provider: "mock", Name: "default"}
 	client, err := httpconnector.New(httpconnector.Config{
@@ -646,7 +645,9 @@ func connectorClient(t *testing.T, provider *mockprovider.Provider) (connector.C
 		connection: {APIKey: connector.NewSecretString("test-key")},
 	})
 	require.NoError(t, err)
-	return connection, client
+	typedConnection, err := httpconnector.NewConnection(client, connection)
+	require.NoError(t, err)
+	return connection, typedConnection, client
 }
 
 func runCustomerOnboarding(

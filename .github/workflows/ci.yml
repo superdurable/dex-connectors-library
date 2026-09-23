@@ -20,6 +20,8 @@ jobs:
           cache-dependency-path: |
             go.sum
             sdk/go/go.sum
+            connectors/http/go.sum
+            connectors/openai/go.sum
       - name: Test standalone Connector Go SDK module
         working-directory: sdk/go
         env:
@@ -29,11 +31,26 @@ jobs:
           go vet ./...
       - name: Test component release planning
         run: python3 -m unittest script/release/component_release_test.py
+      - name: Test standalone HTTP connector module
+        working-directory: connectors/http
+        env:
+          GOWORK: "off"
+        run: |
+          go test -race ./...
+          go vet ./...
+      - name: Test standalone OpenAI connector module
+        working-directory: connectors/openai
+        env:
+          GOWORK: "off"
+        run: |
+          go test -race ./...
+          go vet ./...
       - run: go test -race ./...
       - run: go vet ./...
       - run: go run ./cmd/connectorctl validate connectors/http/connector.yaml connectors/openai/connector.yaml
       - run: go run ./cmd/connectorctl generate --check connectors/http/connector.yaml
       - run: go run ./cmd/connectorctl generate --check connectors/openai/connector.yaml
+      - run: go run ./cmd/connectorctl release-workflow --check connectors .github/workflows/release-connector.yml
       - run: go run ./cmd/connectorctl catalog connectors
 
   dex-integration:
@@ -44,6 +61,11 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+          cache-dependency-path: |
+            go.sum
+            sdk/go/go.sum
+            connectors/http/go.sum
+            connectors/openai/go.sum
       - name: Download Dex and Temporal CLIs
         run: |
           curl --fail --location --output dexcli.tar.gz \

@@ -52,6 +52,21 @@ class ComponentReleaseTest(unittest.TestCase):
         self.addCleanup(os.chdir, previous)
         return release.create_plan("sdk/go", "sdk/go/", bump)
 
+    def connector(self, go_mod_suffix: str = "") -> Path:
+        self.git("tag", "sdk/go/v0.1.0")
+        module = self.repository / "connectors/openai"
+        module.mkdir(parents=True)
+        (module / "go.mod").write_text(
+            "module example.com/connectors/openai\n\n"
+            "go 1.24\n\n"
+            "require github.com/superdurable/dex-connectors-library/sdk/go v0.1.0\n"
+            + go_mod_suffix,
+            encoding="utf-8",
+        )
+        (module / "connector.go").write_text("package openai\n", encoding="utf-8")
+        self.commit("connector(openai): add connector")
+        return module
+
     def test_first_release_is_v010(self) -> None:
         plan = self.plan("minor")
         self.assertEqual(plan.version, "v0.1.0")
@@ -107,6 +122,78 @@ class ComponentReleaseTest(unittest.TestCase):
         _, breaking = release.release_notes(plan, "")
         with self.assertRaisesRegex(ValueError, "requires a major bump"):
             release.validate_breaking_bump(plan, breaking)
+
+    def test_connector_requires_released_sdk_without_replace(self) -> None:
+        self.connector()
+        previous = Path.cwd()
+        os.chdir(self.repository)
+        self.addCleanup(os.chdir, previous)
+        original_run = subprocess.run
+
+        def run_without_network(*arguments: object, **keywords: object) -> subprocess.CompletedProcess[str]:
+            command = arguments[0]
+            if isinstance(command, tuple) and command[:3] == ("go", "mod", "download"):
+                return subprocess.CompletedProcess(command, 0, "", "")
+            return original_run(*arguments, **keywords)
+
+        release.subprocess.run = run_without_network
+        self.addCleanup(setattr, release.subprocess, "run", original_run)
+        self.assertEqual(
+            release.validate_connector(
+                "connectors/openai", "github.com/superdurable/dex-connectors-library/sdk/go"
+            ),
+            "v0.1.0",
+        )
+
+    def test_connector_rejects_replace_and_pseudo_version(self) -> None:
+        module = self.connector(
+            "\nreplace github.com/superdurable/dex-connectors-library/sdk/go => ../../sdk/go\n"
+        )
+        previous = Path.cwd()
+        os.chdir(self.repository)
+        self.addCleanup(os.chdir, previous)
+        with self.assertRaisesRegex(ValueError, "replace directives"):
+            release.validate_connector(
+                "connectors/openai", "github.com/superdurable/dex-connectors-library/sdk/go"
+            )
+        (module / "go.mod").write_text(
+            "module example.com/connectors/openai\n\n"
+            "go 1.24\n\n"
+            "require github.com/superdurable/dex-connectors-library/sdk/go v0.0.0-20260923000000-deadbeefdead\n",
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(ValueError, "invalid stable semantic version"):
+            release.validate_connector(
+                "connectors/openai", "github.com/superdurable/dex-connectors-library/sdk/go"
+            )
+
+    def test_connector_plan_ignores_other_component_tags(self) -> None:
+        self.connector()
+        self.git("tag", "connectors/http/v9.9.9")
+        previous = Path.cwd()
+        os.chdir(self.repository)
+        self.addCleanup(os.chdir, previous)
+        plan = release.create_plan("connectors/openai", "connectors/openai/", "minor")
+        self.assertEqual(plan.version, "v0.1.0")
+        self.assertEqual(plan.tag, "connectors/openai/v0.1.0")
+
+    def test_one_commit_can_enter_each_changed_connector_release(self) -> None:
+        openai = self.repository / "connectors/openai"
+        http = self.repository / "connectors/http"
+        openai.mkdir(parents=True)
+        http.mkdir(parents=True)
+        (openai / "go.mod").write_text("module example.com/openai\n\ngo 1.24\n", encoding="utf-8")
+        (http / "go.mod").write_text("module example.com/http\n\ngo 1.24\n", encoding="utf-8")
+        (openai / "connector.go").write_text("package openai\n", encoding="utf-8")
+        (http / "connector.go").write_text("package httpconnector\n", encoding="utf-8")
+        self.commit("tooling: update both connector modules")
+        previous = Path.cwd()
+        os.chdir(self.repository)
+        self.addCleanup(os.chdir, previous)
+        openai_plan = release.create_plan("connectors/openai", "connectors/openai/", "minor")
+        http_plan = release.create_plan("connectors/http", "connectors/http/", "minor")
+        self.assertEqual(openai_plan.commits, http_plan.commits)
+        self.assertEqual(len(openai_plan.commits), 1)
 
 
 if __name__ == "__main__":

@@ -1,9 +1,17 @@
-# v0.1.0-alpha.1 acceptance
+# Connector modules v0.1.0 acceptance
 
 ## Automated checks
 
 ```bash
 cd sdk/go
+GOWORK=off go test -race ./...
+GOWORK=off go vet ./...
+cd ../..
+
+cd connectors/http
+GOWORK=off go test -race ./...
+GOWORK=off go vet ./...
+cd ../openai
 GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
 cd ../..
@@ -14,12 +22,18 @@ go vet ./...
 go run ./cmd/connectorctl validate connectors/http/connector.yaml connectors/openai/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/http/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/openai/connector.yaml
+go run ./cmd/connectorctl release-workflow --check connectors .github/workflows/release-connector.yml
 go run ./cmd/connectorctl catalog connectors
 ```
 
 The suite must prove:
 
-- the SDK compiles and tests independently of `go.work`;
+- the SDK, HTTP connector, and OpenAI connector compile and test independently
+  of `go.work`;
+- generated operation-specific factories expose typed branch fields and typed,
+  non-serializable connector Connections;
+- the generated release dropdown matches the catalog and release artifacts are
+  deterministic, versioned, and checksummed;
 - typed `connector.GoTo` targets can be converted into generic branch targets
   without exposing their underlying Dex Step;
 - component release planning handles first, minor, patch, major, no-change,
@@ -94,6 +108,16 @@ The integration suite verifies:
    by the Flow.
 6. Accept the known limitation that dexcli 0.11.1 cannot yet render factory
    Steps in Dex Web 2.0.
+
+## Release acceptance
+
+1. Run `Release Connector` for `http` with the default minor bump and confirm
+   tag `connectors/http/v0.1.0` plus its release artifact.
+2. Run it for `openai` and confirm tag `connectors/openai/v0.1.0`.
+3. In clean temporary modules, download each public tag with `GOWORK=off` and
+   compile its operation-specific factory example.
+4. Confirm each release note contains only commits that changed that connector
+   and retains `## Breaking Changes` with `None.` when appropriate.
 
 Only after this API acceptance should the separate Dex CLI analyzer patch
 begin. After its patch release, regenerate Customer Onboarding schema 2.0,

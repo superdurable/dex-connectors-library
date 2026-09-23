@@ -31,7 +31,7 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 	write("\t\"time\"\n\n")
 	write("\tconnector \"github.com/superdurable/dex-connectors-library/sdk/go\"\n")
 	write("\t\"github.com/superdurable/dex/sdk-go/dex\"\n)\n\n")
-	write("const (\n\tConnectorID = %s\n\tConnectorVersion = %s\n)\n\n", strconv.Quote(manifest.Metadata.Name), strconv.Quote(manifest.Metadata.Version))
+	write("const ConnectorID = %s\n\n", strconv.Quote(manifest.Metadata.Name))
 	for _, field := range append(append([]schema.Field(nil), manifest.Spec.Configuration.Fields...), manifest.Spec.Auth.Fields...) {
 		if field.Type != "enum" {
 			continue
@@ -61,6 +61,19 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 		write("\t%s %s\n", field.GoName, goType(field))
 	}
 	write("}\n\n")
+	write("type Connection struct {\n\tclient *Client\n\treference connector.ConnectionRef\n}\n\n")
+	write("func NewConnection(client *Client, reference connector.ConnectionRef) (Connection, error) {\n")
+	write("\tif client == nil { return Connection{}, fmt.Errorf(%q) }\n", manifest.Metadata.Name+" connector client is required")
+	write("\tif err := reference.Validate(); err != nil { return Connection{}, fmt.Errorf(%q, err) }\n", manifest.Metadata.Name+" connector connection: %w")
+	write("\treturn Connection{client: client, reference: reference}, nil\n}\n\n")
+	write("func (connection Connection) validate() error {\n")
+	write("\tif connection.client == nil { return fmt.Errorf(%q) }\n", manifest.Metadata.Name+" connector connection is required")
+	write("\treturn connection.reference.Validate()\n}\n\n")
+	write("func (Connection) MarshalJSON() ([]byte, error) { return nil, fmt.Errorf(%q) }\n", manifest.Metadata.Name+" connector connections cannot be serialized")
+	write("func (Connection) MarshalText() ([]byte, error) { return nil, fmt.Errorf(%q) }\n", manifest.Metadata.Name+" connector connections cannot be serialized")
+	write("func (Connection) MarshalYAML() (any, error) { return nil, fmt.Errorf(%q) }\n", manifest.Metadata.Name+" connector connections cannot be serialized")
+	write("func (Connection) String() string { return %q }\n", manifest.Spec.Codegen.Go.Package+".Connection{[REDACTED]}")
+	write("func (Connection) GoString() string { return %q }\n\n", manifest.Spec.Codegen.Go.Package+".Connection{[REDACTED]}")
 
 	write("func DefaultConfig() Config {\n\treturn Config{\n")
 	for _, field := range manifest.Spec.Configuration.Fields {
@@ -125,6 +138,7 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 		write("\tResultAttribute: connector.Requirement%s,\n", title(operation.ResultAttribute))
 		write("\tProgress: connector.ProgressCapabilities{Structured: %t, Text: %t},\n", contains(operation.Progress, "structured"), contains(operation.Progress, "text"))
 		write("}\n\n")
+		writeOperationFactory(&output, operation)
 	}
 
 	formatted, err := format.Source(output.Bytes())
@@ -132,6 +146,55 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 		return nil, fmt.Errorf("format generated connector: %w\n%s", err, output.String())
 	}
 	return formatted, nil
+}
+
+func writeOperationFactory(output *bytes.Buffer, operation schema.Operation) {
+	write := func(format string, values ...any) { fmt.Fprintf(output, format, values...) }
+	kind := title(operation.Kind)
+	write("type %sStepOutput[IN any] = connector.%sStepOutput[IN, %s]\n\n", operation.GoName, kind, operation.OutputType)
+	write("type %sStepConfig[IN any] struct {\n", operation.GoName)
+	write("\tconnector.%sFactoryConfigMarker `connector:\"factory=%s\"`\n", kind, operation.Kind)
+	write("\tStepType string `connector:\"stepType\"`\n")
+	write("\tPresentation connector.StepPresentation `connector:\"presentation\"`\n")
+	write("\tConnection Connection `connector:\"connection\"`\n")
+	write("\tBuildInput func(IN) (%s, error) `connector:\"buildInput\"`\n", operation.InputType)
+	for _, branch := range operation.Branches {
+		write("\t%s connector.Target[%sStepOutput[IN]] `connector:\"branch=%s\"`\n", branch.GoName, operation.GoName, branch.ID)
+	}
+	if operation.ResultAttribute != "none" {
+		write("\tResultAttribute *dex.Attribute[connector.%sResult[%s]] `connector:\"resultAttribute\"`\n", kind, operation.OutputType)
+	}
+	if contains(operation.Progress, "structured") {
+		write("\tProgressStream *dex.Stream[connector.ProgressUpdate] `connector:\"progressStream\"`\n")
+	}
+	if contains(operation.Progress, "text") {
+		write("\tTextStream *dex.Stream[string] `connector:\"textStream\"`\n")
+		write("\tTextOptions []dex.BufferedTextStreamOption `connector:\"textOptions\"`\n")
+	}
+	write("\tStepOptionsOverride *dex.StepOptions `connector:\"stepOptionsOverride\"`\n")
+	write("}\n\n")
+	write("func New%sStep[IN any](config %sStepConfig[IN]) connector.%sStep[IN, %s, %s] {\n", operation.GoName, operation.GoName, kind, operation.InputType, operation.OutputType)
+	write("\tif err := config.Connection.validate(); err != nil { panic(err) }\n")
+	write("\treturn connector.MustNew%sStep(connector.%sStepConfig[IN, %s, %s]{\n", kind, kind, operation.InputType, operation.OutputType)
+	write("\t\tStepType: config.StepType, Presentation: config.Presentation,\n")
+	write("\t\tOperation: config.Connection.client.%s(), Connection: config.Connection.reference,\n", operation.GoName)
+	write("\t\tBuildInput: config.BuildInput,\n")
+	write("\t\tBranches: []connector.BranchTarget[%sStepOutput[IN]]{\n", operation.GoName)
+	for _, branch := range operation.Branches {
+		write("\t\t\tconfig.%s.BranchTarget(%sBranch%s),\n", branch.GoName, operation.GoName, branch.GoName)
+	}
+	write("\t\t},\n")
+	if operation.ResultAttribute != "none" {
+		write("\t\tResultAttribute: config.ResultAttribute,\n")
+	}
+	if contains(operation.Progress, "structured") {
+		write("\t\tProgressStream: config.ProgressStream,\n")
+	}
+	if contains(operation.Progress, "text") {
+		write("\t\tTextStream: config.TextStream, TextOptions: config.TextOptions,\n")
+	}
+	write("\t\tStepOptionsOverride: config.StepOptionsOverride,\n")
+	write("\t})\n}\n\n")
 }
 
 func goType(field schema.Field) string {

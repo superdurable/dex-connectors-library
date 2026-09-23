@@ -3,7 +3,6 @@ kind: Connector
 metadata:
   name: google-sheets-fixture
   displayName: Google Sheets Fixture
-  version: v0.1.0-alpha.1
   description: OAuth manifest fixture for generated connector metadata.
 spec:
   provider: google
@@ -58,6 +57,8 @@ spec:
   operations:
     - name: appendRows
       goName: AppendRows
+      inputType: AppendRowsInput
+      outputType: AppendRowsOutput
       kind: mutation
       description: Append rows to one spreadsheet.
       idempotency: required

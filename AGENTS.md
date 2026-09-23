@@ -47,6 +47,11 @@ behavior.
   or commit SHAs.
 - If a connector needs an SDK change, deliver and release the SDK first. Upgrade
   connectors in later PRs only after that SDK tag exists.
+- While discovering an SDK contract gap, develop the SDK and connector together
+  with `go.work` or a temporary local `replace` and run the full connector
+  verification. Never commit that `replace`. Before handoff, split the SDK
+  changes into a preceding SDK PR, merge and release its tag, then make the
+  connector PR pin that exact published SDK version.
 - Before release, test each module with GOWORK=off.
 - Release only from main with the generated GitHub workflows.
 - A v0 breaking release cannot be a patch. A v1+ breaking release requires a

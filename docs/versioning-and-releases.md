@@ -1,10 +1,8 @@
 # Go Module Versioning and Releases
 
 The repository publishes the Connector Go SDK and each connector as a separate
-Go module. This migration is staged: the SDK module is released first, then
-connector modules pin that published SDK version in later PRs. A Dex
-application can therefore depend only on the connector modules it uses, and
-connector releases do not force unrelated upgrades.
+Go module. A Dex application depends only on the connector modules it uses,
+and connector releases do not force unrelated upgrades.
 
 ## Module and tag identity
 
@@ -32,6 +30,24 @@ tag, calculates the requested semantic-version bump, and publishes path-scoped
 release notes. The first SDK release is `sdk/go/v0.1.0` and must use the default
 minor selection.
 
+The generated `Release Connector` workflow adds a static, sorted connector
+choice and a `minor|major|patch` choice. `minor` is the default. CI regenerates
+the workflow from the connector catalog and rejects drift, so adding a
+connector without adding its release choice cannot merge. The workflow:
+
+1. verifies generated code and the standalone connector with `GOWORK=off`;
+2. rejects `replace`, pseudo-version, branch, or SHA SDK dependencies;
+3. proves the exact SDK tag is reachable and downloadable;
+4. derives the next version from the latest reachable component tag;
+5. includes only commits that changed that connector directory;
+6. uploads `connector-release.json` and its SHA-256 digest;
+7. verifies the published Go module is downloadable.
+
+The release artifact contains the connector ID, complete versionless manifest,
+module path, release version and tag, source SHA, and source manifest digest.
+SuperVerse Catalog consumes that artifact instead of inferring a version from
+source files.
+
 Breaking changes use the exact lowercase `(breaking)` marker in a PR title,
 PR body, or direct commit message. A v0 breaking release cannot use a patch
 bump. At v1 or later, a breaking release requires a major bump and the Go
@@ -45,6 +61,20 @@ Run the SDK as a standalone consumer would:
 cd sdk/go
 GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
+```
+
+Run each connector the same way:
+
+```bash
+cd connectors/openai
+GOWORK=off go test -race ./...
+GOWORK=off go vet ./...
+```
+
+Regenerate the release dropdown after adding, moving, or deleting a connector:
+
+```bash
+go run ./cmd/connectorctl release-workflow connectors .github/workflows/release-connector.yml
 ```
 
 Release planning is covered by temporary-repository tests:
