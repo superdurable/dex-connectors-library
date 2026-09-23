@@ -11,6 +11,11 @@ alwaysApply: true
 - Connector modules depend on an exact published SDK version without replace,
   pseudo-version, branch, or commit SHA.
 - Release SDK changes before a later connector dependency-upgrade PR.
+- When discovering an SDK contract gap, develop SDK and connector changes
+  together with `go.work` or a temporary local `replace` and run the full
+  connector verification. Never commit that `replace`. Before handoff, split
+  the SDK changes into a preceding SDK PR, merge and release its tag, then pin
+  that exact published SDK version from the connector PR.
 - Run module verification with GOWORK=off; release only from main.
 - v0 breaking releases cannot be patch releases. v1+ breaking releases require
   a major module-path migration.
