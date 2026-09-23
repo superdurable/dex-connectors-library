@@ -60,6 +60,11 @@ make test-integration
 
 The integration suite verifies:
 
+- a standalone fixture connector consumes only the public SDK API to define
+  typed Connection/Credentials, Query/Mutation operations, and
+  operation-specific factories;
+- the fixture connector registers those factories in a real Dex Flow and
+  preserves Call ID, idempotency, Attribute, Stream, and retry behavior;
 - Customer Onboarding registers factory Steps with typed `StepRef` targets;
 - Query Retry succeeds under the generated Dex retry defaults;
 - terminal Query branch does not use Dex retry;

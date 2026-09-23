@@ -18,3 +18,13 @@ Run its supported checks without the repository workspace:
 GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
 ```
+
+The `integrationtest` package behaves like an independently authored
+connector. It defines typed Connection and Credentials, Query and Mutation
+operations, operation-specific Step factories, branch targets, an Attribute,
+and a progress Stream using only this module's public API. Run it against a
+real Dex Server:
+
+```bash
+GOWORK=off go test -tags=integration ./integrationtest/... -count=1 -v
+```
