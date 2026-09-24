@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -31,6 +32,7 @@ import (
 	customeronboarding "github.com/superdurable/dex-connectors-library/examples/customer-onboarding"
 	mockprovider "github.com/superdurable/dex-connectors-library/examples/customer-onboarding/internal/mockprovider"
 	connector "github.com/superdurable/dex-connectors-library/sdk/go"
+	"github.com/superdurable/dex-connectors-library/sdk/go/localconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -93,6 +95,61 @@ func TestGitHubFactoryPersistsAuthenticatedProfileWithRealDex(t *testing.T) {
 	require.NoError(t, result.DecodeSingleOutput(&profile))
 	require.Equal(t, "42", profile.Subject)
 	require.Equal(t, "octocat@example.com", profile.VerifiedEmail)
+}
+
+func TestGitHubLocalConnectionsUseNamedCredentialsAndReloadReplacements(t *testing.T) {
+	var authorizationHeadersMu sync.Mutex
+	authorizationHeaders := make([]string, 0, 6)
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		authorizationHeadersMu.Lock()
+		authorizationHeaders = append(authorizationHeaders, request.Header.Get("Authorization"))
+		authorizationHeadersMu.Unlock()
+		response.Header().Set("Content-Type", "application/json")
+		response.Header().Set("X-OAuth-Scopes", "read:user, user:email")
+		switch request.URL.Path {
+		case "/user":
+			_, _ = response.Write([]byte(`{"id":42,"login":"octocat"}`))
+		case "/user/emails":
+			_, _ = response.Write([]byte(`[{"email":"octocat@example.com","primary":true,"verified":true}]`))
+		default:
+			http.NotFound(response, request)
+		}
+	}))
+	defer server.Close()
+
+	path := filepath.Join(t.TempDir(), "connections.json")
+	writeLocalConnections(t, path,
+		localConnectionRecord("github", "github", "signup-a", map[string]any{"baseUrl": server.URL}, map[string]any{"access_token": "token-a"}, time.Now().Add(time.Hour)),
+		localConnectionRecord("github", "github", "signup-b", map[string]any{"baseUrl": server.URL}, map[string]any{"access_token": "token-b"}, time.Now().Add(time.Hour)),
+	)
+	store, err := localconfig.LoadFile(path)
+	require.NoError(t, err)
+	connectionA, err := githubconnector.NewLocalConnection(store, "signup-a")
+	require.NoError(t, err)
+	flowA := githubProfileFlow{connection: connectionA, connectionName: "signup-a"}
+	harnessA := newDexHarness(t, []dex.Flow{flowA})
+	harnessA.startWorker(t)
+	runGitHubProfile(t, harnessA.client, flowA, uniqueFlowID("github-local-a"))
+
+	connectionB, err := githubconnector.NewLocalConnection(store, "signup-b")
+	require.NoError(t, err)
+	flowB := githubProfileFlow{connection: connectionB, connectionName: "signup-b"}
+	harnessB := newDexHarness(t, []dex.Flow{flowB})
+	harnessB.startWorker(t)
+	runGitHubProfile(t, harnessB.client, flowB, uniqueFlowID("github-local-b"))
+
+	writeLocalConnections(t, path,
+		localConnectionRecord("github", "github", "signup-a", map[string]any{"baseUrl": "http://127.0.0.1:1"}, map[string]any{"access_token": "token-a-replaced"}, time.Now().Add(time.Hour)),
+		localConnectionRecord("github", "github", "signup-b", map[string]any{"baseUrl": server.URL}, map[string]any{"access_token": "token-b"}, time.Now().Add(time.Hour)),
+	)
+	runGitHubProfile(t, harnessA.client, flowA, uniqueFlowID("github-local-a-replaced"))
+
+	authorizationHeadersMu.Lock()
+	defer authorizationHeadersMu.Unlock()
+	require.Equal(t, []string{
+		"Bearer token-a", "Bearer token-a", "Bearer token-b", "Bearer token-b",
+		"Bearer token-a-replaced", "Bearer token-a-replaced",
+	}, authorizationHeaders)
 }
 
 func TestLinkedInFactoryPersistsAuthenticatedProfileWithRealDex(t *testing.T) {
@@ -270,6 +327,39 @@ func TestGmailFactoryRoutesUnknownWithoutResend(t *testing.T) {
 	require.Equal(t, int32(1), requests.Load())
 }
 
+func TestGmailLocalConnectionRejectsExpiredCredentialsBeforeProviderCall(t *testing.T) {
+	var requests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		requests.Add(1)
+		response.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+	path := filepath.Join(t.TempDir(), "connections.json")
+	writeLocalConnections(t, path, localConnectionRecord(
+		"gmail", "google", "gmail", map[string]any{"endpoint": server.URL},
+		map[string]any{"access_token": "expired", "primary_email": "owner@example.com"}, time.Now().Add(-time.Minute),
+	))
+	store, err := localconfig.LoadFile(path)
+	require.NoError(t, err)
+	connection, err := gmail.NewLocalConnection(store, "gmail")
+	require.NoError(t, err)
+	flow := &gmailIntegrationFlow{connection: connection, connectionName: "gmail"}
+	harness := newDexHarness(t, []dex.Flow{flow})
+	harness.startWorker(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	flowID := uniqueFlowID("gmail-expired-local")
+	_, err = harness.client.StartFlow(ctx, flow, flowID, "customer@example.com", dex.StartFlowOptions{})
+	require.NoError(t, err)
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	var branch connector.BranchID
+	require.NoError(t, result.DecodeSingleOutput(&branch))
+	require.Equal(t, gmail.SendMessageBranchRejected, branch)
+	require.Zero(t, requests.Load())
+}
+
 var (
 	githubProfileResult             = dex.DefineAttribute[connector.QueryResult[githubconnector.AuthenticatedProfile]]("github-profile-result")
 	linkedinProfileResult           = dex.DefineAttribute[connector.QueryResult[linkedinconnector.AuthenticatedProfile]]("linkedin-profile-result")
@@ -286,12 +376,14 @@ var (
 
 type githubProfileFlow struct {
 	dex.FlowDefaults
-	connection githubconnector.Connection
+	connection     githubconnector.Connection
+	connectionName string
 }
 
 func (flow githubProfileFlow) GetSteps() []dex.StepDef {
 	step := githubconnector.NewGetAuthenticatedProfileStep(githubconnector.GetAuthenticatedProfileStepConfig[struct{}]{
-		StepType: "ReadGitHubSignupProfile",
+		StepType:       "ReadGitHubSignupProfile",
+		ConnectionName: flow.connectionName,
 		Presentation: connector.StepPresentation{
 			GroupID: "signup", GroupLabel: "Signup", Explanation: "Read the authenticated GitHub signup profile.",
 		},
@@ -513,14 +605,16 @@ func (sheetsIntegrationFinishedStep) Execute(_ dex.Context, output spreadsheet.U
 
 type gmailIntegrationFlow struct {
 	dex.FlowDefaults
-	connection gmail.Connection
+	connection     gmail.Connection
+	connectionName string
 }
 
 func (flow *gmailIntegrationFlow) GetSteps() []dex.StepDef {
 	step := gmail.NewSendMessageStep(gmail.SendMessageStepConfig[string]{
-		StepType:     "IntegrationSendGmailMessage",
-		Presentation: connector.StepPresentation{GroupID: "google", GroupLabel: "Google", Explanation: "Send a customer message."},
-		Connection:   flow.connection,
+		StepType:       "IntegrationSendGmailMessage",
+		ConnectionName: flow.connectionName,
+		Presentation:   connector.StepPresentation{GroupID: "google", GroupLabel: "Google", Explanation: "Send a customer message."},
+		Connection:     flow.connection,
 		BuildInput: func(recipient string) (gmail.SendMessageInput, error) {
 			return gmail.SendMessageInput{To: []string{recipient}, Subject: "Progress", TextBody: "Keep going"}, nil
 		},
@@ -1014,4 +1108,53 @@ func environmentOr(name, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+func runGitHubProfile(t *testing.T, client *dex.Client, flow githubProfileFlow, flowID string) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	_, err := client.StartFlow(ctx, flow, flowID, struct{}{}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	result, err := client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, result.Status)
+}
+
+func localConnectionRecord(
+	connectorID string,
+	provider string,
+	connectionName string,
+	configuration map[string]any,
+	credentials map[string]any,
+	expiresAt time.Time,
+) map[string]any {
+	modulePath := "github.com/superdurable/dex-connectors-library/connectors/" + connectorID
+	if connectorID == "gmail" {
+		modulePath = "github.com/superdurable/dex-connectors-library/connectors/google/gmail"
+	}
+	return map[string]any{
+		"connectorId": connectorID, "modulePath": modulePath, "moduleVersion": "v0.1.1",
+		"provider": provider, "connectionName": connectionName, "configuration": configuration,
+		"credentials": credentials, "credentialExpiresAt": expiresAt.UTC().Format(time.RFC3339),
+	}
+}
+
+func writeLocalConnections(t *testing.T, path string, connections ...map[string]any) {
+	t.Helper()
+	contents, err := json.Marshal(map[string]any{
+		"schemaVersion": localconfig.SchemaVersion,
+		"connections":   connections,
+	})
+	require.NoError(t, err)
+	temporaryFile, err := os.CreateTemp(filepath.Dir(path), ".connections-*.json")
+	require.NoError(t, err)
+	temporaryPath := temporaryFile.Name()
+	t.Cleanup(func() { require.NoError(t, os.RemoveAll(temporaryPath)) })
+	require.NoError(t, temporaryFile.Chmod(0o600))
+	_, err = temporaryFile.Write(contents)
+	require.NoError(t, err)
+	require.NoError(t, temporaryFile.Sync())
+	require.NoError(t, temporaryFile.Close())
+	require.NoError(t, os.Rename(temporaryPath, path))
 }

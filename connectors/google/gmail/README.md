@@ -16,3 +16,19 @@ route that branch to explicit operator recovery.
 
 The `ui/` package builds the credential-safe Studio setup bundle published as
 `connector-ui.tgz` with the Connector release.
+
+For local Dex Web setup, name the factory connection and load the same name at
+application startup:
+
+```go
+store, err := localconfig.LoadFromEnvironment()
+if err != nil {
+	return err
+}
+sender, err := gmail.NewLocalConnection(store, "sender")
+```
+
+Set `ConnectionName: "sender"` beside `Connection: sender` in
+`SendMessageStepConfig`. Dex Web stores only the short-lived access token and
+confirmed primary email. It does not store a refresh token, and deleting the
+local credential does not revoke the Google grant.

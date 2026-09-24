@@ -43,6 +43,13 @@ factory functions. Applications use those factories directly, such as
 `openai.NewCreateResponseStep`, while generic SDK factories remain an advanced
 escape hatch.
 
+The generated surface also includes `NewLocalConnection` and a
+`ConnectionName` field on every operation factory config. The local helper
+decodes every manifest authentication field, including multiple optional
+secret fields, without assuming a single-token OAuth response. Keep secret
+fields typed as `secretString` so code generation constructs `SecretString`
+at the provider boundary.
+
 ```bash
 go run ./cmd/connectorctl validate connectors/openai/connector.yaml
 go run ./cmd/connectorctl generate connectors/openai/connector.yaml

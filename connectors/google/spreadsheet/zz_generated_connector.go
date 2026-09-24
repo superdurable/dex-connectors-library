@@ -5,11 +5,13 @@
 package spreadsheet
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"time"
 
 	connector "github.com/superdurable/dex-connectors-library/sdk/go"
+	"github.com/superdurable/dex-connectors-library/sdk/go/localconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -38,6 +40,40 @@ func NewConnection(client *Client, reference connector.ConnectionRef) (Connectio
 		return Connection{}, fmt.Errorf("google-sheets connector connection: %w", err)
 	}
 	return Connection{client: client, reference: reference}, nil
+}
+
+// NewLocalConnection loads startup configuration and reloads credentials before every provider call.
+func NewLocalConnection(store *localconfig.Store, connectionName string, options ...Option) (Connection, error) {
+	if store == nil {
+		return Connection{}, fmt.Errorf("local connector configuration store is required")
+	}
+	reference := connector.ConnectionRef{Provider: "google", Name: connectionName}
+	if err := reference.Validate(); err != nil {
+		return Connection{}, fmt.Errorf("google-sheets local connection: %w", err)
+	}
+	var config Config
+	if err := store.DecodeConfiguration(ConnectorID, connectionName, &config); err != nil {
+		return Connection{}, err
+	}
+	credentials := localconfig.NewCredentialProvider(store, ConnectorID, connectionName, decodeLocalCredentials)
+	client, err := New(config, credentials, options...)
+	if err != nil {
+		return Connection{}, err
+	}
+	return NewConnection(client, reference)
+}
+
+func decodeLocalCredentials(contents json.RawMessage) (Credentials, error) {
+	var fields struct {
+		AccessToken string `json:"access_token"`
+	}
+	if err := localconfig.DecodeCredentials(contents, &fields); err != nil {
+		return Credentials{}, err
+	}
+	credentials := Credentials{
+		AccessToken: connector.NewSecretString(fields.AccessToken),
+	}
+	return credentials, credentials.Validate()
 }
 
 func (connection Connection) validate() error {
@@ -136,6 +172,7 @@ type GetValuesStepConfig[IN any] struct {
 	StepType                           string                                                 `connector:"stepType"`
 	Presentation                       connector.StepPresentation                             `connector:"presentation"`
 	Connection                         Connection                                             `connector:"connection"`
+	ConnectionName                     string                                                 `connector:"connectionName"`
 	BuildInput                         func(IN) (GetValuesInput, error)                       `connector:"buildInput"`
 	Read                               connector.Target[GetValuesStepOutput[IN]]              `connector:"branch=read"`
 	NotFound                           connector.Target[GetValuesStepOutput[IN]]              `connector:"branch=notFound"`
@@ -148,6 +185,9 @@ type GetValuesStepConfig[IN any] struct {
 func NewGetValuesStep[IN any](config GetValuesStepConfig[IN]) connector.QueryStep[IN, GetValuesInput, GetValuesOutput] {
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
+	}
+	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-sheets connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
 	}
 	return connector.MustNewQueryStep(connector.QueryStepConfig[IN, GetValuesInput, GetValuesOutput]{
 		StepType: config.StepType, Presentation: config.Presentation,
@@ -198,6 +238,7 @@ type FindRowStepConfig[IN any] struct {
 	StepType                           string                                               `connector:"stepType"`
 	Presentation                       connector.StepPresentation                           `connector:"presentation"`
 	Connection                         Connection                                           `connector:"connection"`
+	ConnectionName                     string                                               `connector:"connectionName"`
 	BuildInput                         func(IN) (FindRowInput, error)                       `connector:"buildInput"`
 	Found                              connector.Target[FindRowStepOutput[IN]]              `connector:"branch=found"`
 	NotFound                           connector.Target[FindRowStepOutput[IN]]              `connector:"branch=notFound"`
@@ -211,6 +252,9 @@ type FindRowStepConfig[IN any] struct {
 func NewFindRowStep[IN any](config FindRowStepConfig[IN]) connector.QueryStep[IN, FindRowInput, FindRowOutput] {
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
+	}
+	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-sheets connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
 	}
 	return connector.MustNewQueryStep(connector.QueryStepConfig[IN, FindRowInput, FindRowOutput]{
 		StepType: config.StepType, Presentation: config.Presentation,
@@ -263,6 +307,7 @@ type UpsertRowStepConfig[IN any] struct {
 	StepType                              string                                                    `connector:"stepType"`
 	Presentation                          connector.StepPresentation                                `connector:"presentation"`
 	Connection                            Connection                                                `connector:"connection"`
+	ConnectionName                        string                                                    `connector:"connectionName"`
 	BuildInput                            func(IN) (UpsertRowInput, error)                          `connector:"buildInput"`
 	Upserted                              connector.Target[UpsertRowStepOutput[IN]]                 `connector:"branch=upserted"`
 	Conflict                              connector.Target[UpsertRowStepOutput[IN]]                 `connector:"branch=conflict"`
@@ -276,6 +321,9 @@ type UpsertRowStepConfig[IN any] struct {
 func NewUpsertRowStep[IN any](config UpsertRowStepConfig[IN]) connector.MutationStep[IN, UpsertRowInput, UpsertRowOutput] {
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
+	}
+	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-sheets connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
 	}
 	return connector.MustNewMutationStep(connector.MutationStepConfig[IN, UpsertRowInput, UpsertRowOutput]{
 		StepType: config.StepType, Presentation: config.Presentation,

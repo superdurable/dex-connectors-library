@@ -40,7 +40,7 @@ func TestGeneratedFactoriesExposeEveryTypedBranch(t *testing.T) {
 
 	profileResult := dex.DefineAttribute[connector.QueryResult[githubconnector.AuthenticatedProfile]]("github-profile-result")
 	profile := githubconnector.NewGetAuthenticatedProfileStep(githubconnector.GetAuthenticatedProfileStepConfig[string]{
-		StepType: "ReadGitHubProfile", Presentation: factoryPresentation(), Connection: connection,
+		StepType: "ReadGitHubProfile", Presentation: factoryPresentation(), Connection: connection, ConnectionName: "signup",
 		BuildInput: func(string) (githubconnector.GetAuthenticatedProfileInput, error) {
 			return githubconnector.GetAuthenticatedProfileInput{}, nil
 		},
@@ -53,7 +53,7 @@ func TestGeneratedFactoriesExposeEveryTypedBranch(t *testing.T) {
 
 	repositoriesResult := dex.DefineAttribute[connector.QueryResult[githubconnector.PublicRepositories]]("github-repositories-result")
 	repositories := githubconnector.NewListPublicRepositoriesStep(githubconnector.ListPublicRepositoriesStepConfig[string]{
-		StepType: "ReadGitHubRepositories", Presentation: factoryPresentation(), Connection: connection,
+		StepType: "ReadGitHubRepositories", Presentation: factoryPresentation(), Connection: connection, ConnectionName: "signup",
 		BuildInput: func(login string) (githubconnector.ListPublicRepositoriesInput, error) {
 			return githubconnector.ListPublicRepositoriesInput{Login: login}, nil
 		},

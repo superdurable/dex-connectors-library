@@ -5,11 +5,13 @@
 package gmail
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"time"
 
 	connector "github.com/superdurable/dex-connectors-library/sdk/go"
+	"github.com/superdurable/dex-connectors-library/sdk/go/localconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -39,6 +41,42 @@ func NewConnection(client *Client, reference connector.ConnectionRef) (Connectio
 		return Connection{}, fmt.Errorf("gmail connector connection: %w", err)
 	}
 	return Connection{client: client, reference: reference}, nil
+}
+
+// NewLocalConnection loads startup configuration and reloads credentials before every provider call.
+func NewLocalConnection(store *localconfig.Store, connectionName string, options ...Option) (Connection, error) {
+	if store == nil {
+		return Connection{}, fmt.Errorf("local connector configuration store is required")
+	}
+	reference := connector.ConnectionRef{Provider: "google", Name: connectionName}
+	if err := reference.Validate(); err != nil {
+		return Connection{}, fmt.Errorf("gmail local connection: %w", err)
+	}
+	var config Config
+	if err := store.DecodeConfiguration(ConnectorID, connectionName, &config); err != nil {
+		return Connection{}, err
+	}
+	credentials := localconfig.NewCredentialProvider(store, ConnectorID, connectionName, decodeLocalCredentials)
+	client, err := New(config, credentials, options...)
+	if err != nil {
+		return Connection{}, err
+	}
+	return NewConnection(client, reference)
+}
+
+func decodeLocalCredentials(contents json.RawMessage) (Credentials, error) {
+	var fields struct {
+		AccessToken  string `json:"access_token"`
+		PrimaryEmail string `json:"primary_email"`
+	}
+	if err := localconfig.DecodeCredentials(contents, &fields); err != nil {
+		return Credentials{}, err
+	}
+	credentials := Credentials{
+		AccessToken:  connector.NewSecretString(fields.AccessToken),
+		PrimaryEmail: fields.PrimaryEmail,
+	}
+	return credentials, credentials.Validate()
 }
 
 func (connection Connection) validate() error {
@@ -141,6 +179,7 @@ type SendMessageStepConfig[IN any] struct {
 	StepType                              string                                                      `connector:"stepType"`
 	Presentation                          connector.StepPresentation                                  `connector:"presentation"`
 	Connection                            Connection                                                  `connector:"connection"`
+	ConnectionName                        string                                                      `connector:"connectionName"`
 	BuildInput                            func(IN) (SendMessageInput, error)                          `connector:"buildInput"`
 	Sent                                  connector.Target[SendMessageStepOutput[IN]]                 `connector:"branch=sent"`
 	Rejected                              connector.Target[SendMessageStepOutput[IN]]                 `connector:"branch=rejected"`
@@ -153,6 +192,9 @@ type SendMessageStepConfig[IN any] struct {
 func NewSendMessageStep[IN any](config SendMessageStepConfig[IN]) connector.MutationStep[IN, SendMessageInput, SendMessageOutput] {
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
+	}
+	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("gmail connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
 	}
 	return connector.MustNewMutationStep(connector.MutationStepConfig[IN, SendMessageInput, SendMessageOutput]{
 		StepType: config.StepType, Presentation: config.Presentation,

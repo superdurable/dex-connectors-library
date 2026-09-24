@@ -8,6 +8,7 @@ describe("Gmail setup", () => {
     expect(markup).toContain("owner@example.com");
     expect(markup).toContain("Aliases are not available");
     expect(markup).not.toContain("access_token");
+    expect(markup).not.toContain("Revoke connection");
   });
 
   it.each([

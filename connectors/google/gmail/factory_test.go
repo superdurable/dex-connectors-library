@@ -28,8 +28,22 @@ func TestSendFactoryRequiresEveryTypedBranch(t *testing.T) {
 	require.Panics(t, func() {
 		gmail.NewSendMessageStep(gmail.SendMessageStepConfig[string]{
 			StepType: "Send", Presentation: connector.StepPresentation{GroupID: "google", GroupLabel: "Google", Explanation: "Send a message."},
-			Connection: connection, BuildInput: func(string) (gmail.SendMessageInput, error) { return gmail.SendMessageInput{}, nil },
-			Sent: connector.GoTo(gmailTarget{}), Rejected: connector.GoTo(gmailTarget{}), Uncertain: connector.GoTo(gmailTarget{}),
+			Connection: connection, ConnectionName: "gmail-send",
+			BuildInput: func(string) (gmail.SendMessageInput, error) { return gmail.SendMessageInput{}, nil },
+			Sent:       connector.GoTo(gmailTarget{}), Rejected: connector.GoTo(gmailTarget{}), Uncertain: connector.GoTo(gmailTarget{}),
+		})
+	})
+}
+
+func TestSendFactoryRejectsConnectionNameMismatch(t *testing.T) {
+	client := newGmailClient(t, "http://127.0.0.1:1")
+	connection, err := gmail.NewConnection(client, gmailConnection)
+	require.NoError(t, err)
+	require.Panics(t, func() {
+		gmail.NewSendMessageStep(gmail.SendMessageStepConfig[string]{
+			StepType: "Send", Presentation: connector.StepPresentation{GroupID: "google", GroupLabel: "Google", Explanation: "Send a message."},
+			Connection: connection, ConnectionName: "different",
+			BuildInput: func(string) (gmail.SendMessageInput, error) { return gmail.SendMessageInput{}, nil },
 		})
 	})
 }

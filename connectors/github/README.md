@@ -24,7 +24,7 @@ repository metadata.
 Install the published module:
 
 ```bash
-go get github.com/superdurable/dex-connectors-library/connectors/github@v0.1.0
+go get github.com/superdurable/dex-connectors-library/connectors/github@v0.1.1
 ```
 
 Verify it independently:
@@ -46,3 +46,9 @@ test reads at most five public repositories and never logs the token.
 Applications own the OAuth start/callback, state, PKCE verifier, token exchange,
 one-use token deletion, Result Attributes, and branch behavior. Provider calls
 occur only inside Dex Step `Execute` through the generated factories.
+
+With local Dex Web, call `localconfig.LoadFromEnvironment` and
+`github.NewLocalConnection(store, "reviewer")` during startup. Use the same
+static `ConnectionName: "reviewer"` in each generated GitHub Step config.
+The access token is reloaded before every provider call, so reauthorization
+does not require restarting the application.
