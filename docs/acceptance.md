@@ -13,6 +13,15 @@ GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
 cd ../..
 
+cd connectors/google/spreadsheet
+GOWORK=off go test -race ./...
+GOWORK=off go vet ./...
+cd ui
+npm ci
+npm test
+npm run build
+cd ../../../..
+
 cd connectors/http
 GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
@@ -26,6 +35,7 @@ go test -race ./...
 go vet ./...
 go run ./cmd/connectorctl validate connectors/github/connector.yaml connectors/http/connector.yaml connectors/openai/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/github/connector.yaml
+go run ./cmd/connectorctl generate --check connectors/google/spreadsheet/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/http/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/openai/connector.yaml
 go run ./cmd/connectorctl release-workflow --check connectors .github/workflows/release-connector.yml
@@ -34,8 +44,8 @@ go run ./cmd/connectorctl catalog connectors
 
 The suite must prove:
 
-- the SDK, HTTP connector, and OpenAI connector compile and test independently
-  of `go.work`;
+- the SDK, GitHub, HTTP, OpenAI, and Google Sheets modules compile and test
+  independently of `go.work`;
 - generated operation-specific factories expose typed branch fields and typed,
   non-serializable connector Connections;
 - the generated release dropdown matches the catalog and release artifacts are
@@ -66,11 +76,14 @@ The suite must prove:
 - `SecretString`, API keys, OAuth tokens, authorization headers, and provider
   bodies do not enter Result, Failure, Receipt, Stream, or logs;
 - HTTP and OpenAI provider classification, idempotency, response bounds, SSE,
-  and recovery tests remain green;
+  uncertainty, and recovery tests remain green;
 - GitHub profile/email selection, scope/revocation branches, response bounds,
   public-only pagination, deduplication, sorting, truncation, and rate-limit
   delay tests remain green;
-- React connection-state tests and build remain unchanged.
+- Sheets query-before-mutate, duplicate-key, bounded-response, and uncertainty
+  tests remain green;
+- Studio Host API, setup component, deterministic tarball, digest, and React
+  build tests remain green.
 
 ## Real Dex Server 0.11.3
 
@@ -103,6 +116,8 @@ The integration suite verifies:
 - a factory OpenAI Mutation writes structured/text Streams, preserves text
   order, flushes the tail, and persists its typed Result Attribute;
 - retry Stream messages retain Call ID and separate Attempt/Sequence.
+- Sheets query-before-mutate commits one stable keyed row and the branch
+  transition with its Result Attribute.
 
 ## Manual API and Dex Web acceptance
 
@@ -131,6 +146,8 @@ The integration suite verifies:
    compile its operation-specific factory example.
 5. Confirm each release note contains only commits that changed that connector
    and retains `## Breaking Changes` with `None.` when appropriate.
+6. Run `Release Connector` for `google/spreadsheet` and confirm its independent
+   tag plus `connector-release.json` and `connector-ui.tgz` digests.
 
 The Dex CLI analyzer shipped in 0.11.3. Connector releases must retain a
 deterministic schema 2.0 golden and inspect nodes, branches, Attribute edges,
@@ -140,5 +157,6 @@ and Stream edges in Dex Web 2.0.
 
 Contract changes update `connector-contract.md`; component/data flow changes
 update `architecture.md`; provider manifests and the Customer Onboarding README
-show canonical authoring. G2a adds no React form, OAuth callback, or Studio
-page. Manifest metadata is consumed by later provider connection UI work.
+show canonical authoring. The shared G2c contract ships the bundle format and
+protocol; SuperVerse G6a owns the BFF loader, OAuth callbacks, credential
+broker, and Studio environment pages.

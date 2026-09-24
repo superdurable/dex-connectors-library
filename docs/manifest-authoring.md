@@ -59,3 +59,23 @@ go run ./cmd/connectorctl release-workflow connectors .github/workflows/release-
 CI rejects stale generated code or release choices. Connector `go.mod` files
 must pin an already-published SDK version and cannot contain `replace`,
 pseudo-version, branch, or commit dependencies.
+
+## Studio setup bundle
+
+A connector with a provider-specific setup experience declares `spec.studio`:
+
+```yaml
+studio:
+  setup:
+    entrypoint: index.html
+    hostApiRange: ">=0.1.0 <0.2.0"
+    backendCapabilities: [oauth.connection.manage]
+    mockScenarios: [not-configured, connected, revoked]
+    icon: icon.svg
+```
+
+The UI build output must contain the entrypoint and icon. Release automation
+packages regular files only, enforces file-count and expanded-size limits, and
+creates a deterministic tarball. Connector UI runs in a sandbox iframe and may
+request only the listed Host API capabilities. It must never receive or render
+credential values.

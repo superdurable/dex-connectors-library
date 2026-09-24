@@ -202,9 +202,20 @@ YAML, and text serialization. Connector-specific credential types prevent a
 Google Sheets connection from being accidentally passed to Gmail, even when
 both use one Google account.
 
-The manifest also carries OAuth endpoints, scopes, PKCE, connection kind, and
-field descriptions for future SuperVerse configuration UI. G2a does not load
-provider React code or implement OAuth callbacks.
+The manifest also carries OAuth endpoints, scopes, PKCE, connection kind,
+Studio setup entrypoint, Host API compatibility, required backend capabilities,
+mock scenarios, and icon. Release metadata binds those declarations to the
+checked UI tarball digest.
+
+Connector UI executes in an opaque-origin iframe and communicates through the
+versioned, nonce-bound Studio Host API. Messages contain only safe connection
+status, provider identity, resource selections, and configuration. OAuth
+tokens, API keys, client secrets, and refresh tokens never enter iframe props,
+messages, markup, logs, or artifacts.
+
+The Studio BFF loads artifacts directly from the trusted Connector release;
+the Java Control Plane is not on this path. OAuth callback, refresh, revoke,
+Picker token, and credential-broker behavior remain owned by SuperVerse.
 
 ## Query, RPC, and Action
 

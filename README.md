@@ -11,9 +11,9 @@ The first alpha includes:
   definitions, and operation Step defaults;
 - Dex-native Query/Mutation Step factories with typed branch targets, Result
   Attributes, stable Call IDs, idempotency keys, and application-owned Streams;
-- GitHub signup profile/public-repository, generic HTTP/Webhook, and OpenAI
-  Responses connectors, including OpenAI SSE;
-- React connection-state components that never receive credential values;
+- GitHub signup profile/public-repository, generic HTTP/Webhook, OpenAI
+  Responses, and Google Sheets connectors, including OpenAI SSE;
+- credential-free React primitives and a sandboxed Studio setup protocol;
 - a deterministic mock provider and real-Dex Customer Onboarding fixtures.
 
 ## Quick start
@@ -29,6 +29,15 @@ GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
 cd ../..
 
+cd connectors/google/spreadsheet
+GOWORK=off go test -race ./...
+GOWORK=off go vet ./...
+cd ui
+npm ci
+npm test
+npm run build
+cd ../../../..
+
 cd connectors/http
 GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
@@ -40,6 +49,7 @@ cd ../..
 go test ./...
 go run ./cmd/connectorctl validate connectors/github/connector.yaml connectors/http/connector.yaml connectors/openai/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/github/connector.yaml
+go run ./cmd/connectorctl generate --check connectors/google/spreadsheet/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/http/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/openai/connector.yaml
 go run ./cmd/connectorctl release-workflow --check connectors .github/workflows/release-connector.yml
@@ -51,14 +61,15 @@ npm test
 npm run build
 ```
 
-The Go SDK and every connector are independent Go modules. Their tags are
-directory-prefixed, including `sdk/go/vX.Y.Z`, `connectors/github/vX.Y.Z`,
-`connectors/http/vX.Y.Z`, and `connectors/openai/vX.Y.Z`. The historical root
-`v0.1.0` tag does not version any standalone component. Git tags are the
-release version source of truth.
+The Go SDK and every connector are independent Go modules.
+Their tags are directory-prefixed, including `sdk/go/vX.Y.Z`,
+`connectors/github/vX.Y.Z`, `connectors/http/vX.Y.Z`,
+`connectors/openai/vX.Y.Z`, and `connectors/google/spreadsheet/vX.Y.Z`. The
+historical root `v0.1.0` tag does not version any standalone component. Git
+tags are the release version source of truth.
 
-The SDK must be released before a connector can pin a new SDK version. Each
-new connectors pin the published SDK `v0.1.1`. See
+The SDK must be released before a connector can pin a new SDK version. New
+connectors pin the published SDK `v0.1.1`. See
 [the versioning and release guide](docs/versioning-and-releases.md).
 
 The Connector Go SDK uses `github.com/superdurable/dex/sdk-go v0.11.3` and verifies
@@ -66,7 +77,9 @@ integration behavior against Dex Server/dexcli 0.11.3. Those releases are
 versioned independently.
 
 Dex CLI 0.11.3 renders canonical Connector factory Steps, branch transitions,
-Result Attributes, and progress Streams in Dex Web 2.0.
+Result Attributes, and progress Streams in Dex Web 2.0. Connector releases
+with Studio metadata also publish a deterministic UI tarball for a trusted
+Studio BFF to verify and serve in a sandbox iframe.
 
 Read [the Connector contract](docs/connector-contract.md),
 [architecture](docs/architecture.md),

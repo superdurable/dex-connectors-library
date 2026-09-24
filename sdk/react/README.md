@@ -11,3 +11,9 @@ remain on the server.
   onReconnect={() => beginOAuth()}
 />
 ```
+
+The package also defines the versioned Connector Studio Host API used by
+sandboxed setup bundles. Every message carries the connector ID, protocol
+version, session nonce, and request identity. Hosts must additionally validate
+the iframe `Window` source and declared backend capability before executing a
+command. Messages never carry provider credentials.

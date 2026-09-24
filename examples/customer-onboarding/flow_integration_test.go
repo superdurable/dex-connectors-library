@@ -7,6 +7,7 @@ package customeronboarding_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -22,6 +23,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	githubconnector "github.com/superdurable/dex-connectors-library/connectors/github"
+	spreadsheet "github.com/superdurable/dex-connectors-library/connectors/google/spreadsheet"
 	httpconnector "github.com/superdurable/dex-connectors-library/connectors/http"
 	openai "github.com/superdurable/dex-connectors-library/connectors/openai"
 	customeronboarding "github.com/superdurable/dex-connectors-library/examples/customer-onboarding"
@@ -155,12 +157,58 @@ func TestFlowRPCCannotCallProvider(t *testing.T) {
 	require.Zero(t, provider.ProfileRequests())
 }
 
+func TestGoogleSheetsFactoryCommitsResultAndTransition(t *testing.T) {
+	rows := [][]string{{"accountId", "name"}}
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		response.Header().Set("Content-Type", "application/json")
+		switch request.Method {
+		case http.MethodGet:
+			_ = json.NewEncoder(response).Encode(map[string]any{"range": "Customers", "majorDimension": "ROWS", "values": rows})
+		case http.MethodPost:
+			var payload struct {
+				Values [][]string `json:"values"`
+			}
+			require.NoError(t, json.NewDecoder(request.Body).Decode(&payload))
+			rows = append(rows, payload.Values[0])
+			_, _ = response.Write([]byte(`{"updates":{"updatedRange":"'Customers'!A2:B2"}}`))
+		default:
+			response.WriteHeader(http.StatusMethodNotAllowed)
+		}
+	}))
+	defer server.Close()
+	connectionRef := connector.ConnectionRef{Provider: "google", Name: "sheets"}
+	client, err := spreadsheet.New(spreadsheet.Config{Endpoint: server.URL}, connector.StaticCredentialProvider[spreadsheet.Credentials]{
+		connectionRef: {AccessToken: connector.NewSecretString("token")},
+	})
+	require.NoError(t, err)
+	connection, err := spreadsheet.NewConnection(client, connectionRef)
+	require.NoError(t, err)
+	flow := &sheetsIntegrationFlow{connection: connection}
+	harness := newDexHarness(t, []dex.Flow{flow})
+	harness.startWorker(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	flowID := uniqueFlowID("google-sheets")
+	_, err = harness.client.StartFlow(ctx, flow, flowID, "account-1", dex.StartFlowOptions{})
+	require.NoError(t, err)
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, result.Status)
+	var output connector.MutationResult[spreadsheet.UpsertRowOutput]
+	require.NoError(t, result.DecodeSingleOutput(&output))
+	require.Equal(t, spreadsheet.UpsertRowBranchUpserted, output.Branch)
+	require.Equal(t, "inserted", output.Value.Action)
+	require.Len(t, rows, 2)
+}
+
 var (
 	githubProfileResult             = dex.DefineAttribute[connector.QueryResult[githubconnector.AuthenticatedProfile]]("github-profile-result")
 	openAIProgress                  = dex.DefineStream[connector.ProgressUpdate]("openai-progress", 1<<20)
 	openAIText                      = dex.DefineStream[string]("openai-text", 1<<20)
 	openAIResult                    = dex.DefineAttribute[connector.MutationResult[openai.Response]]("openai-result")
 	retryProgress                   = dex.DefineStream[connector.ProgressUpdate]("retry-progress", 1<<20)
+	sheetsIntegrationResult         = dex.DefineAttribute[connector.MutationResult[spreadsheet.UpsertRowOutput]]("sheets-integration-result")
 	integrationQueryBranchSucceeded = connector.BranchID("succeeded")
 	integrationQueryBranchFailed    = connector.BranchID("failed")
 	integrationQueryBranchDefect    = connector.BranchID("defect")
@@ -307,6 +355,41 @@ func TestProgressStreamDistinguishesDexRetryAttempts(t *testing.T) {
 	require.Equal(t, []int32{2, 1}, []int32{page.Messages[0].Value.Attempt, page.Messages[1].Value.Attempt})
 	require.Equal(t, uint64(1), page.Messages[0].Value.Sequence)
 	require.Equal(t, uint64(1), page.Messages[1].Value.Sequence)
+}
+
+type sheetsIntegrationFlow struct {
+	dex.FlowDefaults
+	connection spreadsheet.Connection
+}
+
+func (flow *sheetsIntegrationFlow) GetSteps() []dex.StepDef {
+	step := spreadsheet.NewUpsertRowStep(spreadsheet.UpsertRowStepConfig[string]{
+		StepType:     "IntegrationUpsertSheetRow",
+		Presentation: connector.StepPresentation{GroupID: "google", GroupLabel: "Google", Explanation: "Upsert a customer row."},
+		Connection:   flow.connection,
+		BuildInput: func(accountID string) (spreadsheet.UpsertRowInput, error) {
+			return spreadsheet.UpsertRowInput{SpreadsheetID: "sheet", SheetName: "Customers", KeyColumn: "accountId", KeyValue: accountID, Values: map[string]string{"name": "Ada"}}, nil
+		},
+		Upserted:        connector.GoTo(sheetsIntegrationFinishedStep{}),
+		Conflict:        connector.GoTo(sheetsIntegrationFinishedStep{}),
+		Rejected:        connector.GoTo(sheetsIntegrationFinishedStep{}),
+		Uncertain:       connector.GoTo(sheetsIntegrationFinishedStep{}),
+		Defect:          connector.GoTo(sheetsIntegrationFinishedStep{}),
+		ResultAttribute: &sheetsIntegrationResult,
+	})
+	return []dex.StepDef{dex.DefineStartStep(step), dex.DefineStep(sheetsIntegrationFinishedStep{})}
+}
+
+func (*sheetsIntegrationFlow) GetPersistenceSchema() dex.PersistenceSchema {
+	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{sheetsIntegrationResult}}
+}
+
+type sheetsIntegrationFinishedStep struct {
+	dex.StepDefaultsNoWaitFor[spreadsheet.UpsertRowStepOutput[string]]
+}
+
+func (sheetsIntegrationFinishedStep) Execute(_ dex.Context, output spreadsheet.UpsertRowStepOutput[string]) (*dex.StepDecision, error) {
+	return dex.GracefulComplete(output.Result), nil
 }
 
 func TestQueryFailureDoesNotUseDexRetry(t *testing.T) {

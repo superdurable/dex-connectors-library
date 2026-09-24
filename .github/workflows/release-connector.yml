@@ -10,6 +10,7 @@ on:
         type: choice
         options:
           - github
+          - google/spreadsheet
           - http
           - openai
       bump:
@@ -49,6 +50,9 @@ jobs:
             go.sum
             sdk/go/go.sum
             connectors/${{ inputs.connector }}/go.sum
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
       - name: Check generated release dropdown and connector code
         env:
           GOWORK: "off"
@@ -67,6 +71,20 @@ jobs:
         run: |
           go test -race ./...
           go vet ./...
+      - name: Build and test Connector Studio UI
+        run: |
+          if [ -f "${COMPONENT_PATH}/ui/package-lock.json" ]; then
+            npm ci --prefix sdk/react
+            npm run build --prefix sdk/react
+            npm ci --prefix "${COMPONENT_PATH}/ui"
+            npm test --prefix "${COMPONENT_PATH}/ui"
+            npm run build --prefix "${COMPONENT_PATH}/ui"
+            go run ./cmd/connectorctl ui-artifact \
+              --manifest "${MANIFEST_PATH}" \
+              --ui-root "${COMPONENT_PATH}/ui/dist" \
+              --output /tmp/connector-ui.tgz \
+              --digest-output /tmp/connector-ui.tgz.sha256
+          fi
       - name: Plan connector release
         id: plan
         run: |
@@ -92,6 +110,10 @@ jobs:
           RELEASE_VERSION: ${{ steps.plan.outputs.version }}
           MODULE_PATH: ${{ steps.plan.outputs.module_path }}
         run: |
+          UI_ARGS=()
+          if [ -f /tmp/connector-ui.tgz ]; then
+            UI_ARGS+=(--ui-artifact /tmp/connector-ui.tgz --ui-digest /tmp/connector-ui.tgz.sha256)
+          fi
           go run ./cmd/connectorctl release-artifact \
             --manifest "${MANIFEST_PATH}" \
             --module-path "${MODULE_PATH}" \
@@ -99,19 +121,23 @@ jobs:
             --tag "${RELEASE_TAG}" \
             --source-sha "${GITHUB_SHA}" \
             --output /tmp/connector-release.json \
-            --digest-output /tmp/connector-release.json.sha256
+            --digest-output /tmp/connector-release.json.sha256 \
+            "${UI_ARGS[@]}"
       - name: Create connector release
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ steps.plan.outputs.tag }}
           RELEASE_VERSION: ${{ steps.plan.outputs.version }}
         run: |
+          ASSETS=(/tmp/connector-release.json /tmp/connector-release.json.sha256)
+          if [ -f /tmp/connector-ui.tgz ]; then
+            ASSETS+=(/tmp/connector-ui.tgz /tmp/connector-ui.tgz.sha256)
+          fi
           gh release create "${RELEASE_TAG}" \
             --target "${GITHUB_SHA}" \
             --title "Connector ${{ inputs.connector }} ${RELEASE_VERSION}" \
             --notes-file /tmp/connector-release-notes.md \
-            /tmp/connector-release.json \
-            /tmp/connector-release.json.sha256
+            "${ASSETS[@]}"
       - name: Verify published connector module
         env:
           MODULE_PATH: ${{ steps.plan.outputs.module_path }}

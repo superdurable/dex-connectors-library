@@ -17,24 +17,22 @@ import (
 func TestCatalogLoadsRepositoryManifests(t *testing.T) {
 	manifests, err := catalog(filepath.Join("..", "..", "connectors"))
 	require.NoError(t, err)
-	require.Len(t, manifests, 3)
-	require.Equal(t, "github", manifests[0].Metadata.Name)
-	require.Equal(t, "http", manifests[1].Metadata.Name)
-	require.Equal(t, "openai", manifests[2].Metadata.Name)
-	require.Equal(t, []string{"structured", "text"}, manifests[2].Spec.Operations[0].Progress)
+	require.Len(t, manifests, 4)
+	require.Equal(t, []string{"github", "google-sheets", "http", "openai"}, []string{manifests[0].Metadata.Name, manifests[1].Metadata.Name, manifests[2].Metadata.Name, manifests[3].Metadata.Name})
+	require.Equal(t, []string{"structured", "text"}, manifests[3].Spec.Operations[0].Progress)
 }
 
 func TestReleaseWorkflowIsGeneratedFromSortedCatalog(t *testing.T) {
 	root := filepath.Join("..", "..", "connectors")
 	entries, err := connectorReleaseCatalog(root)
 	require.NoError(t, err)
-	require.Equal(t, []string{"github", "http", "openai"}, []string{entries[0].Slug, entries[1].Slug, entries[2].Slug})
+	require.Equal(t, []string{"github", "google/spreadsheet", "http", "openai"}, []string{entries[0].Slug, entries[1].Slug, entries[2].Slug, entries[3].Slug})
 	output := filepath.Join(t.TempDir(), "release-connector.yml")
 	require.NoError(t, releaseWorkflow([]string{root, output}))
 	require.NoError(t, releaseWorkflow([]string{"--check", root, output}))
 	content, err := os.ReadFile(output)
 	require.NoError(t, err)
-	require.Contains(t, string(content), "          - github\n          - http\n          - openai\n")
+	require.Contains(t, string(content), "          - github\n          - google/spreadsheet\n          - http\n          - openai\n")
 	require.Contains(t, string(content), "connectors/${{ inputs.connector }}")
 	require.NoError(t, os.WriteFile(output, []byte("stale"), 0o600))
 	require.ErrorContains(t, releaseWorkflow([]string{"--check", root, output}), "stale")
@@ -73,10 +71,83 @@ func TestReleaseArtifactIsDeterministicAndVersioned(t *testing.T) {
 }
 
 func TestGeneratedConnectorsAreCurrent(t *testing.T) {
-	for _, manifest := range []string{"github", "http", "openai"} {
-		path := filepath.Join("..", "..", "connectors", manifest, "connector.yaml")
+	for _, manifest := range []string{"github", "google/spreadsheet", "http", "openai"} {
+		path := filepath.Join("..", "..", "connectors", filepath.FromSlash(manifest), "connector.yaml")
 		require.NoError(t, generate([]string{"--check", path}))
 	}
+}
+
+func TestStudioUIArtifactIsDeterministicAndIncludedInRelease(t *testing.T) {
+	directory := t.TempDir()
+	uiRoot := filepath.Join(directory, "dist")
+	require.NoError(t, os.MkdirAll(uiRoot, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(uiRoot, "index.html"), []byte("<main>Sheets</main>"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(uiRoot, "icon.svg"), []byte("<svg xmlns=\"http://www.w3.org/2000/svg\"/>"), 0o600))
+	fixture, err := os.ReadFile(filepath.Join("..", "..", "schema", "testdata", "google-oauth.yaml"))
+	require.NoError(t, err)
+	fixture = []byte(strings.Replace(string(fixture), "  operations:\n", `  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.1.0 <0.2.0"
+      backendCapabilities: [configuration.write]
+      mockScenarios: [not-configured, ready]
+      icon: icon.svg
+  operations:
+`, 1))
+	manifest := filepath.Join(directory, "connector.yaml")
+	require.NoError(t, os.WriteFile(manifest, fixture, 0o600))
+	first := filepath.Join(directory, "connector-ui.tgz")
+	firstDigest := first + ".sha256"
+	second := filepath.Join(directory, "connector-ui-copy.tgz")
+	secondDigest := second + ".sha256"
+	require.NoError(t, uiArtifact([]string{"--manifest", manifest, "--ui-root", uiRoot, "--output", first, "--digest-output", firstDigest}))
+	require.NoError(t, uiArtifact([]string{"--manifest", manifest, "--ui-root", uiRoot, "--output", second, "--digest-output", secondDigest}))
+	firstBytes, err := os.ReadFile(first)
+	require.NoError(t, err)
+	secondBytes, err := os.ReadFile(second)
+	require.NoError(t, err)
+	require.Equal(t, firstBytes, secondBytes)
+
+	release := filepath.Join(directory, "connector-release.json")
+	releaseDigest := release + ".sha256"
+	require.NoError(t, releaseArtifact([]string{
+		"--manifest", manifest,
+		"--module-path", "github.com/superdurable/dex-connectors-library/connectors/google-fixture",
+		"--version", "v0.1.0", "--tag", "connectors/google-fixture/v0.1.0",
+		"--source-sha", strings.Repeat("a", 40), "--ui-artifact", first, "--ui-digest", firstDigest,
+		"--output", release, "--digest-output", releaseDigest,
+	}))
+	releaseBytes, err := os.ReadFile(release)
+	require.NoError(t, err)
+	require.Contains(t, string(releaseBytes), `"artifact": "connector-ui.tgz"`)
+	require.Contains(t, string(releaseBytes), `"entrypoint": "index.html"`)
+}
+
+func TestStudioUIArtifactRejectsActiveSVG(t *testing.T) {
+	directory := t.TempDir()
+	uiRoot := filepath.Join(directory, "dist")
+	require.NoError(t, os.MkdirAll(uiRoot, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(uiRoot, "index.html"), []byte("<main>Fixture</main>"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(uiRoot, "icon.svg"), []byte(`<svg xmlns="http://www.w3.org/2000/svg"><image onerror = "alert(1)"/></svg>`), 0o600))
+	fixture, err := os.ReadFile(filepath.Join("..", "..", "schema", "testdata", "google-oauth.yaml"))
+	require.NoError(t, err)
+	fixture = []byte(strings.Replace(string(fixture), "  operations:\n", `  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.1.0 <0.2.0"
+      backendCapabilities: [configuration.write]
+      mockScenarios: [ready]
+      icon: icon.svg
+  operations:
+`, 1))
+	manifest := filepath.Join(directory, "connector.yaml")
+	require.NoError(t, os.WriteFile(manifest, fixture, 0o600))
+	err = uiArtifact([]string{
+		"--manifest", manifest, "--ui-root", uiRoot,
+		"--output", filepath.Join(directory, "ui.tgz"),
+		"--digest-output", filepath.Join(directory, "ui.tgz.sha256"),
+	})
+	require.ErrorContains(t, err, "prohibited active content")
 }
 
 func TestGenerateCheckDetectsDrift(t *testing.T) {

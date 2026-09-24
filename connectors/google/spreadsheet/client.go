@@ -1,0 +1,515 @@
+// Copyright (c) 2026 Super Durable
+// SPDX-License-Identifier: MIT
+
+// Package spreadsheet implements bounded Google Sheets operations.
+package spreadsheet
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"sort"
+	"strconv"
+	"strings"
+	"time"
+
+	connector "github.com/superdurable/dex-connectors-library/sdk/go"
+)
+
+type Option func(*clientOptions)
+
+type clientOptions struct {
+	httpClient *http.Client
+	now        func() time.Time
+}
+
+func WithHTTPClient(client *http.Client) Option {
+	return func(options *clientOptions) { options.httpClient = client }
+}
+
+func withClock(now func() time.Time) Option {
+	return func(options *clientOptions) { options.now = now }
+}
+
+type Client struct {
+	endpoint         *url.URL
+	httpClient       *http.Client
+	credentials      connector.CredentialProvider[Credentials]
+	maxResponseBytes int64
+	maxRows          int
+	now              func() time.Time
+}
+
+type GetValuesInput struct {
+	SpreadsheetID string `json:"spreadsheetId"`
+	Range         string `json:"range"`
+}
+
+type GetValuesOutput struct {
+	Range          string     `json:"range"`
+	MajorDimension string     `json:"majorDimension"`
+	Values         [][]string `json:"values"`
+}
+
+type FindRowInput struct {
+	SpreadsheetID string `json:"spreadsheetId"`
+	SheetName     string `json:"sheetName"`
+	KeyColumn     string `json:"keyColumn"`
+	KeyValue      string `json:"keyValue"`
+}
+
+type FindRowOutput struct {
+	RowNumber       int64             `json:"rowNumber,omitempty"`
+	Values          map[string]string `json:"values,omitempty"`
+	ConflictingRows []int64           `json:"conflictingRows,omitempty"`
+}
+
+type UpsertRowInput struct {
+	SpreadsheetID string            `json:"spreadsheetId"`
+	SheetName     string            `json:"sheetName"`
+	KeyColumn     string            `json:"keyColumn"`
+	KeyValue      string            `json:"keyValue"`
+	Values        map[string]string `json:"values"`
+}
+
+type UpsertRowOutput struct {
+	Action       string `json:"action"`
+	RowNumber    int64  `json:"rowNumber"`
+	UpdatedRange string `json:"updatedRange"`
+}
+
+type GetValuesOperation struct{ client *Client }
+type FindRowOperation struct{ client *Client }
+type UpsertRowOperation struct{ client *Client }
+
+type valuesResponse struct {
+	Range          string  `json:"range"`
+	MajorDimension string  `json:"majorDimension"`
+	Values         [][]any `json:"values"`
+}
+
+type updateResponse struct {
+	UpdatedRange string `json:"updatedRange"`
+	Updates      *struct {
+		UpdatedRange string `json:"updatedRange"`
+	} `json:"updates,omitempty"`
+}
+
+type requestResult struct {
+	status    int
+	header    http.Header
+	body      []byte
+	requestID string
+}
+
+type providerRequestError struct {
+	kind    connector.FailureKind
+	message string
+}
+
+func (failure *providerRequestError) Error() string { return failure.message }
+
+func New(config Config, credentials connector.CredentialProvider[Credentials], options ...Option) (*Client, error) {
+	config = withConfigDefaults(config)
+	if err := config.Validate(); err != nil {
+		return nil, err
+	}
+	endpoint, err := url.Parse(config.Endpoint)
+	if err != nil || endpoint.Scheme == "" || endpoint.Hostname() == "" {
+		return nil, fmt.Errorf("Google Sheets endpoint must be absolute")
+	}
+	if endpoint.Scheme != "https" && endpoint.Hostname() != "localhost" && endpoint.Hostname() != "127.0.0.1" {
+		return nil, fmt.Errorf("Google Sheets endpoint must use HTTPS")
+	}
+	if credentials == nil {
+		return nil, fmt.Errorf("credential provider is required")
+	}
+	dependencies := clientOptions{now: time.Now}
+	for _, option := range options {
+		if option == nil {
+			return nil, fmt.Errorf("Google Sheets connector option is nil")
+		}
+		option(&dependencies)
+	}
+	if dependencies.httpClient == nil {
+		dependencies.httpClient = &http.Client{Timeout: 25 * time.Second}
+	}
+	if config.MaxResponseBytes < 1 || config.MaxRows < 2 {
+		return nil, fmt.Errorf("Google Sheets response and row limits must be positive")
+	}
+	return &Client{
+		endpoint: endpoint, httpClient: dependencies.httpClient, credentials: credentials,
+		maxResponseBytes: config.MaxResponseBytes, maxRows: int(config.MaxRows), now: dependencies.now,
+	}, nil
+}
+
+func (client *Client) GetValues() GetValuesOperation { return GetValuesOperation{client: client} }
+func (client *Client) FindRow() FindRowOperation     { return FindRowOperation{client: client} }
+func (client *Client) UpsertRow() UpsertRowOperation { return UpsertRowOperation{client: client} }
+
+func (GetValuesOperation) Definition() connector.QueryDefinition { return GetValuesDefinition }
+
+func (operation GetValuesOperation) Invoke(call connector.Call, input GetValuesInput) connector.QueryAttempt[GetValuesOutput] {
+	if strings.TrimSpace(input.SpreadsheetID) == "" || strings.TrimSpace(input.Range) == "" {
+		return connector.NewQueryBranch(GetValuesBranchDefect, GetValuesOutput{}, failurePointer(connector.FailureValidation, "getValues", "spreadsheet ID and range are required"), connector.Receipt{})
+	}
+	credential, failure := operation.client.resolveCredential(call, "getValues")
+	if failure != nil {
+		return connector.NewQueryBranch(GetValuesBranchFailed, GetValuesOutput{}, failure, connector.Receipt{})
+	}
+	result, err := operation.client.getValues(call, credential, input.SpreadsheetID, input.Range)
+	if err != nil {
+		if requestFailure, ok := err.(*providerRequestError); ok && requestFailure.kind == connector.FailureResponseTooLarge {
+			return connector.NewQueryBranch(GetValuesBranchFailed, GetValuesOutput{}, failurePointer(requestFailure.kind, "getValues", requestFailure.message), connector.Receipt{})
+		}
+		return connector.NewQueryRetry[GetValuesOutput](sheetFailure(connector.FailureAvailability, "getValues", "provider is unavailable"), 0)
+	}
+	receipt := operation.client.receipt(call, result, "")
+	if result.status == http.StatusNotFound {
+		return connector.NewQueryBranch(GetValuesBranchNotFound, GetValuesOutput{}, failurePointer(connector.FailureNotFound, "getValues", "spreadsheet or range was not found"), receipt)
+	}
+	if retry, delay := retryableStatus(result.status, result.header); retry {
+		return connector.NewQueryRetry[GetValuesOutput](sheetFailure(statusFailureKind(result.status), "getValues", "provider temporarily rejected the query"), delay)
+	}
+	if result.status < 200 || result.status >= 300 {
+		return connector.NewQueryBranch(GetValuesBranchFailed, GetValuesOutput{}, failurePointer(statusFailureKind(result.status), "getValues", "provider rejected the query"), receipt)
+	}
+	values, decodeFailure := operation.client.decodeValues(result.body, "getValues")
+	if decodeFailure != nil {
+		return connector.NewQueryBranch(GetValuesBranchFailed, GetValuesOutput{}, decodeFailure, receipt)
+	}
+	return connector.NewQueryBranch(GetValuesBranchRead, convertValues(values), nil, receipt)
+}
+
+func (FindRowOperation) Definition() connector.QueryDefinition { return FindRowDefinition }
+
+func (operation FindRowOperation) Invoke(call connector.Call, input FindRowInput) connector.QueryAttempt[FindRowOutput] {
+	if err := validateFindInput(input); err != nil {
+		return connector.NewQueryBranch(FindRowBranchDefect, FindRowOutput{}, failurePointer(connector.FailureValidation, "findRow", err.Error()), connector.Receipt{})
+	}
+	credential, failure := operation.client.resolveCredential(call, "findRow")
+	if failure != nil {
+		return connector.NewQueryBranch(FindRowBranchFailed, FindRowOutput{}, failure, connector.Receipt{})
+	}
+	result, err := operation.client.getValues(call, credential, input.SpreadsheetID, quoteSheet(input.SheetName))
+	if err != nil {
+		if requestFailure, ok := err.(*providerRequestError); ok && requestFailure.kind == connector.FailureResponseTooLarge {
+			return connector.NewQueryBranch(FindRowBranchFailed, FindRowOutput{}, failurePointer(requestFailure.kind, "findRow", requestFailure.message), connector.Receipt{})
+		}
+		return connector.NewQueryRetry[FindRowOutput](sheetFailure(connector.FailureAvailability, "findRow", "provider is unavailable"), 0)
+	}
+	receipt := operation.client.receipt(call, result, "")
+	if result.status == http.StatusNotFound {
+		return connector.NewQueryBranch(FindRowBranchNotFound, FindRowOutput{}, failurePointer(connector.FailureNotFound, "findRow", "spreadsheet or sheet was not found"), receipt)
+	}
+	if retry, delay := retryableStatus(result.status, result.header); retry {
+		return connector.NewQueryRetry[FindRowOutput](sheetFailure(statusFailureKind(result.status), "findRow", "provider temporarily rejected the query"), delay)
+	}
+	if result.status < 200 || result.status >= 300 {
+		return connector.NewQueryBranch(FindRowBranchFailed, FindRowOutput{}, failurePointer(statusFailureKind(result.status), "findRow", "provider rejected the query"), receipt)
+	}
+	values, decodeFailure := operation.client.decodeValues(result.body, "findRow")
+	if decodeFailure != nil {
+		return connector.NewQueryBranch(FindRowBranchFailed, FindRowOutput{}, decodeFailure, receipt)
+	}
+	found, branch, findFailure := findRow(convertValues(values).Values, input.KeyColumn, input.KeyValue)
+	return connector.NewQueryBranch(branch, found, findFailure, receipt)
+}
+
+func (UpsertRowOperation) Definition() connector.MutationDefinition { return UpsertRowDefinition }
+
+func (UpsertRowOperation) IdempotencyKey(callID connector.CallID, _ UpsertRowInput) connector.IdempotencyKey {
+	return connector.IdempotencyKey(callID)
+}
+
+func (operation UpsertRowOperation) Invoke(call connector.Call, input UpsertRowInput) connector.MutationAttempt[UpsertRowOutput] {
+	findInput := FindRowInput{SpreadsheetID: input.SpreadsheetID, SheetName: input.SheetName, KeyColumn: input.KeyColumn, KeyValue: input.KeyValue}
+	if err := validateFindInput(findInput); err != nil || len(input.Values) == 0 {
+		message := "values are required"
+		if err != nil {
+			message = err.Error()
+		}
+		return connector.NewMutationBranch(UpsertRowBranchDefect, UpsertRowOutput{}, failurePointer(connector.FailureValidation, "upsertRow", message), connector.Receipt{})
+	}
+	credential, failure := operation.client.resolveCredential(call, "upsertRow")
+	if failure != nil {
+		return connector.NewMutationBranch(UpsertRowBranchRejected, UpsertRowOutput{}, failure, connector.Receipt{})
+	}
+	lookup, err := operation.client.getValues(call, credential, input.SpreadsheetID, quoteSheet(input.SheetName))
+	if err != nil {
+		if requestFailure, ok := err.(*providerRequestError); ok && requestFailure.kind == connector.FailureResponseTooLarge {
+			return connector.NewMutationBranch(UpsertRowBranchRejected, UpsertRowOutput{}, failurePointer(requestFailure.kind, "upsertRow", requestFailure.message), connector.Receipt{})
+		}
+		return connector.NewMutationRetry[UpsertRowOutput](sheetFailure(connector.FailureAvailability, "upsertRow", "provider is unavailable before write"), 0)
+	}
+	lookupReceipt := operation.client.receipt(call, lookup, "")
+	if retry, delay := retryableStatus(lookup.status, lookup.header); retry {
+		return connector.NewMutationRetry[UpsertRowOutput](sheetFailure(statusFailureKind(lookup.status), "upsertRow", "provider temporarily rejected the pre-write query"), delay)
+	}
+	if lookup.status < 200 || lookup.status >= 300 {
+		return connector.NewMutationBranch(UpsertRowBranchRejected, UpsertRowOutput{}, failurePointer(statusFailureKind(lookup.status), "upsertRow", "provider rejected the pre-write query"), lookupReceipt)
+	}
+	values, decodeFailure := operation.client.decodeValues(lookup.body, "upsertRow")
+	if decodeFailure != nil {
+		return connector.NewMutationBranch(UpsertRowBranchRejected, UpsertRowOutput{}, decodeFailure, lookupReceipt)
+	}
+	rows := convertValues(values).Values
+	match, branch, findFailure := findRow(rows, input.KeyColumn, input.KeyValue)
+	if branch == FindRowBranchConflict {
+		return connector.NewMutationBranch(UpsertRowBranchConflict, UpsertRowOutput{}, findFailure, lookupReceipt)
+	}
+	if branch != FindRowBranchFound && branch != FindRowBranchNotFound {
+		return connector.NewMutationBranch(UpsertRowBranchDefect, UpsertRowOutput{}, findFailure, lookupReceipt)
+	}
+	row, buildFailure := buildRow(rows, input)
+	if buildFailure != nil {
+		return connector.NewMutationBranch(UpsertRowBranchDefect, UpsertRowOutput{}, buildFailure, lookupReceipt)
+	}
+	action := "inserted"
+	method := http.MethodPost
+	targetRange := quoteSheet(input.SheetName)
+	query := url.Values{"valueInputOption": {"RAW"}, "insertDataOption": {"INSERT_ROWS"}}
+	pathSuffix := "/values/" + url.PathEscape(targetRange) + ":append"
+	rowNumber := int64(len(rows) + 1)
+	if branch == FindRowBranchFound {
+		action = "updated"
+		method = http.MethodPut
+		rowNumber = match.RowNumber
+		targetRange = fmt.Sprintf("%s!A%d", quoteSheet(input.SheetName), rowNumber)
+		query = url.Values{"valueInputOption": {"RAW"}}
+		pathSuffix = "/values/" + url.PathEscape(targetRange)
+	}
+	payload := map[string]any{"range": targetRange, "majorDimension": "ROWS", "values": [][]string{row}}
+	writeResult, err := operation.client.request(call, credential, method, input.SpreadsheetID, pathSuffix, query, payload)
+	if err != nil {
+		return connector.NewMutationUncertain(UpsertRowOutput{}, sheetFailure(connector.FailureTransport, "upsertRow", "provider outcome is unknown"), lookupReceipt)
+	}
+	receipt := operation.client.receipt(call, writeResult, fmt.Sprintf("%s#%s!%d", input.SpreadsheetID, input.SheetName, rowNumber))
+	if writeResult.status == http.StatusTooManyRequests {
+		delay := retryAfterDelay(writeResult.header)
+		return connector.NewMutationRetry[UpsertRowOutput](sheetFailure(statusFailureKind(writeResult.status), "upsertRow", "provider conclusively rejected the write temporarily"), delay)
+	}
+	if writeResult.status >= 500 {
+		return connector.NewMutationUncertain(UpsertRowOutput{}, sheetFailure(connector.FailureAvailability, "upsertRow", "provider write outcome is unknown"), receipt)
+	}
+	if writeResult.status < 200 || writeResult.status >= 300 {
+		return connector.NewMutationBranch(UpsertRowBranchRejected, UpsertRowOutput{}, failurePointer(statusFailureKind(writeResult.status), "upsertRow", "provider rejected the write"), receipt)
+	}
+	var response updateResponse
+	if err := json.Unmarshal(writeResult.body, &response); err != nil {
+		return connector.NewMutationUncertain(UpsertRowOutput{}, sheetFailure(connector.FailureProtocol, "upsertRow", "provider returned an invalid write response"), receipt)
+	}
+	updatedRange := response.UpdatedRange
+	if response.Updates != nil && response.Updates.UpdatedRange != "" {
+		updatedRange = response.Updates.UpdatedRange
+	}
+	return connector.NewMutationBranch(UpsertRowBranchUpserted, UpsertRowOutput{Action: action, RowNumber: rowNumber, UpdatedRange: updatedRange}, nil, receipt)
+}
+
+func (client *Client) resolveCredential(call connector.Call, operation string) (Credentials, *connector.Failure) {
+	credential, err := client.credentials.Resolve(call)
+	if err != nil || credential.Validate() != nil {
+		return Credentials{}, failurePointer(connector.FailureAuthentication, operation, "connection credentials are unavailable")
+	}
+	return credential, nil
+}
+
+func (client *Client) getValues(call connector.Call, credential Credentials, spreadsheetID string, valueRange string) (requestResult, error) {
+	return client.request(call, credential, http.MethodGet, spreadsheetID, "/values/"+url.PathEscape(valueRange), url.Values{"majorDimension": {"ROWS"}, "valueRenderOption": {"FORMATTED_VALUE"}}, nil)
+}
+
+func (client *Client) request(call connector.Call, credential Credentials, method, spreadsheetID, suffix string, query url.Values, payload any) (requestResult, error) {
+	var body io.Reader
+	if payload != nil {
+		encoded, err := json.Marshal(payload)
+		if err != nil {
+			return requestResult{}, err
+		}
+		body = bytes.NewReader(encoded)
+	}
+	target := strings.TrimRight(client.endpoint.String(), "/") + "/spreadsheets/" + url.PathEscape(spreadsheetID) + suffix
+	request, err := http.NewRequestWithContext(call.Context, method, target, body)
+	if err != nil {
+		return requestResult{}, err
+	}
+	request.URL.RawQuery = query.Encode()
+	request.Header.Set("Authorization", "Bearer "+credential.AccessToken.Reveal())
+	if payload != nil {
+		request.Header.Set("Content-Type", "application/json")
+	}
+	response, err := client.httpClient.Do(request)
+	if err != nil {
+		return requestResult{}, &providerRequestError{kind: connector.FailureTransport, message: "provider request failed"}
+	}
+	defer response.Body.Close()
+	content, err := io.ReadAll(io.LimitReader(response.Body, client.maxResponseBytes+1))
+	if err != nil {
+		return requestResult{}, &providerRequestError{kind: connector.FailureTransport, message: "provider response could not be read"}
+	}
+	if int64(len(content)) > client.maxResponseBytes {
+		return requestResult{status: response.StatusCode, header: response.Header, requestID: googleRequestID(response.Header)}, &providerRequestError{kind: connector.FailureResponseTooLarge, message: "provider response exceeds configured limit"}
+	}
+	return requestResult{status: response.StatusCode, header: response.Header, body: content, requestID: googleRequestID(response.Header)}, nil
+}
+
+func (client *Client) decodeValues(content []byte, operation string) (valuesResponse, *connector.Failure) {
+	var response valuesResponse
+	if err := json.Unmarshal(content, &response); err != nil {
+		return valuesResponse{}, failurePointer(connector.FailureProtocol, operation, "provider response is invalid")
+	}
+	if len(response.Values) > client.maxRows {
+		return valuesResponse{}, failurePointer(connector.FailureResponseTooLarge, operation, "provider response exceeds configured row limit")
+	}
+	return response, nil
+}
+
+func convertValues(input valuesResponse) GetValuesOutput {
+	rows := make([][]string, len(input.Values))
+	for rowIndex, row := range input.Values {
+		rows[rowIndex] = make([]string, len(row))
+		for columnIndex, value := range row {
+			rows[rowIndex][columnIndex] = fmt.Sprint(value)
+		}
+	}
+	return GetValuesOutput{Range: input.Range, MajorDimension: input.MajorDimension, Values: rows}
+}
+
+func findRow(rows [][]string, keyColumn, keyValue string) (FindRowOutput, connector.BranchID, *connector.Failure) {
+	if len(rows) == 0 {
+		return FindRowOutput{}, FindRowBranchDefect, failurePointer(connector.FailureValidation, "findRow", "sheet must contain a header row")
+	}
+	column := -1
+	for index, header := range rows[0] {
+		if header == keyColumn {
+			if column >= 0 {
+				return FindRowOutput{}, FindRowBranchConflict, failurePointer(connector.FailureConflict, "findRow", "key column header is duplicated")
+			}
+			column = index
+		}
+	}
+	if column < 0 {
+		return FindRowOutput{}, FindRowBranchDefect, failurePointer(connector.FailureValidation, "findRow", "key column is missing")
+	}
+	var matches []int64
+	var selected []string
+	for rowIndex := 1; rowIndex < len(rows); rowIndex++ {
+		if column < len(rows[rowIndex]) && rows[rowIndex][column] == keyValue {
+			matches = append(matches, int64(rowIndex+1))
+			selected = rows[rowIndex]
+		}
+	}
+	if len(matches) == 0 {
+		return FindRowOutput{}, FindRowBranchNotFound, nil
+	}
+	if len(matches) > 1 {
+		return FindRowOutput{ConflictingRows: matches}, FindRowBranchConflict, failurePointer(connector.FailureConflict, "findRow", "multiple rows contain the stable key")
+	}
+	values := map[string]string{}
+	for index, header := range rows[0] {
+		if index < len(selected) {
+			values[header] = selected[index]
+		}
+	}
+	return FindRowOutput{RowNumber: matches[0], Values: values}, FindRowBranchFound, nil
+}
+
+func buildRow(rows [][]string, input UpsertRowInput) ([]string, *connector.Failure) {
+	if len(rows) == 0 {
+		return nil, failurePointer(connector.FailureValidation, "upsertRow", "sheet must contain a header row")
+	}
+	values := make(map[string]string, len(input.Values)+1)
+	for key, value := range input.Values {
+		values[key] = value
+	}
+	if existing, ok := values[input.KeyColumn]; ok && existing != input.KeyValue {
+		return nil, failurePointer(connector.FailureValidation, "upsertRow", "key column value conflicts with stable key")
+	}
+	values[input.KeyColumn] = input.KeyValue
+	headers := map[string]bool{}
+	row := make([]string, len(rows[0]))
+	for index, header := range rows[0] {
+		if header == "" || headers[header] {
+			return nil, failurePointer(connector.FailureValidation, "upsertRow", "headers must be non-empty and unique")
+		}
+		headers[header] = true
+		row[index] = values[header]
+	}
+	var unknown []string
+	for key := range values {
+		if !headers[key] {
+			unknown = append(unknown, key)
+		}
+	}
+	if len(unknown) > 0 {
+		sort.Strings(unknown)
+		return nil, failurePointer(connector.FailureValidation, "upsertRow", "values contain unknown columns: "+strings.Join(unknown, ", "))
+	}
+	return row, nil
+}
+
+func validateFindInput(input FindRowInput) error {
+	if strings.TrimSpace(input.SpreadsheetID) == "" || strings.TrimSpace(input.SheetName) == "" || strings.TrimSpace(input.KeyColumn) == "" || strings.TrimSpace(input.KeyValue) == "" {
+		return fmt.Errorf("spreadsheet ID, sheet name, key column, and key value are required")
+	}
+	return nil
+}
+
+func quoteSheet(name string) string { return "'" + strings.ReplaceAll(name, "'", "''") + "'" }
+
+func retryableStatus(status int, header http.Header) (bool, time.Duration) {
+	if status != http.StatusTooManyRequests && status < 500 {
+		return false, 0
+	}
+	return true, retryAfterDelay(header)
+}
+
+func retryAfterDelay(header http.Header) time.Duration {
+	seconds, _ := strconv.Atoi(header.Get("Retry-After"))
+	if seconds > 0 {
+		return time.Duration(seconds) * time.Second
+	}
+	return 0
+}
+
+func statusFailureKind(status int) connector.FailureKind {
+	switch status {
+	case http.StatusUnauthorized:
+		return connector.FailureAuthentication
+	case http.StatusForbidden:
+		return connector.FailureAuthorization
+	case http.StatusNotFound:
+		return connector.FailureNotFound
+	case http.StatusConflict:
+		return connector.FailureConflict
+	case http.StatusTooManyRequests:
+		return connector.FailureRateLimit
+	default:
+		if status >= 500 {
+			return connector.FailureAvailability
+		}
+		return connector.FailureProviderRejection
+	}
+}
+
+func sheetFailure(kind connector.FailureKind, operation, message string) connector.Failure {
+	return connector.Failure{Kind: kind, Provider: "google-sheets", Operation: operation, Message: message}
+}
+
+func failurePointer(kind connector.FailureKind, operation, message string) *connector.Failure {
+	failure := sheetFailure(kind, operation, message)
+	return &failure
+}
+
+func googleRequestID(header http.Header) string {
+	if value := header.Get("X-Goog-Request-Id"); value != "" {
+		return value
+	}
+	return header.Get("X-Request-Id")
+}
+
+func (client *Client) receipt(call connector.Call, result requestResult, objectID string) connector.Receipt {
+	return connector.Receipt{CallID: call.ID, IdempotencyKey: call.IdempotencyKey, Provider: "google-sheets", ProviderObjectID: objectID, ProviderRequestID: result.requestID, ObservedAt: client.now().UTC()}
+}

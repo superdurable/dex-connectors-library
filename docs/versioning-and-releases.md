@@ -40,11 +40,13 @@ connector without adding its release choice cannot merge. The workflow:
 3. proves the exact SDK tag is reachable and downloadable;
 4. derives the next version from the latest reachable component tag;
 5. includes only commits that changed that connector directory;
-6. uploads `connector-release.json` and its SHA-256 digest;
-7. verifies the published Go module is downloadable.
+6. builds and tests an optional Connector Studio UI;
+7. uploads `connector-release.json`, optional `connector-ui.tgz`, and digests;
+8. verifies the published Go module is downloadable.
 
 The release artifact contains the connector ID, complete versionless manifest,
-module path, release version and tag, source SHA, and source manifest digest.
+module path, release version and tag, source SHA, source manifest digest, and
+optional Studio UI artifact identity and compatibility metadata.
 SuperVerse Catalog consumes that artifact instead of inferring a version from
 source files.
 

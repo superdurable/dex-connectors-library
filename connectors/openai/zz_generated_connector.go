@@ -132,6 +132,8 @@ type CreateResponseStepOutput[IN any] = connector.MutationStepOutput[IN, Respons
 
 type CreateResponseStepConfig[IN any] struct {
 	connector.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                           struct{}                                           `connector:"connectorId=openai"`
+	operationID                           struct{}                                           `connector:"operationId=createResponse"`
 	StepType                              string                                             `connector:"stepType"`
 	Presentation                          connector.StepPresentation                         `connector:"presentation"`
 	Connection                            Connection                                         `connector:"connection"`
@@ -193,6 +195,8 @@ type RetrieveResponseStepOutput[IN any] = connector.QueryStepOutput[IN, Response
 
 type RetrieveResponseStepConfig[IN any] struct {
 	connector.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                        struct{}                                         `connector:"connectorId=openai"`
+	operationID                        struct{}                                         `connector:"operationId=retrieveResponse"`
 	StepType                           string                                           `connector:"stepType"`
 	Presentation                       connector.StepPresentation                       `connector:"presentation"`
 	Connection                         Connection                                       `connector:"connection"`

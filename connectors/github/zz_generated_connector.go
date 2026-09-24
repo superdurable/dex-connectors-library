@@ -158,6 +158,8 @@ type GetAuthenticatedProfileStepOutput[IN any] = connector.QueryStepOutput[IN, A
 
 type GetAuthenticatedProfileStepConfig[IN any] struct {
 	connector.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                        struct{}                                                    `connector:"connectorId=github"`
+	operationID                        struct{}                                                    `connector:"operationId=getAuthenticatedProfile"`
 	StepType                           string                                                      `connector:"stepType"`
 	Presentation                       connector.StepPresentation                                  `connector:"presentation"`
 	Connection                         Connection                                                  `connector:"connection"`
@@ -226,6 +228,8 @@ type ListPublicRepositoriesStepOutput[IN any] = connector.QueryStepOutput[IN, Pu
 
 type ListPublicRepositoriesStepConfig[IN any] struct {
 	connector.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                        struct{}                                                  `connector:"connectorId=github"`
+	operationID                        struct{}                                                  `connector:"operationId=listPublicRepositories"`
 	StepType                           string                                                    `connector:"stepType"`
 	Presentation                       connector.StepPresentation                                `connector:"presentation"`
 	Connection                         Connection                                                `connector:"connection"`
