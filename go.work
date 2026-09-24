@@ -3,6 +3,7 @@ go 1.24.0
 use (
 	.
 	./connectors/http
+	./connectors/google/spreadsheet
 	./connectors/openai
 	./sdk/go
 )
