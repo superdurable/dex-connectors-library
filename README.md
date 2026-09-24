@@ -53,13 +53,12 @@ The SDK must be released before a connector can pin a new SDK version. Each
 connector currently pins the published SDK `v0.1.0`. See
 [the versioning and release guide](docs/versioning-and-releases.md).
 
-The Connector Go SDK uses `github.com/superdurable/dex/sdk-go v0.10.2` and verifies
-integration behavior against Dex Server/dexcli 0.11.1. Those releases are
+The Connector Go SDK uses `github.com/superdurable/dex/sdk-go v0.11.3` and verifies
+integration behavior against Dex Server/dexcli 0.11.3. Those releases are
 versioned independently.
 
-Dex CLI 0.11.1 cannot yet render factory Steps in Dex Web 2.0. The Connector
-API is intentionally held in Draft for manual acceptance before a separate Dex
-CLI analyzer patch.
+Dex CLI 0.11.3 renders canonical Connector factory Steps, branch transitions,
+Result Attributes, and progress Streams in Dex Web 2.0.
 
 Read [the Connector contract](docs/connector-contract.md),
 [architecture](docs/architecture.md),

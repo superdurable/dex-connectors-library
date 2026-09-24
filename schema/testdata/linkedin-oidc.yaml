@@ -1,0 +1,65 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: linkedin-oidc-fixture
+  displayName: LinkedIn OIDC Fixture
+  description: OIDC manifest fixture for authenticated profile metadata.
+spec:
+  provider: linkedin
+  codegen:
+    go:
+      package: linkedinoidcfixture
+  configuration:
+    fields: []
+  auth:
+    type: oauth2
+    connectionKind: linkedin-oidc
+    fields:
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        description: OIDC access token.
+        required: true
+      - name: id_token
+        goName: IDToken
+        type: secretString
+        description: Signed OIDC identity token.
+        required: true
+    oauth2:
+      protocol: oidc
+      authorizationEndpoint: https://www.linkedin.com/oauth/v2/authorization
+      tokenEndpoint: https://www.linkedin.com/oauth/v2/accessToken
+      scopes: [openid, profile, email]
+      pkce: true
+      oidc:
+        issuer: https://www.linkedin.com
+        discoveryEndpoint: https://www.linkedin.com/oauth/.well-known/openid-configuration
+        userInfoEndpoint: https://api.linkedin.com/v2/userinfo
+        nonceRequired: true
+  operations:
+    - name: getAuthenticatedProfile
+      goName: GetAuthenticatedProfile
+      inputType: GetAuthenticatedProfileInput
+      outputType: GetAuthenticatedProfileOutput
+      kind: query
+      description: Read the authenticated member profile and verified email.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: profileLoaded, goName: ProfileLoaded, description: Profile and verified email were loaded.}
+        - {id: verifiedEmailRequired, goName: VerifiedEmailRequired, description: The provider did not return a verified email.}
+        - {id: insufficientScope, goName: InsufficientScope, description: Required OIDC scopes were not granted.}
+        - {id: authorizationRevoked, goName: AuthorizationRevoked, description: The authorization is no longer valid.}
+        - {id: failed, goName: Failed, description: The profile could not be loaded.}
+        - {id: defect, goName: Defect, description: Local input or connector configuration is invalid.}
+      defectBranch: defect
+      resultAttribute: required
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+        retry:
+          initialInterval: 1s
+          backoffCoefficient: 2
+          maximumInterval: 30s
+          maximumAttempts: 5
+          totalDuration: 2m

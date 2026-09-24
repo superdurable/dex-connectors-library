@@ -64,11 +64,33 @@
               "additionalProperties": false,
               "required": ["authorizationEndpoint", "tokenEndpoint", "scopes", "pkce"],
               "properties": {
+                "protocol": { "enum": ["oauth2", "oidc"] },
                 "authorizationEndpoint": { "type": "string", "format": "uri" },
                 "tokenEndpoint": { "type": "string", "format": "uri" },
                 "scopes": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
-                "pkce": { "type": "boolean" }
-              }
+                "pkce": { "type": "boolean" },
+                "oidc": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["issuer", "discoveryEndpoint", "userInfoEndpoint", "nonceRequired"],
+                  "properties": {
+                    "issuer": { "type": "string", "format": "uri" },
+                    "discoveryEndpoint": { "type": "string", "format": "uri" },
+                    "userInfoEndpoint": { "type": "string", "format": "uri" },
+                    "nonceRequired": { "const": true }
+                  }
+                }
+              },
+              "allOf": [
+                {
+                  "if": { "properties": { "protocol": { "const": "oidc" } }, "required": ["protocol"] },
+                  "then": { "required": ["oidc"] }
+                },
+                {
+                  "if": { "properties": { "protocol": { "const": "oauth2" } }, "required": ["protocol"] },
+                  "then": { "not": { "required": ["oidc"] } }
+                }
+              ]
             }
           }
         },
@@ -156,6 +178,7 @@
         "uncertainBranch": { "type": "string", "minLength": 1 },
         "resultAttribute": { "enum": ["none", "optional", "required"] },
         "progress": { "type": "array", "uniqueItems": true, "items": { "enum": ["structured", "text"] } },
+        "authorization": { "enum": ["none", "required"] },
         "execution": { "$ref": "#/$defs/execution" }
       },
       "allOf": [

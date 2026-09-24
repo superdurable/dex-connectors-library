@@ -69,8 +69,8 @@ jobs:
       - name: Download Dex and Temporal CLIs
         run: |
           curl --fail --location --output dexcli.tar.gz \
-            https://github.com/superdurable/dex/releases/download/cli-v0.11.1/dexcli_v0.11.1_linux_amd64.tar.gz
-          echo "92ca91c5fec9cb1315c9e3f006f37e8f5f6711dd5d0ac1efb8d682da9ee64ac0  dexcli.tar.gz" | sha256sum --check
+            https://github.com/superdurable/dex/releases/download/cli-v0.11.3/dexcli_v0.11.3_linux_amd64.tar.gz
+          echo "91197aa7afb66468c1b8da8d662e3c321257664e0bd57dae11e4b78337509e34  dexcli.tar.gz" | sha256sum --check
           tar --extract --gzip --file dexcli.tar.gz
           curl --fail --location --output temporal.tar.gz \
             https://github.com/temporalio/cli/releases/download/v1.9.1/temporal_cli_1.9.1_linux_amd64.tar.gz
