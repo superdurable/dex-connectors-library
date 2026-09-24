@@ -1,0 +1,77 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: gmail
+  displayName: Gmail
+  description: Send an email from the authorized primary Gmail address.
+spec:
+  provider: google
+  codegen:
+    go:
+      package: gmail
+  configuration:
+    fields:
+      - name: endpoint
+        goName: Endpoint
+        type: url
+        description: Gmail API endpoint.
+        required: false
+        default: https://gmail.googleapis.com/gmail/v1
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum provider response size.
+        required: false
+        default: 1048576
+      - name: maxMessageBytes
+        goName: MaxMessageBytes
+        type: integer
+        description: Maximum encoded RFC message size.
+        required: false
+        default: 10485760
+  auth:
+    type: oauth2
+    connectionKind: gmail-send-oauth
+    fields:
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        description: Short-lived Google OAuth access token.
+        required: true
+      - name: primary_email
+        goName: PrimaryEmail
+        type: string
+        description: Verified primary email from the Google OIDC identity claim.
+        required: true
+    oauth2:
+      authorizationEndpoint: https://accounts.google.com/o/oauth2/v2/auth
+      tokenEndpoint: https://oauth2.googleapis.com/token
+      scopes: [openid, email, https://www.googleapis.com/auth/gmail.send]
+      pkce: true
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.1.0 <0.2.0"
+      backendCapabilities: [oauth.connection.manage, configuration.write]
+      mockScenarios: [not-configured, authorization-pending, connected, insufficient-scope, revoked, broker-unavailable, ready]
+      icon: icon.svg
+  operations:
+    - name: sendMessage
+      goName: SendMessage
+      inputType: SendMessageInput
+      outputType: SendMessageOutput
+      kind: mutation
+      description: Send one MIME message from the authorized primary account.
+      idempotency: required
+      branches:
+        - {id: sent, goName: Sent, description: Gmail accepted the message and returned its identity.}
+        - {id: rejected, goName: Rejected, description: Gmail conclusively rejected the message.}
+        - {id: uncertain, goName: Uncertain, description: The dispatched send outcome cannot be confirmed.}
+        - {id: defect, goName: Defect, description: Local input or connector definition is invalid.}
+      defectBranch: defect
+      uncertainBranch: uncertain
+      resultAttribute: required
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}

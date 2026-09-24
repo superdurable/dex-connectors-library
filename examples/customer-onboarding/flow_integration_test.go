@@ -23,6 +23,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	githubconnector "github.com/superdurable/dex-connectors-library/connectors/github"
+	gmail "github.com/superdurable/dex-connectors-library/connectors/google/gmail"
 	spreadsheet "github.com/superdurable/dex-connectors-library/connectors/google/spreadsheet"
 	httpconnector "github.com/superdurable/dex-connectors-library/connectors/http"
 	openai "github.com/superdurable/dex-connectors-library/connectors/openai"
@@ -202,6 +203,38 @@ func TestGoogleSheetsFactoryCommitsResultAndTransition(t *testing.T) {
 	require.Len(t, rows, 2)
 }
 
+func TestGmailFactoryRoutesUnknownWithoutResend(t *testing.T) {
+	var requests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		requests.Add(1)
+		response.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+	connectionRef := connector.ConnectionRef{Provider: "google", Name: "gmail"}
+	client, err := gmail.New(gmail.Config{Endpoint: server.URL}, connector.StaticCredentialProvider[gmail.Credentials]{
+		connectionRef: {AccessToken: connector.NewSecretString("token"), PrimaryEmail: "owner@example.com"},
+	})
+	require.NoError(t, err)
+	connection, err := gmail.NewConnection(client, connectionRef)
+	require.NoError(t, err)
+	flow := &gmailIntegrationFlow{connection: connection}
+	harness := newDexHarness(t, []dex.Flow{flow})
+	harness.startWorker(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	flowID := uniqueFlowID("gmail-unknown")
+	_, err = harness.client.StartFlow(ctx, flow, flowID, "customer@example.com", dex.StartFlowOptions{})
+	require.NoError(t, err)
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, result.Status)
+	var branch connector.BranchID
+	require.NoError(t, result.DecodeSingleOutput(&branch))
+	require.Equal(t, gmail.SendMessageBranchUncertain, branch)
+	require.Equal(t, int32(1), requests.Load())
+}
+
 var (
 	githubProfileResult             = dex.DefineAttribute[connector.QueryResult[githubconnector.AuthenticatedProfile]]("github-profile-result")
 	openAIProgress                  = dex.DefineStream[connector.ProgressUpdate]("openai-progress", 1<<20)
@@ -209,6 +242,7 @@ var (
 	openAIResult                    = dex.DefineAttribute[connector.MutationResult[openai.Response]]("openai-result")
 	retryProgress                   = dex.DefineStream[connector.ProgressUpdate]("retry-progress", 1<<20)
 	sheetsIntegrationResult         = dex.DefineAttribute[connector.MutationResult[spreadsheet.UpsertRowOutput]]("sheets-integration-result")
+	gmailIntegrationResult          = dex.DefineAttribute[connector.MutationResult[gmail.SendMessageOutput]]("gmail-integration-result")
 	integrationQueryBranchSucceeded = connector.BranchID("succeeded")
 	integrationQueryBranchFailed    = connector.BranchID("failed")
 	integrationQueryBranchDefect    = connector.BranchID("defect")
@@ -390,6 +424,40 @@ type sheetsIntegrationFinishedStep struct {
 
 func (sheetsIntegrationFinishedStep) Execute(_ dex.Context, output spreadsheet.UpsertRowStepOutput[string]) (*dex.StepDecision, error) {
 	return dex.GracefulComplete(output.Result), nil
+}
+
+type gmailIntegrationFlow struct {
+	dex.FlowDefaults
+	connection gmail.Connection
+}
+
+func (flow *gmailIntegrationFlow) GetSteps() []dex.StepDef {
+	step := gmail.NewSendMessageStep(gmail.SendMessageStepConfig[string]{
+		StepType:     "IntegrationSendGmailMessage",
+		Presentation: connector.StepPresentation{GroupID: "google", GroupLabel: "Google", Explanation: "Send a customer message."},
+		Connection:   flow.connection,
+		BuildInput: func(recipient string) (gmail.SendMessageInput, error) {
+			return gmail.SendMessageInput{To: []string{recipient}, Subject: "Progress", TextBody: "Keep going"}, nil
+		},
+		Sent:            connector.GoTo(gmailIntegrationFinishedStep{}),
+		Rejected:        connector.GoTo(gmailIntegrationFinishedStep{}),
+		Uncertain:       connector.GoTo(gmailIntegrationFinishedStep{}),
+		Defect:          connector.GoTo(gmailIntegrationFinishedStep{}),
+		ResultAttribute: &gmailIntegrationResult,
+	})
+	return []dex.StepDef{dex.DefineStartStep(step), dex.DefineStep(gmailIntegrationFinishedStep{})}
+}
+
+func (*gmailIntegrationFlow) GetPersistenceSchema() dex.PersistenceSchema {
+	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{gmailIntegrationResult}}
+}
+
+type gmailIntegrationFinishedStep struct {
+	dex.StepDefaultsNoWaitFor[gmail.SendMessageStepOutput[string]]
+}
+
+func (gmailIntegrationFinishedStep) Execute(_ dex.Context, output gmail.SendMessageStepOutput[string]) (*dex.StepDecision, error) {
+	return dex.GracefulComplete(output.Result.Branch), nil
 }
 
 func TestQueryFailureDoesNotUseDexRetry(t *testing.T) {

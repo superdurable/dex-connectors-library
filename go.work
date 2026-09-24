@@ -4,6 +4,7 @@ use (
 	.
 	./connectors/github
 	./connectors/http
+	./connectors/google/gmail
 	./connectors/google/spreadsheet
 	./connectors/openai
 	./sdk/go

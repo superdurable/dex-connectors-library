@@ -17,22 +17,22 @@ import (
 func TestCatalogLoadsRepositoryManifests(t *testing.T) {
 	manifests, err := catalog(filepath.Join("..", "..", "connectors"))
 	require.NoError(t, err)
-	require.Len(t, manifests, 4)
-	require.Equal(t, []string{"github", "google-sheets", "http", "openai"}, []string{manifests[0].Metadata.Name, manifests[1].Metadata.Name, manifests[2].Metadata.Name, manifests[3].Metadata.Name})
-	require.Equal(t, []string{"structured", "text"}, manifests[3].Spec.Operations[0].Progress)
+	require.Len(t, manifests, 5)
+	require.Equal(t, []string{"github", "gmail", "google-sheets", "http", "openai"}, []string{manifests[0].Metadata.Name, manifests[1].Metadata.Name, manifests[2].Metadata.Name, manifests[3].Metadata.Name, manifests[4].Metadata.Name})
+	require.Equal(t, []string{"structured", "text"}, manifests[4].Spec.Operations[0].Progress)
 }
 
 func TestReleaseWorkflowIsGeneratedFromSortedCatalog(t *testing.T) {
 	root := filepath.Join("..", "..", "connectors")
 	entries, err := connectorReleaseCatalog(root)
 	require.NoError(t, err)
-	require.Equal(t, []string{"github", "google/spreadsheet", "http", "openai"}, []string{entries[0].Slug, entries[1].Slug, entries[2].Slug, entries[3].Slug})
+	require.Equal(t, []string{"github", "google/gmail", "google/spreadsheet", "http", "openai"}, []string{entries[0].Slug, entries[1].Slug, entries[2].Slug, entries[3].Slug, entries[4].Slug})
 	output := filepath.Join(t.TempDir(), "release-connector.yml")
 	require.NoError(t, releaseWorkflow([]string{root, output}))
 	require.NoError(t, releaseWorkflow([]string{"--check", root, output}))
 	content, err := os.ReadFile(output)
 	require.NoError(t, err)
-	require.Contains(t, string(content), "          - github\n          - google/spreadsheet\n          - http\n          - openai\n")
+	require.Contains(t, string(content), "          - github\n          - google/gmail\n          - google/spreadsheet\n          - http\n          - openai\n")
 	require.Contains(t, string(content), "connectors/${{ inputs.connector }}")
 	require.NoError(t, os.WriteFile(output, []byte("stale"), 0o600))
 	require.ErrorContains(t, releaseWorkflow([]string{"--check", root, output}), "stale")
@@ -71,7 +71,7 @@ func TestReleaseArtifactIsDeterministicAndVersioned(t *testing.T) {
 }
 
 func TestGeneratedConnectorsAreCurrent(t *testing.T) {
-	for _, manifest := range []string{"github", "google/spreadsheet", "http", "openai"} {
+	for _, manifest := range []string{"github", "google/gmail", "google/spreadsheet", "http", "openai"} {
 		path := filepath.Join("..", "..", "connectors", filepath.FromSlash(manifest), "connector.yaml")
 		require.NoError(t, generate([]string{"--check", path}))
 	}

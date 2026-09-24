@@ -22,6 +22,15 @@ npm test
 npm run build
 cd ../../../..
 
+cd connectors/google/gmail
+GOWORK=off go test -race ./...
+GOWORK=off go vet ./...
+cd ui
+npm ci
+npm test
+npm run build
+cd ../../../..
+
 cd connectors/http
 GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
@@ -33,8 +42,9 @@ cd ../..
 make check
 go test -race ./...
 go vet ./...
-go run ./cmd/connectorctl validate connectors/github/connector.yaml connectors/http/connector.yaml connectors/openai/connector.yaml
+go run ./cmd/connectorctl validate connectors/github/connector.yaml connectors/google/gmail/connector.yaml connectors/google/spreadsheet/connector.yaml connectors/http/connector.yaml connectors/openai/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/github/connector.yaml
+go run ./cmd/connectorctl generate --check connectors/google/gmail/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/google/spreadsheet/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/http/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/openai/connector.yaml
@@ -44,7 +54,7 @@ go run ./cmd/connectorctl catalog connectors
 
 The suite must prove:
 
-- the SDK, GitHub, HTTP, OpenAI, and Google Sheets modules compile and test
+- the SDK, GitHub, HTTP, OpenAI, Google Sheets, and Gmail modules compile and test
   independently of `go.work`;
 - generated operation-specific factories expose typed branch fields and typed,
   non-serializable connector Connections;
@@ -82,6 +92,8 @@ The suite must prove:
   delay tests remain green;
 - Sheets query-before-mutate, duplicate-key, bounded-response, and uncertainty
   tests remain green;
+- Gmail sender validation, MIME encoding, terminal rejection, rate-limit, and
+  uncertain-send tests remain green;
 - Studio Host API, setup component, deterministic tarball, digest, and React
   build tests remain green.
 
@@ -118,6 +130,8 @@ The integration suite verifies:
 - retry Stream messages retain Call ID and separate Attempt/Sequence.
 - Sheets query-before-mutate commits one stable keyed row and the branch
   transition with its Result Attribute.
+- Gmail unknown sends route to the uncertainty branch without an automatic
+  resend.
 
 ## Manual API and Dex Web acceptance
 
@@ -148,6 +162,8 @@ The integration suite verifies:
    and retains `## Breaking Changes` with `None.` when appropriate.
 6. Run `Release Connector` for `google/spreadsheet` and confirm its independent
    tag plus `connector-release.json` and `connector-ui.tgz` digests.
+7. Run `Release Connector` for `google/gmail` and confirm its own tag and UI
+   artifacts contain no Sheets-only changes.
 
 The Dex CLI analyzer shipped in 0.11.3. Connector releases must retain a
 deterministic schema 2.0 golden and inspect nodes, branches, Attribute edges,

@@ -154,6 +154,14 @@ Google Sheets is an independent module and OAuth Connection. It requests only
 Picker. `UpsertRow` queries by a stable key before updating or appending;
 duplicate keys are an explicit conflict and ambiguous writes remain uncertain.
 
+## Gmail connector
+
+Gmail is a separate module and OAuth Connection. It requests OIDC identity and
+`gmail.send`, sends only from the verified primary address, and never reads the
+inbox, sent mail, profile, or aliases. Gmail has no server-side idempotency
+guarantee, so ambiguous sends route to recovery and are never automatically
+repeated.
+
 ## Studio UI distribution
 
 A manifest may declare a setup entrypoint, Host API range, backend capability
