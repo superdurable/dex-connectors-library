@@ -3,7 +3,7 @@ module github.com/superdurable/dex-connectors-library/examples/local-config
 go 1.24.0
 
 require (
-	github.com/superdurable/dex-connectors-library/connectors/google/gmail v0.1.0
+	github.com/superdurable/dex-connectors-library/connectors/google/gmail v0.1.1
 	github.com/superdurable/dex-connectors-library/sdk/go v0.1.2
 )
 
