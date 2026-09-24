@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	githubconnector "github.com/superdurable/dex-connectors-library/connectors/github"
 	spreadsheet "github.com/superdurable/dex-connectors-library/connectors/google/spreadsheet"
 	httpconnector "github.com/superdurable/dex-connectors-library/connectors/http"
 	openai "github.com/superdurable/dex-connectors-library/connectors/openai"
@@ -50,6 +51,46 @@ func TestQueryAndMutationRetriesUseRealDexIdentity(t *testing.T) {
 	mutation, ok := provider.Mutation(string(output.CallID))
 	require.True(t, ok)
 	require.Equal(t, 100, mutation.Credits)
+}
+
+func TestGitHubFactoryPersistsAuthenticatedProfileWithRealDex(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		response.Header().Set("Content-Type", "application/json")
+		response.Header().Set("X-OAuth-Scopes", "read:user, user:email")
+		response.Header().Set("X-GitHub-Request-Id", "github-integration")
+		switch request.URL.Path {
+		case "/user":
+			_, _ = response.Write([]byte(`{"id":42,"login":"octocat","name":"Mona Lisa"}`))
+		case "/user/emails":
+			_, _ = response.Write([]byte(`[{"email":"octocat@example.com","primary":true,"verified":true}]`))
+		default:
+			http.NotFound(response, request)
+		}
+	}))
+	defer server.Close()
+	reference := connector.ConnectionRef{Provider: "github", Name: "signup"}
+	client, err := githubconnector.New(githubconnector.Config{BaseURL: server.URL}, connector.StaticCredentialProvider[githubconnector.Credentials]{
+		reference: {AccessToken: connector.NewSecretString("one-use-token")},
+	})
+	require.NoError(t, err)
+	connection, err := githubconnector.NewConnection(client, reference)
+	require.NoError(t, err)
+	flow := githubProfileFlow{connection: connection}
+	harness := newDexHarness(t, []dex.Flow{flow})
+	harness.startWorker(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	flowID := uniqueFlowID("github-profile")
+	_, err = harness.client.StartFlow(ctx, flow, flowID, struct{}{}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, result.Status)
+	var profile githubconnector.AuthenticatedProfile
+	require.NoError(t, result.DecodeSingleOutput(&profile))
+	require.Equal(t, "42", profile.Subject)
+	require.Equal(t, "octocat@example.com", profile.VerifiedEmail)
 }
 
 func TestUnknownMutationUsesExplicitRecoveryAndCommittedReceipt(t *testing.T) {
@@ -162,6 +203,7 @@ func TestGoogleSheetsFactoryCommitsResultAndTransition(t *testing.T) {
 }
 
 var (
+	githubProfileResult             = dex.DefineAttribute[connector.QueryResult[githubconnector.AuthenticatedProfile]]("github-profile-result")
 	openAIProgress                  = dex.DefineStream[connector.ProgressUpdate]("openai-progress", 1<<20)
 	openAIText                      = dex.DefineStream[string]("openai-text", 1<<20)
 	openAIResult                    = dex.DefineAttribute[connector.MutationResult[openai.Response]]("openai-result")
@@ -171,6 +213,55 @@ var (
 	integrationQueryBranchFailed    = connector.BranchID("failed")
 	integrationQueryBranchDefect    = connector.BranchID("defect")
 )
+
+type githubProfileFlow struct {
+	dex.FlowDefaults
+	connection githubconnector.Connection
+}
+
+func (flow githubProfileFlow) GetSteps() []dex.StepDef {
+	step := githubconnector.NewGetAuthenticatedProfileStep(githubconnector.GetAuthenticatedProfileStepConfig[struct{}]{
+		StepType: "ReadGitHubSignupProfile",
+		Presentation: connector.StepPresentation{
+			GroupID: "signup", GroupLabel: "Signup", Explanation: "Read the authenticated GitHub signup profile.",
+		},
+		Connection: flow.connection,
+		BuildInput: func(struct{}) (githubconnector.GetAuthenticatedProfileInput, error) {
+			return githubconnector.GetAuthenticatedProfileInput{}, nil
+		},
+		ProfileLoaded:         connector.GoTo(githubProfileTerminalStep{}),
+		VerifiedEmailRequired: connector.GoTo(githubProfileTerminalStep{}),
+		InsufficientScope:     connector.GoTo(githubProfileTerminalStep{}),
+		AuthorizationRevoked:  connector.GoTo(githubProfileTerminalStep{}),
+		NotFound:              connector.GoTo(githubProfileTerminalStep{}),
+		Failed:                connector.GoTo(githubProfileTerminalStep{}),
+		Defect:                connector.GoTo(githubProfileTerminalStep{}),
+		ResultAttribute:       &githubProfileResult,
+	})
+	return []dex.StepDef{dex.DefineStartStep(step), dex.DefineStep(githubProfileTerminalStep{})}
+}
+
+func (githubProfileFlow) GetPersistenceSchema() dex.PersistenceSchema {
+	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{githubProfileResult}}
+}
+
+type githubProfileTerminalStep struct {
+	dex.StepDefaultsNoWaitFor[githubconnector.GetAuthenticatedProfileStepOutput[struct{}]]
+}
+
+func (githubProfileTerminalStep) Execute(ctx dex.Context, output githubconnector.GetAuthenticatedProfileStepOutput[struct{}]) (*dex.StepDecision, error) {
+	persisted, err := githubProfileResult.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if persisted.Receipt.CallID != output.Result.Receipt.CallID {
+		return nil, fmt.Errorf("GitHub profile Result Attribute did not commit with its transition")
+	}
+	if output.Result.Branch != githubconnector.GetAuthenticatedProfileBranchProfileLoaded {
+		return dex.ForceFail("GitHub profile query did not load the profile"), nil
+	}
+	return dex.GracefulComplete(output.Result.Value), nil
+}
 
 func integrationQueryDefinition(operationID string, progress bool) connector.QueryDefinition {
 	return connector.QueryDefinition{

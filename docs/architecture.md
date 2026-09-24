@@ -134,6 +134,19 @@ types. The completed Response object is authoritative for value and usage.
 Early EOF or a missing terminal event is uncertain and can be reconciled with
 RetrieveResponse.
 
+## GitHub connector
+
+GitHub exposes generated Query factories for authenticated profile plus primary
+verified email and for bounded public repositories. Its OAuth manifest requests
+only `read:user user:email` with PKCE. The provider implementation never calls a
+private-repository endpoint and never returns source, README, events, issues, or
+raw provider bodies.
+
+Repository reads default to 100 and cap at 500, use serial pages of at most 100,
+deduplicate by provider repository ID, sort by recent push, and mark truncation.
+Authentication, scope, verified-email, not-found, terminal provider, retry, and
+local-defect paths remain distinct.
+
 ## Google Sheets connector
 
 Google Sheets is an independent module and OAuth Connection. It requests only
