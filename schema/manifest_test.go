@@ -27,6 +27,12 @@ spec:
     fields:
       - {name: endpoint, goName: Endpoint, type: url, description: Provider endpoint., required: true}
   auth: {type: none, connectionKind: none, fields: []}
+  triggers:
+    - name: messageCreated
+      goName: MessageCreated
+      eventType: MessageCreatedEvent
+      configurationType: MessageCreatedTriggerConfiguration
+      description: start a flow for one message
   operations:
     - name: getProfile
       goName: GetProfile
@@ -65,6 +71,52 @@ spec:
 	require.Equal(t, "mock-provider", manifest.Metadata.Name)
 	require.Equal(t, "none", manifest.Spec.Operations[0].Authorization)
 	require.Equal(t, []string{"structured", "text"}, manifest.Spec.Operations[1].Progress)
+	require.Equal(t, "messageCreated", manifest.Spec.Triggers[0].Name)
+	require.Equal(t, "MessageCreatedEvent", manifest.Spec.Triggers[0].EventType)
+}
+
+func TestDecodeOAuthUserScopesAndCredentialMappings(t *testing.T) {
+	manifest, err := schema.Decode(strings.NewReader(`
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata: {name: slack, displayName: Slack, description: Slack connector}
+spec:
+  provider: slack
+  codegen: {go: {package: slack}}
+  configuration: {fields: []}
+  auth:
+    type: oauth2
+    connectionKind: slack-oauth
+    fields:
+      - {name: bot_token, goName: BotToken, type: secretString, description: Bot token., required: true}
+      - {name: user_token, goName: UserToken, type: secretString, description: User token., required: true}
+      - {name: app_token, goName: AppToken, type: secretString, description: App token., required: true}
+    oauth2:
+      authorizationEndpoint: https://slack.com/oauth/v2/authorize
+      tokenEndpoint: https://slack.com/api/oauth.v2.access
+      scopes: [chat:write]
+      userScopes: [channels:history]
+      credentialMappings:
+        - {credential: bot_token, source: access_token}
+        - {credential: user_token, source: authed_user.access_token}
+      pkce: true
+  operations:
+    - name: getThing
+      goName: GetThing
+      inputType: GetThingInput
+      outputType: GetThingOutput
+      kind: query
+      description: get thing
+      idempotency: none
+      branches:
+        - {id: defect, goName: Defect, description: defect}
+      defectBranch: defect
+      resultAttribute: none
+      execution: {executeMethodTimeout: 30s, durability: sync, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}}
+`))
+	require.NoError(t, err)
+	require.Equal(t, []string{"channels:history"}, manifest.Spec.Auth.OAuth2.UserScopes)
+	require.Equal(t, "authed_user.access_token", manifest.Spec.Auth.OAuth2.CredentialMappings[1].Source)
 }
 
 func TestDecodeOAuthManifestFixture(t *testing.T) {

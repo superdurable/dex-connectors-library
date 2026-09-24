@@ -20,6 +20,19 @@ declare HTTPS issuer, discovery, and UserInfo endpoints and require a nonce.
 The application owns state, PKCE verifier, nonce, callback validation, and
 one-time token lifecycle; connector credentials remain typed secret fields.
 
+Providers that issue more than one OAuth token declare `userScopes` and map
+token-response JSON paths to credential fields. Fields without a mapping are
+entered through a host-owned secret form and never sent to Connector Studio.
+
+```yaml
+oauth2:
+  scopes: [chat:write]
+  userScopes: [channels:history]
+  credentialMappings:
+    - {credential: bot_token, source: access_token}
+    - {credential: user_token, source: authed_user.access_token}
+```
+
 ```yaml
 auth:
   type: oauth2
@@ -49,6 +62,24 @@ decodes every manifest authentication field, including multiple optional
 secret fields, without assuming a single-token OAuth response. Keep secret
 fields typed as `secretString` so code generation constructs `SecretString`
 at the provider boundary.
+
+A Trigger declares a typed provider event and its binding-configuration type.
+The application decides whether an event starts a Flow, invokes an RPC, or uses
+another target:
+
+```yaml
+triggers:
+  - name: channelThreadCreated
+    goName: ChannelThreadCreated
+    eventType: MessageEvent
+    configurationType: ChannelThreadCreatedTriggerConfiguration
+    description: Receive a matching top-level channel message.
+```
+
+Code generation creates direct and local-config Trigger factories. The
+provider implements the generated source hook and owns transport acknowledgement,
+reconnection, filtering, and event decoding. The application selects the target
+and owns Flow ID, start-input, and RPC mapping.
 
 ```bash
 go run ./cmd/connectorctl validate connectors/openai/connector.yaml

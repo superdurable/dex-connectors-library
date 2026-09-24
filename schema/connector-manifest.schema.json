@@ -68,6 +68,11 @@
                 "authorizationEndpoint": { "type": "string", "format": "uri" },
                 "tokenEndpoint": { "type": "string", "format": "uri" },
                 "scopes": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+                "userScopes": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+                "credentialMappings": {
+                  "type": "array",
+                  "items": { "$ref": "#/$defs/oauthCredentialMapping" }
+                },
                 "pkce": { "type": "boolean" },
                 "oidc": {
                   "type": "object",
@@ -127,11 +132,36 @@
           "type": "array",
           "minItems": 1,
           "items": { "$ref": "#/$defs/operation" }
+        },
+        "triggers": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/trigger" }
         }
       }
     }
   },
   "$defs": {
+    "oauthCredentialMapping": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["credential", "source"],
+      "properties": {
+        "credential": { "type": "string", "pattern": "^[a-z][A-Za-z0-9_]*$" },
+        "source": { "type": "string", "pattern": "^[a-z][A-Za-z0-9_]*(\\.[a-z][A-Za-z0-9_]*)*$" }
+      }
+    },
+    "trigger": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "goName", "eventType", "configurationType", "description"],
+      "properties": {
+        "name": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]+$" },
+        "goName": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
+        "eventType": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
+        "configurationType": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
+        "description": { "type": "string", "minLength": 1 }
+      }
+    },
     "fieldBase": {
       "type": "object",
       "additionalProperties": false,

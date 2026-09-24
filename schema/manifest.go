@@ -38,6 +38,7 @@ type Spec struct {
 	Configuration Configuration `yaml:"configuration" json:"configuration"`
 	Auth          Auth          `yaml:"auth" json:"auth"`
 	Studio        *Studio       `yaml:"studio,omitempty" json:"studio,omitempty"`
+	Triggers      []Trigger     `yaml:"triggers,omitempty" json:"triggers,omitempty"`
 	Operations    []Operation   `yaml:"operations" json:"operations"`
 }
 
@@ -73,12 +74,19 @@ type Auth struct {
 }
 
 type OAuth2 struct {
-	AuthorizationEndpoint string   `yaml:"authorizationEndpoint" json:"authorizationEndpoint"`
-	TokenEndpoint         string   `yaml:"tokenEndpoint" json:"tokenEndpoint"`
-	Scopes                []string `yaml:"scopes" json:"scopes"`
-	PKCE                  bool     `yaml:"pkce" json:"pkce"`
-	Protocol              string   `yaml:"protocol,omitempty" json:"protocol,omitempty"`
-	OIDC                  *OIDC    `yaml:"oidc,omitempty" json:"oidc,omitempty"`
+	AuthorizationEndpoint string                   `yaml:"authorizationEndpoint" json:"authorizationEndpoint"`
+	TokenEndpoint         string                   `yaml:"tokenEndpoint" json:"tokenEndpoint"`
+	Scopes                []string                 `yaml:"scopes" json:"scopes"`
+	UserScopes            []string                 `yaml:"userScopes,omitempty" json:"userScopes,omitempty"`
+	CredentialMappings    []OAuthCredentialMapping `yaml:"credentialMappings,omitempty" json:"credentialMappings,omitempty"`
+	PKCE                  bool                     `yaml:"pkce" json:"pkce"`
+	Protocol              string                   `yaml:"protocol,omitempty" json:"protocol,omitempty"`
+	OIDC                  *OIDC                    `yaml:"oidc,omitempty" json:"oidc,omitempty"`
+}
+
+type OAuthCredentialMapping struct {
+	Credential string `yaml:"credential" json:"credential"`
+	Source     string `yaml:"source" json:"source"`
 }
 
 type OIDC struct {
@@ -113,6 +121,14 @@ type Operation struct {
 	Progress        []string          `yaml:"progress,omitempty" json:"progress,omitempty"`
 	Authorization   string            `yaml:"authorization,omitempty" json:"authorization,omitempty"`
 	Execution       Execution         `yaml:"execution" json:"execution"`
+}
+
+type Trigger struct {
+	Name              string `yaml:"name" json:"name"`
+	GoName            string `yaml:"goName" json:"goName"`
+	EventType         string `yaml:"eventType" json:"eventType"`
+	ConfigurationType string `yaml:"configurationType" json:"configurationType"`
+	Description       string `yaml:"description" json:"description"`
 }
 
 type OperationBranch struct {
@@ -229,12 +245,25 @@ func (manifest Manifest) Validate() error {
 			} else if manifest.Spec.Auth.OAuth2.OIDC != nil {
 				problems = append(problems, "oidc metadata requires oidc protocol")
 			}
-			seenScopes := map[string]bool{}
-			for _, scope := range manifest.Spec.Auth.OAuth2.Scopes {
-				if strings.TrimSpace(scope) == "" || seenScopes[scope] {
-					problems = append(problems, "oauth2 scopes must be non-empty and unique")
+			for scopeKind, scopes := range map[string][]string{"scopes": manifest.Spec.Auth.OAuth2.Scopes, "userScopes": manifest.Spec.Auth.OAuth2.UserScopes} {
+				seenScopes := map[string]bool{}
+				for _, scope := range scopes {
+					if strings.TrimSpace(scope) == "" || seenScopes[scope] {
+						problems = append(problems, "oauth2 "+scopeKind+" must be non-empty and unique")
+					}
+					seenScopes[scope] = true
 				}
-				seenScopes[scope] = true
+			}
+			credentialFields := make(map[string]bool, len(manifest.Spec.Auth.Fields))
+			for _, field := range manifest.Spec.Auth.Fields {
+				credentialFields[field.Name] = true
+			}
+			seenMappings := map[string]bool{}
+			for _, mapping := range manifest.Spec.Auth.OAuth2.CredentialMappings {
+				if !credentialFields[mapping.Credential] || seenMappings[mapping.Credential] || !validJSONPath(mapping.Source) {
+					problems = append(problems, "oauth2 credential mappings require unique credential fields and dotted JSON response paths")
+				}
+				seenMappings[mapping.Credential] = true
 			}
 		}
 	} else if manifest.Spec.Auth.OAuth2 != nil {
@@ -260,6 +289,24 @@ func (manifest Manifest) Validate() error {
 	}
 	if len(manifest.Spec.Operations) == 0 {
 		problems = append(problems, "spec.operations must contain at least one operation")
+	}
+	seenTriggers := map[string]bool{}
+	seenTriggerGoNames := map[string]bool{}
+	for _, trigger := range manifest.Spec.Triggers {
+		if !operationPattern.MatchString(trigger.Name) || seenTriggers[trigger.Name] {
+			problems = append(problems, "trigger names must be lower camel case and unique")
+		}
+		seenTriggers[trigger.Name] = true
+		if !goNamePattern.MatchString(trigger.GoName) || seenTriggerGoNames[trigger.GoName] {
+			problems = append(problems, trigger.Name+": goName must be exported and unique")
+		}
+		seenTriggerGoNames[trigger.GoName] = true
+		if !goNamePattern.MatchString(trigger.EventType) || !goNamePattern.MatchString(trigger.ConfigurationType) {
+			problems = append(problems, trigger.Name+": eventType and configurationType must name exported local Go types")
+		}
+		if strings.TrimSpace(trigger.Description) == "" {
+			problems = append(problems, trigger.Name+": description is required")
+		}
 	}
 	seenOperations := map[string]bool{}
 	seenOperationGoNames := map[string]bool{}
@@ -356,6 +403,19 @@ func (manifest Manifest) Validate() error {
 		return fmt.Errorf("invalid connector manifest: %s", strings.Join(problems, "; "))
 	}
 	return nil
+}
+
+func validJSONPath(value string) bool {
+	parts := strings.Split(value, ".")
+	if len(parts) == 0 {
+		return false
+	}
+	for _, part := range parts {
+		if !fieldNamePattern.MatchString(part) {
+			return false
+		}
+	}
+	return true
 }
 
 func validateFields(prefix string, fields []Field, allowSecret bool) []string {

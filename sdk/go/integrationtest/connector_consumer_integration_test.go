@@ -31,6 +31,8 @@ const (
 var (
 	createWidgetResult   = dex.DefineAttribute[connector.MutationResult[fixtureconnector.Widget]]("fixture-create-widget-result")
 	createWidgetProgress = dex.DefineStream[connector.ProgressUpdate]("fixture-create-widget-progress", 1<<20)
+	triggerStartEventID  = dex.DefineAttribute[string]("trigger-adapter-start-event-id")
+	triggerApprovalCount = dex.DefineAttribute[int]("trigger-adapter-approval-count")
 )
 
 type flowInput struct {
@@ -169,6 +171,147 @@ func TestConnectorModuleConsumesSDKFactoriesWithRealDex(t *testing.T) {
 	require.Equal(t, []int32{2, 1}, []int32{page.Messages[0].Value.Attempt, page.Messages[1].Value.Attempt})
 	require.Equal(t, uint64(1), page.Messages[0].Value.Sequence)
 	require.Equal(t, uint64(1), page.Messages[1].Value.Sequence)
+}
+
+type triggerAdapterEvent struct {
+	ThreadID string `json:"threadId"`
+}
+
+type triggerAdapterInput struct {
+	EventID string `json:"eventId"`
+}
+
+type triggerAdapterState struct {
+	StartEventID  string `json:"startEventId"`
+	ApprovalCount int    `json:"approvalCount"`
+}
+
+type triggerAdapterFlow struct {
+	dex.FlowDefaults
+	approveTriggerRPC *connector.TriggerRPC[triggerAdapterEvent, triggerAdapterState]
+}
+
+func newTriggerAdapterFlow() *triggerAdapterFlow {
+	flow := &triggerAdapterFlow{}
+	flow.approveTriggerRPC = connector.MustNewTriggerRPC(connector.TriggerRPCConfig[triggerAdapterEvent, triggerAdapterState]{
+		Definition: flow.ApproveRequest, ProcessedEventIDsAttributeName: "trigger-adapter-processed-event-ids",
+		HandleEvent: flow.handleApprovalEvent,
+		Options: &dex.RPCOptions{LockAttributes: []dex.AttributeLock{
+			dex.LockAttribute(triggerApprovalCount), dex.LockAttribute(triggerStartEventID),
+		}},
+	})
+	return flow
+}
+
+func (*triggerAdapterFlow) GetSteps() []dex.StepDef {
+	return []dex.StepDef{dex.DefineStartStep(triggerAdapterStartStep{})}
+}
+
+func (flow *triggerAdapterFlow) GetRPCs() []dex.RPCDef {
+	return []dex.RPCDef{
+		dex.DefineRPC(flow.approveTriggerRPC.Definition(), flow.approveTriggerRPC.DefaultOptions()),
+		dex.DefineRPC(flow.GetTriggerAdapterState, &dex.RPCOptions{LockAttributes: []dex.AttributeLock{
+			dex.LockAttribute(triggerStartEventID), dex.LockAttribute(triggerApprovalCount),
+		}}),
+	}
+}
+
+func (flow *triggerAdapterFlow) GetPersistenceSchema() dex.PersistenceSchema {
+	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{
+		triggerStartEventID, triggerApprovalCount, flow.approveTriggerRPC.PersistenceAttribute(),
+	}}
+}
+
+func (flow *triggerAdapterFlow) ApproveRequest(
+	ctx dex.Context,
+	event connector.TriggerEvent[triggerAdapterEvent],
+) (*dex.RPCResult[triggerAdapterState], error) {
+	return flow.approveTriggerRPC.Handle(ctx, event)
+}
+
+func (*triggerAdapterFlow) handleApprovalEvent(
+	ctx dex.Context,
+	_ connector.TriggerEvent[triggerAdapterEvent],
+) (*dex.RPCResult[triggerAdapterState], error) {
+	approvalCount, err := triggerApprovalCount.Get(ctx)
+	var notFound *dex.AttributeNotFoundError
+	if err != nil && !errors.As(err, &notFound) {
+		return nil, err
+	}
+	approvalCount++
+	if err := triggerApprovalCount.Set(ctx, approvalCount); err != nil {
+		return nil, err
+	}
+	startEventID, err := triggerStartEventID.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &dex.RPCResult[triggerAdapterState]{Output: triggerAdapterState{
+		StartEventID: startEventID, ApprovalCount: approvalCount,
+	}}, nil
+}
+
+func (*triggerAdapterFlow) GetTriggerAdapterState(
+	ctx dex.Context,
+	_ dex.None,
+) (*dex.RPCResult[triggerAdapterState], error) {
+	startEventID, err := triggerStartEventID.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	approvalCount, err := triggerApprovalCount.Get(ctx)
+	var notFound *dex.AttributeNotFoundError
+	if err != nil && !errors.As(err, &notFound) {
+		return nil, err
+	}
+	return &dex.RPCResult[triggerAdapterState]{Output: triggerAdapterState{
+		StartEventID: startEventID, ApprovalCount: approvalCount,
+	}}, nil
+}
+
+type triggerAdapterStartStep struct {
+	dex.StepDefaultsNoWaitFor[triggerAdapterInput]
+}
+
+func (triggerAdapterStartStep) GetStepOptions() *dex.StepOptions {
+	return &dex.StepOptions{ExecuteLockAttributes: []dex.AttributeLock{dex.LockAttribute(triggerStartEventID)}}
+}
+
+func (triggerAdapterStartStep) Execute(ctx dex.Context, input triggerAdapterInput) (*dex.StepDecision, error) {
+	if err := triggerStartEventID.Set(ctx, input.EventID); err != nil {
+		return nil, err
+	}
+	return dex.DeadEnd(), nil
+}
+
+func TestTriggerTargetsResolveFlowAndDeduplicateRPCEventsWithRealDex(t *testing.T) {
+	flow := newTriggerAdapterFlow()
+	harness := newDexHarness(t, []dex.Flow{flow})
+	harness.startWorker(t)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	resolveFlowID := func(event connector.TriggerEvent[triggerAdapterEvent]) (string, error) {
+		return "connector-trigger-" + event.Payload.ThreadID, nil
+	}
+	flowID := "connector-trigger-thread-1"
+	startTarget := connector.NewDexFlowTriggerTarget(harness.client, flow, resolveFlowID,
+		func(event connector.TriggerEvent[triggerAdapterEvent]) (triggerAdapterInput, error) {
+			return triggerAdapterInput{EventID: event.ID}, nil
+		})
+	rootEvent := connector.TriggerEvent[triggerAdapterEvent]{ID: "root-event", Payload: triggerAdapterEvent{ThreadID: "thread-1"}}
+	require.NoError(t, startTarget.HandleTrigger(ctx, rootEvent))
+	require.NoError(t, startTarget.HandleTrigger(ctx, rootEvent))
+
+	replyTarget := connector.NewDexRPCTriggerTarget(harness.client, flow.approveTriggerRPC.Definition(), resolveFlowID)
+	replyEvent := connector.TriggerEvent[triggerAdapterEvent]{ID: "reply-event", Payload: triggerAdapterEvent{ThreadID: "thread-1"}}
+	require.Eventually(t, func() bool {
+		return replyTarget.HandleTrigger(ctx, replyEvent) == nil
+	}, 20*time.Second, 100*time.Millisecond)
+	require.NoError(t, replyTarget.HandleTrigger(ctx, replyEvent))
+
+	var state triggerAdapterState
+	require.NoError(t, harness.client.InvokeRPC(ctx, flowID, flow.GetTriggerAdapterState, nil, &state))
+	require.Equal(t, triggerAdapterState{StartEventID: "root-event", ApprovalCount: 1}, state)
 }
 
 type dexHarness struct {

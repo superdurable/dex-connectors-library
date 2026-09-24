@@ -141,6 +141,14 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 	}
 	write("\treturn nil\n}\n\n")
 
+	for _, trigger := range manifest.Spec.Triggers {
+		write("var %sTriggerDefinition = connector.TriggerDefinition{\n", trigger.GoName)
+		write("\tTrigger: connector.TriggerRef{ConnectorID: ConnectorID, TriggerName: %s},\n", strconv.Quote(trigger.Name))
+		write("\tDescription: %s,\n", strconv.Quote(trigger.Description))
+		write("}\n\n")
+		writeTriggerFactory(&output, manifest, trigger)
+	}
+
 	for _, operation := range manifest.Spec.Operations {
 		for _, branch := range operation.Branches {
 			write("const %sBranch%s connector.BranchID = %s\n", operation.GoName, branch.GoName, strconv.Quote(branch.ID))
@@ -179,6 +187,51 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 		return nil, fmt.Errorf("format generated connector: %w\n%s", err, output.String())
 	}
 	return formatted, nil
+}
+
+func writeTriggerFactory(output *bytes.Buffer, manifest schema.Manifest, trigger schema.Trigger) {
+	write := func(format string, values ...any) { fmt.Fprintf(output, format, values...) }
+	write("type %sTriggerBindingConfig struct {\n", trigger.GoName)
+	write("\tconnector.TriggerBindingFactoryConfigMarker `connector:\"factory=triggerBinding\"`\n")
+	write("\tconnectorID struct{} `connector:\"connectorId=%s\"`\n", manifest.Metadata.Name)
+	write("\ttriggerName struct{} `connector:\"triggerName=%s\"`\n", trigger.Name)
+	write("\tConnectionName string `connector:\"connectionName\"`\n")
+	write("\tBindingName string `connector:\"bindingName\"`\n")
+	write("}\n\n")
+	write("func Define%sTriggerBinding(config %sTriggerBindingConfig) connector.TriggerBindingDefinition {\n", trigger.GoName, trigger.GoName)
+	write("\treturn connector.MustTriggerBindingDefinition(connector.TriggerBindingDefinition{\n")
+	write("\t\tDefinition: %sTriggerDefinition, ConnectionName: config.ConnectionName, BindingName: config.BindingName,\n", trigger.GoName)
+	write("\t})\n}\n\n")
+	write("type %sTriggerConfig struct {\n", trigger.GoName)
+	write("\tconnector.TriggerFactoryConfigMarker `connector:\"factory=trigger\"`\n")
+	write("\tconnectorID struct{} `connector:\"connectorId=%s\"`\n", manifest.Metadata.Name)
+	write("\ttriggerName struct{} `connector:\"triggerName=%s\"`\n", trigger.Name)
+	write("\tConnection Connection `connector:\"connection\"`\n")
+	write("\tConnectionName string `connector:\"connectionName\"`\n")
+	write("\tBindingName string `connector:\"bindingName\"`\n")
+	write("\tConfiguration %s `connector:\"triggerConfiguration\"`\n", trigger.ConfigurationType)
+	write("\tTarget connector.TriggerTarget[%s] `connector:\"triggerTarget\"`\n", trigger.EventType)
+	write("}\n\n")
+	write("func New%sTrigger(config %sTriggerConfig) connector.TriggerRunner {\n", trigger.GoName, trigger.GoName)
+	write("\tif err := config.Connection.validate(); err != nil { panic(err) }\n")
+	write("\tif config.ConnectionName != \"\" && config.ConnectionName != config.Connection.reference.Name {\n")
+	write("\t\tpanic(fmt.Errorf(%q, config.ConnectionName, config.Connection.reference.Name))\n", manifest.Metadata.Name+" connector trigger connection name %q does not match runtime connection %q")
+	write("\t}\n")
+	write("\tbinding := connector.TriggerBindingRef{Connection: config.Connection.reference, Trigger: %sTriggerDefinition.Trigger, Name: config.BindingName}\n", trigger.GoName)
+	write("\treturn connector.MustNewTrigger(connector.TriggerConfig[%s]{\n", trigger.EventType)
+	write("\t\tDefinition: %sTriggerDefinition, Binding: binding,\n", trigger.GoName)
+	write("\t\tSource: config.Connection.client.%sTriggerSource(config.Connection.reference, config.Configuration), Target: config.Target,\n", lowerFirst(trigger.GoName))
+	write("\t})\n}\n\n")
+	write("func NewLocal%sTrigger(store *localconfig.Store, connectionName string, bindingName string, target connector.TriggerTarget[%s], options ...Option) (connector.TriggerRunner, error) {\n", trigger.GoName, trigger.EventType)
+	write("\tconnection, err := NewLocalConnection(store, connectionName, options...)\n")
+	write("\tif err != nil { return nil, err }\n")
+	write("\tvar configuration %s\n", trigger.ConfigurationType)
+	write("\tif err := store.DecodeTriggerConfiguration(ConnectorID, connectionName, %s, bindingName, &configuration); err != nil { return nil, err }\n", strconv.Quote(trigger.Name))
+	write("\tdurableTarget, err := localconfig.NewDurableTriggerTarget(store, ConnectorID, connectionName, %s, bindingName, target)\n", strconv.Quote(trigger.Name))
+	write("\tif err != nil { return nil, err }\n")
+	write("\treturn New%sTrigger(%sTriggerConfig{\n", trigger.GoName, trigger.GoName)
+	write("\t\tConnection: connection, ConnectionName: connectionName, BindingName: bindingName, Configuration: configuration, Target: durableTarget,\n")
+	write("\t}), nil\n}\n\n")
 }
 
 func writeOperationFactory(output *bytes.Buffer, manifest schema.Manifest, operation schema.Operation) {
@@ -480,4 +533,11 @@ func title(value string) string {
 		return ""
 	}
 	return strings.ToUpper(value[:1]) + value[1:]
+}
+
+func lowerFirst(value string) string {
+	if value == "" {
+		return ""
+	}
+	return strings.ToLower(value[:1]) + value[1:]
 }

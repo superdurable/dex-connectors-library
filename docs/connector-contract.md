@@ -57,6 +57,32 @@ business Step. They preserve the same identity, attempt, retry, credential,
 and Stream contracts. Provider calls occur only in `Execute`, never in
 `WaitFor` or RPC.
 
+## Trigger source boundary
+
+Connector Triggers are long-running ingress adapters, not provider calls made
+by a Flow. A generated Trigger factory binds a typed provider `TriggerSource`
+to an application-owned `TriggerTarget`. The manifest does not classify an
+event as a Flow or RPC Trigger. An application may connect the same event type
+to a Flow-start target, an RPC target, or another target. Provider code does
+not know the application Flow type, RPC method, or business Flow ID scheme.
+
+Every event contains a provider-stable event ID and occurrence time. Sources
+must document their acknowledgement, retry, and crash-recovery guarantees.
+Before acknowledging a matched provider event, a source calls
+`PrepareTriggerDelivery`. Generated local factories use this boundary to fsync
+the event to a binding-specific inbox and replay it after restart.
+Applications supply the Flow ID resolver and start-input mapper, and the SDK
+derives the Flow-start request ID from the provider event ID. RPC targets use
+one typed `TriggerRPC` definition for Flow registration and target invocation. It
+persists processed event IDs under an Attribute lock before advancing state.
+A duplicate is successful no-op behavior. RPC names are code identities, not
+binding configuration.
+
+Trigger binding configuration is separate from connection configuration and
+credentials. Its identity is connector ID, connection name, trigger name, and
+binding name. One OAuth connection may therefore serve several independently
+configured Flow triggers.
+
 One Step execution invokes one Connector operation. A second call in the same
 execution reuses the same Call ID and is prohibited. Use another Step
 execution for a second provider call or polling iteration.
