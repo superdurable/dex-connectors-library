@@ -9,6 +9,7 @@ on:
         required: true
         type: choice
         options:
+          - github
           - http
           - openai
       bump:

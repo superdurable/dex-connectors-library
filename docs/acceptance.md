@@ -8,6 +8,11 @@ GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
 cd ../..
 
+cd connectors/github
+GOWORK=off go test -race ./...
+GOWORK=off go vet ./...
+cd ../..
+
 cd connectors/http
 GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
@@ -19,7 +24,8 @@ cd ../..
 make check
 go test -race ./...
 go vet ./...
-go run ./cmd/connectorctl validate connectors/http/connector.yaml connectors/openai/connector.yaml
+go run ./cmd/connectorctl validate connectors/github/connector.yaml connectors/http/connector.yaml connectors/openai/connector.yaml
+go run ./cmd/connectorctl generate --check connectors/github/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/http/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/openai/connector.yaml
 go run ./cmd/connectorctl release-workflow --check connectors .github/workflows/release-connector.yml
@@ -61,6 +67,9 @@ The suite must prove:
   bodies do not enter Result, Failure, Receipt, Stream, or logs;
 - HTTP and OpenAI provider classification, idempotency, response bounds, SSE,
   and recovery tests remain green;
+- GitHub profile/email selection, scope/revocation branches, response bounds,
+  public-only pagination, deduplication, sorting, truncation, and rate-limit
+  delay tests remain green;
 - React connection-state tests and build remain unchanged.
 
 ## Real Dex Server 0.11.3
@@ -112,12 +121,15 @@ The integration suite verifies:
 
 ## Release acceptance
 
-1. Run `Release Connector` for `http` with the default minor bump and confirm
-   tag `connectors/http/v0.1.0` plus its release artifact.
-2. Run it for `openai` and confirm tag `connectors/openai/v0.1.0`.
-3. In clean temporary modules, download each public tag with `GOWORK=off` and
+1. Run `Release Connector` for `github` with the default minor bump and confirm
+   tag `connectors/github/v0.1.0` plus its release artifact.
+2. Run the opt-in GitHub live test with a dedicated account and exact
+   `read:user user:email` scopes; confirm no private repository data is read.
+3. Existing releases remain `connectors/http/v0.1.0` and
+   `connectors/openai/v0.1.0`.
+4. In clean temporary modules, download each public tag with `GOWORK=off` and
    compile its operation-specific factory example.
-4. Confirm each release note contains only commits that changed that connector
+5. Confirm each release note contains only commits that changed that connector
    and retains `## Breaking Changes` with `None.` when appropriate.
 
 The Dex CLI analyzer shipped in 0.11.3. Connector releases must retain a
