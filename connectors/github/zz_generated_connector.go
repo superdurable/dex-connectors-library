@@ -5,11 +5,13 @@
 package githubconnector
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"time"
 
 	connector "github.com/superdurable/dex-connectors-library/sdk/go"
+	"github.com/superdurable/dex-connectors-library/sdk/go/localconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -41,6 +43,40 @@ func NewConnection(client *Client, reference connector.ConnectionRef) (Connectio
 		return Connection{}, fmt.Errorf("github connector connection: %w", err)
 	}
 	return Connection{client: client, reference: reference}, nil
+}
+
+// NewLocalConnection loads startup configuration and reloads credentials before every provider call.
+func NewLocalConnection(store *localconfig.Store, connectionName string, options ...Option) (Connection, error) {
+	if store == nil {
+		return Connection{}, fmt.Errorf("local connector configuration store is required")
+	}
+	reference := connector.ConnectionRef{Provider: "github", Name: connectionName}
+	if err := reference.Validate(); err != nil {
+		return Connection{}, fmt.Errorf("github local connection: %w", err)
+	}
+	var config Config
+	if err := store.DecodeConfiguration(ConnectorID, connectionName, &config); err != nil {
+		return Connection{}, err
+	}
+	credentials := localconfig.NewCredentialProvider(store, ConnectorID, connectionName, decodeLocalCredentials)
+	client, err := New(config, credentials, options...)
+	if err != nil {
+		return Connection{}, err
+	}
+	return NewConnection(client, reference)
+}
+
+func decodeLocalCredentials(contents json.RawMessage) (Credentials, error) {
+	var fields struct {
+		AccessToken string `json:"access_token"`
+	}
+	if err := localconfig.DecodeCredentials(contents, &fields); err != nil {
+		return Credentials{}, err
+	}
+	credentials := Credentials{
+		AccessToken: connector.NewSecretString(fields.AccessToken),
+	}
+	return credentials, credentials.Validate()
 }
 
 func (connection Connection) validate() error {
@@ -163,6 +199,7 @@ type GetAuthenticatedProfileStepConfig[IN any] struct {
 	StepType                           string                                                      `connector:"stepType"`
 	Presentation                       connector.StepPresentation                                  `connector:"presentation"`
 	Connection                         Connection                                                  `connector:"connection"`
+	ConnectionName                     string                                                      `connector:"connectionName"`
 	BuildInput                         func(IN) (GetAuthenticatedProfileInput, error)              `connector:"buildInput"`
 	ProfileLoaded                      connector.Target[GetAuthenticatedProfileStepOutput[IN]]     `connector:"branch=profileLoaded"`
 	VerifiedEmailRequired              connector.Target[GetAuthenticatedProfileStepOutput[IN]]     `connector:"branch=verifiedEmailRequired"`
@@ -178,6 +215,9 @@ type GetAuthenticatedProfileStepConfig[IN any] struct {
 func NewGetAuthenticatedProfileStep[IN any](config GetAuthenticatedProfileStepConfig[IN]) connector.QueryStep[IN, GetAuthenticatedProfileInput, AuthenticatedProfile] {
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
+	}
+	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("github connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
 	}
 	return connector.MustNewQueryStep(connector.QueryStepConfig[IN, GetAuthenticatedProfileInput, AuthenticatedProfile]{
 		StepType: config.StepType, Presentation: config.Presentation,
@@ -233,6 +273,7 @@ type ListPublicRepositoriesStepConfig[IN any] struct {
 	StepType                           string                                                    `connector:"stepType"`
 	Presentation                       connector.StepPresentation                                `connector:"presentation"`
 	Connection                         Connection                                                `connector:"connection"`
+	ConnectionName                     string                                                    `connector:"connectionName"`
 	BuildInput                         func(IN) (ListPublicRepositoriesInput, error)             `connector:"buildInput"`
 	RepositoriesLoaded                 connector.Target[ListPublicRepositoriesStepOutput[IN]]    `connector:"branch=repositoriesLoaded"`
 	InsufficientScope                  connector.Target[ListPublicRepositoriesStepOutput[IN]]    `connector:"branch=insufficientScope"`
@@ -247,6 +288,9 @@ type ListPublicRepositoriesStepConfig[IN any] struct {
 func NewListPublicRepositoriesStep[IN any](config ListPublicRepositoriesStepConfig[IN]) connector.QueryStep[IN, ListPublicRepositoriesInput, PublicRepositories] {
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
+	}
+	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("github connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
 	}
 	return connector.MustNewQueryStep(connector.QueryStepConfig[IN, ListPublicRepositoriesInput, PublicRepositories]{
 		StepType: config.StepType, Presentation: config.Presentation,

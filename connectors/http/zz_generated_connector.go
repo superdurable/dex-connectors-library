@@ -5,11 +5,13 @@
 package httpconnector
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"time"
 
 	connector "github.com/superdurable/dex-connectors-library/sdk/go"
+	"github.com/superdurable/dex-connectors-library/sdk/go/localconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -42,6 +44,42 @@ func NewConnection(client *Client, reference connector.ConnectionRef) (Connectio
 		return Connection{}, fmt.Errorf("http connector connection: %w", err)
 	}
 	return Connection{client: client, reference: reference}, nil
+}
+
+// NewLocalConnection loads startup configuration and reloads credentials before every provider call.
+func NewLocalConnection(store *localconfig.Store, connectionName string, options ...Option) (Connection, error) {
+	if store == nil {
+		return Connection{}, fmt.Errorf("local connector configuration store is required")
+	}
+	reference := connector.ConnectionRef{Provider: "http", Name: connectionName}
+	if err := reference.Validate(); err != nil {
+		return Connection{}, fmt.Errorf("http local connection: %w", err)
+	}
+	var config Config
+	if err := store.DecodeConfiguration(ConnectorID, connectionName, &config); err != nil {
+		return Connection{}, err
+	}
+	credentials := localconfig.NewCredentialProvider(store, ConnectorID, connectionName, decodeLocalCredentials)
+	client, err := New(config, credentials, options...)
+	if err != nil {
+		return Connection{}, err
+	}
+	return NewConnection(client, reference)
+}
+
+func decodeLocalCredentials(contents json.RawMessage) (Credentials, error) {
+	var fields struct {
+		APIKey        string `json:"api_key"`
+		WebhookSecret string `json:"webhook_secret"`
+	}
+	if err := localconfig.DecodeCredentials(contents, &fields); err != nil {
+		return Credentials{}, err
+	}
+	credentials := Credentials{
+		APIKey:        connector.NewSecretString(fields.APIKey),
+		WebhookSecret: connector.NewSecretString(fields.WebhookSecret),
+	}
+	return credentials, credentials.Validate()
 }
 
 func (connection Connection) validate() error {
@@ -138,6 +176,7 @@ type QueryStepConfig[IN any] struct {
 	StepType                           string                                          `connector:"stepType"`
 	Presentation                       connector.StepPresentation                      `connector:"presentation"`
 	Connection                         Connection                                      `connector:"connection"`
+	ConnectionName                     string                                          `connector:"connectionName"`
 	BuildInput                         func(IN) (Request, error)                       `connector:"buildInput"`
 	Succeeded                          connector.Target[QueryStepOutput[IN]]           `connector:"branch=succeeded"`
 	Failed                             connector.Target[QueryStepOutput[IN]]           `connector:"branch=failed"`
@@ -149,6 +188,9 @@ type QueryStepConfig[IN any] struct {
 func NewQueryStep[IN any](config QueryStepConfig[IN]) connector.QueryStep[IN, Request, Response] {
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
+	}
+	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("http connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
 	}
 	return connector.MustNewQueryStep(connector.QueryStepConfig[IN, Request, Response]{
 		StepType: config.StepType, Presentation: config.Presentation,
@@ -197,6 +239,7 @@ type MutationStepConfig[IN any] struct {
 	StepType                              string                                             `connector:"stepType"`
 	Presentation                          connector.StepPresentation                         `connector:"presentation"`
 	Connection                            Connection                                         `connector:"connection"`
+	ConnectionName                        string                                             `connector:"connectionName"`
 	BuildInput                            func(IN) (Request, error)                          `connector:"buildInput"`
 	Succeeded                             connector.Target[MutationStepOutput[IN]]           `connector:"branch=succeeded"`
 	Rejected                              connector.Target[MutationStepOutput[IN]]           `connector:"branch=rejected"`
@@ -209,6 +252,9 @@ type MutationStepConfig[IN any] struct {
 func NewMutationStep[IN any](config MutationStepConfig[IN]) connector.MutationStep[IN, Request, Response] {
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
+	}
+	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("http connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
 	}
 	return connector.MustNewMutationStep(connector.MutationStepConfig[IN, Request, Response]{
 		StepType: config.StepType, Presentation: config.Presentation,
@@ -255,6 +301,7 @@ type VerifyWebhookStepConfig[IN any] struct {
 	StepType                           string                                        `connector:"stepType"`
 	Presentation                       connector.StepPresentation                    `connector:"presentation"`
 	Connection                         Connection                                    `connector:"connection"`
+	ConnectionName                     string                                        `connector:"connectionName"`
 	BuildInput                         func(IN) (WebhookRequest, error)              `connector:"buildInput"`
 	Verified                           connector.Target[VerifyWebhookStepOutput[IN]] `connector:"branch=verified"`
 	Rejected                           connector.Target[VerifyWebhookStepOutput[IN]] `connector:"branch=rejected"`
@@ -265,6 +312,9 @@ type VerifyWebhookStepConfig[IN any] struct {
 func NewVerifyWebhookStep[IN any](config VerifyWebhookStepConfig[IN]) connector.QueryStep[IN, WebhookRequest, WebhookResult] {
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
+	}
+	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("http connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
 	}
 	return connector.MustNewQueryStep(connector.QueryStepConfig[IN, WebhookRequest, WebhookResult]{
 		StepType: config.StepType, Presentation: config.Presentation,

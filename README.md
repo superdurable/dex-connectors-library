@@ -15,6 +15,7 @@ The first alpha includes:
   HTTP/Webhook, OpenAI Responses, Google Sheets, and Gmail connectors,
   including OpenAI SSE;
 - credential-free React primitives and a sandboxed Studio setup protocol;
+- a strict local-development connection file loader with generated named Connection helpers;
 - a deterministic mock provider and real-Dex Customer Onboarding fixtures.
 
 ## Quick start
@@ -86,8 +87,40 @@ historical root `v0.1.0` tag does not version any standalone component. Git
 tags are the release version source of truth.
 
 The SDK must be released before a connector can pin a new SDK version. New
-connectors pin the published SDK `v0.1.1`. See
+connectors pin the published SDK `v0.1.2`. See
 [the versioning and release guide](docs/versioning-and-releases.md).
+
+## Local Dex Web connections
+
+Dex Web writes local-development connections to a JSON file and prints its
+absolute path. Set that path before starting the application:
+
+```bash
+DEX_CONNECTOR_CONFIG_FILE="$HOME/.dex/connectors/connections.json" go run ./cmd/app
+```
+
+Load the file once during application startup, then construct each generated
+Connection by name:
+
+```go
+store, err := localconfig.LoadFromEnvironment()
+if err != nil {
+	return err
+}
+sender, err := gmail.NewLocalConnection(store, "sender")
+```
+
+Configuration is snapshotted when `NewLocalConnection` runs, so changing it
+requires an application restart. Credentials are reloaded before every
+provider call, so reauthorization takes effect without restarting. The loader
+strictly rejects unknown JSON fields, duplicate names, symlink files, expired
+credentials, and a runtime Connection name that differs from the generated
+factory's `ConnectionName`. See the
+[runnable local configuration example](examples/local-config/main.go).
+
+The file is a plaintext secret store intended only for local development.
+`SecretString` still prevents credentials from being serialized, formatted,
+or placed in Flow state by application code.
 
 The Connector Go SDK uses `github.com/superdurable/dex/sdk-go v0.11.3` and verifies
 integration behavior against Dex Server/dexcli 0.11.3. Those releases are

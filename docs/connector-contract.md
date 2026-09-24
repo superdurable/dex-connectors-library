@@ -202,6 +202,30 @@ YAML, and text serialization. Connector-specific credential types prevent a
 Google Sheets connection from being accidentally passed to Gmail, even when
 both use one Google account.
 
+## Local connection file
+
+The Go SDK package `localconfig` reads the path in
+`DEX_CONNECTOR_CONFIG_FILE`. Its schema version is
+`connectors.dex.dev/local-connections/v1alpha1`. Each record is keyed by
+Connector ID and connection name and binds that name to one exact Connector
+module path and version.
+
+Generated operation factory configs expose `ConnectionName` with the
+`connector:"connectionName"` tag. An empty value preserves ordinary runtime
+execution but prevents Dex Web from offering automatic setup. A non-empty
+value must equal the typed Connection's runtime name.
+
+Generated `NewLocalConnection` helpers snapshot non-secret configuration at
+application startup and install a credential provider that reopens the file
+before each provider call. This makes credential replacement visible to a
+running app while keeping configuration changes restart-bound. Credential
+wire values are converted to `SecretString` only at this boundary and cannot
+be serialized again.
+
+The local file may contain several named connections for one Connector. It
+must never be persisted into Flow state or copied into logs. OAuth refresh
+tokens are outside this alpha contract.
+
 The manifest also carries OAuth endpoints, scopes, PKCE, connection kind,
 Studio setup entrypoint, Host API compatibility, required backend capabilities,
 mock scenarios, and icon. Release metadata binds those declarations to the

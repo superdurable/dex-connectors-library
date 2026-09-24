@@ -5,11 +5,13 @@
 package openai
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"time"
 
 	connector "github.com/superdurable/dex-connectors-library/sdk/go"
+	"github.com/superdurable/dex-connectors-library/sdk/go/localconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -38,6 +40,40 @@ func NewConnection(client *Client, reference connector.ConnectionRef) (Connectio
 		return Connection{}, fmt.Errorf("openai connector connection: %w", err)
 	}
 	return Connection{client: client, reference: reference}, nil
+}
+
+// NewLocalConnection loads startup configuration and reloads credentials before every provider call.
+func NewLocalConnection(store *localconfig.Store, connectionName string, options ...Option) (Connection, error) {
+	if store == nil {
+		return Connection{}, fmt.Errorf("local connector configuration store is required")
+	}
+	reference := connector.ConnectionRef{Provider: "openai", Name: connectionName}
+	if err := reference.Validate(); err != nil {
+		return Connection{}, fmt.Errorf("openai local connection: %w", err)
+	}
+	var config Config
+	if err := store.DecodeConfiguration(ConnectorID, connectionName, &config); err != nil {
+		return Connection{}, err
+	}
+	credentials := localconfig.NewCredentialProvider(store, ConnectorID, connectionName, decodeLocalCredentials)
+	client, err := New(config, credentials, options...)
+	if err != nil {
+		return Connection{}, err
+	}
+	return NewConnection(client, reference)
+}
+
+func decodeLocalCredentials(contents json.RawMessage) (Credentials, error) {
+	var fields struct {
+		APIKey string `json:"api_key"`
+	}
+	if err := localconfig.DecodeCredentials(contents, &fields); err != nil {
+		return Credentials{}, err
+	}
+	credentials := Credentials{
+		APIKey: connector.NewSecretString(fields.APIKey),
+	}
+	return credentials, credentials.Validate()
 }
 
 func (connection Connection) validate() error {
@@ -137,6 +173,7 @@ type CreateResponseStepConfig[IN any] struct {
 	StepType                              string                                             `connector:"stepType"`
 	Presentation                          connector.StepPresentation                         `connector:"presentation"`
 	Connection                            Connection                                         `connector:"connection"`
+	ConnectionName                        string                                             `connector:"connectionName"`
 	BuildInput                            func(IN) (CreateRequest, error)                    `connector:"buildInput"`
 	Completed                             connector.Target[CreateResponseStepOutput[IN]]     `connector:"branch=completed"`
 	Failed                                connector.Target[CreateResponseStepOutput[IN]]     `connector:"branch=failed"`
@@ -152,6 +189,9 @@ type CreateResponseStepConfig[IN any] struct {
 func NewCreateResponseStep[IN any](config CreateResponseStepConfig[IN]) connector.MutationStep[IN, CreateRequest, Response] {
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
+	}
+	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("openai connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
 	}
 	return connector.MustNewMutationStep(connector.MutationStepConfig[IN, CreateRequest, Response]{
 		StepType: config.StepType, Presentation: config.Presentation,
@@ -200,6 +240,7 @@ type RetrieveResponseStepConfig[IN any] struct {
 	StepType                           string                                           `connector:"stepType"`
 	Presentation                       connector.StepPresentation                       `connector:"presentation"`
 	Connection                         Connection                                       `connector:"connection"`
+	ConnectionName                     string                                           `connector:"connectionName"`
 	BuildInput                         func(IN) (RetrieveRequest, error)                `connector:"buildInput"`
 	Found                              connector.Target[RetrieveResponseStepOutput[IN]] `connector:"branch=found"`
 	Failed                             connector.Target[RetrieveResponseStepOutput[IN]] `connector:"branch=failed"`
@@ -211,6 +252,9 @@ type RetrieveResponseStepConfig[IN any] struct {
 func NewRetrieveResponseStep[IN any](config RetrieveResponseStepConfig[IN]) connector.QueryStep[IN, RetrieveRequest, Response] {
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
+	}
+	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("openai connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
 	}
 	return connector.MustNewQueryStep(connector.QueryStepConfig[IN, RetrieveRequest, Response]{
 		StepType: config.StepType, Presentation: config.Presentation,
