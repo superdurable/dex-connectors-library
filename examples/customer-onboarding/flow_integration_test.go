@@ -26,6 +26,7 @@ import (
 	gmail "github.com/superdurable/dex-connectors-library/connectors/google/gmail"
 	spreadsheet "github.com/superdurable/dex-connectors-library/connectors/google/spreadsheet"
 	httpconnector "github.com/superdurable/dex-connectors-library/connectors/http"
+	linkedinconnector "github.com/superdurable/dex-connectors-library/connectors/linkedin"
 	openai "github.com/superdurable/dex-connectors-library/connectors/openai"
 	customeronboarding "github.com/superdurable/dex-connectors-library/examples/customer-onboarding"
 	mockprovider "github.com/superdurable/dex-connectors-library/examples/customer-onboarding/internal/mockprovider"
@@ -92,6 +93,40 @@ func TestGitHubFactoryPersistsAuthenticatedProfileWithRealDex(t *testing.T) {
 	require.NoError(t, result.DecodeSingleOutput(&profile))
 	require.Equal(t, "42", profile.Subject)
 	require.Equal(t, "octocat@example.com", profile.VerifiedEmail)
+}
+
+func TestLinkedInFactoryPersistsAuthenticatedProfileWithRealDex(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		require.Equal(t, "/v2/userinfo", request.URL.Path)
+		require.Equal(t, "Bearer one-use-token", request.Header.Get("Authorization"))
+		response.Header().Set("Content-Type", "application/json")
+		response.Header().Set("X-LI-UUID", "linkedin-integration")
+		_, _ = response.Write([]byte(`{"sub":"member-42","name":"Ada Lovelace","email":"ada@example.com","email_verified":true}`))
+	}))
+	defer server.Close()
+	reference := connector.ConnectionRef{Provider: "linkedin", Name: "signup"}
+	client, err := linkedinconnector.New(linkedinconnector.Config{UserInfoURL: server.URL + "/v2/userinfo"}, connector.StaticCredentialProvider[linkedinconnector.Credentials]{
+		reference: {AccessToken: connector.NewSecretString("one-use-token")},
+	})
+	require.NoError(t, err)
+	connection, err := linkedinconnector.NewConnection(client, reference)
+	require.NoError(t, err)
+	flow := linkedinProfileFlow{connection: connection}
+	harness := newDexHarness(t, []dex.Flow{flow})
+	harness.startWorker(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	flowID := uniqueFlowID("linkedin-profile")
+	_, err = harness.client.StartFlow(ctx, flow, flowID, struct{}{}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, result.Status)
+	var profile linkedinconnector.AuthenticatedProfile
+	require.NoError(t, result.DecodeSingleOutput(&profile))
+	require.Equal(t, "member-42", profile.Subject)
+	require.Equal(t, "ada@example.com", profile.VerifiedEmail)
 }
 
 func TestUnknownMutationUsesExplicitRecoveryAndCommittedReceipt(t *testing.T) {
@@ -237,6 +272,7 @@ func TestGmailFactoryRoutesUnknownWithoutResend(t *testing.T) {
 
 var (
 	githubProfileResult             = dex.DefineAttribute[connector.QueryResult[githubconnector.AuthenticatedProfile]]("github-profile-result")
+	linkedinProfileResult           = dex.DefineAttribute[connector.QueryResult[linkedinconnector.AuthenticatedProfile]]("linkedin-profile-result")
 	openAIProgress                  = dex.DefineStream[connector.ProgressUpdate]("openai-progress", 1<<20)
 	openAIText                      = dex.DefineStream[string]("openai-text", 1<<20)
 	openAIResult                    = dex.DefineAttribute[connector.MutationResult[openai.Response]]("openai-result")
@@ -293,6 +329,55 @@ func (githubProfileTerminalStep) Execute(ctx dex.Context, output githubconnector
 	}
 	if output.Result.Branch != githubconnector.GetAuthenticatedProfileBranchProfileLoaded {
 		return dex.ForceFail("GitHub profile query did not load the profile"), nil
+	}
+	return dex.GracefulComplete(output.Result.Value), nil
+}
+
+type linkedinProfileFlow struct {
+	dex.FlowDefaults
+	connection linkedinconnector.Connection
+}
+
+func (flow linkedinProfileFlow) GetSteps() []dex.StepDef {
+	step := linkedinconnector.NewGetAuthenticatedProfileStep(linkedinconnector.GetAuthenticatedProfileStepConfig[struct{}]{
+		StepType: "ReadLinkedInSignupProfile",
+		Presentation: connector.StepPresentation{
+			GroupID: "signup", GroupLabel: "Signup", Explanation: "Read the authenticated LinkedIn OIDC signup profile.",
+		},
+		Connection: flow.connection,
+		BuildInput: func(struct{}) (linkedinconnector.GetAuthenticatedProfileInput, error) {
+			return linkedinconnector.GetAuthenticatedProfileInput{}, nil
+		},
+		ProfileLoaded:         connector.GoTo(linkedinProfileTerminalStep{}),
+		VerifiedEmailRequired: connector.GoTo(linkedinProfileTerminalStep{}),
+		InsufficientScope:     connector.GoTo(linkedinProfileTerminalStep{}),
+		AuthorizationRevoked:  connector.GoTo(linkedinProfileTerminalStep{}),
+		NotFound:              connector.GoTo(linkedinProfileTerminalStep{}),
+		Failed:                connector.GoTo(linkedinProfileTerminalStep{}),
+		Defect:                connector.GoTo(linkedinProfileTerminalStep{}),
+		ResultAttribute:       &linkedinProfileResult,
+	})
+	return []dex.StepDef{dex.DefineStartStep(step), dex.DefineStep(linkedinProfileTerminalStep{})}
+}
+
+func (linkedinProfileFlow) GetPersistenceSchema() dex.PersistenceSchema {
+	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{linkedinProfileResult}}
+}
+
+type linkedinProfileTerminalStep struct {
+	dex.StepDefaultsNoWaitFor[linkedinconnector.GetAuthenticatedProfileStepOutput[struct{}]]
+}
+
+func (linkedinProfileTerminalStep) Execute(ctx dex.Context, output linkedinconnector.GetAuthenticatedProfileStepOutput[struct{}]) (*dex.StepDecision, error) {
+	persisted, err := linkedinProfileResult.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if persisted.Receipt.CallID != output.Result.Receipt.CallID {
+		return nil, fmt.Errorf("LinkedIn profile Result Attribute did not commit with its transition")
+	}
+	if output.Result.Branch != linkedinconnector.GetAuthenticatedProfileBranchProfileLoaded {
+		return dex.ForceFail("LinkedIn profile query did not load the profile"), nil
 	}
 	return dex.GracefulComplete(output.Result.Value), nil
 }

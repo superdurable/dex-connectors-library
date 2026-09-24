@@ -34,6 +34,9 @@ cd ../../../..
 cd connectors/http
 GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
+cd ../linkedin
+GOWORK=off go test -race ./...
+GOWORK=off go vet ./...
 cd ../openai
 GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
@@ -42,11 +45,12 @@ cd ../..
 make check
 go test -race ./...
 go vet ./...
-go run ./cmd/connectorctl validate connectors/github/connector.yaml connectors/google/gmail/connector.yaml connectors/google/spreadsheet/connector.yaml connectors/http/connector.yaml connectors/openai/connector.yaml
+go run ./cmd/connectorctl validate connectors/github/connector.yaml connectors/google/gmail/connector.yaml connectors/google/spreadsheet/connector.yaml connectors/http/connector.yaml connectors/linkedin/connector.yaml connectors/openai/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/github/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/google/gmail/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/google/spreadsheet/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/http/connector.yaml
+go run ./cmd/connectorctl generate --check connectors/linkedin/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/openai/connector.yaml
 go run ./cmd/connectorctl release-workflow --check connectors .github/workflows/release-connector.yml
 go run ./cmd/connectorctl catalog connectors
@@ -54,8 +58,8 @@ go run ./cmd/connectorctl catalog connectors
 
 The suite must prove:
 
-- the SDK, GitHub, HTTP, OpenAI, Google Sheets, and Gmail modules compile and test
-  independently of `go.work`;
+- the SDK and every provider connector compile and test independently of
+  `go.work`;
 - generated operation-specific factories expose typed branch fields and typed,
   non-serializable connector Connections;
 - the generated release dropdown matches the catalog and release artifacts are
@@ -90,6 +94,8 @@ The suite must prove:
 - GitHub profile/email selection, scope/revocation branches, response bounds,
   public-only pagination, deduplication, sorting, truncation, and rate-limit
   delay tests remain green;
+- LinkedIn OIDC UserInfo claim filtering, verified-email, authorization,
+  not-found, response-bound, redirect, and rate-limit tests remain green;
 - Sheets query-before-mutate, duplicate-key, bounded-response, and uncertainty
   tests remain green;
 - Gmail sender validation, MIME encoding, terminal rejection, rate-limit, and
@@ -115,6 +121,8 @@ The integration suite verifies:
 - the fixture connector registers those factories in a real Dex Flow and
   preserves Call ID, idempotency, Attribute, Stream, and retry behavior;
 - Customer Onboarding registers factory Steps with typed `StepRef` targets;
+- GitHub and LinkedIn signup profile factories persist their typed Result
+  Attributes atomically with terminal transitions;
 - Query Retry succeeds under the generated Dex retry defaults;
 - terminal Query branch does not use Dex retry;
 - Mutation rate-limit retry retains Call ID/idempotency key and creates one
@@ -135,7 +143,7 @@ The integration suite verifies:
 
 ## Manual API and Dex Web acceptance
 
-1. Read the generated HTTP/OpenAI files and confirm YAML is the only source of
+1. Read the generated provider files and confirm YAML is the only source of
    Config, Credentials, branch constants, definitions, and defaults.
 2. Confirm a Flow can be authored with factory values directly inside
    `dex.DefineStep`/`dex.DefineStartStep`, without provider concrete Steps.
@@ -156,9 +164,13 @@ The integration suite verifies:
    `read:user user:email` scopes; confirm no private repository data is read.
 3. Existing releases remain `connectors/http/v0.1.0` and
    `connectors/openai/v0.1.0`.
-4. In clean temporary modules, download each public tag with `GOWORK=off` and
+4. Run `Release Connector` for `linkedin` with the default minor bump and
+   confirm tag `connectors/linkedin/v0.1.0` plus its release artifact.
+5. Run the opt-in LinkedIn live test with a dedicated member and exact
+   `openid profile email` scopes; confirm only OIDC UserInfo claims are read.
+6. In clean temporary modules, download each public tag with `GOWORK=off` and
    compile its operation-specific factory example.
-5. Confirm each release note contains only commits that changed that connector
+7. Confirm each release note contains only commits that changed that connector
    and retains `## Breaking Changes` with `None.` when appropriate.
 6. Run `Release Connector` for `google/spreadsheet` and confirm its independent
    tag plus `connector-release.json` and `connector-ui.tgz` digests.

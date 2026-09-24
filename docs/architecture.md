@@ -162,6 +162,22 @@ inbox, sent mail, profile, or aliases. Gmail has no server-side idempotency
 guarantee, so ambiguous sends route to recovery and are never automatically
 repeated.
 
+## LinkedIn connector
+
+LinkedIn exposes one generated Query factory for the authenticated member's
+OpenID Connect UserInfo claims. Its manifest declares the LinkedIn issuer,
+discovery, authorization, token, and UserInfo endpoints; exact
+`openid profile email` scopes; PKCE; and mandatory nonce validation. The
+Customer Onboarding App owns the callback, token exchange, and ID-token
+validation before creating the one-use access-token credential.
+
+The provider implementation calls only UserInfo. It returns bounded `sub`,
+name, given/family name, HTTPS picture, locale, and verified email fields. It
+does not scrape a LinkedIn profile page or infer employer, title, employment
+history, or real-world identity. Missing verified email, insufficient
+authorization, revoked authorization, not-found, terminal provider failure,
+safe retry, and local defect remain distinct branches or retry behavior.
+
 ## Studio UI distribution
 
 A manifest may declare a setup entrypoint, Host API range, backend capability

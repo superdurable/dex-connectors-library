@@ -11,8 +11,9 @@ The first alpha includes:
   definitions, and operation Step defaults;
 - Dex-native Query/Mutation Step factories with typed branch targets, Result
   Attributes, stable Call IDs, idempotency keys, and application-owned Streams;
-- GitHub signup profile/public-repository, generic HTTP/Webhook, OpenAI
-  Responses, Google Sheets, and Gmail connectors, including OpenAI SSE;
+- GitHub and LinkedIn signup profile, GitHub public-repository, generic
+  HTTP/Webhook, OpenAI Responses, Google Sheets, and Gmail connectors,
+  including OpenAI SSE;
 - credential-free React primitives and a sandboxed Studio setup protocol;
 - a deterministic mock provider and real-Dex Customer Onboarding fixtures.
 
@@ -50,17 +51,21 @@ cd ../../../..
 cd connectors/http
 GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
+cd ../linkedin
+GOWORK=off go test -race ./...
+GOWORK=off go vet ./...
 cd ../openai
 GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
 cd ../..
 
 go test ./...
-go run ./cmd/connectorctl validate connectors/github/connector.yaml connectors/google/gmail/connector.yaml connectors/google/spreadsheet/connector.yaml connectors/http/connector.yaml connectors/openai/connector.yaml
+go run ./cmd/connectorctl validate connectors/github/connector.yaml connectors/google/gmail/connector.yaml connectors/google/spreadsheet/connector.yaml connectors/http/connector.yaml connectors/linkedin/connector.yaml connectors/openai/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/github/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/google/gmail/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/google/spreadsheet/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/http/connector.yaml
+go run ./cmd/connectorctl generate --check connectors/linkedin/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/openai/connector.yaml
 go run ./cmd/connectorctl release-workflow --check connectors .github/workflows/release-connector.yml
 go run ./cmd/connectorctl catalog connectors
@@ -74,10 +79,11 @@ npm run build
 The Go SDK and every connector are independent Go modules.
 Their tags are directory-prefixed, including `sdk/go/vX.Y.Z`,
 `connectors/github/vX.Y.Z`, `connectors/http/vX.Y.Z`,
-`connectors/openai/vX.Y.Z`, `connectors/google/spreadsheet/vX.Y.Z`, and
-`connectors/google/gmail/vX.Y.Z`. The historical root `v0.1.0` tag does not
-version any standalone component. Git tags are the release version source of
-truth.
+`connectors/linkedin/vX.Y.Z`, `connectors/openai/vX.Y.Z`,
+`connectors/google/spreadsheet/vX.Y.Z`, and `connectors/google/gmail/vX.Y.Z`.
+The
+historical root `v0.1.0` tag does not version any standalone component. Git
+tags are the release version source of truth.
 
 The SDK must be released before a connector can pin a new SDK version. New
 connectors pin the published SDK `v0.1.1`. See
