@@ -9,6 +9,7 @@ on:
         required: true
         type: choice
         options:
+          - google/gmail
           - google/spreadsheet
           - http
           - openai
