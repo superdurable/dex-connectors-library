@@ -134,6 +134,13 @@ types. The completed Response object is authoritative for value and usage.
 Early EOF or a missing terminal event is uncertain and can be reconciled with
 RetrieveResponse.
 
+## Google Sheets connector
+
+Google Sheets is an independent module and OAuth Connection. It requests only
+`drive.file`, so Studio selects each accessible spreadsheet through Google
+Picker. `UpsertRow` queries by a stable key before updating or appending;
+duplicate keys are an explicit conflict and ambiguous writes remain uncertain.
+
 ## Studio UI distribution
 
 A manifest may declare a setup entrypoint, Host API range, backend capability

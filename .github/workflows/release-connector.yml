@@ -9,6 +9,7 @@ on:
         required: true
         type: choice
         options:
+          - google/spreadsheet
           - http
           - openai
       bump:

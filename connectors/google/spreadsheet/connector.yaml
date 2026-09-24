@@ -1,0 +1,104 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: google-sheets
+  displayName: Google Sheets
+  description: Read ranges, find stable keyed rows, and idempotently upsert rows in Google Sheets.
+spec:
+  provider: google
+  codegen:
+    go:
+      package: spreadsheet
+  configuration:
+    fields:
+      - name: endpoint
+        goName: Endpoint
+        type: url
+        description: Google Sheets API endpoint.
+        required: false
+        default: https://sheets.googleapis.com/v4
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum provider response size.
+        required: false
+        default: 4194304
+      - name: maxRows
+        goName: MaxRows
+        type: integer
+        description: Maximum rows inspected by FindRow and UpsertRow.
+        required: false
+        default: 10000
+  auth:
+    type: oauth2
+    connectionKind: google-sheets-oauth
+    fields:
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        description: Short-lived Google OAuth access token.
+        required: true
+    oauth2:
+      authorizationEndpoint: https://accounts.google.com/o/oauth2/v2/auth
+      tokenEndpoint: https://oauth2.googleapis.com/token
+      scopes: [https://www.googleapis.com/auth/drive.file]
+      pkce: true
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.1.0 <0.2.0"
+      backendCapabilities: [oauth.connection.manage, google.picker.spreadsheets, google.sheets.tabs-list, configuration.write]
+      mockScenarios: [not-configured, authorization-pending, connected, insufficient-scope, revoked, broker-unavailable, ready]
+      icon: icon.svg
+  operations:
+    - name: getValues
+      goName: GetValues
+      inputType: GetValuesInput
+      outputType: GetValuesOutput
+      kind: query
+      description: Read one bounded A1 range.
+      idempotency: none
+      branches:
+        - {id: read, goName: Read, description: The range was read.}
+        - {id: notFound, goName: NotFound, description: The spreadsheet or range does not exist.}
+        - {id: failed, goName: Failed, description: Google rejected the read.}
+        - {id: defect, goName: Defect, description: Local input or connector definition is invalid.}
+      defectBranch: defect
+      resultAttribute: optional
+      execution: &googleExecution
+        executeMethodTimeout: 30s
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+    - name: findRow
+      goName: FindRow
+      inputType: FindRowInput
+      outputType: FindRowOutput
+      kind: query
+      description: Find exactly one row by a named key column and value.
+      idempotency: none
+      branches:
+        - {id: found, goName: Found, description: Exactly one matching row was found.}
+        - {id: notFound, goName: NotFound, description: No matching row exists.}
+        - {id: conflict, goName: Conflict, description: More than one matching row exists.}
+        - {id: failed, goName: Failed, description: Google rejected the query.}
+        - {id: defect, goName: Defect, description: Local input or connector definition is invalid.}
+      defectBranch: defect
+      resultAttribute: optional
+      execution: *googleExecution
+    - name: upsertRow
+      goName: UpsertRow
+      inputType: UpsertRowInput
+      outputType: UpsertRowOutput
+      kind: mutation
+      description: Query by a stable key and update or append exactly one row.
+      idempotency: required
+      branches:
+        - {id: upserted, goName: Upserted, description: One row was inserted or updated.}
+        - {id: conflict, goName: Conflict, description: Existing duplicate key rows prevent a safe write.}
+        - {id: rejected, goName: Rejected, description: Google conclusively rejected the write.}
+        - {id: uncertain, goName: Uncertain, description: The dispatched write outcome cannot be confirmed.}
+        - {id: defect, goName: Defect, description: Local input or connector definition is invalid.}
+      defectBranch: defect
+      uncertainBranch: uncertain
+      resultAttribute: required
+      execution: *googleExecution
