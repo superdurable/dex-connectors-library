@@ -1,0 +1,105 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: github
+  displayName: GitHub
+  description: Read an authenticated GitHub profile, verified primary email, and bounded public repositories.
+spec:
+  provider: github
+  codegen:
+    go:
+      package: githubconnector
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: GitHub REST API base URL.
+        required: false
+        default: https://api.github.com
+      - name: apiVersion
+        goName: APIVersion
+        type: string
+        description: GitHub REST API version header.
+        required: false
+        default: "2026-03-10"
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: HTTP client timeout.
+        required: false
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum bytes accepted from one GitHub response.
+        required: false
+        default: 2097152
+      - name: defaultRepositoryLimit
+        goName: DefaultRepositoryLimit
+        type: integer
+        description: Default number of public repositories returned.
+        required: false
+        default: 100
+      - name: maxRepositories
+        goName: MaxRepositories
+        type: integer
+        description: Maximum public repositories returned by one invocation.
+        required: false
+        default: 500
+  auth:
+    type: oauth2
+    connectionKind: github-oauth
+    fields:
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        description: One-use GitHub OAuth access token.
+        required: true
+    oauth2:
+      protocol: oauth2
+      authorizationEndpoint: https://github.com/login/oauth/authorize
+      tokenEndpoint: https://github.com/login/oauth/access_token
+      scopes: [read:user, user:email]
+      pkce: true
+  operations:
+    - name: getAuthenticatedProfile
+      goName: GetAuthenticatedProfile
+      inputType: GetAuthenticatedProfileInput
+      outputType: AuthenticatedProfile
+      kind: query
+      description: Read the authenticated account and its primary verified email.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: profileLoaded, goName: ProfileLoaded, description: The authenticated profile and primary verified email were loaded.}
+        - {id: verifiedEmailRequired, goName: VerifiedEmailRequired, description: A primary verified email was not available.}
+        - {id: insufficientScope, goName: InsufficientScope, description: The OAuth grant does not match the required scopes.}
+        - {id: authorizationRevoked, goName: AuthorizationRevoked, description: The OAuth grant is invalid or revoked.}
+        - {id: notFound, goName: NotFound, description: The authenticated account was not found.}
+        - {id: failed, goName: Failed, description: GitHub returned a terminal provider or protocol failure.}
+        - {id: defect, goName: Defect, description: Local configuration or input is invalid.}
+      defectBranch: defect
+      resultAttribute: required
+      execution: &githubQueryExecution
+        executeMethodTimeout: 30s
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+    - name: listPublicRepositories
+      goName: ListPublicRepositories
+      inputType: ListPublicRepositoriesInput
+      outputType: PublicRepositories
+      kind: query
+      description: List a bounded, recent-first set of public repositories owned by one login.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: repositoriesLoaded, goName: RepositoriesLoaded, description: Public repositories were loaded and bounded.}
+        - {id: insufficientScope, goName: InsufficientScope, description: The OAuth grant does not match the required scopes.}
+        - {id: authorizationRevoked, goName: AuthorizationRevoked, description: The OAuth grant is invalid or revoked.}
+        - {id: notFound, goName: NotFound, description: The requested GitHub account was not found.}
+        - {id: failed, goName: Failed, description: GitHub returned a terminal provider or protocol failure.}
+        - {id: defect, goName: Defect, description: Local configuration or input is invalid.}
+      defectBranch: defect
+      resultAttribute: required
+      execution: *githubQueryExecution
