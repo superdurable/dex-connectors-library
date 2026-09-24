@@ -11,7 +11,7 @@ The first alpha includes:
   definitions, and operation Step defaults;
 - Dex-native Query/Mutation Step factories with typed branch targets, Result
   Attributes, stable Call IDs, idempotency keys, and application-owned Streams;
-- generic HTTP/Webhook, OpenAI Responses, and Google Sheets connectors;
+- generic HTTP/Webhook, OpenAI Responses, Google Sheets, and Gmail connectors;
 - credential-free React primitives and a sandboxed Studio setup protocol;
 - a deterministic mock provider and real-Dex Customer Onboarding fixtures.
 
@@ -24,6 +24,15 @@ GOWORK=off go vet ./...
 cd ../..
 
 cd connectors/google/spreadsheet
+GOWORK=off go test -race ./...
+GOWORK=off go vet ./...
+cd ui
+npm ci
+npm test
+npm run build
+cd ../../../..
+
+cd connectors/google/gmail
 GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
 cd ui
@@ -55,9 +64,10 @@ npm run build
 
 The Go SDK and every connector are independent Go modules.
 Their tags include `sdk/go/vX.Y.Z`, `connectors/http/vX.Y.Z`,
-`connectors/openai/vX.Y.Z`, and `connectors/google/spreadsheet/vX.Y.Z`. The
-historical root `v0.1.0` tag does not version any standalone component. Git
-tags are the release version source of truth.
+`connectors/openai/vX.Y.Z`, `connectors/google/spreadsheet/vX.Y.Z`, and
+`connectors/google/gmail/vX.Y.Z`. The historical root `v0.1.0` tag does not
+version any standalone component. Git tags are the release version source of
+truth.
 
 The SDK must be released before a connector can pin a new SDK version. Each
 connector currently pins the published SDK `v0.1.0`. See
