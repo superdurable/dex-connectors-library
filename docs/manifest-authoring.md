@@ -10,7 +10,32 @@ An operation declares:
 - Query or Mutation kind and idempotency requirement;
 - every stable branch, plus defect and Mutation uncertainty branches;
 - Result Attribute requirement and progress capabilities;
+- `authorization: required` for operations that require an authorized
+  connection, or `none` for public operations;
 - Dex Execute timeout, retry, heartbeat, and durability defaults.
+
+`auth.oauth2.protocol` distinguishes plain OAuth 2.0 from OpenID Connect. It
+defaults to `oauth2` for existing manifests. An `oidc` manifest must also
+declare HTTPS issuer, discovery, and UserInfo endpoints and require a nonce.
+The application owns state, PKCE verifier, nonce, callback validation, and
+one-time token lifecycle; connector credentials remain typed secret fields.
+
+```yaml
+auth:
+  type: oauth2
+  connectionKind: linkedin-oidc
+  oauth2:
+    protocol: oidc
+    authorizationEndpoint: https://www.linkedin.com/oauth/v2/authorization
+    tokenEndpoint: https://www.linkedin.com/oauth/v2/accessToken
+    scopes: [openid, profile, email]
+    pkce: true
+    oidc:
+      issuer: https://www.linkedin.com
+      discoveryEndpoint: https://www.linkedin.com/oauth/.well-known/openid-configuration
+      userInfoEndpoint: https://api.linkedin.com/v2/userinfo
+      nonceRequired: true
+```
 
 `connectorctl generate` creates the connector-specific Config, Credentials,
 Connection, branch constants, definitions, output aliases, config structs, and

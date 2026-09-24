@@ -84,7 +84,9 @@ Each manifest supplies:
 - Go package and field names;
 - non-sensitive configuration fields, defaults, and validation metadata;
 - connector-specific secret/OAuth fields and connection kind;
-- OAuth endpoints, scopes, and PKCE when applicable;
+- OAuth2/OIDC protocol, endpoints, scopes, PKCE, discovery metadata, and nonce
+  requirement when applicable;
+- whether each operation requires an authorized connection;
 - operation branches, defect and uncertainty branch identities;
 - Result Attribute requirement and Stream capabilities;
 - Execute timeout, heartbeat, retry, and durability defaults.
@@ -134,16 +136,14 @@ RetrieveResponse.
 
 ## Static visualization boundary
 
-Runtime factory execution works with Dex Server 0.11.1 and SDK v0.10.2. Dex
-CLI 0.11.1 does not yet statically render factory calls in schema 2.0 Flow
-Definition. Until the separate Dex CLI patch lands, factory Steps are a known
-Dex Web 2.0 visualization limitation. Dynamic Step type, branch collection,
-or target construction will remain unsupported even after that patch; use the
-canonical static factory form documented in the example.
+Factory execution and visualization use Dex Server, CLI, and Go SDK v0.11.3.
+Dex CLI recognizes the canonical static factory form documented in the
+example. Dynamic Step type, branch collection, or target construction remains
+unsupported because it cannot be represented reliably by static analysis.
 
 ## UI/UX
 
-G2a changes no Studio or React configuration page. The manifest is UI-ready,
-but OAuth callbacks and actual Gmail/Sheets/OpenAI configuration forms belong
-to G2c/G6a. Studio must use Streams only for live feedback and Flow
-snapshot/Result for authoritative status.
+This foundation changes no Studio or React configuration page. The manifest is
+UI-ready, but provider callback handling and actual connection forms belong to
+their application delivery. Studio must use Streams only for live feedback and
+Flow snapshot/Result for authoritative status.

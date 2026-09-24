@@ -1,7 +1,7 @@
 # Dex-native Connector contract v1alpha1
 
 The Go types in `sdk/go` are the executable form of this contract. G2a uses
-Dex Server 0.11.1 and `sdk-go v0.10.2`; it does not change Dex Server or its
+Dex Server 0.11.3 and `sdk-go v0.11.3`; it does not change Dex Server or its
 database.
 
 ## Operation and Step factory boundary

@@ -63,6 +63,7 @@ spec:
 `))
 	require.NoError(t, err)
 	require.Equal(t, "mock-provider", manifest.Metadata.Name)
+	require.Equal(t, "none", manifest.Spec.Operations[0].Authorization)
 	require.Equal(t, []string{"structured", "text"}, manifest.Spec.Operations[1].Progress)
 }
 
@@ -73,9 +74,61 @@ func TestDecodeOAuthManifestFixture(t *testing.T) {
 	manifest, err := schema.Decode(file)
 	require.NoError(t, err)
 	require.Equal(t, "google-sheets-oauth", manifest.Spec.Auth.ConnectionKind)
+	require.Equal(t, "oauth2", manifest.Spec.Auth.OAuth2.Protocol)
 	require.True(t, manifest.Spec.Auth.OAuth2.PKCE)
 	require.Equal(t, []string{"https://www.googleapis.com/auth/spreadsheets"}, manifest.Spec.Auth.OAuth2.Scopes)
 	require.Equal(t, "secretString", manifest.Spec.Auth.Fields[0].Type)
+	require.Equal(t, "required", manifest.Spec.Operations[0].Authorization)
+}
+
+func TestDecodeOIDCManifestFixture(t *testing.T) {
+	file, err := os.Open("testdata/linkedin-oidc.yaml")
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, file.Close()) })
+	manifest, err := schema.Decode(file)
+	require.NoError(t, err)
+	require.Equal(t, "linkedin-oidc", manifest.Spec.Auth.ConnectionKind)
+	require.Equal(t, "oidc", manifest.Spec.Auth.OAuth2.Protocol)
+	require.Equal(t, "https://www.linkedin.com", manifest.Spec.Auth.OAuth2.OIDC.Issuer)
+	require.True(t, manifest.Spec.Auth.OAuth2.OIDC.NonceRequired)
+	require.Equal(t, "required", manifest.Spec.Operations[0].Authorization)
+}
+
+func TestRejectInvalidOIDCAndUnauthorizedOperation(t *testing.T) {
+	contents, err := os.ReadFile("testdata/linkedin-oidc.yaml")
+	require.NoError(t, err)
+
+	_, err = schema.Decode(strings.NewReader(strings.Replace(string(contents), "nonceRequired: true", "nonceRequired: false", 1)))
+	require.ErrorContains(t, err, "oidc auth requires HTTPS issuer, discovery, UserInfo, and nonce")
+
+	_, err = schema.Decode(strings.NewReader(strings.Replace(string(contents), "https://api.linkedin.com/v2/userinfo", "http://api.linkedin.com/v2/userinfo", 1)))
+	require.ErrorContains(t, err, "oidc auth requires HTTPS issuer, discovery, UserInfo, and nonce")
+
+	_, err = schema.Decode(strings.NewReader(`
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata: {name: public-provider, displayName: Public, description: public}
+spec:
+  provider: public
+  codegen: {go: {package: publicprovider}}
+  configuration: {fields: []}
+  auth: {type: none, fields: []}
+  operations:
+    - name: getThing
+      goName: GetThing
+      inputType: GetThingInput
+      outputType: GetThingOutput
+      kind: query
+      description: get thing
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: defect, goName: Defect, description: defect}
+      defectBranch: defect
+      resultAttribute: none
+      execution: {executeMethodTimeout: 30s, durability: sync, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}}
+`))
+	require.ErrorContains(t, err, "required authorization needs connector auth")
 }
 
 func TestRejectProviderIdempotencyAndInvalidProgress(t *testing.T) {

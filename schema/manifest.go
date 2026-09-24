@@ -63,6 +63,15 @@ type OAuth2 struct {
 	TokenEndpoint         string   `yaml:"tokenEndpoint" json:"tokenEndpoint"`
 	Scopes                []string `yaml:"scopes" json:"scopes"`
 	PKCE                  bool     `yaml:"pkce" json:"pkce"`
+	Protocol              string   `yaml:"protocol,omitempty" json:"protocol,omitempty"`
+	OIDC                  *OIDC    `yaml:"oidc,omitempty" json:"oidc,omitempty"`
+}
+
+type OIDC struct {
+	Issuer            string `yaml:"issuer" json:"issuer"`
+	DiscoveryEndpoint string `yaml:"discoveryEndpoint" json:"discoveryEndpoint"`
+	UserInfoEndpoint  string `yaml:"userInfoEndpoint" json:"userInfoEndpoint"`
+	NonceRequired     bool   `yaml:"nonceRequired" json:"nonceRequired"`
 }
 
 type Field struct {
@@ -88,6 +97,7 @@ type Operation struct {
 	UncertainBranch string            `yaml:"uncertainBranch,omitempty" json:"uncertainBranch,omitempty"`
 	ResultAttribute string            `yaml:"resultAttribute" json:"resultAttribute"`
 	Progress        []string          `yaml:"progress,omitempty" json:"progress,omitempty"`
+	Authorization   string            `yaml:"authorization,omitempty" json:"authorization,omitempty"`
 	Execution       Execution         `yaml:"execution" json:"execution"`
 }
 
@@ -126,6 +136,7 @@ func Decode(reader io.Reader) (Manifest, error) {
 	if err := decoder.Decode(&manifest); err != nil {
 		return Manifest{}, fmt.Errorf("decode manifest: %w", err)
 	}
+	manifest.normalize()
 	if err := manifest.Validate(); err != nil {
 		return Manifest{}, err
 	}
@@ -133,6 +144,22 @@ func Decode(reader io.Reader) (Manifest, error) {
 		sort.Strings(manifest.Spec.Operations[index].Progress)
 	}
 	return manifest, nil
+}
+
+func (manifest *Manifest) normalize() {
+	if manifest.Spec.Auth.OAuth2 != nil && manifest.Spec.Auth.OAuth2.Protocol == "" {
+		manifest.Spec.Auth.OAuth2.Protocol = "oauth2"
+	}
+	for index := range manifest.Spec.Operations {
+		if manifest.Spec.Operations[index].Authorization != "" {
+			continue
+		}
+		if manifest.Spec.Auth.Type == "none" {
+			manifest.Spec.Operations[index].Authorization = "none"
+		} else {
+			manifest.Spec.Operations[index].Authorization = "required"
+		}
+	}
 }
 
 func (manifest Manifest) Validate() error {
@@ -172,9 +199,20 @@ func (manifest Manifest) Validate() error {
 	if manifest.Spec.Auth.Type == "oauth2" {
 		if manifest.Spec.Auth.OAuth2 == nil {
 			problems = append(problems, "oauth2 auth requires oauth2 metadata")
-		} else if manifest.Spec.Auth.ConnectionKind == "" || !absoluteURL(manifest.Spec.Auth.OAuth2.AuthorizationEndpoint) || !absoluteURL(manifest.Spec.Auth.OAuth2.TokenEndpoint) || len(manifest.Spec.Auth.OAuth2.Scopes) == 0 {
+		} else if manifest.Spec.Auth.ConnectionKind == "" || !httpsURL(manifest.Spec.Auth.OAuth2.AuthorizationEndpoint) || !httpsURL(manifest.Spec.Auth.OAuth2.TokenEndpoint) || len(manifest.Spec.Auth.OAuth2.Scopes) == 0 {
 			problems = append(problems, "oauth2 auth requires connectionKind, endpoints, and scopes")
 		} else {
+			if manifest.Spec.Auth.OAuth2.Protocol != "oauth2" && manifest.Spec.Auth.OAuth2.Protocol != "oidc" {
+				problems = append(problems, "oauth2 protocol must be oauth2 or oidc")
+			}
+			if manifest.Spec.Auth.OAuth2.Protocol == "oidc" {
+				oidc := manifest.Spec.Auth.OAuth2.OIDC
+				if oidc == nil || !httpsURL(oidc.Issuer) || !httpsURL(oidc.DiscoveryEndpoint) || !httpsURL(oidc.UserInfoEndpoint) || !oidc.NonceRequired {
+					problems = append(problems, "oidc auth requires HTTPS issuer, discovery, UserInfo, and nonce")
+				}
+			} else if manifest.Spec.Auth.OAuth2.OIDC != nil {
+				problems = append(problems, "oidc metadata requires oidc protocol")
+			}
 			seenScopes := map[string]bool{}
 			for _, scope := range manifest.Spec.Auth.OAuth2.Scopes {
 				if strings.TrimSpace(scope) == "" || seenScopes[scope] {
@@ -238,6 +276,12 @@ func (manifest Manifest) Validate() error {
 		}
 		if operation.ResultAttribute != "none" && operation.ResultAttribute != "optional" && operation.ResultAttribute != "required" {
 			problems = append(problems, operation.Name+": resultAttribute must be none, optional, or required")
+		}
+		if operation.Authorization != "none" && operation.Authorization != "required" {
+			problems = append(problems, operation.Name+": authorization must be none or required")
+		}
+		if operation.Authorization == "required" && manifest.Spec.Auth.Type == "none" {
+			problems = append(problems, operation.Name+": required authorization needs connector auth")
 		}
 		seenProgress := map[string]bool{}
 		for _, capability := range operation.Progress {
@@ -369,4 +413,9 @@ func validDefault(field Field) bool {
 func absoluteURL(value string) bool {
 	parsed, err := url.Parse(value)
 	return err == nil && parsed.Scheme != "" && parsed.Hostname() != ""
+}
+
+func httpsURL(value string) bool {
+	parsed, err := url.Parse(value)
+	return err == nil && parsed.Scheme == "https" && parsed.Hostname() != ""
 }

@@ -54,7 +54,8 @@ The suite must prove:
 - RPC fails before credentials and providers;
 - manifest generation is deterministic, `--check` catches drift, and generated
   Config/Credentials/branches/definitions compile;
-- OAuth fixture preserves connection kind, endpoints, scopes, PKCE, and typed
+- OAuth2 and OIDC fixtures preserve protocol, connection kind, HTTPS endpoints,
+  discovery metadata, nonce, scopes, PKCE, operation authorization, and typed
   secret fields without implementing provider OAuth;
 - `SecretString`, API keys, OAuth tokens, authorization headers, and provider
   bodies do not enter Result, Failure, Receipt, Stream, or logs;
@@ -62,10 +63,10 @@ The suite must prove:
   and recovery tests remain green;
 - React connection-state tests and build remain unchanged.
 
-## Real Dex Server 0.11.1
+## Real Dex Server 0.11.3
 
-Install Temporal CLI 1.9.1 and start Dex Server/dexcli 0.11.1 while the Go SDK
-remains v0.10.2:
+Install Temporal CLI 1.9.1 and start Dex Server/dexcli 0.11.3 while the Go SDK
+uses v0.11.3:
 
 ```bash
 dexcli dev
@@ -94,7 +95,7 @@ The integration suite verifies:
   order, flushes the tail, and persists its typed Result Attribute;
 - retry Stream messages retain Call ID and separate Attempt/Sequence.
 
-## Manual API acceptance before Dex CLI work
+## Manual API and Dex Web acceptance
 
 1. Read the generated HTTP/OpenAI files and confirm YAML is the only source of
    Config, Credentials, branch constants, definitions, and defaults.
@@ -106,8 +107,8 @@ The integration suite verifies:
    public start input.
 5. Confirm `PersistenceRequirements()` matches resources explicitly registered
    by the Flow.
-6. Accept the known limitation that dexcli 0.11.1 cannot yet render factory
-   Steps in Dex Web 2.0.
+6. Generate schema 2.0 with dexcli 0.11.3 and verify factory Steps, branches,
+   Result Attributes, and Streams render in Dex Web 2.0.
 
 ## Release acceptance
 
@@ -119,14 +120,13 @@ The integration suite verifies:
 4. Confirm each release note contains only commits that changed that connector
    and retains `## Breaking Changes` with `None.` when appropriate.
 
-Only after this API acceptance should the separate Dex CLI analyzer patch
-begin. After its patch release, regenerate Customer Onboarding schema 2.0,
-add the deterministic golden, inspect nodes/branches/Attribute/Stream edges in
-Dex Web 2.0, and then move Connector PR #1 from Draft to Ready.
+The Dex CLI analyzer shipped in 0.11.3. Connector releases must retain a
+deterministic schema 2.0 golden and inspect nodes, branches, Attribute edges,
+and Stream edges in Dex Web 2.0.
 
 ## Documentation and UI/UX
 
 Contract changes update `connector-contract.md`; component/data flow changes
 update `architecture.md`; provider manifests and the Customer Onboarding README
 show canonical authoring. G2a adds no React form, OAuth callback, or Studio
-page. Manifest metadata is consumed by later G2c/G6a UI work.
+page. Manifest metadata is consumed by later provider connection UI work.

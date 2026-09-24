@@ -23,10 +23,10 @@ factory. It directly registers the required Result Attribute and
 application-owned structured/text Streams, verifies buffered text order and
 final flush, and keeps the committed Result authoritative.
 
-Dex CLI 0.11.1 cannot yet render these factory nodes in Dex Web 2.0. A separate
-Dex CLI patch follows manual acceptance of this factory API.
+Dex CLI 0.11.3 renders these canonical factory nodes and their typed branch,
+Result Attribute, and Stream edges in Dex Web 2.0.
 
-Run the suite against Dex Server 0.11.1:
+Run the suite against Dex Server 0.11.3:
 
 ```bash
 dexcli dev
