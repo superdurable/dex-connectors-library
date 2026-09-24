@@ -59,9 +59,10 @@ The suite must prove:
   secret fields without implementing provider OAuth;
 - `SecretString`, API keys, OAuth tokens, authorization headers, and provider
   bodies do not enter Result, Failure, Receipt, Stream, or logs;
-- HTTP and OpenAI provider classification, idempotency, response bounds, SSE,
-  and recovery tests remain green;
-- React connection-state tests and build remain unchanged.
+- HTTP and OpenAI provider classification, idempotency, response bounds,
+  uncertainty, and recovery tests remain green;
+- Studio Host API, setup component, deterministic tarball, digest, and React
+  build tests remain green.
 
 ## Real Dex Server 0.11.3
 
@@ -128,5 +129,6 @@ and Stream edges in Dex Web 2.0.
 
 Contract changes update `connector-contract.md`; component/data flow changes
 update `architecture.md`; provider manifests and the Customer Onboarding README
-show canonical authoring. G2a adds no React form, OAuth callback, or Studio
-page. Manifest metadata is consumed by later provider connection UI work.
+show canonical authoring. The shared G2c contract ships the bundle format and
+protocol; SuperVerse G6a owns the BFF loader, OAuth callbacks, credential
+broker, and Studio environment pages.

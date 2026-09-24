@@ -76,9 +76,10 @@ func TestDecodeOAuthManifestFixture(t *testing.T) {
 	require.Equal(t, "google-sheets-oauth", manifest.Spec.Auth.ConnectionKind)
 	require.Equal(t, "oauth2", manifest.Spec.Auth.OAuth2.Protocol)
 	require.True(t, manifest.Spec.Auth.OAuth2.PKCE)
-	require.Equal(t, []string{"https://www.googleapis.com/auth/spreadsheets"}, manifest.Spec.Auth.OAuth2.Scopes)
+	require.Equal(t, []string{"https://www.googleapis.com/auth/drive.file"}, manifest.Spec.Auth.OAuth2.Scopes)
 	require.Equal(t, "secretString", manifest.Spec.Auth.Fields[0].Type)
 	require.Equal(t, "required", manifest.Spec.Operations[0].Authorization)
+	require.Len(t, manifest.Spec.Auth.Fields, 1)
 }
 
 func TestDecodeOIDCManifestFixture(t *testing.T) {
@@ -129,6 +130,43 @@ spec:
       execution: {executeMethodTimeout: 30s, durability: sync, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}}
 `))
 	require.ErrorContains(t, err, "required authorization needs connector auth")
+}
+
+func TestDecodeStudioSetupMetadata(t *testing.T) {
+	manifest, err := schema.Decode(strings.NewReader(`
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata: {name: studio-fixture, displayName: Studio Fixture, description: setup UI fixture}
+spec:
+  provider: fixture
+  codegen: {go: {package: studiofixture}}
+  configuration: {fields: []}
+  auth: {type: none, connectionKind: none, fields: []}
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.1.0 <0.2.0"
+      backendCapabilities: [configuration.write]
+      mockScenarios: [not-configured, ready]
+      icon: icon.svg
+  operations:
+    - name: getThing
+      goName: GetThing
+      inputType: GetThingInput
+      outputType: GetThingOutput
+      kind: query
+      description: get thing
+      idempotency: none
+      branches:
+        - {id: defect, goName: Defect, description: defect}
+      defectBranch: defect
+      resultAttribute: none
+      execution: {executeMethodTimeout: 30s, durability: sync, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}}
+`))
+	require.NoError(t, err)
+	require.NotNil(t, manifest.Spec.Studio)
+	require.Equal(t, "index.html", manifest.Spec.Studio.Setup.Entrypoint)
+	require.Contains(t, manifest.Spec.Studio.Setup.BackendCapabilities, "configuration.write")
 }
 
 func TestRejectProviderIdempotencyAndInvalidProgress(t *testing.T) {

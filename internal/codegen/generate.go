@@ -138,7 +138,7 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 		write("\tResultAttribute: connector.Requirement%s,\n", title(operation.ResultAttribute))
 		write("\tProgress: connector.ProgressCapabilities{Structured: %t, Text: %t},\n", contains(operation.Progress, "structured"), contains(operation.Progress, "text"))
 		write("}\n\n")
-		writeOperationFactory(&output, operation)
+		writeOperationFactory(&output, manifest, operation)
 	}
 
 	formatted, err := format.Source(output.Bytes())
@@ -148,12 +148,14 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 	return formatted, nil
 }
 
-func writeOperationFactory(output *bytes.Buffer, operation schema.Operation) {
+func writeOperationFactory(output *bytes.Buffer, manifest schema.Manifest, operation schema.Operation) {
 	write := func(format string, values ...any) { fmt.Fprintf(output, format, values...) }
 	kind := title(operation.Kind)
 	write("type %sStepOutput[IN any] = connector.%sStepOutput[IN, %s]\n\n", operation.GoName, kind, operation.OutputType)
 	write("type %sStepConfig[IN any] struct {\n", operation.GoName)
 	write("\tconnector.%sFactoryConfigMarker `connector:\"factory=%s\"`\n", kind, operation.Kind)
+	write("\tconnectorID struct{} `connector:\"connectorId=%s\"`\n", manifest.Metadata.Name)
+	write("\toperationID struct{} `connector:\"operationId=%s\"`\n", operation.Name)
 	write("\tStepType string `connector:\"stepType\"`\n")
 	write("\tPresentation connector.StepPresentation `connector:\"presentation\"`\n")
 	write("\tConnection Connection `connector:\"connection\"`\n")

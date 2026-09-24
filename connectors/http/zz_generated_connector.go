@@ -133,6 +133,8 @@ type QueryStepOutput[IN any] = connector.QueryStepOutput[IN, Response]
 
 type QueryStepConfig[IN any] struct {
 	connector.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                        struct{}                                        `connector:"connectorId=http"`
+	operationID                        struct{}                                        `connector:"operationId=query"`
 	StepType                           string                                          `connector:"stepType"`
 	Presentation                       connector.StepPresentation                      `connector:"presentation"`
 	Connection                         Connection                                      `connector:"connection"`
@@ -190,6 +192,8 @@ type MutationStepOutput[IN any] = connector.MutationStepOutput[IN, Response]
 
 type MutationStepConfig[IN any] struct {
 	connector.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                           struct{}                                           `connector:"connectorId=http"`
+	operationID                           struct{}                                           `connector:"operationId=mutation"`
 	StepType                              string                                             `connector:"stepType"`
 	Presentation                          connector.StepPresentation                         `connector:"presentation"`
 	Connection                            Connection                                         `connector:"connection"`
@@ -246,6 +250,8 @@ type VerifyWebhookStepOutput[IN any] = connector.QueryStepOutput[IN, WebhookResu
 
 type VerifyWebhookStepConfig[IN any] struct {
 	connector.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                        struct{}                                      `connector:"connectorId=http"`
+	operationID                        struct{}                                      `connector:"operationId=verifyWebhook"`
 	StepType                           string                                        `connector:"stepType"`
 	Presentation                       connector.StepPresentation                    `connector:"presentation"`
 	Connection                         Connection                                    `connector:"connection"`

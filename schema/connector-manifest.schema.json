@@ -94,6 +94,35 @@
             }
           }
         },
+        "studio": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["setup"],
+          "properties": {
+            "setup": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["entrypoint", "hostApiRange", "backendCapabilities", "mockScenarios", "icon"],
+              "properties": {
+                "entrypoint": { "type": "string", "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+\\.html$" },
+                "hostApiRange": { "type": "string", "minLength": 1 },
+                "backendCapabilities": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": { "type": "string", "pattern": "^[a-z][a-z0-9]*(\\.[a-z][a-z0-9-]*)+$" }
+                },
+                "mockScenarios": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" }
+                },
+                "icon": { "type": "string", "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+\\.(?:png|svg)$" }
+              }
+            }
+          }
+        },
         "operations": {
           "type": "array",
           "minItems": 1,

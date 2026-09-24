@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -36,7 +37,20 @@ type Spec struct {
 	Codegen       Codegen       `yaml:"codegen" json:"codegen"`
 	Configuration Configuration `yaml:"configuration" json:"configuration"`
 	Auth          Auth          `yaml:"auth" json:"auth"`
+	Studio        *Studio       `yaml:"studio,omitempty" json:"studio,omitempty"`
 	Operations    []Operation   `yaml:"operations" json:"operations"`
+}
+
+type Studio struct {
+	Setup StudioSetup `yaml:"setup" json:"setup"`
+}
+
+type StudioSetup struct {
+	Entrypoint          string   `yaml:"entrypoint" json:"entrypoint"`
+	HostAPIRange        string   `yaml:"hostApiRange" json:"hostApiRange"`
+	BackendCapabilities []string `yaml:"backendCapabilities" json:"backendCapabilities"`
+	MockScenarios       []string `yaml:"mockScenarios" json:"mockScenarios"`
+	Icon                string   `yaml:"icon" json:"icon"`
 }
 
 type Codegen struct {
@@ -123,10 +137,12 @@ type Retry struct {
 }
 
 var (
-	namePattern      = regexp.MustCompile(`^[a-z][a-z0-9-]{1,62}$`)
-	operationPattern = regexp.MustCompile(`^[a-z][A-Za-z0-9]+$`)
-	goNamePattern    = regexp.MustCompile(`^[A-Z][A-Za-z0-9]*$`)
-	fieldNamePattern = regexp.MustCompile(`^[a-z][A-Za-z0-9_]*$`)
+	namePattern         = regexp.MustCompile(`^[a-z][a-z0-9-]{1,62}$`)
+	operationPattern    = regexp.MustCompile(`^[a-z][A-Za-z0-9]+$`)
+	goNamePattern       = regexp.MustCompile(`^[A-Z][A-Za-z0-9]*$`)
+	fieldNamePattern    = regexp.MustCompile(`^[a-z][A-Za-z0-9_]*$`)
+	capabilityPattern   = regexp.MustCompile(`^[a-z][a-z0-9]*(\.[a-z][a-z0-9-]*)+$`)
+	mockScenarioPattern = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
 )
 
 func Decode(reader io.Reader) (Manifest, error) {
@@ -223,6 +239,24 @@ func (manifest Manifest) Validate() error {
 		}
 	} else if manifest.Spec.Auth.OAuth2 != nil {
 		problems = append(problems, "oauth2 metadata requires oauth2 auth")
+	}
+	if manifest.Spec.Studio != nil {
+		setup := manifest.Spec.Studio.Setup
+		if !safeStudioAssetPath(setup.Entrypoint, ".html") {
+			problems = append(problems, "studio setup entrypoint must be a safe relative .html path")
+		}
+		if !safeStudioIconPath(setup.Icon) {
+			problems = append(problems, "studio setup icon must be a safe relative .png or .svg path")
+		}
+		if strings.TrimSpace(setup.HostAPIRange) == "" {
+			problems = append(problems, "studio setup hostApiRange is required")
+		}
+		if len(setup.BackendCapabilities) == 0 || !validUniqueStrings(setup.BackendCapabilities, capabilityPattern) {
+			problems = append(problems, "studio setup backendCapabilities must be non-empty, unique capability IDs")
+		}
+		if len(setup.MockScenarios) == 0 || !validUniqueStrings(setup.MockScenarios, mockScenarioPattern) {
+			problems = append(problems, "studio setup mockScenarios must be non-empty, unique scenario IDs")
+		}
 	}
 	if len(manifest.Spec.Operations) == 0 {
 		problems = append(problems, "spec.operations must contain at least one operation")
@@ -418,4 +452,26 @@ func absoluteURL(value string) bool {
 func httpsURL(value string) bool {
 	parsed, err := url.Parse(value)
 	return err == nil && parsed.Scheme == "https" && parsed.Hostname() != ""
+}
+
+func safeStudioAssetPath(value string, suffix string) bool {
+	cleaned := filepath.Clean(value)
+	return value != "" && value == filepath.ToSlash(value) && cleaned == value &&
+		!filepath.IsAbs(value) && value != "." && !strings.HasPrefix(value, "../") &&
+		strings.HasSuffix(strings.ToLower(value), suffix)
+}
+
+func safeStudioIconPath(value string) bool {
+	return safeStudioAssetPath(value, ".png") || safeStudioAssetPath(value, ".svg")
+}
+
+func validUniqueStrings(values []string, pattern *regexp.Regexp) bool {
+	seen := map[string]bool{}
+	for _, value := range values {
+		if !pattern.MatchString(value) || seen[value] {
+			return false
+		}
+		seen[value] = true
+	}
+	return true
 }

@@ -36,6 +36,8 @@ func TestGenerateIsDeterministicAndIncludesTypedOAuthCredentials(t *testing.T) {
 	require.Contains(t, text, "type AppendRowsStepConfig[IN any] struct")
 	require.Contains(t, text, "func NewAppendRowsStep[IN any]")
 	require.Contains(t, text, "connector.MutationFactoryConfigMarker")
+	require.Contains(t, text, "`connector:\"connectorId=google-sheets-fixture\"`")
+	require.Contains(t, text, "`connector:\"operationId=appendRows\"`")
 	require.Contains(t, text, "type Environment string")
 	require.Contains(t, text, `EnvironmentProduction Environment = "production"`)
 	require.Contains(t, text, `[]string{"scope-b", "scope-a"}`)

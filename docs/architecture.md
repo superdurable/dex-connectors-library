@@ -15,7 +15,7 @@
   generates the release dropdown, and creates versioned release artifacts.
 - `examples/customer-onboarding/` exercises factories against real Dex.
 
-G2a adds no database schema or migration.
+The library adds no database schema or migration.
 
 ## Dex composition
 
@@ -134,6 +134,19 @@ types. The completed Response object is authoritative for value and usage.
 Early EOF or a missing terminal event is uncertain and can be reconciled with
 RetrieveResponse.
 
+## Studio UI distribution
+
+A manifest may declare a setup entrypoint, Host API range, backend capability
+IDs, mock scenarios, and icon. The connector release builds a deterministic
+`connector-ui.tgz`; its digest and UI contract are recorded in
+`connector-release.json`.
+
+Flow Definition identifies the connector and operation. SuperVerse Studio's
+BFF downloads only allowlisted release artifacts, verifies and caches them by
+digest, then serves the entrypoint in an opaque-origin sandbox iframe. The BFF
+does not call the Java Control Plane for artifact loading. The iframe uses a
+nonce-bound `postMessage` Host API and never receives provider credentials.
+
 ## Static visualization boundary
 
 Factory execution and visualization use Dex Server, CLI, and Go SDK v0.11.3.
@@ -143,7 +156,8 @@ unsupported because it cannot be represented reliably by static analysis.
 
 ## UI/UX
 
-This foundation changes no Studio or React configuration page. The manifest is
-UI-ready, but provider callback handling and actual connection forms belong to
-their application delivery. Studio must use Streams only for live feedback and
-Flow snapshot/Result for authoritative status.
+The shared G2c contract adds no Studio page. Provider modules can ship
+credential-safe setup bundles; SuperVerse G6a owns OAuth callbacks, credential
+storage, the Studio BFF loader, and environment bindings. Studio must use
+Streams only for live feedback and Flow snapshot/Result for authoritative
+status.
