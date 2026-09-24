@@ -23,6 +23,12 @@ factory. It directly registers the required Result Attribute and
 application-owned structured/text Streams, verifies buffered text order and
 final flush, and keeps the committed Result authoritative.
 
+Separate signup fixtures construct the generated GitHub and LinkedIn profile
+Query factories. Each registers its required Result Attribute and verifies the
+provider Result commits atomically with the terminal transition. The LinkedIn
+fixture reads only OIDC UserInfo claims; the App-owned callback validates OIDC
+state, nonce, issuer, audience, PKCE, and the ID token before the Flow starts.
+
 Dex CLI 0.11.3 renders these canonical factory nodes and their typed branch,
 Result Attribute, and Stream edges in Dex Web 2.0.
 

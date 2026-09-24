@@ -6,6 +6,7 @@ use (
 	./connectors/http
 	./connectors/google/gmail
 	./connectors/google/spreadsheet
+	./connectors/linkedin
 	./connectors/openai
 	./sdk/go
 )

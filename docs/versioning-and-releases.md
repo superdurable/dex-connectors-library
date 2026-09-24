@@ -10,6 +10,7 @@ The module directory determines the Git tag prefix:
 
 - `sdk/go` uses `sdk/go/vMAJOR.MINOR.PATCH`.
 - `connectors/http` uses `connectors/http/vMAJOR.MINOR.PATCH`.
+- `connectors/linkedin` uses `connectors/linkedin/vMAJOR.MINOR.PATCH`.
 - `connectors/openai` uses `connectors/openai/vMAJOR.MINOR.PATCH`.
 - Company-owned families keep independent modules below one directory, such as
   `connectors/google/gmail` and `connectors/google/spreadsheet`.

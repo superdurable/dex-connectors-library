@@ -1,0 +1,74 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: linkedin
+  displayName: LinkedIn
+  description: Read the authenticated member's OpenID Connect UserInfo profile and verified email.
+spec:
+  provider: linkedin
+  codegen:
+    go:
+      package: linkedinconnector
+  configuration:
+    fields:
+      - name: userInfoUrl
+        goName: UserInfoURL
+        type: url
+        description: LinkedIn OpenID Connect UserInfo endpoint.
+        required: false
+        default: https://api.linkedin.com/v2/userinfo
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: HTTP client timeout.
+        required: false
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum bytes accepted from the UserInfo response.
+        required: false
+        default: 1048576
+  auth:
+    type: oauth2
+    connectionKind: linkedin-oidc
+    fields:
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        description: One-use LinkedIn OpenID Connect access token.
+        required: true
+    oauth2:
+      protocol: oidc
+      authorizationEndpoint: https://www.linkedin.com/oauth/v2/authorization
+      tokenEndpoint: https://www.linkedin.com/oauth/v2/accessToken
+      scopes: [openid, profile, email]
+      pkce: true
+      oidc:
+        issuer: https://www.linkedin.com
+        discoveryEndpoint: https://www.linkedin.com/oauth/.well-known/openid-configuration
+        userInfoEndpoint: https://api.linkedin.com/v2/userinfo
+        nonceRequired: true
+  operations:
+    - name: getAuthenticatedProfile
+      goName: GetAuthenticatedProfile
+      inputType: GetAuthenticatedProfileInput
+      outputType: AuthenticatedProfile
+      kind: query
+      description: Read bounded signup identity claims from LinkedIn OpenID Connect UserInfo.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: profileLoaded, goName: ProfileLoaded, description: The authenticated profile and verified email were loaded.}
+        - {id: verifiedEmailRequired, goName: VerifiedEmailRequired, description: A verified email was not available.}
+        - {id: insufficientScope, goName: InsufficientScope, description: The OpenID Connect grant lacks required authorization.}
+        - {id: authorizationRevoked, goName: AuthorizationRevoked, description: The OpenID Connect grant is invalid or revoked.}
+        - {id: notFound, goName: NotFound, description: The authenticated member was not found.}
+        - {id: failed, goName: Failed, description: LinkedIn returned a terminal provider or protocol failure.}
+        - {id: defect, goName: Defect, description: Local configuration or input is invalid.}
+      defectBranch: defect
+      resultAttribute: required
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
