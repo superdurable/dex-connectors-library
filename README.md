@@ -11,7 +11,8 @@ The first alpha includes:
   definitions, and operation Step defaults;
 - Dex-native Query/Mutation Step factories with typed branch targets, Result
   Attributes, stable Call IDs, idempotency keys, and application-owned Streams;
-- generic HTTP/Webhook and OpenAI Responses connectors, including OpenAI SSE;
+- GitHub signup profile/public-repository, generic HTTP/Webhook, and OpenAI
+  Responses connectors, including OpenAI SSE;
 - React connection-state components that never receive credential values;
 - a deterministic mock provider and real-Dex Customer Onboarding fixtures.
 
@@ -19,6 +20,11 @@ The first alpha includes:
 
 ```bash
 cd sdk/go
+GOWORK=off go test -race ./...
+GOWORK=off go vet ./...
+cd ../..
+
+cd connectors/github
 GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
 cd ../..
@@ -32,7 +38,8 @@ GOWORK=off go vet ./...
 cd ../..
 
 go test ./...
-go run ./cmd/connectorctl validate connectors/http/connector.yaml connectors/openai/connector.yaml
+go run ./cmd/connectorctl validate connectors/github/connector.yaml connectors/http/connector.yaml connectors/openai/connector.yaml
+go run ./cmd/connectorctl generate --check connectors/github/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/http/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/openai/connector.yaml
 go run ./cmd/connectorctl release-workflow --check connectors .github/workflows/release-connector.yml
@@ -44,13 +51,14 @@ npm test
 npm run build
 ```
 
-The Go SDK, HTTP connector, and OpenAI connector are independent Go modules.
-Their tags are `sdk/go/vX.Y.Z`, `connectors/http/vX.Y.Z`, and
-`connectors/openai/vX.Y.Z`. The historical root `v0.1.0` tag does not version
-any standalone component. Git tags are the release version source of truth.
+The Go SDK and every connector are independent Go modules. Their tags are
+directory-prefixed, including `sdk/go/vX.Y.Z`, `connectors/github/vX.Y.Z`,
+`connectors/http/vX.Y.Z`, and `connectors/openai/vX.Y.Z`. The historical root
+`v0.1.0` tag does not version any standalone component. Git tags are the
+release version source of truth.
 
 The SDK must be released before a connector can pin a new SDK version. Each
-connector currently pins the published SDK `v0.1.0`. See
+new connectors pin the published SDK `v0.1.1`. See
 [the versioning and release guide](docs/versioning-and-releases.md).
 
 The Connector Go SDK uses `github.com/superdurable/dex/sdk-go v0.11.3` and verifies

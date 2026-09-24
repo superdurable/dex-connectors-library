@@ -20,6 +20,7 @@ jobs:
           cache-dependency-path: |
             go.sum
             sdk/go/go.sum
+            connectors/github/go.sum
             connectors/http/go.sum
             connectors/openai/go.sum
       - name: Test standalone Connector Go SDK module
@@ -31,6 +32,13 @@ jobs:
           go vet ./...
       - name: Test component release planning
         run: python3 -m unittest script/release/component_release_test.py
+      - name: Test standalone GitHub connector module
+        working-directory: connectors/github
+        env:
+          GOWORK: "off"
+        run: |
+          go test -race ./...
+          go vet ./...
       - name: Test standalone HTTP connector module
         working-directory: connectors/http
         env:
@@ -47,7 +55,8 @@ jobs:
           go vet ./...
       - run: go test -race ./...
       - run: go vet ./...
-      - run: go run ./cmd/connectorctl validate connectors/http/connector.yaml connectors/openai/connector.yaml
+      - run: go run ./cmd/connectorctl validate connectors/github/connector.yaml connectors/http/connector.yaml connectors/openai/connector.yaml
+      - run: go run ./cmd/connectorctl generate --check connectors/github/connector.yaml
       - run: go run ./cmd/connectorctl generate --check connectors/http/connector.yaml
       - run: go run ./cmd/connectorctl generate --check connectors/openai/connector.yaml
       - run: go run ./cmd/connectorctl release-workflow --check connectors .github/workflows/release-connector.yml
@@ -64,6 +73,7 @@ jobs:
           cache-dependency-path: |
             go.sum
             sdk/go/go.sum
+            connectors/github/go.sum
             connectors/http/go.sum
             connectors/openai/go.sum
       - name: Download Dex and Temporal CLIs
