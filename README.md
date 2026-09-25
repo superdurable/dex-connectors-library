@@ -74,8 +74,9 @@ go run ./cmd/connectorctl generate --check connectors/google/spreadsheet/connect
 go run ./cmd/connectorctl generate --check connectors/linkedin/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/openai/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/slack/connector.yaml
-go run ./cmd/connectorctl release-workflow --check connectors .github/workflows/release-connector.yml
-go run ./cmd/connectorctl catalog connectors
+go run ./cmd/connectorctl catalog --check --registry connectors.yaml
+go run ./cmd/connectorctl release-matrix --registry connectors.yaml
+go run ./cmd/connectorctl catalog --registry connectors.yaml --output dist/pages/catalog.yaml
 
 cd sdk/react
 npm ci
@@ -89,9 +90,13 @@ Their tags are directory-prefixed, including `sdkgo/vX.Y.Z`,
 `connectors/linkedin/vX.Y.Z`, `connectors/openai/vX.Y.Z`,
 `connectors/google/spreadsheet/vX.Y.Z`, and `connectors/google/gmail/vX.Y.Z`.
 Slack uses `connectors/slack/vX.Y.Z`.
-The
-historical root `v0.1.0` tag does not version any standalone component. Git
-tags are the release version source of truth.
+The historical root `v0.1.0` tag does not version any standalone component.
+Each connector manifest declares its release version. Directory-prefixed Git
+tags record published versions.
+
+The generated [Connector catalog](https://superdurable.github.io/dex-connectors-library/catalog.yaml)
+lists every published connector. The root `connectors.yaml` file is the
+directory registry used to generate it.
 
 The SDK must be released before a connector can pin a new SDK version. New
 connectors pin the published SDK `v0.1.0`. See

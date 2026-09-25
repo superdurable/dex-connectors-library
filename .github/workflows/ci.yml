@@ -16,6 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
@@ -47,8 +49,11 @@ jobs:
             go run ./cmd/connectorctl validate "${manifest}"
             go run ./cmd/connectorctl generate --check "${manifest}"
           done < <(find connectors -name connector.yaml -print | sort)
-      - run: go run ./cmd/connectorctl release-workflow --check connectors .github/workflows/release-connector.yml
-      - run: go run ./cmd/connectorctl catalog connectors
+      - name: Validate directory registry and declared release versions
+        run: |
+          go run ./cmd/connectorctl catalog --check --registry connectors.yaml
+          go run ./cmd/connectorctl release-matrix --registry connectors.yaml
+          go run ./cmd/connectorctl catalog --registry connectors.yaml --output /tmp/catalog.yaml
 
   dex-integration:
     if: github.event_name != 'schedule'

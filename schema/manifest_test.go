@@ -20,6 +20,8 @@ metadata:
   name: mock-provider
   displayName: Mock Provider
   description: deterministic test provider
+  company: Example
+  version: v0.1.0
 spec:
   provider: mock
   codegen: {go: {package: mockprovider}}
@@ -73,7 +75,7 @@ func TestDecodeOAuthUserScopesAndCredentialMappings(t *testing.T) {
 	manifest, err := schema.Decode(strings.NewReader(`
 apiVersion: connectors.dex.dev/v1alpha1
 kind: Connector
-metadata: {name: slack, displayName: Slack, description: Slack connector}
+metadata: {name: slack, displayName: Slack, description: Slack connector, company: Slack, version: v0.1.0}
 spec:
   provider: slack
   codegen: {go: {package: slack}}
@@ -152,7 +154,7 @@ func TestRejectInvalidOIDCAndUnauthorizedOperation(t *testing.T) {
 	_, err = schema.Decode(strings.NewReader(`
 apiVersion: connectors.dex.dev/v1alpha1
 kind: Connector
-metadata: {name: public-provider, displayName: Public, description: public}
+metadata: {name: public-provider, displayName: Public, description: public, company: Example, version: v0.1.0}
 spec:
   provider: public
   codegen: {go: {package: publicprovider}}
@@ -178,7 +180,7 @@ func TestDecodeStudioSetupMetadata(t *testing.T) {
 	manifest, err := schema.Decode(strings.NewReader(`
 apiVersion: connectors.dex.dev/v1alpha1
 kind: Connector
-metadata: {name: studio-fixture, displayName: Studio Fixture, description: setup UI fixture}
+metadata: {name: studio-fixture, displayName: Studio Fixture, description: setup UI fixture, company: Example, version: v0.1.0}
 spec:
   provider: fixture
   codegen: {go: {package: studiofixture}}
@@ -213,7 +215,7 @@ func TestRejectProviderIdempotencyAndInvalidProgress(t *testing.T) {
 	_, err := schema.Decode(strings.NewReader(`
 apiVersion: connectors.dex.dev/v1alpha1
 kind: Connector
-metadata: {name: bad-provider, displayName: Bad, description: bad}
+metadata: {name: bad-provider, displayName: Bad, description: bad, company: Example, version: v0.1.0}
 spec:
   provider: bad
   codegen: {go: {package: badprovider}}
@@ -241,7 +243,7 @@ func TestRejectMutationWithoutIdempotency(t *testing.T) {
 	_, err := schema.Decode(strings.NewReader(`
 apiVersion: connectors.dex.dev/v1alpha1
 kind: Connector
-metadata: {name: bad-provider, displayName: Bad, description: bad}
+metadata: {name: bad-provider, displayName: Bad, description: bad, company: Example, version: v0.1.0}
 spec:
   provider: bad
   codegen: {go: {package: badprovider}}
@@ -263,11 +265,11 @@ spec:
 	require.ErrorContains(t, err, "mutations must declare")
 }
 
-func TestRejectMissingOperationGoTypesAndSourceVersion(t *testing.T) {
+func TestRejectMissingManifestMetadataAndOperationGoTypes(t *testing.T) {
 	_, err := schema.Decode(strings.NewReader(`
 apiVersion: connectors.dex.dev/v1alpha1
 kind: Connector
-metadata: {name: bad-provider, displayName: Bad, description: bad, version: v0.1.0}
+metadata: {name: bad-provider, displayName: Bad, description: bad}
 spec:
   provider: bad
   codegen: {go: {package: badprovider}}
@@ -275,12 +277,26 @@ spec:
   auth: {type: none, fields: []}
   operations: []
 `))
-	require.ErrorContains(t, err, "field version not found")
+	require.ErrorContains(t, err, "metadata.company is required")
+	require.ErrorContains(t, err, "metadata.version must be")
+
+	_, err = schema.Decode(strings.NewReader(strings.Replace(`
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata: {name: bad-provider, displayName: Bad, description: bad, company: Example, version: VERSION}
+spec:
+  provider: bad
+  codegen: {go: {package: badprovider}}
+  configuration: {fields: []}
+  auth: {type: none, fields: []}
+  operations: []
+`, "VERSION", "1.0", 1)))
+	require.ErrorContains(t, err, "metadata.version must be")
 
 	_, err = schema.Decode(strings.NewReader(`
 apiVersion: connectors.dex.dev/v1alpha1
 kind: Connector
-metadata: {name: bad-provider, displayName: Bad, description: bad}
+metadata: {name: bad-provider, displayName: Bad, description: bad, company: Example, version: v0.1.0}
 spec:
   provider: bad
   codegen: {go: {package: badprovider}}

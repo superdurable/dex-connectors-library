@@ -11,10 +11,11 @@ alwaysApply: true
 - Register every Attribute and Stream in the consuming Flow schema.
 - Keep secrets out of durable state, Results, receipts, Streams, logs, generated
   values, and release artifacts.
-- Treat connector.yaml as the source for generated connector APIs.
+- Treat connector.yaml as the source for company, release version, and
+  generated connector APIs.
 - Prefer operation-specific factories; generic Query/Mutation factories are
   advanced escape hatches.
 - Every connector needs its own go.mod, README, manifest, generated code, and
   provider tests.
-- Regenerate and check the release-workflow choice list whenever connectors are
-  added, moved, or removed. Never edit the generated choice list manually.
+- Register every connector in the sorted root connectors.yaml list. Paths may
+  have any depth below connectors/.

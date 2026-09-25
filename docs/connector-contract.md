@@ -216,8 +216,8 @@ to reject drift.
 
 The provider-neutral SDK and every connector are independently released Go
 modules. Connector modules pin an already-published SDK version. Directory-
-prefixed Git tags are the published version source of truth; manifests and
-generated files do not carry a manually maintained release version.
+prefixed Git tags record published versions. Each manifest declares its next
+release version, while generated application APIs remain version-independent.
 
 Non-sensitive serializable fields belong in `Config`. HTTP clients,
 transports, clocks, test hooks, and idempotency functions are constructor

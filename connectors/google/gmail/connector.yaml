@@ -4,6 +4,8 @@ metadata:
   name: gmail
   displayName: Gmail
   description: Start and update Dex Flows from received Gmail messages, read messages, and send or reply to email.
+  company: Google
+  version: v0.8.0
 spec:
   provider: google
   codegen:

@@ -4,6 +4,8 @@ metadata:
   name: google-sheets-fixture
   displayName: Google Sheets Fixture
   description: OAuth manifest fixture for generated connector metadata.
+  company: Google
+  version: v0.1.0
 spec:
   provider: google
   codegen:

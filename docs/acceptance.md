@@ -48,8 +48,9 @@ go run ./cmd/connectorctl generate --check connectors/google/gmail/connector.yam
 go run ./cmd/connectorctl generate --check connectors/google/spreadsheet/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/linkedin/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/openai/connector.yaml
-go run ./cmd/connectorctl release-workflow --check connectors .github/workflows/release-connector.yml
-go run ./cmd/connectorctl catalog connectors
+go run ./cmd/connectorctl catalog --check --registry connectors.yaml
+go run ./cmd/connectorctl release-matrix --registry connectors.yaml
+go run ./cmd/connectorctl catalog --registry connectors.yaml --output /tmp/catalog.yaml
 make test-dex-compat-current
 ```
 
@@ -59,8 +60,8 @@ The suite must prove:
   `go.work`;
 - generated operation-specific factories expose typed branch fields and typed,
   non-serializable connector Connections;
-- the generated release dropdown matches the catalog and release artifacts are
-  deterministic, versioned, and checksummed;
+- the directory registry and generated catalog are complete and deterministic,
+  and release artifacts are versioned and checksummed;
 - typed `sdkgo.GoTo` targets can be converted into generic branch targets
   without exposing their underlying Dex Step;
 - component release planning handles first, minor, patch, major, no-change,
@@ -195,22 +196,23 @@ The integration suite verifies:
 
 ## Release acceptance
 
-1. Run `Release Connector` for `github` with the default minor bump and confirm
-   tag `connectors/github/v0.1.0` plus its release artifact.
+1. Raise GitHub's manifest version by one valid SemVer step, merge to `main`,
+   and confirm its directory-prefixed tag and release artifact are created.
 2. Run the opt-in GitHub live test with a dedicated account and exact
    `read:user user:email` scopes; confirm no private repository data is read.
-3. Run `Release Connector` for `linkedin` with the default minor bump and
-   confirm tag `connectors/linkedin/v0.1.0` plus its release artifact.
+3. Raise LinkedIn's manifest version and confirm the automatic workflow creates
+   only the declared release.
 4. Run the opt-in LinkedIn live test with a dedicated member and exact
    `openid profile email` scopes; confirm only OIDC UserInfo claims are read.
 5. In clean temporary modules, download each public tag with `GOWORK=off` and
    compile its operation-specific factory example.
 6. Confirm each release note contains only commits that changed that connector
    and retains `## Breaking Changes` with `None.` when appropriate.
-7. Run `Release Connector` for `google/spreadsheet` and confirm its independent
-   tag plus `connector-release.json` and `connector-ui.tgz` digests.
-8. Run `Release Connector` for `google/gmail` and confirm its own tag and UI
-   artifacts contain no Sheets-only changes.
+7. Raise Google Sheets and Gmail versions in one PR. Confirm the matrix releases
+   both independently with `connector-release.json`, UI artifacts, and digests.
+8. Confirm the Pages catalog updates only after every requested release passes,
+   and a manual workflow rerun repairs missing assets or completion markers
+   without replacing tags.
 
 The required compatibility gate uses `.dex-compat-version`. The scheduled
 canary selects the latest stable Dex CLI release dynamically. Connector

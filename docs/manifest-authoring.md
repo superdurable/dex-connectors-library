@@ -1,7 +1,9 @@
 # Connector manifest and code generation
 
-Each connector module owns `connector.yaml`. The manifest is versionless;
-directory-prefixed Git tags define published versions.
+Each connector module owns `connector.yaml`. Its `metadata.company` and
+`metadata.version` fields feed the public Connector catalog and declarative
+release workflow. A version change requests a release after merge; leaving it
+unchanged explicitly defers release.
 
 An operation declares:
 
@@ -88,13 +90,16 @@ go run ./cmd/connectorctl generate --check connectors/openai/connector.yaml
 ```
 
 Adding a connector also requires its own `go.mod`, README, generated file, and
-tests. Regenerate the static release selector in the same PR:
+tests. Add its repository-relative directory to the sorted root registry.
+Directories may have any depth below `connectors/`:
 
 ```bash
-go run ./cmd/connectorctl release-workflow connectors .github/workflows/release-connector.yml
+go run ./cmd/connectorctl catalog --check --registry connectors.yaml
+go run ./cmd/connectorctl catalog --registry connectors.yaml --output dist/pages/catalog.yaml
 ```
 
-CI rejects stale generated code or release choices. Connector `go.mod` files
+CI rejects unregistered, missing, unsafe, or symlinked connector paths.
+Connector `go.mod` files
 must pin an already-published SDK version and cannot contain `replace`,
 pseudo-version, branch, or commit dependencies.
 

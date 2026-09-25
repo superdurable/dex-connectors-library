@@ -12,7 +12,7 @@
   manifests. Connectors from one company are grouped below one company
   directory without sharing a module or release.
 - `cmd/connectorctl/` validates, generates, checks, and catalogs manifests,
-  generates the release dropdown, and creates versioned release artifacts.
+  plans declared releases, and creates versioned release artifacts.
 - provider connector examples exercise factories against real Dex.
 
 The library adds no database schema or migration.
