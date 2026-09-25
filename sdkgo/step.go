@@ -129,9 +129,6 @@ func NewQueryStep[STEP_IN, OP_IN, OUT any](config QueryStepConfig[STEP_IN, OP_IN
 	if err != nil {
 		return QueryStep[STEP_IN, OP_IN, OUT]{}, err
 	}
-	if err := validateResources(definition.Progress, streamName(config.ProgressStream), streamName(config.TextStream)); err != nil {
-		return QueryStep[STEP_IN, OP_IN, OUT]{}, err
-	}
 	options, err := stepOptions(definition.StepDefaults, config.StepOptionsOverride)
 	if err != nil {
 		return QueryStep[STEP_IN, OP_IN, OUT]{}, err
@@ -166,9 +163,6 @@ func NewMutationStep[STEP_IN, OP_IN, OUT any](config MutationStepConfig[STEP_IN,
 	}
 	branches, err := validateBranchTargets(definition.Branches, config.Branches)
 	if err != nil {
-		return MutationStep[STEP_IN, OP_IN, OUT]{}, err
-	}
-	if err := validateResources(definition.Progress, streamName(config.ProgressStream), streamName(config.TextStream)); err != nil {
 		return MutationStep[STEP_IN, OP_IN, OUT]{}, err
 	}
 	options, err := stepOptions(definition.StepDefaults, config.StepOptionsOverride)
@@ -313,23 +307,6 @@ func validateBranchTargets[T any](definitions []BranchDefinition, targets []Bran
 		}
 	}
 	return resolved, nil
-}
-
-func validateResources(progress ProgressCapabilities, progressName, textName string) error {
-	if progressName != "" && !progress.Structured {
-		return fmt.Errorf("operation does not support structured progress")
-	}
-	if textName != "" && !progress.Text {
-		return fmt.Errorf("operation does not support text progress")
-	}
-	return nil
-}
-
-func streamName[T any](stream *dex.Stream[T]) string {
-	if stream == nil {
-		return ""
-	}
-	return stream.StreamName()
 }
 
 func stepOptions(defaults StepDefaults, override *dex.StepOptions) (*dex.StepOptions, error) {

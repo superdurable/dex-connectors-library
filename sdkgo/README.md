@@ -44,7 +44,13 @@ the raw provider result must remain available outside the transition chain;
 otherwise the result is already durable as the branch target's input.
 Applications must register every configured Attribute and Stream explicitly in
 the Flow persistence schema. The Connector SDK does not aggregate or register
-those resources.
+those resources. Manifest progress declarations only control which typed Stream
+fields code generation exposes; runtime operation definitions do not duplicate
+or validate that metadata.
+
+Every operation declares the standard `defect` branch. Mutations declare the
+standard `uncertain` branch only when a dispatched provider call can have an
+unknown outcome; otherwise generated factories do not require that target.
 
 Local development configuration stores named connections and named Trigger
 bindings separately. `localconfig.Store.DecodeTriggerConfiguration` selects a
