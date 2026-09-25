@@ -35,12 +35,6 @@ type ReplyReceivedTriggerConfiguration struct {
 	ReplyMatcher MessageMatcher `json:"replyMatcher,omitempty"`
 }
 
-// ThreadIdentity identifies one Gmail thread independently of an application Flow ID scheme.
-type ThreadIdentity struct {
-	PrimaryEmail string `json:"primaryEmail"`
-	ThreadID     string `json:"threadId"`
-}
-
 // MessageEvent is the stable, metadata-only payload emitted by Gmail Triggers.
 type MessageEvent struct {
 	PrimaryEmail string    `json:"primaryEmail"`
@@ -51,21 +45,6 @@ type MessageEvent struct {
 	Snippet      string    `json:"snippet,omitempty"`
 	ReceivedAt   time.Time `json:"receivedAt"`
 	IsReply      bool      `json:"isReply"`
-}
-
-// ThreadIdentity returns the account and provider thread identity for this event.
-func (event MessageEvent) ThreadIdentity() ThreadIdentity {
-	return ThreadIdentity{PrimaryEmail: event.PrimaryEmail, ThreadID: event.ThreadID}
-}
-
-// FlowIDByThread adapts an application-owned Gmail thread resolver to the generic Trigger target contract.
-func FlowIDByThread(resolve func(ThreadIdentity) (string, error)) sdkgo.FlowIDResolver[MessageEvent] {
-	if resolve == nil {
-		panic("Gmail thread Flow ID resolver is required")
-	}
-	return func(event sdkgo.TriggerEvent[MessageEvent]) (string, error) {
-		return resolve(event.Payload.ThreadIdentity())
-	}
 }
 
 type messagePollingTriggerSource struct {

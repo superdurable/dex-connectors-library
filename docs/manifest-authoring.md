@@ -8,8 +8,8 @@ An operation declares:
 - stable lower-camel `name` and exported `goName`;
 - exported local Go `inputType` and `outputType`;
 - Query or Mutation kind and idempotency requirement;
-- every stable branch, plus defect and Mutation uncertainty branches;
-- Result Attribute requirement and progress capabilities;
+- every stable branch, including defect and optional Mutation uncertainty;
+- progress capabilities used to generate typed Stream fields;
 - `authorization: required` for operations that require an authorized
   connection, or `none` for public operations;
 - Dex Execute timeout, retry, heartbeat, and durability defaults.

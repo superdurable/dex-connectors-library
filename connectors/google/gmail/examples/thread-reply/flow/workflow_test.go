@@ -20,21 +20,12 @@ func TestRootAndReplyResolveTheSameFlowID(t *testing.T) {
 		ID: "reply-message", OccurredAt: time.Unix(2, 0),
 		Payload: gmail.MessageEvent{PrimaryEmail: "owner@example.com", MessageID: "reply-message", ThreadID: "thread-1", IsReply: true},
 	}
-	rootFlowID, err := ResolveFlowID(root.Payload.ThreadIdentity())
-	if err != nil {
-		t.Fatal(err)
-	}
-	replyFlowID, err := ResolveFlowID(reply.Payload.ThreadIdentity())
-	if err != nil {
-		t.Fatal(err)
-	}
+	rootFlowID := ResolveFlowID(root)
+	replyFlowID := ResolveFlowID(reply)
 	if rootFlowID != replyFlowID {
 		t.Fatalf("Flow IDs differ: root %q, reply %q", rootFlowID, replyFlowID)
 	}
-	input, err := BuildStartInput(root)
-	if err != nil {
-		t.Fatal(err)
-	}
+	input := MapToFlowInput(root)
 	if input.EventID != root.ID || input.MessageID != "root-message" {
 		t.Fatalf("start input = %+v", input)
 	}
@@ -54,23 +45,25 @@ func TestFlowDeclaresIndependentTriggerBindings(t *testing.T) {
 }
 
 func TestApplicationTriggerFiltersSenderTextAndMessageShape(t *testing.T) {
-	startFilter, err := NewStartTriggerEventFilter(gmail.MessageReceivedTriggerConfiguration{
+	startFilter, err := NewStartTriggerFilter(gmail.MessageReceivedTriggerConfiguration{
 		MessageMatcher: gmail.MessageMatcher{MessageContains: "approval request", SenderEmails: []string{"sender@example.com"}},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	replyFilter, err := NewReplyTriggerEventFilter(gmail.ReplyReceivedTriggerConfiguration{
+	replyFilter, err := NewReplyTriggerFilter(gmail.ReplyReceivedTriggerConfiguration{
 		ReplyMatcher: gmail.MessageMatcher{MessageContains: "approved", SenderEmails: []string{"approver@example.com"}},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	root := sdkgo.TriggerEvent[gmail.MessageEvent]{Payload: gmail.MessageEvent{
+	root := sdkgo.TriggerEvent[gmail.MessageEvent]{ID: "root-message", Payload: gmail.MessageEvent{
+		PrimaryEmail: "owner@example.com", MessageID: "root-message", ThreadID: "thread-1",
 		From: "Sender <SENDER@example.com>", Subject: "Approval Request", IsReply: false,
 	}}
-	reply := sdkgo.TriggerEvent[gmail.MessageEvent]{Payload: gmail.MessageEvent{
+	reply := sdkgo.TriggerEvent[gmail.MessageEvent]{ID: "reply-message", Payload: gmail.MessageEvent{
+		PrimaryEmail: "owner@example.com", MessageID: "reply-message", ThreadID: "thread-1",
 		From: "Approver <approver@example.com>", Subject: "Re: Approval", Snippet: "APPROVED", IsReply: true,
 	}}
 	assertFilterResult(t, startFilter, root, true)
@@ -88,15 +81,12 @@ func TestApplicationTriggerFiltersSenderTextAndMessageShape(t *testing.T) {
 
 func assertFilterResult(
 	t *testing.T,
-	filter sdkgo.TriggerEventFilter[gmail.MessageEvent],
+	filter sdkgo.TriggerFilter[gmail.MessageEvent],
 	event sdkgo.TriggerEvent[gmail.MessageEvent],
 	expected bool,
 ) {
 	t.Helper()
-	actual, err := filter(event)
-	if err != nil {
-		t.Fatal(err)
-	}
+	actual := filter(event)
 	if actual != expected {
 		t.Fatalf("filter result = %t, want %t for %+v", actual, expected, event.Payload)
 	}

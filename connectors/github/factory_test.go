@@ -41,8 +41,8 @@ func TestGeneratedFactoriesExposeEveryTypedBranch(t *testing.T) {
 	profileResult := dex.DefineAttribute[sdkgo.QueryResult[githubconnector.AuthenticatedProfile]]("github-profile-result")
 	profile := githubconnector.NewGetAuthenticatedProfileStep(githubconnector.GetAuthenticatedProfileStepConfig[string]{
 		StepType: "ReadGitHubProfile", Annotations: factoryAnnotations(), Connection: connection, ConnectionName: "signup",
-		BuildOperationInput: func(string) (githubconnector.GetAuthenticatedProfileInput, error) {
-			return githubconnector.GetAuthenticatedProfileInput{}, nil
+		MapToOperationInput: func(string) githubconnector.GetAuthenticatedProfileInput {
+			return githubconnector.GetAuthenticatedProfileInput{}
 		},
 		ProfileLoaded: sdkgo.GoTo(profileTarget{}), VerifiedEmailRequired: sdkgo.GoTo(profileTarget{}),
 		InsufficientScope: sdkgo.GoTo(profileTarget{}), AuthorizationRevoked: sdkgo.GoTo(profileTarget{}),
@@ -54,8 +54,8 @@ func TestGeneratedFactoriesExposeEveryTypedBranch(t *testing.T) {
 	repositoriesResult := dex.DefineAttribute[sdkgo.QueryResult[githubconnector.PublicRepositories]]("github-repositories-result")
 	repositories := githubconnector.NewListPublicRepositoriesStep(githubconnector.ListPublicRepositoriesStepConfig[string]{
 		StepType: "ReadGitHubRepositories", Annotations: factoryAnnotations(), Connection: connection, ConnectionName: "signup",
-		BuildOperationInput: func(login string) (githubconnector.ListPublicRepositoriesInput, error) {
-			return githubconnector.ListPublicRepositoriesInput{Login: login}, nil
+		MapToOperationInput: func(login string) githubconnector.ListPublicRepositoriesInput {
+			return githubconnector.ListPublicRepositoriesInput{Login: login}
 		},
 		RepositoriesLoaded: sdkgo.GoTo(repositoriesTarget{}), InsufficientScope: sdkgo.GoTo(repositoriesTarget{}),
 		AuthorizationRevoked: sdkgo.GoTo(repositoriesTarget{}), NotFound: sdkgo.GoTo(repositoriesTarget{}),

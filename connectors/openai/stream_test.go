@@ -22,8 +22,6 @@ var streamTestDefinition = sdkgo.MutationDefinition{
 		{ID: CreateResponseBranchUncertain, Description: "uncertain"},
 		{ID: CreateResponseBranchDefect, Description: "defect"},
 	},
-	DefectBranch: CreateResponseBranchDefect, UncertainBranch: CreateResponseBranchUncertain,
-	ResultAttribute: sdkgo.RequirementOptional,
 }
 
 type streamAttemptOperation struct {

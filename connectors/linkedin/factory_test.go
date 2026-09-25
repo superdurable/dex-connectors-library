@@ -34,8 +34,8 @@ func TestGeneratedFactoryExposesEveryTypedBranch(t *testing.T) {
 		StepType:    "ReadLinkedInProfile",
 		Annotations: sdkgo.StepAnnotations{GroupID: "linkedin", GroupLabel: "LinkedIn", Explanation: "Read bounded signup identity claims."},
 		Connection:  connection,
-		BuildOperationInput: func(string) (linkedinconnector.GetAuthenticatedProfileInput, error) {
-			return linkedinconnector.GetAuthenticatedProfileInput{}, nil
+		MapToOperationInput: func(string) linkedinconnector.GetAuthenticatedProfileInput {
+			return linkedinconnector.GetAuthenticatedProfileInput{}
 		},
 		ProfileLoaded: sdkgo.GoTo(profileTarget{}), VerifiedEmailRequired: sdkgo.GoTo(profileTarget{}),
 		InsufficientScope: sdkgo.GoTo(profileTarget{}), AuthorizationRevoked: sdkgo.GoTo(profileTarget{}),

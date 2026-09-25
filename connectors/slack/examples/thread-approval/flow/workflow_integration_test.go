@@ -49,11 +49,13 @@ func TestThreadApprovalExampleCompletesOnceAndPreservesUncertainOutcomeWithRealD
 			TeamID: teamID, ChannelID: "C1", Timestamp: "2.0", ThreadTimestamp: "1.0", UserID: "U2", Text: "approve",
 		},
 	}
-	replyFilter, err := NewReplyTriggerEventFilter(slack.ThreadReplyCreatedTriggerConfiguration{
+	replyFilter, err := NewReplyTriggerFilter(slack.ThreadReplyCreatedTriggerConfiguration{
 		ChannelID: "C1", ThreadReplyMatcher: slack.MessageMatcher{MessageContains: "approve", PosterUserIDs: []string{"U2"}},
 	})
 	require.NoError(t, err)
-	replyTarget := sdkgo.NewDexRPCTriggerTarget(harness.client, flow.ReceiveThreadReply, replyFilter, slack.FlowIDByThread(ResolveFlowID))
+	replyTarget := sdkgo.NewDexRPCTriggerTarget(
+		harness.client, flow.ReceiveThreadReply, replyFilter, ResolveFlowID, MapToReceiveThreadReplyInput,
+	)
 	rejectedReply := successReply
 	rejectedReply.ID = "Ev-reply-rejected-" + testRunID
 	rejectedReply.Payload.UserID = "U3"
@@ -84,6 +86,9 @@ func TestThreadApprovalExampleCompletesOnceAndPreservesUncertainOutcomeWithRealD
 	}
 	require.NoError(t, replyTarget.HandleTrigger(ctx, uncertainReply))
 	waitForSlackStatus(t, ctx, harness.client, flow, uncertainFlowID, StatusNeedsRecovery)
+	var uncertainSummary map[string]any
+	require.NoError(t, harness.client.InvokeRPC(ctx, uncertainFlowID, flow.GetDexSummary, nil, &uncertainSummary))
+	require.Contains(t, uncertainSummary, "slack-thread-approval-post-reply-result")
 	require.NoError(t, replyTarget.HandleTrigger(ctx, uncertainReply))
 	require.Equal(t, 1, provider.postCount("3.0"))
 }
@@ -97,17 +102,15 @@ func startSlackThreadFlow(
 	payload slack.MessageEvent,
 ) string {
 	t.Helper()
-	startFilter, err := NewStartTriggerEventFilter(slack.ChannelThreadCreatedTriggerConfiguration{
+	startFilter, err := NewStartTriggerFilter(slack.ChannelThreadCreatedTriggerConfiguration{
 		ChannelID: "C1", ThreadTriggerMatcher: slack.MessageMatcher{MessageContains: "request approval", PosterUserIDs: []string{"U1"}},
 	})
 	require.NoError(t, err)
-	startTarget := sdkgo.NewDexFlowTriggerTarget(client, flow, startFilter, slack.FlowIDByThread(ResolveFlowID), BuildStartInput)
+	startTarget := sdkgo.NewDexFlowTriggerTarget(client, flow, startFilter, ResolveFlowID, MapToFlowInput)
 	event := sdkgo.TriggerEvent[slack.MessageEvent]{ID: eventID, OccurredAt: time.Now().UTC(), Payload: payload}
 	require.NoError(t, startTarget.HandleTrigger(ctx, event))
 	require.NoError(t, startTarget.HandleTrigger(ctx, event))
-	flowID, err := ResolveFlowID(payload.ThreadIdentity())
-	require.NoError(t, err)
-	return flowID
+	return ResolveFlowID(event)
 }
 
 func waitForSlackStatus(

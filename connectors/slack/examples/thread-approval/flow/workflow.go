@@ -5,8 +5,7 @@
 package threadapproval
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -24,8 +23,8 @@ const (
 )
 
 var (
-	threadStateAttribute = dex.DefineAttribute[ThreadState]("slack-thread-approval-state")
-	postReplyResult      = dex.DefineAttribute[sdkgo.MutationResult[slack.PostMessageOutput]]("slack-thread-approval-post-reply-result")
+	threadStateAttribute     = dex.DefineAttribute[ThreadState]("slack-thread-approval-state")
+	postReplyResultAttribute = dex.DefineAttribute[slack.PostThreadReplyResult]("slack-thread-approval-post-reply-result")
 )
 
 type Status string
@@ -59,6 +58,11 @@ type ReplyResult struct {
 	Status    Status `json:"status"`
 }
 
+type ReceiveThreadReplyInput struct {
+	EventID string `json:"eventId"`
+	UserID  string `json:"userId"`
+}
+
 type Flow struct {
 	dex.FlowDefaults
 	connection slack.Connection
@@ -76,8 +80,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			GroupID: "slack", GroupLabel: "Slack", Explanation: "Read the messages in the newly created Slack thread.",
 		},
 		Connection: flow.connection,
-		BuildOperationInput: func(input Input) (slack.ListThreadMessagesInput, error) {
-			return slack.ListThreadMessagesInput{ChannelID: input.ChannelID, ThreadTimestamp: input.ThreadTimestamp, PageSize: 15}, nil
+		MapToOperationInput: func(input Input) slack.ListThreadMessagesInput {
+			return slack.ListThreadMessagesInput{ChannelID: input.ChannelID, ThreadTimestamp: input.ThreadTimestamp, PageSize: 15}
 		},
 		Read: sdkgo.GoTo(threadLoaded{}), Rejected: sdkgo.GoTo(threadReadFailed{}),
 		Defect: sdkgo.GoTo(threadReadFailed{}),
@@ -94,15 +98,15 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				GroupID: "slack", GroupLabel: "Slack", Explanation: "Reply to the Slack thread after the configured reply Trigger invokes the RPC.",
 			},
 			Connection: flow.connection,
-			BuildOperationInput: func(state ThreadState) (slack.PostThreadReplyInput, error) {
+			MapToOperationInput: func(state ThreadState) slack.PostThreadReplyInput {
 				return slack.PostThreadReplyInput{
 					ChannelID: state.Input.ChannelID, ThreadTimestamp: state.Input.ThreadTimestamp,
-					Text: fmt.Sprintf("Processing complete (approved by <@%s>)", state.ReplyUserID),
-				}, nil
+					Text: "Processing complete.",
+				}
 			},
 			Sent: sdkgo.GoTo(completionPosted{}), Rejected: sdkgo.GoTo(completionNeedsRecovery{}),
 			Uncertain: sdkgo.GoTo(completionNeedsRecovery{}), Defect: sdkgo.GoTo(completionNeedsRecovery{}),
-			ResultAttribute: &postReplyResult,
+			ResultAttribute: &postReplyResultAttribute,
 		})),
 		dex.DefineStep(completionPosted{}),
 		dex.DefineStep(completionNeedsRecovery{}),
@@ -119,9 +123,7 @@ func (flow *Flow) GetRPCs() []dex.RPCDef {
 }
 
 func (flow *Flow) GetPersistenceSchema() dex.PersistenceSchema {
-	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{
-		threadStateAttribute, postReplyResult,
-	}}
+	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{threadStateAttribute, postReplyResultAttribute}}
 }
 
 func (*Flow) GetConnectorTriggerBindings() []sdkgo.TriggerBindingDefinition {
@@ -137,21 +139,21 @@ func (*Flow) GetConnectorTriggerBindings() []sdkgo.TriggerBindingDefinition {
 
 func (flow *Flow) ReceiveThreadReply(
 	ctx dex.Context,
-	event sdkgo.TriggerEvent[slack.MessageEvent],
+	input ReceiveThreadReplyInput,
 ) (*dex.RPCResult[ReplyResult], error) {
 	state, err := threadStateAttribute.Get(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if state.ReplyEventID == event.ID {
+	if state.ReplyEventID == input.EventID {
 		return &dex.RPCResult[ReplyResult]{Output: ReplyResult{Duplicate: true, Status: state.Status}}, nil
 	}
 	if state.Status != StatusWaitingForReply {
 		return &dex.RPCResult[ReplyResult]{Output: ReplyResult{Status: state.Status}}, nil
 	}
 	state.Status = StatusPostingReply
-	state.ReplyEventID = event.ID
-	state.ReplyUserID = event.Payload.UserID
+	state.ReplyEventID = input.EventID
+	state.ReplyUserID = input.UserID
 	state.FailureMessage = ""
 	if err := threadStateAttribute.Set(ctx, state); err != nil {
 		return nil, err
@@ -173,21 +175,47 @@ func (*Flow) GetThreadStatus(ctx dex.Context, _ dex.None) (*dex.RPCResult[Thread
 }
 
 // dex:field attribute-key:slack-thread-approval-state value-type:json editable:false description:"Slack thread status"
+// dex:field attribute-key:slack-thread-approval-post-reply-result value-type:json editable:false description:"Slack completion reply result"
 func (*Flow) GetDexSummary(ctx dex.Context, _ dex.None) (*dex.RPCResult[map[string]any], error) {
-	state, err := threadStateAttribute.Get(ctx)
+	inspection, err := slackThreadInspection(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return &dex.RPCResult[map[string]any]{Output: map[string]any{"slack-thread-approval-state": state}}, nil
+	return &dex.RPCResult[map[string]any]{Output: inspection}, nil
 }
 
 // dex:field attribute-key:slack-thread-approval-state value-type:json editable:false description:"Slack thread details"
+// dex:field attribute-key:slack-thread-approval-post-reply-result value-type:json editable:false description:"Slack completion reply provider result"
 func (*Flow) GetDexDisplay(ctx dex.Context, _ dex.None) (*dex.RPCResult[map[string]any], error) {
+	inspection, err := slackThreadInspection(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &dex.RPCResult[map[string]any]{Output: inspection}, nil
+}
+
+func slackThreadInspection(ctx dex.Context) (map[string]any, error) {
 	state, err := threadStateAttribute.Get(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return &dex.RPCResult[map[string]any]{Output: map[string]any{"slack-thread-approval-state": state}}, nil
+	postReplyResult, err := optionalPostReplyResult(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]any{
+		"slack-thread-approval-state":             state,
+		"slack-thread-approval-post-reply-result": postReplyResult,
+	}, nil
+}
+
+func optionalPostReplyResult(ctx dex.Context) (slack.PostThreadReplyResult, error) {
+	result, err := postReplyResultAttribute.Get(ctx)
+	var missingAttribute *dex.AttributeNotFoundError
+	if errors.As(err, &missingAttribute) {
+		return slack.PostThreadReplyResult{}, nil
+	}
+	return result, err
 }
 
 type threadQueryOutput = slack.ListThreadMessagesResult
@@ -296,60 +324,61 @@ func failureMessage(branch sdkgo.BranchID, failure *sdkgo.Failure) string {
 	return fmt.Sprintf("%s: %s", branch, failure.Message)
 }
 
-// NewStartTriggerEventFilter creates the application's Slack root-message admission rule.
-func NewStartTriggerEventFilter(configuration slack.ChannelThreadCreatedTriggerConfiguration) (sdkgo.TriggerEventFilter[slack.MessageEvent], error) {
+// NewStartTriggerFilter creates the application's Slack root-message admission rule.
+func NewStartTriggerFilter(configuration slack.ChannelThreadCreatedTriggerConfiguration) (sdkgo.TriggerFilter[slack.MessageEvent], error) {
 	if err := configuration.Validate(); err != nil {
 		return nil, err
 	}
-	return newMessageTriggerEventFilter(configuration.ChannelID, configuration.ThreadTriggerMatcher, false), nil
+	return newMessageTriggerFilter(configuration.ChannelID, configuration.ThreadTriggerMatcher, false), nil
 }
 
-// NewReplyTriggerEventFilter creates the application's Slack reply admission rule.
-func NewReplyTriggerEventFilter(configuration slack.ThreadReplyCreatedTriggerConfiguration) (sdkgo.TriggerEventFilter[slack.MessageEvent], error) {
+// NewReplyTriggerFilter creates the application's Slack reply admission rule.
+func NewReplyTriggerFilter(configuration slack.ThreadReplyCreatedTriggerConfiguration) (sdkgo.TriggerFilter[slack.MessageEvent], error) {
 	if err := configuration.Validate(); err != nil {
 		return nil, err
 	}
-	return newMessageTriggerEventFilter(configuration.ChannelID, configuration.ThreadReplyMatcher, true), nil
+	return newMessageTriggerFilter(configuration.ChannelID, configuration.ThreadReplyMatcher, true), nil
 }
 
-func ResolveFlowID(identity slack.ThreadIdentity) (string, error) {
-	if identity.TeamID == "" || identity.ChannelID == "" || identity.RootTimestamp == "" {
-		return "", fmt.Errorf("Slack thread identity is incomplete")
-	}
-	digest := sha256.Sum256([]byte(identity.TeamID + "\x00" + identity.ChannelID + "\x00" + identity.RootTimestamp))
-	return "slack-thread-approval-" + hex.EncodeToString(digest[:16]), nil
+func ResolveFlowID(event sdkgo.TriggerEvent[slack.MessageEvent]) string {
+	message := event.Payload
+	return fmt.Sprintf("slack-thread-approval-%s-%s-%s", message.TeamID, message.ChannelID, message.ThreadTimestamp)
 }
 
-func BuildStartInput(event sdkgo.TriggerEvent[slack.MessageEvent]) (Input, error) {
+func MapToFlowInput(event sdkgo.TriggerEvent[slack.MessageEvent]) Input {
 	payload := event.Payload
 	return Input{
 		EventID: event.ID, TeamID: payload.TeamID, ChannelID: payload.ChannelID, ThreadTimestamp: payload.ThreadTimestamp,
-	}, nil
+	}
 }
 
-func newMessageTriggerEventFilter(channelID string, matcher slack.MessageMatcher, requiresReply bool) sdkgo.TriggerEventFilter[slack.MessageEvent] {
-	return func(event sdkgo.TriggerEvent[slack.MessageEvent]) (bool, error) {
+func MapToReceiveThreadReplyInput(event sdkgo.TriggerEvent[slack.MessageEvent]) ReceiveThreadReplyInput {
+	return ReceiveThreadReplyInput{EventID: event.ID, UserID: event.Payload.UserID}
+}
+
+func newMessageTriggerFilter(channelID string, matcher slack.MessageMatcher, requiresReply bool) sdkgo.TriggerFilter[slack.MessageEvent] {
+	return func(event sdkgo.TriggerEvent[slack.MessageEvent]) bool {
 		message := event.Payload
 		isReply := message.ThreadTimestamp != "" && message.ThreadTimestamp != message.Timestamp
-		if message.ChannelID != channelID || isReply != requiresReply {
-			return false, nil
+		if event.ID == "" || message.TeamID == "" || message.ChannelID != channelID || message.ThreadTimestamp == "" || message.UserID == "" || isReply != requiresReply {
+			return false
 		}
 		if matcher.MessageContains != "" && !strings.Contains(strings.ToLower(message.Text), strings.ToLower(matcher.MessageContains)) {
-			return false, nil
+			return false
 		}
 		if len(matcher.PosterUserIDs) == 0 {
-			return true, nil
+			return true
 		}
 		for _, allowedUserID := range matcher.PosterUserIDs {
 			if message.UserID == allowedUserID {
-				return true, nil
+				return true
 			}
 		}
-		return false, nil
+		return false
 	}
 }
 
 var _ dex.Flow = (*Flow)(nil)
-var _ dex.RPC[sdkgo.TriggerEvent[slack.MessageEvent], ReplyResult] = (*Flow)(nil).ReceiveThreadReply
+var _ dex.RPC[ReceiveThreadReplyInput, ReplyResult] = (*Flow)(nil).ReceiveThreadReply
 var _ dex.RPC[dex.None, map[string]any] = (*Flow)(nil).GetDexSummary
 var _ dex.RPC[dex.None, map[string]any] = (*Flow)(nil).GetDexDisplay

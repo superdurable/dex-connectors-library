@@ -70,14 +70,14 @@ func run(ctx context.Context) error {
 	); err != nil {
 		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
 	}
-	startEventFilter, err := threadapproval.NewStartTriggerEventFilter(startTriggerConfiguration)
+	startTriggerFilter, err := threadapproval.NewStartTriggerFilter(startTriggerConfiguration)
 	if err != nil {
 		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
 	}
 	startRunner, err := slack.NewLocalChannelThreadCreatedTrigger(
 		store, threadapproval.ConnectionName, threadapproval.StartTriggerBinding,
 		sdkgo.NewDexFlowTriggerTarget(
-			client, flow, startEventFilter, slack.FlowIDByThread(threadapproval.ResolveFlowID), threadapproval.BuildStartInput,
+			client, flow, startTriggerFilter, threadapproval.ResolveFlowID, threadapproval.MapToFlowInput,
 		),
 	)
 	if err != nil {
@@ -90,14 +90,15 @@ func run(ctx context.Context) error {
 	); err != nil {
 		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
 	}
-	replyEventFilter, err := threadapproval.NewReplyTriggerEventFilter(replyTriggerConfiguration)
+	replyTriggerFilter, err := threadapproval.NewReplyTriggerFilter(replyTriggerConfiguration)
 	if err != nil {
 		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
 	}
 	replyRunner, err := slack.NewLocalThreadReplyCreatedTrigger(
 		store, threadapproval.ConnectionName, threadapproval.ReplyTriggerBinding,
 		sdkgo.NewDexRPCTriggerTarget(
-			client, flow.ReceiveThreadReply, replyEventFilter, slack.FlowIDByThread(threadapproval.ResolveFlowID),
+			client, flow.ReceiveThreadReply, replyTriggerFilter, threadapproval.ResolveFlowID,
+			threadapproval.MapToReceiveThreadReplyInput,
 		),
 	)
 	if err != nil {

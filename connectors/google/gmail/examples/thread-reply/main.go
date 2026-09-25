@@ -70,13 +70,13 @@ func run(ctx context.Context) error {
 	); err != nil {
 		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
 	}
-	startEventFilter, err := threadreply.NewStartTriggerEventFilter(startTriggerConfiguration)
+	startTriggerFilter, err := threadreply.NewStartTriggerFilter(startTriggerConfiguration)
 	if err != nil {
 		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
 	}
 	startRunner, err := gmail.NewLocalMessageReceivedTrigger(
 		store, threadreply.ConnectionName, threadreply.StartTriggerBinding,
-		sdkgo.NewDexFlowTriggerTarget(client, flow, startEventFilter, gmail.FlowIDByThread(threadreply.ResolveFlowID), threadreply.BuildStartInput),
+		sdkgo.NewDexFlowTriggerTarget(client, flow, startTriggerFilter, threadreply.ResolveFlowID, threadreply.MapToFlowInput),
 	)
 	if err != nil {
 		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
@@ -88,13 +88,16 @@ func run(ctx context.Context) error {
 	); err != nil {
 		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
 	}
-	replyEventFilter, err := threadreply.NewReplyTriggerEventFilter(replyTriggerConfiguration)
+	replyTriggerFilter, err := threadreply.NewReplyTriggerFilter(replyTriggerConfiguration)
 	if err != nil {
 		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
 	}
 	replyRunner, err := gmail.NewLocalReplyReceivedTrigger(
 		store, threadreply.ConnectionName, threadreply.ReplyTriggerBinding,
-		sdkgo.NewDexRPCTriggerTarget(client, flow.ReceiveEmailReply, replyEventFilter, gmail.FlowIDByThread(threadreply.ResolveFlowID)),
+		sdkgo.NewDexRPCTriggerTarget(
+			client, flow.ReceiveEmailReply, replyTriggerFilter, threadreply.ResolveFlowID,
+			threadreply.MapToReceiveEmailReplyInput,
+		),
 	)
 	if err != nil {
 		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())

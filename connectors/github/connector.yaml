@@ -79,8 +79,6 @@ spec:
         - {id: notFound, goName: NotFound, description: The authenticated account was not found.}
         - {id: failed, goName: Failed, description: GitHub returned a terminal provider or protocol failure.}
         - {id: defect, goName: Defect, description: Local configuration or input is invalid.}
-      defectBranch: defect
-      resultAttribute: required
       execution: &githubQueryExecution
         executeMethodTimeout: 30s
         durability: sync
@@ -100,6 +98,4 @@ spec:
         - {id: notFound, goName: NotFound, description: The requested GitHub account was not found.}
         - {id: failed, goName: Failed, description: GitHub returned a terminal provider or protocol failure.}
         - {id: defect, goName: Defect, description: Local configuration or input is invalid.}
-      defectBranch: defect
-      resultAttribute: required
       execution: *githubQueryExecution

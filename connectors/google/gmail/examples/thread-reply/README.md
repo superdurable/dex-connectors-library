@@ -6,18 +6,24 @@ Connector:
 1. a matching received root message starts a Flow;
 2. the Flow reads that message with `GetMessage`;
 3. a matching received reply invokes the typed `ReceiveEmailReply` RPC; and
-4. the Flow replies `Processing complete` in the same Gmail thread with `ReplyToMessage`.
+4. the Flow replies `Processing complete.` in the same Gmail thread with `ReplyToMessage`.
 
-Both neutral provider Triggers use the same application callback to map the
-authorized primary email and Gmail thread ID to a stable Flow ID. The
+Both neutral provider Triggers use the same application resolver to map the
+connection name and Gmail thread ID to a stable, PII-safe Flow ID. The
 application chooses a Flow-start target for `messageReceived` and an RPC target
 for `replyReceived`; those choices are not encoded in the Connector manifest.
+
+The reply Mutation configures the optional `ResultAttribute`. The Flow
+registers that typed Attribute explicitly, and its summary/display RPCs read the
+full provider result outside the transition chain for operator inspection. This
+intentionally duplicates the durable target input; applications should omit the
+Attribute when no external reader needs the raw result.
 
 Before either Dex call, the application supplies a typed filter. The example
 builds those filters from the binding configuration saved by Dex Web and checks
 the root-or-reply shape, sender address, and case-insensitive subject/snippet
 substring again. A rejected event is consumed without resolving a Flow ID or
-calling Dex. A filter error remains retryable.
+calling Dex. The pure filter has no error result.
 
 ## Configure
 

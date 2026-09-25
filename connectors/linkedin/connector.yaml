@@ -66,8 +66,6 @@ spec:
         - {id: notFound, goName: NotFound, description: The authenticated member was not found.}
         - {id: failed, goName: Failed, description: LinkedIn returned a terminal provider or protocol failure.}
         - {id: defect, goName: Defect, description: Local configuration or input is invalid.}
-      defectBranch: defect
-      resultAttribute: required
       execution:
         executeMethodTimeout: 30s
         durability: sync

@@ -54,17 +54,6 @@ func TestThreadReplyConfigurationRequiresApprover(t *testing.T) {
 	require.ErrorContains(t, err, "requires at least one")
 }
 
-func TestFlowIDByThreadUsesApplicationResolver(t *testing.T) {
-	resolver := FlowIDByThread(func(identity ThreadIdentity) (string, error) {
-		return identity.TeamID + "/" + identity.ChannelID + "/" + identity.RootTimestamp, nil
-	})
-	flowID, err := resolver(sdkgo.TriggerEvent[MessageEvent]{Payload: MessageEvent{
-		TeamID: "T1", ChannelID: "C1", ThreadTimestamp: "1.0",
-	}})
-	require.NoError(t, err)
-	require.Equal(t, "T1/C1/1.0", flowID)
-}
-
 func TestSocketModeReconnectsDeliversAndAcknowledgesMatchedEvent(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		require.Equal(t, "Bearer app-token", request.Header.Get("Authorization"))

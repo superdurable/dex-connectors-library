@@ -142,8 +142,8 @@ func (credentials Credentials) Validate() error {
 
 const CreateResponseBranchCompleted sdkgo.BranchID = "completed"
 const CreateResponseBranchFailed sdkgo.BranchID = "failed"
-const CreateResponseBranchUncertain sdkgo.BranchID = "uncertain"
-const CreateResponseBranchDefect sdkgo.BranchID = "defect"
+const CreateResponseBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateResponseBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 
 var CreateResponseDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createResponse"},
@@ -153,15 +153,11 @@ var CreateResponseDefinition = sdkgo.MutationDefinition{
 		{ID: CreateResponseBranchUncertain, Description: "The dispatched response outcome cannot be confirmed."},
 		{ID: CreateResponseBranchDefect, Description: "Local input or connector definition is invalid."},
 	},
-	DefectBranch:    CreateResponseBranchDefect,
-	UncertainBranch: CreateResponseBranchUncertain,
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(150000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(2000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(300000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
-	ResultAttribute: sdkgo.RequirementRequired,
-	Progress:        sdkgo.ProgressCapabilities{Structured: true, Text: true},
 }
 
 type CreateResponseResult = sdkgo.MutationResult[Response]
@@ -174,7 +170,7 @@ type CreateResponseStepConfig[IN any] struct {
 	Annotations                       sdkgo.StepAnnotations                          `connector:"annotations"`
 	Connection                        Connection                                     `connector:"connection"`
 	ConnectionName                    string                                         `connector:"connectionName"`
-	BuildOperationInput               func(IN) (CreateRequest, error)                `connector:"buildOperationInput"`
+	MapToOperationInput               func(IN) CreateRequest                         `connector:"mapToOperationInput"`
 	Completed                         sdkgo.Target[CreateResponseResult]             `connector:"branch=completed"`
 	Failed                            sdkgo.Target[CreateResponseResult]             `connector:"branch=failed"`
 	Uncertain                         sdkgo.Target[CreateResponseResult]             `connector:"branch=uncertain"`
@@ -196,7 +192,7 @@ func NewCreateResponseStep[IN any](config CreateResponseStepConfig[IN]) sdkgo.Mu
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateRequest, Response]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		Operation: config.Connection.client.CreateResponse(), Connection: config.Connection.reference,
-		BuildOperationInput: config.BuildOperationInput,
+		MapToOperationInput: config.MapToOperationInput,
 		Branches: []sdkgo.BranchTarget[CreateResponseResult]{
 			config.Completed.BranchTarget(CreateResponseBranchCompleted),
 			config.Failed.BranchTarget(CreateResponseBranchFailed),
@@ -212,7 +208,7 @@ func NewCreateResponseStep[IN any](config CreateResponseStepConfig[IN]) sdkgo.Mu
 
 const RetrieveResponseBranchFound sdkgo.BranchID = "found"
 const RetrieveResponseBranchFailed sdkgo.BranchID = "failed"
-const RetrieveResponseBranchDefect sdkgo.BranchID = "defect"
+const RetrieveResponseBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 
 var RetrieveResponseDefinition = sdkgo.QueryDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "retrieveResponse"},
@@ -221,14 +217,11 @@ var RetrieveResponseDefinition = sdkgo.QueryDefinition{
 		{ID: RetrieveResponseBranchFailed, Description: "OpenAI returned a terminal query failure."},
 		{ID: RetrieveResponseBranchDefect, Description: "Local input or connector definition is invalid."},
 	},
-	DefectBranch: RetrieveResponseBranchDefect,
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(150000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(2000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(300000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
-	ResultAttribute: sdkgo.RequirementOptional,
-	Progress:        sdkgo.ProgressCapabilities{Structured: false, Text: false},
 }
 
 type RetrieveResponseResult = sdkgo.QueryResult[Response]
@@ -241,7 +234,7 @@ type RetrieveResponseStepConfig[IN any] struct {
 	Annotations                    sdkgo.StepAnnotations                       `connector:"annotations"`
 	Connection                     Connection                                  `connector:"connection"`
 	ConnectionName                 string                                      `connector:"connectionName"`
-	BuildOperationInput            func(IN) (RetrieveRequest, error)           `connector:"buildOperationInput"`
+	MapToOperationInput            func(IN) RetrieveRequest                    `connector:"mapToOperationInput"`
 	Found                          sdkgo.Target[RetrieveResponseResult]        `connector:"branch=found"`
 	Failed                         sdkgo.Target[RetrieveResponseResult]        `connector:"branch=failed"`
 	Defect                         sdkgo.Target[RetrieveResponseResult]        `connector:"branch=defect"`
@@ -259,7 +252,7 @@ func NewRetrieveResponseStep[IN any](config RetrieveResponseStepConfig[IN]) sdkg
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, RetrieveRequest, Response]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		Operation: config.Connection.client.RetrieveResponse(), Connection: config.Connection.reference,
-		BuildOperationInput: config.BuildOperationInput,
+		MapToOperationInput: config.MapToOperationInput,
 		Branches: []sdkgo.BranchTarget[RetrieveResponseResult]{
 			config.Found.BranchTarget(RetrieveResponseBranchFound),
 			config.Failed.BranchTarget(RetrieveResponseBranchFailed),

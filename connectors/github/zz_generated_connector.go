@@ -167,7 +167,7 @@ const GetAuthenticatedProfileBranchInsufficientScope sdkgo.BranchID = "insuffici
 const GetAuthenticatedProfileBranchAuthorizationRevoked sdkgo.BranchID = "authorizationRevoked"
 const GetAuthenticatedProfileBranchNotFound sdkgo.BranchID = "notFound"
 const GetAuthenticatedProfileBranchFailed sdkgo.BranchID = "failed"
-const GetAuthenticatedProfileBranchDefect sdkgo.BranchID = "defect"
+const GetAuthenticatedProfileBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 
 var GetAuthenticatedProfileDefinition = sdkgo.QueryDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getAuthenticatedProfile"},
@@ -180,14 +180,11 @@ var GetAuthenticatedProfileDefinition = sdkgo.QueryDefinition{
 		{ID: GetAuthenticatedProfileBranchFailed, Description: "GitHub returned a terminal provider or protocol failure."},
 		{ID: GetAuthenticatedProfileBranchDefect, Description: "Local configuration or input is invalid."},
 	},
-	DefectBranch: GetAuthenticatedProfileBranchDefect,
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
-	ResultAttribute: sdkgo.RequirementRequired,
-	Progress:        sdkgo.ProgressCapabilities{Structured: false, Text: false},
 }
 
 type GetAuthenticatedProfileResult = sdkgo.QueryResult[AuthenticatedProfile]
@@ -200,7 +197,7 @@ type GetAuthenticatedProfileStepConfig[IN any] struct {
 	Annotations                    sdkgo.StepAnnotations                                   `connector:"annotations"`
 	Connection                     Connection                                              `connector:"connection"`
 	ConnectionName                 string                                                  `connector:"connectionName"`
-	BuildOperationInput            func(IN) (GetAuthenticatedProfileInput, error)          `connector:"buildOperationInput"`
+	MapToOperationInput            func(IN) GetAuthenticatedProfileInput                   `connector:"mapToOperationInput"`
 	ProfileLoaded                  sdkgo.Target[GetAuthenticatedProfileResult]             `connector:"branch=profileLoaded"`
 	VerifiedEmailRequired          sdkgo.Target[GetAuthenticatedProfileResult]             `connector:"branch=verifiedEmailRequired"`
 	InsufficientScope              sdkgo.Target[GetAuthenticatedProfileResult]             `connector:"branch=insufficientScope"`
@@ -222,7 +219,7 @@ func NewGetAuthenticatedProfileStep[IN any](config GetAuthenticatedProfileStepCo
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetAuthenticatedProfileInput, AuthenticatedProfile]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		Operation: config.Connection.client.GetAuthenticatedProfile(), Connection: config.Connection.reference,
-		BuildOperationInput: config.BuildOperationInput,
+		MapToOperationInput: config.MapToOperationInput,
 		Branches: []sdkgo.BranchTarget[GetAuthenticatedProfileResult]{
 			config.ProfileLoaded.BranchTarget(GetAuthenticatedProfileBranchProfileLoaded),
 			config.VerifiedEmailRequired.BranchTarget(GetAuthenticatedProfileBranchVerifiedEmailRequired),
@@ -242,7 +239,7 @@ const ListPublicRepositoriesBranchInsufficientScope sdkgo.BranchID = "insufficie
 const ListPublicRepositoriesBranchAuthorizationRevoked sdkgo.BranchID = "authorizationRevoked"
 const ListPublicRepositoriesBranchNotFound sdkgo.BranchID = "notFound"
 const ListPublicRepositoriesBranchFailed sdkgo.BranchID = "failed"
-const ListPublicRepositoriesBranchDefect sdkgo.BranchID = "defect"
+const ListPublicRepositoriesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 
 var ListPublicRepositoriesDefinition = sdkgo.QueryDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listPublicRepositories"},
@@ -254,14 +251,11 @@ var ListPublicRepositoriesDefinition = sdkgo.QueryDefinition{
 		{ID: ListPublicRepositoriesBranchFailed, Description: "GitHub returned a terminal provider or protocol failure."},
 		{ID: ListPublicRepositoriesBranchDefect, Description: "Local configuration or input is invalid."},
 	},
-	DefectBranch: ListPublicRepositoriesBranchDefect,
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
-	ResultAttribute: sdkgo.RequirementRequired,
-	Progress:        sdkgo.ProgressCapabilities{Structured: false, Text: false},
 }
 
 type ListPublicRepositoriesResult = sdkgo.QueryResult[PublicRepositories]
@@ -274,7 +268,7 @@ type ListPublicRepositoriesStepConfig[IN any] struct {
 	Annotations                    sdkgo.StepAnnotations                                 `connector:"annotations"`
 	Connection                     Connection                                            `connector:"connection"`
 	ConnectionName                 string                                                `connector:"connectionName"`
-	BuildOperationInput            func(IN) (ListPublicRepositoriesInput, error)         `connector:"buildOperationInput"`
+	MapToOperationInput            func(IN) ListPublicRepositoriesInput                  `connector:"mapToOperationInput"`
 	RepositoriesLoaded             sdkgo.Target[ListPublicRepositoriesResult]            `connector:"branch=repositoriesLoaded"`
 	InsufficientScope              sdkgo.Target[ListPublicRepositoriesResult]            `connector:"branch=insufficientScope"`
 	AuthorizationRevoked           sdkgo.Target[ListPublicRepositoriesResult]            `connector:"branch=authorizationRevoked"`
@@ -295,7 +289,7 @@ func NewListPublicRepositoriesStep[IN any](config ListPublicRepositoriesStepConf
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListPublicRepositoriesInput, PublicRepositories]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		Operation: config.Connection.client.ListPublicRepositories(), Connection: config.Connection.reference,
-		BuildOperationInput: config.BuildOperationInput,
+		MapToOperationInput: config.MapToOperationInput,
 		Branches: []sdkgo.BranchTarget[ListPublicRepositoriesResult]{
 			config.RepositoriesLoaded.BranchTarget(ListPublicRepositoriesBranchRepositoriesLoaded),
 			config.InsufficientScope.BranchTarget(ListPublicRepositoriesBranchInsufficientScope),

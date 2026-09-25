@@ -51,9 +51,6 @@ spec:
         - {id: failed, goName: Failed, description: OpenAI returned a terminal failed or incomplete response.}
         - {id: uncertain, goName: Uncertain, description: The dispatched response outcome cannot be confirmed.}
         - {id: defect, goName: Defect, description: Local input or connector definition is invalid.}
-      defectBranch: defect
-      uncertainBranch: uncertain
-      resultAttribute: required
       progress: [structured, text]
       execution: &openaiExecution
         executeMethodTimeout: 150s
@@ -70,6 +67,4 @@ spec:
         - {id: found, goName: Found, description: The response exists and was returned.}
         - {id: failed, goName: Failed, description: OpenAI returned a terminal query failure.}
         - {id: defect, goName: Defect, description: Local input or connector definition is invalid.}
-      defectBranch: defect
-      resultAttribute: optional
       execution: *openaiExecution

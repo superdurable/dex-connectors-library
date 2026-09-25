@@ -34,20 +34,22 @@ optional for the root trigger; an empty list means any human poster.
 matching is case-insensitive substring matching. For example, `approve` also
 matches `disapprove`; use a more distinctive phrase if that is undesirable.
 
-The application owns the mapping from Slack threads to Flow IDs. Pass a
-callback that accepts `ThreadIdentity` to `FlowIDByThread`; it receives the team
-ID, channel ID, and root timestamp. The RPC target receives the same identity,
-so root and reply events resolve to the same Flow. RPC registration is code,
-not Trigger configuration. Pass the same direct bound Flow method to
-`dex.DefineRPC` and `NewDexRPCTriggerTarget`. The application owns RPC options,
-durable state, locking, and event deduplication.
+The application owns the mapping from Slack events to Flow IDs. Pass the same
+pure `FlowIDResolver` to both targets so root and reply events resolve to the
+same Flow. Prefer a readable ID built from team ID, channel ID, and root
+timestamp. RPC registration is code, not Trigger configuration. Pass the same
+direct bound Flow method to `dex.DefineRPC` and `NewDexRPCTriggerTarget`. Use an
+`RPCInputMapper` to convert the provider event into an application-owned RPC
+input. The application owns RPC options, durable state, locking, and event
+deduplication.
 
-Both Dex targets also require an application-owned `TriggerEventFilter`. It
+Both Dex targets also require an application-owned `TriggerFilter`. It
 runs before Flow ID resolution and is the final admission rule for starting a
 Flow or invoking an RPC. Provider matchers reduce Socket Mode traffic, while
 the application filter can independently enforce channel, poster, message, or
-other domain rules. Returning false consumes the event without calling Dex;
-returning an error keeps the delivery retryable.
+other domain rules. Returning false consumes the event without resolving a
+Flow ID, mapping input, or calling Dex. Filters, resolvers, and mappers are
+deterministic, side-effect-free functions without error results.
 
 If a picker cannot load, copy IDs manually:
 

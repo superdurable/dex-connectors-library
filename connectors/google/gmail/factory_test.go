@@ -29,7 +29,7 @@ func TestSendFactoryRequiresEveryTypedBranch(t *testing.T) {
 		gmail.NewSendMessageStep(gmail.SendMessageStepConfig[string]{
 			StepType: "Send", Annotations: sdkgo.StepAnnotations{GroupID: "google", GroupLabel: "Google", Explanation: "Send a message."},
 			Connection: connection, ConnectionName: "gmail-send",
-			BuildOperationInput: func(string) (gmail.SendMessageInput, error) { return gmail.SendMessageInput{}, nil },
+			MapToOperationInput: func(string) gmail.SendMessageInput { return gmail.SendMessageInput{} },
 			Sent:                sdkgo.GoTo(gmailTarget{}), Rejected: sdkgo.GoTo(gmailTarget{}), Uncertain: sdkgo.GoTo(gmailTarget{}),
 		})
 	})
@@ -43,7 +43,7 @@ func TestSendFactoryRejectsConnectionNameMismatch(t *testing.T) {
 		gmail.NewSendMessageStep(gmail.SendMessageStepConfig[string]{
 			StepType: "Send", Annotations: sdkgo.StepAnnotations{GroupID: "google", GroupLabel: "Google", Explanation: "Send a message."},
 			Connection: connection, ConnectionName: "different",
-			BuildOperationInput: func(string) (gmail.SendMessageInput, error) { return gmail.SendMessageInput{}, nil },
+			MapToOperationInput: func(string) gmail.SendMessageInput { return gmail.SendMessageInput{} },
 		})
 	})
 }

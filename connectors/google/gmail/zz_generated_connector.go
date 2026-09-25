@@ -289,7 +289,7 @@ func NewLocalReplyReceivedTrigger(store *localconfig.Store, connectionName strin
 const GetMessageBranchRead sdkgo.BranchID = "read"
 const GetMessageBranchNotFound sdkgo.BranchID = "notFound"
 const GetMessageBranchRejected sdkgo.BranchID = "rejected"
-const GetMessageBranchDefect sdkgo.BranchID = "defect"
+const GetMessageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 
 var GetMessageDefinition = sdkgo.QueryDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getMessage"},
@@ -299,14 +299,11 @@ var GetMessageDefinition = sdkgo.QueryDefinition{
 		{ID: GetMessageBranchRejected, Description: "Gmail conclusively rejected the query."},
 		{ID: GetMessageBranchDefect, Description: "Local input or connector definition is invalid."},
 	},
-	DefectBranch: GetMessageBranchDefect,
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
-	ResultAttribute: sdkgo.RequirementOptional,
-	Progress:        sdkgo.ProgressCapabilities{Structured: false, Text: false},
 }
 
 type GetMessageResult = sdkgo.QueryResult[Message]
@@ -319,7 +316,7 @@ type GetMessageStepConfig[IN any] struct {
 	Annotations                    sdkgo.StepAnnotations                      `connector:"annotations"`
 	Connection                     Connection                                 `connector:"connection"`
 	ConnectionName                 string                                     `connector:"connectionName"`
-	BuildOperationInput            func(IN) (GetMessageInput, error)          `connector:"buildOperationInput"`
+	MapToOperationInput            func(IN) GetMessageInput                   `connector:"mapToOperationInput"`
 	Read                           sdkgo.Target[GetMessageResult]             `connector:"branch=read"`
 	NotFound                       sdkgo.Target[GetMessageResult]             `connector:"branch=notFound"`
 	Rejected                       sdkgo.Target[GetMessageResult]             `connector:"branch=rejected"`
@@ -338,7 +335,7 @@ func NewGetMessageStep[IN any](config GetMessageStepConfig[IN]) sdkgo.QueryStep[
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetMessageInput, Message]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		Operation: config.Connection.client.GetMessage(), Connection: config.Connection.reference,
-		BuildOperationInput: config.BuildOperationInput,
+		MapToOperationInput: config.MapToOperationInput,
 		Branches: []sdkgo.BranchTarget[GetMessageResult]{
 			config.Read.BranchTarget(GetMessageBranchRead),
 			config.NotFound.BranchTarget(GetMessageBranchNotFound),
@@ -352,8 +349,8 @@ func NewGetMessageStep[IN any](config GetMessageStepConfig[IN]) sdkgo.QueryStep[
 
 const SendMessageBranchSent sdkgo.BranchID = "sent"
 const SendMessageBranchRejected sdkgo.BranchID = "rejected"
-const SendMessageBranchUncertain sdkgo.BranchID = "uncertain"
-const SendMessageBranchDefect sdkgo.BranchID = "defect"
+const SendMessageBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const SendMessageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 
 var SendMessageDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "sendMessage"},
@@ -363,15 +360,11 @@ var SendMessageDefinition = sdkgo.MutationDefinition{
 		{ID: SendMessageBranchUncertain, Description: "The dispatched send outcome cannot be confirmed."},
 		{ID: SendMessageBranchDefect, Description: "Local input or connector definition is invalid."},
 	},
-	DefectBranch:    SendMessageBranchDefect,
-	UncertainBranch: SendMessageBranchUncertain,
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
-	ResultAttribute: sdkgo.RequirementRequired,
-	Progress:        sdkgo.ProgressCapabilities{Structured: false, Text: false},
 }
 
 type SendMessageResult = sdkgo.MutationResult[SendMessageOutput]
@@ -384,7 +377,7 @@ type SendMessageStepConfig[IN any] struct {
 	Annotations                       sdkgo.StepAnnotations                                   `connector:"annotations"`
 	Connection                        Connection                                              `connector:"connection"`
 	ConnectionName                    string                                                  `connector:"connectionName"`
-	BuildOperationInput               func(IN) (SendMessageInput, error)                      `connector:"buildOperationInput"`
+	MapToOperationInput               func(IN) SendMessageInput                               `connector:"mapToOperationInput"`
 	Sent                              sdkgo.Target[SendMessageResult]                         `connector:"branch=sent"`
 	Rejected                          sdkgo.Target[SendMessageResult]                         `connector:"branch=rejected"`
 	Uncertain                         sdkgo.Target[SendMessageResult]                         `connector:"branch=uncertain"`
@@ -403,7 +396,7 @@ func NewSendMessageStep[IN any](config SendMessageStepConfig[IN]) sdkgo.Mutation
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SendMessageInput, SendMessageOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		Operation: config.Connection.client.SendMessage(), Connection: config.Connection.reference,
-		BuildOperationInput: config.BuildOperationInput,
+		MapToOperationInput: config.MapToOperationInput,
 		Branches: []sdkgo.BranchTarget[SendMessageResult]{
 			config.Sent.BranchTarget(SendMessageBranchSent),
 			config.Rejected.BranchTarget(SendMessageBranchRejected),
@@ -417,8 +410,8 @@ func NewSendMessageStep[IN any](config SendMessageStepConfig[IN]) sdkgo.Mutation
 
 const ReplyToMessageBranchSent sdkgo.BranchID = "sent"
 const ReplyToMessageBranchRejected sdkgo.BranchID = "rejected"
-const ReplyToMessageBranchUncertain sdkgo.BranchID = "uncertain"
-const ReplyToMessageBranchDefect sdkgo.BranchID = "defect"
+const ReplyToMessageBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const ReplyToMessageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 
 var ReplyToMessageDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "replyToMessage"},
@@ -428,15 +421,11 @@ var ReplyToMessageDefinition = sdkgo.MutationDefinition{
 		{ID: ReplyToMessageBranchUncertain, Description: "The dispatched reply outcome cannot be confirmed."},
 		{ID: ReplyToMessageBranchDefect, Description: "Local input or connector definition is invalid."},
 	},
-	DefectBranch:    ReplyToMessageBranchDefect,
-	UncertainBranch: ReplyToMessageBranchUncertain,
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
-	ResultAttribute: sdkgo.RequirementRequired,
-	Progress:        sdkgo.ProgressCapabilities{Structured: false, Text: false},
 }
 
 type ReplyToMessageResult = sdkgo.MutationResult[SendMessageOutput]
@@ -449,7 +438,7 @@ type ReplyToMessageStepConfig[IN any] struct {
 	Annotations                       sdkgo.StepAnnotations                                   `connector:"annotations"`
 	Connection                        Connection                                              `connector:"connection"`
 	ConnectionName                    string                                                  `connector:"connectionName"`
-	BuildOperationInput               func(IN) (ReplyToMessageInput, error)                   `connector:"buildOperationInput"`
+	MapToOperationInput               func(IN) ReplyToMessageInput                            `connector:"mapToOperationInput"`
 	Sent                              sdkgo.Target[ReplyToMessageResult]                      `connector:"branch=sent"`
 	Rejected                          sdkgo.Target[ReplyToMessageResult]                      `connector:"branch=rejected"`
 	Uncertain                         sdkgo.Target[ReplyToMessageResult]                      `connector:"branch=uncertain"`
@@ -468,7 +457,7 @@ func NewReplyToMessageStep[IN any](config ReplyToMessageStepConfig[IN]) sdkgo.Mu
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, ReplyToMessageInput, SendMessageOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		Operation: config.Connection.client.ReplyToMessage(), Connection: config.Connection.reference,
-		BuildOperationInput: config.BuildOperationInput,
+		MapToOperationInput: config.MapToOperationInput,
 		Branches: []sdkgo.BranchTarget[ReplyToMessageResult]{
 			config.Sent.BranchTarget(ReplyToMessageBranchSent),
 			config.Rejected.BranchTarget(ReplyToMessageBranchRejected),
