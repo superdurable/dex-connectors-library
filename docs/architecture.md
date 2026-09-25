@@ -4,7 +4,7 @@
 
 - `schema/` owns the strict v1alpha1 manifest model and JSON Schema.
 - `internal/codegen/` turns one manifest into connector Go types.
-- `sdk/go/` is an independently released module owning branch Attempts, Dex
+- `sdkgo/` is an independently released module owning branch Attempts, Dex
   identity, generic Step factories, generated-factory markers, typed targets,
   credentials, receipts, idempotency, and Stream options.
 - `sdk/react/` owns credential-free connection-status primitives.

@@ -3,8 +3,8 @@
 check: test react
 
 test:
-	cd sdk/go && GOWORK=off go test -race ./...
-	cd sdk/go && GOWORK=off go vet ./...
+	cd sdkgo && GOWORK=off go test -race ./...
+	cd sdkgo && GOWORK=off go vet ./...
 	@find connectors -name connector.yaml -print | sort | while IFS= read -r manifest; do \
 		module=$${manifest%/connector.yaml}; \
 		(cd "$$module" && GOWORK=off go test -race ./... && GOWORK=off go vet ./...) || exit 1; \
@@ -21,7 +21,7 @@ test:
 
 test-integration:
 	go test -tags=integration ./examples/customer-onboarding -count=1 -v
-	cd sdk/go && GOWORK=off go test -tags=integration ./integrationtest/... -count=1 -v
+	cd sdkgo && GOWORK=off go test -tags=integration ./integrationtest/... -count=1 -v
 	@find connectors -name connector.yaml -print | sort | while IFS= read -r manifest; do \
 		module=$${manifest%/connector.yaml}; \
 		(cd "$$module" && GOWORK=off go test -tags=integration ./... -count=1 -v) || exit 1; \

@@ -17,8 +17,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	connector "github.com/superdurable/dex-connectors-library/sdk/go"
-	"github.com/superdurable/dex-connectors-library/sdk/go/integrationtest/fixtureconnector"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/integrationtest/fixtureconnector"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -29,8 +29,8 @@ const (
 )
 
 var (
-	createWidgetResult   = dex.DefineAttribute[connector.MutationResult[fixtureconnector.Widget]]("fixture-create-widget-result")
-	createWidgetProgress = dex.DefineStream[connector.ProgressUpdate]("fixture-create-widget-progress", 1<<20)
+	createWidgetResult   = dex.DefineAttribute[sdkgo.MutationResult[fixtureconnector.Widget]]("fixture-create-widget-result")
+	createWidgetProgress = dex.DefineStream[sdkgo.ProgressUpdate]("fixture-create-widget-progress", 1<<20)
 	triggerStartEventID  = dex.DefineAttribute[string]("trigger-adapter-start-event-id")
 	triggerApprovalCount = dex.DefineAttribute[int]("trigger-adapter-approval-count")
 )
@@ -40,9 +40,9 @@ type flowInput struct {
 }
 
 type flowOutput struct {
-	Widget         fixtureconnector.Widget  `json:"widget"`
-	CallID         connector.CallID         `json:"callId"`
-	IdempotencyKey connector.IdempotencyKey `json:"idempotencyKey"`
+	Widget         fixtureconnector.Widget `json:"widget"`
+	CallID         sdkgo.CallID            `json:"callId"`
+	IdempotencyKey sdkgo.IdempotencyKey    `json:"idempotencyKey"`
 }
 
 type connectorConsumerFlow struct {
@@ -56,31 +56,31 @@ type createOutput = fixtureconnector.CreateWidgetStepOutput[lookupOutput]
 func (flow connectorConsumerFlow) GetSteps() []dex.StepDef {
 	lookup := fixtureconnector.NewLookupWidgetStep(fixtureconnector.LookupWidgetStepConfig[flowInput]{
 		StepType: lookupWidgetStepType,
-		Presentation: connector.StepPresentation{
+		Presentation: sdkgo.StepPresentation{
 			GroupID: "fixture", GroupLabel: "Fixture", Explanation: "Look up the widget.",
 		},
 		Connection: flow.connection,
 		BuildInput: func(input flowInput) (fixtureconnector.LookupInput, error) {
 			return fixtureconnector.LookupInput{Name: input.Name}, nil
 		},
-		Found:  connector.GoTo(widgetAlreadyExistsStep{}),
-		Absent: connector.GoTo(connector.StepRef[lookupOutput](createWidgetStepType)),
-		Failed: connector.GoTo(connectorConsumerFailedStep[lookupOutput]{}),
-		Defect: connector.GoTo(connectorConsumerFailedStep[lookupOutput]{}),
+		Found:  sdkgo.GoTo(widgetAlreadyExistsStep{}),
+		Absent: sdkgo.GoTo(sdkgo.StepRef[lookupOutput](createWidgetStepType)),
+		Failed: sdkgo.GoTo(connectorConsumerFailedStep[lookupOutput]{}),
+		Defect: sdkgo.GoTo(connectorConsumerFailedStep[lookupOutput]{}),
 	})
 	create := fixtureconnector.NewCreateWidgetStep(fixtureconnector.CreateWidgetStepConfig[lookupOutput]{
 		StepType: createWidgetStepType,
-		Presentation: connector.StepPresentation{
+		Presentation: sdkgo.StepPresentation{
 			GroupID: "fixture", GroupLabel: "Fixture", Explanation: "Create the missing widget.",
 		},
 		Connection: flow.connection,
 		BuildInput: func(output lookupOutput) (fixtureconnector.CreateInput, error) {
 			return fixtureconnector.CreateInput{Name: output.Input.Name}, nil
 		},
-		Completed:       connector.GoTo(widgetCreatedStep{}),
-		Rejected:        connector.GoTo(connectorConsumerFailedStep[createOutput]{}),
-		Uncertain:       connector.GoTo(connectorConsumerFailedStep[createOutput]{}),
-		Defect:          connector.GoTo(connectorConsumerFailedStep[createOutput]{}),
+		Completed:       sdkgo.GoTo(widgetCreatedStep{}),
+		Rejected:        sdkgo.GoTo(connectorConsumerFailedStep[createOutput]{}),
+		Uncertain:       sdkgo.GoTo(connectorConsumerFailedStep[createOutput]{}),
+		Defect:          sdkgo.GoTo(connectorConsumerFailedStep[createOutput]{}),
 		ResultAttribute: &createWidgetResult,
 		ProgressStream:  &createWidgetProgress,
 	})
@@ -137,7 +137,7 @@ func (connectorConsumerFailedStep[IN]) Execute(dex.Context, IN) (*dex.StepDecisi
 
 func TestConnectorModuleConsumesSDKFactoriesWithRealDex(t *testing.T) {
 	provider := fixtureconnector.NewProvider()
-	connection, err := fixtureconnector.NewConnection(provider, "integration", connector.NewSecretString("fixture-secret"))
+	connection, err := fixtureconnector.NewConnection(provider, "integration", sdkgo.NewSecretString("fixture-secret"))
 	require.NoError(t, err)
 	flow := connectorConsumerFlow{connection: connection}
 	harness := newDexHarness(t, []dex.Flow{flow})
@@ -154,7 +154,7 @@ func TestConnectorModuleConsumesSDKFactoriesWithRealDex(t *testing.T) {
 	require.NoError(t, result.DecodeSingleOutput(&output))
 	require.Equal(t, fixtureconnector.Widget{ID: "widget-1", Name: "alpha"}, output.Widget)
 	require.NotEmpty(t, output.CallID)
-	require.Equal(t, connector.IdempotencyKey(output.CallID), output.IdempotencyKey)
+	require.Equal(t, sdkgo.IdempotencyKey(output.CallID), output.IdempotencyKey)
 
 	stats := provider.Stats()
 	require.Equal(t, 1, stats.QueryCount)
@@ -163,7 +163,7 @@ func TestConnectorModuleConsumesSDKFactoriesWithRealDex(t *testing.T) {
 	require.Equal(t, stats.MutationCalls[0], stats.MutationCalls[1])
 	require.Equal(t, stats.IdempotencyKeys[0], stats.IdempotencyKeys[1])
 
-	var page dex.StreamMessagesPage[connector.ProgressUpdate]
+	var page dex.StreamMessagesPage[sdkgo.ProgressUpdate]
 	require.NoError(t, harness.client.ListStreamMessages(ctx, flowID, createWidgetProgress, 10, "", &page))
 	require.Len(t, page.Messages, 2)
 	require.Equal(t, output.CallID, page.Messages[0].Value.CallID)
@@ -188,12 +188,12 @@ type triggerAdapterState struct {
 
 type triggerAdapterFlow struct {
 	dex.FlowDefaults
-	approveTriggerRPC *connector.TriggerRPC[triggerAdapterEvent, triggerAdapterState]
+	approveTriggerRPC *sdkgo.TriggerRPC[triggerAdapterEvent, triggerAdapterState]
 }
 
 func newTriggerAdapterFlow() *triggerAdapterFlow {
 	flow := &triggerAdapterFlow{}
-	flow.approveTriggerRPC = connector.MustNewTriggerRPC(connector.TriggerRPCConfig[triggerAdapterEvent, triggerAdapterState]{
+	flow.approveTriggerRPC = sdkgo.MustNewTriggerRPC(sdkgo.TriggerRPCConfig[triggerAdapterEvent, triggerAdapterState]{
 		Definition: flow.ApproveRequest, ProcessedEventIDsAttributeName: "trigger-adapter-processed-event-ids",
 		HandleEvent: flow.handleApprovalEvent,
 		Options: &dex.RPCOptions{LockAttributes: []dex.AttributeLock{
@@ -224,14 +224,14 @@ func (flow *triggerAdapterFlow) GetPersistenceSchema() dex.PersistenceSchema {
 
 func (flow *triggerAdapterFlow) ApproveRequest(
 	ctx dex.Context,
-	event connector.TriggerEvent[triggerAdapterEvent],
+	event sdkgo.TriggerEvent[triggerAdapterEvent],
 ) (*dex.RPCResult[triggerAdapterState], error) {
 	return flow.approveTriggerRPC.Handle(ctx, event)
 }
 
 func (*triggerAdapterFlow) handleApprovalEvent(
 	ctx dex.Context,
-	_ connector.TriggerEvent[triggerAdapterEvent],
+	_ sdkgo.TriggerEvent[triggerAdapterEvent],
 ) (*dex.RPCResult[triggerAdapterState], error) {
 	approvalCount, err := triggerApprovalCount.Get(ctx)
 	var notFound *dex.AttributeNotFoundError
@@ -292,21 +292,21 @@ func TestTriggerTargetsResolveFlowAndDeduplicateRPCEventsWithRealDex(t *testing.
 	defer cancel()
 	testRunID := strconv.FormatInt(time.Now().UnixNano(), 10)
 	threadID := "thread-" + testRunID
-	resolveFlowID := func(event connector.TriggerEvent[triggerAdapterEvent]) (string, error) {
+	resolveFlowID := func(event sdkgo.TriggerEvent[triggerAdapterEvent]) (string, error) {
 		return "connector-trigger-" + event.Payload.ThreadID, nil
 	}
 	flowID := "connector-trigger-" + threadID
-	startTarget := connector.NewDexFlowTriggerTarget(harness.client, flow, resolveFlowID,
-		func(event connector.TriggerEvent[triggerAdapterEvent]) (triggerAdapterInput, error) {
+	startTarget := sdkgo.NewDexFlowTriggerTarget(harness.client, flow, resolveFlowID,
+		func(event sdkgo.TriggerEvent[triggerAdapterEvent]) (triggerAdapterInput, error) {
 			return triggerAdapterInput{EventID: event.ID}, nil
 		})
 	rootEventID := "root-event-" + testRunID
-	rootEvent := connector.TriggerEvent[triggerAdapterEvent]{ID: rootEventID, Payload: triggerAdapterEvent{ThreadID: threadID}}
+	rootEvent := sdkgo.TriggerEvent[triggerAdapterEvent]{ID: rootEventID, Payload: triggerAdapterEvent{ThreadID: threadID}}
 	require.NoError(t, startTarget.HandleTrigger(ctx, rootEvent))
 	require.NoError(t, startTarget.HandleTrigger(ctx, rootEvent))
 
-	replyTarget := connector.NewDexRPCTriggerTarget(harness.client, flow.approveTriggerRPC.Definition(), resolveFlowID)
-	replyEvent := connector.TriggerEvent[triggerAdapterEvent]{ID: "reply-event-" + testRunID, Payload: triggerAdapterEvent{ThreadID: threadID}}
+	replyTarget := sdkgo.NewDexRPCTriggerTarget(harness.client, flow.approveTriggerRPC.Definition(), resolveFlowID)
+	replyEvent := sdkgo.TriggerEvent[triggerAdapterEvent]{ID: "reply-event-" + testRunID, Payload: triggerAdapterEvent{ThreadID: threadID}}
 	require.Eventually(t, func() bool {
 		return replyTarget.HandleTrigger(ctx, replyEvent) == nil
 	}, 20*time.Second, 100*time.Millisecond)

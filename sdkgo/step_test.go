@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-package connector_test
+package sdkgo_test
 
 import (
 	"errors"
@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	connector "github.com/superdurable/dex-connectors-library/sdk/go"
-	"github.com/superdurable/dex-connectors-library/sdk/go/internal/testsupport"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/internal/testsupport"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -23,18 +23,18 @@ func TestWrongFactoryTargetInputDoesNotCompile(t *testing.T) {
 }
 
 func TestTypedTargetBindsGeneratedBranch(t *testing.T) {
-	target := connector.GoTo(factoryTarget{})
+	target := sdkgo.GoTo(factoryTarget{})
 	operation := &factoryQuery{definition: queryDefinition(testQueryRef)}
-	step, err := connector.NewQueryStep(connector.QueryStepConfig[string, string, string]{
+	step, err := sdkgo.NewQueryStep(sdkgo.QueryStepConfig[string, string, string]{
 		StepType:     "GeneratedFactoryTarget",
-		Presentation: connector.StepPresentation{GroupID: "test", GroupLabel: "Test", Explanation: "test query"},
+		Presentation: sdkgo.StepPresentation{GroupID: "test", GroupLabel: "Test", Explanation: "test query"},
 		Operation:    operation,
 		Connection:   testConnection,
 		BuildInput:   func(input string) (string, error) { return input, nil },
-		Branches: []connector.BranchTarget[connector.QueryStepOutput[string, string]]{
+		Branches: []sdkgo.BranchTarget[sdkgo.QueryStepOutput[string, string]]{
 			target.BranchTarget(testQuerySucceeded),
-			connector.GoTo(factoryTarget{}).BranchTarget(testQueryFailed),
-			connector.GoTo(factoryTarget{}).BranchTarget(testQueryDefect),
+			sdkgo.GoTo(factoryTarget{}).BranchTarget(testQueryFailed),
+			sdkgo.GoTo(factoryTarget{}).BranchTarget(testQueryDefect),
 		},
 	})
 	require.NoError(t, err)
@@ -42,22 +42,22 @@ func TestTypedTargetBindsGeneratedBranch(t *testing.T) {
 }
 
 type factoryQuery struct {
-	definition connector.QueryDefinition
+	definition sdkgo.QueryDefinition
 	calls      int
 }
 
-func (operation *factoryQuery) Definition() connector.QueryDefinition { return operation.definition }
+func (operation *factoryQuery) Definition() sdkgo.QueryDefinition { return operation.definition }
 
-func (operation *factoryQuery) Invoke(connector.Call, string) connector.QueryAttempt[string] {
+func (operation *factoryQuery) Invoke(sdkgo.Call, string) sdkgo.QueryAttempt[string] {
 	operation.calls++
-	return connector.NewQueryBranch(testQuerySucceeded, "value", nil, connector.Receipt{})
+	return sdkgo.NewQueryBranch(testQuerySucceeded, "value", nil, sdkgo.Receipt{})
 }
 
 type factoryTarget struct {
-	dex.StepDefaultsNoWaitFor[connector.QueryStepOutput[string, string]]
+	dex.StepDefaultsNoWaitFor[sdkgo.QueryStepOutput[string, string]]
 }
 
-func (factoryTarget) Execute(dex.Context, connector.QueryStepOutput[string, string]) (*dex.StepDecision, error) {
+func (factoryTarget) Execute(dex.Context, sdkgo.QueryStepOutput[string, string]) (*dex.StepDecision, error) {
 	return dex.GracefulComplete(nil), nil
 }
 
@@ -84,29 +84,29 @@ func (factoryFailureTarget) Execute(dex.Context, string) (*dex.StepDecision, err
 
 func TestQueryFactoryRequiresExactlyOneTargetPerBranch(t *testing.T) {
 	operation := &factoryQuery{definition: queryDefinition(testQueryRef)}
-	base := connector.QueryStepConfig[string, string, string]{
+	base := sdkgo.QueryStepConfig[string, string, string]{
 		StepType:     "FactoryQuery",
-		Presentation: connector.StepPresentation{GroupID: "test", GroupLabel: "Test", Explanation: "test query"},
+		Presentation: sdkgo.StepPresentation{GroupID: "test", GroupLabel: "Test", Explanation: "test query"},
 		Operation:    operation, Connection: testConnection, BuildInput: func(input string) (string, error) { return input, nil },
 	}
-	_, err := connector.NewQueryStep(base)
+	_, err := sdkgo.NewQueryStep(base)
 	require.ErrorContains(t, err, "branch target")
 
 	base.Branches = queryFactoryTargets()
-	base.Branches = append(base.Branches, connector.GoToBranch(testQuerySucceeded, factoryTarget{}))
-	_, err = connector.NewQueryStep(base)
+	base.Branches = append(base.Branches, sdkgo.GoToBranch(testQuerySucceeded, factoryTarget{}))
+	_, err = sdkgo.NewQueryStep(base)
 	require.ErrorContains(t, err, "duplicated")
 
-	base.Branches = append(queryFactoryTargets(), connector.GoToBranch(connector.BranchID("unknown"), factoryTarget{}))
-	_, err = connector.NewQueryStep(base)
+	base.Branches = append(queryFactoryTargets(), sdkgo.GoToBranch(sdkgo.BranchID("unknown"), factoryTarget{}))
+	_, err = sdkgo.NewQueryStep(base)
 	require.ErrorContains(t, err, "not declared")
 }
 
 func TestFactoryBuildInputDefectDoesNotInvokeProvider(t *testing.T) {
 	operation := &factoryQuery{definition: queryDefinition(testQueryRef)}
-	step := connector.MustNewQueryStep(connector.QueryStepConfig[string, string, string]{
+	step := sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[string, string, string]{
 		StepType:     "FactoryBuildDefect",
-		Presentation: connector.StepPresentation{GroupID: "test", GroupLabel: "Test", Explanation: "test query"},
+		Presentation: sdkgo.StepPresentation{GroupID: "test", GroupLabel: "Test", Explanation: "test query"},
 		Operation:    operation, Connection: testConnection,
 		BuildInput: func(string) (string, error) { return "", errors.New("bad input") },
 		Branches:   queryFactoryTargets(),
@@ -119,20 +119,20 @@ func TestFactoryBuildInputDefectDoesNotInvokeProvider(t *testing.T) {
 
 func TestFactoryValidatesResourcesAndOverlaysExecuteOptions(t *testing.T) {
 	definition := queryDefinition(testQueryRef)
-	definition.ResultAttribute = connector.RequirementRequired
-	definition.Progress = connector.ProgressCapabilities{Structured: true, Text: true}
-	definition.StepDefaults = connector.StepDefaults{
+	definition.ResultAttribute = sdkgo.RequirementRequired
+	definition.Progress = sdkgo.ProgressCapabilities{Structured: true, Text: true}
+	definition.StepDefaults = sdkgo.StepDefaults{
 		ExecuteMethodTimeout: 30 * time.Second,
 		ExecuteRetry:         &dex.RetryPolicy{MaximumAttempts: 5},
 		ExecuteDurability:    dex.StepDurabilitySync,
 	}
 	operation := &factoryQuery{definition: definition}
-	attribute := dex.DefineAttribute[connector.QueryResult[string]]("factory-result")
-	progress := dex.DefineStream[connector.ProgressUpdate]("factory-progress", 1024)
+	attribute := dex.DefineAttribute[sdkgo.QueryResult[string]]("factory-result")
+	progress := dex.DefineStream[sdkgo.ProgressUpdate]("factory-progress", 1024)
 	text := dex.DefineStream[string]("factory-text", 1024)
-	step, err := connector.NewQueryStep(connector.QueryStepConfig[string, string, string]{
+	step, err := sdkgo.NewQueryStep(sdkgo.QueryStepConfig[string, string, string]{
 		StepType:     "FactoryResources",
-		Presentation: connector.StepPresentation{GroupID: "test", GroupLabel: "Test", Explanation: "test query"},
+		Presentation: sdkgo.StepPresentation{GroupID: "test", GroupLabel: "Test", Explanation: "test query"},
 		Operation:    operation, Connection: testConnection,
 		BuildInput: func(input string) (string, error) { return input, nil },
 		Branches:   queryFactoryTargets(), ResultAttribute: &attribute, ProgressStream: &progress, TextStream: &text,
@@ -149,9 +149,9 @@ func TestFactoryValidatesResourcesAndOverlaysExecuteOptions(t *testing.T) {
 	require.Len(t, step.PersistenceRequirements().Attributes, 1)
 	require.Len(t, step.PersistenceRequirements().Streams, 2)
 
-	_, err = connector.NewQueryStep(connector.QueryStepConfig[string, string, string]{
+	_, err = sdkgo.NewQueryStep(sdkgo.QueryStepConfig[string, string, string]{
 		StepType:     "MissingResources",
-		Presentation: connector.StepPresentation{GroupID: "test", GroupLabel: "Test", Explanation: "test query"},
+		Presentation: sdkgo.StepPresentation{GroupID: "test", GroupLabel: "Test", Explanation: "test query"},
 		Operation:    operation, Connection: testConnection,
 		BuildInput: func(input string) (string, error) { return input, nil }, Branches: queryFactoryTargets(),
 	})
@@ -160,16 +160,16 @@ func TestFactoryValidatesResourcesAndOverlaysExecuteOptions(t *testing.T) {
 
 func TestFactoryRejectsWaitForOptionsAndStepRefFailsClosed(t *testing.T) {
 	operation := &factoryQuery{definition: queryDefinition(testQueryRef)}
-	_, err := connector.NewQueryStep(connector.QueryStepConfig[string, string, string]{
+	_, err := sdkgo.NewQueryStep(sdkgo.QueryStepConfig[string, string, string]{
 		StepType:     "FactoryWaitOptions",
-		Presentation: connector.StepPresentation{GroupID: "test", GroupLabel: "Test", Explanation: "test query"},
+		Presentation: sdkgo.StepPresentation{GroupID: "test", GroupLabel: "Test", Explanation: "test query"},
 		Operation:    operation, Connection: testConnection,
 		BuildInput: func(input string) (string, error) { return input, nil }, Branches: queryFactoryTargets(),
 		StepOptionsOverride: &dex.StepOptions{WaitForMethodTimeout: time.Second},
 	})
 	require.ErrorContains(t, err, "rejects WaitFor options")
 
-	reference := connector.StepRef[string]("ReferencedStep")
+	reference := sdkgo.StepRef[string]("ReferencedStep")
 	decision, err := reference.Execute(testsupport.NewDexContext("flow-1", "step-1"), "input")
 	require.Nil(t, decision)
 	require.ErrorContains(t, err, "cannot execute")
@@ -177,10 +177,10 @@ func TestFactoryRejectsWaitForOptionsAndStepRefFailsClosed(t *testing.T) {
 	require.Error(t, err)
 }
 
-func queryFactoryTargets() []connector.BranchTarget[connector.QueryStepOutput[string, string]] {
-	return []connector.BranchTarget[connector.QueryStepOutput[string, string]]{
-		connector.GoToBranch(testQuerySucceeded, factoryTarget{}),
-		connector.GoToBranch(testQueryFailed, factoryTarget{}),
-		connector.GoToBranch(testQueryDefect, factoryTarget{}),
+func queryFactoryTargets() []sdkgo.BranchTarget[sdkgo.QueryStepOutput[string, string]] {
+	return []sdkgo.BranchTarget[sdkgo.QueryStepOutput[string, string]]{
+		sdkgo.GoToBranch(testQuerySucceeded, factoryTarget{}),
+		sdkgo.GoToBranch(testQueryFailed, factoryTarget{}),
+		sdkgo.GoToBranch(testQueryDefect, factoryTarget{}),
 	}
 }

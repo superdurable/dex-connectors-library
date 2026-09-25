@@ -1,8 +1,8 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package connector defines the provider-neutral contract used by Dex connectors.
-package connector
+// Package sdkgo defines the provider-neutral contract used by Dex connectors.
+package sdkgo
 
 import (
 	"encoding/binary"

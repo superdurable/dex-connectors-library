@@ -7,7 +7,7 @@ alwaysApply: true
 
 - Git tags are the only version authority; source manifests have no release
   version.
-- SDK tags use sdk/go/vX.Y.Z; connector tags use their module directory.
+- SDK tags use sdkgo/vX.Y.Z; connector tags use their module directory.
 - Connector modules depend on an exact published SDK version without replace,
   pseudo-version, branch, or commit SHA.
 - Release SDK changes before a later connector dependency-upgrade PR.
@@ -21,6 +21,6 @@ alwaysApply: true
   a major module-path migration.
 - Use one released module per PR unless a repository-wide mechanical change
   requires several.
-- Use sdk(go):, connector(<slug>):, tooling:, or docs: subjects.
+- Use sdkgo:, connector(<slug>):, tooling:, or docs: subjects.
 - Put exact lowercase (breaking) in the PR and final commit message for public
   breaking changes.
