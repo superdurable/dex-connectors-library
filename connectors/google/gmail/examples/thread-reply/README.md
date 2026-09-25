@@ -27,9 +27,9 @@ as its durable identity.
 
 The alpha local Trigger transport polls the newest inbox messages. It derives
 each event ID from the immutable Gmail message ID. A process restart may rescan
-the current page, but deterministic Flow starts and the Trigger RPC's durable
-event-ID set absorb duplicate delivery. Production push delivery and durable
-Gmail history checkpoints are outside this local example.
+the current page, but deterministic Flow starts and the application RPC's
+bounded accepted reply event ID absorb duplicate delivery. Production push
+delivery and durable Gmail history checkpoints are outside this local example.
 
 ## Run
 

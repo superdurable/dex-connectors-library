@@ -52,7 +52,7 @@ func TestThreadReplyExampleCompletesOnceAndPreservesUncertainOutcomeWithRealDex(
 			From: "sender@example.com", Subject: "Re: Approval request", Snippet: "approved", IsReply: true,
 		},
 	}
-	replyTarget := sdkgo.NewDexRPCTriggerTarget(harness.client, flow.ReplyTriggerRPC().Definition(), gmail.FlowIDByThread(ResolveFlowID))
+	replyTarget := sdkgo.NewDexRPCTriggerTarget(harness.client, flow.ReceiveEmailReply, gmail.FlowIDByThread(ResolveFlowID))
 	require.NoError(t, replyTarget.HandleTrigger(ctx, successReply))
 	require.NoError(t, replyTarget.HandleTrigger(ctx, successReply))
 

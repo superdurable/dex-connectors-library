@@ -72,7 +72,7 @@ func run(ctx context.Context) error {
 	}
 	replyRunner, err := gmail.NewLocalReplyReceivedTrigger(
 		store, threadreply.ConnectionName, threadreply.ReplyTriggerBinding,
-		sdkgo.NewDexRPCTriggerTarget(client, flow.ReplyTriggerRPC().Definition(), gmail.FlowIDByThread(threadreply.ResolveFlowID)),
+		sdkgo.NewDexRPCTriggerTarget(client, flow.ReceiveEmailReply, gmail.FlowIDByThread(threadreply.ResolveFlowID)),
 	)
 	if err != nil {
 		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
