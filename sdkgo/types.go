@@ -75,14 +75,6 @@ type BranchDefinition struct {
 	Description string   `json:"description" yaml:"description"`
 }
 
-type Requirement string
-
-const (
-	RequirementNone     Requirement = "none"
-	RequirementOptional Requirement = "optional"
-	RequirementRequired Requirement = "required"
-)
-
 type ProgressCapabilities struct {
 	Structured bool `json:"structured" yaml:"structured"`
 	Text       bool `json:"text" yaml:"text"`
@@ -97,12 +89,11 @@ type StepDefaults struct {
 }
 
 type QueryDefinition struct {
-	Operation       OperationRef         `json:"operation" yaml:"operation"`
-	Branches        []BranchDefinition   `json:"branches" yaml:"branches"`
-	DefectBranch    BranchID             `json:"defectBranch" yaml:"defectBranch"`
-	StepDefaults    StepDefaults         `json:"stepDefaults" yaml:"stepDefaults"`
-	ResultAttribute Requirement          `json:"resultAttribute" yaml:"resultAttribute"`
-	Progress        ProgressCapabilities `json:"progress" yaml:"progress"`
+	Operation    OperationRef         `json:"operation" yaml:"operation"`
+	Branches     []BranchDefinition   `json:"branches" yaml:"branches"`
+	DefectBranch BranchID             `json:"defectBranch" yaml:"defectBranch"`
+	StepDefaults StepDefaults         `json:"stepDefaults" yaml:"stepDefaults"`
+	Progress     ProgressCapabilities `json:"progress" yaml:"progress"`
 }
 
 type MutationDefinition struct {
@@ -111,7 +102,6 @@ type MutationDefinition struct {
 	DefectBranch    BranchID             `json:"defectBranch" yaml:"defectBranch"`
 	UncertainBranch BranchID             `json:"uncertainBranch" yaml:"uncertainBranch"`
 	StepDefaults    StepDefaults         `json:"stepDefaults" yaml:"stepDefaults"`
-	ResultAttribute Requirement          `json:"resultAttribute" yaml:"resultAttribute"`
 	Progress        ProgressCapabilities `json:"progress" yaml:"progress"`
 }
 

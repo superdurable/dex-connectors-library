@@ -2,7 +2,7 @@
 
 This module contains the provider-neutral contracts used by Dex connector
 modules. It owns stable call identity, typed attempts and results, generic Step
-factories, progress Streams, Result Attribute requirements, and the canonical
+factories, progress Streams, optional Result Attributes, and the canonical
 metadata used by operation-specific generated factories.
 
 Applications normally depend on a connector module such as OpenAI rather than
@@ -13,11 +13,14 @@ Connector Trigger sources run outside Dex Steps and deliver typed, stable-ID
 events through `TriggerRunner`. Generated Trigger factories accept any typed
 `TriggerTarget`. Applications choose `NewDexFlowTriggerTarget`,
 `NewDexRPCTriggerTarget`, or a custom target. Both Dex targets require an
-application-owned `TriggerEventFilter` and `FlowIDResolver`. The filter runs
-before Flow ID resolution and returns false to consume an irrelevant event
-without calling Dex. Filter errors keep delivery retryable. Filters should be
-deterministic and side-effect free because a persisted delivery can be replayed
-after restart. The SDK uses the provider event ID as the Flow-start request ID.
+application-owned `TriggerFilter` and `FlowIDResolver`. Flow targets also take a
+`FlowInputMapper`; RPC targets take an `RPCInputMapper` and may invoke any typed
+application RPC. Every callback receives the same complete Trigger event. The
+filter runs before Flow ID resolution and returns false to consume an irrelevant
+event without calling Dex. These callbacks are pure functions without error
+results. They should be deterministic and side-effect free because a persisted
+delivery can be replayed after restart. The SDK uses the provider event ID as
+the Flow-start request ID.
 
 Provider Trigger configuration may reduce upstream traffic, but it is not the
 application admission boundary. Applications use the typed filter to enforce
@@ -31,6 +34,17 @@ RPC-name string can drift from registration. The application owns RPC options,
 durable state, locking, and event deduplication. Connector Triggers preserve the
 provider event ID but do not impose a retention policy or create hidden
 Attributes.
+
+Connector Steps use `MapToOperationInput` to map application Step input to one
+provider operation input. The mapper cannot fail and the branch target receives
+only the current `QueryResult` or `MutationResult`. Applications should use an
+initialization Step to validate start input and persist domain context before a
+Connector Step. A Result Attribute is always optional. Configure one only when
+the raw provider result must remain available outside the transition chain;
+otherwise the result is already durable as the branch target's input.
+Applications must register every configured Attribute and Stream explicitly in
+the Flow persistence schema. The Connector SDK does not aggregate or register
+those resources.
 
 Local development configuration stores named connections and named Trigger
 bindings separately. `localconfig.Store.DecodeTriggerConfiguration` selects a

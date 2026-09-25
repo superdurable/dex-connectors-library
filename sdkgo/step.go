@@ -56,17 +56,12 @@ func GoToBranch[T any](branch BranchID, target dex.Step[T]) BranchTarget[T] {
 	return BranchTarget[T]{branch: branch, target: target}
 }
 
-type PersistenceRequirements struct {
-	Attributes []dex.AttributeDef
-	Streams    []dex.StreamDef
-}
-
 type QueryStepConfig[STEP_IN, OP_IN, OUT any] struct {
 	StepType            string
 	Annotations         StepAnnotations
 	Operation           Query[OP_IN, OUT]
 	Connection          ConnectionRef
-	BuildOperationInput func(STEP_IN) (OP_IN, error)
+	MapToOperationInput func(STEP_IN) OP_IN
 	Branches            []BranchTarget[QueryResult[OUT]]
 	ResultAttribute     *dex.Attribute[QueryResult[OUT]]
 	ProgressStream      *dex.Stream[ProgressUpdate]
@@ -80,7 +75,7 @@ type MutationStepConfig[STEP_IN, OP_IN, OUT any] struct {
 	Annotations         StepAnnotations
 	Operation           Mutation[OP_IN, OUT]
 	Connection          ConnectionRef
-	BuildOperationInput func(STEP_IN) (OP_IN, error)
+	MapToOperationInput func(STEP_IN) OP_IN
 	Branches            []BranchTarget[MutationResult[OUT]]
 	ResultAttribute     *dex.Attribute[MutationResult[OUT]]
 	ProgressStream      *dex.Stream[ProgressUpdate]
@@ -95,7 +90,7 @@ type QueryStep[STEP_IN, OP_IN, OUT any] struct {
 	annotations         StepAnnotations
 	operation           Query[OP_IN, OUT]
 	connection          ConnectionRef
-	buildOperationInput func(STEP_IN) (OP_IN, error)
+	mapToOperationInput func(STEP_IN) OP_IN
 	branches            map[BranchID]dex.Step[QueryResult[OUT]]
 	resultAttribute     *dex.Attribute[QueryResult[OUT]]
 	progressStream      *dex.Stream[ProgressUpdate]
@@ -110,7 +105,7 @@ type MutationStep[STEP_IN, OP_IN, OUT any] struct {
 	annotations         StepAnnotations
 	operation           Mutation[OP_IN, OUT]
 	connection          ConnectionRef
-	buildOperationInput func(STEP_IN) (OP_IN, error)
+	mapToOperationInput func(STEP_IN) OP_IN
 	branches            map[BranchID]dex.Step[MutationResult[OUT]]
 	resultAttribute     *dex.Attribute[MutationResult[OUT]]
 	progressStream      *dex.Stream[ProgressUpdate]
@@ -127,14 +122,14 @@ func NewQueryStep[STEP_IN, OP_IN, OUT any](config QueryStepConfig[STEP_IN, OP_IN
 	if err := definition.Validate(); err != nil {
 		return QueryStep[STEP_IN, OP_IN, OUT]{}, fmt.Errorf("query definition: %w", err)
 	}
-	if err := validateFactoryConfig(config.StepType, config.Annotations, config.Connection, config.BuildOperationInput != nil); err != nil {
+	if err := validateFactoryConfig(config.StepType, config.Annotations, config.Connection, config.MapToOperationInput != nil); err != nil {
 		return QueryStep[STEP_IN, OP_IN, OUT]{}, err
 	}
 	branches, err := validateBranchTargets(definition.Branches, config.Branches)
 	if err != nil {
 		return QueryStep[STEP_IN, OP_IN, OUT]{}, err
 	}
-	if err := validateResources(definition.ResultAttribute, definition.Progress, attributeName(config.ResultAttribute), streamName(config.ProgressStream), streamName(config.TextStream)); err != nil {
+	if err := validateResources(definition.Progress, streamName(config.ProgressStream), streamName(config.TextStream)); err != nil {
 		return QueryStep[STEP_IN, OP_IN, OUT]{}, err
 	}
 	options, err := stepOptions(definition.StepDefaults, config.StepOptionsOverride)
@@ -143,7 +138,7 @@ func NewQueryStep[STEP_IN, OP_IN, OUT any](config QueryStepConfig[STEP_IN, OP_IN
 	}
 	return QueryStep[STEP_IN, OP_IN, OUT]{
 		stepType: config.StepType, annotations: config.Annotations, operation: config.Operation,
-		connection: config.Connection, buildOperationInput: config.BuildOperationInput, branches: branches,
+		connection: config.Connection, mapToOperationInput: config.MapToOperationInput, branches: branches,
 		resultAttribute: config.ResultAttribute, progressStream: config.ProgressStream,
 		textStream: config.TextStream, textOptions: append([]dex.BufferedTextStreamOption(nil), config.TextOptions...),
 		stepOptions: options,
@@ -166,14 +161,14 @@ func NewMutationStep[STEP_IN, OP_IN, OUT any](config MutationStepConfig[STEP_IN,
 	if err := definition.Validate(); err != nil {
 		return MutationStep[STEP_IN, OP_IN, OUT]{}, fmt.Errorf("mutation definition: %w", err)
 	}
-	if err := validateFactoryConfig(config.StepType, config.Annotations, config.Connection, config.BuildOperationInput != nil); err != nil {
+	if err := validateFactoryConfig(config.StepType, config.Annotations, config.Connection, config.MapToOperationInput != nil); err != nil {
 		return MutationStep[STEP_IN, OP_IN, OUT]{}, err
 	}
 	branches, err := validateBranchTargets(definition.Branches, config.Branches)
 	if err != nil {
 		return MutationStep[STEP_IN, OP_IN, OUT]{}, err
 	}
-	if err := validateResources(definition.ResultAttribute, definition.Progress, attributeName(config.ResultAttribute), streamName(config.ProgressStream), streamName(config.TextStream)); err != nil {
+	if err := validateResources(definition.Progress, streamName(config.ProgressStream), streamName(config.TextStream)); err != nil {
 		return MutationStep[STEP_IN, OP_IN, OUT]{}, err
 	}
 	options, err := stepOptions(definition.StepDefaults, config.StepOptionsOverride)
@@ -182,7 +177,7 @@ func NewMutationStep[STEP_IN, OP_IN, OUT any](config MutationStepConfig[STEP_IN,
 	}
 	return MutationStep[STEP_IN, OP_IN, OUT]{
 		stepType: config.StepType, annotations: config.Annotations, operation: config.Operation,
-		connection: config.Connection, buildOperationInput: config.BuildOperationInput, branches: branches,
+		connection: config.Connection, mapToOperationInput: config.MapToOperationInput, branches: branches,
 		resultAttribute: config.ResultAttribute, progressStream: config.ProgressStream,
 		textStream: config.TextStream, textOptions: append([]dex.BufferedTextStreamOption(nil), config.TextOptions...),
 		stepOptions: options,
@@ -205,20 +200,11 @@ func (step QueryStep[STEP_IN, OP_IN, OUT]) GetStepOptions() *dex.StepOptions {
 
 func (step QueryStep[STEP_IN, OP_IN, OUT]) Annotations() StepAnnotations { return step.annotations }
 
-func (step QueryStep[STEP_IN, OP_IN, OUT]) PersistenceRequirements() PersistenceRequirements {
-	return persistenceRequirements(step.resultAttribute, step.progressStream, step.textStream)
-}
-
 func (step QueryStep[STEP_IN, OP_IN, OUT]) Execute(ctx dex.Context, input STEP_IN) (*dex.StepDecision, error) {
-	operationInput, err := step.buildOperationInput(input)
-	var result QueryResult[OUT]
+	operationInput := step.mapToOperationInput(input)
+	result, err := RunQuery(ctx, step.operation, step.connection, operationInput, step.runOptions()...)
 	if err != nil {
-		result = failedQuery[OUT](step.operation.Definition(), "BuildOperationInput returned an error")
-	} else {
-		result, err = RunQuery(ctx, step.operation, step.connection, operationInput, step.runOptions()...)
-		if err != nil {
-			return nil, err
-		}
+		return nil, err
 	}
 	if step.resultAttribute != nil {
 		if err := step.resultAttribute.Set(ctx, result); err != nil {
@@ -246,20 +232,11 @@ func (step MutationStep[STEP_IN, OP_IN, OUT]) Annotations() StepAnnotations {
 	return step.annotations
 }
 
-func (step MutationStep[STEP_IN, OP_IN, OUT]) PersistenceRequirements() PersistenceRequirements {
-	return persistenceRequirements(step.resultAttribute, step.progressStream, step.textStream)
-}
-
 func (step MutationStep[STEP_IN, OP_IN, OUT]) Execute(ctx dex.Context, input STEP_IN) (*dex.StepDecision, error) {
-	operationInput, err := step.buildOperationInput(input)
-	var result MutationResult[OUT]
+	operationInput := step.mapToOperationInput(input)
+	result, err := RunMutation(ctx, step.operation, step.connection, operationInput, step.runOptions()...)
 	if err != nil {
-		result = failedMutation[OUT](step.operation.Definition(), "BuildOperationInput returned an error")
-	} else {
-		result, err = RunMutation(ctx, step.operation, step.connection, operationInput, step.runOptions()...)
-		if err != nil {
-			return nil, err
-		}
+		return nil, err
 	}
 	if step.resultAttribute != nil {
 		if err := step.resultAttribute.Set(ctx, result); err != nil {
@@ -296,7 +273,7 @@ func (reference stepReference[T]) Execute(dex.Context, T) (*dex.StepDecision, er
 	return nil, fmt.Errorf("connector StepRef %q cannot execute", reference.stepType)
 }
 
-func validateFactoryConfig(stepType string, annotations StepAnnotations, connection ConnectionRef, hasBuildOperationInput bool) error {
+func validateFactoryConfig(stepType string, annotations StepAnnotations, connection ConnectionRef, hasOperationInputMapper bool) error {
 	if strings.TrimSpace(stepType) == "" {
 		return fmt.Errorf("stable Step type is required")
 	}
@@ -306,8 +283,8 @@ func validateFactoryConfig(stepType string, annotations StepAnnotations, connect
 	if err := connection.Validate(); err != nil {
 		return fmt.Errorf("Step connection: %w", err)
 	}
-	if !hasBuildOperationInput {
-		return fmt.Errorf("BuildOperationInput is required")
+	if !hasOperationInputMapper {
+		return fmt.Errorf("MapToOperationInput is required")
 	}
 	return nil
 }
@@ -338,18 +315,7 @@ func validateBranchTargets[T any](definitions []BranchDefinition, targets []Bran
 	return resolved, nil
 }
 
-func validateResources(requirement Requirement, progress ProgressCapabilities, attributeName, progressName, textName string) error {
-	switch requirement {
-	case RequirementNone:
-		if attributeName != "" {
-			return fmt.Errorf("operation forbids a Result Attribute")
-		}
-	case RequirementRequired:
-		if attributeName == "" {
-			return fmt.Errorf("operation requires a named Result Attribute")
-		}
-	case RequirementOptional:
-	}
+func validateResources(progress ProgressCapabilities, progressName, textName string) error {
 	if progressName != "" && !progress.Structured {
 		return fmt.Errorf("operation does not support structured progress")
 	}
@@ -357,13 +323,6 @@ func validateResources(requirement Requirement, progress ProgressCapabilities, a
 		return fmt.Errorf("operation does not support text progress")
 	}
 	return nil
-}
-
-func attributeName[T any](attribute *dex.Attribute[T]) string {
-	if attribute == nil {
-		return ""
-	}
-	return attribute.AttributeName()
 }
 
 func streamName[T any](stream *dex.Stream[T]) string {
@@ -474,18 +433,4 @@ func factoryRunOptions(progress *dex.Stream[ProgressUpdate], text *dex.Stream[st
 		options = append(options, WithTextStream(*text, textOptions...))
 	}
 	return options
-}
-
-func persistenceRequirements[T any](attribute *dex.Attribute[T], progress *dex.Stream[ProgressUpdate], text *dex.Stream[string]) PersistenceRequirements {
-	var requirements PersistenceRequirements
-	if attribute != nil {
-		requirements.Attributes = append(requirements.Attributes, *attribute)
-	}
-	if progress != nil {
-		requirements.Streams = append(requirements.Streams, *progress)
-	}
-	if text != nil {
-		requirements.Streams = append(requirements.Streams, *text)
-	}
-	return requirements
 }

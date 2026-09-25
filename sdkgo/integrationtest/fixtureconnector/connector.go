@@ -116,8 +116,7 @@ func (lookupWidgetOperation) Definition() sdkgo.QueryDefinition {
 			{ID: lookupWidgetFailed, Description: "The lookup was rejected."},
 			{ID: lookupWidgetDefect, Description: "The connector definition is invalid."},
 		},
-		DefectBranch:    lookupWidgetDefect,
-		ResultAttribute: sdkgo.RequirementNone,
+		DefectBranch: lookupWidgetDefect,
 		StepDefaults: sdkgo.StepDefaults{
 			ExecuteMethodTimeout: 10 * time.Second,
 			ExecuteRetry:         &dex.RetryPolicy{MaximumAttempts: 3, InitialInterval: 10 * time.Millisecond},
@@ -157,7 +156,6 @@ func (createWidgetOperation) Definition() sdkgo.MutationDefinition {
 		},
 		DefectBranch:    createWidgetDefect,
 		UncertainBranch: createWidgetUncertain,
-		ResultAttribute: sdkgo.RequirementRequired,
 		Progress:        sdkgo.ProgressCapabilities{Structured: true},
 		StepDefaults: sdkgo.StepDefaults{
 			ExecuteMethodTimeout: 10 * time.Second,
@@ -208,7 +206,7 @@ type LookupWidgetStepConfig[IN any] struct {
 	StepType            string
 	Annotations         sdkgo.StepAnnotations
 	Connection          Connection
-	BuildOperationInput func(IN) (LookupInput, error)
+	MapToOperationInput func(IN) LookupInput
 	Found               sdkgo.Target[LookupWidgetResult]
 	Absent              sdkgo.Target[LookupWidgetResult]
 	Failed              sdkgo.Target[LookupWidgetResult]
@@ -222,7 +220,7 @@ func NewLookupWidgetStep[IN any](config LookupWidgetStepConfig[IN]) sdkgo.QueryS
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, LookupInput, Widget]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		Operation: lookupWidgetOperation{connection: config.Connection}, Connection: config.Connection.reference,
-		BuildOperationInput: config.BuildOperationInput,
+		MapToOperationInput: config.MapToOperationInput,
 		Branches: []sdkgo.BranchTarget[LookupWidgetResult]{
 			config.Found.BranchTarget(lookupWidgetFound),
 			config.Absent.BranchTarget(lookupWidgetAbsent),
@@ -239,7 +237,7 @@ type CreateWidgetStepConfig[IN any] struct {
 	StepType            string
 	Annotations         sdkgo.StepAnnotations
 	Connection          Connection
-	BuildOperationInput func(IN) (CreateInput, error)
+	MapToOperationInput func(IN) CreateInput
 	Completed           sdkgo.Target[CreateWidgetResult]
 	Rejected            sdkgo.Target[CreateWidgetResult]
 	Uncertain           sdkgo.Target[CreateWidgetResult]
@@ -255,7 +253,7 @@ func NewCreateWidgetStep[IN any](config CreateWidgetStepConfig[IN]) sdkgo.Mutati
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateInput, Widget]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		Operation: createWidgetOperation{connection: config.Connection}, Connection: config.Connection.reference,
-		BuildOperationInput: config.BuildOperationInput,
+		MapToOperationInput: config.MapToOperationInput,
 		Branches: []sdkgo.BranchTarget[CreateWidgetResult]{
 			config.Completed.BranchTarget(createWidgetCompleted),
 			config.Rejected.BranchTarget(createWidgetRejected),
