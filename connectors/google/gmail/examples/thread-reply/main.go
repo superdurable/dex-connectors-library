@@ -63,16 +63,38 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return errors.Join(err, stopWorker(worker), cache.Close())
 	}
+	var startTriggerConfiguration gmail.MessageReceivedTriggerConfiguration
+	if err := store.DecodeTriggerConfiguration(
+		gmail.ConnectorID, threadreply.ConnectionName, gmail.MessageReceivedTriggerDefinition.Trigger.TriggerName,
+		threadreply.StartTriggerBinding, &startTriggerConfiguration,
+	); err != nil {
+		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
+	}
+	startEventFilter, err := threadreply.NewStartTriggerEventFilter(startTriggerConfiguration)
+	if err != nil {
+		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
+	}
 	startRunner, err := gmail.NewLocalMessageReceivedTrigger(
 		store, threadreply.ConnectionName, threadreply.StartTriggerBinding,
-		sdkgo.NewDexFlowTriggerTarget(client, flow, gmail.FlowIDByThread(threadreply.ResolveFlowID), threadreply.BuildStartInput),
+		sdkgo.NewDexFlowTriggerTarget(client, flow, startEventFilter, gmail.FlowIDByThread(threadreply.ResolveFlowID), threadreply.BuildStartInput),
 	)
+	if err != nil {
+		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
+	}
+	var replyTriggerConfiguration gmail.ReplyReceivedTriggerConfiguration
+	if err := store.DecodeTriggerConfiguration(
+		gmail.ConnectorID, threadreply.ConnectionName, gmail.ReplyReceivedTriggerDefinition.Trigger.TriggerName,
+		threadreply.ReplyTriggerBinding, &replyTriggerConfiguration,
+	); err != nil {
+		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
+	}
+	replyEventFilter, err := threadreply.NewReplyTriggerEventFilter(replyTriggerConfiguration)
 	if err != nil {
 		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
 	}
 	replyRunner, err := gmail.NewLocalReplyReceivedTrigger(
 		store, threadreply.ConnectionName, threadreply.ReplyTriggerBinding,
-		sdkgo.NewDexRPCTriggerTarget(client, flow.ReceiveEmailReply, gmail.FlowIDByThread(threadreply.ResolveFlowID)),
+		sdkgo.NewDexRPCTriggerTarget(client, flow.ReceiveEmailReply, replyEventFilter, gmail.FlowIDByThread(threadreply.ResolveFlowID)),
 	)
 	if err != nil {
 		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())

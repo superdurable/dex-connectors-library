@@ -8,6 +8,8 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"net/mail"
+	"strings"
 
 	gmail "github.com/superdurable/dex-connectors-library/connectors/google/gmail"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
@@ -281,6 +283,22 @@ func failureMessage(branch sdkgo.BranchID, failure *sdkgo.Failure) string {
 	return fmt.Sprintf("%s: %s", branch, failure.Message)
 }
 
+// NewStartTriggerEventFilter creates the application's Gmail root-message admission rule.
+func NewStartTriggerEventFilter(configuration gmail.MessageReceivedTriggerConfiguration) (sdkgo.TriggerEventFilter[gmail.MessageEvent], error) {
+	if err := configuration.Validate(); err != nil {
+		return nil, err
+	}
+	return newMessageTriggerEventFilter(configuration.MessageMatcher, false), nil
+}
+
+// NewReplyTriggerEventFilter creates the application's Gmail reply admission rule.
+func NewReplyTriggerEventFilter(configuration gmail.ReplyReceivedTriggerConfiguration) (sdkgo.TriggerEventFilter[gmail.MessageEvent], error) {
+	if err := configuration.Validate(); err != nil {
+		return nil, err
+	}
+	return newMessageTriggerEventFilter(configuration.ReplyMatcher, true), nil
+}
+
 func ResolveFlowID(identity gmail.ThreadIdentity) (string, error) {
 	if identity.PrimaryEmail == "" || identity.ThreadID == "" {
 		return "", fmt.Errorf("Gmail thread identity is incomplete")
@@ -292,6 +310,35 @@ func ResolveFlowID(identity gmail.ThreadIdentity) (string, error) {
 func BuildStartInput(event sdkgo.TriggerEvent[gmail.MessageEvent]) (Input, error) {
 	payload := event.Payload
 	return Input{EventID: event.ID, PrimaryEmail: payload.PrimaryEmail, MessageID: payload.MessageID, ThreadID: payload.ThreadID}, nil
+}
+
+func newMessageTriggerEventFilter(matcher gmail.MessageMatcher, requiresReply bool) sdkgo.TriggerEventFilter[gmail.MessageEvent] {
+	return func(event sdkgo.TriggerEvent[gmail.MessageEvent]) (bool, error) {
+		message := event.Payload
+		if message.IsReply != requiresReply {
+			return false, nil
+		}
+		if matcher.MessageContains != "" {
+			haystack := strings.ToLower(message.Subject + "\n" + message.Snippet)
+			if !strings.Contains(haystack, strings.ToLower(matcher.MessageContains)) {
+				return false, nil
+			}
+		}
+		if len(matcher.SenderEmails) == 0 {
+			return true, nil
+		}
+		sender, err := mail.ParseAddress(message.From)
+		if err != nil {
+			return false, nil
+		}
+		for _, allowedSender := range matcher.SenderEmails {
+			allowedAddress, err := mail.ParseAddress(allowedSender)
+			if err == nil && strings.EqualFold(sender.Address, allowedAddress.Address) {
+				return true, nil
+			}
+		}
+		return false, nil
+	}
 }
 
 var _ dex.Flow = (*Flow)(nil)

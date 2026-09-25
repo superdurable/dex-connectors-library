@@ -15,6 +15,13 @@ custom typed target to the generated Trigger factory. `FlowIDByThread` adapts
 an application callback that maps primary email plus Gmail thread ID to a
 stable Flow ID.
 
+Both Dex targets also require an application-owned `TriggerEventFilter`. It
+runs before Flow ID resolution and is the final admission rule for starting a
+Flow or invoking an RPC. Provider search and matcher configuration reduce inbox
+traffic, while the application filter can independently enforce root-or-reply,
+sender, text, tenant, or other domain rules. Returning false consumes the event
+without calling Dex; returning an error keeps the delivery retryable.
+
 The local Trigger transport polls the newest inbox page. `searchQuery` accepts
 a Gmail search expression. `MessageMatcher` optionally filters the sender and
 a case-insensitive substring across subject and snippet. Gmail message ID is
