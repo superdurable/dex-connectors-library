@@ -290,20 +290,23 @@ func TestTriggerTargetsResolveFlowAndDeduplicateRPCEventsWithRealDex(t *testing.
 	harness.startWorker(t)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
+	testRunID := strconv.FormatInt(time.Now().UnixNano(), 10)
+	threadID := "thread-" + testRunID
 	resolveFlowID := func(event connector.TriggerEvent[triggerAdapterEvent]) (string, error) {
 		return "connector-trigger-" + event.Payload.ThreadID, nil
 	}
-	flowID := "connector-trigger-thread-1"
+	flowID := "connector-trigger-" + threadID
 	startTarget := connector.NewDexFlowTriggerTarget(harness.client, flow, resolveFlowID,
 		func(event connector.TriggerEvent[triggerAdapterEvent]) (triggerAdapterInput, error) {
 			return triggerAdapterInput{EventID: event.ID}, nil
 		})
-	rootEvent := connector.TriggerEvent[triggerAdapterEvent]{ID: "root-event", Payload: triggerAdapterEvent{ThreadID: "thread-1"}}
+	rootEventID := "root-event-" + testRunID
+	rootEvent := connector.TriggerEvent[triggerAdapterEvent]{ID: rootEventID, Payload: triggerAdapterEvent{ThreadID: threadID}}
 	require.NoError(t, startTarget.HandleTrigger(ctx, rootEvent))
 	require.NoError(t, startTarget.HandleTrigger(ctx, rootEvent))
 
 	replyTarget := connector.NewDexRPCTriggerTarget(harness.client, flow.approveTriggerRPC.Definition(), resolveFlowID)
-	replyEvent := connector.TriggerEvent[triggerAdapterEvent]{ID: "reply-event", Payload: triggerAdapterEvent{ThreadID: "thread-1"}}
+	replyEvent := connector.TriggerEvent[triggerAdapterEvent]{ID: "reply-event-" + testRunID, Payload: triggerAdapterEvent{ThreadID: threadID}}
 	require.Eventually(t, func() bool {
 		return replyTarget.HandleTrigger(ctx, replyEvent) == nil
 	}, 20*time.Second, 100*time.Millisecond)
@@ -311,7 +314,7 @@ func TestTriggerTargetsResolveFlowAndDeduplicateRPCEventsWithRealDex(t *testing.
 
 	var state triggerAdapterState
 	require.NoError(t, harness.client.InvokeRPC(ctx, flowID, flow.GetTriggerAdapterState, nil, &state))
-	require.Equal(t, triggerAdapterState{StartEventID: "root-event", ApprovalCount: 1}, state)
+	require.Equal(t, triggerAdapterState{StartEventID: rootEventID, ApprovalCount: 1}, state)
 }
 
 type dexHarness struct {
