@@ -18,9 +18,11 @@ import (
 const ConnectorID = "gmail"
 
 type Config struct {
-	Endpoint         string `json:"endpoint,omitempty" yaml:"endpoint,omitempty"`
-	MaxResponseBytes int64  `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
-	MaxMessageBytes  int64  `json:"maxMessageBytes,omitempty" yaml:"maxMessageBytes,omitempty"`
+	Endpoint         string        `json:"endpoint,omitempty" yaml:"endpoint,omitempty"`
+	MaxResponseBytes int64         `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
+	MaxMessageBytes  int64         `json:"maxMessageBytes,omitempty" yaml:"maxMessageBytes,omitempty"`
+	PollInterval     time.Duration `json:"pollInterval,omitempty" yaml:"pollInterval,omitempty"`
+	PollPageSize     int64         `json:"pollPageSize,omitempty" yaml:"pollPageSize,omitempty"`
 }
 
 type Credentials struct {
@@ -103,6 +105,8 @@ func DefaultConfig() Config {
 		Endpoint:         "https://gmail.googleapis.com/gmail/v1",
 		MaxResponseBytes: 1048576,
 		MaxMessageBytes:  10485760,
+		PollInterval:     time.Duration(10000000000),
+		PollPageSize:     25,
 	}
 }
 
@@ -116,6 +120,12 @@ func withConfigDefaults(config Config) Config {
 	}
 	if config.MaxMessageBytes == 0 {
 		config.MaxMessageBytes = defaults.MaxMessageBytes
+	}
+	if config.PollInterval == 0 {
+		config.PollInterval = defaults.PollInterval
+	}
+	if config.PollPageSize == 0 {
+		config.PollPageSize = defaults.PollPageSize
 	}
 	return config
 }
@@ -133,6 +143,12 @@ func (config Config) Validate() error {
 	if config.MaxMessageBytes < 0 {
 		return fmt.Errorf("configuration maxMessageBytes cannot be negative")
 	}
+	if config.PollInterval < 0 {
+		return fmt.Errorf("configuration pollInterval cannot be negative")
+	}
+	if config.PollPageSize < 0 {
+		return fmt.Errorf("configuration pollPageSize cannot be negative")
+	}
 	return nil
 }
 
@@ -144,6 +160,194 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential primary_email is required")
 	}
 	return nil
+}
+
+var MessageReceivedTriggerDefinition = connector.TriggerDefinition{
+	Trigger:     connector.TriggerRef{ConnectorID: ConnectorID, TriggerName: "messageReceived"},
+	Description: "Receive a matching message that begins a Gmail thread.",
+}
+
+type MessageReceivedTriggerBindingConfig struct {
+	connector.TriggerBindingFactoryConfigMarker `connector:"factory=triggerBinding"`
+	connectorID                                 struct{} `connector:"connectorId=gmail"`
+	triggerName                                 struct{} `connector:"triggerName=messageReceived"`
+	ConnectionName                              string   `connector:"connectionName"`
+	BindingName                                 string   `connector:"bindingName"`
+}
+
+func DefineMessageReceivedTriggerBinding(config MessageReceivedTriggerBindingConfig) connector.TriggerBindingDefinition {
+	return connector.MustTriggerBindingDefinition(connector.TriggerBindingDefinition{
+		Definition: MessageReceivedTriggerDefinition, ConnectionName: config.ConnectionName, BindingName: config.BindingName,
+	})
+}
+
+type MessageReceivedTriggerConfig struct {
+	connector.TriggerFactoryConfigMarker `connector:"factory=trigger"`
+	connectorID                          struct{}                              `connector:"connectorId=gmail"`
+	triggerName                          struct{}                              `connector:"triggerName=messageReceived"`
+	Connection                           Connection                            `connector:"connection"`
+	ConnectionName                       string                                `connector:"connectionName"`
+	BindingName                          string                                `connector:"bindingName"`
+	Configuration                        MessageReceivedTriggerConfiguration   `connector:"triggerConfiguration"`
+	Target                               connector.TriggerTarget[MessageEvent] `connector:"triggerTarget"`
+}
+
+func NewMessageReceivedTrigger(config MessageReceivedTriggerConfig) connector.TriggerRunner {
+	if err := config.Connection.validate(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("gmail connector trigger connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	binding := connector.TriggerBindingRef{Connection: config.Connection.reference, Trigger: MessageReceivedTriggerDefinition.Trigger, Name: config.BindingName}
+	return connector.MustNewTrigger(connector.TriggerConfig[MessageEvent]{
+		Definition: MessageReceivedTriggerDefinition, Binding: binding,
+		Source: config.Connection.client.messageReceivedTriggerSource(config.Connection.reference, config.Configuration), Target: config.Target,
+	})
+}
+
+func NewLocalMessageReceivedTrigger(store *localconfig.Store, connectionName string, bindingName string, target connector.TriggerTarget[MessageEvent], options ...Option) (connector.TriggerRunner, error) {
+	connection, err := NewLocalConnection(store, connectionName, options...)
+	if err != nil {
+		return nil, err
+	}
+	var configuration MessageReceivedTriggerConfiguration
+	if err := store.DecodeTriggerConfiguration(ConnectorID, connectionName, "messageReceived", bindingName, &configuration); err != nil {
+		return nil, err
+	}
+	durableTarget, err := localconfig.NewDurableTriggerTarget(store, ConnectorID, connectionName, "messageReceived", bindingName, target)
+	if err != nil {
+		return nil, err
+	}
+	return NewMessageReceivedTrigger(MessageReceivedTriggerConfig{
+		Connection: connection, ConnectionName: connectionName, BindingName: bindingName, Configuration: configuration, Target: durableTarget,
+	}), nil
+}
+
+var ReplyReceivedTriggerDefinition = connector.TriggerDefinition{
+	Trigger:     connector.TriggerRef{ConnectorID: ConnectorID, TriggerName: "replyReceived"},
+	Description: "Receive a matching reply in an existing Gmail thread.",
+}
+
+type ReplyReceivedTriggerBindingConfig struct {
+	connector.TriggerBindingFactoryConfigMarker `connector:"factory=triggerBinding"`
+	connectorID                                 struct{} `connector:"connectorId=gmail"`
+	triggerName                                 struct{} `connector:"triggerName=replyReceived"`
+	ConnectionName                              string   `connector:"connectionName"`
+	BindingName                                 string   `connector:"bindingName"`
+}
+
+func DefineReplyReceivedTriggerBinding(config ReplyReceivedTriggerBindingConfig) connector.TriggerBindingDefinition {
+	return connector.MustTriggerBindingDefinition(connector.TriggerBindingDefinition{
+		Definition: ReplyReceivedTriggerDefinition, ConnectionName: config.ConnectionName, BindingName: config.BindingName,
+	})
+}
+
+type ReplyReceivedTriggerConfig struct {
+	connector.TriggerFactoryConfigMarker `connector:"factory=trigger"`
+	connectorID                          struct{}                              `connector:"connectorId=gmail"`
+	triggerName                          struct{}                              `connector:"triggerName=replyReceived"`
+	Connection                           Connection                            `connector:"connection"`
+	ConnectionName                       string                                `connector:"connectionName"`
+	BindingName                          string                                `connector:"bindingName"`
+	Configuration                        ReplyReceivedTriggerConfiguration     `connector:"triggerConfiguration"`
+	Target                               connector.TriggerTarget[MessageEvent] `connector:"triggerTarget"`
+}
+
+func NewReplyReceivedTrigger(config ReplyReceivedTriggerConfig) connector.TriggerRunner {
+	if err := config.Connection.validate(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("gmail connector trigger connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	binding := connector.TriggerBindingRef{Connection: config.Connection.reference, Trigger: ReplyReceivedTriggerDefinition.Trigger, Name: config.BindingName}
+	return connector.MustNewTrigger(connector.TriggerConfig[MessageEvent]{
+		Definition: ReplyReceivedTriggerDefinition, Binding: binding,
+		Source: config.Connection.client.replyReceivedTriggerSource(config.Connection.reference, config.Configuration), Target: config.Target,
+	})
+}
+
+func NewLocalReplyReceivedTrigger(store *localconfig.Store, connectionName string, bindingName string, target connector.TriggerTarget[MessageEvent], options ...Option) (connector.TriggerRunner, error) {
+	connection, err := NewLocalConnection(store, connectionName, options...)
+	if err != nil {
+		return nil, err
+	}
+	var configuration ReplyReceivedTriggerConfiguration
+	if err := store.DecodeTriggerConfiguration(ConnectorID, connectionName, "replyReceived", bindingName, &configuration); err != nil {
+		return nil, err
+	}
+	durableTarget, err := localconfig.NewDurableTriggerTarget(store, ConnectorID, connectionName, "replyReceived", bindingName, target)
+	if err != nil {
+		return nil, err
+	}
+	return NewReplyReceivedTrigger(ReplyReceivedTriggerConfig{
+		Connection: connection, ConnectionName: connectionName, BindingName: bindingName, Configuration: configuration, Target: durableTarget,
+	}), nil
+}
+
+const GetMessageBranchRead connector.BranchID = "read"
+const GetMessageBranchNotFound connector.BranchID = "notFound"
+const GetMessageBranchRejected connector.BranchID = "rejected"
+const GetMessageBranchDefect connector.BranchID = "defect"
+
+var GetMessageDefinition = connector.QueryDefinition{
+	Operation: connector.OperationRef{ConnectorID: ConnectorID, OperationID: "getMessage"},
+	Branches: []connector.BranchDefinition{
+		{ID: GetMessageBranchRead, Description: "The Gmail message was read."},
+		{ID: GetMessageBranchNotFound, Description: "The Gmail message does not exist."},
+		{ID: GetMessageBranchRejected, Description: "Gmail conclusively rejected the query."},
+		{ID: GetMessageBranchDefect, Description: "Local input or connector definition is invalid."},
+	},
+	DefectBranch: GetMessageBranchDefect,
+	StepDefaults: connector.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	ResultAttribute: connector.RequirementOptional,
+	Progress:        connector.ProgressCapabilities{Structured: false, Text: false},
+}
+
+type GetMessageStepOutput[IN any] = connector.QueryStepOutput[IN, Message]
+
+type GetMessageStepConfig[IN any] struct {
+	connector.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                        struct{}                                       `connector:"connectorId=gmail"`
+	operationID                        struct{}                                       `connector:"operationId=getMessage"`
+	StepType                           string                                         `connector:"stepType"`
+	Presentation                       connector.StepPresentation                     `connector:"presentation"`
+	Connection                         Connection                                     `connector:"connection"`
+	ConnectionName                     string                                         `connector:"connectionName"`
+	BuildInput                         func(IN) (GetMessageInput, error)              `connector:"buildInput"`
+	Read                               connector.Target[GetMessageStepOutput[IN]]     `connector:"branch=read"`
+	NotFound                           connector.Target[GetMessageStepOutput[IN]]     `connector:"branch=notFound"`
+	Rejected                           connector.Target[GetMessageStepOutput[IN]]     `connector:"branch=rejected"`
+	Defect                             connector.Target[GetMessageStepOutput[IN]]     `connector:"branch=defect"`
+	ResultAttribute                    *dex.Attribute[connector.QueryResult[Message]] `connector:"resultAttribute"`
+	StepOptionsOverride                *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewGetMessageStep[IN any](config GetMessageStepConfig[IN]) connector.QueryStep[IN, GetMessageInput, Message] {
+	if err := config.Connection.validate(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("gmail connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return connector.MustNewQueryStep(connector.QueryStepConfig[IN, GetMessageInput, Message]{
+		StepType: config.StepType, Presentation: config.Presentation,
+		Operation: config.Connection.client.GetMessage(), Connection: config.Connection.reference,
+		BuildInput: config.BuildInput,
+		Branches: []connector.BranchTarget[GetMessageStepOutput[IN]]{
+			config.Read.BranchTarget(GetMessageBranchRead),
+			config.NotFound.BranchTarget(GetMessageBranchNotFound),
+			config.Rejected.BranchTarget(GetMessageBranchRejected),
+			config.Defect.BranchTarget(GetMessageBranchDefect),
+		},
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const SendMessageBranchSent connector.BranchID = "sent"
@@ -205,6 +409,71 @@ func NewSendMessageStep[IN any](config SendMessageStepConfig[IN]) connector.Muta
 			config.Rejected.BranchTarget(SendMessageBranchRejected),
 			config.Uncertain.BranchTarget(SendMessageBranchUncertain),
 			config.Defect.BranchTarget(SendMessageBranchDefect),
+		},
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ReplyToMessageBranchSent connector.BranchID = "sent"
+const ReplyToMessageBranchRejected connector.BranchID = "rejected"
+const ReplyToMessageBranchUncertain connector.BranchID = "uncertain"
+const ReplyToMessageBranchDefect connector.BranchID = "defect"
+
+var ReplyToMessageDefinition = connector.MutationDefinition{
+	Operation: connector.OperationRef{ConnectorID: ConnectorID, OperationID: "replyToMessage"},
+	Branches: []connector.BranchDefinition{
+		{ID: ReplyToMessageBranchSent, Description: "Gmail accepted the reply and returned its identity."},
+		{ID: ReplyToMessageBranchRejected, Description: "Gmail conclusively rejected the reply."},
+		{ID: ReplyToMessageBranchUncertain, Description: "The dispatched reply outcome cannot be confirmed."},
+		{ID: ReplyToMessageBranchDefect, Description: "Local input or connector definition is invalid."},
+	},
+	DefectBranch:    ReplyToMessageBranchDefect,
+	UncertainBranch: ReplyToMessageBranchUncertain,
+	StepDefaults: connector.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	ResultAttribute: connector.RequirementRequired,
+	Progress:        connector.ProgressCapabilities{Structured: false, Text: false},
+}
+
+type ReplyToMessageStepOutput[IN any] = connector.MutationStepOutput[IN, SendMessageOutput]
+
+type ReplyToMessageStepConfig[IN any] struct {
+	connector.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                           struct{}                                                    `connector:"connectorId=gmail"`
+	operationID                           struct{}                                                    `connector:"operationId=replyToMessage"`
+	StepType                              string                                                      `connector:"stepType"`
+	Presentation                          connector.StepPresentation                                  `connector:"presentation"`
+	Connection                            Connection                                                  `connector:"connection"`
+	ConnectionName                        string                                                      `connector:"connectionName"`
+	BuildInput                            func(IN) (ReplyToMessageInput, error)                       `connector:"buildInput"`
+	Sent                                  connector.Target[ReplyToMessageStepOutput[IN]]              `connector:"branch=sent"`
+	Rejected                              connector.Target[ReplyToMessageStepOutput[IN]]              `connector:"branch=rejected"`
+	Uncertain                             connector.Target[ReplyToMessageStepOutput[IN]]              `connector:"branch=uncertain"`
+	Defect                                connector.Target[ReplyToMessageStepOutput[IN]]              `connector:"branch=defect"`
+	ResultAttribute                       *dex.Attribute[connector.MutationResult[SendMessageOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride                   *dex.StepOptions                                            `connector:"stepOptionsOverride"`
+}
+
+func NewReplyToMessageStep[IN any](config ReplyToMessageStepConfig[IN]) connector.MutationStep[IN, ReplyToMessageInput, SendMessageOutput] {
+	if err := config.Connection.validate(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("gmail connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return connector.MustNewMutationStep(connector.MutationStepConfig[IN, ReplyToMessageInput, SendMessageOutput]{
+		StepType: config.StepType, Presentation: config.Presentation,
+		Operation: config.Connection.client.ReplyToMessage(), Connection: config.Connection.reference,
+		BuildInput: config.BuildInput,
+		Branches: []connector.BranchTarget[ReplyToMessageStepOutput[IN]]{
+			config.Sent.BranchTarget(ReplyToMessageBranchSent),
+			config.Rejected.BranchTarget(ReplyToMessageBranchRejected),
+			config.Uncertain.BranchTarget(ReplyToMessageBranchUncertain),
+			config.Defect.BranchTarget(ReplyToMessageBranchDefect),
 		},
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,

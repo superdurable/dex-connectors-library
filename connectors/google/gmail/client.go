@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package gmail implements sending from an authorized primary Gmail account.
+// Package gmail implements received-message Triggers plus message reads, sends, and replies.
 package gmail
 
 import (
@@ -46,6 +46,8 @@ type Client struct {
 	credentials      connector.CredentialProvider[Credentials]
 	maxResponseBytes int64
 	maxMessageBytes  int64
+	pollInterval     time.Duration
+	pollPageSize     int
 	now              func() time.Time
 }
 
@@ -95,10 +97,14 @@ func New(config Config, credentials connector.CredentialProvider[Credentials], o
 	if dependencies.httpClient == nil {
 		dependencies.httpClient = &http.Client{Timeout: 25 * time.Second}
 	}
-	if config.MaxResponseBytes < 1 || config.MaxMessageBytes < 1 {
-		return nil, fmt.Errorf("Gmail response and message limits must be positive")
+	if config.MaxResponseBytes < 1 || config.MaxMessageBytes < 1 || config.PollInterval < time.Second || config.PollPageSize < 1 || config.PollPageSize > 100 {
+		return nil, fmt.Errorf("Gmail response limits and polling configuration are invalid")
 	}
-	return &Client{endpoint: endpoint, httpClient: dependencies.httpClient, credentials: credentials, maxResponseBytes: config.MaxResponseBytes, maxMessageBytes: config.MaxMessageBytes, now: dependencies.now}, nil
+	return &Client{
+		endpoint: endpoint, httpClient: dependencies.httpClient, credentials: credentials,
+		maxResponseBytes: config.MaxResponseBytes, maxMessageBytes: config.MaxMessageBytes,
+		pollInterval: config.PollInterval, pollPageSize: int(config.PollPageSize), now: dependencies.now,
+	}, nil
 }
 
 func (client *Client) SendMessage() SendMessageOperation { return SendMessageOperation{client: client} }
