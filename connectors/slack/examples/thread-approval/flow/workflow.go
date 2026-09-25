@@ -68,30 +68,32 @@ func NewFlow(connection slack.Connection) *Flow {
 }
 
 func (flow *Flow) GetSteps() []dex.StepDef {
+	readThread := slack.NewListThreadMessagesStep(slack.ListThreadMessagesStepConfig[Input]{
+		StepType:       readThreadStepType,
+		ConnectionName: ConnectionName,
+		Annotations: sdkgo.StepAnnotations{
+			GroupID: "slack", GroupLabel: "Slack", Explanation: "Read the messages in the newly created Slack thread.",
+		},
+		Connection: flow.connection,
+		BuildOperationInput: func(input Input) (slack.ListThreadMessagesInput, error) {
+			return slack.ListThreadMessagesInput{ChannelID: input.ChannelID, ThreadTimestamp: input.ThreadTimestamp, PageSize: 15}, nil
+		},
+		Read: sdkgo.GoTo(threadLoaded{}), Rejected: sdkgo.GoTo(threadReadFailed{}),
+		Defect: sdkgo.GoTo(threadReadFailed{}),
+	})
 	return []dex.StepDef{
-		dex.DefineStartStep(slack.NewListThreadMessagesStep(slack.ListThreadMessagesStepConfig[Input]{
-			StepType:       readThreadStepType,
-			ConnectionName: ConnectionName,
-			Presentation: sdkgo.StepPresentation{
-				GroupID: "slack", GroupLabel: "Slack", Explanation: "Read the messages in the newly created Slack thread.",
-			},
-			Connection: flow.connection,
-			BuildInput: func(input Input) (slack.ListThreadMessagesInput, error) {
-				return slack.ListThreadMessagesInput{ChannelID: input.ChannelID, ThreadTimestamp: input.ThreadTimestamp, PageSize: 15}, nil
-			},
-			Read: sdkgo.GoTo(threadLoaded{}), Rejected: sdkgo.GoTo(threadReadFailed{}),
-			Defect: sdkgo.GoTo(threadReadFailed{}),
-		})),
+		dex.DefineStartStep(initializeThread{}),
+		dex.DefineStep(readThread),
 		dex.DefineStep(threadLoaded{}),
 		dex.DefineStep(threadReadFailed{}),
 		dex.DefineStep(slack.NewPostThreadReplyStep(slack.PostThreadReplyStepConfig[ThreadState]{
 			StepType:       postCompletionStepType,
 			ConnectionName: ConnectionName,
-			Presentation: sdkgo.StepPresentation{
+			Annotations: sdkgo.StepAnnotations{
 				GroupID: "slack", GroupLabel: "Slack", Explanation: "Reply to the Slack thread after the configured reply Trigger invokes the RPC.",
 			},
 			Connection: flow.connection,
-			BuildInput: func(state ThreadState) (slack.PostThreadReplyInput, error) {
+			BuildOperationInput: func(state ThreadState) (slack.PostThreadReplyInput, error) {
 				return slack.PostThreadReplyInput{
 					ChannelID: state.Input.ChannelID, ThreadTimestamp: state.Input.ThreadTimestamp,
 					Text: fmt.Sprintf("Processing complete (approved by <@%s>)", state.ReplyUserID),
@@ -187,7 +189,24 @@ func (*Flow) GetDexDisplay(ctx dex.Context, _ dex.None) (*dex.RPCResult[map[stri
 	return &dex.RPCResult[map[string]any]{Output: map[string]any{"slack-thread-approval-state": state}}, nil
 }
 
-type threadQueryOutput = slack.ListThreadMessagesStepOutput[Input]
+type threadQueryOutput = slack.ListThreadMessagesResult
+
+// dex:group group-id:approval group-label:"Approval"
+// dex:explanation text:"Persist the Slack thread identity before reading its messages."
+type initializeThread struct {
+	dex.StepDefaultsNoWaitFor[Input]
+}
+
+func (initializeThread) GetStepOptions() *dex.StepOptions {
+	return &dex.StepOptions{ExecuteLockAttributes: []dex.AttributeLock{dex.LockAttribute(threadStateAttribute)}}
+}
+
+func (initializeThread) Execute(ctx dex.Context, input Input) (*dex.StepDecision, error) {
+	if err := threadStateAttribute.Set(ctx, ThreadState{Input: input}); err != nil {
+		return nil, err
+	}
+	return dex.GoTo(sdkgo.StepRef[Input](readThreadStepType), input), nil
+}
 
 // dex:group group-id:approval group-label:"Approval"
 // dex:explanation text:"Store the Slack thread messages before waiting for a matching reply Trigger."
@@ -199,8 +218,13 @@ func (threadLoaded) GetStepOptions() *dex.StepOptions {
 	return &dex.StepOptions{ExecuteLockAttributes: []dex.AttributeLock{dex.LockAttribute(threadStateAttribute)}}
 }
 
-func (threadLoaded) Execute(ctx dex.Context, output threadQueryOutput) (*dex.StepDecision, error) {
-	state := ThreadState{Input: output.Input, Messages: output.Result.Value.Messages, Status: StatusWaitingForReply}
+func (threadLoaded) Execute(ctx dex.Context, result threadQueryOutput) (*dex.StepDecision, error) {
+	state, err := threadStateAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	state.Messages = result.Value.Messages
+	state.Status = StatusWaitingForReply
 	if err := threadStateAttribute.Set(ctx, state); err != nil {
 		return nil, err
 	}
@@ -213,11 +237,11 @@ type threadReadFailed struct {
 	dex.StepDefaultsNoWaitFor[threadQueryOutput]
 }
 
-func (threadReadFailed) Execute(_ dex.Context, output threadQueryOutput) (*dex.StepDecision, error) {
-	return dex.ForceFail(failureMessage(output.Result.Branch, output.Result.Failure)), nil
+func (threadReadFailed) Execute(_ dex.Context, result threadQueryOutput) (*dex.StepDecision, error) {
+	return dex.ForceFail(failureMessage(result.Branch, result.Failure)), nil
 }
 
-type postReplyOutput = slack.PostThreadReplyStepOutput[ThreadState]
+type postReplyOutput = slack.PostThreadReplyResult
 
 // dex:group group-id:slack group-label:"Slack"
 // dex:explanation text:"Complete after Slack confirms the thread reply was posted."
@@ -229,8 +253,11 @@ func (completionPosted) GetStepOptions() *dex.StepOptions {
 	return &dex.StepOptions{ExecuteLockAttributes: []dex.AttributeLock{dex.LockAttribute(threadStateAttribute)}}
 }
 
-func (completionPosted) Execute(ctx dex.Context, output postReplyOutput) (*dex.StepDecision, error) {
-	state := output.Input
+func (completionPosted) Execute(ctx dex.Context, _ postReplyOutput) (*dex.StepDecision, error) {
+	state, err := threadStateAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
 	state.Status = StatusCompleted
 	if err := threadStateAttribute.Set(ctx, state); err != nil {
 		return nil, err
@@ -248,10 +275,13 @@ func (completionNeedsRecovery) GetStepOptions() *dex.StepOptions {
 	return &dex.StepOptions{ExecuteLockAttributes: []dex.AttributeLock{dex.LockAttribute(threadStateAttribute)}}
 }
 
-func (completionNeedsRecovery) Execute(ctx dex.Context, output postReplyOutput) (*dex.StepDecision, error) {
-	state := output.Input
+func (completionNeedsRecovery) Execute(ctx dex.Context, result postReplyOutput) (*dex.StepDecision, error) {
+	state, err := threadStateAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
 	state.Status = StatusNeedsRecovery
-	state.FailureMessage = failureMessage(output.Result.Branch, output.Result.Failure)
+	state.FailureMessage = failureMessage(result.Branch, result.Failure)
 	if err := threadStateAttribute.Set(ctx, state); err != nil {
 		return nil, err
 	}

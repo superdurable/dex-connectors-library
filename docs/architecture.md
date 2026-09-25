@@ -53,7 +53,7 @@ target by stable type and input type, so the registered target's options apply.
 ```text
 STEP_IN
    |
-   +-- BuildInput (pure) --error--> DefectBranch
+   +-- BuildOperationInput (pure) --error--> DefectBranch
    |
    +-- validate Dex identity + operation + connection
    +-- derive UUIDv5 CallID

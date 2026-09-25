@@ -15,18 +15,18 @@ import (
 )
 
 type profileTarget struct {
-	dex.StepDefaultsNoWaitFor[githubconnector.GetAuthenticatedProfileStepOutput[string]]
+	dex.StepDefaultsNoWaitFor[githubconnector.GetAuthenticatedProfileResult]
 }
 
-func (profileTarget) Execute(dex.Context, githubconnector.GetAuthenticatedProfileStepOutput[string]) (*dex.StepDecision, error) {
+func (profileTarget) Execute(dex.Context, githubconnector.GetAuthenticatedProfileResult) (*dex.StepDecision, error) {
 	return dex.GracefulComplete(nil), nil
 }
 
 type repositoriesTarget struct {
-	dex.StepDefaultsNoWaitFor[githubconnector.ListPublicRepositoriesStepOutput[string]]
+	dex.StepDefaultsNoWaitFor[githubconnector.ListPublicRepositoriesResult]
 }
 
-func (repositoriesTarget) Execute(dex.Context, githubconnector.ListPublicRepositoriesStepOutput[string]) (*dex.StepDecision, error) {
+func (repositoriesTarget) Execute(dex.Context, githubconnector.ListPublicRepositoriesResult) (*dex.StepDecision, error) {
 	return dex.GracefulComplete(nil), nil
 }
 
@@ -40,8 +40,8 @@ func TestGeneratedFactoriesExposeEveryTypedBranch(t *testing.T) {
 
 	profileResult := dex.DefineAttribute[sdkgo.QueryResult[githubconnector.AuthenticatedProfile]]("github-profile-result")
 	profile := githubconnector.NewGetAuthenticatedProfileStep(githubconnector.GetAuthenticatedProfileStepConfig[string]{
-		StepType: "ReadGitHubProfile", Presentation: factoryPresentation(), Connection: connection, ConnectionName: "signup",
-		BuildInput: func(string) (githubconnector.GetAuthenticatedProfileInput, error) {
+		StepType: "ReadGitHubProfile", Annotations: factoryAnnotations(), Connection: connection, ConnectionName: "signup",
+		BuildOperationInput: func(string) (githubconnector.GetAuthenticatedProfileInput, error) {
 			return githubconnector.GetAuthenticatedProfileInput{}, nil
 		},
 		ProfileLoaded: sdkgo.GoTo(profileTarget{}), VerifiedEmailRequired: sdkgo.GoTo(profileTarget{}),
@@ -53,8 +53,8 @@ func TestGeneratedFactoriesExposeEveryTypedBranch(t *testing.T) {
 
 	repositoriesResult := dex.DefineAttribute[sdkgo.QueryResult[githubconnector.PublicRepositories]]("github-repositories-result")
 	repositories := githubconnector.NewListPublicRepositoriesStep(githubconnector.ListPublicRepositoriesStepConfig[string]{
-		StepType: "ReadGitHubRepositories", Presentation: factoryPresentation(), Connection: connection, ConnectionName: "signup",
-		BuildInput: func(login string) (githubconnector.ListPublicRepositoriesInput, error) {
+		StepType: "ReadGitHubRepositories", Annotations: factoryAnnotations(), Connection: connection, ConnectionName: "signup",
+		BuildOperationInput: func(login string) (githubconnector.ListPublicRepositoriesInput, error) {
 			return githubconnector.ListPublicRepositoriesInput{Login: login}, nil
 		},
 		RepositoriesLoaded: sdkgo.GoTo(repositoriesTarget{}), InsufficientScope: sdkgo.GoTo(repositoriesTarget{}),
@@ -76,6 +76,6 @@ func TestTypedConnectionAndCredentialsCannotSerializeOrLeak(t *testing.T) {
 	require.NotContains(t, fmt.Sprintf("%#v", credentials), "secret-token")
 }
 
-func factoryPresentation() sdkgo.StepPresentation {
-	return sdkgo.StepPresentation{GroupID: "github", GroupLabel: "GitHub", Explanation: "Read bounded signup profile evidence."}
+func factoryAnnotations() sdkgo.StepAnnotations {
+	return sdkgo.StepAnnotations{GroupID: "github", GroupLabel: "GitHub", Explanation: "Read bounded signup profile evidence."}
 }

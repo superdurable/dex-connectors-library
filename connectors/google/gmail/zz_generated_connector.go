@@ -309,21 +309,21 @@ var GetMessageDefinition = sdkgo.QueryDefinition{
 	Progress:        sdkgo.ProgressCapabilities{Structured: false, Text: false},
 }
 
-type GetMessageStepOutput[IN any] = sdkgo.QueryStepOutput[IN, Message]
+type GetMessageResult = sdkgo.QueryResult[Message]
 
 type GetMessageStepConfig[IN any] struct {
 	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
 	connectorID                    struct{}                                   `connector:"connectorId=gmail"`
 	operationID                    struct{}                                   `connector:"operationId=getMessage"`
 	StepType                       string                                     `connector:"stepType"`
-	Presentation                   sdkgo.StepPresentation                     `connector:"presentation"`
+	Annotations                    sdkgo.StepAnnotations                      `connector:"annotations"`
 	Connection                     Connection                                 `connector:"connection"`
 	ConnectionName                 string                                     `connector:"connectionName"`
-	BuildInput                     func(IN) (GetMessageInput, error)          `connector:"buildInput"`
-	Read                           sdkgo.Target[GetMessageStepOutput[IN]]     `connector:"branch=read"`
-	NotFound                       sdkgo.Target[GetMessageStepOutput[IN]]     `connector:"branch=notFound"`
-	Rejected                       sdkgo.Target[GetMessageStepOutput[IN]]     `connector:"branch=rejected"`
-	Defect                         sdkgo.Target[GetMessageStepOutput[IN]]     `connector:"branch=defect"`
+	BuildOperationInput            func(IN) (GetMessageInput, error)          `connector:"buildOperationInput"`
+	Read                           sdkgo.Target[GetMessageResult]             `connector:"branch=read"`
+	NotFound                       sdkgo.Target[GetMessageResult]             `connector:"branch=notFound"`
+	Rejected                       sdkgo.Target[GetMessageResult]             `connector:"branch=rejected"`
+	Defect                         sdkgo.Target[GetMessageResult]             `connector:"branch=defect"`
 	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Message]] `connector:"resultAttribute"`
 	StepOptionsOverride            *dex.StepOptions                           `connector:"stepOptionsOverride"`
 }
@@ -336,10 +336,10 @@ func NewGetMessageStep[IN any](config GetMessageStepConfig[IN]) sdkgo.QueryStep[
 		panic(fmt.Errorf("gmail connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetMessageInput, Message]{
-		StepType: config.StepType, Presentation: config.Presentation,
+		StepType: config.StepType, Annotations: config.Annotations,
 		Operation: config.Connection.client.GetMessage(), Connection: config.Connection.reference,
-		BuildInput: config.BuildInput,
-		Branches: []sdkgo.BranchTarget[GetMessageStepOutput[IN]]{
+		BuildOperationInput: config.BuildOperationInput,
+		Branches: []sdkgo.BranchTarget[GetMessageResult]{
 			config.Read.BranchTarget(GetMessageBranchRead),
 			config.NotFound.BranchTarget(GetMessageBranchNotFound),
 			config.Rejected.BranchTarget(GetMessageBranchRejected),
@@ -374,21 +374,21 @@ var SendMessageDefinition = sdkgo.MutationDefinition{
 	Progress:        sdkgo.ProgressCapabilities{Structured: false, Text: false},
 }
 
-type SendMessageStepOutput[IN any] = sdkgo.MutationStepOutput[IN, SendMessageOutput]
+type SendMessageResult = sdkgo.MutationResult[SendMessageOutput]
 
 type SendMessageStepConfig[IN any] struct {
 	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
 	connectorID                       struct{}                                                `connector:"connectorId=gmail"`
 	operationID                       struct{}                                                `connector:"operationId=sendMessage"`
 	StepType                          string                                                  `connector:"stepType"`
-	Presentation                      sdkgo.StepPresentation                                  `connector:"presentation"`
+	Annotations                       sdkgo.StepAnnotations                                   `connector:"annotations"`
 	Connection                        Connection                                              `connector:"connection"`
 	ConnectionName                    string                                                  `connector:"connectionName"`
-	BuildInput                        func(IN) (SendMessageInput, error)                      `connector:"buildInput"`
-	Sent                              sdkgo.Target[SendMessageStepOutput[IN]]                 `connector:"branch=sent"`
-	Rejected                          sdkgo.Target[SendMessageStepOutput[IN]]                 `connector:"branch=rejected"`
-	Uncertain                         sdkgo.Target[SendMessageStepOutput[IN]]                 `connector:"branch=uncertain"`
-	Defect                            sdkgo.Target[SendMessageStepOutput[IN]]                 `connector:"branch=defect"`
+	BuildOperationInput               func(IN) (SendMessageInput, error)                      `connector:"buildOperationInput"`
+	Sent                              sdkgo.Target[SendMessageResult]                         `connector:"branch=sent"`
+	Rejected                          sdkgo.Target[SendMessageResult]                         `connector:"branch=rejected"`
+	Uncertain                         sdkgo.Target[SendMessageResult]                         `connector:"branch=uncertain"`
+	Defect                            sdkgo.Target[SendMessageResult]                         `connector:"branch=defect"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SendMessageOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
 }
@@ -401,10 +401,10 @@ func NewSendMessageStep[IN any](config SendMessageStepConfig[IN]) sdkgo.Mutation
 		panic(fmt.Errorf("gmail connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SendMessageInput, SendMessageOutput]{
-		StepType: config.StepType, Presentation: config.Presentation,
+		StepType: config.StepType, Annotations: config.Annotations,
 		Operation: config.Connection.client.SendMessage(), Connection: config.Connection.reference,
-		BuildInput: config.BuildInput,
-		Branches: []sdkgo.BranchTarget[SendMessageStepOutput[IN]]{
+		BuildOperationInput: config.BuildOperationInput,
+		Branches: []sdkgo.BranchTarget[SendMessageResult]{
 			config.Sent.BranchTarget(SendMessageBranchSent),
 			config.Rejected.BranchTarget(SendMessageBranchRejected),
 			config.Uncertain.BranchTarget(SendMessageBranchUncertain),
@@ -439,21 +439,21 @@ var ReplyToMessageDefinition = sdkgo.MutationDefinition{
 	Progress:        sdkgo.ProgressCapabilities{Structured: false, Text: false},
 }
 
-type ReplyToMessageStepOutput[IN any] = sdkgo.MutationStepOutput[IN, SendMessageOutput]
+type ReplyToMessageResult = sdkgo.MutationResult[SendMessageOutput]
 
 type ReplyToMessageStepConfig[IN any] struct {
 	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
 	connectorID                       struct{}                                                `connector:"connectorId=gmail"`
 	operationID                       struct{}                                                `connector:"operationId=replyToMessage"`
 	StepType                          string                                                  `connector:"stepType"`
-	Presentation                      sdkgo.StepPresentation                                  `connector:"presentation"`
+	Annotations                       sdkgo.StepAnnotations                                   `connector:"annotations"`
 	Connection                        Connection                                              `connector:"connection"`
 	ConnectionName                    string                                                  `connector:"connectionName"`
-	BuildInput                        func(IN) (ReplyToMessageInput, error)                   `connector:"buildInput"`
-	Sent                              sdkgo.Target[ReplyToMessageStepOutput[IN]]              `connector:"branch=sent"`
-	Rejected                          sdkgo.Target[ReplyToMessageStepOutput[IN]]              `connector:"branch=rejected"`
-	Uncertain                         sdkgo.Target[ReplyToMessageStepOutput[IN]]              `connector:"branch=uncertain"`
-	Defect                            sdkgo.Target[ReplyToMessageStepOutput[IN]]              `connector:"branch=defect"`
+	BuildOperationInput               func(IN) (ReplyToMessageInput, error)                   `connector:"buildOperationInput"`
+	Sent                              sdkgo.Target[ReplyToMessageResult]                      `connector:"branch=sent"`
+	Rejected                          sdkgo.Target[ReplyToMessageResult]                      `connector:"branch=rejected"`
+	Uncertain                         sdkgo.Target[ReplyToMessageResult]                      `connector:"branch=uncertain"`
+	Defect                            sdkgo.Target[ReplyToMessageResult]                      `connector:"branch=defect"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SendMessageOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
 }
@@ -466,10 +466,10 @@ func NewReplyToMessageStep[IN any](config ReplyToMessageStepConfig[IN]) sdkgo.Mu
 		panic(fmt.Errorf("gmail connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, ReplyToMessageInput, SendMessageOutput]{
-		StepType: config.StepType, Presentation: config.Presentation,
+		StepType: config.StepType, Annotations: config.Annotations,
 		Operation: config.Connection.client.ReplyToMessage(), Connection: config.Connection.reference,
-		BuildInput: config.BuildInput,
-		Branches: []sdkgo.BranchTarget[ReplyToMessageStepOutput[IN]]{
+		BuildOperationInput: config.BuildOperationInput,
+		Branches: []sdkgo.BranchTarget[ReplyToMessageResult]{
 			config.Sent.BranchTarget(ReplyToMessageBranchSent),
 			config.Rejected.BranchTarget(ReplyToMessageBranchRejected),
 			config.Uncertain.BranchTarget(ReplyToMessageBranchUncertain),

@@ -16,26 +16,26 @@ import (
 )
 
 type queryTarget struct {
-	dex.StepDefaultsNoWaitFor[httpconnector.QueryStepOutput[string]]
+	dex.StepDefaultsNoWaitFor[httpconnector.QueryResult]
 }
 
-func (queryTarget) Execute(dex.Context, httpconnector.QueryStepOutput[string]) (*dex.StepDecision, error) {
+func (queryTarget) Execute(dex.Context, httpconnector.QueryResult) (*dex.StepDecision, error) {
 	return dex.GracefulComplete(nil), nil
 }
 
 type mutationTarget struct {
-	dex.StepDefaultsNoWaitFor[httpconnector.MutationStepOutput[string]]
+	dex.StepDefaultsNoWaitFor[httpconnector.MutationResult]
 }
 
-func (mutationTarget) Execute(dex.Context, httpconnector.MutationStepOutput[string]) (*dex.StepDecision, error) {
+func (mutationTarget) Execute(dex.Context, httpconnector.MutationResult) (*dex.StepDecision, error) {
 	return dex.GracefulComplete(nil), nil
 }
 
 type webhookTarget struct {
-	dex.StepDefaultsNoWaitFor[httpconnector.VerifyWebhookStepOutput[string]]
+	dex.StepDefaultsNoWaitFor[httpconnector.VerifyWebhookResult]
 }
 
-func (webhookTarget) Execute(dex.Context, httpconnector.VerifyWebhookStepOutput[string]) (*dex.StepDecision, error) {
+func (webhookTarget) Execute(dex.Context, httpconnector.VerifyWebhookResult) (*dex.StepDecision, error) {
 	return dex.GracefulComplete(nil), nil
 }
 
@@ -47,16 +47,16 @@ func TestOperationSpecificFactoriesUseTypedConnectionAndBranches(t *testing.T) {
 	require.NoError(t, err)
 
 	query := httpconnector.NewQueryStep(httpconnector.QueryStepConfig[string]{
-		StepType: "HTTPQuery", Presentation: factoryPresentation(), Connection: connection,
-		BuildInput: func(string) (httpconnector.Request, error) { return httpconnector.Request{Method: http.MethodGet}, nil },
-		Succeeded:  sdkgo.GoTo(queryTarget{}), Failed: sdkgo.GoTo(queryTarget{}), Defect: sdkgo.GoTo(queryTarget{}),
+		StepType: "HTTPQuery", Annotations: factoryAnnotations(), Connection: connection,
+		BuildOperationInput: func(string) (httpconnector.Request, error) { return httpconnector.Request{Method: http.MethodGet}, nil },
+		Succeeded:           sdkgo.GoTo(queryTarget{}), Failed: sdkgo.GoTo(queryTarget{}), Defect: sdkgo.GoTo(queryTarget{}),
 	})
 	require.Equal(t, "HTTPQuery", query.GetStepType())
 
 	attribute := dex.DefineAttribute[sdkgo.MutationResult[httpconnector.Response]]("http-factory-result")
 	mutation := httpconnector.NewMutationStep(httpconnector.MutationStepConfig[string]{
-		StepType: "HTTPMutation", Presentation: factoryPresentation(), Connection: connection,
-		BuildInput: func(string) (httpconnector.Request, error) {
+		StepType: "HTTPMutation", Annotations: factoryAnnotations(), Connection: connection,
+		BuildOperationInput: func(string) (httpconnector.Request, error) {
 			return httpconnector.Request{Method: http.MethodPost}, nil
 		},
 		Succeeded: sdkgo.GoTo(mutationTarget{}), Rejected: sdkgo.GoTo(mutationTarget{}),
@@ -65,9 +65,9 @@ func TestOperationSpecificFactoriesUseTypedConnectionAndBranches(t *testing.T) {
 	require.Equal(t, "HTTPMutation", mutation.GetStepType())
 
 	webhook := httpconnector.NewVerifyWebhookStep(httpconnector.VerifyWebhookStepConfig[string]{
-		StepType: "VerifyWebhook", Presentation: factoryPresentation(), Connection: connection,
-		BuildInput: func(string) (httpconnector.WebhookRequest, error) { return httpconnector.WebhookRequest{}, nil },
-		Verified:   sdkgo.GoTo(webhookTarget{}), Rejected: sdkgo.GoTo(webhookTarget{}), Defect: sdkgo.GoTo(webhookTarget{}),
+		StepType: "VerifyWebhook", Annotations: factoryAnnotations(), Connection: connection,
+		BuildOperationInput: func(string) (httpconnector.WebhookRequest, error) { return httpconnector.WebhookRequest{}, nil },
+		Verified:            sdkgo.GoTo(webhookTarget{}), Rejected: sdkgo.GoTo(webhookTarget{}), Defect: sdkgo.GoTo(webhookTarget{}),
 	})
 	require.Equal(t, "VerifyWebhook", webhook.GetStepType())
 }
@@ -82,6 +82,6 @@ func TestTypedConnectionCannotSerializeAndZeroValueFailsClosed(t *testing.T) {
 	})
 }
 
-func factoryPresentation() sdkgo.StepPresentation {
-	return sdkgo.StepPresentation{GroupID: "http", GroupLabel: "HTTP", Explanation: "Invoke the HTTP sdkgo."}
+func factoryAnnotations() sdkgo.StepAnnotations {
+	return sdkgo.StepAnnotations{GroupID: "http", GroupLabel: "HTTP", Explanation: "Invoke the HTTP sdkgo."}
 }

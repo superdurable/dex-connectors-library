@@ -14,10 +14,10 @@ import (
 )
 
 type sheetTarget struct {
-	dex.StepDefaultsNoWaitFor[spreadsheet.UpsertRowStepOutput[string]]
+	dex.StepDefaultsNoWaitFor[spreadsheet.UpsertRowResult]
 }
 
-func (sheetTarget) Execute(dex.Context, spreadsheet.UpsertRowStepOutput[string]) (*dex.StepDecision, error) {
+func (sheetTarget) Execute(dex.Context, spreadsheet.UpsertRowResult) (*dex.StepDecision, error) {
 	return dex.GracefulComplete(struct{}{}), nil
 }
 
@@ -27,8 +27,8 @@ func TestUpsertFactoryRequiresEveryTypedBranch(t *testing.T) {
 	require.NoError(t, err)
 	require.Panics(t, func() {
 		spreadsheet.NewUpsertRowStep(spreadsheet.UpsertRowStepConfig[string]{
-			StepType: "Upsert", Presentation: sdkgo.StepPresentation{GroupID: "google", GroupLabel: "Google", Explanation: "Upsert a row."},
-			Connection: connection, BuildInput: func(string) (spreadsheet.UpsertRowInput, error) { return spreadsheet.UpsertRowInput{}, nil },
+			StepType: "Upsert", Annotations: sdkgo.StepAnnotations{GroupID: "google", GroupLabel: "Google", Explanation: "Upsert a row."},
+			Connection: connection, BuildOperationInput: func(string) (spreadsheet.UpsertRowInput, error) { return spreadsheet.UpsertRowInput{}, nil },
 			Upserted: sdkgo.GoTo(sheetTarget{}), Conflict: sdkgo.GoTo(sheetTarget{}), Rejected: sdkgo.GoTo(sheetTarget{}), Uncertain: sdkgo.GoTo(sheetTarget{}),
 		})
 	})

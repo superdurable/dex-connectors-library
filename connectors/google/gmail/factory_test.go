@@ -14,10 +14,10 @@ import (
 )
 
 type gmailTarget struct {
-	dex.StepDefaultsNoWaitFor[gmail.SendMessageStepOutput[string]]
+	dex.StepDefaultsNoWaitFor[gmail.SendMessageResult]
 }
 
-func (gmailTarget) Execute(dex.Context, gmail.SendMessageStepOutput[string]) (*dex.StepDecision, error) {
+func (gmailTarget) Execute(dex.Context, gmail.SendMessageResult) (*dex.StepDecision, error) {
 	return dex.GracefulComplete(struct{}{}), nil
 }
 
@@ -27,10 +27,10 @@ func TestSendFactoryRequiresEveryTypedBranch(t *testing.T) {
 	require.NoError(t, err)
 	require.Panics(t, func() {
 		gmail.NewSendMessageStep(gmail.SendMessageStepConfig[string]{
-			StepType: "Send", Presentation: sdkgo.StepPresentation{GroupID: "google", GroupLabel: "Google", Explanation: "Send a message."},
+			StepType: "Send", Annotations: sdkgo.StepAnnotations{GroupID: "google", GroupLabel: "Google", Explanation: "Send a message."},
 			Connection: connection, ConnectionName: "gmail-send",
-			BuildInput: func(string) (gmail.SendMessageInput, error) { return gmail.SendMessageInput{}, nil },
-			Sent:       sdkgo.GoTo(gmailTarget{}), Rejected: sdkgo.GoTo(gmailTarget{}), Uncertain: sdkgo.GoTo(gmailTarget{}),
+			BuildOperationInput: func(string) (gmail.SendMessageInput, error) { return gmail.SendMessageInput{}, nil },
+			Sent:                sdkgo.GoTo(gmailTarget{}), Rejected: sdkgo.GoTo(gmailTarget{}), Uncertain: sdkgo.GoTo(gmailTarget{}),
 		})
 	})
 }
@@ -41,9 +41,9 @@ func TestSendFactoryRejectsConnectionNameMismatch(t *testing.T) {
 	require.NoError(t, err)
 	require.Panics(t, func() {
 		gmail.NewSendMessageStep(gmail.SendMessageStepConfig[string]{
-			StepType: "Send", Presentation: sdkgo.StepPresentation{GroupID: "google", GroupLabel: "Google", Explanation: "Send a message."},
+			StepType: "Send", Annotations: sdkgo.StepAnnotations{GroupID: "google", GroupLabel: "Google", Explanation: "Send a message."},
 			Connection: connection, ConnectionName: "different",
-			BuildInput: func(string) (gmail.SendMessageInput, error) { return gmail.SendMessageInput{}, nil },
+			BuildOperationInput: func(string) (gmail.SendMessageInput, error) { return gmail.SendMessageInput{}, nil },
 		})
 	})
 }

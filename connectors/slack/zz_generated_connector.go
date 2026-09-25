@@ -297,20 +297,20 @@ var ListThreadMessagesDefinition = sdkgo.QueryDefinition{
 	Progress:        sdkgo.ProgressCapabilities{Structured: false, Text: false},
 }
 
-type ListThreadMessagesStepOutput[IN any] = sdkgo.QueryStepOutput[IN, ListThreadMessagesOutput]
+type ListThreadMessagesResult = sdkgo.QueryResult[ListThreadMessagesOutput]
 
 type ListThreadMessagesStepConfig[IN any] struct {
 	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
 	connectorID                    struct{}                                                    `connector:"connectorId=slack"`
 	operationID                    struct{}                                                    `connector:"operationId=listThreadMessages"`
 	StepType                       string                                                      `connector:"stepType"`
-	Presentation                   sdkgo.StepPresentation                                      `connector:"presentation"`
+	Annotations                    sdkgo.StepAnnotations                                       `connector:"annotations"`
 	Connection                     Connection                                                  `connector:"connection"`
 	ConnectionName                 string                                                      `connector:"connectionName"`
-	BuildInput                     func(IN) (ListThreadMessagesInput, error)                   `connector:"buildInput"`
-	Read                           sdkgo.Target[ListThreadMessagesStepOutput[IN]]              `connector:"branch=read"`
-	Rejected                       sdkgo.Target[ListThreadMessagesStepOutput[IN]]              `connector:"branch=rejected"`
-	Defect                         sdkgo.Target[ListThreadMessagesStepOutput[IN]]              `connector:"branch=defect"`
+	BuildOperationInput            func(IN) (ListThreadMessagesInput, error)                   `connector:"buildOperationInput"`
+	Read                           sdkgo.Target[ListThreadMessagesResult]                      `connector:"branch=read"`
+	Rejected                       sdkgo.Target[ListThreadMessagesResult]                      `connector:"branch=rejected"`
+	Defect                         sdkgo.Target[ListThreadMessagesResult]                      `connector:"branch=defect"`
 	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ListThreadMessagesOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride            *dex.StepOptions                                            `connector:"stepOptionsOverride"`
 }
@@ -323,10 +323,10 @@ func NewListThreadMessagesStep[IN any](config ListThreadMessagesStepConfig[IN]) 
 		panic(fmt.Errorf("slack connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListThreadMessagesInput, ListThreadMessagesOutput]{
-		StepType: config.StepType, Presentation: config.Presentation,
+		StepType: config.StepType, Annotations: config.Annotations,
 		Operation: config.Connection.client.ListThreadMessages(), Connection: config.Connection.reference,
-		BuildInput: config.BuildInput,
-		Branches: []sdkgo.BranchTarget[ListThreadMessagesStepOutput[IN]]{
+		BuildOperationInput: config.BuildOperationInput,
+		Branches: []sdkgo.BranchTarget[ListThreadMessagesResult]{
 			config.Read.BranchTarget(ListThreadMessagesBranchRead),
 			config.Rejected.BranchTarget(ListThreadMessagesBranchRejected),
 			config.Defect.BranchTarget(ListThreadMessagesBranchDefect),
@@ -359,21 +359,21 @@ var GetThreadReplyDefinition = sdkgo.QueryDefinition{
 	Progress:        sdkgo.ProgressCapabilities{Structured: false, Text: false},
 }
 
-type GetThreadReplyStepOutput[IN any] = sdkgo.QueryStepOutput[IN, GetThreadReplyOutput]
+type GetThreadReplyResult = sdkgo.QueryResult[GetThreadReplyOutput]
 
 type GetThreadReplyStepConfig[IN any] struct {
 	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
 	connectorID                    struct{}                                                `connector:"connectorId=slack"`
 	operationID                    struct{}                                                `connector:"operationId=getThreadReply"`
 	StepType                       string                                                  `connector:"stepType"`
-	Presentation                   sdkgo.StepPresentation                                  `connector:"presentation"`
+	Annotations                    sdkgo.StepAnnotations                                   `connector:"annotations"`
 	Connection                     Connection                                              `connector:"connection"`
 	ConnectionName                 string                                                  `connector:"connectionName"`
-	BuildInput                     func(IN) (GetThreadReplyInput, error)                   `connector:"buildInput"`
-	Found                          sdkgo.Target[GetThreadReplyStepOutput[IN]]              `connector:"branch=found"`
-	NotFound                       sdkgo.Target[GetThreadReplyStepOutput[IN]]              `connector:"branch=notFound"`
-	Rejected                       sdkgo.Target[GetThreadReplyStepOutput[IN]]              `connector:"branch=rejected"`
-	Defect                         sdkgo.Target[GetThreadReplyStepOutput[IN]]              `connector:"branch=defect"`
+	BuildOperationInput            func(IN) (GetThreadReplyInput, error)                   `connector:"buildOperationInput"`
+	Found                          sdkgo.Target[GetThreadReplyResult]                      `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetThreadReplyResult]                      `connector:"branch=notFound"`
+	Rejected                       sdkgo.Target[GetThreadReplyResult]                      `connector:"branch=rejected"`
+	Defect                         sdkgo.Target[GetThreadReplyResult]                      `connector:"branch=defect"`
 	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[GetThreadReplyOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride            *dex.StepOptions                                        `connector:"stepOptionsOverride"`
 }
@@ -386,10 +386,10 @@ func NewGetThreadReplyStep[IN any](config GetThreadReplyStepConfig[IN]) sdkgo.Qu
 		panic(fmt.Errorf("slack connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetThreadReplyInput, GetThreadReplyOutput]{
-		StepType: config.StepType, Presentation: config.Presentation,
+		StepType: config.StepType, Annotations: config.Annotations,
 		Operation: config.Connection.client.GetThreadReply(), Connection: config.Connection.reference,
-		BuildInput: config.BuildInput,
-		Branches: []sdkgo.BranchTarget[GetThreadReplyStepOutput[IN]]{
+		BuildOperationInput: config.BuildOperationInput,
+		Branches: []sdkgo.BranchTarget[GetThreadReplyResult]{
 			config.Found.BranchTarget(GetThreadReplyBranchFound),
 			config.NotFound.BranchTarget(GetThreadReplyBranchNotFound),
 			config.Rejected.BranchTarget(GetThreadReplyBranchRejected),
@@ -424,21 +424,21 @@ var PostChannelMessageDefinition = sdkgo.MutationDefinition{
 	Progress:        sdkgo.ProgressCapabilities{Structured: false, Text: false},
 }
 
-type PostChannelMessageStepOutput[IN any] = sdkgo.MutationStepOutput[IN, PostMessageOutput]
+type PostChannelMessageResult = sdkgo.MutationResult[PostMessageOutput]
 
 type PostChannelMessageStepConfig[IN any] struct {
 	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
 	connectorID                       struct{}                                                `connector:"connectorId=slack"`
 	operationID                       struct{}                                                `connector:"operationId=postChannelMessage"`
 	StepType                          string                                                  `connector:"stepType"`
-	Presentation                      sdkgo.StepPresentation                                  `connector:"presentation"`
+	Annotations                       sdkgo.StepAnnotations                                   `connector:"annotations"`
 	Connection                        Connection                                              `connector:"connection"`
 	ConnectionName                    string                                                  `connector:"connectionName"`
-	BuildInput                        func(IN) (PostChannelMessageInput, error)               `connector:"buildInput"`
-	Sent                              sdkgo.Target[PostChannelMessageStepOutput[IN]]          `connector:"branch=sent"`
-	Rejected                          sdkgo.Target[PostChannelMessageStepOutput[IN]]          `connector:"branch=rejected"`
-	Uncertain                         sdkgo.Target[PostChannelMessageStepOutput[IN]]          `connector:"branch=uncertain"`
-	Defect                            sdkgo.Target[PostChannelMessageStepOutput[IN]]          `connector:"branch=defect"`
+	BuildOperationInput               func(IN) (PostChannelMessageInput, error)               `connector:"buildOperationInput"`
+	Sent                              sdkgo.Target[PostChannelMessageResult]                  `connector:"branch=sent"`
+	Rejected                          sdkgo.Target[PostChannelMessageResult]                  `connector:"branch=rejected"`
+	Uncertain                         sdkgo.Target[PostChannelMessageResult]                  `connector:"branch=uncertain"`
+	Defect                            sdkgo.Target[PostChannelMessageResult]                  `connector:"branch=defect"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PostMessageOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
 }
@@ -451,10 +451,10 @@ func NewPostChannelMessageStep[IN any](config PostChannelMessageStepConfig[IN]) 
 		panic(fmt.Errorf("slack connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, PostChannelMessageInput, PostMessageOutput]{
-		StepType: config.StepType, Presentation: config.Presentation,
+		StepType: config.StepType, Annotations: config.Annotations,
 		Operation: config.Connection.client.PostChannelMessage(), Connection: config.Connection.reference,
-		BuildInput: config.BuildInput,
-		Branches: []sdkgo.BranchTarget[PostChannelMessageStepOutput[IN]]{
+		BuildOperationInput: config.BuildOperationInput,
+		Branches: []sdkgo.BranchTarget[PostChannelMessageResult]{
 			config.Sent.BranchTarget(PostChannelMessageBranchSent),
 			config.Rejected.BranchTarget(PostChannelMessageBranchRejected),
 			config.Uncertain.BranchTarget(PostChannelMessageBranchUncertain),
@@ -489,21 +489,21 @@ var PostThreadReplyDefinition = sdkgo.MutationDefinition{
 	Progress:        sdkgo.ProgressCapabilities{Structured: false, Text: false},
 }
 
-type PostThreadReplyStepOutput[IN any] = sdkgo.MutationStepOutput[IN, PostMessageOutput]
+type PostThreadReplyResult = sdkgo.MutationResult[PostMessageOutput]
 
 type PostThreadReplyStepConfig[IN any] struct {
 	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
 	connectorID                       struct{}                                                `connector:"connectorId=slack"`
 	operationID                       struct{}                                                `connector:"operationId=postThreadReply"`
 	StepType                          string                                                  `connector:"stepType"`
-	Presentation                      sdkgo.StepPresentation                                  `connector:"presentation"`
+	Annotations                       sdkgo.StepAnnotations                                   `connector:"annotations"`
 	Connection                        Connection                                              `connector:"connection"`
 	ConnectionName                    string                                                  `connector:"connectionName"`
-	BuildInput                        func(IN) (PostThreadReplyInput, error)                  `connector:"buildInput"`
-	Sent                              sdkgo.Target[PostThreadReplyStepOutput[IN]]             `connector:"branch=sent"`
-	Rejected                          sdkgo.Target[PostThreadReplyStepOutput[IN]]             `connector:"branch=rejected"`
-	Uncertain                         sdkgo.Target[PostThreadReplyStepOutput[IN]]             `connector:"branch=uncertain"`
-	Defect                            sdkgo.Target[PostThreadReplyStepOutput[IN]]             `connector:"branch=defect"`
+	BuildOperationInput               func(IN) (PostThreadReplyInput, error)                  `connector:"buildOperationInput"`
+	Sent                              sdkgo.Target[PostThreadReplyResult]                     `connector:"branch=sent"`
+	Rejected                          sdkgo.Target[PostThreadReplyResult]                     `connector:"branch=rejected"`
+	Uncertain                         sdkgo.Target[PostThreadReplyResult]                     `connector:"branch=uncertain"`
+	Defect                            sdkgo.Target[PostThreadReplyResult]                     `connector:"branch=defect"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PostMessageOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
 }
@@ -516,10 +516,10 @@ func NewPostThreadReplyStep[IN any](config PostThreadReplyStepConfig[IN]) sdkgo.
 		panic(fmt.Errorf("slack connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, PostThreadReplyInput, PostMessageOutput]{
-		StepType: config.StepType, Presentation: config.Presentation,
+		StepType: config.StepType, Annotations: config.Annotations,
 		Operation: config.Connection.client.PostThreadReply(), Connection: config.Connection.reference,
-		BuildInput: config.BuildInput,
-		Branches: []sdkgo.BranchTarget[PostThreadReplyStepOutput[IN]]{
+		BuildOperationInput: config.BuildOperationInput,
+		Branches: []sdkgo.BranchTarget[PostThreadReplyResult]{
 			config.Sent.BranchTarget(PostThreadReplyBranchSent),
 			config.Rejected.BranchTarget(PostThreadReplyBranchRejected),
 			config.Uncertain.BranchTarget(PostThreadReplyBranchUncertain),

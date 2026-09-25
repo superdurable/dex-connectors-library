@@ -237,18 +237,18 @@ func writeTriggerFactory(output *bytes.Buffer, manifest schema.Manifest, trigger
 func writeOperationFactory(output *bytes.Buffer, manifest schema.Manifest, operation schema.Operation) {
 	write := func(format string, values ...any) { fmt.Fprintf(output, format, values...) }
 	kind := title(operation.Kind)
-	write("type %sStepOutput[IN any] = sdkgo.%sStepOutput[IN, %s]\n\n", operation.GoName, kind, operation.OutputType)
+	write("type %sResult = sdkgo.%sResult[%s]\n\n", operation.GoName, kind, operation.OutputType)
 	write("type %sStepConfig[IN any] struct {\n", operation.GoName)
 	write("\tsdkgo.%sFactoryConfigMarker `connector:\"factory=%s\"`\n", kind, operation.Kind)
 	write("\tconnectorID struct{} `connector:\"connectorId=%s\"`\n", manifest.Metadata.Name)
 	write("\toperationID struct{} `connector:\"operationId=%s\"`\n", operation.Name)
 	write("\tStepType string `connector:\"stepType\"`\n")
-	write("\tPresentation sdkgo.StepPresentation `connector:\"presentation\"`\n")
+	write("\tAnnotations sdkgo.StepAnnotations `connector:\"annotations\"`\n")
 	write("\tConnection Connection `connector:\"connection\"`\n")
 	write("\tConnectionName string `connector:\"connectionName\"`\n")
-	write("\tBuildInput func(IN) (%s, error) `connector:\"buildInput\"`\n", operation.InputType)
+	write("\tBuildOperationInput func(IN) (%s, error) `connector:\"buildOperationInput\"`\n", operation.InputType)
 	for _, branch := range operation.Branches {
-		write("\t%s sdkgo.Target[%sStepOutput[IN]] `connector:\"branch=%s\"`\n", branch.GoName, operation.GoName, branch.ID)
+		write("\t%s sdkgo.Target[%sResult] `connector:\"branch=%s\"`\n", branch.GoName, operation.GoName, branch.ID)
 	}
 	if operation.ResultAttribute != "none" {
 		write("\tResultAttribute *dex.Attribute[sdkgo.%sResult[%s]] `connector:\"resultAttribute\"`\n", kind, operation.OutputType)
@@ -268,10 +268,10 @@ func writeOperationFactory(output *bytes.Buffer, manifest schema.Manifest, opera
 	write("\t\tpanic(fmt.Errorf(%q, config.ConnectionName, config.Connection.reference.Name))\n", manifest.Metadata.Name+" connector configuration connection name %q does not match runtime connection %q")
 	write("\t}\n")
 	write("\treturn sdkgo.MustNew%sStep(sdkgo.%sStepConfig[IN, %s, %s]{\n", kind, kind, operation.InputType, operation.OutputType)
-	write("\t\tStepType: config.StepType, Presentation: config.Presentation,\n")
+	write("\t\tStepType: config.StepType, Annotations: config.Annotations,\n")
 	write("\t\tOperation: config.Connection.client.%s(), Connection: config.Connection.reference,\n", operation.GoName)
-	write("\t\tBuildInput: config.BuildInput,\n")
-	write("\t\tBranches: []sdkgo.BranchTarget[%sStepOutput[IN]]{\n", operation.GoName)
+	write("\t\tBuildOperationInput: config.BuildOperationInput,\n")
+	write("\t\tBranches: []sdkgo.BranchTarget[%sResult]{\n", operation.GoName)
 	for _, branch := range operation.Branches {
 		write("\t\t\tconfig.%s.BranchTarget(%sBranch%s),\n", branch.GoName, operation.GoName, branch.GoName)
 	}

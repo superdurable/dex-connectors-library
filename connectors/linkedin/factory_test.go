@@ -15,10 +15,10 @@ import (
 )
 
 type profileTarget struct {
-	dex.StepDefaultsNoWaitFor[linkedinconnector.GetAuthenticatedProfileStepOutput[string]]
+	dex.StepDefaultsNoWaitFor[linkedinconnector.GetAuthenticatedProfileResult]
 }
 
-func (profileTarget) Execute(dex.Context, linkedinconnector.GetAuthenticatedProfileStepOutput[string]) (*dex.StepDecision, error) {
+func (profileTarget) Execute(dex.Context, linkedinconnector.GetAuthenticatedProfileResult) (*dex.StepDecision, error) {
 	return dex.GracefulComplete(nil), nil
 }
 
@@ -31,10 +31,10 @@ func TestGeneratedFactoryExposesEveryTypedBranch(t *testing.T) {
 	require.NoError(t, err)
 	result := dex.DefineAttribute[sdkgo.QueryResult[linkedinconnector.AuthenticatedProfile]]("linkedin-profile-result")
 	step := linkedinconnector.NewGetAuthenticatedProfileStep(linkedinconnector.GetAuthenticatedProfileStepConfig[string]{
-		StepType:     "ReadLinkedInProfile",
-		Presentation: sdkgo.StepPresentation{GroupID: "linkedin", GroupLabel: "LinkedIn", Explanation: "Read bounded signup identity claims."},
-		Connection:   connection,
-		BuildInput: func(string) (linkedinconnector.GetAuthenticatedProfileInput, error) {
+		StepType:    "ReadLinkedInProfile",
+		Annotations: sdkgo.StepAnnotations{GroupID: "linkedin", GroupLabel: "LinkedIn", Explanation: "Read bounded signup identity claims."},
+		Connection:  connection,
+		BuildOperationInput: func(string) (linkedinconnector.GetAuthenticatedProfileInput, error) {
 			return linkedinconnector.GetAuthenticatedProfileInput{}, nil
 		},
 		ProfileLoaded: sdkgo.GoTo(profileTarget{}), VerifiedEmailRequired: sdkgo.GoTo(profileTarget{}),
