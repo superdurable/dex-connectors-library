@@ -13,7 +13,7 @@
   directory without sharing a module or release.
 - `cmd/connectorctl/` validates, generates, checks, and catalogs manifests,
   generates the release dropdown, and creates versioned release artifacts.
-- `examples/customer-onboarding/` exercises factories against real Dex.
+- provider connector examples exercise factories against real Dex.
 
 The library adds no database schema or migration.
 
@@ -104,22 +104,6 @@ The SDK and connectors use independent Go modules and directory-prefixed tags.
 An SDK contract change is published first; connector modules then pin that
 exact release in later PRs. Git tags, not source manifests, define published
 versions.
-
-## HTTP connector
-
-HTTP Query supports GET/HEAD; Mutation supports POST/PUT/PATCH/DELETE. The
-connector enforces an explicit host allowlist, HTTPS outside loopback, bounded
-responses, safe persisted response headers, credential-only secret headers,
-and a stable provider idempotency key.
-
-Branches are generated as:
-
-- Query: `succeeded`, `failed`, `defect`;
-- Mutation: `succeeded`, `rejected`, `uncertain`, `defect`.
-
-Query availability and rate limits may Retry. Mutation retries only when the
-connector can confirm no provider write occurred. Post-dispatch connection
-loss and ambiguous 5xx responses are uncertain.
 
 ## OpenAI connector
 

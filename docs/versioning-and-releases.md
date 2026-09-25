@@ -9,7 +9,6 @@ and connector releases do not force unrelated upgrades.
 The module directory determines the Git tag prefix:
 
 - `sdkgo` uses `sdkgo/vMAJOR.MINOR.PATCH`.
-- `connectors/http` uses `connectors/http/vMAJOR.MINOR.PATCH`.
 - `connectors/linkedin` uses `connectors/linkedin/vMAJOR.MINOR.PATCH`.
 - `connectors/openai` uses `connectors/openai/vMAJOR.MINOR.PATCH`.
 - Company-owned families keep independent modules below one directory, such as

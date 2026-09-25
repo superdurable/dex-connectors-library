@@ -20,7 +20,6 @@ test:
 	go run ./cmd/connectorctl catalog connectors
 
 test-integration:
-	cd examples/customer-onboarding && GOWORK=off go test -tags=integration ./... -count=1 -v
 	cd sdkgo && GOWORK=off go test -tags=integration ./integrationtest/... -count=1 -v
 	@find connectors -name connector.yaml -print | sort | while IFS= read -r manifest; do \
 		module=$${manifest%/connector.yaml}; \

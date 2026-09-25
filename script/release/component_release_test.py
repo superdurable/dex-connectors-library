@@ -169,7 +169,7 @@ class ComponentReleaseTest(unittest.TestCase):
 
     def test_connector_plan_ignores_other_component_tags(self) -> None:
         self.connector()
-        self.git("tag", "connectors/http/v9.9.9")
+        self.git("tag", "connectors/linkedin/v9.9.9")
         previous = Path.cwd()
         os.chdir(self.repository)
         self.addCleanup(os.chdir, previous)
@@ -179,20 +179,20 @@ class ComponentReleaseTest(unittest.TestCase):
 
     def test_one_commit_can_enter_each_changed_connector_release(self) -> None:
         openai = self.repository / "connectors/openai"
-        http = self.repository / "connectors/http"
+        linkedin = self.repository / "connectors/linkedin"
         openai.mkdir(parents=True)
-        http.mkdir(parents=True)
+        linkedin.mkdir(parents=True)
         (openai / "go.mod").write_text("module example.com/openai\n\ngo 1.24\n", encoding="utf-8")
-        (http / "go.mod").write_text("module example.com/http\n\ngo 1.24\n", encoding="utf-8")
+        (linkedin / "go.mod").write_text("module example.com/linkedin\n\ngo 1.24\n", encoding="utf-8")
         (openai / "connector.go").write_text("package openai\n", encoding="utf-8")
-        (http / "connector.go").write_text("package httpconnector\n", encoding="utf-8")
+        (linkedin / "connector.go").write_text("package linkedin\n", encoding="utf-8")
         self.commit("tooling: update both connector modules")
         previous = Path.cwd()
         os.chdir(self.repository)
         self.addCleanup(os.chdir, previous)
         openai_plan = release.create_plan("connectors/openai", "connectors/openai/", "minor")
-        http_plan = release.create_plan("connectors/http", "connectors/http/", "minor")
-        self.assertEqual(openai_plan.commits, http_plan.commits)
+        linkedin_plan = release.create_plan("connectors/linkedin", "connectors/linkedin/", "minor")
+        self.assertEqual(openai_plan.commits, linkedin_plan.commits)
         self.assertEqual(len(openai_plan.commits), 1)
 
 
