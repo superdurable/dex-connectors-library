@@ -73,22 +73,21 @@ func NewFlow(connection slack.Connection) *Flow {
 }
 
 func (flow *Flow) GetSteps() []dex.StepDef {
-	readThread := slack.NewListThreadMessagesStep(slack.ListThreadMessagesStepConfig[Input]{
-		StepType:       readThreadStepType,
-		ConnectionName: ConnectionName,
-		Annotations: sdkgo.StepAnnotations{
-			GroupID: "slack", GroupLabel: "Slack", Explanation: "Read the messages in the newly created Slack thread.",
-		},
-		Connection: flow.connection,
-		MapToOperationInput: func(input Input) slack.ListThreadMessagesInput {
-			return slack.ListThreadMessagesInput{ChannelID: input.ChannelID, ThreadTimestamp: input.ThreadTimestamp, PageSize: 15}
-		},
-		Read: sdkgo.GoTo(threadLoaded{}), Rejected: sdkgo.GoTo(threadReadFailed{}),
-		Defect: sdkgo.GoTo(threadReadFailed{}),
-	})
 	return []dex.StepDef{
 		dex.DefineStartStep(initializeThread{}),
-		dex.DefineStep(readThread),
+		dex.DefineStep(slack.NewListThreadMessagesStep(slack.ListThreadMessagesStepConfig[Input]{
+			StepType:       readThreadStepType,
+			ConnectionName: ConnectionName,
+			Annotations: sdkgo.StepAnnotations{
+				GroupID: "slack", GroupLabel: "Slack", Explanation: "Read the messages in the newly created Slack thread.",
+			},
+			Connection: flow.connection,
+			MapToOperationInput: func(input Input) slack.ListThreadMessagesInput {
+				return slack.ListThreadMessagesInput{ChannelID: input.ChannelID, ThreadTimestamp: input.ThreadTimestamp, PageSize: 15}
+			},
+			Read: sdkgo.GoTo(threadLoaded{}), Rejected: sdkgo.GoTo(threadReadFailed{}),
+			Defect: sdkgo.GoTo(threadReadFailed{}),
+		})),
 		dex.DefineStep(threadLoaded{}),
 		dex.DefineStep(threadReadFailed{}),
 		dex.DefineStep(slack.NewPostThreadReplyStep(slack.PostThreadReplyStepConfig[ThreadState]{
@@ -175,38 +174,41 @@ func (*Flow) GetThreadStatus(ctx dex.Context, _ dex.None) (*dex.RPCResult[Thread
 }
 
 // dex:field attribute-key:slack-thread-approval-state value-type:json editable:false description:"Slack thread status"
-// dex:field attribute-key:slack-thread-approval-post-reply-result value-type:json editable:false description:"Slack completion reply result"
+// dex:field attribute-key:slack-thread-approval-post-reply-result value-type:object editable:false description:"Slack completion reply result"
 func (*Flow) GetDexSummary(ctx dex.Context, _ dex.None) (*dex.RPCResult[map[string]any], error) {
-	inspection, err := slackThreadInspection(ctx)
+	state, postReplyResult, err := slackThreadInspection(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return &dex.RPCResult[map[string]any]{Output: inspection}, nil
+	return &dex.RPCResult[map[string]any]{Output: map[string]any{
+		"slack-thread-approval-state":             state,
+		"slack-thread-approval-post-reply-result": postReplyResult,
+	}}, nil
 }
 
 // dex:field attribute-key:slack-thread-approval-state value-type:json editable:false description:"Slack thread details"
-// dex:field attribute-key:slack-thread-approval-post-reply-result value-type:json editable:false description:"Slack completion reply provider result"
+// dex:field attribute-key:slack-thread-approval-post-reply-result value-type:object editable:false description:"Slack completion reply provider result"
 func (*Flow) GetDexDisplay(ctx dex.Context, _ dex.None) (*dex.RPCResult[map[string]any], error) {
-	inspection, err := slackThreadInspection(ctx)
+	state, postReplyResult, err := slackThreadInspection(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return &dex.RPCResult[map[string]any]{Output: inspection}, nil
+	return &dex.RPCResult[map[string]any]{Output: map[string]any{
+		"slack-thread-approval-state":             state,
+		"slack-thread-approval-post-reply-result": postReplyResult,
+	}}, nil
 }
 
-func slackThreadInspection(ctx dex.Context) (map[string]any, error) {
+func slackThreadInspection(ctx dex.Context) (ThreadState, slack.PostThreadReplyResult, error) {
 	state, err := threadStateAttribute.Get(ctx)
 	if err != nil {
-		return nil, err
+		return ThreadState{}, slack.PostThreadReplyResult{}, err
 	}
 	postReplyResult, err := optionalPostReplyResult(ctx)
 	if err != nil {
-		return nil, err
+		return ThreadState{}, slack.PostThreadReplyResult{}, err
 	}
-	return map[string]any{
-		"slack-thread-approval-state":             state,
-		"slack-thread-approval-post-reply-result": postReplyResult,
-	}, nil
+	return state, postReplyResult, nil
 }
 
 func optionalPostReplyResult(ctx dex.Context) (slack.PostThreadReplyResult, error) {
