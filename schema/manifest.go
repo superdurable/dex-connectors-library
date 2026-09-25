@@ -30,6 +30,8 @@ type Metadata struct {
 	Name        string `yaml:"name" json:"name"`
 	DisplayName string `yaml:"displayName" json:"displayName"`
 	Description string `yaml:"description" json:"description"`
+	Company     string `yaml:"company" json:"company"`
+	Version     string `yaml:"version" json:"version"`
 }
 
 type Spec struct {
@@ -156,6 +158,7 @@ var (
 	fieldNamePattern    = regexp.MustCompile(`^[a-z][A-Za-z0-9_]*$`)
 	capabilityPattern   = regexp.MustCompile(`^[a-z][a-z0-9]*(\.[a-z][a-z0-9-]*)+$`)
 	mockScenarioPattern = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
+	versionPattern      = regexp.MustCompile(`^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$`)
 )
 
 func Decode(reader io.Reader) (Manifest, error) {
@@ -204,6 +207,12 @@ func (manifest Manifest) Validate() error {
 	}
 	if strings.TrimSpace(manifest.Metadata.DisplayName) == "" || strings.TrimSpace(manifest.Metadata.Description) == "" {
 		problems = append(problems, "metadata.displayName and metadata.description are required")
+	}
+	if strings.TrimSpace(manifest.Metadata.Company) == "" {
+		problems = append(problems, "metadata.company is required")
+	}
+	if !versionPattern.MatchString(manifest.Metadata.Version) {
+		problems = append(problems, "metadata.version must be a stable semantic version with a v prefix")
 	}
 	if strings.TrimSpace(manifest.Spec.Provider) == "" {
 		problems = append(problems, "spec.provider is required")

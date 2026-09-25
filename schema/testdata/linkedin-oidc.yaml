@@ -4,6 +4,8 @@ metadata:
   name: linkedin-oidc-fixture
   displayName: LinkedIn OIDC Fixture
   description: OIDC manifest fixture for authenticated profile metadata.
+  company: LinkedIn
+  version: v0.1.0
 spec:
   provider: linkedin
   codegen:

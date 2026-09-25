@@ -24,6 +24,7 @@ class ReleasePlan:
     bump: str
     version: str
     tag: str
+    source_sha: str
     commits: tuple[str, ...]
 
 
@@ -59,6 +60,19 @@ def next_version(baseline: str, bump: str) -> str:
     return f"v{major}.{minor}.{patch + 1}"
 
 
+def version_bump(baseline: str, target: str) -> str:
+    parse_version(target)
+    if not baseline:
+        if target != "v0.1.0":
+            raise ValueError(f"the first component release must be v0.1.0, got {target}")
+        return "minor"
+    parse_version(baseline)
+    for bump in ("patch", "minor", "major"):
+        if next_version(baseline, bump) == target:
+            return bump
+    raise ValueError(f"{target} must be the next patch, minor, or major after {baseline}")
+
+
 def validate_release_ref(ref: str) -> None:
     if ref != "refs/heads/main":
         raise ValueError("component releases can run only from main")
@@ -72,7 +86,7 @@ def module_path(component_path: Path) -> str:
     raise ValueError(f"{go_mod} does not declare a module")
 
 
-def latest_reachable_tag(tag_prefix: str) -> tuple[str, str]:
+def reachable_tags(tag_prefix: str) -> list[tuple[tuple[int, int, int], str, str]]:
     result = git(
         "for-each-ref",
         "--merged=HEAD",
@@ -87,14 +101,19 @@ def latest_reachable_tag(tag_prefix: str) -> tuple[str, str]:
         except ValueError:
             continue
         candidates.append((key, tag, version))
+    return sorted(candidates)
+
+
+def latest_reachable_tag(tag_prefix: str) -> tuple[str, str]:
+    candidates = reachable_tags(tag_prefix)
     if not candidates:
         return "", ""
-    _, tag, version = max(candidates)
+    _, tag, version = candidates[-1]
     return tag, version
 
 
-def component_commits(component_path: str, baseline_tag: str) -> tuple[str, ...]:
-    revision = f"{baseline_tag}..HEAD" if baseline_tag else "HEAD"
+def component_commits(component_path: str, baseline_tag: str, release_ref: str = "HEAD") -> tuple[str, ...]:
+    revision = f"{baseline_tag}..{release_ref}" if baseline_tag else release_ref
     result = git(
         "log",
         "--first-parent",
@@ -106,18 +125,49 @@ def component_commits(component_path: str, baseline_tag: str) -> tuple[str, ...]
     return tuple(line for line in result.stdout.splitlines() if line)
 
 
-def create_plan(component_path: str, tag_prefix: str, bump: str) -> ReleasePlan:
+def create_plan(
+    component_path: str,
+    tag_prefix: str,
+    bump: str = "",
+    target_version: str = "",
+) -> ReleasePlan:
     path = Path(component_path)
     if not path.is_dir() or not (path / "go.mod").is_file():
         raise ValueError(f"component is not a Go module: {component_path}")
-    baseline_tag, baseline_version = latest_reachable_tag(tag_prefix)
-    version = next_version(baseline_version, bump)
-    commits = component_commits(component_path, baseline_tag)
+    if bool(bump) == bool(target_version):
+        raise ValueError("exactly one of bump or target version is required")
+    candidates = reachable_tags(tag_prefix)
+    latest_tag = candidates[-1][1] if candidates else ""
+    latest_version = candidates[-1][2] if candidates else ""
+    if target_version:
+        version = target_version
+        if latest_version and parse_version(version) < parse_version(latest_version):
+            raise ValueError(f"target version {version} is behind latest release {latest_version}")
+        target_is_reachable = latest_version == version
+        if target_is_reachable:
+            previous = [candidate for candidate in candidates if candidate[0] < parse_version(version)]
+            baseline_tag = previous[-1][1] if previous else ""
+            baseline_version = previous[-1][2] if previous else ""
+            release_ref = tag_prefix + version
+        else:
+            baseline_tag = latest_tag
+            baseline_version = latest_version
+            release_ref = "HEAD"
+        bump = version_bump(baseline_version, version)
+    else:
+        baseline_tag = latest_tag
+        baseline_version = latest_version
+        version = next_version(baseline_version, bump)
+        release_ref = "HEAD"
+        target_is_reachable = False
+    commits = component_commits(component_path, baseline_tag, release_ref)
     if not commits:
         raise ValueError(f"{component_path} has no changes since {baseline_tag or 'repository creation'}")
     tag = tag_prefix + version
-    if git("show-ref", "--verify", "--quiet", f"refs/tags/{tag}", check=False).returncode == 0:
+    tag_exists = git("show-ref", "--verify", "--quiet", f"refs/tags/{tag}", check=False).returncode == 0
+    if tag_exists and not target_is_reachable:
         raise ValueError(f"release tag already exists: {tag}")
+    source_sha = git("rev-parse", f"{tag}^{{commit}}" if target_is_reachable else "HEAD").stdout.strip()
     module = module_path(path)
     major = parse_version(version)[0]
     if major >= 2 and not module.endswith(f"/v{major}"):
@@ -130,6 +180,7 @@ def create_plan(component_path: str, tag_prefix: str, bump: str) -> ReleasePlan:
         bump=bump,
         version=version,
         tag=tag,
+        source_sha=source_sha,
         commits=commits,
     )
 
@@ -202,6 +253,7 @@ def write_github_output(path: Path, plan: ReleasePlan) -> None:
                 f"tag={plan.tag}",
                 f"baseline_tag={plan.baseline_tag}",
                 f"module_path={plan.module_path}",
+                f"source_sha={plan.source_sha}",
             )
         )
         + "\n",
@@ -259,7 +311,9 @@ def main() -> int:
     plan_parser = subparsers.add_parser("plan")
     plan_parser.add_argument("--component-path", required=True)
     plan_parser.add_argument("--tag-prefix", required=True)
-    plan_parser.add_argument("--bump", required=True)
+    version_group = plan_parser.add_mutually_exclusive_group(required=True)
+    version_group.add_argument("--bump")
+    version_group.add_argument("--version")
     plan_parser.add_argument("--ref", default="")
     plan_parser.add_argument("--json-output", type=Path, required=True)
     plan_parser.add_argument("--github-output", type=Path, required=True)
@@ -275,7 +329,12 @@ def main() -> int:
         if arguments.command == "plan":
             if arguments.ref:
                 validate_release_ref(arguments.ref)
-            plan = create_plan(arguments.component_path, arguments.tag_prefix, arguments.bump)
+            plan = create_plan(
+                arguments.component_path,
+                arguments.tag_prefix,
+                bump=arguments.bump or "",
+                target_version=arguments.version or "",
+            )
             arguments.json_output.write_text(json.dumps(asdict(plan), indent=2) + "\n", encoding="utf-8")
             write_github_output(arguments.github_output, plan)
         elif arguments.command == "notes":

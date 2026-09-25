@@ -14,11 +14,15 @@ The module directory determines the Git tag prefix:
 - Company-owned families keep independent modules below one directory, such as
   `connectors/google/gmail` and `connectors/google/spreadsheet`.
 
-Git tags are the only published-version source of truth. Source manifests and
-generated Go code do not contain a manually maintained release version.
-GitHub Release titles are human-readable labels and do not define module
-versions. SDK releases use `Go SDK vMAJOR.MINOR.PATCH`. Connector releases use
-the manifest `metadata.displayName`, such as `Slack vMAJOR.MINOR.PATCH` or
+Each connector manifest declares `metadata.version`. Changing it to the next
+patch, minor, or major version requests an automatic release after merge.
+Leaving it unchanged explicitly defers release, even when connector code
+changes. Directory-prefixed Git tags record completed releases. Generated Go
+application APIs do not expose the release version.
+
+GitHub Release titles are human-readable labels. SDK releases use
+`Go SDK vMAJOR.MINOR.PATCH`. Connector releases use the manifest
+`metadata.displayName`, such as `Slack vMAJOR.MINOR.PATCH` or
 `Google Sheets vMAJOR.MINOR.PATCH`.
 
 ## Release order
@@ -34,21 +38,31 @@ tag, calculates the requested semantic-version bump, and publishes path-scoped
 release notes. The first SDK release is `sdkgo/v0.1.0` and must use the default
 minor selection.
 
-The generated `Release Connector` workflow adds a static, sorted connector
-choice and a `minor|major|patch` choice. `minor` is the default. CI regenerates
-the workflow from the connector catalog and rejects drift, so adding a
-connector without adding its release choice cannot merge. The workflow:
+The root `connectors.yaml` file is a sorted allowlist of connector directories.
+Each path starts below `connectors/` and may have any number of directory
+levels. CI rejects missing, unregistered, duplicate, unsafe, or symlinked
+paths. It generates the public catalog from the registered manifests.
+
+The `Release Connectors and Catalog` workflow runs automatically after a push
+to `main`. It compares every declared manifest version with reachable tags and
+publishes all requested versions in parallel. A manual run takes no version or
+connector input and only retries incomplete releases. The workflow:
 
 1. runs the Current compatibility gate against the pinned Dex CLI/Web baseline;
 2. verifies generated code and the standalone connector with `GOWORK=off`;
 3. rejects `replace`, pseudo-version, branch, or SHA SDK dependencies;
 4. proves the exact SDK tag is reachable and downloadable;
-5. derives the next version from the latest reachable component tag;
+5. verifies the declared version is the next patch, minor, or major;
 6. includes only commits that changed that connector directory;
 7. builds and tests an optional Connector Studio UI;
 8. uploads `connector-release.json`, optional `connector-ui.tgz`, and digests;
 9. verifies the published Go module is downloadable;
-10. runs Released compatibility against the new component tag.
+10. runs Released compatibility against the new component tag;
+11. publishes `catalog.yaml` to GitHub Pages after every release succeeds.
+
+The workflow uploads `connector-release.complete` only after both publication
+checks pass. A rerun repairs any release without that marker before publishing
+the catalog.
 
 CI also runs Current compatibility on pull requests and `main` using
 `.dex-compat-version`. Connector publishing uses the same reviewed baseline. A
@@ -59,7 +73,7 @@ the selected release checksum. A failed scheduled canary opens or updates one
 `dex-compatibility` issue, and a later successful run closes it.
 `DEX_CLI_VERSION` and `CONNECTOR_RELEASE_TAG` provide exact failure reproduction.
 
-The release artifact contains the connector ID, complete versionless manifest,
+The release artifact contains the connector ID, complete versioned manifest,
 module path, release version and tag, source SHA, source manifest digest, and
 optional Studio UI artifact identity and compatibility metadata.
 SuperVerse Catalog consumes that artifact instead of inferring a version from
@@ -88,10 +102,16 @@ GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
 ```
 
-Regenerate the release dropdown after adding, moving, or deleting a connector:
+Validate the directory registry after adding, moving, or deleting a connector:
 
 ```bash
-go run ./cmd/connectorctl release-workflow connectors .github/workflows/release-connector.yml
+go run ./cmd/connectorctl catalog --check --registry connectors.yaml
+```
+
+Generate the public catalog locally:
+
+```bash
+go run ./cmd/connectorctl catalog --registry connectors.yaml --output dist/pages/catalog.yaml
 ```
 
 Release planning is covered by temporary-repository tests:

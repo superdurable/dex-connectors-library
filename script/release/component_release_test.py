@@ -85,6 +85,34 @@ class ComponentReleaseTest(unittest.TestCase):
         self.commit("sdkgo: add API")
         self.assertEqual(self.plan("major").version, "v1.0.0")
 
+    def test_declared_version_must_be_the_next_semantic_version(self) -> None:
+        self.git("tag", "sdkgo/v0.7.0")
+        (self.repository / "sdkgo/sdk.go").write_text("package sdkgo\n\nconst Version = 2\n", encoding="utf-8")
+        self.commit("sdkgo: add API")
+        previous = Path.cwd()
+        os.chdir(self.repository)
+        self.addCleanup(os.chdir, previous)
+        plan = release.create_plan("sdkgo", "sdkgo/", target_version="v0.8.0")
+        self.assertEqual(plan.bump, "minor")
+        with self.assertRaisesRegex(ValueError, "must be the next"):
+            release.create_plan("sdkgo", "sdkgo/", target_version="v0.9.0")
+
+    def test_declared_version_can_recover_an_existing_reachable_tag(self) -> None:
+        self.git("tag", "sdkgo/v0.1.0")
+        (self.repository / "sdkgo/sdk.go").write_text("package sdkgo\n\nconst Version = 2\n", encoding="utf-8")
+        self.commit("sdkgo: add API")
+        tagged_commit = self.git("rev-parse", "HEAD")
+        self.git("tag", "sdkgo/v0.2.0")
+        (self.repository / "README.md").write_text("later docs\n", encoding="utf-8")
+        self.commit("docs: later change")
+        previous = Path.cwd()
+        os.chdir(self.repository)
+        self.addCleanup(os.chdir, previous)
+        plan = release.create_plan("sdkgo", "sdkgo/", target_version="v0.2.0")
+        self.assertEqual(plan.baseline_tag, "sdkgo/v0.1.0")
+        self.assertEqual(plan.source_sha, tagged_commit)
+        self.assertEqual(len(plan.commits), 1)
+
     def test_unrelated_change_does_not_create_release(self) -> None:
         self.git("tag", "sdkgo/v0.1.0")
         (self.repository / "README.md").write_text("docs\n", encoding="utf-8")

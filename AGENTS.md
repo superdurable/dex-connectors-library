@@ -23,23 +23,26 @@ behavior.
 
 ## Connector Authoring
 
-- connector.yaml is the source for generated Config, Credentials, definitions,
-  branch fields, operation-specific Step factories, and defaults.
+- connector.yaml is the source for company, release version, generated Config,
+  Credentials, definitions, branch fields, operation-specific Step factories,
+  and defaults.
 - Normal application APIs use operation-specific factories such as
   openai.NewCreateResponseStep.
 - Generic sdkgo.NewQueryStep and NewMutationStep are advanced escape
   hatches.
 - Every connector has its own go.mod, README, manifest, generated code, and
   provider tests.
-- A new, moved, or removed connector must regenerate the release workflow
-  choice list. Never edit that generated list by hand.
-- Run the release-workflow generation check before committing connector catalog
-  changes.
+- Register every connector directory in the sorted root connectors.yaml list.
+  Paths may have any depth below connectors/.
+- Add, move, or remove a registry entry only when the connector directory
+  changes. Version-only changes do not modify the registry.
 
 ## Versioning and Release Order
 
-- Git tags are the only version authority. Source manifests do not contain a
-  release version.
+- Connector manifest metadata.version is the release source of truth. Leaving
+  it unchanged explicitly defers release.
+- A declared connector version must equal the latest tag or the next patch,
+  minor, or major version. First releases use v0.1.0.
 - Core SDK tags use sdkgo/vX.Y.Z. Connector tags use the module directory,
   such as connectors/openai/vX.Y.Z.
 - Connector modules require an exact published Connector Go SDK release.
@@ -53,7 +56,8 @@ behavior.
   changes into a preceding SDK PR, merge and release its tag, then make the
   connector PR pin that exact published SDK version.
 - Before release, test each module with GOWORK=off.
-- Release only from main with the generated GitHub workflows.
+- Connector releases run automatically after merge to main. Manual runs only
+  retry incomplete releases and catalog deployment.
 - A v0 breaking release cannot be a patch. A v1+ breaking release requires a
   major-version module-path migration before release.
 

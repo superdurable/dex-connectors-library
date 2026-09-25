@@ -5,8 +5,10 @@ alwaysApply: true
 
 # Independent Releases
 
-- Git tags are the only version authority; source manifests have no release
-  version.
+- Connector manifest metadata.version is the release source of truth. An
+  unchanged version explicitly defers release.
+- Declared versions equal the latest tag or advance by one patch, minor, or
+  major step. First releases use v0.1.0.
 - SDK tags use sdkgo/vX.Y.Z; connector tags use their module directory.
 - Connector modules depend on an exact published SDK version without replace,
   pseudo-version, branch, or commit SHA.
@@ -16,7 +18,9 @@ alwaysApply: true
   connector verification. Never commit that `replace`. Before handoff, split
   the SDK changes into a preceding SDK PR, merge and release its tag, then pin
   that exact published SDK version from the connector PR.
-- Run module verification with GOWORK=off; release only from main.
+- Run module verification with GOWORK=off. Connector releases run automatically
+  after merge to main; manual runs only repair incomplete releases and catalog
+  deployment.
 - v0 breaking releases cannot be patch releases. v1+ breaking releases require
   a major module-path migration.
 - Use one released module per PR unless a repository-wide mechanical change

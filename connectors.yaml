@@ -1,0 +1,9 @@
+apiVersion: connectors.dex.dev/directory-list/v1alpha1
+kind: ConnectorDirectoryList
+directories:
+  - connectors/github
+  - connectors/google/gmail
+  - connectors/google/spreadsheet
+  - connectors/linkedin
+  - connectors/openai
+  - connectors/slack

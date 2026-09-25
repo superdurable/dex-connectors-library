@@ -16,8 +16,9 @@ test:
 		go run ./cmd/connectorctl validate "$$manifest" && \
 		go run ./cmd/connectorctl generate --check "$$manifest" || exit 1; \
 	done
-	go run ./cmd/connectorctl release-workflow --check connectors .github/workflows/release-connector.yml
-	go run ./cmd/connectorctl catalog connectors
+	go run ./cmd/connectorctl catalog --check --registry connectors.yaml
+	go run ./cmd/connectorctl release-matrix --registry connectors.yaml
+	go run ./cmd/connectorctl catalog --registry connectors.yaml --output /tmp/dex-connectors-catalog.yaml
 
 test-integration:
 	cd sdkgo && GOWORK=off go test -tags=integration ./integrationtest/... -count=1 -v
