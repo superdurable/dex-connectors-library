@@ -8,15 +8,15 @@ import (
 	"time"
 
 	gmail "github.com/superdurable/dex-connectors-library/connectors/google/gmail"
-	connector "github.com/superdurable/dex-connectors-library/sdk/go"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 
 func TestRootAndReplyResolveTheSameFlowID(t *testing.T) {
-	root := connector.TriggerEvent[gmail.MessageEvent]{
+	root := sdkgo.TriggerEvent[gmail.MessageEvent]{
 		ID: "root-message", OccurredAt: time.Unix(1, 0),
 		Payload: gmail.MessageEvent{PrimaryEmail: "owner@example.com", MessageID: "root-message", ThreadID: "thread-1"},
 	}
-	reply := connector.TriggerEvent[gmail.MessageEvent]{
+	reply := sdkgo.TriggerEvent[gmail.MessageEvent]{
 		ID: "reply-message", OccurredAt: time.Unix(2, 0),
 		Payload: gmail.MessageEvent{PrimaryEmail: "owner@example.com", MessageID: "reply-message", ThreadID: "thread-1", IsReply: true},
 	}

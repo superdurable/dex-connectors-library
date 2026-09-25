@@ -10,8 +10,8 @@ import (
 	"net/url"
 	"time"
 
-	connector "github.com/superdurable/dex-connectors-library/sdk/go"
-	"github.com/superdurable/dex-connectors-library/sdk/go/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -26,16 +26,16 @@ type Config struct {
 }
 
 type Credentials struct {
-	AccessToken  connector.SecretString
+	AccessToken  sdkgo.SecretString
 	PrimaryEmail string
 }
 
 type Connection struct {
 	client    *Client
-	reference connector.ConnectionRef
+	reference sdkgo.ConnectionRef
 }
 
-func NewConnection(client *Client, reference connector.ConnectionRef) (Connection, error) {
+func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, error) {
 	if client == nil {
 		return Connection{}, fmt.Errorf("gmail connector client is required")
 	}
@@ -50,7 +50,7 @@ func NewLocalConnection(store *localconfig.Store, connectionName string, options
 	if store == nil {
 		return Connection{}, fmt.Errorf("local connector configuration store is required")
 	}
-	reference := connector.ConnectionRef{Provider: "google", Name: connectionName}
+	reference := sdkgo.ConnectionRef{Provider: "google", Name: connectionName}
 	if err := reference.Validate(); err != nil {
 		return Connection{}, fmt.Errorf("gmail local connection: %w", err)
 	}
@@ -75,7 +75,7 @@ func decodeLocalCredentials(contents json.RawMessage) (Credentials, error) {
 		return Credentials{}, err
 	}
 	credentials := Credentials{
-		AccessToken:  connector.NewSecretString(fields.AccessToken),
+		AccessToken:  sdkgo.NewSecretString(fields.AccessToken),
 		PrimaryEmail: fields.PrimaryEmail,
 	}
 	return credentials, credentials.Validate()
@@ -162,51 +162,51 @@ func (credentials Credentials) Validate() error {
 	return nil
 }
 
-var MessageReceivedTriggerDefinition = connector.TriggerDefinition{
-	Trigger:     connector.TriggerRef{ConnectorID: ConnectorID, TriggerName: "messageReceived"},
+var MessageReceivedTriggerDefinition = sdkgo.TriggerDefinition{
+	Trigger:     sdkgo.TriggerRef{ConnectorID: ConnectorID, TriggerName: "messageReceived"},
 	Description: "Receive a matching message that begins a Gmail thread.",
 }
 
 type MessageReceivedTriggerBindingConfig struct {
-	connector.TriggerBindingFactoryConfigMarker `connector:"factory=triggerBinding"`
-	connectorID                                 struct{} `connector:"connectorId=gmail"`
-	triggerName                                 struct{} `connector:"triggerName=messageReceived"`
-	ConnectionName                              string   `connector:"connectionName"`
-	BindingName                                 string   `connector:"bindingName"`
+	sdkgo.TriggerBindingFactoryConfigMarker `connector:"factory=triggerBinding"`
+	connectorID                             struct{} `connector:"connectorId=gmail"`
+	triggerName                             struct{} `connector:"triggerName=messageReceived"`
+	ConnectionName                          string   `connector:"connectionName"`
+	BindingName                             string   `connector:"bindingName"`
 }
 
-func DefineMessageReceivedTriggerBinding(config MessageReceivedTriggerBindingConfig) connector.TriggerBindingDefinition {
-	return connector.MustTriggerBindingDefinition(connector.TriggerBindingDefinition{
+func DefineMessageReceivedTriggerBinding(config MessageReceivedTriggerBindingConfig) sdkgo.TriggerBindingDefinition {
+	return sdkgo.MustTriggerBindingDefinition(sdkgo.TriggerBindingDefinition{
 		Definition: MessageReceivedTriggerDefinition, ConnectionName: config.ConnectionName, BindingName: config.BindingName,
 	})
 }
 
 type MessageReceivedTriggerConfig struct {
-	connector.TriggerFactoryConfigMarker `connector:"factory=trigger"`
-	connectorID                          struct{}                              `connector:"connectorId=gmail"`
-	triggerName                          struct{}                              `connector:"triggerName=messageReceived"`
-	Connection                           Connection                            `connector:"connection"`
-	ConnectionName                       string                                `connector:"connectionName"`
-	BindingName                          string                                `connector:"bindingName"`
-	Configuration                        MessageReceivedTriggerConfiguration   `connector:"triggerConfiguration"`
-	Target                               connector.TriggerTarget[MessageEvent] `connector:"triggerTarget"`
+	sdkgo.TriggerFactoryConfigMarker `connector:"factory=trigger"`
+	connectorID                      struct{}                            `connector:"connectorId=gmail"`
+	triggerName                      struct{}                            `connector:"triggerName=messageReceived"`
+	Connection                       Connection                          `connector:"connection"`
+	ConnectionName                   string                              `connector:"connectionName"`
+	BindingName                      string                              `connector:"bindingName"`
+	Configuration                    MessageReceivedTriggerConfiguration `connector:"triggerConfiguration"`
+	Target                           sdkgo.TriggerTarget[MessageEvent]   `connector:"triggerTarget"`
 }
 
-func NewMessageReceivedTrigger(config MessageReceivedTriggerConfig) connector.TriggerRunner {
+func NewMessageReceivedTrigger(config MessageReceivedTriggerConfig) sdkgo.TriggerRunner {
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
 		panic(fmt.Errorf("gmail connector trigger connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
 	}
-	binding := connector.TriggerBindingRef{Connection: config.Connection.reference, Trigger: MessageReceivedTriggerDefinition.Trigger, Name: config.BindingName}
-	return connector.MustNewTrigger(connector.TriggerConfig[MessageEvent]{
+	binding := sdkgo.TriggerBindingRef{Connection: config.Connection.reference, Trigger: MessageReceivedTriggerDefinition.Trigger, Name: config.BindingName}
+	return sdkgo.MustNewTrigger(sdkgo.TriggerConfig[MessageEvent]{
 		Definition: MessageReceivedTriggerDefinition, Binding: binding,
 		Source: config.Connection.client.messageReceivedTriggerSource(config.Connection.reference, config.Configuration), Target: config.Target,
 	})
 }
 
-func NewLocalMessageReceivedTrigger(store *localconfig.Store, connectionName string, bindingName string, target connector.TriggerTarget[MessageEvent], options ...Option) (connector.TriggerRunner, error) {
+func NewLocalMessageReceivedTrigger(store *localconfig.Store, connectionName string, bindingName string, target sdkgo.TriggerTarget[MessageEvent], options ...Option) (sdkgo.TriggerRunner, error) {
 	connection, err := NewLocalConnection(store, connectionName, options...)
 	if err != nil {
 		return nil, err
@@ -224,51 +224,51 @@ func NewLocalMessageReceivedTrigger(store *localconfig.Store, connectionName str
 	}), nil
 }
 
-var ReplyReceivedTriggerDefinition = connector.TriggerDefinition{
-	Trigger:     connector.TriggerRef{ConnectorID: ConnectorID, TriggerName: "replyReceived"},
+var ReplyReceivedTriggerDefinition = sdkgo.TriggerDefinition{
+	Trigger:     sdkgo.TriggerRef{ConnectorID: ConnectorID, TriggerName: "replyReceived"},
 	Description: "Receive a matching reply in an existing Gmail thread.",
 }
 
 type ReplyReceivedTriggerBindingConfig struct {
-	connector.TriggerBindingFactoryConfigMarker `connector:"factory=triggerBinding"`
-	connectorID                                 struct{} `connector:"connectorId=gmail"`
-	triggerName                                 struct{} `connector:"triggerName=replyReceived"`
-	ConnectionName                              string   `connector:"connectionName"`
-	BindingName                                 string   `connector:"bindingName"`
+	sdkgo.TriggerBindingFactoryConfigMarker `connector:"factory=triggerBinding"`
+	connectorID                             struct{} `connector:"connectorId=gmail"`
+	triggerName                             struct{} `connector:"triggerName=replyReceived"`
+	ConnectionName                          string   `connector:"connectionName"`
+	BindingName                             string   `connector:"bindingName"`
 }
 
-func DefineReplyReceivedTriggerBinding(config ReplyReceivedTriggerBindingConfig) connector.TriggerBindingDefinition {
-	return connector.MustTriggerBindingDefinition(connector.TriggerBindingDefinition{
+func DefineReplyReceivedTriggerBinding(config ReplyReceivedTriggerBindingConfig) sdkgo.TriggerBindingDefinition {
+	return sdkgo.MustTriggerBindingDefinition(sdkgo.TriggerBindingDefinition{
 		Definition: ReplyReceivedTriggerDefinition, ConnectionName: config.ConnectionName, BindingName: config.BindingName,
 	})
 }
 
 type ReplyReceivedTriggerConfig struct {
-	connector.TriggerFactoryConfigMarker `connector:"factory=trigger"`
-	connectorID                          struct{}                              `connector:"connectorId=gmail"`
-	triggerName                          struct{}                              `connector:"triggerName=replyReceived"`
-	Connection                           Connection                            `connector:"connection"`
-	ConnectionName                       string                                `connector:"connectionName"`
-	BindingName                          string                                `connector:"bindingName"`
-	Configuration                        ReplyReceivedTriggerConfiguration     `connector:"triggerConfiguration"`
-	Target                               connector.TriggerTarget[MessageEvent] `connector:"triggerTarget"`
+	sdkgo.TriggerFactoryConfigMarker `connector:"factory=trigger"`
+	connectorID                      struct{}                          `connector:"connectorId=gmail"`
+	triggerName                      struct{}                          `connector:"triggerName=replyReceived"`
+	Connection                       Connection                        `connector:"connection"`
+	ConnectionName                   string                            `connector:"connectionName"`
+	BindingName                      string                            `connector:"bindingName"`
+	Configuration                    ReplyReceivedTriggerConfiguration `connector:"triggerConfiguration"`
+	Target                           sdkgo.TriggerTarget[MessageEvent] `connector:"triggerTarget"`
 }
 
-func NewReplyReceivedTrigger(config ReplyReceivedTriggerConfig) connector.TriggerRunner {
+func NewReplyReceivedTrigger(config ReplyReceivedTriggerConfig) sdkgo.TriggerRunner {
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
 		panic(fmt.Errorf("gmail connector trigger connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
 	}
-	binding := connector.TriggerBindingRef{Connection: config.Connection.reference, Trigger: ReplyReceivedTriggerDefinition.Trigger, Name: config.BindingName}
-	return connector.MustNewTrigger(connector.TriggerConfig[MessageEvent]{
+	binding := sdkgo.TriggerBindingRef{Connection: config.Connection.reference, Trigger: ReplyReceivedTriggerDefinition.Trigger, Name: config.BindingName}
+	return sdkgo.MustNewTrigger(sdkgo.TriggerConfig[MessageEvent]{
 		Definition: ReplyReceivedTriggerDefinition, Binding: binding,
 		Source: config.Connection.client.replyReceivedTriggerSource(config.Connection.reference, config.Configuration), Target: config.Target,
 	})
 }
 
-func NewLocalReplyReceivedTrigger(store *localconfig.Store, connectionName string, bindingName string, target connector.TriggerTarget[MessageEvent], options ...Option) (connector.TriggerRunner, error) {
+func NewLocalReplyReceivedTrigger(store *localconfig.Store, connectionName string, bindingName string, target sdkgo.TriggerTarget[MessageEvent], options ...Option) (sdkgo.TriggerRunner, error) {
 	connection, err := NewLocalConnection(store, connectionName, options...)
 	if err != nil {
 		return nil, err
@@ -286,60 +286,60 @@ func NewLocalReplyReceivedTrigger(store *localconfig.Store, connectionName strin
 	}), nil
 }
 
-const GetMessageBranchRead connector.BranchID = "read"
-const GetMessageBranchNotFound connector.BranchID = "notFound"
-const GetMessageBranchRejected connector.BranchID = "rejected"
-const GetMessageBranchDefect connector.BranchID = "defect"
+const GetMessageBranchRead sdkgo.BranchID = "read"
+const GetMessageBranchNotFound sdkgo.BranchID = "notFound"
+const GetMessageBranchRejected sdkgo.BranchID = "rejected"
+const GetMessageBranchDefect sdkgo.BranchID = "defect"
 
-var GetMessageDefinition = connector.QueryDefinition{
-	Operation: connector.OperationRef{ConnectorID: ConnectorID, OperationID: "getMessage"},
-	Branches: []connector.BranchDefinition{
+var GetMessageDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getMessage"},
+	Branches: []sdkgo.BranchDefinition{
 		{ID: GetMessageBranchRead, Description: "The Gmail message was read."},
 		{ID: GetMessageBranchNotFound, Description: "The Gmail message does not exist."},
 		{ID: GetMessageBranchRejected, Description: "Gmail conclusively rejected the query."},
 		{ID: GetMessageBranchDefect, Description: "Local input or connector definition is invalid."},
 	},
 	DefectBranch: GetMessageBranchDefect,
-	StepDefaults: connector.StepDefaults{
+	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
-	ResultAttribute: connector.RequirementOptional,
-	Progress:        connector.ProgressCapabilities{Structured: false, Text: false},
+	ResultAttribute: sdkgo.RequirementOptional,
+	Progress:        sdkgo.ProgressCapabilities{Structured: false, Text: false},
 }
 
-type GetMessageStepOutput[IN any] = connector.QueryStepOutput[IN, Message]
+type GetMessageStepOutput[IN any] = sdkgo.QueryStepOutput[IN, Message]
 
 type GetMessageStepConfig[IN any] struct {
-	connector.QueryFactoryConfigMarker `connector:"factory=query"`
-	connectorID                        struct{}                                       `connector:"connectorId=gmail"`
-	operationID                        struct{}                                       `connector:"operationId=getMessage"`
-	StepType                           string                                         `connector:"stepType"`
-	Presentation                       connector.StepPresentation                     `connector:"presentation"`
-	Connection                         Connection                                     `connector:"connection"`
-	ConnectionName                     string                                         `connector:"connectionName"`
-	BuildInput                         func(IN) (GetMessageInput, error)              `connector:"buildInput"`
-	Read                               connector.Target[GetMessageStepOutput[IN]]     `connector:"branch=read"`
-	NotFound                           connector.Target[GetMessageStepOutput[IN]]     `connector:"branch=notFound"`
-	Rejected                           connector.Target[GetMessageStepOutput[IN]]     `connector:"branch=rejected"`
-	Defect                             connector.Target[GetMessageStepOutput[IN]]     `connector:"branch=defect"`
-	ResultAttribute                    *dex.Attribute[connector.QueryResult[Message]] `connector:"resultAttribute"`
-	StepOptionsOverride                *dex.StepOptions                               `connector:"stepOptionsOverride"`
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                   `connector:"connectorId=gmail"`
+	operationID                    struct{}                                   `connector:"operationId=getMessage"`
+	StepType                       string                                     `connector:"stepType"`
+	Presentation                   sdkgo.StepPresentation                     `connector:"presentation"`
+	Connection                     Connection                                 `connector:"connection"`
+	ConnectionName                 string                                     `connector:"connectionName"`
+	BuildInput                     func(IN) (GetMessageInput, error)          `connector:"buildInput"`
+	Read                           sdkgo.Target[GetMessageStepOutput[IN]]     `connector:"branch=read"`
+	NotFound                       sdkgo.Target[GetMessageStepOutput[IN]]     `connector:"branch=notFound"`
+	Rejected                       sdkgo.Target[GetMessageStepOutput[IN]]     `connector:"branch=rejected"`
+	Defect                         sdkgo.Target[GetMessageStepOutput[IN]]     `connector:"branch=defect"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Message]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                           `connector:"stepOptionsOverride"`
 }
 
-func NewGetMessageStep[IN any](config GetMessageStepConfig[IN]) connector.QueryStep[IN, GetMessageInput, Message] {
+func NewGetMessageStep[IN any](config GetMessageStepConfig[IN]) sdkgo.QueryStep[IN, GetMessageInput, Message] {
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
 		panic(fmt.Errorf("gmail connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
 	}
-	return connector.MustNewQueryStep(connector.QueryStepConfig[IN, GetMessageInput, Message]{
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetMessageInput, Message]{
 		StepType: config.StepType, Presentation: config.Presentation,
 		Operation: config.Connection.client.GetMessage(), Connection: config.Connection.reference,
 		BuildInput: config.BuildInput,
-		Branches: []connector.BranchTarget[GetMessageStepOutput[IN]]{
+		Branches: []sdkgo.BranchTarget[GetMessageStepOutput[IN]]{
 			config.Read.BranchTarget(GetMessageBranchRead),
 			config.NotFound.BranchTarget(GetMessageBranchNotFound),
 			config.Rejected.BranchTarget(GetMessageBranchRejected),
@@ -350,14 +350,14 @@ func NewGetMessageStep[IN any](config GetMessageStepConfig[IN]) connector.QueryS
 	})
 }
 
-const SendMessageBranchSent connector.BranchID = "sent"
-const SendMessageBranchRejected connector.BranchID = "rejected"
-const SendMessageBranchUncertain connector.BranchID = "uncertain"
-const SendMessageBranchDefect connector.BranchID = "defect"
+const SendMessageBranchSent sdkgo.BranchID = "sent"
+const SendMessageBranchRejected sdkgo.BranchID = "rejected"
+const SendMessageBranchUncertain sdkgo.BranchID = "uncertain"
+const SendMessageBranchDefect sdkgo.BranchID = "defect"
 
-var SendMessageDefinition = connector.MutationDefinition{
-	Operation: connector.OperationRef{ConnectorID: ConnectorID, OperationID: "sendMessage"},
-	Branches: []connector.BranchDefinition{
+var SendMessageDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "sendMessage"},
+	Branches: []sdkgo.BranchDefinition{
 		{ID: SendMessageBranchSent, Description: "Gmail accepted the message and returned its identity."},
 		{ID: SendMessageBranchRejected, Description: "Gmail conclusively rejected the message."},
 		{ID: SendMessageBranchUncertain, Description: "The dispatched send outcome cannot be confirmed."},
@@ -365,46 +365,46 @@ var SendMessageDefinition = connector.MutationDefinition{
 	},
 	DefectBranch:    SendMessageBranchDefect,
 	UncertainBranch: SendMessageBranchUncertain,
-	StepDefaults: connector.StepDefaults{
+	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
-	ResultAttribute: connector.RequirementRequired,
-	Progress:        connector.ProgressCapabilities{Structured: false, Text: false},
+	ResultAttribute: sdkgo.RequirementRequired,
+	Progress:        sdkgo.ProgressCapabilities{Structured: false, Text: false},
 }
 
-type SendMessageStepOutput[IN any] = connector.MutationStepOutput[IN, SendMessageOutput]
+type SendMessageStepOutput[IN any] = sdkgo.MutationStepOutput[IN, SendMessageOutput]
 
 type SendMessageStepConfig[IN any] struct {
-	connector.MutationFactoryConfigMarker `connector:"factory=mutation"`
-	connectorID                           struct{}                                                    `connector:"connectorId=gmail"`
-	operationID                           struct{}                                                    `connector:"operationId=sendMessage"`
-	StepType                              string                                                      `connector:"stepType"`
-	Presentation                          connector.StepPresentation                                  `connector:"presentation"`
-	Connection                            Connection                                                  `connector:"connection"`
-	ConnectionName                        string                                                      `connector:"connectionName"`
-	BuildInput                            func(IN) (SendMessageInput, error)                          `connector:"buildInput"`
-	Sent                                  connector.Target[SendMessageStepOutput[IN]]                 `connector:"branch=sent"`
-	Rejected                              connector.Target[SendMessageStepOutput[IN]]                 `connector:"branch=rejected"`
-	Uncertain                             connector.Target[SendMessageStepOutput[IN]]                 `connector:"branch=uncertain"`
-	Defect                                connector.Target[SendMessageStepOutput[IN]]                 `connector:"branch=defect"`
-	ResultAttribute                       *dex.Attribute[connector.MutationResult[SendMessageOutput]] `connector:"resultAttribute"`
-	StepOptionsOverride                   *dex.StepOptions                                            `connector:"stepOptionsOverride"`
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                `connector:"connectorId=gmail"`
+	operationID                       struct{}                                                `connector:"operationId=sendMessage"`
+	StepType                          string                                                  `connector:"stepType"`
+	Presentation                      sdkgo.StepPresentation                                  `connector:"presentation"`
+	Connection                        Connection                                              `connector:"connection"`
+	ConnectionName                    string                                                  `connector:"connectionName"`
+	BuildInput                        func(IN) (SendMessageInput, error)                      `connector:"buildInput"`
+	Sent                              sdkgo.Target[SendMessageStepOutput[IN]]                 `connector:"branch=sent"`
+	Rejected                          sdkgo.Target[SendMessageStepOutput[IN]]                 `connector:"branch=rejected"`
+	Uncertain                         sdkgo.Target[SendMessageStepOutput[IN]]                 `connector:"branch=uncertain"`
+	Defect                            sdkgo.Target[SendMessageStepOutput[IN]]                 `connector:"branch=defect"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SendMessageOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
 }
 
-func NewSendMessageStep[IN any](config SendMessageStepConfig[IN]) connector.MutationStep[IN, SendMessageInput, SendMessageOutput] {
+func NewSendMessageStep[IN any](config SendMessageStepConfig[IN]) sdkgo.MutationStep[IN, SendMessageInput, SendMessageOutput] {
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
 		panic(fmt.Errorf("gmail connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
 	}
-	return connector.MustNewMutationStep(connector.MutationStepConfig[IN, SendMessageInput, SendMessageOutput]{
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SendMessageInput, SendMessageOutput]{
 		StepType: config.StepType, Presentation: config.Presentation,
 		Operation: config.Connection.client.SendMessage(), Connection: config.Connection.reference,
 		BuildInput: config.BuildInput,
-		Branches: []connector.BranchTarget[SendMessageStepOutput[IN]]{
+		Branches: []sdkgo.BranchTarget[SendMessageStepOutput[IN]]{
 			config.Sent.BranchTarget(SendMessageBranchSent),
 			config.Rejected.BranchTarget(SendMessageBranchRejected),
 			config.Uncertain.BranchTarget(SendMessageBranchUncertain),
@@ -415,14 +415,14 @@ func NewSendMessageStep[IN any](config SendMessageStepConfig[IN]) connector.Muta
 	})
 }
 
-const ReplyToMessageBranchSent connector.BranchID = "sent"
-const ReplyToMessageBranchRejected connector.BranchID = "rejected"
-const ReplyToMessageBranchUncertain connector.BranchID = "uncertain"
-const ReplyToMessageBranchDefect connector.BranchID = "defect"
+const ReplyToMessageBranchSent sdkgo.BranchID = "sent"
+const ReplyToMessageBranchRejected sdkgo.BranchID = "rejected"
+const ReplyToMessageBranchUncertain sdkgo.BranchID = "uncertain"
+const ReplyToMessageBranchDefect sdkgo.BranchID = "defect"
 
-var ReplyToMessageDefinition = connector.MutationDefinition{
-	Operation: connector.OperationRef{ConnectorID: ConnectorID, OperationID: "replyToMessage"},
-	Branches: []connector.BranchDefinition{
+var ReplyToMessageDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "replyToMessage"},
+	Branches: []sdkgo.BranchDefinition{
 		{ID: ReplyToMessageBranchSent, Description: "Gmail accepted the reply and returned its identity."},
 		{ID: ReplyToMessageBranchRejected, Description: "Gmail conclusively rejected the reply."},
 		{ID: ReplyToMessageBranchUncertain, Description: "The dispatched reply outcome cannot be confirmed."},
@@ -430,46 +430,46 @@ var ReplyToMessageDefinition = connector.MutationDefinition{
 	},
 	DefectBranch:    ReplyToMessageBranchDefect,
 	UncertainBranch: ReplyToMessageBranchUncertain,
-	StepDefaults: connector.StepDefaults{
+	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
-	ResultAttribute: connector.RequirementRequired,
-	Progress:        connector.ProgressCapabilities{Structured: false, Text: false},
+	ResultAttribute: sdkgo.RequirementRequired,
+	Progress:        sdkgo.ProgressCapabilities{Structured: false, Text: false},
 }
 
-type ReplyToMessageStepOutput[IN any] = connector.MutationStepOutput[IN, SendMessageOutput]
+type ReplyToMessageStepOutput[IN any] = sdkgo.MutationStepOutput[IN, SendMessageOutput]
 
 type ReplyToMessageStepConfig[IN any] struct {
-	connector.MutationFactoryConfigMarker `connector:"factory=mutation"`
-	connectorID                           struct{}                                                    `connector:"connectorId=gmail"`
-	operationID                           struct{}                                                    `connector:"operationId=replyToMessage"`
-	StepType                              string                                                      `connector:"stepType"`
-	Presentation                          connector.StepPresentation                                  `connector:"presentation"`
-	Connection                            Connection                                                  `connector:"connection"`
-	ConnectionName                        string                                                      `connector:"connectionName"`
-	BuildInput                            func(IN) (ReplyToMessageInput, error)                       `connector:"buildInput"`
-	Sent                                  connector.Target[ReplyToMessageStepOutput[IN]]              `connector:"branch=sent"`
-	Rejected                              connector.Target[ReplyToMessageStepOutput[IN]]              `connector:"branch=rejected"`
-	Uncertain                             connector.Target[ReplyToMessageStepOutput[IN]]              `connector:"branch=uncertain"`
-	Defect                                connector.Target[ReplyToMessageStepOutput[IN]]              `connector:"branch=defect"`
-	ResultAttribute                       *dex.Attribute[connector.MutationResult[SendMessageOutput]] `connector:"resultAttribute"`
-	StepOptionsOverride                   *dex.StepOptions                                            `connector:"stepOptionsOverride"`
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                `connector:"connectorId=gmail"`
+	operationID                       struct{}                                                `connector:"operationId=replyToMessage"`
+	StepType                          string                                                  `connector:"stepType"`
+	Presentation                      sdkgo.StepPresentation                                  `connector:"presentation"`
+	Connection                        Connection                                              `connector:"connection"`
+	ConnectionName                    string                                                  `connector:"connectionName"`
+	BuildInput                        func(IN) (ReplyToMessageInput, error)                   `connector:"buildInput"`
+	Sent                              sdkgo.Target[ReplyToMessageStepOutput[IN]]              `connector:"branch=sent"`
+	Rejected                          sdkgo.Target[ReplyToMessageStepOutput[IN]]              `connector:"branch=rejected"`
+	Uncertain                         sdkgo.Target[ReplyToMessageStepOutput[IN]]              `connector:"branch=uncertain"`
+	Defect                            sdkgo.Target[ReplyToMessageStepOutput[IN]]              `connector:"branch=defect"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SendMessageOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
 }
 
-func NewReplyToMessageStep[IN any](config ReplyToMessageStepConfig[IN]) connector.MutationStep[IN, ReplyToMessageInput, SendMessageOutput] {
+func NewReplyToMessageStep[IN any](config ReplyToMessageStepConfig[IN]) sdkgo.MutationStep[IN, ReplyToMessageInput, SendMessageOutput] {
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
 		panic(fmt.Errorf("gmail connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
 	}
-	return connector.MustNewMutationStep(connector.MutationStepConfig[IN, ReplyToMessageInput, SendMessageOutput]{
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, ReplyToMessageInput, SendMessageOutput]{
 		StepType: config.StepType, Presentation: config.Presentation,
 		Operation: config.Connection.client.ReplyToMessage(), Connection: config.Connection.reference,
 		BuildInput: config.BuildInput,
-		Branches: []connector.BranchTarget[ReplyToMessageStepOutput[IN]]{
+		Branches: []sdkgo.BranchTarget[ReplyToMessageStepOutput[IN]]{
 			config.Sent.BranchTarget(ReplyToMessageBranchSent),
 			config.Rejected.BranchTarget(ReplyToMessageBranchRejected),
 			config.Uncertain.BranchTarget(ReplyToMessageBranchUncertain),

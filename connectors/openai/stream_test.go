@@ -9,36 +9,36 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/openai/internal/testsupport"
-	connector "github.com/superdurable/dex-connectors-library/sdk/go"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 
-var streamTestRef = connector.OperationRef{ConnectorID: "openai", OperationID: "streamFixture"}
+var streamTestRef = sdkgo.OperationRef{ConnectorID: "openai", OperationID: "streamFixture"}
 
-var streamTestDefinition = connector.MutationDefinition{
+var streamTestDefinition = sdkgo.MutationDefinition{
 	Operation: streamTestRef,
-	Branches: []connector.BranchDefinition{
+	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateResponseBranchCompleted, Description: "completed"},
 		{ID: CreateResponseBranchFailed, Description: "failed"},
 		{ID: CreateResponseBranchUncertain, Description: "uncertain"},
 		{ID: CreateResponseBranchDefect, Description: "defect"},
 	},
 	DefectBranch: CreateResponseBranchDefect, UncertainBranch: CreateResponseBranchUncertain,
-	ResultAttribute: connector.RequirementOptional,
+	ResultAttribute: sdkgo.RequirementOptional,
 }
 
 type streamAttemptOperation struct {
-	attempt connector.MutationAttempt[Response]
+	attempt sdkgo.MutationAttempt[Response]
 }
 
-func (streamAttemptOperation) Definition() connector.MutationDefinition {
+func (streamAttemptOperation) Definition() sdkgo.MutationDefinition {
 	return streamTestDefinition
 }
 
-func (streamAttemptOperation) IdempotencyKey(id connector.CallID, _ struct{}) connector.IdempotencyKey {
-	return connector.IdempotencyKey(id)
+func (streamAttemptOperation) IdempotencyKey(id sdkgo.CallID, _ struct{}) sdkgo.IdempotencyKey {
+	return sdkgo.IdempotencyKey(id)
 }
 
-func (operation streamAttemptOperation) Invoke(connector.Call, struct{}) connector.MutationAttempt[Response] {
+func (operation streamAttemptOperation) Invoke(sdkgo.Call, struct{}) sdkgo.MutationAttempt[Response] {
 	return operation.attempt
 }
 
@@ -65,7 +65,7 @@ func TestOpenAIStreamTerminalFailuresPreserveKnownResponse(t *testing.T) {
 				`{"type":"`+eventType+`","sequence_number":2,"response":{"id":"resp_failed","model":"gpt-test","status":"failed","usage":{"total_tokens":7}}}`,
 			)))
 			require.Equal(t, CreateResponseBranchFailed, result.Branch)
-			require.Equal(t, connector.FailureProviderRejection, result.Failure.Kind)
+			require.Equal(t, sdkgo.FailureProviderRejection, result.Failure.Kind)
 			require.Equal(t, "resp_failed", result.Value.ID)
 			require.Equal(t, 7, result.Value.Usage.TotalTokens)
 			require.Equal(t, "resp_failed", result.Receipt.ProviderObjectID)
@@ -76,7 +76,7 @@ func TestOpenAIStreamTerminalFailuresPreserveKnownResponse(t *testing.T) {
 func TestOpenAIStreamErrorEventIsFailed(t *testing.T) {
 	result := runStreamAttempt(t, strings.NewReader(sse(`{"type":"error","sequence_number":1,"error":{"message":"secret provider body"}}`)))
 	require.Equal(t, CreateResponseBranchFailed, result.Branch)
-	require.Equal(t, connector.FailureProviderRejection, result.Failure.Kind)
+	require.Equal(t, sdkgo.FailureProviderRejection, result.Failure.Kind)
 	require.NotContains(t, result.Failure.Message, "secret provider body")
 }
 
@@ -95,25 +95,25 @@ func TestOpenAIStreamEarlyEOFAndBoundsAreUnknown(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			attempt := CreateResponseOperation{client: test.client}.readStream(connector.Call{}, strings.NewReader(test.body), nil, "req_1")
-			result, err := connector.RunMutation(
+			attempt := CreateResponseOperation{client: test.client}.readStream(sdkgo.Call{}, strings.NewReader(test.body), nil, "req_1")
+			result, err := sdkgo.RunMutation(
 				testsupport.NewDexContext("stream-flow", "stream-step"),
-				streamAttemptOperation{attempt: attempt}, connector.ConnectionRef{Provider: "openai", Name: "default"}, struct{}{},
+				streamAttemptOperation{attempt: attempt}, sdkgo.ConnectionRef{Provider: "openai", Name: "default"}, struct{}{},
 			)
 			require.NoError(t, err)
 			require.Equal(t, CreateResponseBranchUncertain, result.Branch)
-			require.Equal(t, connector.FailureProtocol, result.Failure.Kind)
+			require.Equal(t, sdkgo.FailureProtocol, result.Failure.Kind)
 		})
 	}
 }
 
-func runStreamAttempt(t *testing.T, body *strings.Reader) connector.MutationResult[Response] {
+func runStreamAttempt(t *testing.T, body *strings.Reader) sdkgo.MutationResult[Response] {
 	t.Helper()
 	client := &Client{maxResponseBytes: 16 << 10, maxSSEEventBytes: 4 << 10}
-	attempt := CreateResponseOperation{client: client}.readStream(connector.Call{}, body, nil, "req_stream")
-	result, err := connector.RunMutation(
+	attempt := CreateResponseOperation{client: client}.readStream(sdkgo.Call{}, body, nil, "req_stream")
+	result, err := sdkgo.RunMutation(
 		testsupport.NewDexContext("stream-flow", "stream-step"),
-		streamAttemptOperation{attempt: attempt}, connector.ConnectionRef{Provider: "openai", Name: "default"}, struct{}{},
+		streamAttemptOperation{attempt: attempt}, sdkgo.ConnectionRef{Provider: "openai", Name: "default"}, struct{}{},
 	)
 	require.NoError(t, err)
 	return result

@@ -8,17 +8,17 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/connectors/slack"
-	connector "github.com/superdurable/dex-connectors-library/sdk/go"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 
 func TestRootAndReplyResolveTheSameFlowID(t *testing.T) {
-	root := connector.TriggerEvent[slack.MessageEvent]{
+	root := sdkgo.TriggerEvent[slack.MessageEvent]{
 		ID: "Ev-root", OccurredAt: time.Unix(1, 0),
 		Payload: slack.MessageEvent{
 			TeamID: "T1", ChannelID: "C1", Timestamp: "1.0", ThreadTimestamp: "1.0", UserID: "U1",
 		},
 	}
-	reply := connector.TriggerEvent[slack.MessageEvent]{
+	reply := sdkgo.TriggerEvent[slack.MessageEvent]{
 		ID: "Ev-reply", OccurredAt: time.Unix(2, 0),
 		Payload: slack.MessageEvent{
 			TeamID: "T1", ChannelID: "C1", Timestamp: "2.0", ThreadTimestamp: "1.0", UserID: "U2",

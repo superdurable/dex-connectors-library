@@ -11,7 +11,7 @@ import (
 	"net/http"
 
 	httpconnector "github.com/superdurable/dex-connectors-library/connectors/http"
-	connector "github.com/superdurable/dex-connectors-library/sdk/go"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -21,7 +21,7 @@ const (
 	reconcileCreditGrantStepType = "ReconcileCreditGrant"
 )
 
-var CreditGrantResult = dex.DefineAttribute[connector.MutationResult[httpconnector.Response]]("CreditGrantResult")
+var CreditGrantResult = dex.DefineAttribute[sdkgo.MutationResult[httpconnector.Response]]("CreditGrantResult")
 
 type Input struct {
 	CustomerID      string `json:"customerId"`
@@ -36,9 +36,9 @@ type Profile struct {
 }
 
 type Output struct {
-	CustomerID string             `json:"customerId"`
-	CallID     connector.CallID   `json:"callId"`
-	Branch     connector.BranchID `json:"branch"`
+	CustomerID string         `json:"customerId"`
+	CallID     sdkgo.CallID   `json:"callId"`
+	Branch     sdkgo.BranchID `json:"branch"`
 }
 
 type profileStepOutput = httpconnector.QueryStepOutput[Input]
@@ -58,26 +58,26 @@ func (flow *CustomerOnboardingConnectorFlow) GetSteps() []dex.StepDef {
 	return []dex.StepDef{
 		dex.DefineStartStep(httpconnector.NewQueryStep(httpconnector.QueryStepConfig[Input]{
 			StepType: readCustomerProfileStepType,
-			Presentation: connector.StepPresentation{
+			Presentation: sdkgo.StepPresentation{
 				GroupID: "onboarding", GroupLabel: "Onboarding",
 				Explanation: "Read the customer profile from the configured provider.",
 			},
 			Connection: flow.connection, BuildInput: buildProfileQuery,
-			Succeeded: connector.GoTo(connector.StepRef[profileStepOutput](grantCustomerCreditsStepType)),
-			Failed:    connector.GoTo(ProfileReadFailedStep{}),
-			Defect:    connector.GoTo(ProfileReadFailedStep{}),
+			Succeeded: sdkgo.GoTo(sdkgo.StepRef[profileStepOutput](grantCustomerCreditsStepType)),
+			Failed:    sdkgo.GoTo(ProfileReadFailedStep{}),
+			Defect:    sdkgo.GoTo(ProfileReadFailedStep{}),
 		})),
 		dex.DefineStep(httpconnector.NewMutationStep(httpconnector.MutationStepConfig[profileStepOutput]{
 			StepType: grantCustomerCreditsStepType,
-			Presentation: connector.StepPresentation{
+			Presentation: sdkgo.StepPresentation{
 				GroupID: "onboarding", GroupLabel: "Onboarding",
 				Explanation: "Grant credits through an idempotent provider mutation.",
 			},
 			Connection: flow.connection, BuildInput: buildGrantMutation,
-			Succeeded:       connector.GoTo(CreditGrantSucceededStep{}),
-			Rejected:        connector.GoTo(CreditGrantFailedStep{}),
-			Uncertain:       connector.GoTo(connector.StepRef[grantStepOutput](reconcileCreditGrantStepType)),
-			Defect:          connector.GoTo(CreditGrantFailedStep{}),
+			Succeeded:       sdkgo.GoTo(CreditGrantSucceededStep{}),
+			Rejected:        sdkgo.GoTo(CreditGrantFailedStep{}),
+			Uncertain:       sdkgo.GoTo(sdkgo.StepRef[grantStepOutput](reconcileCreditGrantStepType)),
+			Defect:          sdkgo.GoTo(CreditGrantFailedStep{}),
 			ResultAttribute: &CreditGrantResult,
 			StepOptionsOverride: &dex.StepOptions{
 				ExecuteFailure: dex.ProceedToOnExecuteFailure(GrantExecuteFailedStep{}, nil),
@@ -85,14 +85,14 @@ func (flow *CustomerOnboardingConnectorFlow) GetSteps() []dex.StepDef {
 		})),
 		dex.DefineStep(httpconnector.NewQueryStep(httpconnector.QueryStepConfig[grantStepOutput]{
 			StepType: reconcileCreditGrantStepType,
-			Presentation: connector.StepPresentation{
+			Presentation: sdkgo.StepPresentation{
 				GroupID: "recovery", GroupLabel: "Recovery",
 				Explanation: "Reconcile an uncertain credit grant without repeating the mutation.",
 			},
 			Connection: flow.connection, BuildInput: buildReconciliationQuery,
-			Succeeded: connector.GoTo(CreditGrantReconciledStep{}),
-			Failed:    connector.GoTo(CreditGrantReconcileFailedStep{}),
-			Defect:    connector.GoTo(CreditGrantReconcileFailedStep{}),
+			Succeeded: sdkgo.GoTo(CreditGrantReconciledStep{}),
+			Failed:    sdkgo.GoTo(CreditGrantReconcileFailedStep{}),
+			Defect:    sdkgo.GoTo(CreditGrantReconcileFailedStep{}),
 		})),
 		dex.DefineStep(ProfileReadFailedStep{}),
 		dex.DefineStep(CreditGrantSucceededStep{}),
@@ -129,11 +129,11 @@ func (*CustomerOnboardingConnectorFlow) GetDexDisplay(ctx dex.Context, _ dex.Non
 	return &dex.RPCResult[map[string]any]{Output: map[string]any{"CreditGrantResult": result}}, nil
 }
 
-func optionalCreditGrantResult(ctx dex.Context) (connector.MutationResult[httpconnector.Response], error) {
+func optionalCreditGrantResult(ctx dex.Context) (sdkgo.MutationResult[httpconnector.Response], error) {
 	result, err := CreditGrantResult.Get(ctx)
 	var missing *dex.AttributeNotFoundError
 	if errors.As(err, &missing) {
-		return connector.MutationResult[httpconnector.Response]{}, nil
+		return sdkgo.MutationResult[httpconnector.Response]{}, nil
 	}
 	return result, err
 }
@@ -250,14 +250,14 @@ func (GrantExecuteFailedStep) Execute(_ dex.Context, _ profileStepOutput) (*dex.
 	return dex.ForceFail("credit grant connector Step exhausted retries"), nil
 }
 
-func resultFailure(operation string, failure *connector.Failure) string {
+func resultFailure(operation string, failure *sdkgo.Failure) string {
 	if failure == nil {
 		return operation + " failed without a classified failure"
 	}
 	return fmt.Sprintf("%s failed: %s", operation, failure.Kind)
 }
 
-func validateCommittedCreditGrant(ctx dex.Context, callID connector.CallID) error {
+func validateCommittedCreditGrant(ctx dex.Context, callID sdkgo.CallID) error {
 	result, err := CreditGrantResult.Get(ctx)
 	if err != nil {
 		return fmt.Errorf("load committed credit grant Result: %w", err)

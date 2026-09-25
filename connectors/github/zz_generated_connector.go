@@ -10,8 +10,8 @@ import (
 	"net/url"
 	"time"
 
-	connector "github.com/superdurable/dex-connectors-library/sdk/go"
-	"github.com/superdurable/dex-connectors-library/sdk/go/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -27,15 +27,15 @@ type Config struct {
 }
 
 type Credentials struct {
-	AccessToken connector.SecretString
+	AccessToken sdkgo.SecretString
 }
 
 type Connection struct {
 	client    *Client
-	reference connector.ConnectionRef
+	reference sdkgo.ConnectionRef
 }
 
-func NewConnection(client *Client, reference connector.ConnectionRef) (Connection, error) {
+func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, error) {
 	if client == nil {
 		return Connection{}, fmt.Errorf("github connector client is required")
 	}
@@ -50,7 +50,7 @@ func NewLocalConnection(store *localconfig.Store, connectionName string, options
 	if store == nil {
 		return Connection{}, fmt.Errorf("local connector configuration store is required")
 	}
-	reference := connector.ConnectionRef{Provider: "github", Name: connectionName}
+	reference := sdkgo.ConnectionRef{Provider: "github", Name: connectionName}
 	if err := reference.Validate(); err != nil {
 		return Connection{}, fmt.Errorf("github local connection: %w", err)
 	}
@@ -74,7 +74,7 @@ func decodeLocalCredentials(contents json.RawMessage) (Credentials, error) {
 		return Credentials{}, err
 	}
 	credentials := Credentials{
-		AccessToken: connector.NewSecretString(fields.AccessToken),
+		AccessToken: sdkgo.NewSecretString(fields.AccessToken),
 	}
 	return credentials, credentials.Validate()
 }
@@ -161,17 +161,17 @@ func (credentials Credentials) Validate() error {
 	return nil
 }
 
-const GetAuthenticatedProfileBranchProfileLoaded connector.BranchID = "profileLoaded"
-const GetAuthenticatedProfileBranchVerifiedEmailRequired connector.BranchID = "verifiedEmailRequired"
-const GetAuthenticatedProfileBranchInsufficientScope connector.BranchID = "insufficientScope"
-const GetAuthenticatedProfileBranchAuthorizationRevoked connector.BranchID = "authorizationRevoked"
-const GetAuthenticatedProfileBranchNotFound connector.BranchID = "notFound"
-const GetAuthenticatedProfileBranchFailed connector.BranchID = "failed"
-const GetAuthenticatedProfileBranchDefect connector.BranchID = "defect"
+const GetAuthenticatedProfileBranchProfileLoaded sdkgo.BranchID = "profileLoaded"
+const GetAuthenticatedProfileBranchVerifiedEmailRequired sdkgo.BranchID = "verifiedEmailRequired"
+const GetAuthenticatedProfileBranchInsufficientScope sdkgo.BranchID = "insufficientScope"
+const GetAuthenticatedProfileBranchAuthorizationRevoked sdkgo.BranchID = "authorizationRevoked"
+const GetAuthenticatedProfileBranchNotFound sdkgo.BranchID = "notFound"
+const GetAuthenticatedProfileBranchFailed sdkgo.BranchID = "failed"
+const GetAuthenticatedProfileBranchDefect sdkgo.BranchID = "defect"
 
-var GetAuthenticatedProfileDefinition = connector.QueryDefinition{
-	Operation: connector.OperationRef{ConnectorID: ConnectorID, OperationID: "getAuthenticatedProfile"},
-	Branches: []connector.BranchDefinition{
+var GetAuthenticatedProfileDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getAuthenticatedProfile"},
+	Branches: []sdkgo.BranchDefinition{
 		{ID: GetAuthenticatedProfileBranchProfileLoaded, Description: "The authenticated profile and primary verified email were loaded."},
 		{ID: GetAuthenticatedProfileBranchVerifiedEmailRequired, Description: "A primary verified email was not available."},
 		{ID: GetAuthenticatedProfileBranchInsufficientScope, Description: "The OAuth grant does not match the required scopes."},
@@ -181,49 +181,49 @@ var GetAuthenticatedProfileDefinition = connector.QueryDefinition{
 		{ID: GetAuthenticatedProfileBranchDefect, Description: "Local configuration or input is invalid."},
 	},
 	DefectBranch: GetAuthenticatedProfileBranchDefect,
-	StepDefaults: connector.StepDefaults{
+	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
-	ResultAttribute: connector.RequirementRequired,
-	Progress:        connector.ProgressCapabilities{Structured: false, Text: false},
+	ResultAttribute: sdkgo.RequirementRequired,
+	Progress:        sdkgo.ProgressCapabilities{Structured: false, Text: false},
 }
 
-type GetAuthenticatedProfileStepOutput[IN any] = connector.QueryStepOutput[IN, AuthenticatedProfile]
+type GetAuthenticatedProfileStepOutput[IN any] = sdkgo.QueryStepOutput[IN, AuthenticatedProfile]
 
 type GetAuthenticatedProfileStepConfig[IN any] struct {
-	connector.QueryFactoryConfigMarker `connector:"factory=query"`
-	connectorID                        struct{}                                                    `connector:"connectorId=github"`
-	operationID                        struct{}                                                    `connector:"operationId=getAuthenticatedProfile"`
-	StepType                           string                                                      `connector:"stepType"`
-	Presentation                       connector.StepPresentation                                  `connector:"presentation"`
-	Connection                         Connection                                                  `connector:"connection"`
-	ConnectionName                     string                                                      `connector:"connectionName"`
-	BuildInput                         func(IN) (GetAuthenticatedProfileInput, error)              `connector:"buildInput"`
-	ProfileLoaded                      connector.Target[GetAuthenticatedProfileStepOutput[IN]]     `connector:"branch=profileLoaded"`
-	VerifiedEmailRequired              connector.Target[GetAuthenticatedProfileStepOutput[IN]]     `connector:"branch=verifiedEmailRequired"`
-	InsufficientScope                  connector.Target[GetAuthenticatedProfileStepOutput[IN]]     `connector:"branch=insufficientScope"`
-	AuthorizationRevoked               connector.Target[GetAuthenticatedProfileStepOutput[IN]]     `connector:"branch=authorizationRevoked"`
-	NotFound                           connector.Target[GetAuthenticatedProfileStepOutput[IN]]     `connector:"branch=notFound"`
-	Failed                             connector.Target[GetAuthenticatedProfileStepOutput[IN]]     `connector:"branch=failed"`
-	Defect                             connector.Target[GetAuthenticatedProfileStepOutput[IN]]     `connector:"branch=defect"`
-	ResultAttribute                    *dex.Attribute[connector.QueryResult[AuthenticatedProfile]] `connector:"resultAttribute"`
-	StepOptionsOverride                *dex.StepOptions                                            `connector:"stepOptionsOverride"`
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                `connector:"connectorId=github"`
+	operationID                    struct{}                                                `connector:"operationId=getAuthenticatedProfile"`
+	StepType                       string                                                  `connector:"stepType"`
+	Presentation                   sdkgo.StepPresentation                                  `connector:"presentation"`
+	Connection                     Connection                                              `connector:"connection"`
+	ConnectionName                 string                                                  `connector:"connectionName"`
+	BuildInput                     func(IN) (GetAuthenticatedProfileInput, error)          `connector:"buildInput"`
+	ProfileLoaded                  sdkgo.Target[GetAuthenticatedProfileStepOutput[IN]]     `connector:"branch=profileLoaded"`
+	VerifiedEmailRequired          sdkgo.Target[GetAuthenticatedProfileStepOutput[IN]]     `connector:"branch=verifiedEmailRequired"`
+	InsufficientScope              sdkgo.Target[GetAuthenticatedProfileStepOutput[IN]]     `connector:"branch=insufficientScope"`
+	AuthorizationRevoked           sdkgo.Target[GetAuthenticatedProfileStepOutput[IN]]     `connector:"branch=authorizationRevoked"`
+	NotFound                       sdkgo.Target[GetAuthenticatedProfileStepOutput[IN]]     `connector:"branch=notFound"`
+	Failed                         sdkgo.Target[GetAuthenticatedProfileStepOutput[IN]]     `connector:"branch=failed"`
+	Defect                         sdkgo.Target[GetAuthenticatedProfileStepOutput[IN]]     `connector:"branch=defect"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[AuthenticatedProfile]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                        `connector:"stepOptionsOverride"`
 }
 
-func NewGetAuthenticatedProfileStep[IN any](config GetAuthenticatedProfileStepConfig[IN]) connector.QueryStep[IN, GetAuthenticatedProfileInput, AuthenticatedProfile] {
+func NewGetAuthenticatedProfileStep[IN any](config GetAuthenticatedProfileStepConfig[IN]) sdkgo.QueryStep[IN, GetAuthenticatedProfileInput, AuthenticatedProfile] {
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
 		panic(fmt.Errorf("github connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
 	}
-	return connector.MustNewQueryStep(connector.QueryStepConfig[IN, GetAuthenticatedProfileInput, AuthenticatedProfile]{
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetAuthenticatedProfileInput, AuthenticatedProfile]{
 		StepType: config.StepType, Presentation: config.Presentation,
 		Operation: config.Connection.client.GetAuthenticatedProfile(), Connection: config.Connection.reference,
 		BuildInput: config.BuildInput,
-		Branches: []connector.BranchTarget[GetAuthenticatedProfileStepOutput[IN]]{
+		Branches: []sdkgo.BranchTarget[GetAuthenticatedProfileStepOutput[IN]]{
 			config.ProfileLoaded.BranchTarget(GetAuthenticatedProfileBranchProfileLoaded),
 			config.VerifiedEmailRequired.BranchTarget(GetAuthenticatedProfileBranchVerifiedEmailRequired),
 			config.InsufficientScope.BranchTarget(GetAuthenticatedProfileBranchInsufficientScope),
@@ -237,16 +237,16 @@ func NewGetAuthenticatedProfileStep[IN any](config GetAuthenticatedProfileStepCo
 	})
 }
 
-const ListPublicRepositoriesBranchRepositoriesLoaded connector.BranchID = "repositoriesLoaded"
-const ListPublicRepositoriesBranchInsufficientScope connector.BranchID = "insufficientScope"
-const ListPublicRepositoriesBranchAuthorizationRevoked connector.BranchID = "authorizationRevoked"
-const ListPublicRepositoriesBranchNotFound connector.BranchID = "notFound"
-const ListPublicRepositoriesBranchFailed connector.BranchID = "failed"
-const ListPublicRepositoriesBranchDefect connector.BranchID = "defect"
+const ListPublicRepositoriesBranchRepositoriesLoaded sdkgo.BranchID = "repositoriesLoaded"
+const ListPublicRepositoriesBranchInsufficientScope sdkgo.BranchID = "insufficientScope"
+const ListPublicRepositoriesBranchAuthorizationRevoked sdkgo.BranchID = "authorizationRevoked"
+const ListPublicRepositoriesBranchNotFound sdkgo.BranchID = "notFound"
+const ListPublicRepositoriesBranchFailed sdkgo.BranchID = "failed"
+const ListPublicRepositoriesBranchDefect sdkgo.BranchID = "defect"
 
-var ListPublicRepositoriesDefinition = connector.QueryDefinition{
-	Operation: connector.OperationRef{ConnectorID: ConnectorID, OperationID: "listPublicRepositories"},
-	Branches: []connector.BranchDefinition{
+var ListPublicRepositoriesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listPublicRepositories"},
+	Branches: []sdkgo.BranchDefinition{
 		{ID: ListPublicRepositoriesBranchRepositoriesLoaded, Description: "Public repositories were loaded and bounded."},
 		{ID: ListPublicRepositoriesBranchInsufficientScope, Description: "The OAuth grant does not match the required scopes."},
 		{ID: ListPublicRepositoriesBranchAuthorizationRevoked, Description: "The OAuth grant is invalid or revoked."},
@@ -255,48 +255,48 @@ var ListPublicRepositoriesDefinition = connector.QueryDefinition{
 		{ID: ListPublicRepositoriesBranchDefect, Description: "Local configuration or input is invalid."},
 	},
 	DefectBranch: ListPublicRepositoriesBranchDefect,
-	StepDefaults: connector.StepDefaults{
+	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
-	ResultAttribute: connector.RequirementRequired,
-	Progress:        connector.ProgressCapabilities{Structured: false, Text: false},
+	ResultAttribute: sdkgo.RequirementRequired,
+	Progress:        sdkgo.ProgressCapabilities{Structured: false, Text: false},
 }
 
-type ListPublicRepositoriesStepOutput[IN any] = connector.QueryStepOutput[IN, PublicRepositories]
+type ListPublicRepositoriesStepOutput[IN any] = sdkgo.QueryStepOutput[IN, PublicRepositories]
 
 type ListPublicRepositoriesStepConfig[IN any] struct {
-	connector.QueryFactoryConfigMarker `connector:"factory=query"`
-	connectorID                        struct{}                                                  `connector:"connectorId=github"`
-	operationID                        struct{}                                                  `connector:"operationId=listPublicRepositories"`
-	StepType                           string                                                    `connector:"stepType"`
-	Presentation                       connector.StepPresentation                                `connector:"presentation"`
-	Connection                         Connection                                                `connector:"connection"`
-	ConnectionName                     string                                                    `connector:"connectionName"`
-	BuildInput                         func(IN) (ListPublicRepositoriesInput, error)             `connector:"buildInput"`
-	RepositoriesLoaded                 connector.Target[ListPublicRepositoriesStepOutput[IN]]    `connector:"branch=repositoriesLoaded"`
-	InsufficientScope                  connector.Target[ListPublicRepositoriesStepOutput[IN]]    `connector:"branch=insufficientScope"`
-	AuthorizationRevoked               connector.Target[ListPublicRepositoriesStepOutput[IN]]    `connector:"branch=authorizationRevoked"`
-	NotFound                           connector.Target[ListPublicRepositoriesStepOutput[IN]]    `connector:"branch=notFound"`
-	Failed                             connector.Target[ListPublicRepositoriesStepOutput[IN]]    `connector:"branch=failed"`
-	Defect                             connector.Target[ListPublicRepositoriesStepOutput[IN]]    `connector:"branch=defect"`
-	ResultAttribute                    *dex.Attribute[connector.QueryResult[PublicRepositories]] `connector:"resultAttribute"`
-	StepOptionsOverride                *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                              `connector:"connectorId=github"`
+	operationID                    struct{}                                              `connector:"operationId=listPublicRepositories"`
+	StepType                       string                                                `connector:"stepType"`
+	Presentation                   sdkgo.StepPresentation                                `connector:"presentation"`
+	Connection                     Connection                                            `connector:"connection"`
+	ConnectionName                 string                                                `connector:"connectionName"`
+	BuildInput                     func(IN) (ListPublicRepositoriesInput, error)         `connector:"buildInput"`
+	RepositoriesLoaded             sdkgo.Target[ListPublicRepositoriesStepOutput[IN]]    `connector:"branch=repositoriesLoaded"`
+	InsufficientScope              sdkgo.Target[ListPublicRepositoriesStepOutput[IN]]    `connector:"branch=insufficientScope"`
+	AuthorizationRevoked           sdkgo.Target[ListPublicRepositoriesStepOutput[IN]]    `connector:"branch=authorizationRevoked"`
+	NotFound                       sdkgo.Target[ListPublicRepositoriesStepOutput[IN]]    `connector:"branch=notFound"`
+	Failed                         sdkgo.Target[ListPublicRepositoriesStepOutput[IN]]    `connector:"branch=failed"`
+	Defect                         sdkgo.Target[ListPublicRepositoriesStepOutput[IN]]    `connector:"branch=defect"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[PublicRepositories]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                      `connector:"stepOptionsOverride"`
 }
 
-func NewListPublicRepositoriesStep[IN any](config ListPublicRepositoriesStepConfig[IN]) connector.QueryStep[IN, ListPublicRepositoriesInput, PublicRepositories] {
+func NewListPublicRepositoriesStep[IN any](config ListPublicRepositoriesStepConfig[IN]) sdkgo.QueryStep[IN, ListPublicRepositoriesInput, PublicRepositories] {
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
 		panic(fmt.Errorf("github connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
 	}
-	return connector.MustNewQueryStep(connector.QueryStepConfig[IN, ListPublicRepositoriesInput, PublicRepositories]{
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListPublicRepositoriesInput, PublicRepositories]{
 		StepType: config.StepType, Presentation: config.Presentation,
 		Operation: config.Connection.client.ListPublicRepositories(), Connection: config.Connection.reference,
 		BuildInput: config.BuildInput,
-		Branches: []connector.BranchTarget[ListPublicRepositoriesStepOutput[IN]]{
+		Branches: []sdkgo.BranchTarget[ListPublicRepositoriesStepOutput[IN]]{
 			config.RepositoriesLoaded.BranchTarget(ListPublicRepositoriesBranchRepositoriesLoaded),
 			config.InsufficientScope.BranchTarget(ListPublicRepositoriesBranchInsufficientScope),
 			config.AuthorizationRevoked.BranchTarget(ListPublicRepositoriesBranchAuthorizationRevoked),

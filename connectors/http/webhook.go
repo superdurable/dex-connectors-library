@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"time"
 
-	connector "github.com/superdurable/dex-connectors-library/sdk/go"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 
 type WebhookRequest struct {
@@ -28,32 +28,32 @@ type VerifyWebhookOperation struct {
 	client *Client
 }
 
-func (VerifyWebhookOperation) Definition() connector.QueryDefinition {
+func (VerifyWebhookOperation) Definition() sdkgo.QueryDefinition {
 	return VerifyWebhookDefinition
 }
 
-func (operation VerifyWebhookOperation) Invoke(call connector.Call, input WebhookRequest) connector.QueryAttempt[WebhookResult] {
+func (operation VerifyWebhookOperation) Invoke(call sdkgo.Call, input WebhookRequest) sdkgo.QueryAttempt[WebhookResult] {
 	if input.Timestamp == "" || input.Signature == "" || len(input.Body) == 0 {
-		failure := connector.Failure{Kind: connector.FailureValidation, Provider: "http", Operation: "verifyWebhook", Message: "timestamp, signature, and body are required"}
-		return connector.NewQueryBranch(VerifyWebhookBranchDefect, WebhookResult{}, &failure, connector.Receipt{})
+		failure := sdkgo.Failure{Kind: sdkgo.FailureValidation, Provider: "http", Operation: "verifyWebhook", Message: "timestamp, signature, and body are required"}
+		return sdkgo.NewQueryBranch(VerifyWebhookBranchDefect, WebhookResult{}, &failure, sdkgo.Receipt{})
 	}
 	if operation.client.webhookReplay == nil {
-		failure := connector.Failure{Kind: connector.FailureLocalDefect, Provider: "http", Operation: "verifyWebhook", Message: "webhook replay protection is not configured"}
-		return connector.NewQueryBranch(VerifyWebhookBranchDefect, WebhookResult{}, &failure, connector.Receipt{})
+		failure := sdkgo.Failure{Kind: sdkgo.FailureLocalDefect, Provider: "http", Operation: "verifyWebhook", Message: "webhook replay protection is not configured"}
+		return sdkgo.NewQueryBranch(VerifyWebhookBranchDefect, WebhookResult{}, &failure, sdkgo.Receipt{})
 	}
 	credentials, err := operation.client.credentials.Resolve(call)
 	if err != nil || credentials.WebhookSecret.Reveal() == "" {
-		failure := connector.Failure{Kind: connector.FailureAuthentication, Provider: "http", Operation: "verifyWebhook", Message: "webhook credentials are unavailable"}
-		return connector.NewQueryBranch(VerifyWebhookBranchRejected, WebhookResult{}, &failure, connector.Receipt{})
+		failure := sdkgo.Failure{Kind: sdkgo.FailureAuthentication, Provider: "http", Operation: "verifyWebhook", Message: "webhook credentials are unavailable"}
+		return sdkgo.NewQueryBranch(VerifyWebhookBranchRejected, WebhookResult{}, &failure, sdkgo.Receipt{})
 	}
 	verifier := WebhookVerifier{
 		Secret: []byte(credentials.WebhookSecret.Reveal()), Replay: operation.client.webhookReplay, Now: operation.client.now,
 	}
 	if err := verifier.Verify(input.Timestamp, input.Signature, input.Body); err != nil {
-		failure := connector.Failure{Kind: connector.FailureProviderRejection, Provider: "http", Operation: "verifyWebhook", Message: "webhook verification failed"}
-		return connector.NewQueryBranch(VerifyWebhookBranchRejected, WebhookResult{}, &failure, connector.Receipt{})
+		failure := sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Provider: "http", Operation: "verifyWebhook", Message: "webhook verification failed"}
+		return sdkgo.NewQueryBranch(VerifyWebhookBranchRejected, WebhookResult{}, &failure, sdkgo.Receipt{})
 	}
-	return connector.NewQueryBranch(VerifyWebhookBranchVerified, WebhookResult{Verified: true}, nil, connector.Receipt{})
+	return sdkgo.NewQueryBranch(VerifyWebhookBranchVerified, WebhookResult{Verified: true}, nil, sdkgo.Receipt{})
 }
 
 type ReplayGuard interface {

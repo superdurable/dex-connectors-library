@@ -18,11 +18,11 @@ import (
 	"github.com/stretchr/testify/require"
 	githubconnector "github.com/superdurable/dex-connectors-library/connectors/github"
 	"github.com/superdurable/dex-connectors-library/connectors/github/internal/testsupport"
-	connector "github.com/superdurable/dex-connectors-library/sdk/go"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
-var githubConnection = connector.ConnectionRef{Provider: "github", Name: "signup"}
+var githubConnection = sdkgo.ConnectionRef{Provider: "github", Name: "signup"}
 
 func TestGetAuthenticatedProfileReturnsBoundedProfileAndPrimaryVerifiedEmail(t *testing.T) {
 	var requests atomic.Int32
@@ -54,7 +54,7 @@ func TestGetAuthenticatedProfileReturnsBoundedProfileAndPrimaryVerifiedEmail(t *
 	defer server.Close()
 
 	client := newClient(t, server.URL, githubconnector.Config{})
-	result, err := connector.RunQuery(
+	result, err := sdkgo.RunQuery(
 		testsupport.NewDexContext("signup-flow", "profile-step"), client.GetAuthenticatedProfile(), githubConnection,
 		githubconnector.GetAuthenticatedProfileInput{},
 	)
@@ -89,13 +89,13 @@ func TestGetAuthenticatedProfileRequiresPrimaryVerifiedEmail(t *testing.T) {
 	defer server.Close()
 
 	client := newClient(t, server.URL, githubconnector.Config{})
-	result, err := connector.RunQuery(
+	result, err := sdkgo.RunQuery(
 		testsupport.NewDexContext("signup-flow", "email-step"), client.GetAuthenticatedProfile(), githubConnection,
 		githubconnector.GetAuthenticatedProfileInput{},
 	)
 	require.NoError(t, err)
 	require.Equal(t, githubconnector.GetAuthenticatedProfileBranchVerifiedEmailRequired, result.Branch)
-	require.Equal(t, connector.FailureAuthentication, result.Failure.Kind)
+	require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
 	require.Empty(t, result.Value.VerifiedEmail)
 }
 
@@ -104,15 +104,15 @@ func TestGetAuthenticatedProfileClassifiesAuthorizationAndRateLimit(t *testing.T
 		name       string
 		status     int
 		headers    map[string]string
-		wantBranch connector.BranchID
-		wantKind   connector.FailureKind
+		wantBranch sdkgo.BranchID
+		wantKind   sdkgo.FailureKind
 		wantRetry  time.Duration
 	}{
-		{name: "revoked", status: http.StatusUnauthorized, wantBranch: githubconnector.GetAuthenticatedProfileBranchAuthorizationRevoked, wantKind: connector.FailureAuthentication},
-		{name: "forbidden", status: http.StatusForbidden, wantBranch: githubconnector.GetAuthenticatedProfileBranchInsufficientScope, wantKind: connector.FailureAuthorization},
-		{name: "not found", status: http.StatusNotFound, wantBranch: githubconnector.GetAuthenticatedProfileBranchNotFound, wantKind: connector.FailureNotFound},
-		{name: "primary rate limit", status: http.StatusForbidden, headers: map[string]string{"X-RateLimit-Remaining": "0", "X-RateLimit-Reset": "1767225635"}, wantKind: connector.FailureRateLimit, wantRetry: 30 * time.Second},
-		{name: "secondary rate limit", status: http.StatusTooManyRequests, headers: map[string]string{"Retry-After": "7"}, wantKind: connector.FailureRateLimit, wantRetry: 7 * time.Second},
+		{name: "revoked", status: http.StatusUnauthorized, wantBranch: githubconnector.GetAuthenticatedProfileBranchAuthorizationRevoked, wantKind: sdkgo.FailureAuthentication},
+		{name: "forbidden", status: http.StatusForbidden, wantBranch: githubconnector.GetAuthenticatedProfileBranchInsufficientScope, wantKind: sdkgo.FailureAuthorization},
+		{name: "not found", status: http.StatusNotFound, wantBranch: githubconnector.GetAuthenticatedProfileBranchNotFound, wantKind: sdkgo.FailureNotFound},
+		{name: "primary rate limit", status: http.StatusForbidden, headers: map[string]string{"X-RateLimit-Remaining": "0", "X-RateLimit-Reset": "1767225635"}, wantKind: sdkgo.FailureRateLimit, wantRetry: 30 * time.Second},
+		{name: "secondary rate limit", status: http.StatusTooManyRequests, headers: map[string]string{"Retry-After": "7"}, wantKind: sdkgo.FailureRateLimit, wantRetry: 7 * time.Second},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -126,12 +126,12 @@ func TestGetAuthenticatedProfileClassifiesAuthorizationAndRateLimit(t *testing.T
 			client := newClient(t, server.URL, githubconnector.Config{}, githubconnector.WithClock(func() time.Time {
 				return time.Unix(1767225605, 0)
 			}))
-			result, err := connector.RunQuery(
+			result, err := sdkgo.RunQuery(
 				testsupport.NewDexContext("signup-flow", "classification-step"), client.GetAuthenticatedProfile(), githubConnection,
 				githubconnector.GetAuthenticatedProfileInput{},
 			)
 			if test.wantRetry > 0 {
-				var retry *connector.RetryError
+				var retry *sdkgo.RetryError
 				require.ErrorAs(t, err, &retry)
 				require.Equal(t, test.wantKind, retry.Failure.Kind)
 				var retryAfter *dex.RetryAfterError
@@ -158,7 +158,7 @@ func TestGetAuthenticatedProfileRejectsMissingOAuthScopes(t *testing.T) {
 			defer server.Close()
 
 			client := newClient(t, server.URL, githubconnector.Config{})
-			result, err := connector.RunQuery(
+			result, err := sdkgo.RunQuery(
 				testsupport.NewDexContext("signup-flow", "scope-step"), client.GetAuthenticatedProfile(), githubConnection,
 				githubconnector.GetAuthenticatedProfileInput{},
 			)
@@ -198,7 +198,7 @@ func TestListPublicRepositoriesPaginatesDeduplicatesSortsAndTruncates(t *testing
 	defer server.Close()
 
 	client := newClient(t, server.URL, githubconnector.Config{DefaultRepositoryLimit: 3, MaxRepositories: 5})
-	result, err := connector.RunQuery(
+	result, err := sdkgo.RunQuery(
 		testsupport.NewDexContext("signup-flow", "repositories-step"), client.ListPublicRepositories(), githubConnection,
 		githubconnector.ListPublicRepositoriesInput{Login: "octocat", Limit: 3},
 	)
@@ -222,12 +222,12 @@ func TestListPublicRepositoriesValidatesInputBeforeProviderAccess(t *testing.T) 
 	client := newClient(t, server.URL, githubconnector.Config{DefaultRepositoryLimit: 5, MaxRepositories: 5})
 
 	for _, input := range []githubconnector.ListPublicRepositoriesInput{{Login: ""}, {Login: "bad/login"}, {Login: "octocat", Limit: 6}} {
-		result, err := connector.RunQuery(
+		result, err := sdkgo.RunQuery(
 			testsupport.NewDexContext("signup-flow", "invalid-repositories-step"), client.ListPublicRepositories(), githubConnection, input,
 		)
 		require.NoError(t, err)
 		require.Equal(t, githubconnector.ListPublicRepositoriesBranchDefect, result.Branch)
-		require.Equal(t, connector.FailureValidation, result.Failure.Kind)
+		require.Equal(t, sdkgo.FailureValidation, result.Failure.Kind)
 	}
 	require.Zero(t, requests.Load())
 }
@@ -239,13 +239,13 @@ func TestResponseSizeFailureIsTerminalAndSecretSafe(t *testing.T) {
 	}))
 	defer server.Close()
 	client := newClient(t, server.URL, githubconnector.Config{MaxResponseBytes: 16})
-	result, err := connector.RunQuery(
+	result, err := sdkgo.RunQuery(
 		testsupport.NewDexContext("signup-flow", "large-response-step"), client.GetAuthenticatedProfile(), githubConnection,
 		githubconnector.GetAuthenticatedProfileInput{},
 	)
 	require.NoError(t, err)
 	require.Equal(t, githubconnector.GetAuthenticatedProfileBranchFailed, result.Branch)
-	require.Equal(t, connector.FailureResponseTooLarge, result.Failure.Kind)
+	require.Equal(t, sdkgo.FailureResponseTooLarge, result.Failure.Kind)
 	require.NotContains(t, fmt.Sprintf("%#v", result), "one-use-token")
 }
 
@@ -255,13 +255,13 @@ func TestTransportAndAvailabilityFailuresAreSafeRetries(t *testing.T) {
 		return nil, errors.New("transport failed with one-use-token")
 	})}
 	client := newClient(t, "https://api.github.test", githubconnector.Config{}, githubconnector.WithHTTPClient(transportClient))
-	_, err := connector.RunQuery(
+	_, err := sdkgo.RunQuery(
 		testsupport.NewDexContext("signup-flow", "transport-step"), client.GetAuthenticatedProfile(), githubConnection,
 		githubconnector.GetAuthenticatedProfileInput{},
 	)
-	var retry *connector.RetryError
+	var retry *sdkgo.RetryError
 	require.ErrorAs(t, err, &retry)
-	require.Equal(t, connector.FailureAvailability, retry.Failure.Kind)
+	require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
 	require.NotContains(t, err.Error(), "one-use-token")
 
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
@@ -269,17 +269,17 @@ func TestTransportAndAvailabilityFailuresAreSafeRetries(t *testing.T) {
 	}))
 	defer server.Close()
 	client = newClient(t, server.URL, githubconnector.Config{})
-	_, err = connector.RunQuery(
+	_, err = sdkgo.RunQuery(
 		testsupport.NewDexContext("signup-flow", "availability-step"), client.GetAuthenticatedProfile(), githubConnection,
 		githubconnector.GetAuthenticatedProfileInput{},
 	)
 	require.ErrorAs(t, err, &retry)
-	require.Equal(t, connector.FailureAvailability, retry.Failure.Kind)
+	require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
 }
 
 func TestConfigRejectsUnsafeEndpointAndRepositoryLimits(t *testing.T) {
-	credentials := connector.StaticCredentialProvider[githubconnector.Credentials]{githubConnection: {
-		AccessToken: connector.NewSecretString("one-use-token"),
+	credentials := sdkgo.StaticCredentialProvider[githubconnector.Credentials]{githubConnection: {
+		AccessToken: sdkgo.NewSecretString("one-use-token"),
 	}}
 	_, err := githubconnector.New(githubconnector.Config{BaseURL: "http://github.example"}, credentials)
 	require.ErrorContains(t, err, "must use HTTPS")
@@ -294,8 +294,8 @@ func TestConfigRejectsUnsafeEndpointAndRepositoryLimits(t *testing.T) {
 func newClient(t *testing.T, baseURL string, config githubconnector.Config, options ...githubconnector.Option) *githubconnector.Client {
 	t.Helper()
 	config.BaseURL = baseURL
-	credentials := connector.StaticCredentialProvider[githubconnector.Credentials]{githubConnection: {
-		AccessToken: connector.NewSecretString("one-use-token"),
+	credentials := sdkgo.StaticCredentialProvider[githubconnector.Credentials]{githubConnection: {
+		AccessToken: sdkgo.NewSecretString("one-use-token"),
 	}}
 	client, err := githubconnector.New(config, credentials, options...)
 	require.NoError(t, err)

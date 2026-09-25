@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	connector "github.com/superdurable/dex-connectors-library/sdk/go"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 
 func TestChannelThreadTriggerMatchesChannelPosterAndText(t *testing.T) {
@@ -58,7 +58,7 @@ func TestFlowIDByThreadUsesApplicationResolver(t *testing.T) {
 	resolver := FlowIDByThread(func(identity ThreadIdentity) (string, error) {
 		return identity.TeamID + "/" + identity.ChannelID + "/" + identity.RootTimestamp, nil
 	})
-	flowID, err := resolver(connector.TriggerEvent[MessageEvent]{Payload: MessageEvent{
+	flowID, err := resolver(sdkgo.TriggerEvent[MessageEvent]{Payload: MessageEvent{
 		TeamID: "T1", ChannelID: "C1", ThreadTimestamp: "1.0",
 	}})
 	require.NoError(t, err)
@@ -86,20 +86,20 @@ func TestSocketModeReconnectsDeliversAndAcknowledgesMatchedEvent(t *testing.T) {
 		}
 		return second, nil
 	}
-	connectionReference := connector.ConnectionRef{Provider: "slack", Name: "workspace"}
-	client, err := New(Config{Endpoint: server.URL}, connector.StaticCredentialProvider[Credentials]{
-		connectionReference: {BotToken: connector.NewSecretString("bot-token"), UserToken: connector.NewSecretString("user-token"), AppToken: connector.NewSecretString("app-token")},
+	connectionReference := sdkgo.ConnectionRef{Provider: "slack", Name: "workspace"}
+	client, err := New(Config{Endpoint: server.URL}, sdkgo.StaticCredentialProvider[Credentials]{
+		connectionReference: {BotToken: sdkgo.NewSecretString("bot-token"), UserToken: sdkgo.NewSecretString("user-token"), AppToken: sdkgo.NewSecretString("app-token")},
 	}, func(options *clientOptions) { options.socketDialer = dialer })
 	require.NoError(t, err)
 	connection, err := NewConnection(client, connectionReference)
 	require.NoError(t, err)
 	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
 	defer cancel()
-	delivered := make(chan connector.TriggerEvent[MessageEvent], 1)
+	delivered := make(chan sdkgo.TriggerEvent[MessageEvent], 1)
 	runner := NewChannelThreadCreatedTrigger(ChannelThreadCreatedTriggerConfig{
 		Connection: connection, ConnectionName: "workspace", BindingName: "approval-start",
 		Configuration: ChannelThreadCreatedTriggerConfiguration{ChannelID: "C123", ThreadTriggerMatcher: MessageMatcher{MessageContains: "request approval"}},
-		Target: connector.TriggerTargetFunc[MessageEvent](func(_ context.Context, event connector.TriggerEvent[MessageEvent]) error {
+		Target: sdkgo.TriggerTargetFunc[MessageEvent](func(_ context.Context, event sdkgo.TriggerEvent[MessageEvent]) error {
 			delivered <- event
 			cancel()
 			return nil
@@ -135,9 +135,9 @@ func TestSocketModeAcknowledgesBeforeTargetCompletes(t *testing.T) {
 	connection := &fakeSocketConnection{acknowledgements: make(chan map[string]string, 1), envelopes: []socketEnvelope{messageEnvelope(t, "Ev3", messageEvent{
 		Type: "message", Channel: "C123", User: "U1", Text: "request approval", Timestamp: "1.0",
 	})}}
-	connectionReference := connector.ConnectionRef{Provider: "slack", Name: "workspace"}
-	client, err := New(Config{Endpoint: server.URL}, connector.StaticCredentialProvider[Credentials]{
-		connectionReference: {BotToken: connector.NewSecretString("bot-token"), UserToken: connector.NewSecretString("user-token"), AppToken: connector.NewSecretString("app-token")},
+	connectionReference := sdkgo.ConnectionRef{Provider: "slack", Name: "workspace"}
+	client, err := New(Config{Endpoint: server.URL}, sdkgo.StaticCredentialProvider[Credentials]{
+		connectionReference: {BotToken: sdkgo.NewSecretString("bot-token"), UserToken: sdkgo.NewSecretString("user-token"), AppToken: sdkgo.NewSecretString("app-token")},
 	}, func(options *clientOptions) {
 		options.socketDialer = func(context.Context, string) (socketConnection, error) { return connection, nil }
 	})
@@ -151,7 +151,7 @@ func TestSocketModeAcknowledgesBeforeTargetCompletes(t *testing.T) {
 	runner := NewChannelThreadCreatedTrigger(ChannelThreadCreatedTriggerConfig{
 		Connection: configuredConnection, BindingName: "approval-start",
 		Configuration: ChannelThreadCreatedTriggerConfiguration{ChannelID: "C123"},
-		Target: connector.TriggerTargetFunc[MessageEvent](func(context.Context, connector.TriggerEvent[MessageEvent]) error {
+		Target: sdkgo.TriggerTargetFunc[MessageEvent](func(context.Context, sdkgo.TriggerEvent[MessageEvent]) error {
 			close(targetStarted)
 			<-releaseTarget
 			return nil
@@ -183,13 +183,13 @@ func TestTriggerDeliveryRetriesAfterAcknowledgement(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	attempts := 0
-	err := deliverTriggerEvent(ctx, connector.TriggerTargetFunc[MessageEvent](func(context.Context, connector.TriggerEvent[MessageEvent]) error {
+	err := deliverTriggerEvent(ctx, sdkgo.TriggerTargetFunc[MessageEvent](func(context.Context, sdkgo.TriggerEvent[MessageEvent]) error {
 		attempts++
 		if attempts == 1 {
 			return errors.New("temporary Dex failure")
 		}
 		return nil
-	}), connector.TriggerEvent[MessageEvent]{ID: "Ev4"})
+	}), sdkgo.TriggerEvent[MessageEvent]{ID: "Ev4"})
 	require.NoError(t, err)
 	require.Equal(t, 2, attempts)
 }

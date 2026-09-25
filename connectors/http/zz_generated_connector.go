@@ -10,8 +10,8 @@ import (
 	"net/url"
 	"time"
 
-	connector "github.com/superdurable/dex-connectors-library/sdk/go"
-	"github.com/superdurable/dex-connectors-library/sdk/go/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -27,16 +27,16 @@ type Config struct {
 }
 
 type Credentials struct {
-	APIKey        connector.SecretString
-	WebhookSecret connector.SecretString
+	APIKey        sdkgo.SecretString
+	WebhookSecret sdkgo.SecretString
 }
 
 type Connection struct {
 	client    *Client
-	reference connector.ConnectionRef
+	reference sdkgo.ConnectionRef
 }
 
-func NewConnection(client *Client, reference connector.ConnectionRef) (Connection, error) {
+func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, error) {
 	if client == nil {
 		return Connection{}, fmt.Errorf("http connector client is required")
 	}
@@ -51,7 +51,7 @@ func NewLocalConnection(store *localconfig.Store, connectionName string, options
 	if store == nil {
 		return Connection{}, fmt.Errorf("local connector configuration store is required")
 	}
-	reference := connector.ConnectionRef{Provider: "http", Name: connectionName}
+	reference := sdkgo.ConnectionRef{Provider: "http", Name: connectionName}
 	if err := reference.Validate(); err != nil {
 		return Connection{}, fmt.Errorf("http local connection: %w", err)
 	}
@@ -76,8 +76,8 @@ func decodeLocalCredentials(contents json.RawMessage) (Credentials, error) {
 		return Credentials{}, err
 	}
 	credentials := Credentials{
-		APIKey:        connector.NewSecretString(fields.APIKey),
-		WebhookSecret: connector.NewSecretString(fields.WebhookSecret),
+		APIKey:        sdkgo.NewSecretString(fields.APIKey),
+		WebhookSecret: sdkgo.NewSecretString(fields.WebhookSecret),
 	}
 	return credentials, credentials.Validate()
 }
@@ -146,57 +146,57 @@ func (credentials Credentials) Validate() error {
 	return nil
 }
 
-const QueryBranchSucceeded connector.BranchID = "succeeded"
-const QueryBranchFailed connector.BranchID = "failed"
-const QueryBranchDefect connector.BranchID = "defect"
+const QueryBranchSucceeded sdkgo.BranchID = "succeeded"
+const QueryBranchFailed sdkgo.BranchID = "failed"
+const QueryBranchDefect sdkgo.BranchID = "defect"
 
-var QueryDefinition = connector.QueryDefinition{
-	Operation: connector.OperationRef{ConnectorID: ConnectorID, OperationID: "query"},
-	Branches: []connector.BranchDefinition{
+var QueryDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "query"},
+	Branches: []sdkgo.BranchDefinition{
 		{ID: QueryBranchSucceeded, Description: "The provider returned a successful response."},
 		{ID: QueryBranchFailed, Description: "The provider rejected the query or returned a terminal response."},
 		{ID: QueryBranchDefect, Description: "Local input or connector definition is invalid."},
 	},
 	DefectBranch: QueryBranchDefect,
-	StepDefaults: connector.StepDefaults{
+	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
-	ResultAttribute: connector.RequirementOptional,
-	Progress:        connector.ProgressCapabilities{Structured: false, Text: false},
+	ResultAttribute: sdkgo.RequirementOptional,
+	Progress:        sdkgo.ProgressCapabilities{Structured: false, Text: false},
 }
 
-type QueryStepOutput[IN any] = connector.QueryStepOutput[IN, Response]
+type QueryStepOutput[IN any] = sdkgo.QueryStepOutput[IN, Response]
 
 type QueryStepConfig[IN any] struct {
-	connector.QueryFactoryConfigMarker `connector:"factory=query"`
-	connectorID                        struct{}                                        `connector:"connectorId=http"`
-	operationID                        struct{}                                        `connector:"operationId=query"`
-	StepType                           string                                          `connector:"stepType"`
-	Presentation                       connector.StepPresentation                      `connector:"presentation"`
-	Connection                         Connection                                      `connector:"connection"`
-	ConnectionName                     string                                          `connector:"connectionName"`
-	BuildInput                         func(IN) (Request, error)                       `connector:"buildInput"`
-	Succeeded                          connector.Target[QueryStepOutput[IN]]           `connector:"branch=succeeded"`
-	Failed                             connector.Target[QueryStepOutput[IN]]           `connector:"branch=failed"`
-	Defect                             connector.Target[QueryStepOutput[IN]]           `connector:"branch=defect"`
-	ResultAttribute                    *dex.Attribute[connector.QueryResult[Response]] `connector:"resultAttribute"`
-	StepOptionsOverride                *dex.StepOptions                                `connector:"stepOptionsOverride"`
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                    `connector:"connectorId=http"`
+	operationID                    struct{}                                    `connector:"operationId=query"`
+	StepType                       string                                      `connector:"stepType"`
+	Presentation                   sdkgo.StepPresentation                      `connector:"presentation"`
+	Connection                     Connection                                  `connector:"connection"`
+	ConnectionName                 string                                      `connector:"connectionName"`
+	BuildInput                     func(IN) (Request, error)                   `connector:"buildInput"`
+	Succeeded                      sdkgo.Target[QueryStepOutput[IN]]           `connector:"branch=succeeded"`
+	Failed                         sdkgo.Target[QueryStepOutput[IN]]           `connector:"branch=failed"`
+	Defect                         sdkgo.Target[QueryStepOutput[IN]]           `connector:"branch=defect"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Response]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                            `connector:"stepOptionsOverride"`
 }
 
-func NewQueryStep[IN any](config QueryStepConfig[IN]) connector.QueryStep[IN, Request, Response] {
+func NewQueryStep[IN any](config QueryStepConfig[IN]) sdkgo.QueryStep[IN, Request, Response] {
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
 		panic(fmt.Errorf("http connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
 	}
-	return connector.MustNewQueryStep(connector.QueryStepConfig[IN, Request, Response]{
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, Request, Response]{
 		StepType: config.StepType, Presentation: config.Presentation,
 		Operation: config.Connection.client.Query(), Connection: config.Connection.reference,
 		BuildInput: config.BuildInput,
-		Branches: []connector.BranchTarget[QueryStepOutput[IN]]{
+		Branches: []sdkgo.BranchTarget[QueryStepOutput[IN]]{
 			config.Succeeded.BranchTarget(QueryBranchSucceeded),
 			config.Failed.BranchTarget(QueryBranchFailed),
 			config.Defect.BranchTarget(QueryBranchDefect),
@@ -206,14 +206,14 @@ func NewQueryStep[IN any](config QueryStepConfig[IN]) connector.QueryStep[IN, Re
 	})
 }
 
-const MutationBranchSucceeded connector.BranchID = "succeeded"
-const MutationBranchRejected connector.BranchID = "rejected"
-const MutationBranchUncertain connector.BranchID = "uncertain"
-const MutationBranchDefect connector.BranchID = "defect"
+const MutationBranchSucceeded sdkgo.BranchID = "succeeded"
+const MutationBranchRejected sdkgo.BranchID = "rejected"
+const MutationBranchUncertain sdkgo.BranchID = "uncertain"
+const MutationBranchDefect sdkgo.BranchID = "defect"
 
-var MutationDefinition = connector.MutationDefinition{
-	Operation: connector.OperationRef{ConnectorID: ConnectorID, OperationID: "mutation"},
-	Branches: []connector.BranchDefinition{
+var MutationDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "mutation"},
+	Branches: []sdkgo.BranchDefinition{
 		{ID: MutationBranchSucceeded, Description: "The provider confirmed the mutation."},
 		{ID: MutationBranchRejected, Description: "The provider definitely rejected the mutation."},
 		{ID: MutationBranchUncertain, Description: "The provider outcome cannot be confirmed."},
@@ -221,46 +221,46 @@ var MutationDefinition = connector.MutationDefinition{
 	},
 	DefectBranch:    MutationBranchDefect,
 	UncertainBranch: MutationBranchUncertain,
-	StepDefaults: connector.StepDefaults{
+	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
-	ResultAttribute: connector.RequirementRequired,
-	Progress:        connector.ProgressCapabilities{Structured: false, Text: false},
+	ResultAttribute: sdkgo.RequirementRequired,
+	Progress:        sdkgo.ProgressCapabilities{Structured: false, Text: false},
 }
 
-type MutationStepOutput[IN any] = connector.MutationStepOutput[IN, Response]
+type MutationStepOutput[IN any] = sdkgo.MutationStepOutput[IN, Response]
 
 type MutationStepConfig[IN any] struct {
-	connector.MutationFactoryConfigMarker `connector:"factory=mutation"`
-	connectorID                           struct{}                                           `connector:"connectorId=http"`
-	operationID                           struct{}                                           `connector:"operationId=mutation"`
-	StepType                              string                                             `connector:"stepType"`
-	Presentation                          connector.StepPresentation                         `connector:"presentation"`
-	Connection                            Connection                                         `connector:"connection"`
-	ConnectionName                        string                                             `connector:"connectionName"`
-	BuildInput                            func(IN) (Request, error)                          `connector:"buildInput"`
-	Succeeded                             connector.Target[MutationStepOutput[IN]]           `connector:"branch=succeeded"`
-	Rejected                              connector.Target[MutationStepOutput[IN]]           `connector:"branch=rejected"`
-	Uncertain                             connector.Target[MutationStepOutput[IN]]           `connector:"branch=uncertain"`
-	Defect                                connector.Target[MutationStepOutput[IN]]           `connector:"branch=defect"`
-	ResultAttribute                       *dex.Attribute[connector.MutationResult[Response]] `connector:"resultAttribute"`
-	StepOptionsOverride                   *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                       `connector:"connectorId=http"`
+	operationID                       struct{}                                       `connector:"operationId=mutation"`
+	StepType                          string                                         `connector:"stepType"`
+	Presentation                      sdkgo.StepPresentation                         `connector:"presentation"`
+	Connection                        Connection                                     `connector:"connection"`
+	ConnectionName                    string                                         `connector:"connectionName"`
+	BuildInput                        func(IN) (Request, error)                      `connector:"buildInput"`
+	Succeeded                         sdkgo.Target[MutationStepOutput[IN]]           `connector:"branch=succeeded"`
+	Rejected                          sdkgo.Target[MutationStepOutput[IN]]           `connector:"branch=rejected"`
+	Uncertain                         sdkgo.Target[MutationStepOutput[IN]]           `connector:"branch=uncertain"`
+	Defect                            sdkgo.Target[MutationStepOutput[IN]]           `connector:"branch=defect"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Response]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                               `connector:"stepOptionsOverride"`
 }
 
-func NewMutationStep[IN any](config MutationStepConfig[IN]) connector.MutationStep[IN, Request, Response] {
+func NewMutationStep[IN any](config MutationStepConfig[IN]) sdkgo.MutationStep[IN, Request, Response] {
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
 		panic(fmt.Errorf("http connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
 	}
-	return connector.MustNewMutationStep(connector.MutationStepConfig[IN, Request, Response]{
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, Request, Response]{
 		StepType: config.StepType, Presentation: config.Presentation,
 		Operation: config.Connection.client.Mutation(), Connection: config.Connection.reference,
 		BuildInput: config.BuildInput,
-		Branches: []connector.BranchTarget[MutationStepOutput[IN]]{
+		Branches: []sdkgo.BranchTarget[MutationStepOutput[IN]]{
 			config.Succeeded.BranchTarget(MutationBranchSucceeded),
 			config.Rejected.BranchTarget(MutationBranchRejected),
 			config.Uncertain.BranchTarget(MutationBranchUncertain),
@@ -271,56 +271,56 @@ func NewMutationStep[IN any](config MutationStepConfig[IN]) connector.MutationSt
 	})
 }
 
-const VerifyWebhookBranchVerified connector.BranchID = "verified"
-const VerifyWebhookBranchRejected connector.BranchID = "rejected"
-const VerifyWebhookBranchDefect connector.BranchID = "defect"
+const VerifyWebhookBranchVerified sdkgo.BranchID = "verified"
+const VerifyWebhookBranchRejected sdkgo.BranchID = "rejected"
+const VerifyWebhookBranchDefect sdkgo.BranchID = "defect"
 
-var VerifyWebhookDefinition = connector.QueryDefinition{
-	Operation: connector.OperationRef{ConnectorID: ConnectorID, OperationID: "verifyWebhook"},
-	Branches: []connector.BranchDefinition{
+var VerifyWebhookDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "verifyWebhook"},
+	Branches: []sdkgo.BranchDefinition{
 		{ID: VerifyWebhookBranchVerified, Description: "The webhook signature and replay checks passed."},
 		{ID: VerifyWebhookBranchRejected, Description: "The webhook could not be verified."},
 		{ID: VerifyWebhookBranchDefect, Description: "Local input or connector definition is invalid."},
 	},
 	DefectBranch: VerifyWebhookBranchDefect,
-	StepDefaults: connector.StepDefaults{
+	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
-	ResultAttribute: connector.RequirementNone,
-	Progress:        connector.ProgressCapabilities{Structured: false, Text: false},
+	ResultAttribute: sdkgo.RequirementNone,
+	Progress:        sdkgo.ProgressCapabilities{Structured: false, Text: false},
 }
 
-type VerifyWebhookStepOutput[IN any] = connector.QueryStepOutput[IN, WebhookResult]
+type VerifyWebhookStepOutput[IN any] = sdkgo.QueryStepOutput[IN, WebhookResult]
 
 type VerifyWebhookStepConfig[IN any] struct {
-	connector.QueryFactoryConfigMarker `connector:"factory=query"`
-	connectorID                        struct{}                                      `connector:"connectorId=http"`
-	operationID                        struct{}                                      `connector:"operationId=verifyWebhook"`
-	StepType                           string                                        `connector:"stepType"`
-	Presentation                       connector.StepPresentation                    `connector:"presentation"`
-	Connection                         Connection                                    `connector:"connection"`
-	ConnectionName                     string                                        `connector:"connectionName"`
-	BuildInput                         func(IN) (WebhookRequest, error)              `connector:"buildInput"`
-	Verified                           connector.Target[VerifyWebhookStepOutput[IN]] `connector:"branch=verified"`
-	Rejected                           connector.Target[VerifyWebhookStepOutput[IN]] `connector:"branch=rejected"`
-	Defect                             connector.Target[VerifyWebhookStepOutput[IN]] `connector:"branch=defect"`
-	StepOptionsOverride                *dex.StepOptions                              `connector:"stepOptionsOverride"`
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                  `connector:"connectorId=http"`
+	operationID                    struct{}                                  `connector:"operationId=verifyWebhook"`
+	StepType                       string                                    `connector:"stepType"`
+	Presentation                   sdkgo.StepPresentation                    `connector:"presentation"`
+	Connection                     Connection                                `connector:"connection"`
+	ConnectionName                 string                                    `connector:"connectionName"`
+	BuildInput                     func(IN) (WebhookRequest, error)          `connector:"buildInput"`
+	Verified                       sdkgo.Target[VerifyWebhookStepOutput[IN]] `connector:"branch=verified"`
+	Rejected                       sdkgo.Target[VerifyWebhookStepOutput[IN]] `connector:"branch=rejected"`
+	Defect                         sdkgo.Target[VerifyWebhookStepOutput[IN]] `connector:"branch=defect"`
+	StepOptionsOverride            *dex.StepOptions                          `connector:"stepOptionsOverride"`
 }
 
-func NewVerifyWebhookStep[IN any](config VerifyWebhookStepConfig[IN]) connector.QueryStep[IN, WebhookRequest, WebhookResult] {
+func NewVerifyWebhookStep[IN any](config VerifyWebhookStepConfig[IN]) sdkgo.QueryStep[IN, WebhookRequest, WebhookResult] {
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
 		panic(fmt.Errorf("http connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
 	}
-	return connector.MustNewQueryStep(connector.QueryStepConfig[IN, WebhookRequest, WebhookResult]{
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, WebhookRequest, WebhookResult]{
 		StepType: config.StepType, Presentation: config.Presentation,
 		Operation: config.Connection.client.VerifyWebhook(), Connection: config.Connection.reference,
 		BuildInput: config.BuildInput,
-		Branches: []connector.BranchTarget[VerifyWebhookStepOutput[IN]]{
+		Branches: []sdkgo.BranchTarget[VerifyWebhookStepOutput[IN]]{
 			config.Verified.BranchTarget(VerifyWebhookBranchVerified),
 			config.Rejected.BranchTarget(VerifyWebhookBranchRejected),
 			config.Defect.BranchTarget(VerifyWebhookBranchDefect),

@@ -10,8 +10,8 @@ import (
 	"net/url"
 	"time"
 
-	connector "github.com/superdurable/dex-connectors-library/sdk/go"
-	"github.com/superdurable/dex-connectors-library/sdk/go/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -24,15 +24,15 @@ type Config struct {
 }
 
 type Credentials struct {
-	APIKey connector.SecretString
+	APIKey sdkgo.SecretString
 }
 
 type Connection struct {
 	client    *Client
-	reference connector.ConnectionRef
+	reference sdkgo.ConnectionRef
 }
 
-func NewConnection(client *Client, reference connector.ConnectionRef) (Connection, error) {
+func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, error) {
 	if client == nil {
 		return Connection{}, fmt.Errorf("openai connector client is required")
 	}
@@ -47,7 +47,7 @@ func NewLocalConnection(store *localconfig.Store, connectionName string, options
 	if store == nil {
 		return Connection{}, fmt.Errorf("local connector configuration store is required")
 	}
-	reference := connector.ConnectionRef{Provider: "openai", Name: connectionName}
+	reference := sdkgo.ConnectionRef{Provider: "openai", Name: connectionName}
 	if err := reference.Validate(); err != nil {
 		return Connection{}, fmt.Errorf("openai local connection: %w", err)
 	}
@@ -71,7 +71,7 @@ func decodeLocalCredentials(contents json.RawMessage) (Credentials, error) {
 		return Credentials{}, err
 	}
 	credentials := Credentials{
-		APIKey: connector.NewSecretString(fields.APIKey),
+		APIKey: sdkgo.NewSecretString(fields.APIKey),
 	}
 	return credentials, credentials.Validate()
 }
@@ -140,14 +140,14 @@ func (credentials Credentials) Validate() error {
 	return nil
 }
 
-const CreateResponseBranchCompleted connector.BranchID = "completed"
-const CreateResponseBranchFailed connector.BranchID = "failed"
-const CreateResponseBranchUncertain connector.BranchID = "uncertain"
-const CreateResponseBranchDefect connector.BranchID = "defect"
+const CreateResponseBranchCompleted sdkgo.BranchID = "completed"
+const CreateResponseBranchFailed sdkgo.BranchID = "failed"
+const CreateResponseBranchUncertain sdkgo.BranchID = "uncertain"
+const CreateResponseBranchDefect sdkgo.BranchID = "defect"
 
-var CreateResponseDefinition = connector.MutationDefinition{
-	Operation: connector.OperationRef{ConnectorID: ConnectorID, OperationID: "createResponse"},
-	Branches: []connector.BranchDefinition{
+var CreateResponseDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createResponse"},
+	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateResponseBranchCompleted, Description: "OpenAI completed the response."},
 		{ID: CreateResponseBranchFailed, Description: "OpenAI returned a terminal failed or incomplete response."},
 		{ID: CreateResponseBranchUncertain, Description: "The dispatched response outcome cannot be confirmed."},
@@ -155,49 +155,49 @@ var CreateResponseDefinition = connector.MutationDefinition{
 	},
 	DefectBranch:    CreateResponseBranchDefect,
 	UncertainBranch: CreateResponseBranchUncertain,
-	StepDefaults: connector.StepDefaults{
+	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(150000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(2000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(300000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
-	ResultAttribute: connector.RequirementRequired,
-	Progress:        connector.ProgressCapabilities{Structured: true, Text: true},
+	ResultAttribute: sdkgo.RequirementRequired,
+	Progress:        sdkgo.ProgressCapabilities{Structured: true, Text: true},
 }
 
-type CreateResponseStepOutput[IN any] = connector.MutationStepOutput[IN, Response]
+type CreateResponseStepOutput[IN any] = sdkgo.MutationStepOutput[IN, Response]
 
 type CreateResponseStepConfig[IN any] struct {
-	connector.MutationFactoryConfigMarker `connector:"factory=mutation"`
-	connectorID                           struct{}                                           `connector:"connectorId=openai"`
-	operationID                           struct{}                                           `connector:"operationId=createResponse"`
-	StepType                              string                                             `connector:"stepType"`
-	Presentation                          connector.StepPresentation                         `connector:"presentation"`
-	Connection                            Connection                                         `connector:"connection"`
-	ConnectionName                        string                                             `connector:"connectionName"`
-	BuildInput                            func(IN) (CreateRequest, error)                    `connector:"buildInput"`
-	Completed                             connector.Target[CreateResponseStepOutput[IN]]     `connector:"branch=completed"`
-	Failed                                connector.Target[CreateResponseStepOutput[IN]]     `connector:"branch=failed"`
-	Uncertain                             connector.Target[CreateResponseStepOutput[IN]]     `connector:"branch=uncertain"`
-	Defect                                connector.Target[CreateResponseStepOutput[IN]]     `connector:"branch=defect"`
-	ResultAttribute                       *dex.Attribute[connector.MutationResult[Response]] `connector:"resultAttribute"`
-	ProgressStream                        *dex.Stream[connector.ProgressUpdate]              `connector:"progressStream"`
-	TextStream                            *dex.Stream[string]                                `connector:"textStream"`
-	TextOptions                           []dex.BufferedTextStreamOption                     `connector:"textOptions"`
-	StepOptionsOverride                   *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                       `connector:"connectorId=openai"`
+	operationID                       struct{}                                       `connector:"operationId=createResponse"`
+	StepType                          string                                         `connector:"stepType"`
+	Presentation                      sdkgo.StepPresentation                         `connector:"presentation"`
+	Connection                        Connection                                     `connector:"connection"`
+	ConnectionName                    string                                         `connector:"connectionName"`
+	BuildInput                        func(IN) (CreateRequest, error)                `connector:"buildInput"`
+	Completed                         sdkgo.Target[CreateResponseStepOutput[IN]]     `connector:"branch=completed"`
+	Failed                            sdkgo.Target[CreateResponseStepOutput[IN]]     `connector:"branch=failed"`
+	Uncertain                         sdkgo.Target[CreateResponseStepOutput[IN]]     `connector:"branch=uncertain"`
+	Defect                            sdkgo.Target[CreateResponseStepOutput[IN]]     `connector:"branch=defect"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Response]] `connector:"resultAttribute"`
+	ProgressStream                    *dex.Stream[sdkgo.ProgressUpdate]              `connector:"progressStream"`
+	TextStream                        *dex.Stream[string]                            `connector:"textStream"`
+	TextOptions                       []dex.BufferedTextStreamOption                 `connector:"textOptions"`
+	StepOptionsOverride               *dex.StepOptions                               `connector:"stepOptionsOverride"`
 }
 
-func NewCreateResponseStep[IN any](config CreateResponseStepConfig[IN]) connector.MutationStep[IN, CreateRequest, Response] {
+func NewCreateResponseStep[IN any](config CreateResponseStepConfig[IN]) sdkgo.MutationStep[IN, CreateRequest, Response] {
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
 		panic(fmt.Errorf("openai connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
 	}
-	return connector.MustNewMutationStep(connector.MutationStepConfig[IN, CreateRequest, Response]{
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateRequest, Response]{
 		StepType: config.StepType, Presentation: config.Presentation,
 		Operation: config.Connection.client.CreateResponse(), Connection: config.Connection.reference,
 		BuildInput: config.BuildInput,
-		Branches: []connector.BranchTarget[CreateResponseStepOutput[IN]]{
+		Branches: []sdkgo.BranchTarget[CreateResponseStepOutput[IN]]{
 			config.Completed.BranchTarget(CreateResponseBranchCompleted),
 			config.Failed.BranchTarget(CreateResponseBranchFailed),
 			config.Uncertain.BranchTarget(CreateResponseBranchUncertain),
@@ -210,57 +210,57 @@ func NewCreateResponseStep[IN any](config CreateResponseStepConfig[IN]) connecto
 	})
 }
 
-const RetrieveResponseBranchFound connector.BranchID = "found"
-const RetrieveResponseBranchFailed connector.BranchID = "failed"
-const RetrieveResponseBranchDefect connector.BranchID = "defect"
+const RetrieveResponseBranchFound sdkgo.BranchID = "found"
+const RetrieveResponseBranchFailed sdkgo.BranchID = "failed"
+const RetrieveResponseBranchDefect sdkgo.BranchID = "defect"
 
-var RetrieveResponseDefinition = connector.QueryDefinition{
-	Operation: connector.OperationRef{ConnectorID: ConnectorID, OperationID: "retrieveResponse"},
-	Branches: []connector.BranchDefinition{
+var RetrieveResponseDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "retrieveResponse"},
+	Branches: []sdkgo.BranchDefinition{
 		{ID: RetrieveResponseBranchFound, Description: "The response exists and was returned."},
 		{ID: RetrieveResponseBranchFailed, Description: "OpenAI returned a terminal query failure."},
 		{ID: RetrieveResponseBranchDefect, Description: "Local input or connector definition is invalid."},
 	},
 	DefectBranch: RetrieveResponseBranchDefect,
-	StepDefaults: connector.StepDefaults{
+	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(150000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(2000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(300000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
-	ResultAttribute: connector.RequirementOptional,
-	Progress:        connector.ProgressCapabilities{Structured: false, Text: false},
+	ResultAttribute: sdkgo.RequirementOptional,
+	Progress:        sdkgo.ProgressCapabilities{Structured: false, Text: false},
 }
 
-type RetrieveResponseStepOutput[IN any] = connector.QueryStepOutput[IN, Response]
+type RetrieveResponseStepOutput[IN any] = sdkgo.QueryStepOutput[IN, Response]
 
 type RetrieveResponseStepConfig[IN any] struct {
-	connector.QueryFactoryConfigMarker `connector:"factory=query"`
-	connectorID                        struct{}                                         `connector:"connectorId=openai"`
-	operationID                        struct{}                                         `connector:"operationId=retrieveResponse"`
-	StepType                           string                                           `connector:"stepType"`
-	Presentation                       connector.StepPresentation                       `connector:"presentation"`
-	Connection                         Connection                                       `connector:"connection"`
-	ConnectionName                     string                                           `connector:"connectionName"`
-	BuildInput                         func(IN) (RetrieveRequest, error)                `connector:"buildInput"`
-	Found                              connector.Target[RetrieveResponseStepOutput[IN]] `connector:"branch=found"`
-	Failed                             connector.Target[RetrieveResponseStepOutput[IN]] `connector:"branch=failed"`
-	Defect                             connector.Target[RetrieveResponseStepOutput[IN]] `connector:"branch=defect"`
-	ResultAttribute                    *dex.Attribute[connector.QueryResult[Response]]  `connector:"resultAttribute"`
-	StepOptionsOverride                *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                     `connector:"connectorId=openai"`
+	operationID                    struct{}                                     `connector:"operationId=retrieveResponse"`
+	StepType                       string                                       `connector:"stepType"`
+	Presentation                   sdkgo.StepPresentation                       `connector:"presentation"`
+	Connection                     Connection                                   `connector:"connection"`
+	ConnectionName                 string                                       `connector:"connectionName"`
+	BuildInput                     func(IN) (RetrieveRequest, error)            `connector:"buildInput"`
+	Found                          sdkgo.Target[RetrieveResponseStepOutput[IN]] `connector:"branch=found"`
+	Failed                         sdkgo.Target[RetrieveResponseStepOutput[IN]] `connector:"branch=failed"`
+	Defect                         sdkgo.Target[RetrieveResponseStepOutput[IN]] `connector:"branch=defect"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Response]]  `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                             `connector:"stepOptionsOverride"`
 }
 
-func NewRetrieveResponseStep[IN any](config RetrieveResponseStepConfig[IN]) connector.QueryStep[IN, RetrieveRequest, Response] {
+func NewRetrieveResponseStep[IN any](config RetrieveResponseStepConfig[IN]) sdkgo.QueryStep[IN, RetrieveRequest, Response] {
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
 		panic(fmt.Errorf("openai connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
 	}
-	return connector.MustNewQueryStep(connector.QueryStepConfig[IN, RetrieveRequest, Response]{
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, RetrieveRequest, Response]{
 		StepType: config.StepType, Presentation: config.Presentation,
 		Operation: config.Connection.client.RetrieveResponse(), Connection: config.Connection.reference,
 		BuildInput: config.BuildInput,
-		Branches: []connector.BranchTarget[RetrieveResponseStepOutput[IN]]{
+		Branches: []sdkgo.BranchTarget[RetrieveResponseStepOutput[IN]]{
 			config.Found.BranchTarget(RetrieveResponseBranchFound),
 			config.Failed.BranchTarget(RetrieveResponseBranchFailed),
 			config.Defect.BranchTarget(RetrieveResponseBranchDefect),

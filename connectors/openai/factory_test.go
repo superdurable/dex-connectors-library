@@ -10,7 +10,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	openai "github.com/superdurable/dex-connectors-library/connectors/openai"
-	connector "github.com/superdurable/dex-connectors-library/sdk/go"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -31,22 +31,22 @@ func (retrieveTarget) Execute(dex.Context, openai.RetrieveResponseStepOutput[str
 }
 
 func TestOperationSpecificFactoriesUseTypedConnectionAndResources(t *testing.T) {
-	reference := connector.ConnectionRef{Provider: "openai", Name: "factory-test"}
-	client, err := openai.New(openai.Config{}, connector.StaticCredentialProvider[openai.Credentials]{
-		reference: {APIKey: connector.NewSecretString("test-key")},
+	reference := sdkgo.ConnectionRef{Provider: "openai", Name: "factory-test"}
+	client, err := openai.New(openai.Config{}, sdkgo.StaticCredentialProvider[openai.Credentials]{
+		reference: {APIKey: sdkgo.NewSecretString("test-key")},
 	})
 	require.NoError(t, err)
 	connection, err := openai.NewConnection(client, reference)
 	require.NoError(t, err)
-	result := dex.DefineAttribute[connector.MutationResult[openai.Response]]("openai-factory-result")
-	progress := dex.DefineStream[connector.ProgressUpdate]("openai-factory-progress", 100)
+	result := dex.DefineAttribute[sdkgo.MutationResult[openai.Response]]("openai-factory-result")
+	progress := dex.DefineStream[sdkgo.ProgressUpdate]("openai-factory-progress", 100)
 	text := dex.DefineStream[string]("openai-factory-text", 100)
 
 	create := openai.NewCreateResponseStep(openai.CreateResponseStepConfig[string]{
 		StepType: "CreateResponse", Presentation: openAIPresentation(), Connection: connection,
 		BuildInput: func(string) (openai.CreateRequest, error) { return openai.CreateRequest{Model: "gpt-test"}, nil },
-		Completed:  connector.GoTo(createTarget{}), Failed: connector.GoTo(createTarget{}),
-		Uncertain: connector.GoTo(createTarget{}), Defect: connector.GoTo(createTarget{}),
+		Completed:  sdkgo.GoTo(createTarget{}), Failed: sdkgo.GoTo(createTarget{}),
+		Uncertain: sdkgo.GoTo(createTarget{}), Defect: sdkgo.GoTo(createTarget{}),
 		ResultAttribute: &result, ProgressStream: &progress, TextStream: &text,
 	})
 	require.Equal(t, "CreateResponse", create.GetStepType())
@@ -54,7 +54,7 @@ func TestOperationSpecificFactoriesUseTypedConnectionAndResources(t *testing.T) 
 	retrieve := openai.NewRetrieveResponseStep(openai.RetrieveResponseStepConfig[string]{
 		StepType: "RetrieveResponse", Presentation: openAIPresentation(), Connection: connection,
 		BuildInput: func(string) (openai.RetrieveRequest, error) { return openai.RetrieveRequest{ResponseID: "resp_1"}, nil },
-		Found:      connector.GoTo(retrieveTarget{}), Failed: connector.GoTo(retrieveTarget{}), Defect: connector.GoTo(retrieveTarget{}),
+		Found:      sdkgo.GoTo(retrieveTarget{}), Failed: sdkgo.GoTo(retrieveTarget{}), Defect: sdkgo.GoTo(retrieveTarget{}),
 	})
 	require.Equal(t, "RetrieveResponse", retrieve.GetStepType())
 }
@@ -69,6 +69,6 @@ func TestTypedConnectionCannotSerializeAndRequiredBranchFailsClosed(t *testing.T
 	})
 }
 
-func openAIPresentation() connector.StepPresentation {
-	return connector.StepPresentation{GroupID: "openai", GroupLabel: "OpenAI", Explanation: "Invoke the OpenAI connector."}
+func openAIPresentation() sdkgo.StepPresentation {
+	return sdkgo.StepPresentation{GroupID: "openai", GroupLabel: "OpenAI", Explanation: "Invoke the OpenAI sdkgo."}
 }

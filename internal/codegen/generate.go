@@ -29,8 +29,8 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 		write("\t\"net/url\"\n")
 	}
 	write("\t\"time\"\n\n")
-	write("\tconnector \"github.com/superdurable/dex-connectors-library/sdk/go\"\n")
-	write("\t\"github.com/superdurable/dex-connectors-library/sdk/go/localconfig\"\n")
+	write("\t\"github.com/superdurable/dex-connectors-library/sdkgo\"\n")
+	write("\t\"github.com/superdurable/dex-connectors-library/sdkgo/localconfig\"\n")
 	write("\t\"github.com/superdurable/dex/sdk-go/dex\"\n)\n\n")
 	write("const ConnectorID = %s\n\n", strconv.Quote(manifest.Metadata.Name))
 	for _, field := range append(append([]schema.Field(nil), manifest.Spec.Configuration.Fields...), manifest.Spec.Auth.Fields...) {
@@ -62,15 +62,15 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 		write("\t%s %s\n", field.GoName, goType(field))
 	}
 	write("}\n\n")
-	write("type Connection struct {\n\tclient *Client\n\treference connector.ConnectionRef\n}\n\n")
-	write("func NewConnection(client *Client, reference connector.ConnectionRef) (Connection, error) {\n")
+	write("type Connection struct {\n\tclient *Client\n\treference sdkgo.ConnectionRef\n}\n\n")
+	write("func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, error) {\n")
 	write("\tif client == nil { return Connection{}, fmt.Errorf(%q) }\n", manifest.Metadata.Name+" connector client is required")
 	write("\tif err := reference.Validate(); err != nil { return Connection{}, fmt.Errorf(%q, err) }\n", manifest.Metadata.Name+" connector connection: %w")
 	write("\treturn Connection{client: client, reference: reference}, nil\n}\n\n")
 	write("// NewLocalConnection loads startup configuration and reloads credentials before every provider call.\n")
 	write("func NewLocalConnection(store *localconfig.Store, connectionName string, options ...Option) (Connection, error) {\n")
 	write("\tif store == nil { return Connection{}, fmt.Errorf(%q) }\n", "local connector configuration store is required")
-	write("\treference := connector.ConnectionRef{Provider: %s, Name: connectionName}\n", strconv.Quote(manifest.Spec.Provider))
+	write("\treference := sdkgo.ConnectionRef{Provider: %s, Name: connectionName}\n", strconv.Quote(manifest.Spec.Provider))
 	write("\tif err := reference.Validate(); err != nil { return Connection{}, fmt.Errorf(%q, err) }\n", manifest.Metadata.Name+" local connection: %w")
 	write("\tvar config Config\n")
 	write("\tif err := store.DecodeConfiguration(ConnectorID, connectionName, &config); err != nil { return Connection{}, err }\n")
@@ -93,7 +93,7 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 	for _, field := range manifest.Spec.Auth.Fields {
 		value := "fields." + field.GoName
 		if field.Type == "secretString" {
-			value = "connector.NewSecretString(" + value + ")"
+			value = "sdkgo.NewSecretString(" + value + ")"
 		}
 		write("\t\t%s: %s,\n", field.GoName, value)
 	}
@@ -142,8 +142,8 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 	write("\treturn nil\n}\n\n")
 
 	for _, trigger := range manifest.Spec.Triggers {
-		write("var %sTriggerDefinition = connector.TriggerDefinition{\n", trigger.GoName)
-		write("\tTrigger: connector.TriggerRef{ConnectorID: ConnectorID, TriggerName: %s},\n", strconv.Quote(trigger.Name))
+		write("var %sTriggerDefinition = sdkgo.TriggerDefinition{\n", trigger.GoName)
+		write("\tTrigger: sdkgo.TriggerRef{ConnectorID: ConnectorID, TriggerName: %s},\n", strconv.Quote(trigger.Name))
 		write("\tDescription: %s,\n", strconv.Quote(trigger.Description))
 		write("}\n\n")
 		writeTriggerFactory(&output, manifest, trigger)
@@ -151,11 +151,11 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 
 	for _, operation := range manifest.Spec.Operations {
 		for _, branch := range operation.Branches {
-			write("const %sBranch%s connector.BranchID = %s\n", operation.GoName, branch.GoName, strconv.Quote(branch.ID))
+			write("const %sBranch%s sdkgo.BranchID = %s\n", operation.GoName, branch.GoName, strconv.Quote(branch.ID))
 		}
-		write("\nvar %sDefinition = connector.%sDefinition{\n", operation.GoName, title(operation.Kind))
-		write("\tOperation: connector.OperationRef{ConnectorID: ConnectorID, OperationID: %s},\n", strconv.Quote(operation.Name))
-		write("\tBranches: []connector.BranchDefinition{\n")
+		write("\nvar %sDefinition = sdkgo.%sDefinition{\n", operation.GoName, title(operation.Kind))
+		write("\tOperation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: %s},\n", strconv.Quote(operation.Name))
+		write("\tBranches: []sdkgo.BranchDefinition{\n")
 		for _, branch := range operation.Branches {
 			write("\t\t{ID: %sBranch%s, Description: %s},\n", operation.GoName, branch.GoName, strconv.Quote(branch.Description))
 		}
@@ -172,12 +172,12 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 		if operation.Execution.Durability == "async" {
 			durability = "dex.StepDurabilityAsync"
 		}
-		write("\tStepDefaults: connector.StepDefaults{\n")
+		write("\tStepDefaults: sdkgo.StepDefaults{\n")
 		write("\t\tExecuteMethodTimeout: time.Duration(%d), HeartbeatTimeout: time.Duration(%d),\n", timeout, heartbeat)
 		write("\t\tExecuteRetry: &dex.RetryPolicy{InitialInterval: time.Duration(%d), BackoffCoefficient: %s, MaximumInterval: time.Duration(%d), MaximumAttempts: %d, TotalDuration: time.Duration(%d)},\n", initial, strconv.FormatFloat(operation.Execution.Retry.BackoffCoefficient, 'f', -1, 64), maximum, operation.Execution.Retry.MaximumAttempts, total)
 		write("\t\tExecuteDurability: %s,\n\t},\n", durability)
-		write("\tResultAttribute: connector.Requirement%s,\n", title(operation.ResultAttribute))
-		write("\tProgress: connector.ProgressCapabilities{Structured: %t, Text: %t},\n", contains(operation.Progress, "structured"), contains(operation.Progress, "text"))
+		write("\tResultAttribute: sdkgo.Requirement%s,\n", title(operation.ResultAttribute))
+		write("\tProgress: sdkgo.ProgressCapabilities{Structured: %t, Text: %t},\n", contains(operation.Progress, "structured"), contains(operation.Progress, "text"))
 		write("}\n\n")
 		writeOperationFactory(&output, manifest, operation)
 	}
@@ -192,37 +192,37 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 func writeTriggerFactory(output *bytes.Buffer, manifest schema.Manifest, trigger schema.Trigger) {
 	write := func(format string, values ...any) { fmt.Fprintf(output, format, values...) }
 	write("type %sTriggerBindingConfig struct {\n", trigger.GoName)
-	write("\tconnector.TriggerBindingFactoryConfigMarker `connector:\"factory=triggerBinding\"`\n")
+	write("\tsdkgo.TriggerBindingFactoryConfigMarker `connector:\"factory=triggerBinding\"`\n")
 	write("\tconnectorID struct{} `connector:\"connectorId=%s\"`\n", manifest.Metadata.Name)
 	write("\ttriggerName struct{} `connector:\"triggerName=%s\"`\n", trigger.Name)
 	write("\tConnectionName string `connector:\"connectionName\"`\n")
 	write("\tBindingName string `connector:\"bindingName\"`\n")
 	write("}\n\n")
-	write("func Define%sTriggerBinding(config %sTriggerBindingConfig) connector.TriggerBindingDefinition {\n", trigger.GoName, trigger.GoName)
-	write("\treturn connector.MustTriggerBindingDefinition(connector.TriggerBindingDefinition{\n")
+	write("func Define%sTriggerBinding(config %sTriggerBindingConfig) sdkgo.TriggerBindingDefinition {\n", trigger.GoName, trigger.GoName)
+	write("\treturn sdkgo.MustTriggerBindingDefinition(sdkgo.TriggerBindingDefinition{\n")
 	write("\t\tDefinition: %sTriggerDefinition, ConnectionName: config.ConnectionName, BindingName: config.BindingName,\n", trigger.GoName)
 	write("\t})\n}\n\n")
 	write("type %sTriggerConfig struct {\n", trigger.GoName)
-	write("\tconnector.TriggerFactoryConfigMarker `connector:\"factory=trigger\"`\n")
+	write("\tsdkgo.TriggerFactoryConfigMarker `connector:\"factory=trigger\"`\n")
 	write("\tconnectorID struct{} `connector:\"connectorId=%s\"`\n", manifest.Metadata.Name)
 	write("\ttriggerName struct{} `connector:\"triggerName=%s\"`\n", trigger.Name)
 	write("\tConnection Connection `connector:\"connection\"`\n")
 	write("\tConnectionName string `connector:\"connectionName\"`\n")
 	write("\tBindingName string `connector:\"bindingName\"`\n")
 	write("\tConfiguration %s `connector:\"triggerConfiguration\"`\n", trigger.ConfigurationType)
-	write("\tTarget connector.TriggerTarget[%s] `connector:\"triggerTarget\"`\n", trigger.EventType)
+	write("\tTarget sdkgo.TriggerTarget[%s] `connector:\"triggerTarget\"`\n", trigger.EventType)
 	write("}\n\n")
-	write("func New%sTrigger(config %sTriggerConfig) connector.TriggerRunner {\n", trigger.GoName, trigger.GoName)
+	write("func New%sTrigger(config %sTriggerConfig) sdkgo.TriggerRunner {\n", trigger.GoName, trigger.GoName)
 	write("\tif err := config.Connection.validate(); err != nil { panic(err) }\n")
 	write("\tif config.ConnectionName != \"\" && config.ConnectionName != config.Connection.reference.Name {\n")
 	write("\t\tpanic(fmt.Errorf(%q, config.ConnectionName, config.Connection.reference.Name))\n", manifest.Metadata.Name+" connector trigger connection name %q does not match runtime connection %q")
 	write("\t}\n")
-	write("\tbinding := connector.TriggerBindingRef{Connection: config.Connection.reference, Trigger: %sTriggerDefinition.Trigger, Name: config.BindingName}\n", trigger.GoName)
-	write("\treturn connector.MustNewTrigger(connector.TriggerConfig[%s]{\n", trigger.EventType)
+	write("\tbinding := sdkgo.TriggerBindingRef{Connection: config.Connection.reference, Trigger: %sTriggerDefinition.Trigger, Name: config.BindingName}\n", trigger.GoName)
+	write("\treturn sdkgo.MustNewTrigger(sdkgo.TriggerConfig[%s]{\n", trigger.EventType)
 	write("\t\tDefinition: %sTriggerDefinition, Binding: binding,\n", trigger.GoName)
 	write("\t\tSource: config.Connection.client.%sTriggerSource(config.Connection.reference, config.Configuration), Target: config.Target,\n", lowerFirst(trigger.GoName))
 	write("\t})\n}\n\n")
-	write("func NewLocal%sTrigger(store *localconfig.Store, connectionName string, bindingName string, target connector.TriggerTarget[%s], options ...Option) (connector.TriggerRunner, error) {\n", trigger.GoName, trigger.EventType)
+	write("func NewLocal%sTrigger(store *localconfig.Store, connectionName string, bindingName string, target sdkgo.TriggerTarget[%s], options ...Option) (sdkgo.TriggerRunner, error) {\n", trigger.GoName, trigger.EventType)
 	write("\tconnection, err := NewLocalConnection(store, connectionName, options...)\n")
 	write("\tif err != nil { return nil, err }\n")
 	write("\tvar configuration %s\n", trigger.ConfigurationType)
@@ -237,24 +237,24 @@ func writeTriggerFactory(output *bytes.Buffer, manifest schema.Manifest, trigger
 func writeOperationFactory(output *bytes.Buffer, manifest schema.Manifest, operation schema.Operation) {
 	write := func(format string, values ...any) { fmt.Fprintf(output, format, values...) }
 	kind := title(operation.Kind)
-	write("type %sStepOutput[IN any] = connector.%sStepOutput[IN, %s]\n\n", operation.GoName, kind, operation.OutputType)
+	write("type %sStepOutput[IN any] = sdkgo.%sStepOutput[IN, %s]\n\n", operation.GoName, kind, operation.OutputType)
 	write("type %sStepConfig[IN any] struct {\n", operation.GoName)
-	write("\tconnector.%sFactoryConfigMarker `connector:\"factory=%s\"`\n", kind, operation.Kind)
+	write("\tsdkgo.%sFactoryConfigMarker `connector:\"factory=%s\"`\n", kind, operation.Kind)
 	write("\tconnectorID struct{} `connector:\"connectorId=%s\"`\n", manifest.Metadata.Name)
 	write("\toperationID struct{} `connector:\"operationId=%s\"`\n", operation.Name)
 	write("\tStepType string `connector:\"stepType\"`\n")
-	write("\tPresentation connector.StepPresentation `connector:\"presentation\"`\n")
+	write("\tPresentation sdkgo.StepPresentation `connector:\"presentation\"`\n")
 	write("\tConnection Connection `connector:\"connection\"`\n")
 	write("\tConnectionName string `connector:\"connectionName\"`\n")
 	write("\tBuildInput func(IN) (%s, error) `connector:\"buildInput\"`\n", operation.InputType)
 	for _, branch := range operation.Branches {
-		write("\t%s connector.Target[%sStepOutput[IN]] `connector:\"branch=%s\"`\n", branch.GoName, operation.GoName, branch.ID)
+		write("\t%s sdkgo.Target[%sStepOutput[IN]] `connector:\"branch=%s\"`\n", branch.GoName, operation.GoName, branch.ID)
 	}
 	if operation.ResultAttribute != "none" {
-		write("\tResultAttribute *dex.Attribute[connector.%sResult[%s]] `connector:\"resultAttribute\"`\n", kind, operation.OutputType)
+		write("\tResultAttribute *dex.Attribute[sdkgo.%sResult[%s]] `connector:\"resultAttribute\"`\n", kind, operation.OutputType)
 	}
 	if contains(operation.Progress, "structured") {
-		write("\tProgressStream *dex.Stream[connector.ProgressUpdate] `connector:\"progressStream\"`\n")
+		write("\tProgressStream *dex.Stream[sdkgo.ProgressUpdate] `connector:\"progressStream\"`\n")
 	}
 	if contains(operation.Progress, "text") {
 		write("\tTextStream *dex.Stream[string] `connector:\"textStream\"`\n")
@@ -262,16 +262,16 @@ func writeOperationFactory(output *bytes.Buffer, manifest schema.Manifest, opera
 	}
 	write("\tStepOptionsOverride *dex.StepOptions `connector:\"stepOptionsOverride\"`\n")
 	write("}\n\n")
-	write("func New%sStep[IN any](config %sStepConfig[IN]) connector.%sStep[IN, %s, %s] {\n", operation.GoName, operation.GoName, kind, operation.InputType, operation.OutputType)
+	write("func New%sStep[IN any](config %sStepConfig[IN]) sdkgo.%sStep[IN, %s, %s] {\n", operation.GoName, operation.GoName, kind, operation.InputType, operation.OutputType)
 	write("\tif err := config.Connection.validate(); err != nil { panic(err) }\n")
 	write("\tif config.ConnectionName != \"\" && config.ConnectionName != config.Connection.reference.Name {\n")
 	write("\t\tpanic(fmt.Errorf(%q, config.ConnectionName, config.Connection.reference.Name))\n", manifest.Metadata.Name+" connector configuration connection name %q does not match runtime connection %q")
 	write("\t}\n")
-	write("\treturn connector.MustNew%sStep(connector.%sStepConfig[IN, %s, %s]{\n", kind, kind, operation.InputType, operation.OutputType)
+	write("\treturn sdkgo.MustNew%sStep(sdkgo.%sStepConfig[IN, %s, %s]{\n", kind, kind, operation.InputType, operation.OutputType)
 	write("\t\tStepType: config.StepType, Presentation: config.Presentation,\n")
 	write("\t\tOperation: config.Connection.client.%s(), Connection: config.Connection.reference,\n", operation.GoName)
 	write("\t\tBuildInput: config.BuildInput,\n")
-	write("\t\tBranches: []connector.BranchTarget[%sStepOutput[IN]]{\n", operation.GoName)
+	write("\t\tBranches: []sdkgo.BranchTarget[%sStepOutput[IN]]{\n", operation.GoName)
 	for _, branch := range operation.Branches {
 		write("\t\t\tconfig.%s.BranchTarget(%sBranch%s),\n", branch.GoName, operation.GoName, branch.GoName)
 	}
@@ -302,7 +302,7 @@ func goType(field schema.Field) string {
 	case "stringMap":
 		return "map[string]string"
 	case "secretString":
-		return "connector.SecretString"
+		return "sdkgo.SecretString"
 	case "enum":
 		return field.GoName
 	default:

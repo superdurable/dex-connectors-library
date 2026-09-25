@@ -10,16 +10,16 @@ import (
 	"github.com/stretchr/testify/require"
 	httpconnector "github.com/superdurable/dex-connectors-library/connectors/http"
 	customeronboarding "github.com/superdurable/dex-connectors-library/examples/customer-onboarding"
-	connector "github.com/superdurable/dex-connectors-library/sdk/go"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
 func TestFlowDefinitionRegistersDurableAttribute(t *testing.T) {
-	connection := connector.ConnectionRef{Provider: "mock", Name: "default"}
+	connection := sdkgo.ConnectionRef{Provider: "mock", Name: "default"}
 	client, err := httpconnector.New(httpconnector.Config{
 		BaseURL: "http://127.0.0.1:1", CredentialHeaders: map[string]string{"api_key": "X-Mock-Api-Key"},
-	}, connector.StaticCredentialProvider[httpconnector.Credentials]{
-		connection: {APIKey: connector.NewSecretString("test-key")},
+	}, sdkgo.StaticCredentialProvider[httpconnector.Credentials]{
+		connection: {APIKey: sdkgo.NewSecretString("test-key")},
 	})
 	require.NoError(t, err)
 	typedConnection, err := httpconnector.NewConnection(client, connection)

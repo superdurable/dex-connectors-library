@@ -16,11 +16,11 @@ import (
 	"github.com/stretchr/testify/require"
 	linkedinconnector "github.com/superdurable/dex-connectors-library/connectors/linkedin"
 	"github.com/superdurable/dex-connectors-library/connectors/linkedin/internal/testsupport"
-	connector "github.com/superdurable/dex-connectors-library/sdk/go"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
-var linkedinConnection = connector.ConnectionRef{Provider: "linkedin", Name: "signup"}
+var linkedinConnection = sdkgo.ConnectionRef{Provider: "linkedin", Name: "signup"}
 
 func TestGetAuthenticatedProfileReturnsBoundedUserInfoClaims(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
@@ -41,7 +41,7 @@ func TestGetAuthenticatedProfileReturnsBoundedUserInfoClaims(t *testing.T) {
 	defer server.Close()
 
 	client := newClient(t, server.URL+"/v2/userinfo", linkedinconnector.Config{})
-	result, err := connector.RunQuery(
+	result, err := sdkgo.RunQuery(
 		testsupport.NewDexContext("signup-flow", "profile-step"), client.GetAuthenticatedProfile(), linkedinConnection,
 		linkedinconnector.GetAuthenticatedProfileInput{},
 	)
@@ -68,28 +68,28 @@ func TestGetAuthenticatedProfileRequiresVerifiedEmail(t *testing.T) {
 			writeJSON(t, response, payload)
 		}))
 		client := newClient(t, server.URL, linkedinconnector.Config{})
-		result, err := connector.RunQuery(
+		result, err := sdkgo.RunQuery(
 			testsupport.NewDexContext("signup-flow", "email-step"), client.GetAuthenticatedProfile(), linkedinConnection,
 			linkedinconnector.GetAuthenticatedProfileInput{},
 		)
 		server.Close()
 		require.NoError(t, err)
 		require.Equal(t, linkedinconnector.GetAuthenticatedProfileBranchVerifiedEmailRequired, result.Branch)
-		require.Equal(t, connector.FailureAuthentication, result.Failure.Kind)
+		require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
 	}
 }
 
 func TestGetAuthenticatedProfileClassifiesTerminalProviderResponses(t *testing.T) {
 	tests := []struct {
 		status int
-		branch connector.BranchID
-		kind   connector.FailureKind
+		branch sdkgo.BranchID
+		kind   sdkgo.FailureKind
 	}{
-		{http.StatusUnauthorized, linkedinconnector.GetAuthenticatedProfileBranchAuthorizationRevoked, connector.FailureAuthentication},
-		{http.StatusForbidden, linkedinconnector.GetAuthenticatedProfileBranchInsufficientScope, connector.FailureAuthorization},
-		{http.StatusNotFound, linkedinconnector.GetAuthenticatedProfileBranchNotFound, connector.FailureNotFound},
-		{http.StatusBadRequest, linkedinconnector.GetAuthenticatedProfileBranchFailed, connector.FailureProviderRejection},
-		{http.StatusFound, linkedinconnector.GetAuthenticatedProfileBranchFailed, connector.FailureProviderRejection},
+		{http.StatusUnauthorized, linkedinconnector.GetAuthenticatedProfileBranchAuthorizationRevoked, sdkgo.FailureAuthentication},
+		{http.StatusForbidden, linkedinconnector.GetAuthenticatedProfileBranchInsufficientScope, sdkgo.FailureAuthorization},
+		{http.StatusNotFound, linkedinconnector.GetAuthenticatedProfileBranchNotFound, sdkgo.FailureNotFound},
+		{http.StatusBadRequest, linkedinconnector.GetAuthenticatedProfileBranchFailed, sdkgo.FailureProviderRejection},
+		{http.StatusFound, linkedinconnector.GetAuthenticatedProfileBranchFailed, sdkgo.FailureProviderRejection},
 	}
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("status-%d", test.status), func(t *testing.T) {
@@ -99,7 +99,7 @@ func TestGetAuthenticatedProfileClassifiesTerminalProviderResponses(t *testing.T
 			}))
 			defer server.Close()
 			client := newClient(t, server.URL, linkedinconnector.Config{})
-			result, err := connector.RunQuery(
+			result, err := sdkgo.RunQuery(
 				testsupport.NewDexContext("signup-flow", "terminal-step"), client.GetAuthenticatedProfile(), linkedinConnection,
 				linkedinconnector.GetAuthenticatedProfileInput{},
 			)
@@ -114,11 +114,11 @@ func TestGetAuthenticatedProfileClassifiesTerminalProviderResponses(t *testing.T
 func TestRateLimitAndAvailabilityAreSafeRetries(t *testing.T) {
 	for _, test := range []struct {
 		status int
-		kind   connector.FailureKind
+		kind   sdkgo.FailureKind
 		delay  time.Duration
 	}{
-		{http.StatusTooManyRequests, connector.FailureRateLimit, 7 * time.Second},
-		{http.StatusServiceUnavailable, connector.FailureAvailability, 0},
+		{http.StatusTooManyRequests, sdkgo.FailureRateLimit, 7 * time.Second},
+		{http.StatusServiceUnavailable, sdkgo.FailureAvailability, 0},
 	} {
 		server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
 			if test.status == http.StatusTooManyRequests {
@@ -127,12 +127,12 @@ func TestRateLimitAndAvailabilityAreSafeRetries(t *testing.T) {
 			response.WriteHeader(test.status)
 		}))
 		client := newClient(t, server.URL, linkedinconnector.Config{})
-		_, err := connector.RunQuery(
+		_, err := sdkgo.RunQuery(
 			testsupport.NewDexContext("signup-flow", "retry-step"), client.GetAuthenticatedProfile(), linkedinConnection,
 			linkedinconnector.GetAuthenticatedProfileInput{},
 		)
 		server.Close()
-		var retry *connector.RetryError
+		var retry *sdkgo.RetryError
 		require.ErrorAs(t, err, &retry)
 		require.Equal(t, test.kind, retry.Failure.Kind)
 		if test.delay > 0 {
@@ -149,11 +149,11 @@ func TestTransportAndResponseBoundsDoNotLeakSecrets(t *testing.T) {
 		return nil, errors.New("transport failed with one-use-token")
 	})}
 	client := newClient(t, "https://api.linkedin.test/v2/userinfo", linkedinconnector.Config{}, linkedinconnector.WithHTTPClient(transportClient))
-	_, err := connector.RunQuery(
+	_, err := sdkgo.RunQuery(
 		testsupport.NewDexContext("signup-flow", "transport-step"), client.GetAuthenticatedProfile(), linkedinConnection,
 		linkedinconnector.GetAuthenticatedProfileInput{},
 	)
-	var retry *connector.RetryError
+	var retry *sdkgo.RetryError
 	require.ErrorAs(t, err, &retry)
 	require.NotContains(t, err.Error(), "one-use-token")
 
@@ -162,13 +162,13 @@ func TestTransportAndResponseBoundsDoNotLeakSecrets(t *testing.T) {
 	}))
 	defer server.Close()
 	client = newClient(t, server.URL, linkedinconnector.Config{MaxResponseBytes: 16})
-	result, err := connector.RunQuery(
+	result, err := sdkgo.RunQuery(
 		testsupport.NewDexContext("signup-flow", "large-step"), client.GetAuthenticatedProfile(), linkedinConnection,
 		linkedinconnector.GetAuthenticatedProfileInput{},
 	)
 	require.NoError(t, err)
 	require.Equal(t, linkedinconnector.GetAuthenticatedProfileBranchFailed, result.Branch)
-	require.Equal(t, connector.FailureResponseTooLarge, result.Failure.Kind)
+	require.Equal(t, sdkgo.FailureResponseTooLarge, result.Failure.Kind)
 }
 
 func TestInvalidUserInfoIsTerminalProtocolFailure(t *testing.T) {
@@ -181,20 +181,20 @@ func TestInvalidUserInfoIsTerminalProtocolFailure(t *testing.T) {
 			_, _ = response.Write([]byte(body))
 		}))
 		client := newClient(t, server.URL, linkedinconnector.Config{})
-		result, err := connector.RunQuery(
+		result, err := sdkgo.RunQuery(
 			testsupport.NewDexContext("signup-flow", "protocol-step"), client.GetAuthenticatedProfile(), linkedinConnection,
 			linkedinconnector.GetAuthenticatedProfileInput{},
 		)
 		server.Close()
 		require.NoError(t, err)
 		require.Equal(t, linkedinconnector.GetAuthenticatedProfileBranchFailed, result.Branch)
-		require.Equal(t, connector.FailureProtocol, result.Failure.Kind)
+		require.Equal(t, sdkgo.FailureProtocol, result.Failure.Kind)
 	}
 }
 
 func TestConfigRejectsUnsafeUserInfoEndpoint(t *testing.T) {
-	credentials := connector.StaticCredentialProvider[linkedinconnector.Credentials]{linkedinConnection: {
-		AccessToken: connector.NewSecretString("one-use-token"),
+	credentials := sdkgo.StaticCredentialProvider[linkedinconnector.Credentials]{linkedinConnection: {
+		AccessToken: sdkgo.NewSecretString("one-use-token"),
 	}}
 	_, err := linkedinconnector.New(linkedinconnector.Config{UserInfoURL: "http://linkedin.example/v2/userinfo"}, credentials)
 	require.ErrorContains(t, err, "must use HTTPS")
@@ -207,8 +207,8 @@ func TestConfigRejectsUnsafeUserInfoEndpoint(t *testing.T) {
 func newClient(t *testing.T, userInfoURL string, config linkedinconnector.Config, options ...linkedinconnector.Option) *linkedinconnector.Client {
 	t.Helper()
 	config.UserInfoURL = userInfoURL
-	credentials := connector.StaticCredentialProvider[linkedinconnector.Credentials]{linkedinConnection: {
-		AccessToken: connector.NewSecretString("one-use-token"),
+	credentials := sdkgo.StaticCredentialProvider[linkedinconnector.Credentials]{linkedinConnection: {
+		AccessToken: sdkgo.NewSecretString("one-use-token"),
 	}}
 	client, err := linkedinconnector.New(config, credentials, options...)
 	require.NoError(t, err)

@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	connector "github.com/superdurable/dex-connectors-library/sdk/go"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 
 type MessageMatcher struct {
@@ -53,11 +53,11 @@ func (event MessageEvent) ThreadIdentity() ThreadIdentity {
 }
 
 // FlowIDByThread adapts an application-owned Slack thread resolver to the generic Trigger target contract.
-func FlowIDByThread(resolve func(ThreadIdentity) (string, error)) connector.FlowIDResolver[MessageEvent] {
+func FlowIDByThread(resolve func(ThreadIdentity) (string, error)) sdkgo.FlowIDResolver[MessageEvent] {
 	if resolve == nil {
 		panic("Slack thread Flow ID resolver is required")
 	}
-	return func(event connector.TriggerEvent[MessageEvent]) (string, error) {
+	return func(event sdkgo.TriggerEvent[MessageEvent]) (string, error) {
 		return resolve(event.Payload.ThreadIdentity())
 	}
 }
@@ -73,7 +73,7 @@ type socketDialer func(context.Context, string) (socketConnection, error)
 
 type messageTriggerSource struct {
 	client         *Client
-	connection     connector.ConnectionRef
+	connection     sdkgo.ConnectionRef
 	channelID      string
 	matcher        MessageMatcher
 	requiresThread bool
@@ -137,7 +137,7 @@ func (matcher MessageMatcher) validate(requiresPoster bool) error {
 	return nil
 }
 
-func (client *Client) channelThreadCreatedTriggerSource(connection connector.ConnectionRef, configuration ChannelThreadCreatedTriggerConfiguration) connector.TriggerSource[MessageEvent] {
+func (client *Client) channelThreadCreatedTriggerSource(connection sdkgo.ConnectionRef, configuration ChannelThreadCreatedTriggerConfiguration) sdkgo.TriggerSource[MessageEvent] {
 	if err := configuration.Validate(); err != nil {
 		panic(err)
 	}
@@ -147,7 +147,7 @@ func (client *Client) channelThreadCreatedTriggerSource(connection connector.Con
 	}
 }
 
-func (client *Client) threadReplyCreatedTriggerSource(connection connector.ConnectionRef, configuration ThreadReplyCreatedTriggerConfiguration) connector.TriggerSource[MessageEvent] {
+func (client *Client) threadReplyCreatedTriggerSource(connection sdkgo.ConnectionRef, configuration ThreadReplyCreatedTriggerConfiguration) sdkgo.TriggerSource[MessageEvent] {
 	if err := configuration.Validate(); err != nil {
 		panic(err)
 	}
@@ -157,7 +157,7 @@ func (client *Client) threadReplyCreatedTriggerSource(connection connector.Conne
 	}
 }
 
-func (source *messageTriggerSource) Run(ctx context.Context, target connector.TriggerTarget[MessageEvent]) error {
+func (source *messageTriggerSource) Run(ctx context.Context, target sdkgo.TriggerTarget[MessageEvent]) error {
 	for {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -180,8 +180,8 @@ func (source *messageTriggerSource) Run(ctx context.Context, target connector.Tr
 	}
 }
 
-func (source *messageTriggerSource) runConnection(ctx context.Context, target connector.TriggerTarget[MessageEvent]) error {
-	credentials, err := source.client.credentials.Resolve(connector.Call{Connection: source.connection})
+func (source *messageTriggerSource) runConnection(ctx context.Context, target sdkgo.TriggerTarget[MessageEvent]) error {
+	credentials, err := source.client.credentials.Resolve(sdkgo.Call{Connection: source.connection})
 	if err != nil || credentials.Validate() != nil {
 		return fmt.Errorf("Slack Socket Mode credentials are unavailable")
 	}
@@ -215,7 +215,7 @@ func (source *messageTriggerSource) runConnection(ctx context.Context, target co
 			}
 			continue
 		}
-		if err := connector.PrepareTriggerDelivery(ctx, target, event); err != nil {
+		if err := sdkgo.PrepareTriggerDelivery(ctx, target, event); err != nil {
 			return err
 		}
 		if err := acknowledgeEnvelope(connection, envelope.EnvelopeID); err != nil {
@@ -227,7 +227,7 @@ func (source *messageTriggerSource) runConnection(ctx context.Context, target co
 	}
 }
 
-func deliverTriggerEvent(ctx context.Context, target connector.TriggerTarget[MessageEvent], event connector.TriggerEvent[MessageEvent]) error {
+func deliverTriggerEvent(ctx context.Context, target sdkgo.TriggerTarget[MessageEvent], event sdkgo.TriggerEvent[MessageEvent]) error {
 	for {
 		if err := target.HandleTrigger(ctx, event); err == nil {
 			return nil
@@ -244,27 +244,27 @@ func deliverTriggerEvent(ctx context.Context, target connector.TriggerTarget[Mes
 	}
 }
 
-func (source *messageTriggerSource) decodeEvent(envelope socketEnvelope) (bool, connector.TriggerEvent[MessageEvent], error) {
+func (source *messageTriggerSource) decodeEvent(envelope socketEnvelope) (bool, sdkgo.TriggerEvent[MessageEvent], error) {
 	if envelope.Type != "events_api" || strings.TrimSpace(envelope.EnvelopeID) == "" {
-		return false, connector.TriggerEvent[MessageEvent]{}, nil
+		return false, sdkgo.TriggerEvent[MessageEvent]{}, nil
 	}
 	var payload eventsAPIPayload
 	if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
-		return false, connector.TriggerEvent[MessageEvent]{}, err
+		return false, sdkgo.TriggerEvent[MessageEvent]{}, err
 	}
 	message := payload.Event
 	if payload.EventID == "" || message.Type != "message" || message.Subtype != "" || message.BotID != "" || message.User == "" || message.Channel != source.channelID {
-		return false, connector.TriggerEvent[MessageEvent]{}, nil
+		return false, sdkgo.TriggerEvent[MessageEvent]{}, nil
 	}
 	isReply := message.ThreadTS != "" && message.ThreadTS != message.Timestamp
 	if source.requiresThread != isReply || !source.matcher.matches(message.User, message.Text) {
-		return false, connector.TriggerEvent[MessageEvent]{}, nil
+		return false, sdkgo.TriggerEvent[MessageEvent]{}, nil
 	}
 	threadTimestamp := message.ThreadTS
 	if !isReply {
 		threadTimestamp = message.Timestamp
 	}
-	return true, connector.TriggerEvent[MessageEvent]{
+	return true, sdkgo.TriggerEvent[MessageEvent]{
 		ID: payload.EventID, OccurredAt: time.Unix(payload.EventTime, 0).UTC(),
 		Payload: MessageEvent{
 			TeamID: payload.TeamID, ChannelID: message.Channel, Timestamp: message.Timestamp,

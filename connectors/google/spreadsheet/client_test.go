@@ -14,11 +14,11 @@ import (
 
 	"github.com/stretchr/testify/require"
 	spreadsheet "github.com/superdurable/dex-connectors-library/connectors/google/spreadsheet"
-	connector "github.com/superdurable/dex-connectors-library/sdk/go"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
-var sheetsConnection = connector.ConnectionRef{Provider: "google", Name: "customer-sheet"}
+var sheetsConnection = sdkgo.ConnectionRef{Provider: "google", Name: "customer-sheet"}
 
 func TestFindRowDistinguishesMissingAndDuplicateKeys(t *testing.T) {
 	rows := [][]string{{"accountId", "name"}, {"a-1", "Ada"}}
@@ -26,17 +26,17 @@ func TestFindRowDistinguishesMissingAndDuplicateKeys(t *testing.T) {
 	defer server.Close()
 	client := newSheetsClient(t, server.URL)
 
-	found, err := connector.RunQuery(newDexContext("find-found"), client.FindRow(), sheetsConnection, spreadsheet.FindRowInput{SpreadsheetID: "sheet", SheetName: "Customers", KeyColumn: "accountId", KeyValue: "a-1"})
+	found, err := sdkgo.RunQuery(newDexContext("find-found"), client.FindRow(), sheetsConnection, spreadsheet.FindRowInput{SpreadsheetID: "sheet", SheetName: "Customers", KeyColumn: "accountId", KeyValue: "a-1"})
 	require.NoError(t, err)
 	require.Equal(t, spreadsheet.FindRowBranchFound, found.Branch)
 	require.Equal(t, int64(2), found.Value.RowNumber)
 
-	missing, err := connector.RunQuery(newDexContext("find-missing"), client.FindRow(), sheetsConnection, spreadsheet.FindRowInput{SpreadsheetID: "sheet", SheetName: "Customers", KeyColumn: "accountId", KeyValue: "a-2"})
+	missing, err := sdkgo.RunQuery(newDexContext("find-missing"), client.FindRow(), sheetsConnection, spreadsheet.FindRowInput{SpreadsheetID: "sheet", SheetName: "Customers", KeyColumn: "accountId", KeyValue: "a-2"})
 	require.NoError(t, err)
 	require.Equal(t, spreadsheet.FindRowBranchNotFound, missing.Branch)
 
 	rows = append(rows, []string{"a-1", "Duplicate"})
-	conflict, err := connector.RunQuery(newDexContext("find-conflict"), client.FindRow(), sheetsConnection, spreadsheet.FindRowInput{SpreadsheetID: "sheet", SheetName: "Customers", KeyColumn: "accountId", KeyValue: "a-1"})
+	conflict, err := sdkgo.RunQuery(newDexContext("find-conflict"), client.FindRow(), sheetsConnection, spreadsheet.FindRowInput{SpreadsheetID: "sheet", SheetName: "Customers", KeyColumn: "accountId", KeyValue: "a-1"})
 	require.NoError(t, err)
 	require.Equal(t, spreadsheet.FindRowBranchConflict, conflict.Branch)
 	require.Equal(t, []int64{2, 3}, conflict.Value.ConflictingRows)
@@ -46,12 +46,12 @@ func TestGetValuesClassifiesAuthenticationAndRateLimit(t *testing.T) {
 	tests := []struct {
 		name       string
 		status     int
-		wantBranch connector.BranchID
-		wantKind   connector.FailureKind
+		wantBranch sdkgo.BranchID
+		wantKind   sdkgo.FailureKind
 		wantRetry  bool
 	}{
-		{name: "authentication", status: http.StatusUnauthorized, wantBranch: spreadsheet.GetValuesBranchFailed, wantKind: connector.FailureAuthentication},
-		{name: "rate limit", status: http.StatusTooManyRequests, wantKind: connector.FailureRateLimit, wantRetry: true},
+		{name: "authentication", status: http.StatusUnauthorized, wantBranch: spreadsheet.GetValuesBranchFailed, wantKind: sdkgo.FailureAuthentication},
+		{name: "rate limit", status: http.StatusTooManyRequests, wantKind: sdkgo.FailureRateLimit, wantRetry: true},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -60,10 +60,10 @@ func TestGetValuesClassifiesAuthenticationAndRateLimit(t *testing.T) {
 			}))
 			defer server.Close()
 			client := newSheetsClient(t, server.URL)
-			result, err := connector.RunQuery(newDexContext("get-values-"+test.name), client.GetValues(), sheetsConnection, spreadsheet.GetValuesInput{SpreadsheetID: "sheet", Range: "Customers!A:B"})
+			result, err := sdkgo.RunQuery(newDexContext("get-values-"+test.name), client.GetValues(), sheetsConnection, spreadsheet.GetValuesInput{SpreadsheetID: "sheet", Range: "Customers!A:B"})
 			if test.wantRetry {
 				require.Error(t, err)
-				var retry *connector.RetryError
+				var retry *sdkgo.RetryError
 				require.ErrorAs(t, err, &retry)
 				require.Equal(t, test.wantKind, retry.Failure.Kind)
 				return
@@ -81,15 +81,15 @@ func TestGetValuesRejectsOversizedResponseWithoutRetry(t *testing.T) {
 		_, _ = response.Write([]byte(`{"range":"Customers","values":[["accountId","name"]]}`))
 	}))
 	defer server.Close()
-	client, err := spreadsheet.New(spreadsheet.Config{Endpoint: server.URL, MaxResponseBytes: 8}, connector.StaticCredentialProvider[spreadsheet.Credentials]{
-		sheetsConnection: {AccessToken: connector.NewSecretString("sheets-token")},
+	client, err := spreadsheet.New(spreadsheet.Config{Endpoint: server.URL, MaxResponseBytes: 8}, sdkgo.StaticCredentialProvider[spreadsheet.Credentials]{
+		sheetsConnection: {AccessToken: sdkgo.NewSecretString("sheets-token")},
 	})
 	require.NoError(t, err)
-	result, err := connector.RunQuery(newDexContext("oversized"), client.GetValues(), sheetsConnection, spreadsheet.GetValuesInput{SpreadsheetID: "sheet", Range: "Customers!A:B"})
+	result, err := sdkgo.RunQuery(newDexContext("oversized"), client.GetValues(), sheetsConnection, spreadsheet.GetValuesInput{SpreadsheetID: "sheet", Range: "Customers!A:B"})
 	require.NoError(t, err)
 	require.Equal(t, spreadsheet.GetValuesBranchFailed, result.Branch)
 	require.NotNil(t, result.Failure)
-	require.Equal(t, connector.FailureResponseTooLarge, result.Failure.Kind)
+	require.Equal(t, sdkgo.FailureResponseTooLarge, result.Failure.Kind)
 }
 
 func TestUpsertReconcilesAmbiguousAppendWithoutSecondRow(t *testing.T) {
@@ -115,12 +115,12 @@ func TestUpsertReconcilesAmbiguousAppendWithoutSecondRow(t *testing.T) {
 	input := spreadsheet.UpsertRowInput{SpreadsheetID: "sheet", SheetName: "Customers", KeyColumn: "accountId", KeyValue: "a-1", Values: map[string]string{"name": "Ada"}}
 	ctx := newDexContext("upsert-one")
 
-	unknown, err := connector.RunMutation(ctx, client.UpsertRow(), sheetsConnection, input)
+	unknown, err := sdkgo.RunMutation(ctx, client.UpsertRow(), sheetsConnection, input)
 	require.NoError(t, err)
 	require.Equal(t, spreadsheet.UpsertRowBranchUncertain, unknown.Branch)
 	require.Len(t, rows, 2)
 
-	recovered, err := connector.RunMutation(ctx, client.UpsertRow(), sheetsConnection, input)
+	recovered, err := sdkgo.RunMutation(ctx, client.UpsertRow(), sheetsConnection, input)
 	require.NoError(t, err)
 	require.Equal(t, spreadsheet.UpsertRowBranchUpserted, recovered.Branch)
 	require.Equal(t, "updated", recovered.Value.Action)
@@ -152,8 +152,8 @@ func sheetServer(t *testing.T, rows *[][]string, write func(http.ResponseWriter,
 
 func newSheetsClient(t *testing.T, endpoint string) *spreadsheet.Client {
 	t.Helper()
-	client, err := spreadsheet.New(spreadsheet.Config{Endpoint: endpoint}, connector.StaticCredentialProvider[spreadsheet.Credentials]{
-		sheetsConnection: {AccessToken: connector.NewSecretString("sheets-token")},
+	client, err := spreadsheet.New(spreadsheet.Config{Endpoint: endpoint}, sdkgo.StaticCredentialProvider[spreadsheet.Credentials]{
+		sheetsConnection: {AccessToken: sdkgo.NewSecretString("sheets-token")},
 	})
 	require.NoError(t, err)
 	return client

@@ -16,8 +16,8 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/connectors/slack"
 	threadapproval "github.com/superdurable/dex-connectors-library/connectors/slack/examples/thread-approval/flow"
-	connector "github.com/superdurable/dex-connectors-library/sdk/go"
-	"github.com/superdurable/dex-connectors-library/sdk/go/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -65,7 +65,7 @@ func run(ctx context.Context) error {
 	}
 	startRunner, err := slack.NewLocalChannelThreadCreatedTrigger(
 		store, threadapproval.ConnectionName, threadapproval.StartTriggerBinding,
-		connector.NewDexFlowTriggerTarget(
+		sdkgo.NewDexFlowTriggerTarget(
 			client, flow, slack.FlowIDByThread(threadapproval.ResolveFlowID), threadapproval.BuildStartInput,
 		),
 	)
@@ -74,7 +74,7 @@ func run(ctx context.Context) error {
 	}
 	replyRunner, err := slack.NewLocalThreadReplyCreatedTrigger(
 		store, threadapproval.ConnectionName, threadapproval.ReplyTriggerBinding,
-		connector.NewDexRPCTriggerTarget(
+		sdkgo.NewDexRPCTriggerTarget(
 			client, flow.ReplyTriggerRPC().Definition(), slack.FlowIDByThread(threadapproval.ResolveFlowID),
 		),
 	)

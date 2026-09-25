@@ -22,7 +22,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/slack"
-	connector "github.com/superdurable/dex-connectors-library/sdk/go"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -43,13 +43,13 @@ func TestThreadApprovalExampleCompletesOnceAndPreservesUncertainOutcomeWithRealD
 	successFlowID := startSlackThreadFlow(t, ctx, harness.client, flow, "Ev-root-success-"+testRunID, successRoot)
 	waitForSlackStatus(t, ctx, harness.client, flow, successFlowID, StatusWaitingForReply)
 
-	successReply := connector.TriggerEvent[slack.MessageEvent]{
+	successReply := sdkgo.TriggerEvent[slack.MessageEvent]{
 		ID: "Ev-reply-success-" + testRunID, OccurredAt: time.Unix(2, 0).UTC(),
 		Payload: slack.MessageEvent{
 			TeamID: teamID, ChannelID: "C1", Timestamp: "2.0", ThreadTimestamp: "1.0", UserID: "U2", Text: "approve",
 		},
 	}
-	replyTarget := connector.NewDexRPCTriggerTarget(harness.client, flow.ReplyTriggerRPC().Definition(), slack.FlowIDByThread(ResolveFlowID))
+	replyTarget := sdkgo.NewDexRPCTriggerTarget(harness.client, flow.ReplyTriggerRPC().Definition(), slack.FlowIDByThread(ResolveFlowID))
 	require.NoError(t, replyTarget.HandleTrigger(ctx, successReply))
 	require.NoError(t, replyTarget.HandleTrigger(ctx, successReply))
 
@@ -67,7 +67,7 @@ func TestThreadApprovalExampleCompletesOnceAndPreservesUncertainOutcomeWithRealD
 	}
 	uncertainFlowID := startSlackThreadFlow(t, ctx, harness.client, flow, "Ev-root-uncertain-"+testRunID, uncertainRoot)
 	waitForSlackStatus(t, ctx, harness.client, flow, uncertainFlowID, StatusWaitingForReply)
-	uncertainReply := connector.TriggerEvent[slack.MessageEvent]{
+	uncertainReply := sdkgo.TriggerEvent[slack.MessageEvent]{
 		ID: "Ev-reply-uncertain-" + testRunID, OccurredAt: time.Unix(4, 0).UTC(),
 		Payload: slack.MessageEvent{
 			TeamID: teamID, ChannelID: "C1", Timestamp: "4.0", ThreadTimestamp: "3.0", UserID: "U2", Text: "approve",
@@ -88,8 +88,8 @@ func startSlackThreadFlow(
 	payload slack.MessageEvent,
 ) string {
 	t.Helper()
-	startTarget := connector.NewDexFlowTriggerTarget(client, flow, slack.FlowIDByThread(ResolveFlowID), BuildStartInput)
-	event := connector.TriggerEvent[slack.MessageEvent]{ID: eventID, OccurredAt: time.Now().UTC(), Payload: payload}
+	startTarget := sdkgo.NewDexFlowTriggerTarget(client, flow, slack.FlowIDByThread(ResolveFlowID), BuildStartInput)
+	event := sdkgo.TriggerEvent[slack.MessageEvent]{ID: eventID, OccurredAt: time.Now().UTC(), Payload: payload}
 	require.NoError(t, startTarget.HandleTrigger(ctx, event))
 	require.NoError(t, startTarget.HandleTrigger(ctx, event))
 	flowID, err := ResolveFlowID(payload.ThreadIdentity())
@@ -181,10 +181,10 @@ type slackIntegrationHarness struct {
 
 func newSlackIntegrationHarness(t *testing.T, endpoint string) (*Flow, *slackIntegrationHarness) {
 	t.Helper()
-	reference := connector.ConnectionRef{Provider: "slack", Name: ConnectionName}
-	providerClient, err := slack.New(slack.Config{Endpoint: endpoint}, connector.StaticCredentialProvider[slack.Credentials]{
+	reference := sdkgo.ConnectionRef{Provider: "slack", Name: ConnectionName}
+	providerClient, err := slack.New(slack.Config{Endpoint: endpoint}, sdkgo.StaticCredentialProvider[slack.Credentials]{
 		reference: {
-			BotToken: connector.NewSecretString("bot-token"), UserToken: connector.NewSecretString("user-token"), AppToken: connector.NewSecretString("app-token"),
+			BotToken: sdkgo.NewSecretString("bot-token"), UserToken: sdkgo.NewSecretString("user-token"), AppToken: sdkgo.NewSecretString("app-token"),
 		},
 	})
 	require.NoError(t, err)

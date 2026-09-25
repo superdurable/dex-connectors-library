@@ -10,7 +10,7 @@ import (
 	"fmt"
 
 	gmail "github.com/superdurable/dex-connectors-library/connectors/google/gmail"
-	connector "github.com/superdurable/dex-connectors-library/sdk/go"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -24,7 +24,7 @@ const (
 
 var (
 	threadStateAttribute = dex.DefineAttribute[ThreadState]("gmail-thread-reply-state")
-	replyResultAttribute = dex.DefineAttribute[connector.MutationResult[gmail.SendMessageOutput]]("gmail-thread-reply-result")
+	replyResultAttribute = dex.DefineAttribute[sdkgo.MutationResult[gmail.SendMessageOutput]]("gmail-thread-reply-result")
 )
 
 type Status string
@@ -60,12 +60,12 @@ type ReplyResult struct {
 type Flow struct {
 	dex.FlowDefaults
 	connection      gmail.Connection
-	replyTriggerRPC *connector.TriggerRPC[gmail.MessageEvent, ReplyResult]
+	replyTriggerRPC *sdkgo.TriggerRPC[gmail.MessageEvent, ReplyResult]
 }
 
 func NewFlow(connection gmail.Connection) *Flow {
 	flow := &Flow{connection: connection}
-	flow.replyTriggerRPC = connector.MustNewTriggerRPC(connector.TriggerRPCConfig[gmail.MessageEvent, ReplyResult]{
+	flow.replyTriggerRPC = sdkgo.MustNewTriggerRPC(sdkgo.TriggerRPCConfig[gmail.MessageEvent, ReplyResult]{
 		Definition: flow.ReceiveEmailReply, ProcessedEventIDsAttributeName: "gmail-thread-reply-processed-event-ids",
 		HandleEvent: flow.handleEmailReply, DuplicateEvent: flow.handleDuplicateEmailReply,
 		Options: &dex.RPCOptions{LockAttributes: []dex.AttributeLock{dex.LockAttribute(threadStateAttribute)}},
@@ -77,25 +77,25 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 	return []dex.StepDef{
 		dex.DefineStartStep(gmail.NewGetMessageStep(gmail.GetMessageStepConfig[Input]{
 			StepType: readMessageStepType, ConnectionName: ConnectionName,
-			Presentation: connector.StepPresentation{GroupID: "gmail", GroupLabel: "Gmail", Explanation: "Read the received Gmail message that started the Flow."},
+			Presentation: sdkgo.StepPresentation{GroupID: "gmail", GroupLabel: "Gmail", Explanation: "Read the received Gmail message that started the Flow."},
 			Connection:   flow.connection,
 			BuildInput: func(input Input) (gmail.GetMessageInput, error) {
 				return gmail.GetMessageInput{MessageID: input.MessageID}, nil
 			},
-			Read: connector.GoTo(messageLoaded{}), NotFound: connector.GoTo(messageReadFailed{}),
-			Rejected: connector.GoTo(messageReadFailed{}), Defect: connector.GoTo(messageReadFailed{}),
+			Read: sdkgo.GoTo(messageLoaded{}), NotFound: sdkgo.GoTo(messageReadFailed{}),
+			Rejected: sdkgo.GoTo(messageReadFailed{}), Defect: sdkgo.GoTo(messageReadFailed{}),
 		})),
 		dex.DefineStep(messageLoaded{}),
 		dex.DefineStep(messageReadFailed{}),
 		dex.DefineStep(gmail.NewReplyToMessageStep(gmail.ReplyToMessageStepConfig[ThreadState]{
 			StepType: replyMessageStepType, ConnectionName: ConnectionName,
-			Presentation: connector.StepPresentation{GroupID: "gmail", GroupLabel: "Gmail", Explanation: "Reply after the received email Trigger invokes the typed RPC."},
+			Presentation: sdkgo.StepPresentation{GroupID: "gmail", GroupLabel: "Gmail", Explanation: "Reply after the received email Trigger invokes the typed RPC."},
 			Connection:   flow.connection,
 			BuildInput: func(state ThreadState) (gmail.ReplyToMessageInput, error) {
 				return gmail.ReplyToMessageInput{MessageID: state.ReplyMessageID, TextBody: "Processing complete"}, nil
 			},
-			Sent: connector.GoTo(replySent{}), Rejected: connector.GoTo(replyNeedsRecovery{}),
-			Uncertain: connector.GoTo(replyNeedsRecovery{}), Defect: connector.GoTo(replyNeedsRecovery{}),
+			Sent: sdkgo.GoTo(replySent{}), Rejected: sdkgo.GoTo(replyNeedsRecovery{}),
+			Uncertain: sdkgo.GoTo(replyNeedsRecovery{}), Defect: sdkgo.GoTo(replyNeedsRecovery{}),
 			ResultAttribute: &replyResultAttribute,
 		})),
 		dex.DefineStep(replySent{}),
@@ -118,8 +118,8 @@ func (flow *Flow) GetPersistenceSchema() dex.PersistenceSchema {
 	}}
 }
 
-func (*Flow) GetConnectorTriggerBindings() []connector.TriggerBindingDefinition {
-	return []connector.TriggerBindingDefinition{
+func (*Flow) GetConnectorTriggerBindings() []sdkgo.TriggerBindingDefinition {
+	return []sdkgo.TriggerBindingDefinition{
 		gmail.DefineMessageReceivedTriggerBinding(gmail.MessageReceivedTriggerBindingConfig{
 			ConnectionName: ConnectionName, BindingName: StartTriggerBinding,
 		}),
@@ -129,7 +129,7 @@ func (*Flow) GetConnectorTriggerBindings() []connector.TriggerBindingDefinition 
 	}
 }
 
-func (flow *Flow) ReceiveEmailReply(ctx dex.Context, event connector.TriggerEvent[gmail.MessageEvent]) (*dex.RPCResult[ReplyResult], error) {
+func (flow *Flow) ReceiveEmailReply(ctx dex.Context, event sdkgo.TriggerEvent[gmail.MessageEvent]) (*dex.RPCResult[ReplyResult], error) {
 	result, err := flow.replyTriggerRPC.Handle(ctx, event)
 	if err != nil {
 		return nil, err
@@ -141,17 +141,17 @@ func (flow *Flow) ReceiveEmailReply(ctx dex.Context, event connector.TriggerEven
 		}
 		return &dex.RPCResult[ReplyResult]{
 			Output:    result.Output,
-			NextSteps: []dex.StepMovement{dex.MovementOf(connector.StepRef[ThreadState](replyMessageStepType), state)},
+			NextSteps: []dex.StepMovement{dex.MovementOf(sdkgo.StepRef[ThreadState](replyMessageStepType), state)},
 		}, nil
 	}
 	return result, nil
 }
 
-func (flow *Flow) ReplyTriggerRPC() *connector.TriggerRPC[gmail.MessageEvent, ReplyResult] {
+func (flow *Flow) ReplyTriggerRPC() *sdkgo.TriggerRPC[gmail.MessageEvent, ReplyResult] {
 	return flow.replyTriggerRPC
 }
 
-func (*Flow) handleEmailReply(ctx dex.Context, event connector.TriggerEvent[gmail.MessageEvent]) (*dex.RPCResult[ReplyResult], error) {
+func (*Flow) handleEmailReply(ctx dex.Context, event sdkgo.TriggerEvent[gmail.MessageEvent]) (*dex.RPCResult[ReplyResult], error) {
 	state, err := threadStateAttribute.Get(ctx)
 	if err != nil {
 		return nil, err
@@ -168,7 +168,7 @@ func (*Flow) handleEmailReply(ctx dex.Context, event connector.TriggerEvent[gmai
 	return &dex.RPCResult[ReplyResult]{Output: ReplyResult{Accepted: accepted, Status: state.Status}}, nil
 }
 
-func (*Flow) handleDuplicateEmailReply(ctx dex.Context, _ connector.TriggerEvent[gmail.MessageEvent]) (*dex.RPCResult[ReplyResult], error) {
+func (*Flow) handleDuplicateEmailReply(ctx dex.Context, _ sdkgo.TriggerEvent[gmail.MessageEvent]) (*dex.RPCResult[ReplyResult], error) {
 	state, err := threadStateAttribute.Get(ctx)
 	if err != nil {
 		return nil, err
@@ -273,7 +273,7 @@ func (replyNeedsRecovery) Execute(ctx dex.Context, output replyMessageOutput) (*
 	return dex.DeadEnd(), nil
 }
 
-func failureMessage(branch connector.BranchID, failure *connector.Failure) string {
+func failureMessage(branch sdkgo.BranchID, failure *sdkgo.Failure) string {
 	if failure == nil {
 		return string(branch)
 	}
@@ -288,12 +288,12 @@ func ResolveFlowID(identity gmail.ThreadIdentity) (string, error) {
 	return "gmail-thread-reply-" + hex.EncodeToString(digest[:16]), nil
 }
 
-func BuildStartInput(event connector.TriggerEvent[gmail.MessageEvent]) (Input, error) {
+func BuildStartInput(event sdkgo.TriggerEvent[gmail.MessageEvent]) (Input, error) {
 	payload := event.Payload
 	return Input{EventID: event.ID, PrimaryEmail: payload.PrimaryEmail, MessageID: payload.MessageID, ThreadID: payload.ThreadID}, nil
 }
 
 var _ dex.Flow = (*Flow)(nil)
-var _ dex.RPC[connector.TriggerEvent[gmail.MessageEvent], ReplyResult] = (*Flow)(nil).ReceiveEmailReply
+var _ dex.RPC[sdkgo.TriggerEvent[gmail.MessageEvent], ReplyResult] = (*Flow)(nil).ReceiveEmailReply
 var _ dex.RPC[dex.None, map[string]any] = (*Flow)(nil).GetDexSummary
 var _ dex.RPC[dex.None, map[string]any] = (*Flow)(nil).GetDexDisplay

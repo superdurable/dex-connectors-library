@@ -10,7 +10,7 @@ import (
 	"strings"
 	"sync"
 
-	connector "github.com/superdurable/dex-connectors-library/sdk/go"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 
 type Mutation struct {
@@ -61,13 +61,13 @@ func (provider *Provider) Mutation(callID string) (Mutation, bool) {
 	return mutation, ok
 }
 
-func (provider *Provider) MutationCount(callID connector.CallID) int {
+func (provider *Provider) MutationCount(callID sdkgo.CallID) int {
 	provider.mu.Lock()
 	defer provider.mu.Unlock()
 	return provider.mutationExecutions[string(callID)]
 }
 
-func (provider *Provider) MutationAttempts(callID connector.CallID) int {
+func (provider *Provider) MutationAttempts(callID sdkgo.CallID) int {
 	provider.mu.Lock()
 	defer provider.mu.Unlock()
 	return provider.mutationAttempts[string(callID)]

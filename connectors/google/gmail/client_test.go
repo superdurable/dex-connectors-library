@@ -14,11 +14,11 @@ import (
 
 	"github.com/stretchr/testify/require"
 	gmail "github.com/superdurable/dex-connectors-library/connectors/google/gmail"
-	connector "github.com/superdurable/dex-connectors-library/sdk/go"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
-var gmailConnection = connector.ConnectionRef{Provider: "google", Name: "gmail-send"}
+var gmailConnection = sdkgo.ConnectionRef{Provider: "google", Name: "gmail-send"}
 
 func TestSendMessageUsesPrimarySenderAndStableMessageID(t *testing.T) {
 	var raw string
@@ -35,7 +35,7 @@ func TestSendMessageUsesPrimarySenderAndStableMessageID(t *testing.T) {
 	defer server.Close()
 	client := newGmailClient(t, server.URL)
 	ctx := newGmailDexContext("send-one")
-	result, err := connector.RunMutation(ctx, client.SendMessage(), gmailConnection, gmail.SendMessageInput{To: []string{"customer@example.com"}, Subject: "Weekly progress", TextBody: "Keep going"})
+	result, err := sdkgo.RunMutation(ctx, client.SendMessage(), gmailConnection, gmail.SendMessageInput{To: []string{"customer@example.com"}, Subject: "Weekly progress", TextBody: "Keep going"})
 	require.NoError(t, err)
 	require.Equal(t, gmail.SendMessageBranchSent, result.Branch)
 	require.Equal(t, "owner@example.com", result.Value.Sender)
@@ -53,7 +53,7 @@ func TestServerFailureIsUncertainAndNeverAutomaticRetry(t *testing.T) {
 	}))
 	defer server.Close()
 	client := newGmailClient(t, server.URL)
-	result, err := connector.RunMutation(newGmailDexContext("send-unknown"), client.SendMessage(), gmailConnection, gmail.SendMessageInput{To: []string{"customer@example.com"}, Subject: "Progress", TextBody: "Update"})
+	result, err := sdkgo.RunMutation(newGmailDexContext("send-unknown"), client.SendMessage(), gmailConnection, gmail.SendMessageInput{To: []string{"customer@example.com"}, Subject: "Progress", TextBody: "Update"})
 	require.NoError(t, err)
 	require.Equal(t, gmail.SendMessageBranchUncertain, result.Branch)
 	require.Equal(t, 1, requests)
@@ -66,11 +66,11 @@ func TestRateLimitIsTheOnlyAutomaticRetryPath(t *testing.T) {
 	}))
 	defer server.Close()
 	client := newGmailClient(t, server.URL)
-	_, err := connector.RunMutation(newGmailDexContext("send-rate-limit"), client.SendMessage(), gmailConnection, gmail.SendMessageInput{To: []string{"customer@example.com"}, Subject: "Progress", TextBody: "Update"})
+	_, err := sdkgo.RunMutation(newGmailDexContext("send-rate-limit"), client.SendMessage(), gmailConnection, gmail.SendMessageInput{To: []string{"customer@example.com"}, Subject: "Progress", TextBody: "Update"})
 	require.Error(t, err)
-	var retry *connector.RetryError
+	var retry *sdkgo.RetryError
 	require.ErrorAs(t, err, &retry)
-	require.Equal(t, connector.FailureRateLimit, retry.Failure.Kind)
+	require.Equal(t, sdkgo.FailureRateLimit, retry.Failure.Kind)
 }
 
 func TestProviderRejectionIsTerminal(t *testing.T) {
@@ -79,11 +79,11 @@ func TestProviderRejectionIsTerminal(t *testing.T) {
 	}))
 	defer server.Close()
 	client := newGmailClient(t, server.URL)
-	result, err := connector.RunMutation(newGmailDexContext("send-rejected"), client.SendMessage(), gmailConnection, gmail.SendMessageInput{To: []string{"customer@example.com"}, Subject: "Progress", TextBody: "Update"})
+	result, err := sdkgo.RunMutation(newGmailDexContext("send-rejected"), client.SendMessage(), gmailConnection, gmail.SendMessageInput{To: []string{"customer@example.com"}, Subject: "Progress", TextBody: "Update"})
 	require.NoError(t, err)
 	require.Equal(t, gmail.SendMessageBranchRejected, result.Branch)
 	require.NotNil(t, result.Failure)
-	require.Equal(t, connector.FailureAuthorization, result.Failure.Kind)
+	require.Equal(t, sdkgo.FailureAuthorization, result.Failure.Kind)
 }
 
 func TestMalformedSuccessIsUncertain(t *testing.T) {
@@ -92,34 +92,34 @@ func TestMalformedSuccessIsUncertain(t *testing.T) {
 	}))
 	defer server.Close()
 	client := newGmailClient(t, server.URL)
-	result, err := connector.RunMutation(newGmailDexContext("send-malformed"), client.SendMessage(), gmailConnection, gmail.SendMessageInput{To: []string{"customer@example.com"}, Subject: "Progress", TextBody: "Update"})
+	result, err := sdkgo.RunMutation(newGmailDexContext("send-malformed"), client.SendMessage(), gmailConnection, gmail.SendMessageInput{To: []string{"customer@example.com"}, Subject: "Progress", TextBody: "Update"})
 	require.NoError(t, err)
 	require.Equal(t, gmail.SendMessageBranchUncertain, result.Branch)
 	require.NotNil(t, result.Failure)
-	require.Equal(t, connector.FailureProtocol, result.Failure.Kind)
+	require.Equal(t, sdkgo.FailureProtocol, result.Failure.Kind)
 }
 
 func TestRejectsHeaderInjectionBeforeProviderCall(t *testing.T) {
 	client := newGmailClient(t, "http://127.0.0.1:1")
-	result, err := connector.RunMutation(newGmailDexContext("send-defect"), client.SendMessage(), gmailConnection, gmail.SendMessageInput{To: []string{"customer@example.com"}, Subject: "Hello\r\nBcc: victim@example.com", TextBody: "Update"})
+	result, err := sdkgo.RunMutation(newGmailDexContext("send-defect"), client.SendMessage(), gmailConnection, gmail.SendMessageInput{To: []string{"customer@example.com"}, Subject: "Hello\r\nBcc: victim@example.com", TextBody: "Update"})
 	require.NoError(t, err)
 	require.Equal(t, gmail.SendMessageBranchDefect, result.Branch)
 }
 
 func TestRejectsDisplayNameAsVerifiedPrimaryEmail(t *testing.T) {
-	client, err := gmail.New(gmail.Config{Endpoint: "http://127.0.0.1:1"}, connector.StaticCredentialProvider[gmail.Credentials]{
-		gmailConnection: {AccessToken: connector.NewSecretString("gmail-token"), PrimaryEmail: "Owner <owner@example.com>"},
+	client, err := gmail.New(gmail.Config{Endpoint: "http://127.0.0.1:1"}, sdkgo.StaticCredentialProvider[gmail.Credentials]{
+		gmailConnection: {AccessToken: sdkgo.NewSecretString("gmail-token"), PrimaryEmail: "Owner <owner@example.com>"},
 	})
 	require.NoError(t, err)
-	result, err := connector.RunMutation(newGmailDexContext("sender-defect"), client.SendMessage(), gmailConnection, gmail.SendMessageInput{To: []string{"customer@example.com"}, Subject: "Progress", TextBody: "Update"})
+	result, err := sdkgo.RunMutation(newGmailDexContext("sender-defect"), client.SendMessage(), gmailConnection, gmail.SendMessageInput{To: []string{"customer@example.com"}, Subject: "Progress", TextBody: "Update"})
 	require.NoError(t, err)
 	require.Equal(t, gmail.SendMessageBranchDefect, result.Branch)
 }
 
 func newGmailClient(t *testing.T, endpoint string) *gmail.Client {
 	t.Helper()
-	client, err := gmail.New(gmail.Config{Endpoint: endpoint}, connector.StaticCredentialProvider[gmail.Credentials]{
-		gmailConnection: {AccessToken: connector.NewSecretString("gmail-token"), PrimaryEmail: "owner@example.com"},
+	client, err := gmail.New(gmail.Config{Endpoint: endpoint}, sdkgo.StaticCredentialProvider[gmail.Credentials]{
+		gmailConnection: {AccessToken: sdkgo.NewSecretString("gmail-token"), PrimaryEmail: "owner@example.com"},
 	})
 	require.NoError(t, err)
 	return client

@@ -9,7 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	spreadsheet "github.com/superdurable/dex-connectors-library/connectors/google/spreadsheet"
-	connector "github.com/superdurable/dex-connectors-library/sdk/go"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -27,9 +27,9 @@ func TestUpsertFactoryRequiresEveryTypedBranch(t *testing.T) {
 	require.NoError(t, err)
 	require.Panics(t, func() {
 		spreadsheet.NewUpsertRowStep(spreadsheet.UpsertRowStepConfig[string]{
-			StepType: "Upsert", Presentation: connector.StepPresentation{GroupID: "google", GroupLabel: "Google", Explanation: "Upsert a row."},
+			StepType: "Upsert", Presentation: sdkgo.StepPresentation{GroupID: "google", GroupLabel: "Google", Explanation: "Upsert a row."},
 			Connection: connection, BuildInput: func(string) (spreadsheet.UpsertRowInput, error) { return spreadsheet.UpsertRowInput{}, nil },
-			Upserted: connector.GoTo(sheetTarget{}), Conflict: connector.GoTo(sheetTarget{}), Rejected: connector.GoTo(sheetTarget{}), Uncertain: connector.GoTo(sheetTarget{}),
+			Upserted: sdkgo.GoTo(sheetTarget{}), Conflict: sdkgo.GoTo(sheetTarget{}), Rejected: sdkgo.GoTo(sheetTarget{}), Uncertain: sdkgo.GoTo(sheetTarget{}),
 		})
 	})
 }

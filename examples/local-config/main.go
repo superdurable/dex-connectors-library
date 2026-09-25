@@ -8,7 +8,7 @@ import (
 	"log"
 
 	gmail "github.com/superdurable/dex-connectors-library/connectors/google/gmail"
-	"github.com/superdurable/dex-connectors-library/sdk/go/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
 )
 
 func main() {

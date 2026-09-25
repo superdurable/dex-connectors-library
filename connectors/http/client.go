@@ -17,10 +17,10 @@ import (
 	"strings"
 	"time"
 
-	connector "github.com/superdurable/dex-connectors-library/sdk/go"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 
-type IdempotencyKeyFunc func(connector.CallID, Request) connector.IdempotencyKey
+type IdempotencyKeyFunc func(sdkgo.CallID, Request) sdkgo.IdempotencyKey
 
 type Option func(*clientOptions)
 
@@ -55,7 +55,7 @@ type Client struct {
 	idempotencyHeader string
 	idempotencyKey    IdempotencyKeyFunc
 	httpClient        *http.Client
-	credentials       connector.CredentialProvider[Credentials]
+	credentials       sdkgo.CredentialProvider[Credentials]
 	webhookReplay     ReplayGuard
 	now               func() time.Time
 }
@@ -79,13 +79,13 @@ type QueryOperation struct{ client *Client }
 type MutationOperation struct{ client *Client }
 
 type requestError struct {
-	kind    connector.FailureKind
+	kind    sdkgo.FailureKind
 	message string
 }
 
 func (err *requestError) Error() string { return err.message }
 
-func New(config Config, credentials connector.CredentialProvider[Credentials], options ...Option) (*Client, error) {
+func New(config Config, credentials sdkgo.CredentialProvider[Credentials], options ...Option) (*Client, error) {
 	config = withConfigDefaults(config)
 	if err := config.Validate(); err != nil {
 		return nil, err
@@ -137,108 +137,108 @@ func (client *Client) VerifyWebhook() VerifyWebhookOperation {
 	return VerifyWebhookOperation{client: client}
 }
 
-func (QueryOperation) Definition() connector.QueryDefinition { return QueryDefinition }
+func (QueryOperation) Definition() sdkgo.QueryDefinition { return QueryDefinition }
 
-func (operation QueryOperation) Invoke(call connector.Call, input Request) connector.QueryAttempt[Response] {
+func (operation QueryOperation) Invoke(call sdkgo.Call, input Request) sdkgo.QueryAttempt[Response] {
 	if input.Method != http.MethodGet && input.Method != http.MethodHead {
-		failure := queryFailure(connector.FailureValidation, "query method must be GET or HEAD")
-		return connector.NewQueryBranch(QueryBranchDefect, Response{}, &failure, connector.Receipt{})
+		failure := queryFailure(sdkgo.FailureValidation, "query method must be GET or HEAD")
+		return sdkgo.NewQueryBranch(QueryBranchDefect, Response{}, &failure, sdkgo.Receipt{})
 	}
 	response, requestID, dispatched, err := operation.client.do(call, input, "")
 	if err != nil {
 		if !dispatched {
 			failure := requestFailure("query", err)
-			return connector.NewQueryBranch(queryFailureBranch(failure), Response{}, &failure, connector.Receipt{})
+			return sdkgo.NewQueryBranch(queryFailureBranch(failure), Response{}, &failure, sdkgo.Receipt{})
 		}
-		return connector.NewQueryRetry[Response](queryFailure(connector.FailureAvailability, "provider is unavailable"), 0)
+		return sdkgo.NewQueryRetry[Response](queryFailure(sdkgo.FailureAvailability, "provider is unavailable"), 0)
 	}
 	receipt := responseReceipt(call, requestID)
 	if int64(len(response.Body)) > operation.client.maxResponseBytes {
-		failure := queryFailure(connector.FailureResponseTooLarge, "provider response exceeds the configured size limit")
-		return connector.NewQueryBranch(QueryBranchFailed, Response{}, &failure, receipt)
+		failure := queryFailure(sdkgo.FailureResponseTooLarge, "provider response exceeds the configured size limit")
+		return sdkgo.NewQueryBranch(QueryBranchFailed, Response{}, &failure, receipt)
 	}
 	if response.StatusCode >= 200 && response.StatusCode < 300 {
-		return connector.NewQueryBranch(QueryBranchSucceeded, response, nil, receipt)
+		return sdkgo.NewQueryBranch(QueryBranchSucceeded, response, nil, receipt)
 	}
 	failure, retryAfter, retry := classifyStatus("query", response)
 	if retry {
-		return connector.NewQueryRetry[Response](failure, retryAfter)
+		return sdkgo.NewQueryRetry[Response](failure, retryAfter)
 	}
-	return connector.NewQueryBranch(QueryBranchFailed, Response{}, &failure, receipt)
+	return sdkgo.NewQueryBranch(QueryBranchFailed, Response{}, &failure, receipt)
 }
 
-func (MutationOperation) Definition() connector.MutationDefinition { return MutationDefinition }
+func (MutationOperation) Definition() sdkgo.MutationDefinition { return MutationDefinition }
 
-func (operation MutationOperation) IdempotencyKey(callID connector.CallID, input Request) connector.IdempotencyKey {
+func (operation MutationOperation) IdempotencyKey(callID sdkgo.CallID, input Request) sdkgo.IdempotencyKey {
 	if operation.client.idempotencyKey == nil {
-		return connector.IdempotencyKey(callID)
+		return sdkgo.IdempotencyKey(callID)
 	}
 	return operation.client.idempotencyKey(callID, input)
 }
 
-func (operation MutationOperation) Invoke(call connector.Call, input Request) connector.MutationAttempt[Response] {
+func (operation MutationOperation) Invoke(call sdkgo.Call, input Request) sdkgo.MutationAttempt[Response] {
 	if input.Method != http.MethodPost && input.Method != http.MethodPut && input.Method != http.MethodPatch && input.Method != http.MethodDelete {
-		failure := mutationFailure(connector.FailureValidation, "unsupported mutation method")
-		return connector.NewMutationBranch(MutationBranchDefect, Response{}, &failure, connector.Receipt{})
+		failure := mutationFailure(sdkgo.FailureValidation, "unsupported mutation method")
+		return sdkgo.NewMutationBranch(MutationBranchDefect, Response{}, &failure, sdkgo.Receipt{})
 	}
 	response, requestID, dispatched, err := operation.client.do(call, input, call.IdempotencyKey)
 	receipt := responseReceipt(call, requestID)
 	if err != nil {
 		if !dispatched {
 			failure := requestFailure("mutation", err)
-			return connector.NewMutationBranch(mutationFailureBranch(failure), Response{}, &failure, receipt)
+			return sdkgo.NewMutationBranch(mutationFailureBranch(failure), Response{}, &failure, receipt)
 		}
-		return connector.NewMutationUncertain(Response{}, mutationFailure(connector.FailureTransport, "provider outcome is unknown"), receipt)
+		return sdkgo.NewMutationUncertain(Response{}, mutationFailure(sdkgo.FailureTransport, "provider outcome is unknown"), receipt)
 	}
 	if int64(len(response.Body)) > operation.client.maxResponseBytes {
-		return connector.NewMutationUncertain(Response{}, mutationFailure(connector.FailureResponseTooLarge, "provider outcome is unknown"), receipt)
+		return sdkgo.NewMutationUncertain(Response{}, mutationFailure(sdkgo.FailureResponseTooLarge, "provider outcome is unknown"), receipt)
 	}
 	if response.StatusCode >= 200 && response.StatusCode < 300 {
-		return connector.NewMutationBranch(MutationBranchSucceeded, response, nil, receipt)
+		return sdkgo.NewMutationBranch(MutationBranchSucceeded, response, nil, receipt)
 	}
 	failure, retryAfter, retry := classifyStatus("mutation", response)
 	if retry {
-		return connector.NewMutationRetry[Response](failure, retryAfter)
+		return sdkgo.NewMutationRetry[Response](failure, retryAfter)
 	}
 	if response.StatusCode >= 500 {
-		return connector.NewMutationUncertain(Response{}, failure, receipt)
+		return sdkgo.NewMutationUncertain(Response{}, failure, receipt)
 	}
-	return connector.NewMutationBranch(MutationBranchRejected, Response{}, &failure, receipt)
+	return sdkgo.NewMutationBranch(MutationBranchRejected, Response{}, &failure, receipt)
 }
 
-func (client *Client) do(call connector.Call, input Request, idempotencyKey connector.IdempotencyKey) (Response, string, bool, error) {
+func (client *Client) do(call sdkgo.Call, input Request, idempotencyKey sdkgo.IdempotencyKey) (Response, string, bool, error) {
 	target, err := client.baseURL.Parse(input.Path)
 	if err != nil || !client.allowedHosts[strings.ToLower(target.Hostname())] {
-		return Response{}, "", false, &requestError{kind: connector.FailureValidation, message: "request target is outside the host allowlist"}
+		return Response{}, "", false, &requestError{kind: sdkgo.FailureValidation, message: "request target is outside the host allowlist"}
 	}
 	target.RawQuery = input.Query.Encode()
 	var body io.Reader
 	if input.Body != nil {
 		encoded, encodeErr := json.Marshal(input.Body)
 		if encodeErr != nil {
-			return Response{}, "", false, &requestError{kind: connector.FailureValidation, message: "request body is not JSON serializable"}
+			return Response{}, "", false, &requestError{kind: sdkgo.FailureValidation, message: "request body is not JSON serializable"}
 		}
 		body = bytes.NewReader(encoded)
 	}
 	request, err := http.NewRequestWithContext(call.Context, input.Method, target.String(), body)
 	if err != nil {
-		return Response{}, "", false, &requestError{kind: connector.FailureValidation, message: "request is invalid"}
+		return Response{}, "", false, &requestError{kind: sdkgo.FailureValidation, message: "request is invalid"}
 	}
 	if input.Body != nil {
 		request.Header.Set("Content-Type", "application/json")
 	}
 	for name, value := range input.Headers {
 		if isSecretHeader(name) {
-			return Response{}, "", false, &requestError{kind: connector.FailureValidation, message: "secret headers must come from CredentialProvider"}
+			return Response{}, "", false, &requestError{kind: sdkgo.FailureValidation, message: "secret headers must come from CredentialProvider"}
 		}
 		request.Header.Set(name, value)
 	}
 	credential, err := client.credentials.Resolve(call)
 	if err != nil {
-		return Response{}, "", false, &requestError{kind: connector.FailureAuthentication, message: "connection credentials are unavailable"}
+		return Response{}, "", false, &requestError{kind: sdkgo.FailureAuthentication, message: "connection credentials are unavailable"}
 	}
 	if err := credential.Validate(); err != nil {
-		return Response{}, "", false, &requestError{kind: connector.FailureAuthentication, message: "connection credentials are invalid"}
+		return Response{}, "", false, &requestError{kind: sdkgo.FailureAuthentication, message: "connection credentials are invalid"}
 	}
 	for field, header := range client.credentialHeaders {
 		if field == "api_key" && credential.APIKey.Reveal() != "" {
@@ -262,75 +262,75 @@ func (client *Client) do(call connector.Call, input Request, idempotencyKey conn
 	return Response{StatusCode: response.StatusCode, Header: safeResponseHeaders(response.Header), Body: responseBody}, requestID, true, nil
 }
 
-func queryFailureBranch(failure connector.Failure) connector.BranchID {
-	if failure.Kind == connector.FailureLocalDefect || failure.Kind == connector.FailureValidation {
+func queryFailureBranch(failure sdkgo.Failure) sdkgo.BranchID {
+	if failure.Kind == sdkgo.FailureLocalDefect || failure.Kind == sdkgo.FailureValidation {
 		return QueryBranchDefect
 	}
 	return QueryBranchFailed
 }
 
-func mutationFailureBranch(failure connector.Failure) connector.BranchID {
-	if failure.Kind == connector.FailureLocalDefect || failure.Kind == connector.FailureValidation {
+func mutationFailureBranch(failure sdkgo.Failure) sdkgo.BranchID {
+	if failure.Kind == sdkgo.FailureLocalDefect || failure.Kind == sdkgo.FailureValidation {
 		return MutationBranchDefect
 	}
 	return MutationBranchRejected
 }
 
-func classifyStatus(operation string, response Response) (connector.Failure, time.Duration, bool) {
-	kind := connector.FailureProviderRejection
+func classifyStatus(operation string, response Response) (sdkgo.Failure, time.Duration, bool) {
+	kind := sdkgo.FailureProviderRejection
 	retry := false
 	switch response.StatusCode {
 	case http.StatusUnauthorized:
-		kind = connector.FailureAuthentication
+		kind = sdkgo.FailureAuthentication
 	case http.StatusForbidden:
-		kind = connector.FailureAuthorization
+		kind = sdkgo.FailureAuthorization
 	case http.StatusNotFound:
-		kind = connector.FailureNotFound
+		kind = sdkgo.FailureNotFound
 	case http.StatusConflict:
-		kind = connector.FailureConflict
+		kind = sdkgo.FailureConflict
 	case http.StatusTooManyRequests:
-		kind = connector.FailureRateLimit
+		kind = sdkgo.FailureRateLimit
 		retry = true
 	default:
 		if response.StatusCode >= 500 {
-			kind = connector.FailureAvailability
+			kind = sdkgo.FailureAvailability
 			retry = operation == "query"
 		}
 	}
 	var retryAfter time.Duration
-	if kind == connector.FailureRateLimit {
+	if kind == sdkgo.FailureRateLimit {
 		if seconds, err := strconv.Atoi(response.Header.Get("Retry-After")); err == nil && seconds > 0 {
 			retryAfter = time.Duration(seconds) * time.Second
 		}
 	}
-	failure := connector.Failure{
+	failure := sdkgo.Failure{
 		Kind: kind, Provider: "http", Operation: operation,
 		Message: "provider returned HTTP " + strconv.Itoa(response.StatusCode),
 	}
 	return failure, retryAfter, retry
 }
 
-func queryFailure(kind connector.FailureKind, message string) connector.Failure {
-	return connector.Failure{Kind: kind, Provider: "http", Operation: "query", Message: message}
+func queryFailure(kind sdkgo.FailureKind, message string) sdkgo.Failure {
+	return sdkgo.Failure{Kind: kind, Provider: "http", Operation: "query", Message: message}
 }
 
-func mutationFailure(kind connector.FailureKind, message string) connector.Failure {
-	return connector.Failure{Kind: kind, Provider: "http", Operation: "mutation", Message: message}
+func mutationFailure(kind sdkgo.FailureKind, message string) sdkgo.Failure {
+	return sdkgo.Failure{Kind: kind, Provider: "http", Operation: "mutation", Message: message}
 }
 
-func requestFailure(operation string, err error) connector.Failure {
-	kind := connector.FailureLocalDefect
+func requestFailure(operation string, err error) sdkgo.Failure {
+	kind := sdkgo.FailureLocalDefect
 	message := "request could not be prepared"
 	var classified *requestError
 	if errors.As(err, &classified) {
 		kind = classified.kind
 		message = classified.message
 	}
-	return connector.Failure{Kind: kind, Provider: "http", Operation: operation, Message: message}
+	return sdkgo.Failure{Kind: kind, Provider: "http", Operation: operation, Message: message}
 }
 
-func responseReceipt(call connector.Call, requestID string) connector.Receipt {
-	return connector.Receipt{
+func responseReceipt(call sdkgo.Call, requestID string) sdkgo.Receipt {
+	return sdkgo.Receipt{
 		CallID: call.ID, IdempotencyKey: call.IdempotencyKey, Provider: "http",
 		ProviderRequestID: requestID, ObservedAt: time.Now().UTC(),
 	}

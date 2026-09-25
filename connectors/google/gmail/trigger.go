@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	connector "github.com/superdurable/dex-connectors-library/sdk/go"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 
 // MessageMatcher filters received Gmail messages by sender and text.
@@ -59,18 +59,18 @@ func (event MessageEvent) ThreadIdentity() ThreadIdentity {
 }
 
 // FlowIDByThread adapts an application-owned Gmail thread resolver to the generic Trigger target contract.
-func FlowIDByThread(resolve func(ThreadIdentity) (string, error)) connector.FlowIDResolver[MessageEvent] {
+func FlowIDByThread(resolve func(ThreadIdentity) (string, error)) sdkgo.FlowIDResolver[MessageEvent] {
 	if resolve == nil {
 		panic("Gmail thread Flow ID resolver is required")
 	}
-	return func(event connector.TriggerEvent[MessageEvent]) (string, error) {
+	return func(event sdkgo.TriggerEvent[MessageEvent]) (string, error) {
 		return resolve(event.Payload.ThreadIdentity())
 	}
 }
 
 type messagePollingTriggerSource struct {
 	client        *Client
-	connection    connector.ConnectionRef
+	connection    sdkgo.ConnectionRef
 	searchQuery   string
 	matcher       MessageMatcher
 	requiresReply bool
@@ -110,7 +110,7 @@ func (matcher MessageMatcher) validate() error {
 	return nil
 }
 
-func (client *Client) messageReceivedTriggerSource(connection connector.ConnectionRef, configuration MessageReceivedTriggerConfiguration) connector.TriggerSource[MessageEvent] {
+func (client *Client) messageReceivedTriggerSource(connection sdkgo.ConnectionRef, configuration MessageReceivedTriggerConfiguration) sdkgo.TriggerSource[MessageEvent] {
 	if err := configuration.Validate(); err != nil {
 		panic(err)
 	}
@@ -120,7 +120,7 @@ func (client *Client) messageReceivedTriggerSource(connection connector.Connecti
 	}
 }
 
-func (client *Client) replyReceivedTriggerSource(connection connector.ConnectionRef, configuration ReplyReceivedTriggerConfiguration) connector.TriggerSource[MessageEvent] {
+func (client *Client) replyReceivedTriggerSource(connection sdkgo.ConnectionRef, configuration ReplyReceivedTriggerConfiguration) sdkgo.TriggerSource[MessageEvent] {
 	if err := configuration.Validate(); err != nil {
 		panic(err)
 	}
@@ -130,7 +130,7 @@ func (client *Client) replyReceivedTriggerSource(connection connector.Connection
 	}
 }
 
-func (source *messagePollingTriggerSource) Run(ctx context.Context, target connector.TriggerTarget[MessageEvent]) error {
+func (source *messagePollingTriggerSource) Run(ctx context.Context, target sdkgo.TriggerTarget[MessageEvent]) error {
 	for {
 		if err := source.scan(ctx, target); err != nil && ctx.Err() != nil {
 			return ctx.Err()
@@ -147,8 +147,8 @@ func (source *messagePollingTriggerSource) Run(ctx context.Context, target conne
 	}
 }
 
-func (source *messagePollingTriggerSource) scan(ctx context.Context, target connector.TriggerTarget[MessageEvent]) error {
-	credentials, err := source.client.credentials.Resolve(connector.Call{Connection: source.connection})
+func (source *messagePollingTriggerSource) scan(ctx context.Context, target sdkgo.TriggerTarget[MessageEvent]) error {
+	credentials, err := source.client.credentials.Resolve(sdkgo.Call{Connection: source.connection})
 	if err != nil || credentials.Validate() != nil {
 		return fmt.Errorf("Gmail Trigger credentials are unavailable")
 	}
@@ -178,14 +178,14 @@ func (source *messagePollingTriggerSource) scan(ctx context.Context, target conn
 		if isReply != source.requiresReply || !source.matcher.matches(message) {
 			continue
 		}
-		event := connector.TriggerEvent[MessageEvent]{
+		event := sdkgo.TriggerEvent[MessageEvent]{
 			ID: message.MessageID, OccurredAt: message.ReceivedAt,
 			Payload: MessageEvent{
 				PrimaryEmail: credentials.PrimaryEmail, MessageID: message.MessageID, ThreadID: message.ThreadID,
 				From: message.From, Subject: message.Subject, Snippet: message.Snippet, ReceivedAt: message.ReceivedAt, IsReply: isReply,
 			},
 		}
-		if err := connector.PrepareTriggerDelivery(ctx, target, event); err != nil {
+		if err := sdkgo.PrepareTriggerDelivery(ctx, target, event); err != nil {
 			return err
 		}
 		if err := target.HandleTrigger(ctx, event); err != nil {
