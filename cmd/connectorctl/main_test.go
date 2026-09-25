@@ -32,6 +32,10 @@ func TestReleaseWorkflowIsGeneratedFromSortedCatalog(t *testing.T) {
 	require.Equal(t, []string{"github", "google/gmail", "google/spreadsheet", "http", "linkedin", "openai", "slack"}, []string{
 		entries[0].Slug, entries[1].Slug, entries[2].Slug, entries[3].Slug, entries[4].Slug, entries[5].Slug, entries[6].Slug,
 	})
+	require.Equal(t, []string{"GitHub", "Gmail", "Google Sheets", "HTTP and Webhook", "LinkedIn", "OpenAI", "Slack"}, []string{
+		entries[0].DisplayName, entries[1].DisplayName, entries[2].DisplayName, entries[3].DisplayName,
+		entries[4].DisplayName, entries[5].DisplayName, entries[6].DisplayName,
+	})
 	output := filepath.Join(t.TempDir(), "release-connector.yml")
 	require.NoError(t, releaseWorkflow([]string{root, output}))
 	require.NoError(t, releaseWorkflow([]string{"--check", root, output}))
@@ -39,8 +43,16 @@ func TestReleaseWorkflowIsGeneratedFromSortedCatalog(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, string(content), "          - github\n          - google/gmail\n          - google/spreadsheet\n          - http\n          - linkedin\n          - openai\n          - slack\n")
 	require.Contains(t, string(content), "connectors/${{ inputs.connector }}")
+	require.Contains(t, string(content), "'google/spreadsheet') RELEASE_DISPLAY_NAME='Google Sheets' ;;")
+	require.Contains(t, string(content), "'http') RELEASE_DISPLAY_NAME='HTTP and Webhook' ;;")
+	require.Contains(t, string(content), `--title "${RELEASE_DISPLAY_NAME} ${RELEASE_VERSION}"`)
+	require.NotContains(t, string(content), `--title "Connector `)
 	require.NoError(t, os.WriteFile(output, []byte("stale"), 0o600))
 	require.ErrorContains(t, releaseWorkflow([]string{"--check", root, output}), "stale")
+}
+
+func TestShellSingleQuoteEscapesDisplayNames(t *testing.T) {
+	require.Equal(t, `'Provider'"'"'s API'`, shellSingleQuote("Provider's API"))
 }
 
 func TestReleaseArtifactIsDeterministicAndVersioned(t *testing.T) {
