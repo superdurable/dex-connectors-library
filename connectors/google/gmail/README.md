@@ -19,7 +19,9 @@ The local Trigger transport polls the newest inbox page. `searchQuery` accepts
 a Gmail search expression. `MessageMatcher` optionally filters the sender and
 a case-insensitive substring across subject and snippet. Gmail message ID is
 the stable event ID. Restart rescans can redeliver the current page, so Flow
-start request IDs and Trigger RPC persistence perform final deduplication.
+start request IDs and application-owned RPC state perform final deduplication.
+The application chooses the durable key, retention policy, locks, and duplicate
+response.
 
 `GetMessage` returns decoded headers, text, HTML, snippet, labels, and received
 time. `ReplyToMessage` reads the source metadata and sends with Gmail thread

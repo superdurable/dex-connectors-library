@@ -46,6 +46,7 @@ type Input struct {
 type ThreadState struct {
 	Input          Input         `json:"input"`
 	RootMessage    gmail.Message `json:"rootMessage"`
+	ReplyEventID   string        `json:"replyEventId,omitempty"`
 	ReplyMessageID string        `json:"replyMessageId,omitempty"`
 	Status         Status        `json:"status"`
 	FailureMessage string        `json:"failureMessage,omitempty"`
@@ -59,18 +60,11 @@ type ReplyResult struct {
 
 type Flow struct {
 	dex.FlowDefaults
-	connection      gmail.Connection
-	replyTriggerRPC *sdkgo.TriggerRPC[gmail.MessageEvent, ReplyResult]
+	connection gmail.Connection
 }
 
 func NewFlow(connection gmail.Connection) *Flow {
-	flow := &Flow{connection: connection}
-	flow.replyTriggerRPC = sdkgo.MustNewTriggerRPC(sdkgo.TriggerRPCConfig[gmail.MessageEvent, ReplyResult]{
-		Definition: flow.ReceiveEmailReply, ProcessedEventIDsAttributeName: "gmail-thread-reply-processed-event-ids",
-		HandleEvent: flow.handleEmailReply, DuplicateEvent: flow.handleDuplicateEmailReply,
-		Options: &dex.RPCOptions{LockAttributes: []dex.AttributeLock{dex.LockAttribute(threadStateAttribute)}},
-	})
-	return flow
+	return &Flow{connection: connection}
 }
 
 func (flow *Flow) GetSteps() []dex.StepDef {
@@ -105,7 +99,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 
 func (flow *Flow) GetRPCs() []dex.RPCDef {
 	return []dex.RPCDef{
-		dex.DefineRPC(flow.replyTriggerRPC.Definition(), flow.replyTriggerRPC.DefaultOptions()),
+		dex.DefineRPC(flow.ReceiveEmailReply, &dex.RPCOptions{LockAttributes: []dex.AttributeLock{dex.LockAttribute(threadStateAttribute)}}),
 		dex.DefineRPC(flow.GetThreadStatus, &dex.RPCOptions{LockAttributes: []dex.AttributeLock{dex.LockAttribute(threadStateAttribute)}}),
 		dex.DefineRPC(flow.GetDexSummary, nil),
 		dex.DefineRPC(flow.GetDexDisplay, nil),
@@ -114,7 +108,7 @@ func (flow *Flow) GetRPCs() []dex.RPCDef {
 
 func (flow *Flow) GetPersistenceSchema() dex.PersistenceSchema {
 	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{
-		threadStateAttribute, replyResultAttribute, flow.replyTriggerRPC.PersistenceAttribute(),
+		threadStateAttribute, replyResultAttribute,
 	}}
 }
 
@@ -130,50 +124,27 @@ func (*Flow) GetConnectorTriggerBindings() []sdkgo.TriggerBindingDefinition {
 }
 
 func (flow *Flow) ReceiveEmailReply(ctx dex.Context, event sdkgo.TriggerEvent[gmail.MessageEvent]) (*dex.RPCResult[ReplyResult], error) {
-	result, err := flow.replyTriggerRPC.Handle(ctx, event)
-	if err != nil {
-		return nil, err
-	}
-	if result.Output.Accepted && !result.Output.Duplicate {
-		state, err := threadStateAttribute.Get(ctx)
-		if err != nil {
-			return nil, err
-		}
-		return &dex.RPCResult[ReplyResult]{
-			Output:    result.Output,
-			NextSteps: []dex.StepMovement{dex.MovementOf(sdkgo.StepRef[ThreadState](replyMessageStepType), state)},
-		}, nil
-	}
-	return result, nil
-}
-
-func (flow *Flow) ReplyTriggerRPC() *sdkgo.TriggerRPC[gmail.MessageEvent, ReplyResult] {
-	return flow.replyTriggerRPC
-}
-
-func (*Flow) handleEmailReply(ctx dex.Context, event sdkgo.TriggerEvent[gmail.MessageEvent]) (*dex.RPCResult[ReplyResult], error) {
 	state, err := threadStateAttribute.Get(ctx)
 	if err != nil {
 		return nil, err
 	}
-	accepted := state.Status == StatusWaitingForReply
-	if accepted {
-		state.Status = StatusReplying
-		state.ReplyMessageID = event.Payload.MessageID
-		state.FailureMessage = ""
-		if err := threadStateAttribute.Set(ctx, state); err != nil {
-			return nil, err
-		}
+	if state.ReplyEventID == event.ID {
+		return &dex.RPCResult[ReplyResult]{Output: ReplyResult{Duplicate: true, Status: state.Status}}, nil
 	}
-	return &dex.RPCResult[ReplyResult]{Output: ReplyResult{Accepted: accepted, Status: state.Status}}, nil
-}
-
-func (*Flow) handleDuplicateEmailReply(ctx dex.Context, _ sdkgo.TriggerEvent[gmail.MessageEvent]) (*dex.RPCResult[ReplyResult], error) {
-	state, err := threadStateAttribute.Get(ctx)
-	if err != nil {
+	if state.Status != StatusWaitingForReply {
+		return &dex.RPCResult[ReplyResult]{Output: ReplyResult{Status: state.Status}}, nil
+	}
+	state.Status = StatusReplying
+	state.ReplyEventID = event.ID
+	state.ReplyMessageID = event.Payload.MessageID
+	state.FailureMessage = ""
+	if err := threadStateAttribute.Set(ctx, state); err != nil {
 		return nil, err
 	}
-	return &dex.RPCResult[ReplyResult]{Output: ReplyResult{Duplicate: true, Status: state.Status}}, nil
+	return &dex.RPCResult[ReplyResult]{
+		Output:    ReplyResult{Accepted: true, Status: state.Status},
+		NextSteps: []dex.StepMovement{dex.MovementOf(sdkgo.StepRef[ThreadState](replyMessageStepType), state)},
+	}, nil
 }
 
 func (*Flow) GetThreadStatus(ctx dex.Context, _ dex.None) (*dex.RPCResult[ThreadState], error) {
