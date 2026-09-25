@@ -130,8 +130,8 @@ The file is a plaintext secret store intended only for local development.
 or placed in Flow state by application code.
 
 Connector modules pin an exact released Dex Go SDK version. That build-time
-dependency is independent from the compatibility gate, which dynamically
-selects the newest stable `cli-v*` release and its embedded Dex Web:
+dependency is independent from the CLI/Web compatibility baseline in
+`.dex-compat-version`. Maintainers advance that baseline through a reviewed PR:
 
 ```bash
 make test-dex-compat-current
@@ -140,8 +140,12 @@ make test-dex-compat-released
 
 Current mode packages the working tree as exact test-only Go module versions.
 Released mode downloads the newest stable component releases and their real
-metadata and UI assets. Set `DEX_CLI_VERSION=vX.Y.Z` to reproduce a Dex failure,
-or `CONNECTOR_RELEASE_TAG=connectors/slack/vX.Y.Z` to retest one published
+metadata and UI assets. The daily canary sets `DEX_CLI_VERSION=latest` to detect
+a newer Dex release without unexpectedly blocking pull requests or connector
+publishing. A failed scheduled canary opens or updates one compatibility issue;
+the next successful scheduled run closes it. Set `DEX_CLI_VERSION=cli-vX.Y.Z`
+to reproduce another Dex version, or set
+`CONNECTOR_RELEASE_TAG=connectors/slack/vX.Y.Z` to retest one published
 connector. Connector releases with Studio metadata publish a deterministic UI
 tarball for Dex Web to verify and serve in a sandbox iframe.
 

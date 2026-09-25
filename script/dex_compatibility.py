@@ -7,7 +7,7 @@
 #
 # SPDX-License-Identifier: LicenseRef-Sustainable-Use-1.0
 
-"""Exercise current or published Connectors against the latest stable Dex release."""
+"""Exercise current or published Connectors against a pinned or latest Dex release."""
 
 from __future__ import annotations
 
@@ -42,7 +42,8 @@ def main() -> int:
     args = parser.parse_args()
 
     root = Path(__file__).resolve().parents[1]
-    dex_release = resolve_dex_release(args.dex_version)
+    configured_version = args.dex_version or (root / ".dex-compat-version").read_text().strip()
+    dex_release = resolve_dex_release(configured_version)
     with tempfile.TemporaryDirectory(prefix="dex-compat-") as temporary:
         temporary_root = Path(temporary)
         dexcli = download_dexcli(dex_release, temporary_root)
@@ -120,7 +121,7 @@ def resolve_dex_release(version_override: str | None) -> dict[str, object]:
         and STABLE_VERSION.fullmatch(str(release["tag_name"])[4:])
     ]
     requested = version_override
-    if requested:
+    if requested and requested != "latest":
         requested = requested if requested.startswith("cli-") else f"cli-{requested}"
         candidates = [release for release in candidates if release["tag_name"] == requested]
     if not candidates:

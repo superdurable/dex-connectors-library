@@ -45,7 +45,8 @@ delivery and durable Gmail history checkpoints are outside this local example.
 
 ## Run
 
-Before starting Dex, verify the example with the newest stable dexcli:
+Before starting Dex, verify the example with the dexcli release pinned in the
+repository's `.dex-compat-version` file:
 
 ```bash
 mkdir -p build

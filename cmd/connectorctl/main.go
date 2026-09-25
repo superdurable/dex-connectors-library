@@ -247,7 +247,7 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-      - name: Test current Connector source with latest stable Dex CLI and Web
+      - name: Test current Connector source with pinned Dex CLI and Web
         env:
           GH_TOKEN: ${{ github.token }}
         run: make test-dex-compat-current
@@ -353,7 +353,7 @@ jobs:
             fi
             sleep 2
           done
-      - name: Verify the published Connector with latest stable Dex CLI and Web
+      - name: Verify the published Connector with pinned Dex CLI and Web
         env:
           GH_TOKEN: ${{ github.token }}
           CONNECTOR_RELEASE_TAG: ${{ steps.plan.outputs.tag }}

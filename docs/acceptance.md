@@ -99,12 +99,13 @@ The suite must prove:
 - Studio Host API, setup component, deterministic tarball, digest, and React
   build tests remain green.
 
-## Latest Dex CLI and Web compatibility
+## Dex CLI and Web compatibility
 
-`make test-dex-compat-current` is the pull-request gate. It discovers every
+`make test-dex-compat-current` is the pull-request gate. It uses the Dex release
+pinned in `.dex-compat-version` and discovers every
 manifest and every example Flow containing `GetSteps`. Each current connector
 is exposed through a temporary file-backed Go module proxy at an exact test
-version, without adding a `replace` directive. The newest stable Dex CLI runs
+version, without adding a `replace` directive. The pinned Dex CLI runs
 schema 2.0 visualization twice in clean consumer modules. Output must be valid,
 free of error diagnostics, byte-for-byte deterministic, and contain complete
 connector identities.
@@ -115,7 +116,9 @@ package from the matching Dex release. The test verifies catalog resolution,
 checksums, UI caching and sandbox headers, OAuth authorization parameters, and
 Dex Web's API-key and OAuth security suites with local mock providers.
 
-`make test-dex-compat-released` is the scheduled and post-release canary. It
+`make test-dex-compat-released` is the post-release check. It uses the pinned
+Dex baseline. The scheduled and manually dispatched canary sets
+`DEX_CLI_VERSION=latest`. Both variants
 selects the highest stable component tag for each connector, downloads public
 Go modules plus unmodified GitHub release metadata and UI assets, verifies all
 digests, and repeats the clean-consumer CLI and Dex Web checks. GitHub API,
@@ -125,18 +128,21 @@ The logs identify the selected Dex tag, connector tag, source commit, and
 metadata digest. Use these overrides to reproduce a failure:
 
 ```bash
-DEX_CLI_VERSION=v0.13.6 make test-dex-compat-current
-DEX_CLI_VERSION=v0.13.6 CONNECTOR_RELEASE_TAG=connectors/slack/v0.7.0 make test-dex-compat-released
+DEX_CLI_VERSION=cli-v0.13.6 make test-dex-compat-current
+DEX_CLI_VERSION=latest make test-dex-compat-released
+DEX_CLI_VERSION=cli-v0.13.6 CONNECTOR_RELEASE_TAG=connectors/slack/v0.7.0 make test-dex-compat-released
 ```
 
-The scheduled canary intentionally fails when an existing connector release is
-incompatible with a newly published Dex release. Fix current source, publish a
-new connector component version, and rerun the tagged canary; do not add a
-permanent allowlist.
+The scheduled latest-version canary intentionally fails when an existing
+connector release is incompatible with a newly published Dex release. Fix
+current source, publish a new connector component version, and rerun the tagged
+canary; do not add a permanent allowlist. A failure opens or updates the single
+`dex-compatibility` issue. A later successful scheduled run closes it.
 
 ## Real Dex Server integration
 
-Install Temporal CLI 1.9.1 and start the latest stable Dex CLI. Connector Go
+Install Temporal CLI 1.9.1 and start the Dex CLI version pinned in
+`.dex-compat-version`. Connector Go
 modules continue to use their pinned Dex SDK versions:
 
 ```bash
@@ -184,7 +190,7 @@ The integration suite verifies:
    public start input.
 5. Confirm the Flow explicitly registers each Attribute and Stream passed to a
    Connector Step.
-6. Generate schema 2.0 with the latest stable dexcli and verify factory Steps, branches,
+6. Generate schema 2.0 with the pinned dexcli baseline and verify factory Steps, branches,
    Result Attributes, and Streams render in Dex Web 2.0.
 
 ## Release acceptance
@@ -206,8 +212,9 @@ The integration suite verifies:
 8. Run `Release Connector` for `google/gmail` and confirm its own tag and UI
    artifacts contain no Sheets-only changes.
 
-The compatibility gate selects the latest stable Dex CLI release dynamically.
-Connector releases must retain deterministic schema 2.0 output and complete
+The required compatibility gate uses `.dex-compat-version`. The scheduled
+canary selects the latest stable Dex CLI release dynamically. Connector
+releases must retain deterministic schema 2.0 output and complete
 nodes, branches, Attribute edges, Stream edges, and trigger bindings in Dex Web
 2.0.
 

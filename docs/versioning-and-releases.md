@@ -39,7 +39,7 @@ choice and a `minor|major|patch` choice. `minor` is the default. CI regenerates
 the workflow from the connector catalog and rejects drift, so adding a
 connector without adding its release choice cannot merge. The workflow:
 
-1. runs the Current compatibility gate against the latest stable Dex CLI/Web;
+1. runs the Current compatibility gate against the pinned Dex CLI/Web baseline;
 2. verifies generated code and the standalone connector with `GOWORK=off`;
 3. rejects `replace`, pseudo-version, branch, or SHA SDK dependencies;
 4. proves the exact SDK tag is reachable and downloadable;
@@ -50,11 +50,14 @@ connector without adding its release choice cannot merge. The workflow:
 9. verifies the published Go module is downloadable;
 10. runs Released compatibility against the new component tag.
 
-CI also runs Current compatibility on pull requests and `main`. A daily canary
-runs Released compatibility for the highest stable component tag of every
-current connector. Both modes resolve the newest non-draft, non-prerelease
-`cli-v*` release and verify its published checksum. `DEX_CLI_VERSION` and
-`CONNECTOR_RELEASE_TAG` provide exact failure reproduction.
+CI also runs Current compatibility on pull requests and `main` using
+`.dex-compat-version`. Connector publishing uses the same reviewed baseline. A
+daily canary runs Released compatibility for the highest stable component tag
+of every current connector while setting `DEX_CLI_VERSION=latest`. Maintainers
+bump the baseline in a separate PR after the canary passes. Every mode verifies
+the selected release checksum. A failed scheduled canary opens or updates one
+`dex-compatibility` issue, and a later successful run closes it.
+`DEX_CLI_VERSION` and `CONNECTOR_RELEASE_TAG` provide exact failure reproduction.
 
 The release artifact contains the connector ID, complete versionless manifest,
 module path, release version and tag, source SHA, source manifest digest, and
