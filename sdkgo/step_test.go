@@ -26,12 +26,12 @@ func TestTypedTargetBindsGeneratedBranch(t *testing.T) {
 	target := sdkgo.GoTo(factoryTarget{})
 	operation := &factoryQuery{definition: queryDefinition(testQueryRef)}
 	step, err := sdkgo.NewQueryStep(sdkgo.QueryStepConfig[string, string, string]{
-		StepType:     "GeneratedFactoryTarget",
-		Presentation: sdkgo.StepPresentation{GroupID: "test", GroupLabel: "Test", Explanation: "test query"},
-		Operation:    operation,
-		Connection:   testConnection,
-		BuildInput:   func(input string) (string, error) { return input, nil },
-		Branches: []sdkgo.BranchTarget[sdkgo.QueryStepOutput[string, string]]{
+		StepType:            "GeneratedFactoryTarget",
+		Annotations:         sdkgo.StepAnnotations{GroupID: "test", GroupLabel: "Test", Explanation: "test query"},
+		Operation:           operation,
+		Connection:          testConnection,
+		BuildOperationInput: func(input string) (string, error) { return input, nil },
+		Branches: []sdkgo.BranchTarget[sdkgo.QueryResult[string]]{
 			target.BranchTarget(testQuerySucceeded),
 			sdkgo.GoTo(factoryTarget{}).BranchTarget(testQueryFailed),
 			sdkgo.GoTo(factoryTarget{}).BranchTarget(testQueryDefect),
@@ -54,10 +54,10 @@ func (operation *factoryQuery) Invoke(sdkgo.Call, string) sdkgo.QueryAttempt[str
 }
 
 type factoryTarget struct {
-	dex.StepDefaultsNoWaitFor[sdkgo.QueryStepOutput[string, string]]
+	dex.StepDefaultsNoWaitFor[sdkgo.QueryResult[string]]
 }
 
-func (factoryTarget) Execute(dex.Context, sdkgo.QueryStepOutput[string, string]) (*dex.StepDecision, error) {
+func (factoryTarget) Execute(dex.Context, sdkgo.QueryResult[string]) (*dex.StepDecision, error) {
 	return dex.GracefulComplete(nil), nil
 }
 
@@ -85,9 +85,10 @@ func (factoryFailureTarget) Execute(dex.Context, string) (*dex.StepDecision, err
 func TestQueryFactoryRequiresExactlyOneTargetPerBranch(t *testing.T) {
 	operation := &factoryQuery{definition: queryDefinition(testQueryRef)}
 	base := sdkgo.QueryStepConfig[string, string, string]{
-		StepType:     "FactoryQuery",
-		Presentation: sdkgo.StepPresentation{GroupID: "test", GroupLabel: "Test", Explanation: "test query"},
-		Operation:    operation, Connection: testConnection, BuildInput: func(input string) (string, error) { return input, nil },
+		StepType:    "FactoryQuery",
+		Annotations: sdkgo.StepAnnotations{GroupID: "test", GroupLabel: "Test", Explanation: "test query"},
+		Operation:   operation, Connection: testConnection,
+		BuildOperationInput: func(input string) (string, error) { return input, nil },
 	}
 	_, err := sdkgo.NewQueryStep(base)
 	require.ErrorContains(t, err, "branch target")
@@ -102,14 +103,14 @@ func TestQueryFactoryRequiresExactlyOneTargetPerBranch(t *testing.T) {
 	require.ErrorContains(t, err, "not declared")
 }
 
-func TestFactoryBuildInputDefectDoesNotInvokeProvider(t *testing.T) {
+func TestFactoryBuildOperationInputDefectDoesNotInvokeProvider(t *testing.T) {
 	operation := &factoryQuery{definition: queryDefinition(testQueryRef)}
 	step := sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[string, string, string]{
-		StepType:     "FactoryBuildDefect",
-		Presentation: sdkgo.StepPresentation{GroupID: "test", GroupLabel: "Test", Explanation: "test query"},
-		Operation:    operation, Connection: testConnection,
-		BuildInput: func(string) (string, error) { return "", errors.New("bad input") },
-		Branches:   queryFactoryTargets(),
+		StepType:    "FactoryBuildDefect",
+		Annotations: sdkgo.StepAnnotations{GroupID: "test", GroupLabel: "Test", Explanation: "test query"},
+		Operation:   operation, Connection: testConnection,
+		BuildOperationInput: func(string) (string, error) { return "", errors.New("bad input") },
+		Branches:            queryFactoryTargets(),
 	})
 	decision, err := step.Execute(testsupport.NewDexContext("flow-1", "step-1"), "input")
 	require.NoError(t, err)
@@ -131,11 +132,11 @@ func TestFactoryValidatesResourcesAndOverlaysExecuteOptions(t *testing.T) {
 	progress := dex.DefineStream[sdkgo.ProgressUpdate]("factory-progress", 1024)
 	text := dex.DefineStream[string]("factory-text", 1024)
 	step, err := sdkgo.NewQueryStep(sdkgo.QueryStepConfig[string, string, string]{
-		StepType:     "FactoryResources",
-		Presentation: sdkgo.StepPresentation{GroupID: "test", GroupLabel: "Test", Explanation: "test query"},
-		Operation:    operation, Connection: testConnection,
-		BuildInput: func(input string) (string, error) { return input, nil },
-		Branches:   queryFactoryTargets(), ResultAttribute: &attribute, ProgressStream: &progress, TextStream: &text,
+		StepType:    "FactoryResources",
+		Annotations: sdkgo.StepAnnotations{GroupID: "test", GroupLabel: "Test", Explanation: "test query"},
+		Operation:   operation, Connection: testConnection,
+		BuildOperationInput: func(input string) (string, error) { return input, nil },
+		Branches:            queryFactoryTargets(), ResultAttribute: &attribute, ProgressStream: &progress, TextStream: &text,
 		StepOptionsOverride: &dex.StepOptions{
 			ExecuteMethodTimeout: time.Minute,
 			ExecuteFailure:       dex.ProceedToOnExecuteFailure(factoryFailureTarget{}, nil),
@@ -150,10 +151,10 @@ func TestFactoryValidatesResourcesAndOverlaysExecuteOptions(t *testing.T) {
 	require.Len(t, step.PersistenceRequirements().Streams, 2)
 
 	_, err = sdkgo.NewQueryStep(sdkgo.QueryStepConfig[string, string, string]{
-		StepType:     "MissingResources",
-		Presentation: sdkgo.StepPresentation{GroupID: "test", GroupLabel: "Test", Explanation: "test query"},
-		Operation:    operation, Connection: testConnection,
-		BuildInput: func(input string) (string, error) { return input, nil }, Branches: queryFactoryTargets(),
+		StepType:    "MissingResources",
+		Annotations: sdkgo.StepAnnotations{GroupID: "test", GroupLabel: "Test", Explanation: "test query"},
+		Operation:   operation, Connection: testConnection,
+		BuildOperationInput: func(input string) (string, error) { return input, nil }, Branches: queryFactoryTargets(),
 	})
 	require.ErrorContains(t, err, "requires a named Result Attribute")
 }
@@ -161,10 +162,10 @@ func TestFactoryValidatesResourcesAndOverlaysExecuteOptions(t *testing.T) {
 func TestFactoryRejectsWaitForOptionsAndStepRefFailsClosed(t *testing.T) {
 	operation := &factoryQuery{definition: queryDefinition(testQueryRef)}
 	_, err := sdkgo.NewQueryStep(sdkgo.QueryStepConfig[string, string, string]{
-		StepType:     "FactoryWaitOptions",
-		Presentation: sdkgo.StepPresentation{GroupID: "test", GroupLabel: "Test", Explanation: "test query"},
-		Operation:    operation, Connection: testConnection,
-		BuildInput: func(input string) (string, error) { return input, nil }, Branches: queryFactoryTargets(),
+		StepType:    "FactoryWaitOptions",
+		Annotations: sdkgo.StepAnnotations{GroupID: "test", GroupLabel: "Test", Explanation: "test query"},
+		Operation:   operation, Connection: testConnection,
+		BuildOperationInput: func(input string) (string, error) { return input, nil }, Branches: queryFactoryTargets(),
 		StepOptionsOverride: &dex.StepOptions{WaitForMethodTimeout: time.Second},
 	})
 	require.ErrorContains(t, err, "rejects WaitFor options")
@@ -177,8 +178,8 @@ func TestFactoryRejectsWaitForOptionsAndStepRefFailsClosed(t *testing.T) {
 	require.Error(t, err)
 }
 
-func queryFactoryTargets() []sdkgo.BranchTarget[sdkgo.QueryStepOutput[string, string]] {
-	return []sdkgo.BranchTarget[sdkgo.QueryStepOutput[string, string]]{
+func queryFactoryTargets() []sdkgo.BranchTarget[sdkgo.QueryResult[string]] {
+	return []sdkgo.BranchTarget[sdkgo.QueryResult[string]]{
 		sdkgo.GoToBranch(testQuerySucceeded, factoryTarget{}),
 		sdkgo.GoToBranch(testQueryFailed, factoryTarget{}),
 		sdkgo.GoToBranch(testQueryDefect, factoryTarget{}),
