@@ -34,17 +34,19 @@ func TestThreadApprovalExampleCompletesOnceAndPreservesUncertainOutcomeWithRealD
 	harness.startWorker(t)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
+	testRunID := strconv.FormatInt(time.Now().UnixNano(), 10)
+	teamID := "T" + testRunID
 
 	successRoot := slack.MessageEvent{
-		TeamID: "T1", ChannelID: "C1", Timestamp: "1.0", ThreadTimestamp: "1.0", UserID: "U1", Text: "request approval",
+		TeamID: teamID, ChannelID: "C1", Timestamp: "1.0", ThreadTimestamp: "1.0", UserID: "U1", Text: "request approval",
 	}
-	successFlowID := startSlackThreadFlow(t, ctx, harness.client, flow, "Ev-root-success", successRoot)
+	successFlowID := startSlackThreadFlow(t, ctx, harness.client, flow, "Ev-root-success-"+testRunID, successRoot)
 	waitForSlackStatus(t, ctx, harness.client, flow, successFlowID, StatusWaitingForReply)
 
 	successReply := connector.TriggerEvent[slack.MessageEvent]{
-		ID: "Ev-reply-success", OccurredAt: time.Unix(2, 0).UTC(),
+		ID: "Ev-reply-success-" + testRunID, OccurredAt: time.Unix(2, 0).UTC(),
 		Payload: slack.MessageEvent{
-			TeamID: "T1", ChannelID: "C1", Timestamp: "2.0", ThreadTimestamp: "1.0", UserID: "U2", Text: "approve",
+			TeamID: teamID, ChannelID: "C1", Timestamp: "2.0", ThreadTimestamp: "1.0", UserID: "U2", Text: "approve",
 		},
 	}
 	replyTarget := connector.NewDexRPCTriggerTarget(harness.client, flow.ReplyTriggerRPC().Definition(), slack.FlowIDByThread(ResolveFlowID))
@@ -61,14 +63,14 @@ func TestThreadApprovalExampleCompletesOnceAndPreservesUncertainOutcomeWithRealD
 	require.Equal(t, 1, provider.postCount("1.0"))
 
 	uncertainRoot := slack.MessageEvent{
-		TeamID: "T1", ChannelID: "C1", Timestamp: "3.0", ThreadTimestamp: "3.0", UserID: "U1", Text: "request approval",
+		TeamID: teamID, ChannelID: "C1", Timestamp: "3.0", ThreadTimestamp: "3.0", UserID: "U1", Text: "request approval",
 	}
-	uncertainFlowID := startSlackThreadFlow(t, ctx, harness.client, flow, "Ev-root-uncertain", uncertainRoot)
+	uncertainFlowID := startSlackThreadFlow(t, ctx, harness.client, flow, "Ev-root-uncertain-"+testRunID, uncertainRoot)
 	waitForSlackStatus(t, ctx, harness.client, flow, uncertainFlowID, StatusWaitingForReply)
 	uncertainReply := connector.TriggerEvent[slack.MessageEvent]{
-		ID: "Ev-reply-uncertain", OccurredAt: time.Unix(4, 0).UTC(),
+		ID: "Ev-reply-uncertain-" + testRunID, OccurredAt: time.Unix(4, 0).UTC(),
 		Payload: slack.MessageEvent{
-			TeamID: "T1", ChannelID: "C1", Timestamp: "4.0", ThreadTimestamp: "3.0", UserID: "U2", Text: "approve",
+			TeamID: teamID, ChannelID: "C1", Timestamp: "4.0", ThreadTimestamp: "3.0", UserID: "U2", Text: "approve",
 		},
 	}
 	require.NoError(t, replyTarget.HandleTrigger(ctx, uncertainReply))
