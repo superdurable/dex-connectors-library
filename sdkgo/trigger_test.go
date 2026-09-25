@@ -5,7 +5,7 @@ package sdkgo_test
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -28,8 +28,8 @@ func (*filterTestFlow) GetRPCs() []dex.RPCDef { return nil }
 
 func (*filterTestFlow) GetPersistenceSchema() dex.PersistenceSchema { return dex.PersistenceSchema{} }
 
-func (*filterTestFlow) ReceiveEvent(_ dex.Context, event sdkgo.TriggerEvent[string]) (*dex.RPCResult[string], error) {
-	return &dex.RPCResult[string]{Output: event.Payload}, nil
+func (*filterTestFlow) ReceiveEvent(_ dex.Context, input int) (*dex.RPCResult[string], error) {
+	return &dex.RPCResult[string]{Output: fmt.Sprintf("%d", input)}, nil
 }
 
 func (source triggerSource) Run(ctx context.Context, target sdkgo.TriggerTarget[string]) error {
@@ -95,42 +95,45 @@ func TestTriggerBindingDefinitionRequiresStaticNames(t *testing.T) {
 
 func TestDexFlowTriggerTargetConsumesFilteredEventBeforeRouting(t *testing.T) {
 	resolverCalled := false
-	inputBuilderCalled := false
+	inputMapperCalled := false
 	target := sdkgo.NewDexFlowTriggerTarget(
 		&dex.Client{},
 		&filterTestFlow{},
-		func(sdkgo.TriggerEvent[string]) (bool, error) { return false, nil },
-		func(sdkgo.TriggerEvent[string]) (string, error) {
+		func(sdkgo.TriggerEvent[string]) bool { return false },
+		func(sdkgo.TriggerEvent[string]) string {
 			resolverCalled = true
-			return "flow-id", nil
+			return "flow-id"
 		},
-		func(sdkgo.TriggerEvent[string]) (string, error) {
-			inputBuilderCalled = true
-			return "input", nil
+		func(sdkgo.TriggerEvent[string]) string {
+			inputMapperCalled = true
+			return "input"
 		},
 	)
 
 	require.NoError(t, target.HandleTrigger(context.Background(), sdkgo.TriggerEvent[string]{ID: "event-id", Payload: "ignored"}))
 	require.False(t, resolverCalled)
-	require.False(t, inputBuilderCalled)
+	require.False(t, inputMapperCalled)
 }
 
-func TestDexRPCTriggerTargetReturnsFilterErrorBeforeRouting(t *testing.T) {
-	expectedError := errors.New("filter unavailable")
+func TestDexRPCTriggerTargetConsumesFilteredEventBeforeRouting(t *testing.T) {
 	resolverCalled := false
+	inputMapperCalled := false
 	flow := &filterTestFlow{}
 	target := sdkgo.NewDexRPCTriggerTarget(
 		&dex.Client{},
 		flow.ReceiveEvent,
-		func(sdkgo.TriggerEvent[string]) (bool, error) { return false, expectedError },
-		func(sdkgo.TriggerEvent[string]) (string, error) {
+		func(sdkgo.TriggerEvent[string]) bool { return false },
+		func(sdkgo.TriggerEvent[string]) string {
 			resolverCalled = true
-			return "flow-id", nil
+			return "flow-id"
+		},
+		func(sdkgo.TriggerEvent[string]) int {
+			inputMapperCalled = true
+			return 42
 		},
 	)
 
-	err := target.HandleTrigger(context.Background(), sdkgo.TriggerEvent[string]{ID: "event-id", Payload: "retry"})
-	require.ErrorIs(t, err, expectedError)
-	require.ErrorContains(t, err, "filter RPC Trigger event")
+	require.NoError(t, target.HandleTrigger(context.Background(), sdkgo.TriggerEvent[string]{ID: "event-id", Payload: "ignored"}))
 	require.False(t, resolverCalled)
+	require.False(t, inputMapperCalled)
 }

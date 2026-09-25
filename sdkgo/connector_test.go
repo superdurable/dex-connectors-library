@@ -38,7 +38,7 @@ func queryDefinition(ref sdkgo.OperationRef) sdkgo.QueryDefinition {
 			{ID: testQueryFailed, Description: "failed"},
 			{ID: testQueryDefect, Description: "defect"},
 		},
-		DefectBranch: testQueryDefect, ResultAttribute: sdkgo.RequirementOptional,
+		DefectBranch: testQueryDefect,
 	}
 }
 
@@ -52,7 +52,6 @@ func mutationDefinition(ref sdkgo.OperationRef) sdkgo.MutationDefinition {
 			{ID: testMutationDefect, Description: "defect"},
 		},
 		DefectBranch: testMutationDefect, UncertainBranch: testMutationUncertain,
-		ResultAttribute: sdkgo.RequirementOptional,
 	}
 }
 

@@ -24,7 +24,7 @@ func (definition QueryDefinition) Validate() error {
 	if !branches[definition.DefectBranch] {
 		return fmt.Errorf("defect branch %q is not declared", definition.DefectBranch)
 	}
-	return validateDefinitionOptions(definition.ResultAttribute, definition.StepDefaults)
+	return validateDefinitionOptions(definition.StepDefaults)
 }
 
 func (definition MutationDefinition) Validate() error {
@@ -41,7 +41,7 @@ func (definition MutationDefinition) Validate() error {
 	if !branches[definition.UncertainBranch] {
 		return fmt.Errorf("uncertain branch %q is not declared", definition.UncertainBranch)
 	}
-	return validateDefinitionOptions(definition.ResultAttribute, definition.StepDefaults)
+	return validateDefinitionOptions(definition.StepDefaults)
 }
 
 func (definition QueryDefinition) hasBranch(branch BranchID) bool {
@@ -81,12 +81,7 @@ func validateBranches(definitions []BranchDefinition) (map[BranchID]bool, error)
 	return branches, nil
 }
 
-func validateDefinitionOptions(requirement Requirement, defaults StepDefaults) error {
-	switch requirement {
-	case RequirementNone, RequirementOptional, RequirementRequired:
-	default:
-		return fmt.Errorf("result attribute requirement %q is invalid", requirement)
-	}
+func validateDefinitionOptions(defaults StepDefaults) error {
 	if defaults.ExecuteMethodTimeout < 0 || defaults.HeartbeatTimeout < 0 {
 		return fmt.Errorf("Step timeouts cannot be negative")
 	}
