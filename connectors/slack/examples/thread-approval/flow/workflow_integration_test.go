@@ -49,7 +49,16 @@ func TestThreadApprovalExampleCompletesOnceAndPreservesUncertainOutcomeWithRealD
 			TeamID: teamID, ChannelID: "C1", Timestamp: "2.0", ThreadTimestamp: "1.0", UserID: "U2", Text: "approve",
 		},
 	}
-	replyTarget := sdkgo.NewDexRPCTriggerTarget(harness.client, flow.ReceiveThreadReply, slack.FlowIDByThread(ResolveFlowID))
+	replyFilter, err := NewReplyTriggerEventFilter(slack.ThreadReplyCreatedTriggerConfiguration{
+		ChannelID: "C1", ThreadReplyMatcher: slack.MessageMatcher{MessageContains: "approve", PosterUserIDs: []string{"U2"}},
+	})
+	require.NoError(t, err)
+	replyTarget := sdkgo.NewDexRPCTriggerTarget(harness.client, flow.ReceiveThreadReply, replyFilter, slack.FlowIDByThread(ResolveFlowID))
+	rejectedReply := successReply
+	rejectedReply.ID = "Ev-reply-rejected-" + testRunID
+	rejectedReply.Payload.UserID = "U3"
+	require.NoError(t, replyTarget.HandleTrigger(ctx, rejectedReply))
+	require.Equal(t, StatusWaitingForReply, waitForSlackStatus(t, ctx, harness.client, flow, successFlowID, StatusWaitingForReply).Status)
 	require.NoError(t, replyTarget.HandleTrigger(ctx, successReply))
 	require.NoError(t, replyTarget.HandleTrigger(ctx, successReply))
 
@@ -88,7 +97,11 @@ func startSlackThreadFlow(
 	payload slack.MessageEvent,
 ) string {
 	t.Helper()
-	startTarget := sdkgo.NewDexFlowTriggerTarget(client, flow, slack.FlowIDByThread(ResolveFlowID), BuildStartInput)
+	startFilter, err := NewStartTriggerEventFilter(slack.ChannelThreadCreatedTriggerConfiguration{
+		ChannelID: "C1", ThreadTriggerMatcher: slack.MessageMatcher{MessageContains: "request approval", PosterUserIDs: []string{"U1"}},
+	})
+	require.NoError(t, err)
+	startTarget := sdkgo.NewDexFlowTriggerTarget(client, flow, startFilter, slack.FlowIDByThread(ResolveFlowID), BuildStartInput)
 	event := sdkgo.TriggerEvent[slack.MessageEvent]{ID: eventID, OccurredAt: time.Now().UTC(), Payload: payload}
 	require.NoError(t, startTarget.HandleTrigger(ctx, event))
 	require.NoError(t, startTarget.HandleTrigger(ctx, event))

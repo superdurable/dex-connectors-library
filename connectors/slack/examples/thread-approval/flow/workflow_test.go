@@ -56,3 +56,61 @@ func TestFlowDeclaresIndependentTriggerBindings(t *testing.T) {
 		t.Fatalf("reply binding = %+v", bindings[1])
 	}
 }
+
+func TestApplicationTriggerFiltersChannelPosterTextAndMessageShape(t *testing.T) {
+	startFilter, err := NewStartTriggerEventFilter(slack.ChannelThreadCreatedTriggerConfiguration{
+		ChannelID: "C1",
+		ThreadTriggerMatcher: slack.MessageMatcher{
+			MessageContains: "request approval", PosterUserIDs: []string{"U1"},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	replyFilter, err := NewReplyTriggerEventFilter(slack.ThreadReplyCreatedTriggerConfiguration{
+		ChannelID: "C1",
+		ThreadReplyMatcher: slack.MessageMatcher{
+			MessageContains: "approve", PosterUserIDs: []string{"U2"},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	root := sdkgo.TriggerEvent[slack.MessageEvent]{Payload: slack.MessageEvent{
+		ChannelID: "C1", Timestamp: "1.0", ThreadTimestamp: "1.0", UserID: "U1", Text: "Request Approval for this order",
+	}}
+	reply := sdkgo.TriggerEvent[slack.MessageEvent]{Payload: slack.MessageEvent{
+		ChannelID: "C1", Timestamp: "2.0", ThreadTimestamp: "1.0", UserID: "U2", Text: "APPROVE",
+	}}
+	assertFilterResult(t, startFilter, root, true)
+	assertFilterResult(t, startFilter, reply, false)
+	assertFilterResult(t, replyFilter, root, false)
+	assertFilterResult(t, replyFilter, reply, true)
+
+	wrongChannel := reply
+	wrongChannel.Payload.ChannelID = "C2"
+	assertFilterResult(t, replyFilter, wrongChannel, false)
+	wrongPoster := reply
+	wrongPoster.Payload.UserID = "U3"
+	assertFilterResult(t, replyFilter, wrongPoster, false)
+	wrongText := reply
+	wrongText.Payload.Text = "deny"
+	assertFilterResult(t, replyFilter, wrongText, false)
+}
+
+func assertFilterResult(
+	t *testing.T,
+	filter sdkgo.TriggerEventFilter[slack.MessageEvent],
+	event sdkgo.TriggerEvent[slack.MessageEvent],
+	expected bool,
+) {
+	t.Helper()
+	actual, err := filter(event)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if actual != expected {
+		t.Fatalf("filter result = %t, want %t for %+v", actual, expected, event.Payload)
+	}
+}

@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"strings"
 
 	"github.com/superdurable/dex-connectors-library/connectors/slack"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
@@ -295,6 +296,22 @@ func failureMessage(branch sdkgo.BranchID, failure *sdkgo.Failure) string {
 	return fmt.Sprintf("%s: %s", branch, failure.Message)
 }
 
+// NewStartTriggerEventFilter creates the application's Slack root-message admission rule.
+func NewStartTriggerEventFilter(configuration slack.ChannelThreadCreatedTriggerConfiguration) (sdkgo.TriggerEventFilter[slack.MessageEvent], error) {
+	if err := configuration.Validate(); err != nil {
+		return nil, err
+	}
+	return newMessageTriggerEventFilter(configuration.ChannelID, configuration.ThreadTriggerMatcher, false), nil
+}
+
+// NewReplyTriggerEventFilter creates the application's Slack reply admission rule.
+func NewReplyTriggerEventFilter(configuration slack.ThreadReplyCreatedTriggerConfiguration) (sdkgo.TriggerEventFilter[slack.MessageEvent], error) {
+	if err := configuration.Validate(); err != nil {
+		return nil, err
+	}
+	return newMessageTriggerEventFilter(configuration.ChannelID, configuration.ThreadReplyMatcher, true), nil
+}
+
 func ResolveFlowID(identity slack.ThreadIdentity) (string, error) {
 	if identity.TeamID == "" || identity.ChannelID == "" || identity.RootTimestamp == "" {
 		return "", fmt.Errorf("Slack thread identity is incomplete")
@@ -308,6 +325,28 @@ func BuildStartInput(event sdkgo.TriggerEvent[slack.MessageEvent]) (Input, error
 	return Input{
 		EventID: event.ID, TeamID: payload.TeamID, ChannelID: payload.ChannelID, ThreadTimestamp: payload.ThreadTimestamp,
 	}, nil
+}
+
+func newMessageTriggerEventFilter(channelID string, matcher slack.MessageMatcher, requiresReply bool) sdkgo.TriggerEventFilter[slack.MessageEvent] {
+	return func(event sdkgo.TriggerEvent[slack.MessageEvent]) (bool, error) {
+		message := event.Payload
+		isReply := message.ThreadTimestamp != "" && message.ThreadTimestamp != message.Timestamp
+		if message.ChannelID != channelID || isReply != requiresReply {
+			return false, nil
+		}
+		if matcher.MessageContains != "" && !strings.Contains(strings.ToLower(message.Text), strings.ToLower(matcher.MessageContains)) {
+			return false, nil
+		}
+		if len(matcher.PosterUserIDs) == 0 {
+			return true, nil
+		}
+		for _, allowedUserID := range matcher.PosterUserIDs {
+			if message.UserID == allowedUserID {
+				return true, nil
+			}
+		}
+		return false, nil
+	}
 }
 
 var _ dex.Flow = (*Flow)(nil)
