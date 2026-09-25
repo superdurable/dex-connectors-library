@@ -14,20 +14,15 @@ import (
 
 var groupIDPattern = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
 
-type StepPresentation struct {
-	GroupID     string
-	GroupLabel  string
+// StepAnnotations describes how Dex tooling explains and groups a Connector Step.
+// Applications provide stable group metadata when constructing an operation-specific Step.
+type StepAnnotations struct {
+	// GroupID identifies the Step group with a stable lowercase identifier.
+	GroupID string
+	// GroupLabel is the human-readable Step group label.
+	GroupLabel string
+	// Explanation is one sentence describing what the Step does.
 	Explanation string
-}
-
-type QueryStepOutput[IN, OUT any] struct {
-	Input  IN               `json:"input"`
-	Result QueryResult[OUT] `json:"result"`
-}
-
-type MutationStepOutput[IN, OUT any] struct {
-	Input  IN                  `json:"input"`
-	Result MutationResult[OUT] `json:"result"`
 }
 
 // QueryFactoryConfigMarker identifies generated Query Step factory configs.
@@ -68,11 +63,11 @@ type PersistenceRequirements struct {
 
 type QueryStepConfig[STEP_IN, OP_IN, OUT any] struct {
 	StepType            string
-	Presentation        StepPresentation
+	Annotations         StepAnnotations
 	Operation           Query[OP_IN, OUT]
 	Connection          ConnectionRef
-	BuildInput          func(STEP_IN) (OP_IN, error)
-	Branches            []BranchTarget[QueryStepOutput[STEP_IN, OUT]]
+	BuildOperationInput func(STEP_IN) (OP_IN, error)
+	Branches            []BranchTarget[QueryResult[OUT]]
 	ResultAttribute     *dex.Attribute[QueryResult[OUT]]
 	ProgressStream      *dex.Stream[ProgressUpdate]
 	TextStream          *dex.Stream[string]
@@ -82,11 +77,11 @@ type QueryStepConfig[STEP_IN, OP_IN, OUT any] struct {
 
 type MutationStepConfig[STEP_IN, OP_IN, OUT any] struct {
 	StepType            string
-	Presentation        StepPresentation
+	Annotations         StepAnnotations
 	Operation           Mutation[OP_IN, OUT]
 	Connection          ConnectionRef
-	BuildInput          func(STEP_IN) (OP_IN, error)
-	Branches            []BranchTarget[MutationStepOutput[STEP_IN, OUT]]
+	BuildOperationInput func(STEP_IN) (OP_IN, error)
+	Branches            []BranchTarget[MutationResult[OUT]]
 	ResultAttribute     *dex.Attribute[MutationResult[OUT]]
 	ProgressStream      *dex.Stream[ProgressUpdate]
 	TextStream          *dex.Stream[string]
@@ -96,32 +91,32 @@ type MutationStepConfig[STEP_IN, OP_IN, OUT any] struct {
 
 type QueryStep[STEP_IN, OP_IN, OUT any] struct {
 	dex.NoWaitFor[STEP_IN]
-	stepType        string
-	presentation    StepPresentation
-	operation       Query[OP_IN, OUT]
-	connection      ConnectionRef
-	buildInput      func(STEP_IN) (OP_IN, error)
-	branches        map[BranchID]dex.Step[QueryStepOutput[STEP_IN, OUT]]
-	resultAttribute *dex.Attribute[QueryResult[OUT]]
-	progressStream  *dex.Stream[ProgressUpdate]
-	textStream      *dex.Stream[string]
-	textOptions     []dex.BufferedTextStreamOption
-	stepOptions     *dex.StepOptions
+	stepType            string
+	annotations         StepAnnotations
+	operation           Query[OP_IN, OUT]
+	connection          ConnectionRef
+	buildOperationInput func(STEP_IN) (OP_IN, error)
+	branches            map[BranchID]dex.Step[QueryResult[OUT]]
+	resultAttribute     *dex.Attribute[QueryResult[OUT]]
+	progressStream      *dex.Stream[ProgressUpdate]
+	textStream          *dex.Stream[string]
+	textOptions         []dex.BufferedTextStreamOption
+	stepOptions         *dex.StepOptions
 }
 
 type MutationStep[STEP_IN, OP_IN, OUT any] struct {
 	dex.NoWaitFor[STEP_IN]
-	stepType        string
-	presentation    StepPresentation
-	operation       Mutation[OP_IN, OUT]
-	connection      ConnectionRef
-	buildInput      func(STEP_IN) (OP_IN, error)
-	branches        map[BranchID]dex.Step[MutationStepOutput[STEP_IN, OUT]]
-	resultAttribute *dex.Attribute[MutationResult[OUT]]
-	progressStream  *dex.Stream[ProgressUpdate]
-	textStream      *dex.Stream[string]
-	textOptions     []dex.BufferedTextStreamOption
-	stepOptions     *dex.StepOptions
+	stepType            string
+	annotations         StepAnnotations
+	operation           Mutation[OP_IN, OUT]
+	connection          ConnectionRef
+	buildOperationInput func(STEP_IN) (OP_IN, error)
+	branches            map[BranchID]dex.Step[MutationResult[OUT]]
+	resultAttribute     *dex.Attribute[MutationResult[OUT]]
+	progressStream      *dex.Stream[ProgressUpdate]
+	textStream          *dex.Stream[string]
+	textOptions         []dex.BufferedTextStreamOption
+	stepOptions         *dex.StepOptions
 }
 
 func NewQueryStep[STEP_IN, OP_IN, OUT any](config QueryStepConfig[STEP_IN, OP_IN, OUT]) (QueryStep[STEP_IN, OP_IN, OUT], error) {
@@ -132,7 +127,7 @@ func NewQueryStep[STEP_IN, OP_IN, OUT any](config QueryStepConfig[STEP_IN, OP_IN
 	if err := definition.Validate(); err != nil {
 		return QueryStep[STEP_IN, OP_IN, OUT]{}, fmt.Errorf("query definition: %w", err)
 	}
-	if err := validateFactoryConfig(config.StepType, config.Presentation, config.Connection, config.BuildInput != nil); err != nil {
+	if err := validateFactoryConfig(config.StepType, config.Annotations, config.Connection, config.BuildOperationInput != nil); err != nil {
 		return QueryStep[STEP_IN, OP_IN, OUT]{}, err
 	}
 	branches, err := validateBranchTargets(definition.Branches, config.Branches)
@@ -147,8 +142,8 @@ func NewQueryStep[STEP_IN, OP_IN, OUT any](config QueryStepConfig[STEP_IN, OP_IN
 		return QueryStep[STEP_IN, OP_IN, OUT]{}, err
 	}
 	return QueryStep[STEP_IN, OP_IN, OUT]{
-		stepType: config.StepType, presentation: config.Presentation, operation: config.Operation,
-		connection: config.Connection, buildInput: config.BuildInput, branches: branches,
+		stepType: config.StepType, annotations: config.Annotations, operation: config.Operation,
+		connection: config.Connection, buildOperationInput: config.BuildOperationInput, branches: branches,
 		resultAttribute: config.ResultAttribute, progressStream: config.ProgressStream,
 		textStream: config.TextStream, textOptions: append([]dex.BufferedTextStreamOption(nil), config.TextOptions...),
 		stepOptions: options,
@@ -171,7 +166,7 @@ func NewMutationStep[STEP_IN, OP_IN, OUT any](config MutationStepConfig[STEP_IN,
 	if err := definition.Validate(); err != nil {
 		return MutationStep[STEP_IN, OP_IN, OUT]{}, fmt.Errorf("mutation definition: %w", err)
 	}
-	if err := validateFactoryConfig(config.StepType, config.Presentation, config.Connection, config.BuildInput != nil); err != nil {
+	if err := validateFactoryConfig(config.StepType, config.Annotations, config.Connection, config.BuildOperationInput != nil); err != nil {
 		return MutationStep[STEP_IN, OP_IN, OUT]{}, err
 	}
 	branches, err := validateBranchTargets(definition.Branches, config.Branches)
@@ -186,8 +181,8 @@ func NewMutationStep[STEP_IN, OP_IN, OUT any](config MutationStepConfig[STEP_IN,
 		return MutationStep[STEP_IN, OP_IN, OUT]{}, err
 	}
 	return MutationStep[STEP_IN, OP_IN, OUT]{
-		stepType: config.StepType, presentation: config.Presentation, operation: config.Operation,
-		connection: config.Connection, buildInput: config.BuildInput, branches: branches,
+		stepType: config.StepType, annotations: config.Annotations, operation: config.Operation,
+		connection: config.Connection, buildOperationInput: config.BuildOperationInput, branches: branches,
 		resultAttribute: config.ResultAttribute, progressStream: config.ProgressStream,
 		textStream: config.TextStream, textOptions: append([]dex.BufferedTextStreamOption(nil), config.TextOptions...),
 		stepOptions: options,
@@ -208,17 +203,17 @@ func (step QueryStep[STEP_IN, OP_IN, OUT]) GetStepOptions() *dex.StepOptions {
 	return cloneStepOptions(step.stepOptions)
 }
 
-func (step QueryStep[STEP_IN, OP_IN, OUT]) Presentation() StepPresentation { return step.presentation }
+func (step QueryStep[STEP_IN, OP_IN, OUT]) Annotations() StepAnnotations { return step.annotations }
 
 func (step QueryStep[STEP_IN, OP_IN, OUT]) PersistenceRequirements() PersistenceRequirements {
 	return persistenceRequirements(step.resultAttribute, step.progressStream, step.textStream)
 }
 
 func (step QueryStep[STEP_IN, OP_IN, OUT]) Execute(ctx dex.Context, input STEP_IN) (*dex.StepDecision, error) {
-	operationInput, err := step.buildInput(input)
+	operationInput, err := step.buildOperationInput(input)
 	var result QueryResult[OUT]
 	if err != nil {
-		result = failedQuery[OUT](step.operation.Definition(), "BuildInput returned an error")
+		result = failedQuery[OUT](step.operation.Definition(), "BuildOperationInput returned an error")
 	} else {
 		result, err = RunQuery(ctx, step.operation, step.connection, operationInput, step.runOptions()...)
 		if err != nil {
@@ -234,7 +229,7 @@ func (step QueryStep[STEP_IN, OP_IN, OUT]) Execute(ctx dex.Context, input STEP_I
 	if target == nil {
 		return nil, fmt.Errorf("query result selected unconfigured branch %q", result.Branch)
 	}
-	return dex.GoTo(target, QueryStepOutput[STEP_IN, OUT]{Input: input, Result: result}), nil
+	return dex.GoTo(target, result), nil
 }
 
 func (step QueryStep[STEP_IN, OP_IN, OUT]) runOptions() []RunOption {
@@ -247,8 +242,8 @@ func (step MutationStep[STEP_IN, OP_IN, OUT]) GetStepOptions() *dex.StepOptions 
 	return cloneStepOptions(step.stepOptions)
 }
 
-func (step MutationStep[STEP_IN, OP_IN, OUT]) Presentation() StepPresentation {
-	return step.presentation
+func (step MutationStep[STEP_IN, OP_IN, OUT]) Annotations() StepAnnotations {
+	return step.annotations
 }
 
 func (step MutationStep[STEP_IN, OP_IN, OUT]) PersistenceRequirements() PersistenceRequirements {
@@ -256,10 +251,10 @@ func (step MutationStep[STEP_IN, OP_IN, OUT]) PersistenceRequirements() Persiste
 }
 
 func (step MutationStep[STEP_IN, OP_IN, OUT]) Execute(ctx dex.Context, input STEP_IN) (*dex.StepDecision, error) {
-	operationInput, err := step.buildInput(input)
+	operationInput, err := step.buildOperationInput(input)
 	var result MutationResult[OUT]
 	if err != nil {
-		result = failedMutation[OUT](step.operation.Definition(), "BuildInput returned an error")
+		result = failedMutation[OUT](step.operation.Definition(), "BuildOperationInput returned an error")
 	} else {
 		result, err = RunMutation(ctx, step.operation, step.connection, operationInput, step.runOptions()...)
 		if err != nil {
@@ -275,7 +270,7 @@ func (step MutationStep[STEP_IN, OP_IN, OUT]) Execute(ctx dex.Context, input STE
 	if target == nil {
 		return nil, fmt.Errorf("mutation result selected unconfigured branch %q", result.Branch)
 	}
-	return dex.GoTo(target, MutationStepOutput[STEP_IN, OUT]{Input: input, Result: result}), nil
+	return dex.GoTo(target, result), nil
 }
 
 func (step MutationStep[STEP_IN, OP_IN, OUT]) runOptions() []RunOption {
@@ -301,18 +296,18 @@ func (reference stepReference[T]) Execute(dex.Context, T) (*dex.StepDecision, er
 	return nil, fmt.Errorf("connector StepRef %q cannot execute", reference.stepType)
 }
 
-func validateFactoryConfig(stepType string, presentation StepPresentation, connection ConnectionRef, hasBuildInput bool) error {
+func validateFactoryConfig(stepType string, annotations StepAnnotations, connection ConnectionRef, hasBuildOperationInput bool) error {
 	if strings.TrimSpace(stepType) == "" {
 		return fmt.Errorf("stable Step type is required")
 	}
-	if !groupIDPattern.MatchString(presentation.GroupID) || strings.TrimSpace(presentation.GroupLabel) == "" || strings.TrimSpace(presentation.Explanation) == "" {
+	if !groupIDPattern.MatchString(annotations.GroupID) || strings.TrimSpace(annotations.GroupLabel) == "" || strings.TrimSpace(annotations.Explanation) == "" {
 		return fmt.Errorf("Step group, group label, and explanation are required")
 	}
 	if err := connection.Validate(); err != nil {
 		return fmt.Errorf("Step connection: %w", err)
 	}
-	if !hasBuildInput {
-		return fmt.Errorf("BuildInput is required")
+	if !hasBuildOperationInput {
+		return fmt.Errorf("BuildOperationInput is required")
 	}
 	return nil
 }

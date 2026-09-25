@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Super Durable
+// SPDX-License-Identifier: MIT
+
 package wrongtarget
 
 import (
@@ -11,6 +14,6 @@ func (wrongTarget) Execute(dex.Context, int) (*dex.StepDecision, error) {
 	return dex.GracefulComplete(nil), nil
 }
 
-var _ = []sdkgo.BranchTarget[sdkgo.QueryStepOutput[string, string]]{
+var _ = []sdkgo.BranchTarget[sdkgo.QueryResult[string]]{
 	sdkgo.GoToBranch(sdkgo.BranchID("succeeded"), wrongTarget{}),
 }
