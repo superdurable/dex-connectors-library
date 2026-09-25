@@ -121,7 +121,7 @@ jobs:
           cache-dependency-path: |
             sdk/react/package-lock.json
             connectors/**/ui/package-lock.json
-      - name: Test current Connector source with latest stable Dex CLI and Web
+      - name: Test current Connector source with pinned Dex CLI and Web
         env:
           GH_TOKEN: ${{ github.token }}
         run: make test-dex-compat-current
@@ -140,7 +140,95 @@ jobs:
       - name: Test latest published Connectors with latest stable Dex CLI and Web
         env:
           GH_TOKEN: ${{ github.token }}
+          DEX_CLI_VERSION: latest
         run: make test-dex-compat-released
+
+  dex-compat-canary-issue:
+    if: ${{ always() && github.event_name == 'schedule' }}
+    needs: dex-compat-released
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Update latest Dex compatibility issue
+        uses: actions/github-script@v8
+        env:
+          CANARY_RESULT: ${{ needs.dex-compat-released.result }}
+        with:
+          script: |
+            const marker = "<!-- dex-compat-latest-canary -->";
+            const issueTitle = "Dex compatibility canary: latest stable release";
+            const runURL = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              ...context.repo,
+              state: "all",
+              per_page: 100,
+            });
+            const issue = issues.find((candidate) =>
+              !candidate.pull_request &&
+              candidate.title === issueTitle &&
+              candidate.body?.includes(marker)
+            );
+            if (process.env.CANARY_RESULT === "success") {
+              if (issue?.state === "open") {
+                await github.rest.issues.createComment({
+                  ...context.repo,
+                  issue_number: issue.number,
+                  body: `Recovered in [scheduled run ${context.runId}](${runURL}).`,
+                });
+                await github.rest.issues.update({
+                  ...context.repo,
+                  issue_number: issue.number,
+                  state: "closed",
+                  state_reason: "completed",
+                });
+              }
+              return;
+            }
+            const label = "dex-compatibility";
+            try {
+              await github.rest.issues.getLabel({ ...context.repo, name: label });
+            } catch (error) {
+              if (error.status !== 404) throw error;
+              await github.rest.issues.createLabel({
+                ...context.repo,
+                name: label,
+                color: "B60205",
+                description: "Dex CLI and Web compatibility failures",
+              });
+            }
+            const body = [
+              marker,
+              "The scheduled compatibility canary against the latest stable Dex CLI and Web failed.",
+              "",
+              `- Latest failed run: [${context.runId}](${runURL})`,
+              `- Connector commit: ${context.sha}`,
+              `- Result: ${process.env.CANARY_RESULT}`,
+              "",
+              "Inspect the run log for the resolved Dex tag, connector tag, source commit, and artifact digest. Fix current source, publish a new connector release when required, then rerun the canary. This issue closes automatically after a successful scheduled run.",
+            ].join("\n");
+            if (issue) {
+              await github.rest.issues.addLabels({
+                ...context.repo,
+                issue_number: issue.number,
+                labels: [label],
+              });
+              await github.rest.issues.update({
+                ...context.repo,
+                issue_number: issue.number,
+                title: issueTitle,
+                body,
+                state: "open",
+              });
+            } else {
+              await github.rest.issues.create({
+                ...context.repo,
+                title: issueTitle,
+                body,
+                labels: [label],
+              });
+            }
 
   react:
     if: github.event_name != 'schedule'
