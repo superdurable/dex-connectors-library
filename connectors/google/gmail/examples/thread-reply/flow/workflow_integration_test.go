@@ -35,18 +35,20 @@ func TestThreadReplyExampleCompletesOnceAndPreservesUncertainOutcomeWithRealDex(
 	harness.startWorker(t)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
+	testRunID := strconv.FormatInt(time.Now().UnixNano(), 10)
+	primaryEmail := "owner+" + testRunID + "@example.com"
 
 	successRoot := gmail.MessageEvent{
-		PrimaryEmail: "owner@example.com", MessageID: "root-success", ThreadID: "thread-success",
+		PrimaryEmail: primaryEmail, MessageID: "root-success", ThreadID: "thread-success",
 		From: "sender@example.com", Subject: "Approval request", Snippet: "request approval",
 	}
-	successFlowID := startGmailThreadFlow(t, ctx, harness.client, flow, "root-success", successRoot)
+	successFlowID := startGmailThreadFlow(t, ctx, harness.client, flow, "root-success-"+testRunID, successRoot)
 	waitForGmailStatus(t, ctx, harness.client, flow, successFlowID, StatusWaitingForReply)
 
 	successReply := connector.TriggerEvent[gmail.MessageEvent]{
-		ID: "reply-success", OccurredAt: time.Unix(2, 0).UTC(),
+		ID: "reply-success-" + testRunID, OccurredAt: time.Unix(2, 0).UTC(),
 		Payload: gmail.MessageEvent{
-			PrimaryEmail: "owner@example.com", MessageID: "reply-success", ThreadID: "thread-success",
+			PrimaryEmail: primaryEmail, MessageID: "reply-success", ThreadID: "thread-success",
 			From: "sender@example.com", Subject: "Re: Approval request", Snippet: "approved", IsReply: true,
 		},
 	}
@@ -64,15 +66,15 @@ func TestThreadReplyExampleCompletesOnceAndPreservesUncertainOutcomeWithRealDex(
 	require.Equal(t, 1, provider.sendCount("thread-success"))
 
 	uncertainRoot := gmail.MessageEvent{
-		PrimaryEmail: "owner@example.com", MessageID: "root-uncertain", ThreadID: "thread-uncertain",
+		PrimaryEmail: primaryEmail, MessageID: "root-uncertain", ThreadID: "thread-uncertain",
 		From: "sender@example.com", Subject: "Approval request", Snippet: "request approval",
 	}
-	uncertainFlowID := startGmailThreadFlow(t, ctx, harness.client, flow, "root-uncertain", uncertainRoot)
+	uncertainFlowID := startGmailThreadFlow(t, ctx, harness.client, flow, "root-uncertain-"+testRunID, uncertainRoot)
 	waitForGmailStatus(t, ctx, harness.client, flow, uncertainFlowID, StatusWaitingForReply)
 	uncertainReply := connector.TriggerEvent[gmail.MessageEvent]{
-		ID: "reply-uncertain", OccurredAt: time.Unix(4, 0).UTC(),
+		ID: "reply-uncertain-" + testRunID, OccurredAt: time.Unix(4, 0).UTC(),
 		Payload: gmail.MessageEvent{
-			PrimaryEmail: "owner@example.com", MessageID: "reply-uncertain", ThreadID: "thread-uncertain",
+			PrimaryEmail: primaryEmail, MessageID: "reply-uncertain", ThreadID: "thread-uncertain",
 			From: "sender@example.com", Subject: "Re: Approval request", Snippet: "approved", IsReply: true,
 		},
 	}
