@@ -9,8 +9,9 @@ This example keeps one complete Slack integration beside the Slack Connector:
 
 The root and reply Triggers use the same application callback to map Slack team
 ID, channel ID, and root timestamp to a stable Flow ID. The RPC is registered
-and invoked through the same `TriggerRPC.Definition()`. Its default options add
-transactional Slack event-ID deduplication.
+and invoked through the same direct bound `ReceiveThreadReply` method. The
+application RPC locks its thread state and stores the one accepted reply event
+ID, so duplicate delivery cannot schedule another completion reply.
 
 ## Configure
 

@@ -49,7 +49,7 @@ func TestThreadApprovalExampleCompletesOnceAndPreservesUncertainOutcomeWithRealD
 			TeamID: teamID, ChannelID: "C1", Timestamp: "2.0", ThreadTimestamp: "1.0", UserID: "U2", Text: "approve",
 		},
 	}
-	replyTarget := sdkgo.NewDexRPCTriggerTarget(harness.client, flow.ReplyTriggerRPC().Definition(), slack.FlowIDByThread(ResolveFlowID))
+	replyTarget := sdkgo.NewDexRPCTriggerTarget(harness.client, flow.ReceiveThreadReply, slack.FlowIDByThread(ResolveFlowID))
 	require.NoError(t, replyTarget.HandleTrigger(ctx, successReply))
 	require.NoError(t, replyTarget.HandleTrigger(ctx, successReply))
 

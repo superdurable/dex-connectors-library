@@ -38,8 +38,9 @@ The application owns the mapping from Slack threads to Flow IDs. Pass a
 callback that accepts `ThreadIdentity` to `FlowIDByThread`; it receives the team
 ID, channel ID, and root timestamp. The RPC target receives the same identity,
 so root and reply events resolve to the same Flow. RPC registration is code,
-not Trigger configuration. Use one SDK `TriggerRPC` definition in both
-`GetRPCs` and `NewDexRPCTriggerTarget`.
+not Trigger configuration. Pass the same direct bound Flow method to
+`dex.DefineRPC` and `NewDexRPCTriggerTarget`. The application owns RPC options,
+durable state, locking, and event deduplication.
 
 If a picker cannot load, copy IDs manually:
 
