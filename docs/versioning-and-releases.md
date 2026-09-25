@@ -17,6 +17,10 @@ The module directory determines the Git tag prefix:
 
 Git tags are the only published-version source of truth. Source manifests and
 generated Go code do not contain a manually maintained release version.
+GitHub Release titles are human-readable labels and do not define module
+versions. SDK releases use `Go SDK vMAJOR.MINOR.PATCH`. Connector releases use
+the manifest `metadata.displayName`, such as `Slack vMAJOR.MINOR.PATCH` or
+`Google Sheets vMAJOR.MINOR.PATCH`.
 
 ## Release order
 

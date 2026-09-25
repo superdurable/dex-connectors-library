@@ -105,7 +105,7 @@ jobs:
         run: |
           gh release create "${RELEASE_TAG}" \
             --target "${GITHUB_SHA}" \
-            --title "Connector Go SDK ${RELEASE_VERSION}" \
+            --title "Go SDK ${RELEASE_VERSION}" \
             --notes-file /tmp/connector-sdk-release-notes.md
       - name: Verify published module
         env:

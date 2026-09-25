@@ -132,13 +132,23 @@ jobs:
           RELEASE_TAG: ${{ steps.plan.outputs.tag }}
           RELEASE_VERSION: ${{ steps.plan.outputs.version }}
         run: |
+          case "${{ inputs.connector }}" in
+            'github') RELEASE_DISPLAY_NAME='GitHub' ;;
+            'google/gmail') RELEASE_DISPLAY_NAME='Gmail' ;;
+            'google/spreadsheet') RELEASE_DISPLAY_NAME='Google Sheets' ;;
+            'http') RELEASE_DISPLAY_NAME='HTTP and Webhook' ;;
+            'linkedin') RELEASE_DISPLAY_NAME='LinkedIn' ;;
+            'openai') RELEASE_DISPLAY_NAME='OpenAI' ;;
+            'slack') RELEASE_DISPLAY_NAME='Slack' ;;
+            *) echo "Unknown connector: ${{ inputs.connector }}" >&2; exit 1 ;;
+          esac
           ASSETS=(/tmp/connector-release.json /tmp/connector-release.json.sha256)
           if [ -f /tmp/connector-ui.tgz ]; then
             ASSETS+=(/tmp/connector-ui.tgz /tmp/connector-ui.tgz.sha256)
           fi
           gh release create "${RELEASE_TAG}" \
             --target "${GITHUB_SHA}" \
-            --title "Connector ${{ inputs.connector }} ${RELEASE_VERSION}" \
+            --title "${RELEASE_DISPLAY_NAME} ${RELEASE_VERSION}" \
             --notes-file /tmp/connector-release-notes.md \
             "${ASSETS[@]}"
       - name: Verify published connector module
