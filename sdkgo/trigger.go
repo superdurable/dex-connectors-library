@@ -208,20 +208,33 @@ type TriggerBindingFactoryConfigMarker struct{}
 // FlowIDResolver maps one provider event to the stable application Flow ID that owns it.
 type FlowIDResolver[EVENT any] func(TriggerEvent[EVENT]) (string, error)
 
+// TriggerEventFilter decides whether an application accepts a provider event for Dex routing.
+// Returning false consumes the event without starting a Flow or invoking an RPC. Returning an error leaves the delivery retryable.
+// The filter should be deterministic and side-effect free because durable Trigger delivery may evaluate it again after a restart.
+type TriggerEventFilter[EVENT any] func(TriggerEvent[EVENT]) (bool, error)
+
 // FlowInputBuilder maps one provider event to a Flow's typed start input.
 type FlowInputBuilder[EVENT, INPUT any] func(TriggerEvent[EVENT]) (INPUT, error)
 
-// NewDexFlowTriggerTarget creates a target that starts a typed Dex Flow.
+// NewDexFlowTriggerTarget creates a filtered target that starts a typed Dex Flow.
 func NewDexFlowTriggerTarget[EVENT, INPUT any](
 	client *dex.Client,
 	flow dex.Flow,
+	filterEvent TriggerEventFilter[EVENT],
 	resolveFlowID FlowIDResolver[EVENT],
 	buildInput FlowInputBuilder[EVENT, INPUT],
 ) TriggerTarget[EVENT] {
-	if client == nil || flow == nil || resolveFlowID == nil || buildInput == nil {
-		panic("Dex client, Flow, Flow ID resolver, and input builder are required")
+	if client == nil || flow == nil || filterEvent == nil || resolveFlowID == nil || buildInput == nil {
+		panic("Dex client, Flow, Trigger event filter, Flow ID resolver, and input builder are required")
 	}
 	return TriggerTargetFunc[EVENT](func(ctx context.Context, event TriggerEvent[EVENT]) error {
+		shouldRoute, err := filterEvent(event)
+		if err != nil {
+			return fmt.Errorf("filter Flow Trigger event: %w", err)
+		}
+		if !shouldRoute {
+			return nil
+		}
 		flowID, err := resolveFlowID(event)
 		if err != nil {
 			return err
@@ -243,16 +256,24 @@ func NewDexFlowTriggerTarget[EVENT, INPUT any](
 	})
 }
 
-// NewDexRPCTriggerTarget invokes one event-aware typed RPC on the resolved Flow.
+// NewDexRPCTriggerTarget filters an event before invoking one typed RPC on the resolved Flow.
 func NewDexRPCTriggerTarget[EVENT, OUTPUT any](
 	client *dex.Client,
 	rpc dex.RPC[TriggerEvent[EVENT], OUTPUT],
+	filterEvent TriggerEventFilter[EVENT],
 	resolveFlowID FlowIDResolver[EVENT],
 ) TriggerTarget[EVENT] {
-	if client == nil || rpc == nil || resolveFlowID == nil {
-		panic("Dex client, RPC, and Flow ID resolver are required")
+	if client == nil || rpc == nil || filterEvent == nil || resolveFlowID == nil {
+		panic("Dex client, RPC, Trigger event filter, and Flow ID resolver are required")
 	}
 	return TriggerTargetFunc[EVENT](func(ctx context.Context, event TriggerEvent[EVENT]) error {
+		shouldRoute, err := filterEvent(event)
+		if err != nil {
+			return fmt.Errorf("filter RPC Trigger event: %w", err)
+		}
+		if !shouldRoute {
+			return nil
+		}
 		flowID, err := resolveFlowID(event)
 		if err != nil {
 			return err

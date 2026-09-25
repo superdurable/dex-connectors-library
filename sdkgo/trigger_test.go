@@ -5,15 +5,31 @@ package sdkgo_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex/sdk-go/dex"
 )
 
 type triggerSource struct {
 	event sdkgo.TriggerEvent[string]
+}
+
+type filterTestFlow struct {
+	dex.FlowDefaults
+}
+
+func (*filterTestFlow) GetSteps() []dex.StepDef { return nil }
+
+func (*filterTestFlow) GetRPCs() []dex.RPCDef { return nil }
+
+func (*filterTestFlow) GetPersistenceSchema() dex.PersistenceSchema { return dex.PersistenceSchema{} }
+
+func (*filterTestFlow) ReceiveEvent(_ dex.Context, event sdkgo.TriggerEvent[string]) (*dex.RPCResult[string], error) {
+	return &dex.RPCResult[string]{Output: event.Payload}, nil
 }
 
 func (source triggerSource) Run(ctx context.Context, target sdkgo.TriggerTarget[string]) error {
@@ -75,4 +91,46 @@ func TestTriggerBindingDefinitionRequiresStaticNames(t *testing.T) {
 	definition.ConnectionName = "workspace"
 	definition.BindingName = "approval-start"
 	require.NoError(t, definition.Validate())
+}
+
+func TestDexFlowTriggerTargetConsumesFilteredEventBeforeRouting(t *testing.T) {
+	resolverCalled := false
+	inputBuilderCalled := false
+	target := sdkgo.NewDexFlowTriggerTarget(
+		&dex.Client{},
+		&filterTestFlow{},
+		func(sdkgo.TriggerEvent[string]) (bool, error) { return false, nil },
+		func(sdkgo.TriggerEvent[string]) (string, error) {
+			resolverCalled = true
+			return "flow-id", nil
+		},
+		func(sdkgo.TriggerEvent[string]) (string, error) {
+			inputBuilderCalled = true
+			return "input", nil
+		},
+	)
+
+	require.NoError(t, target.HandleTrigger(context.Background(), sdkgo.TriggerEvent[string]{ID: "event-id", Payload: "ignored"}))
+	require.False(t, resolverCalled)
+	require.False(t, inputBuilderCalled)
+}
+
+func TestDexRPCTriggerTargetReturnsFilterErrorBeforeRouting(t *testing.T) {
+	expectedError := errors.New("filter unavailable")
+	resolverCalled := false
+	flow := &filterTestFlow{}
+	target := sdkgo.NewDexRPCTriggerTarget(
+		&dex.Client{},
+		flow.ReceiveEvent,
+		func(sdkgo.TriggerEvent[string]) (bool, error) { return false, expectedError },
+		func(sdkgo.TriggerEvent[string]) (string, error) {
+			resolverCalled = true
+			return "flow-id", nil
+		},
+	)
+
+	err := target.HandleTrigger(context.Background(), sdkgo.TriggerEvent[string]{ID: "event-id", Payload: "retry"})
+	require.ErrorIs(t, err, expectedError)
+	require.ErrorContains(t, err, "filter RPC Trigger event")
+	require.False(t, resolverCalled)
 }

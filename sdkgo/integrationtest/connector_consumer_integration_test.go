@@ -329,16 +329,22 @@ func TestTriggerTargetsResolveFlowAndApplicationRPCOwnsDeduplicationWithRealDex(
 		return "connector-trigger-" + event.Payload.ThreadID, nil
 	}
 	flowID := "connector-trigger-" + threadID
-	startTarget := sdkgo.NewDexFlowTriggerTarget(harness.client, flow, resolveFlowID,
+	filterEvent := func(event sdkgo.TriggerEvent[triggerAdapterEvent]) (bool, error) {
+		return event.Payload.ThreadID == threadID, nil
+	}
+	startTarget := sdkgo.NewDexFlowTriggerTarget(harness.client, flow, filterEvent, resolveFlowID,
 		func(event sdkgo.TriggerEvent[triggerAdapterEvent]) (triggerAdapterInput, error) {
 			return triggerAdapterInput{EventID: event.ID}, nil
 		})
+	rejectedEvent := sdkgo.TriggerEvent[triggerAdapterEvent]{ID: "rejected-" + testRunID, Payload: triggerAdapterEvent{ThreadID: "other-thread"}}
+	require.NoError(t, startTarget.HandleTrigger(ctx, rejectedEvent))
 	rootEventID := "root-event-" + testRunID
 	rootEvent := sdkgo.TriggerEvent[triggerAdapterEvent]{ID: rootEventID, Payload: triggerAdapterEvent{ThreadID: threadID}}
 	require.NoError(t, startTarget.HandleTrigger(ctx, rootEvent))
 	require.NoError(t, startTarget.HandleTrigger(ctx, rootEvent))
 
-	replyTarget := sdkgo.NewDexRPCTriggerTarget(harness.client, flow.ApproveRequest, resolveFlowID)
+	replyTarget := sdkgo.NewDexRPCTriggerTarget(harness.client, flow.ApproveRequest, filterEvent, resolveFlowID)
+	require.NoError(t, replyTarget.HandleTrigger(ctx, rejectedEvent))
 	replyEventID := "reply-event-" + testRunID
 	replyEvent := sdkgo.TriggerEvent[triggerAdapterEvent]{ID: replyEventID, Payload: triggerAdapterEvent{ThreadID: threadID}}
 	require.Eventually(t, func() bool {

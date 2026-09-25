@@ -12,9 +12,17 @@ generic `NewQueryStep` and `NewMutationStep` APIs as an advanced escape hatch.
 Connector Trigger sources run outside Dex Steps and deliver typed, stable-ID
 events through `TriggerRunner`. Generated Trigger factories accept any typed
 `TriggerTarget`. Applications choose `NewDexFlowTriggerTarget`,
-`NewDexRPCTriggerTarget`, or a custom target and provide a typed
-`FlowIDResolver`. The SDK uses the provider event ID as the Flow-start request
-ID.
+`NewDexRPCTriggerTarget`, or a custom target. Both Dex targets require an
+application-owned `TriggerEventFilter` and `FlowIDResolver`. The filter runs
+before Flow ID resolution and returns false to consume an irrelevant event
+without calling Dex. Filter errors keep delivery retryable. Filters should be
+deterministic and side-effect free because a persisted delivery can be replayed
+after restart. The SDK uses the provider event ID as the Flow-start request ID.
+
+Provider Trigger configuration may reduce upstream traffic, but it is not the
+application admission boundary. Applications use the typed filter to enforce
+their own channel, sender, recipient, text, tenant, or other routing rules for
+both Flow starts and RPC invocations.
 
 RPC Trigger targets receive the same direct bound Flow method that the
 application registers with `dex.DefineRPC`. The method carries the Flow
