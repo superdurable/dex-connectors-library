@@ -12,7 +12,6 @@ on:
           - github
           - google/gmail
           - google/spreadsheet
-          - http
           - linkedin
           - openai
           - slack
@@ -136,7 +135,6 @@ jobs:
             'github') RELEASE_DISPLAY_NAME='GitHub' ;;
             'google/gmail') RELEASE_DISPLAY_NAME='Gmail' ;;
             'google/spreadsheet') RELEASE_DISPLAY_NAME='Google Sheets' ;;
-            'http') RELEASE_DISPLAY_NAME='HTTP and Webhook' ;;
             'linkedin') RELEASE_DISPLAY_NAME='LinkedIn' ;;
             'openai') RELEASE_DISPLAY_NAME='OpenAI' ;;
             'slack') RELEASE_DISPLAY_NAME='Slack' ;;

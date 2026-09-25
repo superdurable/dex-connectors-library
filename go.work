@@ -5,7 +5,6 @@ use (
 	./connectors/github
 	./connectors/google/gmail
 	./connectors/google/spreadsheet
-	./connectors/http
 	./connectors/linkedin
 	./connectors/openai
 	./connectors/slack

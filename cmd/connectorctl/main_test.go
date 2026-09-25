@@ -17,34 +17,33 @@ import (
 func TestCatalogLoadsRepositoryManifests(t *testing.T) {
 	manifests, err := catalog(filepath.Join("..", "..", "connectors"))
 	require.NoError(t, err)
-	require.Len(t, manifests, 7)
-	require.Equal(t, []string{"github", "gmail", "google-sheets", "http", "linkedin", "openai", "slack"}, []string{
+	require.Len(t, manifests, 6)
+	require.Equal(t, []string{"github", "gmail", "google-sheets", "linkedin", "openai", "slack"}, []string{
 		manifests[0].Metadata.Name, manifests[1].Metadata.Name, manifests[2].Metadata.Name,
-		manifests[3].Metadata.Name, manifests[4].Metadata.Name, manifests[5].Metadata.Name, manifests[6].Metadata.Name,
+		manifests[3].Metadata.Name, manifests[4].Metadata.Name, manifests[5].Metadata.Name,
 	})
-	require.Equal(t, []string{"structured", "text"}, manifests[5].Spec.Operations[0].Progress)
+	require.Equal(t, []string{"structured", "text"}, manifests[4].Spec.Operations[0].Progress)
 }
 
 func TestReleaseWorkflowIsGeneratedFromSortedCatalog(t *testing.T) {
 	root := filepath.Join("..", "..", "connectors")
 	entries, err := connectorReleaseCatalog(root)
 	require.NoError(t, err)
-	require.Equal(t, []string{"github", "google/gmail", "google/spreadsheet", "http", "linkedin", "openai", "slack"}, []string{
-		entries[0].Slug, entries[1].Slug, entries[2].Slug, entries[3].Slug, entries[4].Slug, entries[5].Slug, entries[6].Slug,
+	require.Equal(t, []string{"github", "google/gmail", "google/spreadsheet", "linkedin", "openai", "slack"}, []string{
+		entries[0].Slug, entries[1].Slug, entries[2].Slug, entries[3].Slug, entries[4].Slug, entries[5].Slug,
 	})
-	require.Equal(t, []string{"GitHub", "Gmail", "Google Sheets", "HTTP and Webhook", "LinkedIn", "OpenAI", "Slack"}, []string{
+	require.Equal(t, []string{"GitHub", "Gmail", "Google Sheets", "LinkedIn", "OpenAI", "Slack"}, []string{
 		entries[0].DisplayName, entries[1].DisplayName, entries[2].DisplayName, entries[3].DisplayName,
-		entries[4].DisplayName, entries[5].DisplayName, entries[6].DisplayName,
+		entries[4].DisplayName, entries[5].DisplayName,
 	})
 	output := filepath.Join(t.TempDir(), "release-connector.yml")
 	require.NoError(t, releaseWorkflow([]string{root, output}))
 	require.NoError(t, releaseWorkflow([]string{"--check", root, output}))
 	content, err := os.ReadFile(output)
 	require.NoError(t, err)
-	require.Contains(t, string(content), "          - github\n          - google/gmail\n          - google/spreadsheet\n          - http\n          - linkedin\n          - openai\n          - slack\n")
+	require.Contains(t, string(content), "          - github\n          - google/gmail\n          - google/spreadsheet\n          - linkedin\n          - openai\n          - slack\n")
 	require.Contains(t, string(content), "connectors/${{ inputs.connector }}")
 	require.Contains(t, string(content), "'google/spreadsheet') RELEASE_DISPLAY_NAME='Google Sheets' ;;")
-	require.Contains(t, string(content), "'http') RELEASE_DISPLAY_NAME='HTTP and Webhook' ;;")
 	require.Contains(t, string(content), `--title "${RELEASE_DISPLAY_NAME} ${RELEASE_VERSION}"`)
 	require.NotContains(t, string(content), `--title "Connector `)
 	require.NoError(t, os.WriteFile(output, []byte("stale"), 0o600))
@@ -88,7 +87,7 @@ func TestReleaseArtifactIsDeterministicAndVersioned(t *testing.T) {
 }
 
 func TestGeneratedConnectorsAreCurrent(t *testing.T) {
-	for _, manifest := range []string{"github", "google/gmail", "google/spreadsheet", "http", "linkedin", "openai", "slack"} {
+	for _, manifest := range []string{"github", "google/gmail", "google/spreadsheet", "linkedin", "openai", "slack"} {
 		path := filepath.Join("..", "..", "connectors", filepath.FromSlash(manifest), "connector.yaml")
 		require.NoError(t, generate([]string{"--check", path}))
 	}

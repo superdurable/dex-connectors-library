@@ -11,12 +11,12 @@ The first alpha includes:
   definitions, and operation Step defaults;
 - Dex-native Query/Mutation Step factories with typed branch targets, Result
   Attributes, stable Call IDs, idempotency keys, and application-owned Streams;
-- GitHub and LinkedIn signup profile, GitHub public-repository, generic
-  HTTP/Webhook, OpenAI Responses, Google Sheets, Gmail, and Slack connectors,
+- GitHub and LinkedIn signup profile, GitHub public-repository, OpenAI
+  Responses, Google Sheets, Gmail, and Slack connectors,
   including OpenAI SSE;
 - credential-free React primitives and a sandboxed Studio setup protocol;
 - a strict local-development connection file loader with generated named Connection helpers;
-- a deterministic mock provider and real-Dex Customer Onboarding fixtures.
+- real-Dex integration fixtures for public provider connectors.
 
 ## Quick start
 
@@ -49,10 +49,7 @@ npm test
 npm run build
 cd ../../../..
 
-cd connectors/http
-GOWORK=off go test -race ./...
-GOWORK=off go vet ./...
-cd ../linkedin
+cd connectors/linkedin
 GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
 cd ../openai
@@ -70,11 +67,10 @@ npm run build
 cd ../../..
 
 go test ./...
-go run ./cmd/connectorctl validate connectors/github/connector.yaml connectors/google/gmail/connector.yaml connectors/google/spreadsheet/connector.yaml connectors/http/connector.yaml connectors/linkedin/connector.yaml connectors/openai/connector.yaml
+go run ./cmd/connectorctl validate connectors/github/connector.yaml connectors/google/gmail/connector.yaml connectors/google/spreadsheet/connector.yaml connectors/linkedin/connector.yaml connectors/openai/connector.yaml connectors/slack/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/github/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/google/gmail/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/google/spreadsheet/connector.yaml
-go run ./cmd/connectorctl generate --check connectors/http/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/linkedin/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/openai/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/slack/connector.yaml
@@ -89,7 +85,7 @@ npm run build
 
 The Go SDK and every connector are independent Go modules.
 Their tags are directory-prefixed, including `sdkgo/vX.Y.Z`,
-`connectors/github/vX.Y.Z`, `connectors/http/vX.Y.Z`,
+`connectors/github/vX.Y.Z`,
 `connectors/linkedin/vX.Y.Z`, `connectors/openai/vX.Y.Z`,
 `connectors/google/spreadsheet/vX.Y.Z`, and `connectors/google/gmail/vX.Y.Z`.
 Slack uses `connectors/slack/vX.Y.Z`.

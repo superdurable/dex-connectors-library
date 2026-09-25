@@ -31,10 +31,7 @@ npm test
 npm run build
 cd ../../../..
 
-cd connectors/http
-GOWORK=off go test -race ./...
-GOWORK=off go vet ./...
-cd ../linkedin
+cd connectors/linkedin
 GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
 cd ../openai
@@ -45,11 +42,10 @@ cd ../..
 make check
 go test -race ./...
 go vet ./...
-go run ./cmd/connectorctl validate connectors/github/connector.yaml connectors/google/gmail/connector.yaml connectors/google/spreadsheet/connector.yaml connectors/http/connector.yaml connectors/linkedin/connector.yaml connectors/openai/connector.yaml
+go run ./cmd/connectorctl validate connectors/github/connector.yaml connectors/google/gmail/connector.yaml connectors/google/spreadsheet/connector.yaml connectors/linkedin/connector.yaml connectors/openai/connector.yaml connectors/slack/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/github/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/google/gmail/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/google/spreadsheet/connector.yaml
-go run ./cmd/connectorctl generate --check connectors/http/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/linkedin/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/openai/connector.yaml
 go run ./cmd/connectorctl release-workflow --check connectors .github/workflows/release-connector.yml
@@ -89,7 +85,7 @@ The suite must prove:
   secret fields without implementing provider OAuth;
 - `SecretString`, API keys, OAuth tokens, authorization headers, and provider
   bodies do not enter Result, Failure, Receipt, Stream, or logs;
-- HTTP and OpenAI provider classification, idempotency, response bounds, SSE,
+- OpenAI provider classification, idempotency, response bounds, SSE,
   uncertainty, and recovery tests remain green;
 - GitHub profile/email selection, scope/revocation branches, response bounds,
   public-only pagination, deduplication, sorting, truncation, and rate-limit
@@ -120,7 +116,7 @@ The integration suite verifies:
   operation-specific factories;
 - the fixture connector registers those factories in a real Dex Flow and
   preserves Call ID, idempotency, Attribute, Stream, and retry behavior;
-- Customer Onboarding registers factory Steps with typed `StepRef` targets;
+- provider connector examples register factory Steps with typed `StepRef` targets;
 - GitHub and LinkedIn signup profile factories persist their typed Result
   Attributes atomically with terminal transitions;
 - Query Retry succeeds under the generated Dex retry defaults;
@@ -162,19 +158,17 @@ The integration suite verifies:
    tag `connectors/github/v0.1.0` plus its release artifact.
 2. Run the opt-in GitHub live test with a dedicated account and exact
    `read:user user:email` scopes; confirm no private repository data is read.
-3. Existing releases remain `connectors/http/v0.1.0` and
-   `connectors/openai/v0.1.0`.
-4. Run `Release Connector` for `linkedin` with the default minor bump and
+3. Run `Release Connector` for `linkedin` with the default minor bump and
    confirm tag `connectors/linkedin/v0.1.0` plus its release artifact.
-5. Run the opt-in LinkedIn live test with a dedicated member and exact
+4. Run the opt-in LinkedIn live test with a dedicated member and exact
    `openid profile email` scopes; confirm only OIDC UserInfo claims are read.
-6. In clean temporary modules, download each public tag with `GOWORK=off` and
+5. In clean temporary modules, download each public tag with `GOWORK=off` and
    compile its operation-specific factory example.
-7. Confirm each release note contains only commits that changed that connector
+6. Confirm each release note contains only commits that changed that connector
    and retains `## Breaking Changes` with `None.` when appropriate.
-6. Run `Release Connector` for `google/spreadsheet` and confirm its independent
+7. Run `Release Connector` for `google/spreadsheet` and confirm its independent
    tag plus `connector-release.json` and `connector-ui.tgz` digests.
-7. Run `Release Connector` for `google/gmail` and confirm its own tag and UI
+8. Run `Release Connector` for `google/gmail` and confirm its own tag and UI
    artifacts contain no Sheets-only changes.
 
 The Dex CLI analyzer shipped in 0.11.3. Connector releases must retain a
@@ -184,7 +178,7 @@ and Stream edges in Dex Web 2.0.
 ## Documentation and UI/UX
 
 Contract changes update `connector-contract.md`; component/data flow changes
-update `architecture.md`; provider manifests and the Customer Onboarding README
-show canonical authoring. The shared G2c contract ships the bundle format and
+update `architecture.md`; provider manifests and their examples show canonical
+authoring. The shared G2c contract ships the bundle format and
 protocol; SuperVerse G6a owns the BFF loader, OAuth callbacks, credential
 broker, and Studio environment pages.
