@@ -23,11 +23,11 @@ var (
 	testMutationRef       = sdkgo.OperationRef{ConnectorID: "mock-provider", OperationID: "grantCredit"}
 	testQuerySucceeded    = sdkgo.BranchID("succeeded")
 	testQueryFailed       = sdkgo.BranchID("failed")
-	testQueryDefect       = sdkgo.BranchID("defect")
+	testQueryDefect       = sdkgo.DefectBranchID
 	testMutationSucceeded = sdkgo.BranchID("succeeded")
 	testMutationRejected  = sdkgo.BranchID("rejected")
-	testMutationUncertain = sdkgo.BranchID("uncertain")
-	testMutationDefect    = sdkgo.BranchID("defect")
+	testMutationUncertain = sdkgo.UncertainBranchID
+	testMutationDefect    = sdkgo.DefectBranchID
 )
 
 func queryDefinition(ref sdkgo.OperationRef) sdkgo.QueryDefinition {
@@ -38,7 +38,6 @@ func queryDefinition(ref sdkgo.OperationRef) sdkgo.QueryDefinition {
 			{ID: testQueryFailed, Description: "failed"},
 			{ID: testQueryDefect, Description: "defect"},
 		},
-		DefectBranch: testQueryDefect,
 	}
 }
 
@@ -51,7 +50,6 @@ func mutationDefinition(ref sdkgo.OperationRef) sdkgo.MutationDefinition {
 			{ID: testMutationUncertain, Description: "uncertain"},
 			{ID: testMutationDefect, Description: "defect"},
 		},
-		DefectBranch: testMutationDefect, UncertainBranch: testMutationUncertain,
 	}
 }
 
@@ -322,7 +320,7 @@ func TestZeroAttemptsFailClosed(t *testing.T) {
 
 	mutationResult, err := sdkgo.RunMutation(ctx, invalidMutation{}, testConnection, "credits")
 	require.NoError(t, err)
-	require.Equal(t, testMutationUncertain, mutationResult.Branch)
+	require.Equal(t, testMutationDefect, mutationResult.Branch)
 	require.Equal(t, sdkgo.FailureLocalDefect, mutationResult.Failure.Kind)
 
 	queryResult, err = sdkgo.RunQuery(ctx, &queryOperation{
@@ -335,7 +333,7 @@ func TestZeroAttemptsFailClosed(t *testing.T) {
 		useSet: true, attempt: sdkgo.NewMutationBranch("unknown", "", nil, sdkgo.Receipt{}),
 	}, testConnection, "credits")
 	require.NoError(t, err)
-	require.Equal(t, testMutationUncertain, mutationResult.Branch)
+	require.Equal(t, testMutationDefect, mutationResult.Branch)
 
 	invalidRetry := sdkgo.Failure{Kind: "MADE_UP", Provider: "mock", Operation: "query", Message: "invalid"}
 	queryResult, err = sdkgo.RunQuery(ctx, &queryOperation{
@@ -348,7 +346,7 @@ func TestZeroAttemptsFailClosed(t *testing.T) {
 		useSet: true, attempt: sdkgo.NewMutationRetry[string](invalidRetry, 0),
 	}, testConnection, "credits")
 	require.NoError(t, err)
-	require.Equal(t, testMutationUncertain, mutationResult.Branch)
+	require.Equal(t, testMutationDefect, mutationResult.Branch)
 }
 
 type invalidQuery struct{}

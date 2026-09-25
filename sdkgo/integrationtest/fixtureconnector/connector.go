@@ -116,7 +116,6 @@ func (lookupWidgetOperation) Definition() sdkgo.QueryDefinition {
 			{ID: lookupWidgetFailed, Description: "The lookup was rejected."},
 			{ID: lookupWidgetDefect, Description: "The connector definition is invalid."},
 		},
-		DefectBranch: lookupWidgetDefect,
 		StepDefaults: sdkgo.StepDefaults{
 			ExecuteMethodTimeout: 10 * time.Second,
 			ExecuteRetry:         &dex.RetryPolicy{MaximumAttempts: 3, InitialInterval: 10 * time.Millisecond},
@@ -154,9 +153,6 @@ func (createWidgetOperation) Definition() sdkgo.MutationDefinition {
 			{ID: createWidgetUncertain, Description: "The provider outcome is unknown."},
 			{ID: createWidgetDefect, Description: "The connector definition is invalid."},
 		},
-		DefectBranch:    createWidgetDefect,
-		UncertainBranch: createWidgetUncertain,
-		Progress:        sdkgo.ProgressCapabilities{Structured: true},
 		StepDefaults: sdkgo.StepDefaults{
 			ExecuteMethodTimeout: 10 * time.Second,
 			ExecuteRetry:         &dex.RetryPolicy{MaximumAttempts: 3, InitialInterval: 10 * time.Millisecond},

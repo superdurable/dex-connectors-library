@@ -21,13 +21,6 @@ func TestWrongFactoryTargetInputDoesNotCompile(t *testing.T) {
 	require.Contains(t, string(output), "cannot use")
 }
 
-func TestLegacyConnectorAPIDoesNotCompile(t *testing.T) {
-	command := exec.Command("go", "test", "./testdata/compile-fail-legacy-api")
-	output, err := command.CombinedOutput()
-	require.Error(t, err)
-	require.Contains(t, string(output), "undefined")
-}
-
 func TestTypedTargetBindsGeneratedBranch(t *testing.T) {
 	target := sdkgo.GoTo(factoryTarget{})
 	operation := &factoryQuery{definition: queryDefinition(testQueryRef)}
@@ -129,9 +122,8 @@ func TestFactoryMapsOperationInputBeforeInvokingProvider(t *testing.T) {
 	require.Equal(t, 1, operation.calls)
 }
 
-func TestFactoryValidatesResourcesAndOverlaysExecuteOptions(t *testing.T) {
+func TestFactoryUsesConfiguredResourcesAndOverlaysExecuteOptions(t *testing.T) {
 	definition := queryDefinition(testQueryRef)
-	definition.Progress = sdkgo.ProgressCapabilities{Structured: true, Text: true}
 	definition.StepDefaults = sdkgo.StepDefaults{
 		ExecuteMethodTimeout: 30 * time.Second,
 		ExecuteRetry:         &dex.RetryPolicy{MaximumAttempts: 5},

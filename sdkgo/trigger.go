@@ -265,8 +265,8 @@ func NewDexRPCTriggerTarget[EVENT, INPUT, OUTPUT any](
 			return nil
 		}
 		flowID := resolveFlowID(event)
-		if strings.TrimSpace(flowID) == "" {
-			return fmt.Errorf("RPC trigger requires a Flow ID")
+		if strings.TrimSpace(flowID) == "" || strings.TrimSpace(event.ID) == "" {
+			return fmt.Errorf("RPC trigger requires Flow ID and event ID")
 		}
 		var output OUTPUT
 		return client.InvokeRPC(ctx, flowID, rpc, mapToRPCInput(event), &output)

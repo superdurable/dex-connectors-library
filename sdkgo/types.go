@@ -70,14 +70,16 @@ func (ref OperationRef) Validate() error {
 // BranchID is one stable, operation-defined process route.
 type BranchID string
 
+const (
+	// DefectBranchID is the standard route for local Connector defects.
+	DefectBranchID BranchID = "defect"
+	// UncertainBranchID is the optional route for dispatched mutations with unknown outcomes.
+	UncertainBranchID BranchID = "uncertain"
+)
+
 type BranchDefinition struct {
 	ID          BranchID `json:"id" yaml:"id"`
 	Description string   `json:"description" yaml:"description"`
-}
-
-type ProgressCapabilities struct {
-	Structured bool `json:"structured" yaml:"structured"`
-	Text       bool `json:"text" yaml:"text"`
 }
 
 // StepDefaults are the execute-only Dex options owned by an operation definition.
@@ -89,20 +91,15 @@ type StepDefaults struct {
 }
 
 type QueryDefinition struct {
-	Operation    OperationRef         `json:"operation" yaml:"operation"`
-	Branches     []BranchDefinition   `json:"branches" yaml:"branches"`
-	DefectBranch BranchID             `json:"defectBranch" yaml:"defectBranch"`
-	StepDefaults StepDefaults         `json:"stepDefaults" yaml:"stepDefaults"`
-	Progress     ProgressCapabilities `json:"progress" yaml:"progress"`
+	Operation    OperationRef       `json:"operation" yaml:"operation"`
+	Branches     []BranchDefinition `json:"branches" yaml:"branches"`
+	StepDefaults StepDefaults       `json:"stepDefaults" yaml:"stepDefaults"`
 }
 
 type MutationDefinition struct {
-	Operation       OperationRef         `json:"operation" yaml:"operation"`
-	Branches        []BranchDefinition   `json:"branches" yaml:"branches"`
-	DefectBranch    BranchID             `json:"defectBranch" yaml:"defectBranch"`
-	UncertainBranch BranchID             `json:"uncertainBranch" yaml:"uncertainBranch"`
-	StepDefaults    StepDefaults         `json:"stepDefaults" yaml:"stepDefaults"`
-	Progress        ProgressCapabilities `json:"progress" yaml:"progress"`
+	Operation    OperationRef       `json:"operation" yaml:"operation"`
+	Branches     []BranchDefinition `json:"branches" yaml:"branches"`
+	StepDefaults StepDefaults       `json:"stepDefaults" yaml:"stepDefaults"`
 }
 
 type Query[IN, OUT any] interface {
@@ -272,11 +269,11 @@ func RunQuery[IN, OUT any](ctx dex.Context, operation Query[IN, OUT], connection
 
 func RunMutation[IN, OUT any](ctx dex.Context, operation Mutation[IN, OUT], connection ConnectionRef, input IN, options ...RunOption) (MutationResult[OUT], error) {
 	if nilValue(operation) {
-		return uncertainMutation[OUT](MutationDefinition{}, "connector mutation is required"), nil
+		return failedMutation[OUT](MutationDefinition{}, "connector mutation is required"), nil
 	}
 	definition := operation.Definition()
 	if err := definition.Validate(); err != nil {
-		return uncertainMutation[OUT](definition, "invalid mutation definition: "+err.Error()), nil
+		return failedMutation[OUT](definition, "invalid mutation definition: "+err.Error()), nil
 	}
 	call, err := newCall(ctx, definition.Operation, connection)
 	if err != nil {
@@ -330,16 +327,16 @@ func mutationResult[T any](call Call, definition MutationDefinition, attempt Mut
 	switch attempt.kind {
 	case mutationAttemptBranch:
 		if !definition.hasBranch(attempt.branch) {
-			return uncertainMutationForCall[T](definition, call, "mutation returned an unknown branch"), nil
+			return failedMutationForCall[T](definition, call, "mutation returned an unknown branch"), nil
 		}
 		if attempt.hasFailure {
 			if err := attempt.failure.validate(); err != nil {
-				return uncertainMutationForCall[T](definition, call, "mutation returned an invalid failure: "+err.Error()), nil
+				return failedMutationForCall[T](definition, call, "mutation returned an invalid failure: "+err.Error()), nil
 			}
 		}
 		receipt, err := completeReceipt(attempt.receipt, call)
 		if err != nil {
-			return uncertainMutationForCall[T](definition, call, err.Error()), nil
+			return failedMutationForCall[T](definition, call, err.Error()), nil
 		}
 		result := MutationResult[T]{Branch: attempt.branch, Value: attempt.value, Receipt: receipt}
 		if attempt.hasFailure {
@@ -347,21 +344,24 @@ func mutationResult[T any](call Call, definition MutationDefinition, attempt Mut
 		}
 		return result, nil
 	case mutationAttemptUncertain:
+		if !definition.hasBranch(UncertainBranchID) {
+			return failedMutationForCall[T](definition, call, "mutation returned uncertainty without declaring the uncertain branch"), nil
+		}
 		if err := attempt.failure.validate(); err != nil {
-			return uncertainMutationForCall[T](definition, call, "mutation returned an invalid failure: "+err.Error()), nil
+			return failedMutationForCall[T](definition, call, "mutation returned an invalid uncertainty failure: "+err.Error()), nil
 		}
 		receipt, err := completeReceipt(attempt.receipt, call)
 		if err != nil {
-			return uncertainMutationForCall[T](definition, call, err.Error()), nil
+			return failedMutationForCall[T](definition, call, err.Error()), nil
 		}
-		return MutationResult[T]{Branch: definition.UncertainBranch, Value: attempt.value, Receipt: receipt, Failure: &attempt.failure}, nil
+		return MutationResult[T]{Branch: UncertainBranchID, Value: attempt.value, Receipt: receipt, Failure: &attempt.failure}, nil
 	case mutationAttemptRetry:
 		if err := attempt.failure.validate(); err != nil || attempt.retryAfter < 0 {
-			return uncertainMutationForCall[T](definition, call, "mutation returned an invalid retry attempt"), nil
+			return failedMutationForCall[T](definition, call, "mutation returned an invalid retry attempt"), nil
 		}
 		return MutationResult[T]{}, retryError(attempt.failure, attempt.retryAfter)
 	default:
-		return uncertainMutationForCall[T](definition, call, "mutation returned an invalid attempt"), nil
+		return failedMutationForCall[T](definition, call, "mutation returned an invalid attempt"), nil
 	}
 }
 
@@ -454,7 +454,7 @@ func completeReceipt(receipt Receipt, call Call) (Receipt, error) {
 
 func failedQuery[T any](definition QueryDefinition, message string) QueryResult[T] {
 	failure := localFailure(definition.Operation, message)
-	return QueryResult[T]{Branch: definition.DefectBranch, Failure: &failure}
+	return QueryResult[T]{Branch: DefectBranchID, Failure: &failure}
 }
 
 func failedQueryForCall[T any](definition QueryDefinition, call Call, message string) QueryResult[T] {
@@ -465,24 +465,13 @@ func failedQueryForCall[T any](definition QueryDefinition, call Call, message st
 
 func failedMutation[T any](definition MutationDefinition, message string) MutationResult[T] {
 	failure := localFailure(definition.Operation, message)
-	return MutationResult[T]{Branch: definition.DefectBranch, Failure: &failure}
+	return MutationResult[T]{Branch: DefectBranchID, Failure: &failure}
 }
 
 func failedMutationForCall[T any](definition MutationDefinition, call Call, message string) MutationResult[T] {
 	result := failedMutation[T](definition, message)
 	result.Receipt, _ = completeReceipt(Receipt{}, call)
 	return result
-}
-
-func uncertainMutation[T any](definition MutationDefinition, message string) MutationResult[T] {
-	failure := localFailure(definition.Operation, message)
-	return MutationResult[T]{Branch: definition.UncertainBranch, Failure: &failure}
-}
-
-func uncertainMutationForCall[T any](definition MutationDefinition, call Call, message string) MutationResult[T] {
-	failure := localFailure(call.Operation, message)
-	receipt, _ := completeReceipt(Receipt{}, call)
-	return MutationResult[T]{Branch: definition.UncertainBranch, Receipt: receipt, Failure: &failure}
 }
 
 func localFailure(operation OperationRef, message string) Failure {
