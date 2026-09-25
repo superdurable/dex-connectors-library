@@ -190,6 +190,15 @@ def module_path(module_root: Path) -> str:
 
 def build_current_artifacts(root: Path, output: Path) -> None:
     commit = run(["git", "rev-parse", "HEAD"], root).stdout.strip()
+    matrix_output = run([
+        "go", "run", "./cmd/connectorctl", "release-matrix",
+        "--registry", "connectors.yaml", "--include-published",
+    ], root).stdout
+    release_matrix = json.loads(matrix_output)
+    declared_versions = {
+        item["manifest_path"]: item["version"]
+        for item in release_matrix["include"]
+    }
     run(["npm", "ci"], root / "sdk" / "react")
     run(["npm", "run", "build"], root / "sdk" / "react")
     for manifest in manifests(root):
@@ -204,7 +213,9 @@ def build_current_artifacts(root: Path, output: Path) -> None:
             run(["go", "run", "./cmd/connectorctl", "ui-artifact", "--manifest", str(manifest), "--ui-root", str(ui / "dist"), "--output", str(destination / "connector-ui.tgz"), "--digest-output", str(destination / "connector-ui.tgz.sha256")], root)
             arguments = ["--ui-artifact", str(destination / "connector-ui.tgz"), "--ui-digest", str(destination / "connector-ui.tgz.sha256")]
         relative = connector_root.relative_to(root).as_posix()
-        run(["go", "run", "./cmd/connectorctl", "release-artifact", "--manifest", str(manifest), "--module-path", module_path(connector_root), "--version", SYNTHETIC_VERSION, "--tag", f"{relative}/{SYNTHETIC_VERSION}", "--source-sha", commit, "--output", str(destination / "connector-release.json"), "--digest-output", str(destination / "connector-release.json.sha256"), *arguments], root)
+        manifest_path = manifest.relative_to(root).as_posix()
+        version = declared_versions[manifest_path]
+        run(["go", "run", "./cmd/connectorctl", "release-artifact", "--manifest", str(manifest), "--module-path", module_path(connector_root), "--version", version, "--tag", f"{relative}/{version}", "--source-sha", commit, "--output", str(destination / "connector-release.json"), "--digest-output", str(destination / "connector-release.json.sha256"), *arguments], root)
         release = json.loads((destination / "connector-release.json").read_text())
         print(f"Current artifact: connector={release['connectorId']} tag={release['tag']} commit={commit} digest={checksum_entry((destination / 'connector-release.json.sha256').read_text(), 'connector-release.json')}", flush=True)
 
