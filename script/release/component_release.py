@@ -236,7 +236,7 @@ def validate_connector(component_path: str, sdk_module: str) -> str:
         raise ValueError(f"connector must require exactly one {sdk_module} version")
     version = str(sdk_requirements[0].get("Version") or "")
     parse_version(version)
-    sdk_tag = f"sdk/go/{version}"
+    sdk_tag = f"sdkgo/{version}"
     if git("show-ref", "--verify", "--quiet", f"refs/tags/{sdk_tag}", check=False).returncode != 0:
         raise ValueError(f"connector SDK release tag is missing: {sdk_tag}")
     if git("merge-base", "--is-ancestor", sdk_tag, "HEAD", check=False).returncode != 0:

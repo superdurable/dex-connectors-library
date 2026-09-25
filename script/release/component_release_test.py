@@ -27,11 +27,11 @@ class ComponentReleaseTest(unittest.TestCase):
         self.git("init", "-b", "main")
         self.git("config", "user.email", "release-test@example.com")
         self.git("config", "user.name", "Release Test")
-        module = self.repository / "sdk/go"
+        module = self.repository / "sdkgo"
         module.mkdir(parents=True)
-        (module / "go.mod").write_text("module example.com/connectors/sdk/go\n\ngo 1.24\n", encoding="utf-8")
-        (module / "sdk.go").write_text("package connector\n", encoding="utf-8")
-        self.commit("sdk(go): initial SDK")
+        (module / "go.mod").write_text("module example.com/connectors/sdkgo\n\ngo 1.24\n", encoding="utf-8")
+        (module / "sdk.go").write_text("package sdkgo\n", encoding="utf-8")
+        self.commit("sdkgo: initial SDK")
 
     def git(self, *arguments: str) -> str:
         return subprocess.run(
@@ -50,16 +50,16 @@ class ComponentReleaseTest(unittest.TestCase):
         previous = Path.cwd()
         os.chdir(self.repository)
         self.addCleanup(os.chdir, previous)
-        return release.create_plan("sdk/go", "sdk/go/", bump)
+        return release.create_plan("sdkgo", "sdkgo/", bump)
 
     def connector(self, go_mod_suffix: str = "") -> Path:
-        self.git("tag", "sdk/go/v0.1.0")
+        self.git("tag", "sdkgo/v0.1.0")
         module = self.repository / "connectors/openai"
         module.mkdir(parents=True)
         (module / "go.mod").write_text(
             "module example.com/connectors/openai\n\n"
             "go 1.24\n\n"
-            "require github.com/superdurable/dex-connectors-library/sdk/go v0.1.0\n"
+            "require github.com/superdurable/dex-connectors-library/sdkgo v0.1.0\n"
             + go_mod_suffix,
             encoding="utf-8",
         )
@@ -70,32 +70,32 @@ class ComponentReleaseTest(unittest.TestCase):
     def test_first_release_is_v010(self) -> None:
         plan = self.plan("minor")
         self.assertEqual(plan.version, "v0.1.0")
-        self.assertEqual(plan.tag, "sdk/go/v0.1.0")
+        self.assertEqual(plan.tag, "sdkgo/v0.1.0")
 
     def test_minor_and_patch_follow_latest_component_tag(self) -> None:
-        self.git("tag", "sdk/go/v0.1.0")
-        (self.repository / "sdk/go/sdk.go").write_text("package connector\n\nconst Version = 2\n", encoding="utf-8")
-        self.commit("sdk(go): add API")
+        self.git("tag", "sdkgo/v0.1.0")
+        (self.repository / "sdkgo/sdk.go").write_text("package sdkgo\n\nconst Version = 2\n", encoding="utf-8")
+        self.commit("sdkgo: add API")
         self.assertEqual(self.plan("minor").version, "v0.2.0")
         self.assertEqual(self.plan("patch").version, "v0.1.1")
 
     def test_major_resets_minor_and_patch(self) -> None:
-        self.git("tag", "sdk/go/v0.7.4")
-        (self.repository / "sdk/go/sdk.go").write_text("package connector\n\nconst Version = 2\n", encoding="utf-8")
-        self.commit("sdk(go): add API")
+        self.git("tag", "sdkgo/v0.7.4")
+        (self.repository / "sdkgo/sdk.go").write_text("package sdkgo\n\nconst Version = 2\n", encoding="utf-8")
+        self.commit("sdkgo: add API")
         self.assertEqual(self.plan("major").version, "v1.0.0")
 
     def test_unrelated_change_does_not_create_release(self) -> None:
-        self.git("tag", "sdk/go/v0.1.0")
+        self.git("tag", "sdkgo/v0.1.0")
         (self.repository / "README.md").write_text("docs\n", encoding="utf-8")
         self.commit("docs: update")
         with self.assertRaisesRegex(ValueError, "no changes"):
             self.plan("minor")
 
     def test_breaking_notes_reject_v0_patch(self) -> None:
-        self.git("tag", "sdk/go/v0.1.0")
-        (self.repository / "sdk/go/sdk.go").write_text("package connector\n\nconst Version = 2\n", encoding="utf-8")
-        self.commit("sdk(go): replace API (breaking)")
+        self.git("tag", "sdkgo/v0.1.0")
+        (self.repository / "sdkgo/sdk.go").write_text("package sdkgo\n\nconst Version = 2\n", encoding="utf-8")
+        self.commit("sdkgo: replace API (breaking)")
         plan = self.plan("patch")
         previous = Path.cwd()
         os.chdir(self.repository)
@@ -112,9 +112,9 @@ class ComponentReleaseTest(unittest.TestCase):
             release.validate_release_ref("refs/heads/feature")
 
     def test_v1_breaking_change_requires_major(self) -> None:
-        self.git("tag", "sdk/go/v1.2.0")
-        (self.repository / "sdk/go/sdk.go").write_text("package connector\n\nconst Version = 2\n", encoding="utf-8")
-        self.commit("sdk(go): replace API (breaking)")
+        self.git("tag", "sdkgo/v1.2.0")
+        (self.repository / "sdkgo/sdk.go").write_text("package sdkgo\n\nconst Version = 2\n", encoding="utf-8")
+        self.commit("sdkgo: replace API (breaking)")
         plan = self.plan("minor")
         previous = Path.cwd()
         os.chdir(self.repository)
@@ -140,31 +140,31 @@ class ComponentReleaseTest(unittest.TestCase):
         self.addCleanup(setattr, release.subprocess, "run", original_run)
         self.assertEqual(
             release.validate_connector(
-                "connectors/openai", "github.com/superdurable/dex-connectors-library/sdk/go"
+                "connectors/openai", "github.com/superdurable/dex-connectors-library/sdkgo"
             ),
             "v0.1.0",
         )
 
     def test_connector_rejects_replace_and_pseudo_version(self) -> None:
         module = self.connector(
-            "\nreplace github.com/superdurable/dex-connectors-library/sdk/go => ../../sdk/go\n"
+            "\nreplace github.com/superdurable/dex-connectors-library/sdkgo => ../../sdkgo\n"
         )
         previous = Path.cwd()
         os.chdir(self.repository)
         self.addCleanup(os.chdir, previous)
         with self.assertRaisesRegex(ValueError, "replace directives"):
             release.validate_connector(
-                "connectors/openai", "github.com/superdurable/dex-connectors-library/sdk/go"
+                "connectors/openai", "github.com/superdurable/dex-connectors-library/sdkgo"
             )
         (module / "go.mod").write_text(
             "module example.com/connectors/openai\n\n"
             "go 1.24\n\n"
-            "require github.com/superdurable/dex-connectors-library/sdk/go v0.0.0-20260923000000-deadbeefdead\n",
+            "require github.com/superdurable/dex-connectors-library/sdkgo v0.0.0-20260923000000-deadbeefdead\n",
             encoding="utf-8",
         )
         with self.assertRaisesRegex(ValueError, "invalid stable semantic version"):
             release.validate_connector(
-                "connectors/openai", "github.com/superdurable/dex-connectors-library/sdk/go"
+                "connectors/openai", "github.com/superdurable/dex-connectors-library/sdkgo"
             )
 
     def test_connector_plan_ignores_other_component_tags(self) -> None:

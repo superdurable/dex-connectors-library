@@ -31,8 +31,8 @@ import (
 	openai "github.com/superdurable/dex-connectors-library/connectors/openai"
 	customeronboarding "github.com/superdurable/dex-connectors-library/examples/customer-onboarding"
 	mockprovider "github.com/superdurable/dex-connectors-library/examples/customer-onboarding/internal/mockprovider"
-	connector "github.com/superdurable/dex-connectors-library/sdk/go"
-	"github.com/superdurable/dex-connectors-library/sdk/go/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -72,9 +72,9 @@ func TestGitHubFactoryPersistsAuthenticatedProfileWithRealDex(t *testing.T) {
 		}
 	}))
 	defer server.Close()
-	reference := connector.ConnectionRef{Provider: "github", Name: "signup"}
-	client, err := githubconnector.New(githubconnector.Config{BaseURL: server.URL}, connector.StaticCredentialProvider[githubconnector.Credentials]{
-		reference: {AccessToken: connector.NewSecretString("one-use-token")},
+	reference := sdkgo.ConnectionRef{Provider: "github", Name: "signup"}
+	client, err := githubconnector.New(githubconnector.Config{BaseURL: server.URL}, sdkgo.StaticCredentialProvider[githubconnector.Credentials]{
+		reference: {AccessToken: sdkgo.NewSecretString("one-use-token")},
 	})
 	require.NoError(t, err)
 	connection, err := githubconnector.NewConnection(client, reference)
@@ -161,9 +161,9 @@ func TestLinkedInFactoryPersistsAuthenticatedProfileWithRealDex(t *testing.T) {
 		_, _ = response.Write([]byte(`{"sub":"member-42","name":"Ada Lovelace","email":"ada@example.com","email_verified":true}`))
 	}))
 	defer server.Close()
-	reference := connector.ConnectionRef{Provider: "linkedin", Name: "signup"}
-	client, err := linkedinconnector.New(linkedinconnector.Config{UserInfoURL: server.URL + "/v2/userinfo"}, connector.StaticCredentialProvider[linkedinconnector.Credentials]{
-		reference: {AccessToken: connector.NewSecretString("one-use-token")},
+	reference := sdkgo.ConnectionRef{Provider: "linkedin", Name: "signup"}
+	client, err := linkedinconnector.New(linkedinconnector.Config{UserInfoURL: server.URL + "/v2/userinfo"}, sdkgo.StaticCredentialProvider[linkedinconnector.Credentials]{
+		reference: {AccessToken: sdkgo.NewSecretString("one-use-token")},
 	})
 	require.NoError(t, err)
 	connection, err := linkedinconnector.NewConnection(client, reference)
@@ -269,9 +269,9 @@ func TestGoogleSheetsFactoryCommitsResultAndTransition(t *testing.T) {
 		}
 	}))
 	defer server.Close()
-	connectionRef := connector.ConnectionRef{Provider: "google", Name: "sheets"}
-	client, err := spreadsheet.New(spreadsheet.Config{Endpoint: server.URL}, connector.StaticCredentialProvider[spreadsheet.Credentials]{
-		connectionRef: {AccessToken: connector.NewSecretString("token")},
+	connectionRef := sdkgo.ConnectionRef{Provider: "google", Name: "sheets"}
+	client, err := spreadsheet.New(spreadsheet.Config{Endpoint: server.URL}, sdkgo.StaticCredentialProvider[spreadsheet.Credentials]{
+		connectionRef: {AccessToken: sdkgo.NewSecretString("token")},
 	})
 	require.NoError(t, err)
 	connection, err := spreadsheet.NewConnection(client, connectionRef)
@@ -288,7 +288,7 @@ func TestGoogleSheetsFactoryCommitsResultAndTransition(t *testing.T) {
 	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
 	require.NoError(t, err)
 	require.Equal(t, dex.FlowCompleted, result.Status)
-	var output connector.MutationResult[spreadsheet.UpsertRowOutput]
+	var output sdkgo.MutationResult[spreadsheet.UpsertRowOutput]
 	require.NoError(t, result.DecodeSingleOutput(&output))
 	require.Equal(t, spreadsheet.UpsertRowBranchUpserted, output.Branch)
 	require.Equal(t, "inserted", output.Value.Action)
@@ -302,9 +302,9 @@ func TestGmailFactoryRoutesUnknownWithoutResend(t *testing.T) {
 		response.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer server.Close()
-	connectionRef := connector.ConnectionRef{Provider: "google", Name: "gmail"}
-	client, err := gmail.New(gmail.Config{Endpoint: server.URL}, connector.StaticCredentialProvider[gmail.Credentials]{
-		connectionRef: {AccessToken: connector.NewSecretString("token"), PrimaryEmail: "owner@example.com"},
+	connectionRef := sdkgo.ConnectionRef{Provider: "google", Name: "gmail"}
+	client, err := gmail.New(gmail.Config{Endpoint: server.URL}, sdkgo.StaticCredentialProvider[gmail.Credentials]{
+		connectionRef: {AccessToken: sdkgo.NewSecretString("token"), PrimaryEmail: "owner@example.com"},
 	})
 	require.NoError(t, err)
 	connection, err := gmail.NewConnection(client, connectionRef)
@@ -321,7 +321,7 @@ func TestGmailFactoryRoutesUnknownWithoutResend(t *testing.T) {
 	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
 	require.NoError(t, err)
 	require.Equal(t, dex.FlowCompleted, result.Status)
-	var branch connector.BranchID
+	var branch sdkgo.BranchID
 	require.NoError(t, result.DecodeSingleOutput(&branch))
 	require.Equal(t, gmail.SendMessageBranchUncertain, branch)
 	require.Equal(t, int32(1), requests.Load())
@@ -354,24 +354,24 @@ func TestGmailLocalConnectionRejectsExpiredCredentialsBeforeProviderCall(t *test
 	require.NoError(t, err)
 	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
 	require.NoError(t, err)
-	var branch connector.BranchID
+	var branch sdkgo.BranchID
 	require.NoError(t, result.DecodeSingleOutput(&branch))
 	require.Equal(t, gmail.SendMessageBranchRejected, branch)
 	require.Zero(t, requests.Load())
 }
 
 var (
-	githubProfileResult             = dex.DefineAttribute[connector.QueryResult[githubconnector.AuthenticatedProfile]]("github-profile-result")
-	linkedinProfileResult           = dex.DefineAttribute[connector.QueryResult[linkedinconnector.AuthenticatedProfile]]("linkedin-profile-result")
-	openAIProgress                  = dex.DefineStream[connector.ProgressUpdate]("openai-progress", 1<<20)
+	githubProfileResult             = dex.DefineAttribute[sdkgo.QueryResult[githubconnector.AuthenticatedProfile]]("github-profile-result")
+	linkedinProfileResult           = dex.DefineAttribute[sdkgo.QueryResult[linkedinconnector.AuthenticatedProfile]]("linkedin-profile-result")
+	openAIProgress                  = dex.DefineStream[sdkgo.ProgressUpdate]("openai-progress", 1<<20)
 	openAIText                      = dex.DefineStream[string]("openai-text", 1<<20)
-	openAIResult                    = dex.DefineAttribute[connector.MutationResult[openai.Response]]("openai-result")
-	retryProgress                   = dex.DefineStream[connector.ProgressUpdate]("retry-progress", 1<<20)
-	sheetsIntegrationResult         = dex.DefineAttribute[connector.MutationResult[spreadsheet.UpsertRowOutput]]("sheets-integration-result")
-	gmailIntegrationResult          = dex.DefineAttribute[connector.MutationResult[gmail.SendMessageOutput]]("gmail-integration-result")
-	integrationQueryBranchSucceeded = connector.BranchID("succeeded")
-	integrationQueryBranchFailed    = connector.BranchID("failed")
-	integrationQueryBranchDefect    = connector.BranchID("defect")
+	openAIResult                    = dex.DefineAttribute[sdkgo.MutationResult[openai.Response]]("openai-result")
+	retryProgress                   = dex.DefineStream[sdkgo.ProgressUpdate]("retry-progress", 1<<20)
+	sheetsIntegrationResult         = dex.DefineAttribute[sdkgo.MutationResult[spreadsheet.UpsertRowOutput]]("sheets-integration-result")
+	gmailIntegrationResult          = dex.DefineAttribute[sdkgo.MutationResult[gmail.SendMessageOutput]]("gmail-integration-result")
+	integrationQueryBranchSucceeded = sdkgo.BranchID("succeeded")
+	integrationQueryBranchFailed    = sdkgo.BranchID("failed")
+	integrationQueryBranchDefect    = sdkgo.BranchID("defect")
 )
 
 type githubProfileFlow struct {
@@ -384,20 +384,20 @@ func (flow githubProfileFlow) GetSteps() []dex.StepDef {
 	step := githubconnector.NewGetAuthenticatedProfileStep(githubconnector.GetAuthenticatedProfileStepConfig[struct{}]{
 		StepType:       "ReadGitHubSignupProfile",
 		ConnectionName: flow.connectionName,
-		Presentation: connector.StepPresentation{
+		Presentation: sdkgo.StepPresentation{
 			GroupID: "signup", GroupLabel: "Signup", Explanation: "Read the authenticated GitHub signup profile.",
 		},
 		Connection: flow.connection,
 		BuildInput: func(struct{}) (githubconnector.GetAuthenticatedProfileInput, error) {
 			return githubconnector.GetAuthenticatedProfileInput{}, nil
 		},
-		ProfileLoaded:         connector.GoTo(githubProfileTerminalStep{}),
-		VerifiedEmailRequired: connector.GoTo(githubProfileTerminalStep{}),
-		InsufficientScope:     connector.GoTo(githubProfileTerminalStep{}),
-		AuthorizationRevoked:  connector.GoTo(githubProfileTerminalStep{}),
-		NotFound:              connector.GoTo(githubProfileTerminalStep{}),
-		Failed:                connector.GoTo(githubProfileTerminalStep{}),
-		Defect:                connector.GoTo(githubProfileTerminalStep{}),
+		ProfileLoaded:         sdkgo.GoTo(githubProfileTerminalStep{}),
+		VerifiedEmailRequired: sdkgo.GoTo(githubProfileTerminalStep{}),
+		InsufficientScope:     sdkgo.GoTo(githubProfileTerminalStep{}),
+		AuthorizationRevoked:  sdkgo.GoTo(githubProfileTerminalStep{}),
+		NotFound:              sdkgo.GoTo(githubProfileTerminalStep{}),
+		Failed:                sdkgo.GoTo(githubProfileTerminalStep{}),
+		Defect:                sdkgo.GoTo(githubProfileTerminalStep{}),
 		ResultAttribute:       &githubProfileResult,
 	})
 	return []dex.StepDef{dex.DefineStartStep(step), dex.DefineStep(githubProfileTerminalStep{})}
@@ -433,20 +433,20 @@ type linkedinProfileFlow struct {
 func (flow linkedinProfileFlow) GetSteps() []dex.StepDef {
 	step := linkedinconnector.NewGetAuthenticatedProfileStep(linkedinconnector.GetAuthenticatedProfileStepConfig[struct{}]{
 		StepType: "ReadLinkedInSignupProfile",
-		Presentation: connector.StepPresentation{
+		Presentation: sdkgo.StepPresentation{
 			GroupID: "signup", GroupLabel: "Signup", Explanation: "Read the authenticated LinkedIn OIDC signup profile.",
 		},
 		Connection: flow.connection,
 		BuildInput: func(struct{}) (linkedinconnector.GetAuthenticatedProfileInput, error) {
 			return linkedinconnector.GetAuthenticatedProfileInput{}, nil
 		},
-		ProfileLoaded:         connector.GoTo(linkedinProfileTerminalStep{}),
-		VerifiedEmailRequired: connector.GoTo(linkedinProfileTerminalStep{}),
-		InsufficientScope:     connector.GoTo(linkedinProfileTerminalStep{}),
-		AuthorizationRevoked:  connector.GoTo(linkedinProfileTerminalStep{}),
-		NotFound:              connector.GoTo(linkedinProfileTerminalStep{}),
-		Failed:                connector.GoTo(linkedinProfileTerminalStep{}),
-		Defect:                connector.GoTo(linkedinProfileTerminalStep{}),
+		ProfileLoaded:         sdkgo.GoTo(linkedinProfileTerminalStep{}),
+		VerifiedEmailRequired: sdkgo.GoTo(linkedinProfileTerminalStep{}),
+		InsufficientScope:     sdkgo.GoTo(linkedinProfileTerminalStep{}),
+		AuthorizationRevoked:  sdkgo.GoTo(linkedinProfileTerminalStep{}),
+		NotFound:              sdkgo.GoTo(linkedinProfileTerminalStep{}),
+		Failed:                sdkgo.GoTo(linkedinProfileTerminalStep{}),
+		Defect:                sdkgo.GoTo(linkedinProfileTerminalStep{}),
 		ResultAttribute:       &linkedinProfileResult,
 	})
 	return []dex.StepDef{dex.DefineStartStep(step), dex.DefineStep(linkedinProfileTerminalStep{})}
@@ -474,17 +474,17 @@ func (linkedinProfileTerminalStep) Execute(ctx dex.Context, output linkedinconne
 	return dex.GracefulComplete(output.Result.Value), nil
 }
 
-func integrationQueryDefinition(operationID string, progress bool) connector.QueryDefinition {
-	return connector.QueryDefinition{
-		Operation: connector.OperationRef{ConnectorID: "mock", OperationID: operationID},
-		Branches: []connector.BranchDefinition{
+func integrationQueryDefinition(operationID string, progress bool) sdkgo.QueryDefinition {
+	return sdkgo.QueryDefinition{
+		Operation: sdkgo.OperationRef{ConnectorID: "mock", OperationID: operationID},
+		Branches: []sdkgo.BranchDefinition{
 			{ID: integrationQueryBranchSucceeded, Description: "succeeded"},
 			{ID: integrationQueryBranchFailed, Description: "failed"},
 			{ID: integrationQueryBranchDefect, Description: "defect"},
 		},
 		DefectBranch:    integrationQueryBranchDefect,
-		ResultAttribute: connector.RequirementOptional,
-		Progress:        connector.ProgressCapabilities{Structured: progress},
+		ResultAttribute: sdkgo.RequirementOptional,
+		Progress:        sdkgo.ProgressCapabilities{Structured: progress},
 	}
 }
 
@@ -502,9 +502,9 @@ func TestOpenAIStreamingWritesRealDexStreams(t *testing.T) {
 		}, "\n\n") + "\n\n"))
 	}))
 	defer server.Close()
-	connection := connector.ConnectionRef{Provider: "openai", Name: "default"}
-	client, err := openai.New(openai.Config{Endpoint: server.URL}, connector.StaticCredentialProvider[openai.Credentials]{
-		connection: {APIKey: connector.NewSecretString("test-key")},
+	connection := sdkgo.ConnectionRef{Provider: "openai", Name: "default"}
+	client, err := openai.New(openai.Config{Endpoint: server.URL}, sdkgo.StaticCredentialProvider[openai.Credentials]{
+		connection: {APIKey: sdkgo.NewSecretString("test-key")},
 	})
 	require.NoError(t, err)
 	typedConnection, err := openai.NewConnection(client, connection)
@@ -527,7 +527,7 @@ func TestOpenAIStreamingWritesRealDexStreams(t *testing.T) {
 	require.Equal(t, "hello", output.Text)
 	require.Equal(t, 3, output.TotalTokens)
 
-	var progressPage dex.StreamMessagesPage[connector.ProgressUpdate]
+	var progressPage dex.StreamMessagesPage[sdkgo.ProgressUpdate]
 	require.NoError(t, harness.client.ListStreamMessages(ctx, flowID, openAIProgress, 10, "", &progressPage))
 	require.Len(t, progressPage.Messages, 1)
 	update := progressPage.Messages[0].Value
@@ -555,10 +555,10 @@ func TestProgressStreamDistinguishesDexRetryAttempts(t *testing.T) {
 	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
 	require.NoError(t, err)
 	require.Equal(t, dex.FlowCompleted, result.Status)
-	var callID connector.CallID
+	var callID sdkgo.CallID
 	require.NoError(t, result.DecodeSingleOutput(&callID))
 
-	var page dex.StreamMessagesPage[connector.ProgressUpdate]
+	var page dex.StreamMessagesPage[sdkgo.ProgressUpdate]
 	require.NoError(t, harness.client.ListStreamMessages(ctx, flowID, retryProgress, 10, "", &page))
 	require.Len(t, page.Messages, 2)
 	require.Equal(t, callID, page.Messages[0].Value.CallID)
@@ -576,16 +576,16 @@ type sheetsIntegrationFlow struct {
 func (flow *sheetsIntegrationFlow) GetSteps() []dex.StepDef {
 	step := spreadsheet.NewUpsertRowStep(spreadsheet.UpsertRowStepConfig[string]{
 		StepType:     "IntegrationUpsertSheetRow",
-		Presentation: connector.StepPresentation{GroupID: "google", GroupLabel: "Google", Explanation: "Upsert a customer row."},
+		Presentation: sdkgo.StepPresentation{GroupID: "google", GroupLabel: "Google", Explanation: "Upsert a customer row."},
 		Connection:   flow.connection,
 		BuildInput: func(accountID string) (spreadsheet.UpsertRowInput, error) {
 			return spreadsheet.UpsertRowInput{SpreadsheetID: "sheet", SheetName: "Customers", KeyColumn: "accountId", KeyValue: accountID, Values: map[string]string{"name": "Ada"}}, nil
 		},
-		Upserted:        connector.GoTo(sheetsIntegrationFinishedStep{}),
-		Conflict:        connector.GoTo(sheetsIntegrationFinishedStep{}),
-		Rejected:        connector.GoTo(sheetsIntegrationFinishedStep{}),
-		Uncertain:       connector.GoTo(sheetsIntegrationFinishedStep{}),
-		Defect:          connector.GoTo(sheetsIntegrationFinishedStep{}),
+		Upserted:        sdkgo.GoTo(sheetsIntegrationFinishedStep{}),
+		Conflict:        sdkgo.GoTo(sheetsIntegrationFinishedStep{}),
+		Rejected:        sdkgo.GoTo(sheetsIntegrationFinishedStep{}),
+		Uncertain:       sdkgo.GoTo(sheetsIntegrationFinishedStep{}),
+		Defect:          sdkgo.GoTo(sheetsIntegrationFinishedStep{}),
 		ResultAttribute: &sheetsIntegrationResult,
 	})
 	return []dex.StepDef{dex.DefineStartStep(step), dex.DefineStep(sheetsIntegrationFinishedStep{})}
@@ -613,15 +613,15 @@ func (flow *gmailIntegrationFlow) GetSteps() []dex.StepDef {
 	step := gmail.NewSendMessageStep(gmail.SendMessageStepConfig[string]{
 		StepType:       "IntegrationSendGmailMessage",
 		ConnectionName: flow.connectionName,
-		Presentation:   connector.StepPresentation{GroupID: "google", GroupLabel: "Google", Explanation: "Send a customer message."},
+		Presentation:   sdkgo.StepPresentation{GroupID: "google", GroupLabel: "Google", Explanation: "Send a customer message."},
 		Connection:     flow.connection,
 		BuildInput: func(recipient string) (gmail.SendMessageInput, error) {
 			return gmail.SendMessageInput{To: []string{recipient}, Subject: "Progress", TextBody: "Keep going"}, nil
 		},
-		Sent:            connector.GoTo(gmailIntegrationFinishedStep{}),
-		Rejected:        connector.GoTo(gmailIntegrationFinishedStep{}),
-		Uncertain:       connector.GoTo(gmailIntegrationFinishedStep{}),
-		Defect:          connector.GoTo(gmailIntegrationFinishedStep{}),
+		Sent:            sdkgo.GoTo(gmailIntegrationFinishedStep{}),
+		Rejected:        sdkgo.GoTo(gmailIntegrationFinishedStep{}),
+		Uncertain:       sdkgo.GoTo(gmailIntegrationFinishedStep{}),
+		Defect:          sdkgo.GoTo(gmailIntegrationFinishedStep{}),
 		ResultAttribute: &gmailIntegrationResult,
 	})
 	return []dex.StepDef{dex.DefineStartStep(step), dex.DefineStep(gmailIntegrationFinishedStep{})}
@@ -688,9 +688,9 @@ func TestOpenAIEarlyEOFReconcilesByResponseID(t *testing.T) {
 		}
 	}))
 	defer server.Close()
-	connection := connector.ConnectionRef{Provider: "openai", Name: "default"}
-	client, err := openai.New(openai.Config{Endpoint: server.URL}, connector.StaticCredentialProvider[openai.Credentials]{
-		connection: {APIKey: connector.NewSecretString("test-key")},
+	connection := sdkgo.ConnectionRef{Provider: "openai", Name: "default"}
+	client, err := openai.New(openai.Config{Endpoint: server.URL}, sdkgo.StaticCredentialProvider[openai.Credentials]{
+		connection: {APIKey: sdkgo.NewSecretString("test-key")},
 	})
 	require.NoError(t, err)
 	flow := &openAIRecoveryFlow{client: client, connection: connection}
@@ -714,10 +714,10 @@ func TestOpenAIEarlyEOFReconcilesByResponseID(t *testing.T) {
 }
 
 type openAIStreamingOutput struct {
-	CallID      connector.CallID   `json:"callId"`
-	Branch      connector.BranchID `json:"branch"`
-	Text        string             `json:"text"`
-	TotalTokens int                `json:"totalTokens"`
+	CallID      sdkgo.CallID   `json:"callId"`
+	Branch      sdkgo.BranchID `json:"branch"`
+	Text        string         `json:"text"`
+	TotalTokens int            `json:"totalTokens"`
 }
 
 type openAIStreamingFlow struct {
@@ -728,17 +728,17 @@ type openAIStreamingFlow struct {
 func (flow *openAIStreamingFlow) GetSteps() []dex.StepDef {
 	step := openai.NewCreateResponseStep(openai.CreateResponseStepConfig[struct{}]{
 		StepType: "OpenAIStreaming",
-		Presentation: connector.StepPresentation{
+		Presentation: sdkgo.StepPresentation{
 			GroupID: "openai", GroupLabel: "OpenAI", Explanation: "Create a streaming OpenAI response.",
 		},
 		Connection: flow.connection,
 		BuildInput: func(struct{}) (openai.CreateRequest, error) {
 			return openai.CreateRequest{Model: "gpt-test", Input: "stream this"}, nil
 		},
-		Completed:       connector.GoTo(openAIStreamingSucceededStep{}),
-		Failed:          connector.GoTo(openAIStreamingFailedStep{}),
-		Uncertain:       connector.GoTo(openAIStreamingFailedStep{}),
-		Defect:          connector.GoTo(openAIStreamingFailedStep{}),
+		Completed:       sdkgo.GoTo(openAIStreamingSucceededStep{}),
+		Failed:          sdkgo.GoTo(openAIStreamingFailedStep{}),
+		Uncertain:       sdkgo.GoTo(openAIStreamingFailedStep{}),
+		Defect:          sdkgo.GoTo(openAIStreamingFailedStep{}),
 		ResultAttribute: &openAIResult, ProgressStream: &openAIProgress, TextStream: &openAIText,
 		TextOptions: []dex.BufferedTextStreamOption{dex.BufferedTextStreamMaxBytes(1)},
 	})
@@ -757,10 +757,10 @@ func (*openAIStreamingFlow) GetPersistenceSchema() dex.PersistenceSchema {
 }
 
 type openAIStreamingSucceededStep struct {
-	dex.StepDefaultsNoWaitFor[connector.MutationStepOutput[struct{}, openai.Response]]
+	dex.StepDefaultsNoWaitFor[sdkgo.MutationStepOutput[struct{}, openai.Response]]
 }
 
-func (openAIStreamingSucceededStep) Execute(_ dex.Context, output connector.MutationStepOutput[struct{}, openai.Response]) (*dex.StepDecision, error) {
+func (openAIStreamingSucceededStep) Execute(_ dex.Context, output sdkgo.MutationStepOutput[struct{}, openai.Response]) (*dex.StepDecision, error) {
 	result := output.Result
 	return dex.GracefulComplete(openAIStreamingOutput{
 		CallID: result.Receipt.CallID, Branch: result.Branch,
@@ -769,10 +769,10 @@ func (openAIStreamingSucceededStep) Execute(_ dex.Context, output connector.Muta
 }
 
 type openAIStreamingFailedStep struct {
-	dex.StepDefaultsNoWaitFor[connector.MutationStepOutput[struct{}, openai.Response]]
+	dex.StepDefaultsNoWaitFor[sdkgo.MutationStepOutput[struct{}, openai.Response]]
 }
 
-func (openAIStreamingFailedStep) Execute(_ dex.Context, output connector.MutationStepOutput[struct{}, openai.Response]) (*dex.StepDecision, error) {
+func (openAIStreamingFailedStep) Execute(_ dex.Context, output sdkgo.MutationStepOutput[struct{}, openai.Response]) (*dex.StepDecision, error) {
 	return dex.ForceFail("OpenAI streaming ended on branch " + string(output.Result.Branch)), nil
 }
 
@@ -791,9 +791,9 @@ type retryProgressStep struct {
 }
 
 func (retryProgressStep) Execute(ctx dex.Context, _ struct{}) (*dex.StepDecision, error) {
-	result, err := connector.RunQuery(
-		ctx, retryProgressQuery{}, connector.ConnectionRef{Provider: "mock", Name: "default"}, struct{}{},
-		connector.WithProgressStream(retryProgress),
+	result, err := sdkgo.RunQuery(
+		ctx, retryProgressQuery{}, sdkgo.ConnectionRef{Provider: "mock", Name: "default"}, struct{}{},
+		sdkgo.WithProgressStream(retryProgress),
 	)
 	if err != nil {
 		return nil, err
@@ -803,22 +803,22 @@ func (retryProgressStep) Execute(ctx dex.Context, _ struct{}) (*dex.StepDecision
 
 type retryProgressQuery struct{}
 
-func (retryProgressQuery) Definition() connector.QueryDefinition {
+func (retryProgressQuery) Definition() sdkgo.QueryDefinition {
 	return integrationQueryDefinition("retryProgress", true)
 }
 
-func (retryProgressQuery) Invoke(call connector.Call, _ struct{}) connector.QueryAttempt[struct{}] {
-	if err := call.ReportProgress(connector.Progress{Phase: "attempt"}); err != nil {
-		return connector.NewQueryRetry[struct{}](connector.Failure{
-			Kind: connector.FailureAvailability, Provider: "mock", Operation: "retryProgress", Message: "progress delivery failed",
+func (retryProgressQuery) Invoke(call sdkgo.Call, _ struct{}) sdkgo.QueryAttempt[struct{}] {
+	if err := call.ReportProgress(sdkgo.Progress{Phase: "attempt"}); err != nil {
+		return sdkgo.NewQueryRetry[struct{}](sdkgo.Failure{
+			Kind: sdkgo.FailureAvailability, Provider: "mock", Operation: "retryProgress", Message: "progress delivery failed",
 		}, 0)
 	}
 	if call.Context.Attempt() == 1 {
-		return connector.NewQueryRetry[struct{}](connector.Failure{
-			Kind: connector.FailureAvailability, Provider: "mock", Operation: "retryProgress", Message: "retry fixture",
+		return sdkgo.NewQueryRetry[struct{}](sdkgo.Failure{
+			Kind: sdkgo.FailureAvailability, Provider: "mock", Operation: "retryProgress", Message: "retry fixture",
 		}, 10*time.Millisecond)
 	}
-	return connector.NewQueryBranch(integrationQueryBranchSucceeded, struct{}{}, nil, connector.Receipt{})
+	return sdkgo.NewQueryBranch(integrationQueryBranchSucceeded, struct{}{}, nil, sdkgo.Receipt{})
 }
 
 type queryFailureFlow struct {
@@ -826,22 +826,22 @@ type queryFailureFlow struct {
 	calls *atomic.Int32
 }
 
-var missingSchemaResult = dex.DefineAttribute[connector.QueryResult[struct{}]]("missing-schema-result")
+var missingSchemaResult = dex.DefineAttribute[sdkgo.QueryResult[struct{}]]("missing-schema-result")
 
 type missingSchemaFlow struct{ dex.FlowDefaults }
 
 func (missingSchemaFlow) GetSteps() []dex.StepDef {
-	step := connector.MustNewQueryStep(connector.QueryStepConfig[struct{}, struct{}, struct{}]{
+	step := sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[struct{}, struct{}, struct{}]{
 		StepType: "MissingSchemaQuery",
-		Presentation: connector.StepPresentation{
+		Presentation: sdkgo.StepPresentation{
 			GroupID: "test", GroupLabel: "Test", Explanation: "Verify missing schema registration fails.",
 		},
-		Operation: missingSchemaQuery{}, Connection: connector.ConnectionRef{Provider: "mock", Name: "default"},
+		Operation: missingSchemaQuery{}, Connection: sdkgo.ConnectionRef{Provider: "mock", Name: "default"},
 		BuildInput: func(struct{}) (struct{}, error) { return struct{}{}, nil },
-		Branches: []connector.BranchTarget[connector.QueryStepOutput[struct{}, struct{}]]{
-			connector.GoToBranch(integrationQueryBranchSucceeded, missingSchemaTerminalStep{}),
-			connector.GoToBranch(integrationQueryBranchFailed, missingSchemaTerminalStep{}),
-			connector.GoToBranch(integrationQueryBranchDefect, missingSchemaTerminalStep{}),
+		Branches: []sdkgo.BranchTarget[sdkgo.QueryStepOutput[struct{}, struct{}]]{
+			sdkgo.GoToBranch(integrationQueryBranchSucceeded, missingSchemaTerminalStep{}),
+			sdkgo.GoToBranch(integrationQueryBranchFailed, missingSchemaTerminalStep{}),
+			sdkgo.GoToBranch(integrationQueryBranchDefect, missingSchemaTerminalStep{}),
 		},
 		ResultAttribute:     &missingSchemaResult,
 		StepOptionsOverride: &dex.StepOptions{ExecuteRetry: &dex.RetryPolicy{MaximumAttempts: 1}},
@@ -853,21 +853,21 @@ func (missingSchemaFlow) GetPersistenceSchema() dex.PersistenceSchema { return d
 
 type missingSchemaQuery struct{}
 
-func (missingSchemaQuery) Definition() connector.QueryDefinition {
+func (missingSchemaQuery) Definition() sdkgo.QueryDefinition {
 	definition := integrationQueryDefinition("missingSchema", false)
-	definition.ResultAttribute = connector.RequirementRequired
+	definition.ResultAttribute = sdkgo.RequirementRequired
 	return definition
 }
 
-func (missingSchemaQuery) Invoke(connector.Call, struct{}) connector.QueryAttempt[struct{}] {
-	return connector.NewQueryBranch(integrationQueryBranchSucceeded, struct{}{}, nil, connector.Receipt{})
+func (missingSchemaQuery) Invoke(sdkgo.Call, struct{}) sdkgo.QueryAttempt[struct{}] {
+	return sdkgo.NewQueryBranch(integrationQueryBranchSucceeded, struct{}{}, nil, sdkgo.Receipt{})
 }
 
 type missingSchemaTerminalStep struct {
-	dex.StepDefaultsNoWaitFor[connector.QueryStepOutput[struct{}, struct{}]]
+	dex.StepDefaultsNoWaitFor[sdkgo.QueryStepOutput[struct{}, struct{}]]
 }
 
-func (missingSchemaTerminalStep) Execute(dex.Context, connector.QueryStepOutput[struct{}, struct{}]) (*dex.StepDecision, error) {
+func (missingSchemaTerminalStep) Execute(dex.Context, sdkgo.QueryStepOutput[struct{}, struct{}]) (*dex.StepDecision, error) {
 	return dex.GracefulComplete(struct{}{}), nil
 }
 
@@ -885,9 +885,9 @@ type queryFailureStep struct {
 }
 
 func (step queryFailureStep) Execute(ctx dex.Context, _ struct{}) (*dex.StepDecision, error) {
-	result, err := connector.RunQuery(
+	result, err := sdkgo.RunQuery(
 		ctx, terminalFailureQuery{calls: step.calls},
-		connector.ConnectionRef{Provider: "mock", Name: "default"}, struct{}{},
+		sdkgo.ConnectionRef{Provider: "mock", Name: "default"}, struct{}{},
 	)
 	if err != nil {
 		return nil, err
@@ -900,22 +900,22 @@ func (step queryFailureStep) Execute(ctx dex.Context, _ struct{}) (*dex.StepDeci
 
 type terminalFailureQuery struct{ calls *atomic.Int32 }
 
-func (terminalFailureQuery) Definition() connector.QueryDefinition {
+func (terminalFailureQuery) Definition() sdkgo.QueryDefinition {
 	return integrationQueryDefinition("terminalFailure", false)
 }
 
-func (operation terminalFailureQuery) Invoke(connector.Call, struct{}) connector.QueryAttempt[struct{}] {
+func (operation terminalFailureQuery) Invoke(sdkgo.Call, struct{}) sdkgo.QueryAttempt[struct{}] {
 	operation.calls.Add(1)
-	failure := connector.Failure{
-		Kind: connector.FailureNotFound, Provider: "mock", Operation: "terminalFailure", Message: "object was not found",
+	failure := sdkgo.Failure{
+		Kind: sdkgo.FailureNotFound, Provider: "mock", Operation: "terminalFailure", Message: "object was not found",
 	}
-	return connector.NewQueryBranch(integrationQueryBranchFailed, struct{}{}, &failure, connector.Receipt{})
+	return sdkgo.NewQueryBranch(integrationQueryBranchFailed, struct{}{}, &failure, sdkgo.Receipt{})
 }
 
 type openAIRecoveryFlow struct {
 	dex.FlowDefaults
 	client     *openai.Client
-	connection connector.ConnectionRef
+	connection sdkgo.ConnectionRef
 }
 
 func (flow *openAIRecoveryFlow) GetSteps() []dex.StepDef {
@@ -932,14 +932,14 @@ func (*openAIRecoveryFlow) GetPersistenceSchema() dex.PersistenceSchema {
 type openAIRecoveryStartStep struct {
 	dex.StepDefaultsNoWaitFor[struct{}]
 	client     *openai.Client
-	connection connector.ConnectionRef
+	connection sdkgo.ConnectionRef
 }
 
 func (step openAIRecoveryStartStep) Execute(ctx dex.Context, _ struct{}) (*dex.StepDecision, error) {
-	result, err := connector.RunMutation(
+	result, err := sdkgo.RunMutation(
 		ctx, step.client.CreateResponse(), step.connection,
 		openai.CreateRequest{Model: "gpt-test", Input: "recover this"},
-		connector.WithProgressStream(openAIProgress),
+		sdkgo.WithProgressStream(openAIProgress),
 	)
 	if err != nil {
 		return nil, err
@@ -953,11 +953,11 @@ func (step openAIRecoveryStartStep) Execute(ctx dex.Context, _ struct{}) (*dex.S
 type openAIRetrieveStep struct {
 	dex.StepDefaultsNoWaitFor[openai.RetrieveRequest]
 	client     *openai.Client
-	connection connector.ConnectionRef
+	connection sdkgo.ConnectionRef
 }
 
 func (step openAIRetrieveStep) Execute(ctx dex.Context, input openai.RetrieveRequest) (*dex.StepDecision, error) {
-	result, err := connector.RunQuery(ctx, step.client.RetrieveResponse(), step.connection, input)
+	result, err := sdkgo.RunQuery(ctx, step.client.RetrieveResponse(), step.connection, input)
 	if err != nil {
 		return nil, err
 	}
@@ -984,8 +984,8 @@ func (*rpcBoundaryFlow) GetPersistenceSchema() dex.PersistenceSchema {
 	return dex.PersistenceSchema{}
 }
 
-func (flow *rpcBoundaryFlow) AttemptProviderQuery(ctx dex.Context, connection connector.ConnectionRef) (*dex.RPCResult[bool], error) {
-	result, err := connector.RunQuery(ctx, flow.query, connection, httpconnector.Request{
+func (flow *rpcBoundaryFlow) AttemptProviderQuery(ctx dex.Context, connection sdkgo.ConnectionRef) (*dex.RPCResult[bool], error) {
+	result, err := sdkgo.RunQuery(ctx, flow.query, connection, httpconnector.Request{
 		Method: http.MethodGet, Path: "/profiles/customer-rpc",
 	})
 	return &dex.RPCResult[bool]{Output: err == nil && result.Branch == httpconnector.QueryBranchSucceeded}, err
@@ -1057,13 +1057,13 @@ func (harness *dexHarness) stopWorker(t *testing.T) {
 	harness.workerResult = nil
 }
 
-func connectorClient(t *testing.T, provider *mockprovider.Provider) (connector.ConnectionRef, httpconnector.Connection, *httpconnector.Client) {
+func connectorClient(t *testing.T, provider *mockprovider.Provider) (sdkgo.ConnectionRef, httpconnector.Connection, *httpconnector.Client) {
 	t.Helper()
-	connection := connector.ConnectionRef{Provider: "mock", Name: "default"}
+	connection := sdkgo.ConnectionRef{Provider: "mock", Name: "default"}
 	client, err := httpconnector.New(httpconnector.Config{
 		BaseURL: provider.URL(), CredentialHeaders: map[string]string{"api_key": "X-Mock-Api-Key"},
-	}, connector.StaticCredentialProvider[httpconnector.Credentials]{
-		connection: {APIKey: connector.NewSecretString("test-key")},
+	}, sdkgo.StaticCredentialProvider[httpconnector.Credentials]{
+		connection: {APIKey: sdkgo.NewSecretString("test-key")},
 	})
 	require.NoError(t, err)
 	typedConnection, err := httpconnector.NewConnection(client, connection)

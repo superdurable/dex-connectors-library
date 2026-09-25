@@ -19,7 +19,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	connector "github.com/superdurable/dex-connectors-library/sdk/go"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 
 const userAgent = "superdurable-dex-linkedin-connector/0.1"
@@ -38,7 +38,7 @@ type Client struct {
 	userInfoURL      *url.URL
 	maxResponseBytes int64
 	httpClient       *http.Client
-	credentials      connector.CredentialProvider[Credentials]
+	credentials      sdkgo.CredentialProvider[Credentials]
 }
 
 type GetAuthenticatedProfileInput struct{}
@@ -75,7 +75,7 @@ type providerResponse struct {
 
 var errResponseTooLarge = errors.New("LinkedIn response exceeds the configured size limit")
 
-func New(config Config, credentials connector.CredentialProvider[Credentials], options ...Option) (*Client, error) {
+func New(config Config, credentials sdkgo.CredentialProvider[Credentials], options ...Option) (*Client, error) {
 	config = withConfigDefaults(config)
 	if err := config.Validate(); err != nil {
 		return nil, err
@@ -121,59 +121,59 @@ func (client *Client) GetAuthenticatedProfile() GetAuthenticatedProfileOperation
 	return GetAuthenticatedProfileOperation{client: client}
 }
 
-func (GetAuthenticatedProfileOperation) Definition() connector.QueryDefinition {
+func (GetAuthenticatedProfileOperation) Definition() sdkgo.QueryDefinition {
 	return GetAuthenticatedProfileDefinition
 }
 
-func (operation GetAuthenticatedProfileOperation) Invoke(call connector.Call, _ GetAuthenticatedProfileInput) connector.QueryAttempt[AuthenticatedProfile] {
+func (operation GetAuthenticatedProfileOperation) Invoke(call sdkgo.Call, _ GetAuthenticatedProfileInput) sdkgo.QueryAttempt[AuthenticatedProfile] {
 	credential, failure := operation.client.resolveCredential(call)
 	if failure != nil {
-		return connector.NewQueryBranch(GetAuthenticatedProfileBranchAuthorizationRevoked, AuthenticatedProfile{}, failure, connector.Receipt{})
+		return sdkgo.NewQueryBranch(GetAuthenticatedProfileBranchAuthorizationRevoked, AuthenticatedProfile{}, failure, sdkgo.Receipt{})
 	}
 	response, err := operation.client.get(call, credential)
 	if err != nil {
 		if errors.Is(err, errResponseTooLarge) {
-			failure := providerFailure(connector.FailureResponseTooLarge, "LinkedIn UserInfo response exceeds the configured size limit")
-			return connector.NewQueryBranch(GetAuthenticatedProfileBranchFailed, AuthenticatedProfile{}, &failure, receipt(response))
+			failure := providerFailure(sdkgo.FailureResponseTooLarge, "LinkedIn UserInfo response exceeds the configured size limit")
+			return sdkgo.NewQueryBranch(GetAuthenticatedProfileBranchFailed, AuthenticatedProfile{}, &failure, receipt(response))
 		}
-		return connector.NewQueryRetry[AuthenticatedProfile](providerFailure(connector.FailureAvailability, "LinkedIn is unavailable"), 0)
+		return sdkgo.NewQueryRetry[AuthenticatedProfile](providerFailure(sdkgo.FailureAvailability, "LinkedIn is unavailable"), 0)
 	}
 	if attempt := classifyResponse(response); attempt != nil {
 		return *attempt
 	}
 	var claims userInfo
 	if err := decodeJSON(response.body, &claims); err != nil {
-		failure := providerFailure(connector.FailureProtocol, "LinkedIn returned an invalid UserInfo response")
-		return connector.NewQueryBranch(GetAuthenticatedProfileBranchFailed, AuthenticatedProfile{}, &failure, receipt(response))
+		failure := providerFailure(sdkgo.FailureProtocol, "LinkedIn returned an invalid UserInfo response")
+		return sdkgo.NewQueryBranch(GetAuthenticatedProfileBranchFailed, AuthenticatedProfile{}, &failure, receipt(response))
 	}
 	subject := strings.TrimSpace(claims.Subject)
 	if subject == "" || len(subject) > 255 || !utf8.ValidString(subject) {
-		failure := providerFailure(connector.FailureProtocol, "LinkedIn returned an invalid UserInfo response")
-		return connector.NewQueryBranch(GetAuthenticatedProfileBranchFailed, AuthenticatedProfile{}, &failure, receipt(response))
+		failure := providerFailure(sdkgo.FailureProtocol, "LinkedIn returned an invalid UserInfo response")
+		return sdkgo.NewQueryBranch(GetAuthenticatedProfileBranchFailed, AuthenticatedProfile{}, &failure, receipt(response))
 	}
 	email := verifiedEmail(claims.Email, claims.EmailVerified)
 	if email == "" {
-		failure := providerFailure(connector.FailureAuthentication, "LinkedIn verified email is required")
-		return connector.NewQueryBranch(GetAuthenticatedProfileBranchVerifiedEmailRequired, AuthenticatedProfile{}, &failure, receipt(response))
+		failure := providerFailure(sdkgo.FailureAuthentication, "LinkedIn verified email is required")
+		return sdkgo.NewQueryBranch(GetAuthenticatedProfileBranchVerifiedEmailRequired, AuthenticatedProfile{}, &failure, receipt(response))
 	}
 	profile := AuthenticatedProfile{
 		Subject: subject, Name: boundedString(claims.Name, 256),
 		GivenName: boundedString(claims.GivenName, 128), FamilyName: boundedString(claims.FamilyName, 128),
 		PictureURL: safeURL(claims.Picture), Locale: normalizeLocale(claims.Locale), VerifiedEmail: email,
 	}
-	return connector.NewQueryBranch(GetAuthenticatedProfileBranchProfileLoaded, profile, nil, receipt(response))
+	return sdkgo.NewQueryBranch(GetAuthenticatedProfileBranchProfileLoaded, profile, nil, receipt(response))
 }
 
-func (client *Client) resolveCredential(call connector.Call) (Credentials, *connector.Failure) {
+func (client *Client) resolveCredential(call sdkgo.Call) (Credentials, *sdkgo.Failure) {
 	credential, err := client.credentials.Resolve(call)
 	if err != nil || credential.Validate() != nil {
-		failure := providerFailure(connector.FailureAuthentication, "LinkedIn authorization is unavailable or revoked")
+		failure := providerFailure(sdkgo.FailureAuthentication, "LinkedIn authorization is unavailable or revoked")
 		return Credentials{}, &failure
 	}
 	return credential, nil
 }
 
-func (client *Client) get(call connector.Call, credential Credentials) (providerResponse, error) {
+func (client *Client) get(call sdkgo.Call, credential Credentials) (providerResponse, error) {
 	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, client.userInfoURL.String(), nil)
 	if err != nil {
 		return providerResponse{}, err
@@ -201,49 +201,49 @@ func (client *Client) get(call connector.Call, credential Credentials) (provider
 	return result, nil
 }
 
-func classifyResponse(response providerResponse) *connector.QueryAttempt[AuthenticatedProfile] {
+func classifyResponse(response providerResponse) *sdkgo.QueryAttempt[AuthenticatedProfile] {
 	receipt := receipt(response)
 	if response.statusCode >= 200 && response.statusCode < 300 {
 		return nil
 	}
 	if response.statusCode == http.StatusTooManyRequests {
-		attempt := connector.NewQueryRetry[AuthenticatedProfile](
-			providerFailure(connector.FailureRateLimit, "LinkedIn rate limit was reached"), retryDelay(response.header),
+		attempt := sdkgo.NewQueryRetry[AuthenticatedProfile](
+			providerFailure(sdkgo.FailureRateLimit, "LinkedIn rate limit was reached"), retryDelay(response.header),
 		)
 		return &attempt
 	}
-	var branch connector.BranchID
-	var failure connector.Failure
+	var branch sdkgo.BranchID
+	var failure sdkgo.Failure
 	switch response.statusCode {
 	case http.StatusUnauthorized:
 		branch = GetAuthenticatedProfileBranchAuthorizationRevoked
-		failure = providerFailure(connector.FailureAuthentication, "LinkedIn authorization is invalid or revoked")
+		failure = providerFailure(sdkgo.FailureAuthentication, "LinkedIn authorization is invalid or revoked")
 	case http.StatusForbidden:
 		branch = GetAuthenticatedProfileBranchInsufficientScope
-		failure = providerFailure(connector.FailureAuthorization, "LinkedIn authorization is forbidden or lacks scope")
+		failure = providerFailure(sdkgo.FailureAuthorization, "LinkedIn authorization is forbidden or lacks scope")
 	case http.StatusNotFound:
 		branch = GetAuthenticatedProfileBranchNotFound
-		failure = providerFailure(connector.FailureNotFound, "LinkedIn member was not found")
+		failure = providerFailure(sdkgo.FailureNotFound, "LinkedIn member was not found")
 	default:
 		if response.statusCode >= 500 {
-			attempt := connector.NewQueryRetry[AuthenticatedProfile](
-				providerFailure(connector.FailureAvailability, "LinkedIn is unavailable"), 0,
+			attempt := sdkgo.NewQueryRetry[AuthenticatedProfile](
+				providerFailure(sdkgo.FailureAvailability, "LinkedIn is unavailable"), 0,
 			)
 			return &attempt
 		}
 		branch = GetAuthenticatedProfileBranchFailed
-		failure = providerFailure(connector.FailureProviderRejection, "LinkedIn rejected the UserInfo request")
+		failure = providerFailure(sdkgo.FailureProviderRejection, "LinkedIn rejected the UserInfo request")
 	}
-	attempt := connector.NewQueryBranch(branch, AuthenticatedProfile{}, &failure, receipt)
+	attempt := sdkgo.NewQueryBranch(branch, AuthenticatedProfile{}, &failure, receipt)
 	return &attempt
 }
 
-func receipt(response providerResponse) connector.Receipt {
-	return connector.Receipt{ProviderRequestID: response.requestID}
+func receipt(response providerResponse) sdkgo.Receipt {
+	return sdkgo.Receipt{ProviderRequestID: response.requestID}
 }
 
-func providerFailure(kind connector.FailureKind, message string) connector.Failure {
-	return connector.Failure{Kind: kind, Provider: "linkedin", Operation: "getAuthenticatedProfile", Message: message}
+func providerFailure(kind sdkgo.FailureKind, message string) sdkgo.Failure {
+	return sdkgo.Failure{Kind: kind, Provider: "linkedin", Operation: "getAuthenticatedProfile", Message: message}
 }
 
 func decodeJSON(body []byte, destination any) error {

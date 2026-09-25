@@ -16,8 +16,8 @@ import (
 
 	gmail "github.com/superdurable/dex-connectors-library/connectors/google/gmail"
 	threadreply "github.com/superdurable/dex-connectors-library/connectors/google/gmail/examples/thread-reply/flow"
-	connector "github.com/superdurable/dex-connectors-library/sdk/go"
-	"github.com/superdurable/dex-connectors-library/sdk/go/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -65,14 +65,14 @@ func run(ctx context.Context) error {
 	}
 	startRunner, err := gmail.NewLocalMessageReceivedTrigger(
 		store, threadreply.ConnectionName, threadreply.StartTriggerBinding,
-		connector.NewDexFlowTriggerTarget(client, flow, gmail.FlowIDByThread(threadreply.ResolveFlowID), threadreply.BuildStartInput),
+		sdkgo.NewDexFlowTriggerTarget(client, flow, gmail.FlowIDByThread(threadreply.ResolveFlowID), threadreply.BuildStartInput),
 	)
 	if err != nil {
 		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
 	}
 	replyRunner, err := gmail.NewLocalReplyReceivedTrigger(
 		store, threadreply.ConnectionName, threadreply.ReplyTriggerBinding,
-		connector.NewDexRPCTriggerTarget(client, flow.ReplyTriggerRPC().Definition(), gmail.FlowIDByThread(threadreply.ResolveFlowID)),
+		sdkgo.NewDexRPCTriggerTarget(client, flow.ReplyTriggerRPC().Definition(), gmail.FlowIDByThread(threadreply.ResolveFlowID)),
 	)
 	if err != nil {
 		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())

@@ -23,7 +23,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	gmail "github.com/superdurable/dex-connectors-library/connectors/google/gmail"
-	connector "github.com/superdurable/dex-connectors-library/sdk/go"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -45,14 +45,14 @@ func TestThreadReplyExampleCompletesOnceAndPreservesUncertainOutcomeWithRealDex(
 	successFlowID := startGmailThreadFlow(t, ctx, harness.client, flow, "root-success-"+testRunID, successRoot)
 	waitForGmailStatus(t, ctx, harness.client, flow, successFlowID, StatusWaitingForReply)
 
-	successReply := connector.TriggerEvent[gmail.MessageEvent]{
+	successReply := sdkgo.TriggerEvent[gmail.MessageEvent]{
 		ID: "reply-success-" + testRunID, OccurredAt: time.Unix(2, 0).UTC(),
 		Payload: gmail.MessageEvent{
 			PrimaryEmail: primaryEmail, MessageID: "reply-success", ThreadID: "thread-success",
 			From: "sender@example.com", Subject: "Re: Approval request", Snippet: "approved", IsReply: true,
 		},
 	}
-	replyTarget := connector.NewDexRPCTriggerTarget(harness.client, flow.ReplyTriggerRPC().Definition(), gmail.FlowIDByThread(ResolveFlowID))
+	replyTarget := sdkgo.NewDexRPCTriggerTarget(harness.client, flow.ReplyTriggerRPC().Definition(), gmail.FlowIDByThread(ResolveFlowID))
 	require.NoError(t, replyTarget.HandleTrigger(ctx, successReply))
 	require.NoError(t, replyTarget.HandleTrigger(ctx, successReply))
 
@@ -71,7 +71,7 @@ func TestThreadReplyExampleCompletesOnceAndPreservesUncertainOutcomeWithRealDex(
 	}
 	uncertainFlowID := startGmailThreadFlow(t, ctx, harness.client, flow, "root-uncertain-"+testRunID, uncertainRoot)
 	waitForGmailStatus(t, ctx, harness.client, flow, uncertainFlowID, StatusWaitingForReply)
-	uncertainReply := connector.TriggerEvent[gmail.MessageEvent]{
+	uncertainReply := sdkgo.TriggerEvent[gmail.MessageEvent]{
 		ID: "reply-uncertain-" + testRunID, OccurredAt: time.Unix(4, 0).UTC(),
 		Payload: gmail.MessageEvent{
 			PrimaryEmail: primaryEmail, MessageID: "reply-uncertain", ThreadID: "thread-uncertain",
@@ -93,8 +93,8 @@ func startGmailThreadFlow(
 	payload gmail.MessageEvent,
 ) string {
 	t.Helper()
-	startTarget := connector.NewDexFlowTriggerTarget(client, flow, gmail.FlowIDByThread(ResolveFlowID), BuildStartInput)
-	event := connector.TriggerEvent[gmail.MessageEvent]{ID: eventID, OccurredAt: time.Now().UTC(), Payload: payload}
+	startTarget := sdkgo.NewDexFlowTriggerTarget(client, flow, gmail.FlowIDByThread(ResolveFlowID), BuildStartInput)
+	event := sdkgo.TriggerEvent[gmail.MessageEvent]{ID: eventID, OccurredAt: time.Now().UTC(), Payload: payload}
 	require.NoError(t, startTarget.HandleTrigger(ctx, event))
 	require.NoError(t, startTarget.HandleTrigger(ctx, event))
 	flowID, err := ResolveFlowID(payload.ThreadIdentity())
@@ -215,9 +215,9 @@ type gmailIntegrationHarness struct {
 
 func newGmailIntegrationHarness(t *testing.T, endpoint string) (*Flow, *gmailIntegrationHarness) {
 	t.Helper()
-	reference := connector.ConnectionRef{Provider: "gmail", Name: ConnectionName}
-	providerClient, err := gmail.New(gmail.Config{Endpoint: endpoint}, connector.StaticCredentialProvider[gmail.Credentials]{
-		reference: {AccessToken: connector.NewSecretString("gmail-token"), PrimaryEmail: "owner@example.com"},
+	reference := sdkgo.ConnectionRef{Provider: "gmail", Name: ConnectionName}
+	providerClient, err := gmail.New(gmail.Config{Endpoint: endpoint}, sdkgo.StaticCredentialProvider[gmail.Credentials]{
+		reference: {AccessToken: sdkgo.NewSecretString("gmail-token"), PrimaryEmail: "owner@example.com"},
 	})
 	require.NoError(t, err)
 	connection, err := gmail.NewConnection(providerClient, reference)

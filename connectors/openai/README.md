@@ -8,7 +8,7 @@ provides:
 - `openai.NewRetrieveResponseStep` for query-first reconciliation.
 
 Create one `openai.Connection` from a configured client and logical
-`connector.ConnectionRef`, then pass it to the operation-specific factory.
+`sdkgo.ConnectionRef`, then pass it to the operation-specific factory.
 The generated connection type prevents cross-connector wiring and rejects
 serialization.
 

@@ -12,10 +12,10 @@ import (
 	"github.com/stretchr/testify/require"
 	openai "github.com/superdurable/dex-connectors-library/connectors/openai"
 	"github.com/superdurable/dex-connectors-library/connectors/openai/internal/testsupport"
-	connector "github.com/superdurable/dex-connectors-library/sdk/go"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 
-var openAIConnection = connector.ConnectionRef{Provider: "openai", Name: "default"}
+var openAIConnection = sdkgo.ConnectionRef{Provider: "openai", Name: "default"}
 
 func TestCreateStructuredResponseCapturesUsageAndReceipt(t *testing.T) {
 	var requestBody map[string]any
@@ -33,7 +33,7 @@ func TestCreateStructuredResponseCapturesUsageAndReceipt(t *testing.T) {
 	}))
 	defer server.Close()
 	client := newClient(t, server.URL)
-	result, err := connector.RunMutation(
+	result, err := sdkgo.RunMutation(
 		testsupport.NewDexContext("flow-1", "create-response-1"), client.CreateResponse(), openAIConnection,
 		openai.CreateRequest{
 			Model: "gpt-test", Input: "profile",
@@ -60,7 +60,7 @@ func TestRetrieveResponseSupportsReceiptRecovery(t *testing.T) {
 	}))
 	defer server.Close()
 	client := newClient(t, server.URL)
-	result, err := connector.RunQuery(
+	result, err := sdkgo.RunQuery(
 		testsupport.NewDexContext("flow-1", "retrieve-response-1"), client.RetrieveResponse(), openAIConnection,
 		openai.RetrieveRequest{ResponseID: "resp_known"},
 	)
@@ -77,13 +77,13 @@ func TestMalformedSuccessResponseLeavesMutationUnknown(t *testing.T) {
 	}))
 	defer server.Close()
 	client := newClient(t, server.URL)
-	result, err := connector.RunMutation(
+	result, err := sdkgo.RunMutation(
 		testsupport.NewDexContext("flow-1", "malformed-response-1"), client.CreateResponse(), openAIConnection,
 		openai.CreateRequest{Model: "gpt-test", Input: "profile"},
 	)
 	require.NoError(t, err)
 	require.Equal(t, openai.CreateResponseBranchUncertain, result.Branch)
-	require.Equal(t, connector.FailureProtocol, result.Failure.Kind)
+	require.Equal(t, sdkgo.FailureProtocol, result.Failure.Kind)
 	require.NotEmpty(t, result.Receipt.CallID)
 }
 
@@ -94,20 +94,20 @@ func TestConfirmedRejectionIsFailedResult(t *testing.T) {
 	}))
 	defer server.Close()
 	client := newClient(t, server.URL)
-	result, err := connector.RunMutation(
+	result, err := sdkgo.RunMutation(
 		testsupport.NewDexContext("flow-1", "rejected-response-1"), client.CreateResponse(), openAIConnection,
 		openai.CreateRequest{Model: "gpt-test", Input: "profile"},
 	)
 	require.NoError(t, err)
 	require.Equal(t, openai.CreateResponseBranchFailed, result.Branch)
-	require.Equal(t, connector.FailureAuthentication, result.Failure.Kind)
+	require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
 	require.Equal(t, "req_rejected", result.Receipt.ProviderRequestID)
 }
 
 func newClient(t *testing.T, endpoint string) *openai.Client {
 	t.Helper()
-	client, err := openai.New(openai.Config{Endpoint: endpoint}, connector.StaticCredentialProvider[openai.Credentials]{
-		openAIConnection: {APIKey: connector.NewSecretString("test-key")},
+	client, err := openai.New(openai.Config{Endpoint: endpoint}, sdkgo.StaticCredentialProvider[openai.Credentials]{
+		openAIConnection: {APIKey: sdkgo.NewSecretString("test-key")},
 	})
 	require.NoError(t, err)
 	return client

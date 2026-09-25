@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 	linkedinconnector "github.com/superdurable/dex-connectors-library/connectors/linkedin"
 	"github.com/superdurable/dex-connectors-library/connectors/linkedin/internal/testsupport"
-	connector "github.com/superdurable/dex-connectors-library/sdk/go"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 
 func TestLiveAuthenticatedProfile(t *testing.T) {
@@ -20,11 +20,11 @@ func TestLiveAuthenticatedProfile(t *testing.T) {
 	if token == "" {
 		t.Skip("LINKEDIN_CONNECTOR_TEST_TOKEN is not configured")
 	}
-	client, err := linkedinconnector.New(linkedinconnector.Config{}, connector.StaticCredentialProvider[linkedinconnector.Credentials]{
-		linkedinConnection: {AccessToken: connector.NewSecretString(token)},
+	client, err := linkedinconnector.New(linkedinconnector.Config{}, sdkgo.StaticCredentialProvider[linkedinconnector.Credentials]{
+		linkedinConnection: {AccessToken: sdkgo.NewSecretString(token)},
 	})
 	require.NoError(t, err)
-	profile, err := connector.RunQuery(
+	profile, err := sdkgo.RunQuery(
 		testsupport.NewDexContext("live-linkedin-flow", "live-profile-step"), client.GetAuthenticatedProfile(), linkedinConnection,
 		linkedinconnector.GetAuthenticatedProfileInput{},
 	)

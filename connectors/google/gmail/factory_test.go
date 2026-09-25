@@ -9,7 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	gmail "github.com/superdurable/dex-connectors-library/connectors/google/gmail"
-	connector "github.com/superdurable/dex-connectors-library/sdk/go"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -27,10 +27,10 @@ func TestSendFactoryRequiresEveryTypedBranch(t *testing.T) {
 	require.NoError(t, err)
 	require.Panics(t, func() {
 		gmail.NewSendMessageStep(gmail.SendMessageStepConfig[string]{
-			StepType: "Send", Presentation: connector.StepPresentation{GroupID: "google", GroupLabel: "Google", Explanation: "Send a message."},
+			StepType: "Send", Presentation: sdkgo.StepPresentation{GroupID: "google", GroupLabel: "Google", Explanation: "Send a message."},
 			Connection: connection, ConnectionName: "gmail-send",
 			BuildInput: func(string) (gmail.SendMessageInput, error) { return gmail.SendMessageInput{}, nil },
-			Sent:       connector.GoTo(gmailTarget{}), Rejected: connector.GoTo(gmailTarget{}), Uncertain: connector.GoTo(gmailTarget{}),
+			Sent:       sdkgo.GoTo(gmailTarget{}), Rejected: sdkgo.GoTo(gmailTarget{}), Uncertain: sdkgo.GoTo(gmailTarget{}),
 		})
 	})
 }
@@ -41,7 +41,7 @@ func TestSendFactoryRejectsConnectionNameMismatch(t *testing.T) {
 	require.NoError(t, err)
 	require.Panics(t, func() {
 		gmail.NewSendMessageStep(gmail.SendMessageStepConfig[string]{
-			StepType: "Send", Presentation: connector.StepPresentation{GroupID: "google", GroupLabel: "Google", Explanation: "Send a message."},
+			StepType: "Send", Presentation: sdkgo.StepPresentation{GroupID: "google", GroupLabel: "Google", Explanation: "Send a message."},
 			Connection: connection, ConnectionName: "different",
 			BuildInput: func(string) (gmail.SendMessageInput, error) { return gmail.SendMessageInput{}, nil },
 		})

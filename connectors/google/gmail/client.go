@@ -22,7 +22,7 @@ import (
 	"strings"
 	"time"
 
-	connector "github.com/superdurable/dex-connectors-library/sdk/go"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 
 type Option func(*clientOptions)
@@ -43,7 +43,7 @@ func withClock(now func() time.Time) Option {
 type Client struct {
 	endpoint         *url.URL
 	httpClient       *http.Client
-	credentials      connector.CredentialProvider[Credentials]
+	credentials      sdkgo.CredentialProvider[Credentials]
 	maxResponseBytes int64
 	maxMessageBytes  int64
 	pollInterval     time.Duration
@@ -72,7 +72,7 @@ type sendResponse struct {
 	ThreadID string `json:"threadId"`
 }
 
-func New(config Config, credentials connector.CredentialProvider[Credentials], options ...Option) (*Client, error) {
+func New(config Config, credentials sdkgo.CredentialProvider[Credentials], options ...Option) (*Client, error) {
 	config = withConfigDefaults(config)
 	if err := config.Validate(); err != nil {
 		return nil, err
@@ -109,85 +109,85 @@ func New(config Config, credentials connector.CredentialProvider[Credentials], o
 
 func (client *Client) SendMessage() SendMessageOperation { return SendMessageOperation{client: client} }
 
-func (SendMessageOperation) Definition() connector.MutationDefinition { return SendMessageDefinition }
+func (SendMessageOperation) Definition() sdkgo.MutationDefinition { return SendMessageDefinition }
 
-func (SendMessageOperation) IdempotencyKey(callID connector.CallID, _ SendMessageInput) connector.IdempotencyKey {
-	return connector.IdempotencyKey(callID)
+func (SendMessageOperation) IdempotencyKey(callID sdkgo.CallID, _ SendMessageInput) sdkgo.IdempotencyKey {
+	return sdkgo.IdempotencyKey(callID)
 }
 
-func (operation SendMessageOperation) Invoke(call connector.Call, input SendMessageInput) connector.MutationAttempt[SendMessageOutput] {
+func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageInput) sdkgo.MutationAttempt[SendMessageOutput] {
 	credential, err := operation.client.credentials.Resolve(call)
 	if err != nil || credential.Validate() != nil {
-		return connector.NewMutationBranch(SendMessageBranchRejected, SendMessageOutput{}, gmailFailurePointer(connector.FailureAuthentication, "connection credentials are unavailable"), connector.Receipt{})
+		return sdkgo.NewMutationBranch(SendMessageBranchRejected, SendMessageOutput{}, gmailFailurePointer(sdkgo.FailureAuthentication, "connection credentials are unavailable"), sdkgo.Receipt{})
 	}
 	recipients, validationFailure := validateSendInput(input, credential.PrimaryEmail)
 	if validationFailure != nil {
-		return connector.NewMutationBranch(SendMessageBranchDefect, SendMessageOutput{}, validationFailure, connector.Receipt{})
+		return sdkgo.NewMutationBranch(SendMessageBranchDefect, SendMessageOutput{}, validationFailure, sdkgo.Receipt{})
 	}
 	raw, err := buildMIMEMessage(call, credential.PrimaryEmail, recipients, input)
 	if err != nil {
-		return connector.NewMutationBranch(SendMessageBranchDefect, SendMessageOutput{}, gmailFailurePointer(connector.FailureValidation, "message could not be encoded"), connector.Receipt{})
+		return sdkgo.NewMutationBranch(SendMessageBranchDefect, SendMessageOutput{}, gmailFailurePointer(sdkgo.FailureValidation, "message could not be encoded"), sdkgo.Receipt{})
 	}
 	if int64(len(raw)) > operation.client.maxMessageBytes {
-		return connector.NewMutationBranch(SendMessageBranchDefect, SendMessageOutput{}, gmailFailurePointer(connector.FailureValidation, "message exceeds configured size limit"), connector.Receipt{})
+		return sdkgo.NewMutationBranch(SendMessageBranchDefect, SendMessageOutput{}, gmailFailurePointer(sdkgo.FailureValidation, "message exceeds configured size limit"), sdkgo.Receipt{})
 	}
 	payload, err := json.Marshal(map[string]string{"raw": base64.RawURLEncoding.EncodeToString(raw)})
 	if err != nil {
-		return connector.NewMutationBranch(SendMessageBranchDefect, SendMessageOutput{}, gmailFailurePointer(connector.FailureLocalDefect, "message request could not be encoded"), connector.Receipt{})
+		return sdkgo.NewMutationBranch(SendMessageBranchDefect, SendMessageOutput{}, gmailFailurePointer(sdkgo.FailureLocalDefect, "message request could not be encoded"), sdkgo.Receipt{})
 	}
 	target := strings.TrimRight(operation.client.endpoint.String(), "/") + "/users/me/messages/send"
 	request, err := http.NewRequestWithContext(call.Context, http.MethodPost, target, bytes.NewReader(payload))
 	if err != nil {
-		return connector.NewMutationBranch(SendMessageBranchDefect, SendMessageOutput{}, gmailFailurePointer(connector.FailureLocalDefect, "message request could not be built"), connector.Receipt{})
+		return sdkgo.NewMutationBranch(SendMessageBranchDefect, SendMessageOutput{}, gmailFailurePointer(sdkgo.FailureLocalDefect, "message request could not be built"), sdkgo.Receipt{})
 	}
 	request.Header.Set("Authorization", "Bearer "+credential.AccessToken.Reveal())
 	request.Header.Set("Content-Type", "application/json")
 	response, err := operation.client.httpClient.Do(request)
 	if err != nil {
-		return connector.NewMutationUncertain(SendMessageOutput{}, gmailFailure(connector.FailureTransport, "Gmail send outcome is unknown"), operation.client.receipt(call, "", ""))
+		return sdkgo.NewMutationUncertain(SendMessageOutput{}, gmailFailure(sdkgo.FailureTransport, "Gmail send outcome is unknown"), operation.client.receipt(call, "", ""))
 	}
 	defer response.Body.Close()
 	requestID := googleRequestID(response.Header)
 	receipt := operation.client.receipt(call, requestID, "")
 	content, readErr := io.ReadAll(io.LimitReader(response.Body, operation.client.maxResponseBytes+1))
 	if readErr != nil || int64(len(content)) > operation.client.maxResponseBytes {
-		return connector.NewMutationUncertain(SendMessageOutput{}, gmailFailure(connector.FailureTransport, "Gmail send response could not be confirmed"), receipt)
+		return sdkgo.NewMutationUncertain(SendMessageOutput{}, gmailFailure(sdkgo.FailureTransport, "Gmail send response could not be confirmed"), receipt)
 	}
 	if response.StatusCode == http.StatusTooManyRequests {
-		return connector.NewMutationRetry[SendMessageOutput](gmailFailure(connector.FailureRateLimit, "Gmail temporarily rejected the send"), retryAfter(response.Header))
+		return sdkgo.NewMutationRetry[SendMessageOutput](gmailFailure(sdkgo.FailureRateLimit, "Gmail temporarily rejected the send"), retryAfter(response.Header))
 	}
 	if response.StatusCode >= 500 {
-		return connector.NewMutationUncertain(SendMessageOutput{}, gmailFailure(connector.FailureAvailability, "Gmail send outcome is unknown"), receipt)
+		return sdkgo.NewMutationUncertain(SendMessageOutput{}, gmailFailure(sdkgo.FailureAvailability, "Gmail send outcome is unknown"), receipt)
 	}
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return connector.NewMutationBranch(SendMessageBranchRejected, SendMessageOutput{}, gmailFailurePointer(statusFailureKind(response.StatusCode), "Gmail rejected the message"), receipt)
+		return sdkgo.NewMutationBranch(SendMessageBranchRejected, SendMessageOutput{}, gmailFailurePointer(statusFailureKind(response.StatusCode), "Gmail rejected the message"), receipt)
 	}
 	var sent sendResponse
 	if err := json.Unmarshal(content, &sent); err != nil || sent.ID == "" {
-		return connector.NewMutationUncertain(SendMessageOutput{}, gmailFailure(connector.FailureProtocol, "Gmail returned an invalid send response"), receipt)
+		return sdkgo.NewMutationUncertain(SendMessageOutput{}, gmailFailure(sdkgo.FailureProtocol, "Gmail returned an invalid send response"), receipt)
 	}
 	receipt.ProviderObjectID = sent.ID
-	return connector.NewMutationBranch(SendMessageBranchSent, SendMessageOutput{Sender: credential.PrimaryEmail, Recipients: recipients, MessageID: sent.ID, ThreadID: sent.ThreadID}, nil, receipt)
+	return sdkgo.NewMutationBranch(SendMessageBranchSent, SendMessageOutput{Sender: credential.PrimaryEmail, Recipients: recipients, MessageID: sent.ID, ThreadID: sent.ThreadID}, nil, receipt)
 }
 
-func validateSendInput(input SendMessageInput, sender string) ([]string, *connector.Failure) {
+func validateSendInput(input SendMessageInput, sender string) ([]string, *sdkgo.Failure) {
 	if strings.TrimSpace(sender) == "" || strings.ContainsAny(input.Subject, "\r\n") || strings.TrimSpace(input.Subject) == "" || strings.TrimSpace(input.TextBody) == "" || len(input.To) == 0 {
-		return nil, gmailFailurePointer(connector.FailureValidation, "sender, recipients, subject, and text body are required")
+		return nil, gmailFailurePointer(sdkgo.FailureValidation, "sender, recipients, subject, and text body are required")
 	}
 	senderAddress, err := parseMailbox(sender)
 	if err != nil || !strings.EqualFold(senderAddress.Address, strings.TrimSpace(sender)) {
-		return nil, gmailFailurePointer(connector.FailureValidation, "authorized primary email is invalid")
+		return nil, gmailFailurePointer(sdkgo.FailureValidation, "authorized primary email is invalid")
 	}
 	recipients := make([]string, len(input.To))
 	seen := map[string]bool{}
 	for index, value := range input.To {
 		address, err := parseMailbox(value)
 		if err != nil {
-			return nil, gmailFailurePointer(connector.FailureValidation, "recipient email is invalid")
+			return nil, gmailFailurePointer(sdkgo.FailureValidation, "recipient email is invalid")
 		}
 		canonical := strings.ToLower(address.Address)
 		if seen[canonical] {
-			return nil, gmailFailurePointer(connector.FailureValidation, "recipient email is duplicated")
+			return nil, gmailFailurePointer(sdkgo.FailureValidation, "recipient email is duplicated")
 		}
 		seen[canonical] = true
 		recipients[index] = address.String()
@@ -206,7 +206,7 @@ func parseMailbox(value string) (*mail.Address, error) {
 	return address, nil
 }
 
-func buildMIMEMessage(call connector.Call, sender string, recipients []string, input SendMessageInput) ([]byte, error) {
+func buildMIMEMessage(call sdkgo.Call, sender string, recipients []string, input SendMessageInput) ([]byte, error) {
 	var message bytes.Buffer
 	writeHeader := func(name, value string) { fmt.Fprintf(&message, "%s: %s\r\n", name, value) }
 	writeHeader("From", sender)
@@ -267,26 +267,26 @@ func retryAfter(header http.Header) time.Duration {
 	return 0
 }
 
-func statusFailureKind(status int) connector.FailureKind {
+func statusFailureKind(status int) sdkgo.FailureKind {
 	switch status {
 	case http.StatusUnauthorized:
-		return connector.FailureAuthentication
+		return sdkgo.FailureAuthentication
 	case http.StatusForbidden:
-		return connector.FailureAuthorization
+		return sdkgo.FailureAuthorization
 	case http.StatusNotFound:
-		return connector.FailureNotFound
+		return sdkgo.FailureNotFound
 	case http.StatusConflict:
-		return connector.FailureConflict
+		return sdkgo.FailureConflict
 	default:
-		return connector.FailureProviderRejection
+		return sdkgo.FailureProviderRejection
 	}
 }
 
-func gmailFailure(kind connector.FailureKind, message string) connector.Failure {
-	return connector.Failure{Kind: kind, Provider: "gmail", Operation: "sendMessage", Message: message}
+func gmailFailure(kind sdkgo.FailureKind, message string) sdkgo.Failure {
+	return sdkgo.Failure{Kind: kind, Provider: "gmail", Operation: "sendMessage", Message: message}
 }
 
-func gmailFailurePointer(kind connector.FailureKind, message string) *connector.Failure {
+func gmailFailurePointer(kind sdkgo.FailureKind, message string) *sdkgo.Failure {
 	failure := gmailFailure(kind, message)
 	return &failure
 }
@@ -298,6 +298,6 @@ func googleRequestID(header http.Header) string {
 	return header.Get("X-Request-Id")
 }
 
-func (client *Client) receipt(call connector.Call, requestID, objectID string) connector.Receipt {
-	return connector.Receipt{CallID: call.ID, IdempotencyKey: call.IdempotencyKey, Provider: "gmail", ProviderObjectID: objectID, ProviderRequestID: requestID, ObservedAt: client.now().UTC()}
+func (client *Client) receipt(call sdkgo.Call, requestID, objectID string) sdkgo.Receipt {
+	return sdkgo.Receipt{CallID: call.ID, IdempotencyKey: call.IdempotencyKey, Provider: "gmail", ProviderObjectID: objectID, ProviderRequestID: requestID, ObservedAt: client.now().UTC()}
 }

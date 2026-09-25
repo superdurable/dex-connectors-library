@@ -11,7 +11,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	httpconnector "github.com/superdurable/dex-connectors-library/connectors/http"
-	connector "github.com/superdurable/dex-connectors-library/sdk/go"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -40,8 +40,8 @@ func (webhookTarget) Execute(dex.Context, httpconnector.VerifyWebhookStepOutput[
 }
 
 func TestOperationSpecificFactoriesUseTypedConnectionAndBranches(t *testing.T) {
-	reference := connector.ConnectionRef{Provider: "http", Name: "factory-test"}
-	client, err := httpconnector.New(httpconnector.Config{BaseURL: "https://example.com"}, connector.StaticCredentialProvider[httpconnector.Credentials]{reference: {}})
+	reference := sdkgo.ConnectionRef{Provider: "http", Name: "factory-test"}
+	client, err := httpconnector.New(httpconnector.Config{BaseURL: "https://example.com"}, sdkgo.StaticCredentialProvider[httpconnector.Credentials]{reference: {}})
 	require.NoError(t, err)
 	connection, err := httpconnector.NewConnection(client, reference)
 	require.NoError(t, err)
@@ -49,25 +49,25 @@ func TestOperationSpecificFactoriesUseTypedConnectionAndBranches(t *testing.T) {
 	query := httpconnector.NewQueryStep(httpconnector.QueryStepConfig[string]{
 		StepType: "HTTPQuery", Presentation: factoryPresentation(), Connection: connection,
 		BuildInput: func(string) (httpconnector.Request, error) { return httpconnector.Request{Method: http.MethodGet}, nil },
-		Succeeded:  connector.GoTo(queryTarget{}), Failed: connector.GoTo(queryTarget{}), Defect: connector.GoTo(queryTarget{}),
+		Succeeded:  sdkgo.GoTo(queryTarget{}), Failed: sdkgo.GoTo(queryTarget{}), Defect: sdkgo.GoTo(queryTarget{}),
 	})
 	require.Equal(t, "HTTPQuery", query.GetStepType())
 
-	attribute := dex.DefineAttribute[connector.MutationResult[httpconnector.Response]]("http-factory-result")
+	attribute := dex.DefineAttribute[sdkgo.MutationResult[httpconnector.Response]]("http-factory-result")
 	mutation := httpconnector.NewMutationStep(httpconnector.MutationStepConfig[string]{
 		StepType: "HTTPMutation", Presentation: factoryPresentation(), Connection: connection,
 		BuildInput: func(string) (httpconnector.Request, error) {
 			return httpconnector.Request{Method: http.MethodPost}, nil
 		},
-		Succeeded: connector.GoTo(mutationTarget{}), Rejected: connector.GoTo(mutationTarget{}),
-		Uncertain: connector.GoTo(mutationTarget{}), Defect: connector.GoTo(mutationTarget{}), ResultAttribute: &attribute,
+		Succeeded: sdkgo.GoTo(mutationTarget{}), Rejected: sdkgo.GoTo(mutationTarget{}),
+		Uncertain: sdkgo.GoTo(mutationTarget{}), Defect: sdkgo.GoTo(mutationTarget{}), ResultAttribute: &attribute,
 	})
 	require.Equal(t, "HTTPMutation", mutation.GetStepType())
 
 	webhook := httpconnector.NewVerifyWebhookStep(httpconnector.VerifyWebhookStepConfig[string]{
 		StepType: "VerifyWebhook", Presentation: factoryPresentation(), Connection: connection,
 		BuildInput: func(string) (httpconnector.WebhookRequest, error) { return httpconnector.WebhookRequest{}, nil },
-		Verified:   connector.GoTo(webhookTarget{}), Rejected: connector.GoTo(webhookTarget{}), Defect: connector.GoTo(webhookTarget{}),
+		Verified:   sdkgo.GoTo(webhookTarget{}), Rejected: sdkgo.GoTo(webhookTarget{}), Defect: sdkgo.GoTo(webhookTarget{}),
 	})
 	require.Equal(t, "VerifyWebhook", webhook.GetStepType())
 }
@@ -82,6 +82,6 @@ func TestTypedConnectionCannotSerializeAndZeroValueFailsClosed(t *testing.T) {
 	})
 }
 
-func factoryPresentation() connector.StepPresentation {
-	return connector.StepPresentation{GroupID: "http", GroupLabel: "HTTP", Explanation: "Invoke the HTTP connector."}
+func factoryPresentation() sdkgo.StepPresentation {
+	return sdkgo.StepPresentation{GroupID: "http", GroupLabel: "HTTP", Explanation: "Invoke the HTTP sdkgo."}
 }

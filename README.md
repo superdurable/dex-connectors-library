@@ -98,7 +98,7 @@ historical root `v0.1.0` tag does not version any standalone component. Git
 tags are the release version source of truth.
 
 The SDK must be released before a connector can pin a new SDK version. New
-connectors pin the published SDK `v0.1.2`. See
+connectors pin the published SDK `v0.1.0`. See
 [the versioning and release guide](docs/versioning-and-releases.md).
 
 ## Local Dex Web connections

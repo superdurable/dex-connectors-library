@@ -10,8 +10,8 @@ import (
 	"net/url"
 	"time"
 
-	connector "github.com/superdurable/dex-connectors-library/sdk/go"
-	"github.com/superdurable/dex-connectors-library/sdk/go/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -24,17 +24,17 @@ type Config struct {
 }
 
 type Credentials struct {
-	BotToken  connector.SecretString
-	UserToken connector.SecretString
-	AppToken  connector.SecretString
+	BotToken  sdkgo.SecretString
+	UserToken sdkgo.SecretString
+	AppToken  sdkgo.SecretString
 }
 
 type Connection struct {
 	client    *Client
-	reference connector.ConnectionRef
+	reference sdkgo.ConnectionRef
 }
 
-func NewConnection(client *Client, reference connector.ConnectionRef) (Connection, error) {
+func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, error) {
 	if client == nil {
 		return Connection{}, fmt.Errorf("slack connector client is required")
 	}
@@ -49,7 +49,7 @@ func NewLocalConnection(store *localconfig.Store, connectionName string, options
 	if store == nil {
 		return Connection{}, fmt.Errorf("local connector configuration store is required")
 	}
-	reference := connector.ConnectionRef{Provider: "slack", Name: connectionName}
+	reference := sdkgo.ConnectionRef{Provider: "slack", Name: connectionName}
 	if err := reference.Validate(); err != nil {
 		return Connection{}, fmt.Errorf("slack local connection: %w", err)
 	}
@@ -75,9 +75,9 @@ func decodeLocalCredentials(contents json.RawMessage) (Credentials, error) {
 		return Credentials{}, err
 	}
 	credentials := Credentials{
-		BotToken:  connector.NewSecretString(fields.BotToken),
-		UserToken: connector.NewSecretString(fields.UserToken),
-		AppToken:  connector.NewSecretString(fields.AppToken),
+		BotToken:  sdkgo.NewSecretString(fields.BotToken),
+		UserToken: sdkgo.NewSecretString(fields.UserToken),
+		AppToken:  sdkgo.NewSecretString(fields.AppToken),
 	}
 	return credentials, credentials.Validate()
 }
@@ -152,51 +152,51 @@ func (credentials Credentials) Validate() error {
 	return nil
 }
 
-var ChannelThreadCreatedTriggerDefinition = connector.TriggerDefinition{
-	Trigger:     connector.TriggerRef{ConnectorID: ConnectorID, TriggerName: "channelThreadCreated"},
+var ChannelThreadCreatedTriggerDefinition = sdkgo.TriggerDefinition{
+	Trigger:     sdkgo.TriggerRef{ConnectorID: ConnectorID, TriggerName: "channelThreadCreated"},
 	Description: "Receive a matching top-level channel message.",
 }
 
 type ChannelThreadCreatedTriggerBindingConfig struct {
-	connector.TriggerBindingFactoryConfigMarker `connector:"factory=triggerBinding"`
-	connectorID                                 struct{} `connector:"connectorId=slack"`
-	triggerName                                 struct{} `connector:"triggerName=channelThreadCreated"`
-	ConnectionName                              string   `connector:"connectionName"`
-	BindingName                                 string   `connector:"bindingName"`
+	sdkgo.TriggerBindingFactoryConfigMarker `connector:"factory=triggerBinding"`
+	connectorID                             struct{} `connector:"connectorId=slack"`
+	triggerName                             struct{} `connector:"triggerName=channelThreadCreated"`
+	ConnectionName                          string   `connector:"connectionName"`
+	BindingName                             string   `connector:"bindingName"`
 }
 
-func DefineChannelThreadCreatedTriggerBinding(config ChannelThreadCreatedTriggerBindingConfig) connector.TriggerBindingDefinition {
-	return connector.MustTriggerBindingDefinition(connector.TriggerBindingDefinition{
+func DefineChannelThreadCreatedTriggerBinding(config ChannelThreadCreatedTriggerBindingConfig) sdkgo.TriggerBindingDefinition {
+	return sdkgo.MustTriggerBindingDefinition(sdkgo.TriggerBindingDefinition{
 		Definition: ChannelThreadCreatedTriggerDefinition, ConnectionName: config.ConnectionName, BindingName: config.BindingName,
 	})
 }
 
 type ChannelThreadCreatedTriggerConfig struct {
-	connector.TriggerFactoryConfigMarker `connector:"factory=trigger"`
-	connectorID                          struct{}                                 `connector:"connectorId=slack"`
-	triggerName                          struct{}                                 `connector:"triggerName=channelThreadCreated"`
-	Connection                           Connection                               `connector:"connection"`
-	ConnectionName                       string                                   `connector:"connectionName"`
-	BindingName                          string                                   `connector:"bindingName"`
-	Configuration                        ChannelThreadCreatedTriggerConfiguration `connector:"triggerConfiguration"`
-	Target                               connector.TriggerTarget[MessageEvent]    `connector:"triggerTarget"`
+	sdkgo.TriggerFactoryConfigMarker `connector:"factory=trigger"`
+	connectorID                      struct{}                                 `connector:"connectorId=slack"`
+	triggerName                      struct{}                                 `connector:"triggerName=channelThreadCreated"`
+	Connection                       Connection                               `connector:"connection"`
+	ConnectionName                   string                                   `connector:"connectionName"`
+	BindingName                      string                                   `connector:"bindingName"`
+	Configuration                    ChannelThreadCreatedTriggerConfiguration `connector:"triggerConfiguration"`
+	Target                           sdkgo.TriggerTarget[MessageEvent]        `connector:"triggerTarget"`
 }
 
-func NewChannelThreadCreatedTrigger(config ChannelThreadCreatedTriggerConfig) connector.TriggerRunner {
+func NewChannelThreadCreatedTrigger(config ChannelThreadCreatedTriggerConfig) sdkgo.TriggerRunner {
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
 		panic(fmt.Errorf("slack connector trigger connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
 	}
-	binding := connector.TriggerBindingRef{Connection: config.Connection.reference, Trigger: ChannelThreadCreatedTriggerDefinition.Trigger, Name: config.BindingName}
-	return connector.MustNewTrigger(connector.TriggerConfig[MessageEvent]{
+	binding := sdkgo.TriggerBindingRef{Connection: config.Connection.reference, Trigger: ChannelThreadCreatedTriggerDefinition.Trigger, Name: config.BindingName}
+	return sdkgo.MustNewTrigger(sdkgo.TriggerConfig[MessageEvent]{
 		Definition: ChannelThreadCreatedTriggerDefinition, Binding: binding,
 		Source: config.Connection.client.channelThreadCreatedTriggerSource(config.Connection.reference, config.Configuration), Target: config.Target,
 	})
 }
 
-func NewLocalChannelThreadCreatedTrigger(store *localconfig.Store, connectionName string, bindingName string, target connector.TriggerTarget[MessageEvent], options ...Option) (connector.TriggerRunner, error) {
+func NewLocalChannelThreadCreatedTrigger(store *localconfig.Store, connectionName string, bindingName string, target sdkgo.TriggerTarget[MessageEvent], options ...Option) (sdkgo.TriggerRunner, error) {
 	connection, err := NewLocalConnection(store, connectionName, options...)
 	if err != nil {
 		return nil, err
@@ -214,51 +214,51 @@ func NewLocalChannelThreadCreatedTrigger(store *localconfig.Store, connectionNam
 	}), nil
 }
 
-var ThreadReplyCreatedTriggerDefinition = connector.TriggerDefinition{
-	Trigger:     connector.TriggerRef{ConnectorID: ConnectorID, TriggerName: "threadReplyCreated"},
+var ThreadReplyCreatedTriggerDefinition = sdkgo.TriggerDefinition{
+	Trigger:     sdkgo.TriggerRef{ConnectorID: ConnectorID, TriggerName: "threadReplyCreated"},
 	Description: "Receive a matching thread reply.",
 }
 
 type ThreadReplyCreatedTriggerBindingConfig struct {
-	connector.TriggerBindingFactoryConfigMarker `connector:"factory=triggerBinding"`
-	connectorID                                 struct{} `connector:"connectorId=slack"`
-	triggerName                                 struct{} `connector:"triggerName=threadReplyCreated"`
-	ConnectionName                              string   `connector:"connectionName"`
-	BindingName                                 string   `connector:"bindingName"`
+	sdkgo.TriggerBindingFactoryConfigMarker `connector:"factory=triggerBinding"`
+	connectorID                             struct{} `connector:"connectorId=slack"`
+	triggerName                             struct{} `connector:"triggerName=threadReplyCreated"`
+	ConnectionName                          string   `connector:"connectionName"`
+	BindingName                             string   `connector:"bindingName"`
 }
 
-func DefineThreadReplyCreatedTriggerBinding(config ThreadReplyCreatedTriggerBindingConfig) connector.TriggerBindingDefinition {
-	return connector.MustTriggerBindingDefinition(connector.TriggerBindingDefinition{
+func DefineThreadReplyCreatedTriggerBinding(config ThreadReplyCreatedTriggerBindingConfig) sdkgo.TriggerBindingDefinition {
+	return sdkgo.MustTriggerBindingDefinition(sdkgo.TriggerBindingDefinition{
 		Definition: ThreadReplyCreatedTriggerDefinition, ConnectionName: config.ConnectionName, BindingName: config.BindingName,
 	})
 }
 
 type ThreadReplyCreatedTriggerConfig struct {
-	connector.TriggerFactoryConfigMarker `connector:"factory=trigger"`
-	connectorID                          struct{}                               `connector:"connectorId=slack"`
-	triggerName                          struct{}                               `connector:"triggerName=threadReplyCreated"`
-	Connection                           Connection                             `connector:"connection"`
-	ConnectionName                       string                                 `connector:"connectionName"`
-	BindingName                          string                                 `connector:"bindingName"`
-	Configuration                        ThreadReplyCreatedTriggerConfiguration `connector:"triggerConfiguration"`
-	Target                               connector.TriggerTarget[MessageEvent]  `connector:"triggerTarget"`
+	sdkgo.TriggerFactoryConfigMarker `connector:"factory=trigger"`
+	connectorID                      struct{}                               `connector:"connectorId=slack"`
+	triggerName                      struct{}                               `connector:"triggerName=threadReplyCreated"`
+	Connection                       Connection                             `connector:"connection"`
+	ConnectionName                   string                                 `connector:"connectionName"`
+	BindingName                      string                                 `connector:"bindingName"`
+	Configuration                    ThreadReplyCreatedTriggerConfiguration `connector:"triggerConfiguration"`
+	Target                           sdkgo.TriggerTarget[MessageEvent]      `connector:"triggerTarget"`
 }
 
-func NewThreadReplyCreatedTrigger(config ThreadReplyCreatedTriggerConfig) connector.TriggerRunner {
+func NewThreadReplyCreatedTrigger(config ThreadReplyCreatedTriggerConfig) sdkgo.TriggerRunner {
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
 		panic(fmt.Errorf("slack connector trigger connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
 	}
-	binding := connector.TriggerBindingRef{Connection: config.Connection.reference, Trigger: ThreadReplyCreatedTriggerDefinition.Trigger, Name: config.BindingName}
-	return connector.MustNewTrigger(connector.TriggerConfig[MessageEvent]{
+	binding := sdkgo.TriggerBindingRef{Connection: config.Connection.reference, Trigger: ThreadReplyCreatedTriggerDefinition.Trigger, Name: config.BindingName}
+	return sdkgo.MustNewTrigger(sdkgo.TriggerConfig[MessageEvent]{
 		Definition: ThreadReplyCreatedTriggerDefinition, Binding: binding,
 		Source: config.Connection.client.threadReplyCreatedTriggerSource(config.Connection.reference, config.Configuration), Target: config.Target,
 	})
 }
 
-func NewLocalThreadReplyCreatedTrigger(store *localconfig.Store, connectionName string, bindingName string, target connector.TriggerTarget[MessageEvent], options ...Option) (connector.TriggerRunner, error) {
+func NewLocalThreadReplyCreatedTrigger(store *localconfig.Store, connectionName string, bindingName string, target sdkgo.TriggerTarget[MessageEvent], options ...Option) (sdkgo.TriggerRunner, error) {
 	connection, err := NewLocalConnection(store, connectionName, options...)
 	if err != nil {
 		return nil, err
@@ -276,57 +276,57 @@ func NewLocalThreadReplyCreatedTrigger(store *localconfig.Store, connectionName 
 	}), nil
 }
 
-const ListThreadMessagesBranchRead connector.BranchID = "read"
-const ListThreadMessagesBranchRejected connector.BranchID = "rejected"
-const ListThreadMessagesBranchDefect connector.BranchID = "defect"
+const ListThreadMessagesBranchRead sdkgo.BranchID = "read"
+const ListThreadMessagesBranchRejected sdkgo.BranchID = "rejected"
+const ListThreadMessagesBranchDefect sdkgo.BranchID = "defect"
 
-var ListThreadMessagesDefinition = connector.QueryDefinition{
-	Operation: connector.OperationRef{ConnectorID: ConnectorID, OperationID: "listThreadMessages"},
-	Branches: []connector.BranchDefinition{
+var ListThreadMessagesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listThreadMessages"},
+	Branches: []sdkgo.BranchDefinition{
 		{ID: ListThreadMessagesBranchRead, Description: "The thread page was read."},
 		{ID: ListThreadMessagesBranchRejected, Description: "Slack rejected the query."},
 		{ID: ListThreadMessagesBranchDefect, Description: "Local input or connector definition is invalid."},
 	},
 	DefectBranch: ListThreadMessagesBranchDefect,
-	StepDefaults: connector.StepDefaults{
+	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
-	ResultAttribute: connector.RequirementOptional,
-	Progress:        connector.ProgressCapabilities{Structured: false, Text: false},
+	ResultAttribute: sdkgo.RequirementOptional,
+	Progress:        sdkgo.ProgressCapabilities{Structured: false, Text: false},
 }
 
-type ListThreadMessagesStepOutput[IN any] = connector.QueryStepOutput[IN, ListThreadMessagesOutput]
+type ListThreadMessagesStepOutput[IN any] = sdkgo.QueryStepOutput[IN, ListThreadMessagesOutput]
 
 type ListThreadMessagesStepConfig[IN any] struct {
-	connector.QueryFactoryConfigMarker `connector:"factory=query"`
-	connectorID                        struct{}                                                        `connector:"connectorId=slack"`
-	operationID                        struct{}                                                        `connector:"operationId=listThreadMessages"`
-	StepType                           string                                                          `connector:"stepType"`
-	Presentation                       connector.StepPresentation                                      `connector:"presentation"`
-	Connection                         Connection                                                      `connector:"connection"`
-	ConnectionName                     string                                                          `connector:"connectionName"`
-	BuildInput                         func(IN) (ListThreadMessagesInput, error)                       `connector:"buildInput"`
-	Read                               connector.Target[ListThreadMessagesStepOutput[IN]]              `connector:"branch=read"`
-	Rejected                           connector.Target[ListThreadMessagesStepOutput[IN]]              `connector:"branch=rejected"`
-	Defect                             connector.Target[ListThreadMessagesStepOutput[IN]]              `connector:"branch=defect"`
-	ResultAttribute                    *dex.Attribute[connector.QueryResult[ListThreadMessagesOutput]] `connector:"resultAttribute"`
-	StepOptionsOverride                *dex.StepOptions                                                `connector:"stepOptionsOverride"`
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                    `connector:"connectorId=slack"`
+	operationID                    struct{}                                                    `connector:"operationId=listThreadMessages"`
+	StepType                       string                                                      `connector:"stepType"`
+	Presentation                   sdkgo.StepPresentation                                      `connector:"presentation"`
+	Connection                     Connection                                                  `connector:"connection"`
+	ConnectionName                 string                                                      `connector:"connectionName"`
+	BuildInput                     func(IN) (ListThreadMessagesInput, error)                   `connector:"buildInput"`
+	Read                           sdkgo.Target[ListThreadMessagesStepOutput[IN]]              `connector:"branch=read"`
+	Rejected                       sdkgo.Target[ListThreadMessagesStepOutput[IN]]              `connector:"branch=rejected"`
+	Defect                         sdkgo.Target[ListThreadMessagesStepOutput[IN]]              `connector:"branch=defect"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ListThreadMessagesOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                            `connector:"stepOptionsOverride"`
 }
 
-func NewListThreadMessagesStep[IN any](config ListThreadMessagesStepConfig[IN]) connector.QueryStep[IN, ListThreadMessagesInput, ListThreadMessagesOutput] {
+func NewListThreadMessagesStep[IN any](config ListThreadMessagesStepConfig[IN]) sdkgo.QueryStep[IN, ListThreadMessagesInput, ListThreadMessagesOutput] {
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
 		panic(fmt.Errorf("slack connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
 	}
-	return connector.MustNewQueryStep(connector.QueryStepConfig[IN, ListThreadMessagesInput, ListThreadMessagesOutput]{
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListThreadMessagesInput, ListThreadMessagesOutput]{
 		StepType: config.StepType, Presentation: config.Presentation,
 		Operation: config.Connection.client.ListThreadMessages(), Connection: config.Connection.reference,
 		BuildInput: config.BuildInput,
-		Branches: []connector.BranchTarget[ListThreadMessagesStepOutput[IN]]{
+		Branches: []sdkgo.BranchTarget[ListThreadMessagesStepOutput[IN]]{
 			config.Read.BranchTarget(ListThreadMessagesBranchRead),
 			config.Rejected.BranchTarget(ListThreadMessagesBranchRejected),
 			config.Defect.BranchTarget(ListThreadMessagesBranchDefect),
@@ -336,60 +336,60 @@ func NewListThreadMessagesStep[IN any](config ListThreadMessagesStepConfig[IN]) 
 	})
 }
 
-const GetThreadReplyBranchFound connector.BranchID = "found"
-const GetThreadReplyBranchNotFound connector.BranchID = "notFound"
-const GetThreadReplyBranchRejected connector.BranchID = "rejected"
-const GetThreadReplyBranchDefect connector.BranchID = "defect"
+const GetThreadReplyBranchFound sdkgo.BranchID = "found"
+const GetThreadReplyBranchNotFound sdkgo.BranchID = "notFound"
+const GetThreadReplyBranchRejected sdkgo.BranchID = "rejected"
+const GetThreadReplyBranchDefect sdkgo.BranchID = "defect"
 
-var GetThreadReplyDefinition = connector.QueryDefinition{
-	Operation: connector.OperationRef{ConnectorID: ConnectorID, OperationID: "getThreadReply"},
-	Branches: []connector.BranchDefinition{
+var GetThreadReplyDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getThreadReply"},
+	Branches: []sdkgo.BranchDefinition{
 		{ID: GetThreadReplyBranchFound, Description: "The reply was found."},
 		{ID: GetThreadReplyBranchNotFound, Description: "The reply does not exist."},
 		{ID: GetThreadReplyBranchRejected, Description: "Slack rejected the query."},
 		{ID: GetThreadReplyBranchDefect, Description: "Local input or connector definition is invalid."},
 	},
 	DefectBranch: GetThreadReplyBranchDefect,
-	StepDefaults: connector.StepDefaults{
+	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
-	ResultAttribute: connector.RequirementOptional,
-	Progress:        connector.ProgressCapabilities{Structured: false, Text: false},
+	ResultAttribute: sdkgo.RequirementOptional,
+	Progress:        sdkgo.ProgressCapabilities{Structured: false, Text: false},
 }
 
-type GetThreadReplyStepOutput[IN any] = connector.QueryStepOutput[IN, GetThreadReplyOutput]
+type GetThreadReplyStepOutput[IN any] = sdkgo.QueryStepOutput[IN, GetThreadReplyOutput]
 
 type GetThreadReplyStepConfig[IN any] struct {
-	connector.QueryFactoryConfigMarker `connector:"factory=query"`
-	connectorID                        struct{}                                                    `connector:"connectorId=slack"`
-	operationID                        struct{}                                                    `connector:"operationId=getThreadReply"`
-	StepType                           string                                                      `connector:"stepType"`
-	Presentation                       connector.StepPresentation                                  `connector:"presentation"`
-	Connection                         Connection                                                  `connector:"connection"`
-	ConnectionName                     string                                                      `connector:"connectionName"`
-	BuildInput                         func(IN) (GetThreadReplyInput, error)                       `connector:"buildInput"`
-	Found                              connector.Target[GetThreadReplyStepOutput[IN]]              `connector:"branch=found"`
-	NotFound                           connector.Target[GetThreadReplyStepOutput[IN]]              `connector:"branch=notFound"`
-	Rejected                           connector.Target[GetThreadReplyStepOutput[IN]]              `connector:"branch=rejected"`
-	Defect                             connector.Target[GetThreadReplyStepOutput[IN]]              `connector:"branch=defect"`
-	ResultAttribute                    *dex.Attribute[connector.QueryResult[GetThreadReplyOutput]] `connector:"resultAttribute"`
-	StepOptionsOverride                *dex.StepOptions                                            `connector:"stepOptionsOverride"`
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                `connector:"connectorId=slack"`
+	operationID                    struct{}                                                `connector:"operationId=getThreadReply"`
+	StepType                       string                                                  `connector:"stepType"`
+	Presentation                   sdkgo.StepPresentation                                  `connector:"presentation"`
+	Connection                     Connection                                              `connector:"connection"`
+	ConnectionName                 string                                                  `connector:"connectionName"`
+	BuildInput                     func(IN) (GetThreadReplyInput, error)                   `connector:"buildInput"`
+	Found                          sdkgo.Target[GetThreadReplyStepOutput[IN]]              `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetThreadReplyStepOutput[IN]]              `connector:"branch=notFound"`
+	Rejected                       sdkgo.Target[GetThreadReplyStepOutput[IN]]              `connector:"branch=rejected"`
+	Defect                         sdkgo.Target[GetThreadReplyStepOutput[IN]]              `connector:"branch=defect"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[GetThreadReplyOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                        `connector:"stepOptionsOverride"`
 }
 
-func NewGetThreadReplyStep[IN any](config GetThreadReplyStepConfig[IN]) connector.QueryStep[IN, GetThreadReplyInput, GetThreadReplyOutput] {
+func NewGetThreadReplyStep[IN any](config GetThreadReplyStepConfig[IN]) sdkgo.QueryStep[IN, GetThreadReplyInput, GetThreadReplyOutput] {
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
 		panic(fmt.Errorf("slack connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
 	}
-	return connector.MustNewQueryStep(connector.QueryStepConfig[IN, GetThreadReplyInput, GetThreadReplyOutput]{
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetThreadReplyInput, GetThreadReplyOutput]{
 		StepType: config.StepType, Presentation: config.Presentation,
 		Operation: config.Connection.client.GetThreadReply(), Connection: config.Connection.reference,
 		BuildInput: config.BuildInput,
-		Branches: []connector.BranchTarget[GetThreadReplyStepOutput[IN]]{
+		Branches: []sdkgo.BranchTarget[GetThreadReplyStepOutput[IN]]{
 			config.Found.BranchTarget(GetThreadReplyBranchFound),
 			config.NotFound.BranchTarget(GetThreadReplyBranchNotFound),
 			config.Rejected.BranchTarget(GetThreadReplyBranchRejected),
@@ -400,14 +400,14 @@ func NewGetThreadReplyStep[IN any](config GetThreadReplyStepConfig[IN]) connecto
 	})
 }
 
-const PostChannelMessageBranchSent connector.BranchID = "sent"
-const PostChannelMessageBranchRejected connector.BranchID = "rejected"
-const PostChannelMessageBranchUncertain connector.BranchID = "uncertain"
-const PostChannelMessageBranchDefect connector.BranchID = "defect"
+const PostChannelMessageBranchSent sdkgo.BranchID = "sent"
+const PostChannelMessageBranchRejected sdkgo.BranchID = "rejected"
+const PostChannelMessageBranchUncertain sdkgo.BranchID = "uncertain"
+const PostChannelMessageBranchDefect sdkgo.BranchID = "defect"
 
-var PostChannelMessageDefinition = connector.MutationDefinition{
-	Operation: connector.OperationRef{ConnectorID: ConnectorID, OperationID: "postChannelMessage"},
-	Branches: []connector.BranchDefinition{
+var PostChannelMessageDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "postChannelMessage"},
+	Branches: []sdkgo.BranchDefinition{
 		{ID: PostChannelMessageBranchSent, Description: "Slack accepted the message."},
 		{ID: PostChannelMessageBranchRejected, Description: "Slack conclusively rejected the message."},
 		{ID: PostChannelMessageBranchUncertain, Description: "The dispatched message outcome cannot be confirmed."},
@@ -415,46 +415,46 @@ var PostChannelMessageDefinition = connector.MutationDefinition{
 	},
 	DefectBranch:    PostChannelMessageBranchDefect,
 	UncertainBranch: PostChannelMessageBranchUncertain,
-	StepDefaults: connector.StepDefaults{
+	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
-	ResultAttribute: connector.RequirementRequired,
-	Progress:        connector.ProgressCapabilities{Structured: false, Text: false},
+	ResultAttribute: sdkgo.RequirementRequired,
+	Progress:        sdkgo.ProgressCapabilities{Structured: false, Text: false},
 }
 
-type PostChannelMessageStepOutput[IN any] = connector.MutationStepOutput[IN, PostMessageOutput]
+type PostChannelMessageStepOutput[IN any] = sdkgo.MutationStepOutput[IN, PostMessageOutput]
 
 type PostChannelMessageStepConfig[IN any] struct {
-	connector.MutationFactoryConfigMarker `connector:"factory=mutation"`
-	connectorID                           struct{}                                                    `connector:"connectorId=slack"`
-	operationID                           struct{}                                                    `connector:"operationId=postChannelMessage"`
-	StepType                              string                                                      `connector:"stepType"`
-	Presentation                          connector.StepPresentation                                  `connector:"presentation"`
-	Connection                            Connection                                                  `connector:"connection"`
-	ConnectionName                        string                                                      `connector:"connectionName"`
-	BuildInput                            func(IN) (PostChannelMessageInput, error)                   `connector:"buildInput"`
-	Sent                                  connector.Target[PostChannelMessageStepOutput[IN]]          `connector:"branch=sent"`
-	Rejected                              connector.Target[PostChannelMessageStepOutput[IN]]          `connector:"branch=rejected"`
-	Uncertain                             connector.Target[PostChannelMessageStepOutput[IN]]          `connector:"branch=uncertain"`
-	Defect                                connector.Target[PostChannelMessageStepOutput[IN]]          `connector:"branch=defect"`
-	ResultAttribute                       *dex.Attribute[connector.MutationResult[PostMessageOutput]] `connector:"resultAttribute"`
-	StepOptionsOverride                   *dex.StepOptions                                            `connector:"stepOptionsOverride"`
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                `connector:"connectorId=slack"`
+	operationID                       struct{}                                                `connector:"operationId=postChannelMessage"`
+	StepType                          string                                                  `connector:"stepType"`
+	Presentation                      sdkgo.StepPresentation                                  `connector:"presentation"`
+	Connection                        Connection                                              `connector:"connection"`
+	ConnectionName                    string                                                  `connector:"connectionName"`
+	BuildInput                        func(IN) (PostChannelMessageInput, error)               `connector:"buildInput"`
+	Sent                              sdkgo.Target[PostChannelMessageStepOutput[IN]]          `connector:"branch=sent"`
+	Rejected                          sdkgo.Target[PostChannelMessageStepOutput[IN]]          `connector:"branch=rejected"`
+	Uncertain                         sdkgo.Target[PostChannelMessageStepOutput[IN]]          `connector:"branch=uncertain"`
+	Defect                            sdkgo.Target[PostChannelMessageStepOutput[IN]]          `connector:"branch=defect"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PostMessageOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
 }
 
-func NewPostChannelMessageStep[IN any](config PostChannelMessageStepConfig[IN]) connector.MutationStep[IN, PostChannelMessageInput, PostMessageOutput] {
+func NewPostChannelMessageStep[IN any](config PostChannelMessageStepConfig[IN]) sdkgo.MutationStep[IN, PostChannelMessageInput, PostMessageOutput] {
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
 		panic(fmt.Errorf("slack connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
 	}
-	return connector.MustNewMutationStep(connector.MutationStepConfig[IN, PostChannelMessageInput, PostMessageOutput]{
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, PostChannelMessageInput, PostMessageOutput]{
 		StepType: config.StepType, Presentation: config.Presentation,
 		Operation: config.Connection.client.PostChannelMessage(), Connection: config.Connection.reference,
 		BuildInput: config.BuildInput,
-		Branches: []connector.BranchTarget[PostChannelMessageStepOutput[IN]]{
+		Branches: []sdkgo.BranchTarget[PostChannelMessageStepOutput[IN]]{
 			config.Sent.BranchTarget(PostChannelMessageBranchSent),
 			config.Rejected.BranchTarget(PostChannelMessageBranchRejected),
 			config.Uncertain.BranchTarget(PostChannelMessageBranchUncertain),
@@ -465,14 +465,14 @@ func NewPostChannelMessageStep[IN any](config PostChannelMessageStepConfig[IN]) 
 	})
 }
 
-const PostThreadReplyBranchSent connector.BranchID = "sent"
-const PostThreadReplyBranchRejected connector.BranchID = "rejected"
-const PostThreadReplyBranchUncertain connector.BranchID = "uncertain"
-const PostThreadReplyBranchDefect connector.BranchID = "defect"
+const PostThreadReplyBranchSent sdkgo.BranchID = "sent"
+const PostThreadReplyBranchRejected sdkgo.BranchID = "rejected"
+const PostThreadReplyBranchUncertain sdkgo.BranchID = "uncertain"
+const PostThreadReplyBranchDefect sdkgo.BranchID = "defect"
 
-var PostThreadReplyDefinition = connector.MutationDefinition{
-	Operation: connector.OperationRef{ConnectorID: ConnectorID, OperationID: "postThreadReply"},
-	Branches: []connector.BranchDefinition{
+var PostThreadReplyDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "postThreadReply"},
+	Branches: []sdkgo.BranchDefinition{
 		{ID: PostThreadReplyBranchSent, Description: "Slack accepted the message."},
 		{ID: PostThreadReplyBranchRejected, Description: "Slack conclusively rejected the message."},
 		{ID: PostThreadReplyBranchUncertain, Description: "The dispatched message outcome cannot be confirmed."},
@@ -480,46 +480,46 @@ var PostThreadReplyDefinition = connector.MutationDefinition{
 	},
 	DefectBranch:    PostThreadReplyBranchDefect,
 	UncertainBranch: PostThreadReplyBranchUncertain,
-	StepDefaults: connector.StepDefaults{
+	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
-	ResultAttribute: connector.RequirementRequired,
-	Progress:        connector.ProgressCapabilities{Structured: false, Text: false},
+	ResultAttribute: sdkgo.RequirementRequired,
+	Progress:        sdkgo.ProgressCapabilities{Structured: false, Text: false},
 }
 
-type PostThreadReplyStepOutput[IN any] = connector.MutationStepOutput[IN, PostMessageOutput]
+type PostThreadReplyStepOutput[IN any] = sdkgo.MutationStepOutput[IN, PostMessageOutput]
 
 type PostThreadReplyStepConfig[IN any] struct {
-	connector.MutationFactoryConfigMarker `connector:"factory=mutation"`
-	connectorID                           struct{}                                                    `connector:"connectorId=slack"`
-	operationID                           struct{}                                                    `connector:"operationId=postThreadReply"`
-	StepType                              string                                                      `connector:"stepType"`
-	Presentation                          connector.StepPresentation                                  `connector:"presentation"`
-	Connection                            Connection                                                  `connector:"connection"`
-	ConnectionName                        string                                                      `connector:"connectionName"`
-	BuildInput                            func(IN) (PostThreadReplyInput, error)                      `connector:"buildInput"`
-	Sent                                  connector.Target[PostThreadReplyStepOutput[IN]]             `connector:"branch=sent"`
-	Rejected                              connector.Target[PostThreadReplyStepOutput[IN]]             `connector:"branch=rejected"`
-	Uncertain                             connector.Target[PostThreadReplyStepOutput[IN]]             `connector:"branch=uncertain"`
-	Defect                                connector.Target[PostThreadReplyStepOutput[IN]]             `connector:"branch=defect"`
-	ResultAttribute                       *dex.Attribute[connector.MutationResult[PostMessageOutput]] `connector:"resultAttribute"`
-	StepOptionsOverride                   *dex.StepOptions                                            `connector:"stepOptionsOverride"`
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                `connector:"connectorId=slack"`
+	operationID                       struct{}                                                `connector:"operationId=postThreadReply"`
+	StepType                          string                                                  `connector:"stepType"`
+	Presentation                      sdkgo.StepPresentation                                  `connector:"presentation"`
+	Connection                        Connection                                              `connector:"connection"`
+	ConnectionName                    string                                                  `connector:"connectionName"`
+	BuildInput                        func(IN) (PostThreadReplyInput, error)                  `connector:"buildInput"`
+	Sent                              sdkgo.Target[PostThreadReplyStepOutput[IN]]             `connector:"branch=sent"`
+	Rejected                          sdkgo.Target[PostThreadReplyStepOutput[IN]]             `connector:"branch=rejected"`
+	Uncertain                         sdkgo.Target[PostThreadReplyStepOutput[IN]]             `connector:"branch=uncertain"`
+	Defect                            sdkgo.Target[PostThreadReplyStepOutput[IN]]             `connector:"branch=defect"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PostMessageOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
 }
 
-func NewPostThreadReplyStep[IN any](config PostThreadReplyStepConfig[IN]) connector.MutationStep[IN, PostThreadReplyInput, PostMessageOutput] {
+func NewPostThreadReplyStep[IN any](config PostThreadReplyStepConfig[IN]) sdkgo.MutationStep[IN, PostThreadReplyInput, PostMessageOutput] {
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
 		panic(fmt.Errorf("slack connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
 	}
-	return connector.MustNewMutationStep(connector.MutationStepConfig[IN, PostThreadReplyInput, PostMessageOutput]{
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, PostThreadReplyInput, PostMessageOutput]{
 		StepType: config.StepType, Presentation: config.Presentation,
 		Operation: config.Connection.client.PostThreadReply(), Connection: config.Connection.reference,
 		BuildInput: config.BuildInput,
-		Branches: []connector.BranchTarget[PostThreadReplyStepOutput[IN]]{
+		Branches: []sdkgo.BranchTarget[PostThreadReplyStepOutput[IN]]{
 			config.Sent.BranchTarget(PostThreadReplyBranchSent),
 			config.Rejected.BranchTarget(PostThreadReplyBranchRejected),
 			config.Uncertain.BranchTarget(PostThreadReplyBranchUncertain),

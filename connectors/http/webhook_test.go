@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 	httpconnector "github.com/superdurable/dex-connectors-library/connectors/http"
 	"github.com/superdurable/dex-connectors-library/connectors/http/internal/testsupport"
-	connector "github.com/superdurable/dex-connectors-library/sdk/go"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 
 type replayGuard struct {
@@ -23,10 +23,10 @@ type replayGuard struct {
 func TestVerifyWebhookOperationUsesCredentialAndRejectsReplay(t *testing.T) {
 	now := time.Unix(1_800_000_000, 0)
 	body := []byte(`{"event":"customer.created"}`)
-	reference := connector.ConnectionRef{Provider: "http", Name: "webhook-test"}
+	reference := sdkgo.ConnectionRef{Provider: "http", Name: "webhook-test"}
 	guard := &replayGuard{used: map[string]bool{}}
-	client, err := httpconnector.New(httpconnector.Config{BaseURL: "https://example.com"}, connector.StaticCredentialProvider[httpconnector.Credentials]{
-		reference: {WebhookSecret: connector.NewSecretString("webhook-secret")},
+	client, err := httpconnector.New(httpconnector.Config{BaseURL: "https://example.com"}, sdkgo.StaticCredentialProvider[httpconnector.Credentials]{
+		reference: {WebhookSecret: sdkgo.NewSecretString("webhook-secret")},
 	}, httpconnector.WithWebhookReplayGuard(guard), httpconnector.WithClock(func() time.Time { return now }))
 	require.NoError(t, err)
 	input := httpconnector.WebhookRequest{
@@ -34,33 +34,33 @@ func TestVerifyWebhookOperationUsesCredentialAndRejectsReplay(t *testing.T) {
 		Signature: httpconnector.SignWebhook([]byte("webhook-secret"), now, body),
 		Body:      body,
 	}
-	result, err := connector.RunQuery(testsupport.NewDexContext("flow-1", "verify-1"), client.VerifyWebhook(), reference, input)
+	result, err := sdkgo.RunQuery(testsupport.NewDexContext("flow-1", "verify-1"), client.VerifyWebhook(), reference, input)
 	require.NoError(t, err)
 	require.Equal(t, httpconnector.VerifyWebhookBranchVerified, result.Branch)
 	require.True(t, result.Value.Verified)
 
-	replayed, err := connector.RunQuery(testsupport.NewDexContext("flow-1", "verify-2"), client.VerifyWebhook(), reference, input)
+	replayed, err := sdkgo.RunQuery(testsupport.NewDexContext("flow-1", "verify-2"), client.VerifyWebhook(), reference, input)
 	require.NoError(t, err)
 	require.Equal(t, httpconnector.VerifyWebhookBranchRejected, replayed.Branch)
-	require.Equal(t, connector.FailureProviderRejection, replayed.Failure.Kind)
+	require.Equal(t, sdkgo.FailureProviderRejection, replayed.Failure.Kind)
 }
 
 func TestVerifyWebhookOperationRequiresReplayProtection(t *testing.T) {
 	now := time.Unix(1_800_000_000, 0)
 	body := []byte(`{"event":"customer.created"}`)
-	reference := connector.ConnectionRef{Provider: "http", Name: "webhook-test"}
-	client, err := httpconnector.New(httpconnector.Config{BaseURL: "https://example.com"}, connector.StaticCredentialProvider[httpconnector.Credentials]{
-		reference: {WebhookSecret: connector.NewSecretString("webhook-secret")},
+	reference := sdkgo.ConnectionRef{Provider: "http", Name: "webhook-test"}
+	client, err := httpconnector.New(httpconnector.Config{BaseURL: "https://example.com"}, sdkgo.StaticCredentialProvider[httpconnector.Credentials]{
+		reference: {WebhookSecret: sdkgo.NewSecretString("webhook-secret")},
 	}, httpconnector.WithClock(func() time.Time { return now }))
 	require.NoError(t, err)
-	result, err := connector.RunQuery(testsupport.NewDexContext("flow-1", "verify-1"), client.VerifyWebhook(), reference, httpconnector.WebhookRequest{
+	result, err := sdkgo.RunQuery(testsupport.NewDexContext("flow-1", "verify-1"), client.VerifyWebhook(), reference, httpconnector.WebhookRequest{
 		Timestamp: strconv.FormatInt(now.Unix(), 10),
 		Signature: httpconnector.SignWebhook([]byte("webhook-secret"), now, body),
 		Body:      body,
 	})
 	require.NoError(t, err)
 	require.Equal(t, httpconnector.VerifyWebhookBranchDefect, result.Branch)
-	require.Equal(t, connector.FailureLocalDefect, result.Failure.Kind)
+	require.Equal(t, sdkgo.FailureLocalDefect, result.Failure.Kind)
 }
 
 func (guard *replayGuard) Use(key string, _ time.Time) bool {

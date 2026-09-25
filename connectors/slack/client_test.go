@@ -13,11 +13,11 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/slack"
-	connector "github.com/superdurable/dex-connectors-library/sdk/go"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
-var slackConnection = connector.ConnectionRef{Provider: "slack", Name: "workspace"}
+var slackConnection = sdkgo.ConnectionRef{Provider: "slack", Name: "workspace"}
 
 func TestListThreadMessagesUsesUserTokenAndReturnsCursor(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
@@ -30,7 +30,7 @@ func TestListThreadMessagesUsesUserTokenAndReturnsCursor(t *testing.T) {
 	}))
 	defer server.Close()
 	client := newSlackClient(t, server.URL)
-	result, err := connector.RunQuery(newSlackDexContext("list-thread"), client.ListThreadMessages(), slackConnection, slack.ListThreadMessagesInput{ChannelID: "C123", ThreadTimestamp: "1.0", PageSize: 15})
+	result, err := sdkgo.RunQuery(newSlackDexContext("list-thread"), client.ListThreadMessages(), slackConnection, slack.ListThreadMessagesInput{ChannelID: "C123", ThreadTimestamp: "1.0", PageSize: 15})
 	require.NoError(t, err)
 	require.Equal(t, slack.ListThreadMessagesBranchRead, result.Branch)
 	require.Len(t, result.Value.Messages, 2)
@@ -46,7 +46,7 @@ func TestGetThreadReplyReturnsNotFoundForAnotherTimestamp(t *testing.T) {
 	}))
 	defer server.Close()
 	client := newSlackClient(t, server.URL)
-	result, err := connector.RunQuery(newSlackDexContext("get-reply"), client.GetThreadReply(), slackConnection, slack.GetThreadReplyInput{ChannelID: "C123", ThreadTimestamp: "1.0", ReplyTimestamp: "2.0"})
+	result, err := sdkgo.RunQuery(newSlackDexContext("get-reply"), client.GetThreadReply(), slackConnection, slack.GetThreadReplyInput{ChannelID: "C123", ThreadTimestamp: "1.0", ReplyTimestamp: "2.0"})
 	require.NoError(t, err)
 	require.Equal(t, slack.GetThreadReplyBranchNotFound, result.Branch)
 }
@@ -57,7 +57,7 @@ func TestGetThreadReplyReturnsExactReply(t *testing.T) {
 	}))
 	defer server.Close()
 	client := newSlackClient(t, server.URL)
-	result, err := connector.RunQuery(newSlackDexContext("get-reply-found"), client.GetThreadReply(), slackConnection, slack.GetThreadReplyInput{ChannelID: "C123", ThreadTimestamp: "1.0", ReplyTimestamp: "2.0"})
+	result, err := sdkgo.RunQuery(newSlackDexContext("get-reply-found"), client.GetThreadReply(), slackConnection, slack.GetThreadReplyInput{ChannelID: "C123", ThreadTimestamp: "1.0", ReplyTimestamp: "2.0"})
 	require.NoError(t, err)
 	require.Equal(t, slack.GetThreadReplyBranchFound, result.Branch)
 	require.Equal(t, "approve", result.Value.Message.Text)
@@ -69,10 +69,10 @@ func TestGetThreadReplyProviderRejectionIsRejected(t *testing.T) {
 	}))
 	defer server.Close()
 	client := newSlackClient(t, server.URL)
-	result, err := connector.RunQuery(newSlackDexContext("get-reply-rejected"), client.GetThreadReply(), slackConnection, slack.GetThreadReplyInput{ChannelID: "C123", ThreadTimestamp: "1.0", ReplyTimestamp: "2.0"})
+	result, err := sdkgo.RunQuery(newSlackDexContext("get-reply-rejected"), client.GetThreadReply(), slackConnection, slack.GetThreadReplyInput{ChannelID: "C123", ThreadTimestamp: "1.0", ReplyTimestamp: "2.0"})
 	require.NoError(t, err)
 	require.Equal(t, slack.GetThreadReplyBranchRejected, result.Branch)
-	require.Equal(t, connector.FailureAuthorization, result.Failure.Kind)
+	require.Equal(t, sdkgo.FailureAuthorization, result.Failure.Kind)
 }
 
 func TestPostThreadReplyUsesBotTokenThreadAndStableClientMessageID(t *testing.T) {
@@ -84,7 +84,7 @@ func TestPostThreadReplyUsesBotTokenThreadAndStableClientMessageID(t *testing.T)
 	}))
 	defer server.Close()
 	client := newSlackClient(t, server.URL)
-	result, err := connector.RunMutation(newSlackDexContext("reply-complete"), client.PostThreadReply(), slackConnection, slack.PostThreadReplyInput{ChannelID: "C123", ThreadTimestamp: "1.0", Text: "Processing complete"})
+	result, err := sdkgo.RunMutation(newSlackDexContext("reply-complete"), client.PostThreadReply(), slackConnection, slack.PostThreadReplyInput{ChannelID: "C123", ThreadTimestamp: "1.0", Text: "Processing complete"})
 	require.NoError(t, err)
 	require.Equal(t, slack.PostThreadReplyBranchSent, result.Branch)
 	require.Equal(t, "1.0", payload["thread_ts"])
@@ -101,7 +101,7 @@ func TestPostChannelMessageOmitsThreadTimestamp(t *testing.T) {
 	}))
 	defer server.Close()
 	client := newSlackClient(t, server.URL)
-	result, err := connector.RunMutation(newSlackDexContext("post-root"), client.PostChannelMessage(), slackConnection, slack.PostChannelMessageInput{ChannelID: "C123", Text: "new request"})
+	result, err := sdkgo.RunMutation(newSlackDexContext("post-root"), client.PostChannelMessage(), slackConnection, slack.PostChannelMessageInput{ChannelID: "C123", Text: "new request"})
 	require.NoError(t, err)
 	require.Equal(t, slack.PostChannelMessageBranchSent, result.Branch)
 	require.NotContains(t, payload, "thread_ts")
@@ -114,10 +114,10 @@ func TestPostMessageProviderRejectionIsRejected(t *testing.T) {
 	}))
 	defer server.Close()
 	client := newSlackClient(t, server.URL)
-	result, err := connector.RunMutation(newSlackDexContext("post-rejected"), client.PostChannelMessage(), slackConnection, slack.PostChannelMessageInput{ChannelID: "C404", Text: "hello"})
+	result, err := sdkgo.RunMutation(newSlackDexContext("post-rejected"), client.PostChannelMessage(), slackConnection, slack.PostChannelMessageInput{ChannelID: "C404", Text: "hello"})
 	require.NoError(t, err)
 	require.Equal(t, slack.PostChannelMessageBranchRejected, result.Branch)
-	require.Equal(t, connector.FailureNotFound, result.Failure.Kind)
+	require.Equal(t, sdkgo.FailureNotFound, result.Failure.Kind)
 }
 
 func TestPostMessageServerFailureIsUncertain(t *testing.T) {
@@ -127,23 +127,23 @@ func TestPostMessageServerFailureIsUncertain(t *testing.T) {
 	}))
 	defer server.Close()
 	client := newSlackClient(t, server.URL)
-	result, err := connector.RunMutation(newSlackDexContext("post-unknown"), client.PostChannelMessage(), slackConnection, slack.PostChannelMessageInput{ChannelID: "C123", Text: "hello"})
+	result, err := sdkgo.RunMutation(newSlackDexContext("post-unknown"), client.PostChannelMessage(), slackConnection, slack.PostChannelMessageInput{ChannelID: "C123", Text: "hello"})
 	require.NoError(t, err)
 	require.Equal(t, slack.PostChannelMessageBranchUncertain, result.Branch)
 }
 
 func TestListThreadMessagesRejectsPageLargerThanSlackLimit(t *testing.T) {
 	client := newSlackClient(t, "http://127.0.0.1:1")
-	result, err := connector.RunQuery(newSlackDexContext("invalid-page"), client.ListThreadMessages(), slackConnection, slack.ListThreadMessagesInput{ChannelID: "C123", ThreadTimestamp: "1.0", PageSize: 16})
+	result, err := sdkgo.RunQuery(newSlackDexContext("invalid-page"), client.ListThreadMessages(), slackConnection, slack.ListThreadMessagesInput{ChannelID: "C123", ThreadTimestamp: "1.0", PageSize: 16})
 	require.NoError(t, err)
 	require.Equal(t, slack.ListThreadMessagesBranchDefect, result.Branch)
 }
 
 func newSlackClient(t *testing.T, endpoint string) *slack.Client {
 	t.Helper()
-	client, err := slack.New(slack.Config{Endpoint: endpoint}, connector.StaticCredentialProvider[slack.Credentials]{
+	client, err := slack.New(slack.Config{Endpoint: endpoint}, sdkgo.StaticCredentialProvider[slack.Credentials]{
 		slackConnection: {
-			BotToken: connector.NewSecretString("bot-token"), UserToken: connector.NewSecretString("user-token"), AppToken: connector.NewSecretString("app-token"),
+			BotToken: sdkgo.NewSecretString("bot-token"), UserToken: sdkgo.NewSecretString("user-token"), AppToken: sdkgo.NewSecretString("app-token"),
 		},
 	})
 	require.NoError(t, err)

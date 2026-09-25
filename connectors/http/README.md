@@ -9,7 +9,7 @@ verification:
 - `httpconnector.NewVerifyWebhookStep`
 
 Create one `httpconnector.Connection` from a configured client and logical
-`connector.ConnectionRef`, then pass it to operation-specific factory configs.
+`sdkgo.ConnectionRef`, then pass it to operation-specific factory configs.
 Connection values cannot be serialized and must never enter Flow input or
 durable state.
 

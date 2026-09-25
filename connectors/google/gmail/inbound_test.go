@@ -15,7 +15,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	gmail "github.com/superdurable/dex-connectors-library/connectors/google/gmail"
-	connector "github.com/superdurable/dex-connectors-library/sdk/go"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 
 func TestGetMessageDecodesHeadersAndBodies(t *testing.T) {
@@ -25,7 +25,7 @@ func TestGetMessageDecodesHeadersAndBodies(t *testing.T) {
 		_, _ = response.Write([]byte(gmailMessageJSON("message-1", "thread-1", false, "hello", "<p>hello</p>")))
 	}))
 	defer server.Close()
-	result, err := connector.RunQuery(newGmailDexContext("read-message"), newGmailClient(t, server.URL).GetMessage(), gmailConnection, gmail.GetMessageInput{MessageID: "message-1"})
+	result, err := sdkgo.RunQuery(newGmailDexContext("read-message"), newGmailClient(t, server.URL).GetMessage(), gmailConnection, gmail.GetMessageInput{MessageID: "message-1"})
 	require.NoError(t, err)
 	require.Equal(t, gmail.GetMessageBranchRead, result.Branch)
 	require.Equal(t, "thread-1", result.Value.ThreadID)
@@ -53,7 +53,7 @@ func TestReplyToMessageUsesThreadAndRFCReplyHeaders(t *testing.T) {
 		}
 	}))
 	defer server.Close()
-	result, err := connector.RunMutation(newGmailDexContext("reply-message"), newGmailClient(t, server.URL).ReplyToMessage(), gmailConnection, gmail.ReplyToMessageInput{MessageID: "message-2", TextBody: "Processing complete"})
+	result, err := sdkgo.RunMutation(newGmailDexContext("reply-message"), newGmailClient(t, server.URL).ReplyToMessage(), gmailConnection, gmail.ReplyToMessageInput{MessageID: "message-2", TextBody: "Processing complete"})
 	require.NoError(t, err)
 	require.Equal(t, gmail.ReplyToMessageBranchSent, result.Branch)
 	require.Contains(t, raw, `To: "Sender" <sender@example.com>`)
@@ -78,27 +78,27 @@ func TestPollingTriggersSeparateRootsAndRepliesAndSuppressRescans(t *testing.T) 
 		}
 	}))
 	defer server.Close()
-	client, err := gmail.New(gmail.Config{Endpoint: server.URL, PollInterval: time.Second}, connector.StaticCredentialProvider[gmail.Credentials]{
-		gmailConnection: {AccessToken: connector.NewSecretString("gmail-token"), PrimaryEmail: "owner@example.com"},
+	client, err := gmail.New(gmail.Config{Endpoint: server.URL, PollInterval: time.Second}, sdkgo.StaticCredentialProvider[gmail.Credentials]{
+		gmailConnection: {AccessToken: sdkgo.NewSecretString("gmail-token"), PrimaryEmail: "owner@example.com"},
 	})
 	require.NoError(t, err)
 	connection, err := gmail.NewConnection(client, gmailConnection)
 	require.NoError(t, err)
 
-	rootEvents := make(chan connector.TriggerEvent[gmail.MessageEvent], 2)
+	rootEvents := make(chan sdkgo.TriggerEvent[gmail.MessageEvent], 2)
 	rootRunner := gmail.NewMessageReceivedTrigger(gmail.MessageReceivedTriggerConfig{
 		Connection: connection, BindingName: "gmail-thread-start",
 		Configuration: gmail.MessageReceivedTriggerConfiguration{MessageMatcher: gmail.MessageMatcher{SenderEmails: []string{"sender@example.com"}}},
-		Target: connector.TriggerTargetFunc[gmail.MessageEvent](func(_ context.Context, event connector.TriggerEvent[gmail.MessageEvent]) error {
+		Target: sdkgo.TriggerTargetFunc[gmail.MessageEvent](func(_ context.Context, event sdkgo.TriggerEvent[gmail.MessageEvent]) error {
 			rootEvents <- event
 			return nil
 		}),
 	})
-	replyEvents := make(chan connector.TriggerEvent[gmail.MessageEvent], 2)
+	replyEvents := make(chan sdkgo.TriggerEvent[gmail.MessageEvent], 2)
 	replyRunner := gmail.NewReplyReceivedTrigger(gmail.ReplyReceivedTriggerConfig{
 		Connection: connection, BindingName: "gmail-thread-reply",
 		Configuration: gmail.ReplyReceivedTriggerConfiguration{ReplyMatcher: gmail.MessageMatcher{MessageContains: "approval"}},
-		Target: connector.TriggerTargetFunc[gmail.MessageEvent](func(_ context.Context, event connector.TriggerEvent[gmail.MessageEvent]) error {
+		Target: sdkgo.TriggerTargetFunc[gmail.MessageEvent](func(_ context.Context, event sdkgo.TriggerEvent[gmail.MessageEvent]) error {
 			replyEvents <- event
 			return nil
 		}),
@@ -129,14 +129,14 @@ func TestPollingTriggersSeparateRootsAndRepliesAndSuppressRescans(t *testing.T) 
 	require.Empty(t, replyEvents)
 }
 
-func receiveTriggerEvent(t *testing.T, events <-chan connector.TriggerEvent[gmail.MessageEvent]) connector.TriggerEvent[gmail.MessageEvent] {
+func receiveTriggerEvent(t *testing.T, events <-chan sdkgo.TriggerEvent[gmail.MessageEvent]) sdkgo.TriggerEvent[gmail.MessageEvent] {
 	t.Helper()
 	select {
 	case event := <-events:
 		return event
 	case <-time.After(4 * time.Second):
 		t.Fatal("Gmail Trigger event was not delivered")
-		return connector.TriggerEvent[gmail.MessageEvent]{}
+		return sdkgo.TriggerEvent[gmail.MessageEvent]{}
 	}
 }
 

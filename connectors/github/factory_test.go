@@ -10,7 +10,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	githubconnector "github.com/superdurable/dex-connectors-library/connectors/github"
-	connector "github.com/superdurable/dex-connectors-library/sdk/go"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -31,35 +31,35 @@ func (repositoriesTarget) Execute(dex.Context, githubconnector.ListPublicReposit
 }
 
 func TestGeneratedFactoriesExposeEveryTypedBranch(t *testing.T) {
-	client, err := githubconnector.New(githubconnector.Config{}, connector.StaticCredentialProvider[githubconnector.Credentials]{
-		githubConnection: {AccessToken: connector.NewSecretString("token")},
+	client, err := githubconnector.New(githubconnector.Config{}, sdkgo.StaticCredentialProvider[githubconnector.Credentials]{
+		githubConnection: {AccessToken: sdkgo.NewSecretString("token")},
 	})
 	require.NoError(t, err)
 	connection, err := githubconnector.NewConnection(client, githubConnection)
 	require.NoError(t, err)
 
-	profileResult := dex.DefineAttribute[connector.QueryResult[githubconnector.AuthenticatedProfile]]("github-profile-result")
+	profileResult := dex.DefineAttribute[sdkgo.QueryResult[githubconnector.AuthenticatedProfile]]("github-profile-result")
 	profile := githubconnector.NewGetAuthenticatedProfileStep(githubconnector.GetAuthenticatedProfileStepConfig[string]{
 		StepType: "ReadGitHubProfile", Presentation: factoryPresentation(), Connection: connection, ConnectionName: "signup",
 		BuildInput: func(string) (githubconnector.GetAuthenticatedProfileInput, error) {
 			return githubconnector.GetAuthenticatedProfileInput{}, nil
 		},
-		ProfileLoaded: connector.GoTo(profileTarget{}), VerifiedEmailRequired: connector.GoTo(profileTarget{}),
-		InsufficientScope: connector.GoTo(profileTarget{}), AuthorizationRevoked: connector.GoTo(profileTarget{}),
-		NotFound: connector.GoTo(profileTarget{}), Failed: connector.GoTo(profileTarget{}), Defect: connector.GoTo(profileTarget{}),
+		ProfileLoaded: sdkgo.GoTo(profileTarget{}), VerifiedEmailRequired: sdkgo.GoTo(profileTarget{}),
+		InsufficientScope: sdkgo.GoTo(profileTarget{}), AuthorizationRevoked: sdkgo.GoTo(profileTarget{}),
+		NotFound: sdkgo.GoTo(profileTarget{}), Failed: sdkgo.GoTo(profileTarget{}), Defect: sdkgo.GoTo(profileTarget{}),
 		ResultAttribute: &profileResult,
 	})
 	require.Equal(t, "ReadGitHubProfile", profile.GetStepType())
 
-	repositoriesResult := dex.DefineAttribute[connector.QueryResult[githubconnector.PublicRepositories]]("github-repositories-result")
+	repositoriesResult := dex.DefineAttribute[sdkgo.QueryResult[githubconnector.PublicRepositories]]("github-repositories-result")
 	repositories := githubconnector.NewListPublicRepositoriesStep(githubconnector.ListPublicRepositoriesStepConfig[string]{
 		StepType: "ReadGitHubRepositories", Presentation: factoryPresentation(), Connection: connection, ConnectionName: "signup",
 		BuildInput: func(login string) (githubconnector.ListPublicRepositoriesInput, error) {
 			return githubconnector.ListPublicRepositoriesInput{Login: login}, nil
 		},
-		RepositoriesLoaded: connector.GoTo(repositoriesTarget{}), InsufficientScope: connector.GoTo(repositoriesTarget{}),
-		AuthorizationRevoked: connector.GoTo(repositoriesTarget{}), NotFound: connector.GoTo(repositoriesTarget{}),
-		Failed: connector.GoTo(repositoriesTarget{}), Defect: connector.GoTo(repositoriesTarget{}),
+		RepositoriesLoaded: sdkgo.GoTo(repositoriesTarget{}), InsufficientScope: sdkgo.GoTo(repositoriesTarget{}),
+		AuthorizationRevoked: sdkgo.GoTo(repositoriesTarget{}), NotFound: sdkgo.GoTo(repositoriesTarget{}),
+		Failed: sdkgo.GoTo(repositoriesTarget{}), Defect: sdkgo.GoTo(repositoriesTarget{}),
 		ResultAttribute: &repositoriesResult,
 	})
 	require.Equal(t, "ReadGitHubRepositories", repositories.GetStepType())
@@ -69,13 +69,13 @@ func TestTypedConnectionAndCredentialsCannotSerializeOrLeak(t *testing.T) {
 	encoded, err := json.Marshal(githubconnector.Connection{})
 	require.ErrorContains(t, err, "cannot be serialized")
 	require.Nil(t, encoded)
-	credentials := githubconnector.Credentials{AccessToken: connector.NewSecretString("secret-token")}
+	credentials := githubconnector.Credentials{AccessToken: sdkgo.NewSecretString("secret-token")}
 	encoded, err = json.Marshal(credentials)
 	require.Error(t, err)
 	require.Nil(t, encoded)
 	require.NotContains(t, fmt.Sprintf("%#v", credentials), "secret-token")
 }
 
-func factoryPresentation() connector.StepPresentation {
-	return connector.StepPresentation{GroupID: "github", GroupLabel: "GitHub", Explanation: "Read bounded signup profile evidence."}
+func factoryPresentation() sdkgo.StepPresentation {
+	return sdkgo.StepPresentation{GroupID: "github", GroupLabel: "GitHub", Explanation: "Read bounded signup profile evidence."}
 }

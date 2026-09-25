@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package openai implements the OpenAI Responses API connector.
+// Package openai implements the OpenAI Responses API sdkgo.
 package openai
 
 import (
@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	connector "github.com/superdurable/dex-connectors-library/sdk/go"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 
 type Option func(*clientOptions)
@@ -29,7 +29,7 @@ func WithHTTPClient(client *http.Client) Option {
 type Client struct {
 	endpoint         *url.URL
 	httpClient       *http.Client
-	credentials      connector.CredentialProvider[Credentials]
+	credentials      sdkgo.CredentialProvider[Credentials]
 	maxResponseBytes int64
 	maxSSEEventBytes int
 }
@@ -73,12 +73,12 @@ type CreateResponseOperation struct{ client *Client }
 type RetrieveResponseOperation struct{ client *Client }
 
 type requestFailure struct {
-	failure connector.Failure
+	failure sdkgo.Failure
 }
 
 func (failure *requestFailure) Error() string { return failure.failure.Message }
 
-func New(config Config, credentials connector.CredentialProvider[Credentials], options ...Option) (*Client, error) {
+func New(config Config, credentials sdkgo.CredentialProvider[Credentials], options ...Option) (*Client, error) {
 	config = withConfigDefaults(config)
 	if err := config.Validate(); err != nil {
 		return nil, err
@@ -121,18 +121,18 @@ func (client *Client) RetrieveResponse() RetrieveResponseOperation {
 	return RetrieveResponseOperation{client: client}
 }
 
-func (CreateResponseOperation) Definition() connector.MutationDefinition {
+func (CreateResponseOperation) Definition() sdkgo.MutationDefinition {
 	return CreateResponseDefinition
 }
 
-func (CreateResponseOperation) IdempotencyKey(callID connector.CallID, _ CreateRequest) connector.IdempotencyKey {
-	return connector.IdempotencyKey(callID)
+func (CreateResponseOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateRequest) sdkgo.IdempotencyKey {
+	return sdkgo.IdempotencyKey(callID)
 }
 
-func (operation CreateResponseOperation) Invoke(call connector.Call, input CreateRequest) connector.MutationAttempt[Response] {
+func (operation CreateResponseOperation) Invoke(call sdkgo.Call, input CreateRequest) sdkgo.MutationAttempt[Response] {
 	if input.Model == "" || input.Input == nil {
-		failure := openAIFailure(connector.FailureValidation, "createResponse", "model and input are required")
-		return connector.NewMutationBranch(CreateResponseBranchDefect, Response{}, &failure, connector.Receipt{})
+		failure := openAIFailure(sdkgo.FailureValidation, "createResponse", "model and input are required")
+		return sdkgo.NewMutationBranch(CreateResponseBranchDefect, Response{}, &failure, sdkgo.Receipt{})
 	}
 	payload := map[string]any{"model": input.Model, "input": input.Input}
 	if input.Instructions != "" {
@@ -152,14 +152,14 @@ func (operation CreateResponseOperation) Invoke(call connector.Call, input Creat
 	request, failure := operation.client.newRequest(call, http.MethodPost, "/responses", call.IdempotencyKey, payload)
 	if failure != nil {
 		branch := CreateResponseBranchFailed
-		if failure.failure.Kind == connector.FailureLocalDefect || failure.failure.Kind == connector.FailureValidation {
+		if failure.failure.Kind == sdkgo.FailureLocalDefect || failure.failure.Kind == sdkgo.FailureValidation {
 			branch = CreateResponseBranchDefect
 		}
-		return connector.NewMutationBranch(branch, Response{}, &failure.failure, connector.Receipt{})
+		return sdkgo.NewMutationBranch(branch, Response{}, &failure.failure, sdkgo.Receipt{})
 	}
 	response, err := operation.client.httpClient.Do(request)
 	if err != nil {
-		return connector.NewMutationUncertain(Response{}, openAIFailure(connector.FailureTransport, "createResponse", "provider outcome is unknown"), responseReceipt(call, "", http.Header{}, ""))
+		return sdkgo.NewMutationUncertain(Response{}, openAIFailure(sdkgo.FailureTransport, "createResponse", "provider outcome is unknown"), responseReceipt(call, "", http.Header{}, ""))
 	}
 	defer response.Body.Close()
 	requestID := response.Header.Get("X-Request-Id")
@@ -171,74 +171,74 @@ func (operation CreateResponseOperation) Invoke(call connector.Call, input Creat
 	}
 	wire, readFailure := operation.client.readResponse(response.Body, "createResponse")
 	if readFailure != nil {
-		return connector.NewMutationUncertain(Response{}, *readFailure, responseReceipt(call, requestID, response.Header, ""))
+		return sdkgo.NewMutationUncertain(Response{}, *readFailure, responseReceipt(call, requestID, response.Header, ""))
 	}
 	result := convertResponse(wire)
-	return connector.NewMutationBranch(CreateResponseBranchCompleted, result, nil, responseReceipt(call, requestID, response.Header, result.ID))
+	return sdkgo.NewMutationBranch(CreateResponseBranchCompleted, result, nil, responseReceipt(call, requestID, response.Header, result.ID))
 }
 
-func (RetrieveResponseOperation) Definition() connector.QueryDefinition {
+func (RetrieveResponseOperation) Definition() sdkgo.QueryDefinition {
 	return RetrieveResponseDefinition
 }
 
-func (operation RetrieveResponseOperation) Invoke(call connector.Call, input RetrieveRequest) connector.QueryAttempt[Response] {
+func (operation RetrieveResponseOperation) Invoke(call sdkgo.Call, input RetrieveRequest) sdkgo.QueryAttempt[Response] {
 	if input.ResponseID == "" {
-		failure := openAIFailure(connector.FailureValidation, "retrieveResponse", "response ID is required")
-		return connector.NewQueryBranch(RetrieveResponseBranchDefect, Response{}, &failure, connector.Receipt{})
+		failure := openAIFailure(sdkgo.FailureValidation, "retrieveResponse", "response ID is required")
+		return sdkgo.NewQueryBranch(RetrieveResponseBranchDefect, Response{}, &failure, sdkgo.Receipt{})
 	}
 	request, failure := operation.client.newRequest(call, http.MethodGet, "/responses/"+url.PathEscape(input.ResponseID), "", nil)
 	if failure != nil {
 		branch := RetrieveResponseBranchFailed
-		if failure.failure.Kind == connector.FailureLocalDefect || failure.failure.Kind == connector.FailureValidation {
+		if failure.failure.Kind == sdkgo.FailureLocalDefect || failure.failure.Kind == sdkgo.FailureValidation {
 			branch = RetrieveResponseBranchDefect
 		}
-		return connector.NewQueryBranch(branch, Response{}, &failure.failure, connector.Receipt{})
+		return sdkgo.NewQueryBranch(branch, Response{}, &failure.failure, sdkgo.Receipt{})
 	}
 	response, err := operation.client.httpClient.Do(request)
 	if err != nil {
-		return connector.NewQueryRetry[Response](openAIFailure(connector.FailureAvailability, "retrieveResponse", "provider is unavailable"), 0)
+		return sdkgo.NewQueryRetry[Response](openAIFailure(sdkgo.FailureAvailability, "retrieveResponse", "provider is unavailable"), 0)
 	}
 	defer response.Body.Close()
 	requestID := response.Header.Get("X-Request-Id")
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		failure, retryAfter, retry := classifyOpenAIStatus("retrieveResponse", response.StatusCode, response.Header)
 		if retry {
-			return connector.NewQueryRetry[Response](failure, retryAfter)
+			return sdkgo.NewQueryRetry[Response](failure, retryAfter)
 		}
-		return connector.NewQueryBranch(RetrieveResponseBranchFailed, Response{}, &failure, responseReceipt(call, requestID, response.Header, input.ResponseID))
+		return sdkgo.NewQueryBranch(RetrieveResponseBranchFailed, Response{}, &failure, responseReceipt(call, requestID, response.Header, input.ResponseID))
 	}
 	wire, readFailure := operation.client.readResponse(response.Body, "retrieveResponse")
 	if readFailure != nil {
-		if readFailure.Kind == connector.FailureResponseTooLarge || readFailure.Kind == connector.FailureProtocol {
-			return connector.NewQueryBranch(RetrieveResponseBranchFailed, Response{}, readFailure, responseReceipt(call, requestID, response.Header, input.ResponseID))
+		if readFailure.Kind == sdkgo.FailureResponseTooLarge || readFailure.Kind == sdkgo.FailureProtocol {
+			return sdkgo.NewQueryBranch(RetrieveResponseBranchFailed, Response{}, readFailure, responseReceipt(call, requestID, response.Header, input.ResponseID))
 		}
-		return connector.NewQueryRetry[Response](*readFailure, 0)
+		return sdkgo.NewQueryRetry[Response](*readFailure, 0)
 	}
 	result := convertResponse(wire)
-	return connector.NewQueryBranch(RetrieveResponseBranchFound, result, nil, responseReceipt(call, requestID, response.Header, result.ID))
+	return sdkgo.NewQueryBranch(RetrieveResponseBranchFound, result, nil, responseReceipt(call, requestID, response.Header, result.ID))
 }
 
-func (client *Client) newRequest(call connector.Call, method, path string, key connector.IdempotencyKey, payload any) (*http.Request, *requestFailure) {
+func (client *Client) newRequest(call sdkgo.Call, method, path string, key sdkgo.IdempotencyKey, payload any) (*http.Request, *requestFailure) {
 	credential, err := client.credentials.Resolve(call)
 	if err != nil {
-		return nil, &requestFailure{failure: openAIFailure(connector.FailureAuthentication, call.Operation.OperationID, "connection credentials are unavailable")}
+		return nil, &requestFailure{failure: openAIFailure(sdkgo.FailureAuthentication, call.Operation.OperationID, "connection credentials are unavailable")}
 	}
 	if err := credential.Validate(); err != nil {
-		return nil, &requestFailure{failure: openAIFailure(connector.FailureAuthentication, call.Operation.OperationID, "connection credentials are invalid")}
+		return nil, &requestFailure{failure: openAIFailure(sdkgo.FailureAuthentication, call.Operation.OperationID, "connection credentials are invalid")}
 	}
 	apiKey := credential.APIKey.Reveal()
 	var body io.Reader
 	if payload != nil {
 		encoded, encodeErr := json.Marshal(payload)
 		if encodeErr != nil {
-			return nil, &requestFailure{failure: openAIFailure(connector.FailureValidation, call.Operation.OperationID, "request is not JSON serializable")}
+			return nil, &requestFailure{failure: openAIFailure(sdkgo.FailureValidation, call.Operation.OperationID, "request is not JSON serializable")}
 		}
 		body = bytes.NewReader(encoded)
 	}
 	target := strings.TrimRight(client.endpoint.String(), "/") + path
 	request, err := http.NewRequestWithContext(call.Context, method, target, body)
 	if err != nil {
-		return nil, &requestFailure{failure: openAIFailure(connector.FailureLocalDefect, call.Operation.OperationID, "request could not be built")}
+		return nil, &requestFailure{failure: openAIFailure(sdkgo.FailureLocalDefect, call.Operation.OperationID, "request could not be built")}
 	}
 	request.Header.Set("Authorization", "Bearer "+apiKey)
 	request.Header.Set("Content-Type", "application/json")
@@ -248,59 +248,59 @@ func (client *Client) newRequest(call connector.Call, method, path string, key c
 	return request, nil
 }
 
-func (client *Client) readResponse(body io.Reader, operation string) (wireResponse, *connector.Failure) {
+func (client *Client) readResponse(body io.Reader, operation string) (wireResponse, *sdkgo.Failure) {
 	data, err := io.ReadAll(io.LimitReader(body, client.maxResponseBytes+1))
 	if err != nil {
-		failure := openAIFailure(connector.FailureTransport, operation, "provider response could not be read")
+		failure := openAIFailure(sdkgo.FailureTransport, operation, "provider response could not be read")
 		return wireResponse{}, &failure
 	}
 	if int64(len(data)) > client.maxResponseBytes {
-		failure := openAIFailure(connector.FailureResponseTooLarge, operation, "provider response exceeds the configured size limit")
+		failure := openAIFailure(sdkgo.FailureResponseTooLarge, operation, "provider response exceeds the configured size limit")
 		return wireResponse{}, &failure
 	}
 	var wire wireResponse
 	if err := json.Unmarshal(data, &wire); err != nil {
-		failure := openAIFailure(connector.FailureProtocol, operation, "provider response is invalid")
+		failure := openAIFailure(sdkgo.FailureProtocol, operation, "provider response is invalid")
 		return wireResponse{}, &failure
 	}
 	return wire, nil
 }
 
-func createStatusAttempt(call connector.Call, status int, header http.Header, requestID string) connector.MutationAttempt[Response] {
+func createStatusAttempt(call sdkgo.Call, status int, header http.Header, requestID string) sdkgo.MutationAttempt[Response] {
 	failure, retryAfter, retry := classifyOpenAIStatus("createResponse", status, header)
 	if retry {
-		return connector.NewMutationRetry[Response](failure, retryAfter)
+		return sdkgo.NewMutationRetry[Response](failure, retryAfter)
 	}
 	receipt := responseReceipt(call, requestID, header, "")
 	if status >= 500 {
-		return connector.NewMutationUncertain(Response{}, failure, receipt)
+		return sdkgo.NewMutationUncertain(Response{}, failure, receipt)
 	}
-	return connector.NewMutationBranch(CreateResponseBranchFailed, Response{}, &failure, receipt)
+	return sdkgo.NewMutationBranch(CreateResponseBranchFailed, Response{}, &failure, receipt)
 }
 
-func classifyOpenAIStatus(operation string, status int, header http.Header) (connector.Failure, time.Duration, bool) {
-	kind := connector.FailureProviderRejection
+func classifyOpenAIStatus(operation string, status int, header http.Header) (sdkgo.Failure, time.Duration, bool) {
+	kind := sdkgo.FailureProviderRejection
 	retry := false
 	switch status {
 	case http.StatusUnauthorized:
-		kind = connector.FailureAuthentication
+		kind = sdkgo.FailureAuthentication
 	case http.StatusForbidden:
-		kind = connector.FailureAuthorization
+		kind = sdkgo.FailureAuthorization
 	case http.StatusNotFound:
-		kind = connector.FailureNotFound
+		kind = sdkgo.FailureNotFound
 	case http.StatusConflict:
-		kind = connector.FailureConflict
+		kind = sdkgo.FailureConflict
 	case http.StatusTooManyRequests:
-		kind = connector.FailureRateLimit
+		kind = sdkgo.FailureRateLimit
 		retry = true
 	default:
 		if status >= 500 {
-			kind = connector.FailureAvailability
+			kind = sdkgo.FailureAvailability
 			retry = operation == "retrieveResponse"
 		}
 	}
 	var retryAfter time.Duration
-	if kind == connector.FailureRateLimit {
+	if kind == sdkgo.FailureRateLimit {
 		if seconds, err := strconv.Atoi(header.Get("Retry-After")); err == nil && seconds > 0 {
 			retryAfter = time.Duration(seconds) * time.Second
 		}
@@ -308,12 +308,12 @@ func classifyOpenAIStatus(operation string, status int, header http.Header) (con
 	return openAIFailure(kind, operation, "provider returned HTTP "+strconv.Itoa(status)), retryAfter, retry
 }
 
-func openAIFailure(kind connector.FailureKind, operation, message string) connector.Failure {
-	return connector.Failure{Kind: kind, Provider: "openai", Operation: operation, Message: message}
+func openAIFailure(kind sdkgo.FailureKind, operation, message string) sdkgo.Failure {
+	return sdkgo.Failure{Kind: kind, Provider: "openai", Operation: operation, Message: message}
 }
 
-func responseReceipt(call connector.Call, requestID string, header http.Header, responseID string) connector.Receipt {
-	return connector.Receipt{
+func responseReceipt(call sdkgo.Call, requestID string, header http.Header, responseID string) sdkgo.Receipt {
+	return sdkgo.Receipt{
 		CallID: call.ID, IdempotencyKey: call.IdempotencyKey, Provider: "openai",
 		ProviderObjectID: responseID, ProviderRequestID: requestID,
 		ObservedAt: time.Now().UTC(), Metadata: rateLimitMetadata(header),

@@ -233,7 +233,7 @@ jobs:
           go-version-file: go.mod
           cache-dependency-path: |
             go.sum
-            sdk/go/go.sum
+            sdkgo/go.sum
             connectors/${{ inputs.connector }}/go.sum
       - uses: actions/setup-node@v6
         with:
@@ -248,7 +248,7 @@ jobs:
         run: |
           python3 script/release/component_release.py validate-connector \
             --component-path "${COMPONENT_PATH}" \
-            --sdk-module github.com/superdurable/dex-connectors-library/sdk/go
+            --sdk-module github.com/superdurable/dex-connectors-library/sdkgo
       - name: Test standalone connector module
         working-directory: ${{ env.COMPONENT_PATH }}
         env:

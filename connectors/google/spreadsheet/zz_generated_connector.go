@@ -10,8 +10,8 @@ import (
 	"net/url"
 	"time"
 
-	connector "github.com/superdurable/dex-connectors-library/sdk/go"
-	"github.com/superdurable/dex-connectors-library/sdk/go/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -24,15 +24,15 @@ type Config struct {
 }
 
 type Credentials struct {
-	AccessToken connector.SecretString
+	AccessToken sdkgo.SecretString
 }
 
 type Connection struct {
 	client    *Client
-	reference connector.ConnectionRef
+	reference sdkgo.ConnectionRef
 }
 
-func NewConnection(client *Client, reference connector.ConnectionRef) (Connection, error) {
+func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, error) {
 	if client == nil {
 		return Connection{}, fmt.Errorf("google-sheets connector client is required")
 	}
@@ -47,7 +47,7 @@ func NewLocalConnection(store *localconfig.Store, connectionName string, options
 	if store == nil {
 		return Connection{}, fmt.Errorf("local connector configuration store is required")
 	}
-	reference := connector.ConnectionRef{Provider: "google", Name: connectionName}
+	reference := sdkgo.ConnectionRef{Provider: "google", Name: connectionName}
 	if err := reference.Validate(); err != nil {
 		return Connection{}, fmt.Errorf("google-sheets local connection: %w", err)
 	}
@@ -71,7 +71,7 @@ func decodeLocalCredentials(contents json.RawMessage) (Credentials, error) {
 		return Credentials{}, err
 	}
 	credentials := Credentials{
-		AccessToken: connector.NewSecretString(fields.AccessToken),
+		AccessToken: sdkgo.NewSecretString(fields.AccessToken),
 	}
 	return credentials, credentials.Validate()
 }
@@ -140,60 +140,60 @@ func (credentials Credentials) Validate() error {
 	return nil
 }
 
-const GetValuesBranchRead connector.BranchID = "read"
-const GetValuesBranchNotFound connector.BranchID = "notFound"
-const GetValuesBranchFailed connector.BranchID = "failed"
-const GetValuesBranchDefect connector.BranchID = "defect"
+const GetValuesBranchRead sdkgo.BranchID = "read"
+const GetValuesBranchNotFound sdkgo.BranchID = "notFound"
+const GetValuesBranchFailed sdkgo.BranchID = "failed"
+const GetValuesBranchDefect sdkgo.BranchID = "defect"
 
-var GetValuesDefinition = connector.QueryDefinition{
-	Operation: connector.OperationRef{ConnectorID: ConnectorID, OperationID: "getValues"},
-	Branches: []connector.BranchDefinition{
+var GetValuesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getValues"},
+	Branches: []sdkgo.BranchDefinition{
 		{ID: GetValuesBranchRead, Description: "The range was read."},
 		{ID: GetValuesBranchNotFound, Description: "The spreadsheet or range does not exist."},
 		{ID: GetValuesBranchFailed, Description: "Google rejected the read."},
 		{ID: GetValuesBranchDefect, Description: "Local input or connector definition is invalid."},
 	},
 	DefectBranch: GetValuesBranchDefect,
-	StepDefaults: connector.StepDefaults{
+	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
-	ResultAttribute: connector.RequirementOptional,
-	Progress:        connector.ProgressCapabilities{Structured: false, Text: false},
+	ResultAttribute: sdkgo.RequirementOptional,
+	Progress:        sdkgo.ProgressCapabilities{Structured: false, Text: false},
 }
 
-type GetValuesStepOutput[IN any] = connector.QueryStepOutput[IN, GetValuesOutput]
+type GetValuesStepOutput[IN any] = sdkgo.QueryStepOutput[IN, GetValuesOutput]
 
 type GetValuesStepConfig[IN any] struct {
-	connector.QueryFactoryConfigMarker `connector:"factory=query"`
-	connectorID                        struct{}                                               `connector:"connectorId=google-sheets"`
-	operationID                        struct{}                                               `connector:"operationId=getValues"`
-	StepType                           string                                                 `connector:"stepType"`
-	Presentation                       connector.StepPresentation                             `connector:"presentation"`
-	Connection                         Connection                                             `connector:"connection"`
-	ConnectionName                     string                                                 `connector:"connectionName"`
-	BuildInput                         func(IN) (GetValuesInput, error)                       `connector:"buildInput"`
-	Read                               connector.Target[GetValuesStepOutput[IN]]              `connector:"branch=read"`
-	NotFound                           connector.Target[GetValuesStepOutput[IN]]              `connector:"branch=notFound"`
-	Failed                             connector.Target[GetValuesStepOutput[IN]]              `connector:"branch=failed"`
-	Defect                             connector.Target[GetValuesStepOutput[IN]]              `connector:"branch=defect"`
-	ResultAttribute                    *dex.Attribute[connector.QueryResult[GetValuesOutput]] `connector:"resultAttribute"`
-	StepOptionsOverride                *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                           `connector:"connectorId=google-sheets"`
+	operationID                    struct{}                                           `connector:"operationId=getValues"`
+	StepType                       string                                             `connector:"stepType"`
+	Presentation                   sdkgo.StepPresentation                             `connector:"presentation"`
+	Connection                     Connection                                         `connector:"connection"`
+	ConnectionName                 string                                             `connector:"connectionName"`
+	BuildInput                     func(IN) (GetValuesInput, error)                   `connector:"buildInput"`
+	Read                           sdkgo.Target[GetValuesStepOutput[IN]]              `connector:"branch=read"`
+	NotFound                       sdkgo.Target[GetValuesStepOutput[IN]]              `connector:"branch=notFound"`
+	Failed                         sdkgo.Target[GetValuesStepOutput[IN]]              `connector:"branch=failed"`
+	Defect                         sdkgo.Target[GetValuesStepOutput[IN]]              `connector:"branch=defect"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[GetValuesOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                   `connector:"stepOptionsOverride"`
 }
 
-func NewGetValuesStep[IN any](config GetValuesStepConfig[IN]) connector.QueryStep[IN, GetValuesInput, GetValuesOutput] {
+func NewGetValuesStep[IN any](config GetValuesStepConfig[IN]) sdkgo.QueryStep[IN, GetValuesInput, GetValuesOutput] {
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
 		panic(fmt.Errorf("google-sheets connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
 	}
-	return connector.MustNewQueryStep(connector.QueryStepConfig[IN, GetValuesInput, GetValuesOutput]{
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetValuesInput, GetValuesOutput]{
 		StepType: config.StepType, Presentation: config.Presentation,
 		Operation: config.Connection.client.GetValues(), Connection: config.Connection.reference,
 		BuildInput: config.BuildInput,
-		Branches: []connector.BranchTarget[GetValuesStepOutput[IN]]{
+		Branches: []sdkgo.BranchTarget[GetValuesStepOutput[IN]]{
 			config.Read.BranchTarget(GetValuesBranchRead),
 			config.NotFound.BranchTarget(GetValuesBranchNotFound),
 			config.Failed.BranchTarget(GetValuesBranchFailed),
@@ -204,15 +204,15 @@ func NewGetValuesStep[IN any](config GetValuesStepConfig[IN]) connector.QuerySte
 	})
 }
 
-const FindRowBranchFound connector.BranchID = "found"
-const FindRowBranchNotFound connector.BranchID = "notFound"
-const FindRowBranchConflict connector.BranchID = "conflict"
-const FindRowBranchFailed connector.BranchID = "failed"
-const FindRowBranchDefect connector.BranchID = "defect"
+const FindRowBranchFound sdkgo.BranchID = "found"
+const FindRowBranchNotFound sdkgo.BranchID = "notFound"
+const FindRowBranchConflict sdkgo.BranchID = "conflict"
+const FindRowBranchFailed sdkgo.BranchID = "failed"
+const FindRowBranchDefect sdkgo.BranchID = "defect"
 
-var FindRowDefinition = connector.QueryDefinition{
-	Operation: connector.OperationRef{ConnectorID: ConnectorID, OperationID: "findRow"},
-	Branches: []connector.BranchDefinition{
+var FindRowDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "findRow"},
+	Branches: []sdkgo.BranchDefinition{
 		{ID: FindRowBranchFound, Description: "Exactly one matching row was found."},
 		{ID: FindRowBranchNotFound, Description: "No matching row exists."},
 		{ID: FindRowBranchConflict, Description: "More than one matching row exists."},
@@ -220,47 +220,47 @@ var FindRowDefinition = connector.QueryDefinition{
 		{ID: FindRowBranchDefect, Description: "Local input or connector definition is invalid."},
 	},
 	DefectBranch: FindRowBranchDefect,
-	StepDefaults: connector.StepDefaults{
+	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
-	ResultAttribute: connector.RequirementOptional,
-	Progress:        connector.ProgressCapabilities{Structured: false, Text: false},
+	ResultAttribute: sdkgo.RequirementOptional,
+	Progress:        sdkgo.ProgressCapabilities{Structured: false, Text: false},
 }
 
-type FindRowStepOutput[IN any] = connector.QueryStepOutput[IN, FindRowOutput]
+type FindRowStepOutput[IN any] = sdkgo.QueryStepOutput[IN, FindRowOutput]
 
 type FindRowStepConfig[IN any] struct {
-	connector.QueryFactoryConfigMarker `connector:"factory=query"`
-	connectorID                        struct{}                                             `connector:"connectorId=google-sheets"`
-	operationID                        struct{}                                             `connector:"operationId=findRow"`
-	StepType                           string                                               `connector:"stepType"`
-	Presentation                       connector.StepPresentation                           `connector:"presentation"`
-	Connection                         Connection                                           `connector:"connection"`
-	ConnectionName                     string                                               `connector:"connectionName"`
-	BuildInput                         func(IN) (FindRowInput, error)                       `connector:"buildInput"`
-	Found                              connector.Target[FindRowStepOutput[IN]]              `connector:"branch=found"`
-	NotFound                           connector.Target[FindRowStepOutput[IN]]              `connector:"branch=notFound"`
-	Conflict                           connector.Target[FindRowStepOutput[IN]]              `connector:"branch=conflict"`
-	Failed                             connector.Target[FindRowStepOutput[IN]]              `connector:"branch=failed"`
-	Defect                             connector.Target[FindRowStepOutput[IN]]              `connector:"branch=defect"`
-	ResultAttribute                    *dex.Attribute[connector.QueryResult[FindRowOutput]] `connector:"resultAttribute"`
-	StepOptionsOverride                *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                         `connector:"connectorId=google-sheets"`
+	operationID                    struct{}                                         `connector:"operationId=findRow"`
+	StepType                       string                                           `connector:"stepType"`
+	Presentation                   sdkgo.StepPresentation                           `connector:"presentation"`
+	Connection                     Connection                                       `connector:"connection"`
+	ConnectionName                 string                                           `connector:"connectionName"`
+	BuildInput                     func(IN) (FindRowInput, error)                   `connector:"buildInput"`
+	Found                          sdkgo.Target[FindRowStepOutput[IN]]              `connector:"branch=found"`
+	NotFound                       sdkgo.Target[FindRowStepOutput[IN]]              `connector:"branch=notFound"`
+	Conflict                       sdkgo.Target[FindRowStepOutput[IN]]              `connector:"branch=conflict"`
+	Failed                         sdkgo.Target[FindRowStepOutput[IN]]              `connector:"branch=failed"`
+	Defect                         sdkgo.Target[FindRowStepOutput[IN]]              `connector:"branch=defect"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[FindRowOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
 }
 
-func NewFindRowStep[IN any](config FindRowStepConfig[IN]) connector.QueryStep[IN, FindRowInput, FindRowOutput] {
+func NewFindRowStep[IN any](config FindRowStepConfig[IN]) sdkgo.QueryStep[IN, FindRowInput, FindRowOutput] {
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
 		panic(fmt.Errorf("google-sheets connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
 	}
-	return connector.MustNewQueryStep(connector.QueryStepConfig[IN, FindRowInput, FindRowOutput]{
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, FindRowInput, FindRowOutput]{
 		StepType: config.StepType, Presentation: config.Presentation,
 		Operation: config.Connection.client.FindRow(), Connection: config.Connection.reference,
 		BuildInput: config.BuildInput,
-		Branches: []connector.BranchTarget[FindRowStepOutput[IN]]{
+		Branches: []sdkgo.BranchTarget[FindRowStepOutput[IN]]{
 			config.Found.BranchTarget(FindRowBranchFound),
 			config.NotFound.BranchTarget(FindRowBranchNotFound),
 			config.Conflict.BranchTarget(FindRowBranchConflict),
@@ -272,15 +272,15 @@ func NewFindRowStep[IN any](config FindRowStepConfig[IN]) connector.QueryStep[IN
 	})
 }
 
-const UpsertRowBranchUpserted connector.BranchID = "upserted"
-const UpsertRowBranchConflict connector.BranchID = "conflict"
-const UpsertRowBranchRejected connector.BranchID = "rejected"
-const UpsertRowBranchUncertain connector.BranchID = "uncertain"
-const UpsertRowBranchDefect connector.BranchID = "defect"
+const UpsertRowBranchUpserted sdkgo.BranchID = "upserted"
+const UpsertRowBranchConflict sdkgo.BranchID = "conflict"
+const UpsertRowBranchRejected sdkgo.BranchID = "rejected"
+const UpsertRowBranchUncertain sdkgo.BranchID = "uncertain"
+const UpsertRowBranchDefect sdkgo.BranchID = "defect"
 
-var UpsertRowDefinition = connector.MutationDefinition{
-	Operation: connector.OperationRef{ConnectorID: ConnectorID, OperationID: "upsertRow"},
-	Branches: []connector.BranchDefinition{
+var UpsertRowDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "upsertRow"},
+	Branches: []sdkgo.BranchDefinition{
 		{ID: UpsertRowBranchUpserted, Description: "One row was inserted or updated."},
 		{ID: UpsertRowBranchConflict, Description: "Existing duplicate key rows prevent a safe write."},
 		{ID: UpsertRowBranchRejected, Description: "Google conclusively rejected the write."},
@@ -289,47 +289,47 @@ var UpsertRowDefinition = connector.MutationDefinition{
 	},
 	DefectBranch:    UpsertRowBranchDefect,
 	UncertainBranch: UpsertRowBranchUncertain,
-	StepDefaults: connector.StepDefaults{
+	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
-	ResultAttribute: connector.RequirementRequired,
-	Progress:        connector.ProgressCapabilities{Structured: false, Text: false},
+	ResultAttribute: sdkgo.RequirementRequired,
+	Progress:        sdkgo.ProgressCapabilities{Structured: false, Text: false},
 }
 
-type UpsertRowStepOutput[IN any] = connector.MutationStepOutput[IN, UpsertRowOutput]
+type UpsertRowStepOutput[IN any] = sdkgo.MutationStepOutput[IN, UpsertRowOutput]
 
 type UpsertRowStepConfig[IN any] struct {
-	connector.MutationFactoryConfigMarker `connector:"factory=mutation"`
-	connectorID                           struct{}                                                  `connector:"connectorId=google-sheets"`
-	operationID                           struct{}                                                  `connector:"operationId=upsertRow"`
-	StepType                              string                                                    `connector:"stepType"`
-	Presentation                          connector.StepPresentation                                `connector:"presentation"`
-	Connection                            Connection                                                `connector:"connection"`
-	ConnectionName                        string                                                    `connector:"connectionName"`
-	BuildInput                            func(IN) (UpsertRowInput, error)                          `connector:"buildInput"`
-	Upserted                              connector.Target[UpsertRowStepOutput[IN]]                 `connector:"branch=upserted"`
-	Conflict                              connector.Target[UpsertRowStepOutput[IN]]                 `connector:"branch=conflict"`
-	Rejected                              connector.Target[UpsertRowStepOutput[IN]]                 `connector:"branch=rejected"`
-	Uncertain                             connector.Target[UpsertRowStepOutput[IN]]                 `connector:"branch=uncertain"`
-	Defect                                connector.Target[UpsertRowStepOutput[IN]]                 `connector:"branch=defect"`
-	ResultAttribute                       *dex.Attribute[connector.MutationResult[UpsertRowOutput]] `connector:"resultAttribute"`
-	StepOptionsOverride                   *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=google-sheets"`
+	operationID                       struct{}                                              `connector:"operationId=upsertRow"`
+	StepType                          string                                                `connector:"stepType"`
+	Presentation                      sdkgo.StepPresentation                                `connector:"presentation"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	BuildInput                        func(IN) (UpsertRowInput, error)                      `connector:"buildInput"`
+	Upserted                          sdkgo.Target[UpsertRowStepOutput[IN]]                 `connector:"branch=upserted"`
+	Conflict                          sdkgo.Target[UpsertRowStepOutput[IN]]                 `connector:"branch=conflict"`
+	Rejected                          sdkgo.Target[UpsertRowStepOutput[IN]]                 `connector:"branch=rejected"`
+	Uncertain                         sdkgo.Target[UpsertRowStepOutput[IN]]                 `connector:"branch=uncertain"`
+	Defect                            sdkgo.Target[UpsertRowStepOutput[IN]]                 `connector:"branch=defect"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpsertRowOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
 }
 
-func NewUpsertRowStep[IN any](config UpsertRowStepConfig[IN]) connector.MutationStep[IN, UpsertRowInput, UpsertRowOutput] {
+func NewUpsertRowStep[IN any](config UpsertRowStepConfig[IN]) sdkgo.MutationStep[IN, UpsertRowInput, UpsertRowOutput] {
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
 		panic(fmt.Errorf("google-sheets connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
 	}
-	return connector.MustNewMutationStep(connector.MutationStepConfig[IN, UpsertRowInput, UpsertRowOutput]{
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpsertRowInput, UpsertRowOutput]{
 		StepType: config.StepType, Presentation: config.Presentation,
 		Operation: config.Connection.client.UpsertRow(), Connection: config.Connection.reference,
 		BuildInput: config.BuildInput,
-		Branches: []connector.BranchTarget[UpsertRowStepOutput[IN]]{
+		Branches: []sdkgo.BranchTarget[UpsertRowStepOutput[IN]]{
 			config.Upserted.BranchTarget(UpsertRowBranchUpserted),
 			config.Conflict.BranchTarget(UpsertRowBranchConflict),
 			config.Rejected.BranchTarget(UpsertRowBranchRejected),
