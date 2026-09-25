@@ -57,6 +57,16 @@ type messageTriggerSource struct {
 	requiresThread bool
 }
 
+type messageTriggerRoute struct {
+	source *messageTriggerSource
+	target sdkgo.TriggerTarget[MessageEvent]
+}
+
+type pendingMessageTriggerDelivery struct {
+	target sdkgo.TriggerTarget[MessageEvent]
+	event  sdkgo.TriggerEvent[MessageEvent]
+}
+
 type socketEnvelope struct {
 	EnvelopeID string          `json:"envelope_id"`
 	Type       string          `json:"type"`
@@ -115,7 +125,7 @@ func (matcher MessageMatcher) validate(requiresPoster bool) error {
 	return nil
 }
 
-func (client *Client) channelThreadCreatedTriggerSource(connection sdkgo.ConnectionRef, configuration ChannelThreadCreatedTriggerConfiguration) sdkgo.TriggerSource[MessageEvent] {
+func (client *Client) channelThreadCreatedTriggerSource(connection sdkgo.ConnectionRef, configuration ChannelThreadCreatedTriggerConfiguration) *messageTriggerSource {
 	if err := configuration.Validate(); err != nil {
 		panic(err)
 	}
@@ -125,7 +135,7 @@ func (client *Client) channelThreadCreatedTriggerSource(connection sdkgo.Connect
 	}
 }
 
-func (client *Client) threadReplyCreatedTriggerSource(connection sdkgo.ConnectionRef, configuration ThreadReplyCreatedTriggerConfiguration) sdkgo.TriggerSource[MessageEvent] {
+func (client *Client) threadReplyCreatedTriggerSource(connection sdkgo.ConnectionRef, configuration ThreadReplyCreatedTriggerConfiguration) *messageTriggerSource {
 	if err := configuration.Validate(); err != nil {
 		panic(err)
 	}
@@ -136,11 +146,18 @@ func (client *Client) threadReplyCreatedTriggerSource(connection sdkgo.Connectio
 }
 
 func (source *messageTriggerSource) Run(ctx context.Context, target sdkgo.TriggerTarget[MessageEvent]) error {
+	return runMessageTriggerRoutes(ctx, []messageTriggerRoute{{source: source, target: target}})
+}
+
+func runMessageTriggerRoutes(ctx context.Context, routes []messageTriggerRoute) error {
+	if len(routes) == 0 {
+		return fmt.Errorf("Slack message Trigger routes are required")
+	}
 	for {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		if err := source.runConnection(ctx, target); err != nil {
+		if err := runMessageTriggerConnection(ctx, routes); err != nil {
 			if ctx.Err() != nil {
 				return ctx.Err()
 			}
@@ -158,7 +175,8 @@ func (source *messageTriggerSource) Run(ctx context.Context, target sdkgo.Trigge
 	}
 }
 
-func (source *messageTriggerSource) runConnection(ctx context.Context, target sdkgo.TriggerTarget[MessageEvent]) error {
+func runMessageTriggerConnection(ctx context.Context, routes []messageTriggerRoute) error {
+	source := routes[0].source
 	credentials, err := source.client.credentials.Resolve(sdkgo.Call{Connection: source.connection})
 	if err != nil || credentials.Validate() != nil {
 		return fmt.Errorf("Slack Socket Mode credentials are unavailable")
@@ -180,29 +198,47 @@ func (source *messageTriggerSource) runConnection(ctx context.Context, target sd
 		if err := connection.ReadJSON(&envelope); err != nil {
 			return fmt.Errorf("read Slack Socket Mode envelope: %w", err)
 		}
-		matched, event, err := source.decodeEvent(envelope)
+		deliveries, err := decodeMessageTriggerDeliveries(routes, envelope)
 		if err != nil {
 			if acknowledgeErr := acknowledgeEnvelope(connection, envelope.EnvelopeID); acknowledgeErr != nil {
 				return acknowledgeErr
 			}
 			continue
 		}
-		if !matched {
+		if len(deliveries) == 0 {
 			if err := acknowledgeEnvelope(connection, envelope.EnvelopeID); err != nil {
 				return err
 			}
 			continue
 		}
-		if err := sdkgo.PrepareTriggerDelivery(ctx, target, event); err != nil {
-			return err
+		for _, delivery := range deliveries {
+			if err := sdkgo.PrepareTriggerDelivery(ctx, delivery.target, delivery.event); err != nil {
+				return err
+			}
 		}
 		if err := acknowledgeEnvelope(connection, envelope.EnvelopeID); err != nil {
 			return err
 		}
-		if err := deliverTriggerEvent(ctx, target, event); err != nil {
-			return err
+		for _, delivery := range deliveries {
+			if err := deliverTriggerEvent(ctx, delivery.target, delivery.event); err != nil {
+				return err
+			}
 		}
 	}
+}
+
+func decodeMessageTriggerDeliveries(routes []messageTriggerRoute, envelope socketEnvelope) ([]pendingMessageTriggerDelivery, error) {
+	deliveries := make([]pendingMessageTriggerDelivery, 0, len(routes))
+	for _, route := range routes {
+		matched, event, err := route.source.decodeEvent(envelope)
+		if err != nil {
+			return nil, err
+		}
+		if matched {
+			deliveries = append(deliveries, pendingMessageTriggerDelivery{target: route.target, event: event})
+		}
+	}
+	return deliveries, nil
 }
 
 func deliverTriggerEvent(ctx context.Context, target sdkgo.TriggerTarget[MessageEvent], event sdkgo.TriggerEvent[MessageEvent]) error {

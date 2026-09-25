@@ -96,13 +96,18 @@ If a picker cannot load, copy IDs manually:
 }
 ```
 
-Load the file with `localconfig.LoadFromEnvironment`, create generated local
-Trigger runners, and run them beside the Dex Worker. Socket Mode envelopes are
-persisted in a binding-specific local inbox and acknowledged before the target
-runs, so Slack is not blocked by Dex latency. The runner retries a failed target
-while the process remains alive and replays pending events after restart. Flow
-starts and approval RPCs deduplicate stable event IDs, so a crash at either side
-of inbox cleanup remains safe.
+Load the file with `localconfig.LoadFromEnvironment`, then create one
+`NewLocalMessageTriggerRunner` containing every Slack message Trigger route for
+the connection. Slack distributes Socket Mode events among active WebSocket
+connections, so separate root and reply runners must not compete for the same
+workspace events. The shared runner keeps each binding's configuration, target,
+and durable inbox independent while receiving every message through one socket.
+
+Socket Mode envelopes are persisted in every matching binding-specific inbox
+and acknowledged before its targets run, so Slack is not blocked by Dex latency.
+The runner retries a failed target while the process remains alive and replays
+pending events after restart. Flow starts and approval RPCs deduplicate stable
+event IDs, so a crash at either side of inbox cleanup remains safe.
 
 ## Operations
 
