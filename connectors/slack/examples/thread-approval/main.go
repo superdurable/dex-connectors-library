@@ -74,15 +74,6 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
 	}
-	startRunner, err := slack.NewLocalChannelThreadCreatedTrigger(
-		store, threadapproval.ConnectionName, threadapproval.StartTriggerBinding,
-		sdkgo.NewDexFlowTriggerTarget(
-			client, flow, startTriggerFilter, threadapproval.ResolveFlowID, threadapproval.MapToFlowInput,
-		),
-	)
-	if err != nil {
-		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
-	}
 	var replyTriggerConfiguration slack.ThreadReplyCreatedTriggerConfiguration
 	if err := store.DecodeTriggerConfiguration(
 		slack.ConnectorID, threadapproval.ConnectionName, slack.ThreadReplyCreatedTriggerDefinition.Trigger.TriggerName,
@@ -94,22 +85,29 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
 	}
-	replyRunner, err := slack.NewLocalThreadReplyCreatedTrigger(
-		store, threadapproval.ConnectionName, threadapproval.ReplyTriggerBinding,
-		sdkgo.NewDexRPCTriggerTarget(
-			client, flow.ReceiveThreadReply, replyTriggerFilter, threadapproval.ResolveFlowID,
-			threadapproval.MapToReceiveThreadReplyInput,
-		),
-	)
+	triggerRunner, err := slack.NewLocalMessageTriggerRunner(store, threadapproval.ConnectionName, slack.LocalMessageTriggerRunnerConfig{
+		ChannelThreadCreatedRoutes: []slack.LocalChannelThreadCreatedTriggerRoute{{
+			BindingName: threadapproval.StartTriggerBinding,
+			Target: sdkgo.NewDexFlowTriggerTarget(
+				client, flow, startTriggerFilter, threadapproval.ResolveFlowID, threadapproval.MapToFlowInput,
+			),
+		}},
+		ThreadReplyCreatedRoutes: []slack.LocalThreadReplyCreatedTriggerRoute{{
+			BindingName: threadapproval.ReplyTriggerBinding,
+			Target: sdkgo.NewDexRPCTriggerTarget(
+				client, flow.ReceiveThreadReply, replyTriggerFilter, threadapproval.ResolveFlowID,
+				threadapproval.MapToReceiveThreadReplyInput,
+			),
+		}},
+	})
 	if err != nil {
 		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
 	}
 	runCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	runResults := make(chan error, 3)
+	runResults := make(chan error, 2)
 	go func() { runResults <- worker.Start() }()
-	go func() { runResults <- startRunner.Run(runCtx) }()
-	go func() { runResults <- replyRunner.Run(runCtx) }()
+	go func() { runResults <- triggerRunner.Run(runCtx) }()
 	select {
 	case <-ctx.Done():
 	case err = <-runResults:

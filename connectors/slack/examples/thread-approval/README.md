@@ -20,6 +20,11 @@ full provider result outside the transition chain for operator inspection. This
 intentionally duplicates the durable target input; applications should omit the
 Attribute when no external reader needs the raw result.
 
+The example runs both message Trigger bindings through one
+`NewLocalMessageTriggerRunner`. Slack distributes events among Socket Mode
+connections, so one shared connection ensures the root and reply routes both
+observe their matching events.
+
 Before either Dex call, the application supplies a typed filter. The example
 builds those filters from the binding configuration saved by Dex Web and checks
 the channel, root-or-reply shape, allowed member, and case-insensitive message

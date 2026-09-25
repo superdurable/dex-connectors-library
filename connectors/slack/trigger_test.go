@@ -168,6 +168,88 @@ func TestSocketModeAcknowledgesBeforeTargetCompletes(t *testing.T) {
 	}
 }
 
+func TestMessageTriggerRunnerSharesSocketAcrossRootAndReplyRoutes(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		_, _ = response.Write([]byte(`{"ok":true,"url":"ws://socket.test"}`))
+	}))
+	defer server.Close()
+	socket := &fakeSocketConnection{
+		acknowledgements: make(chan map[string]string, 2),
+		envelopes: []socketEnvelope{
+			messageEnvelope(t, "EvRoot", messageEvent{
+				Type: "message", Channel: "C123", User: "U1", Text: "request approval", Timestamp: "1.0",
+			}),
+			messageEnvelope(t, "EvReply", messageEvent{
+				Type: "message", Channel: "C123", User: "U2", Text: "approve", Timestamp: "2.0", ThreadTS: "1.0",
+			}),
+		},
+	}
+	dialCount := 0
+	connectionReference := sdkgo.ConnectionRef{Provider: "slack", Name: "workspace"}
+	client, err := New(Config{Endpoint: server.URL}, sdkgo.StaticCredentialProvider[Credentials]{
+		connectionReference: {
+			BotToken: sdkgo.NewSecretString("bot-token"), UserToken: sdkgo.NewSecretString("user-token"),
+			AppToken: sdkgo.NewSecretString("app-token"),
+		},
+	}, func(options *clientOptions) {
+		options.socketDialer = func(context.Context, string) (socketConnection, error) {
+			dialCount++
+			return socket, nil
+		}
+	})
+	require.NoError(t, err)
+	connection, err := NewConnection(client, connectionReference)
+	require.NoError(t, err)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	rootEvents := make(chan sdkgo.TriggerEvent[MessageEvent], 1)
+	replyEvents := make(chan sdkgo.TriggerEvent[MessageEvent], 1)
+	runner, err := NewMessageTriggerRunner(MessageTriggerRunnerConfig{
+		Connection: connection,
+		ChannelThreadCreatedRoutes: []ChannelThreadCreatedTriggerRoute{{
+			BindingName: "approval-start",
+			Configuration: ChannelThreadCreatedTriggerConfiguration{
+				ChannelID: "C123", ThreadTriggerMatcher: MessageMatcher{MessageContains: "request approval"},
+			},
+			Target: sdkgo.TriggerTargetFunc[MessageEvent](func(_ context.Context, event sdkgo.TriggerEvent[MessageEvent]) error {
+				rootEvents <- event
+				return nil
+			}),
+		}},
+		ThreadReplyCreatedRoutes: []ThreadReplyCreatedTriggerRoute{{
+			BindingName: "approval-reply",
+			Configuration: ThreadReplyCreatedTriggerConfiguration{
+				ChannelID: "C123", ThreadReplyMatcher: MessageMatcher{MessageContains: "approve", PosterUserIDs: []string{"U2"}},
+			},
+			Target: sdkgo.TriggerTargetFunc[MessageEvent](func(_ context.Context, event sdkgo.TriggerEvent[MessageEvent]) error {
+				replyEvents <- event
+				cancel()
+				return nil
+			}),
+		}},
+	})
+	require.NoError(t, err)
+	runFinished := make(chan error, 1)
+	go func() { runFinished <- runner.Run(ctx) }()
+	require.Equal(t, "EvRoot", receiveTriggerEvent(t, rootEvents).ID)
+	require.Equal(t, "EvReply", receiveTriggerEvent(t, replyEvents).ID)
+	for _, eventID := range []string{"EvRoot", "EvReply"} {
+		select {
+		case acknowledgement := <-socket.acknowledgements:
+			require.Equal(t, "envelope-"+eventID, acknowledgement["envelope_id"])
+		case <-time.After(time.Second):
+			t.Fatalf("Slack envelope %s was not acknowledged", eventID)
+		}
+	}
+	select {
+	case runErr := <-runFinished:
+		require.ErrorIs(t, runErr, context.Canceled)
+	case <-time.After(time.Second):
+		t.Fatal("message Trigger runner did not stop")
+	}
+	require.Equal(t, 1, dialCount)
+}
+
 func TestTriggerDeliveryRetriesAfterAcknowledgement(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
@@ -181,6 +263,17 @@ func TestTriggerDeliveryRetriesAfterAcknowledgement(t *testing.T) {
 	}), sdkgo.TriggerEvent[MessageEvent]{ID: "Ev4"})
 	require.NoError(t, err)
 	require.Equal(t, 2, attempts)
+}
+
+func receiveTriggerEvent(t *testing.T, events <-chan sdkgo.TriggerEvent[MessageEvent]) sdkgo.TriggerEvent[MessageEvent] {
+	t.Helper()
+	select {
+	case event := <-events:
+		return event
+	case <-time.After(time.Second):
+		t.Fatal("Slack Trigger event was not delivered")
+		return sdkgo.TriggerEvent[MessageEvent]{}
+	}
 }
 
 type fakeSocketConnection struct {
