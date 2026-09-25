@@ -15,18 +15,18 @@ import (
 )
 
 type createTarget struct {
-	dex.StepDefaultsNoWaitFor[openai.CreateResponseStepOutput[string]]
+	dex.StepDefaultsNoWaitFor[openai.CreateResponseResult]
 }
 
-func (createTarget) Execute(dex.Context, openai.CreateResponseStepOutput[string]) (*dex.StepDecision, error) {
+func (createTarget) Execute(dex.Context, openai.CreateResponseResult) (*dex.StepDecision, error) {
 	return dex.GracefulComplete(nil), nil
 }
 
 type retrieveTarget struct {
-	dex.StepDefaultsNoWaitFor[openai.RetrieveResponseStepOutput[string]]
+	dex.StepDefaultsNoWaitFor[openai.RetrieveResponseResult]
 }
 
-func (retrieveTarget) Execute(dex.Context, openai.RetrieveResponseStepOutput[string]) (*dex.StepDecision, error) {
+func (retrieveTarget) Execute(dex.Context, openai.RetrieveResponseResult) (*dex.StepDecision, error) {
 	return dex.GracefulComplete(nil), nil
 }
 
@@ -43,18 +43,18 @@ func TestOperationSpecificFactoriesUseTypedConnectionAndResources(t *testing.T) 
 	text := dex.DefineStream[string]("openai-factory-text", 100)
 
 	create := openai.NewCreateResponseStep(openai.CreateResponseStepConfig[string]{
-		StepType: "CreateResponse", Presentation: openAIPresentation(), Connection: connection,
-		BuildInput: func(string) (openai.CreateRequest, error) { return openai.CreateRequest{Model: "gpt-test"}, nil },
-		Completed:  sdkgo.GoTo(createTarget{}), Failed: sdkgo.GoTo(createTarget{}),
+		StepType: "CreateResponse", Annotations: openAIAnnotations(), Connection: connection,
+		BuildOperationInput: func(string) (openai.CreateRequest, error) { return openai.CreateRequest{Model: "gpt-test"}, nil },
+		Completed:           sdkgo.GoTo(createTarget{}), Failed: sdkgo.GoTo(createTarget{}),
 		Uncertain: sdkgo.GoTo(createTarget{}), Defect: sdkgo.GoTo(createTarget{}),
 		ResultAttribute: &result, ProgressStream: &progress, TextStream: &text,
 	})
 	require.Equal(t, "CreateResponse", create.GetStepType())
 
 	retrieve := openai.NewRetrieveResponseStep(openai.RetrieveResponseStepConfig[string]{
-		StepType: "RetrieveResponse", Presentation: openAIPresentation(), Connection: connection,
-		BuildInput: func(string) (openai.RetrieveRequest, error) { return openai.RetrieveRequest{ResponseID: "resp_1"}, nil },
-		Found:      sdkgo.GoTo(retrieveTarget{}), Failed: sdkgo.GoTo(retrieveTarget{}), Defect: sdkgo.GoTo(retrieveTarget{}),
+		StepType: "RetrieveResponse", Annotations: openAIAnnotations(), Connection: connection,
+		BuildOperationInput: func(string) (openai.RetrieveRequest, error) { return openai.RetrieveRequest{ResponseID: "resp_1"}, nil },
+		Found:               sdkgo.GoTo(retrieveTarget{}), Failed: sdkgo.GoTo(retrieveTarget{}), Defect: sdkgo.GoTo(retrieveTarget{}),
 	})
 	require.Equal(t, "RetrieveResponse", retrieve.GetStepType())
 }
@@ -69,6 +69,6 @@ func TestTypedConnectionCannotSerializeAndRequiredBranchFailsClosed(t *testing.T
 	})
 }
 
-func openAIPresentation() sdkgo.StepPresentation {
-	return sdkgo.StepPresentation{GroupID: "openai", GroupLabel: "OpenAI", Explanation: "Invoke the OpenAI sdkgo."}
+func openAIAnnotations() sdkgo.StepAnnotations {
+	return sdkgo.StepAnnotations{GroupID: "openai", GroupLabel: "OpenAI", Explanation: "Invoke the OpenAI sdkgo."}
 }

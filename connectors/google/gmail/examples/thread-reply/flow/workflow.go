@@ -68,24 +68,26 @@ func NewFlow(connection gmail.Connection) *Flow {
 }
 
 func (flow *Flow) GetSteps() []dex.StepDef {
+	readMessage := gmail.NewGetMessageStep(gmail.GetMessageStepConfig[Input]{
+		StepType: readMessageStepType, ConnectionName: ConnectionName,
+		Annotations: sdkgo.StepAnnotations{GroupID: "gmail", GroupLabel: "Gmail", Explanation: "Read the received Gmail message that started the Flow."},
+		Connection:  flow.connection,
+		BuildOperationInput: func(input Input) (gmail.GetMessageInput, error) {
+			return gmail.GetMessageInput{MessageID: input.MessageID}, nil
+		},
+		Read: sdkgo.GoTo(messageLoaded{}), NotFound: sdkgo.GoTo(messageReadFailed{}),
+		Rejected: sdkgo.GoTo(messageReadFailed{}), Defect: sdkgo.GoTo(messageReadFailed{}),
+	})
 	return []dex.StepDef{
-		dex.DefineStartStep(gmail.NewGetMessageStep(gmail.GetMessageStepConfig[Input]{
-			StepType: readMessageStepType, ConnectionName: ConnectionName,
-			Presentation: sdkgo.StepPresentation{GroupID: "gmail", GroupLabel: "Gmail", Explanation: "Read the received Gmail message that started the Flow."},
-			Connection:   flow.connection,
-			BuildInput: func(input Input) (gmail.GetMessageInput, error) {
-				return gmail.GetMessageInput{MessageID: input.MessageID}, nil
-			},
-			Read: sdkgo.GoTo(messageLoaded{}), NotFound: sdkgo.GoTo(messageReadFailed{}),
-			Rejected: sdkgo.GoTo(messageReadFailed{}), Defect: sdkgo.GoTo(messageReadFailed{}),
-		})),
+		dex.DefineStartStep(initializeThread{}),
+		dex.DefineStep(readMessage),
 		dex.DefineStep(messageLoaded{}),
 		dex.DefineStep(messageReadFailed{}),
 		dex.DefineStep(gmail.NewReplyToMessageStep(gmail.ReplyToMessageStepConfig[ThreadState]{
 			StepType: replyMessageStepType, ConnectionName: ConnectionName,
-			Presentation: sdkgo.StepPresentation{GroupID: "gmail", GroupLabel: "Gmail", Explanation: "Reply after the received email Trigger invokes the typed RPC."},
-			Connection:   flow.connection,
-			BuildInput: func(state ThreadState) (gmail.ReplyToMessageInput, error) {
+			Annotations: sdkgo.StepAnnotations{GroupID: "gmail", GroupLabel: "Gmail", Explanation: "Reply after the received email Trigger invokes the typed RPC."},
+			Connection:  flow.connection,
+			BuildOperationInput: func(state ThreadState) (gmail.ReplyToMessageInput, error) {
 				return gmail.ReplyToMessageInput{MessageID: state.ReplyMessageID, TextBody: "Processing complete"}, nil
 			},
 			Sent: sdkgo.GoTo(replySent{}), Rejected: sdkgo.GoTo(replyNeedsRecovery{}),
@@ -173,7 +175,24 @@ func (*Flow) GetDexDisplay(ctx dex.Context, _ dex.None) (*dex.RPCResult[map[stri
 	return &dex.RPCResult[map[string]any]{Output: map[string]any{"gmail-thread-reply-state": state}}, nil
 }
 
-type readMessageOutput = gmail.GetMessageStepOutput[Input]
+type readMessageOutput = gmail.GetMessageResult
+
+// dex:group group-id:reply group-label:"Reply"
+// dex:explanation text:"Persist the Gmail thread identity before reading its root message."
+type initializeThread struct {
+	dex.StepDefaultsNoWaitFor[Input]
+}
+
+func (initializeThread) GetStepOptions() *dex.StepOptions {
+	return &dex.StepOptions{ExecuteLockAttributes: []dex.AttributeLock{dex.LockAttribute(threadStateAttribute)}}
+}
+
+func (initializeThread) Execute(ctx dex.Context, input Input) (*dex.StepDecision, error) {
+	if err := threadStateAttribute.Set(ctx, ThreadState{Input: input}); err != nil {
+		return nil, err
+	}
+	return dex.GoTo(sdkgo.StepRef[Input](readMessageStepType), input), nil
+}
 
 // dex:group group-id:reply group-label:"Reply"
 // dex:explanation text:"Store the received Gmail message before waiting for a reply Trigger."
@@ -185,8 +204,13 @@ func (messageLoaded) GetStepOptions() *dex.StepOptions {
 	return &dex.StepOptions{ExecuteLockAttributes: []dex.AttributeLock{dex.LockAttribute(threadStateAttribute)}}
 }
 
-func (messageLoaded) Execute(ctx dex.Context, output readMessageOutput) (*dex.StepDecision, error) {
-	state := ThreadState{Input: output.Input, RootMessage: output.Result.Value, Status: StatusWaitingForReply}
+func (messageLoaded) Execute(ctx dex.Context, result readMessageOutput) (*dex.StepDecision, error) {
+	state, err := threadStateAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	state.RootMessage = result.Value
+	state.Status = StatusWaitingForReply
 	if err := threadStateAttribute.Set(ctx, state); err != nil {
 		return nil, err
 	}
@@ -199,11 +223,11 @@ type messageReadFailed struct {
 	dex.StepDefaultsNoWaitFor[readMessageOutput]
 }
 
-func (messageReadFailed) Execute(_ dex.Context, output readMessageOutput) (*dex.StepDecision, error) {
-	return dex.ForceFail(failureMessage(output.Result.Branch, output.Result.Failure)), nil
+func (messageReadFailed) Execute(_ dex.Context, result readMessageOutput) (*dex.StepDecision, error) {
+	return dex.ForceFail(failureMessage(result.Branch, result.Failure)), nil
 }
 
-type replyMessageOutput = gmail.ReplyToMessageStepOutput[ThreadState]
+type replyMessageOutput = gmail.ReplyToMessageResult
 
 // dex:group group-id:gmail group-label:"Gmail"
 // dex:explanation text:"Complete after Gmail confirms the thread reply was sent."
@@ -215,8 +239,11 @@ func (replySent) GetStepOptions() *dex.StepOptions {
 	return &dex.StepOptions{ExecuteLockAttributes: []dex.AttributeLock{dex.LockAttribute(threadStateAttribute)}}
 }
 
-func (replySent) Execute(ctx dex.Context, output replyMessageOutput) (*dex.StepDecision, error) {
-	state := output.Input
+func (replySent) Execute(ctx dex.Context, _ replyMessageOutput) (*dex.StepDecision, error) {
+	state, err := threadStateAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
 	state.Status = StatusCompleted
 	if err := threadStateAttribute.Set(ctx, state); err != nil {
 		return nil, err
@@ -234,10 +261,13 @@ func (replyNeedsRecovery) GetStepOptions() *dex.StepOptions {
 	return &dex.StepOptions{ExecuteLockAttributes: []dex.AttributeLock{dex.LockAttribute(threadStateAttribute)}}
 }
 
-func (replyNeedsRecovery) Execute(ctx dex.Context, output replyMessageOutput) (*dex.StepDecision, error) {
-	state := output.Input
+func (replyNeedsRecovery) Execute(ctx dex.Context, result replyMessageOutput) (*dex.StepDecision, error) {
+	state, err := threadStateAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
 	state.Status = StatusNeedsRecovery
-	state.FailureMessage = failureMessage(output.Result.Branch, output.Result.Failure)
+	state.FailureMessage = failureMessage(result.Branch, result.Failure)
 	if err := threadStateAttribute.Set(ctx, state); err != nil {
 		return nil, err
 	}

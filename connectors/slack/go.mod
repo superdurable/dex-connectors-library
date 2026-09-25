@@ -5,7 +5,7 @@ go 1.24.0
 require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/stretchr/testify v1.11.1
-	github.com/superdurable/dex-connectors-library/sdkgo v0.2.0
+	github.com/superdurable/dex-connectors-library/sdkgo v0.3.0
 	github.com/superdurable/dex/blob-cache-go v0.1.0
 	github.com/superdurable/dex/sdk-go v0.11.3
 )
