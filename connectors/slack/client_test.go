@@ -63,7 +63,7 @@ func TestGetThreadReplyReturnsExactReply(t *testing.T) {
 	require.Equal(t, "approve", result.Value.Message.Text)
 }
 
-func TestGetThreadReplyProviderRejectionIsRejected(t *testing.T) {
+func TestGetThreadReplyProviderRejectionUsesProviderRejectedBranch(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
 		_, _ = response.Write([]byte(`{"ok":false,"error":"missing_scope"}`))
 	}))
@@ -71,8 +71,20 @@ func TestGetThreadReplyProviderRejectionIsRejected(t *testing.T) {
 	client := newSlackClient(t, server.URL)
 	result, err := sdkgo.RunQuery(newSlackDexContext("get-reply-rejected"), client.GetThreadReply(), slackConnection, slack.GetThreadReplyInput{ChannelID: "C123", ThreadTimestamp: "1.0", ReplyTimestamp: "2.0"})
 	require.NoError(t, err)
-	require.Equal(t, slack.GetThreadReplyBranchRejected, result.Branch)
+	require.Equal(t, slack.GetThreadReplyBranchProviderRejected, result.Branch)
 	require.Equal(t, sdkgo.FailureAuthorization, result.Failure.Kind)
+}
+
+func TestListThreadMessagesInvalidResponseUsesInvalidResponseBranch(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		_, _ = response.Write([]byte(`{"ok":`))
+	}))
+	defer server.Close()
+	client := newSlackClient(t, server.URL)
+	result, err := sdkgo.RunQuery(newSlackDexContext("list-thread-invalid-response"), client.ListThreadMessages(), slackConnection, slack.ListThreadMessagesInput{ChannelID: "C123", ThreadTimestamp: "1.0", PageSize: 15})
+	require.NoError(t, err)
+	require.Equal(t, slack.ListThreadMessagesBranchInvalidResponse, result.Branch)
+	require.Equal(t, sdkgo.FailureProtocol, result.Failure.Kind)
 }
 
 func TestPostThreadReplyUsesBotTokenThreadAndStableClientMessageID(t *testing.T) {
@@ -108,7 +120,7 @@ func TestPostChannelMessageOmitsThreadTimestamp(t *testing.T) {
 	require.Equal(t, "1.0", result.Value.Message.Timestamp)
 }
 
-func TestPostMessageProviderRejectionIsRejected(t *testing.T) {
+func TestPostMessageProviderRejectionUsesProviderRejectedBranch(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
 		_, _ = response.Write([]byte(`{"ok":false,"error":"channel_not_found"}`))
 	}))
@@ -116,7 +128,7 @@ func TestPostMessageProviderRejectionIsRejected(t *testing.T) {
 	client := newSlackClient(t, server.URL)
 	result, err := sdkgo.RunMutation(newSlackDexContext("post-rejected"), client.PostChannelMessage(), slackConnection, slack.PostChannelMessageInput{ChannelID: "C404", Text: "hello"})
 	require.NoError(t, err)
-	require.Equal(t, slack.PostChannelMessageBranchRejected, result.Branch)
+	require.Equal(t, slack.PostChannelMessageBranchProviderRejected, result.Branch)
 	require.Equal(t, sdkgo.FailureNotFound, result.Failure.Kind)
 }
 

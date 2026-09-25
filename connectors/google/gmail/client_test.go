@@ -81,7 +81,7 @@ func TestProviderRejectionIsTerminal(t *testing.T) {
 	client := newGmailClient(t, server.URL)
 	result, err := sdkgo.RunMutation(newGmailDexContext("send-rejected"), client.SendMessage(), gmailConnection, gmail.SendMessageInput{To: []string{"customer@example.com"}, Subject: "Progress", TextBody: "Update"})
 	require.NoError(t, err)
-	require.Equal(t, gmail.SendMessageBranchRejected, result.Branch)
+	require.Equal(t, gmail.SendMessageBranchProviderRejected, result.Branch)
 	require.NotNil(t, result.Failure)
 	require.Equal(t, sdkgo.FailureAuthorization, result.Failure.Kind)
 }

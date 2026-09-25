@@ -50,7 +50,7 @@ func TestGetValuesClassifiesAuthenticationAndRateLimit(t *testing.T) {
 		wantKind   sdkgo.FailureKind
 		wantRetry  bool
 	}{
-		{name: "authentication", status: http.StatusUnauthorized, wantBranch: spreadsheet.GetValuesBranchFailed, wantKind: sdkgo.FailureAuthentication},
+		{name: "authentication", status: http.StatusUnauthorized, wantBranch: spreadsheet.GetValuesBranchProviderRejected, wantKind: sdkgo.FailureAuthentication},
 		{name: "rate limit", status: http.StatusTooManyRequests, wantKind: sdkgo.FailureRateLimit, wantRetry: true},
 	}
 	for _, test := range tests {
@@ -76,6 +76,15 @@ func TestGetValuesClassifiesAuthenticationAndRateLimit(t *testing.T) {
 	}
 }
 
+func TestGetValuesMissingConnectionUsesDefectBranch(t *testing.T) {
+	client, err := spreadsheet.New(spreadsheet.Config{}, sdkgo.StaticCredentialProvider[spreadsheet.Credentials]{})
+	require.NoError(t, err)
+	result, err := sdkgo.RunQuery(newDexContext("missing-connection"), client.GetValues(), sheetsConnection, spreadsheet.GetValuesInput{SpreadsheetID: "sheet", Range: "Customers!A:B"})
+	require.NoError(t, err)
+	require.Equal(t, spreadsheet.GetValuesBranchDefect, result.Branch)
+	require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
+}
+
 func TestGetValuesRejectsOversizedResponseWithoutRetry(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
 		_, _ = response.Write([]byte(`{"range":"Customers","values":[["accountId","name"]]}`))
@@ -87,9 +96,21 @@ func TestGetValuesRejectsOversizedResponseWithoutRetry(t *testing.T) {
 	require.NoError(t, err)
 	result, err := sdkgo.RunQuery(newDexContext("oversized"), client.GetValues(), sheetsConnection, spreadsheet.GetValuesInput{SpreadsheetID: "sheet", Range: "Customers!A:B"})
 	require.NoError(t, err)
-	require.Equal(t, spreadsheet.GetValuesBranchFailed, result.Branch)
+	require.Equal(t, spreadsheet.GetValuesBranchInvalidResponse, result.Branch)
 	require.NotNil(t, result.Failure)
 	require.Equal(t, sdkgo.FailureResponseTooLarge, result.Failure.Kind)
+}
+
+func TestGetValuesInvalidJSONUsesInvalidResponseBranch(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		_, _ = response.Write([]byte(`{"range":`))
+	}))
+	defer server.Close()
+	client := newSheetsClient(t, server.URL)
+	result, err := sdkgo.RunQuery(newDexContext("invalid-json"), client.GetValues(), sheetsConnection, spreadsheet.GetValuesInput{SpreadsheetID: "sheet", Range: "Customers!A:B"})
+	require.NoError(t, err)
+	require.Equal(t, spreadsheet.GetValuesBranchInvalidResponse, result.Branch)
+	require.Equal(t, sdkgo.FailureProtocol, result.Failure.Kind)
 }
 
 func TestUpsertReconcilesAmbiguousAppendWithoutSecondRow(t *testing.T) {

@@ -118,7 +118,7 @@ func (SendMessageOperation) IdempotencyKey(callID sdkgo.CallID, _ SendMessageInp
 func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageInput) sdkgo.MutationAttempt[SendMessageOutput] {
 	credential, err := operation.client.credentials.Resolve(call)
 	if err != nil || credential.Validate() != nil {
-		return sdkgo.NewMutationBranch(SendMessageBranchRejected, SendMessageOutput{}, gmailFailurePointer(sdkgo.FailureAuthentication, "connection credentials are unavailable"), sdkgo.Receipt{})
+		return sdkgo.NewMutationBranch(SendMessageBranchDefect, SendMessageOutput{}, gmailFailurePointer(sdkgo.FailureAuthentication, "connection credentials are unavailable"), sdkgo.Receipt{})
 	}
 	recipients, validationFailure := validateSendInput(input, credential.PrimaryEmail)
 	if validationFailure != nil {
@@ -160,7 +160,7 @@ func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageI
 		return sdkgo.NewMutationUncertain(SendMessageOutput{}, gmailFailure(sdkgo.FailureAvailability, "Gmail send outcome is unknown"), receipt)
 	}
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return sdkgo.NewMutationBranch(SendMessageBranchRejected, SendMessageOutput{}, gmailFailurePointer(statusFailureKind(response.StatusCode), "Gmail rejected the message"), receipt)
+		return sdkgo.NewMutationBranch(SendMessageBranchProviderRejected, SendMessageOutput{}, gmailFailurePointer(statusFailureKind(response.StatusCode), "Gmail rejected the message"), receipt)
 	}
 	var sent sendResponse
 	if err := json.Unmarshal(content, &sent); err != nil || sent.ID == "" {

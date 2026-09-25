@@ -277,15 +277,17 @@ func NewLocalThreadReplyCreatedTrigger(store *localconfig.Store, connectionName 
 }
 
 const ListThreadMessagesBranchRead sdkgo.BranchID = "read"
-const ListThreadMessagesBranchRejected sdkgo.BranchID = "rejected"
+const ListThreadMessagesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListThreadMessagesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
 const ListThreadMessagesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 
 var ListThreadMessagesDefinition = sdkgo.QueryDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listThreadMessages"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: ListThreadMessagesBranchRead, Description: "The thread page was read."},
-		{ID: ListThreadMessagesBranchRejected, Description: "Slack rejected the query."},
-		{ID: ListThreadMessagesBranchDefect, Description: "Local input or connector definition is invalid."},
+		{ID: ListThreadMessagesBranchProviderRejected, Description: "Slack conclusively rejected the thread query."},
+		{ID: ListThreadMessagesBranchInvalidResponse, Description: "Slack returned an invalid or oversized thread response."},
+		{ID: ListThreadMessagesBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid."},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
@@ -306,7 +308,8 @@ type ListThreadMessagesStepConfig[IN any] struct {
 	ConnectionName                 string                                                      `connector:"connectionName"`
 	MapToOperationInput            func(IN) ListThreadMessagesInput                            `connector:"mapToOperationInput"`
 	Read                           sdkgo.Target[ListThreadMessagesResult]                      `connector:"branch=read"`
-	Rejected                       sdkgo.Target[ListThreadMessagesResult]                      `connector:"branch=rejected"`
+	ProviderRejected               sdkgo.Target[ListThreadMessagesResult]                      `connector:"branch=providerRejected"`
+	InvalidResponse                sdkgo.Target[ListThreadMessagesResult]                      `connector:"branch=invalidResponse"`
 	Defect                         sdkgo.Target[ListThreadMessagesResult]                      `connector:"branch=defect"`
 	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ListThreadMessagesOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride            *dex.StepOptions                                            `connector:"stepOptionsOverride"`
@@ -325,7 +328,8 @@ func NewListThreadMessagesStep[IN any](config ListThreadMessagesStepConfig[IN]) 
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: []sdkgo.BranchTarget[ListThreadMessagesResult]{
 			config.Read.BranchTarget(ListThreadMessagesBranchRead),
-			config.Rejected.BranchTarget(ListThreadMessagesBranchRejected),
+			config.ProviderRejected.BranchTarget(ListThreadMessagesBranchProviderRejected),
+			config.InvalidResponse.BranchTarget(ListThreadMessagesBranchInvalidResponse),
 			config.Defect.BranchTarget(ListThreadMessagesBranchDefect),
 		},
 		ResultAttribute:     config.ResultAttribute,
@@ -335,7 +339,8 @@ func NewListThreadMessagesStep[IN any](config ListThreadMessagesStepConfig[IN]) 
 
 const GetThreadReplyBranchFound sdkgo.BranchID = "found"
 const GetThreadReplyBranchNotFound sdkgo.BranchID = "notFound"
-const GetThreadReplyBranchRejected sdkgo.BranchID = "rejected"
+const GetThreadReplyBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetThreadReplyBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
 const GetThreadReplyBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 
 var GetThreadReplyDefinition = sdkgo.QueryDefinition{
@@ -343,8 +348,9 @@ var GetThreadReplyDefinition = sdkgo.QueryDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: GetThreadReplyBranchFound, Description: "The reply was found."},
 		{ID: GetThreadReplyBranchNotFound, Description: "The reply does not exist."},
-		{ID: GetThreadReplyBranchRejected, Description: "Slack rejected the query."},
-		{ID: GetThreadReplyBranchDefect, Description: "Local input or connector definition is invalid."},
+		{ID: GetThreadReplyBranchProviderRejected, Description: "Slack conclusively rejected the reply query."},
+		{ID: GetThreadReplyBranchInvalidResponse, Description: "Slack returned an invalid or oversized reply response."},
+		{ID: GetThreadReplyBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid."},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
@@ -366,7 +372,8 @@ type GetThreadReplyStepConfig[IN any] struct {
 	MapToOperationInput            func(IN) GetThreadReplyInput                            `connector:"mapToOperationInput"`
 	Found                          sdkgo.Target[GetThreadReplyResult]                      `connector:"branch=found"`
 	NotFound                       sdkgo.Target[GetThreadReplyResult]                      `connector:"branch=notFound"`
-	Rejected                       sdkgo.Target[GetThreadReplyResult]                      `connector:"branch=rejected"`
+	ProviderRejected               sdkgo.Target[GetThreadReplyResult]                      `connector:"branch=providerRejected"`
+	InvalidResponse                sdkgo.Target[GetThreadReplyResult]                      `connector:"branch=invalidResponse"`
 	Defect                         sdkgo.Target[GetThreadReplyResult]                      `connector:"branch=defect"`
 	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[GetThreadReplyOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride            *dex.StepOptions                                        `connector:"stepOptionsOverride"`
@@ -386,7 +393,8 @@ func NewGetThreadReplyStep[IN any](config GetThreadReplyStepConfig[IN]) sdkgo.Qu
 		Branches: []sdkgo.BranchTarget[GetThreadReplyResult]{
 			config.Found.BranchTarget(GetThreadReplyBranchFound),
 			config.NotFound.BranchTarget(GetThreadReplyBranchNotFound),
-			config.Rejected.BranchTarget(GetThreadReplyBranchRejected),
+			config.ProviderRejected.BranchTarget(GetThreadReplyBranchProviderRejected),
+			config.InvalidResponse.BranchTarget(GetThreadReplyBranchInvalidResponse),
 			config.Defect.BranchTarget(GetThreadReplyBranchDefect),
 		},
 		ResultAttribute:     config.ResultAttribute,
@@ -395,7 +403,7 @@ func NewGetThreadReplyStep[IN any](config GetThreadReplyStepConfig[IN]) sdkgo.Qu
 }
 
 const PostChannelMessageBranchSent sdkgo.BranchID = "sent"
-const PostChannelMessageBranchRejected sdkgo.BranchID = "rejected"
+const PostChannelMessageBranchProviderRejected sdkgo.BranchID = "providerRejected"
 const PostChannelMessageBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
 const PostChannelMessageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 
@@ -403,9 +411,9 @@ var PostChannelMessageDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "postChannelMessage"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: PostChannelMessageBranchSent, Description: "Slack accepted the message."},
-		{ID: PostChannelMessageBranchRejected, Description: "Slack conclusively rejected the message."},
+		{ID: PostChannelMessageBranchProviderRejected, Description: "Slack conclusively rejected the message."},
 		{ID: PostChannelMessageBranchUncertain, Description: "The dispatched message outcome cannot be confirmed."},
-		{ID: PostChannelMessageBranchDefect, Description: "Local input or connector definition is invalid."},
+		{ID: PostChannelMessageBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid."},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
@@ -426,7 +434,7 @@ type PostChannelMessageStepConfig[IN any] struct {
 	ConnectionName                    string                                                  `connector:"connectionName"`
 	MapToOperationInput               func(IN) PostChannelMessageInput                        `connector:"mapToOperationInput"`
 	Sent                              sdkgo.Target[PostChannelMessageResult]                  `connector:"branch=sent"`
-	Rejected                          sdkgo.Target[PostChannelMessageResult]                  `connector:"branch=rejected"`
+	ProviderRejected                  sdkgo.Target[PostChannelMessageResult]                  `connector:"branch=providerRejected"`
 	Uncertain                         sdkgo.Target[PostChannelMessageResult]                  `connector:"branch=uncertain"`
 	Defect                            sdkgo.Target[PostChannelMessageResult]                  `connector:"branch=defect"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PostMessageOutput]] `connector:"resultAttribute"`
@@ -446,7 +454,7 @@ func NewPostChannelMessageStep[IN any](config PostChannelMessageStepConfig[IN]) 
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: []sdkgo.BranchTarget[PostChannelMessageResult]{
 			config.Sent.BranchTarget(PostChannelMessageBranchSent),
-			config.Rejected.BranchTarget(PostChannelMessageBranchRejected),
+			config.ProviderRejected.BranchTarget(PostChannelMessageBranchProviderRejected),
 			config.Uncertain.BranchTarget(PostChannelMessageBranchUncertain),
 			config.Defect.BranchTarget(PostChannelMessageBranchDefect),
 		},
@@ -456,7 +464,7 @@ func NewPostChannelMessageStep[IN any](config PostChannelMessageStepConfig[IN]) 
 }
 
 const PostThreadReplyBranchSent sdkgo.BranchID = "sent"
-const PostThreadReplyBranchRejected sdkgo.BranchID = "rejected"
+const PostThreadReplyBranchProviderRejected sdkgo.BranchID = "providerRejected"
 const PostThreadReplyBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
 const PostThreadReplyBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 
@@ -464,9 +472,9 @@ var PostThreadReplyDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "postThreadReply"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: PostThreadReplyBranchSent, Description: "Slack accepted the message."},
-		{ID: PostThreadReplyBranchRejected, Description: "Slack conclusively rejected the message."},
+		{ID: PostThreadReplyBranchProviderRejected, Description: "Slack conclusively rejected the message."},
 		{ID: PostThreadReplyBranchUncertain, Description: "The dispatched message outcome cannot be confirmed."},
-		{ID: PostThreadReplyBranchDefect, Description: "Local input or connector definition is invalid."},
+		{ID: PostThreadReplyBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid."},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
@@ -487,7 +495,7 @@ type PostThreadReplyStepConfig[IN any] struct {
 	ConnectionName                    string                                                  `connector:"connectionName"`
 	MapToOperationInput               func(IN) PostThreadReplyInput                           `connector:"mapToOperationInput"`
 	Sent                              sdkgo.Target[PostThreadReplyResult]                     `connector:"branch=sent"`
-	Rejected                          sdkgo.Target[PostThreadReplyResult]                     `connector:"branch=rejected"`
+	ProviderRejected                  sdkgo.Target[PostThreadReplyResult]                     `connector:"branch=providerRejected"`
 	Uncertain                         sdkgo.Target[PostThreadReplyResult]                     `connector:"branch=uncertain"`
 	Defect                            sdkgo.Target[PostThreadReplyResult]                     `connector:"branch=defect"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PostMessageOutput]] `connector:"resultAttribute"`
@@ -507,7 +515,7 @@ func NewPostThreadReplyStep[IN any](config PostThreadReplyStepConfig[IN]) sdkgo.
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: []sdkgo.BranchTarget[PostThreadReplyResult]{
 			config.Sent.BranchTarget(PostThreadReplyBranchSent),
-			config.Rejected.BranchTarget(PostThreadReplyBranchRejected),
+			config.ProviderRejected.BranchTarget(PostThreadReplyBranchProviderRejected),
 			config.Uncertain.BranchTarget(PostThreadReplyBranchUncertain),
 			config.Defect.BranchTarget(PostThreadReplyBranchDefect),
 		},

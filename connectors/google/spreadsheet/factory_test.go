@@ -29,7 +29,9 @@ func TestUpsertFactoryRequiresEveryTypedBranch(t *testing.T) {
 		spreadsheet.NewUpsertRowStep(spreadsheet.UpsertRowStepConfig[string]{
 			StepType: "Upsert", Annotations: sdkgo.StepAnnotations{GroupID: "google", GroupLabel: "Google", Explanation: "Upsert a row."},
 			Connection: connection, MapToOperationInput: func(string) spreadsheet.UpsertRowInput { return spreadsheet.UpsertRowInput{} },
-			Upserted: sdkgo.GoTo(sheetTarget{}), Conflict: sdkgo.GoTo(sheetTarget{}), Rejected: sdkgo.GoTo(sheetTarget{}), Uncertain: sdkgo.GoTo(sheetTarget{}),
+			Upserted: sdkgo.GoTo(sheetTarget{}), Conflict: sdkgo.GoTo(sheetTarget{}),
+			ProviderRejected: sdkgo.GoTo(sheetTarget{}), InvalidResponse: sdkgo.GoTo(sheetTarget{}),
+			Uncertain: sdkgo.GoTo(sheetTarget{}),
 		})
 	})
 }

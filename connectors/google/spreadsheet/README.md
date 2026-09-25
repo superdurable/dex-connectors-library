@@ -17,5 +17,11 @@ updates one match, appends when absent, and returns the `conflict` branch for
 duplicates. An ambiguous provider write returns `uncertain`; retrying the same
 Step execution retains its Call ID and queries before writing again.
 
+Every operation uses `defect` for invalid local input, connection configuration,
+or Connector contract violations. A conclusive Google API refusal uses
+`providerRejected`; malformed or oversized reads before a write use
+`invalidResponse`. Safe query transport, rate-limit, and availability failures
+retry instead of producing a branch.
+
 The `ui/` package builds the credential-safe Studio setup bundle published as
 `connector-ui.tgz` with the Connector release.

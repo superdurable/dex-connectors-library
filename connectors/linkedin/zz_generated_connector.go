@@ -145,7 +145,8 @@ const GetAuthenticatedProfileBranchVerifiedEmailRequired sdkgo.BranchID = "verif
 const GetAuthenticatedProfileBranchInsufficientScope sdkgo.BranchID = "insufficientScope"
 const GetAuthenticatedProfileBranchAuthorizationRevoked sdkgo.BranchID = "authorizationRevoked"
 const GetAuthenticatedProfileBranchNotFound sdkgo.BranchID = "notFound"
-const GetAuthenticatedProfileBranchFailed sdkgo.BranchID = "failed"
+const GetAuthenticatedProfileBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetAuthenticatedProfileBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
 const GetAuthenticatedProfileBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 
 var GetAuthenticatedProfileDefinition = sdkgo.QueryDefinition{
@@ -156,8 +157,9 @@ var GetAuthenticatedProfileDefinition = sdkgo.QueryDefinition{
 		{ID: GetAuthenticatedProfileBranchInsufficientScope, Description: "The OpenID Connect grant lacks required authorization."},
 		{ID: GetAuthenticatedProfileBranchAuthorizationRevoked, Description: "The OpenID Connect grant is invalid or revoked."},
 		{ID: GetAuthenticatedProfileBranchNotFound, Description: "The authenticated member was not found."},
-		{ID: GetAuthenticatedProfileBranchFailed, Description: "LinkedIn returned a terminal provider or protocol failure."},
-		{ID: GetAuthenticatedProfileBranchDefect, Description: "Local configuration or input is invalid."},
+		{ID: GetAuthenticatedProfileBranchProviderRejected, Description: "LinkedIn conclusively rejected the profile query."},
+		{ID: GetAuthenticatedProfileBranchInvalidResponse, Description: "LinkedIn returned an invalid or oversized profile response."},
+		{ID: GetAuthenticatedProfileBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid."},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
@@ -182,7 +184,8 @@ type GetAuthenticatedProfileStepConfig[IN any] struct {
 	InsufficientScope              sdkgo.Target[GetAuthenticatedProfileResult]             `connector:"branch=insufficientScope"`
 	AuthorizationRevoked           sdkgo.Target[GetAuthenticatedProfileResult]             `connector:"branch=authorizationRevoked"`
 	NotFound                       sdkgo.Target[GetAuthenticatedProfileResult]             `connector:"branch=notFound"`
-	Failed                         sdkgo.Target[GetAuthenticatedProfileResult]             `connector:"branch=failed"`
+	ProviderRejected               sdkgo.Target[GetAuthenticatedProfileResult]             `connector:"branch=providerRejected"`
+	InvalidResponse                sdkgo.Target[GetAuthenticatedProfileResult]             `connector:"branch=invalidResponse"`
 	Defect                         sdkgo.Target[GetAuthenticatedProfileResult]             `connector:"branch=defect"`
 	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[AuthenticatedProfile]] `connector:"resultAttribute"`
 	StepOptionsOverride            *dex.StepOptions                                        `connector:"stepOptionsOverride"`
@@ -205,7 +208,8 @@ func NewGetAuthenticatedProfileStep[IN any](config GetAuthenticatedProfileStepCo
 			config.InsufficientScope.BranchTarget(GetAuthenticatedProfileBranchInsufficientScope),
 			config.AuthorizationRevoked.BranchTarget(GetAuthenticatedProfileBranchAuthorizationRevoked),
 			config.NotFound.BranchTarget(GetAuthenticatedProfileBranchNotFound),
-			config.Failed.BranchTarget(GetAuthenticatedProfileBranchFailed),
+			config.ProviderRejected.BranchTarget(GetAuthenticatedProfileBranchProviderRejected),
+			config.InvalidResponse.BranchTarget(GetAuthenticatedProfileBranchInvalidResponse),
 			config.Defect.BranchTarget(GetAuthenticatedProfileBranchDefect),
 		},
 		ResultAttribute:     config.ResultAttribute,

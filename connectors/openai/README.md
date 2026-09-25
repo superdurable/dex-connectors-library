@@ -15,7 +15,7 @@ serialization.
 Install a published component release:
 
 ```bash
-go get github.com/superdurable/dex-connectors-library/connectors/openai@v0.1.0
+go get github.com/superdurable/dex-connectors-library/connectors/openai@v0.5.0
 ```
 
 Verify this module independently:
@@ -28,3 +28,9 @@ GOWORK=off go vet ./...
 Applications own and register the Result Attribute and any structured/text
 Dex Streams. Stream data is best-effort; the committed Result and branch are
 authoritative.
+
+`CreateResponse` keeps `failed` for an actual failed or incomplete OpenAI
+response. Other conclusive API refusals use `providerRejected`.
+`RetrieveResponse` additionally exposes `notFound` and `invalidResponse`.
+Invalid local input or connection configuration uses the standard `defect`
+branch, while an ambiguous dispatched mutation uses `uncertain`.

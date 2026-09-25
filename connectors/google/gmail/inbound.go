@@ -110,7 +110,7 @@ func (operation GetMessageOperation) Invoke(call sdkgo.Call, input GetMessageInp
 	}
 	credentials, err := operation.client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
-		return sdkgo.NewQueryBranch(GetMessageBranchRejected, Message{}, gmailOperationFailurePointer("getMessage", sdkgo.FailureAuthentication, "connection credentials are unavailable"), sdkgo.Receipt{})
+		return sdkgo.NewQueryBranch(GetMessageBranchDefect, Message{}, gmailOperationFailurePointer("getMessage", sdkgo.FailureAuthentication, "connection credentials are unavailable"), sdkgo.Receipt{})
 	}
 	resource, result, err := operation.client.readMessage(call.Context, credentials, input.MessageID, "full")
 	if err != nil {
@@ -118,7 +118,7 @@ func (operation GetMessageOperation) Invoke(call sdkgo.Call, input GetMessageInp
 	}
 	message, err := decodeGmailMessage(resource)
 	if err != nil {
-		return sdkgo.NewQueryBranch(GetMessageBranchDefect, Message{}, gmailOperationFailurePointer("getMessage", sdkgo.FailureProtocol, "Gmail returned an invalid message"), sdkgo.Receipt{})
+		return sdkgo.NewQueryBranch(GetMessageBranchInvalidResponse, Message{}, gmailOperationFailurePointer("getMessage", sdkgo.FailureProtocol, "Gmail returned an invalid message"), operation.client.receipt(call, googleRequestID(result.header), input.MessageID))
 	}
 	return sdkgo.NewQueryBranch(GetMessageBranchRead, message, nil, sdkgo.Receipt{Provider: "gmail", ProviderObjectID: message.MessageID, ProviderRequestID: googleRequestID(result.header), ObservedAt: operation.client.now().UTC()})
 }
@@ -137,25 +137,31 @@ func (ReplyToMessageOperation) IdempotencyKey(callID sdkgo.CallID, _ ReplyToMess
 func (operation ReplyToMessageOperation) Invoke(call sdkgo.Call, input ReplyToMessageInput) sdkgo.MutationAttempt[SendMessageOutput] {
 	credentials, err := operation.client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
-		return sdkgo.NewMutationBranch(ReplyToMessageBranchRejected, SendMessageOutput{}, gmailOperationFailurePointer("replyToMessage", sdkgo.FailureAuthentication, "connection credentials are unavailable"), sdkgo.Receipt{})
+		return sdkgo.NewMutationBranch(ReplyToMessageBranchDefect, SendMessageOutput{}, gmailOperationFailurePointer("replyToMessage", sdkgo.FailureAuthentication, "connection credentials are unavailable"), sdkgo.Receipt{})
 	}
 	if strings.TrimSpace(input.MessageID) == "" || strings.TrimSpace(input.TextBody) == "" {
 		return sdkgo.NewMutationBranch(ReplyToMessageBranchDefect, SendMessageOutput{}, gmailOperationFailurePointer("replyToMessage", sdkgo.FailureValidation, "message ID and text body are required"), sdkgo.Receipt{})
 	}
 	resource, result, err := operation.client.readMessage(call.Context, credentials, input.MessageID, "metadata")
 	if err != nil {
-		if result.statusCode == http.StatusTooManyRequests || result.statusCode >= 500 {
+		if result.statusCode == 0 || result.statusCode == http.StatusTooManyRequests || result.statusCode >= 500 {
 			return sdkgo.NewMutationRetry[SendMessageOutput](gmailOperationFailure("replyToMessage", sdkgo.FailureAvailability, "Gmail source message is temporarily unavailable"), retryAfter(result.header))
 		}
-		return sdkgo.NewMutationBranch(ReplyToMessageBranchRejected, SendMessageOutput{}, gmailOperationFailurePointer("replyToMessage", statusFailureKind(result.statusCode), "Gmail rejected the source message lookup"), sdkgo.Receipt{})
+		if result.statusCode >= 200 && result.statusCode < 300 {
+			return sdkgo.NewMutationBranch(ReplyToMessageBranchInvalidResponse, SendMessageOutput{}, gmailOperationFailurePointer("replyToMessage", sdkgo.FailureProtocol, "Gmail returned an invalid source message response"), operation.client.receipt(call, googleRequestID(result.header), input.MessageID))
+		}
+		return sdkgo.NewMutationBranch(ReplyToMessageBranchProviderRejected, SendMessageOutput{}, gmailOperationFailurePointer("replyToMessage", statusFailureKind(result.statusCode), "Gmail rejected the source message lookup"), operation.client.receipt(call, googleRequestID(result.header), input.MessageID))
 	}
 	message, err := decodeGmailMessage(resource)
 	if err != nil || message.ThreadID == "" || message.RFCMessageID == "" {
-		return sdkgo.NewMutationBranch(ReplyToMessageBranchDefect, SendMessageOutput{}, gmailOperationFailurePointer("replyToMessage", sdkgo.FailureProtocol, "source message lacks reply metadata"), sdkgo.Receipt{})
+		return sdkgo.NewMutationBranch(ReplyToMessageBranchInvalidResponse, SendMessageOutput{}, gmailOperationFailurePointer("replyToMessage", sdkgo.FailureProtocol, "source message lacks reply metadata"), operation.client.receipt(call, googleRequestID(result.header), input.MessageID))
 	}
 	recipient, err := replyRecipient(message)
 	if err != nil {
-		return sdkgo.NewMutationBranch(ReplyToMessageBranchDefect, SendMessageOutput{}, gmailOperationFailurePointer("replyToMessage", sdkgo.FailureValidation, "source sender is invalid"), sdkgo.Receipt{})
+		return sdkgo.NewMutationBranch(ReplyToMessageBranchInvalidResponse, SendMessageOutput{}, gmailOperationFailurePointer("replyToMessage", sdkgo.FailureProtocol, "Gmail returned an invalid source sender"), operation.client.receipt(call, googleRequestID(result.header), input.MessageID))
+	}
+	if strings.ContainsAny(message.Subject+message.RFCMessageID+message.References, "\r\n") {
+		return sdkgo.NewMutationBranch(ReplyToMessageBranchInvalidResponse, SendMessageOutput{}, gmailOperationFailurePointer("replyToMessage", sdkgo.FailureProtocol, "Gmail returned invalid source reply headers"), operation.client.receipt(call, googleRequestID(result.header), input.MessageID))
 	}
 	raw, err := buildReplyMIMEMessage(call, credentials.PrimaryEmail, recipient, message, input)
 	if err != nil || int64(len(raw)) > operation.client.maxMessageBytes {
@@ -190,7 +196,7 @@ func (operation ReplyToMessageOperation) sendReply(call sdkgo.Call, credentials 
 		return sdkgo.NewMutationRetry[SendMessageOutput](gmailOperationFailure("replyToMessage", sdkgo.FailureRateLimit, "Gmail temporarily rejected the reply"), retryAfter(response.Header))
 	}
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return sdkgo.NewMutationBranch(ReplyToMessageBranchRejected, SendMessageOutput{}, gmailOperationFailurePointer("replyToMessage", statusFailureKind(response.StatusCode), "Gmail rejected the reply"), receipt)
+		return sdkgo.NewMutationBranch(ReplyToMessageBranchProviderRejected, SendMessageOutput{}, gmailOperationFailurePointer("replyToMessage", statusFailureKind(response.StatusCode), "Gmail rejected the reply"), receipt)
 	}
 	var sent sendResponse
 	if err := json.Unmarshal(content, &sent); err != nil || sent.ID == "" || (sent.ThreadID != "" && sent.ThreadID != threadID) {
@@ -237,7 +243,10 @@ func classifyGetMessageFailure(result gmailHTTPResult, err error) sdkgo.QueryAtt
 	if result.statusCode == http.StatusNotFound {
 		return sdkgo.NewQueryBranch(GetMessageBranchNotFound, Message{}, nil, sdkgo.Receipt{})
 	}
-	return sdkgo.NewQueryBranch(GetMessageBranchRejected, Message{}, gmailOperationFailurePointer("getMessage", statusFailureKind(result.statusCode), err.Error()), sdkgo.Receipt{})
+	if result.statusCode >= 200 && result.statusCode < 300 {
+		return sdkgo.NewQueryBranch(GetMessageBranchInvalidResponse, Message{}, gmailOperationFailurePointer("getMessage", sdkgo.FailureProtocol, "Gmail returned an invalid or oversized message response"), sdkgo.Receipt{})
+	}
+	return sdkgo.NewQueryBranch(GetMessageBranchProviderRejected, Message{}, gmailOperationFailurePointer("getMessage", statusFailureKind(result.statusCode), err.Error()), sdkgo.Receipt{})
 }
 
 func decodeGmailMessage(resource gmailMessageResource) (Message, error) {
@@ -335,9 +344,6 @@ func buildReplyMIMEMessage(call sdkgo.Call, sender string, recipient string, sou
 	senderAddress, err := parseMailbox(sender)
 	if err != nil || !strings.EqualFold(senderAddress.Address, strings.TrimSpace(sender)) {
 		return nil, fmt.Errorf("authorized primary email is invalid")
-	}
-	if strings.ContainsAny(source.Subject+source.RFCMessageID+source.References, "\r\n") {
-		return nil, fmt.Errorf("source reply headers are invalid")
 	}
 	subject := source.Subject
 	if !strings.HasPrefix(strings.ToLower(strings.TrimSpace(subject)), "re:") {

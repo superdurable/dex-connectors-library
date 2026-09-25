@@ -74,6 +74,7 @@ func NewFlow(connection gmail.Connection) *Flow {
 }
 
 func (flow *Flow) GetSteps() []dex.StepDef {
+	messageReadRecovery := sdkgo.GoTo(messageReadFailed{})
 	readMessage := gmail.NewGetMessageStep(gmail.GetMessageStepConfig[Input]{
 		StepType: readMessageStepType, ConnectionName: ConnectionName,
 		Annotations: sdkgo.StepAnnotations{GroupID: "gmail", GroupLabel: "Gmail", Explanation: "Read the received Gmail message that started the Flow."},
@@ -82,8 +83,9 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			return gmail.GetMessageInput{MessageID: input.MessageID}
 		},
 		Read: sdkgo.GoTo(messageLoaded{}), NotFound: sdkgo.GoTo(messageReadFailed{}),
-		Rejected: sdkgo.GoTo(messageReadFailed{}), Defect: sdkgo.GoTo(messageReadFailed{}),
+		ProviderRejected: messageReadRecovery, InvalidResponse: messageReadRecovery, Defect: messageReadRecovery,
 	})
+	replyRecovery := sdkgo.GoTo(replyNeedsRecovery{})
 	return []dex.StepDef{
 		dex.DefineStartStep(initializeThread{}),
 		dex.DefineStep(readMessage),
@@ -96,8 +98,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			MapToOperationInput: func(state ThreadState) gmail.ReplyToMessageInput {
 				return gmail.ReplyToMessageInput{MessageID: state.ReplyMessageID, TextBody: "Processing complete."}
 			},
-			Sent: sdkgo.GoTo(replySent{}), Rejected: sdkgo.GoTo(replyNeedsRecovery{}),
-			Uncertain: sdkgo.GoTo(replyNeedsRecovery{}), Defect: sdkgo.GoTo(replyNeedsRecovery{}),
+			Sent: sdkgo.GoTo(replySent{}), ProviderRejected: replyRecovery,
+			InvalidResponse: replyRecovery, Uncertain: replyRecovery, Defect: replyRecovery,
 			ResultAttribute: &replyResultAttribute,
 		})),
 		dex.DefineStep(replySent{}),
@@ -282,7 +284,7 @@ func (replySent) Execute(ctx dex.Context, _ replyMessageOutput) (*dex.StepDecisi
 }
 
 // dex:group group-id:recovery group-label:"Recovery"
-// dex:explanation text:"Pause after a rejected or uncertain Gmail reply for explicit recovery."
+// dex:explanation text:"Pause after a terminal or uncertain Gmail reply outcome for explicit recovery."
 type replyNeedsRecovery struct {
 	dex.StepDefaultsNoWaitFor[replyMessageOutput]
 }

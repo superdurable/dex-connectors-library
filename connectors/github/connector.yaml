@@ -77,8 +77,9 @@ spec:
         - {id: insufficientScope, goName: InsufficientScope, description: The OAuth grant does not match the required scopes.}
         - {id: authorizationRevoked, goName: AuthorizationRevoked, description: The OAuth grant is invalid or revoked.}
         - {id: notFound, goName: NotFound, description: The authenticated account was not found.}
-        - {id: failed, goName: Failed, description: GitHub returned a terminal provider or protocol failure.}
-        - {id: defect, goName: Defect, description: Local configuration or input is invalid.}
+        - {id: providerRejected, goName: ProviderRejected, description: GitHub conclusively rejected the profile query.}
+        - {id: invalidResponse, goName: InvalidResponse, description: GitHub returned an invalid or oversized profile response.}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid."}
       execution: &githubQueryExecution
         executeMethodTimeout: 30s
         durability: sync
@@ -96,6 +97,7 @@ spec:
         - {id: insufficientScope, goName: InsufficientScope, description: The OAuth grant does not match the required scopes.}
         - {id: authorizationRevoked, goName: AuthorizationRevoked, description: The OAuth grant is invalid or revoked.}
         - {id: notFound, goName: NotFound, description: The requested GitHub account was not found.}
-        - {id: failed, goName: Failed, description: GitHub returned a terminal provider or protocol failure.}
-        - {id: defect, goName: Defect, description: Local configuration or input is invalid.}
+        - {id: providerRejected, goName: ProviderRejected, description: GitHub conclusively rejected the repository query.}
+        - {id: invalidResponse, goName: InvalidResponse, description: GitHub returned an invalid or oversized repository response.}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid."}
       execution: *githubQueryExecution

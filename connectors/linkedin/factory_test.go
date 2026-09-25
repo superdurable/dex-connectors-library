@@ -39,7 +39,8 @@ func TestGeneratedFactoryExposesEveryTypedBranch(t *testing.T) {
 		},
 		ProfileLoaded: sdkgo.GoTo(profileTarget{}), VerifiedEmailRequired: sdkgo.GoTo(profileTarget{}),
 		InsufficientScope: sdkgo.GoTo(profileTarget{}), AuthorizationRevoked: sdkgo.GoTo(profileTarget{}),
-		NotFound: sdkgo.GoTo(profileTarget{}), Failed: sdkgo.GoTo(profileTarget{}), Defect: sdkgo.GoTo(profileTarget{}),
+		NotFound: sdkgo.GoTo(profileTarget{}), ProviderRejected: sdkgo.GoTo(profileTarget{}),
+		InvalidResponse: sdkgo.GoTo(profileTarget{}), Defect: sdkgo.GoTo(profileTarget{}),
 		ResultAttribute: &result,
 	})
 	require.Equal(t, "ReadLinkedInProfile", step.GetStepType())

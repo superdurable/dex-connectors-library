@@ -158,12 +158,17 @@ func (operation GetValuesOperation) Invoke(call sdkgo.Call, input GetValuesInput
 	}
 	credential, failure := operation.client.resolveCredential(call, "getValues")
 	if failure != nil {
-		return sdkgo.NewQueryBranch(GetValuesBranchFailed, GetValuesOutput{}, failure, sdkgo.Receipt{})
+		return sdkgo.NewQueryBranch(GetValuesBranchDefect, GetValuesOutput{}, failure, sdkgo.Receipt{})
 	}
 	result, err := operation.client.getValues(call, credential, input.SpreadsheetID, input.Range)
 	if err != nil {
-		if requestFailure, ok := err.(*providerRequestError); ok && requestFailure.kind == sdkgo.FailureResponseTooLarge {
-			return sdkgo.NewQueryBranch(GetValuesBranchFailed, GetValuesOutput{}, failurePointer(requestFailure.kind, "getValues", requestFailure.message), sdkgo.Receipt{})
+		if requestFailure, ok := err.(*providerRequestError); ok {
+			switch requestFailure.kind {
+			case sdkgo.FailureResponseTooLarge:
+				return sdkgo.NewQueryBranch(GetValuesBranchInvalidResponse, GetValuesOutput{}, failurePointer(requestFailure.kind, "getValues", requestFailure.message), operation.client.receipt(call, result, ""))
+			case sdkgo.FailureLocalDefect:
+				return sdkgo.NewQueryBranch(GetValuesBranchDefect, GetValuesOutput{}, failurePointer(requestFailure.kind, "getValues", requestFailure.message), sdkgo.Receipt{})
+			}
 		}
 		return sdkgo.NewQueryRetry[GetValuesOutput](sheetFailure(sdkgo.FailureAvailability, "getValues", "provider is unavailable"), 0)
 	}
@@ -175,11 +180,11 @@ func (operation GetValuesOperation) Invoke(call sdkgo.Call, input GetValuesInput
 		return sdkgo.NewQueryRetry[GetValuesOutput](sheetFailure(statusFailureKind(result.status), "getValues", "provider temporarily rejected the query"), delay)
 	}
 	if result.status < 200 || result.status >= 300 {
-		return sdkgo.NewQueryBranch(GetValuesBranchFailed, GetValuesOutput{}, failurePointer(statusFailureKind(result.status), "getValues", "provider rejected the query"), receipt)
+		return sdkgo.NewQueryBranch(GetValuesBranchProviderRejected, GetValuesOutput{}, failurePointer(statusFailureKind(result.status), "getValues", "provider rejected the query"), receipt)
 	}
 	values, decodeFailure := operation.client.decodeValues(result.body, "getValues")
 	if decodeFailure != nil {
-		return sdkgo.NewQueryBranch(GetValuesBranchFailed, GetValuesOutput{}, decodeFailure, receipt)
+		return sdkgo.NewQueryBranch(GetValuesBranchInvalidResponse, GetValuesOutput{}, decodeFailure, receipt)
 	}
 	return sdkgo.NewQueryBranch(GetValuesBranchRead, convertValues(values), nil, receipt)
 }
@@ -192,12 +197,17 @@ func (operation FindRowOperation) Invoke(call sdkgo.Call, input FindRowInput) sd
 	}
 	credential, failure := operation.client.resolveCredential(call, "findRow")
 	if failure != nil {
-		return sdkgo.NewQueryBranch(FindRowBranchFailed, FindRowOutput{}, failure, sdkgo.Receipt{})
+		return sdkgo.NewQueryBranch(FindRowBranchDefect, FindRowOutput{}, failure, sdkgo.Receipt{})
 	}
 	result, err := operation.client.getValues(call, credential, input.SpreadsheetID, quoteSheet(input.SheetName))
 	if err != nil {
-		if requestFailure, ok := err.(*providerRequestError); ok && requestFailure.kind == sdkgo.FailureResponseTooLarge {
-			return sdkgo.NewQueryBranch(FindRowBranchFailed, FindRowOutput{}, failurePointer(requestFailure.kind, "findRow", requestFailure.message), sdkgo.Receipt{})
+		if requestFailure, ok := err.(*providerRequestError); ok {
+			switch requestFailure.kind {
+			case sdkgo.FailureResponseTooLarge:
+				return sdkgo.NewQueryBranch(FindRowBranchInvalidResponse, FindRowOutput{}, failurePointer(requestFailure.kind, "findRow", requestFailure.message), operation.client.receipt(call, result, ""))
+			case sdkgo.FailureLocalDefect:
+				return sdkgo.NewQueryBranch(FindRowBranchDefect, FindRowOutput{}, failurePointer(requestFailure.kind, "findRow", requestFailure.message), sdkgo.Receipt{})
+			}
 		}
 		return sdkgo.NewQueryRetry[FindRowOutput](sheetFailure(sdkgo.FailureAvailability, "findRow", "provider is unavailable"), 0)
 	}
@@ -209,11 +219,11 @@ func (operation FindRowOperation) Invoke(call sdkgo.Call, input FindRowInput) sd
 		return sdkgo.NewQueryRetry[FindRowOutput](sheetFailure(statusFailureKind(result.status), "findRow", "provider temporarily rejected the query"), delay)
 	}
 	if result.status < 200 || result.status >= 300 {
-		return sdkgo.NewQueryBranch(FindRowBranchFailed, FindRowOutput{}, failurePointer(statusFailureKind(result.status), "findRow", "provider rejected the query"), receipt)
+		return sdkgo.NewQueryBranch(FindRowBranchProviderRejected, FindRowOutput{}, failurePointer(statusFailureKind(result.status), "findRow", "provider rejected the query"), receipt)
 	}
 	values, decodeFailure := operation.client.decodeValues(result.body, "findRow")
 	if decodeFailure != nil {
-		return sdkgo.NewQueryBranch(FindRowBranchFailed, FindRowOutput{}, decodeFailure, receipt)
+		return sdkgo.NewQueryBranch(FindRowBranchInvalidResponse, FindRowOutput{}, decodeFailure, receipt)
 	}
 	found, branch, findFailure := findRow(convertValues(values).Values, input.KeyColumn, input.KeyValue)
 	return sdkgo.NewQueryBranch(branch, found, findFailure, receipt)
@@ -236,12 +246,17 @@ func (operation UpsertRowOperation) Invoke(call sdkgo.Call, input UpsertRowInput
 	}
 	credential, failure := operation.client.resolveCredential(call, "upsertRow")
 	if failure != nil {
-		return sdkgo.NewMutationBranch(UpsertRowBranchRejected, UpsertRowOutput{}, failure, sdkgo.Receipt{})
+		return sdkgo.NewMutationBranch(UpsertRowBranchDefect, UpsertRowOutput{}, failure, sdkgo.Receipt{})
 	}
 	lookup, err := operation.client.getValues(call, credential, input.SpreadsheetID, quoteSheet(input.SheetName))
 	if err != nil {
-		if requestFailure, ok := err.(*providerRequestError); ok && requestFailure.kind == sdkgo.FailureResponseTooLarge {
-			return sdkgo.NewMutationBranch(UpsertRowBranchRejected, UpsertRowOutput{}, failurePointer(requestFailure.kind, "upsertRow", requestFailure.message), sdkgo.Receipt{})
+		if requestFailure, ok := err.(*providerRequestError); ok {
+			switch requestFailure.kind {
+			case sdkgo.FailureResponseTooLarge:
+				return sdkgo.NewMutationBranch(UpsertRowBranchInvalidResponse, UpsertRowOutput{}, failurePointer(requestFailure.kind, "upsertRow", requestFailure.message), operation.client.receipt(call, lookup, ""))
+			case sdkgo.FailureLocalDefect:
+				return sdkgo.NewMutationBranch(UpsertRowBranchDefect, UpsertRowOutput{}, failurePointer(requestFailure.kind, "upsertRow", requestFailure.message), sdkgo.Receipt{})
+			}
 		}
 		return sdkgo.NewMutationRetry[UpsertRowOutput](sheetFailure(sdkgo.FailureAvailability, "upsertRow", "provider is unavailable before write"), 0)
 	}
@@ -250,11 +265,11 @@ func (operation UpsertRowOperation) Invoke(call sdkgo.Call, input UpsertRowInput
 		return sdkgo.NewMutationRetry[UpsertRowOutput](sheetFailure(statusFailureKind(lookup.status), "upsertRow", "provider temporarily rejected the pre-write query"), delay)
 	}
 	if lookup.status < 200 || lookup.status >= 300 {
-		return sdkgo.NewMutationBranch(UpsertRowBranchRejected, UpsertRowOutput{}, failurePointer(statusFailureKind(lookup.status), "upsertRow", "provider rejected the pre-write query"), lookupReceipt)
+		return sdkgo.NewMutationBranch(UpsertRowBranchProviderRejected, UpsertRowOutput{}, failurePointer(statusFailureKind(lookup.status), "upsertRow", "provider rejected the pre-write query"), lookupReceipt)
 	}
 	values, decodeFailure := operation.client.decodeValues(lookup.body, "upsertRow")
 	if decodeFailure != nil {
-		return sdkgo.NewMutationBranch(UpsertRowBranchRejected, UpsertRowOutput{}, decodeFailure, lookupReceipt)
+		return sdkgo.NewMutationBranch(UpsertRowBranchInvalidResponse, UpsertRowOutput{}, decodeFailure, lookupReceipt)
 	}
 	rows := convertValues(values).Values
 	match, branch, findFailure := findRow(rows, input.KeyColumn, input.KeyValue)
@@ -285,6 +300,9 @@ func (operation UpsertRowOperation) Invoke(call sdkgo.Call, input UpsertRowInput
 	payload := map[string]any{"range": targetRange, "majorDimension": "ROWS", "values": [][]string{row}}
 	writeResult, err := operation.client.request(call, credential, method, input.SpreadsheetID, pathSuffix, query, payload)
 	if err != nil {
+		if requestFailure, ok := err.(*providerRequestError); ok && requestFailure.kind == sdkgo.FailureLocalDefect {
+			return sdkgo.NewMutationBranch(UpsertRowBranchDefect, UpsertRowOutput{}, failurePointer(requestFailure.kind, "upsertRow", requestFailure.message), lookupReceipt)
+		}
 		return sdkgo.NewMutationUncertain(UpsertRowOutput{}, sheetFailure(sdkgo.FailureTransport, "upsertRow", "provider outcome is unknown"), lookupReceipt)
 	}
 	receipt := operation.client.receipt(call, writeResult, fmt.Sprintf("%s#%s!%d", input.SpreadsheetID, input.SheetName, rowNumber))
@@ -296,7 +314,7 @@ func (operation UpsertRowOperation) Invoke(call sdkgo.Call, input UpsertRowInput
 		return sdkgo.NewMutationUncertain(UpsertRowOutput{}, sheetFailure(sdkgo.FailureAvailability, "upsertRow", "provider write outcome is unknown"), receipt)
 	}
 	if writeResult.status < 200 || writeResult.status >= 300 {
-		return sdkgo.NewMutationBranch(UpsertRowBranchRejected, UpsertRowOutput{}, failurePointer(statusFailureKind(writeResult.status), "upsertRow", "provider rejected the write"), receipt)
+		return sdkgo.NewMutationBranch(UpsertRowBranchProviderRejected, UpsertRowOutput{}, failurePointer(statusFailureKind(writeResult.status), "upsertRow", "provider rejected the write"), receipt)
 	}
 	var response updateResponse
 	if err := json.Unmarshal(writeResult.body, &response); err != nil {
@@ -326,14 +344,14 @@ func (client *Client) request(call sdkgo.Call, credential Credentials, method, s
 	if payload != nil {
 		encoded, err := json.Marshal(payload)
 		if err != nil {
-			return requestResult{}, err
+			return requestResult{}, &providerRequestError{kind: sdkgo.FailureLocalDefect, message: "provider request could not be encoded"}
 		}
 		body = bytes.NewReader(encoded)
 	}
 	target := strings.TrimRight(client.endpoint.String(), "/") + "/spreadsheets/" + url.PathEscape(spreadsheetID) + suffix
 	request, err := http.NewRequestWithContext(call.Context, method, target, body)
 	if err != nil {
-		return requestResult{}, err
+		return requestResult{}, &providerRequestError{kind: sdkgo.FailureLocalDefect, message: "provider request could not be built"}
 	}
 	request.URL.RawQuery = query.Encode()
 	request.Header.Set("Authorization", "Bearer "+credential.AccessToken.Reveal())

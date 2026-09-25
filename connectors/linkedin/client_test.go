@@ -88,8 +88,8 @@ func TestGetAuthenticatedProfileClassifiesTerminalProviderResponses(t *testing.T
 		{http.StatusUnauthorized, linkedinconnector.GetAuthenticatedProfileBranchAuthorizationRevoked, sdkgo.FailureAuthentication},
 		{http.StatusForbidden, linkedinconnector.GetAuthenticatedProfileBranchInsufficientScope, sdkgo.FailureAuthorization},
 		{http.StatusNotFound, linkedinconnector.GetAuthenticatedProfileBranchNotFound, sdkgo.FailureNotFound},
-		{http.StatusBadRequest, linkedinconnector.GetAuthenticatedProfileBranchFailed, sdkgo.FailureProviderRejection},
-		{http.StatusFound, linkedinconnector.GetAuthenticatedProfileBranchFailed, sdkgo.FailureProviderRejection},
+		{http.StatusBadRequest, linkedinconnector.GetAuthenticatedProfileBranchProviderRejected, sdkgo.FailureProviderRejection},
+		{http.StatusFound, linkedinconnector.GetAuthenticatedProfileBranchProviderRejected, sdkgo.FailureProviderRejection},
 	}
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("status-%d", test.status), func(t *testing.T) {
@@ -109,6 +109,18 @@ func TestGetAuthenticatedProfileClassifiesTerminalProviderResponses(t *testing.T
 			require.NotContains(t, fmt.Sprintf("%#v", result), "sensitive provider response")
 		})
 	}
+}
+
+func TestGetAuthenticatedProfileMissingConnectionUsesDefectBranch(t *testing.T) {
+	client, err := linkedinconnector.New(linkedinconnector.Config{}, sdkgo.StaticCredentialProvider[linkedinconnector.Credentials]{})
+	require.NoError(t, err)
+	result, err := sdkgo.RunQuery(
+		testsupport.NewDexContext("signup-flow", "missing-connection"), client.GetAuthenticatedProfile(), linkedinConnection,
+		linkedinconnector.GetAuthenticatedProfileInput{},
+	)
+	require.NoError(t, err)
+	require.Equal(t, linkedinconnector.GetAuthenticatedProfileBranchDefect, result.Branch)
+	require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
 }
 
 func TestRateLimitAndAvailabilityAreSafeRetries(t *testing.T) {
@@ -167,7 +179,7 @@ func TestTransportAndResponseBoundsDoNotLeakSecrets(t *testing.T) {
 		linkedinconnector.GetAuthenticatedProfileInput{},
 	)
 	require.NoError(t, err)
-	require.Equal(t, linkedinconnector.GetAuthenticatedProfileBranchFailed, result.Branch)
+	require.Equal(t, linkedinconnector.GetAuthenticatedProfileBranchInvalidResponse, result.Branch)
 	require.Equal(t, sdkgo.FailureResponseTooLarge, result.Failure.Kind)
 }
 
@@ -187,7 +199,7 @@ func TestInvalidUserInfoIsTerminalProtocolFailure(t *testing.T) {
 		)
 		server.Close()
 		require.NoError(t, err)
-		require.Equal(t, linkedinconnector.GetAuthenticatedProfileBranchFailed, result.Branch)
+		require.Equal(t, linkedinconnector.GetAuthenticatedProfileBranchInvalidResponse, result.Branch)
 		require.Equal(t, sdkgo.FailureProtocol, result.Failure.Kind)
 	}
 }
