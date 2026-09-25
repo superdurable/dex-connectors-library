@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: gmail
   displayName: Gmail
-  description: Send an email from the authorized primary Gmail address.
+  description: Start and update Dex Flows from received Gmail messages, read messages, and send or reply to email.
 spec:
   provider: google
   codegen:
@@ -29,6 +29,18 @@ spec:
         description: Maximum encoded RFC message size.
         required: false
         default: 10485760
+      - name: pollInterval
+        goName: PollInterval
+        type: duration
+        description: Interval used by local Gmail polling Triggers.
+        required: false
+        default: 10s
+      - name: pollPageSize
+        goName: PollPageSize
+        type: integer
+        description: Maximum recent inbox messages inspected by each polling Trigger.
+        required: false
+        default: 25
   auth:
     type: oauth2
     connectionKind: gmail-send-oauth
@@ -46,16 +58,45 @@ spec:
     oauth2:
       authorizationEndpoint: https://accounts.google.com/o/oauth2/v2/auth
       tokenEndpoint: https://oauth2.googleapis.com/token
-      scopes: [openid, email, https://www.googleapis.com/auth/gmail.send]
+      scopes: [openid, email, https://www.googleapis.com/auth/gmail.readonly, https://www.googleapis.com/auth/gmail.send]
       pkce: true
   studio:
     setup:
       entrypoint: index.html
       hostApiRange: ">=0.1.0 <0.2.0"
-      backendCapabilities: [oauth.connection.manage, configuration.write]
+      backendCapabilities: [oauth.connection.manage, configuration.write, trigger.configuration.write]
       mockScenarios: [not-configured, authorization-pending, connected, insufficient-scope, revoked, broker-unavailable, ready]
       icon: icon.svg
+  triggers:
+    - name: messageReceived
+      goName: MessageReceived
+      eventType: MessageEvent
+      configurationType: MessageReceivedTriggerConfiguration
+      description: Receive a matching message that begins a Gmail thread.
+    - name: replyReceived
+      goName: ReplyReceived
+      eventType: MessageEvent
+      configurationType: ReplyReceivedTriggerConfiguration
+      description: Receive a matching reply in an existing Gmail thread.
   operations:
+    - name: getMessage
+      goName: GetMessage
+      inputType: GetMessageInput
+      outputType: Message
+      kind: query
+      description: Read one Gmail message with decoded text and HTML bodies.
+      idempotency: none
+      branches:
+        - {id: read, goName: Read, description: The Gmail message was read.}
+        - {id: notFound, goName: NotFound, description: The Gmail message does not exist.}
+        - {id: rejected, goName: Rejected, description: Gmail conclusively rejected the query.}
+        - {id: defect, goName: Defect, description: Local input or connector definition is invalid.}
+      defectBranch: defect
+      resultAttribute: optional
+      execution: &gmailQueryExecution
+        executeMethodTimeout: 30s
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
     - name: sendMessage
       goName: SendMessage
       inputType: SendMessageInput
@@ -67,6 +108,25 @@ spec:
         - {id: sent, goName: Sent, description: Gmail accepted the message and returned its identity.}
         - {id: rejected, goName: Rejected, description: Gmail conclusively rejected the message.}
         - {id: uncertain, goName: Uncertain, description: The dispatched send outcome cannot be confirmed.}
+        - {id: defect, goName: Defect, description: Local input or connector definition is invalid.}
+      defectBranch: defect
+      uncertainBranch: uncertain
+      resultAttribute: required
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+    - name: replyToMessage
+      goName: ReplyToMessage
+      inputType: ReplyToMessageInput
+      outputType: SendMessageOutput
+      kind: mutation
+      description: Reply to one Gmail message in its existing thread.
+      idempotency: required
+      branches:
+        - {id: sent, goName: Sent, description: Gmail accepted the reply and returned its identity.}
+        - {id: rejected, goName: Rejected, description: Gmail conclusively rejected the reply.}
+        - {id: uncertain, goName: Uncertain, description: The dispatched reply outcome cannot be confirmed.}
         - {id: defect, goName: Defect, description: Local input or connector definition is invalid.}
       defectBranch: defect
       uncertainBranch: uncertain

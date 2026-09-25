@@ -1,12 +1,29 @@
 # Gmail Connector
 
-The Gmail Connector exposes `gmail.NewSendMessageStep`. It sends from the
-verified primary address of a dedicated `gmail-send-oauth` Connection.
+The Gmail Connector receives root messages and replies, reads one message, and
+sends new messages or replies from the verified primary address.
 
-The OAuth grant requests `openid`, `email`, and `gmail.send`. It does not read
-the inbox, sent messages, aliases, or Gmail profile data. The generated
+The OAuth grant requests `openid`, `email`, `gmail.readonly`, and `gmail.send`.
+It does not modify or delete existing messages. The generated
 `Credentials` contains a short-lived access token and the verified primary
 email; refresh tokens remain in the hosting application's OAuth broker.
+
+`messageReceived` and `replyReceived` are neutral provider Triggers. Their
+manifest does not decide whether an event starts a Flow or invokes an RPC. The
+application passes `NewDexFlowTriggerTarget`, `NewDexRPCTriggerTarget`, or a
+custom typed target to the generated Trigger factory. `FlowIDByThread` adapts
+an application callback that maps primary email plus Gmail thread ID to a
+stable Flow ID.
+
+The local Trigger transport polls the newest inbox page. `searchQuery` accepts
+a Gmail search expression. `MessageMatcher` optionally filters the sender and
+a case-insensitive substring across subject and snippet. Gmail message ID is
+the stable event ID. Restart rescans can redeliver the current page, so Flow
+start request IDs and Trigger RPC persistence perform final deduplication.
+
+`GetMessage` returns decoded headers, text, HTML, snippet, labels, and received
+time. `ReplyToMessage` reads the source metadata and sends with Gmail thread
+ID, `In-Reply-To`, and `References` preserved.
 
 The stable Connector idempotency key is written into the RFC `Message-ID` and
 safe correlation header. Gmail does not promise server-side deduplication, so
@@ -28,7 +45,10 @@ if err != nil {
 sender, err := gmail.NewLocalConnection(store, "sender")
 ```
 
-Set `ConnectionName: "sender"` beside `Connection: sender` in
-`SendMessageStepConfig`. Dex Web stores only the short-lived access token and
+Set the same `ConnectionName` beside the typed `Connection` in each operation
+or Trigger binding. Dex Web stores only the short-lived access token and
 confirmed primary email. It does not store a refresh token, and deleting the
 local credential does not revoke the Google grant.
+
+[`examples/thread-reply`](examples/thread-reply) combines a Flow-start target,
+`GetMessage`, a typed reply RPC, and `ReplyToMessage` in one runnable Flow.

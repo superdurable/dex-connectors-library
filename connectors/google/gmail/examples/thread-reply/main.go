@@ -1,0 +1,105 @@
+// Copyright (c) 2026 Super Durable
+// SPDX-License-Identifier: MIT
+
+package main
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"log"
+	"os"
+	"os/signal"
+	"path/filepath"
+	"syscall"
+	"time"
+
+	gmail "github.com/superdurable/dex-connectors-library/connectors/google/gmail"
+	threadreply "github.com/superdurable/dex-connectors-library/connectors/google/gmail/examples/thread-reply/flow"
+	connector "github.com/superdurable/dex-connectors-library/sdk/go"
+	"github.com/superdurable/dex-connectors-library/sdk/go/localconfig"
+	"github.com/superdurable/dex/blob-cache-go/blobcache"
+	"github.com/superdurable/dex/sdk-go/dex"
+)
+
+func main() {
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	if err := run(ctx); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func run(ctx context.Context) error {
+	store, err := localconfig.LoadFromEnvironment()
+	if err != nil {
+		return err
+	}
+	connection, err := gmail.NewLocalConnection(store, threadreply.ConnectionName)
+	if err != nil {
+		return err
+	}
+	flow := threadreply.NewFlow(connection)
+	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	if err != nil {
+		return fmt.Errorf("register Gmail thread reply Flow: %w", err)
+	}
+	cache, err := blobcache.New(&blobcache.Config{
+		Dir: environmentOr("DEX_BLOB_CACHE_DIR", filepath.Join(os.TempDir(), "dex-gmail-thread-reply-blobs")), MaxBytes: 1 << 30,
+	})
+	if err != nil {
+		return fmt.Errorf("create blob cache: %w", err)
+	}
+	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{
+		BindAddress:        environmentOr("DEX_WORKER_BIND_ADDRESS", "127.0.0.1:8814"),
+		FlowServiceAddress: os.Getenv("DEX_FLOW_SERVICE_ADDRESS"),
+	})
+	if err != nil {
+		return errors.Join(err, cache.Close())
+	}
+	client, err := dex.NewClient(registry, cache, dex.ClientOptions{
+		FlowServiceAddress: os.Getenv("DEX_FLOW_SERVICE_ADDRESS"), WorkerTarget: worker.WorkerTarget(),
+	})
+	if err != nil {
+		return errors.Join(err, stopWorker(worker), cache.Close())
+	}
+	startRunner, err := gmail.NewLocalMessageReceivedTrigger(
+		store, threadreply.ConnectionName, threadreply.StartTriggerBinding,
+		connector.NewDexFlowTriggerTarget(client, flow, gmail.FlowIDByThread(threadreply.ResolveFlowID), threadreply.BuildStartInput),
+	)
+	if err != nil {
+		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
+	}
+	replyRunner, err := gmail.NewLocalReplyReceivedTrigger(
+		store, threadreply.ConnectionName, threadreply.ReplyTriggerBinding,
+		connector.NewDexRPCTriggerTarget(client, flow.ReplyTriggerRPC().Definition(), gmail.FlowIDByThread(threadreply.ResolveFlowID)),
+	)
+	if err != nil {
+		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
+	}
+	runCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	runResults := make(chan error, 3)
+	go func() { runResults <- worker.Start() }()
+	go func() { runResults <- startRunner.Run(runCtx) }()
+	go func() { runResults <- replyRunner.Run(runCtx) }()
+	select {
+	case <-ctx.Done():
+	case err = <-runResults:
+	}
+	cancel()
+	return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
+}
+
+func stopWorker(worker *dex.Worker) error {
+	stopCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	return worker.Stop(stopCtx)
+}
+
+func environmentOr(name string, fallback string) string {
+	if value := os.Getenv(name); value != "" {
+		return value
+	}
+	return fallback
+}
