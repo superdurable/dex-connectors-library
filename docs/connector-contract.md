@@ -14,7 +14,7 @@ Dex Step factory such as:
 openai.NewCreateResponseStep(openai.CreateResponseStepConfig[Input]{
     StepType:  "GenerateSummary",
     Connection: openAIConnection,
-    BuildInput: buildRequest,
+    BuildOperationInput: buildOperationInput,
     Completed: sdkgo.GoTo(CompletedStep{}),
     Failed:    sdkgo.GoTo(FailedStep{}),
     Uncertain: sdkgo.GoTo(ReconcileStep{}),
@@ -35,17 +35,17 @@ Gmail, or Sheets connection cannot be passed to another connector factory.
 The same typed connection can be reused by operations from that connector.
 
 The factory owns one provider invocation and one `dex.GoTo`. The application
-supplies a stable Step type, presentation metadata, registration-time
-typed Connection, pure `BuildInput`, and one typed target for every declared
-branch. A target receives the original Step input and the full Connector
-Result:
+supplies a stable Step type, annotations, registration-time typed Connection,
+pure `BuildOperationInput`, and one typed target for every declared branch.
+A target receives only the current Connector Result:
 
 ```go
-type QueryStepOutput[IN, OUT any] struct {
-    Input  IN
-    Result QueryResult[OUT]
-}
+type ListThreadMessagesResult = sdkgo.QueryResult[ListThreadMessagesOutput]
 ```
+
+Connector Steps do not forward their input. Applications persist durable
+business context in domain Attributes or pass an explicit domain value through
+an application Step before invoking the next Connector Step.
 
 `GoTo` and `GoToBranch` enforce the target input type at Go compile time. `StepRef[T]`
 provides a lightweight reference to another factory by stable Step type; the

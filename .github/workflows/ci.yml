@@ -96,8 +96,10 @@ jobs:
             cat /tmp/dex-connectors-server.log
             exit 1
           fi
-          DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:18801 \
-            go test -race -tags=integration ./examples/customer-onboarding -count=1 -v
+          cd examples/customer-onboarding
+          DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:18801 GOWORK=off \
+            go test -race -tags=integration ./... -count=1 -v
+          cd ../..
           cd sdkgo
           DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:18801 GOWORK=off \
             go test -race -tags=integration ./integrationtest/... -count=1 -v

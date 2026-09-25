@@ -29,6 +29,7 @@ const (
 )
 
 var (
+	connectorConsumerInput = dex.DefineAttribute[flowInput]("connector-consumer-input")
 	createWidgetResult     = dex.DefineAttribute[sdkgo.MutationResult[fixtureconnector.Widget]]("fixture-create-widget-result")
 	createWidgetProgress   = dex.DefineStream[sdkgo.ProgressUpdate]("fixture-create-widget-progress", 1<<20)
 	triggerStartEventID    = dex.DefineAttribute[string]("trigger-adapter-start-event-id")
@@ -51,80 +52,105 @@ type connectorConsumerFlow struct {
 	connection fixtureconnector.Connection
 }
 
-type lookupOutput = fixtureconnector.LookupWidgetStepOutput[flowInput]
-type createOutput = fixtureconnector.CreateWidgetStepOutput[lookupOutput]
+type lookupResult = fixtureconnector.LookupWidgetResult
+type createResult = fixtureconnector.CreateWidgetResult
 
 func (flow connectorConsumerFlow) GetSteps() []dex.StepDef {
 	lookup := fixtureconnector.NewLookupWidgetStep(fixtureconnector.LookupWidgetStepConfig[flowInput]{
 		StepType: lookupWidgetStepType,
-		Presentation: sdkgo.StepPresentation{
+		Annotations: sdkgo.StepAnnotations{
 			GroupID: "fixture", GroupLabel: "Fixture", Explanation: "Look up the widget.",
 		},
 		Connection: flow.connection,
-		BuildInput: func(input flowInput) (fixtureconnector.LookupInput, error) {
+		BuildOperationInput: func(input flowInput) (fixtureconnector.LookupInput, error) {
 			return fixtureconnector.LookupInput{Name: input.Name}, nil
 		},
 		Found:  sdkgo.GoTo(widgetAlreadyExistsStep{}),
-		Absent: sdkgo.GoTo(sdkgo.StepRef[lookupOutput](createWidgetStepType)),
-		Failed: sdkgo.GoTo(connectorConsumerFailedStep[lookupOutput]{}),
-		Defect: sdkgo.GoTo(connectorConsumerFailedStep[lookupOutput]{}),
+		Absent: sdkgo.GoTo(prepareWidgetCreationStep{}),
+		Failed: sdkgo.GoTo(connectorConsumerFailedStep[lookupResult]{}),
+		Defect: sdkgo.GoTo(connectorConsumerFailedStep[lookupResult]{}),
 	})
-	create := fixtureconnector.NewCreateWidgetStep(fixtureconnector.CreateWidgetStepConfig[lookupOutput]{
+	create := fixtureconnector.NewCreateWidgetStep(fixtureconnector.CreateWidgetStepConfig[flowInput]{
 		StepType: createWidgetStepType,
-		Presentation: sdkgo.StepPresentation{
+		Annotations: sdkgo.StepAnnotations{
 			GroupID: "fixture", GroupLabel: "Fixture", Explanation: "Create the missing widget.",
 		},
 		Connection: flow.connection,
-		BuildInput: func(output lookupOutput) (fixtureconnector.CreateInput, error) {
-			return fixtureconnector.CreateInput{Name: output.Input.Name}, nil
+		BuildOperationInput: func(input flowInput) (fixtureconnector.CreateInput, error) {
+			return fixtureconnector.CreateInput{Name: input.Name}, nil
 		},
 		Completed:       sdkgo.GoTo(widgetCreatedStep{}),
-		Rejected:        sdkgo.GoTo(connectorConsumerFailedStep[createOutput]{}),
-		Uncertain:       sdkgo.GoTo(connectorConsumerFailedStep[createOutput]{}),
-		Defect:          sdkgo.GoTo(connectorConsumerFailedStep[createOutput]{}),
+		Rejected:        sdkgo.GoTo(connectorConsumerFailedStep[createResult]{}),
+		Uncertain:       sdkgo.GoTo(connectorConsumerFailedStep[createResult]{}),
+		Defect:          sdkgo.GoTo(connectorConsumerFailedStep[createResult]{}),
 		ResultAttribute: &createWidgetResult,
 		ProgressStream:  &createWidgetProgress,
 	})
 	return []dex.StepDef{
-		dex.DefineStartStep(lookup),
+		dex.DefineStartStep(initializeConnectorConsumerStep{}),
+		dex.DefineStep(lookup),
 		dex.DefineStep(create),
+		dex.DefineStep(prepareWidgetCreationStep{}),
 		dex.DefineStep(widgetAlreadyExistsStep{}),
 		dex.DefineStep(widgetCreatedStep{}),
-		dex.DefineStep(connectorConsumerFailedStep[lookupOutput]{}),
-		dex.DefineStep(connectorConsumerFailedStep[createOutput]{}),
+		dex.DefineStep(connectorConsumerFailedStep[lookupResult]{}),
+		dex.DefineStep(connectorConsumerFailedStep[createResult]{}),
 	}
 }
 
 func (connectorConsumerFlow) GetPersistenceSchema() dex.PersistenceSchema {
 	return dex.PersistenceSchema{
-		Attributes: []dex.AttributeDef{createWidgetResult},
+		Attributes: []dex.AttributeDef{connectorConsumerInput, createWidgetResult},
 		Streams:    []dex.StreamDef{createWidgetProgress},
 	}
 }
 
-type widgetAlreadyExistsStep struct {
-	dex.StepDefaultsNoWaitFor[lookupOutput]
+type initializeConnectorConsumerStep struct {
+	dex.StepDefaultsNoWaitFor[flowInput]
 }
 
-func (widgetAlreadyExistsStep) Execute(_ dex.Context, output lookupOutput) (*dex.StepDecision, error) {
-	return dex.GracefulComplete(flowOutput{Widget: output.Result.Value, CallID: output.Result.Receipt.CallID}), nil
+func (initializeConnectorConsumerStep) Execute(ctx dex.Context, input flowInput) (*dex.StepDecision, error) {
+	if err := connectorConsumerInput.Set(ctx, input); err != nil {
+		return nil, err
+	}
+	return dex.GoTo(sdkgo.StepRef[flowInput](lookupWidgetStepType), input), nil
+}
+
+type widgetAlreadyExistsStep struct {
+	dex.StepDefaultsNoWaitFor[lookupResult]
+}
+
+func (widgetAlreadyExistsStep) Execute(_ dex.Context, result lookupResult) (*dex.StepDecision, error) {
+	return dex.GracefulComplete(flowOutput{Widget: result.Value, CallID: result.Receipt.CallID}), nil
+}
+
+type prepareWidgetCreationStep struct {
+	dex.StepDefaultsNoWaitFor[lookupResult]
+}
+
+func (prepareWidgetCreationStep) Execute(ctx dex.Context, _ lookupResult) (*dex.StepDecision, error) {
+	input, err := connectorConsumerInput.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return dex.GoTo(sdkgo.StepRef[flowInput](createWidgetStepType), input), nil
 }
 
 type widgetCreatedStep struct {
-	dex.StepDefaultsNoWaitFor[createOutput]
+	dex.StepDefaultsNoWaitFor[createResult]
 }
 
-func (widgetCreatedStep) Execute(ctx dex.Context, output createOutput) (*dex.StepDecision, error) {
+func (widgetCreatedStep) Execute(ctx dex.Context, result createResult) (*dex.StepDecision, error) {
 	persisted, err := createWidgetResult.Get(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if persisted.Receipt.CallID != output.Result.Receipt.CallID {
+	if persisted.Receipt.CallID != result.Receipt.CallID {
 		return dex.ForceFail("persisted connector result does not match Step output"), nil
 	}
 	return dex.GracefulComplete(flowOutput{
-		Widget: output.Result.Value, CallID: output.Result.Receipt.CallID,
-		IdempotencyKey: output.Result.Receipt.IdempotencyKey,
+		Widget: result.Value, CallID: result.Receipt.CallID,
+		IdempotencyKey: result.Receipt.IdempotencyKey,
 	}), nil
 }
 

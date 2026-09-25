@@ -201,18 +201,18 @@ func (operation createWidgetOperation) Invoke(call sdkgo.Call, input CreateInput
 	return sdkgo.NewMutationBranch(createWidgetCompleted, created, nil, sdkgo.Receipt{ProviderObjectID: created.ID})
 }
 
-type LookupWidgetStepOutput[IN any] = sdkgo.QueryStepOutput[IN, Widget]
+type LookupWidgetResult = sdkgo.QueryResult[Widget]
 
 type LookupWidgetStepConfig[IN any] struct {
 	sdkgo.QueryFactoryConfigMarker
-	StepType     string
-	Presentation sdkgo.StepPresentation
-	Connection   Connection
-	BuildInput   func(IN) (LookupInput, error)
-	Found        sdkgo.Target[LookupWidgetStepOutput[IN]]
-	Absent       sdkgo.Target[LookupWidgetStepOutput[IN]]
-	Failed       sdkgo.Target[LookupWidgetStepOutput[IN]]
-	Defect       sdkgo.Target[LookupWidgetStepOutput[IN]]
+	StepType            string
+	Annotations         sdkgo.StepAnnotations
+	Connection          Connection
+	BuildOperationInput func(IN) (LookupInput, error)
+	Found               sdkgo.Target[LookupWidgetResult]
+	Absent              sdkgo.Target[LookupWidgetResult]
+	Failed              sdkgo.Target[LookupWidgetResult]
+	Defect              sdkgo.Target[LookupWidgetResult]
 }
 
 func NewLookupWidgetStep[IN any](config LookupWidgetStepConfig[IN]) sdkgo.QueryStep[IN, LookupInput, Widget] {
@@ -220,10 +220,10 @@ func NewLookupWidgetStep[IN any](config LookupWidgetStepConfig[IN]) sdkgo.QueryS
 		panic(err)
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, LookupInput, Widget]{
-		StepType: config.StepType, Presentation: config.Presentation,
+		StepType: config.StepType, Annotations: config.Annotations,
 		Operation: lookupWidgetOperation{connection: config.Connection}, Connection: config.Connection.reference,
-		BuildInput: config.BuildInput,
-		Branches: []sdkgo.BranchTarget[LookupWidgetStepOutput[IN]]{
+		BuildOperationInput: config.BuildOperationInput,
+		Branches: []sdkgo.BranchTarget[LookupWidgetResult]{
 			config.Found.BranchTarget(lookupWidgetFound),
 			config.Absent.BranchTarget(lookupWidgetAbsent),
 			config.Failed.BranchTarget(lookupWidgetFailed),
@@ -232,20 +232,20 @@ func NewLookupWidgetStep[IN any](config LookupWidgetStepConfig[IN]) sdkgo.QueryS
 	})
 }
 
-type CreateWidgetStepOutput[IN any] = sdkgo.MutationStepOutput[IN, Widget]
+type CreateWidgetResult = sdkgo.MutationResult[Widget]
 
 type CreateWidgetStepConfig[IN any] struct {
 	sdkgo.MutationFactoryConfigMarker
-	StepType        string
-	Presentation    sdkgo.StepPresentation
-	Connection      Connection
-	BuildInput      func(IN) (CreateInput, error)
-	Completed       sdkgo.Target[CreateWidgetStepOutput[IN]]
-	Rejected        sdkgo.Target[CreateWidgetStepOutput[IN]]
-	Uncertain       sdkgo.Target[CreateWidgetStepOutput[IN]]
-	Defect          sdkgo.Target[CreateWidgetStepOutput[IN]]
-	ResultAttribute *dex.Attribute[sdkgo.MutationResult[Widget]]
-	ProgressStream  *dex.Stream[sdkgo.ProgressUpdate]
+	StepType            string
+	Annotations         sdkgo.StepAnnotations
+	Connection          Connection
+	BuildOperationInput func(IN) (CreateInput, error)
+	Completed           sdkgo.Target[CreateWidgetResult]
+	Rejected            sdkgo.Target[CreateWidgetResult]
+	Uncertain           sdkgo.Target[CreateWidgetResult]
+	Defect              sdkgo.Target[CreateWidgetResult]
+	ResultAttribute     *dex.Attribute[sdkgo.MutationResult[Widget]]
+	ProgressStream      *dex.Stream[sdkgo.ProgressUpdate]
 }
 
 func NewCreateWidgetStep[IN any](config CreateWidgetStepConfig[IN]) sdkgo.MutationStep[IN, CreateInput, Widget] {
@@ -253,10 +253,10 @@ func NewCreateWidgetStep[IN any](config CreateWidgetStepConfig[IN]) sdkgo.Mutati
 		panic(err)
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateInput, Widget]{
-		StepType: config.StepType, Presentation: config.Presentation,
+		StepType: config.StepType, Annotations: config.Annotations,
 		Operation: createWidgetOperation{connection: config.Connection}, Connection: config.Connection.reference,
-		BuildInput: config.BuildInput,
-		Branches: []sdkgo.BranchTarget[CreateWidgetStepOutput[IN]]{
+		BuildOperationInput: config.BuildOperationInput,
+		Branches: []sdkgo.BranchTarget[CreateWidgetResult]{
 			config.Completed.BranchTarget(createWidgetCompleted),
 			config.Rejected.BranchTarget(createWidgetRejected),
 			config.Uncertain.BranchTarget(createWidgetUncertain),
