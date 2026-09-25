@@ -151,7 +151,7 @@ func (provider *slackProvider) serveHTTP(response http.ResponseWriter, request *
 			writeSlackProviderResponse(response, `{"ok":false,"error":"fatal_error"}`)
 			return
 		}
-		writeSlackProviderResponse(response, `{"ok":true,"channel":"C1","ts":"2.1","message":{"ts":"2.1","thread_ts":"1.0","user":"UBOT","text":"处理结束"}}`)
+		writeSlackProviderResponse(response, `{"ok":true,"channel":"C1","ts":"2.1","message":{"ts":"2.1","thread_ts":"1.0","user":"UBOT","text":"Processing complete"}}`)
 	default:
 		http.NotFound(response, request)
 	}

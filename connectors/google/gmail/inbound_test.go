@@ -53,13 +53,13 @@ func TestReplyToMessageUsesThreadAndRFCReplyHeaders(t *testing.T) {
 		}
 	}))
 	defer server.Close()
-	result, err := connector.RunMutation(newGmailDexContext("reply-message"), newGmailClient(t, server.URL).ReplyToMessage(), gmailConnection, gmail.ReplyToMessageInput{MessageID: "message-2", TextBody: "处理结束"})
+	result, err := connector.RunMutation(newGmailDexContext("reply-message"), newGmailClient(t, server.URL).ReplyToMessage(), gmailConnection, gmail.ReplyToMessageInput{MessageID: "message-2", TextBody: "Processing complete"})
 	require.NoError(t, err)
 	require.Equal(t, gmail.ReplyToMessageBranchSent, result.Branch)
 	require.Contains(t, raw, `To: "Sender" <sender@example.com>`)
 	require.Contains(t, raw, "In-Reply-To: <message-2@example.com>")
 	require.Contains(t, raw, "References: <root@example.com> <message-2@example.com>")
-	require.Contains(t, raw, "处理结束")
+	require.Contains(t, raw, "Processing complete")
 }
 
 func TestPollingTriggersSeparateRootsAndRepliesAndSuppressRescans(t *testing.T) {
