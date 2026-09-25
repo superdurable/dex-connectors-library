@@ -129,14 +129,21 @@ The file is a plaintext secret store intended only for local development.
 `SecretString` still prevents credentials from being serialized, formatted,
 or placed in Flow state by application code.
 
-The Connector Go SDK uses `github.com/superdurable/dex/sdk-go v0.11.3` and verifies
-integration behavior against Dex Server/dexcli 0.11.3. Those releases are
-versioned independently.
+Connector modules pin an exact released Dex Go SDK version. That build-time
+dependency is independent from the compatibility gate, which dynamically
+selects the newest stable `cli-v*` release and its embedded Dex Web:
 
-Dex CLI 0.11.3 renders canonical Connector factory Steps, branch transitions,
-Result Attributes, and progress Streams in Dex Web 2.0. Connector releases
-with Studio metadata also publish a deterministic UI tarball for a trusted
-Studio BFF to verify and serve in a sandbox iframe.
+```bash
+make test-dex-compat-current
+make test-dex-compat-released
+```
+
+Current mode packages the working tree as exact test-only Go module versions.
+Released mode downloads the newest stable component releases and their real
+metadata and UI assets. Set `DEX_CLI_VERSION=vX.Y.Z` to reproduce a Dex failure,
+or `CONNECTOR_RELEASE_TAG=connectors/slack/vX.Y.Z` to retest one published
+connector. Connector releases with Studio metadata publish a deterministic UI
+tarball for Dex Web to verify and serve in a sandbox iframe.
 
 Read [the Connector contract](docs/connector-contract.md),
 [architecture](docs/architecture.md),

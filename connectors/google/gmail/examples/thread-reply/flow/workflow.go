@@ -74,21 +74,18 @@ func NewFlow(connection gmail.Connection) *Flow {
 }
 
 func (flow *Flow) GetSteps() []dex.StepDef {
-	messageReadRecovery := sdkgo.GoTo(messageReadFailed{})
-	readMessage := gmail.NewGetMessageStep(gmail.GetMessageStepConfig[Input]{
-		StepType: readMessageStepType, ConnectionName: ConnectionName,
-		Annotations: sdkgo.StepAnnotations{GroupID: "gmail", GroupLabel: "Gmail", Explanation: "Read the received Gmail message that started the Flow."},
-		Connection:  flow.connection,
-		MapToOperationInput: func(input Input) gmail.GetMessageInput {
-			return gmail.GetMessageInput{MessageID: input.MessageID}
-		},
-		Read: sdkgo.GoTo(messageLoaded{}), NotFound: sdkgo.GoTo(messageReadFailed{}),
-		ProviderRejected: messageReadRecovery, InvalidResponse: messageReadRecovery, Defect: messageReadRecovery,
-	})
-	replyRecovery := sdkgo.GoTo(replyNeedsRecovery{})
 	return []dex.StepDef{
 		dex.DefineStartStep(initializeThread{}),
-		dex.DefineStep(readMessage),
+		dex.DefineStep(gmail.NewGetMessageStep(gmail.GetMessageStepConfig[Input]{
+			StepType: readMessageStepType, ConnectionName: ConnectionName,
+			Annotations: sdkgo.StepAnnotations{GroupID: "gmail", GroupLabel: "Gmail", Explanation: "Read the received Gmail message that started the Flow."},
+			Connection:  flow.connection,
+			MapToOperationInput: func(input Input) gmail.GetMessageInput {
+				return gmail.GetMessageInput{MessageID: input.MessageID}
+			},
+			Read: sdkgo.GoTo(messageLoaded{}), NotFound: sdkgo.GoTo(messageReadFailed{}),
+			ProviderRejected: sdkgo.GoTo(messageReadFailed{}), InvalidResponse: sdkgo.GoTo(messageReadFailed{}), Defect: sdkgo.GoTo(messageReadFailed{}),
+		})),
 		dex.DefineStep(messageLoaded{}),
 		dex.DefineStep(messageReadFailed{}),
 		dex.DefineStep(gmail.NewReplyToMessageStep(gmail.ReplyToMessageStepConfig[ThreadState]{
@@ -98,8 +95,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			MapToOperationInput: func(state ThreadState) gmail.ReplyToMessageInput {
 				return gmail.ReplyToMessageInput{MessageID: state.ReplyMessageID, TextBody: "Processing complete."}
 			},
-			Sent: sdkgo.GoTo(replySent{}), ProviderRejected: replyRecovery,
-			InvalidResponse: replyRecovery, Uncertain: replyRecovery, Defect: replyRecovery,
+			Sent: sdkgo.GoTo(replySent{}), ProviderRejected: sdkgo.GoTo(replyNeedsRecovery{}),
+			InvalidResponse: sdkgo.GoTo(replyNeedsRecovery{}), Uncertain: sdkgo.GoTo(replyNeedsRecovery{}), Defect: sdkgo.GoTo(replyNeedsRecovery{}),
 			ResultAttribute: &replyResultAttribute,
 		})),
 		dex.DefineStep(replySent{}),
@@ -164,38 +161,41 @@ func (*Flow) GetThreadStatus(ctx dex.Context, _ dex.None) (*dex.RPCResult[Thread
 }
 
 // dex:field attribute-key:gmail-thread-reply-state value-type:json editable:false description:"Gmail thread status"
-// dex:field attribute-key:gmail-thread-reply-result value-type:json editable:false description:"Gmail completion reply result"
+// dex:field attribute-key:gmail-thread-reply-result value-type:object editable:false description:"Gmail completion reply result"
 func (*Flow) GetDexSummary(ctx dex.Context, _ dex.None) (*dex.RPCResult[map[string]any], error) {
-	inspection, err := gmailThreadInspection(ctx)
+	state, replyResult, err := gmailThreadInspection(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return &dex.RPCResult[map[string]any]{Output: inspection}, nil
+	return &dex.RPCResult[map[string]any]{Output: map[string]any{
+		"gmail-thread-reply-state":  state,
+		"gmail-thread-reply-result": replyResult,
+	}}, nil
 }
 
 // dex:field attribute-key:gmail-thread-reply-state value-type:json editable:false description:"Gmail thread details"
-// dex:field attribute-key:gmail-thread-reply-result value-type:json editable:false description:"Gmail completion reply provider result"
+// dex:field attribute-key:gmail-thread-reply-result value-type:object editable:false description:"Gmail completion reply provider result"
 func (*Flow) GetDexDisplay(ctx dex.Context, _ dex.None) (*dex.RPCResult[map[string]any], error) {
-	inspection, err := gmailThreadInspection(ctx)
+	state, replyResult, err := gmailThreadInspection(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return &dex.RPCResult[map[string]any]{Output: inspection}, nil
+	return &dex.RPCResult[map[string]any]{Output: map[string]any{
+		"gmail-thread-reply-state":  state,
+		"gmail-thread-reply-result": replyResult,
+	}}, nil
 }
 
-func gmailThreadInspection(ctx dex.Context) (map[string]any, error) {
+func gmailThreadInspection(ctx dex.Context) (ThreadState, gmail.ReplyToMessageResult, error) {
 	state, err := threadStateAttribute.Get(ctx)
 	if err != nil {
-		return nil, err
+		return ThreadState{}, gmail.ReplyToMessageResult{}, err
 	}
 	replyResult, err := optionalReplyResult(ctx)
 	if err != nil {
-		return nil, err
+		return ThreadState{}, gmail.ReplyToMessageResult{}, err
 	}
-	return map[string]any{
-		"gmail-thread-reply-state":  state,
-		"gmail-thread-reply-result": replyResult,
-	}, nil
+	return state, replyResult, nil
 }
 
 func optionalReplyResult(ctx dex.Context) (gmail.ReplyToMessageResult, error) {

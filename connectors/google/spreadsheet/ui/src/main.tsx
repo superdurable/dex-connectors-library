@@ -48,7 +48,7 @@ function ConnectorApp() {
   };
 
   if (!ready) return <p role="status">Waiting for Studio…</p>;
-  return <SpreadsheetSetupView connection={ready.connection} selection={selection} tabs={tabs} busy={busy} onCommand={send}/>;
+  return <SpreadsheetSetupView connection={ready.connection} selection={selection} tabs={tabs} capabilities={ready.capabilities} busy={busy} onCommand={send}/>;
 }
 
 function requiredCapability(command: ConnectorStudioCommand["command"]): string {

@@ -39,14 +39,22 @@ choice and a `minor|major|patch` choice. `minor` is the default. CI regenerates
 the workflow from the connector catalog and rejects drift, so adding a
 connector without adding its release choice cannot merge. The workflow:
 
-1. verifies generated code and the standalone connector with `GOWORK=off`;
-2. rejects `replace`, pseudo-version, branch, or SHA SDK dependencies;
-3. proves the exact SDK tag is reachable and downloadable;
-4. derives the next version from the latest reachable component tag;
-5. includes only commits that changed that connector directory;
-6. builds and tests an optional Connector Studio UI;
-7. uploads `connector-release.json`, optional `connector-ui.tgz`, and digests;
-8. verifies the published Go module is downloadable.
+1. runs the Current compatibility gate against the latest stable Dex CLI/Web;
+2. verifies generated code and the standalone connector with `GOWORK=off`;
+3. rejects `replace`, pseudo-version, branch, or SHA SDK dependencies;
+4. proves the exact SDK tag is reachable and downloadable;
+5. derives the next version from the latest reachable component tag;
+6. includes only commits that changed that connector directory;
+7. builds and tests an optional Connector Studio UI;
+8. uploads `connector-release.json`, optional `connector-ui.tgz`, and digests;
+9. verifies the published Go module is downloadable;
+10. runs Released compatibility against the new component tag.
+
+CI also runs Current compatibility on pull requests and `main`. A daily canary
+runs Released compatibility for the highest stable component tag of every
+current connector. Both modes resolve the newest non-draft, non-prerelease
+`cli-v*` release and verify its published checksum. `DEX_CLI_VERSION` and
+`CONNECTOR_RELEASE_TAG` provide exact failure reproduction.
 
 The release artifact contains the connector ID, complete versionless manifest,
 module path, release version and tag, source SHA, source manifest digest, and
@@ -87,4 +95,11 @@ Release planning is covered by temporary-repository tests:
 
 ```bash
 python3 -m unittest script/release/component_release_test.py
+```
+
+Run the compatibility modes locally:
+
+```bash
+make test-dex-compat-current
+make test-dex-compat-released
 ```
