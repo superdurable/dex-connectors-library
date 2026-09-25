@@ -71,8 +71,9 @@ func (ref OperationRef) Validate() error {
 type BranchID string
 
 const (
-	// DefectBranchID is the standard route for local Connector defects.
-	DefectBranchID BranchID = "defect"
+	// FailedBranchID is the standard route for deterministic terminal failures.
+	// Applications inspect Result.Failure.Kind when different causes require different recovery actions.
+	FailedBranchID BranchID = "failed"
 	// UncertainBranchID is the optional route for dispatched mutations with unknown outcomes.
 	UncertainBranchID BranchID = "uncertain"
 )
@@ -454,7 +455,7 @@ func completeReceipt(receipt Receipt, call Call) (Receipt, error) {
 
 func failedQuery[T any](definition QueryDefinition, message string) QueryResult[T] {
 	failure := localFailure(definition.Operation, message)
-	return QueryResult[T]{Branch: DefectBranchID, Failure: &failure}
+	return QueryResult[T]{Branch: FailedBranchID, Failure: &failure}
 }
 
 func failedQueryForCall[T any](definition QueryDefinition, call Call, message string) QueryResult[T] {
@@ -465,7 +466,7 @@ func failedQueryForCall[T any](definition QueryDefinition, call Call, message st
 
 func failedMutation[T any](definition MutationDefinition, message string) MutationResult[T] {
 	failure := localFailure(definition.Operation, message)
-	return MutationResult[T]{Branch: DefectBranchID, Failure: &failure}
+	return MutationResult[T]{Branch: FailedBranchID, Failure: &failure}
 }
 
 func failedMutationForCall[T any](definition MutationDefinition, call Call, message string) MutationResult[T] {

@@ -33,7 +33,6 @@ func TestTypedTargetBindsGeneratedBranch(t *testing.T) {
 		Branches: []sdkgo.BranchTarget[sdkgo.QueryResult[string]]{
 			target.BranchTarget(testQuerySucceeded),
 			sdkgo.GoTo(factoryTarget{}).BranchTarget(testQueryFailed),
-			sdkgo.GoTo(factoryTarget{}).BranchTarget(testQueryDefect),
 		},
 	})
 	require.NoError(t, err)
@@ -182,6 +181,5 @@ func queryFactoryTargets() []sdkgo.BranchTarget[sdkgo.QueryResult[string]] {
 	return []sdkgo.BranchTarget[sdkgo.QueryResult[string]]{
 		sdkgo.GoToBranch(testQuerySucceeded, factoryTarget{}),
 		sdkgo.GoToBranch(testQueryFailed, factoryTarget{}),
-		sdkgo.GoToBranch(testQueryDefect, factoryTarget{}),
 	}
 }

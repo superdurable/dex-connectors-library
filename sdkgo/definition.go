@@ -21,8 +21,8 @@ func (definition QueryDefinition) Validate() error {
 	if err != nil {
 		return err
 	}
-	if !branches[DefectBranchID] {
-		return fmt.Errorf("defect branch is not declared")
+	if !branches[FailedBranchID] {
+		return fmt.Errorf("failed branch is not declared")
 	}
 	if branches[UncertainBranchID] {
 		return fmt.Errorf("query cannot declare the uncertain branch")
@@ -38,8 +38,8 @@ func (definition MutationDefinition) Validate() error {
 	if err != nil {
 		return err
 	}
-	if !branches[DefectBranchID] {
-		return fmt.Errorf("defect branch is not declared")
+	if !branches[FailedBranchID] {
+		return fmt.Errorf("failed branch is not declared")
 	}
 	return validateDefinitionOptions(definition.StepDefaults)
 }

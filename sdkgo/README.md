@@ -48,7 +48,10 @@ those resources. Manifest progress declarations only control which typed Stream
 fields code generation exposes; runtime operation definitions do not duplicate
 or validate that metadata.
 
-Every operation declares the standard `defect` branch. Mutations declare the
+Every operation declares the standard `failed` branch for deterministic terminal
+failures. Applications inspect `Failure.Kind` when recovery depends on whether
+the cause is validation, authentication, authorization, provider rejection, or
+a local Connector defect. Mutations declare the
 standard `uncertain` branch only when a dispatched provider call can have an
 unknown outcome; otherwise generated factories do not require that target.
 

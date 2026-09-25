@@ -23,9 +23,9 @@ func TestQueryDefinitionRejectsInvalidBranches(t *testing.T) {
 		}, want: "duplicated"},
 		{name: "invalid", change: func(definition *sdkgo.QueryDefinition) { definition.Branches[0].ID = "Bad" }, want: "lower camel"},
 		{name: "missing description", change: func(definition *sdkgo.QueryDefinition) { definition.Branches[0].Description = "" }, want: "description"},
-		{name: "missing defect", change: func(definition *sdkgo.QueryDefinition) {
+		{name: "missing failed", change: func(definition *sdkgo.QueryDefinition) {
 			definition.Branches[len(definition.Branches)-1].ID = "broken"
-		}, want: "defect branch"},
+		}, want: "failed branch"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			definition := valid
@@ -38,7 +38,6 @@ func TestQueryDefinitionRejectsInvalidBranches(t *testing.T) {
 
 func TestMutationDefinitionAllowsOmittedUncertainBranch(t *testing.T) {
 	definition := mutationDefinition(testMutationRef)
-	definition.Branches = definition.Branches[:len(definition.Branches)-2]
-	definition.Branches = append(definition.Branches, sdkgo.BranchDefinition{ID: sdkgo.DefectBranchID, Description: "defect"})
+	definition.Branches = definition.Branches[:len(definition.Branches)-1]
 	require.NoError(t, definition.Validate())
 }

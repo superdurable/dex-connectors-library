@@ -18,15 +18,13 @@ import (
 const (
 	lookupWidgetFound  sdkgo.BranchID = "found"
 	lookupWidgetAbsent sdkgo.BranchID = "absent"
-	lookupWidgetFailed sdkgo.BranchID = "failed"
-	lookupWidgetDefect sdkgo.BranchID = "defect"
+	lookupWidgetFailed sdkgo.BranchID = sdkgo.FailedBranchID
 )
 
 const (
 	createWidgetCompleted sdkgo.BranchID = "completed"
-	createWidgetRejected  sdkgo.BranchID = "rejected"
+	createWidgetFailed    sdkgo.BranchID = sdkgo.FailedBranchID
 	createWidgetUncertain sdkgo.BranchID = "uncertain"
-	createWidgetDefect    sdkgo.BranchID = "defect"
 )
 
 type Widget struct {
@@ -113,8 +111,7 @@ func (lookupWidgetOperation) Definition() sdkgo.QueryDefinition {
 		Branches: []sdkgo.BranchDefinition{
 			{ID: lookupWidgetFound, Description: "The widget exists."},
 			{ID: lookupWidgetAbsent, Description: "The widget does not exist."},
-			{ID: lookupWidgetFailed, Description: "The lookup was rejected."},
-			{ID: lookupWidgetDefect, Description: "The connector definition is invalid."},
+			{ID: lookupWidgetFailed, Description: "The lookup failed."},
 		},
 		StepDefaults: sdkgo.StepDefaults{
 			ExecuteMethodTimeout: 10 * time.Second,
@@ -149,9 +146,8 @@ func (createWidgetOperation) Definition() sdkgo.MutationDefinition {
 		Operation: sdkgo.OperationRef{ConnectorID: "fixture", OperationID: "createWidget"},
 		Branches: []sdkgo.BranchDefinition{
 			{ID: createWidgetCompleted, Description: "The widget was created."},
-			{ID: createWidgetRejected, Description: "The provider rejected the widget."},
+			{ID: createWidgetFailed, Description: "The widget creation failed."},
 			{ID: createWidgetUncertain, Description: "The provider outcome is unknown."},
-			{ID: createWidgetDefect, Description: "The connector definition is invalid."},
 		},
 		StepDefaults: sdkgo.StepDefaults{
 			ExecuteMethodTimeout: 10 * time.Second,
@@ -169,7 +165,7 @@ func (operation createWidgetOperation) Invoke(call sdkgo.Call, input CreateInput
 	credential, err := operation.connection.credentials.Resolve(call)
 	if err != nil || credential.Token.Reveal() == "" {
 		failure := sdkgo.Failure{Kind: sdkgo.FailureAuthentication, Provider: "fixture", Operation: "createWidget", Message: "credentials unavailable"}
-		return sdkgo.NewMutationBranch(createWidgetRejected, Widget{}, &failure, sdkgo.Receipt{})
+		return sdkgo.NewMutationBranch(createWidgetFailed, Widget{}, &failure, sdkgo.Receipt{})
 	}
 	if err := call.ReportProgress(sdkgo.Progress{Phase: "dispatching"}); err != nil {
 		return sdkgo.NewMutationRetry[Widget](sdkgo.Failure{
@@ -206,7 +202,6 @@ type LookupWidgetStepConfig[IN any] struct {
 	Found               sdkgo.Target[LookupWidgetResult]
 	Absent              sdkgo.Target[LookupWidgetResult]
 	Failed              sdkgo.Target[LookupWidgetResult]
-	Defect              sdkgo.Target[LookupWidgetResult]
 }
 
 func NewLookupWidgetStep[IN any](config LookupWidgetStepConfig[IN]) sdkgo.QueryStep[IN, LookupInput, Widget] {
@@ -221,7 +216,6 @@ func NewLookupWidgetStep[IN any](config LookupWidgetStepConfig[IN]) sdkgo.QueryS
 			config.Found.BranchTarget(lookupWidgetFound),
 			config.Absent.BranchTarget(lookupWidgetAbsent),
 			config.Failed.BranchTarget(lookupWidgetFailed),
-			config.Defect.BranchTarget(lookupWidgetDefect),
 		},
 	})
 }
@@ -235,9 +229,8 @@ type CreateWidgetStepConfig[IN any] struct {
 	Connection          Connection
 	MapToOperationInput func(IN) CreateInput
 	Completed           sdkgo.Target[CreateWidgetResult]
-	Rejected            sdkgo.Target[CreateWidgetResult]
+	Failed              sdkgo.Target[CreateWidgetResult]
 	Uncertain           sdkgo.Target[CreateWidgetResult]
-	Defect              sdkgo.Target[CreateWidgetResult]
 	ResultAttribute     *dex.Attribute[sdkgo.MutationResult[Widget]]
 	ProgressStream      *dex.Stream[sdkgo.ProgressUpdate]
 }
@@ -252,9 +245,8 @@ func NewCreateWidgetStep[IN any](config CreateWidgetStepConfig[IN]) sdkgo.Mutati
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: []sdkgo.BranchTarget[CreateWidgetResult]{
 			config.Completed.BranchTarget(createWidgetCompleted),
-			config.Rejected.BranchTarget(createWidgetRejected),
+			config.Failed.BranchTarget(createWidgetFailed),
 			config.Uncertain.BranchTarget(createWidgetUncertain),
-			config.Defect.BranchTarget(createWidgetDefect),
 		},
 		ResultAttribute: config.ResultAttribute,
 		ProgressStream:  config.ProgressStream,

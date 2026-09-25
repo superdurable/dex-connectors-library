@@ -68,7 +68,6 @@ func (flow connectorConsumerFlow) GetSteps() []dex.StepDef {
 		Found:  sdkgo.GoTo(widgetAlreadyExistsStep{}),
 		Absent: sdkgo.GoTo(prepareWidgetCreationStep{}),
 		Failed: sdkgo.GoTo(connectorConsumerFailedStep[lookupResult]{}),
-		Defect: sdkgo.GoTo(connectorConsumerFailedStep[lookupResult]{}),
 	})
 	create := fixtureconnector.NewCreateWidgetStep(fixtureconnector.CreateWidgetStepConfig[flowInput]{
 		StepType: createWidgetStepType,
@@ -80,9 +79,8 @@ func (flow connectorConsumerFlow) GetSteps() []dex.StepDef {
 			return fixtureconnector.CreateInput{Name: input.Name}
 		},
 		Completed:       sdkgo.GoTo(widgetCreatedStep{}),
-		Rejected:        sdkgo.GoTo(connectorConsumerFailedStep[createResult]{}),
+		Failed:          sdkgo.GoTo(connectorConsumerFailedStep[createResult]{}),
 		Uncertain:       sdkgo.GoTo(connectorConsumerFailedStep[createResult]{}),
-		Defect:          sdkgo.GoTo(connectorConsumerFailedStep[createResult]{}),
 		ResultAttribute: &createWidgetResult,
 		ProgressStream:  &createWidgetProgress,
 	})
