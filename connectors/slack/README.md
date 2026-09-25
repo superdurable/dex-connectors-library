@@ -42,6 +42,13 @@ not Trigger configuration. Pass the same direct bound Flow method to
 `dex.DefineRPC` and `NewDexRPCTriggerTarget`. The application owns RPC options,
 durable state, locking, and event deduplication.
 
+Both Dex targets also require an application-owned `TriggerEventFilter`. It
+runs before Flow ID resolution and is the final admission rule for starting a
+Flow or invoking an RPC. Provider matchers reduce Socket Mode traffic, while
+the application filter can independently enforce channel, poster, message, or
+other domain rules. Returning false consumes the event without calling Dex;
+returning an error keeps the delivery retryable.
+
 If a picker cannot load, copy IDs manually:
 
 - Open channel details in Slack and choose **Copy channel ID**.

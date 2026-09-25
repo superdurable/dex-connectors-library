@@ -13,6 +13,12 @@ and invoked through the same direct bound `ReceiveThreadReply` method. The
 application RPC locks its thread state and stores the one accepted reply event
 ID, so duplicate delivery cannot schedule another completion reply.
 
+Before either Dex call, the application supplies a typed filter. The example
+builds those filters from the binding configuration saved by Dex Web and checks
+the channel, root-or-reply shape, allowed member, and case-insensitive message
+substring again. A rejected event is consumed without resolving a Flow ID or
+calling Dex. A filter error remains retryable.
+
 ## Configure
 
 Follow the [Slack Connector setup](../../README.md), then configure the

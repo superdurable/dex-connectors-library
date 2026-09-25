@@ -63,19 +63,41 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return errors.Join(err, stopWorker(worker), cache.Close())
 	}
+	var startTriggerConfiguration slack.ChannelThreadCreatedTriggerConfiguration
+	if err := store.DecodeTriggerConfiguration(
+		slack.ConnectorID, threadapproval.ConnectionName, slack.ChannelThreadCreatedTriggerDefinition.Trigger.TriggerName,
+		threadapproval.StartTriggerBinding, &startTriggerConfiguration,
+	); err != nil {
+		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
+	}
+	startEventFilter, err := threadapproval.NewStartTriggerEventFilter(startTriggerConfiguration)
+	if err != nil {
+		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
+	}
 	startRunner, err := slack.NewLocalChannelThreadCreatedTrigger(
 		store, threadapproval.ConnectionName, threadapproval.StartTriggerBinding,
 		sdkgo.NewDexFlowTriggerTarget(
-			client, flow, slack.FlowIDByThread(threadapproval.ResolveFlowID), threadapproval.BuildStartInput,
+			client, flow, startEventFilter, slack.FlowIDByThread(threadapproval.ResolveFlowID), threadapproval.BuildStartInput,
 		),
 	)
+	if err != nil {
+		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
+	}
+	var replyTriggerConfiguration slack.ThreadReplyCreatedTriggerConfiguration
+	if err := store.DecodeTriggerConfiguration(
+		slack.ConnectorID, threadapproval.ConnectionName, slack.ThreadReplyCreatedTriggerDefinition.Trigger.TriggerName,
+		threadapproval.ReplyTriggerBinding, &replyTriggerConfiguration,
+	); err != nil {
+		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
+	}
+	replyEventFilter, err := threadapproval.NewReplyTriggerEventFilter(replyTriggerConfiguration)
 	if err != nil {
 		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
 	}
 	replyRunner, err := slack.NewLocalThreadReplyCreatedTrigger(
 		store, threadapproval.ConnectionName, threadapproval.ReplyTriggerBinding,
 		sdkgo.NewDexRPCTriggerTarget(
-			client, flow.ReceiveThreadReply, slack.FlowIDByThread(threadapproval.ResolveFlowID),
+			client, flow.ReceiveThreadReply, replyEventFilter, slack.FlowIDByThread(threadapproval.ResolveFlowID),
 		),
 	)
 	if err != nil {
