@@ -22,10 +22,8 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu7U=
 github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
-github.com/superdurable/dex-connectors-library/connectors/google/gmail v0.1.1 h1:WtkaC7bEaOsRIKjxJSwJ43kKY5AjtVT8H1YAfv4Chmc=
-github.com/superdurable/dex-connectors-library/connectors/google/gmail v0.1.1/go.mod h1:fEuldZ06tpEXcY6IWv02+1Eh+x0DSG2qy76sZaFkqw0=
-github.com/superdurable/dex-connectors-library/sdk/go v0.1.2 h1:6N+Ayh98CqMlrKttNTDnBlPn9G2o7oq5/BsigSkxcbk=
-github.com/superdurable/dex-connectors-library/sdk/go v0.1.2/go.mod h1:wv493iG6f2po9NR8Y7pm4+dxR6KPwMgOqIWQWzkITBU=
+github.com/superdurable/dex-connectors-library/connectors/google/gmail v0.3.0 h1:/L9ySm8T/6oytd7wX84MB4Zd8ZCk2ESp2icKMvfiZCs=
+github.com/superdurable/dex-connectors-library/connectors/google/gmail v0.3.0/go.mod h1:WTylcU1TcGo4/Gx9IyIQBlP4MNKUhP2jZpLfhio9QDo=
 github.com/superdurable/dex-connectors-library/sdkgo v0.1.0 h1:zBSWSYECArk29n9w0DxAgkzMc0NXwYNZlXn70CbGEKY=
 github.com/superdurable/dex-connectors-library/sdkgo v0.1.0/go.mod h1:Xk/OsuI/Zz+Dxk2jUOyS0M1wDaiZFlSduots21qkAQ0=
 github.com/superdurable/dex/blob-cache-go v0.1.0 h1:+c3H5YBWG3DlICOHbgT9IUM5vTlfLYGP5Vd5sWr7WTY=
