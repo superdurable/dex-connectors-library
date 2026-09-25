@@ -18,7 +18,7 @@ import (
 	"sync"
 	"time"
 
-	connector "github.com/superdurable/dex-connectors-library/sdk/go"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 
 const (
@@ -169,7 +169,7 @@ func NewCredentialProvider[C any](
 	connectorID string,
 	connectionName string,
 	decoder CredentialDecoder[C],
-) connector.CredentialProvider[C] {
+) sdkgo.CredentialProvider[C] {
 	if store == nil {
 		panic("local connector configuration store is required")
 	}
@@ -193,13 +193,13 @@ type credentialProvider[C any] struct {
 
 type durableTriggerTarget[T any] struct {
 	path   string
-	target connector.TriggerTarget[T]
+	target sdkgo.TriggerTarget[T]
 	mutex  sync.Mutex
 }
 
 type triggerInboxFile[T any] struct {
-	SchemaVersion string                      `json:"schemaVersion"`
-	Events        []connector.TriggerEvent[T] `json:"events"`
+	SchemaVersion string                  `json:"schemaVersion"`
+	Events        []sdkgo.TriggerEvent[T] `json:"events"`
 }
 
 const triggerInboxSchemaVersion = "connectors.dex.dev/local-trigger-inbox/v1alpha1"
@@ -211,8 +211,8 @@ func NewDurableTriggerTarget[T any](
 	connectionName string,
 	triggerName string,
 	bindingName string,
-	target connector.TriggerTarget[T],
-) (connector.TriggerTarget[T], error) {
+	target sdkgo.TriggerTarget[T],
+) (sdkgo.TriggerTarget[T], error) {
 	if store == nil || target == nil {
 		return nil, fmt.Errorf("local connector store and Trigger target are required")
 	}
@@ -227,7 +227,7 @@ func NewDurableTriggerTarget[T any](
 	return &durableTriggerTarget[T]{path: path, target: target}, nil
 }
 
-func (target *durableTriggerTarget[T]) PrepareTrigger(_ context.Context, event connector.TriggerEvent[T]) error {
+func (target *durableTriggerTarget[T]) PrepareTrigger(_ context.Context, event sdkgo.TriggerEvent[T]) error {
 	if strings.TrimSpace(event.ID) == "" {
 		return fmt.Errorf("Trigger event ID is required")
 	}
@@ -246,7 +246,7 @@ func (target *durableTriggerTarget[T]) PrepareTrigger(_ context.Context, event c
 	return target.writeInbox(inbox)
 }
 
-func (target *durableTriggerTarget[T]) HandleTrigger(ctx context.Context, event connector.TriggerEvent[T]) error {
+func (target *durableTriggerTarget[T]) HandleTrigger(ctx context.Context, event sdkgo.TriggerEvent[T]) error {
 	target.mutex.Lock()
 	defer target.mutex.Unlock()
 	if err := target.target.HandleTrigger(ctx, event); err != nil {
@@ -347,7 +347,7 @@ func (target *durableTriggerTarget[T]) writeInbox(inbox triggerInboxFile[T]) err
 	return errors.Join(directory.Sync(), directory.Close())
 }
 
-func (provider credentialProvider[C]) Resolve(call connector.Call) (C, error) {
+func (provider credentialProvider[C]) Resolve(call sdkgo.Call) (C, error) {
 	var zero C
 	if call.Connection.Name != provider.connectionName {
 		return zero, fmt.Errorf("connector connection name %q does not match local connection %q", call.Connection.Name, provider.connectionName)

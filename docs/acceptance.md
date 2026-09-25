@@ -3,7 +3,7 @@
 ## Automated checks
 
 ```bash
-cd sdk/go
+cd sdkgo
 GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
 cd ../..
@@ -64,7 +64,7 @@ The suite must prove:
   non-serializable connector Connections;
 - the generated release dropdown matches the catalog and release artifacts are
   deterministic, versioned, and checksummed;
-- typed `connector.GoTo` targets can be converted into generic branch targets
+- typed `sdkgo.GoTo` targets can be converted into generic branch targets
   without exposing their underlying Dex Step;
 - component release planning handles first, minor, patch, major, no-change,
   path-scoped, and breaking-change cases;

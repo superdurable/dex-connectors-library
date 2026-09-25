@@ -8,7 +8,7 @@ and connector releases do not force unrelated upgrades.
 
 The module directory determines the Git tag prefix:
 
-- `sdk/go` uses `sdk/go/vMAJOR.MINOR.PATCH`.
+- `sdkgo` uses `sdkgo/vMAJOR.MINOR.PATCH`.
 - `connectors/http` uses `connectors/http/vMAJOR.MINOR.PATCH`.
 - `connectors/linkedin` uses `connectors/linkedin/vMAJOR.MINOR.PATCH`.
 - `connectors/openai` uses `connectors/openai/vMAJOR.MINOR.PATCH`.
@@ -28,7 +28,7 @@ checked-in `go.mod`.
 The `Release Connector Go SDK` workflow runs only on `main`. It verifies the
 standalone module with `GOWORK=off`, finds the latest reachable SDK component
 tag, calculates the requested semantic-version bump, and publishes path-scoped
-release notes. The first SDK release is `sdk/go/v0.1.0` and must use the default
+release notes. The first SDK release is `sdkgo/v0.1.0` and must use the default
 minor selection.
 
 The generated `Release Connector` workflow adds a static, sorted connector
@@ -61,7 +61,7 @@ module path must be migrated before publishing v2 or later.
 Run the SDK as a standalone consumer would:
 
 ```bash
-cd sdk/go
+cd sdkgo
 GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
 ```

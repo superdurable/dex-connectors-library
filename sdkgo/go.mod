@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/sdk/go
+module github.com/superdurable/dex-connectors-library/sdkgo
 
 go 1.24.0
 

@@ -1,13 +1,13 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-package connector_test
+package sdkgo_test
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	connector "github.com/superdurable/dex-connectors-library/sdk/go"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -17,14 +17,14 @@ type triggerRPCTestFlow struct{}
 
 func (*triggerRPCTestFlow) Approve(
 	_ dex.Context,
-	event connector.TriggerEvent[string],
+	event sdkgo.TriggerEvent[string],
 ) (*dex.RPCResult[string], error) {
 	return &dex.RPCResult[string]{Output: event.Payload}, nil
 }
 
 func TestTriggerRPCProvidesDefinitionDefaultOptionsAndPersistence(t *testing.T) {
 	flow := &triggerRPCTestFlow{}
-	triggerRPC, err := connector.NewTriggerRPC(connector.TriggerRPCConfig[string, string]{
+	triggerRPC, err := sdkgo.NewTriggerRPC(sdkgo.TriggerRPCConfig[string, string]{
 		Definition: flow.Approve, ProcessedEventIDsAttributeName: "processed-slack-event-ids",
 		HandleEvent: flow.Approve,
 		Options:     &dex.RPCOptions{LockAttributes: []dex.AttributeLock{dex.LockAttribute(triggerRPCApplicationState)}},

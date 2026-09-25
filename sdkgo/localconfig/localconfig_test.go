@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	connector "github.com/superdurable/dex-connectors-library/sdk/go"
-	"github.com/superdurable/dex-connectors-library/sdk/go/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
 )
 
 type testConfiguration struct {
@@ -21,7 +21,7 @@ type testConfiguration struct {
 }
 
 type testCredentials struct {
-	AccessToken connector.SecretString
+	AccessToken sdkgo.SecretString
 }
 
 type testTriggerConfiguration struct {
@@ -39,14 +39,14 @@ func TestStoreSnapshotsConfigurationAndReloadsCredentials(t *testing.T) {
 	require.Equal(t, "https://one.example", configuration.Endpoint)
 
 	provider := localconfig.NewCredentialProvider(store, "gmail", "sender", decodeTestCredentials)
-	credentials, err := provider.Resolve(connector.Call{Connection: connector.ConnectionRef{Provider: "google", Name: "sender"}})
+	credentials, err := provider.Resolve(sdkgo.Call{Connection: sdkgo.ConnectionRef{Provider: "google", Name: "sender"}})
 	require.NoError(t, err)
 	require.Equal(t, "token-one", credentials.AccessToken.Reveal())
 
 	writeConnections(t, path, "https://two.example", "token-two", time.Now().Add(time.Hour))
 	require.NoError(t, store.DecodeConfiguration("gmail", "sender", &configuration))
 	require.Equal(t, "https://one.example", configuration.Endpoint)
-	credentials, err = provider.Resolve(connector.Call{Connection: connector.ConnectionRef{Provider: "google", Name: "sender"}})
+	credentials, err = provider.Resolve(sdkgo.Call{Connection: sdkgo.ConnectionRef{Provider: "google", Name: "sender"}})
 	require.NoError(t, err)
 	require.Equal(t, "token-two", credentials.AccessToken.Reveal())
 }
@@ -62,7 +62,7 @@ func TestLoadFromEnvironmentRejectsUnknownFieldsAndExpiredCredentials(t *testing
 	store, err := localconfig.LoadFromEnvironment()
 	require.NoError(t, err)
 	provider := localconfig.NewCredentialProvider(store, "gmail", "sender", decodeTestCredentials)
-	_, err = provider.Resolve(connector.Call{Connection: connector.ConnectionRef{Provider: "google", Name: "sender"}})
+	_, err = provider.Resolve(sdkgo.Call{Connection: sdkgo.ConnectionRef{Provider: "google", Name: "sender"}})
 	require.ErrorContains(t, err, "credentials are expired")
 }
 
@@ -125,31 +125,31 @@ func TestDurableTriggerTargetReplaysEventAfterRestart(t *testing.T) {
 	writeConnections(t, path, "https://example.test", "token", time.Now().Add(time.Hour))
 	store, err := localconfig.LoadFile(path)
 	require.NoError(t, err)
-	event := connector.TriggerEvent[testTriggerConfiguration]{
+	event := sdkgo.TriggerEvent[testTriggerConfiguration]{
 		ID: "Ev-pending", OccurredAt: time.Unix(42, 0).UTC(), Payload: testTriggerConfiguration{ChannelID: "C123"},
 	}
 	firstTarget, err := localconfig.NewDurableTriggerTarget(
 		store, "gmail", "sender", "messageCreated", "approval-start",
-		connector.TriggerTargetFunc[testTriggerConfiguration](func(context.Context, connector.TriggerEvent[testTriggerConfiguration]) error {
+		sdkgo.TriggerTargetFunc[testTriggerConfiguration](func(context.Context, sdkgo.TriggerEvent[testTriggerConfiguration]) error {
 			return nil
 		}),
 	)
 	require.NoError(t, err)
-	require.NoError(t, connector.PrepareTriggerDelivery(context.Background(), firstTarget, event))
+	require.NoError(t, sdkgo.PrepareTriggerDelivery(context.Background(), firstTarget, event))
 
-	var replayed []connector.TriggerEvent[testTriggerConfiguration]
+	var replayed []sdkgo.TriggerEvent[testTriggerConfiguration]
 	restartedTarget, err := localconfig.NewDurableTriggerTarget(
 		store, "gmail", "sender", "messageCreated", "approval-start",
-		connector.TriggerTargetFunc[testTriggerConfiguration](func(_ context.Context, received connector.TriggerEvent[testTriggerConfiguration]) error {
+		sdkgo.TriggerTargetFunc[testTriggerConfiguration](func(_ context.Context, received sdkgo.TriggerEvent[testTriggerConfiguration]) error {
 			replayed = append(replayed, received)
 			return nil
 		}),
 	)
 	require.NoError(t, err)
-	replayer, ok := restartedTarget.(connector.TriggerDeliveryReplayer)
+	replayer, ok := restartedTarget.(sdkgo.TriggerDeliveryReplayer)
 	require.True(t, ok)
 	require.NoError(t, replayer.ReplayTriggerDeliveries(context.Background()))
-	require.Equal(t, []connector.TriggerEvent[testTriggerConfiguration]{event}, replayed)
+	require.Equal(t, []sdkgo.TriggerEvent[testTriggerConfiguration]{event}, replayed)
 	require.NoError(t, replayer.ReplayTriggerDeliveries(context.Background()))
 	require.Len(t, replayed, 1)
 }
@@ -161,7 +161,7 @@ func decodeTestCredentials(contents json.RawMessage) (testCredentials, error) {
 	if err := json.Unmarshal(contents, &raw); err != nil {
 		return testCredentials{}, err
 	}
-	return testCredentials{AccessToken: connector.NewSecretString(raw.AccessToken)}, nil
+	return testCredentials{AccessToken: sdkgo.NewSecretString(raw.AccessToken)}, nil
 }
 
 func writeConnections(t *testing.T, path string, endpoint string, token string, expiresAt time.Time) {

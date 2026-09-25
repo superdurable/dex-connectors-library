@@ -11,7 +11,7 @@ behavior.
 
 ## Repository Boundaries
 
-- Keep the Go SDK in sdk/go and every connector in its own Go module.
+- Keep the Go SDK in sdkgo and every connector in its own Go module.
 - Group one company's connectors below one directory, such as
   connectors/google/gmail and connectors/google/spreadsheet.
 - Keep provider calls in Dex Step Execute. Do not call providers from RPCs.
@@ -27,7 +27,7 @@ behavior.
   branch fields, operation-specific Step factories, and defaults.
 - Normal application APIs use operation-specific factories such as
   openai.NewCreateResponseStep.
-- Generic connector.NewQueryStep and NewMutationStep are advanced escape
+- Generic sdkgo.NewQueryStep and NewMutationStep are advanced escape
   hatches.
 - Every connector has its own go.mod, README, manifest, generated code, and
   provider tests.
@@ -40,7 +40,7 @@ behavior.
 
 - Git tags are the only version authority. Source manifests do not contain a
   release version.
-- Core SDK tags use sdk/go/vX.Y.Z. Connector tags use the module directory,
+- Core SDK tags use sdkgo/vX.Y.Z. Connector tags use the module directory,
   such as connectors/openai/vX.Y.Z.
 - Connector modules require an exact published Connector Go SDK release.
 - Connector go.mod files must not contain replace, pseudo-versions, branches,
@@ -62,7 +62,7 @@ behavior.
 Use one released module per PR unless a repository-wide mechanical change
 requires several. Use these title and commit-subject scopes:
 
-- sdk(go): ...
+- sdkgo: ...
 - connector(openai): ...
 - connector(google/gmail): ...
 - tooling: ...

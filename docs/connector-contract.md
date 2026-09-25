@@ -1,6 +1,6 @@
 # Dex-native Connector contract v1alpha1
 
-The Go types in `sdk/go` are the executable form of this contract. G2a uses
+The Go types in `sdkgo` are the executable form of this contract. G2a uses
 Dex Server 0.11.3 and `sdk-go v0.11.3`; it does not change Dex Server or its
 database.
 
@@ -15,16 +15,16 @@ openai.NewCreateResponseStep(openai.CreateResponseStepConfig[Input]{
     StepType:  "GenerateSummary",
     Connection: openAIConnection,
     BuildInput: buildRequest,
-    Completed: connector.GoTo(CompletedStep{}),
-    Failed:    connector.GoTo(FailedStep{}),
-    Uncertain: connector.GoTo(ReconcileStep{}),
-    Defect:    connector.GoTo(FailedStep{}),
+    Completed: sdkgo.GoTo(CompletedStep{}),
+    Failed:    sdkgo.GoTo(FailedStep{}),
+    Uncertain: sdkgo.GoTo(ReconcileStep{}),
+    Defect:    sdkgo.GoTo(FailedStep{}),
 })
 ```
 
 Generated configs embed the canonical SDK Query or Mutation factory marker.
 Each declared operation branch becomes one named, strongly typed config field.
-`connector.GoTo` binds its target input type at compile time; the generated
+`sdkgo.GoTo` binds its target input type at compile time; the generated
 constructor converts it to the operation's internal branch target. The generic
 `MustNewQueryStep` and `MustNewMutationStep` APIs remain available only for
 custom or dynamic operations.
@@ -137,8 +137,8 @@ Each operation declares `resultAttribute: none|optional|required`. A factory
 accepts only the exact typed Attribute:
 
 ```go
-dex.Attribute[connector.QueryResult[OUT]]
-dex.Attribute[connector.MutationResult[OUT]]
+dex.Attribute[sdkgo.QueryResult[OUT]]
+dex.Attribute[sdkgo.MutationResult[OUT]]
 ```
 
 The factory writes the complete Result before choosing its branch. Attribute
@@ -188,7 +188,7 @@ Step execution, not cross-Flow business deduplication.
 ## Streams
 
 Operations advertise `structured` and/or `text` progress capabilities.
-Applications define and register `dex.Stream[connector.ProgressUpdate]` and
+Applications define and register `dex.Stream[sdkgo.ProgressUpdate]` and
 `dex.Stream[string]`, then pass them to a factory. Unsupported capability,
 wrong Go type, or empty name rejects construction.
 

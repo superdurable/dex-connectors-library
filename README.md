@@ -21,7 +21,7 @@ The first alpha includes:
 ## Quick start
 
 ```bash
-cd sdk/go
+cd sdkgo
 GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
 cd ../..
@@ -88,7 +88,7 @@ npm run build
 ```
 
 The Go SDK and every connector are independent Go modules.
-Their tags are directory-prefixed, including `sdk/go/vX.Y.Z`,
+Their tags are directory-prefixed, including `sdkgo/vX.Y.Z`,
 `connectors/github/vX.Y.Z`, `connectors/http/vX.Y.Z`,
 `connectors/linkedin/vX.Y.Z`, `connectors/openai/vX.Y.Z`,
 `connectors/google/spreadsheet/vX.Y.Z`, and `connectors/google/gmail/vX.Y.Z`.

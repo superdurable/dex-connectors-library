@@ -31,10 +31,10 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-go@v6
         with:
-          go-version-file: sdk/go/go.mod
-          cache-dependency-path: sdk/go/go.sum
+          go-version-file: sdkgo/go.mod
+          cache-dependency-path: sdkgo/go.sum
       - name: Test standalone SDK module
-        working-directory: sdk/go
+        working-directory: sdkgo
         env:
           GOWORK: "off"
         run: |
@@ -76,15 +76,15 @@ jobs:
             cat /tmp/dex-connectors-sdk-server.log
             exit 1
           fi
-          cd sdk/go
+          cd sdkgo
           DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:18801 GOWORK=off \
             go test -race -tags=integration ./integrationtest/... -count=1 -v
       - name: Plan SDK release
         id: plan
         run: |
           python3 script/release/component_release.py plan \
-            --component-path sdk/go \
-            --tag-prefix sdk/go/ \
+            --component-path sdkgo \
+            --tag-prefix sdkgo/ \
             --bump "${{ inputs.bump }}" \
             --ref "${GITHUB_REF}" \
             --json-output /tmp/connector-sdk-release-plan.json \

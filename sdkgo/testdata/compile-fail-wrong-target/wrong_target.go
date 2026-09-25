@@ -1,7 +1,7 @@
 package wrongtarget
 
 import (
-	connector "github.com/superdurable/dex-connectors-library/sdk/go"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -11,6 +11,6 @@ func (wrongTarget) Execute(dex.Context, int) (*dex.StepDecision, error) {
 	return dex.GracefulComplete(nil), nil
 }
 
-var _ = []connector.BranchTarget[connector.QueryStepOutput[string, string]]{
-	connector.GoToBranch(connector.BranchID("succeeded"), wrongTarget{}),
+var _ = []sdkgo.BranchTarget[sdkgo.QueryStepOutput[string, string]]{
+	sdkgo.GoToBranch(sdkgo.BranchID("succeeded"), wrongTarget{}),
 }

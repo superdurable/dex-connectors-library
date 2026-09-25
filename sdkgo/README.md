@@ -36,7 +36,7 @@ acknowledgement, removes it only after Dex accepts it, and replays pending
 events after a process restart.
 
 The module is released independently with directory-prefixed tags such as
-`sdk/go/v0.1.0`. Connector modules must pin an already-published SDK release.
+`sdkgo/v0.1.0`. Connector modules must pin an already-published SDK release.
 
 Run its supported checks without the repository workspace:
 

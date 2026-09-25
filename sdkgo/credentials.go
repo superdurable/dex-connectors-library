@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-package connector
+package sdkgo
 
 import (
 	"errors"
@@ -19,7 +19,7 @@ func (secret SecretString) Reveal() string { return secret.value }
 
 func (SecretString) String() string { return "[REDACTED]" }
 
-func (SecretString) GoString() string { return "connector.SecretString{[REDACTED]}" }
+func (SecretString) GoString() string { return "sdkgo.SecretString{[REDACTED]}" }
 
 func (SecretString) MarshalJSON() ([]byte, error) {
 	return nil, errors.New("connector secrets cannot be serialized")
