@@ -44,7 +44,7 @@ func TestOperationSpecificFactoriesUseTypedConnectionAndResources(t *testing.T) 
 
 	create := openai.NewCreateResponseStep(openai.CreateResponseStepConfig[string]{
 		StepType: "CreateResponse", Annotations: openAIAnnotations(), Connection: connection,
-		BuildOperationInput: func(string) (openai.CreateRequest, error) { return openai.CreateRequest{Model: "gpt-test"}, nil },
+		MapToOperationInput: func(string) openai.CreateRequest { return openai.CreateRequest{Model: "gpt-test"} },
 		Completed:           sdkgo.GoTo(createTarget{}), Failed: sdkgo.GoTo(createTarget{}),
 		Uncertain: sdkgo.GoTo(createTarget{}), Defect: sdkgo.GoTo(createTarget{}),
 		ResultAttribute: &result, ProgressStream: &progress, TextStream: &text,
@@ -53,7 +53,7 @@ func TestOperationSpecificFactoriesUseTypedConnectionAndResources(t *testing.T) 
 
 	retrieve := openai.NewRetrieveResponseStep(openai.RetrieveResponseStepConfig[string]{
 		StepType: "RetrieveResponse", Annotations: openAIAnnotations(), Connection: connection,
-		BuildOperationInput: func(string) (openai.RetrieveRequest, error) { return openai.RetrieveRequest{ResponseID: "resp_1"}, nil },
+		MapToOperationInput: func(string) openai.RetrieveRequest { return openai.RetrieveRequest{ResponseID: "resp_1"} },
 		Found:               sdkgo.GoTo(retrieveTarget{}), Failed: sdkgo.GoTo(retrieveTarget{}), Defect: sdkgo.GoTo(retrieveTarget{}),
 	})
 	require.Equal(t, "RetrieveResponse", retrieve.GetStepType())

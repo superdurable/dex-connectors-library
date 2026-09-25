@@ -63,8 +63,6 @@ spec:
         - {id: notFound, goName: NotFound, description: The spreadsheet or range does not exist.}
         - {id: failed, goName: Failed, description: Google rejected the read.}
         - {id: defect, goName: Defect, description: Local input or connector definition is invalid.}
-      defectBranch: defect
-      resultAttribute: optional
       execution: &googleExecution
         executeMethodTimeout: 30s
         durability: sync
@@ -82,8 +80,6 @@ spec:
         - {id: conflict, goName: Conflict, description: More than one matching row exists.}
         - {id: failed, goName: Failed, description: Google rejected the query.}
         - {id: defect, goName: Defect, description: Local input or connector definition is invalid.}
-      defectBranch: defect
-      resultAttribute: optional
       execution: *googleExecution
     - name: upsertRow
       goName: UpsertRow
@@ -98,7 +94,4 @@ spec:
         - {id: rejected, goName: Rejected, description: Google conclusively rejected the write.}
         - {id: uncertain, goName: Uncertain, description: The dispatched write outcome cannot be confirmed.}
         - {id: defect, goName: Defect, description: Local input or connector definition is invalid.}
-      defectBranch: defect
-      uncertainBranch: uncertain
-      resultAttribute: required
       execution: *googleExecution

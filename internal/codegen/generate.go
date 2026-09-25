@@ -151,7 +151,13 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 
 	for _, operation := range manifest.Spec.Operations {
 		for _, branch := range operation.Branches {
-			write("const %sBranch%s sdkgo.BranchID = %s\n", operation.GoName, branch.GoName, strconv.Quote(branch.ID))
+			branchIdentity := strconv.Quote(branch.ID)
+			if branch.ID == "defect" {
+				branchIdentity = "sdkgo.DefectBranchID"
+			} else if branch.ID == "uncertain" {
+				branchIdentity = "sdkgo.UncertainBranchID"
+			}
+			write("const %sBranch%s sdkgo.BranchID = %s\n", operation.GoName, branch.GoName, branchIdentity)
 		}
 		write("\nvar %sDefinition = sdkgo.%sDefinition{\n", operation.GoName, title(operation.Kind))
 		write("\tOperation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: %s},\n", strconv.Quote(operation.Name))
@@ -159,10 +165,7 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 		for _, branch := range operation.Branches {
 			write("\t\t{ID: %sBranch%s, Description: %s},\n", operation.GoName, branch.GoName, strconv.Quote(branch.Description))
 		}
-		write("\t},\n\tDefectBranch: %s,\n", branchConstant(operation, operation.DefectBranch))
-		if operation.Kind == "mutation" {
-			write("\tUncertainBranch: %s,\n", branchConstant(operation, operation.UncertainBranch))
-		}
+		write("\t},\n")
 		timeout, _ := time.ParseDuration(operation.Execution.ExecuteMethodTimeout)
 		heartbeat, _ := time.ParseDuration(operation.Execution.HeartbeatTimeout)
 		initial, _ := time.ParseDuration(operation.Execution.Retry.InitialInterval)
@@ -176,8 +179,6 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 		write("\t\tExecuteMethodTimeout: time.Duration(%d), HeartbeatTimeout: time.Duration(%d),\n", timeout, heartbeat)
 		write("\t\tExecuteRetry: &dex.RetryPolicy{InitialInterval: time.Duration(%d), BackoffCoefficient: %s, MaximumInterval: time.Duration(%d), MaximumAttempts: %d, TotalDuration: time.Duration(%d)},\n", initial, strconv.FormatFloat(operation.Execution.Retry.BackoffCoefficient, 'f', -1, 64), maximum, operation.Execution.Retry.MaximumAttempts, total)
 		write("\t\tExecuteDurability: %s,\n\t},\n", durability)
-		write("\tResultAttribute: sdkgo.Requirement%s,\n", title(operation.ResultAttribute))
-		write("\tProgress: sdkgo.ProgressCapabilities{Structured: %t, Text: %t},\n", contains(operation.Progress, "structured"), contains(operation.Progress, "text"))
 		write("}\n\n")
 		writeOperationFactory(&output, manifest, operation)
 	}
@@ -246,13 +247,11 @@ func writeOperationFactory(output *bytes.Buffer, manifest schema.Manifest, opera
 	write("\tAnnotations sdkgo.StepAnnotations `connector:\"annotations\"`\n")
 	write("\tConnection Connection `connector:\"connection\"`\n")
 	write("\tConnectionName string `connector:\"connectionName\"`\n")
-	write("\tBuildOperationInput func(IN) (%s, error) `connector:\"buildOperationInput\"`\n", operation.InputType)
+	write("\tMapToOperationInput func(IN) %s `connector:\"mapToOperationInput\"`\n", operation.InputType)
 	for _, branch := range operation.Branches {
 		write("\t%s sdkgo.Target[%sResult] `connector:\"branch=%s\"`\n", branch.GoName, operation.GoName, branch.ID)
 	}
-	if operation.ResultAttribute != "none" {
-		write("\tResultAttribute *dex.Attribute[sdkgo.%sResult[%s]] `connector:\"resultAttribute\"`\n", kind, operation.OutputType)
-	}
+	write("\tResultAttribute *dex.Attribute[sdkgo.%sResult[%s]] `connector:\"resultAttribute\"`\n", kind, operation.OutputType)
 	if contains(operation.Progress, "structured") {
 		write("\tProgressStream *dex.Stream[sdkgo.ProgressUpdate] `connector:\"progressStream\"`\n")
 	}
@@ -270,15 +269,13 @@ func writeOperationFactory(output *bytes.Buffer, manifest schema.Manifest, opera
 	write("\treturn sdkgo.MustNew%sStep(sdkgo.%sStepConfig[IN, %s, %s]{\n", kind, kind, operation.InputType, operation.OutputType)
 	write("\t\tStepType: config.StepType, Annotations: config.Annotations,\n")
 	write("\t\tOperation: config.Connection.client.%s(), Connection: config.Connection.reference,\n", operation.GoName)
-	write("\t\tBuildOperationInput: config.BuildOperationInput,\n")
+	write("\t\tMapToOperationInput: config.MapToOperationInput,\n")
 	write("\t\tBranches: []sdkgo.BranchTarget[%sResult]{\n", operation.GoName)
 	for _, branch := range operation.Branches {
 		write("\t\t\tconfig.%s.BranchTarget(%sBranch%s),\n", branch.GoName, operation.GoName, branch.GoName)
 	}
 	write("\t\t},\n")
-	if operation.ResultAttribute != "none" {
-		write("\t\tResultAttribute: config.ResultAttribute,\n")
-	}
+	write("\t\tResultAttribute: config.ResultAttribute,\n")
 	if contains(operation.Progress, "structured") {
 		write("\t\tProgressStream: config.ProgressStream,\n")
 	}
@@ -419,15 +416,6 @@ func writeFieldValidation(output *bytes.Buffer, name string, field schema.Field,
 		}
 		fmt.Fprintf(output, ":\n\tdefault: return fmt.Errorf(%q)\n\t}\n", prefix+" "+field.Name+" is invalid")
 	}
-}
-
-func branchConstant(operation schema.Operation, id string) string {
-	for _, branch := range operation.Branches {
-		if branch.ID == id {
-			return operation.GoName + "Branch" + branch.GoName
-		}
-	}
-	return strconv.Quote(id)
 }
 
 func contains(values []string, expected string) bool {

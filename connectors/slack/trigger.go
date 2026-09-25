@@ -31,13 +31,6 @@ type ThreadReplyCreatedTriggerConfiguration struct {
 	ThreadReplyMatcher MessageMatcher `json:"threadReplyMatcher"`
 }
 
-// ThreadIdentity identifies one Slack thread independently of any application Flow ID scheme.
-type ThreadIdentity struct {
-	TeamID        string `json:"teamId"`
-	ChannelID     string `json:"channelId"`
-	RootTimestamp string `json:"rootTimestamp"`
-}
-
 type MessageEvent struct {
 	TeamID          string `json:"teamId"`
 	ChannelID       string `json:"channelId"`
@@ -45,21 +38,6 @@ type MessageEvent struct {
 	ThreadTimestamp string `json:"threadTimestamp"`
 	UserID          string `json:"userId"`
 	Text            string `json:"text"`
-}
-
-// ThreadIdentity returns the stable workspace, channel, and root timestamp for this event.
-func (event MessageEvent) ThreadIdentity() ThreadIdentity {
-	return ThreadIdentity{TeamID: event.TeamID, ChannelID: event.ChannelID, RootTimestamp: event.ThreadTimestamp}
-}
-
-// FlowIDByThread adapts an application-owned Slack thread resolver to the generic Trigger target contract.
-func FlowIDByThread(resolve func(ThreadIdentity) (string, error)) sdkgo.FlowIDResolver[MessageEvent] {
-	if resolve == nil {
-		panic("Slack thread Flow ID resolver is required")
-	}
-	return func(event sdkgo.TriggerEvent[MessageEvent]) (string, error) {
-		return resolve(event.Payload.ThreadIdentity())
-	}
 }
 
 type socketConnection interface {

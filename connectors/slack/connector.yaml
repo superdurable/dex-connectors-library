@@ -87,8 +87,6 @@ spec:
         - {id: read, goName: Read, description: The thread page was read.}
         - {id: rejected, goName: Rejected, description: Slack rejected the query.}
         - {id: defect, goName: Defect, description: Local input or connector definition is invalid.}
-      defectBranch: defect
-      resultAttribute: optional
       execution: &slackQueryExecution
         executeMethodTimeout: 30s
         durability: sync
@@ -105,8 +103,6 @@ spec:
         - {id: notFound, goName: NotFound, description: The reply does not exist.}
         - {id: rejected, goName: Rejected, description: Slack rejected the query.}
         - {id: defect, goName: Defect, description: Local input or connector definition is invalid.}
-      defectBranch: defect
-      resultAttribute: optional
       execution: *slackQueryExecution
     - name: postChannelMessage
       goName: PostChannelMessage
@@ -120,9 +116,6 @@ spec:
         - {id: rejected, goName: Rejected, description: Slack conclusively rejected the message.}
         - {id: uncertain, goName: Uncertain, description: The dispatched message outcome cannot be confirmed.}
         - {id: defect, goName: Defect, description: Local input or connector definition is invalid.}
-      defectBranch: defect
-      uncertainBranch: uncertain
-      resultAttribute: required
       execution: &slackMutationExecution
         executeMethodTimeout: 30s
         durability: sync
@@ -135,7 +128,4 @@ spec:
       description: Post one reply to an existing Slack channel thread.
       idempotency: required
       branches: *postBranches
-      defectBranch: defect
-      uncertainBranch: uncertain
-      resultAttribute: required
       execution: *slackMutationExecution

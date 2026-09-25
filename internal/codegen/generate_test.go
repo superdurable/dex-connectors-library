@@ -38,12 +38,9 @@ func TestGenerateIsDeterministicAndIncludesTypedOAuthCredentials(t *testing.T) {
 	require.Contains(t, text, "Annotations")
 	require.Contains(t, text, "sdkgo.StepAnnotations")
 	require.Contains(t, text, "`connector:\"annotations\"`")
-	require.Contains(t, text, "BuildOperationInput")
-	require.Contains(t, text, "func(IN) (AppendRowsInput, error)")
-	require.Contains(t, text, "`connector:\"buildOperationInput\"`")
-	require.NotContains(t, text, "StepOutput")
-	require.NotContains(t, text, "Presentation")
-	require.NotContains(t, text, "BuildInput")
+	require.Contains(t, text, "MapToOperationInput")
+	require.Contains(t, text, "func(IN) AppendRowsInput")
+	require.Contains(t, text, "`connector:\"mapToOperationInput\"`")
 	require.Contains(t, text, "func NewAppendRowsStep[IN any]")
 	require.Contains(t, text, "func NewLocalConnection(store *localconfig.Store, connectionName string")
 	require.Contains(t, text, "ConnectionName")
@@ -84,8 +81,6 @@ spec:
       description: Read a message.
       idempotency: none
       branches: [{id: defect, goName: Defect, description: Invalid input.}]
-      defectBranch: defect
-      resultAttribute: none
       execution: {executeMethodTimeout: 30s, durability: sync, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}}
 `))
 	require.NoError(t, err)

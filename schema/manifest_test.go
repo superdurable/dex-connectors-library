@@ -44,8 +44,6 @@ spec:
       branches:
         - {id: found, goName: Found, description: profile found}
         - {id: defect, goName: Defect, description: local defect}
-      defectBranch: defect
-      resultAttribute: optional
       execution: &execution
         executeMethodTimeout: 30s
         durability: sync
@@ -59,11 +57,7 @@ spec:
       idempotency: required
       branches:
         - {id: granted, goName: Granted, description: credit granted}
-        - {id: uncertain, goName: Uncertain, description: outcome uncertain}
         - {id: defect, goName: Defect, description: local defect}
-      defectBranch: defect
-      uncertainBranch: uncertain
-      resultAttribute: required
       progress: [text, structured]
       execution: *execution
 `))
@@ -110,8 +104,6 @@ spec:
       idempotency: none
       branches:
         - {id: defect, goName: Defect, description: defect}
-      defectBranch: defect
-      resultAttribute: none
       execution: {executeMethodTimeout: 30s, durability: sync, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}}
 `))
 	require.NoError(t, err)
@@ -177,8 +169,6 @@ spec:
       authorization: required
       branches:
         - {id: defect, goName: Defect, description: defect}
-      defectBranch: defect
-      resultAttribute: none
       execution: {executeMethodTimeout: 30s, durability: sync, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}}
 `))
 	require.ErrorContains(t, err, "required authorization needs connector auth")
@@ -211,8 +201,6 @@ spec:
       idempotency: none
       branches:
         - {id: defect, goName: Defect, description: defect}
-      defectBranch: defect
-      resultAttribute: none
       execution: {executeMethodTimeout: 30s, durability: sync, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}}
 `))
 	require.NoError(t, err)
@@ -242,9 +230,6 @@ spec:
       branches:
         - {id: uncertain, goName: Uncertain, description: uncertain}
         - {id: defect, goName: Defect, description: defect}
-      defectBranch: defect
-      uncertainBranch: uncertain
-      resultAttribute: required
       progress: [video]
       execution: {executeMethodTimeout: 30s, durability: sync, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}}
 `))
@@ -273,9 +258,6 @@ spec:
       branches:
         - {id: uncertain, goName: Uncertain, description: uncertain}
         - {id: defect, goName: Defect, description: defect}
-      defectBranch: defect
-      uncertainBranch: uncertain
-      resultAttribute: required
       execution: {executeMethodTimeout: 30s, durability: sync, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}}
 `))
 	require.ErrorContains(t, err, "mutations must declare")
@@ -312,8 +294,6 @@ spec:
       idempotency: none
       branches:
         - {id: defect, goName: Defect, description: defect}
-      defectBranch: defect
-      resultAttribute: none
       execution: {executeMethodTimeout: 30s, durability: sync, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}}
 `))
 	require.ErrorContains(t, err, "inputType and outputType")

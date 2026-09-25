@@ -107,20 +107,17 @@ type Field struct {
 }
 
 type Operation struct {
-	Name            string            `yaml:"name" json:"name"`
-	GoName          string            `yaml:"goName" json:"goName"`
-	InputType       string            `yaml:"inputType" json:"inputType"`
-	OutputType      string            `yaml:"outputType" json:"outputType"`
-	Kind            string            `yaml:"kind" json:"kind"`
-	Description     string            `yaml:"description" json:"description"`
-	Idempotency     string            `yaml:"idempotency" json:"idempotency"`
-	Branches        []OperationBranch `yaml:"branches" json:"branches"`
-	DefectBranch    string            `yaml:"defectBranch" json:"defectBranch"`
-	UncertainBranch string            `yaml:"uncertainBranch,omitempty" json:"uncertainBranch,omitempty"`
-	ResultAttribute string            `yaml:"resultAttribute" json:"resultAttribute"`
-	Progress        []string          `yaml:"progress,omitempty" json:"progress,omitempty"`
-	Authorization   string            `yaml:"authorization,omitempty" json:"authorization,omitempty"`
-	Execution       Execution         `yaml:"execution" json:"execution"`
+	Name          string            `yaml:"name" json:"name"`
+	GoName        string            `yaml:"goName" json:"goName"`
+	InputType     string            `yaml:"inputType" json:"inputType"`
+	OutputType    string            `yaml:"outputType" json:"outputType"`
+	Kind          string            `yaml:"kind" json:"kind"`
+	Description   string            `yaml:"description" json:"description"`
+	Idempotency   string            `yaml:"idempotency" json:"idempotency"`
+	Branches      []OperationBranch `yaml:"branches" json:"branches"`
+	Progress      []string          `yaml:"progress,omitempty" json:"progress,omitempty"`
+	Authorization string            `yaml:"authorization,omitempty" json:"authorization,omitempty"`
+	Execution     Execution         `yaml:"execution" json:"execution"`
 }
 
 type Trigger struct {
@@ -346,17 +343,11 @@ func (manifest Manifest) Validate() error {
 			branches[branch.ID] = true
 			branchGoNames[branch.GoName] = true
 		}
-		if len(branches) == 0 || !branches[operation.DefectBranch] {
-			problems = append(problems, operation.Name+": defectBranch must name a declared branch")
+		if len(branches) == 0 || !branches["defect"] {
+			problems = append(problems, operation.Name+": branches must declare defect")
 		}
-		if operation.Kind == "mutation" && !branches[operation.UncertainBranch] {
-			problems = append(problems, operation.Name+": uncertainBranch must name a declared branch")
-		}
-		if operation.Kind == "query" && operation.UncertainBranch != "" {
-			problems = append(problems, operation.Name+": query cannot declare uncertainBranch")
-		}
-		if operation.ResultAttribute != "none" && operation.ResultAttribute != "optional" && operation.ResultAttribute != "required" {
-			problems = append(problems, operation.Name+": resultAttribute must be none, optional, or required")
+		if operation.Kind == "query" && branches["uncertain"] {
+			problems = append(problems, operation.Name+": query cannot declare uncertain")
 		}
 		if operation.Authorization != "none" && operation.Authorization != "required" {
 			problems = append(problems, operation.Name+": authorization must be none or required")

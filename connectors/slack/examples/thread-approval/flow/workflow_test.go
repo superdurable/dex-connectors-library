@@ -24,21 +24,12 @@ func TestRootAndReplyResolveTheSameFlowID(t *testing.T) {
 			TeamID: "T1", ChannelID: "C1", Timestamp: "2.0", ThreadTimestamp: "1.0", UserID: "U2",
 		},
 	}
-	rootFlowID, err := ResolveFlowID(root.Payload.ThreadIdentity())
-	if err != nil {
-		t.Fatal(err)
-	}
-	replyFlowID, err := ResolveFlowID(reply.Payload.ThreadIdentity())
-	if err != nil {
-		t.Fatal(err)
-	}
+	rootFlowID := ResolveFlowID(root)
+	replyFlowID := ResolveFlowID(reply)
 	if rootFlowID != replyFlowID {
 		t.Fatalf("Flow IDs differ: root %q, reply %q", rootFlowID, replyFlowID)
 	}
-	input, err := BuildStartInput(root)
-	if err != nil {
-		t.Fatal(err)
-	}
+	input := MapToFlowInput(root)
 	if input.EventID != root.ID || input.ThreadTimestamp != "1.0" {
 		t.Fatalf("start input = %+v", input)
 	}
@@ -58,7 +49,7 @@ func TestFlowDeclaresIndependentTriggerBindings(t *testing.T) {
 }
 
 func TestApplicationTriggerFiltersChannelPosterTextAndMessageShape(t *testing.T) {
-	startFilter, err := NewStartTriggerEventFilter(slack.ChannelThreadCreatedTriggerConfiguration{
+	startFilter, err := NewStartTriggerFilter(slack.ChannelThreadCreatedTriggerConfiguration{
 		ChannelID: "C1",
 		ThreadTriggerMatcher: slack.MessageMatcher{
 			MessageContains: "request approval", PosterUserIDs: []string{"U1"},
@@ -67,7 +58,7 @@ func TestApplicationTriggerFiltersChannelPosterTextAndMessageShape(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	replyFilter, err := NewReplyTriggerEventFilter(slack.ThreadReplyCreatedTriggerConfiguration{
+	replyFilter, err := NewReplyTriggerFilter(slack.ThreadReplyCreatedTriggerConfiguration{
 		ChannelID: "C1",
 		ThreadReplyMatcher: slack.MessageMatcher{
 			MessageContains: "approve", PosterUserIDs: []string{"U2"},
@@ -77,11 +68,11 @@ func TestApplicationTriggerFiltersChannelPosterTextAndMessageShape(t *testing.T)
 		t.Fatal(err)
 	}
 
-	root := sdkgo.TriggerEvent[slack.MessageEvent]{Payload: slack.MessageEvent{
-		ChannelID: "C1", Timestamp: "1.0", ThreadTimestamp: "1.0", UserID: "U1", Text: "Request Approval for this order",
+	root := sdkgo.TriggerEvent[slack.MessageEvent]{ID: "Ev-root", Payload: slack.MessageEvent{
+		TeamID: "T1", ChannelID: "C1", Timestamp: "1.0", ThreadTimestamp: "1.0", UserID: "U1", Text: "Request Approval for this order",
 	}}
-	reply := sdkgo.TriggerEvent[slack.MessageEvent]{Payload: slack.MessageEvent{
-		ChannelID: "C1", Timestamp: "2.0", ThreadTimestamp: "1.0", UserID: "U2", Text: "APPROVE",
+	reply := sdkgo.TriggerEvent[slack.MessageEvent]{ID: "Ev-reply", Payload: slack.MessageEvent{
+		TeamID: "T1", ChannelID: "C1", Timestamp: "2.0", ThreadTimestamp: "1.0", UserID: "U2", Text: "APPROVE",
 	}}
 	assertFilterResult(t, startFilter, root, true)
 	assertFilterResult(t, startFilter, reply, false)
@@ -101,15 +92,12 @@ func TestApplicationTriggerFiltersChannelPosterTextAndMessageShape(t *testing.T)
 
 func assertFilterResult(
 	t *testing.T,
-	filter sdkgo.TriggerEventFilter[slack.MessageEvent],
+	filter sdkgo.TriggerFilter[slack.MessageEvent],
 	event sdkgo.TriggerEvent[slack.MessageEvent],
 	expected bool,
 ) {
 	t.Helper()
-	actual, err := filter(event)
-	if err != nil {
-		t.Fatal(err)
-	}
+	actual := filter(event)
 	if actual != expected {
 		t.Fatalf("filter result = %t, want %t for %+v", actual, expected, event.Payload)
 	}

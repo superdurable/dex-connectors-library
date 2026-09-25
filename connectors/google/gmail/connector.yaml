@@ -91,8 +91,6 @@ spec:
         - {id: notFound, goName: NotFound, description: The Gmail message does not exist.}
         - {id: rejected, goName: Rejected, description: Gmail conclusively rejected the query.}
         - {id: defect, goName: Defect, description: Local input or connector definition is invalid.}
-      defectBranch: defect
-      resultAttribute: optional
       execution: &gmailQueryExecution
         executeMethodTimeout: 30s
         durability: sync
@@ -109,9 +107,6 @@ spec:
         - {id: rejected, goName: Rejected, description: Gmail conclusively rejected the message.}
         - {id: uncertain, goName: Uncertain, description: The dispatched send outcome cannot be confirmed.}
         - {id: defect, goName: Defect, description: Local input or connector definition is invalid.}
-      defectBranch: defect
-      uncertainBranch: uncertain
-      resultAttribute: required
       execution:
         executeMethodTimeout: 30s
         durability: sync
@@ -128,9 +123,6 @@ spec:
         - {id: rejected, goName: Rejected, description: Gmail conclusively rejected the reply.}
         - {id: uncertain, goName: Uncertain, description: The dispatched reply outcome cannot be confirmed.}
         - {id: defect, goName: Defect, description: Local input or connector definition is invalid.}
-      defectBranch: defect
-      uncertainBranch: uncertain
-      resultAttribute: required
       execution:
         executeMethodTimeout: 30s
         durability: sync

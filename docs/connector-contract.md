@@ -14,7 +14,7 @@ Dex Step factory such as:
 openai.NewCreateResponseStep(openai.CreateResponseStepConfig[Input]{
     StepType:  "GenerateSummary",
     Connection: openAIConnection,
-    BuildOperationInput: buildOperationInput,
+    MapToOperationInput: mapToOperationInput,
     Completed: sdkgo.GoTo(CompletedStep{}),
     Failed:    sdkgo.GoTo(FailedStep{}),
     Uncertain: sdkgo.GoTo(ReconcileStep{}),
@@ -36,7 +36,7 @@ The same typed connection can be reused by operations from that connector.
 
 The factory owns one provider invocation and one `dex.GoTo`. The application
 supplies a stable Step type, annotations, registration-time typed Connection,
-pure `BuildOperationInput`, and one typed target for every declared branch.
+pure `MapToOperationInput`, and one typed target for every declared branch.
 A target receives only the current Connector Result:
 
 ```go
@@ -89,8 +89,9 @@ execution for a second provider call or polling iteration.
 ## Branch-only Result and strict Attempt
 
 An operation declares stable branches in its manifest and generated
-definition. Query identifies a `DefectBranch`; Mutation additionally identifies
-an `UncertainBranch`.
+definition. Every operation declares the standard `defect` branch. A Mutation
+declares the standard `uncertain` branch only when dispatch can produce an
+outcome that is unsafe to retry.
 
 ```go
 type QueryResult[T any] struct {
@@ -119,9 +120,9 @@ the Process.
 Mutation uncertainty is not an ordinary caller-selected branch. After a
 request dispatch, a lost connection, truncated response, ambiguous server
 error, or missing terminal event uses `NewMutationUncertain`; the SDK selects
-the generated `UncertainBranch`. A zero or invalid Mutation Attempt also fails
-closed to that branch. Invalid Query Attempt and pre-dispatch local input
-construction fail closed to `DefectBranch`.
+the standard `uncertain` branch. A Mutation that cannot produce uncertainty
+omits that branch and target. Invalid Attempts and local SDK defects fail closed
+to the standard `defect` branch.
 
 `FailureKind` records a safe fact, not retry policy. Authentication,
 authorization, not-found, rate-limit, transport, protocol, provider rejection,
@@ -130,10 +131,9 @@ branch. The concrete operation alone decides whether a fact is terminal or is
 safe to Retry. `Failure` never contains credentials, authorization headers,
 provider bodies, or arbitrary metadata.
 
-## Result Attributes and atomic transition
+## Optional Result Attributes and atomic transition
 
-Each operation declares `resultAttribute: none|optional|required`. A factory
-accepts only the exact typed Attribute:
+Every generated factory accepts an optional exact typed Attribute:
 
 ```go
 dex.Attribute[sdkgo.QueryResult[OUT]]
@@ -145,10 +145,11 @@ write and `GoTo` are returned in one Dex Execute response and commit together.
 If a post-mutation Attribute write must be retried, the same Step execution
 retains its Call ID and idempotency key.
 
-`PersistenceRequirements()` lists configured Attributes and Streams for tests
-and future schema aggregation. The application still explicitly registers
-every resource in `GetPersistenceSchema`; the factory creates no global
-durable primitive.
+Applications explicitly register every configured Attribute and Stream in
+`GetPersistenceSchema`. Connector Steps use the application-provided typed
+handles directly. The SDK does not aggregate or automatically register
+persistence resources. A missing registration fails when the Flow attempts to
+write the resource.
 
 ## Step defaults and overrides
 
@@ -186,10 +187,11 @@ Step execution, not cross-Flow business deduplication.
 
 ## Streams
 
-Operations advertise `structured` and/or `text` progress capabilities.
-Applications define and register `dex.Stream[sdkgo.ProgressUpdate]` and
-`dex.Stream[string]`, then pass them to a factory. Unsupported capability,
-wrong Go type, or empty name rejects construction.
+The manifest declares `structured` and/or `text` progress only to decide which
+typed Stream fields code generation exposes. Applications define and register
+`dex.Stream[sdkgo.ProgressUpdate]` and `dex.Stream[string]`, then pass them to
+the generated factory. Runtime operation definitions do not duplicate progress
+capability metadata and generic factories do not validate it.
 
 Structured messages add Call ID, Dex attempt, and a sequence starting at one
 per attempt. Text uses `dex.BufferedTextStream` and flushes before the handler

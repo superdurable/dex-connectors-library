@@ -64,15 +64,14 @@ The suite must prove:
   without exposing their underlying Dex Step;
 - component release planning handles first, minor, patch, major, no-change,
   path-scoped, and breaking-change cases;
-- branch definitions reject empty, duplicate, invalid, missing defect, and
-  missing Mutation uncertainty branches;
+- branch definitions reject empty, duplicate, invalid, and missing defect
+  branches while allowing Mutations to omit uncertainty;
 - factories reject missing, duplicate, and unknown targets and require every
   target to accept the typed factory output;
 - Query invalid Attempt routes to defect, while Mutation invalid Attempt and
   explicit uncertainty route to uncertainty;
 - Retry is the only Attempt that returns a Go error;
-- Result Attribute requirement and Stream capability/name checks fail during
-  factory construction;
+- configured Result Attributes and Streams are used directly by the factory;
 - operation defaults merge with non-zero application Execute overrides and
   WaitFor-only options are rejected;
 - Call ID and idempotency key are stable across Dex attempt, Run, and Worker
@@ -147,8 +146,8 @@ The integration suite verifies:
    mistaken for a provider rejection.
 4. Confirm `ConnectionRef` is bound at Flow registration, not accepted from
    public start input.
-5. Confirm `PersistenceRequirements()` matches resources explicitly registered
-   by the Flow.
+5. Confirm the Flow explicitly registers each Attribute and Stream passed to a
+   Connector Step.
 6. Generate schema 2.0 with dexcli 0.11.3 and verify factory Steps, branches,
    Result Attributes, and Streams render in Dex Web 2.0.
 

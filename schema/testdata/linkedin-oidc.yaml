@@ -52,8 +52,6 @@ spec:
         - {id: authorizationRevoked, goName: AuthorizationRevoked, description: The authorization is no longer valid.}
         - {id: failed, goName: Failed, description: The profile could not be loaded.}
         - {id: defect, goName: Defect, description: Local input or connector configuration is invalid.}
-      defectBranch: defect
-      resultAttribute: required
       execution:
         executeMethodTimeout: 30s
         durability: sync

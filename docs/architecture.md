@@ -39,7 +39,7 @@ ReconcileCreditGrant factory Query
 
 The application writes no provider-specific Step handler. It still owns stable
 Step types, pure business-to-operation input mapping, every branch target,
-Result Attributes, Streams, Execute failure policy, and terminal behavior.
+optional Result Attributes, Streams, Execute failure policy, and terminal behavior.
 Non-connector Steps remain ordinary application Steps.
 
 The trusted connector-specific `Connection` is constructor-injected when the
@@ -53,7 +53,7 @@ target by stable type and input type, so the registered target's options apply.
 ```text
 STEP_IN
    |
-   +-- BuildOperationInput (pure) --error--> DefectBranch
+   +-- MapToOperationInput (pure)
    |
    +-- validate Dex identity + operation + connection
    +-- derive UUIDv5 CallID
@@ -63,7 +63,7 @@ STEP_IN
    +-- provider request
    +-- strict Attempt
           +-- Retry --------------------> Go error / Dex policy
-          +-- Uncertain Mutation ------> UncertainBranch
+          +-- Uncertain Mutation ------> optional uncertain branch
           +-- declared branch ---------> same branch
    |
    +-- set typed Result Attribute
@@ -87,8 +87,8 @@ Each manifest supplies:
 - OAuth2/OIDC protocol, endpoints, scopes, PKCE, discovery metadata, and nonce
   requirement when applicable;
 - whether each operation requires an authorized connection;
-- operation branches, defect and uncertainty branch identities;
-- Result Attribute requirement and Stream capabilities;
+- operation branches, the standard defect identity, and optional uncertainty;
+- optional typed Result Attributes and generated Stream fields;
 - Execute timeout, heartbeat, retry, and durability defaults.
 - Go operation input/output types used to generate its public Step factory.
 
