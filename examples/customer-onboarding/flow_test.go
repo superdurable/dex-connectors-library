@@ -28,7 +28,7 @@ func TestFlowDefinitionRegistersDurableAttribute(t *testing.T) {
 	registry, err := dex.NewRegistry([]dex.Flow{flow})
 	require.NoError(t, err)
 	require.NotNil(t, registry)
-	require.Len(t, flow.GetPersistenceSchema().Attributes, 1)
+	require.Len(t, flow.GetPersistenceSchema().Attributes, 2)
 	require.Len(t, flow.GetRPCs(), 2)
 }
 

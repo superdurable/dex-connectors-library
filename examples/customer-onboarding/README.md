@@ -5,6 +5,11 @@ reconciliation Query directly with Connector Dex Step factories. It defines no
 provider concrete Step. Generated operation branches each have one typed GoTo
 target; Retry is the only Connector path returned as a Go error to Dex.
 
+Each Connector Step emits only its current QueryResult or MutationResult. The
+Flow persists the request and loaded profile in `CustomerOnboardingState`, then
+uses application Steps to construct the next domain input. Connector factories
+never carry the complete upstream input chain.
+
 The public Flow input contains only customer business data. A trusted typed
 `httpconnector.Connection` is fixed when the Flow is registered and injected
 into every provider Step; a StartFlow caller cannot select another account's

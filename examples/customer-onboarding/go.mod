@@ -4,13 +4,13 @@ go 1.24.0
 
 require (
 	github.com/stretchr/testify v1.11.1
-	github.com/superdurable/dex-connectors-library/connectors/github v0.2.0
-	github.com/superdurable/dex-connectors-library/connectors/google/gmail v0.4.0
-	github.com/superdurable/dex-connectors-library/connectors/google/spreadsheet v0.2.0
-	github.com/superdurable/dex-connectors-library/connectors/http v0.2.0
-	github.com/superdurable/dex-connectors-library/connectors/linkedin v0.2.0
-	github.com/superdurable/dex-connectors-library/connectors/openai v0.2.0
-	github.com/superdurable/dex-connectors-library/sdkgo v0.2.0
+	github.com/superdurable/dex-connectors-library/connectors/github v0.3.0
+	github.com/superdurable/dex-connectors-library/connectors/google/gmail v0.5.0
+	github.com/superdurable/dex-connectors-library/connectors/google/spreadsheet v0.3.0
+	github.com/superdurable/dex-connectors-library/connectors/http v0.3.0
+	github.com/superdurable/dex-connectors-library/connectors/linkedin v0.3.0
+	github.com/superdurable/dex-connectors-library/connectors/openai v0.3.0
+	github.com/superdurable/dex-connectors-library/sdkgo v0.3.0
 	github.com/superdurable/dex/blob-cache-go v0.1.0
 	github.com/superdurable/dex/sdk-go v0.11.3
 )
