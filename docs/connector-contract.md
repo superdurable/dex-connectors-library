@@ -73,10 +73,9 @@ Before acknowledging a matched provider event, a source calls
 the event to a binding-specific inbox and replay it after restart.
 Applications supply the Flow ID resolver and start-input mapper, and the SDK
 derives the Flow-start request ID from the provider event ID. RPC targets use
-one typed `TriggerRPC` definition for Flow registration and target invocation. It
-persists processed event IDs under an Attribute lock before advancing state.
-A duplicate is successful no-op behavior. RPC names are code identities, not
-binding configuration.
+the same direct bound Flow method for registration and target invocation. The
+application owns RPC options, durable state, locking, and event deduplication.
+RPC names are code identities, not binding configuration.
 
 Trigger binding configuration is separate from connection configuration and
 credentials. Its identity is connector ID, connection name, trigger name, and

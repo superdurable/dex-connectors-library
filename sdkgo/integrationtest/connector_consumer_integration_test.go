@@ -29,10 +29,11 @@ const (
 )
 
 var (
-	createWidgetResult   = dex.DefineAttribute[sdkgo.MutationResult[fixtureconnector.Widget]]("fixture-create-widget-result")
-	createWidgetProgress = dex.DefineStream[sdkgo.ProgressUpdate]("fixture-create-widget-progress", 1<<20)
-	triggerStartEventID  = dex.DefineAttribute[string]("trigger-adapter-start-event-id")
-	triggerApprovalCount = dex.DefineAttribute[int]("trigger-adapter-approval-count")
+	createWidgetResult     = dex.DefineAttribute[sdkgo.MutationResult[fixtureconnector.Widget]]("fixture-create-widget-result")
+	createWidgetProgress   = dex.DefineStream[sdkgo.ProgressUpdate]("fixture-create-widget-progress", 1<<20)
+	triggerStartEventID    = dex.DefineAttribute[string]("trigger-adapter-start-event-id")
+	triggerApprovalEventID = dex.DefineAttribute[string]("trigger-adapter-approval-event-id")
+	triggerApprovalCount   = dex.DefineAttribute[int]("trigger-adapter-approval-count")
 )
 
 type flowInput struct {
@@ -182,25 +183,17 @@ type triggerAdapterInput struct {
 }
 
 type triggerAdapterState struct {
-	StartEventID  string `json:"startEventId"`
-	ApprovalCount int    `json:"approvalCount"`
+	StartEventID    string `json:"startEventId"`
+	ApprovalEventID string `json:"approvalEventId"`
+	ApprovalCount   int    `json:"approvalCount"`
 }
 
 type triggerAdapterFlow struct {
 	dex.FlowDefaults
-	approveTriggerRPC *sdkgo.TriggerRPC[triggerAdapterEvent, triggerAdapterState]
 }
 
 func newTriggerAdapterFlow() *triggerAdapterFlow {
-	flow := &triggerAdapterFlow{}
-	flow.approveTriggerRPC = sdkgo.MustNewTriggerRPC(sdkgo.TriggerRPCConfig[triggerAdapterEvent, triggerAdapterState]{
-		Definition: flow.ApproveRequest, ProcessedEventIDsAttributeName: "trigger-adapter-processed-event-ids",
-		HandleEvent: flow.handleApprovalEvent,
-		Options: &dex.RPCOptions{LockAttributes: []dex.AttributeLock{
-			dex.LockAttribute(triggerApprovalCount), dex.LockAttribute(triggerStartEventID),
-		}},
-	})
-	return flow
+	return &triggerAdapterFlow{}
 }
 
 func (*triggerAdapterFlow) GetSteps() []dex.StepDef {
@@ -209,16 +202,20 @@ func (*triggerAdapterFlow) GetSteps() []dex.StepDef {
 
 func (flow *triggerAdapterFlow) GetRPCs() []dex.RPCDef {
 	return []dex.RPCDef{
-		dex.DefineRPC(flow.approveTriggerRPC.Definition(), flow.approveTriggerRPC.DefaultOptions()),
+		dex.DefineRPC(flow.ApproveRequest, &dex.RPCOptions{LockAttributes: []dex.AttributeLock{
+			dex.LockAttribute(triggerStartEventID), dex.LockAttribute(triggerApprovalEventID),
+			dex.LockAttribute(triggerApprovalCount),
+		}}),
 		dex.DefineRPC(flow.GetTriggerAdapterState, &dex.RPCOptions{LockAttributes: []dex.AttributeLock{
-			dex.LockAttribute(triggerStartEventID), dex.LockAttribute(triggerApprovalCount),
+			dex.LockAttribute(triggerStartEventID), dex.LockAttribute(triggerApprovalEventID),
+			dex.LockAttribute(triggerApprovalCount),
 		}}),
 	}
 }
 
 func (flow *triggerAdapterFlow) GetPersistenceSchema() dex.PersistenceSchema {
 	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{
-		triggerStartEventID, triggerApprovalCount, flow.approveTriggerRPC.PersistenceAttribute(),
+		triggerStartEventID, triggerApprovalEventID, triggerApprovalCount,
 	}}
 }
 
@@ -226,19 +223,25 @@ func (flow *triggerAdapterFlow) ApproveRequest(
 	ctx dex.Context,
 	event sdkgo.TriggerEvent[triggerAdapterEvent],
 ) (*dex.RPCResult[triggerAdapterState], error) {
-	return flow.approveTriggerRPC.Handle(ctx, event)
-}
-
-func (*triggerAdapterFlow) handleApprovalEvent(
-	ctx dex.Context,
-	_ sdkgo.TriggerEvent[triggerAdapterEvent],
-) (*dex.RPCResult[triggerAdapterState], error) {
-	approvalCount, err := triggerApprovalCount.Get(ctx)
+	if event.ID == "" {
+		return nil, fmt.Errorf("approval event ID is required")
+	}
+	approvalEventID, err := triggerApprovalEventID.Get(ctx)
 	var notFound *dex.AttributeNotFoundError
 	if err != nil && !errors.As(err, &notFound) {
 		return nil, err
 	}
+	if approvalEventID != "" {
+		return flow.GetTriggerAdapterState(ctx, nil)
+	}
+	approvalCount, err := triggerApprovalCount.Get(ctx)
+	if err != nil && !errors.As(err, &notFound) {
+		return nil, err
+	}
 	approvalCount++
+	if err := triggerApprovalEventID.Set(ctx, event.ID); err != nil {
+		return nil, err
+	}
 	if err := triggerApprovalCount.Set(ctx, approvalCount); err != nil {
 		return nil, err
 	}
@@ -247,7 +250,7 @@ func (*triggerAdapterFlow) handleApprovalEvent(
 		return nil, err
 	}
 	return &dex.RPCResult[triggerAdapterState]{Output: triggerAdapterState{
-		StartEventID: startEventID, ApprovalCount: approvalCount,
+		StartEventID: startEventID, ApprovalEventID: event.ID, ApprovalCount: approvalCount,
 	}}, nil
 }
 
@@ -259,13 +262,17 @@ func (*triggerAdapterFlow) GetTriggerAdapterState(
 	if err != nil {
 		return nil, err
 	}
-	approvalCount, err := triggerApprovalCount.Get(ctx)
+	approvalEventID, err := triggerApprovalEventID.Get(ctx)
 	var notFound *dex.AttributeNotFoundError
 	if err != nil && !errors.As(err, &notFound) {
 		return nil, err
 	}
+	approvalCount, err := triggerApprovalCount.Get(ctx)
+	if err != nil && !errors.As(err, &notFound) {
+		return nil, err
+	}
 	return &dex.RPCResult[triggerAdapterState]{Output: triggerAdapterState{
-		StartEventID: startEventID, ApprovalCount: approvalCount,
+		StartEventID: startEventID, ApprovalEventID: approvalEventID, ApprovalCount: approvalCount,
 	}}, nil
 }
 
@@ -284,7 +291,7 @@ func (triggerAdapterStartStep) Execute(ctx dex.Context, input triggerAdapterInpu
 	return dex.DeadEnd(), nil
 }
 
-func TestTriggerTargetsResolveFlowAndDeduplicateRPCEventsWithRealDex(t *testing.T) {
+func TestTriggerTargetsResolveFlowAndApplicationRPCOwnsDeduplicationWithRealDex(t *testing.T) {
 	flow := newTriggerAdapterFlow()
 	harness := newDexHarness(t, []dex.Flow{flow})
 	harness.startWorker(t)
@@ -305,8 +312,9 @@ func TestTriggerTargetsResolveFlowAndDeduplicateRPCEventsWithRealDex(t *testing.
 	require.NoError(t, startTarget.HandleTrigger(ctx, rootEvent))
 	require.NoError(t, startTarget.HandleTrigger(ctx, rootEvent))
 
-	replyTarget := sdkgo.NewDexRPCTriggerTarget(harness.client, flow.approveTriggerRPC.Definition(), resolveFlowID)
-	replyEvent := sdkgo.TriggerEvent[triggerAdapterEvent]{ID: "reply-event-" + testRunID, Payload: triggerAdapterEvent{ThreadID: threadID}}
+	replyTarget := sdkgo.NewDexRPCTriggerTarget(harness.client, flow.ApproveRequest, resolveFlowID)
+	replyEventID := "reply-event-" + testRunID
+	replyEvent := sdkgo.TriggerEvent[triggerAdapterEvent]{ID: replyEventID, Payload: triggerAdapterEvent{ThreadID: threadID}}
 	require.Eventually(t, func() bool {
 		return replyTarget.HandleTrigger(ctx, replyEvent) == nil
 	}, 20*time.Second, 100*time.Millisecond)
@@ -314,7 +322,7 @@ func TestTriggerTargetsResolveFlowAndDeduplicateRPCEventsWithRealDex(t *testing.
 
 	var state triggerAdapterState
 	require.NoError(t, harness.client.InvokeRPC(ctx, flowID, flow.GetTriggerAdapterState, nil, &state))
-	require.Equal(t, triggerAdapterState{StartEventID: rootEventID, ApprovalCount: 1}, state)
+	require.Equal(t, triggerAdapterState{StartEventID: rootEventID, ApprovalEventID: replyEventID, ApprovalCount: 1}, state)
 }
 
 type dexHarness struct {
