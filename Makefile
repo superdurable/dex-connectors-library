@@ -1,4 +1,4 @@
-.PHONY: check test test-integration react
+.PHONY: check test test-integration test-dex-compat-current test-dex-compat-released react
 
 check: test react
 
@@ -25,6 +25,12 @@ test-integration:
 		module=$${manifest%/connector.yaml}; \
 		(cd "$$module" && GOWORK=off go test -tags=integration ./... -count=1 -v) || exit 1; \
 	done
+
+test-dex-compat-current:
+	python3 script/dex_compatibility.py current
+
+test-dex-compat-released:
+	python3 script/dex_compatibility.py released
 
 react:
 	cd sdk/react && npm ci && npm test && npm run build

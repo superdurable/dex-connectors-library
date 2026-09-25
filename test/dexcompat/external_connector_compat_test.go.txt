@@ -1,0 +1,217 @@
+// Copyright (c) 2026 Super Durable, Inc.
+//
+// Licensed under the Sustainable Use License 1.0.
+// You may not use this file except in compliance with the License.
+// See the LICENSE file in the repository root.
+//
+// SPDX-License-Identifier: LicenseRef-Sustainable-Use-1.0
+
+package web
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/superdurable/dex/web/api"
+)
+
+func TestExternalConnectorCompatibility(t *testing.T) {
+	artifactRoot := os.Getenv("DEX_CONNECTOR_COMPAT_ARTIFACT_ROOT")
+	if artifactRoot == "" {
+		t.Fatal("DEX_CONNECTOR_COMPAT_ARTIFACT_ROOT is required")
+	}
+	metadataPaths, err := filepath.Glob(filepath.Join(artifactRoot, "connectors", "*", "connector-release.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	nestedMetadataPaths, err := filepath.Glob(filepath.Join(artifactRoot, "connectors", "*", "*", "connector-release.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	metadataPaths = append(metadataPaths, nestedMetadataPaths...)
+	if len(metadataPaths) == 0 {
+		t.Fatal("no Connector release metadata found")
+	}
+	artifacts := make(map[string]string)
+	identities := make([]connectorDefinitionIdentity, 0, len(metadataPaths))
+	for _, metadataPath := range metadataPaths {
+		metadata, readErr := os.ReadFile(metadataPath)
+		if readErr != nil {
+			t.Fatal(readErr)
+		}
+		var release connectorRelease
+		if unmarshalErr := json.Unmarshal(metadata, &release); unmarshalErr != nil {
+			t.Fatalf("decode %s: %v", metadataPath, unmarshalErr)
+		}
+		operationID, operationKind := externalFirstOperation(metadata)
+		identity := connectorDefinitionIdentity{
+			ConnectorID: release.ConnectorID, ModulePath: release.ModulePath, ModuleVersion: release.Version,
+			ConnectionName: "compatibility-connection", OperationID: operationID, OperationKind: operationKind,
+			ConfigurationEnabled: true,
+		}
+		identities = append(identities, identity)
+		base := filepath.Dir(metadataPath)
+		artifacts[release.Tag+"/"+connectorReleaseMetadataName] = metadataPath
+		artifacts[release.Tag+"/"+connectorReleaseDigestName] = filepath.Join(base, connectorReleaseDigestName)
+		if release.UI != nil {
+			artifacts[release.Tag+"/"+release.UI.Artifact] = filepath.Join(base, release.UI.Artifact)
+		}
+		externalValidateAuth(t, release)
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		path := strings.TrimPrefix(request.URL.Path, "/")
+		artifact, found := artifacts[path]
+		if !found {
+			http.NotFound(response, request)
+			return
+		}
+		http.ServeFile(response, request, artifact)
+	}))
+	defer server.Close()
+	resolver := &connectorReleaseResolver{baseURL: server.URL, artifactRoot: filepath.Join(t.TempDir(), "artifacts"), httpClient: server.Client()}
+	for _, identity := range identities {
+		resolved, resolveErr := resolver.resolve(context.Background(), identity)
+		if resolveErr != nil {
+			t.Fatalf("resolve %s: %v", identity.ConnectorID, resolveErr)
+		}
+		if resolved.release.UI == nil {
+			externalTestOAuthStart(t, resolver, identity, resolved.release)
+			continue
+		}
+		entrypoint := filepath.Join(resolved.uiRoot, resolved.release.UI.Entrypoint)
+		if _, statErr := os.Stat(entrypoint); statErr != nil {
+			t.Fatalf("UI entrypoint %s: %v", identity.ConnectorID, statErr)
+		}
+		response := httptest.NewRecorder()
+		serveConnectorUIAsset(response, httptest.NewRequest(http.MethodGet, "/connector-ui", nil), resolved.release.UI.Entrypoint, resolved.uiRoot)
+		if response.Code != http.StatusOK || !strings.Contains(response.Header().Get("Content-Security-Policy"), "connect-src 'none'") {
+			t.Fatalf("UI response %s: status=%d CSP=%q", identity.ConnectorID, response.Code, response.Header().Get("Content-Security-Policy"))
+		}
+		externalTestOAuthStart(t, resolver, identity, resolved.release)
+	}
+	setup := connectorTestSetup(t, t.TempDir(), connectorTestDefinitionProvider(t, identities))
+	setup.releases = resolver
+	recorder := httptest.NewRecorder()
+	setup.handleListConnections(recorder, httptest.NewRequest(http.MethodGet, "/api/v2/connector-connections", nil))
+	if recorder.Code != http.StatusOK || strings.Contains(recorder.Body.String(), "Unsupported") || strings.Contains(recorder.Body.String(), "version conflict") {
+		t.Fatalf("Connector catalog: status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+}
+
+func externalTestOAuthStart(t *testing.T, resolver *connectorReleaseResolver, identity connectorDefinitionIdentity, release connectorRelease) {
+	t.Helper()
+	if release.Manifest.Spec.Auth.Type != "oauth2" {
+		return
+	}
+	setup := connectorTestSetup(t, t.TempDir(), connectorTestDefinitionProvider(t, []connectorDefinitionIdentity{identity}))
+	setup.releases = resolver
+	credentialValues := make(map[string]any)
+	credentialSecrets := make(map[string]string)
+	mappedCredentials := map[string]bool{"access_token": true}
+	for _, mapping := range release.Manifest.Spec.Auth.OAuth2.CredentialMappings {
+		mappedCredentials[mapping.Credential] = true
+	}
+	for _, field := range release.Manifest.Spec.Auth.Fields {
+		if !field.Required || mappedCredentials[field.Name] {
+			continue
+		}
+		if field.Type == "secretString" {
+			credentialSecrets[field.Name] = "compatibility-secret"
+		} else {
+			credentialValues[field.Name] = "compatibility-value"
+		}
+	}
+	body, err := json.Marshal(map[string]any{
+		"clientId": "compatibility-client", "clientSecret": "compatibility-client-secret",
+		"configuration": map[string]any{}, "credentialValues": credentialValues, "credentialSecrets": credentialSecrets,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := httptest.NewRequest(http.MethodPost, "/api/v2/connector-connections/"+identity.ConnectorID+"/"+identity.ConnectionName+"/oauth/start", strings.NewReader(string(body)))
+	request.SetPathValue("connectorId", identity.ConnectorID)
+	request.SetPathValue("connectionName", identity.ConnectionName)
+	request.Host = "127.0.0.1:8802"
+	request.Header.Set("Origin", "http://127.0.0.1:8802")
+	request.Header.Set(connectorCSRFHeader, setup.csrfToken)
+	request.Header.Set(api.V2DefinitionRevisionHeader, "sha256:test")
+	response := httptest.NewRecorder()
+	setup.handleOAuthStart(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("OAuth start %s: status=%d body=%s", identity.ConnectorID, response.Code, response.Body.String())
+	}
+	var result struct {
+		AuthorizationURL string `json:"authorizationUrl"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	authorizationURL, err := url.Parse(result.AuthorizationURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	oauth := release.Manifest.Spec.Auth.OAuth2
+	if authorizationURL.Scheme+"://"+authorizationURL.Host+authorizationURL.Path != oauth.AuthorizationEndpoint ||
+		authorizationURL.Query().Get("scope") != strings.Join(oauth.Scopes, " ") ||
+		authorizationURL.Query().Get("user_scope") != strings.Join(oauth.UserScopes, " ") ||
+		authorizationURL.Query().Get("state") == "" || authorizationURL.Query().Get("redirect_uri") == "" {
+		t.Fatalf("OAuth authorization URL %s: %s", identity.ConnectorID, result.AuthorizationURL)
+	}
+	hasPKCE := authorizationURL.Query().Get("code_challenge") != "" && authorizationURL.Query().Get("code_challenge_method") == "S256"
+	if hasPKCE != oauth.PKCE {
+		t.Fatalf("OAuth PKCE %s: got=%v want=%v", identity.ConnectorID, hasPKCE, oauth.PKCE)
+	}
+}
+
+func externalFirstOperation(metadata []byte) (string, string) {
+	var document struct {
+		Manifest struct {
+			Spec struct {
+				Operations []struct {
+					Name string `json:"name"`
+					Kind string `json:"kind"`
+				} `json:"operations"`
+			} `json:"spec"`
+		} `json:"manifest"`
+	}
+	if err := json.Unmarshal(metadata, &document); err != nil || len(document.Manifest.Spec.Operations) == 0 {
+		panic("Connector release has no operation")
+	}
+	for _, operation := range document.Manifest.Spec.Operations {
+		if operation.Kind != "" {
+			return operation.Name, operation.Kind
+		}
+	}
+	panic("Connector release has no query or mutation operation")
+}
+
+func externalValidateAuth(t *testing.T, release connectorRelease) {
+	t.Helper()
+	auth := release.Manifest.Spec.Auth
+	switch auth.Type {
+	case "apiKey":
+		if len(auth.Fields) == 0 {
+			t.Fatalf("%s API-key auth has no fields", release.ConnectorID)
+		}
+	case "oauth2":
+		if auth.OAuth2 == nil || auth.OAuth2.AuthorizationEndpoint == "" || auth.OAuth2.TokenEndpoint == "" || len(auth.OAuth2.Scopes) == 0 {
+			t.Fatalf("%s OAuth metadata is incomplete", release.ConnectorID)
+		}
+	default:
+		t.Fatalf("%s auth type %q is unsupported", release.ConnectorID, auth.Type)
+	}
+	encoded, err := json.Marshal(release)
+	if err != nil {
+		t.Fatal(err)
+	}
+	digest := sha256.Sum256(encoded)
+	t.Logf("connector=%s tag=%s commit=%s metadata=%x", release.ConnectorID, release.Tag, release.SourceSHA, digest)
+}

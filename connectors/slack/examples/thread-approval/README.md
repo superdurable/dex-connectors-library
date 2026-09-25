@@ -93,6 +93,11 @@ dexcli visualize ./flow/workflow.go \
 The command must finish without blocking diagnostics and create
 `build/slack-thread-approval.json`.
 
+The compatibility gate repeats this visualization twice in a clean consumer
+module using the latest stable dexcli. The output must be deterministic and
+retain both connector Steps, both Trigger bindings, all branch targets, and the
+Result Attribute.
+
 ## 2. Start Dex and record its addresses
 
 From the test project, start Dex with the generated Flow definition and the

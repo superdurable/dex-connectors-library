@@ -45,6 +45,20 @@ delivery and durable Gmail history checkpoints are outside this local example.
 
 ## Run
 
+Before starting Dex, verify the example with the newest stable dexcli:
+
+```bash
+mkdir -p build
+dexcli visualize ./examples/thread-reply/flow/workflow.go \
+  --schema-version 2.0 \
+  --json \
+  --out ./build/gmail-thread-reply
+```
+
+The compatibility gate runs this command twice from a clean consumer module.
+The schema must be valid, deterministic, and include both Gmail connector
+Steps, both Trigger bindings, branch targets, and Result Attributes.
+
 Start Dex, then run the example with the connection file shown by Dex Web:
 
 ```bash
