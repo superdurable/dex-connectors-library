@@ -14,6 +14,13 @@ describe("Connector Studio Host API", () => {
     })).toBe(true);
   });
 
+  it("accepts Slack resource and trigger configuration commands", () => {
+    const common = {protocolVersion: connectorStudioHostAPIVersion, sessionNonce: "nonce", connectorId: "slack", requestId: "request", type: "connector.command"};
+    expect(isConnectorStudioMessage({...common, command: "slack.channels.list"})).toBe(true);
+    expect(isConnectorStudioMessage({...common, command: "slack.users.list"})).toBe(true);
+    expect(isConnectorStudioMessage({...common, command: "trigger.configuration.save", input: {bindingName: "approval-start"}})).toBe(true);
+  });
+
   it("rejects messages without the protocol identity", () => {
     expect(isConnectorStudioMessage({ type: "connector.command", connectorId: "gmail" })).toBe(false);
   });
@@ -27,6 +34,7 @@ describe("Connector Studio Host API", () => {
       capabilities: ["configuration.write"],
       connection: { state: "connected", grantedScopes: [] },
       configuration: {},
+      triggerBindings: {channelThreadCreated: {"approval-start": {channelId: "C123"}}},
     };
     expect(isConnectorStudioMessage(ready)).toBe(true);
     expect(isConnectorStudioMessage({ ...ready, type: "connector.host.evil" })).toBe(false);

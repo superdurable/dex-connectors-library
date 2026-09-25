@@ -26,6 +26,7 @@ export interface ConnectorStudioHostReady {
   capabilities: string[];
   connection: ConnectorConnectionView;
   configuration: Record<string, unknown>;
+  triggerBindings?: Record<string, Record<string, Record<string, unknown>>>;
 }
 
 export type ConnectorStudioCommandType =
@@ -34,6 +35,9 @@ export type ConnectorStudioCommandType =
   | "oauth.revoke"
   | "google.picker.open-spreadsheet"
   | "google.sheets.list-tabs"
+  | "slack.channels.list"
+  | "slack.users.list"
+  | "trigger.configuration.save"
   | "configuration.save";
 
 export interface ConnectorStudioCommand {
@@ -68,6 +72,9 @@ const commandTypes = new Set<ConnectorStudioCommandType>([
   "oauth.revoke",
   "google.picker.open-spreadsheet",
   "google.sheets.list-tabs",
+  "slack.channels.list",
+  "slack.users.list",
+  "trigger.configuration.save",
   "configuration.save",
 ]);
 
@@ -85,7 +92,8 @@ export function isConnectorStudioMessage(value: unknown): value is ConnectorStud
     return Array.isArray(message.capabilities)
       && message.capabilities.every((capability) => typeof capability === "string")
       && isRecord(message.connection)
-      && isRecord(message.configuration);
+      && isRecord(message.configuration)
+      && (message.triggerBindings === undefined || isTriggerBindings(message.triggerBindings));
   }
   if (message.type === "connector.command") {
     return typeof message.requestId === "string"
@@ -102,6 +110,11 @@ export function isConnectorStudioMessage(value: unknown): value is ConnectorStud
       && (message.error === undefined || isCommandError(message.error));
   }
   return false;
+}
+
+function isTriggerBindings(value: unknown): value is Record<string, Record<string, Record<string, unknown>>> {
+  return isRecord(value)
+    && Object.values(value).every((bindings) => isRecord(bindings) && Object.values(bindings).every(isRecord));
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

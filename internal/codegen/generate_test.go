@@ -51,3 +51,43 @@ func TestGenerateIsDeterministicAndIncludesTypedOAuthCredentials(t *testing.T) {
 	_, err = parser.ParseFile(token.NewFileSet(), "zz_generated_connector.go", strings.NewReader(text), parser.AllErrors)
 	require.NoError(t, err)
 }
+
+func TestGenerateIncludesTypedProviderTriggers(t *testing.T) {
+	manifest, err := schema.Decode(strings.NewReader(`
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata: {name: messages, displayName: Messages, description: Message events.}
+spec:
+  provider: messages
+  codegen: {go: {package: messages}}
+  configuration: {fields: []}
+  auth: {type: none, connectionKind: none, fields: []}
+  triggers:
+    - {name: channelThreadCreated, goName: ChannelThreadCreated, eventType: MessageEvent, configurationType: ChannelThreadConfiguration, description: Receive a top-level channel message.}
+    - {name: threadReplyCreated, goName: ThreadReplyCreated, eventType: MessageEvent, configurationType: ThreadReplyConfiguration, description: Receive a thread reply.}
+  operations:
+    - name: getMessage
+      goName: GetMessage
+      inputType: GetMessageInput
+      outputType: GetMessageOutput
+      kind: query
+      description: Read a message.
+      idempotency: none
+      branches: [{id: defect, goName: Defect, description: Invalid input.}]
+      defectBranch: defect
+      resultAttribute: none
+      execution: {executeMethodTimeout: 30s, durability: sync, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}}
+`))
+	require.NoError(t, err)
+	generated, err := codegen.Generate(manifest)
+	require.NoError(t, err)
+	text := string(generated)
+	require.Contains(t, text, "connector.TriggerFactoryConfigMarker")
+	require.Contains(t, text, "func NewChannelThreadCreatedTrigger")
+	require.Contains(t, text, "func DefineChannelThreadCreatedTriggerBinding")
+	require.Contains(t, text, "func NewLocalThreadReplyCreatedTrigger")
+	require.NotContains(t, text, "triggerKind")
+	require.Contains(t, text, "`connector:\"bindingName\"`")
+	_, err = parser.ParseFile(token.NewFileSet(), "zz_generated_connector.go", strings.NewReader(text), parser.AllErrors)
+	require.NoError(t, err)
+}

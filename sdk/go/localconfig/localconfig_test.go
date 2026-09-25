@@ -4,6 +4,7 @@
 package localconfig_test
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -21,6 +22,10 @@ type testConfiguration struct {
 
 type testCredentials struct {
 	AccessToken connector.SecretString
+}
+
+type testTriggerConfiguration struct {
+	ChannelID string `json:"channelId"`
 }
 
 func TestStoreSnapshotsConfigurationAndReloadsCredentials(t *testing.T) {
@@ -90,6 +95,63 @@ func TestLoadFileRejectsCredentialFileWithBroadPermissions(t *testing.T) {
 
 	_, err := localconfig.LoadFile(path)
 	require.ErrorContains(t, err, "permissions must be 0600")
+}
+
+func TestStoreDecodesTriggerBindingConfiguration(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "connections.json")
+	writeConnections(t, path, "https://example.test", "token", time.Now().Add(time.Hour))
+	contents, err := os.ReadFile(path)
+	require.NoError(t, err)
+	var file map[string]any
+	require.NoError(t, json.Unmarshal(contents, &file))
+	file["triggerBindings"] = []any{map[string]any{
+		"connectorId": "gmail", "connectionName": "sender", "triggerName": "messageCreated", "bindingName": "approval-start",
+		"configuration": map[string]any{"channelId": "C123"},
+	}}
+	contents, err = json.Marshal(file)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(path, contents, 0o600))
+
+	store, err := localconfig.LoadFile(path)
+	require.NoError(t, err)
+	var configuration testTriggerConfiguration
+	require.NoError(t, store.DecodeTriggerConfiguration("gmail", "sender", "messageCreated", "approval-start", &configuration))
+	require.Equal(t, "C123", configuration.ChannelID)
+	require.ErrorContains(t, store.DecodeTriggerConfiguration("gmail", "sender", "messageCreated", "missing", &configuration), "is not configured")
+}
+
+func TestDurableTriggerTargetReplaysEventAfterRestart(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "connections.json")
+	writeConnections(t, path, "https://example.test", "token", time.Now().Add(time.Hour))
+	store, err := localconfig.LoadFile(path)
+	require.NoError(t, err)
+	event := connector.TriggerEvent[testTriggerConfiguration]{
+		ID: "Ev-pending", OccurredAt: time.Unix(42, 0).UTC(), Payload: testTriggerConfiguration{ChannelID: "C123"},
+	}
+	firstTarget, err := localconfig.NewDurableTriggerTarget(
+		store, "gmail", "sender", "messageCreated", "approval-start",
+		connector.TriggerTargetFunc[testTriggerConfiguration](func(context.Context, connector.TriggerEvent[testTriggerConfiguration]) error {
+			return nil
+		}),
+	)
+	require.NoError(t, err)
+	require.NoError(t, connector.PrepareTriggerDelivery(context.Background(), firstTarget, event))
+
+	var replayed []connector.TriggerEvent[testTriggerConfiguration]
+	restartedTarget, err := localconfig.NewDurableTriggerTarget(
+		store, "gmail", "sender", "messageCreated", "approval-start",
+		connector.TriggerTargetFunc[testTriggerConfiguration](func(_ context.Context, received connector.TriggerEvent[testTriggerConfiguration]) error {
+			replayed = append(replayed, received)
+			return nil
+		}),
+	)
+	require.NoError(t, err)
+	replayer, ok := restartedTarget.(connector.TriggerDeliveryReplayer)
+	require.True(t, ok)
+	require.NoError(t, replayer.ReplayTriggerDeliveries(context.Background()))
+	require.Equal(t, []connector.TriggerEvent[testTriggerConfiguration]{event}, replayed)
+	require.NoError(t, replayer.ReplayTriggerDeliveries(context.Background()))
+	require.Len(t, replayed, 1)
 }
 
 func decodeTestCredentials(contents json.RawMessage) (testCredentials, error) {
