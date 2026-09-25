@@ -13,6 +13,12 @@ authorized primary email and Gmail thread ID to a stable Flow ID. The
 application chooses a Flow-start target for `messageReceived` and an RPC target
 for `replyReceived`; those choices are not encoded in the Connector manifest.
 
+Before either Dex call, the application supplies a typed filter. The example
+builds those filters from the binding configuration saved by Dex Web and checks
+the root-or-reply shape, sender address, and case-insensitive subject/snippet
+substring again. A rejected event is consumed without resolving a Flow ID or
+calling Dex. A filter error remains retryable.
+
 ## Configure
 
 Follow the [Gmail Connector setup](../../README.md), then configure the

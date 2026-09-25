@@ -52,7 +52,16 @@ func TestThreadReplyExampleCompletesOnceAndPreservesUncertainOutcomeWithRealDex(
 			From: "sender@example.com", Subject: "Re: Approval request", Snippet: "approved", IsReply: true,
 		},
 	}
-	replyTarget := sdkgo.NewDexRPCTriggerTarget(harness.client, flow.ReceiveEmailReply, gmail.FlowIDByThread(ResolveFlowID))
+	replyFilter, err := NewReplyTriggerEventFilter(gmail.ReplyReceivedTriggerConfiguration{
+		ReplyMatcher: gmail.MessageMatcher{MessageContains: "approved", SenderEmails: []string{"sender@example.com"}},
+	})
+	require.NoError(t, err)
+	replyTarget := sdkgo.NewDexRPCTriggerTarget(harness.client, flow.ReceiveEmailReply, replyFilter, gmail.FlowIDByThread(ResolveFlowID))
+	rejectedReply := successReply
+	rejectedReply.ID = "reply-rejected-" + testRunID
+	rejectedReply.Payload.From = "other@example.com"
+	require.NoError(t, replyTarget.HandleTrigger(ctx, rejectedReply))
+	require.Equal(t, StatusWaitingForReply, waitForGmailStatus(t, ctx, harness.client, flow, successFlowID, StatusWaitingForReply).Status)
 	require.NoError(t, replyTarget.HandleTrigger(ctx, successReply))
 	require.NoError(t, replyTarget.HandleTrigger(ctx, successReply))
 
@@ -93,7 +102,11 @@ func startGmailThreadFlow(
 	payload gmail.MessageEvent,
 ) string {
 	t.Helper()
-	startTarget := sdkgo.NewDexFlowTriggerTarget(client, flow, gmail.FlowIDByThread(ResolveFlowID), BuildStartInput)
+	startFilter, err := NewStartTriggerEventFilter(gmail.MessageReceivedTriggerConfiguration{
+		MessageMatcher: gmail.MessageMatcher{MessageContains: "request approval", SenderEmails: []string{"sender@example.com"}},
+	})
+	require.NoError(t, err)
+	startTarget := sdkgo.NewDexFlowTriggerTarget(client, flow, startFilter, gmail.FlowIDByThread(ResolveFlowID), BuildStartInput)
 	event := sdkgo.TriggerEvent[gmail.MessageEvent]{ID: eventID, OccurredAt: time.Now().UTC(), Payload: payload}
 	require.NoError(t, startTarget.HandleTrigger(ctx, event))
 	require.NoError(t, startTarget.HandleTrigger(ctx, event))

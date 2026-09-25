@@ -52,3 +52,52 @@ func TestFlowDeclaresIndependentTriggerBindings(t *testing.T) {
 		t.Fatalf("reply binding = %+v", bindings[1])
 	}
 }
+
+func TestApplicationTriggerFiltersSenderTextAndMessageShape(t *testing.T) {
+	startFilter, err := NewStartTriggerEventFilter(gmail.MessageReceivedTriggerConfiguration{
+		MessageMatcher: gmail.MessageMatcher{MessageContains: "approval request", SenderEmails: []string{"sender@example.com"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	replyFilter, err := NewReplyTriggerEventFilter(gmail.ReplyReceivedTriggerConfiguration{
+		ReplyMatcher: gmail.MessageMatcher{MessageContains: "approved", SenderEmails: []string{"approver@example.com"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	root := sdkgo.TriggerEvent[gmail.MessageEvent]{Payload: gmail.MessageEvent{
+		From: "Sender <SENDER@example.com>", Subject: "Approval Request", IsReply: false,
+	}}
+	reply := sdkgo.TriggerEvent[gmail.MessageEvent]{Payload: gmail.MessageEvent{
+		From: "Approver <approver@example.com>", Subject: "Re: Approval", Snippet: "APPROVED", IsReply: true,
+	}}
+	assertFilterResult(t, startFilter, root, true)
+	assertFilterResult(t, startFilter, reply, false)
+	assertFilterResult(t, replyFilter, root, false)
+	assertFilterResult(t, replyFilter, reply, true)
+
+	wrongSender := reply
+	wrongSender.Payload.From = "other@example.com"
+	assertFilterResult(t, replyFilter, wrongSender, false)
+	wrongText := reply
+	wrongText.Payload.Snippet = "denied"
+	assertFilterResult(t, replyFilter, wrongText, false)
+}
+
+func assertFilterResult(
+	t *testing.T,
+	filter sdkgo.TriggerEventFilter[gmail.MessageEvent],
+	event sdkgo.TriggerEvent[gmail.MessageEvent],
+	expected bool,
+) {
+	t.Helper()
+	actual, err := filter(event)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if actual != expected {
+		t.Fatalf("filter result = %t, want %t for %+v", actual, expected, event.Payload)
+	}
+}
