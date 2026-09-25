@@ -384,11 +384,11 @@ func (flow githubProfileFlow) GetSteps() []dex.StepDef {
 	step := githubconnector.NewGetAuthenticatedProfileStep(githubconnector.GetAuthenticatedProfileStepConfig[struct{}]{
 		StepType:       "ReadGitHubSignupProfile",
 		ConnectionName: flow.connectionName,
-		Presentation: sdkgo.StepPresentation{
+		Annotations: sdkgo.StepAnnotations{
 			GroupID: "signup", GroupLabel: "Signup", Explanation: "Read the authenticated GitHub signup profile.",
 		},
 		Connection: flow.connection,
-		BuildInput: func(struct{}) (githubconnector.GetAuthenticatedProfileInput, error) {
+		BuildOperationInput: func(struct{}) (githubconnector.GetAuthenticatedProfileInput, error) {
 			return githubconnector.GetAuthenticatedProfileInput{}, nil
 		},
 		ProfileLoaded:         sdkgo.GoTo(githubProfileTerminalStep{}),
@@ -408,21 +408,21 @@ func (githubProfileFlow) GetPersistenceSchema() dex.PersistenceSchema {
 }
 
 type githubProfileTerminalStep struct {
-	dex.StepDefaultsNoWaitFor[githubconnector.GetAuthenticatedProfileStepOutput[struct{}]]
+	dex.StepDefaultsNoWaitFor[githubconnector.GetAuthenticatedProfileResult]
 }
 
-func (githubProfileTerminalStep) Execute(ctx dex.Context, output githubconnector.GetAuthenticatedProfileStepOutput[struct{}]) (*dex.StepDecision, error) {
+func (githubProfileTerminalStep) Execute(ctx dex.Context, result githubconnector.GetAuthenticatedProfileResult) (*dex.StepDecision, error) {
 	persisted, err := githubProfileResult.Get(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if persisted.Receipt.CallID != output.Result.Receipt.CallID {
+	if persisted.Receipt.CallID != result.Receipt.CallID {
 		return nil, fmt.Errorf("GitHub profile Result Attribute did not commit with its transition")
 	}
-	if output.Result.Branch != githubconnector.GetAuthenticatedProfileBranchProfileLoaded {
+	if result.Branch != githubconnector.GetAuthenticatedProfileBranchProfileLoaded {
 		return dex.ForceFail("GitHub profile query did not load the profile"), nil
 	}
-	return dex.GracefulComplete(output.Result.Value), nil
+	return dex.GracefulComplete(result.Value), nil
 }
 
 type linkedinProfileFlow struct {
@@ -433,11 +433,11 @@ type linkedinProfileFlow struct {
 func (flow linkedinProfileFlow) GetSteps() []dex.StepDef {
 	step := linkedinconnector.NewGetAuthenticatedProfileStep(linkedinconnector.GetAuthenticatedProfileStepConfig[struct{}]{
 		StepType: "ReadLinkedInSignupProfile",
-		Presentation: sdkgo.StepPresentation{
+		Annotations: sdkgo.StepAnnotations{
 			GroupID: "signup", GroupLabel: "Signup", Explanation: "Read the authenticated LinkedIn OIDC signup profile.",
 		},
 		Connection: flow.connection,
-		BuildInput: func(struct{}) (linkedinconnector.GetAuthenticatedProfileInput, error) {
+		BuildOperationInput: func(struct{}) (linkedinconnector.GetAuthenticatedProfileInput, error) {
 			return linkedinconnector.GetAuthenticatedProfileInput{}, nil
 		},
 		ProfileLoaded:         sdkgo.GoTo(linkedinProfileTerminalStep{}),
@@ -457,21 +457,21 @@ func (linkedinProfileFlow) GetPersistenceSchema() dex.PersistenceSchema {
 }
 
 type linkedinProfileTerminalStep struct {
-	dex.StepDefaultsNoWaitFor[linkedinconnector.GetAuthenticatedProfileStepOutput[struct{}]]
+	dex.StepDefaultsNoWaitFor[linkedinconnector.GetAuthenticatedProfileResult]
 }
 
-func (linkedinProfileTerminalStep) Execute(ctx dex.Context, output linkedinconnector.GetAuthenticatedProfileStepOutput[struct{}]) (*dex.StepDecision, error) {
+func (linkedinProfileTerminalStep) Execute(ctx dex.Context, result linkedinconnector.GetAuthenticatedProfileResult) (*dex.StepDecision, error) {
 	persisted, err := linkedinProfileResult.Get(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if persisted.Receipt.CallID != output.Result.Receipt.CallID {
+	if persisted.Receipt.CallID != result.Receipt.CallID {
 		return nil, fmt.Errorf("LinkedIn profile Result Attribute did not commit with its transition")
 	}
-	if output.Result.Branch != linkedinconnector.GetAuthenticatedProfileBranchProfileLoaded {
+	if result.Branch != linkedinconnector.GetAuthenticatedProfileBranchProfileLoaded {
 		return dex.ForceFail("LinkedIn profile query did not load the profile"), nil
 	}
-	return dex.GracefulComplete(output.Result.Value), nil
+	return dex.GracefulComplete(result.Value), nil
 }
 
 func integrationQueryDefinition(operationID string, progress bool) sdkgo.QueryDefinition {
@@ -575,10 +575,10 @@ type sheetsIntegrationFlow struct {
 
 func (flow *sheetsIntegrationFlow) GetSteps() []dex.StepDef {
 	step := spreadsheet.NewUpsertRowStep(spreadsheet.UpsertRowStepConfig[string]{
-		StepType:     "IntegrationUpsertSheetRow",
-		Presentation: sdkgo.StepPresentation{GroupID: "google", GroupLabel: "Google", Explanation: "Upsert a customer row."},
-		Connection:   flow.connection,
-		BuildInput: func(accountID string) (spreadsheet.UpsertRowInput, error) {
+		StepType:    "IntegrationUpsertSheetRow",
+		Annotations: sdkgo.StepAnnotations{GroupID: "google", GroupLabel: "Google", Explanation: "Upsert a customer row."},
+		Connection:  flow.connection,
+		BuildOperationInput: func(accountID string) (spreadsheet.UpsertRowInput, error) {
 			return spreadsheet.UpsertRowInput{SpreadsheetID: "sheet", SheetName: "Customers", KeyColumn: "accountId", KeyValue: accountID, Values: map[string]string{"name": "Ada"}}, nil
 		},
 		Upserted:        sdkgo.GoTo(sheetsIntegrationFinishedStep{}),
@@ -596,11 +596,11 @@ func (*sheetsIntegrationFlow) GetPersistenceSchema() dex.PersistenceSchema {
 }
 
 type sheetsIntegrationFinishedStep struct {
-	dex.StepDefaultsNoWaitFor[spreadsheet.UpsertRowStepOutput[string]]
+	dex.StepDefaultsNoWaitFor[spreadsheet.UpsertRowResult]
 }
 
-func (sheetsIntegrationFinishedStep) Execute(_ dex.Context, output spreadsheet.UpsertRowStepOutput[string]) (*dex.StepDecision, error) {
-	return dex.GracefulComplete(output.Result), nil
+func (sheetsIntegrationFinishedStep) Execute(_ dex.Context, result spreadsheet.UpsertRowResult) (*dex.StepDecision, error) {
+	return dex.GracefulComplete(result), nil
 }
 
 type gmailIntegrationFlow struct {
@@ -613,9 +613,9 @@ func (flow *gmailIntegrationFlow) GetSteps() []dex.StepDef {
 	step := gmail.NewSendMessageStep(gmail.SendMessageStepConfig[string]{
 		StepType:       "IntegrationSendGmailMessage",
 		ConnectionName: flow.connectionName,
-		Presentation:   sdkgo.StepPresentation{GroupID: "google", GroupLabel: "Google", Explanation: "Send a customer message."},
+		Annotations:    sdkgo.StepAnnotations{GroupID: "google", GroupLabel: "Google", Explanation: "Send a customer message."},
 		Connection:     flow.connection,
-		BuildInput: func(recipient string) (gmail.SendMessageInput, error) {
+		BuildOperationInput: func(recipient string) (gmail.SendMessageInput, error) {
 			return gmail.SendMessageInput{To: []string{recipient}, Subject: "Progress", TextBody: "Keep going"}, nil
 		},
 		Sent:            sdkgo.GoTo(gmailIntegrationFinishedStep{}),
@@ -632,11 +632,11 @@ func (*gmailIntegrationFlow) GetPersistenceSchema() dex.PersistenceSchema {
 }
 
 type gmailIntegrationFinishedStep struct {
-	dex.StepDefaultsNoWaitFor[gmail.SendMessageStepOutput[string]]
+	dex.StepDefaultsNoWaitFor[gmail.SendMessageResult]
 }
 
-func (gmailIntegrationFinishedStep) Execute(_ dex.Context, output gmail.SendMessageStepOutput[string]) (*dex.StepDecision, error) {
-	return dex.GracefulComplete(output.Result.Branch), nil
+func (gmailIntegrationFinishedStep) Execute(_ dex.Context, result gmail.SendMessageResult) (*dex.StepDecision, error) {
+	return dex.GracefulComplete(result.Branch), nil
 }
 
 func TestQueryFailureDoesNotUseDexRetry(t *testing.T) {
@@ -728,11 +728,11 @@ type openAIStreamingFlow struct {
 func (flow *openAIStreamingFlow) GetSteps() []dex.StepDef {
 	step := openai.NewCreateResponseStep(openai.CreateResponseStepConfig[struct{}]{
 		StepType: "OpenAIStreaming",
-		Presentation: sdkgo.StepPresentation{
+		Annotations: sdkgo.StepAnnotations{
 			GroupID: "openai", GroupLabel: "OpenAI", Explanation: "Create a streaming OpenAI response.",
 		},
 		Connection: flow.connection,
-		BuildInput: func(struct{}) (openai.CreateRequest, error) {
+		BuildOperationInput: func(struct{}) (openai.CreateRequest, error) {
 			return openai.CreateRequest{Model: "gpt-test", Input: "stream this"}, nil
 		},
 		Completed:       sdkgo.GoTo(openAIStreamingSucceededStep{}),
@@ -757,11 +757,10 @@ func (*openAIStreamingFlow) GetPersistenceSchema() dex.PersistenceSchema {
 }
 
 type openAIStreamingSucceededStep struct {
-	dex.StepDefaultsNoWaitFor[sdkgo.MutationStepOutput[struct{}, openai.Response]]
+	dex.StepDefaultsNoWaitFor[sdkgo.MutationResult[openai.Response]]
 }
 
-func (openAIStreamingSucceededStep) Execute(_ dex.Context, output sdkgo.MutationStepOutput[struct{}, openai.Response]) (*dex.StepDecision, error) {
-	result := output.Result
+func (openAIStreamingSucceededStep) Execute(_ dex.Context, result sdkgo.MutationResult[openai.Response]) (*dex.StepDecision, error) {
 	return dex.GracefulComplete(openAIStreamingOutput{
 		CallID: result.Receipt.CallID, Branch: result.Branch,
 		Text: result.Value.OutputText, TotalTokens: result.Value.Usage.TotalTokens,
@@ -769,11 +768,11 @@ func (openAIStreamingSucceededStep) Execute(_ dex.Context, output sdkgo.Mutation
 }
 
 type openAIStreamingFailedStep struct {
-	dex.StepDefaultsNoWaitFor[sdkgo.MutationStepOutput[struct{}, openai.Response]]
+	dex.StepDefaultsNoWaitFor[sdkgo.MutationResult[openai.Response]]
 }
 
-func (openAIStreamingFailedStep) Execute(_ dex.Context, output sdkgo.MutationStepOutput[struct{}, openai.Response]) (*dex.StepDecision, error) {
-	return dex.ForceFail("OpenAI streaming ended on branch " + string(output.Result.Branch)), nil
+func (openAIStreamingFailedStep) Execute(_ dex.Context, result sdkgo.MutationResult[openai.Response]) (*dex.StepDecision, error) {
+	return dex.ForceFail("OpenAI streaming ended on branch " + string(result.Branch)), nil
 }
 
 type retryProgressFlow struct{ dex.FlowDefaults }
@@ -833,12 +832,12 @@ type missingSchemaFlow struct{ dex.FlowDefaults }
 func (missingSchemaFlow) GetSteps() []dex.StepDef {
 	step := sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[struct{}, struct{}, struct{}]{
 		StepType: "MissingSchemaQuery",
-		Presentation: sdkgo.StepPresentation{
+		Annotations: sdkgo.StepAnnotations{
 			GroupID: "test", GroupLabel: "Test", Explanation: "Verify missing schema registration fails.",
 		},
 		Operation: missingSchemaQuery{}, Connection: sdkgo.ConnectionRef{Provider: "mock", Name: "default"},
-		BuildInput: func(struct{}) (struct{}, error) { return struct{}{}, nil },
-		Branches: []sdkgo.BranchTarget[sdkgo.QueryStepOutput[struct{}, struct{}]]{
+		BuildOperationInput: func(struct{}) (struct{}, error) { return struct{}{}, nil },
+		Branches: []sdkgo.BranchTarget[sdkgo.QueryResult[struct{}]]{
 			sdkgo.GoToBranch(integrationQueryBranchSucceeded, missingSchemaTerminalStep{}),
 			sdkgo.GoToBranch(integrationQueryBranchFailed, missingSchemaTerminalStep{}),
 			sdkgo.GoToBranch(integrationQueryBranchDefect, missingSchemaTerminalStep{}),
@@ -864,10 +863,10 @@ func (missingSchemaQuery) Invoke(sdkgo.Call, struct{}) sdkgo.QueryAttempt[struct
 }
 
 type missingSchemaTerminalStep struct {
-	dex.StepDefaultsNoWaitFor[sdkgo.QueryStepOutput[struct{}, struct{}]]
+	dex.StepDefaultsNoWaitFor[sdkgo.QueryResult[struct{}]]
 }
 
-func (missingSchemaTerminalStep) Execute(dex.Context, sdkgo.QueryStepOutput[struct{}, struct{}]) (*dex.StepDecision, error) {
+func (missingSchemaTerminalStep) Execute(dex.Context, sdkgo.QueryResult[struct{}]) (*dex.StepDecision, error) {
 	return dex.GracefulComplete(struct{}{}), nil
 }
 
