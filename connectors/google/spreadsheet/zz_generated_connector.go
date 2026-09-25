@@ -142,7 +142,8 @@ func (credentials Credentials) Validate() error {
 
 const GetValuesBranchRead sdkgo.BranchID = "read"
 const GetValuesBranchNotFound sdkgo.BranchID = "notFound"
-const GetValuesBranchFailed sdkgo.BranchID = "failed"
+const GetValuesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetValuesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
 const GetValuesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 
 var GetValuesDefinition = sdkgo.QueryDefinition{
@@ -150,8 +151,9 @@ var GetValuesDefinition = sdkgo.QueryDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: GetValuesBranchRead, Description: "The range was read."},
 		{ID: GetValuesBranchNotFound, Description: "The spreadsheet or range does not exist."},
-		{ID: GetValuesBranchFailed, Description: "Google rejected the read."},
-		{ID: GetValuesBranchDefect, Description: "Local input or connector definition is invalid."},
+		{ID: GetValuesBranchProviderRejected, Description: "Google conclusively rejected the range read."},
+		{ID: GetValuesBranchInvalidResponse, Description: "Google returned an invalid or oversized range response."},
+		{ID: GetValuesBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid."},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
@@ -173,7 +175,8 @@ type GetValuesStepConfig[IN any] struct {
 	MapToOperationInput            func(IN) GetValuesInput                            `connector:"mapToOperationInput"`
 	Read                           sdkgo.Target[GetValuesResult]                      `connector:"branch=read"`
 	NotFound                       sdkgo.Target[GetValuesResult]                      `connector:"branch=notFound"`
-	Failed                         sdkgo.Target[GetValuesResult]                      `connector:"branch=failed"`
+	ProviderRejected               sdkgo.Target[GetValuesResult]                      `connector:"branch=providerRejected"`
+	InvalidResponse                sdkgo.Target[GetValuesResult]                      `connector:"branch=invalidResponse"`
 	Defect                         sdkgo.Target[GetValuesResult]                      `connector:"branch=defect"`
 	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[GetValuesOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride            *dex.StepOptions                                   `connector:"stepOptionsOverride"`
@@ -193,7 +196,8 @@ func NewGetValuesStep[IN any](config GetValuesStepConfig[IN]) sdkgo.QueryStep[IN
 		Branches: []sdkgo.BranchTarget[GetValuesResult]{
 			config.Read.BranchTarget(GetValuesBranchRead),
 			config.NotFound.BranchTarget(GetValuesBranchNotFound),
-			config.Failed.BranchTarget(GetValuesBranchFailed),
+			config.ProviderRejected.BranchTarget(GetValuesBranchProviderRejected),
+			config.InvalidResponse.BranchTarget(GetValuesBranchInvalidResponse),
 			config.Defect.BranchTarget(GetValuesBranchDefect),
 		},
 		ResultAttribute:     config.ResultAttribute,
@@ -204,7 +208,8 @@ func NewGetValuesStep[IN any](config GetValuesStepConfig[IN]) sdkgo.QueryStep[IN
 const FindRowBranchFound sdkgo.BranchID = "found"
 const FindRowBranchNotFound sdkgo.BranchID = "notFound"
 const FindRowBranchConflict sdkgo.BranchID = "conflict"
-const FindRowBranchFailed sdkgo.BranchID = "failed"
+const FindRowBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const FindRowBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
 const FindRowBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 
 var FindRowDefinition = sdkgo.QueryDefinition{
@@ -213,8 +218,9 @@ var FindRowDefinition = sdkgo.QueryDefinition{
 		{ID: FindRowBranchFound, Description: "Exactly one matching row was found."},
 		{ID: FindRowBranchNotFound, Description: "No matching row exists."},
 		{ID: FindRowBranchConflict, Description: "More than one matching row exists."},
-		{ID: FindRowBranchFailed, Description: "Google rejected the query."},
-		{ID: FindRowBranchDefect, Description: "Local input or connector definition is invalid."},
+		{ID: FindRowBranchProviderRejected, Description: "Google conclusively rejected the row query."},
+		{ID: FindRowBranchInvalidResponse, Description: "Google returned an invalid or oversized row response."},
+		{ID: FindRowBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid."},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
@@ -237,7 +243,8 @@ type FindRowStepConfig[IN any] struct {
 	Found                          sdkgo.Target[FindRowResult]                      `connector:"branch=found"`
 	NotFound                       sdkgo.Target[FindRowResult]                      `connector:"branch=notFound"`
 	Conflict                       sdkgo.Target[FindRowResult]                      `connector:"branch=conflict"`
-	Failed                         sdkgo.Target[FindRowResult]                      `connector:"branch=failed"`
+	ProviderRejected               sdkgo.Target[FindRowResult]                      `connector:"branch=providerRejected"`
+	InvalidResponse                sdkgo.Target[FindRowResult]                      `connector:"branch=invalidResponse"`
 	Defect                         sdkgo.Target[FindRowResult]                      `connector:"branch=defect"`
 	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[FindRowOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
@@ -258,7 +265,8 @@ func NewFindRowStep[IN any](config FindRowStepConfig[IN]) sdkgo.QueryStep[IN, Fi
 			config.Found.BranchTarget(FindRowBranchFound),
 			config.NotFound.BranchTarget(FindRowBranchNotFound),
 			config.Conflict.BranchTarget(FindRowBranchConflict),
-			config.Failed.BranchTarget(FindRowBranchFailed),
+			config.ProviderRejected.BranchTarget(FindRowBranchProviderRejected),
+			config.InvalidResponse.BranchTarget(FindRowBranchInvalidResponse),
 			config.Defect.BranchTarget(FindRowBranchDefect),
 		},
 		ResultAttribute:     config.ResultAttribute,
@@ -268,7 +276,8 @@ func NewFindRowStep[IN any](config FindRowStepConfig[IN]) sdkgo.QueryStep[IN, Fi
 
 const UpsertRowBranchUpserted sdkgo.BranchID = "upserted"
 const UpsertRowBranchConflict sdkgo.BranchID = "conflict"
-const UpsertRowBranchRejected sdkgo.BranchID = "rejected"
+const UpsertRowBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpsertRowBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
 const UpsertRowBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
 const UpsertRowBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 
@@ -277,9 +286,10 @@ var UpsertRowDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: UpsertRowBranchUpserted, Description: "One row was inserted or updated."},
 		{ID: UpsertRowBranchConflict, Description: "Existing duplicate key rows prevent a safe write."},
-		{ID: UpsertRowBranchRejected, Description: "Google conclusively rejected the write."},
+		{ID: UpsertRowBranchProviderRejected, Description: "Google conclusively rejected the row write."},
+		{ID: UpsertRowBranchInvalidResponse, Description: "Google returned an invalid or oversized pre-write response."},
 		{ID: UpsertRowBranchUncertain, Description: "The dispatched write outcome cannot be confirmed."},
-		{ID: UpsertRowBranchDefect, Description: "Local input or connector definition is invalid."},
+		{ID: UpsertRowBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid."},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
@@ -301,7 +311,8 @@ type UpsertRowStepConfig[IN any] struct {
 	MapToOperationInput               func(IN) UpsertRowInput                               `connector:"mapToOperationInput"`
 	Upserted                          sdkgo.Target[UpsertRowResult]                         `connector:"branch=upserted"`
 	Conflict                          sdkgo.Target[UpsertRowResult]                         `connector:"branch=conflict"`
-	Rejected                          sdkgo.Target[UpsertRowResult]                         `connector:"branch=rejected"`
+	ProviderRejected                  sdkgo.Target[UpsertRowResult]                         `connector:"branch=providerRejected"`
+	InvalidResponse                   sdkgo.Target[UpsertRowResult]                         `connector:"branch=invalidResponse"`
 	Uncertain                         sdkgo.Target[UpsertRowResult]                         `connector:"branch=uncertain"`
 	Defect                            sdkgo.Target[UpsertRowResult]                         `connector:"branch=defect"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpsertRowOutput]] `connector:"resultAttribute"`
@@ -322,7 +333,8 @@ func NewUpsertRowStep[IN any](config UpsertRowStepConfig[IN]) sdkgo.MutationStep
 		Branches: []sdkgo.BranchTarget[UpsertRowResult]{
 			config.Upserted.BranchTarget(UpsertRowBranchUpserted),
 			config.Conflict.BranchTarget(UpsertRowBranchConflict),
-			config.Rejected.BranchTarget(UpsertRowBranchRejected),
+			config.ProviderRejected.BranchTarget(UpsertRowBranchProviderRejected),
+			config.InvalidResponse.BranchTarget(UpsertRowBranchInvalidResponse),
 			config.Uncertain.BranchTarget(UpsertRowBranchUncertain),
 			config.Defect.BranchTarget(UpsertRowBranchDefect),
 		},

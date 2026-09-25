@@ -85,8 +85,9 @@ spec:
       idempotency: none
       branches:
         - {id: read, goName: Read, description: The thread page was read.}
-        - {id: rejected, goName: Rejected, description: Slack rejected the query.}
-        - {id: defect, goName: Defect, description: Local input or connector definition is invalid.}
+        - {id: providerRejected, goName: ProviderRejected, description: Slack conclusively rejected the thread query.}
+        - {id: invalidResponse, goName: InvalidResponse, description: Slack returned an invalid or oversized thread response.}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid."}
       execution: &slackQueryExecution
         executeMethodTimeout: 30s
         durability: sync
@@ -101,8 +102,9 @@ spec:
       branches:
         - {id: found, goName: Found, description: The reply was found.}
         - {id: notFound, goName: NotFound, description: The reply does not exist.}
-        - {id: rejected, goName: Rejected, description: Slack rejected the query.}
-        - {id: defect, goName: Defect, description: Local input or connector definition is invalid.}
+        - {id: providerRejected, goName: ProviderRejected, description: Slack conclusively rejected the reply query.}
+        - {id: invalidResponse, goName: InvalidResponse, description: Slack returned an invalid or oversized reply response.}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid."}
       execution: *slackQueryExecution
     - name: postChannelMessage
       goName: PostChannelMessage
@@ -113,9 +115,9 @@ spec:
       idempotency: required
       branches: &postBranches
         - {id: sent, goName: Sent, description: Slack accepted the message.}
-        - {id: rejected, goName: Rejected, description: Slack conclusively rejected the message.}
+        - {id: providerRejected, goName: ProviderRejected, description: Slack conclusively rejected the message.}
         - {id: uncertain, goName: Uncertain, description: The dispatched message outcome cannot be confirmed.}
-        - {id: defect, goName: Defect, description: Local input or connector definition is invalid.}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid."}
       execution: &slackMutationExecution
         executeMethodTimeout: 30s
         durability: sync

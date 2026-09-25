@@ -89,8 +89,9 @@ spec:
       branches:
         - {id: read, goName: Read, description: The Gmail message was read.}
         - {id: notFound, goName: NotFound, description: The Gmail message does not exist.}
-        - {id: rejected, goName: Rejected, description: Gmail conclusively rejected the query.}
-        - {id: defect, goName: Defect, description: Local input or connector definition is invalid.}
+        - {id: providerRejected, goName: ProviderRejected, description: Gmail conclusively rejected the message query.}
+        - {id: invalidResponse, goName: InvalidResponse, description: Gmail returned an invalid or oversized message response.}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid."}
       execution: &gmailQueryExecution
         executeMethodTimeout: 30s
         durability: sync
@@ -104,9 +105,9 @@ spec:
       idempotency: required
       branches:
         - {id: sent, goName: Sent, description: Gmail accepted the message and returned its identity.}
-        - {id: rejected, goName: Rejected, description: Gmail conclusively rejected the message.}
+        - {id: providerRejected, goName: ProviderRejected, description: Gmail conclusively rejected the message.}
         - {id: uncertain, goName: Uncertain, description: The dispatched send outcome cannot be confirmed.}
-        - {id: defect, goName: Defect, description: Local input or connector definition is invalid.}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid."}
       execution:
         executeMethodTimeout: 30s
         durability: sync
@@ -120,9 +121,10 @@ spec:
       idempotency: required
       branches:
         - {id: sent, goName: Sent, description: Gmail accepted the reply and returned its identity.}
-        - {id: rejected, goName: Rejected, description: Gmail conclusively rejected the reply.}
+        - {id: providerRejected, goName: ProviderRejected, description: Gmail conclusively rejected the reply.}
+        - {id: invalidResponse, goName: InvalidResponse, description: Gmail returned an invalid or oversized source message response before sending the reply.}
         - {id: uncertain, goName: Uncertain, description: The dispatched reply outcome cannot be confirmed.}
-        - {id: defect, goName: Defect, description: Local input or connector definition is invalid.}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid."}
       execution:
         executeMethodTimeout: 30s
         durability: sync

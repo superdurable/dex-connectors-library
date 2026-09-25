@@ -64,8 +64,9 @@ spec:
         - {id: insufficientScope, goName: InsufficientScope, description: The OpenID Connect grant lacks required authorization.}
         - {id: authorizationRevoked, goName: AuthorizationRevoked, description: The OpenID Connect grant is invalid or revoked.}
         - {id: notFound, goName: NotFound, description: The authenticated member was not found.}
-        - {id: failed, goName: Failed, description: LinkedIn returned a terminal provider or protocol failure.}
-        - {id: defect, goName: Defect, description: Local configuration or input is invalid.}
+        - {id: providerRejected, goName: ProviderRejected, description: LinkedIn conclusively rejected the profile query.}
+        - {id: invalidResponse, goName: InvalidResponse, description: LinkedIn returned an invalid or oversized profile response.}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid."}
       execution:
         executeMethodTimeout: 30s
         durability: sync

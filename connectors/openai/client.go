@@ -151,11 +151,7 @@ func (operation CreateResponseOperation) Invoke(call sdkgo.Call, input CreateReq
 	}
 	request, failure := operation.client.newRequest(call, http.MethodPost, "/responses", call.IdempotencyKey, payload)
 	if failure != nil {
-		branch := CreateResponseBranchFailed
-		if failure.failure.Kind == sdkgo.FailureLocalDefect || failure.failure.Kind == sdkgo.FailureValidation {
-			branch = CreateResponseBranchDefect
-		}
-		return sdkgo.NewMutationBranch(branch, Response{}, &failure.failure, sdkgo.Receipt{})
+		return sdkgo.NewMutationBranch(CreateResponseBranchDefect, Response{}, &failure.failure, sdkgo.Receipt{})
 	}
 	response, err := operation.client.httpClient.Do(request)
 	if err != nil {
@@ -188,11 +184,7 @@ func (operation RetrieveResponseOperation) Invoke(call sdkgo.Call, input Retriev
 	}
 	request, failure := operation.client.newRequest(call, http.MethodGet, "/responses/"+url.PathEscape(input.ResponseID), "", nil)
 	if failure != nil {
-		branch := RetrieveResponseBranchFailed
-		if failure.failure.Kind == sdkgo.FailureLocalDefect || failure.failure.Kind == sdkgo.FailureValidation {
-			branch = RetrieveResponseBranchDefect
-		}
-		return sdkgo.NewQueryBranch(branch, Response{}, &failure.failure, sdkgo.Receipt{})
+		return sdkgo.NewQueryBranch(RetrieveResponseBranchDefect, Response{}, &failure.failure, sdkgo.Receipt{})
 	}
 	response, err := operation.client.httpClient.Do(request)
 	if err != nil {
@@ -205,12 +197,16 @@ func (operation RetrieveResponseOperation) Invoke(call sdkgo.Call, input Retriev
 		if retry {
 			return sdkgo.NewQueryRetry[Response](failure, retryAfter)
 		}
-		return sdkgo.NewQueryBranch(RetrieveResponseBranchFailed, Response{}, &failure, responseReceipt(call, requestID, response.Header, input.ResponseID))
+		branch := RetrieveResponseBranchProviderRejected
+		if response.StatusCode == http.StatusNotFound {
+			branch = RetrieveResponseBranchNotFound
+		}
+		return sdkgo.NewQueryBranch(branch, Response{}, &failure, responseReceipt(call, requestID, response.Header, input.ResponseID))
 	}
 	wire, readFailure := operation.client.readResponse(response.Body, "retrieveResponse")
 	if readFailure != nil {
 		if readFailure.Kind == sdkgo.FailureResponseTooLarge || readFailure.Kind == sdkgo.FailureProtocol {
-			return sdkgo.NewQueryBranch(RetrieveResponseBranchFailed, Response{}, readFailure, responseReceipt(call, requestID, response.Header, input.ResponseID))
+			return sdkgo.NewQueryBranch(RetrieveResponseBranchInvalidResponse, Response{}, readFailure, responseReceipt(call, requestID, response.Header, input.ResponseID))
 		}
 		return sdkgo.NewQueryRetry[Response](*readFailure, 0)
 	}
@@ -275,7 +271,7 @@ func createStatusAttempt(call sdkgo.Call, status int, header http.Header, reques
 	if status >= 500 {
 		return sdkgo.NewMutationUncertain(Response{}, failure, receipt)
 	}
-	return sdkgo.NewMutationBranch(CreateResponseBranchFailed, Response{}, &failure, receipt)
+	return sdkgo.NewMutationBranch(CreateResponseBranchProviderRejected, Response{}, &failure, receipt)
 }
 
 func classifyOpenAIStatus(operation string, status int, header http.Header) (sdkgo.Failure, time.Duration, bool) {

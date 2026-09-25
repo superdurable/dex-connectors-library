@@ -64,7 +64,7 @@ If a picker cannot load, copy IDs manually:
   "connections": [{
     "connectorId": "slack",
     "modulePath": "github.com/superdurable/dex-connectors-library/connectors/slack",
-    "moduleVersion": "v0.1.0",
+    "moduleVersion": "v0.7.0",
     "provider": "slack",
     "connectionName": "slack-workspace",
     "configuration": {},
@@ -119,6 +119,12 @@ event IDs, so a crash at either side of inbox cleanup remains safe.
 Posting uses Dex Call ID as Slack `client_msg_id`. An ambiguous provider result
 uses the `uncertain` branch and must be reconciled or manually recovered rather
 than automatically resent.
+
+Every operation uses `defect` for invalid local input, connection configuration,
+or Connector contract violations. A conclusive Slack API refusal uses
+`providerRejected`; query responses that are malformed or exceed configured
+limits use `invalidResponse`. Safe query transport, rate-limit, and availability
+failures retry instead of producing a branch.
 
 ## Example
 

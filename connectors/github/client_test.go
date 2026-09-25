@@ -111,6 +111,7 @@ func TestGetAuthenticatedProfileClassifiesAuthorizationAndRateLimit(t *testing.T
 		{name: "revoked", status: http.StatusUnauthorized, wantBranch: githubconnector.GetAuthenticatedProfileBranchAuthorizationRevoked, wantKind: sdkgo.FailureAuthentication},
 		{name: "forbidden", status: http.StatusForbidden, wantBranch: githubconnector.GetAuthenticatedProfileBranchInsufficientScope, wantKind: sdkgo.FailureAuthorization},
 		{name: "not found", status: http.StatusNotFound, wantBranch: githubconnector.GetAuthenticatedProfileBranchNotFound, wantKind: sdkgo.FailureNotFound},
+		{name: "provider rejected", status: http.StatusBadRequest, wantBranch: githubconnector.GetAuthenticatedProfileBranchProviderRejected, wantKind: sdkgo.FailureProviderRejection},
 		{name: "primary rate limit", status: http.StatusForbidden, headers: map[string]string{"X-RateLimit-Remaining": "0", "X-RateLimit-Reset": "1767225635"}, wantKind: sdkgo.FailureRateLimit, wantRetry: 30 * time.Second},
 		{name: "secondary rate limit", status: http.StatusTooManyRequests, headers: map[string]string{"Retry-After": "7"}, wantKind: sdkgo.FailureRateLimit, wantRetry: 7 * time.Second},
 	}
@@ -244,7 +245,7 @@ func TestResponseSizeFailureIsTerminalAndSecretSafe(t *testing.T) {
 		githubconnector.GetAuthenticatedProfileInput{},
 	)
 	require.NoError(t, err)
-	require.Equal(t, githubconnector.GetAuthenticatedProfileBranchFailed, result.Branch)
+	require.Equal(t, githubconnector.GetAuthenticatedProfileBranchInvalidResponse, result.Branch)
 	require.Equal(t, sdkgo.FailureResponseTooLarge, result.Failure.Kind)
 	require.NotContains(t, fmt.Sprintf("%#v", result), "one-use-token")
 }

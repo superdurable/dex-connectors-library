@@ -46,7 +46,8 @@ func TestOperationSpecificFactoriesUseTypedConnectionAndResources(t *testing.T) 
 		StepType: "CreateResponse", Annotations: openAIAnnotations(), Connection: connection,
 		MapToOperationInput: func(string) openai.CreateRequest { return openai.CreateRequest{Model: "gpt-test"} },
 		Completed:           sdkgo.GoTo(createTarget{}), Failed: sdkgo.GoTo(createTarget{}),
-		Uncertain: sdkgo.GoTo(createTarget{}), Defect: sdkgo.GoTo(createTarget{}),
+		ProviderRejected: sdkgo.GoTo(createTarget{}),
+		Uncertain:        sdkgo.GoTo(createTarget{}), Defect: sdkgo.GoTo(createTarget{}),
 		ResultAttribute: &result, ProgressStream: &progress, TextStream: &text,
 	})
 	require.Equal(t, "CreateResponse", create.GetStepType())
@@ -54,7 +55,9 @@ func TestOperationSpecificFactoriesUseTypedConnectionAndResources(t *testing.T) 
 	retrieve := openai.NewRetrieveResponseStep(openai.RetrieveResponseStepConfig[string]{
 		StepType: "RetrieveResponse", Annotations: openAIAnnotations(), Connection: connection,
 		MapToOperationInput: func(string) openai.RetrieveRequest { return openai.RetrieveRequest{ResponseID: "resp_1"} },
-		Found:               sdkgo.GoTo(retrieveTarget{}), Failed: sdkgo.GoTo(retrieveTarget{}), Defect: sdkgo.GoTo(retrieveTarget{}),
+		Found:               sdkgo.GoTo(retrieveTarget{}), NotFound: sdkgo.GoTo(retrieveTarget{}),
+		ProviderRejected: sdkgo.GoTo(retrieveTarget{}), InvalidResponse: sdkgo.GoTo(retrieveTarget{}),
+		Defect: sdkgo.GoTo(retrieveTarget{}),
 	})
 	require.Equal(t, "RetrieveResponse", retrieve.GetStepType())
 }

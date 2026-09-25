@@ -126,6 +126,12 @@ type providerResponse struct {
 	decoded    slackResponse
 }
 
+var (
+	errSlackRequestInvalid   = errors.New("Slack request is invalid")
+	errSlackResponseInvalid  = errors.New("Slack response is invalid")
+	errSlackResponseTooLarge = errors.New("Slack response exceeds configured size limit")
+)
+
 func New(config Config, credentials sdkgo.CredentialProvider[Credentials], options ...Option) (*Client, error) {
 	config = withConfigDefaults(config)
 	if err := config.Validate(); err != nil {
@@ -187,7 +193,7 @@ func (operation ListThreadMessagesOperation) Invoke(call sdkgo.Call, input ListT
 	}
 	credentials, failure := operation.client.resolveCredentials(call, "listThreadMessages")
 	if failure != nil {
-		return sdkgo.NewQueryBranch(ListThreadMessagesBranchRejected, ListThreadMessagesOutput{}, failure, sdkgo.Receipt{})
+		return sdkgo.NewQueryBranch(ListThreadMessagesBranchDefect, ListThreadMessagesOutput{}, failure, sdkgo.Receipt{})
 	}
 	values := url.Values{"channel": {input.ChannelID}, "ts": {input.ThreadTimestamp}, "limit": {strconv.Itoa(input.PageSize)}}
 	if input.Cursor != "" {
@@ -195,13 +201,22 @@ func (operation ListThreadMessagesOperation) Invoke(call sdkgo.Call, input ListT
 	}
 	response, err := operation.client.get(call, credentials.UserToken.Reveal(), "conversations.replies", values)
 	if err != nil {
+		if errors.Is(err, errSlackResponseTooLarge) {
+			return sdkgo.NewQueryBranch(ListThreadMessagesBranchInvalidResponse, ListThreadMessagesOutput{}, slackFailurePointer("listThreadMessages", sdkgo.FailureResponseTooLarge, err.Error()), operation.client.receipt(call, response, ""))
+		}
+		if errors.Is(err, errSlackResponseInvalid) {
+			return sdkgo.NewQueryBranch(ListThreadMessagesBranchInvalidResponse, ListThreadMessagesOutput{}, slackFailurePointer("listThreadMessages", sdkgo.FailureProtocol, err.Error()), operation.client.receipt(call, response, ""))
+		}
 		return sdkgo.NewQueryRetry[ListThreadMessagesOutput](slackFailure("listThreadMessages", sdkgo.FailureAvailability, "Slack thread messages are temporarily unavailable"), 0)
 	}
 	if response.statusCode == http.StatusTooManyRequests {
 		return sdkgo.NewQueryRetry[ListThreadMessagesOutput](slackFailure("listThreadMessages", sdkgo.FailureRateLimit, "Slack rate limited the thread query"), retryAfter(response.header))
 	}
+	if response.statusCode >= 500 {
+		return sdkgo.NewQueryRetry[ListThreadMessagesOutput](slackFailure("listThreadMessages", sdkgo.FailureAvailability, "Slack thread messages are temporarily unavailable"), 0)
+	}
 	if failure := classifyResponse("listThreadMessages", response); failure != nil {
-		return sdkgo.NewQueryBranch(ListThreadMessagesBranchRejected, ListThreadMessagesOutput{}, failure, operation.client.receipt(call, response, ""))
+		return sdkgo.NewQueryBranch(ListThreadMessagesBranchProviderRejected, ListThreadMessagesOutput{}, failure, operation.client.receipt(call, response, ""))
 	}
 	messages := make([]Message, len(response.decoded.Messages))
 	for index, message := range response.decoded.Messages {
@@ -220,7 +235,7 @@ func (operation GetThreadReplyOperation) Invoke(call sdkgo.Call, input GetThread
 	}
 	credentials, failure := operation.client.resolveCredentials(call, "getThreadReply")
 	if failure != nil {
-		return sdkgo.NewQueryBranch(GetThreadReplyBranchRejected, GetThreadReplyOutput{}, failure, sdkgo.Receipt{})
+		return sdkgo.NewQueryBranch(GetThreadReplyBranchDefect, GetThreadReplyOutput{}, failure, sdkgo.Receipt{})
 	}
 	values := url.Values{
 		"channel": {input.ChannelID}, "ts": {input.ThreadTimestamp}, "oldest": {input.ReplyTimestamp},
@@ -228,13 +243,22 @@ func (operation GetThreadReplyOperation) Invoke(call sdkgo.Call, input GetThread
 	}
 	response, err := operation.client.get(call, credentials.UserToken.Reveal(), "conversations.replies", values)
 	if err != nil {
+		if errors.Is(err, errSlackResponseTooLarge) {
+			return sdkgo.NewQueryBranch(GetThreadReplyBranchInvalidResponse, GetThreadReplyOutput{}, slackFailurePointer("getThreadReply", sdkgo.FailureResponseTooLarge, err.Error()), operation.client.receipt(call, response, ""))
+		}
+		if errors.Is(err, errSlackResponseInvalid) {
+			return sdkgo.NewQueryBranch(GetThreadReplyBranchInvalidResponse, GetThreadReplyOutput{}, slackFailurePointer("getThreadReply", sdkgo.FailureProtocol, err.Error()), operation.client.receipt(call, response, ""))
+		}
 		return sdkgo.NewQueryRetry[GetThreadReplyOutput](slackFailure("getThreadReply", sdkgo.FailureAvailability, "Slack thread reply is temporarily unavailable"), 0)
 	}
 	if response.statusCode == http.StatusTooManyRequests {
 		return sdkgo.NewQueryRetry[GetThreadReplyOutput](slackFailure("getThreadReply", sdkgo.FailureRateLimit, "Slack rate limited the reply query"), retryAfter(response.header))
 	}
+	if response.statusCode >= 500 {
+		return sdkgo.NewQueryRetry[GetThreadReplyOutput](slackFailure("getThreadReply", sdkgo.FailureAvailability, "Slack thread reply is temporarily unavailable"), 0)
+	}
 	if failure := classifyResponse("getThreadReply", response); failure != nil {
-		return sdkgo.NewQueryBranch(GetThreadReplyBranchRejected, GetThreadReplyOutput{}, failure, operation.client.receipt(call, response, ""))
+		return sdkgo.NewQueryBranch(GetThreadReplyBranchProviderRejected, GetThreadReplyOutput{}, failure, operation.client.receipt(call, response, ""))
 	}
 	for _, message := range response.decoded.Messages {
 		if message.Timestamp == input.ReplyTimestamp && message.ThreadTS == input.ThreadTimestamp {
@@ -253,7 +277,7 @@ func (PostChannelMessageOperation) IdempotencyKey(callID sdkgo.CallID, _ PostCha
 }
 
 func (operation PostChannelMessageOperation) Invoke(call sdkgo.Call, input PostChannelMessageInput) sdkgo.MutationAttempt[PostMessageOutput] {
-	return operation.client.postMessage(call, "postChannelMessage", input.ChannelID, "", input.Text, PostChannelMessageBranchSent, PostChannelMessageBranchRejected, PostChannelMessageBranchUncertain, PostChannelMessageBranchDefect)
+	return operation.client.postMessage(call, "postChannelMessage", input.ChannelID, "", input.Text, PostChannelMessageBranchSent, PostChannelMessageBranchProviderRejected, PostChannelMessageBranchUncertain, PostChannelMessageBranchDefect)
 }
 
 func (PostThreadReplyOperation) Definition() sdkgo.MutationDefinition {
@@ -265,16 +289,16 @@ func (PostThreadReplyOperation) IdempotencyKey(callID sdkgo.CallID, _ PostThread
 }
 
 func (operation PostThreadReplyOperation) Invoke(call sdkgo.Call, input PostThreadReplyInput) sdkgo.MutationAttempt[PostMessageOutput] {
-	return operation.client.postMessage(call, "postThreadReply", input.ChannelID, input.ThreadTimestamp, input.Text, PostThreadReplyBranchSent, PostThreadReplyBranchRejected, PostThreadReplyBranchUncertain, PostThreadReplyBranchDefect)
+	return operation.client.postMessage(call, "postThreadReply", input.ChannelID, input.ThreadTimestamp, input.Text, PostThreadReplyBranchSent, PostThreadReplyBranchProviderRejected, PostThreadReplyBranchUncertain, PostThreadReplyBranchDefect)
 }
 
-func (client *Client) postMessage(call sdkgo.Call, operationName string, channelID string, threadTimestamp string, text string, sent sdkgo.BranchID, rejected sdkgo.BranchID, uncertain sdkgo.BranchID, defect sdkgo.BranchID) sdkgo.MutationAttempt[PostMessageOutput] {
+func (client *Client) postMessage(call sdkgo.Call, operationName string, channelID string, threadTimestamp string, text string, sent sdkgo.BranchID, providerRejected sdkgo.BranchID, uncertain sdkgo.BranchID, defect sdkgo.BranchID) sdkgo.MutationAttempt[PostMessageOutput] {
 	if strings.TrimSpace(channelID) == "" || strings.TrimSpace(text) == "" || len([]rune(text)) > client.maxMessageCharacters {
 		return sdkgo.NewMutationBranch(defect, PostMessageOutput{}, slackFailurePointer(operationName, sdkgo.FailureValidation, "channel and bounded non-empty text are required"), sdkgo.Receipt{})
 	}
 	credentials, failure := client.resolveCredentials(call, operationName)
 	if failure != nil {
-		return sdkgo.NewMutationBranch(rejected, PostMessageOutput{}, failure, sdkgo.Receipt{})
+		return sdkgo.NewMutationBranch(defect, PostMessageOutput{}, failure, sdkgo.Receipt{})
 	}
 	payload := map[string]string{"channel": channelID, "text": text, "client_msg_id": string(call.IdempotencyKey)}
 	if threadTimestamp != "" {
@@ -282,6 +306,9 @@ func (client *Client) postMessage(call sdkgo.Call, operationName string, channel
 	}
 	response, err := client.post(call, credentials.BotToken.Reveal(), "chat.postMessage", payload)
 	if err != nil {
+		if errors.Is(err, errSlackRequestInvalid) {
+			return sdkgo.NewMutationBranch(defect, PostMessageOutput{}, slackFailurePointer(operationName, sdkgo.FailureLocalDefect, err.Error()), sdkgo.Receipt{})
+		}
 		return sdkgo.NewMutationUncertain(PostMessageOutput{}, slackFailure(operationName, sdkgo.FailureTransport, "Slack message outcome is unknown"), client.receipt(call, response, ""))
 	}
 	if response.statusCode == http.StatusTooManyRequests {
@@ -291,7 +318,7 @@ func (client *Client) postMessage(call sdkgo.Call, operationName string, channel
 		return sdkgo.NewMutationUncertain(PostMessageOutput{}, slackFailure(operationName, sdkgo.FailureAvailability, "Slack message outcome is unknown"), client.receipt(call, response, ""))
 	}
 	if failure := classifyResponse(operationName, response); failure != nil {
-		return sdkgo.NewMutationBranch(rejected, PostMessageOutput{}, failure, client.receipt(call, response, ""))
+		return sdkgo.NewMutationBranch(providerRejected, PostMessageOutput{}, failure, client.receipt(call, response, ""))
 	}
 	message := response.decoded.Message
 	if message.Timestamp == "" {
@@ -329,12 +356,12 @@ func (client *Client) get(call sdkgo.Call, token string, method string, values u
 func (client *Client) post(call sdkgo.Call, token string, method string, payload any) (providerResponse, error) {
 	contents, err := json.Marshal(payload)
 	if err != nil {
-		return providerResponse{}, err
+		return providerResponse{}, fmt.Errorf("%w: request could not be encoded", errSlackRequestInvalid)
 	}
 	target := strings.TrimRight(client.endpoint.String(), "/") + "/" + method
 	request, err := http.NewRequestWithContext(call.Context, http.MethodPost, target, bytes.NewReader(contents))
 	if err != nil {
-		return providerResponse{}, err
+		return providerResponse{}, fmt.Errorf("%w: request could not be built", errSlackRequestInvalid)
 	}
 	request.Header.Set("Content-Type", "application/json; charset=utf-8")
 	return client.do(request, token)
@@ -353,13 +380,13 @@ func (client *Client) do(request *http.Request, token string) (providerResponse,
 		return result, err
 	}
 	if int64(len(result.body)) > client.maxResponseBytes {
-		return result, errors.New("Slack response exceeds configured size limit")
+		return result, errSlackResponseTooLarge
 	}
 	if len(result.body) == 0 {
-		return result, errors.New("Slack returned an empty response")
+		return result, fmt.Errorf("%w: Slack returned an empty response", errSlackResponseInvalid)
 	}
 	if err := json.Unmarshal(result.body, &result.decoded); err != nil {
-		return result, err
+		return result, fmt.Errorf("%w: Slack returned malformed JSON", errSlackResponseInvalid)
 	}
 	return result, nil
 }

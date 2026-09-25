@@ -288,7 +288,8 @@ func NewLocalReplyReceivedTrigger(store *localconfig.Store, connectionName strin
 
 const GetMessageBranchRead sdkgo.BranchID = "read"
 const GetMessageBranchNotFound sdkgo.BranchID = "notFound"
-const GetMessageBranchRejected sdkgo.BranchID = "rejected"
+const GetMessageBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetMessageBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
 const GetMessageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 
 var GetMessageDefinition = sdkgo.QueryDefinition{
@@ -296,8 +297,9 @@ var GetMessageDefinition = sdkgo.QueryDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: GetMessageBranchRead, Description: "The Gmail message was read."},
 		{ID: GetMessageBranchNotFound, Description: "The Gmail message does not exist."},
-		{ID: GetMessageBranchRejected, Description: "Gmail conclusively rejected the query."},
-		{ID: GetMessageBranchDefect, Description: "Local input or connector definition is invalid."},
+		{ID: GetMessageBranchProviderRejected, Description: "Gmail conclusively rejected the message query."},
+		{ID: GetMessageBranchInvalidResponse, Description: "Gmail returned an invalid or oversized message response."},
+		{ID: GetMessageBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid."},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
@@ -319,7 +321,8 @@ type GetMessageStepConfig[IN any] struct {
 	MapToOperationInput            func(IN) GetMessageInput                   `connector:"mapToOperationInput"`
 	Read                           sdkgo.Target[GetMessageResult]             `connector:"branch=read"`
 	NotFound                       sdkgo.Target[GetMessageResult]             `connector:"branch=notFound"`
-	Rejected                       sdkgo.Target[GetMessageResult]             `connector:"branch=rejected"`
+	ProviderRejected               sdkgo.Target[GetMessageResult]             `connector:"branch=providerRejected"`
+	InvalidResponse                sdkgo.Target[GetMessageResult]             `connector:"branch=invalidResponse"`
 	Defect                         sdkgo.Target[GetMessageResult]             `connector:"branch=defect"`
 	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Message]] `connector:"resultAttribute"`
 	StepOptionsOverride            *dex.StepOptions                           `connector:"stepOptionsOverride"`
@@ -339,7 +342,8 @@ func NewGetMessageStep[IN any](config GetMessageStepConfig[IN]) sdkgo.QueryStep[
 		Branches: []sdkgo.BranchTarget[GetMessageResult]{
 			config.Read.BranchTarget(GetMessageBranchRead),
 			config.NotFound.BranchTarget(GetMessageBranchNotFound),
-			config.Rejected.BranchTarget(GetMessageBranchRejected),
+			config.ProviderRejected.BranchTarget(GetMessageBranchProviderRejected),
+			config.InvalidResponse.BranchTarget(GetMessageBranchInvalidResponse),
 			config.Defect.BranchTarget(GetMessageBranchDefect),
 		},
 		ResultAttribute:     config.ResultAttribute,
@@ -348,7 +352,7 @@ func NewGetMessageStep[IN any](config GetMessageStepConfig[IN]) sdkgo.QueryStep[
 }
 
 const SendMessageBranchSent sdkgo.BranchID = "sent"
-const SendMessageBranchRejected sdkgo.BranchID = "rejected"
+const SendMessageBranchProviderRejected sdkgo.BranchID = "providerRejected"
 const SendMessageBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
 const SendMessageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 
@@ -356,9 +360,9 @@ var SendMessageDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "sendMessage"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: SendMessageBranchSent, Description: "Gmail accepted the message and returned its identity."},
-		{ID: SendMessageBranchRejected, Description: "Gmail conclusively rejected the message."},
+		{ID: SendMessageBranchProviderRejected, Description: "Gmail conclusively rejected the message."},
 		{ID: SendMessageBranchUncertain, Description: "The dispatched send outcome cannot be confirmed."},
-		{ID: SendMessageBranchDefect, Description: "Local input or connector definition is invalid."},
+		{ID: SendMessageBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid."},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
@@ -379,7 +383,7 @@ type SendMessageStepConfig[IN any] struct {
 	ConnectionName                    string                                                  `connector:"connectionName"`
 	MapToOperationInput               func(IN) SendMessageInput                               `connector:"mapToOperationInput"`
 	Sent                              sdkgo.Target[SendMessageResult]                         `connector:"branch=sent"`
-	Rejected                          sdkgo.Target[SendMessageResult]                         `connector:"branch=rejected"`
+	ProviderRejected                  sdkgo.Target[SendMessageResult]                         `connector:"branch=providerRejected"`
 	Uncertain                         sdkgo.Target[SendMessageResult]                         `connector:"branch=uncertain"`
 	Defect                            sdkgo.Target[SendMessageResult]                         `connector:"branch=defect"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SendMessageOutput]] `connector:"resultAttribute"`
@@ -399,7 +403,7 @@ func NewSendMessageStep[IN any](config SendMessageStepConfig[IN]) sdkgo.Mutation
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: []sdkgo.BranchTarget[SendMessageResult]{
 			config.Sent.BranchTarget(SendMessageBranchSent),
-			config.Rejected.BranchTarget(SendMessageBranchRejected),
+			config.ProviderRejected.BranchTarget(SendMessageBranchProviderRejected),
 			config.Uncertain.BranchTarget(SendMessageBranchUncertain),
 			config.Defect.BranchTarget(SendMessageBranchDefect),
 		},
@@ -409,7 +413,8 @@ func NewSendMessageStep[IN any](config SendMessageStepConfig[IN]) sdkgo.Mutation
 }
 
 const ReplyToMessageBranchSent sdkgo.BranchID = "sent"
-const ReplyToMessageBranchRejected sdkgo.BranchID = "rejected"
+const ReplyToMessageBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ReplyToMessageBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
 const ReplyToMessageBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
 const ReplyToMessageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 
@@ -417,9 +422,10 @@ var ReplyToMessageDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "replyToMessage"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: ReplyToMessageBranchSent, Description: "Gmail accepted the reply and returned its identity."},
-		{ID: ReplyToMessageBranchRejected, Description: "Gmail conclusively rejected the reply."},
+		{ID: ReplyToMessageBranchProviderRejected, Description: "Gmail conclusively rejected the reply."},
+		{ID: ReplyToMessageBranchInvalidResponse, Description: "Gmail returned an invalid or oversized source message response before sending the reply."},
 		{ID: ReplyToMessageBranchUncertain, Description: "The dispatched reply outcome cannot be confirmed."},
-		{ID: ReplyToMessageBranchDefect, Description: "Local input or connector definition is invalid."},
+		{ID: ReplyToMessageBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid."},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
@@ -440,7 +446,8 @@ type ReplyToMessageStepConfig[IN any] struct {
 	ConnectionName                    string                                                  `connector:"connectionName"`
 	MapToOperationInput               func(IN) ReplyToMessageInput                            `connector:"mapToOperationInput"`
 	Sent                              sdkgo.Target[ReplyToMessageResult]                      `connector:"branch=sent"`
-	Rejected                          sdkgo.Target[ReplyToMessageResult]                      `connector:"branch=rejected"`
+	ProviderRejected                  sdkgo.Target[ReplyToMessageResult]                      `connector:"branch=providerRejected"`
+	InvalidResponse                   sdkgo.Target[ReplyToMessageResult]                      `connector:"branch=invalidResponse"`
 	Uncertain                         sdkgo.Target[ReplyToMessageResult]                      `connector:"branch=uncertain"`
 	Defect                            sdkgo.Target[ReplyToMessageResult]                      `connector:"branch=defect"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SendMessageOutput]] `connector:"resultAttribute"`
@@ -460,7 +467,8 @@ func NewReplyToMessageStep[IN any](config ReplyToMessageStepConfig[IN]) sdkgo.Mu
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: []sdkgo.BranchTarget[ReplyToMessageResult]{
 			config.Sent.BranchTarget(ReplyToMessageBranchSent),
-			config.Rejected.BranchTarget(ReplyToMessageBranchRejected),
+			config.ProviderRejected.BranchTarget(ReplyToMessageBranchProviderRejected),
+			config.InvalidResponse.BranchTarget(ReplyToMessageBranchInvalidResponse),
 			config.Uncertain.BranchTarget(ReplyToMessageBranchUncertain),
 			config.Defect.BranchTarget(ReplyToMessageBranchDefect),
 		},

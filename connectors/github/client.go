@@ -246,13 +246,13 @@ func (GetAuthenticatedProfileOperation) Definition() sdkgo.QueryDefinition {
 func (operation GetAuthenticatedProfileOperation) Invoke(call sdkgo.Call, _ GetAuthenticatedProfileInput) sdkgo.QueryAttempt[AuthenticatedProfile] {
 	credential, failure := operation.client.resolveCredential(call, "getAuthenticatedProfile")
 	if failure != nil {
-		return sdkgo.NewQueryBranch(GetAuthenticatedProfileBranchAuthorizationRevoked, AuthenticatedProfile{}, failure, sdkgo.Receipt{})
+		return sdkgo.NewQueryBranch(GetAuthenticatedProfileBranchDefect, AuthenticatedProfile{}, failure, sdkgo.Receipt{})
 	}
 	profileResponse, err := operation.client.get(call, credential, "/user", nil)
 	if err != nil {
 		if errors.Is(err, errResponseTooLarge) {
 			failure := providerFailure("getAuthenticatedProfile", sdkgo.FailureResponseTooLarge, "GitHub profile response exceeds the configured size limit")
-			return sdkgo.NewQueryBranch(GetAuthenticatedProfileBranchFailed, AuthenticatedProfile{}, &failure, receipt(profileResponse))
+			return sdkgo.NewQueryBranch(GetAuthenticatedProfileBranchInvalidResponse, AuthenticatedProfile{}, &failure, receipt(profileResponse))
 		}
 		return sdkgo.NewQueryRetry[AuthenticatedProfile](providerFailure("getAuthenticatedProfile", sdkgo.FailureAvailability, "GitHub is unavailable"), 0)
 	}
@@ -266,13 +266,13 @@ func (operation GetAuthenticatedProfileOperation) Invoke(call sdkgo.Call, _ GetA
 	var user githubUser
 	if err := decodeJSON(profileResponse.body, &user); err != nil || user.ID <= 0 || strings.TrimSpace(user.Login) == "" {
 		failure := providerFailure("getAuthenticatedProfile", sdkgo.FailureProtocol, "GitHub returned an invalid profile response")
-		return sdkgo.NewQueryBranch(GetAuthenticatedProfileBranchFailed, AuthenticatedProfile{}, &failure, receipt(profileResponse))
+		return sdkgo.NewQueryBranch(GetAuthenticatedProfileBranchInvalidResponse, AuthenticatedProfile{}, &failure, receipt(profileResponse))
 	}
 	emailResponse, err := operation.client.get(call, credential, "/user/emails", url.Values{"per_page": {"100"}})
 	if err != nil {
 		if errors.Is(err, errResponseTooLarge) {
 			failure := providerFailure("getAuthenticatedProfile", sdkgo.FailureResponseTooLarge, "GitHub email response exceeds the configured size limit")
-			return sdkgo.NewQueryBranch(GetAuthenticatedProfileBranchFailed, AuthenticatedProfile{}, &failure, receipt(emailResponse))
+			return sdkgo.NewQueryBranch(GetAuthenticatedProfileBranchInvalidResponse, AuthenticatedProfile{}, &failure, receipt(emailResponse))
 		}
 		return sdkgo.NewQueryRetry[AuthenticatedProfile](providerFailure("getAuthenticatedProfile", sdkgo.FailureAvailability, "GitHub is unavailable"), 0)
 	}
@@ -291,7 +291,7 @@ func (operation GetAuthenticatedProfileOperation) Invoke(call sdkgo.Call, _ GetA
 	var emails []githubEmail
 	if err := decodeJSON(emailResponse.body, &emails); err != nil {
 		failure := providerFailure("getAuthenticatedProfile", sdkgo.FailureProtocol, "GitHub returned an invalid email response")
-		return sdkgo.NewQueryBranch(GetAuthenticatedProfileBranchFailed, AuthenticatedProfile{}, &failure, combinedReceipt)
+		return sdkgo.NewQueryBranch(GetAuthenticatedProfileBranchInvalidResponse, AuthenticatedProfile{}, &failure, combinedReceipt)
 	}
 	verifiedEmail := primaryVerifiedEmail(emails)
 	if verifiedEmail == "" {
@@ -322,7 +322,7 @@ func (operation ListPublicRepositoriesOperation) Invoke(call sdkgo.Call, input L
 	}
 	credential, failure := operation.client.resolveCredential(call, "listPublicRepositories")
 	if failure != nil {
-		return sdkgo.NewQueryBranch(ListPublicRepositoriesBranchAuthorizationRevoked, PublicRepositories{}, failure, sdkgo.Receipt{})
+		return sdkgo.NewQueryBranch(ListPublicRepositoriesBranchDefect, PublicRepositories{}, failure, sdkgo.Receipt{})
 	}
 	repositories := make(map[int64]Repository, limit)
 	page := 1
@@ -336,7 +336,7 @@ func (operation ListPublicRepositoriesOperation) Invoke(call sdkgo.Call, input L
 		if err != nil {
 			if errors.Is(err, errResponseTooLarge) {
 				failure := providerFailure("listPublicRepositories", sdkgo.FailureResponseTooLarge, "GitHub repository response exceeds the configured size limit")
-				return sdkgo.NewQueryBranch(ListPublicRepositoriesBranchFailed, PublicRepositories{}, &failure, receipt(response))
+				return sdkgo.NewQueryBranch(ListPublicRepositoriesBranchInvalidResponse, PublicRepositories{}, &failure, receipt(response))
 			}
 			return sdkgo.NewQueryRetry[PublicRepositories](providerFailure("listPublicRepositories", sdkgo.FailureAvailability, "GitHub is unavailable"), 0)
 		}
@@ -352,7 +352,7 @@ func (operation ListPublicRepositoriesOperation) Invoke(call sdkgo.Call, input L
 		var providerRepositories []githubRepository
 		if err := decodeJSON(response.body, &providerRepositories); err != nil {
 			failure := providerFailure("listPublicRepositories", sdkgo.FailureProtocol, "GitHub returned an invalid repository response")
-			return sdkgo.NewQueryBranch(ListPublicRepositoriesBranchFailed, PublicRepositories{}, &failure, lastReceipt)
+			return sdkgo.NewQueryBranch(ListPublicRepositoriesBranchInvalidResponse, PublicRepositories{}, &failure, lastReceipt)
 		}
 		for _, providerRepository := range providerRepositories {
 			if providerRepository.ID <= 0 || providerRepository.Private || (providerRepository.Visibility != "" && providerRepository.Visibility != "public") {
@@ -461,7 +461,7 @@ func (client *Client) classify(operation string, response providerResponse, bran
 		if response.statusCode >= 500 {
 			return &terminalResponse{failure: providerFailure(operation, sdkgo.FailureAvailability, "GitHub is unavailable"), retry: true}
 		}
-		return &terminalResponse{branch: branches.failed, failure: providerFailure(operation, sdkgo.FailureProviderRejection, "GitHub rejected the request")}
+		return &terminalResponse{branch: branches.providerRejected, failure: providerFailure(operation, sdkgo.FailureProviderRejection, "GitHub rejected the request")}
 	}
 }
 
@@ -469,7 +469,7 @@ type responseBranches struct {
 	insufficientScope sdkgo.BranchID
 	revoked           sdkgo.BranchID
 	notFound          sdkgo.BranchID
-	failed            sdkgo.BranchID
+	providerRejected  sdkgo.BranchID
 }
 
 func profileBranches() responseBranches {
@@ -477,7 +477,7 @@ func profileBranches() responseBranches {
 		insufficientScope: GetAuthenticatedProfileBranchInsufficientScope,
 		revoked:           GetAuthenticatedProfileBranchAuthorizationRevoked,
 		notFound:          GetAuthenticatedProfileBranchNotFound,
-		failed:            GetAuthenticatedProfileBranchFailed,
+		providerRejected:  GetAuthenticatedProfileBranchProviderRejected,
 	}
 }
 
@@ -486,7 +486,7 @@ func repositoryBranches() responseBranches {
 		insufficientScope: ListPublicRepositoriesBranchInsufficientScope,
 		revoked:           ListPublicRepositoriesBranchAuthorizationRevoked,
 		notFound:          ListPublicRepositoriesBranchNotFound,
-		failed:            ListPublicRepositoriesBranchFailed,
+		providerRejected:  ListPublicRepositoriesBranchProviderRejected,
 	}
 }
 

@@ -73,6 +73,8 @@ func NewFlow(connection slack.Connection) *Flow {
 }
 
 func (flow *Flow) GetSteps() []dex.StepDef {
+	threadReadRecovery := sdkgo.GoTo(threadReadFailed{})
+	completionRecovery := sdkgo.GoTo(completionNeedsRecovery{})
 	return []dex.StepDef{
 		dex.DefineStartStep(initializeThread{}),
 		dex.DefineStep(slack.NewListThreadMessagesStep(slack.ListThreadMessagesStepConfig[Input]{
@@ -85,8 +87,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			MapToOperationInput: func(input Input) slack.ListThreadMessagesInput {
 				return slack.ListThreadMessagesInput{ChannelID: input.ChannelID, ThreadTimestamp: input.ThreadTimestamp, PageSize: 15}
 			},
-			Read: sdkgo.GoTo(threadLoaded{}), Rejected: sdkgo.GoTo(threadReadFailed{}),
-			Defect: sdkgo.GoTo(threadReadFailed{}),
+			Read: sdkgo.GoTo(threadLoaded{}), ProviderRejected: threadReadRecovery,
+			InvalidResponse: threadReadRecovery, Defect: threadReadRecovery,
 		})),
 		dex.DefineStep(threadLoaded{}),
 		dex.DefineStep(threadReadFailed{}),
@@ -103,8 +105,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 					Text: "Processing complete.",
 				}
 			},
-			Sent: sdkgo.GoTo(completionPosted{}), Rejected: sdkgo.GoTo(completionNeedsRecovery{}),
-			Uncertain: sdkgo.GoTo(completionNeedsRecovery{}), Defect: sdkgo.GoTo(completionNeedsRecovery{}),
+			Sent: sdkgo.GoTo(completionPosted{}), ProviderRejected: completionRecovery,
+			Uncertain: completionRecovery, Defect: completionRecovery,
 			ResultAttribute: &postReplyResultAttribute,
 		})),
 		dex.DefineStep(completionPosted{}),
@@ -297,7 +299,7 @@ func (completionPosted) Execute(ctx dex.Context, _ postReplyOutput) (*dex.StepDe
 }
 
 // dex:group group-id:recovery group-label:"Recovery"
-// dex:explanation text:"Pause after a rejected or uncertain Slack reply for explicit recovery."
+// dex:explanation text:"Pause after a terminal or uncertain Slack reply outcome for explicit recovery."
 type completionNeedsRecovery struct {
 	dex.StepDefaultsNoWaitFor[postReplyOutput]
 }

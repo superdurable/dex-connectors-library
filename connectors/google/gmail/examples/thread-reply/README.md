@@ -22,7 +22,7 @@ Attribute when no external reader needs the raw result.
 Before either Dex call, the application supplies a typed filter. The example
 builds those filters from the binding configuration saved by Dex Web and checks
 the root-or-reply shape, sender address, and case-insensitive subject/snippet
-substring again. A rejected event is consumed without resolving a Flow ID or
+substring again. A filtered event is consumed without resolving a Flow ID or
 calling Dex. The pure filter has no error result.
 
 ## Configure
@@ -56,6 +56,7 @@ The default Worker address is `127.0.0.1:8814`. Override
 `DEX_FLOW_SERVICE_ADDRESS`, `DEX_WORKER_BIND_ADDRESS`, or
 `DEX_BLOB_CACHE_DIR` when needed.
 
-If Gmail rejects the initial read, the Flow fails. A rejected, uncertain, or
-defective reply enters `needsRecovery`; the example never blindly resends an
-uncertain external write.
+If the initial read has a provider rejection, invalid response, or local defect,
+the Flow fails. A provider-rejected, invalid-response, uncertain, or defective
+reply enters `needsRecovery`; the example never blindly resends an uncertain
+external write.

@@ -46,7 +46,8 @@ func TestGeneratedFactoriesExposeEveryTypedBranch(t *testing.T) {
 		},
 		ProfileLoaded: sdkgo.GoTo(profileTarget{}), VerifiedEmailRequired: sdkgo.GoTo(profileTarget{}),
 		InsufficientScope: sdkgo.GoTo(profileTarget{}), AuthorizationRevoked: sdkgo.GoTo(profileTarget{}),
-		NotFound: sdkgo.GoTo(profileTarget{}), Failed: sdkgo.GoTo(profileTarget{}), Defect: sdkgo.GoTo(profileTarget{}),
+		NotFound: sdkgo.GoTo(profileTarget{}), ProviderRejected: sdkgo.GoTo(profileTarget{}),
+		InvalidResponse: sdkgo.GoTo(profileTarget{}), Defect: sdkgo.GoTo(profileTarget{}),
 		ResultAttribute: &profileResult,
 	})
 	require.Equal(t, "ReadGitHubProfile", profile.GetStepType())
@@ -59,7 +60,8 @@ func TestGeneratedFactoriesExposeEveryTypedBranch(t *testing.T) {
 		},
 		RepositoriesLoaded: sdkgo.GoTo(repositoriesTarget{}), InsufficientScope: sdkgo.GoTo(repositoriesTarget{}),
 		AuthorizationRevoked: sdkgo.GoTo(repositoriesTarget{}), NotFound: sdkgo.GoTo(repositoriesTarget{}),
-		Failed: sdkgo.GoTo(repositoriesTarget{}), Defect: sdkgo.GoTo(repositoriesTarget{}),
+		ProviderRejected: sdkgo.GoTo(repositoriesTarget{}), InvalidResponse: sdkgo.GoTo(repositoriesTarget{}),
+		Defect:          sdkgo.GoTo(repositoriesTarget{}),
 		ResultAttribute: &repositoriesResult,
 	})
 	require.Equal(t, "ReadGitHubRepositories", repositories.GetStepType())

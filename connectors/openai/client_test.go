@@ -70,6 +70,48 @@ func TestRetrieveResponseSupportsReceiptRecovery(t *testing.T) {
 	require.Equal(t, "resp_known", result.Receipt.ProviderObjectID)
 }
 
+func TestRetrieveResponseClassifiesTerminalOutcomes(t *testing.T) {
+	for _, test := range []struct {
+		name       string
+		status     int
+		body       string
+		wantBranch sdkgo.BranchID
+		wantKind   sdkgo.FailureKind
+	}{
+		{name: "not found", status: http.StatusNotFound, body: `{}`, wantBranch: openai.RetrieveResponseBranchNotFound, wantKind: sdkgo.FailureNotFound},
+		{name: "provider rejected", status: http.StatusBadRequest, body: `{}`, wantBranch: openai.RetrieveResponseBranchProviderRejected, wantKind: sdkgo.FailureProviderRejection},
+		{name: "invalid response", status: http.StatusOK, body: `{"id":`, wantBranch: openai.RetrieveResponseBranchInvalidResponse, wantKind: sdkgo.FailureProtocol},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+				response.WriteHeader(test.status)
+				_, _ = response.Write([]byte(test.body))
+			}))
+			defer server.Close()
+			client := newClient(t, server.URL)
+			result, err := sdkgo.RunQuery(
+				testsupport.NewDexContext("flow-1", "retrieve-response-"+test.name), client.RetrieveResponse(), openAIConnection,
+				openai.RetrieveRequest{ResponseID: "resp_known"},
+			)
+			require.NoError(t, err)
+			require.Equal(t, test.wantBranch, result.Branch)
+			require.Equal(t, test.wantKind, result.Failure.Kind)
+		})
+	}
+}
+
+func TestRetrieveResponseMissingConnectionUsesDefectBranch(t *testing.T) {
+	client, err := openai.New(openai.Config{}, sdkgo.StaticCredentialProvider[openai.Credentials]{})
+	require.NoError(t, err)
+	result, err := sdkgo.RunQuery(
+		testsupport.NewDexContext("flow-1", "missing-connection"), client.RetrieveResponse(), openAIConnection,
+		openai.RetrieveRequest{ResponseID: "resp_123"},
+	)
+	require.NoError(t, err)
+	require.Equal(t, openai.RetrieveResponseBranchDefect, result.Branch)
+	require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
+}
+
 func TestMalformedSuccessResponseLeavesMutationUnknown(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
 		response.WriteHeader(http.StatusOK)
@@ -87,7 +129,7 @@ func TestMalformedSuccessResponseLeavesMutationUnknown(t *testing.T) {
 	require.NotEmpty(t, result.Receipt.CallID)
 }
 
-func TestConfirmedRejectionIsFailedResult(t *testing.T) {
+func TestConfirmedRejectionUsesProviderRejectedBranch(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
 		response.Header().Set("X-Request-Id", "req_rejected")
 		response.WriteHeader(http.StatusUnauthorized)
@@ -99,7 +141,7 @@ func TestConfirmedRejectionIsFailedResult(t *testing.T) {
 		openai.CreateRequest{Model: "gpt-test", Input: "profile"},
 	)
 	require.NoError(t, err)
-	require.Equal(t, openai.CreateResponseBranchFailed, result.Branch)
+	require.Equal(t, openai.CreateResponseBranchProviderRejected, result.Branch)
 	require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
 	require.Equal(t, "req_rejected", result.Receipt.ProviderRequestID)
 }

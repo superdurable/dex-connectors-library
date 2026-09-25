@@ -41,6 +41,12 @@ a timeout, connection loss, ambiguous 5xx, or invalid success response returns
 the `uncertain` branch and is never automatically resent. Applications must
 route that branch to explicit operator recovery.
 
+Every operation uses `defect` for invalid local input, connection configuration,
+or Connector contract violations. A conclusive Gmail API refusal uses
+`providerRejected`; message reads that return malformed or oversized data use
+`invalidResponse`. Safe query transport, rate-limit, and availability failures
+retry instead of producing a branch.
+
 The `ui/` package builds the credential-safe Studio setup bundle published as
 `connector-ui.tgz` with the Connector release.
 

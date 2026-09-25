@@ -34,6 +34,31 @@ func TestGetMessageDecodesHeadersAndBodies(t *testing.T) {
 	require.Equal(t, "<p>hello</p>", result.Value.HTMLBody)
 }
 
+func TestGetMessageClassifiesProviderAndResponseFailures(t *testing.T) {
+	for _, test := range []struct {
+		name       string
+		status     int
+		body       string
+		wantBranch sdkgo.BranchID
+		wantKind   sdkgo.FailureKind
+	}{
+		{name: "provider rejected", status: http.StatusForbidden, body: `{}`, wantBranch: gmail.GetMessageBranchProviderRejected, wantKind: sdkgo.FailureAuthorization},
+		{name: "invalid response", status: http.StatusOK, body: `{"id":`, wantBranch: gmail.GetMessageBranchInvalidResponse, wantKind: sdkgo.FailureProtocol},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+				response.WriteHeader(test.status)
+				_, _ = response.Write([]byte(test.body))
+			}))
+			defer server.Close()
+			result, err := sdkgo.RunQuery(newGmailDexContext("read-message-"+test.name), newGmailClient(t, server.URL).GetMessage(), gmailConnection, gmail.GetMessageInput{MessageID: "message-1"})
+			require.NoError(t, err)
+			require.Equal(t, test.wantBranch, result.Branch)
+			require.Equal(t, test.wantKind, result.Failure.Kind)
+		})
+	}
+}
+
 func TestReplyToMessageUsesThreadAndRFCReplyHeaders(t *testing.T) {
 	var raw string
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {

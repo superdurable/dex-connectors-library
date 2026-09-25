@@ -30,7 +30,8 @@ func TestSendFactoryRequiresEveryTypedBranch(t *testing.T) {
 			StepType: "Send", Annotations: sdkgo.StepAnnotations{GroupID: "google", GroupLabel: "Google", Explanation: "Send a message."},
 			Connection: connection, ConnectionName: "gmail-send",
 			MapToOperationInput: func(string) gmail.SendMessageInput { return gmail.SendMessageInput{} },
-			Sent:                sdkgo.GoTo(gmailTarget{}), Rejected: sdkgo.GoTo(gmailTarget{}), Uncertain: sdkgo.GoTo(gmailTarget{}),
+			Sent:                sdkgo.GoTo(gmailTarget{}), ProviderRejected: sdkgo.GoTo(gmailTarget{}),
+			Uncertain: sdkgo.GoTo(gmailTarget{}),
 		})
 	})
 }
