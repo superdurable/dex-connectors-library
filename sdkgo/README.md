@@ -16,15 +16,13 @@ events through `TriggerRunner`. Generated Trigger factories accept any typed
 `FlowIDResolver`. The SDK uses the provider event ID as the Flow-start request
 ID.
 
-`TriggerRPC` owns transactional RPC-trigger event deduplication. Its
-`Definition` method returns the direct bound Flow method, and `DefaultOptions`
-adds the event-ID Attribute lock to application locks. The Flow method delegates
-to `TriggerRPC.Handle`, while `PersistenceAttribute` is included in the Flow's
-PersistenceSchema. The same definition is passed to the RPC Trigger target, so
-no configurable RPC-name string can drift from registration.
-`TriggerRPC` does not implement application business behavior. The application
-constructs it with its bound Flow method and event handler. That bound method
-already carries the Flow instance, durable RPC name, input type, and output type.
+RPC Trigger targets receive the same direct bound Flow method that the
+application registers with `dex.DefineRPC`. The method carries the Flow
+instance, durable RPC name, input type, and output type, so no configurable
+RPC-name string can drift from registration. The application owns RPC options,
+durable state, locking, and event deduplication. Connector Triggers preserve the
+provider event ID but do not impose a retention policy or create hidden
+Attributes.
 
 Local development configuration stores named connections and named Trigger
 bindings separately. `localconfig.Store.DecodeTriggerConfiguration` selects a
