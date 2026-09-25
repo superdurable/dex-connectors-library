@@ -22,6 +22,10 @@ test:
 test-integration:
 	go test -tags=integration ./examples/customer-onboarding -count=1 -v
 	cd sdk/go && GOWORK=off go test -tags=integration ./integrationtest/... -count=1 -v
+	@find connectors -name connector.yaml -print | sort | while IFS= read -r manifest; do \
+		module=$${manifest%/connector.yaml}; \
+		(cd "$$module" && GOWORK=off go test -tags=integration ./... -count=1 -v) || exit 1; \
+	done
 
 react:
 	cd sdk/react && npm ci && npm test && npm run build
