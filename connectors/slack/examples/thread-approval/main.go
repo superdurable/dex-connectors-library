@@ -75,7 +75,7 @@ func run(ctx context.Context) error {
 	replyRunner, err := slack.NewLocalThreadReplyCreatedTrigger(
 		store, threadapproval.ConnectionName, threadapproval.ReplyTriggerBinding,
 		sdkgo.NewDexRPCTriggerTarget(
-			client, flow.ReplyTriggerRPC().Definition(), slack.FlowIDByThread(threadapproval.ResolveFlowID),
+			client, flow.ReceiveThreadReply, slack.FlowIDByThread(threadapproval.ResolveFlowID),
 		),
 	)
 	if err != nil {
