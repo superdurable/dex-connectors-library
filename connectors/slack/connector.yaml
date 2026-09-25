@@ -1,0 +1,141 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: slack
+  displayName: Slack
+  description: Start and update Dex Flows from Slack threads and exchange thread messages.
+spec:
+  provider: slack
+  codegen:
+    go:
+      package: slack
+  configuration:
+    fields:
+      - name: endpoint
+        goName: Endpoint
+        type: url
+        description: Slack Web API endpoint.
+        required: false
+        default: https://slack.com/api
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum provider response size.
+        required: false
+        default: 4194304
+      - name: maxMessageCharacters
+        goName: MaxMessageCharacters
+        type: integer
+        description: Maximum message text length accepted by this connector.
+        required: false
+        default: 40000
+  auth:
+    type: oauth2
+    connectionKind: slack-socket-mode-oauth
+    fields:
+      - name: bot_token
+        goName: BotToken
+        type: secretString
+        description: Slack OAuth bot token.
+        required: true
+      - name: user_token
+        goName: UserToken
+        type: secretString
+        description: Slack OAuth user token used to read channel thread replies.
+        required: true
+      - name: app_token
+        goName: AppToken
+        type: secretString
+        description: Slack app-level Socket Mode token with connections:write.
+        required: true
+    oauth2:
+      authorizationEndpoint: https://slack.com/oauth/v2/authorize
+      tokenEndpoint: https://slack.com/api/oauth.v2.access
+      scopes: [channels:history, groups:history, channels:read, groups:read, users:read, chat:write]
+      userScopes: [channels:history, groups:history]
+      credentialMappings:
+        - {credential: bot_token, source: access_token}
+        - {credential: user_token, source: authed_user.access_token}
+      pkce: false
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.1.0 <0.2.0"
+      backendCapabilities: [oauth.connection.manage, configuration.write, trigger.configuration.write, slack.channels-list, slack.users-list]
+      mockScenarios: [not-configured, authorization-pending, connected, insufficient-scope, revoked, broker-unavailable, ready]
+      icon: icon.svg
+  triggers:
+    - name: channelThreadCreated
+      goName: ChannelThreadCreated
+      eventType: MessageEvent
+      configurationType: ChannelThreadCreatedTriggerConfiguration
+      description: Receive a matching top-level channel message.
+    - name: threadReplyCreated
+      goName: ThreadReplyCreated
+      eventType: MessageEvent
+      configurationType: ThreadReplyCreatedTriggerConfiguration
+      description: Receive a matching thread reply.
+  operations:
+    - name: listThreadMessages
+      goName: ListThreadMessages
+      inputType: ListThreadMessagesInput
+      outputType: ListThreadMessagesOutput
+      kind: query
+      description: Read one bounded page of messages from a channel thread.
+      idempotency: none
+      branches:
+        - {id: read, goName: Read, description: The thread page was read.}
+        - {id: rejected, goName: Rejected, description: Slack rejected the query.}
+        - {id: defect, goName: Defect, description: Local input or connector definition is invalid.}
+      defectBranch: defect
+      resultAttribute: optional
+      execution: &slackQueryExecution
+        executeMethodTimeout: 30s
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+    - name: getThreadReply
+      goName: GetThreadReply
+      inputType: GetThreadReplyInput
+      outputType: GetThreadReplyOutput
+      kind: query
+      description: Read one reply from a channel thread by timestamp.
+      idempotency: none
+      branches:
+        - {id: found, goName: Found, description: The reply was found.}
+        - {id: notFound, goName: NotFound, description: The reply does not exist.}
+        - {id: rejected, goName: Rejected, description: Slack rejected the query.}
+        - {id: defect, goName: Defect, description: Local input or connector definition is invalid.}
+      defectBranch: defect
+      resultAttribute: optional
+      execution: *slackQueryExecution
+    - name: postChannelMessage
+      goName: PostChannelMessage
+      inputType: PostChannelMessageInput
+      outputType: PostMessageOutput
+      kind: mutation
+      description: Post one top-level message to a Slack channel.
+      idempotency: required
+      branches: &postBranches
+        - {id: sent, goName: Sent, description: Slack accepted the message.}
+        - {id: rejected, goName: Rejected, description: Slack conclusively rejected the message.}
+        - {id: uncertain, goName: Uncertain, description: The dispatched message outcome cannot be confirmed.}
+        - {id: defect, goName: Defect, description: Local input or connector definition is invalid.}
+      defectBranch: defect
+      uncertainBranch: uncertain
+      resultAttribute: required
+      execution: &slackMutationExecution
+        executeMethodTimeout: 30s
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+    - name: postThreadReply
+      goName: PostThreadReply
+      inputType: PostThreadReplyInput
+      outputType: PostMessageOutput
+      kind: mutation
+      description: Post one reply to an existing Slack channel thread.
+      idempotency: required
+      branches: *postBranches
+      defectBranch: defect
+      uncertainBranch: uncertain
+      resultAttribute: required
+      execution: *slackMutationExecution
