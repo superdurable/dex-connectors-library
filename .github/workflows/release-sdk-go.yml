@@ -113,7 +113,8 @@ jobs:
           RELEASE_VERSION: ${{ steps.plan.outputs.version }}
         run: |
           deadline=$((SECONDS + 120))
-          until GOWORK=off GOPROXY=direct go mod download "${MODULE_PATH}@${RELEASE_VERSION}"; do
+          until GOWORK=off GOPROXY=direct GONOSUMDB=github.com/superdurable/dex-connectors-library \
+            go mod download "${MODULE_PATH}@${RELEASE_VERSION}"; do
             if (( SECONDS >= deadline )); then
               echo "Published SDK module did not become downloadable before the deadline" >&2
               exit 1
