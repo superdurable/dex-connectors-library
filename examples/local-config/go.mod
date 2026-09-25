@@ -3,7 +3,7 @@ module github.com/superdurable/dex-connectors-library/examples/local-config
 go 1.24.0
 
 require (
-	github.com/superdurable/dex-connectors-library/connectors/google/gmail v0.1.1
+	github.com/superdurable/dex-connectors-library/connectors/google/gmail v0.3.0
 	github.com/superdurable/dex-connectors-library/sdkgo v0.1.0
 )
 
@@ -12,7 +12,6 @@ require (
 	github.com/dgraph-io/ristretto/v2 v2.4.2 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/superdurable/dex-connectors-library/sdk/go v0.1.2 // indirect
 	github.com/superdurable/dex/blob-cache-go v0.1.0 // indirect
 	github.com/superdurable/dex/sdk-go v0.11.3 // indirect
 	golang.org/x/net v0.49.0 // indirect
