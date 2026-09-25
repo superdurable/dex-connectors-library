@@ -92,7 +92,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Presentation: connector.StepPresentation{GroupID: "gmail", GroupLabel: "Gmail", Explanation: "Reply after the received email Trigger invokes the typed RPC."},
 			Connection:   flow.connection,
 			BuildInput: func(state ThreadState) (gmail.ReplyToMessageInput, error) {
-				return gmail.ReplyToMessageInput{MessageID: state.ReplyMessageID, TextBody: "处理结束"}, nil
+				return gmail.ReplyToMessageInput{MessageID: state.ReplyMessageID, TextBody: "Processing complete"}, nil
 			},
 			Sent: connector.GoTo(replySent{}), Rejected: connector.GoTo(replyNeedsRecovery{}),
 			Uncertain: connector.GoTo(replyNeedsRecovery{}), Defect: connector.GoTo(replyNeedsRecovery{}),

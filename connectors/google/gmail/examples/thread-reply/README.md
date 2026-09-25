@@ -6,7 +6,7 @@ Connector:
 1. a matching received root message starts a Flow;
 2. the Flow reads that message with `GetMessage`;
 3. a matching received reply invokes the typed `ReceiveEmailReply` RPC; and
-4. the Flow replies `处理结束` in the same Gmail thread with `ReplyToMessage`.
+4. the Flow replies `Processing complete` in the same Gmail thread with `ReplyToMessage`.
 
 Both neutral provider Triggers use the same application callback to map the
 authorized primary email and Gmail thread ID to a stable Flow ID. The

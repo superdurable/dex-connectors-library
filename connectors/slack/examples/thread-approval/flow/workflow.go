@@ -100,7 +100,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			BuildInput: func(state ThreadState) (slack.PostThreadReplyInput, error) {
 				return slack.PostThreadReplyInput{
 					ChannelID: state.Input.ChannelID, ThreadTimestamp: state.Input.ThreadTimestamp,
-					Text: fmt.Sprintf("处理结束（approved by <@%s>）", state.ReplyUserID),
+					Text: fmt.Sprintf("Processing complete (approved by <@%s>)", state.ReplyUserID),
 				}, nil
 			},
 			Sent: connector.GoTo(completionPosted{}), Rejected: connector.GoTo(completionNeedsRecovery{}),

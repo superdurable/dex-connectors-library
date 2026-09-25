@@ -5,7 +5,7 @@ This example keeps one complete Slack integration beside the Slack Connector:
 1. a matching top-level channel message starts a Flow;
 2. the Flow reads the first page of that thread with `ListThreadMessages`;
 3. a matching reply invokes the typed `ReceiveThreadReply` RPC; and
-4. the Flow posts `处理结束` to the same thread with `PostThreadReply`.
+4. the Flow posts `Processing complete` to the same thread with `PostThreadReply`.
 
 The root and reply Triggers use the same application callback to map Slack team
 ID, channel ID, and root timestamp to a stable Flow ID. The RPC is registered
