@@ -398,6 +398,7 @@ def test_dex_web(dex_release: dict[str, object], root: Path, artifacts: Path, te
     run(["npm", "run", "build"], web)
     environment = os.environ.copy()
     environment["GOWORK"] = "off"
+    environment["GOTOOLCHAIN"] = "auto"
     environment["DEX_CONNECTOR_COMPAT_ARTIFACT_ROOT"] = str(artifacts)
     run(["go", "test", ".", "-run", "TestExternalConnectorCompatibility|TestConnectorOAuth|TestSlackOAuth|TestConnectorConnectionsAPI|TestConnectorConnectionStore", "-count=1", "-v"], web, environment)
 
