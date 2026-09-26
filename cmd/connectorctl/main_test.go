@@ -23,7 +23,7 @@ func TestCatalogLoadsRepositoryDirectoryRegistry(t *testing.T) {
 		entries[0].Manifest.Metadata.Name, entries[1].Manifest.Metadata.Name, entries[2].Manifest.Metadata.Name,
 		entries[3].Manifest.Metadata.Name, entries[4].Manifest.Metadata.Name, entries[5].Manifest.Metadata.Name,
 	})
-	require.Equal(t, []string{"v0.6.0", "v0.11.0", "v0.7.0", "v0.6.0", "v0.6.0", "v0.10.0"}, []string{
+	require.Equal(t, []string{"v0.7.0", "v0.11.0", "v0.7.0", "v0.6.0", "v0.6.0", "v0.10.0"}, []string{
 		entries[0].Manifest.Metadata.Version, entries[1].Manifest.Metadata.Version, entries[2].Manifest.Metadata.Version,
 		entries[3].Manifest.Metadata.Version, entries[4].Manifest.Metadata.Version, entries[5].Manifest.Metadata.Version,
 	})
@@ -33,6 +33,9 @@ func TestRegisteredOperationsKeepOnlyHappyPathBranchesRequired(t *testing.T) {
 	happyBranchByOperation := map[string]string{
 		"getAuthenticatedProfile": "profileLoaded",
 		"listPublicRepositories":  "repositoriesLoaded",
+		"listMergedPullRequests":  "listed",
+		"listPullRequestFiles":    "listed",
+		"listCommits":             "listed",
 		"getMessage":              "read",
 		"sendMessage":             "sent",
 		"replyToMessage":          "sent",

@@ -1,30 +1,119 @@
 # GitHub Connector
 
-The GitHub connector is an independent Go module for signup profile evidence.
-It exposes generated Dex Query Step factories for:
+The GitHub connector is an independent Go module for signup profile evidence
+and public repository change research. It exposes generated Dex Query Step
+factories for:
 
 - `GetAuthenticatedProfile`: authenticated account plus primary verified email;
 - `ListPublicRepositories`: recent-first, deduplicated, bounded public
-  repositories owned by one login.
+  repositories owned by one login;
+- `ListMergedPullRequests`: one page of pull requests merged into a repository
+  within a time window;
+- `ListPullRequestFiles`: one page of files changed by a pull request;
+- `ListCommits`: one page of commits within a time window, optionally from one
+  ref and path.
 
 The OAuth connection requests only `read:user user:email`. The connector never
-requests `repo`, `public_repo`, organization, or write scopes. Repository reads
-use only `GET /users/{login}/repos` and never return private repositories,
-source, README, events, issues, or raw GitHub responses.
+requests `repo`, `public_repo`, organization, or write scopes. Without `repo`,
+GitHub serves only public repository data. Every operation also checks
+GitHub's `X-OAuth-Scopes` response header and selects `insufficientScope` for a
+grant that differs from those two scopes, including a broader token, so the
+queries cannot return private repository data. Repository listing never
+returns private repositories, source, README, events, or issues. The change
+queries return bounded pull request metadata and bodies, changed-file patches,
+and commit messages, never raw GitHub responses, commit email addresses, or
+provider error bodies.
 
 GitHub documents [`read:user` and `user:email` as the profile and email OAuth
 scopes](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/scopes-for-oauth-apps).
-The connector follows GitHub's authoritative `Retry-After` and
-`X-RateLimit-Reset` headers for safe Query retries.
+A rate-limited Query retries after the delay that GitHub's [rate-limit
+guidance](https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api)
+gives: `Retry-After` seconds when present, the `X-RateLimit-Reset` time when
+`X-RateLimit-Remaining` is `0`, and otherwise one minute. Dex waits for that
+delay only while it fits in the Step's remaining retry budget.
 
 The default repository limit is 100 and the hard cap is 500. Provider pages use
 at most 100 items. Results report truncation and retain only bounded profile and
 repository metadata.
 
+## Repository change queries
+
+Each change query makes one GitHub request for one page. Its happy-path branch
+is `listed`. `NextPage` comes from GitHub's `Link` header `rel="next"` and is
+zero when no page follows. An application reads another page with another Step
+execution. Pages are one-based. `PageSize` accepts 1 through 100.
+
+| Operation | GitHub REST API | Default page size |
+| --- | --- | --- |
+| `listMergedPullRequests` | [`GET /search/issues`](https://docs.github.com/en/rest/search/search#search-issues-and-pull-requests) with `repo:OWNER/REPO is:pr is:merged merged:AFTER..BEFORE` | 30 |
+| `listPullRequestFiles` | [`GET /repos/{owner}/{repo}/pulls/{pull_number}/files`](https://docs.github.com/en/rest/pulls/pulls#list-pull-requests-files) | 50 |
+| `listCommits` | [`GET /repos/{owner}/{repo}/commits`](https://docs.github.com/en/rest/commits/commits#list-commits) with `since`, `until`, and optional `path` and `sha` | 30 |
+
+`listMergedPullRequests` uses search because the pull request list endpoint
+cannot filter by merge time. The window is inclusive at both ends, uses UTC,
+and has second precision, as GitHub search ranges define it. Search cannot sort
+by merge time, so results are ordered by pull request creation time, newest
+first. Creation time never changes, which keeps page boundaries stable while
+later comments update a pull request. `TotalCount` and `IncompleteResults`
+come from GitHub. GitHub search serves only the first 1000 matches, so a page
+that starts after them selects `defect` before GitHub is called. Narrow the
+window when `TotalCount` exceeds 1000. Search results do not include the base
+branch. GitHub answers a search of a missing or inaccessible repository with
+`422`, which selects `providerRejected`.
+
+`listCommits` passes `Since` and `Until` to GitHub as `since` and `until`, and
+`Ref` as `sha`; an empty `Ref` reads the default branch. GitHub answers `409`
+for an empty repository. That repository has no commits in any window, so the
+operation selects `listed` with no commits and records `repositoryEmpty` in the
+receipt metadata. A missing ref or repository selects `notFound`.
+
+Primary and secondary rate limits retry. A rate limit is any `429`, or a `403`
+with `Retry-After`, with `X-RateLimit-Remaining: 0`, or with an error message
+that says a rate limit was exceeded. GitHub can send a secondary rate limit
+without either header, so the connector reads the bounded error body's
+`message` field for this check only and never returns it. The retry waits for
+`Retry-After` seconds, for `X-RateLimit-Reset` when `X-RateLimit-Remaining` is
+`0`, and otherwise for one minute, as GitHub's rate-limit guidance says.
+
+The change queries allow five Execute attempts within 65 minutes, so Dex can
+wait out GitHub's hourly primary rate-limit window. The Step fails when a delay
+does not fit in the remaining budget or the attempts run out, and then the
+Flow fails unless `StepOptionsOverride` sets `dex.ProceedToOnExecuteFailure`.
+When a delay is longer than the Step's async local execution can wait, Dex
+sends the first retry at once as it moves the Step to regular execution; later
+retries wait for GitHub's delay. To fail sooner, give `StepOptionsOverride` a
+complete `ExecuteRetry` policy with a shorter `TotalDuration`.
+
+A `5xx` response or a transport failure retries with the policy's backoff.
+`401` selects `authorizationRevoked`, any other `403` selects
+`insufficientScope`, and `404` selects `notFound`. The connector does not
+follow redirects, so a renamed or transferred repository selects
+`providerRejected`; use its current owner and name. Malformed JSON, an item
+without required fields, or a next link that does not advance selects
+`invalidResponse`. A response over `maxResponseBytes` selects
+`invalidResponse` with a response-size failure; request a smaller page.
+
+These configuration fields bound text in Results. Each counts Unicode
+characters, keeps the beginning, and sets the matching truncation flag:
+
+| Field | Default | Bounds |
+| --- | --- | --- |
+| `maxPullRequestBodyCharacters` | 4000 | `MergedPullRequest.Body`, `BodyTruncated` |
+| `maxPatchCharacters` | 4000 | `PullRequestFile.Patch`, `PatchTruncated` |
+| `maxCommitMessageCharacters` | 4000 | `CommitSummary.Message`, `MessageTruncated` |
+
+GitHub omits the patch for a binary or very large file, which leaves `Patch`
+empty with `PatchTruncated` false.
+
+The [repository changes example](examples/repository-changes/README.md) runs
+all three queries in one Flow from Dex Web **Start Flow**.
+
+## Install and verify
+
 Install the published module:
 
 ```bash
-go get github.com/superdurable/dex-connectors-library/connectors/github@v0.6.0
+go get github.com/superdurable/dex-connectors-library/connectors/github@v0.7.0
 ```
 
 Verify it independently:
@@ -41,7 +130,9 @@ GITHUB_CONNECTOR_TEST_TOKEN=... GOWORK=off go test -tags=live -run TestLive ./..
 ```
 
 The dedicated token must grant exactly the documented signup scopes. The live
-test reads at most five public repositories and never logs the token.
+test reads at most five public repositories, and at most five merged pull
+requests, changed files, and commits from the last 30 days of
+`superdurable/dex`. It never logs the token.
 
 Applications own the OAuth start/callback, state, PKCE verifier, token exchange,
 one-use token deletion, Result Attributes, and branch behavior. Provider calls
