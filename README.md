@@ -37,20 +37,69 @@ for plugin setup and the complete contribution workflow.
 
 ## Use a connector
 
-Connector operations are typed Dex Steps. Map the current Flow value to the
-provider input, then connect the successful provider branch to the next Step:
+A Connector is a versioned integration package, not just an API operation. It
+can own authentication and connection configuration, provider reads and
+writes, provider event ingress, typed routing into Dex, and reusable setup UI.
+Applications keep only a logical connection name; credentials remain in the
+Connector runtime and never enter Flow state or a configuration UI unit.
+
+| Capability | Purpose |
+| --- | --- |
+| Query operation | Read provider state from a typed Connector Step. |
+| Mutation operation | Change provider state with idempotency and explicit uncertainty handling. |
+| Trigger | Receive and normalize provider events with stable event identity and at-least-once delivery. |
+| Flow Trigger target | Filter and map a Trigger event into a new typed Flow execution. |
+| Flow RPC and RPC Trigger target | Define a typed method on an existing Flow, then filter and map a Trigger event into it. |
+| Configuration UI unit | Let Dex Web compose connector-owned controls for non-secret operation or Trigger configuration. |
+
+### Query operation
+
+A Query reads provider state. The operation-specific factory creates a typed
+Dex Step; the application maps the current Flow value to provider input and
+connects the successful result branch to the next Step. Provider work runs in
+the Connector Step's `Execute` method.
+
+For example, the Slack thread approval Flow reads one bounded page of thread
+messages and routes the `Read` result to `threadLoaded`:
+
+```go
+dex.DefineStep(slack.NewListThreadMessagesStep(slack.ListThreadMessagesStepConfig[Input]{
+	StepType:       readThreadStepType,
+	ConnectionName: ConnectionName,
+	Annotations: sdkgo.StepAnnotations{
+		GroupID: "slack", GroupLabel: "Slack",
+		Explanation: "Read the messages in the newly created Slack thread.",
+	},
+	Connection: flow.connection,
+	MapToOperationInput: func(input Input) slack.ListThreadMessagesInput {
+		return slack.ListThreadMessagesInput{
+			ChannelID: input.ChannelID, ThreadTimestamp: input.ThreadTimestamp,
+			PageSize: 15,
+		}
+	},
+	Read: sdkgo.GoTo(threadLoaded{}),
+}))
+```
+
+### Mutation operation
+
+A Mutation changes provider state. It uses the same typed Step boundary, but
+its provider adapter also derives a stable idempotency key from the Dex call
+identity. A conclusive provider outcome selects a branch; an ambiguous
+post-dispatch outcome selects `uncertain` for reconciliation instead of being
+blindly resent.
+
+This Slack Mutation maps durable thread state into a reply and continues only
+after Slack confirms the `Sent` branch:
 
 ```go
 dex.DefineStep(slack.NewPostThreadReplyStep(slack.PostThreadReplyStepConfig[ThreadState]{
 	StepType:       postCompletionStepType,
 	ConnectionName: ConnectionName,
-	ConfigurationUI: sdkgo.ConnectorConfigurationUI{Units: []sdkgo.ConnectorUIUnit{{
-		ID: "completionText", UnitID: slack.UIUnitTextInput,
-		Label: "Completion reply", Required: true,
-		Bindings: []sdkgo.ConnectorUIBinding{{
-			Port: slack.UITextInputPortText, JSONPointer: "/text",
-		}},
-	}}},
+	Annotations: sdkgo.StepAnnotations{
+		GroupID: "slack", GroupLabel: "Slack",
+		Explanation: "Reply to the Slack thread after the reply Trigger invokes the RPC.",
+	},
 	Connection:     flow.connection,
 	MapToOperationInput: func(state ThreadState) slack.PostThreadReplyInput {
 		return slack.PostThreadReplyInput{
@@ -62,6 +111,108 @@ dex.DefineStep(slack.NewPostThreadReplyStep(slack.PostThreadReplyStepConfig[Thre
 	Sent: sdkgo.GoTo(completionPosted{}),
 }))
 ```
+
+### Trigger
+
+A Trigger is a long-running provider ingress capability, separate from a Flow
+Step. It validates and normalizes an external event, preserves the provider's
+stable event ID and occurrence time, and delivers the event at least once. A
+Trigger binding names one use of that event source and keeps its matcher
+configuration separate from reusable connection credentials.
+
+For example, this Flow definition declares one statically named use of Slack's
+`channelThreadCreated` Trigger:
+
+```go
+slack.DefineChannelThreadCreatedTriggerBinding(
+	slack.ChannelThreadCreatedTriggerBindingConfig{
+		ConnectionName: ConnectionName,
+		BindingName:    StartTriggerBinding,
+	},
+)
+```
+
+The Trigger itself does not decide whether an event starts a Flow or invokes an
+RPC. The application chooses one of the following typed targets and supplies a
+pure filter, Flow ID resolver, and input mapper.
+
+### Flow Trigger target
+
+A Flow Trigger target admits a provider event into a new Flow. The application
+filter runs first, the resolver chooses the stable business Flow ID, and the
+mapper produces the typed start input. Dex uses the stable provider event ID as
+the start request identity so redelivery does not create another root start.
+
+The Slack example routes a matching top-level channel message into a new thread
+approval Flow:
+
+```go
+ChannelThreadCreatedRoutes: []slack.LocalChannelThreadCreatedTriggerRoute{{
+	BindingName: threadapproval.StartTriggerBinding,
+	Target: sdkgo.NewDexFlowTriggerTarget(
+		client, flow, startTriggerFilter, threadapproval.ResolveFlowID,
+		threadapproval.MapToFlowInput,
+	),
+}},
+```
+
+### Flow RPC and RPC Trigger target
+
+A Flow RPC is an application-owned typed method for synchronously reading or
+changing one existing Flow execution. An RPC Trigger target delivers a provider
+event to that method. The same Flow ID resolver locates the execution, while an
+RPC input mapper keeps the provider event type out of the application's RPC
+contract. The application owns RPC registration, locks, business-state checks,
+and bounded duplicate-event state.
+
+The Slack Flow registers `ReceiveThreadReply` with an Attribute lock for the
+state changed by the handler:
+
+```go
+dex.DefineRPC(flow.ReceiveThreadReply, &dex.RPCOptions{
+	LockAttributes: []dex.AttributeLock{dex.LockAttribute(threadStateAttribute)},
+})
+```
+
+The Trigger target passes that same bound method directly, routing an allowed
+thread reply to the Flow started by the root message:
+
+```go
+ThreadReplyCreatedRoutes: []slack.LocalThreadReplyCreatedTriggerRoute{{
+	BindingName: threadapproval.ReplyTriggerBinding,
+	Target: sdkgo.NewDexRPCTriggerTarget(
+		client, flow.ReceiveThreadReply, replyTriggerFilter,
+		threadapproval.ResolveFlowID, threadapproval.MapToReceiveThreadReplyInput,
+	),
+}},
+```
+
+### Configuration UI unit
+
+A configuration UI unit is a small connector-owned React control that Dex Web
+composes for one operation or Trigger binding. Generated unit and port
+constants connect the control to an application-owned configuration object
+through JSON Pointers. The iframe receives only scoped non-secret values;
+credentials and provider tokens remain host-owned.
+
+For example, Slack's reusable `textInput` unit configures the completion reply
+used by `PostThreadReply`:
+
+```go
+ConfigurationUI: sdkgo.ConnectorConfigurationUI{Units: []sdkgo.ConnectorUIUnit{{
+	ID: "completionText", UnitID: slack.UIUnitTextInput,
+	Label: "Completion reply", Required: true,
+	Bindings: []sdkgo.ConnectorUIBinding{{
+		Port: slack.UITextInputPortText, JSONPointer: "/text",
+	}},
+}}},
+```
+
+Slack also composes `channelPicker`, `memberPicker`, and `textInput` units for
+its two Trigger bindings, so Dex Web stores stable provider IDs without
+exposing credentials to those controls.
+
+### End-to-end Slack example
 
 Follow the [Slack thread approval walkthrough](connectors/slack/examples/thread-approval/README.md)
 to configure Slack and Dex Web, run the example Worker, and verify the complete
