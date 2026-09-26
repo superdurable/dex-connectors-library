@@ -9,7 +9,7 @@ test:
 		module=$${manifest%/connector.yaml}; \
 		(cd "$$module" && GOWORK=off go test -race ./... && GOWORK=off go vet ./...) || exit 1; \
 	done
-	python3 -m unittest script/release/component_release_test.py
+	python3 -m unittest script/release/component_release_test.py script/dex_compatibility_test.py
 	go test -race ./...
 	go vet ./...
 	@find connectors -name connector.yaml -print | sort | while IFS= read -r manifest; do \

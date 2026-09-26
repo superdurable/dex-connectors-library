@@ -17,6 +17,17 @@ import (
 
 const ConnectorID = "google-sheets"
 
+const (
+	UIUnitSpreadsheetPicker                = "spreadsheetPicker"
+	UISpreadsheetPickerPortSpreadsheetID   = "spreadsheetId"
+	UISpreadsheetPickerPortSpreadsheetName = "spreadsheetName"
+	UIUnitSheetTabPicker                   = "sheetTabPicker"
+	UISheetTabPickerPortSpreadsheetID      = "spreadsheetId"
+	UISheetTabPickerPortTab                = "tab"
+	UIUnitTextInput                        = "textInput"
+	UITextInputPortText                    = "text"
+)
+
 type Config struct {
 	Endpoint         string `json:"endpoint,omitempty" yaml:"endpoint,omitempty"`
 	MaxResponseBytes int64  `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
@@ -170,6 +181,7 @@ type GetValuesStepConfig[IN any] struct {
 	operationID                    struct{}                                           `connector:"operationId=getValues"`
 	StepType                       string                                             `connector:"stepType"`
 	Annotations                    sdkgo.StepAnnotations                              `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                     `connector:"configurationUI"`
 	Connection                     Connection                                         `connector:"connection"`
 	ConnectionName                 string                                             `connector:"connectionName"`
 	MapToOperationInput            func(IN) GetValuesInput                            `connector:"mapToOperationInput"`
@@ -191,7 +203,8 @@ func NewGetValuesStep[IN any](config GetValuesStepConfig[IN]) sdkgo.QueryStep[IN
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetValuesInput, GetValuesOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.GetValues(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.client.GetValues(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[GetValuesResult] {
 			branches := make([]sdkgo.BranchTarget[GetValuesResult], 0, 5)
@@ -249,6 +262,7 @@ type FindRowStepConfig[IN any] struct {
 	operationID                    struct{}                                         `connector:"operationId=findRow"`
 	StepType                       string                                           `connector:"stepType"`
 	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                   `connector:"configurationUI"`
 	Connection                     Connection                                       `connector:"connection"`
 	ConnectionName                 string                                           `connector:"connectionName"`
 	MapToOperationInput            func(IN) FindRowInput                            `connector:"mapToOperationInput"`
@@ -271,7 +285,8 @@ func NewFindRowStep[IN any](config FindRowStepConfig[IN]) sdkgo.QueryStep[IN, Fi
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, FindRowInput, FindRowOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.FindRow(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.client.FindRow(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[FindRowResult] {
 			branches := make([]sdkgo.BranchTarget[FindRowResult], 0, 6)
@@ -332,6 +347,7 @@ type UpsertRowStepConfig[IN any] struct {
 	operationID                       struct{}                                              `connector:"operationId=upsertRow"`
 	StepType                          string                                                `connector:"stepType"`
 	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                        `connector:"configurationUI"`
 	Connection                        Connection                                            `connector:"connection"`
 	ConnectionName                    string                                                `connector:"connectionName"`
 	MapToOperationInput               func(IN) UpsertRowInput                               `connector:"mapToOperationInput"`
@@ -354,7 +370,8 @@ func NewUpsertRowStep[IN any](config UpsertRowStepConfig[IN]) sdkgo.MutationStep
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpsertRowInput, UpsertRowOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.UpsertRow(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.client.UpsertRow(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[UpsertRowResult] {
 			branches := make([]sdkgo.BranchTarget[UpsertRowResult], 0, 6)

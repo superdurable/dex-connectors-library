@@ -17,6 +17,15 @@ import (
 
 const ConnectorID = "gmail"
 
+const (
+	UIUnitSearchQueryInput      = "searchQueryInput"
+	UISearchQueryInputPortQuery = "query"
+	UIUnitEmailListInput        = "emailListInput"
+	UIEmailListInputPortEmails  = "emails"
+	UIUnitTextInput             = "textInput"
+	UITextInputPortText         = "text"
+)
+
 type Config struct {
 	Endpoint         string        `json:"endpoint,omitempty" yaml:"endpoint,omitempty"`
 	MaxResponseBytes int64         `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
@@ -169,15 +178,17 @@ var MessageReceivedTriggerDefinition = sdkgo.TriggerDefinition{
 
 type MessageReceivedTriggerBindingConfig struct {
 	sdkgo.TriggerBindingFactoryConfigMarker `connector:"factory=triggerBinding"`
-	connectorID                             struct{} `connector:"connectorId=gmail"`
-	triggerName                             struct{} `connector:"triggerName=messageReceived"`
-	ConnectionName                          string   `connector:"connectionName"`
-	BindingName                             string   `connector:"bindingName"`
+	connectorID                             struct{}                       `connector:"connectorId=gmail"`
+	triggerName                             struct{}                       `connector:"triggerName=messageReceived"`
+	ConnectionName                          string                         `connector:"connectionName"`
+	BindingName                             string                         `connector:"bindingName"`
+	ConfigurationUI                         sdkgo.ConnectorConfigurationUI `connector:"configurationUI"`
 }
 
 func DefineMessageReceivedTriggerBinding(config MessageReceivedTriggerBindingConfig) sdkgo.TriggerBindingDefinition {
 	return sdkgo.MustTriggerBindingDefinition(sdkgo.TriggerBindingDefinition{
 		Definition: MessageReceivedTriggerDefinition, ConnectionName: config.ConnectionName, BindingName: config.BindingName,
+		ConfigurationUI: &config.ConfigurationUI,
 	})
 }
 
@@ -231,15 +242,17 @@ var ReplyReceivedTriggerDefinition = sdkgo.TriggerDefinition{
 
 type ReplyReceivedTriggerBindingConfig struct {
 	sdkgo.TriggerBindingFactoryConfigMarker `connector:"factory=triggerBinding"`
-	connectorID                             struct{} `connector:"connectorId=gmail"`
-	triggerName                             struct{} `connector:"triggerName=replyReceived"`
-	ConnectionName                          string   `connector:"connectionName"`
-	BindingName                             string   `connector:"bindingName"`
+	connectorID                             struct{}                       `connector:"connectorId=gmail"`
+	triggerName                             struct{}                       `connector:"triggerName=replyReceived"`
+	ConnectionName                          string                         `connector:"connectionName"`
+	BindingName                             string                         `connector:"bindingName"`
+	ConfigurationUI                         sdkgo.ConnectorConfigurationUI `connector:"configurationUI"`
 }
 
 func DefineReplyReceivedTriggerBinding(config ReplyReceivedTriggerBindingConfig) sdkgo.TriggerBindingDefinition {
 	return sdkgo.MustTriggerBindingDefinition(sdkgo.TriggerBindingDefinition{
 		Definition: ReplyReceivedTriggerDefinition, ConnectionName: config.ConnectionName, BindingName: config.BindingName,
+		ConfigurationUI: &config.ConfigurationUI,
 	})
 }
 
@@ -316,6 +329,7 @@ type GetMessageStepConfig[IN any] struct {
 	operationID                    struct{}                                   `connector:"operationId=getMessage"`
 	StepType                       string                                     `connector:"stepType"`
 	Annotations                    sdkgo.StepAnnotations                      `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI             `connector:"configurationUI"`
 	Connection                     Connection                                 `connector:"connection"`
 	ConnectionName                 string                                     `connector:"connectionName"`
 	MapToOperationInput            func(IN) GetMessageInput                   `connector:"mapToOperationInput"`
@@ -337,7 +351,8 @@ func NewGetMessageStep[IN any](config GetMessageStepConfig[IN]) sdkgo.QueryStep[
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetMessageInput, Message]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.GetMessage(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.client.GetMessage(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[GetMessageResult] {
 			branches := make([]sdkgo.BranchTarget[GetMessageResult], 0, 5)
@@ -391,6 +406,7 @@ type SendMessageStepConfig[IN any] struct {
 	operationID                       struct{}                                                `connector:"operationId=sendMessage"`
 	StepType                          string                                                  `connector:"stepType"`
 	Annotations                       sdkgo.StepAnnotations                                   `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                          `connector:"configurationUI"`
 	Connection                        Connection                                              `connector:"connection"`
 	ConnectionName                    string                                                  `connector:"connectionName"`
 	MapToOperationInput               func(IN) SendMessageInput                               `connector:"mapToOperationInput"`
@@ -411,7 +427,8 @@ func NewSendMessageStep[IN any](config SendMessageStepConfig[IN]) sdkgo.Mutation
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SendMessageInput, SendMessageOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.SendMessage(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.client.SendMessage(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[SendMessageResult] {
 			branches := make([]sdkgo.BranchTarget[SendMessageResult], 0, 4)
@@ -464,6 +481,7 @@ type ReplyToMessageStepConfig[IN any] struct {
 	operationID                       struct{}                                                `connector:"operationId=replyToMessage"`
 	StepType                          string                                                  `connector:"stepType"`
 	Annotations                       sdkgo.StepAnnotations                                   `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                          `connector:"configurationUI"`
 	Connection                        Connection                                              `connector:"connection"`
 	ConnectionName                    string                                                  `connector:"connectionName"`
 	MapToOperationInput               func(IN) ReplyToMessageInput                            `connector:"mapToOperationInput"`
@@ -485,7 +503,8 @@ func NewReplyToMessageStep[IN any](config ReplyToMessageStepConfig[IN]) sdkgo.Mu
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, ReplyToMessageInput, SendMessageOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.ReplyToMessage(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.client.ReplyToMessage(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[ReplyToMessageResult] {
 			branches := make([]sdkgo.BranchTarget[ReplyToMessageResult], 0, 5)
