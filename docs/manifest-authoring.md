@@ -10,7 +10,8 @@ An operation declares:
 - stable lower-camel `name` and exported `goName`;
 - exported local Go `inputType` and `outputType`;
 - Query or Mutation kind and idempotency requirement;
-- every stable branch, including defect and optional Mutation uncertainty;
+- every stable branch, including defect and Mutation uncertainty when a write can be ambiguous;
+- `optional: true` on every branch that is not a happy path;
 - progress capabilities used to generate typed Stream fields;
 - `authorization: required` for operations that require an authorized
   connection, or `none` for public operations;

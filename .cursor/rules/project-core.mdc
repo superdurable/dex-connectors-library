@@ -21,3 +21,16 @@ alwaysApply: true
   provider tests.
 - Register every connector in the sorted root connectors.yaml list. Paths may
   have any depth below connectors/.
+- Before changing Connector Step options, branches, retry, durability, or other
+  Dex semantics, load the installed dex-developer skill. Cursor uses the
+  dex-developer skill, Codex uses `$dex-developer`, and Claude Code uses
+  `/dex:dex-developer`. If it is unavailable, stop and follow
+  https://docs.superdurable.io/build-with-ai/dex-developer-skill.
+- Only a happy-path branch is required. Mark every other branch `optional: true`.
+  An unwired optional branch fails the Flow when selected. Mark a non-happy-path
+  branch required only when the application must choose a different continuation,
+  and say why in the branch description.
+- Execute durability defaults to async. Use sync only when the operation is very
+  likely to exceed 7 seconds, matching the Dex ASYNC local-activity limit. An LLM
+  generation call can use sync. Do not choose sync because the timeout ceiling
+  is 30 seconds.

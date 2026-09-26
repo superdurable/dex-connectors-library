@@ -112,9 +112,9 @@ func (lookupWidgetOperation) Definition() sdkgo.QueryDefinition {
 		Operation: sdkgo.OperationRef{ConnectorID: "fixture", OperationID: "lookupWidget"},
 		Branches: []sdkgo.BranchDefinition{
 			{ID: lookupWidgetFound, Description: "The widget exists."},
-			{ID: lookupWidgetAbsent, Description: "The widget does not exist."},
-			{ID: lookupWidgetFailed, Description: "The lookup was rejected."},
-			{ID: lookupWidgetDefect, Description: "The connector definition is invalid."},
+			{ID: lookupWidgetAbsent, Description: "The widget does not exist.", Optional: true},
+			{ID: lookupWidgetFailed, Description: "The lookup was rejected.", Optional: true},
+			{ID: lookupWidgetDefect, Description: "The connector definition is invalid.", Optional: true},
 		},
 		StepDefaults: sdkgo.StepDefaults{
 			ExecuteMethodTimeout: 10 * time.Second,
@@ -149,9 +149,9 @@ func (createWidgetOperation) Definition() sdkgo.MutationDefinition {
 		Operation: sdkgo.OperationRef{ConnectorID: "fixture", OperationID: "createWidget"},
 		Branches: []sdkgo.BranchDefinition{
 			{ID: createWidgetCompleted, Description: "The widget was created."},
-			{ID: createWidgetRejected, Description: "The provider rejected the widget."},
-			{ID: createWidgetUncertain, Description: "The provider outcome is unknown."},
-			{ID: createWidgetDefect, Description: "The connector definition is invalid."},
+			{ID: createWidgetRejected, Description: "The provider rejected the widget.", Optional: true},
+			{ID: createWidgetUncertain, Description: "The provider outcome is unknown.", Optional: true},
+			{ID: createWidgetDefect, Description: "The connector definition is invalid.", Optional: true},
 		},
 		StepDefaults: sdkgo.StepDefaults{
 			ExecuteMethodTimeout: 10 * time.Second,
@@ -217,13 +217,25 @@ func NewLookupWidgetStep[IN any](config LookupWidgetStepConfig[IN]) sdkgo.QueryS
 		StepType: config.StepType, Annotations: config.Annotations,
 		Operation: lookupWidgetOperation{connection: config.Connection}, Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
-		Branches: []sdkgo.BranchTarget[LookupWidgetResult]{
-			config.Found.BranchTarget(lookupWidgetFound),
-			config.Absent.BranchTarget(lookupWidgetAbsent),
-			config.Failed.BranchTarget(lookupWidgetFailed),
-			config.Defect.BranchTarget(lookupWidgetDefect),
-		},
+		Branches:            lookupWidgetBranches(config),
 	})
+}
+
+func lookupWidgetBranches[IN any](config LookupWidgetStepConfig[IN]) []sdkgo.BranchTarget[LookupWidgetResult] {
+	branches := make([]sdkgo.BranchTarget[LookupWidgetResult], 0, 4)
+	if config.Found.HasStep() {
+		branches = append(branches, config.Found.BranchTarget(lookupWidgetFound))
+	}
+	if config.Absent.HasStep() {
+		branches = append(branches, config.Absent.BranchTarget(lookupWidgetAbsent))
+	}
+	if config.Failed.HasStep() {
+		branches = append(branches, config.Failed.BranchTarget(lookupWidgetFailed))
+	}
+	if config.Defect.HasStep() {
+		branches = append(branches, config.Defect.BranchTarget(lookupWidgetDefect))
+	}
+	return branches
 }
 
 type CreateWidgetResult = sdkgo.MutationResult[Widget]
@@ -250,13 +262,25 @@ func NewCreateWidgetStep[IN any](config CreateWidgetStepConfig[IN]) sdkgo.Mutati
 		StepType: config.StepType, Annotations: config.Annotations,
 		Operation: createWidgetOperation{connection: config.Connection}, Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
-		Branches: []sdkgo.BranchTarget[CreateWidgetResult]{
-			config.Completed.BranchTarget(createWidgetCompleted),
-			config.Rejected.BranchTarget(createWidgetRejected),
-			config.Uncertain.BranchTarget(createWidgetUncertain),
-			config.Defect.BranchTarget(createWidgetDefect),
-		},
-		ResultAttribute: config.ResultAttribute,
-		ProgressStream:  config.ProgressStream,
+		Branches:            createWidgetBranches(config),
+		ResultAttribute:     config.ResultAttribute,
+		ProgressStream:      config.ProgressStream,
 	})
+}
+
+func createWidgetBranches[IN any](config CreateWidgetStepConfig[IN]) []sdkgo.BranchTarget[CreateWidgetResult] {
+	branches := make([]sdkgo.BranchTarget[CreateWidgetResult], 0, 4)
+	if config.Completed.HasStep() {
+		branches = append(branches, config.Completed.BranchTarget(createWidgetCompleted))
+	}
+	if config.Rejected.HasStep() {
+		branches = append(branches, config.Rejected.BranchTarget(createWidgetRejected))
+	}
+	if config.Uncertain.HasStep() {
+		branches = append(branches, config.Uncertain.BranchTarget(createWidgetUncertain))
+	}
+	if config.Defect.HasStep() {
+		branches = append(branches, config.Defect.BranchTarget(createWidgetDefect))
+	}
+	return branches
 }

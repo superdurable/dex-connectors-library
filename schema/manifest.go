@@ -134,6 +134,7 @@ type OperationBranch struct {
 	ID          string `yaml:"id" json:"id"`
 	GoName      string `yaml:"goName" json:"goName"`
 	Description string `yaml:"description" json:"description"`
+	Optional    bool   `yaml:"optional,omitempty" json:"optional,omitempty"`
 }
 
 type Execution struct {
