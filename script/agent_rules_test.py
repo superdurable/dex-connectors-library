@@ -64,6 +64,22 @@ class AgentRulesTest(unittest.TestCase):
     def test_claude_uses_the_canonical_rules(self) -> None:
         self.assertEqual((ROOT / "CLAUDE.md").read_text(encoding="utf-8").strip(), "@AGENTS.md")
 
+    def test_rules_reject_vague_normalize_and_runtime_names(self) -> None:
+        paths = (
+            ROOT / "AGENTS.md",
+            ROOT / ".cursor" / "rules" / "project-core.mdc",
+        )
+        required_fragments = (
+            "`normalize`, `normalizer`, or `runtime`",
+            "packages, directories, files, classes, structs, interfaces, fields,",
+            "parameters, variables, or helpers",
+        )
+        for path in paths:
+            with self.subTest(path=path):
+                contents = path.read_text(encoding="utf-8")
+                for fragment in required_fragments:
+                    self.assertIn(fragment, contents)
+
     def test_cursor_hook_rejects_skipping_git_hooks(self) -> None:
         payload = json.dumps({"command": "git commit --no-verify -m test"})
 

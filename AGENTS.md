@@ -137,6 +137,10 @@ commit.
   `supportsXxx`. Stable public and wire names remain unchanged.
 - Do not introduce `NormalizeXyz`. Name the operation precisely, such as
   `TrimWhitespace`, `CanonicalizeURL`, or `ValidateAndSortSelections`.
+- Do not use vague names such as `normalize`, `normalizer`, or `runtime` for
+  packages, directories, files, classes, structs, interfaces, fields,
+  parameters, variables, or helpers. Name the exact domain behavior, owned
+  state, or responsibility.
 - Reuse existing repository and public API terms instead of inventing synonyms.
 - Variables, including fields and parameters, use descriptive names. Go method
   receivers and `i j k n err ctx ok t mu wg id r w ch` are allowed exceptions.

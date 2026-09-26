@@ -24,6 +24,10 @@ alwaysApply: true
 
 - Prefer complete domain names. Boolean helpers and internal fields use predicate
   names. Stable public and wire names do not change for style.
+- Do not use vague names such as `normalize`, `normalizer`, or `runtime` for
+  packages, directories, files, classes, structs, interfaces, fields,
+  parameters, variables, or helpers. Name the exact domain behavior, owned
+  state, or responsibility.
 - Use constructor injection and fail fast on missing required dependencies.
 - Lift stateful or reused closures into explicit struct methods.
 - Keep one struct's methods in one primary file. Put callers above callees.
