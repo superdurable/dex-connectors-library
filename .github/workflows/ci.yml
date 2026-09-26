@@ -267,3 +267,24 @@ jobs:
               --manifest "${manifest}" --ui-root "${ui}/dist" \
               --output /tmp/connector-ui.tgz --digest-output /tmp/connector-ui.tgz.sha256
           done < <(find connectors -path '*/ui/package-lock.json' -print | sort)
+
+  site:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: site
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+      - name: Install catalog card fonts
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fonts-dejavu-core
+      - run: npm ci
+      - run: npm test
+      - run: npm run build

@@ -254,17 +254,32 @@ jobs:
 
   build-catalog:
     needs: [plan, release]
+    if: always() && needs.plan.result == 'success' && (needs.release.result == 'success' || needs.release.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: site/package-lock.json
       - name: Generate public Connector catalog
         run: |
           go run ./cmd/connectorctl catalog \
             --registry connectors.yaml \
             --output dist/pages/catalog.yaml
+      - name: Build the connector directory and catalog card
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fonts-dejavu-core
+          npm ci --prefix site
+          npm test --prefix site
+          npm run build --prefix site
+          node site/scripts/render-card.mjs --catalog dist/pages/catalog.yaml --output dist/pages/card.png
+          cp -a site/dist/. dist/pages/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4
         with:
@@ -275,7 +290,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}catalog.yaml
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Deploy Connector catalog
         id: deployment

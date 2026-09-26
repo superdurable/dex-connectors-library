@@ -117,6 +117,7 @@ func TestReleaseMatrixFindsEveryDeclaredRepositoryVersion(t *testing.T) {
 	githubOutput := filepath.Join(t.TempDir(), "github-output")
 	require.NoError(t, releaseMatrixCommand([]string{
 		"--registry", filepath.Join("..", "..", "connectors.yaml"),
+		"--include-published",
 		"--github-output", githubOutput,
 	}))
 	contents, err := os.ReadFile(githubOutput)
@@ -126,13 +127,67 @@ func TestReleaseMatrixFindsEveryDeclaredRepositoryVersion(t *testing.T) {
 	require.Contains(t, string(contents), `"version":"v0.8.0"`)
 }
 
+func TestCatalogRejectsMissingCompanyLogo(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	writeConnectorFixture(t, repositoryRoot, "connectors/acme/mail", "example.com/connectors/acme/mail")
+	require.NoError(t, os.Remove(filepath.Join(repositoryRoot, "connectors", "acme", "logo.svg")))
+	registryPath := filepath.Join(repositoryRoot, "connectors.yaml")
+	require.NoError(t, os.WriteFile(registryPath, []byte(`apiVersion: connectors.dex.dev/directory-list/v1alpha1
+kind: ConnectorDirectoryList
+directories:
+  - connectors/acme/mail
+`), 0o600))
+	_, err := loadConnectorDirectoryEntries(registryPath)
+	require.ErrorContains(t, err, "company logo is missing")
+}
+
+func TestCatalogRejectsCompanyDirectoryMismatch(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	writeConnectorFixture(t, repositoryRoot, "connectors/acme/mail", "example.com/connectors/acme/mail")
+	manifestPath := filepath.Join(repositoryRoot, "connectors", "acme", "mail", "connector.yaml")
+	contents, err := os.ReadFile(manifestPath)
+	require.NoError(t, err)
+	contents = []byte(strings.Replace(string(contents), "company: acme", "company: Other", 1))
+	require.NoError(t, os.WriteFile(manifestPath, contents, 0o600))
+	registryPath := filepath.Join(repositoryRoot, "connectors.yaml")
+	require.NoError(t, os.WriteFile(registryPath, []byte(`apiVersion: connectors.dex.dev/directory-list/v1alpha1
+kind: ConnectorDirectoryList
+directories:
+  - connectors/acme/mail
+`), 0o600))
+	_, err = loadConnectorDirectoryEntries(registryPath)
+	require.ErrorContains(t, err, "must match directory acme")
+}
+
+func TestCatalogIncludesTriggersAndOperations(t *testing.T) {
+	encoded, err := encodeConnectorCatalog(mustLoadRealConnectorEntries(t))
+	require.NoError(t, err)
+	catalog := string(encoded)
+	require.Contains(t, catalog, "messageReceived")
+	require.Contains(t, catalog, "getMessage")
+	require.Contains(t, catalog, "kind: query")
+	require.Contains(t, catalog, "kind: mutation")
+}
+
+func mustLoadRealConnectorEntries(t *testing.T) []connectorDirectoryEntry {
+	t.Helper()
+	entries, err := loadConnectorDirectoryEntries(filepath.Join("..", "..", "connectors.yaml"))
+	require.NoError(t, err)
+	return entries
+}
+
 func writeConnectorFixture(t *testing.T, repositoryRoot, directory, modulePath string) {
 	t.Helper()
 	connectorDirectory := filepath.Join(repositoryRoot, filepath.FromSlash(directory))
 	require.NoError(t, os.MkdirAll(connectorDirectory, 0o755))
 	fixture, err := os.ReadFile(filepath.Join("..", "..", "schema", "testdata", "google-oauth.yaml"))
 	require.NoError(t, err)
-	fixture = []byte(strings.Replace(string(fixture), "name: google-sheets-fixture", "name: fixture-connector", 1))
-	require.NoError(t, os.WriteFile(filepath.Join(connectorDirectory, "connector.yaml"), fixture, 0o600))
+	fixtureText := strings.Replace(string(fixture), "name: google-sheets-fixture", "name: fixture-connector", 1)
+	if strings.HasPrefix(directory, "connectors/") {
+		companyDirectory := strings.Split(directory, "/")[1]
+		fixtureText = strings.Replace(fixtureText, "company: Google", "company: "+companyDirectory, 1)
+		require.NoError(t, os.WriteFile(filepath.Join(repositoryRoot, "connectors", companyDirectory, "logo.svg"), []byte("<svg xmlns=\"http://www.w3.org/2000/svg\"/>\n"), 0o600))
+	}
+	require.NoError(t, os.WriteFile(filepath.Join(connectorDirectory, "connector.yaml"), []byte(fixtureText), 0o600))
 	require.NoError(t, os.WriteFile(filepath.Join(connectorDirectory, "go.mod"), []byte("module "+modulePath+"\n\ngo 1.24\n"), 0o600))
 }

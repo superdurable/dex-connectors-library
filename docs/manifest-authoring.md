@@ -2,7 +2,9 @@
 
 Each connector module owns `connector.yaml`. Its `metadata.company` and
 `metadata.version` fields feed the public Connector catalog and declarative
-release workflow. A version change requests a release after merge; leaving it
+release workflow. The first directory under `connectors/` is the company. The
+slug of `metadata.company` must match that folder, and the folder must contain
+`logo.svg`. A version change requests a release after merge; leaving it
 unchanged explicitly defers release.
 
 An operation declares:

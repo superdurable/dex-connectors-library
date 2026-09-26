@@ -18,4 +18,5 @@ alwaysApply: true
 - Every connector needs its own go.mod, README, manifest, generated code, and
   provider tests.
 - Register every connector in the sorted root connectors.yaml list. Paths may
-  have any depth below connectors/.
+  have any depth below connectors/. The first directory is the company, must
+  match metadata.company, and must contain logo.svg.

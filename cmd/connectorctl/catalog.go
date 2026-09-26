@@ -18,6 +18,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/superdurable/dex-connectors-library/schema"
 	"gopkg.in/yaml.v3"
@@ -42,13 +43,21 @@ type connectorCatalog struct {
 	Connectors []connectorCatalogItem `yaml:"connectors"`
 }
 
-type connectorCatalogItem struct {
-	Company     string `yaml:"company"`
-	ID          string `yaml:"id"`
+type connectorCatalogCapability struct {
 	Name        string `yaml:"name"`
+	Kind        string `yaml:"kind,omitempty"`
 	Description string `yaml:"description"`
-	Version     string `yaml:"version"`
-	Directory   string `yaml:"directory"`
+}
+
+type connectorCatalogItem struct {
+	Company     string                       `yaml:"company"`
+	ID          string                       `yaml:"id"`
+	Name        string                       `yaml:"name"`
+	Description string                       `yaml:"description"`
+	Version     string                       `yaml:"version"`
+	Directory   string                       `yaml:"directory"`
+	Triggers    []connectorCatalogCapability `yaml:"triggers"`
+	Operations  []connectorCatalogCapability `yaml:"operations"`
 }
 
 type connectorDirectoryEntry struct {
@@ -212,6 +221,13 @@ func loadConnectorDirectoryEntries(registryPath string) ([]connectorDirectoryEnt
 			return nil, fmt.Errorf("duplicate connector ID: %s", manifest.Metadata.Name)
 		}
 		connectorIDs[manifest.Metadata.Name] = true
+		companyDirectory, companyErr := connectorCompanyDirectory(directory)
+		if companyErr != nil {
+			return nil, companyErr
+		}
+		if companyDirectorySlug(manifest.Metadata.Company) != companyDirectory {
+			return nil, fmt.Errorf("metadata.company %q must match directory %s", manifest.Metadata.Company, companyDirectory)
+		}
 		goModPath := filepath.Join(repositoryRoot, filepath.FromSlash(directory), "go.mod")
 		if err := requireRegularFile(goModPath, "connector go.mod"); err != nil {
 			return nil, err
@@ -230,7 +246,53 @@ func loadConnectorDirectoryEntries(registryPath string) ([]connectorDirectoryEnt
 	if err := validateDiscoveredConnectorDirectories(repositoryRoot, registeredDirectories); err != nil {
 		return nil, err
 	}
+	if err := validateCompanyLogos(repositoryRoot); err != nil {
+		return nil, err
+	}
 	return entries, nil
+}
+
+func connectorCompanyDirectory(directory string) (string, error) {
+	segments := strings.Split(directory, "/")
+	if len(segments) < 2 || segments[0] != "connectors" || segments[1] == "" {
+		return "", fmt.Errorf("connector directory must start with a company folder: %s", directory)
+	}
+	return segments[1], nil
+}
+
+func companyDirectorySlug(company string) string {
+	var slug strings.Builder
+	for _, character := range strings.ToLower(company) {
+		if unicode.IsLetter(character) || unicode.IsDigit(character) {
+			slug.WriteRune(character)
+		}
+	}
+	return slug.String()
+}
+
+func validateCompanyLogos(repositoryRoot string) error {
+	connectorsRoot := filepath.Join(repositoryRoot, "connectors")
+	entries, err := os.ReadDir(connectorsRoot)
+	if err != nil {
+		return fmt.Errorf("read connectors directory: %w", err)
+	}
+	for _, entry := range entries {
+		info, infoErr := entry.Info()
+		if infoErr != nil {
+			return fmt.Errorf("inspect company directory %s: %w", entry.Name(), infoErr)
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("company directory cannot be a symlink: connectors/%s", entry.Name())
+		}
+		if !info.IsDir() {
+			continue
+		}
+		logoPath := filepath.Join(connectorsRoot, entry.Name(), "logo.svg")
+		if err := requireRegularFile(logoPath, "company logo"); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func validateConnectorDirectory(directory string) error {
@@ -323,9 +385,22 @@ func encodeConnectorCatalog(entries []connectorDirectoryEntry) ([]byte, error) {
 	}
 	for _, entry := range entries {
 		metadata := entry.Manifest.Metadata
+		triggers := make([]connectorCatalogCapability, 0, len(entry.Manifest.Spec.Triggers))
+		for _, trigger := range entry.Manifest.Spec.Triggers {
+			triggers = append(triggers, connectorCatalogCapability{
+				Name: trigger.Name, Description: trigger.Description,
+			})
+		}
+		operations := make([]connectorCatalogCapability, 0, len(entry.Manifest.Spec.Operations))
+		for _, operation := range entry.Manifest.Spec.Operations {
+			operations = append(operations, connectorCatalogCapability{
+				Name: operation.Name, Kind: operation.Kind, Description: operation.Description,
+			})
+		}
 		catalog.Connectors = append(catalog.Connectors, connectorCatalogItem{
 			Company: metadata.Company, ID: metadata.Name, Name: metadata.DisplayName,
 			Description: metadata.Description, Version: metadata.Version, Directory: entry.Directory,
+			Triggers: triggers, Operations: operations,
 		})
 	}
 	encoded, err := yaml.Marshal(catalog)

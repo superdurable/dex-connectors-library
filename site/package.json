@@ -1,0 +1,25 @@
+{
+  "name": "@superdurable/dex-connectors-directory",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "go run ../cmd/connectorctl catalog --registry ../connectors.yaml --output .catalog.yaml && vite",
+    "test": "node --test",
+    "build": "tsc -b && vite build"
+  },
+  "dependencies": {
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "react-router-dom": "^7.8.2",
+    "yaml": "^2.8.1"
+  },
+  "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
+    "@types/node": "^24.3.0",
+    "@types/react": "^19.1.12",
+    "@types/react-dom": "^19.1.9",
+    "@vitejs/plugin-react": "^5.0.2",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.3"
+  }
+}

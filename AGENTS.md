@@ -33,7 +33,8 @@ behavior.
 - Every connector has its own go.mod, README, manifest, generated code, and
   provider tests.
 - Register every connector directory in the sorted root connectors.yaml list.
-  Paths may have any depth below connectors/.
+  Paths may have any depth below connectors/. The first directory is the
+  company, must match metadata.company, and must contain logo.svg.
 - Add, move, or remove a registry entry only when the connector directory
   changes. Version-only changes do not modify the registry.
 
