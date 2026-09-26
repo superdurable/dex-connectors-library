@@ -421,10 +421,10 @@ process. Do not change `127.0.0.1` to `localhost`. Use dexcli v0.13.7 or newer.
 
 ### The channel or member picker is empty
 
-Confirm that OAuth completed, then choose **Load channels** and **Load members**
-again. Invite the app to the channel. For a private channel, both the signed-in
-member and app must have access. After adding scopes, reinstall the Slack app
-and reconnect OAuth. Use the manual ID fallback when necessary.
+Confirm that OAuth completed, then choose **Load joined channels** and **Load
+members** again. Invite the app to the channel. For a private channel, both the
+signed-in member and app must have access. After adding scopes, reinstall the
+Slack app and reconnect OAuth. Use the manual ID fallback when necessary.
 
 ### A copied member value starts with `D`
 

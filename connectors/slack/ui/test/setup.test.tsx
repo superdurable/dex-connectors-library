@@ -16,6 +16,8 @@ describe("Slack setup", () => {
       <SlackConfigurationUnit target={{kind: "configurationUnit", scope, instanceId: "channel", unitId: "channelPicker", label: "Approval channel", required: true, bindings: [{port: "channelId", jsonPointer: "/channelId"}], value: {channelId: "C123"}}} channels={[{id: "C123", name: "approvals", isPrivate: true}]} users={[]} onLoadChannels={() => undefined} onLoadUsers={() => undefined} onSave={() => undefined}/>
       <SlackConfigurationUnit target={{kind: "configurationUnit", scope, instanceId: "members", unitId: "memberPicker", label: "Approvers", required: true, bindings: [{port: "memberIds", jsonPointer: "/memberIds"}], value: {memberIds: ["U123"]}}} channels={[]} users={[{id: "U123", displayName: "Ada"}]} onLoadChannels={() => undefined} onLoadUsers={() => undefined} onSave={() => undefined}/>
     </>);
+    expect(markup).toContain("Load joined channels");
+    expect(markup).toContain("Only channels this app has joined are available.");
     expect(markup).toContain("#approvals (private) · C123");
     expect(markup).toContain("Ada");
     expect(markup).toContain("U123");

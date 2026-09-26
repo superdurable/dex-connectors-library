@@ -26,7 +26,8 @@ export function SlackConfigurationUnit(props: SlackUnitProps) {
 function ChannelPickerUnit({target, channels, busy, onLoadChannels, onSave}: SlackUnitProps) {
   const [channelId, setChannelId] = useState(stringValue(target.value.channelId));
   return <UnitFrame target={target}>
-    <button disabled={busy} onClick={onLoadChannels} type="button">Load channels</button>
+    <button disabled={busy} onClick={onLoadChannels} type="button">Load joined channels</button>
+    <p className="note">Only channels this app has joined are available.</p>
     <label>Channel<select value={channelId} onChange={(event) => setChannelId(event.target.value)}>
       <option value="">Select a channel</option>
       {channels.map((channel) => <option key={channel.id} value={channel.id}>#{channel.name}{channel.isPrivate ? " (private)" : ""} · {channel.id}</option>)}
