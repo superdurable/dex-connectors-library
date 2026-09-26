@@ -76,6 +76,7 @@ func TestThreadApprovalExampleCompletesOnceAndFailsUnwiredUncertainOutcomeWithRe
 	require.Equal(t, StatusCompleted, completedState.Status)
 	require.Equal(t, "U2", completedState.ReplyUserID)
 	require.Equal(t, 1, provider.postCount("1.0"))
+	require.Equal(t, "Integration complete.", provider.postText("1.0"))
 
 	uncertainRoot := slack.MessageEvent{
 		TeamID: teamID, ChannelID: "C1", Timestamp: "3.0", ThreadTimestamp: "3.0", UserID: "U1", Text: "request approval",
@@ -136,11 +137,12 @@ type slackProvider struct {
 	*httptest.Server
 	mutex         sync.Mutex
 	postsByThread map[string]int
+	textByThread  map[string]string
 }
 
 func newSlackProvider(t *testing.T) *slackProvider {
 	t.Helper()
-	provider := &slackProvider{postsByThread: map[string]int{}}
+	provider := &slackProvider{postsByThread: map[string]int{}, textByThread: map[string]string{}}
 	provider.Server = httptest.NewServer(http.HandlerFunc(provider.serveHTTP))
 	return provider
 }
@@ -162,6 +164,7 @@ func (provider *slackProvider) serveHTTP(response http.ResponseWriter, request *
 		threadTimestamp := payload["thread_ts"]
 		provider.mutex.Lock()
 		provider.postsByThread[threadTimestamp]++
+		provider.textByThread[threadTimestamp] = payload["text"]
 		provider.mutex.Unlock()
 		response.Header().Set("Content-Type", "application/json")
 		if threadTimestamp == "3.0" {
@@ -187,6 +190,12 @@ func (provider *slackProvider) postCount(threadTimestamp string) int {
 	return provider.postsByThread[threadTimestamp]
 }
 
+func (provider *slackProvider) postText(threadTimestamp string) string {
+	provider.mutex.Lock()
+	defer provider.mutex.Unlock()
+	return provider.textByThread[threadTimestamp]
+}
+
 type slackIntegrationHarness struct {
 	registry      *dex.Registry
 	cache         *blobcache.Cache
@@ -208,7 +217,9 @@ func newSlackIntegrationHarness(t *testing.T, endpoint string) (*Flow, *slackInt
 	require.NoError(t, err)
 	connection, err := slack.NewConnection(providerClient, reference)
 	require.NoError(t, err)
-	flow := NewFlow(connection)
+	flow := NewFlow(connection, sdkgo.ConnectorLoadedConfiguration[PostCompletionConfiguration]{
+		Reference: PostCompletionConfigurationRef(), Value: PostCompletionConfiguration{Text: "Integration complete."},
+	})
 	registry, err := dex.NewRegistry([]dex.Flow{flow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
