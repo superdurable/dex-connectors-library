@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -20,6 +21,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/internal/triggerlog"
 )
 
 const (
@@ -269,7 +271,34 @@ type credentialProvider[C any] struct {
 type durableTriggerTarget[T any] struct {
 	path   string
 	target sdkgo.TriggerTarget[T]
+	log    triggerlog.Logger
 	mutex  sync.Mutex
+	// pendingRemoval holds the IDs of events the target consumed whose removal from the inbox failed, and
+	// whether the target consumed each as undeliverable. A retry of such an event only removes it, so a
+	// failing inbox write does not invoke the target again.
+	pendingRemoval map[string]bool
+}
+
+// DurableTriggerOption configures NewDurableTriggerTarget.
+type DurableTriggerOption interface {
+	applyDurableTriggerOption(*durableTriggerOptions)
+}
+
+type durableTriggerOptions struct {
+	logger *slog.Logger
+}
+
+type durableTriggerLoggerOption struct{ logger *slog.Logger }
+
+func (option durableTriggerLoggerOption) applyDurableTriggerOption(options *durableTriggerOptions) {
+	options.logger = option.logger
+}
+
+// WithTriggerLogger sends the inbox's records to logger. Without this option, or with a nil logger,
+// records go to slog.Default() as of each record. Every record carries the connector, connection,
+// trigger, and binding attributes, and event IDs rather than payloads.
+func WithTriggerLogger(logger *slog.Logger) DurableTriggerOption {
+	return durableTriggerLoggerOption{logger: logger}
 }
 
 type triggerInboxFile[T any] struct {
@@ -279,7 +308,15 @@ type triggerInboxFile[T any] struct {
 
 const triggerInboxSchemaVersion = "connectors.dex.dev/local-trigger-inbox/v1alpha1"
 
-// NewDurableTriggerTarget stores acknowledged events beside the local connection file until Dex accepts them.
+// NewDurableTriggerTarget stores acknowledged events beside the local connection file until the target
+// consumes them. The target consumes an event by returning nil or an UndeliverableTriggerError; any other
+// error keeps the event pending. Replay delivers pending events in order with sdkgo.DeliverTrigger.
+// Inbox read and write failures are returned like target failures, so callers retry them. When only the
+// removal of a consumed event fails, a retry removes the event without invoking the target again.
+//
+// The inbox logs a WARN "trigger event skipped: undeliverable" record for every event it consumes as
+// undeliverable, an ERROR record for every inbox read, write, or removal failure, and INFO records at the
+// start and end of a replay that finds pending events. Pass WithTriggerLogger to choose the logger.
 func NewDurableTriggerTarget[T any](
 	store *Store,
 	connectorID string,
@@ -287,6 +324,7 @@ func NewDurableTriggerTarget[T any](
 	triggerName string,
 	bindingName string,
 	target sdkgo.TriggerTarget[T],
+	options ...DurableTriggerOption,
 ) (sdkgo.TriggerTarget[T], error) {
 	if store == nil || target == nil {
 		return nil, fmt.Errorf("local connector store and Trigger target are required")
@@ -299,10 +337,20 @@ func NewDurableTriggerTarget[T any](
 	identity := strings.Join([]string{connectorID, connectionName, triggerName, bindingName}, "\x00")
 	digest := sha256.Sum256([]byte(identity))
 	path := filepath.Join(filepath.Dir(store.path), fmt.Sprintf(".trigger-inbox-%x.json", digest[:16]))
-	return &durableTriggerTarget[T]{path: path, target: target}, nil
+	var resolved durableTriggerOptions
+	for _, option := range options {
+		if option != nil {
+			option.applyDurableTriggerOption(&resolved)
+		}
+	}
+	log := triggerlog.New(resolved.logger,
+		slog.String("connector", connectorID), slog.String("connection", connectionName),
+		slog.String("trigger", triggerName), slog.String("binding", bindingName),
+	)
+	return &durableTriggerTarget[T]{path: path, target: target, log: log, pendingRemoval: make(map[string]bool)}, nil
 }
 
-func (target *durableTriggerTarget[T]) PrepareTrigger(_ context.Context, event sdkgo.TriggerEvent[T]) error {
+func (target *durableTriggerTarget[T]) PrepareTrigger(ctx context.Context, event sdkgo.TriggerEvent[T]) error {
 	if strings.TrimSpace(event.ID) == "" {
 		return fmt.Errorf("Trigger event ID is required")
 	}
@@ -310,6 +358,7 @@ func (target *durableTriggerTarget[T]) PrepareTrigger(_ context.Context, event s
 	defer target.mutex.Unlock()
 	inbox, err := target.readInbox()
 	if err != nil {
+		target.log.Error(ctx, "trigger inbox read failed", slog.String("event_id", event.ID), triggerlog.Err(err))
 		return err
 	}
 	for _, pendingEvent := range inbox.Events {
@@ -318,35 +367,104 @@ func (target *durableTriggerTarget[T]) PrepareTrigger(_ context.Context, event s
 		}
 	}
 	inbox.Events = append(inbox.Events, event)
-	return target.writeInbox(inbox)
+	if err := target.writeInbox(inbox); err != nil {
+		target.log.Error(ctx, "trigger inbox write failed", slog.String("event_id", event.ID), triggerlog.Err(err))
+		return err
+	}
+	return nil
 }
 
 func (target *durableTriggerTarget[T]) HandleTrigger(ctx context.Context, event sdkgo.TriggerEvent[T]) error {
 	target.mutex.Lock()
 	defer target.mutex.Unlock()
-	if err := target.target.HandleTrigger(ctx, event); err != nil {
-		return err
-	}
-	return target.removeEvent(event.ID)
+	_, err := target.consume(ctx, event)
+	return err
 }
 
+// ReplayTriggerDeliveries delivers the events pending at the call in order. It holds the inbox lock only
+// for one delivery attempt, so PrepareTrigger does not wait for a pending event's backoff. A source must
+// still deliver new events only after replay returns, or a new event could overtake an older pending one.
 func (target *durableTriggerTarget[T]) ReplayTriggerDeliveries(ctx context.Context) error {
+	target.mutex.Lock()
+	inbox, err := target.readInbox()
+	target.mutex.Unlock()
+	if err != nil {
+		target.log.Error(ctx, "trigger inbox read failed", triggerlog.Err(err))
+		return err
+	}
+	if len(inbox.Events) == 0 {
+		return nil
+	}
+	target.log.Info(ctx, "replaying pending trigger events", slog.Int("count", len(inbox.Events)))
+	deliveryLogger := sdkgo.WithTriggerLogger(target.log.Slog())
+	delivered, skipped := 0, 0
+	for index, event := range inbox.Events {
+		eventSkipped := false
+		err := sdkgo.DeliverTrigger(ctx, sdkgo.TriggerTargetFunc[T](func(ctx context.Context, event sdkgo.TriggerEvent[T]) error {
+			var err error
+			eventSkipped, err = target.handlePending(ctx, event)
+			return err
+		}), event, deliveryLogger)
+		if err != nil {
+			target.log.Info(ctx, "finished replaying pending trigger events", slog.Int("delivered", delivered),
+				slog.Int("skipped", skipped), slog.Int("remaining", len(inbox.Events)-index), triggerlog.Err(err))
+			return err
+		}
+		if eventSkipped {
+			skipped++
+		} else {
+			delivered++
+		}
+	}
+	target.log.Info(ctx, "finished replaying pending trigger events",
+		slog.Int("delivered", delivered), slog.Int("skipped", skipped), slog.Int("remaining", 0))
+	return nil
+}
+
+// handlePending makes one replay attempt, skipping an event that another delivery already consumed. It
+// reports whether the target consumed the event as undeliverable.
+func (target *durableTriggerTarget[T]) handlePending(ctx context.Context, event sdkgo.TriggerEvent[T]) (bool, error) {
 	target.mutex.Lock()
 	defer target.mutex.Unlock()
 	inbox, err := target.readInbox()
 	if err != nil {
-		return err
+		target.log.Error(ctx, "trigger inbox read failed", slog.String("event_id", event.ID), triggerlog.Err(err))
+		return false, err
 	}
-	for len(inbox.Events) > 0 {
-		if err := target.target.HandleTrigger(ctx, inbox.Events[0]); err != nil {
-			return err
-		}
-		inbox.Events = inbox.Events[1:]
-		if err := target.writeInbox(inbox); err != nil {
-			return err
+	for _, pendingEvent := range inbox.Events {
+		if pendingEvent.ID == event.ID {
+			return target.consume(ctx, pendingEvent)
 		}
 	}
-	return nil
+	return false, nil
+}
+
+// consume delivers one event and removes it when the target consumes it. It reports whether the target
+// consumed the event as undeliverable, and logs that skip once. The caller holds target.mutex.
+func (target *durableTriggerTarget[T]) consume(ctx context.Context, event sdkgo.TriggerEvent[T]) (bool, error) {
+	skipped, removalPending := target.pendingRemoval[event.ID]
+	if !removalPending {
+		err := target.target.HandleTrigger(ctx, event)
+		if err != nil && !sdkgo.IsTriggerUndeliverable(err) {
+			return false, err
+		}
+		if err != nil {
+			skipped = true
+			target.log.Warn(ctx, "trigger event skipped: undeliverable",
+				append([]slog.Attr{slog.String("event_id", event.ID)}, triggerlog.ErrAttrs(err)...)...)
+		}
+	}
+	if skipped {
+		// The enclosing delivery attempt must not also report this event as delivered.
+		triggerlog.RecordSkip(ctx)
+	}
+	if err := target.removeEvent(event.ID); err != nil {
+		target.pendingRemoval[event.ID] = skipped
+		target.log.Error(ctx, "trigger inbox remove failed", slog.String("event_id", event.ID), triggerlog.Err(err))
+		return skipped, err
+	}
+	delete(target.pendingRemoval, event.ID)
+	return skipped, nil
 }
 
 func (target *durableTriggerTarget[T]) removeEvent(eventID string) error {

@@ -69,6 +69,28 @@ must document their acknowledgement, retry, and crash-recovery guarantees.
 Before acknowledging a matched provider event, a source calls
 `PrepareTriggerDelivery`. Generated local factories use this boundary to fsync
 the event to a binding-specific inbox and replay it after restart.
+Sources hand each acknowledged event to `sdkgo.DeliverTrigger`, or document an
+equivalent policy: nil and `UndeliverableTriggerError` consume the event, and
+every other error is retried with backoff. A source must not stop delivering
+later events because one event is undeliverable, and it replays pending events
+before it delivers new ones. When one runner feeds both a Flow start and that
+Flow's RPCs, it delivers every event that can start a Flow before a later event
+that targets that Flow. For example, it can deliver events in the order the
+provider sends them, or deliver every root before any reply found in the same
+poll. Sources document this ordering guarantee alongside acknowledgement,
+retry, and crash recovery.
+Sources log through `log/slog` with the SDK's message and attribute
+conventions (see `sdkgo/README.md`). A provider event the source ignores is
+logged at DEBUG with a `reason`, a failed attempt or connection at WARN with
+its `attempt` count and next `delay`, and never a payload, message text, or
+credential. Retries and reconnects back off, so an outage does not log once a
+second, and a healthy idle connection or a routine reconnect that the provider
+requests logs no WARN. A source that
+consumes an undeliverable event itself logs that skip at WARN. A source that
+retries on its own schedule, such as a poller, runs each attempt through
+`sdkgo.TriggerAttempt`, so it does not report an event that an inbox or runner
+skipped as delivered after a retry. It keeps retrying a failed event until the
+event is consumed, even after the provider stops listing it.
 Applications supply the Flow ID resolver and start-input mapper, and the SDK
 derives the Flow-start request ID from the provider event ID. RPC targets use
 the same direct bound Flow method for registration and target invocation. The
