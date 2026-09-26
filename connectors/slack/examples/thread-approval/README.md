@@ -230,7 +230,8 @@ In the Slack client:
 The app must be a member of the selected public or private channel. Direct
 messages are not supported by this Connector.
 
-Dex Web normally provides channel and member pickers. For the manual fallback:
+Dex Web provides reusable channel, member, and text-input units for each Flow
+use. For the manual fallback:
 
 - open the channel details and choose **Copy channel ID**;
 - open a member profile, open the profile menu, and choose **Copy member ID**.
@@ -279,24 +280,40 @@ $HOME/.dex/connectors/connections.json
 
 Never commit or share that file.
 
-## 6. Configure both Trigger bindings
+## 6. Configure the Flow uses
 
-In the embedded Slack setup panel, choose **Expand setup** when a full-screen
-configuration view is more comfortable. Then:
+After the connection becomes **Ready**, Dex Web expands **Flow configuration**.
+The page owns the grouping and persistence; each embedded Slack iframe renders
+only the reusable unit requested by the Flow definition.
 
-1. choose **Load channels**;
-2. choose **Load members**;
-3. select the same approval channel for both Trigger bindings;
-4. optionally set **Start when the top-level message contains**;
-5. optionally restrict **Members allowed to start approval**; leaving it empty
-   permits any human member;
-6. set **Approval reply contains** to `approve` or a more distinctive phrase;
-7. select at least one **Member allowed to approve**;
-8. choose **Save trigger settings**.
+For `slack-thread-approval-start`:
+
+1. load and select the approval channel in **Approval channel**;
+2. optionally set **Start message contains**;
+3. optionally select **Members allowed to start**; leaving it empty permits any
+   human member.
+
+For `slack-thread-approval-reply`:
+
+1. select the same channel in **Approval channel**;
+2. set **Approval reply contains** to `approve` or a more distinctive phrase;
+3. select at least one **Member allowed to approve**.
+
+For the `PostSlackCompletion` Step, set **Completion reply** to the message the
+Flow should post, for example `Processing complete.`. Choose **Save** in each
+unit after editing it. Trigger configuration remains in
+`connections.json`; Step-operation configuration is written beside it in:
+
+```text
+$HOME/.dex/connectors/use-configurations.json
+```
+
+Both files are startup snapshots for this example Worker. Restart the Worker
+after changing a unit.
 
 The pickers display names for convenience but save stable IDs. If a picker is
-unavailable, enter the copied channel ID and comma-separated member IDs in the
-fallback fields.
+unavailable, enter the copied channel ID and comma-separated member IDs in its
+fallback field.
 
 Matching is a case-insensitive substring check. The default `approve` also
 matches `disapprove`. Use a distinctive phrase or change the application filter
@@ -326,6 +343,11 @@ export DEX_WORKER_BIND_ADDRESS="127.0.0.1:8913"
 Keep exactly one example Worker running for this Slack app. Slack distributes
 Socket Mode envelopes among active WebSocket connections rather than
 broadcasting every event to every connection.
+
+Startup fails with a scoped connector/connection/operation/Flow/Step error if
+`use-configurations.json` does not contain the `PostSlackCompletion`
+configuration. Return to Dex Web, save **Completion reply**, and restart the
+Worker.
 
 ## 8. Run the end-to-end test
 

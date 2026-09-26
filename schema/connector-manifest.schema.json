@@ -127,6 +127,11 @@
                 },
                 "icon": { "type": "string", "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+\\.(?:png|svg)$" }
               }
+            },
+            "units": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": { "$ref": "#/$defs/studioUnit" }
             }
           }
         },
@@ -143,6 +148,40 @@
     }
   },
   "$defs": {
+    "studioUnitPort": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "goName", "type"],
+      "properties": {
+        "name": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]+$" },
+        "goName": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
+        "type": { "enum": ["string", "stringList", "integer", "number", "boolean"] }
+      }
+    },
+    "studioUnit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "goName", "description", "outputs"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]+$" },
+        "goName": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
+        "description": { "type": "string", "minLength": 1 },
+        "backendCapabilities": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[a-z][a-z0-9]*(\\.[a-z][a-z0-9-]*)+$" }
+        },
+        "inputs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/studioUnitPort" }
+        },
+        "outputs": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/studioUnitPort" }
+        }
+      }
+    },
     "oauthCredentialMapping": {
       "type": "object",
       "additionalProperties": false,

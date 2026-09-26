@@ -45,7 +45,8 @@ type Spec struct {
 }
 
 type Studio struct {
-	Setup StudioSetup `yaml:"setup" json:"setup"`
+	Setup StudioSetup  `yaml:"setup" json:"setup"`
+	Units []StudioUnit `yaml:"units,omitempty" json:"units,omitempty"`
 }
 
 type StudioSetup struct {
@@ -54,6 +55,21 @@ type StudioSetup struct {
 	BackendCapabilities []string `yaml:"backendCapabilities" json:"backendCapabilities"`
 	MockScenarios       []string `yaml:"mockScenarios" json:"mockScenarios"`
 	Icon                string   `yaml:"icon" json:"icon"`
+}
+
+type StudioUnit struct {
+	ID                  string           `yaml:"id" json:"id"`
+	GoName              string           `yaml:"goName" json:"goName"`
+	Description         string           `yaml:"description" json:"description"`
+	BackendCapabilities []string         `yaml:"backendCapabilities,omitempty" json:"backendCapabilities,omitempty"`
+	Inputs              []StudioUnitPort `yaml:"inputs,omitempty" json:"inputs,omitempty"`
+	Outputs             []StudioUnitPort `yaml:"outputs" json:"outputs"`
+}
+
+type StudioUnitPort struct {
+	Name   string `yaml:"name" json:"name"`
+	GoName string `yaml:"goName" json:"goName"`
+	Type   string `yaml:"type" json:"type"`
 }
 
 type Codegen struct {
@@ -293,6 +309,28 @@ func (manifest Manifest) Validate() error {
 		if len(setup.MockScenarios) == 0 || !validUniqueStrings(setup.MockScenarios, mockScenarioPattern) {
 			problems = append(problems, "studio setup mockScenarios must be non-empty, unique scenario IDs")
 		}
+		seenUnitIDs := map[string]bool{}
+		seenUnitGoNames := map[string]bool{}
+		for _, unit := range manifest.Spec.Studio.Units {
+			if !operationPattern.MatchString(unit.ID) || seenUnitIDs[unit.ID] {
+				problems = append(problems, "studio unit IDs must be lower camel case and unique")
+			}
+			seenUnitIDs[unit.ID] = true
+			if !goNamePattern.MatchString(unit.GoName) || seenUnitGoNames[unit.GoName] {
+				problems = append(problems, "studio units require unique exported goName values")
+			}
+			seenUnitGoNames[unit.GoName] = true
+			if strings.TrimSpace(unit.Description) == "" {
+				problems = append(problems, "studio unit "+unit.ID+": description is required")
+			}
+			if !validUniqueStrings(unit.BackendCapabilities, capabilityPattern) {
+				problems = append(problems, "studio unit "+unit.ID+": backendCapabilities must be unique capability IDs")
+			}
+			if len(unit.Outputs) == 0 {
+				problems = append(problems, "studio unit "+unit.ID+": at least one output port is required")
+			}
+			problems = append(problems, validateStudioUnitPorts(unit.ID, unit.Inputs, unit.Outputs)...)
+		}
 	}
 	if len(manifest.Spec.Operations) == 0 {
 		problems = append(problems, "spec.operations must contain at least one operation")
@@ -404,6 +442,26 @@ func (manifest Manifest) Validate() error {
 		return fmt.Errorf("invalid connector manifest: %s", strings.Join(problems, "; "))
 	}
 	return nil
+}
+
+func validateStudioUnitPorts(unitID string, inputPorts []StudioUnitPort, outputPorts []StudioUnitPort) []string {
+	var problems []string
+	seenNames := map[string]bool{}
+	seenGoNames := map[string]bool{}
+	allowedTypes := map[string]bool{
+		"string": true, "stringList": true, "integer": true, "number": true, "boolean": true,
+	}
+	for _, port := range append(append([]StudioUnitPort(nil), inputPorts...), outputPorts...) {
+		if !operationPattern.MatchString(port.Name) || seenNames[port.Name] {
+			problems = append(problems, "studio unit "+unitID+": port names must be lower camel case and unique")
+		}
+		seenNames[port.Name] = true
+		if !goNamePattern.MatchString(port.GoName) || seenGoNames[port.GoName] || !allowedTypes[port.Type] {
+			problems = append(problems, "studio unit "+unitID+": ports require unique exported goName values and supported types")
+		}
+		seenGoNames[port.GoName] = true
+	}
+	return problems
 }
 
 func validJSONPath(value string) bool {

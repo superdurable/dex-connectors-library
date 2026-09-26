@@ -114,10 +114,17 @@ A connector with a provider-specific setup experience declares `spec.studio`:
 studio:
   setup:
     entrypoint: index.html
-    hostApiRange: ">=0.1.0 <0.2.0"
-    backendCapabilities: [oauth.connection.manage]
+    hostApiRange: ">=0.2.0 <0.3.0"
+    backendCapabilities: [oauth.connection.manage, use.configuration.write, slack.channels-list]
     mockScenarios: [not-configured, connected, revoked]
     icon: icon.svg
+  units:
+    - id: channelPicker
+      goName: ChannelPicker
+      description: Select one Slack channel.
+      backendCapabilities: [slack.channels-list]
+      outputs:
+        - {name: channelId, goName: ChannelID, type: string}
 ```
 
 The UI build output must contain the entrypoint and icon. Release automation
@@ -125,3 +132,14 @@ packages regular files only, enforces file-count and expanded-size limits, and
 creates a deterministic tarball. Connector UI runs in a sandbox iframe and may
 request only the listed Host API capabilities. It must never receive or render
 credential values.
+
+`studio.units` is the release-owned catalog of small UI components. It does
+not decide which operations or Triggers display a unit. A Flow composes unit
+instances in each generated Step or Trigger binding config and maps named ports
+to its own configuration object with JSON Pointers. Unit IDs and port names are
+generated as Go constants so Flow code does not repeat release-owned strings.
+
+The same bundle entrypoint renders either the connection surface or exactly one
+configuration unit, as selected by Connector Studio Host API 0.2. Connection
+authorization stays connector-wide. Unit values are isolated by Flow type and
+Step type for operations, or by Flow type and binding name for Triggers.

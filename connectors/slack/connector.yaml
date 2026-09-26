@@ -62,10 +62,28 @@ spec:
   studio:
     setup:
       entrypoint: index.html
-      hostApiRange: ">=0.1.0 <0.2.0"
-      backendCapabilities: [oauth.connection.manage, configuration.write, trigger.configuration.write, slack.channels-list, slack.users-list]
+      hostApiRange: ">=0.2.0 <0.3.0"
+      backendCapabilities: [oauth.connection.manage, use.configuration.write, slack.channels-list, slack.users-list]
       mockScenarios: [not-configured, authorization-pending, connected, insufficient-scope, revoked, broker-unavailable, ready]
       icon: icon.svg
+    units:
+      - id: channelPicker
+        goName: ChannelPicker
+        description: Select one Slack channel.
+        backendCapabilities: [slack.channels-list]
+        outputs:
+          - {name: channelId, goName: ChannelID, type: string}
+      - id: memberPicker
+        goName: MemberPicker
+        description: Select one or more Slack workspace members.
+        backendCapabilities: [slack.users-list]
+        outputs:
+          - {name: memberIds, goName: MemberIDs, type: stringList}
+      - id: textInput
+        goName: TextInput
+        description: Enter connector message or matching text.
+        outputs:
+          - {name: text, goName: Text, type: string}
   triggers:
     - name: channelThreadCreated
       goName: ChannelThreadCreated

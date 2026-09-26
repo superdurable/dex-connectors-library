@@ -7,6 +7,11 @@ export type {
   ConnectorStudioCommand,
   ConnectorStudioCommandResult,
   ConnectorStudioCommandType,
+  ConnectorStudioConfigurationUnitTarget,
+  ConnectorStudioConnectionTarget,
   ConnectorStudioHostReady,
   ConnectorStudioMessage,
+  ConnectorStudioOperationScope,
+  ConnectorStudioTarget,
+  ConnectorStudioTriggerScope,
 } from "./host-api.js";

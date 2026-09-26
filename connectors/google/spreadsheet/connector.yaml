@@ -48,10 +48,31 @@ spec:
   studio:
     setup:
       entrypoint: index.html
-      hostApiRange: ">=0.1.0 <0.2.0"
-      backendCapabilities: [oauth.connection.manage, google.picker.spreadsheets, google.sheets.tabs-list, configuration.write]
+      hostApiRange: ">=0.2.0 <0.3.0"
+      backendCapabilities: [oauth.connection.manage, use.configuration.write, google.picker.spreadsheets, google.sheets.tabs-list]
       mockScenarios: [not-configured, authorization-pending, connected, insufficient-scope, revoked, broker-unavailable, ready]
       icon: icon.svg
+    units:
+      - id: spreadsheetPicker
+        goName: SpreadsheetPicker
+        description: Select one Google spreadsheet.
+        backendCapabilities: [google.picker.spreadsheets]
+        outputs:
+          - {name: spreadsheetId, goName: SpreadsheetID, type: string}
+          - {name: spreadsheetName, goName: SpreadsheetName, type: string}
+      - id: sheetTabPicker
+        goName: SheetTabPicker
+        description: Select one tab from a spreadsheet.
+        backendCapabilities: [google.sheets.tabs-list]
+        inputs:
+          - {name: spreadsheetId, goName: SpreadsheetID, type: string}
+        outputs:
+          - {name: tab, goName: Tab, type: string}
+      - id: textInput
+        goName: TextInput
+        description: Enter a range, key, or cell value.
+        outputs:
+          - {name: text, goName: Text, type: string}
   operations:
     - name: getValues
       goName: GetValues

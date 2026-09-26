@@ -193,6 +193,13 @@ spec:
       backendCapabilities: [configuration.write]
       mockScenarios: [not-configured, ready]
       icon: icon.svg
+    units:
+      - id: channelPicker
+        goName: ChannelPicker
+        description: Select a provider channel.
+        backendCapabilities: [channels.list]
+        outputs:
+          - {name: channelId, goName: ChannelID, type: string}
   operations:
     - name: getThing
       goName: GetThing
@@ -209,6 +216,8 @@ spec:
 	require.NotNil(t, manifest.Spec.Studio)
 	require.Equal(t, "index.html", manifest.Spec.Studio.Setup.Entrypoint)
 	require.Contains(t, manifest.Spec.Studio.Setup.BackendCapabilities, "configuration.write")
+	require.Equal(t, "channelPicker", manifest.Spec.Studio.Units[0].ID)
+	require.Equal(t, "channelId", manifest.Spec.Studio.Units[0].Outputs[0].Name)
 }
 
 func TestRejectProviderIdempotencyAndInvalidProgress(t *testing.T) {

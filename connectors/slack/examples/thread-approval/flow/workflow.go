@@ -61,13 +61,34 @@ type ReceiveThreadReplyInput struct {
 	UserID  string `json:"userId"`
 }
 
-type Flow struct {
-	dex.FlowDefaults
-	connection slack.Connection
+type PostCompletionConfiguration struct {
+	Text string `json:"text"`
 }
 
-func NewFlow(connection slack.Connection) *Flow {
-	return &Flow{connection: connection}
+type Flow struct {
+	dex.FlowDefaults
+	connection                  slack.Connection
+	postCompletionConfiguration sdkgo.ConnectorLoadedConfiguration[PostCompletionConfiguration]
+}
+
+func NewFlow(connection slack.Connection, configurations ...sdkgo.ConnectorLoadedConfiguration[PostCompletionConfiguration]) *Flow {
+	configuration := sdkgo.ConnectorLoadedConfiguration[PostCompletionConfiguration]{
+		Reference: PostCompletionConfigurationRef(), Value: PostCompletionConfiguration{Text: "Processing complete."},
+	}
+	if len(configurations) > 1 {
+		panic("Slack thread approval Flow accepts one post-completion configuration")
+	}
+	if len(configurations) == 1 {
+		configuration = configurations[0]
+	}
+	return &Flow{connection: connection, postCompletionConfiguration: configuration}
+}
+
+func PostCompletionConfigurationRef() sdkgo.ConnectorConfigurationRef {
+	return sdkgo.ConnectorConfigurationRef{
+		ConnectorID: slack.ConnectorID, ConnectionName: ConnectionName, OperationID: "postThreadReply",
+		FlowType: "Flow", StepType: postCompletionStepType,
+	}
 }
 
 func (flow *Flow) GetSteps() []dex.StepDef {
@@ -92,11 +113,15 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Annotations: sdkgo.StepAnnotations{
 				GroupID: "slack", GroupLabel: "Slack", Explanation: "Reply to the Slack thread after the configured reply Trigger invokes the RPC.",
 			},
+			ConfigurationUI: sdkgo.ConnectorConfigurationUI{Units: []sdkgo.ConnectorUIUnit{{
+				ID: "completionText", UnitID: slack.UIUnitTextInput, Label: "Completion reply", Required: true,
+				Bindings: []sdkgo.ConnectorUIBinding{{Port: slack.UITextInputPortText, JSONPointer: "/text"}},
+			}}},
 			Connection: flow.connection,
 			MapToOperationInput: func(state ThreadState) slack.PostThreadReplyInput {
 				return slack.PostThreadReplyInput{
 					ChannelID: state.Input.ChannelID, ThreadTimestamp: state.Input.ThreadTimestamp,
-					Text: "Processing complete.",
+					Text: flow.postCompletionConfiguration.Value.Text,
 				}
 			},
 			Sent:            sdkgo.GoTo(completionPosted{}),
@@ -123,9 +148,19 @@ func (*Flow) GetConnectorTriggerBindings() []sdkgo.TriggerBindingDefinition {
 	return []sdkgo.TriggerBindingDefinition{
 		slack.DefineChannelThreadCreatedTriggerBinding(slack.ChannelThreadCreatedTriggerBindingConfig{
 			ConnectionName: ConnectionName, BindingName: StartTriggerBinding,
+			ConfigurationUI: sdkgo.ConnectorConfigurationUI{Units: []sdkgo.ConnectorUIUnit{
+				{ID: "channel", UnitID: slack.UIUnitChannelPicker, Label: "Approval channel", Required: true, Bindings: []sdkgo.ConnectorUIBinding{{Port: slack.UIChannelPickerPortChannelID, JSONPointer: "/channelId"}}},
+				{ID: "message", UnitID: slack.UIUnitTextInput, Label: "Start message contains", Bindings: []sdkgo.ConnectorUIBinding{{Port: slack.UITextInputPortText, JSONPointer: "/threadTriggerMatcher/messageContains"}}},
+				{ID: "members", UnitID: slack.UIUnitMemberPicker, Label: "Members allowed to start", Bindings: []sdkgo.ConnectorUIBinding{{Port: slack.UIMemberPickerPortMemberIDs, JSONPointer: "/threadTriggerMatcher/posterUserIds"}}},
+			}},
 		}),
 		slack.DefineThreadReplyCreatedTriggerBinding(slack.ThreadReplyCreatedTriggerBindingConfig{
 			ConnectionName: ConnectionName, BindingName: ReplyTriggerBinding,
+			ConfigurationUI: sdkgo.ConnectorConfigurationUI{Units: []sdkgo.ConnectorUIUnit{
+				{ID: "channel", UnitID: slack.UIUnitChannelPicker, Label: "Approval channel", Required: true, Bindings: []sdkgo.ConnectorUIBinding{{Port: slack.UIChannelPickerPortChannelID, JSONPointer: "/channelId"}}},
+				{ID: "message", UnitID: slack.UIUnitTextInput, Label: "Approval reply contains", Bindings: []sdkgo.ConnectorUIBinding{{Port: slack.UITextInputPortText, JSONPointer: "/threadReplyMatcher/messageContains"}}},
+				{ID: "approvers", UnitID: slack.UIUnitMemberPicker, Label: "Members allowed to approve", Required: true, Bindings: []sdkgo.ConnectorUIBinding{{Port: slack.UIMemberPickerPortMemberIDs, JSONPointer: "/threadReplyMatcher/posterUserIds"}}},
+			}},
 		}),
 	}
 }

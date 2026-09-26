@@ -70,6 +70,13 @@ spec:
   codegen: {go: {package: messages}}
   configuration: {fields: []}
   auth: {type: none, connectionKind: none, fields: []}
+  studio:
+    setup: {entrypoint: index.html, hostApiRange: ">=0.2.0 <0.3.0", backendCapabilities: [channels.list], mockScenarios: [ready], icon: icon.svg}
+    units:
+      - id: channelPicker
+        goName: ChannelPicker
+        description: Select a channel.
+        outputs: [{name: channelId, goName: ChannelID, type: string}]
   triggers:
     - {name: channelThreadCreated, goName: ChannelThreadCreated, eventType: MessageEvent, configurationType: ChannelThreadConfiguration, description: Receive a top-level channel message.}
     - {name: threadReplyCreated, goName: ThreadReplyCreated, eventType: MessageEvent, configurationType: ThreadReplyConfiguration, description: Receive a thread reply.}
@@ -100,6 +107,13 @@ spec:
 	require.Contains(t, text, "func NewLocalThreadReplyCreatedTrigger")
 	require.NotContains(t, text, "triggerKind")
 	require.Contains(t, text, "`connector:\"bindingName\"`")
+	require.Contains(t, text, "UIUnitChannelPicker")
+	require.Contains(t, text, `= "channelPicker"`)
+	require.Contains(t, text, "UIChannelPickerPortChannelID")
+	require.Contains(t, text, `= "channelId"`)
+	require.Contains(t, text, "sdkgo.ConnectorConfigurationUI `connector:\"configurationUI\"`")
+	require.Contains(t, text, "ConfigurationUI: &config.ConfigurationUI")
+	require.Contains(t, text, "ConfigurationUI: config.ConfigurationUI")
 	_, err = parser.ParseFile(token.NewFileSet(), "zz_generated_connector.go", strings.NewReader(text), parser.AllErrors)
 	require.NoError(t, err)
 }

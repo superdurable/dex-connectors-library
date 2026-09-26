@@ -17,6 +17,15 @@ import (
 
 const ConnectorID = "slack"
 
+const (
+	UIUnitChannelPicker          = "channelPicker"
+	UIChannelPickerPortChannelID = "channelId"
+	UIUnitMemberPicker           = "memberPicker"
+	UIMemberPickerPortMemberIDs  = "memberIds"
+	UIUnitTextInput              = "textInput"
+	UITextInputPortText          = "text"
+)
+
 type Config struct {
 	Endpoint             string `json:"endpoint,omitempty" yaml:"endpoint,omitempty"`
 	MaxResponseBytes     int64  `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
@@ -159,15 +168,17 @@ var ChannelThreadCreatedTriggerDefinition = sdkgo.TriggerDefinition{
 
 type ChannelThreadCreatedTriggerBindingConfig struct {
 	sdkgo.TriggerBindingFactoryConfigMarker `connector:"factory=triggerBinding"`
-	connectorID                             struct{} `connector:"connectorId=slack"`
-	triggerName                             struct{} `connector:"triggerName=channelThreadCreated"`
-	ConnectionName                          string   `connector:"connectionName"`
-	BindingName                             string   `connector:"bindingName"`
+	connectorID                             struct{}                       `connector:"connectorId=slack"`
+	triggerName                             struct{}                       `connector:"triggerName=channelThreadCreated"`
+	ConnectionName                          string                         `connector:"connectionName"`
+	BindingName                             string                         `connector:"bindingName"`
+	ConfigurationUI                         sdkgo.ConnectorConfigurationUI `connector:"configurationUI"`
 }
 
 func DefineChannelThreadCreatedTriggerBinding(config ChannelThreadCreatedTriggerBindingConfig) sdkgo.TriggerBindingDefinition {
 	return sdkgo.MustTriggerBindingDefinition(sdkgo.TriggerBindingDefinition{
 		Definition: ChannelThreadCreatedTriggerDefinition, ConnectionName: config.ConnectionName, BindingName: config.BindingName,
+		ConfigurationUI: &config.ConfigurationUI,
 	})
 }
 
@@ -221,15 +232,17 @@ var ThreadReplyCreatedTriggerDefinition = sdkgo.TriggerDefinition{
 
 type ThreadReplyCreatedTriggerBindingConfig struct {
 	sdkgo.TriggerBindingFactoryConfigMarker `connector:"factory=triggerBinding"`
-	connectorID                             struct{} `connector:"connectorId=slack"`
-	triggerName                             struct{} `connector:"triggerName=threadReplyCreated"`
-	ConnectionName                          string   `connector:"connectionName"`
-	BindingName                             string   `connector:"bindingName"`
+	connectorID                             struct{}                       `connector:"connectorId=slack"`
+	triggerName                             struct{}                       `connector:"triggerName=threadReplyCreated"`
+	ConnectionName                          string                         `connector:"connectionName"`
+	BindingName                             string                         `connector:"bindingName"`
+	ConfigurationUI                         sdkgo.ConnectorConfigurationUI `connector:"configurationUI"`
 }
 
 func DefineThreadReplyCreatedTriggerBinding(config ThreadReplyCreatedTriggerBindingConfig) sdkgo.TriggerBindingDefinition {
 	return sdkgo.MustTriggerBindingDefinition(sdkgo.TriggerBindingDefinition{
 		Definition: ThreadReplyCreatedTriggerDefinition, ConnectionName: config.ConnectionName, BindingName: config.BindingName,
+		ConfigurationUI: &config.ConfigurationUI,
 	})
 }
 
@@ -304,6 +317,7 @@ type ListThreadMessagesStepConfig[IN any] struct {
 	operationID                    struct{}                                                    `connector:"operationId=listThreadMessages"`
 	StepType                       string                                                      `connector:"stepType"`
 	Annotations                    sdkgo.StepAnnotations                                       `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                              `connector:"configurationUI"`
 	Connection                     Connection                                                  `connector:"connection"`
 	ConnectionName                 string                                                      `connector:"connectionName"`
 	MapToOperationInput            func(IN) ListThreadMessagesInput                            `connector:"mapToOperationInput"`
@@ -324,7 +338,8 @@ func NewListThreadMessagesStep[IN any](config ListThreadMessagesStepConfig[IN]) 
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListThreadMessagesInput, ListThreadMessagesOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.ListThreadMessages(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.client.ListThreadMessages(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[ListThreadMessagesResult] {
 			branches := make([]sdkgo.BranchTarget[ListThreadMessagesResult], 0, 4)
@@ -377,6 +392,7 @@ type GetThreadReplyStepConfig[IN any] struct {
 	operationID                    struct{}                                                `connector:"operationId=getThreadReply"`
 	StepType                       string                                                  `connector:"stepType"`
 	Annotations                    sdkgo.StepAnnotations                                   `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                          `connector:"configurationUI"`
 	Connection                     Connection                                              `connector:"connection"`
 	ConnectionName                 string                                                  `connector:"connectionName"`
 	MapToOperationInput            func(IN) GetThreadReplyInput                            `connector:"mapToOperationInput"`
@@ -398,7 +414,8 @@ func NewGetThreadReplyStep[IN any](config GetThreadReplyStepConfig[IN]) sdkgo.Qu
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetThreadReplyInput, GetThreadReplyOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.GetThreadReply(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.client.GetThreadReply(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[GetThreadReplyResult] {
 			branches := make([]sdkgo.BranchTarget[GetThreadReplyResult], 0, 5)
@@ -452,6 +469,7 @@ type PostChannelMessageStepConfig[IN any] struct {
 	operationID                       struct{}                                                `connector:"operationId=postChannelMessage"`
 	StepType                          string                                                  `connector:"stepType"`
 	Annotations                       sdkgo.StepAnnotations                                   `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                          `connector:"configurationUI"`
 	Connection                        Connection                                              `connector:"connection"`
 	ConnectionName                    string                                                  `connector:"connectionName"`
 	MapToOperationInput               func(IN) PostChannelMessageInput                        `connector:"mapToOperationInput"`
@@ -472,7 +490,8 @@ func NewPostChannelMessageStep[IN any](config PostChannelMessageStepConfig[IN]) 
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, PostChannelMessageInput, PostMessageOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.PostChannelMessage(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.client.PostChannelMessage(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[PostChannelMessageResult] {
 			branches := make([]sdkgo.BranchTarget[PostChannelMessageResult], 0, 4)
@@ -523,6 +542,7 @@ type PostThreadReplyStepConfig[IN any] struct {
 	operationID                       struct{}                                                `connector:"operationId=postThreadReply"`
 	StepType                          string                                                  `connector:"stepType"`
 	Annotations                       sdkgo.StepAnnotations                                   `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                          `connector:"configurationUI"`
 	Connection                        Connection                                              `connector:"connection"`
 	ConnectionName                    string                                                  `connector:"connectionName"`
 	MapToOperationInput               func(IN) PostThreadReplyInput                           `connector:"mapToOperationInput"`
@@ -543,7 +563,8 @@ func NewPostThreadReplyStep[IN any](config PostThreadReplyStepConfig[IN]) sdkgo.
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, PostThreadReplyInput, PostMessageOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.PostThreadReply(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.client.PostThreadReply(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[PostThreadReplyResult] {
 			branches := make([]sdkgo.BranchTarget[PostThreadReplyResult], 0, 4)

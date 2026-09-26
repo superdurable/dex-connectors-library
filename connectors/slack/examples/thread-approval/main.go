@@ -39,7 +39,13 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	flow := threadapproval.NewFlow(connection)
+	postCompletionConfiguration, err := localconfig.LoadOperationConfiguration[threadapproval.PostCompletionConfiguration](
+		store, threadapproval.PostCompletionConfigurationRef(),
+	)
+	if err != nil {
+		return err
+	}
+	flow := threadapproval.NewFlow(connection, postCompletionConfiguration)
 	registry, err := dex.NewRegistry([]dex.Flow{flow})
 	if err != nil {
 		return fmt.Errorf("register Slack thread approval Flow: %w", err)

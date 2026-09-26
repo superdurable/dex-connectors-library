@@ -65,10 +65,26 @@ spec:
   studio:
     setup:
       entrypoint: index.html
-      hostApiRange: ">=0.1.0 <0.2.0"
-      backendCapabilities: [oauth.connection.manage, configuration.write, trigger.configuration.write]
+      hostApiRange: ">=0.2.0 <0.3.0"
+      backendCapabilities: [oauth.connection.manage, use.configuration.write]
       mockScenarios: [not-configured, authorization-pending, connected, insufficient-scope, revoked, broker-unavailable, ready]
       icon: icon.svg
+    units:
+      - id: searchQueryInput
+        goName: SearchQueryInput
+        description: Enter a Gmail search query.
+        outputs:
+          - {name: query, goName: Query, type: string}
+      - id: emailListInput
+        goName: EmailListInput
+        description: Enter one or more email addresses.
+        outputs:
+          - {name: emails, goName: Emails, type: stringList}
+      - id: textInput
+        goName: TextInput
+        description: Enter email body or matching text.
+        outputs:
+          - {name: text, goName: Text, type: string}
   triggers:
     - name: messageReceived
       goName: MessageReceived

@@ -14,11 +14,11 @@ describe("Connector Studio Host API", () => {
     })).toBe(true);
   });
 
-  it("accepts Slack resource and trigger configuration commands", () => {
+  it("accepts resource and use-configuration commands", () => {
     const common = {protocolVersion: connectorStudioHostAPIVersion, sessionNonce: "nonce", connectorId: "slack", requestId: "request", type: "connector.command"};
     expect(isConnectorStudioMessage({...common, command: "slack.channels.list"})).toBe(true);
     expect(isConnectorStudioMessage({...common, command: "slack.users.list"})).toBe(true);
-    expect(isConnectorStudioMessage({...common, command: "trigger.configuration.save", input: {bindingName: "approval-start"}})).toBe(true);
+    expect(isConnectorStudioMessage({...common, command: "use.configuration.save", input: {value: {channelId: "C123"}}})).toBe(true);
   });
 
   it("rejects messages without the protocol identity", () => {
@@ -33,12 +33,32 @@ describe("Connector Studio Host API", () => {
       connectorId: "fixture",
       capabilities: ["configuration.write"],
       connection: { state: "connected", grantedScopes: [] },
-      configuration: {},
-      triggerBindings: {channelThreadCreated: {"approval-start": {channelId: "C123"}}},
+      target: {kind: "connection"},
     };
     expect(isConnectorStudioMessage(ready)).toBe(true);
     expect(isConnectorStudioMessage({ ...ready, type: "connector.host.evil" })).toBe(false);
     expect(isConnectorStudioMessage({ ...ready, capabilities: ["safe", 7] })).toBe(false);
+  });
+
+  it("accepts an isolated operation unit target", () => {
+    expect(isConnectorStudioMessage({
+      type: "connector.host.ready",
+      protocolVersion: connectorStudioHostAPIVersion,
+      sessionNonce: "nonce",
+      connectorId: "slack",
+      capabilities: ["use.configuration.write", "slack.channels-list"],
+      connection: {state: "connected", grantedScopes: []},
+      target: {
+        kind: "configurationUnit",
+        scope: {kind: "operation", operationId: "postChannelMessage", flowType: "ApprovalFlow", stepType: "RequestApproval"},
+        instanceId: "approvalChannel",
+        unitId: "channelPicker",
+        label: "Approval channel",
+        required: true,
+        bindings: [{port: "channelId", jsonPointer: "/channelId"}],
+        value: {channelId: "C123"},
+      },
+    })).toBe(true);
   });
 
   it("rejects unknown commands and malformed results", () => {

@@ -48,6 +48,27 @@ those resources. Manifest progress declarations only control which typed Stream
 fields code generation exposes; runtime operation definitions do not duplicate
 or validate that metadata.
 
+Generated Step and Trigger binding configs also accept a static
+`ConnectorConfigurationUI`. A Flow composes release-owned UI units and binds
+their ports to JSON Pointers in its own configuration shape. Dex CLI extracts
+only static literals into the Flow Definition; dynamic UI composition is
+rejected. UI metadata never contains selected values.
+
+For local operation configuration, load selected values once during startup:
+
+```go
+loaded, err := localconfig.LoadOperationConfiguration[ReplyConfiguration](store,
+    sdkgo.ConnectorConfigurationRef{
+        ConnectorID: "slack", ConnectionName: "workspace", OperationID: "postThreadReply",
+        FlowType: "ApprovalFlow", StepType: "PostCompletion",
+    })
+```
+
+Pass the resulting `ConnectorLoadedConfiguration[ReplyConfiguration]` into the
+Flow constructor and explicitly use `loaded.Value` inside
+`MapToOperationInput`. The identity includes Flow and Step types, so two uses of
+the same operation never share configuration implicitly.
+
 Every operation declares the standard `defect` branch. Mutations declare the
 standard `uncertain` branch only when a dispatched provider call can have an
 unknown outcome; otherwise generated factories do not require that target.

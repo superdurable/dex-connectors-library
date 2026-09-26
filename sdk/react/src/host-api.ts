@@ -1,4 +1,4 @@
-export const connectorStudioHostAPIVersion = "0.1.0" as const;
+export const connectorStudioHostAPIVersion = "0.2.0" as const;
 
 export type ConnectorConnectionState =
   | "not_configured"
@@ -18,6 +18,38 @@ export interface ConnectorConnectionView {
   detail?: string;
 }
 
+export interface ConnectorStudioConnectionTarget {
+  kind: "connection";
+}
+
+export interface ConnectorStudioOperationScope {
+  kind: "operation";
+  operationId: string;
+  flowType: string;
+  stepType: string;
+}
+
+export interface ConnectorStudioTriggerScope {
+  kind: "trigger";
+  triggerName: string;
+  bindingName: string;
+  flowType: string;
+}
+
+export interface ConnectorStudioConfigurationUnitTarget {
+  kind: "configurationUnit";
+  scope: ConnectorStudioOperationScope | ConnectorStudioTriggerScope;
+  instanceId: string;
+  unitId: string;
+  label: string;
+  description?: string;
+  required: boolean;
+  bindings: {port: string; jsonPointer: string}[];
+  value: Record<string, unknown>;
+}
+
+export type ConnectorStudioTarget = ConnectorStudioConnectionTarget | ConnectorStudioConfigurationUnitTarget;
+
 export interface ConnectorStudioHostReady {
   type: "connector.host.ready";
   protocolVersion: typeof connectorStudioHostAPIVersion;
@@ -25,8 +57,7 @@ export interface ConnectorStudioHostReady {
   connectorId: string;
   capabilities: string[];
   connection: ConnectorConnectionView;
-  configuration: Record<string, unknown>;
-  triggerBindings?: Record<string, Record<string, Record<string, unknown>>>;
+  target: ConnectorStudioTarget;
 }
 
 export type ConnectorStudioCommandType =
@@ -37,8 +68,7 @@ export type ConnectorStudioCommandType =
   | "google.sheets.list-tabs"
   | "slack.channels.list"
   | "slack.users.list"
-  | "trigger.configuration.save"
-  | "configuration.save";
+  | "use.configuration.save";
 
 export interface ConnectorStudioCommand {
   type: "connector.command";
@@ -74,8 +104,7 @@ const commandTypes = new Set<ConnectorStudioCommandType>([
   "google.sheets.list-tabs",
   "slack.channels.list",
   "slack.users.list",
-  "trigger.configuration.save",
-  "configuration.save",
+  "use.configuration.save",
 ]);
 
 export function isConnectorStudioMessage(value: unknown): value is ConnectorStudioMessage {
@@ -92,8 +121,7 @@ export function isConnectorStudioMessage(value: unknown): value is ConnectorStud
     return Array.isArray(message.capabilities)
       && message.capabilities.every((capability) => typeof capability === "string")
       && isRecord(message.connection)
-      && isRecord(message.configuration)
-      && (message.triggerBindings === undefined || isTriggerBindings(message.triggerBindings));
+      && isConnectorStudioTarget(message.target);
   }
   if (message.type === "connector.command") {
     return typeof message.requestId === "string"
@@ -112,13 +140,31 @@ export function isConnectorStudioMessage(value: unknown): value is ConnectorStud
   return false;
 }
 
-function isTriggerBindings(value: unknown): value is Record<string, Record<string, Record<string, unknown>>> {
-  return isRecord(value)
-    && Object.values(value).every((bindings) => isRecord(bindings) && Object.values(bindings).every(isRecord));
+function isConnectorStudioTarget(value: unknown): value is ConnectorStudioTarget {
+  if (!isRecord(value) || typeof value.kind !== "string") return false;
+  if (value.kind === "connection") return true;
+  if (value.kind !== "configurationUnit" || !isRecord(value.scope)) return false;
+  const scope = value.scope;
+  const validScope = scope.kind === "operation"
+    ? nonEmptyString(scope.operationId) && nonEmptyString(scope.flowType) && nonEmptyString(scope.stepType)
+    : scope.kind === "trigger"
+      && nonEmptyString(scope.triggerName) && nonEmptyString(scope.bindingName) && nonEmptyString(scope.flowType);
+  return validScope
+    && nonEmptyString(value.instanceId)
+    && nonEmptyString(value.unitId)
+    && nonEmptyString(value.label)
+    && typeof value.required === "boolean"
+    && Array.isArray(value.bindings)
+    && value.bindings.every((binding) => isRecord(binding) && nonEmptyString(binding.port) && nonEmptyString(binding.jsonPointer))
+    && isRecord(value.value);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function nonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.length > 0;
 }
 
 function isCommandError(value: unknown): boolean {
