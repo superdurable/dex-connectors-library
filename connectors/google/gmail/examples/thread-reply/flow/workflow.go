@@ -62,13 +62,34 @@ type ReceiveEmailReplyInput struct {
 	MessageID string `json:"messageId"`
 }
 
-type Flow struct {
-	dex.FlowDefaults
-	connection gmail.Connection
+type ReplyMessageConfiguration struct {
+	TextBody string `json:"textBody"`
 }
 
-func NewFlow(connection gmail.Connection) *Flow {
-	return &Flow{connection: connection}
+type Flow struct {
+	dex.FlowDefaults
+	connection                gmail.Connection
+	replyMessageConfiguration sdkgo.ConnectorLoadedConfiguration[ReplyMessageConfiguration]
+}
+
+func NewFlow(connection gmail.Connection, configurations ...sdkgo.ConnectorLoadedConfiguration[ReplyMessageConfiguration]) *Flow {
+	configuration := sdkgo.ConnectorLoadedConfiguration[ReplyMessageConfiguration]{
+		Reference: ReplyMessageConfigurationRef(), Value: ReplyMessageConfiguration{TextBody: "Processing complete."},
+	}
+	if len(configurations) > 1 {
+		panic("Gmail thread reply Flow accepts one reply-message configuration")
+	}
+	if len(configurations) == 1 {
+		configuration = configurations[0]
+	}
+	return &Flow{connection: connection, replyMessageConfiguration: configuration}
+}
+
+func ReplyMessageConfigurationRef() sdkgo.ConnectorConfigurationRef {
+	return sdkgo.ConnectorConfigurationRef{
+		ConnectorID: gmail.ConnectorID, ConnectionName: ConnectionName, OperationID: "replyToMessage",
+		FlowType: "Flow", StepType: replyMessageStepType,
+	}
 }
 
 func (flow *Flow) GetSteps() []dex.StepDef {
@@ -87,9 +108,13 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 		dex.DefineStep(gmail.NewReplyToMessageStep(gmail.ReplyToMessageStepConfig[ThreadState]{
 			StepType: replyMessageStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{GroupID: "gmail", GroupLabel: "Gmail", Explanation: "Reply after the received email Trigger invokes the typed RPC."},
-			Connection:  flow.connection,
+			ConfigurationUI: sdkgo.ConnectorConfigurationUI{Units: []sdkgo.ConnectorUIUnit{{
+				ID: "replyBody", UnitID: gmail.UIUnitTextInput, Label: "Completion reply", Required: true,
+				Bindings: []sdkgo.ConnectorUIBinding{{Port: gmail.UITextInputPortText, JSONPointer: "/textBody"}},
+			}}},
+			Connection: flow.connection,
 			MapToOperationInput: func(state ThreadState) gmail.ReplyToMessageInput {
-				return gmail.ReplyToMessageInput{MessageID: state.ReplyMessageID, TextBody: "Processing complete."}
+				return gmail.ReplyToMessageInput{MessageID: state.ReplyMessageID, TextBody: flow.replyMessageConfiguration.Value.TextBody}
 			},
 			Sent:            sdkgo.GoTo(replySent{}),
 			ResultAttribute: &replyResultAttribute,
@@ -115,9 +140,19 @@ func (*Flow) GetConnectorTriggerBindings() []sdkgo.TriggerBindingDefinition {
 	return []sdkgo.TriggerBindingDefinition{
 		gmail.DefineMessageReceivedTriggerBinding(gmail.MessageReceivedTriggerBindingConfig{
 			ConnectionName: ConnectionName, BindingName: StartTriggerBinding,
+			ConfigurationUI: sdkgo.ConnectorConfigurationUI{Units: []sdkgo.ConnectorUIUnit{
+				{ID: "query", UnitID: gmail.UIUnitSearchQueryInput, Label: "Gmail search query", Bindings: []sdkgo.ConnectorUIBinding{{Port: gmail.UISearchQueryInputPortQuery, JSONPointer: "/searchQuery"}}},
+				{ID: "message", UnitID: gmail.UIUnitTextInput, Label: "Start message contains", Bindings: []sdkgo.ConnectorUIBinding{{Port: gmail.UITextInputPortText, JSONPointer: "/messageMatcher/messageContains"}}},
+				{ID: "senders", UnitID: gmail.UIUnitEmailListInput, Label: "Allowed root senders", Bindings: []sdkgo.ConnectorUIBinding{{Port: gmail.UIEmailListInputPortEmails, JSONPointer: "/messageMatcher/senderEmails"}}},
+			}},
 		}),
 		gmail.DefineReplyReceivedTriggerBinding(gmail.ReplyReceivedTriggerBindingConfig{
 			ConnectionName: ConnectionName, BindingName: ReplyTriggerBinding,
+			ConfigurationUI: sdkgo.ConnectorConfigurationUI{Units: []sdkgo.ConnectorUIUnit{
+				{ID: "query", UnitID: gmail.UIUnitSearchQueryInput, Label: "Gmail search query", Bindings: []sdkgo.ConnectorUIBinding{{Port: gmail.UISearchQueryInputPortQuery, JSONPointer: "/searchQuery"}}},
+				{ID: "message", UnitID: gmail.UIUnitTextInput, Label: "Reply message contains", Bindings: []sdkgo.ConnectorUIBinding{{Port: gmail.UITextInputPortText, JSONPointer: "/replyMatcher/messageContains"}}},
+				{ID: "senders", UnitID: gmail.UIUnitEmailListInput, Label: "Allowed reply senders", Bindings: []sdkgo.ConnectorUIBinding{{Port: gmail.UIEmailListInputPortEmails, JSONPointer: "/replyMatcher/senderEmails"}}},
+			}},
 		}),
 	}
 }

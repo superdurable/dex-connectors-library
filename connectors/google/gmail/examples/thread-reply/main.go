@@ -39,7 +39,13 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	flow := threadreply.NewFlow(connection)
+	replyMessageConfiguration, err := localconfig.LoadOperationConfiguration[threadreply.ReplyMessageConfiguration](
+		store, threadreply.ReplyMessageConfigurationRef(),
+	)
+	if err != nil {
+		return err
+	}
+	flow := threadreply.NewFlow(connection, replyMessageConfiguration)
 	registry, err := dex.NewRegistry([]dex.Flow{flow})
 	if err != nil {
 		return fmt.Errorf("register Gmail thread reply Flow: %w", err)
