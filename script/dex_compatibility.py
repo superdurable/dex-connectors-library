@@ -29,7 +29,7 @@ from pathlib import Path
 
 REPOSITORY = "superdurable/dex-connectors-library"
 DEX_REPOSITORY = "superdurable/dex"
-SYNTHETIC_VERSION = "v0.0.0"
+SYNTHETIC_VERSION_PREFIX = "v0.0."
 STABLE_VERSION = re.compile(r"^v(\d+)\.(\d+)\.(\d+)$")
 
 
@@ -222,18 +222,27 @@ def build_current_artifacts(root: Path, output: Path) -> None:
 
 def create_module_proxy(module_root: Path, proxy: Path) -> tuple[str, str]:
     name = module_path(module_root)
+    files = [
+        path for path in sorted(module_root.rglob("*"))
+        if path.is_file() and not any(part in {"node_modules", "dist", ".git"} for part in path.parts)
+    ]
+    digest = hashlib.sha256()
+    for file in files:
+        digest.update(file.relative_to(module_root).as_posix().encode())
+        digest.update(b"\0")
+        digest.update(file.read_bytes())
+        digest.update(b"\0")
+    version = SYNTHETIC_VERSION_PREFIX + str(max(1, int(digest.hexdigest()[:12], 16)))
     version_root = proxy / name / "@v"
     version_root.mkdir(parents=True, exist_ok=True)
-    (version_root / "list").write_text(SYNTHETIC_VERSION + "\n")
-    (version_root / f"{SYNTHETIC_VERSION}.info").write_text(json.dumps({"Version": SYNTHETIC_VERSION, "Time": "2026-01-01T00:00:00Z"}) + "\n")
-    shutil.copy2(module_root / "go.mod", version_root / f"{SYNTHETIC_VERSION}.mod")
-    with zipfile.ZipFile(version_root / f"{SYNTHETIC_VERSION}.zip", "w", zipfile.ZIP_DEFLATED) as archive:
-        for path in sorted(module_root.rglob("*")):
-            if not path.is_file() or any(part in {"node_modules", "dist", ".git"} for part in path.parts):
-                continue
+    (version_root / "list").write_text(version + "\n")
+    (version_root / f"{version}.info").write_text(json.dumps({"Version": version, "Time": "2026-01-01T00:00:00Z"}) + "\n")
+    shutil.copy2(module_root / "go.mod", version_root / f"{version}.mod")
+    with zipfile.ZipFile(version_root / f"{version}.zip", "w", zipfile.ZIP_DEFLATED) as archive:
+        for path in files:
             relative = path.relative_to(module_root).as_posix()
-            archive.write(path, f"{name}@{SYNTHETIC_VERSION}/{relative}")
-    return name, SYNTHETIC_VERSION
+            archive.write(path, f"{name}@{version}/{relative}")
+    return name, version
 
 
 def flow_examples(root: Path) -> list[Path]:
