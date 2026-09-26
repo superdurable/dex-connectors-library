@@ -5,7 +5,7 @@ metadata:
   displayName: GitHub
   description: Read an authenticated GitHub profile, verified primary email, and bounded public repositories.
   company: GitHub
-  version: v0.5.0
+  version: v0.6.0
 spec:
   provider: github
   codegen:
@@ -75,16 +75,16 @@ spec:
       authorization: required
       branches:
         - {id: profileLoaded, goName: ProfileLoaded, description: The authenticated profile and primary verified email were loaded.}
-        - {id: verifiedEmailRequired, goName: VerifiedEmailRequired, description: A primary verified email was not available.}
-        - {id: insufficientScope, goName: InsufficientScope, description: The OAuth grant does not match the required scopes.}
-        - {id: authorizationRevoked, goName: AuthorizationRevoked, description: The OAuth grant is invalid or revoked.}
-        - {id: notFound, goName: NotFound, description: The authenticated account was not found.}
-        - {id: providerRejected, goName: ProviderRejected, description: GitHub conclusively rejected the profile query.}
-        - {id: invalidResponse, goName: InvalidResponse, description: GitHub returned an invalid or oversized profile response.}
-        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid."}
+        - {id: verifiedEmailRequired, goName: VerifiedEmailRequired, description: A primary verified email was not available., optional: true}
+        - {id: insufficientScope, goName: InsufficientScope, description: The OAuth grant does not match the required scopes., optional: true}
+        - {id: authorizationRevoked, goName: AuthorizationRevoked, description: The OAuth grant is invalid or revoked., optional: true}
+        - {id: notFound, goName: NotFound, description: The authenticated account was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: GitHub conclusively rejected the profile query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: GitHub returned an invalid or oversized profile response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution: &githubQueryExecution
         executeMethodTimeout: 30s
-        durability: sync
+        durability: async
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
     - name: listPublicRepositories
       goName: ListPublicRepositories
@@ -96,10 +96,10 @@ spec:
       authorization: required
       branches:
         - {id: repositoriesLoaded, goName: RepositoriesLoaded, description: Public repositories were loaded and bounded.}
-        - {id: insufficientScope, goName: InsufficientScope, description: The OAuth grant does not match the required scopes.}
-        - {id: authorizationRevoked, goName: AuthorizationRevoked, description: The OAuth grant is invalid or revoked.}
-        - {id: notFound, goName: NotFound, description: The requested GitHub account was not found.}
-        - {id: providerRejected, goName: ProviderRejected, description: GitHub conclusively rejected the repository query.}
-        - {id: invalidResponse, goName: InvalidResponse, description: GitHub returned an invalid or oversized repository response.}
-        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid."}
+        - {id: insufficientScope, goName: InsufficientScope, description: The OAuth grant does not match the required scopes., optional: true}
+        - {id: authorizationRevoked, goName: AuthorizationRevoked, description: The OAuth grant is invalid or revoked., optional: true}
+        - {id: notFound, goName: NotFound, description: The requested GitHub account was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: GitHub conclusively rejected the repository query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: GitHub returned an invalid or oversized repository response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution: *githubQueryExecution

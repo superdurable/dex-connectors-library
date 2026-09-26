@@ -150,15 +150,15 @@ var GetValuesDefinition = sdkgo.QueryDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getValues"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: GetValuesBranchRead, Description: "The range was read."},
-		{ID: GetValuesBranchNotFound, Description: "The spreadsheet or range does not exist."},
-		{ID: GetValuesBranchProviderRejected, Description: "Google conclusively rejected the range read."},
-		{ID: GetValuesBranchInvalidResponse, Description: "Google returned an invalid or oversized range response."},
-		{ID: GetValuesBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid."},
+		{ID: GetValuesBranchNotFound, Description: "The spreadsheet or range does not exist.", Optional: true},
+		{ID: GetValuesBranchProviderRejected, Description: "Google conclusively rejected the range read.", Optional: true},
+		{ID: GetValuesBranchInvalidResponse, Description: "Google returned an invalid or oversized range response.", Optional: true},
+		{ID: GetValuesBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
-		ExecuteDurability: dex.StepDurabilitySync,
+		ExecuteDurability: dex.StepDurabilityAsync,
 	},
 }
 
@@ -174,10 +174,10 @@ type GetValuesStepConfig[IN any] struct {
 	ConnectionName                 string                                             `connector:"connectionName"`
 	MapToOperationInput            func(IN) GetValuesInput                            `connector:"mapToOperationInput"`
 	Read                           sdkgo.Target[GetValuesResult]                      `connector:"branch=read"`
-	NotFound                       sdkgo.Target[GetValuesResult]                      `connector:"branch=notFound"`
-	ProviderRejected               sdkgo.Target[GetValuesResult]                      `connector:"branch=providerRejected"`
-	InvalidResponse                sdkgo.Target[GetValuesResult]                      `connector:"branch=invalidResponse"`
-	Defect                         sdkgo.Target[GetValuesResult]                      `connector:"branch=defect"`
+	NotFound                       sdkgo.Target[GetValuesResult]                      `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetValuesResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetValuesResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetValuesResult]                      `connector:"branch=defect,optional"`
 	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[GetValuesOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride            *dex.StepOptions                                   `connector:"stepOptionsOverride"`
 }
@@ -216,16 +216,16 @@ var FindRowDefinition = sdkgo.QueryDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "findRow"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: FindRowBranchFound, Description: "Exactly one matching row was found."},
-		{ID: FindRowBranchNotFound, Description: "No matching row exists."},
-		{ID: FindRowBranchConflict, Description: "More than one matching row exists."},
-		{ID: FindRowBranchProviderRejected, Description: "Google conclusively rejected the row query."},
-		{ID: FindRowBranchInvalidResponse, Description: "Google returned an invalid or oversized row response."},
-		{ID: FindRowBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid."},
+		{ID: FindRowBranchNotFound, Description: "No matching row exists.", Optional: true},
+		{ID: FindRowBranchConflict, Description: "More than one matching row exists.", Optional: true},
+		{ID: FindRowBranchProviderRejected, Description: "Google conclusively rejected the row query.", Optional: true},
+		{ID: FindRowBranchInvalidResponse, Description: "Google returned an invalid or oversized row response.", Optional: true},
+		{ID: FindRowBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
-		ExecuteDurability: dex.StepDurabilitySync,
+		ExecuteDurability: dex.StepDurabilityAsync,
 	},
 }
 
@@ -241,11 +241,11 @@ type FindRowStepConfig[IN any] struct {
 	ConnectionName                 string                                           `connector:"connectionName"`
 	MapToOperationInput            func(IN) FindRowInput                            `connector:"mapToOperationInput"`
 	Found                          sdkgo.Target[FindRowResult]                      `connector:"branch=found"`
-	NotFound                       sdkgo.Target[FindRowResult]                      `connector:"branch=notFound"`
-	Conflict                       sdkgo.Target[FindRowResult]                      `connector:"branch=conflict"`
-	ProviderRejected               sdkgo.Target[FindRowResult]                      `connector:"branch=providerRejected"`
-	InvalidResponse                sdkgo.Target[FindRowResult]                      `connector:"branch=invalidResponse"`
-	Defect                         sdkgo.Target[FindRowResult]                      `connector:"branch=defect"`
+	NotFound                       sdkgo.Target[FindRowResult]                      `connector:"branch=notFound,optional"`
+	Conflict                       sdkgo.Target[FindRowResult]                      `connector:"branch=conflict,optional"`
+	ProviderRejected               sdkgo.Target[FindRowResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[FindRowResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[FindRowResult]                      `connector:"branch=defect,optional"`
 	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[FindRowOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
 }
@@ -285,16 +285,16 @@ var UpsertRowDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "upsertRow"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: UpsertRowBranchUpserted, Description: "One row was inserted or updated."},
-		{ID: UpsertRowBranchConflict, Description: "Existing duplicate key rows prevent a safe write."},
-		{ID: UpsertRowBranchProviderRejected, Description: "Google conclusively rejected the row write."},
-		{ID: UpsertRowBranchInvalidResponse, Description: "Google returned an invalid or oversized pre-write response."},
-		{ID: UpsertRowBranchUncertain, Description: "The dispatched write outcome cannot be confirmed."},
-		{ID: UpsertRowBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid."},
+		{ID: UpsertRowBranchConflict, Description: "Existing duplicate key rows prevent a safe write.", Optional: true},
+		{ID: UpsertRowBranchProviderRejected, Description: "Google conclusively rejected the row write.", Optional: true},
+		{ID: UpsertRowBranchInvalidResponse, Description: "Google returned an invalid or oversized pre-write response.", Optional: true},
+		{ID: UpsertRowBranchUncertain, Description: "The dispatched write outcome cannot be confirmed.", Optional: true},
+		{ID: UpsertRowBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
-		ExecuteDurability: dex.StepDurabilitySync,
+		ExecuteDurability: dex.StepDurabilityAsync,
 	},
 }
 
@@ -310,11 +310,11 @@ type UpsertRowStepConfig[IN any] struct {
 	ConnectionName                    string                                                `connector:"connectionName"`
 	MapToOperationInput               func(IN) UpsertRowInput                               `connector:"mapToOperationInput"`
 	Upserted                          sdkgo.Target[UpsertRowResult]                         `connector:"branch=upserted"`
-	Conflict                          sdkgo.Target[UpsertRowResult]                         `connector:"branch=conflict"`
-	ProviderRejected                  sdkgo.Target[UpsertRowResult]                         `connector:"branch=providerRejected"`
-	InvalidResponse                   sdkgo.Target[UpsertRowResult]                         `connector:"branch=invalidResponse"`
-	Uncertain                         sdkgo.Target[UpsertRowResult]                         `connector:"branch=uncertain"`
-	Defect                            sdkgo.Target[UpsertRowResult]                         `connector:"branch=defect"`
+	Conflict                          sdkgo.Target[UpsertRowResult]                         `connector:"branch=conflict,optional"`
+	ProviderRejected                  sdkgo.Target[UpsertRowResult]                         `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpsertRowResult]                         `connector:"branch=invalidResponse,optional"`
+	Uncertain                         sdkgo.Target[UpsertRowResult]                         `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[UpsertRowResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpsertRowOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
 }

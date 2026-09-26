@@ -153,18 +153,18 @@ var GetAuthenticatedProfileDefinition = sdkgo.QueryDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getAuthenticatedProfile"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: GetAuthenticatedProfileBranchProfileLoaded, Description: "The authenticated profile and verified email were loaded."},
-		{ID: GetAuthenticatedProfileBranchVerifiedEmailRequired, Description: "A verified email was not available."},
-		{ID: GetAuthenticatedProfileBranchInsufficientScope, Description: "The OpenID Connect grant lacks required authorization."},
-		{ID: GetAuthenticatedProfileBranchAuthorizationRevoked, Description: "The OpenID Connect grant is invalid or revoked."},
-		{ID: GetAuthenticatedProfileBranchNotFound, Description: "The authenticated member was not found."},
-		{ID: GetAuthenticatedProfileBranchProviderRejected, Description: "LinkedIn conclusively rejected the profile query."},
-		{ID: GetAuthenticatedProfileBranchInvalidResponse, Description: "LinkedIn returned an invalid or oversized profile response."},
-		{ID: GetAuthenticatedProfileBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid."},
+		{ID: GetAuthenticatedProfileBranchVerifiedEmailRequired, Description: "A verified email was not available.", Optional: true},
+		{ID: GetAuthenticatedProfileBranchInsufficientScope, Description: "The OpenID Connect grant lacks required authorization.", Optional: true},
+		{ID: GetAuthenticatedProfileBranchAuthorizationRevoked, Description: "The OpenID Connect grant is invalid or revoked.", Optional: true},
+		{ID: GetAuthenticatedProfileBranchNotFound, Description: "The authenticated member was not found.", Optional: true},
+		{ID: GetAuthenticatedProfileBranchProviderRejected, Description: "LinkedIn conclusively rejected the profile query.", Optional: true},
+		{ID: GetAuthenticatedProfileBranchInvalidResponse, Description: "LinkedIn returned an invalid or oversized profile response.", Optional: true},
+		{ID: GetAuthenticatedProfileBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
-		ExecuteDurability: dex.StepDurabilitySync,
+		ExecuteDurability: dex.StepDurabilityAsync,
 	},
 }
 
@@ -180,13 +180,13 @@ type GetAuthenticatedProfileStepConfig[IN any] struct {
 	ConnectionName                 string                                                  `connector:"connectionName"`
 	MapToOperationInput            func(IN) GetAuthenticatedProfileInput                   `connector:"mapToOperationInput"`
 	ProfileLoaded                  sdkgo.Target[GetAuthenticatedProfileResult]             `connector:"branch=profileLoaded"`
-	VerifiedEmailRequired          sdkgo.Target[GetAuthenticatedProfileResult]             `connector:"branch=verifiedEmailRequired"`
-	InsufficientScope              sdkgo.Target[GetAuthenticatedProfileResult]             `connector:"branch=insufficientScope"`
-	AuthorizationRevoked           sdkgo.Target[GetAuthenticatedProfileResult]             `connector:"branch=authorizationRevoked"`
-	NotFound                       sdkgo.Target[GetAuthenticatedProfileResult]             `connector:"branch=notFound"`
-	ProviderRejected               sdkgo.Target[GetAuthenticatedProfileResult]             `connector:"branch=providerRejected"`
-	InvalidResponse                sdkgo.Target[GetAuthenticatedProfileResult]             `connector:"branch=invalidResponse"`
-	Defect                         sdkgo.Target[GetAuthenticatedProfileResult]             `connector:"branch=defect"`
+	VerifiedEmailRequired          sdkgo.Target[GetAuthenticatedProfileResult]             `connector:"branch=verifiedEmailRequired,optional"`
+	InsufficientScope              sdkgo.Target[GetAuthenticatedProfileResult]             `connector:"branch=insufficientScope,optional"`
+	AuthorizationRevoked           sdkgo.Target[GetAuthenticatedProfileResult]             `connector:"branch=authorizationRevoked,optional"`
+	NotFound                       sdkgo.Target[GetAuthenticatedProfileResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetAuthenticatedProfileResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetAuthenticatedProfileResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetAuthenticatedProfileResult]             `connector:"branch=defect,optional"`
 	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[AuthenticatedProfile]] `connector:"resultAttribute"`
 	StepOptionsOverride            *dex.StepOptions                                        `connector:"stepOptionsOverride"`
 }

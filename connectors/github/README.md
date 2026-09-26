@@ -24,7 +24,7 @@ repository metadata.
 Install the published module:
 
 ```bash
-go get github.com/superdurable/dex-connectors-library/connectors/github@v0.5.0
+go get github.com/superdurable/dex-connectors-library/connectors/github@v0.6.0
 ```
 
 Verify it independently:

@@ -174,18 +174,18 @@ var GetAuthenticatedProfileDefinition = sdkgo.QueryDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getAuthenticatedProfile"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: GetAuthenticatedProfileBranchProfileLoaded, Description: "The authenticated profile and primary verified email were loaded."},
-		{ID: GetAuthenticatedProfileBranchVerifiedEmailRequired, Description: "A primary verified email was not available."},
-		{ID: GetAuthenticatedProfileBranchInsufficientScope, Description: "The OAuth grant does not match the required scopes."},
-		{ID: GetAuthenticatedProfileBranchAuthorizationRevoked, Description: "The OAuth grant is invalid or revoked."},
-		{ID: GetAuthenticatedProfileBranchNotFound, Description: "The authenticated account was not found."},
-		{ID: GetAuthenticatedProfileBranchProviderRejected, Description: "GitHub conclusively rejected the profile query."},
-		{ID: GetAuthenticatedProfileBranchInvalidResponse, Description: "GitHub returned an invalid or oversized profile response."},
-		{ID: GetAuthenticatedProfileBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid."},
+		{ID: GetAuthenticatedProfileBranchVerifiedEmailRequired, Description: "A primary verified email was not available.", Optional: true},
+		{ID: GetAuthenticatedProfileBranchInsufficientScope, Description: "The OAuth grant does not match the required scopes.", Optional: true},
+		{ID: GetAuthenticatedProfileBranchAuthorizationRevoked, Description: "The OAuth grant is invalid or revoked.", Optional: true},
+		{ID: GetAuthenticatedProfileBranchNotFound, Description: "The authenticated account was not found.", Optional: true},
+		{ID: GetAuthenticatedProfileBranchProviderRejected, Description: "GitHub conclusively rejected the profile query.", Optional: true},
+		{ID: GetAuthenticatedProfileBranchInvalidResponse, Description: "GitHub returned an invalid or oversized profile response.", Optional: true},
+		{ID: GetAuthenticatedProfileBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
-		ExecuteDurability: dex.StepDurabilitySync,
+		ExecuteDurability: dex.StepDurabilityAsync,
 	},
 }
 
@@ -201,13 +201,13 @@ type GetAuthenticatedProfileStepConfig[IN any] struct {
 	ConnectionName                 string                                                  `connector:"connectionName"`
 	MapToOperationInput            func(IN) GetAuthenticatedProfileInput                   `connector:"mapToOperationInput"`
 	ProfileLoaded                  sdkgo.Target[GetAuthenticatedProfileResult]             `connector:"branch=profileLoaded"`
-	VerifiedEmailRequired          sdkgo.Target[GetAuthenticatedProfileResult]             `connector:"branch=verifiedEmailRequired"`
-	InsufficientScope              sdkgo.Target[GetAuthenticatedProfileResult]             `connector:"branch=insufficientScope"`
-	AuthorizationRevoked           sdkgo.Target[GetAuthenticatedProfileResult]             `connector:"branch=authorizationRevoked"`
-	NotFound                       sdkgo.Target[GetAuthenticatedProfileResult]             `connector:"branch=notFound"`
-	ProviderRejected               sdkgo.Target[GetAuthenticatedProfileResult]             `connector:"branch=providerRejected"`
-	InvalidResponse                sdkgo.Target[GetAuthenticatedProfileResult]             `connector:"branch=invalidResponse"`
-	Defect                         sdkgo.Target[GetAuthenticatedProfileResult]             `connector:"branch=defect"`
+	VerifiedEmailRequired          sdkgo.Target[GetAuthenticatedProfileResult]             `connector:"branch=verifiedEmailRequired,optional"`
+	InsufficientScope              sdkgo.Target[GetAuthenticatedProfileResult]             `connector:"branch=insufficientScope,optional"`
+	AuthorizationRevoked           sdkgo.Target[GetAuthenticatedProfileResult]             `connector:"branch=authorizationRevoked,optional"`
+	NotFound                       sdkgo.Target[GetAuthenticatedProfileResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetAuthenticatedProfileResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetAuthenticatedProfileResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetAuthenticatedProfileResult]             `connector:"branch=defect,optional"`
 	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[AuthenticatedProfile]] `connector:"resultAttribute"`
 	StepOptionsOverride            *dex.StepOptions                                        `connector:"stepOptionsOverride"`
 }
@@ -250,17 +250,17 @@ var ListPublicRepositoriesDefinition = sdkgo.QueryDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listPublicRepositories"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: ListPublicRepositoriesBranchRepositoriesLoaded, Description: "Public repositories were loaded and bounded."},
-		{ID: ListPublicRepositoriesBranchInsufficientScope, Description: "The OAuth grant does not match the required scopes."},
-		{ID: ListPublicRepositoriesBranchAuthorizationRevoked, Description: "The OAuth grant is invalid or revoked."},
-		{ID: ListPublicRepositoriesBranchNotFound, Description: "The requested GitHub account was not found."},
-		{ID: ListPublicRepositoriesBranchProviderRejected, Description: "GitHub conclusively rejected the repository query."},
-		{ID: ListPublicRepositoriesBranchInvalidResponse, Description: "GitHub returned an invalid or oversized repository response."},
-		{ID: ListPublicRepositoriesBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid."},
+		{ID: ListPublicRepositoriesBranchInsufficientScope, Description: "The OAuth grant does not match the required scopes.", Optional: true},
+		{ID: ListPublicRepositoriesBranchAuthorizationRevoked, Description: "The OAuth grant is invalid or revoked.", Optional: true},
+		{ID: ListPublicRepositoriesBranchNotFound, Description: "The requested GitHub account was not found.", Optional: true},
+		{ID: ListPublicRepositoriesBranchProviderRejected, Description: "GitHub conclusively rejected the repository query.", Optional: true},
+		{ID: ListPublicRepositoriesBranchInvalidResponse, Description: "GitHub returned an invalid or oversized repository response.", Optional: true},
+		{ID: ListPublicRepositoriesBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
-		ExecuteDurability: dex.StepDurabilitySync,
+		ExecuteDurability: dex.StepDurabilityAsync,
 	},
 }
 
@@ -276,12 +276,12 @@ type ListPublicRepositoriesStepConfig[IN any] struct {
 	ConnectionName                 string                                                `connector:"connectionName"`
 	MapToOperationInput            func(IN) ListPublicRepositoriesInput                  `connector:"mapToOperationInput"`
 	RepositoriesLoaded             sdkgo.Target[ListPublicRepositoriesResult]            `connector:"branch=repositoriesLoaded"`
-	InsufficientScope              sdkgo.Target[ListPublicRepositoriesResult]            `connector:"branch=insufficientScope"`
-	AuthorizationRevoked           sdkgo.Target[ListPublicRepositoriesResult]            `connector:"branch=authorizationRevoked"`
-	NotFound                       sdkgo.Target[ListPublicRepositoriesResult]            `connector:"branch=notFound"`
-	ProviderRejected               sdkgo.Target[ListPublicRepositoriesResult]            `connector:"branch=providerRejected"`
-	InvalidResponse                sdkgo.Target[ListPublicRepositoriesResult]            `connector:"branch=invalidResponse"`
-	Defect                         sdkgo.Target[ListPublicRepositoriesResult]            `connector:"branch=defect"`
+	InsufficientScope              sdkgo.Target[ListPublicRepositoriesResult]            `connector:"branch=insufficientScope,optional"`
+	AuthorizationRevoked           sdkgo.Target[ListPublicRepositoriesResult]            `connector:"branch=authorizationRevoked,optional"`
+	NotFound                       sdkgo.Target[ListPublicRepositoriesResult]            `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListPublicRepositoriesResult]            `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListPublicRepositoriesResult]            `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListPublicRepositoriesResult]            `connector:"branch=defect,optional"`
 	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[PublicRepositories]] `connector:"resultAttribute"`
 	StepOptionsOverride            *dex.StepOptions                                      `connector:"stepOptionsOverride"`
 }

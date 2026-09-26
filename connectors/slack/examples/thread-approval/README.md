@@ -36,7 +36,7 @@ calling Dex. The pure filter has no error result.
 
 This walkthrough uses these published releases:
 
-- [Slack Connector v0.7.0](https://github.com/superdurable/dex-connectors-library/releases/tag/connectors%2Fslack%2Fv0.7.0)
+- [Slack Connector v0.8.0](https://github.com/superdurable/dex-connectors-library/releases/tag/connectors%2Fslack%2Fv0.8.0)
 - [dexcli v0.13.6](https://github.com/superdurable/dex/releases/tag/cli-v0.13.6)
 
 Install Go 1.24 or newer and curl. You also need permission to create and
@@ -64,7 +64,7 @@ macOS installation, download the matching archive from the
 ## 1. Prepare a clean local test project
 
 Create a separate directory that consumes the released Connector. The Flow
-source is copied from the immutable v0.7.0 tag so dexcli can analyze it as an
+source is copied from the immutable v0.8.0 tag so dexcli can analyze it as an
 application dependency rather than as part of the Connector module itself.
 
 ```bash
@@ -73,11 +73,11 @@ cd slack-thread-approval-e2e
 mkdir -p flow build
 
 curl -fsSL \
-  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/slack/v0.7.0/connectors/slack/examples/thread-approval/flow/workflow.go \
+  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/slack/v0.8.0/connectors/slack/examples/thread-approval/flow/workflow.go \
   -o flow/workflow.go
 
 go mod init example.com/slack-thread-approval-e2e
-go get github.com/superdurable/dex-connectors-library/connectors/slack@v0.7.0
+go get github.com/superdurable/dex-connectors-library/connectors/slack@v0.8.0
 go mod tidy
 ```
 
@@ -312,7 +312,7 @@ export DEX_CONNECTOR_CONFIG_FILE="$HOME/.dex/connectors/connections.json"
 export DEX_FLOW_SERVICE_ADDRESS="127.0.0.1:8801"
 
 GOWORK=off go run \
-  github.com/superdurable/dex-connectors-library/connectors/slack/examples/thread-approval@v0.7.0
+  github.com/superdurable/dex-connectors-library/connectors/slack/examples/thread-approval@v0.8.0
 ```
 
 Replace `127.0.0.1:8801` when dexcli printed another Dex Server address. The
@@ -425,7 +425,7 @@ Check all of the following:
 
 Make sure the message is a reply in the original thread, the sender's `U...`
 member ID is allowed, and the text matches the approval filter. Run only one
-copy of the released example Worker. Connector v0.7.0 uses one shared Socket
+copy of the released example Worker. Connector v0.8.0 uses one shared Socket
 Mode connection for both root and reply routes; separate competing connections
 can consume each other's events.
 

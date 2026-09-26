@@ -21,17 +21,24 @@ func (gmailTarget) Execute(dex.Context, gmail.SendMessageResult) (*dex.StepDecis
 	return dex.GracefulComplete(struct{}{}), nil
 }
 
-func TestSendFactoryRequiresEveryTypedBranch(t *testing.T) {
+func TestSendFactoryRequiresHappyPathAndAllowsOptionalBranches(t *testing.T) {
 	client := newGmailClient(t, "http://127.0.0.1:1")
 	connection, err := gmail.NewConnection(client, gmailConnection)
 	require.NoError(t, err)
+	require.NotPanics(t, func() {
+		gmail.NewSendMessageStep(gmail.SendMessageStepConfig[string]{
+			StepType: "Send", Annotations: sdkgo.StepAnnotations{GroupID: "google", GroupLabel: "Google", Explanation: "Send a message."},
+			Connection: connection, ConnectionName: "gmail-send",
+			MapToOperationInput: func(string) gmail.SendMessageInput { return gmail.SendMessageInput{} },
+			Sent:                sdkgo.GoTo(gmailTarget{}),
+		})
+	})
 	require.Panics(t, func() {
 		gmail.NewSendMessageStep(gmail.SendMessageStepConfig[string]{
 			StepType: "Send", Annotations: sdkgo.StepAnnotations{GroupID: "google", GroupLabel: "Google", Explanation: "Send a message."},
 			Connection: connection, ConnectionName: "gmail-send",
 			MapToOperationInput: func(string) gmail.SendMessageInput { return gmail.SendMessageInput{} },
-			Sent:                sdkgo.GoTo(gmailTarget{}), ProviderRejected: sdkgo.GoTo(gmailTarget{}),
-			Uncertain: sdkgo.GoTo(gmailTarget{}),
+			ProviderRejected:    sdkgo.GoTo(gmailTarget{}),
 		})
 	})
 }

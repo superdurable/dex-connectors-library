@@ -5,7 +5,7 @@ metadata:
   displayName: Slack
   description: Start and update Dex Flows from Slack threads and exchange thread messages.
   company: Slack
-  version: v0.7.0
+  version: v0.8.0
 spec:
   provider: slack
   codegen:
@@ -87,12 +87,12 @@ spec:
       idempotency: none
       branches:
         - {id: read, goName: Read, description: The thread page was read.}
-        - {id: providerRejected, goName: ProviderRejected, description: Slack conclusively rejected the thread query.}
-        - {id: invalidResponse, goName: InvalidResponse, description: Slack returned an invalid or oversized thread response.}
-        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid."}
+        - {id: providerRejected, goName: ProviderRejected, description: Slack conclusively rejected the thread query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Slack returned an invalid or oversized thread response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution: &slackQueryExecution
         executeMethodTimeout: 30s
-        durability: sync
+        durability: async
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
     - name: getThreadReply
       goName: GetThreadReply
@@ -103,10 +103,10 @@ spec:
       idempotency: none
       branches:
         - {id: found, goName: Found, description: The reply was found.}
-        - {id: notFound, goName: NotFound, description: The reply does not exist.}
-        - {id: providerRejected, goName: ProviderRejected, description: Slack conclusively rejected the reply query.}
-        - {id: invalidResponse, goName: InvalidResponse, description: Slack returned an invalid or oversized reply response.}
-        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid."}
+        - {id: notFound, goName: NotFound, description: The reply does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Slack conclusively rejected the reply query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Slack returned an invalid or oversized reply response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution: *slackQueryExecution
     - name: postChannelMessage
       goName: PostChannelMessage
@@ -117,12 +117,12 @@ spec:
       idempotency: required
       branches: &postBranches
         - {id: sent, goName: Sent, description: Slack accepted the message.}
-        - {id: providerRejected, goName: ProviderRejected, description: Slack conclusively rejected the message.}
-        - {id: uncertain, goName: Uncertain, description: The dispatched message outcome cannot be confirmed.}
-        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid."}
+        - {id: providerRejected, goName: ProviderRejected, description: Slack conclusively rejected the message., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The dispatched message outcome cannot be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution: &slackMutationExecution
         executeMethodTimeout: 30s
-        durability: sync
+        durability: async
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
     - name: postThreadReply
       goName: PostThreadReply

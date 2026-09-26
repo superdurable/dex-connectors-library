@@ -296,15 +296,15 @@ var GetMessageDefinition = sdkgo.QueryDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getMessage"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: GetMessageBranchRead, Description: "The Gmail message was read."},
-		{ID: GetMessageBranchNotFound, Description: "The Gmail message does not exist."},
-		{ID: GetMessageBranchProviderRejected, Description: "Gmail conclusively rejected the message query."},
-		{ID: GetMessageBranchInvalidResponse, Description: "Gmail returned an invalid or oversized message response."},
-		{ID: GetMessageBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid."},
+		{ID: GetMessageBranchNotFound, Description: "The Gmail message does not exist.", Optional: true},
+		{ID: GetMessageBranchProviderRejected, Description: "Gmail conclusively rejected the message query.", Optional: true},
+		{ID: GetMessageBranchInvalidResponse, Description: "Gmail returned an invalid or oversized message response.", Optional: true},
+		{ID: GetMessageBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
-		ExecuteDurability: dex.StepDurabilitySync,
+		ExecuteDurability: dex.StepDurabilityAsync,
 	},
 }
 
@@ -320,10 +320,10 @@ type GetMessageStepConfig[IN any] struct {
 	ConnectionName                 string                                     `connector:"connectionName"`
 	MapToOperationInput            func(IN) GetMessageInput                   `connector:"mapToOperationInput"`
 	Read                           sdkgo.Target[GetMessageResult]             `connector:"branch=read"`
-	NotFound                       sdkgo.Target[GetMessageResult]             `connector:"branch=notFound"`
-	ProviderRejected               sdkgo.Target[GetMessageResult]             `connector:"branch=providerRejected"`
-	InvalidResponse                sdkgo.Target[GetMessageResult]             `connector:"branch=invalidResponse"`
-	Defect                         sdkgo.Target[GetMessageResult]             `connector:"branch=defect"`
+	NotFound                       sdkgo.Target[GetMessageResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetMessageResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetMessageResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetMessageResult]             `connector:"branch=defect,optional"`
 	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Message]] `connector:"resultAttribute"`
 	StepOptionsOverride            *dex.StepOptions                           `connector:"stepOptionsOverride"`
 }
@@ -360,14 +360,14 @@ var SendMessageDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "sendMessage"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: SendMessageBranchSent, Description: "Gmail accepted the message and returned its identity."},
-		{ID: SendMessageBranchProviderRejected, Description: "Gmail conclusively rejected the message."},
-		{ID: SendMessageBranchUncertain, Description: "The dispatched send outcome cannot be confirmed."},
-		{ID: SendMessageBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid."},
+		{ID: SendMessageBranchProviderRejected, Description: "Gmail conclusively rejected the message.", Optional: true},
+		{ID: SendMessageBranchUncertain, Description: "The dispatched send outcome cannot be confirmed.", Optional: true},
+		{ID: SendMessageBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
-		ExecuteDurability: dex.StepDurabilitySync,
+		ExecuteDurability: dex.StepDurabilityAsync,
 	},
 }
 
@@ -383,9 +383,9 @@ type SendMessageStepConfig[IN any] struct {
 	ConnectionName                    string                                                  `connector:"connectionName"`
 	MapToOperationInput               func(IN) SendMessageInput                               `connector:"mapToOperationInput"`
 	Sent                              sdkgo.Target[SendMessageResult]                         `connector:"branch=sent"`
-	ProviderRejected                  sdkgo.Target[SendMessageResult]                         `connector:"branch=providerRejected"`
-	Uncertain                         sdkgo.Target[SendMessageResult]                         `connector:"branch=uncertain"`
-	Defect                            sdkgo.Target[SendMessageResult]                         `connector:"branch=defect"`
+	ProviderRejected                  sdkgo.Target[SendMessageResult]                         `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[SendMessageResult]                         `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[SendMessageResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SendMessageOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
 }
@@ -422,15 +422,15 @@ var ReplyToMessageDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "replyToMessage"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: ReplyToMessageBranchSent, Description: "Gmail accepted the reply and returned its identity."},
-		{ID: ReplyToMessageBranchProviderRejected, Description: "Gmail conclusively rejected the reply."},
-		{ID: ReplyToMessageBranchInvalidResponse, Description: "Gmail returned an invalid or oversized source message response before sending the reply."},
-		{ID: ReplyToMessageBranchUncertain, Description: "The dispatched reply outcome cannot be confirmed."},
-		{ID: ReplyToMessageBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid."},
+		{ID: ReplyToMessageBranchProviderRejected, Description: "Gmail conclusively rejected the reply.", Optional: true},
+		{ID: ReplyToMessageBranchInvalidResponse, Description: "Gmail returned an invalid or oversized source message response before sending the reply.", Optional: true},
+		{ID: ReplyToMessageBranchUncertain, Description: "The dispatched reply outcome cannot be confirmed.", Optional: true},
+		{ID: ReplyToMessageBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
-		ExecuteDurability: dex.StepDurabilitySync,
+		ExecuteDurability: dex.StepDurabilityAsync,
 	},
 }
 
@@ -446,10 +446,10 @@ type ReplyToMessageStepConfig[IN any] struct {
 	ConnectionName                    string                                                  `connector:"connectionName"`
 	MapToOperationInput               func(IN) ReplyToMessageInput                            `connector:"mapToOperationInput"`
 	Sent                              sdkgo.Target[ReplyToMessageResult]                      `connector:"branch=sent"`
-	ProviderRejected                  sdkgo.Target[ReplyToMessageResult]                      `connector:"branch=providerRejected"`
-	InvalidResponse                   sdkgo.Target[ReplyToMessageResult]                      `connector:"branch=invalidResponse"`
-	Uncertain                         sdkgo.Target[ReplyToMessageResult]                      `connector:"branch=uncertain"`
-	Defect                            sdkgo.Target[ReplyToMessageResult]                      `connector:"branch=defect"`
+	ProviderRejected                  sdkgo.Target[ReplyToMessageResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[ReplyToMessageResult]                      `connector:"branch=invalidResponse,optional"`
+	Uncertain                         sdkgo.Target[ReplyToMessageResult]                      `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[ReplyToMessageResult]                      `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SendMessageOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
 }
