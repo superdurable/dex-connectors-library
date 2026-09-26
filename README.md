@@ -16,33 +16,6 @@ explicit.
 The directory lists each published connector, its company, reusable UI units,
 triggers, and operations. Search matches all of those names and descriptions.
 
-## Contribute a connector
-
-Use the official
-[Dex Connector Contributor skill](https://github.com/superdurable/dex-skills/blob/main/dex-connector-contributor/SKILL.md)
-to add or modify a connector, operation, Trigger, or configuration UI unit.
-The skill guides an agent through provider public APIs or official SDKs,
-manifest-first code generation, a connector-local runnable example, complete
-testing, and an upstream pull request. It also discovers or helps create the
-contributor's GitHub fork before checking it out locally.
-
-Invoke it through the `superdurable-dex` plugin:
-
-- Codex: `$dex-connector-contributor`
-- Claude Code: `/superdurable-dex:dex-connector-contributor`
-- Cursor: `/dex-connector-contributor`
-
-See the [Dex Skills installation guide](https://github.com/superdurable/dex-skills#install)
-for plugin setup and the complete contribution workflow.
-
-<a href="https://www.star-history.com/?repos=superdurable%2Fdex-connectors-library&type=date&legend=top-left">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=superdurable/dex-connectors-library&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=superdurable/dex-connectors-library&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=superdurable/dex-connectors-library&type=date&legend=top-left" />
- </picture>
-</a>
-
 ## Use a connector
 
 A Connector is a versioned integration package, not just an API operation. It
@@ -237,6 +210,48 @@ authorization and both triggers are ready; `postThreadReply` is the remaining
 item to configure before starting the example Worker.
 
 ![Dex Web Slack connection setup with authorization, operation, and trigger status](docs/assets/slack-connection-setup.png)
+
+## Contribute a connector
+
+Use the official
+[Dex Connector Contributor skill](https://github.com/superdurable/dex-skills/blob/main/dex-connector-contributor/SKILL.md)
+to add or modify a connector, operation, Trigger, or configuration UI unit.
+The skill guides an agent through provider public APIs or official SDKs,
+manifest-first code generation, a connector-local runnable example, complete
+testing, and an upstream pull request. It also discovers or helps create the
+contributor's GitHub fork before checking it out locally.
+
+Invoke it through the `superdurable-dex` plugin:
+
+- Codex: `$dex-connector-contributor`
+- Claude Code: `/superdurable-dex:dex-connector-contributor`
+- Cursor: `/dex-connector-contributor`
+
+See the [Dex Skills installation guide](https://github.com/superdurable/dex-skills#install)
+for plugin setup and the complete contribution workflow.
+
+## Contributors
+
+Every GitHub user with an attributed commit on the default `main` branch is a
+Dex Connectors contributor. Counts follow that branch, matching the repository
+contributor view; bots and commits without a linked GitHub account are omitted.
+
+<a href="https://github.com/superdurable/dex-connectors-library/graphs/contributors">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/superdurable/dex-connectors-library/readme-assets/contributors-dark.svg" />
+    <img src="https://raw.githubusercontent.com/superdurable/dex-connectors-library/readme-assets/contributors-light.svg" alt="Dex Connectors contributors on the main branch" />
+  </picture>
+</a>
+
+## Star History
+
+<a href="https://www.star-history.com/?repos=superdurable%2Fdex-connectors-library&type=date&legend=top-left">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=superdurable/dex-connectors-library&type=date&theme=dark&legend=top-left" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=superdurable/dex-connectors-library&type=date&legend=top-left" />
+    <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=superdurable/dex-connectors-library&type=date&legend=top-left" />
+  </picture>
+</a>
 
 ## Organization
 
