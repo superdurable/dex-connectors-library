@@ -5,7 +5,7 @@ metadata:
   displayName: Slack
   description: Start and update Dex Flows from Slack threads and exchange thread messages.
   company: Slack
-  version: v0.9.0
+  version: v0.10.0
 spec:
   provider: slack
   codegen:

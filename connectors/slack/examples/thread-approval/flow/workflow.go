@@ -22,6 +22,8 @@ const (
 	postCompletionStepType = "PostSlackCompletion"
 )
 
+var errThreadNotReady = errors.New("Slack thread is still reading its root message")
+
 var (
 	threadStateAttribute     = dex.DefineAttribute[ThreadState]("slack-thread-approval-state")
 	postReplyResultAttribute = dex.DefineAttribute[slack.PostThreadReplyResult]("slack-thread-approval-post-reply-result")
@@ -175,6 +177,11 @@ func (flow *Flow) ReceiveThreadReply(
 	}
 	if state.ReplyEventID == input.EventID {
 		return &dex.RPCResult[ReplyResult]{Output: ReplyResult{Duplicate: true, Status: state.Status}}, nil
+	}
+	if state.Status == "" {
+		// The Flow is still reading its root message. The error keeps the reply pending, so the
+		// Trigger retries it after the Flow starts waiting instead of consuming it as a no-op.
+		return nil, errThreadNotReady
 	}
 	if state.Status != StatusWaitingForReply {
 		return &dex.RPCResult[ReplyResult]{Output: ReplyResult{Status: state.Status}}, nil

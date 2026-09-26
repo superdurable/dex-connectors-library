@@ -53,6 +53,7 @@ func NewMessageTriggerRunner(config MessageTriggerRunnerConfig) (*MessageTrigger
 			return nil, err
 		}
 		source := config.Connection.client.channelThreadCreatedTriggerSource(config.Connection.reference, route.Configuration)
+		source.bindingName = route.BindingName
 		routes = append(routes, messageTriggerRoute{source: source, target: route.Target})
 	}
 	for _, route := range config.ThreadReplyCreatedRoutes {
@@ -63,6 +64,7 @@ func NewMessageTriggerRunner(config MessageTriggerRunnerConfig) (*MessageTrigger
 			return nil, err
 		}
 		source := config.Connection.client.threadReplyCreatedTriggerSource(config.Connection.reference, route.Configuration)
+		source.bindingName = route.BindingName
 		routes = append(routes, messageTriggerRoute{source: source, target: route.Target})
 	}
 	if len(routes) == 0 {
@@ -71,14 +73,17 @@ func NewMessageTriggerRunner(config MessageTriggerRunnerConfig) (*MessageTrigger
 	return &MessageTriggerRunner{routes: routes}, nil
 }
 
-// Run receives and dispatches Slack message events until the context ends or the runner fails.
+// Run replays each route's durable inbox in order, roots first, retrying failures until the context ends,
+// then receives and dispatches Slack message events until the context ends or the runner fails. Before
+// each reconnect it replays the inboxes again, so an event persisted on a failed connection is delivered
+// before any envelope read on the next one.
+//
+// Run logs through the connection's WithLogger logger: INFO when a Socket Mode connection opens, WARN with
+// the next delay when one fails, DEBUG for every ignored message with its reason, and the sdkgo delivery
+// records (skips, retries with their backoff delay, and recoveries) with the route's binding.
 func (runner *MessageTriggerRunner) Run(ctx context.Context) error {
-	for _, route := range runner.routes {
-		if replayer, ok := route.target.(sdkgo.TriggerDeliveryReplayer); ok {
-			if err := replayer.ReplayTriggerDeliveries(ctx); err != nil {
-				return fmt.Errorf("replay Slack Trigger deliveries: %w", err)
-			}
-		}
+	if err := replayMessageTriggerRoutes(ctx, runner.routes); err != nil {
+		return err
 	}
 	return runMessageTriggerRoutes(ctx, runner.routes)
 }
@@ -101,7 +106,8 @@ type LocalMessageTriggerRunnerConfig struct {
 	ThreadReplyCreatedRoutes   []LocalThreadReplyCreatedTriggerRoute
 }
 
-// NewLocalMessageTriggerRunner loads stored bindings and creates one durable Socket Mode runner.
+// NewLocalMessageTriggerRunner loads stored bindings and creates one durable Socket Mode runner. The
+// WithLogger option also applies to the durable inboxes it creates.
 func NewLocalMessageTriggerRunner(
 	store *localconfig.Store,
 	connectionName string,
@@ -118,7 +124,8 @@ func NewLocalMessageTriggerRunner(
 		if err := store.DecodeTriggerConfiguration(ConnectorID, connectionName, "channelThreadCreated", route.BindingName, &configuration); err != nil {
 			return nil, err
 		}
-		target, err := localconfig.NewDurableTriggerTarget(store, ConnectorID, connectionName, "channelThreadCreated", route.BindingName, route.Target)
+		target, err := localconfig.NewDurableTriggerTarget(store, ConnectorID, connectionName, "channelThreadCreated", route.BindingName, route.Target,
+			localconfig.WithTriggerLogger(connection.client.logger))
 		if err != nil {
 			return nil, err
 		}
@@ -131,7 +138,8 @@ func NewLocalMessageTriggerRunner(
 		if err := store.DecodeTriggerConfiguration(ConnectorID, connectionName, "threadReplyCreated", route.BindingName, &configuration); err != nil {
 			return nil, err
 		}
-		target, err := localconfig.NewDurableTriggerTarget(store, ConnectorID, connectionName, "threadReplyCreated", route.BindingName, route.Target)
+		target, err := localconfig.NewDurableTriggerTarget(store, ConnectorID, connectionName, "threadReplyCreated", route.BindingName, route.Target,
+			localconfig.WithTriggerLogger(connection.client.logger))
 		if err != nil {
 			return nil, err
 		}
