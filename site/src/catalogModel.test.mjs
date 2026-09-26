@@ -33,10 +33,10 @@ test("logo URL uses the company directory", () => {
 });
 
 test("development reads the local catalog and production reads the site copy", () => {
-  assert.equal(catalogDocumentUrl(true, "/"), "/catalog.yaml");
+  assert.equal(catalogDocumentUrl(true, "/", "ignored-in-development"), "/catalog.yaml");
   assert.equal(
-    catalogDocumentUrl(false, "/dex-connectors-library/"),
-    "/dex-connectors-library/catalog.yaml",
+    catalogDocumentUrl(false, "/dex-connectors-library/", "release/abcdef"),
+    "/dex-connectors-library/catalog.yaml?v=release%2Fabcdef",
   );
 });
 

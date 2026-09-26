@@ -25,8 +25,12 @@ export function App() {
 
   useEffect(() => {
     const controller = new AbortController();
-    const url = catalogDocumentUrl(import.meta.env.DEV, import.meta.env.BASE_URL);
-    fetch(url, { signal: controller.signal })
+    const url = catalogDocumentUrl(
+      import.meta.env.DEV,
+      import.meta.env.BASE_URL,
+      import.meta.env.VITE_CATALOG_VERSION,
+    );
+    fetch(url, { cache: "no-store", signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) {
           throw new Error(`catalog request failed (${response.status})`);

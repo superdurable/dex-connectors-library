@@ -25,12 +25,13 @@ export function companyLogoUrl(company, origin) {
   return `${rawRepositoryRoot}/main/connectors/${company}/logo.svg`;
 }
 
-export function catalogDocumentUrl(isDev, baseUrl) {
+export function catalogDocumentUrl(isDev, baseUrl, version = "") {
   if (isDev) {
     return "/catalog.yaml";
   }
   const base = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
-  return `${base}catalog.yaml`;
+  const versionQuery = version ? `?v=${encodeURIComponent(version)}` : "";
+  return `${base}catalog.yaml${versionQuery}`;
 }
 
 export function readCatalog(text) {

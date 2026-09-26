@@ -36,7 +36,7 @@ export type CatalogTotals = {
 export function companyDirectory(directory: string): string;
 export function connectorManifestUrl(directory: string, version: string): string;
 export function companyLogoUrl(company: string, origin: "local" | "published"): string;
-export function catalogDocumentUrl(isDev: boolean, baseUrl: string): string;
+export function catalogDocumentUrl(isDev: boolean, baseUrl: string, version?: string): string;
 export function readCatalog(text: string): CatalogConnector[];
 export function connectorMatchesQuery(connector: CatalogConnector, query: string): boolean;
 export function catalogTotals(connectors: CatalogConnector[]): CatalogTotals;
