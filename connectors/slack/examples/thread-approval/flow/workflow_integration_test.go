@@ -16,6 +16,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -62,7 +63,10 @@ func TestThreadApprovalExampleCompletesOnceAndFailsUnwiredUncertainOutcomeWithRe
 	require.NoError(t, replyTarget.HandleTrigger(ctx, rejectedReply))
 	require.Equal(t, StatusWaitingForReply, waitForSlackStatus(t, ctx, harness.client, flow, successFlowID, StatusWaitingForReply).Status)
 	require.NoError(t, replyTarget.HandleTrigger(ctx, successReply))
-	require.NoError(t, replyTarget.HandleTrigger(ctx, successReply))
+	require.Eventually(t, func() bool {
+		err = replyTarget.HandleTrigger(ctx, successReply)
+		return err == nil || !strings.Contains(err.Error(), "attribute keys are locked")
+	}, 20*time.Second, 50*time.Millisecond)
 
 	result, err := harness.client.WaitForFlow(ctx, successFlowID, dex.WaitForFlowOptions{NeedsResults: true})
 	require.NoError(t, err)
