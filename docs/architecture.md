@@ -40,7 +40,7 @@ ReconcileCreditGrant factory Query
 ```
 
 The application writes no provider-specific Step handler. It still owns stable
-Step types, pure business-to-operation input mapping, every branch target,
+Step types, pure business-to-operation input mapping, every required branch target,
 optional Result Attributes, Streams, Execute failure policy, and terminal behavior.
 Non-connector Steps remain ordinary application Steps.
 

@@ -104,8 +104,11 @@ type QueryResult[T any] struct {
 
 There is no public fixed Outcome enum. Provider-specific branches may express
 `found`, `notFound`, `completed`, `rejected`, or other durable Process
-vocabulary. Every branch must have exactly one GoTo target; missing, duplicate,
-and unknown targets reject factory construction.
+vocabulary. A required branch must have exactly one GoTo target. An optional
+branch may be omitted. Selecting an omitted optional branch stores the Result
+when one is configured, then ForceFails the Flow instead of retrying. Missing
+required targets, duplicate targets, and unknown targets reject factory
+construction.
 
 Operation implementations cannot return an unclassified Go error. They return:
 
@@ -114,8 +117,8 @@ Operation implementations cannot return an unclassified Go error. They return:
 
 Only Retry becomes a non-nil Go error and enters the Dex Execute retry policy.
 A positive provider delay becomes `dex.RetryAfter`; zero delay uses the Step
-policy. A branch or uncertainty returns `error == nil` and must be routed by
-the Process.
+policy. A branch or uncertainty returns `error == nil`. A wired branch is routed to
+its target. An omitted optional branch ForceFails the Flow.
 
 Mutation uncertainty is not an ordinary caller-selected branch. After a
 request dispatch, a lost connection, truncated response, ambiguous server
@@ -156,8 +159,10 @@ write the resource.
 Manifest execution defaults generate `StepDefaults`: Execute timeout,
 optional heartbeat timeout, retry policy, and durability. HTTP defaults are
 30 seconds and a five-attempt/two-minute window. OpenAI defaults are 150
-seconds and a five-attempt/five-minute window. Both use synchronous
-durability.
+seconds and a five-attempt/five-minute window. Execute durability is
+asynchronous unless the operation is very likely to run longer than seven
+seconds. Response creation stays synchronous. Response retrieval uses the
+asynchronous HTTP defaults.
 
 `StepOptionsOverride` overlays non-zero Execute fields and can add
 `dex.ProceedToOnExecuteFailure`. That recovery target accepts the original

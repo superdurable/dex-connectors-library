@@ -17,6 +17,13 @@ alwaysApply: true
   generated connector APIs.
 - Prefer operation-specific factories; generic Query/Mutation factories are
   advanced escape hatches.
+- Before changing Connector Step options, branches, retry, or durability, load
+  the installed dex-developer skill. If it is missing, stop and use
+  https://docs.superdurable.io/build-with-ai/dex-developer-skill.
+- Only a happy-path branch stays required. Mark every other branch
+  `optional: true`. An unwired optional branch ForceFails the Flow.
+- Execute durability defaults to async. Use sync only when the operation is
+  very likely to run longer than seven seconds.
 - Every connector needs its own go.mod, README, manifest, generated code, and
   provider tests.
 - Register every connector in the sorted root connectors.yaml list. Paths may

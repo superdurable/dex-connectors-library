@@ -197,7 +197,8 @@
       "properties": {
         "id": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]+$" },
         "goName": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
-        "description": { "type": "string", "minLength": 1 }
+        "description": { "type": "string", "minLength": 1 },
+        "optional": { "type": "boolean" }
       }
     },
     "execution": {

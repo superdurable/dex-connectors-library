@@ -5,6 +5,7 @@ package sdkgo_test
 
 import (
 	"os/exec"
+	"reflect"
 	"testing"
 	"time"
 
@@ -43,13 +44,18 @@ func TestTypedTargetBindsGeneratedBranch(t *testing.T) {
 type factoryQuery struct {
 	definition sdkgo.QueryDefinition
 	calls      int
+	selected   sdkgo.BranchID
 }
 
 func (operation *factoryQuery) Definition() sdkgo.QueryDefinition { return operation.definition }
 
 func (operation *factoryQuery) Invoke(sdkgo.Call, string) sdkgo.QueryAttempt[string] {
 	operation.calls++
-	return sdkgo.NewQueryBranch(testQuerySucceeded, "value", nil, sdkgo.Receipt{})
+	selected := operation.selected
+	if selected == "" {
+		selected = testQuerySucceeded
+	}
+	return sdkgo.NewQueryBranch(selected, "value", nil, sdkgo.Receipt{})
 }
 
 type factoryTarget struct {
@@ -176,6 +182,55 @@ func TestFactoryRejectsWaitForOptionsAndStepRefFailsClosed(t *testing.T) {
 	require.ErrorContains(t, err, "cannot execute")
 	_, err = dex.NewRegistry([]dex.Flow{stepRefRegistrationFlow{reference: reference}})
 	require.Error(t, err)
+}
+
+func TestOptionalBranchMayBeOmittedAndForceFailsWhenSelected(t *testing.T) {
+	definition := queryDefinition(testQueryRef)
+	for index := range definition.Branches {
+		if definition.Branches[index].ID == testQueryDefect {
+			definition.Branches[index].Optional = true
+		}
+	}
+	operation := &factoryQuery{definition: definition, selected: testQueryDefect}
+	step, err := sdkgo.NewQueryStep(sdkgo.QueryStepConfig[string, string, string]{
+		StepType:    "OptionalDefect",
+		Annotations: sdkgo.StepAnnotations{GroupID: "test", GroupLabel: "Test", Explanation: "test query"},
+		Operation:   operation, Connection: testConnection,
+		MapToOperationInput: func(input string) string { return input },
+		Branches: []sdkgo.BranchTarget[sdkgo.QueryResult[string]]{
+			sdkgo.GoToBranch(testQuerySucceeded, factoryTarget{}),
+			sdkgo.GoToBranch(testQueryFailed, factoryTarget{}),
+		},
+	})
+	require.NoError(t, err)
+	decision, err := step.Execute(testsupport.NewDexContext("flow-1", "step-1"), "input")
+	require.NoError(t, err)
+	requireForceFail(t, decision, "defect")
+
+	required := queryDefinition(testQueryRef)
+	_, err = sdkgo.NewQueryStep(sdkgo.QueryStepConfig[string, string, string]{
+		StepType:    "MissingRequired",
+		Annotations: sdkgo.StepAnnotations{GroupID: "test", GroupLabel: "Test", Explanation: "test query"},
+		Operation:   &factoryQuery{definition: required}, Connection: testConnection,
+		MapToOperationInput: func(input string) string { return input },
+		Branches: []sdkgo.BranchTarget[sdkgo.QueryResult[string]]{
+			sdkgo.GoToBranch(testQuerySucceeded, factoryTarget{}),
+			sdkgo.GoToBranch(testQueryDefect, factoryTarget{}),
+		},
+	})
+	require.ErrorContains(t, err, "branch target \"failed\" is required")
+}
+
+func requireForceFail(t *testing.T, decision *dex.StepDecision, branch string) {
+	t.Helper()
+	require.NotNil(t, decision)
+	closeValue := reflect.ValueOf(decision).Elem().FieldByName("close")
+	require.True(t, closeValue.IsValid())
+	kind := closeValue.FieldByName("kind")
+	reason := closeValue.FieldByName("reason")
+	require.True(t, kind.IsValid())
+	require.Equal(t, uint64(3), kind.Uint())
+	require.Contains(t, reason.String(), branch)
 }
 
 func queryFactoryTargets() []sdkgo.BranchTarget[sdkgo.QueryResult[string]] {

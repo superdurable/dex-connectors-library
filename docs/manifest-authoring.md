@@ -14,7 +14,10 @@ An operation declares:
 - progress capabilities used to generate typed Stream fields;
 - `authorization: required` for operations that require an authorized
   connection, or `none` for public operations;
-- Dex Execute timeout, retry, heartbeat, and durability defaults.
+- `optional: true` on every branch that is not a happy path;
+- Dex Execute timeout, retry, heartbeat, and durability defaults. Asynchronous
+  durability is the default unless the operation is very likely to exceed seven
+  seconds.
 
 `auth.oauth2.protocol` distinguishes plain OAuth 2.0 from OpenID Connect. It
 defaults to `oauth2` for existing manifests. An `oidc` manifest must also

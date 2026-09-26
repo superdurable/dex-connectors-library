@@ -23,6 +23,22 @@ behavior.
 - Keep secrets out of Flow input, Attributes, Results, receipts, Streams, logs,
   generated values, and release artifacts.
 
+## Dex semantics
+
+Before changing Connector Step options, branches, retry, durability, or other
+Dex semantics, load the installed dex-developer skill. Codex uses
+`$dex-developer`, Claude Code uses `/dex:dex-developer`, and Cursor uses the
+installed dex-developer skill. If the skill is unavailable, stop and use
+https://docs.superdurable.io/build-with-ai/dex-developer-skill.
+
+Only a happy-path branch stays required. Mark every other branch
+`optional: true`. An application that does not wire an optional branch
+ForceFails the Flow when that branch is selected.
+
+Execute durability defaults to async. Use sync only when the operation is very
+likely to run longer than seven seconds. Do not choose sync because the timeout
+ceiling is 30 seconds.
+
 ## Connector Authoring
 
 - connector.yaml is the source for company, release version, generated Config,

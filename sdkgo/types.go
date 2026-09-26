@@ -80,6 +80,10 @@ const (
 type BranchDefinition struct {
 	ID          BranchID `json:"id" yaml:"id"`
 	Description string   `json:"description" yaml:"description"`
+	// Optional is true when an application may omit the branch target.
+	// Selecting an omitted optional branch ForceFails the Flow after the Result is stored.
+	// The zero value requires a target.
+	Optional bool `json:"optional,omitempty" yaml:"optional,omitempty"`
 }
 
 // StepDefaults are the execute-only Dex options owned by an operation definition.

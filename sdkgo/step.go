@@ -41,6 +41,11 @@ func GoTo[T any](target dex.Step[T]) Target[T] {
 	return Target[T]{target: target}
 }
 
+// HasStep reports whether the target names a Step.
+func (target Target[T]) HasStep() bool {
+	return targetHasStep(target.target)
+}
+
 // BranchTarget binds this target to a generated operation branch.
 func (target Target[T]) BranchTarget(branch BranchID) BranchTarget[T] {
 	return GoToBranch(branch, target.target)
@@ -92,6 +97,7 @@ type QueryStep[STEP_IN, OP_IN, OUT any] struct {
 	connection          ConnectionRef
 	mapToOperationInput func(STEP_IN) OP_IN
 	branches            map[BranchID]dex.Step[QueryResult[OUT]]
+	optionalBranches    map[BranchID]bool
 	resultAttribute     *dex.Attribute[QueryResult[OUT]]
 	progressStream      *dex.Stream[ProgressUpdate]
 	textStream          *dex.Stream[string]
@@ -107,6 +113,7 @@ type MutationStep[STEP_IN, OP_IN, OUT any] struct {
 	connection          ConnectionRef
 	mapToOperationInput func(STEP_IN) OP_IN
 	branches            map[BranchID]dex.Step[MutationResult[OUT]]
+	optionalBranches    map[BranchID]bool
 	resultAttribute     *dex.Attribute[MutationResult[OUT]]
 	progressStream      *dex.Stream[ProgressUpdate]
 	textStream          *dex.Stream[string]
@@ -125,7 +132,7 @@ func NewQueryStep[STEP_IN, OP_IN, OUT any](config QueryStepConfig[STEP_IN, OP_IN
 	if err := validateFactoryConfig(config.StepType, config.Annotations, config.Connection, config.MapToOperationInput != nil); err != nil {
 		return QueryStep[STEP_IN, OP_IN, OUT]{}, err
 	}
-	branches, err := validateBranchTargets(definition.Branches, config.Branches)
+	branches, optionalBranches, err := validateBranchTargets(definition.Branches, config.Branches)
 	if err != nil {
 		return QueryStep[STEP_IN, OP_IN, OUT]{}, err
 	}
@@ -136,7 +143,8 @@ func NewQueryStep[STEP_IN, OP_IN, OUT any](config QueryStepConfig[STEP_IN, OP_IN
 	return QueryStep[STEP_IN, OP_IN, OUT]{
 		stepType: config.StepType, annotations: config.Annotations, operation: config.Operation,
 		connection: config.Connection, mapToOperationInput: config.MapToOperationInput, branches: branches,
-		resultAttribute: config.ResultAttribute, progressStream: config.ProgressStream,
+		optionalBranches: optionalBranches,
+		resultAttribute:  config.ResultAttribute, progressStream: config.ProgressStream,
 		textStream: config.TextStream, textOptions: append([]dex.BufferedTextStreamOption(nil), config.TextOptions...),
 		stepOptions: options,
 	}, nil
@@ -161,7 +169,7 @@ func NewMutationStep[STEP_IN, OP_IN, OUT any](config MutationStepConfig[STEP_IN,
 	if err := validateFactoryConfig(config.StepType, config.Annotations, config.Connection, config.MapToOperationInput != nil); err != nil {
 		return MutationStep[STEP_IN, OP_IN, OUT]{}, err
 	}
-	branches, err := validateBranchTargets(definition.Branches, config.Branches)
+	branches, optionalBranches, err := validateBranchTargets(definition.Branches, config.Branches)
 	if err != nil {
 		return MutationStep[STEP_IN, OP_IN, OUT]{}, err
 	}
@@ -172,7 +180,8 @@ func NewMutationStep[STEP_IN, OP_IN, OUT any](config MutationStepConfig[STEP_IN,
 	return MutationStep[STEP_IN, OP_IN, OUT]{
 		stepType: config.StepType, annotations: config.Annotations, operation: config.Operation,
 		connection: config.Connection, mapToOperationInput: config.MapToOperationInput, branches: branches,
-		resultAttribute: config.ResultAttribute, progressStream: config.ProgressStream,
+		optionalBranches: optionalBranches,
+		resultAttribute:  config.ResultAttribute, progressStream: config.ProgressStream,
 		textStream: config.TextStream, textOptions: append([]dex.BufferedTextStreamOption(nil), config.TextOptions...),
 		stepOptions: options,
 	}, nil
@@ -205,11 +214,7 @@ func (step QueryStep[STEP_IN, OP_IN, OUT]) Execute(ctx dex.Context, input STEP_I
 			return nil, err
 		}
 	}
-	target := step.branches[result.Branch]
-	if target == nil {
-		return nil, fmt.Errorf("query result selected unconfigured branch %q", result.Branch)
-	}
-	return dex.GoTo(target, result), nil
+	return routeBranch("query", result.Branch, result, step.branches, step.optionalBranches)
 }
 
 func (step QueryStep[STEP_IN, OP_IN, OUT]) runOptions() []RunOption {
@@ -237,11 +242,7 @@ func (step MutationStep[STEP_IN, OP_IN, OUT]) Execute(ctx dex.Context, input STE
 			return nil, err
 		}
 	}
-	target := step.branches[result.Branch]
-	if target == nil {
-		return nil, fmt.Errorf("mutation result selected unconfigured branch %q", result.Branch)
-	}
-	return dex.GoTo(target, result), nil
+	return routeBranch("mutation", result.Branch, result, step.branches, step.optionalBranches)
 }
 
 func (step MutationStep[STEP_IN, OP_IN, OUT]) runOptions() []RunOption {
@@ -283,30 +284,48 @@ func validateFactoryConfig(stepType string, annotations StepAnnotations, connect
 	return nil
 }
 
-func validateBranchTargets[T any](definitions []BranchDefinition, targets []BranchTarget[T]) (map[BranchID]dex.Step[T], error) {
+func validateBranchTargets[T any](definitions []BranchDefinition, targets []BranchTarget[T]) (map[BranchID]dex.Step[T], map[BranchID]bool, error) {
 	expected := make(map[BranchID]bool, len(definitions))
+	optional := make(map[BranchID]bool)
 	for _, definition := range definitions {
 		expected[definition.ID] = true
+		if definition.Optional {
+			optional[definition.ID] = true
+		}
 	}
 	resolved := make(map[BranchID]dex.Step[T], len(targets))
 	for _, target := range targets {
 		if !expected[target.branch] {
-			return nil, fmt.Errorf("branch target %q is not declared by the operation", target.branch)
+			return nil, nil, fmt.Errorf("branch target %q is not declared by the operation", target.branch)
 		}
 		if resolved[target.branch] != nil {
-			return nil, fmt.Errorf("branch target %q is duplicated", target.branch)
+			return nil, nil, fmt.Errorf("branch target %q is duplicated", target.branch)
 		}
-		if nilValue(target.target) || strings.TrimSpace(dex.GetFinalStepType(target.target)) == "" {
-			return nil, fmt.Errorf("branch target %q must name a Step", target.branch)
+		if !targetHasStep(target.target) {
+			return nil, nil, fmt.Errorf("branch target %q must name a Step", target.branch)
 		}
 		resolved[target.branch] = target.target
 	}
 	for branch := range expected {
-		if resolved[branch] == nil {
-			return nil, fmt.Errorf("branch target %q is required", branch)
+		if resolved[branch] == nil && !optional[branch] {
+			return nil, nil, fmt.Errorf("branch target %q is required", branch)
 		}
 	}
-	return resolved, nil
+	return resolved, optional, nil
+}
+
+func routeBranch[T any](kind string, branch BranchID, result T, branches map[BranchID]dex.Step[T], optional map[BranchID]bool) (*dex.StepDecision, error) {
+	if target := branches[branch]; target != nil {
+		return dex.GoTo(target, result), nil
+	}
+	if optional[branch] {
+		return dex.ForceFail(fmt.Sprintf("connector branch %q has no target", branch)), nil
+	}
+	return nil, fmt.Errorf("%s result selected unconfigured branch %q", kind, branch)
+}
+
+func targetHasStep[T any](target dex.Step[T]) bool {
+	return !nilValue(target) && strings.TrimSpace(dex.GetFinalStepType(target)) != ""
 }
 
 func stepOptions(defaults StepDefaults, override *dex.StepOptions) (*dex.StepOptions, error) {

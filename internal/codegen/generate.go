@@ -163,7 +163,11 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 		write("\tOperation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: %s},\n", strconv.Quote(operation.Name))
 		write("\tBranches: []sdkgo.BranchDefinition{\n")
 		for _, branch := range operation.Branches {
-			write("\t\t{ID: %sBranch%s, Description: %s},\n", operation.GoName, branch.GoName, strconv.Quote(branch.Description))
+			optional := ""
+			if branch.Optional {
+				optional = ", Optional: true"
+			}
+			write("\t\t{ID: %sBranch%s, Description: %s%s},\n", operation.GoName, branch.GoName, strconv.Quote(branch.Description), optional)
 		}
 		write("\t},\n")
 		timeout, _ := time.ParseDuration(operation.Execution.ExecuteMethodTimeout)
@@ -249,7 +253,11 @@ func writeOperationFactory(output *bytes.Buffer, manifest schema.Manifest, opera
 	write("\tConnectionName string `connector:\"connectionName\"`\n")
 	write("\tMapToOperationInput func(IN) %s `connector:\"mapToOperationInput\"`\n", operation.InputType)
 	for _, branch := range operation.Branches {
-		write("\t%s sdkgo.Target[%sResult] `connector:\"branch=%s\"`\n", branch.GoName, operation.GoName, branch.ID)
+		tag := fmt.Sprintf("branch=%s", branch.ID)
+		if branch.Optional {
+			tag += ",optional"
+		}
+		write("\t%s sdkgo.Target[%sResult] `connector:%s`\n", branch.GoName, operation.GoName, strconv.Quote(tag))
 	}
 	write("\tResultAttribute *dex.Attribute[sdkgo.%sResult[%s]] `connector:\"resultAttribute\"`\n", kind, operation.OutputType)
 	if contains(operation.Progress, "structured") {
@@ -270,11 +278,15 @@ func writeOperationFactory(output *bytes.Buffer, manifest schema.Manifest, opera
 	write("\t\tStepType: config.StepType, Annotations: config.Annotations,\n")
 	write("\t\tOperation: config.Connection.client.%s(), Connection: config.Connection.reference,\n", operation.GoName)
 	write("\t\tMapToOperationInput: config.MapToOperationInput,\n")
-	write("\t\tBranches: []sdkgo.BranchTarget[%sResult]{\n", operation.GoName)
+	write("\t\tBranches: func() []sdkgo.BranchTarget[%sResult] {\n", operation.GoName)
+	write("\t\t\tbranches := []sdkgo.BranchTarget[%sResult]{}\n", operation.GoName)
 	for _, branch := range operation.Branches {
-		write("\t\t\tconfig.%s.BranchTarget(%sBranch%s),\n", branch.GoName, operation.GoName, branch.GoName)
+		write("\t\t\tif config.%s.HasStep() {\n", branch.GoName)
+		write("\t\t\t\tbranches = append(branches, config.%s.BranchTarget(%sBranch%s))\n", branch.GoName, operation.GoName, branch.GoName)
+		write("\t\t\t}\n")
 	}
-	write("\t\t},\n")
+	write("\t\t\treturn branches\n")
+	write("\t\t}(),\n")
 	write("\t\tResultAttribute: config.ResultAttribute,\n")
 	if contains(operation.Progress, "structured") {
 		write("\t\tProgressStream: config.ProgressStream,\n")
