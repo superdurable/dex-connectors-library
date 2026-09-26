@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"github.com/superdurable/dex-connectors-library/schema"
 )
 
 func TestValidateConnectorDirectoryAllowsAnyDepth(t *testing.T) {
@@ -162,12 +163,31 @@ func TestCatalogCheckAcceptsRepositoryCompanies(t *testing.T) {
 	require.NoError(t, catalogCommand([]string{"--check", "--registry", filepath.Join("..", "..", "connectors.yaml")}))
 }
 
-func TestCatalogIncludesOperationsAndTriggers(t *testing.T) {
-	entries, err := loadConnectorDirectoryEntries(filepath.Join("..", "..", "connectors.yaml"))
-	require.NoError(t, err)
+func TestCatalogIncludesUIUnitsOperationsAndTriggers(t *testing.T) {
+	entries := []connectorDirectoryEntry{{
+		Directory: "connectors/acme/chat",
+		Manifest: schema.Manifest{
+			Metadata: schema.Metadata{
+				Name: "acme-chat", DisplayName: "Acme Chat", Description: "Catalog fixture.", Company: "Acme", Version: "v0.1.0",
+			},
+			Spec: schema.Spec{
+				Studio: &schema.Studio{Units: []schema.StudioUnit{
+					{ID: "channelPicker", Description: "Select one channel."},
+					{ID: "searchQueryInput", Description: "Enter a search query."},
+				}},
+				Triggers: []schema.Trigger{{Name: "messageReceived", Description: "Receive one message."}},
+				Operations: []schema.Operation{
+					{Name: "getMessage", Kind: "query", Description: "Read one message."},
+					{Name: "sendMessage", Kind: "mutation", Description: "Send one message."},
+				},
+			},
+		},
+	}}
 	encoded, err := encodeConnectorCatalog(entries)
 	require.NoError(t, err)
 	catalog := string(encoded)
+	require.Contains(t, catalog, "name: channelPicker")
+	require.Contains(t, catalog, "name: searchQueryInput")
 	require.Contains(t, catalog, "name: messageReceived")
 	require.Contains(t, catalog, "name: getMessage")
 	require.Contains(t, catalog, "kind: query")

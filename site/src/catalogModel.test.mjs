@@ -40,7 +40,7 @@ test("development reads the local catalog and production reads the site copy", (
   );
 });
 
-test("catalog text exposes company, operations, and triggers", () => {
+test("catalog text exposes company, UI units, operations, and triggers", () => {
   const connectors = readCatalog(`
 apiVersion: connectors.dex.dev/catalog/v1alpha1
 kind: ConnectorCatalog
@@ -51,6 +51,9 @@ connectors:
     description: Send and read Gmail messages.
     version: v0.8.0
     directory: connectors/google/gmail
+    uiUnits:
+      - name: searchQueryInput
+        description: Enter a Gmail search query.
     triggers:
       - name: messageReceived
         description: Receive a matching message.
@@ -64,6 +67,9 @@ connectors:
   assert.equal(connectors[0].name, "Gmail");
   assert.equal(connectors[0].description, "Send and read Gmail messages.");
   assert.equal(connectors[0].companyDirectory, "google");
+  assert.deepEqual(connectors[0].uiUnits, [
+    { name: "searchQueryInput", kind: "ui-unit", description: "Enter a Gmail search query." },
+  ]);
   assert.deepEqual(connectors[0].triggers, [
     { name: "messageReceived", kind: "trigger", description: "Receive a matching message." },
   ]);
@@ -72,10 +78,12 @@ connectors:
   ]);
   assert.equal(connectorMatchesQuery(connectors[0], "messageReceived"), true);
   assert.equal(connectorMatchesQuery(connectors[0], "send mutation"), true);
+  assert.equal(connectorMatchesQuery(connectors[0], "searchQueryInput"), true);
   assert.equal(connectorMatchesQuery(connectors[0], "spreadsheet"), false);
   assert.deepEqual(catalogTotals(connectors), {
     companies: 1,
     connectors: 1,
+    uiUnits: 1,
     triggers: 1,
     operations: 1,
   });

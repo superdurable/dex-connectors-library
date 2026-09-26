@@ -14,10 +14,12 @@ const fontCandidates = [
 ];
 
 export function companyCountLine(group) {
+  const uiUnits = group.connectors.reduce((total, connector) => total + connector.uiUnits.length, 0);
   const operations = group.connectors.reduce((total, connector) => total + connector.operations.length, 0);
   const triggers = group.connectors.reduce((total, connector) => total + connector.triggers.length, 0);
   return [
     countPhrase(group.connectors.length, "connector", "connectors"),
+    countPhrase(uiUnits, "UI unit", "UI units"),
     countPhrase(operations, "operation", "operations"),
     countPhrase(triggers, "trigger", "triggers"),
   ].join(" · ");

@@ -8,8 +8,9 @@ export type CatalogConnector = {
   version: string;
   directory: string;
   companyDirectory: string;
-  triggers: CatalogOperation[];
-  operations: CatalogOperation[];
+  uiUnits: CatalogCapability[];
+  triggers: CatalogCapability[];
+  operations: CatalogCapability[];
 };
 
 export type CompanyGroup = {
@@ -18,7 +19,7 @@ export type CompanyGroup = {
   connectors: CatalogConnector[];
 };
 
-export type CatalogOperation = {
+export type CatalogCapability = {
   name: string;
   kind: string;
   description: string;
@@ -27,6 +28,7 @@ export type CatalogOperation = {
 export type CatalogTotals = {
   companies: number;
   connectors: number;
+  uiUnits: number;
   triggers: number;
   operations: number;
 };
@@ -39,4 +41,4 @@ export function readCatalog(text: string): CatalogConnector[];
 export function connectorMatchesQuery(connector: CatalogConnector, query: string): boolean;
 export function catalogTotals(connectors: CatalogConnector[]): CatalogTotals;
 export function groupCatalog(connectors: CatalogConnector[]): CompanyGroup[];
-export function readOperations(text: string): CatalogOperation[];
+export function readOperations(text: string): CatalogCapability[];
