@@ -65,6 +65,7 @@ func GoToBranch[T any](branch BranchID, target dex.Step[T]) BranchTarget[T] {
 type QueryStepConfig[STEP_IN, OP_IN, OUT any] struct {
 	StepType            string
 	Annotations         StepAnnotations
+	ConfigurationUI     ConnectorConfigurationUI
 	Operation           Query[OP_IN, OUT]
 	Connection          ConnectionRef
 	MapToOperationInput func(STEP_IN) OP_IN
@@ -79,6 +80,7 @@ type QueryStepConfig[STEP_IN, OP_IN, OUT any] struct {
 type MutationStepConfig[STEP_IN, OP_IN, OUT any] struct {
 	StepType            string
 	Annotations         StepAnnotations
+	ConfigurationUI     ConnectorConfigurationUI
 	Operation           Mutation[OP_IN, OUT]
 	Connection          ConnectionRef
 	MapToOperationInput func(STEP_IN) OP_IN
@@ -94,6 +96,7 @@ type QueryStep[STEP_IN, OP_IN, OUT any] struct {
 	dex.NoWaitFor[STEP_IN]
 	stepType            string
 	annotations         StepAnnotations
+	configurationUI     ConnectorConfigurationUI
 	operation           Query[OP_IN, OUT]
 	connection          ConnectionRef
 	mapToOperationInput func(STEP_IN) OP_IN
@@ -110,6 +113,7 @@ type MutationStep[STEP_IN, OP_IN, OUT any] struct {
 	dex.NoWaitFor[STEP_IN]
 	stepType            string
 	annotations         StepAnnotations
+	configurationUI     ConnectorConfigurationUI
 	operation           Mutation[OP_IN, OUT]
 	connection          ConnectionRef
 	mapToOperationInput func(STEP_IN) OP_IN
@@ -133,6 +137,9 @@ func NewQueryStep[STEP_IN, OP_IN, OUT any](config QueryStepConfig[STEP_IN, OP_IN
 	if err := validateFactoryConfig(config.StepType, config.Annotations, config.Connection, config.MapToOperationInput != nil); err != nil {
 		return QueryStep[STEP_IN, OP_IN, OUT]{}, err
 	}
+	if err := config.ConfigurationUI.Validate(); err != nil {
+		return QueryStep[STEP_IN, OP_IN, OUT]{}, fmt.Errorf("Connector configuration UI: %w", err)
+	}
 	branches, optionalBranches, err := validateBranchTargets(definition.Branches, config.Branches)
 	if err != nil {
 		return QueryStep[STEP_IN, OP_IN, OUT]{}, err
@@ -142,7 +149,8 @@ func NewQueryStep[STEP_IN, OP_IN, OUT any](config QueryStepConfig[STEP_IN, OP_IN
 		return QueryStep[STEP_IN, OP_IN, OUT]{}, err
 	}
 	return QueryStep[STEP_IN, OP_IN, OUT]{
-		stepType: config.StepType, annotations: config.Annotations, operation: config.Operation,
+		stepType: config.StepType, annotations: config.Annotations,
+		configurationUI: cloneConnectorConfigurationUI(config.ConfigurationUI), operation: config.Operation,
 		connection: config.Connection, mapToOperationInput: config.MapToOperationInput, branches: branches,
 		optionalBranches: optionalBranches,
 		resultAttribute:  config.ResultAttribute, progressStream: config.ProgressStream,
@@ -170,6 +178,9 @@ func NewMutationStep[STEP_IN, OP_IN, OUT any](config MutationStepConfig[STEP_IN,
 	if err := validateFactoryConfig(config.StepType, config.Annotations, config.Connection, config.MapToOperationInput != nil); err != nil {
 		return MutationStep[STEP_IN, OP_IN, OUT]{}, err
 	}
+	if err := config.ConfigurationUI.Validate(); err != nil {
+		return MutationStep[STEP_IN, OP_IN, OUT]{}, fmt.Errorf("Connector configuration UI: %w", err)
+	}
 	branches, optionalBranches, err := validateBranchTargets(definition.Branches, config.Branches)
 	if err != nil {
 		return MutationStep[STEP_IN, OP_IN, OUT]{}, err
@@ -179,7 +190,8 @@ func NewMutationStep[STEP_IN, OP_IN, OUT any](config MutationStepConfig[STEP_IN,
 		return MutationStep[STEP_IN, OP_IN, OUT]{}, err
 	}
 	return MutationStep[STEP_IN, OP_IN, OUT]{
-		stepType: config.StepType, annotations: config.Annotations, operation: config.Operation,
+		stepType: config.StepType, annotations: config.Annotations,
+		configurationUI: cloneConnectorConfigurationUI(config.ConfigurationUI), operation: config.Operation,
 		connection: config.Connection, mapToOperationInput: config.MapToOperationInput, branches: branches,
 		optionalBranches: optionalBranches,
 		resultAttribute:  config.ResultAttribute, progressStream: config.ProgressStream,
@@ -203,6 +215,12 @@ func (step QueryStep[STEP_IN, OP_IN, OUT]) GetStepOptions() *dex.StepOptions {
 }
 
 func (step QueryStep[STEP_IN, OP_IN, OUT]) Annotations() StepAnnotations { return step.annotations }
+
+// ConfigurationUI returns an isolated copy of this Connector Step's optional
+// application-authored UI composition.
+func (step QueryStep[STEP_IN, OP_IN, OUT]) ConfigurationUI() ConnectorConfigurationUI {
+	return cloneConnectorConfigurationUI(step.configurationUI)
+}
 
 func (step QueryStep[STEP_IN, OP_IN, OUT]) Execute(ctx dex.Context, input STEP_IN) (*dex.StepDecision, error) {
 	operationInput := step.mapToOperationInput(input)
@@ -230,6 +248,12 @@ func (step MutationStep[STEP_IN, OP_IN, OUT]) GetStepOptions() *dex.StepOptions 
 
 func (step MutationStep[STEP_IN, OP_IN, OUT]) Annotations() StepAnnotations {
 	return step.annotations
+}
+
+// ConfigurationUI returns an isolated copy of this Connector Step's optional
+// application-authored UI composition.
+func (step MutationStep[STEP_IN, OP_IN, OUT]) ConfigurationUI() ConnectorConfigurationUI {
+	return cloneConnectorConfigurationUI(step.configurationUI)
 }
 
 func (step MutationStep[STEP_IN, OP_IN, OUT]) Execute(ctx dex.Context, input STEP_IN) (*dex.StepDecision, error) {

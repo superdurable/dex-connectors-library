@@ -28,6 +28,11 @@ type testTriggerConfiguration struct {
 	ChannelID string `json:"channelId"`
 }
 
+type testOperationConfiguration struct {
+	ChannelID string `json:"channelId"`
+	Message   string `json:"message"`
+}
+
 func TestStoreSnapshotsConfigurationAndReloadsCredentials(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "connections.json")
 	writeConnections(t, path, "https://one.example", "token-one", time.Now().Add(time.Hour))
@@ -120,6 +125,51 @@ func TestStoreDecodesTriggerBindingConfiguration(t *testing.T) {
 	require.ErrorContains(t, store.DecodeTriggerConfiguration("gmail", "sender", "messageCreated", "missing", &configuration), "is not configured")
 }
 
+func TestStoreLoadsIsolatedOperationConfigurationSnapshot(t *testing.T) {
+	directory := t.TempDir()
+	path := filepath.Join(directory, "connections.json")
+	writeConnections(t, path, "https://example.test", "token", time.Now().Add(time.Hour))
+	reference := sdkgo.ConnectorConfigurationRef{
+		ConnectorID: "gmail", ConnectionName: "sender", OperationID: "sendMessage",
+		FlowType: "ApprovalFlow", StepType: "SendApproval",
+	}
+	writeUseConfigurations(t, directory, reference, map[string]any{"channelId": "C123", "message": "Approve?"})
+
+	store, err := localconfig.LoadFile(path)
+	require.NoError(t, err)
+	require.Equal(t, filepath.Join(directory, localconfig.UseConfigurationsFileName), store.UseConfigurationsPath())
+	loaded, err := localconfig.LoadOperationConfiguration[testOperationConfiguration](store, reference)
+	require.NoError(t, err)
+	require.Equal(t, reference, loaded.Reference)
+	require.Equal(t, testOperationConfiguration{ChannelID: "C123", Message: "Approve?"}, loaded.Value)
+
+	writeUseConfigurations(t, directory, reference, map[string]any{"channelId": "C999", "message": "Changed"})
+	loaded, err = localconfig.LoadOperationConfiguration[testOperationConfiguration](store, reference)
+	require.NoError(t, err)
+	require.Equal(t, "C123", loaded.Value.ChannelID)
+}
+
+func TestStoreRejectsInvalidOperationConfigurationSidecar(t *testing.T) {
+	directory := t.TempDir()
+	path := filepath.Join(directory, "connections.json")
+	writeConnections(t, path, "https://example.test", "token", time.Now().Add(time.Hour))
+	reference := sdkgo.ConnectorConfigurationRef{
+		ConnectorID: "gmail", ConnectionName: "sender", OperationID: "sendMessage",
+		FlowType: "ApprovalFlow", StepType: "SendApproval",
+	}
+	writeUseConfigurations(t, directory, reference, map[string]any{"channelId": "C123", "unexpected": true})
+
+	store, err := localconfig.LoadFile(path)
+	require.NoError(t, err)
+	_, err = localconfig.LoadOperationConfiguration[testOperationConfiguration](store, reference)
+	require.ErrorContains(t, err, "unknown field")
+
+	reference.ConnectionName = "missing"
+	writeUseConfigurations(t, directory, reference, map[string]any{"channelId": "C123"})
+	_, err = localconfig.LoadFile(path)
+	require.ErrorContains(t, err, "unknown connection")
+}
+
 func TestDurableTriggerTargetReplaysEventAfterRestart(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "connections.json")
 	writeConnections(t, path, "https://example.test", "token", time.Now().Add(time.Hour))
@@ -177,4 +227,18 @@ func writeConnections(t *testing.T, path string, endpoint string, token string, 
 	})
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(path, contents, 0o600))
+}
+
+func writeUseConfigurations(t *testing.T, directory string, reference sdkgo.ConnectorConfigurationRef, configuration map[string]any) {
+	t.Helper()
+	contents, err := json.Marshal(map[string]any{
+		"schemaVersion": localconfig.UseConfigurationsSchemaVersion,
+		"operationConfigurations": []any{map[string]any{
+			"connectorId": reference.ConnectorID, "connectionName": reference.ConnectionName,
+			"operationId": reference.OperationID, "flowType": reference.FlowType, "stepType": reference.StepType,
+			"configuration": configuration,
+		}},
+	})
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(directory, localconfig.UseConfigurationsFileName), contents, 0o600))
 }

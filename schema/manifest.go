@@ -45,7 +45,34 @@ type Spec struct {
 }
 
 type Studio struct {
-	Setup StudioSetup `yaml:"setup" json:"setup"`
+	Setup    StudioSetup     `yaml:"setup" json:"setup"`
+	Commands []StudioCommand `yaml:"commands,omitempty" json:"commands,omitempty"`
+	Units    []StudioUnit    `yaml:"units,omitempty" json:"units,omitempty"`
+}
+
+type StudioCommand struct {
+	ID         string                   `yaml:"id" json:"id"`
+	Capability string                   `yaml:"capability" json:"capability"`
+	Request    StudioCommandHTTPRequest `yaml:"request" json:"request"`
+}
+
+type StudioCommandHTTPRequest struct {
+	Method     string                   `yaml:"method" json:"method"`
+	URL        string                   `yaml:"url" json:"url"`
+	Credential StudioCommandCredential  `yaml:"credential" json:"credential"`
+	FixedQuery map[string]string        `yaml:"fixedQuery,omitempty" json:"fixedQuery,omitempty"`
+	Parameters []StudioCommandParameter `yaml:"parameters,omitempty" json:"parameters,omitempty"`
+}
+
+type StudioCommandCredential struct {
+	Field  string `yaml:"field" json:"field"`
+	Scheme string `yaml:"scheme" json:"scheme"`
+}
+
+type StudioCommandParameter struct {
+	Name     string `yaml:"name" json:"name"`
+	Location string `yaml:"location" json:"location"`
+	Target   string `yaml:"target" json:"target"`
 }
 
 type StudioSetup struct {
@@ -54,6 +81,21 @@ type StudioSetup struct {
 	BackendCapabilities []string `yaml:"backendCapabilities" json:"backendCapabilities"`
 	MockScenarios       []string `yaml:"mockScenarios" json:"mockScenarios"`
 	Icon                string   `yaml:"icon" json:"icon"`
+}
+
+type StudioUnit struct {
+	ID                  string           `yaml:"id" json:"id"`
+	GoName              string           `yaml:"goName" json:"goName"`
+	Description         string           `yaml:"description" json:"description"`
+	BackendCapabilities []string         `yaml:"backendCapabilities,omitempty" json:"backendCapabilities,omitempty"`
+	Inputs              []StudioUnitPort `yaml:"inputs,omitempty" json:"inputs,omitempty"`
+	Outputs             []StudioUnitPort `yaml:"outputs" json:"outputs"`
+}
+
+type StudioUnitPort struct {
+	Name   string `yaml:"name" json:"name"`
+	GoName string `yaml:"goName" json:"goName"`
+	Type   string `yaml:"type" json:"type"`
 }
 
 type Codegen struct {
@@ -293,6 +335,52 @@ func (manifest Manifest) Validate() error {
 		if len(setup.MockScenarios) == 0 || !validUniqueStrings(setup.MockScenarios, mockScenarioPattern) {
 			problems = append(problems, "studio setup mockScenarios must be non-empty, unique scenario IDs")
 		}
+		setupCapabilities := make(map[string]bool, len(setup.BackendCapabilities))
+		for _, capability := range setup.BackendCapabilities {
+			setupCapabilities[capability] = true
+		}
+		authFields := make(map[string]Field, len(manifest.Spec.Auth.Fields))
+		for _, field := range manifest.Spec.Auth.Fields {
+			authFields[field.Name] = field
+		}
+		seenCommandIDs := map[string]bool{}
+		for _, command := range manifest.Spec.Studio.Commands {
+			if !operationPattern.MatchString(command.ID) || seenCommandIDs[command.ID] {
+				problems = append(problems, "studio command IDs must be lower camel case and unique")
+			}
+			seenCommandIDs[command.ID] = true
+			if !capabilityPattern.MatchString(command.Capability) || !setupCapabilities[command.Capability] {
+				problems = append(problems, "studio command "+command.ID+": capability must be declared by studio setup")
+			}
+			problems = append(problems, validateStudioCommand(command, authFields)...)
+		}
+		seenUnitIDs := map[string]bool{}
+		seenUnitGoNames := map[string]bool{}
+		for _, unit := range manifest.Spec.Studio.Units {
+			if !operationPattern.MatchString(unit.ID) || seenUnitIDs[unit.ID] {
+				problems = append(problems, "studio unit IDs must be lower camel case and unique")
+			}
+			seenUnitIDs[unit.ID] = true
+			if !goNamePattern.MatchString(unit.GoName) || seenUnitGoNames[unit.GoName] {
+				problems = append(problems, "studio units require unique exported goName values")
+			}
+			seenUnitGoNames[unit.GoName] = true
+			if strings.TrimSpace(unit.Description) == "" {
+				problems = append(problems, "studio unit "+unit.ID+": description is required")
+			}
+			if !validUniqueStrings(unit.BackendCapabilities, capabilityPattern) {
+				problems = append(problems, "studio unit "+unit.ID+": backendCapabilities must be unique capability IDs")
+			}
+			for _, capability := range unit.BackendCapabilities {
+				if !setupCapabilities[capability] {
+					problems = append(problems, "studio unit "+unit.ID+": backendCapabilities must be declared by studio setup")
+				}
+			}
+			if len(unit.Outputs) == 0 {
+				problems = append(problems, "studio unit "+unit.ID+": at least one output port is required")
+			}
+			problems = append(problems, validateStudioUnitPorts(unit.ID, unit.Inputs, unit.Outputs)...)
+		}
 	}
 	if len(manifest.Spec.Operations) == 0 {
 		problems = append(problems, "spec.operations must contain at least one operation")
@@ -404,6 +492,81 @@ func (manifest Manifest) Validate() error {
 		return fmt.Errorf("invalid connector manifest: %s", strings.Join(problems, "; "))
 	}
 	return nil
+}
+
+func validateStudioUnitPorts(unitID string, inputPorts []StudioUnitPort, outputPorts []StudioUnitPort) []string {
+	var problems []string
+	seenNames := map[string]bool{}
+	seenGoNames := map[string]bool{}
+	allowedTypes := map[string]bool{
+		"string": true, "stringList": true, "integer": true, "number": true, "boolean": true,
+	}
+	for _, port := range append(append([]StudioUnitPort(nil), inputPorts...), outputPorts...) {
+		if !operationPattern.MatchString(port.Name) || seenNames[port.Name] {
+			problems = append(problems, "studio unit "+unitID+": port names must be lower camel case and unique")
+		}
+		seenNames[port.Name] = true
+		if !goNamePattern.MatchString(port.GoName) || seenGoNames[port.GoName] || !allowedTypes[port.Type] {
+			problems = append(problems, "studio unit "+unitID+": ports require unique exported goName values and supported types")
+		}
+		seenGoNames[port.GoName] = true
+	}
+	return problems
+}
+
+func validateStudioCommand(command StudioCommand, authFields map[string]Field) []string {
+	request := command.Request
+	prefix := "studio command " + command.ID + ": "
+	problems := []string{}
+	if request.Method != "GET" {
+		problems = append(problems, prefix+"request method must be GET")
+	}
+	target, err := url.Parse(request.URL)
+	if err != nil || target.Scheme != "https" || target.Host == "" || target.User != nil || target.RawQuery != "" || target.Fragment != "" {
+		problems = append(problems, prefix+"request URL must be an absolute HTTPS URL without credentials, query, or fragment")
+	}
+	credential, exists := authFields[request.Credential.Field]
+	if !exists || credential.Type != "secretString" || request.Credential.Scheme != "bearer" {
+		problems = append(problems, prefix+"credential must name a secretString auth field with bearer scheme")
+	}
+	seenParameters := map[string]bool{}
+	seenTargets := map[string]bool{}
+	for _, parameter := range request.Parameters {
+		if !fieldNamePattern.MatchString(parameter.Name) || seenParameters[parameter.Name] {
+			problems = append(problems, prefix+"parameter names must be lower camel case and unique")
+		}
+		seenParameters[parameter.Name] = true
+		if strings.TrimSpace(parameter.Target) == "" || seenTargets[parameter.Location+"\x00"+parameter.Target] {
+			problems = append(problems, prefix+"parameter targets must be non-empty and unique per location")
+		}
+		seenTargets[parameter.Location+"\x00"+parameter.Target] = true
+		switch parameter.Location {
+		case "query":
+			if _, fixed := request.FixedQuery[parameter.Target]; fixed {
+				problems = append(problems, prefix+"query parameter targets cannot replace fixed query values")
+			}
+		case "path":
+			placeholder := "{" + parameter.Target + "}"
+			if strings.Count(request.URL, placeholder) != 1 {
+				problems = append(problems, prefix+"path parameter target must have exactly one URL placeholder")
+			}
+		default:
+			problems = append(problems, prefix+"parameter location must be query or path")
+		}
+	}
+	for name := range request.FixedQuery {
+		if strings.TrimSpace(name) == "" {
+			problems = append(problems, prefix+"fixed query names must be non-empty")
+		}
+	}
+	if target != nil {
+		for _, match := range regexp.MustCompile(`\{([^{}]+)\}`).FindAllStringSubmatch(target.Path, -1) {
+			if !seenTargets["path\x00"+match[1]] {
+				problems = append(problems, prefix+"URL contains an undeclared path placeholder")
+			}
+		}
+	}
+	return problems
 }
 
 func validJSONPath(value string) bool {

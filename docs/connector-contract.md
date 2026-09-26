@@ -252,20 +252,31 @@ running app while keeping configuration changes restart-bound. Credential
 wire values are converted to `SecretString` only at this boundary and cannot
 be serialized again.
 
+Dex Web writes non-secret operation-use values to the sibling
+`use-configurations.json` file. `localconfig.LoadFile` snapshots this sidecar at
+application startup. Applications load one value with
+`LoadOperationConfiguration[T]`, identified by connector ID, connection name,
+operation ID, Flow type, and Step type. `ConnectorLoadedConfiguration[T]`
+keeps that identity beside the strictly decoded value. A Flow explicitly
+captures `Value` in `MapToOperationInput`; retries never reread the sidecar.
+
 The local file may contain several named connections for one Connector. It
 must never be persisted into Flow state or copied into logs. OAuth refresh
 tokens are outside this alpha contract.
 
 The manifest also carries OAuth endpoints, scopes, PKCE, connection kind,
-Studio setup entrypoint, Host API compatibility, required backend capabilities,
-mock scenarios, and icon. Release metadata binds those declarations to the
-checked UI tarball digest.
+Studio setup entrypoint, reusable unit catalogs, Host API compatibility,
+required backend capabilities, mock scenarios, and icon. Release metadata binds
+those declarations to the checked UI tarball digest.
 
 Connector UI executes in an opaque-origin iframe and communicates through the
-versioned, nonce-bound Studio Host API. Messages contain only safe connection
-status, provider identity, resource selections, and configuration. OAuth
-tokens, API keys, client secrets, and refresh tokens never enter iframe props,
-messages, markup, logs, or artifacts.
+versioned, nonce-bound Studio Host API. Host API 0.2 selects either the
+connection surface or one isolated configuration unit. Messages contain only
+safe connection status, provider identity, unit port values, configuration,
+and a bounded frame height. Connector bundles report content changes with
+`connector.frame.resize` so the host can fit the opaque-origin iframe without
+reading its DOM. OAuth tokens, API keys, client secrets, and refresh tokens
+never enter iframe props, messages, markup, logs, or artifacts.
 
 The Studio BFF loads artifacts directly from the trusted Connector release;
 the Java Control Plane is not on this path. OAuth callback, refresh, revoke,
