@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -27,6 +28,7 @@ type clientOptions struct {
 	httpClient   *http.Client
 	now          func() time.Time
 	socketDialer socketDialer
+	logger       *slog.Logger
 }
 
 // WithHTTPClient replaces the HTTP client used for Slack Web API calls.
@@ -39,6 +41,16 @@ func WithClock(now func() time.Time) Option {
 	return func(options *clientOptions) { options.now = now }
 }
 
+// WithLogger sends the Trigger runner's records to logger: Socket Mode connections, ignored and skipped
+// events, delivery retries, and the durable inboxes that NewLocalMessageTriggerRunner creates. Without
+// this option, or with a nil logger, records go to slog.Default() as of each record. Records carry IDs
+// and error messages, never message text or tokens. The generated per-Trigger factories, such as
+// NewLocalThreadReplyCreatedTrigger, pass logger to their Socket Mode source only; their durable inbox
+// and runner records go to slog.Default(), so call slog.SetDefault when you use them.
+func WithLogger(logger *slog.Logger) Option {
+	return func(options *clientOptions) { options.logger = logger }
+}
+
 type Client struct {
 	endpoint             *url.URL
 	httpClient           *http.Client
@@ -47,6 +59,7 @@ type Client struct {
 	maxMessageCharacters int
 	now                  func() time.Time
 	socketDialer         socketDialer
+	logger               *slog.Logger
 }
 
 type Message struct {
@@ -163,7 +176,7 @@ func New(config Config, credentials sdkgo.CredentialProvider[Credentials], optio
 	return &Client{
 		endpoint: endpoint, httpClient: dependencies.httpClient, credentials: credentials,
 		maxResponseBytes: config.MaxResponseBytes, maxMessageCharacters: int(config.MaxMessageCharacters),
-		now: dependencies.now, socketDialer: dependencies.socketDialer,
+		now: dependencies.now, socketDialer: dependencies.socketDialer, logger: dependencies.logger,
 	}, nil
 }
 

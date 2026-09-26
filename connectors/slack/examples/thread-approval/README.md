@@ -12,7 +12,9 @@ readable Flow ID from Slack team ID, channel ID, and root timestamp. The RPC is
 registered and invoked through the same direct bound `ReceiveThreadReply`
 method. An RPC input mapper passes only the event ID and approver user ID. The
 application RPC locks its thread state and stores the one accepted reply event
-ID, so duplicate delivery cannot schedule another completion reply.
+ID, so duplicate delivery cannot schedule another completion reply. A matching
+reply in a thread whose Flow already completed, or that never started a Flow,
+is consumed as undeliverable and logged, so it cannot stop the shared runner.
 
 The completion Mutation configures the optional `ResultAttribute`. The Flow
 registers that typed Attribute explicitly, and its summary/display RPCs read the
@@ -36,7 +38,7 @@ calling Dex. The pure filter has no error result.
 
 This walkthrough uses these published releases:
 
-- [Slack Connector v0.8.0](https://github.com/superdurable/dex-connectors-library/releases/tag/connectors%2Fslack%2Fv0.8.0)
+- [Slack Connector v0.10.0](https://github.com/superdurable/dex-connectors-library/releases/tag/connectors%2Fslack%2Fv0.10.0)
 - [dexcli v0.13.7](https://github.com/superdurable/dex/releases/tag/cli-v0.13.7)
 
 Install Go 1.24 or newer and curl. You also need permission to create and
@@ -64,7 +66,7 @@ macOS installation, download the matching archive from the
 ## 1. Prepare a clean local test project
 
 Create a separate directory that consumes the released Connector. The Flow
-source is copied from the immutable v0.8.0 tag so dexcli can analyze it as an
+source is copied from the immutable v0.10.0 tag so dexcli can analyze it as an
 application dependency rather than as part of the Connector module itself.
 
 ```bash
@@ -73,11 +75,11 @@ cd slack-thread-approval-e2e
 mkdir -p flow build
 
 curl -fsSL \
-  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/slack/v0.8.0/connectors/slack/examples/thread-approval/flow/workflow.go \
+  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/slack/v0.10.0/connectors/slack/examples/thread-approval/flow/workflow.go \
   -o flow/workflow.go
 
 go mod init example.com/slack-thread-approval-e2e
-go get github.com/superdurable/dex-connectors-library/connectors/slack@v0.8.0
+go get github.com/superdurable/dex-connectors-library/connectors/slack@v0.10.0
 go mod tidy
 ```
 
@@ -329,7 +331,7 @@ export DEX_CONNECTOR_CONFIG_FILE="$HOME/.dex/connectors/connections.json"
 export DEX_FLOW_SERVICE_ADDRESS="127.0.0.1:8801"
 
 GOWORK=off go run \
-  github.com/superdurable/dex-connectors-library/connectors/slack/examples/thread-approval@v0.8.0
+  github.com/superdurable/dex-connectors-library/connectors/slack/examples/thread-approval@v0.10.0
 ```
 
 Replace `127.0.0.1:8801` when dexcli printed another Dex Server address. The
@@ -348,6 +350,12 @@ Startup fails with a scoped connector/connection/operation/Flow/Step error if
 `use-configurations.json` does not contain the `PostSlackCompletion`
 configuration. Return to Dex Web, save **Completion reply**, and restart the
 Worker.
+
+The Worker writes text logs to standard error at INFO: Socket Mode
+connections, skipped events, retries with their backoff delay, and replay
+summaries. Set `LOG_LEVEL=debug` before starting it to also see every Slack
+message a Trigger ignores, with the reason, and every delivery to Dex. The logs
+contain IDs and error messages, never message text or tokens.
 
 ## 8. Run the end-to-end test
 
@@ -374,8 +382,18 @@ Worker.
    application-owned thread state and the optional
    `slack-thread-approval-post-reply-result` provider result.
 
-The RPC accepts only the first valid approval while the Flow is waiting. A
-second matching approval must not post another completion reply.
+The RPC accepts only the first valid approval while the Flow is waiting. To
+check this, post a second matching approval, such as `approved, thanks`, in the
+completed thread:
+
+- No second `Processing complete.` reply is posted.
+- The Worker logs one WARN record that it skipped the event as undeliverable:
+
+  ```text
+  time=<timestamp> level=WARN msg="trigger event skipped: undeliverable" connector=slack connection=slack-workspace trigger=threadReplyCreated binding=slack-thread-approval-reply channel=<channel-id> thread_ts=<root-ts> event_id=<event-id> flow_id=<flow-id> error="Trigger event is undeliverable: dex: InvokeRPC flow \"<flow-id>\": NotFound: workflow execution already completed"
+  ```
+
+- A new top-level message still starts a new Flow.
 
 For CLI inspection, substitute the actual Flow ID:
 
@@ -398,8 +416,80 @@ After the Flow completes:
 The Trigger inbox can replay an unfinished delivery after a crash. Stable event
 IDs, the readable Flow ID, the application RPC state transition, and Slack
 `client_msg_id` prevent replay from duplicating the completed external action.
+Replay runs before the socket opens. It consumes any event that a crash left
+pending for a completed thread, such as an approval that arrived after
+completion, and never exits the Worker because of one event. When replay finds
+pending events, the Worker logs `replaying pending trigger events` with their
+`count`, and then `finished replaying pending trigger events` with the
+`delivered`, `skipped`, and `remaining` counts.
+
+If the Dex Server is unreachable when the Worker starts, the Worker logs
+`dex server unavailable; retrying` with a growing `delay`, up to 30 seconds, and
+starts once the Dex Server answers. If Dex becomes unreachable later, a pending
+delivery logs `trigger delivery failed; retrying` with the same growing
+`delay`, then `trigger delivered after retry` once Dex accepts it.
 
 ## Troubleshooting
+
+### Reading the Worker log
+
+Every record about an event names its `binding`, so filter by
+`binding=slack-thread-approval-start` or `binding=slack-thread-approval-reply`,
+by the Slack `event_id`, or by a thread's root timestamp in `thread_ts`.
+Records for events that the inbox replays at startup or before a reconnect
+carry the `event_id`, and `flow_id` for Dex errors, but not `channel` or
+`thread_ts`, so search replay records by `event_id`. A second approval in a completed thread (step 8) is
+skipped once:
+
+```text
+time=2026-09-25T22:41:07.412-07:00 level=WARN msg="trigger event skipped: undeliverable" connector=slack connection=slack-workspace trigger=threadReplyCreated binding=slack-thread-approval-reply channel=C0456EFGH thread_ts=1790400000.000100 event_id=Ev0AB1CD2EF3 flow_id=slack-thread-approval-T0123ABCD-C0456EFGH-1790400000.000100 error="Trigger event is undeliverable: dex: InvokeRPC flow \"slack-thread-approval-T0123ABCD-C0456EFGH-1790400000.000100\": NotFound: workflow execution already completed"
+```
+
+An approval posted while the Dex Server is down retries with a delay that
+doubles from 250 milliseconds to 30 seconds, then reports the recovery:
+
+```text
+time=2026-09-25T22:43:10.101-07:00 level=WARN msg="trigger delivery failed; retrying" connector=slack connection=slack-workspace trigger=threadReplyCreated binding=slack-thread-approval-reply channel=C0456EFGH thread_ts=1790400100.000200 event_id=Ev0AB1CD2EF4 attempt=1 delay=250ms flow_id=slack-thread-approval-T0123ABCD-C0456EFGH-1790400100.000200 error="dex: InvokeRPC flow \"slack-thread-approval-T0123ABCD-C0456EFGH-1790400100.000200\": Unavailable: connection error: desc = \"transport: Error while dialing: dial tcp 127.0.0.1:8801: connect: connection refused\""
+time=2026-09-25T22:43:10.354-07:00 level=WARN msg="trigger delivery failed; retrying" connector=slack connection=slack-workspace trigger=threadReplyCreated binding=slack-thread-approval-reply channel=C0456EFGH thread_ts=1790400100.000200 event_id=Ev0AB1CD2EF4 attempt=2 delay=500ms flow_id=slack-thread-approval-T0123ABCD-C0456EFGH-1790400100.000200 error="dex: InvokeRPC flow \"slack-thread-approval-T0123ABCD-C0456EFGH-1790400100.000200\": Unavailable: connection error: desc = \"transport: Error while dialing: dial tcp 127.0.0.1:8801: connect: connection refused\""
+time=2026-09-25T22:43:10.858-07:00 level=WARN msg="trigger delivery failed; retrying" connector=slack connection=slack-workspace trigger=threadReplyCreated binding=slack-thread-approval-reply channel=C0456EFGH thread_ts=1790400100.000200 event_id=Ev0AB1CD2EF4 attempt=3 delay=1s flow_id=slack-thread-approval-T0123ABCD-C0456EFGH-1790400100.000200 error="dex: InvokeRPC flow \"slack-thread-approval-T0123ABCD-C0456EFGH-1790400100.000200\": Unavailable: connection error: desc = \"transport: Error while dialing: dial tcp 127.0.0.1:8801: connect: connection refused\""
+time=2026-09-25T22:43:11.862-07:00 level=WARN msg="trigger delivery failed; retrying" connector=slack connection=slack-workspace trigger=threadReplyCreated binding=slack-thread-approval-reply channel=C0456EFGH thread_ts=1790400100.000200 event_id=Ev0AB1CD2EF4 attempt=4 delay=2s flow_id=slack-thread-approval-T0123ABCD-C0456EFGH-1790400100.000200 error="dex: InvokeRPC flow \"slack-thread-approval-T0123ABCD-C0456EFGH-1790400100.000200\": Unavailable: connection error: desc = \"transport: Error while dialing: dial tcp 127.0.0.1:8801: connect: connection refused\""
+time=2026-09-25T22:43:13.870-07:00 level=INFO msg="trigger delivered after retry" connector=slack connection=slack-workspace trigger=threadReplyCreated binding=slack-thread-approval-reply channel=C0456EFGH thread_ts=1790400100.000200 event_id=Ev0AB1CD2EF4 attempts=5
+```
+
+An approval that reaches the Flow while it is still reading the thread, for
+example because `conversations.replies` is slow or rate-limited, retries the
+same way. The RPC keeps it pending with `Slack thread is still reading its root
+message`, or Dex reports `one or more attribute keys are locked`, until the
+Flow is waiting for a reply.
+
+While one event retries, the shared runner reads no later message, so fix the
+reported failure: restart the Dex Server or the Worker, or correct
+`DEX_FLOW_SERVICE_ADDRESS`. Slack redelivers an unacknowledged envelope only a
+few times, so messages sent during a long retry are persisted only if Slack
+still redelivers them after the runner resumes; a long outage can drop them.
+Other records to look for:
+
+- A quiet channel logs nothing between messages. Slack pings the socket, and
+  the Worker keeps one connection open for hours, until Slack refreshes it with
+  an INFO `slack socket mode disconnected; reconnecting` record and its
+  `reason`, followed by INFO `slack socket mode connected`.
+- `slack socket mode connection failed; reconnecting` (WARN) means the socket
+  could not open, dropped, or received nothing, not even a ping, for 45
+  seconds. The runner reconnects after `delay`, which doubles from 1 second to
+  30 seconds while attempts keep failing, and `attempt` counts them. The
+  `error` names the cause without the token, such as `Slack rejected the Socket
+  Mode connection: invalid_auth (HTTP 200)` for a revoked or wrong `xapp-...`
+  token, or `Slack Socket Mode credentials are unavailable: credential
+  app_token is required` for a connection saved without one.
+- `trigger event skipped: filtered` (INFO) means the application filter
+  rejected an event that the binding configuration matched.
+- `trigger event ignored` (DEBUG) names the `reason` a route did not match a
+  message, such as `channel_mismatch`, `bot`, `not_a_root`, or
+  `matcher_mismatch`. Every message appears once per route, so a root message
+  also shows `not_a_reply` for the reply binding.
+- `trigger inbox write failed` or another `trigger inbox ... failed` record
+  (ERROR) means the Trigger inbox beside the connection file cannot be
+  written; check the directory permissions and free disk space.
 
 ### Connections does not show `slack-workspace`
 
@@ -435,21 +525,43 @@ use **Copy member ID** to obtain the required `U...` value.
 
 Check all of the following:
 
-- the example Worker is running and connected to the current Dex Server;
+- the example Worker is running and connected to the current Dex Server. A
+  Worker that keeps logging `dex server unavailable; retrying` has not started
+  yet; check `DEX_FLOW_SERVICE_ADDRESS`;
 - Socket Mode is enabled and the `xapp-...` token has `connections:write`;
 - `message.channels` and `message.groups` are subscribed;
 - the app was reinstalled after scope changes;
 - the app is a member of the selected channel;
 - the message is top-level, human-authored, and matches the configured channel,
-  poster, and text filters.
+  poster, and text filters;
+- the Worker log does not repeat `trigger delivery failed; retrying`. While
+  one event retries, the shared runner delivers no later message. Fix the
+  reported Dex or Worker failure. A handler that fails the same way every time
+  must return a result or `sdkgo.MarkTriggerUndeliverable` instead.
+
+Restart the Worker with `LOG_LEVEL=debug` and post the message again. A
+`trigger event ignored` record for its `event_id` on the
+`slack-thread-approval-start` binding names the `reason` it did not match. No
+record at all means Slack did not deliver the event to this Worker.
 
 ### The Flow starts but an approval reply does nothing
 
 Make sure the message is a reply in the original thread, the sender's `U...`
 member ID is allowed, and the text matches the approval filter. Run only one
-copy of the released example Worker. Connector v0.8.0 uses one shared Socket
+copy of the released example Worker. Connector v0.10.0 uses one shared Socket
 Mode connection for both root and reply routes; separate competing connections
 can consume each other's events.
+
+If the Worker logs `trigger event skipped: undeliverable` for the reply, Dex
+found no active Flow for its thread: the Flow had completed, or the reply
+reached Dex before its root message started a Flow. Post the approval again
+once the Flow is waiting. An approval that arrives while the Flow is still
+reading the thread is not lost: it logs `trigger delivery failed; retrying`
+until the Flow is waiting, then `trigger delivered after retry`. With
+`LOG_LEVEL=debug`, a `trigger event ignored`
+record on the `slack-thread-approval-reply` binding names the `reason` the
+reply did not match, such as `matcher_mismatch` for a sender or text that the
+binding does not allow.
 
 ### Reading the thread fails with a scope error
 
