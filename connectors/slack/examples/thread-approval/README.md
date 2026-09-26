@@ -37,7 +37,7 @@ calling Dex. The pure filter has no error result.
 This walkthrough uses these published releases:
 
 - [Slack Connector v0.8.0](https://github.com/superdurable/dex-connectors-library/releases/tag/connectors%2Fslack%2Fv0.8.0)
-- [dexcli v0.13.6](https://github.com/superdurable/dex/releases/tag/cli-v0.13.6)
+- [dexcli v0.13.7](https://github.com/superdurable/dex/releases/tag/cli-v0.13.7)
 
 Install Go 1.24 or newer and curl. You also need permission to create and
 install an app in the Slack workspace. A workspace administrator may need to
@@ -57,9 +57,9 @@ brew upgrade superdurable/tap/dexcli
 dexcli version
 ```
 
-The final command must report `dexcli v0.13.6` or newer. For Linux or a manual
+The final command must report `dexcli v0.13.7` or newer. For Linux or a manual
 macOS installation, download the matching archive from the
-[cli-v0.13.6 release](https://github.com/superdurable/dex/releases/tag/cli-v0.13.6).
+[cli-v0.13.7 release](https://github.com/superdurable/dex/releases/tag/cli-v0.13.7).
 
 ## 1. Prepare a clean local test project
 
@@ -383,7 +383,7 @@ IDs, the readable Flow ID, the application RPC state transition, and Slack
 
 Confirm that `build/slack-thread-approval.json` exists and that dexcli started
 with the same directory passed to `--flow-rendering-dir`. Re-run visualization
-with dexcli v0.13.6 or newer and resolve every blocking diagnostic.
+with dexcli v0.13.7 or newer and resolve every blocking diagnostic.
 
 ### Slack reports a redirect URL mismatch
 
@@ -395,7 +395,7 @@ Copy the exact current Dex Web origin into the Slack redirect URL. Preserve
 
 This usually means the tab belongs to an older dexcli process or a different
 port. Close that tab and open the exact URL printed by the current dexcli
-process. Do not change `127.0.0.1` to `localhost`. Use dexcli v0.13.6 or newer.
+process. Do not change `127.0.0.1` to `localhost`. Use dexcli v0.13.7 or newer.
 
 ### The channel or member picker is empty
 

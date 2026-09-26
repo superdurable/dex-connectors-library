@@ -129,9 +129,9 @@ The logs identify the selected Dex tag, connector tag, source commit, and
 metadata digest. Use these overrides to reproduce a failure:
 
 ```bash
-DEX_CLI_VERSION=cli-v0.13.6 make test-dex-compat-current
+DEX_CLI_VERSION=cli-v0.13.7 make test-dex-compat-current
 DEX_CLI_VERSION=latest make test-dex-compat-released
-DEX_CLI_VERSION=cli-v0.13.6 CONNECTOR_RELEASE_TAG=connectors/slack/v0.7.0 make test-dex-compat-released
+DEX_CLI_VERSION=cli-v0.13.7 CONNECTOR_RELEASE_TAG=connectors/slack/v0.7.0 make test-dex-compat-released
 ```
 
 The scheduled latest-version canary intentionally fails when an existing
