@@ -223,16 +223,34 @@ func NewGetAuthenticatedProfileStep[IN any](config GetAuthenticatedProfileStepCo
 		StepType: config.StepType, Annotations: config.Annotations,
 		Operation: config.Connection.client.GetAuthenticatedProfile(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
-		Branches: []sdkgo.BranchTarget[GetAuthenticatedProfileResult]{
-			config.ProfileLoaded.BranchTarget(GetAuthenticatedProfileBranchProfileLoaded),
-			config.VerifiedEmailRequired.BranchTarget(GetAuthenticatedProfileBranchVerifiedEmailRequired),
-			config.InsufficientScope.BranchTarget(GetAuthenticatedProfileBranchInsufficientScope),
-			config.AuthorizationRevoked.BranchTarget(GetAuthenticatedProfileBranchAuthorizationRevoked),
-			config.NotFound.BranchTarget(GetAuthenticatedProfileBranchNotFound),
-			config.ProviderRejected.BranchTarget(GetAuthenticatedProfileBranchProviderRejected),
-			config.InvalidResponse.BranchTarget(GetAuthenticatedProfileBranchInvalidResponse),
-			config.Defect.BranchTarget(GetAuthenticatedProfileBranchDefect),
-		},
+		Branches: func() []sdkgo.BranchTarget[GetAuthenticatedProfileResult] {
+			branches := make([]sdkgo.BranchTarget[GetAuthenticatedProfileResult], 0, 8)
+			if config.ProfileLoaded.HasStep() {
+				branches = append(branches, config.ProfileLoaded.BranchTarget(GetAuthenticatedProfileBranchProfileLoaded))
+			}
+			if config.VerifiedEmailRequired.HasStep() {
+				branches = append(branches, config.VerifiedEmailRequired.BranchTarget(GetAuthenticatedProfileBranchVerifiedEmailRequired))
+			}
+			if config.InsufficientScope.HasStep() {
+				branches = append(branches, config.InsufficientScope.BranchTarget(GetAuthenticatedProfileBranchInsufficientScope))
+			}
+			if config.AuthorizationRevoked.HasStep() {
+				branches = append(branches, config.AuthorizationRevoked.BranchTarget(GetAuthenticatedProfileBranchAuthorizationRevoked))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetAuthenticatedProfileBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetAuthenticatedProfileBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetAuthenticatedProfileBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetAuthenticatedProfileBranchDefect))
+			}
+			return branches
+		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
 	})
@@ -297,15 +315,31 @@ func NewListPublicRepositoriesStep[IN any](config ListPublicRepositoriesStepConf
 		StepType: config.StepType, Annotations: config.Annotations,
 		Operation: config.Connection.client.ListPublicRepositories(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
-		Branches: []sdkgo.BranchTarget[ListPublicRepositoriesResult]{
-			config.RepositoriesLoaded.BranchTarget(ListPublicRepositoriesBranchRepositoriesLoaded),
-			config.InsufficientScope.BranchTarget(ListPublicRepositoriesBranchInsufficientScope),
-			config.AuthorizationRevoked.BranchTarget(ListPublicRepositoriesBranchAuthorizationRevoked),
-			config.NotFound.BranchTarget(ListPublicRepositoriesBranchNotFound),
-			config.ProviderRejected.BranchTarget(ListPublicRepositoriesBranchProviderRejected),
-			config.InvalidResponse.BranchTarget(ListPublicRepositoriesBranchInvalidResponse),
-			config.Defect.BranchTarget(ListPublicRepositoriesBranchDefect),
-		},
+		Branches: func() []sdkgo.BranchTarget[ListPublicRepositoriesResult] {
+			branches := make([]sdkgo.BranchTarget[ListPublicRepositoriesResult], 0, 7)
+			if config.RepositoriesLoaded.HasStep() {
+				branches = append(branches, config.RepositoriesLoaded.BranchTarget(ListPublicRepositoriesBranchRepositoriesLoaded))
+			}
+			if config.InsufficientScope.HasStep() {
+				branches = append(branches, config.InsufficientScope.BranchTarget(ListPublicRepositoriesBranchInsufficientScope))
+			}
+			if config.AuthorizationRevoked.HasStep() {
+				branches = append(branches, config.AuthorizationRevoked.BranchTarget(ListPublicRepositoriesBranchAuthorizationRevoked))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListPublicRepositoriesBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListPublicRepositoriesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListPublicRepositoriesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListPublicRepositoriesBranchDefect))
+			}
+			return branches
+		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
 	})
