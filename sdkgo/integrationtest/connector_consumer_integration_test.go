@@ -162,6 +162,78 @@ func (connectorConsumerFailedStep[IN]) Execute(dex.Context, IN) (*dex.StepDecisi
 	return dex.ForceFail("fixture connector selected a failure branch"), nil
 }
 
+var optionalDefectResult = dex.DefineAttribute[sdkgo.QueryResult[string]]("optional-defect-result")
+
+type optionalDefectQuery struct{}
+
+func (optionalDefectQuery) Definition() sdkgo.QueryDefinition {
+	return sdkgo.QueryDefinition{
+		Operation: sdkgo.OperationRef{ConnectorID: "fixture", OperationID: "selectDefect"},
+		Branches: []sdkgo.BranchDefinition{
+			{ID: sdkgo.BranchID("found"), Description: "The widget exists."},
+			{ID: sdkgo.DefectBranchID, Description: "The connector definition is invalid.", Optional: true},
+		},
+		StepDefaults: sdkgo.StepDefaults{
+			ExecuteMethodTimeout: 10 * time.Second,
+			ExecuteDurability:    dex.StepDurabilitySync,
+		},
+	}
+}
+
+func (optionalDefectQuery) Invoke(sdkgo.Call, string) sdkgo.QueryAttempt[string] {
+	return sdkgo.NewQueryBranch(sdkgo.DefectBranchID, "stored", nil, sdkgo.Receipt{})
+}
+
+type optionalDefectFoundStep struct {
+	dex.StepDefaultsNoWaitFor[sdkgo.QueryResult[string]]
+}
+
+func (optionalDefectFoundStep) Execute(dex.Context, sdkgo.QueryResult[string]) (*dex.StepDecision, error) {
+	return dex.GracefulComplete("found"), nil
+}
+
+type optionalDefectFlow struct {
+	dex.FlowDefaults
+	step sdkgo.QueryStep[string, string, string]
+}
+
+func (flow optionalDefectFlow) GetSteps() []dex.StepDef {
+	return []dex.StepDef{
+		dex.DefineStartStep(flow.step),
+		dex.DefineStep(optionalDefectFoundStep{}),
+	}
+}
+
+func (optionalDefectFlow) GetPersistenceSchema() dex.PersistenceSchema {
+	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{optionalDefectResult}}
+}
+
+func TestUnwiredOptionalBranchFailsFlowAfterPersistingResult(t *testing.T) {
+	step := sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[string, string, string]{
+		StepType:            "OptionalDefectQuery",
+		Annotations:         sdkgo.StepAnnotations{GroupID: "fixture", GroupLabel: "Fixture", Explanation: "Select an unwired defect branch."},
+		Operation:           optionalDefectQuery{},
+		Connection:          sdkgo.ConnectionRef{Provider: "fixture", Name: "optional-defect"},
+		MapToOperationInput: func(input string) string { return input },
+		Branches: []sdkgo.BranchTarget[sdkgo.QueryResult[string]]{
+			sdkgo.GoToBranch(sdkgo.BranchID("found"), optionalDefectFoundStep{}),
+		},
+		ResultAttribute: &optionalDefectResult,
+	})
+	flow := optionalDefectFlow{step: step}
+	harness := newDexHarness(t, []dex.Flow{flow})
+	harness.startWorker(t)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	flowID := fmt.Sprintf("optional-defect-%d", time.Now().UnixNano())
+	_, err := harness.client.StartFlow(ctx, flow, flowID, "input", dex.StartFlowOptions{})
+	require.NoError(t, err)
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, `connector branch "defect" has no target`)
+}
+
 func TestConnectorModuleConsumesSDKFactoriesWithRealDex(t *testing.T) {
 	provider := fixtureconnector.NewProvider()
 	connection, err := fixtureconnector.NewConnection(provider, "integration", sdkgo.NewSecretString("fixture-secret"))

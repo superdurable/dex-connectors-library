@@ -81,13 +81,19 @@ spec:
       kind: query
       description: Read a message.
       idempotency: none
-      branches: [{id: defect, goName: Defect, description: Invalid input.}]
+      branches:
+        - {id: read, goName: Read, description: The message was read.}
+        - {id: defect, goName: Defect, description: Invalid input., optional: true}
       execution: {executeMethodTimeout: 30s, durability: sync, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}}
 `))
 	require.NoError(t, err)
 	generated, err := codegen.Generate(manifest)
 	require.NoError(t, err)
 	text := string(generated)
+	require.Contains(t, text, "`connector:\"branch=defect,optional\"`")
+	require.Contains(t, text, "{ID: GetMessageBranchDefect, Description: \"Invalid input.\", Optional: true}")
+	require.Contains(t, text, "if config.Defect.HasStep()")
+	require.Contains(t, text, "if config.Read.HasStep()")
 	require.Contains(t, text, "sdkgo.TriggerFactoryConfigMarker")
 	require.Contains(t, text, "func NewChannelThreadCreatedTrigger")
 	require.Contains(t, text, "func DefineChannelThreadCreatedTriggerBinding")

@@ -221,6 +221,29 @@ func TestOptionalBranchMayBeOmittedAndForceFailsWhenSelected(t *testing.T) {
 	require.ErrorContains(t, err, "branch target \"failed\" is required")
 }
 
+func TestUndeclaredBranchStillFails(t *testing.T) {
+	definition := queryDefinition(testQueryRef)
+	for index := range definition.Branches {
+		if definition.Branches[index].ID == testQueryDefect {
+			definition.Branches[index].Optional = true
+		}
+	}
+	operation := &factoryQuery{definition: definition, selected: sdkgo.BranchID("unknown")}
+	step := sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[string, string, string]{
+		StepType:    "UnknownBranch",
+		Annotations: sdkgo.StepAnnotations{GroupID: "test", GroupLabel: "Test", Explanation: "test query"},
+		Operation:   operation, Connection: testConnection,
+		MapToOperationInput: func(input string) string { return input },
+		Branches: []sdkgo.BranchTarget[sdkgo.QueryResult[string]]{
+			sdkgo.GoToBranch(testQuerySucceeded, factoryTarget{}),
+			sdkgo.GoToBranch(testQueryFailed, factoryTarget{}),
+		},
+	})
+	decision, err := step.Execute(testsupport.NewDexContext("flow-1", "step-1"), "input")
+	require.NoError(t, err)
+	requireForceFail(t, decision, "defect")
+}
+
 func requireForceFail(t *testing.T, decision *dex.StepDecision, branch string) {
 	t.Helper()
 	require.NotNil(t, decision)
