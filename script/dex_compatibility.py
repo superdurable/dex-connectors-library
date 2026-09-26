@@ -417,9 +417,11 @@ def test_dex_web(dex_release: dict[str, object], root: Path, artifacts: Path, te
 
 def run(arguments: list[str], directory: Path, environment: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
     print("+ " + " ".join(arguments), flush=True)
-    result = subprocess.run(arguments, cwd=directory, env=environment, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    result = subprocess.run(arguments, cwd=directory, env=environment, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if result.stdout:
         print(result.stdout, end="", flush=True)
+    if result.stderr:
+        print(result.stderr, end="", file=sys.stderr, flush=True)
     if result.returncode:
         raise RuntimeError(f"command failed with exit code {result.returncode}: {' '.join(arguments)}")
     return result

@@ -23,10 +23,57 @@ func TestCatalogLoadsRepositoryDirectoryRegistry(t *testing.T) {
 		entries[0].Manifest.Metadata.Name, entries[1].Manifest.Metadata.Name, entries[2].Manifest.Metadata.Name,
 		entries[3].Manifest.Metadata.Name, entries[4].Manifest.Metadata.Name, entries[5].Manifest.Metadata.Name,
 	})
-	require.Equal(t, []string{"v0.5.0", "v0.8.0", "v0.5.0", "v0.5.0", "v0.5.0", "v0.7.0"}, []string{
+	require.Equal(t, []string{"v0.6.0", "v0.9.0", "v0.6.0", "v0.6.0", "v0.6.0", "v0.8.0"}, []string{
 		entries[0].Manifest.Metadata.Version, entries[1].Manifest.Metadata.Version, entries[2].Manifest.Metadata.Version,
 		entries[3].Manifest.Metadata.Version, entries[4].Manifest.Metadata.Version, entries[5].Manifest.Metadata.Version,
 	})
+}
+
+func TestRegisteredOperationsKeepOnlyHappyPathBranchesRequired(t *testing.T) {
+	happyBranchByOperation := map[string]string{
+		"getAuthenticatedProfile": "profileLoaded",
+		"listPublicRepositories":  "repositoriesLoaded",
+		"getMessage":              "read",
+		"sendMessage":             "sent",
+		"replyToMessage":          "sent",
+		"getValues":               "read",
+		"findRow":                 "found",
+		"upsertRow":               "upserted",
+		"createResponse":          "completed",
+		"retrieveResponse":        "found",
+		"listThreadMessages":      "read",
+		"getThreadReply":          "found",
+		"postChannelMessage":      "sent",
+		"postThreadReply":         "sent",
+	}
+	entries, err := loadConnectorDirectoryEntries(filepath.Join("..", "..", "connectors.yaml"))
+	require.NoError(t, err)
+	seen := map[string]bool{}
+	for _, entry := range entries {
+		for _, operation := range entry.Manifest.Spec.Operations {
+			expected, ok := happyBranchByOperation[operation.Name]
+			require.Truef(t, ok, "unexpected operation %s", operation.Name)
+			seen[operation.Name] = true
+			required := []string{}
+			for _, branch := range operation.Branches {
+				if !branch.Optional {
+					required = append(required, branch.ID)
+				}
+			}
+			require.Equal(t, []string{expected}, required, operation.Name)
+			switch operation.Name {
+			case "createResponse":
+				require.Equal(t, "sync", operation.Execution.Durability)
+				require.Equal(t, "150s", operation.Execution.ExecuteMethodTimeout)
+			case "retrieveResponse":
+				require.Equal(t, "async", operation.Execution.Durability)
+				require.Equal(t, "30s", operation.Execution.ExecuteMethodTimeout)
+			default:
+				require.Equalf(t, "async", operation.Execution.Durability, operation.Name)
+			}
+		}
+	}
+	require.Len(t, seen, len(happyBranchByOperation))
 }
 
 func TestCatalogCommandWritesDeterministicYAML(t *testing.T) {
@@ -43,7 +90,7 @@ func TestCatalogCommandWritesDeterministicYAML(t *testing.T) {
 	require.Equal(t, firstContent, secondContent)
 	require.Contains(t, string(firstContent), "apiVersion: connectors.dex.dev/catalog/v1alpha1")
 	require.Contains(t, string(firstContent), "directory: connectors/google/gmail")
-	require.Contains(t, string(firstContent), "version: v0.8.0")
+	require.Contains(t, string(firstContent), "version: v0.9.0")
 }
 
 func TestReleaseArtifactIsDeterministicAndVersioned(t *testing.T) {
@@ -57,8 +104,8 @@ func TestReleaseArtifactIsDeterministicAndVersioned(t *testing.T) {
 		return []string{
 			"--manifest", manifest,
 			"--module-path", "github.com/superdurable/dex-connectors-library/connectors/openai",
-			"--version", "v0.5.0",
-			"--tag", "connectors/openai/v0.5.0",
+			"--version", "v0.6.0",
+			"--tag", "connectors/openai/v0.6.0",
 			"--source-sha", strings.Repeat("a", 40),
 			"--output", output,
 			"--digest-output", digest,
@@ -71,13 +118,13 @@ func TestReleaseArtifactIsDeterministicAndVersioned(t *testing.T) {
 	secondContent, err := os.ReadFile(second)
 	require.NoError(t, err)
 	require.Equal(t, firstContent, secondContent)
-	require.Contains(t, string(firstContent), `"version": "v0.5.0"`)
-	require.Contains(t, string(firstContent), `"tag": "connectors/openai/v0.5.0"`)
+	require.Contains(t, string(firstContent), `"version": "v0.6.0"`)
+	require.Contains(t, string(firstContent), `"tag": "connectors/openai/v0.6.0"`)
 	digest, err := os.ReadFile(firstDigest)
 	require.NoError(t, err)
 	require.Equal(t, fmt.Sprintf("%x  connector-release.json\n", sha256.Sum256(firstContent)), string(digest))
 	mismatchedArguments := arguments(filepath.Join(directory, "mismatch.json"), filepath.Join(directory, "mismatch.json.sha256"))
-	mismatchedArguments[5] = "v0.5.1"
+	mismatchedArguments[5] = "v0.6.1"
 	require.ErrorContains(t, releaseArtifact(mismatchedArguments), "does not match manifest version")
 }
 

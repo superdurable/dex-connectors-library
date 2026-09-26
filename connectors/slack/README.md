@@ -64,7 +64,7 @@ If a picker cannot load, copy IDs manually:
   "connections": [{
     "connectorId": "slack",
     "modulePath": "github.com/superdurable/dex-connectors-library/connectors/slack",
-    "moduleVersion": "v0.7.0",
+    "moduleVersion": "v0.8.0",
     "provider": "slack",
     "connectionName": "slack-workspace",
     "configuration": {},

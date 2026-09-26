@@ -150,10 +150,10 @@ var CreateResponseDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createResponse"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateResponseBranchCompleted, Description: "OpenAI completed the response."},
-		{ID: CreateResponseBranchFailed, Description: "OpenAI returned a terminal failed or incomplete response."},
-		{ID: CreateResponseBranchProviderRejected, Description: "OpenAI conclusively rejected the response request."},
-		{ID: CreateResponseBranchUncertain, Description: "The dispatched response outcome cannot be confirmed."},
-		{ID: CreateResponseBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid."},
+		{ID: CreateResponseBranchFailed, Description: "OpenAI returned a terminal failed or incomplete response.", Optional: true},
+		{ID: CreateResponseBranchProviderRejected, Description: "OpenAI conclusively rejected the response request.", Optional: true},
+		{ID: CreateResponseBranchUncertain, Description: "The dispatched response outcome cannot be confirmed.", Optional: true},
+		{ID: CreateResponseBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(150000000000), HeartbeatTimeout: time.Duration(0),
@@ -174,10 +174,10 @@ type CreateResponseStepConfig[IN any] struct {
 	ConnectionName                    string                                         `connector:"connectionName"`
 	MapToOperationInput               func(IN) CreateRequest                         `connector:"mapToOperationInput"`
 	Completed                         sdkgo.Target[CreateResponseResult]             `connector:"branch=completed"`
-	Failed                            sdkgo.Target[CreateResponseResult]             `connector:"branch=failed"`
-	ProviderRejected                  sdkgo.Target[CreateResponseResult]             `connector:"branch=providerRejected"`
-	Uncertain                         sdkgo.Target[CreateResponseResult]             `connector:"branch=uncertain"`
-	Defect                            sdkgo.Target[CreateResponseResult]             `connector:"branch=defect"`
+	Failed                            sdkgo.Target[CreateResponseResult]             `connector:"branch=failed,optional"`
+	ProviderRejected                  sdkgo.Target[CreateResponseResult]             `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateResponseResult]             `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateResponseResult]             `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Response]] `connector:"resultAttribute"`
 	ProgressStream                    *dex.Stream[sdkgo.ProgressUpdate]              `connector:"progressStream"`
 	TextStream                        *dex.Stream[string]                            `connector:"textStream"`
@@ -196,13 +196,25 @@ func NewCreateResponseStep[IN any](config CreateResponseStepConfig[IN]) sdkgo.Mu
 		StepType: config.StepType, Annotations: config.Annotations,
 		Operation: config.Connection.client.CreateResponse(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
-		Branches: []sdkgo.BranchTarget[CreateResponseResult]{
-			config.Completed.BranchTarget(CreateResponseBranchCompleted),
-			config.Failed.BranchTarget(CreateResponseBranchFailed),
-			config.ProviderRejected.BranchTarget(CreateResponseBranchProviderRejected),
-			config.Uncertain.BranchTarget(CreateResponseBranchUncertain),
-			config.Defect.BranchTarget(CreateResponseBranchDefect),
-		},
+		Branches: func() []sdkgo.BranchTarget[CreateResponseResult] {
+			branches := make([]sdkgo.BranchTarget[CreateResponseResult], 0, 5)
+			if config.Completed.HasStep() {
+				branches = append(branches, config.Completed.BranchTarget(CreateResponseBranchCompleted))
+			}
+			if config.Failed.HasStep() {
+				branches = append(branches, config.Failed.BranchTarget(CreateResponseBranchFailed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateResponseBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateResponseBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateResponseBranchDefect))
+			}
+			return branches
+		}(),
 		ResultAttribute: config.ResultAttribute,
 		ProgressStream:  config.ProgressStream,
 		TextStream:      config.TextStream, TextOptions: config.TextOptions,
@@ -220,15 +232,15 @@ var RetrieveResponseDefinition = sdkgo.QueryDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "retrieveResponse"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: RetrieveResponseBranchFound, Description: "The response exists and was returned."},
-		{ID: RetrieveResponseBranchNotFound, Description: "The requested response does not exist."},
-		{ID: RetrieveResponseBranchProviderRejected, Description: "OpenAI conclusively rejected the response query."},
-		{ID: RetrieveResponseBranchInvalidResponse, Description: "OpenAI returned an invalid or oversized response."},
-		{ID: RetrieveResponseBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid."},
+		{ID: RetrieveResponseBranchNotFound, Description: "The requested response does not exist.", Optional: true},
+		{ID: RetrieveResponseBranchProviderRejected, Description: "OpenAI conclusively rejected the response query.", Optional: true},
+		{ID: RetrieveResponseBranchInvalidResponse, Description: "OpenAI returned an invalid or oversized response.", Optional: true},
+		{ID: RetrieveResponseBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
-		ExecuteMethodTimeout: time.Duration(150000000000), HeartbeatTimeout: time.Duration(0),
-		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(2000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(300000000000)},
-		ExecuteDurability: dex.StepDurabilitySync,
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
 	},
 }
 
@@ -244,10 +256,10 @@ type RetrieveResponseStepConfig[IN any] struct {
 	ConnectionName                 string                                      `connector:"connectionName"`
 	MapToOperationInput            func(IN) RetrieveRequest                    `connector:"mapToOperationInput"`
 	Found                          sdkgo.Target[RetrieveResponseResult]        `connector:"branch=found"`
-	NotFound                       sdkgo.Target[RetrieveResponseResult]        `connector:"branch=notFound"`
-	ProviderRejected               sdkgo.Target[RetrieveResponseResult]        `connector:"branch=providerRejected"`
-	InvalidResponse                sdkgo.Target[RetrieveResponseResult]        `connector:"branch=invalidResponse"`
-	Defect                         sdkgo.Target[RetrieveResponseResult]        `connector:"branch=defect"`
+	NotFound                       sdkgo.Target[RetrieveResponseResult]        `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[RetrieveResponseResult]        `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[RetrieveResponseResult]        `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[RetrieveResponseResult]        `connector:"branch=defect,optional"`
 	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Response]] `connector:"resultAttribute"`
 	StepOptionsOverride            *dex.StepOptions                            `connector:"stepOptionsOverride"`
 }
@@ -263,13 +275,25 @@ func NewRetrieveResponseStep[IN any](config RetrieveResponseStepConfig[IN]) sdkg
 		StepType: config.StepType, Annotations: config.Annotations,
 		Operation: config.Connection.client.RetrieveResponse(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
-		Branches: []sdkgo.BranchTarget[RetrieveResponseResult]{
-			config.Found.BranchTarget(RetrieveResponseBranchFound),
-			config.NotFound.BranchTarget(RetrieveResponseBranchNotFound),
-			config.ProviderRejected.BranchTarget(RetrieveResponseBranchProviderRejected),
-			config.InvalidResponse.BranchTarget(RetrieveResponseBranchInvalidResponse),
-			config.Defect.BranchTarget(RetrieveResponseBranchDefect),
-		},
+		Branches: func() []sdkgo.BranchTarget[RetrieveResponseResult] {
+			branches := make([]sdkgo.BranchTarget[RetrieveResponseResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(RetrieveResponseBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(RetrieveResponseBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(RetrieveResponseBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(RetrieveResponseBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(RetrieveResponseBranchDefect))
+			}
+			return branches
+		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
 	})

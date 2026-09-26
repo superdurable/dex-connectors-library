@@ -5,7 +5,7 @@ metadata:
   displayName: Google Sheets
   description: Read ranges, find stable keyed rows, and idempotently upsert rows in Google Sheets.
   company: Google
-  version: v0.5.0
+  version: v0.6.0
 spec:
   provider: google
   codegen:
@@ -62,13 +62,13 @@ spec:
       idempotency: none
       branches:
         - {id: read, goName: Read, description: The range was read.}
-        - {id: notFound, goName: NotFound, description: The spreadsheet or range does not exist.}
-        - {id: providerRejected, goName: ProviderRejected, description: Google conclusively rejected the range read.}
-        - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized range response.}
-        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid."}
+        - {id: notFound, goName: NotFound, description: The spreadsheet or range does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Google conclusively rejected the range read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized range response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution: &googleExecution
         executeMethodTimeout: 30s
-        durability: sync
+        durability: async
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
     - name: findRow
       goName: FindRow
@@ -79,11 +79,11 @@ spec:
       idempotency: none
       branches:
         - {id: found, goName: Found, description: Exactly one matching row was found.}
-        - {id: notFound, goName: NotFound, description: No matching row exists.}
-        - {id: conflict, goName: Conflict, description: More than one matching row exists.}
-        - {id: providerRejected, goName: ProviderRejected, description: Google conclusively rejected the row query.}
-        - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized row response.}
-        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid."}
+        - {id: notFound, goName: NotFound, description: No matching row exists., optional: true}
+        - {id: conflict, goName: Conflict, description: More than one matching row exists., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Google conclusively rejected the row query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized row response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution: *googleExecution
     - name: upsertRow
       goName: UpsertRow
@@ -94,9 +94,9 @@ spec:
       idempotency: required
       branches:
         - {id: upserted, goName: Upserted, description: One row was inserted or updated.}
-        - {id: conflict, goName: Conflict, description: Existing duplicate key rows prevent a safe write.}
-        - {id: providerRejected, goName: ProviderRejected, description: Google conclusively rejected the row write.}
-        - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized pre-write response.}
-        - {id: uncertain, goName: Uncertain, description: The dispatched write outcome cannot be confirmed.}
-        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid."}
+        - {id: conflict, goName: Conflict, description: Existing duplicate key rows prevent a safe write., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Google conclusively rejected the row write., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized pre-write response., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The dispatched write outcome cannot be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution: *googleExecution

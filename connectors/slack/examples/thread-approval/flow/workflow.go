@@ -32,7 +32,6 @@ type Status string
 const (
 	StatusWaitingForReply Status = "waitingForReply"
 	StatusPostingReply    Status = "postingReply"
-	StatusNeedsRecovery   Status = "needsRecovery"
 	StatusCompleted       Status = "completed"
 )
 
@@ -44,12 +43,11 @@ type Input struct {
 }
 
 type ThreadState struct {
-	Input          Input           `json:"input"`
-	Messages       []slack.Message `json:"messages"`
-	Status         Status          `json:"status"`
-	ReplyEventID   string          `json:"replyEventId,omitempty"`
-	ReplyUserID    string          `json:"replyUserId,omitempty"`
-	FailureMessage string          `json:"failureMessage,omitempty"`
+	Input        Input           `json:"input"`
+	Messages     []slack.Message `json:"messages"`
+	Status       Status          `json:"status"`
+	ReplyEventID string          `json:"replyEventId,omitempty"`
+	ReplyUserID  string          `json:"replyUserId,omitempty"`
 }
 
 type ReplyResult struct {
@@ -85,11 +83,9 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			MapToOperationInput: func(input Input) slack.ListThreadMessagesInput {
 				return slack.ListThreadMessagesInput{ChannelID: input.ChannelID, ThreadTimestamp: input.ThreadTimestamp, PageSize: 15}
 			},
-			Read: sdkgo.GoTo(threadLoaded{}), ProviderRejected: sdkgo.GoTo(threadReadFailed{}),
-			InvalidResponse: sdkgo.GoTo(threadReadFailed{}), Defect: sdkgo.GoTo(threadReadFailed{}),
+			Read: sdkgo.GoTo(threadLoaded{}),
 		})),
 		dex.DefineStep(threadLoaded{}),
-		dex.DefineStep(threadReadFailed{}),
 		dex.DefineStep(slack.NewPostThreadReplyStep(slack.PostThreadReplyStepConfig[ThreadState]{
 			StepType:       postCompletionStepType,
 			ConnectionName: ConnectionName,
@@ -103,12 +99,10 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 					Text: "Processing complete.",
 				}
 			},
-			Sent: sdkgo.GoTo(completionPosted{}), ProviderRejected: sdkgo.GoTo(completionNeedsRecovery{}),
-			Uncertain: sdkgo.GoTo(completionNeedsRecovery{}), Defect: sdkgo.GoTo(completionNeedsRecovery{}),
+			Sent:            sdkgo.GoTo(completionPosted{}),
 			ResultAttribute: &postReplyResultAttribute,
 		})),
 		dex.DefineStep(completionPosted{}),
-		dex.DefineStep(completionNeedsRecovery{}),
 	}
 }
 
@@ -153,7 +147,6 @@ func (flow *Flow) ReceiveThreadReply(
 	state.Status = StatusPostingReply
 	state.ReplyEventID = input.EventID
 	state.ReplyUserID = input.UserID
-	state.FailureMessage = ""
 	if err := threadStateAttribute.Set(ctx, state); err != nil {
 		return nil, err
 	}
@@ -262,16 +255,6 @@ func (threadLoaded) Execute(ctx dex.Context, result threadQueryOutput) (*dex.Ste
 	return dex.DeadEnd(), nil
 }
 
-// dex:group group-id:recovery group-label:"Recovery"
-// dex:explanation text:"Fail when Slack cannot provide the initial thread messages."
-type threadReadFailed struct {
-	dex.StepDefaultsNoWaitFor[threadQueryOutput]
-}
-
-func (threadReadFailed) Execute(_ dex.Context, result threadQueryOutput) (*dex.StepDecision, error) {
-	return dex.ForceFail(failureMessage(result.Branch, result.Failure)), nil
-}
-
 type postReplyOutput = slack.PostThreadReplyResult
 
 // dex:group group-id:slack group-label:"Slack"
@@ -294,36 +277,6 @@ func (completionPosted) Execute(ctx dex.Context, _ postReplyOutput) (*dex.StepDe
 		return nil, err
 	}
 	return dex.GracefulComplete(state), nil
-}
-
-// dex:group group-id:recovery group-label:"Recovery"
-// dex:explanation text:"Pause after a terminal or uncertain Slack reply outcome for explicit recovery."
-type completionNeedsRecovery struct {
-	dex.StepDefaultsNoWaitFor[postReplyOutput]
-}
-
-func (completionNeedsRecovery) GetStepOptions() *dex.StepOptions {
-	return &dex.StepOptions{ExecuteLockAttributes: []dex.AttributeLock{dex.LockAttribute(threadStateAttribute)}}
-}
-
-func (completionNeedsRecovery) Execute(ctx dex.Context, result postReplyOutput) (*dex.StepDecision, error) {
-	state, err := threadStateAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	state.Status = StatusNeedsRecovery
-	state.FailureMessage = failureMessage(result.Branch, result.Failure)
-	if err := threadStateAttribute.Set(ctx, state); err != nil {
-		return nil, err
-	}
-	return dex.DeadEnd(), nil
-}
-
-func failureMessage(branch sdkgo.BranchID, failure *sdkgo.Failure) string {
-	if failure == nil {
-		return string(branch)
-	}
-	return fmt.Sprintf("%s: %s", branch, failure.Message)
 }
 
 // NewStartTriggerFilter creates the application's Slack root-message admission rule.

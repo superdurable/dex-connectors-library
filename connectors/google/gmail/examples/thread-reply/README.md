@@ -71,7 +71,5 @@ The default Worker address is `127.0.0.1:8814`. Override
 `DEX_FLOW_SERVICE_ADDRESS`, `DEX_WORKER_BIND_ADDRESS`, or
 `DEX_BLOB_CACHE_DIR` when needed.
 
-If the initial read has a provider rejection, invalid response, or local defect,
-the Flow fails. A provider-rejected, invalid-response, uncertain, or defective
-reply enters `needsRecovery`; the example never blindly resends an uncertain
-external write.
+The example wires only the happy-path branches. An unwired optional branch fails
+the Flow. An uncertain reply is not resent.

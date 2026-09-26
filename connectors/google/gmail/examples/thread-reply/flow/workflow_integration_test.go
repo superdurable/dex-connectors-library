@@ -28,7 +28,7 @@ import (
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
-func TestThreadReplyExampleCompletesOnceAndPreservesUncertainOutcomeWithRealDex(t *testing.T) {
+func TestThreadReplyExampleCompletesOnceAndFailsUnwiredUncertainOutcomeWithRealDex(t *testing.T) {
 	provider := newGmailProvider(t)
 	defer provider.Close()
 	flow, harness := newGmailIntegrationHarness(t, provider.URL)
@@ -68,7 +68,10 @@ func TestThreadReplyExampleCompletesOnceAndPreservesUncertainOutcomeWithRealDex(
 	require.NoError(t, replyTarget.HandleTrigger(ctx, rejectedReply))
 	require.Equal(t, StatusWaitingForReply, waitForGmailStatus(t, ctx, harness.client, flow, successFlowID, StatusWaitingForReply).Status)
 	require.NoError(t, replyTarget.HandleTrigger(ctx, successReply))
-	require.NoError(t, replyTarget.HandleTrigger(ctx, successReply))
+	require.Eventually(t, func() bool {
+		err = replyTarget.HandleTrigger(ctx, successReply)
+		return err == nil || !strings.Contains(err.Error(), "attribute keys are locked")
+	}, 20*time.Second, 50*time.Millisecond)
 
 	result, err := harness.client.WaitForFlow(ctx, successFlowID, dex.WaitForFlowOptions{NeedsResults: true})
 	require.NoError(t, err)
@@ -97,11 +100,9 @@ func TestThreadReplyExampleCompletesOnceAndPreservesUncertainOutcomeWithRealDex(
 		},
 	}
 	require.NoError(t, replyTarget.HandleTrigger(ctx, uncertainReply))
-	waitForGmailStatus(t, ctx, harness.client, flow, uncertainFlowID, StatusNeedsRecovery)
-	var uncertainSummary map[string]any
-	require.NoError(t, harness.client.InvokeRPC(ctx, uncertainFlowID, flow.GetDexSummary, nil, &uncertainSummary))
-	require.Contains(t, uncertainSummary, "gmail-thread-reply-result")
-	require.NoError(t, replyTarget.HandleTrigger(ctx, uncertainReply))
+	uncertainResult, err := harness.client.WaitForFlow(ctx, uncertainFlowID, dex.WaitForFlowOptions{})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowFailed, uncertainResult.Status)
 	require.Equal(t, 1, provider.sendCount(uncertainThreadID))
 }
 

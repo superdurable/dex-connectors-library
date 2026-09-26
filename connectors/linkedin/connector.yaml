@@ -5,7 +5,7 @@ metadata:
   displayName: LinkedIn
   description: Read the authenticated member's OpenID Connect UserInfo profile and verified email.
   company: LinkedIn
-  version: v0.5.0
+  version: v0.6.0
 spec:
   provider: linkedin
   codegen:
@@ -62,14 +62,14 @@ spec:
       authorization: required
       branches:
         - {id: profileLoaded, goName: ProfileLoaded, description: The authenticated profile and verified email were loaded.}
-        - {id: verifiedEmailRequired, goName: VerifiedEmailRequired, description: A verified email was not available.}
-        - {id: insufficientScope, goName: InsufficientScope, description: The OpenID Connect grant lacks required authorization.}
-        - {id: authorizationRevoked, goName: AuthorizationRevoked, description: The OpenID Connect grant is invalid or revoked.}
-        - {id: notFound, goName: NotFound, description: The authenticated member was not found.}
-        - {id: providerRejected, goName: ProviderRejected, description: LinkedIn conclusively rejected the profile query.}
-        - {id: invalidResponse, goName: InvalidResponse, description: LinkedIn returned an invalid or oversized profile response.}
-        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid."}
+        - {id: verifiedEmailRequired, goName: VerifiedEmailRequired, description: A verified email was not available., optional: true}
+        - {id: insufficientScope, goName: InsufficientScope, description: The OpenID Connect grant lacks required authorization., optional: true}
+        - {id: authorizationRevoked, goName: AuthorizationRevoked, description: The OpenID Connect grant is invalid or revoked., optional: true}
+        - {id: notFound, goName: NotFound, description: The authenticated member was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: LinkedIn conclusively rejected the profile query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: LinkedIn returned an invalid or oversized profile response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
-        durability: sync
+        durability: async
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}

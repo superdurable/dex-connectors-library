@@ -15,7 +15,7 @@ serialization.
 Install a published component release:
 
 ```bash
-go get github.com/superdurable/dex-connectors-library/connectors/openai@v0.5.0
+go get github.com/superdurable/dex-connectors-library/connectors/openai@v0.6.0
 ```
 
 Verify this module independently:

@@ -16,6 +16,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -27,7 +28,7 @@ import (
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
-func TestThreadApprovalExampleCompletesOnceAndPreservesUncertainOutcomeWithRealDex(t *testing.T) {
+func TestThreadApprovalExampleCompletesOnceAndFailsUnwiredUncertainOutcomeWithRealDex(t *testing.T) {
 	provider := newSlackProvider(t)
 	defer provider.Close()
 	flow, harness := newSlackIntegrationHarness(t, provider.URL)
@@ -62,7 +63,10 @@ func TestThreadApprovalExampleCompletesOnceAndPreservesUncertainOutcomeWithRealD
 	require.NoError(t, replyTarget.HandleTrigger(ctx, rejectedReply))
 	require.Equal(t, StatusWaitingForReply, waitForSlackStatus(t, ctx, harness.client, flow, successFlowID, StatusWaitingForReply).Status)
 	require.NoError(t, replyTarget.HandleTrigger(ctx, successReply))
-	require.NoError(t, replyTarget.HandleTrigger(ctx, successReply))
+	require.Eventually(t, func() bool {
+		err = replyTarget.HandleTrigger(ctx, successReply)
+		return err == nil || !strings.Contains(err.Error(), "attribute keys are locked")
+	}, 20*time.Second, 50*time.Millisecond)
 
 	result, err := harness.client.WaitForFlow(ctx, successFlowID, dex.WaitForFlowOptions{NeedsResults: true})
 	require.NoError(t, err)
@@ -85,11 +89,9 @@ func TestThreadApprovalExampleCompletesOnceAndPreservesUncertainOutcomeWithRealD
 		},
 	}
 	require.NoError(t, replyTarget.HandleTrigger(ctx, uncertainReply))
-	waitForSlackStatus(t, ctx, harness.client, flow, uncertainFlowID, StatusNeedsRecovery)
-	var uncertainSummary map[string]any
-	require.NoError(t, harness.client.InvokeRPC(ctx, uncertainFlowID, flow.GetDexSummary, nil, &uncertainSummary))
-	require.Contains(t, uncertainSummary, "slack-thread-approval-post-reply-result")
-	require.NoError(t, replyTarget.HandleTrigger(ctx, uncertainReply))
+	uncertainResult, err := harness.client.WaitForFlow(ctx, uncertainFlowID, dex.WaitForFlowOptions{})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowFailed, uncertainResult.Status)
 	require.Equal(t, 1, provider.postCount("3.0"))
 }
 

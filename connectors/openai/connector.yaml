@@ -5,7 +5,7 @@ metadata:
   displayName: OpenAI
   description: OpenAI Responses API with structured output, usage, and recovery metadata.
   company: OpenAI
-  version: v0.5.0
+  version: v0.6.0
 spec:
   provider: openai
   codegen:
@@ -50,10 +50,10 @@ spec:
       idempotency: required
       branches:
         - {id: completed, goName: Completed, description: OpenAI completed the response.}
-        - {id: failed, goName: Failed, description: OpenAI returned a terminal failed or incomplete response.}
-        - {id: providerRejected, goName: ProviderRejected, description: OpenAI conclusively rejected the response request.}
-        - {id: uncertain, goName: Uncertain, description: The dispatched response outcome cannot be confirmed.}
-        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid."}
+        - {id: failed, goName: Failed, description: OpenAI returned a terminal failed or incomplete response., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: OpenAI conclusively rejected the response request., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The dispatched response outcome cannot be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       progress: [structured, text]
       execution: &openaiExecution
         executeMethodTimeout: 150s
@@ -68,8 +68,11 @@ spec:
       idempotency: none
       branches:
         - {id: found, goName: Found, description: The response exists and was returned.}
-        - {id: notFound, goName: NotFound, description: The requested response does not exist.}
-        - {id: providerRejected, goName: ProviderRejected, description: OpenAI conclusively rejected the response query.}
-        - {id: invalidResponse, goName: InvalidResponse, description: OpenAI returned an invalid or oversized response.}
-        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid."}
-      execution: *openaiExecution
+        - {id: notFound, goName: NotFound, description: The requested response does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: OpenAI conclusively rejected the response query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: OpenAI returned an invalid or oversized response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
