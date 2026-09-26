@@ -356,7 +356,7 @@ func buildReplyMIMEMessage(call sdkgo.Call, sender string, recipient string, sou
 	if input.HTMLBody == "" {
 		mustWriteMIMEHeader(&message, "Content-Type", `text/plain; charset="UTF-8"`)
 		mustWriteMIMEHeader(&message, "Content-Transfer-Encoding", "8bit")
-		message.WriteString("\r\n" + normalizeBody(input.TextBody))
+		message.WriteString("\r\n" + convertLineEndingsToCRLF(input.TextBody))
 		return message.Bytes(), nil
 	}
 	hash := sha256.Sum256([]byte(call.IdempotencyKey))
@@ -373,7 +373,7 @@ func buildReplyMIMEMessage(call sdkgo.Call, sender string, recipient string, sou
 	if err != nil {
 		return nil, err
 	}
-	if _, err := io.WriteString(textPart, normalizeBody(input.TextBody)); err != nil {
+	if _, err := io.WriteString(textPart, convertLineEndingsToCRLF(input.TextBody)); err != nil {
 		return nil, err
 	}
 	htmlHeader := make(textproto.MIMEHeader)
@@ -382,7 +382,7 @@ func buildReplyMIMEMessage(call sdkgo.Call, sender string, recipient string, sou
 	if err != nil {
 		return nil, err
 	}
-	if _, err := io.WriteString(htmlPart, normalizeBody(input.HTMLBody)); err != nil {
+	if _, err := io.WriteString(htmlPart, convertLineEndingsToCRLF(input.HTMLBody)); err != nil {
 		return nil, err
 	}
 	if err := writer.Close(); err != nil {

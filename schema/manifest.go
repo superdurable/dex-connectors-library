@@ -211,7 +211,7 @@ func Decode(reader io.Reader) (Manifest, error) {
 	if err := decoder.Decode(&manifest); err != nil {
 		return Manifest{}, fmt.Errorf("decode manifest: %w", err)
 	}
-	manifest.normalize()
+	manifest.setImplicitAuthDefaults()
 	if err := manifest.Validate(); err != nil {
 		return Manifest{}, err
 	}
@@ -221,7 +221,7 @@ func Decode(reader io.Reader) (Manifest, error) {
 	return manifest, nil
 }
 
-func (manifest *Manifest) normalize() {
+func (manifest *Manifest) setImplicitAuthDefaults() {
 	if manifest.Spec.Auth.OAuth2 != nil && manifest.Spec.Auth.OAuth2.Protocol == "" {
 		manifest.Spec.Auth.OAuth2.Protocol = "oauth2"
 	}

@@ -176,7 +176,7 @@ func (operation GetAuthenticatedProfileOperation) Invoke(call sdkgo.Call, _ GetA
 	profile := AuthenticatedProfile{
 		Subject: subject, Name: boundedString(claims.Name, 256),
 		GivenName: boundedString(claims.GivenName, 128), FamilyName: boundedString(claims.FamilyName, 128),
-		PictureURL: safeURL(claims.Picture), Locale: normalizeLocale(claims.Locale), VerifiedEmail: email,
+		PictureURL: safeURL(claims.Picture), Locale: localeStringFromLinkedInClaim(claims.Locale), VerifiedEmail: email,
 	}
 	return sdkgo.NewQueryBranch(GetAuthenticatedProfileBranchProfileLoaded, profile, nil, receipt(response))
 }
@@ -286,7 +286,7 @@ func verifiedEmail(value string, verified bool) string {
 	return email
 }
 
-func normalizeLocale(raw json.RawMessage) string {
+func localeStringFromLinkedInClaim(raw json.RawMessage) string {
 	if len(raw) == 0 || bytes.Equal(raw, []byte("null")) {
 		return ""
 	}

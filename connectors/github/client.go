@@ -351,7 +351,7 @@ func (operation GetAuthenticatedProfileOperation) Invoke(call sdkgo.Call, _ GetA
 		failure := providerFailure("getAuthenticatedProfile", sdkgo.FailureAuthentication, "GitHub primary verified email is required")
 		return sdkgo.NewQueryBranch(GetAuthenticatedProfileBranchVerifiedEmailRequired, AuthenticatedProfile{}, &failure, combinedReceipt)
 	}
-	profile := normalizeProfile(user, verifiedEmail)
+	profile := authenticatedProfileFromGitHubUser(user, verifiedEmail)
 	return sdkgo.NewQueryBranch(GetAuthenticatedProfileBranchProfileLoaded, profile, nil, combinedReceipt)
 }
 
@@ -420,7 +420,7 @@ func (operation ListPublicRepositoriesOperation) Invoke(call sdkgo.Call, input L
 				truncated = true
 				break
 			}
-			repositories[providerRepository.ID] = normalizeRepository(providerRepository)
+			repositories[providerRepository.ID] = repositoryFromGitHubRepository(providerRepository)
 		}
 		hasNext := hasNextPage(response.header)
 		if len(repositories) == limit {
@@ -602,7 +602,7 @@ func primaryVerifiedEmail(emails []githubEmail) string {
 	return ""
 }
 
-func normalizeProfile(user githubUser, email string) AuthenticatedProfile {
+func authenticatedProfileFromGitHubUser(user githubUser, email string) AuthenticatedProfile {
 	return AuthenticatedProfile{
 		Subject: strconv.FormatInt(user.ID, 10), Login: boundedString(user.Login, 100), Name: boundedString(user.Name, 256),
 		VerifiedEmail: email, AvatarURL: safeURL(user.AvatarURL), ProfileURL: safeURL(user.HTMLURL),
@@ -613,7 +613,7 @@ func normalizeProfile(user githubUser, email string) AuthenticatedProfile {
 	}
 }
 
-func normalizeRepository(repository githubRepository) Repository {
+func repositoryFromGitHubRepository(repository githubRepository) Repository {
 	return Repository{
 		ID: repository.ID, Name: boundedString(repository.Name, 256), FullName: boundedString(repository.FullName, 512),
 		Description: boundedString(repository.Description, 1024), ProfileURL: safeURL(repository.HTMLURL), HomepageURL: safeURL(repository.Homepage),
