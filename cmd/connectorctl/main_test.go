@@ -18,19 +18,22 @@ func TestCatalogLoadsRepositoryDirectoryRegistry(t *testing.T) {
 	registry := filepath.Join("..", "..", "connectors.yaml")
 	entries, err := loadConnectorDirectoryEntries(registry)
 	require.NoError(t, err)
-	require.Len(t, entries, 6)
-	require.Equal(t, []string{"github", "gmail", "google-sheets", "linkedin", "openai", "slack"}, []string{
+	require.Len(t, entries, 7)
+	require.Equal(t, []string{"github", "gemini", "gmail", "google-sheets", "linkedin", "openai", "slack"}, []string{
 		entries[0].Manifest.Metadata.Name, entries[1].Manifest.Metadata.Name, entries[2].Manifest.Metadata.Name,
 		entries[3].Manifest.Metadata.Name, entries[4].Manifest.Metadata.Name, entries[5].Manifest.Metadata.Name,
+		entries[6].Manifest.Metadata.Name,
 	})
-	require.Equal(t, []string{"v0.7.0", "v0.11.0", "v0.7.0", "v0.6.0", "v0.6.0", "v0.10.0"}, []string{
+	require.Equal(t, []string{"v0.7.0", "v0.1.0", "v0.11.0", "v0.7.0", "v0.6.0", "v0.6.0", "v0.10.0"}, []string{
 		entries[0].Manifest.Metadata.Version, entries[1].Manifest.Metadata.Version, entries[2].Manifest.Metadata.Version,
 		entries[3].Manifest.Metadata.Version, entries[4].Manifest.Metadata.Version, entries[5].Manifest.Metadata.Version,
+		entries[6].Manifest.Metadata.Version,
 	})
 }
 
 func TestRegisteredOperationsKeepOnlyHappyPathBranchesRequired(t *testing.T) {
 	happyBranchByOperation := map[string]string{
+		"generateContent":         "generated",
 		"getAuthenticatedProfile": "profileLoaded",
 		"listPublicRepositories":  "repositoriesLoaded",
 		"listMergedPullRequests":  "listed",
@@ -68,6 +71,11 @@ func TestRegisteredOperationsKeepOnlyHappyPathBranchesRequired(t *testing.T) {
 			case "createResponse":
 				require.Equal(t, "sync", operation.Execution.Durability)
 				require.Equal(t, "150s", operation.Execution.ExecuteMethodTimeout)
+			case "generateContent":
+				// A non-streaming LLM generation is long and silent until the provider answers.
+				require.Equal(t, "sync", operation.Execution.Durability)
+				require.Equal(t, "300s", operation.Execution.ExecuteMethodTimeout)
+				require.Equal(t, "300s", operation.Execution.HeartbeatTimeout)
 			case "retrieveResponse":
 				require.Equal(t, "async", operation.Execution.Durability)
 				require.Equal(t, "30s", operation.Execution.ExecuteMethodTimeout)

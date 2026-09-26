@@ -185,7 +185,9 @@ than seven seconds. Response creation uses synchronous durability. A response
 retrieval uses the asynchronous HTTP defaults. GitHub repository change
 queries use a five-attempt/65-minute window, because Dex fails a Step whose
 provider delay does not fit in the remaining window and GitHub's primary rate
-limit resets hourly.
+limit resets hourly. Gemini content generation is a synchronous Query with a
+300-second Execute timeout, a matching heartbeat timeout because the call does
+not stream, and a five-attempt/ten-minute window.
 
 `StepOptionsOverride` overlays non-zero Execute fields and can add
 `dex.ProceedToOnExecuteFailure`. That recovery target accepts the original

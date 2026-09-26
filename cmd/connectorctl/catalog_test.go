@@ -123,7 +123,7 @@ func TestReleaseMatrixFindsEveryDeclaredRepositoryVersion(t *testing.T) {
 	}))
 	contents, err := os.ReadFile(githubOutput)
 	require.NoError(t, err)
-	require.Contains(t, string(contents), "count=6")
+	require.Contains(t, string(contents), "count=7")
 	require.Contains(t, string(contents), `"directory":"connectors/google/gmail"`)
 	require.Contains(t, string(contents), `"version":"v0.10.0"`)
 }
