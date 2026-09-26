@@ -5,7 +5,7 @@ metadata:
   displayName: Google Sheets
   description: Read ranges, find stable keyed rows, and idempotently upsert rows in Google Sheets.
   company: Google
-  version: v0.6.0
+  version: v0.7.0
 spec:
   provider: google
   codegen:
@@ -48,10 +48,53 @@ spec:
   studio:
     setup:
       entrypoint: index.html
-      hostApiRange: ">=0.1.0 <0.2.0"
-      backendCapabilities: [oauth.connection.manage, google.picker.spreadsheets, google.sheets.tabs-list, configuration.write]
+      hostApiRange: ">=0.2.0 <0.3.0"
+      backendCapabilities: [oauth.connection.manage, use.configuration.write, google.drive.spreadsheets-list, google.sheets.tabs-list]
       mockScenarios: [not-configured, authorization-pending, connected, insufficient-scope, revoked, broker-unavailable, ready]
       icon: icon.svg
+    commands:
+      - id: listSpreadsheets
+        capability: google.drive.spreadsheets-list
+        request:
+          method: GET
+          url: https://www.googleapis.com/drive/v3/files
+          credential: {field: access_token, scheme: bearer}
+          fixedQuery:
+            q: "mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false"
+            fields: "nextPageToken,files(id,name)"
+            pageSize: "100"
+          parameters:
+            - {name: pageToken, location: query, target: pageToken}
+      - id: listTabs
+        capability: google.sheets.tabs-list
+        request:
+          method: GET
+          url: https://sheets.googleapis.com/v4/spreadsheets/{spreadsheetId}
+          credential: {field: access_token, scheme: bearer}
+          fixedQuery: {fields: "sheets.properties.title"}
+          parameters:
+            - {name: spreadsheetId, location: path, target: spreadsheetId}
+    units:
+      - id: spreadsheetPicker
+        goName: SpreadsheetPicker
+        description: Select one Google spreadsheet.
+        backendCapabilities: [google.drive.spreadsheets-list]
+        outputs:
+          - {name: spreadsheetId, goName: SpreadsheetID, type: string}
+          - {name: spreadsheetName, goName: SpreadsheetName, type: string}
+      - id: sheetTabPicker
+        goName: SheetTabPicker
+        description: Select one tab from a spreadsheet.
+        backendCapabilities: [google.sheets.tabs-list]
+        inputs:
+          - {name: spreadsheetId, goName: SpreadsheetID, type: string}
+        outputs:
+          - {name: tab, goName: Tab, type: string}
+      - id: textInput
+        goName: TextInput
+        description: Enter a range, key, or cell value.
+        outputs:
+          - {name: text, goName: Text, type: string}
   operations:
     - name: getValues
       goName: GetValues
