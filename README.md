@@ -35,6 +35,14 @@ Invoke it through the `superdurable-dex` plugin:
 See the [Dex Skills installation guide](https://github.com/superdurable/dex-skills#install)
 for plugin setup and the complete contribution workflow.
 
+<a href="https://www.star-history.com/?repos=superdurable%2Fdex-connectors-library&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=superdurable/dex-connectors-library&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=superdurable/dex-connectors-library&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=superdurable/dex-connectors-library&type=date&legend=top-left" />
+ </picture>
+</a>
+
 ## Use a connector
 
 A Connector is a versioned integration package, not just an API operation. It
