@@ -11,13 +11,14 @@
 Dex Connectors Library is the open-source library that connects Dex
 applications to products and services across the internet.
 
-Events from those products can enter Dex through Connector Triggers, either
-starting a new Flow execution or invoking a typed Flow RPC on one already
-running. In the other direction, Dex applications compose reusable Connector
-Steps into Flows to call provider APIs. Those Steps cover Query and Mutation
-operations, timeout and retry policy, persisting read results in Attributes,
-and streaming progress from long-running operations. Connectors also include
-reusable UI units that Dex Web composes to configure and use those products.
+Trigger events from those products can start a new Flow run or invoke a Flow
+RPC. On the other hand, Dex Flows compose reusable Connector Steps to call
+provider APIs. Those Steps include Query and Mutation operations, timeout and
+retry policy, persisting read results in Attributes, and streaming progress
+from long-running operations. In addition, connectors include reusable UI
+units for configuring and using those products.
+
+![How Trigger events, Connector Steps, and UI units connect products with Dex](docs/assets/dex-connectors-overview.png)
 
 The directory lists each published connector, its company, reusable UI units,
 triggers, and operations. Search matches all of those names and descriptions.
@@ -34,7 +35,7 @@ Connector runtime and never enter Flow state or a configuration UI unit.
 | --- | --- |
 | Query operation | Read provider state from a typed Connector Step. |
 | Mutation operation | Change provider state with idempotency and explicit uncertainty handling. |
-| Trigger | Receive and normalize provider events with stable event identity and at-least-once delivery. |
+| Trigger | Receive provider events with stable event identity and at-least-once delivery. |
 | Flow Trigger target | Filter and map a Trigger event into a new typed Flow execution. |
 | Flow RPC and RPC Trigger target | Define a typed method on an existing Flow, then filter and map a Trigger event into it. |
 | Configuration UI unit | Let Dex Web compose connector-owned controls for non-secret operation or Trigger configuration. |
@@ -102,8 +103,8 @@ dex.DefineStep(slack.NewPostThreadReplyStep(slack.PostThreadReplyStepConfig[Thre
 ### Trigger
 
 A Trigger is a long-running provider ingress capability, separate from a Flow
-Step. It validates and normalizes an external event, preserves the provider's
-stable event ID and occurrence time, and delivers the event at least once. A
+Step. It validates an external event, preserves the provider's stable event ID
+and occurrence time, and delivers the event at least once. A
 Trigger binding names one use of that event source and keeps its matcher
 configuration separate from reusable connection credentials.
 
