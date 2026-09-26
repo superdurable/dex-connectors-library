@@ -339,13 +339,25 @@ func NewGetMessageStep[IN any](config GetMessageStepConfig[IN]) sdkgo.QueryStep[
 		StepType: config.StepType, Annotations: config.Annotations,
 		Operation: config.Connection.client.GetMessage(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
-		Branches: []sdkgo.BranchTarget[GetMessageResult]{
-			config.Read.BranchTarget(GetMessageBranchRead),
-			config.NotFound.BranchTarget(GetMessageBranchNotFound),
-			config.ProviderRejected.BranchTarget(GetMessageBranchProviderRejected),
-			config.InvalidResponse.BranchTarget(GetMessageBranchInvalidResponse),
-			config.Defect.BranchTarget(GetMessageBranchDefect),
-		},
+		Branches: func() []sdkgo.BranchTarget[GetMessageResult] {
+			branches := make([]sdkgo.BranchTarget[GetMessageResult], 0, 5)
+			if config.Read.HasStep() {
+				branches = append(branches, config.Read.BranchTarget(GetMessageBranchRead))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetMessageBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetMessageBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetMessageBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetMessageBranchDefect))
+			}
+			return branches
+		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
 	})
@@ -401,12 +413,22 @@ func NewSendMessageStep[IN any](config SendMessageStepConfig[IN]) sdkgo.Mutation
 		StepType: config.StepType, Annotations: config.Annotations,
 		Operation: config.Connection.client.SendMessage(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
-		Branches: []sdkgo.BranchTarget[SendMessageResult]{
-			config.Sent.BranchTarget(SendMessageBranchSent),
-			config.ProviderRejected.BranchTarget(SendMessageBranchProviderRejected),
-			config.Uncertain.BranchTarget(SendMessageBranchUncertain),
-			config.Defect.BranchTarget(SendMessageBranchDefect),
-		},
+		Branches: func() []sdkgo.BranchTarget[SendMessageResult] {
+			branches := make([]sdkgo.BranchTarget[SendMessageResult], 0, 4)
+			if config.Sent.HasStep() {
+				branches = append(branches, config.Sent.BranchTarget(SendMessageBranchSent))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SendMessageBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(SendMessageBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SendMessageBranchDefect))
+			}
+			return branches
+		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
 	})
@@ -465,13 +487,25 @@ func NewReplyToMessageStep[IN any](config ReplyToMessageStepConfig[IN]) sdkgo.Mu
 		StepType: config.StepType, Annotations: config.Annotations,
 		Operation: config.Connection.client.ReplyToMessage(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
-		Branches: []sdkgo.BranchTarget[ReplyToMessageResult]{
-			config.Sent.BranchTarget(ReplyToMessageBranchSent),
-			config.ProviderRejected.BranchTarget(ReplyToMessageBranchProviderRejected),
-			config.InvalidResponse.BranchTarget(ReplyToMessageBranchInvalidResponse),
-			config.Uncertain.BranchTarget(ReplyToMessageBranchUncertain),
-			config.Defect.BranchTarget(ReplyToMessageBranchDefect),
-		},
+		Branches: func() []sdkgo.BranchTarget[ReplyToMessageResult] {
+			branches := make([]sdkgo.BranchTarget[ReplyToMessageResult], 0, 5)
+			if config.Sent.HasStep() {
+				branches = append(branches, config.Sent.BranchTarget(ReplyToMessageBranchSent))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ReplyToMessageBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ReplyToMessageBranchInvalidResponse))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(ReplyToMessageBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ReplyToMessageBranchDefect))
+			}
+			return branches
+		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
 	})

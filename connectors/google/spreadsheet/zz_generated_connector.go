@@ -193,13 +193,25 @@ func NewGetValuesStep[IN any](config GetValuesStepConfig[IN]) sdkgo.QueryStep[IN
 		StepType: config.StepType, Annotations: config.Annotations,
 		Operation: config.Connection.client.GetValues(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
-		Branches: []sdkgo.BranchTarget[GetValuesResult]{
-			config.Read.BranchTarget(GetValuesBranchRead),
-			config.NotFound.BranchTarget(GetValuesBranchNotFound),
-			config.ProviderRejected.BranchTarget(GetValuesBranchProviderRejected),
-			config.InvalidResponse.BranchTarget(GetValuesBranchInvalidResponse),
-			config.Defect.BranchTarget(GetValuesBranchDefect),
-		},
+		Branches: func() []sdkgo.BranchTarget[GetValuesResult] {
+			branches := make([]sdkgo.BranchTarget[GetValuesResult], 0, 5)
+			if config.Read.HasStep() {
+				branches = append(branches, config.Read.BranchTarget(GetValuesBranchRead))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetValuesBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetValuesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetValuesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetValuesBranchDefect))
+			}
+			return branches
+		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
 	})
@@ -261,14 +273,28 @@ func NewFindRowStep[IN any](config FindRowStepConfig[IN]) sdkgo.QueryStep[IN, Fi
 		StepType: config.StepType, Annotations: config.Annotations,
 		Operation: config.Connection.client.FindRow(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
-		Branches: []sdkgo.BranchTarget[FindRowResult]{
-			config.Found.BranchTarget(FindRowBranchFound),
-			config.NotFound.BranchTarget(FindRowBranchNotFound),
-			config.Conflict.BranchTarget(FindRowBranchConflict),
-			config.ProviderRejected.BranchTarget(FindRowBranchProviderRejected),
-			config.InvalidResponse.BranchTarget(FindRowBranchInvalidResponse),
-			config.Defect.BranchTarget(FindRowBranchDefect),
-		},
+		Branches: func() []sdkgo.BranchTarget[FindRowResult] {
+			branches := make([]sdkgo.BranchTarget[FindRowResult], 0, 6)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(FindRowBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(FindRowBranchNotFound))
+			}
+			if config.Conflict.HasStep() {
+				branches = append(branches, config.Conflict.BranchTarget(FindRowBranchConflict))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(FindRowBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(FindRowBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(FindRowBranchDefect))
+			}
+			return branches
+		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
 	})
@@ -330,14 +356,28 @@ func NewUpsertRowStep[IN any](config UpsertRowStepConfig[IN]) sdkgo.MutationStep
 		StepType: config.StepType, Annotations: config.Annotations,
 		Operation: config.Connection.client.UpsertRow(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
-		Branches: []sdkgo.BranchTarget[UpsertRowResult]{
-			config.Upserted.BranchTarget(UpsertRowBranchUpserted),
-			config.Conflict.BranchTarget(UpsertRowBranchConflict),
-			config.ProviderRejected.BranchTarget(UpsertRowBranchProviderRejected),
-			config.InvalidResponse.BranchTarget(UpsertRowBranchInvalidResponse),
-			config.Uncertain.BranchTarget(UpsertRowBranchUncertain),
-			config.Defect.BranchTarget(UpsertRowBranchDefect),
-		},
+		Branches: func() []sdkgo.BranchTarget[UpsertRowResult] {
+			branches := make([]sdkgo.BranchTarget[UpsertRowResult], 0, 6)
+			if config.Upserted.HasStep() {
+				branches = append(branches, config.Upserted.BranchTarget(UpsertRowBranchUpserted))
+			}
+			if config.Conflict.HasStep() {
+				branches = append(branches, config.Conflict.BranchTarget(UpsertRowBranchConflict))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpsertRowBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpsertRowBranchInvalidResponse))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(UpsertRowBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpsertRowBranchDefect))
+			}
+			return branches
+		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
 	})
