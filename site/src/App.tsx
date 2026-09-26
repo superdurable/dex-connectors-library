@@ -56,7 +56,7 @@ export function App() {
           </span>
         </Link>
         <p className="lede">
-          Take a process from a prototype to production with open sourced and trusted connectors.
+          Open sourced and trusted connectors, take your process from prototype to production.
         </p>
         {catalog.status === "ready" ? <CatalogTotals connectors={catalog.value} /> : null}
       </header>
