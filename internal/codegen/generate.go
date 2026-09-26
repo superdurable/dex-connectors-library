@@ -278,15 +278,23 @@ func writeOperationFactory(output *bytes.Buffer, manifest schema.Manifest, opera
 	write("\t\tStepType: config.StepType, Annotations: config.Annotations,\n")
 	write("\t\tOperation: config.Connection.client.%s(), Connection: config.Connection.reference,\n", operation.GoName)
 	write("\t\tMapToOperationInput: config.MapToOperationInput,\n")
-	write("\t\tBranches: func() []sdkgo.BranchTarget[%sResult] {\n", operation.GoName)
-	write("\t\t\tbranches := make([]sdkgo.BranchTarget[%sResult], 0, %d)\n", operation.GoName, len(operation.Branches))
-	for _, branch := range operation.Branches {
-		write("\t\t\tif config.%s.HasStep() {\n", branch.GoName)
-		write("\t\t\t\tbranches = append(branches, config.%s.BranchTarget(%sBranch%s))\n", branch.GoName, operation.GoName, branch.GoName)
-		write("\t\t\t}\n")
+	if operationHasOptionalBranch(operation) {
+		write("\t\tBranches: func() []sdkgo.BranchTarget[%sResult] {\n", operation.GoName)
+		write("\t\t\tbranches := make([]sdkgo.BranchTarget[%sResult], 0, %d)\n", operation.GoName, len(operation.Branches))
+		for _, branch := range operation.Branches {
+			write("\t\t\tif config.%s.HasStep() {\n", branch.GoName)
+			write("\t\t\t\tbranches = append(branches, config.%s.BranchTarget(%sBranch%s))\n", branch.GoName, operation.GoName, branch.GoName)
+			write("\t\t\t}\n")
+		}
+		write("\t\t\treturn branches\n")
+		write("\t\t}(),\n")
+	} else {
+		write("\t\tBranches: []sdkgo.BranchTarget[%sResult]{\n", operation.GoName)
+		for _, branch := range operation.Branches {
+			write("\t\t\tconfig.%s.BranchTarget(%sBranch%s),\n", branch.GoName, operation.GoName, branch.GoName)
+		}
+		write("\t\t},\n")
 	}
-	write("\t\t\treturn branches\n")
-	write("\t\t}(),\n")
 	write("\t\tResultAttribute: config.ResultAttribute,\n")
 	if contains(operation.Progress, "structured") {
 		write("\t\tProgressStream: config.ProgressStream,\n")
@@ -296,6 +304,15 @@ func writeOperationFactory(output *bytes.Buffer, manifest schema.Manifest, opera
 	}
 	write("\t\tStepOptionsOverride: config.StepOptionsOverride,\n")
 	write("\t})\n}\n\n")
+}
+
+func operationHasOptionalBranch(operation schema.Operation) bool {
+	for _, branch := range operation.Branches {
+		if branch.Optional {
+			return true
+		}
+	}
+	return false
 }
 
 func goType(field schema.Field) string {

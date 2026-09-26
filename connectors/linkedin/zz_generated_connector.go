@@ -202,34 +202,16 @@ func NewGetAuthenticatedProfileStep[IN any](config GetAuthenticatedProfileStepCo
 		StepType: config.StepType, Annotations: config.Annotations,
 		Operation: config.Connection.client.GetAuthenticatedProfile(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
-		Branches: func() []sdkgo.BranchTarget[GetAuthenticatedProfileResult] {
-			branches := make([]sdkgo.BranchTarget[GetAuthenticatedProfileResult], 0, 8)
-			if config.ProfileLoaded.HasStep() {
-				branches = append(branches, config.ProfileLoaded.BranchTarget(GetAuthenticatedProfileBranchProfileLoaded))
-			}
-			if config.VerifiedEmailRequired.HasStep() {
-				branches = append(branches, config.VerifiedEmailRequired.BranchTarget(GetAuthenticatedProfileBranchVerifiedEmailRequired))
-			}
-			if config.InsufficientScope.HasStep() {
-				branches = append(branches, config.InsufficientScope.BranchTarget(GetAuthenticatedProfileBranchInsufficientScope))
-			}
-			if config.AuthorizationRevoked.HasStep() {
-				branches = append(branches, config.AuthorizationRevoked.BranchTarget(GetAuthenticatedProfileBranchAuthorizationRevoked))
-			}
-			if config.NotFound.HasStep() {
-				branches = append(branches, config.NotFound.BranchTarget(GetAuthenticatedProfileBranchNotFound))
-			}
-			if config.ProviderRejected.HasStep() {
-				branches = append(branches, config.ProviderRejected.BranchTarget(GetAuthenticatedProfileBranchProviderRejected))
-			}
-			if config.InvalidResponse.HasStep() {
-				branches = append(branches, config.InvalidResponse.BranchTarget(GetAuthenticatedProfileBranchInvalidResponse))
-			}
-			if config.Defect.HasStep() {
-				branches = append(branches, config.Defect.BranchTarget(GetAuthenticatedProfileBranchDefect))
-			}
-			return branches
-		}(),
+		Branches: []sdkgo.BranchTarget[GetAuthenticatedProfileResult]{
+			config.ProfileLoaded.BranchTarget(GetAuthenticatedProfileBranchProfileLoaded),
+			config.VerifiedEmailRequired.BranchTarget(GetAuthenticatedProfileBranchVerifiedEmailRequired),
+			config.InsufficientScope.BranchTarget(GetAuthenticatedProfileBranchInsufficientScope),
+			config.AuthorizationRevoked.BranchTarget(GetAuthenticatedProfileBranchAuthorizationRevoked),
+			config.NotFound.BranchTarget(GetAuthenticatedProfileBranchNotFound),
+			config.ProviderRejected.BranchTarget(GetAuthenticatedProfileBranchProviderRejected),
+			config.InvalidResponse.BranchTarget(GetAuthenticatedProfileBranchInvalidResponse),
+			config.Defect.BranchTarget(GetAuthenticatedProfileBranchDefect),
+		},
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
 	})

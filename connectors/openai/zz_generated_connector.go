@@ -196,25 +196,13 @@ func NewCreateResponseStep[IN any](config CreateResponseStepConfig[IN]) sdkgo.Mu
 		StepType: config.StepType, Annotations: config.Annotations,
 		Operation: config.Connection.client.CreateResponse(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
-		Branches: func() []sdkgo.BranchTarget[CreateResponseResult] {
-			branches := make([]sdkgo.BranchTarget[CreateResponseResult], 0, 5)
-			if config.Completed.HasStep() {
-				branches = append(branches, config.Completed.BranchTarget(CreateResponseBranchCompleted))
-			}
-			if config.Failed.HasStep() {
-				branches = append(branches, config.Failed.BranchTarget(CreateResponseBranchFailed))
-			}
-			if config.ProviderRejected.HasStep() {
-				branches = append(branches, config.ProviderRejected.BranchTarget(CreateResponseBranchProviderRejected))
-			}
-			if config.Uncertain.HasStep() {
-				branches = append(branches, config.Uncertain.BranchTarget(CreateResponseBranchUncertain))
-			}
-			if config.Defect.HasStep() {
-				branches = append(branches, config.Defect.BranchTarget(CreateResponseBranchDefect))
-			}
-			return branches
-		}(),
+		Branches: []sdkgo.BranchTarget[CreateResponseResult]{
+			config.Completed.BranchTarget(CreateResponseBranchCompleted),
+			config.Failed.BranchTarget(CreateResponseBranchFailed),
+			config.ProviderRejected.BranchTarget(CreateResponseBranchProviderRejected),
+			config.Uncertain.BranchTarget(CreateResponseBranchUncertain),
+			config.Defect.BranchTarget(CreateResponseBranchDefect),
+		},
 		ResultAttribute: config.ResultAttribute,
 		ProgressStream:  config.ProgressStream,
 		TextStream:      config.TextStream, TextOptions: config.TextOptions,
@@ -275,25 +263,13 @@ func NewRetrieveResponseStep[IN any](config RetrieveResponseStepConfig[IN]) sdkg
 		StepType: config.StepType, Annotations: config.Annotations,
 		Operation: config.Connection.client.RetrieveResponse(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
-		Branches: func() []sdkgo.BranchTarget[RetrieveResponseResult] {
-			branches := make([]sdkgo.BranchTarget[RetrieveResponseResult], 0, 5)
-			if config.Found.HasStep() {
-				branches = append(branches, config.Found.BranchTarget(RetrieveResponseBranchFound))
-			}
-			if config.NotFound.HasStep() {
-				branches = append(branches, config.NotFound.BranchTarget(RetrieveResponseBranchNotFound))
-			}
-			if config.ProviderRejected.HasStep() {
-				branches = append(branches, config.ProviderRejected.BranchTarget(RetrieveResponseBranchProviderRejected))
-			}
-			if config.InvalidResponse.HasStep() {
-				branches = append(branches, config.InvalidResponse.BranchTarget(RetrieveResponseBranchInvalidResponse))
-			}
-			if config.Defect.HasStep() {
-				branches = append(branches, config.Defect.BranchTarget(RetrieveResponseBranchDefect))
-			}
-			return branches
-		}(),
+		Branches: []sdkgo.BranchTarget[RetrieveResponseResult]{
+			config.Found.BranchTarget(RetrieveResponseBranchFound),
+			config.NotFound.BranchTarget(RetrieveResponseBranchNotFound),
+			config.ProviderRejected.BranchTarget(RetrieveResponseBranchProviderRejected),
+			config.InvalidResponse.BranchTarget(RetrieveResponseBranchInvalidResponse),
+			config.Defect.BranchTarget(RetrieveResponseBranchDefect),
+		},
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
 	})

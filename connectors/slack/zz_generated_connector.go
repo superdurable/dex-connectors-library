@@ -326,22 +326,12 @@ func NewListThreadMessagesStep[IN any](config ListThreadMessagesStepConfig[IN]) 
 		StepType: config.StepType, Annotations: config.Annotations,
 		Operation: config.Connection.client.ListThreadMessages(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
-		Branches: func() []sdkgo.BranchTarget[ListThreadMessagesResult] {
-			branches := make([]sdkgo.BranchTarget[ListThreadMessagesResult], 0, 4)
-			if config.Read.HasStep() {
-				branches = append(branches, config.Read.BranchTarget(ListThreadMessagesBranchRead))
-			}
-			if config.ProviderRejected.HasStep() {
-				branches = append(branches, config.ProviderRejected.BranchTarget(ListThreadMessagesBranchProviderRejected))
-			}
-			if config.InvalidResponse.HasStep() {
-				branches = append(branches, config.InvalidResponse.BranchTarget(ListThreadMessagesBranchInvalidResponse))
-			}
-			if config.Defect.HasStep() {
-				branches = append(branches, config.Defect.BranchTarget(ListThreadMessagesBranchDefect))
-			}
-			return branches
-		}(),
+		Branches: []sdkgo.BranchTarget[ListThreadMessagesResult]{
+			config.Read.BranchTarget(ListThreadMessagesBranchRead),
+			config.ProviderRejected.BranchTarget(ListThreadMessagesBranchProviderRejected),
+			config.InvalidResponse.BranchTarget(ListThreadMessagesBranchInvalidResponse),
+			config.Defect.BranchTarget(ListThreadMessagesBranchDefect),
+		},
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
 	})
@@ -400,25 +390,13 @@ func NewGetThreadReplyStep[IN any](config GetThreadReplyStepConfig[IN]) sdkgo.Qu
 		StepType: config.StepType, Annotations: config.Annotations,
 		Operation: config.Connection.client.GetThreadReply(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
-		Branches: func() []sdkgo.BranchTarget[GetThreadReplyResult] {
-			branches := make([]sdkgo.BranchTarget[GetThreadReplyResult], 0, 5)
-			if config.Found.HasStep() {
-				branches = append(branches, config.Found.BranchTarget(GetThreadReplyBranchFound))
-			}
-			if config.NotFound.HasStep() {
-				branches = append(branches, config.NotFound.BranchTarget(GetThreadReplyBranchNotFound))
-			}
-			if config.ProviderRejected.HasStep() {
-				branches = append(branches, config.ProviderRejected.BranchTarget(GetThreadReplyBranchProviderRejected))
-			}
-			if config.InvalidResponse.HasStep() {
-				branches = append(branches, config.InvalidResponse.BranchTarget(GetThreadReplyBranchInvalidResponse))
-			}
-			if config.Defect.HasStep() {
-				branches = append(branches, config.Defect.BranchTarget(GetThreadReplyBranchDefect))
-			}
-			return branches
-		}(),
+		Branches: []sdkgo.BranchTarget[GetThreadReplyResult]{
+			config.Found.BranchTarget(GetThreadReplyBranchFound),
+			config.NotFound.BranchTarget(GetThreadReplyBranchNotFound),
+			config.ProviderRejected.BranchTarget(GetThreadReplyBranchProviderRejected),
+			config.InvalidResponse.BranchTarget(GetThreadReplyBranchInvalidResponse),
+			config.Defect.BranchTarget(GetThreadReplyBranchDefect),
+		},
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
 	})
@@ -474,22 +452,12 @@ func NewPostChannelMessageStep[IN any](config PostChannelMessageStepConfig[IN]) 
 		StepType: config.StepType, Annotations: config.Annotations,
 		Operation: config.Connection.client.PostChannelMessage(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
-		Branches: func() []sdkgo.BranchTarget[PostChannelMessageResult] {
-			branches := make([]sdkgo.BranchTarget[PostChannelMessageResult], 0, 4)
-			if config.Sent.HasStep() {
-				branches = append(branches, config.Sent.BranchTarget(PostChannelMessageBranchSent))
-			}
-			if config.ProviderRejected.HasStep() {
-				branches = append(branches, config.ProviderRejected.BranchTarget(PostChannelMessageBranchProviderRejected))
-			}
-			if config.Uncertain.HasStep() {
-				branches = append(branches, config.Uncertain.BranchTarget(PostChannelMessageBranchUncertain))
-			}
-			if config.Defect.HasStep() {
-				branches = append(branches, config.Defect.BranchTarget(PostChannelMessageBranchDefect))
-			}
-			return branches
-		}(),
+		Branches: []sdkgo.BranchTarget[PostChannelMessageResult]{
+			config.Sent.BranchTarget(PostChannelMessageBranchSent),
+			config.ProviderRejected.BranchTarget(PostChannelMessageBranchProviderRejected),
+			config.Uncertain.BranchTarget(PostChannelMessageBranchUncertain),
+			config.Defect.BranchTarget(PostChannelMessageBranchDefect),
+		},
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
 	})
@@ -545,22 +513,12 @@ func NewPostThreadReplyStep[IN any](config PostThreadReplyStepConfig[IN]) sdkgo.
 		StepType: config.StepType, Annotations: config.Annotations,
 		Operation: config.Connection.client.PostThreadReply(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
-		Branches: func() []sdkgo.BranchTarget[PostThreadReplyResult] {
-			branches := make([]sdkgo.BranchTarget[PostThreadReplyResult], 0, 4)
-			if config.Sent.HasStep() {
-				branches = append(branches, config.Sent.BranchTarget(PostThreadReplyBranchSent))
-			}
-			if config.ProviderRejected.HasStep() {
-				branches = append(branches, config.ProviderRejected.BranchTarget(PostThreadReplyBranchProviderRejected))
-			}
-			if config.Uncertain.HasStep() {
-				branches = append(branches, config.Uncertain.BranchTarget(PostThreadReplyBranchUncertain))
-			}
-			if config.Defect.HasStep() {
-				branches = append(branches, config.Defect.BranchTarget(PostThreadReplyBranchDefect))
-			}
-			return branches
-		}(),
+		Branches: []sdkgo.BranchTarget[PostThreadReplyResult]{
+			config.Sent.BranchTarget(PostThreadReplyBranchSent),
+			config.ProviderRejected.BranchTarget(PostThreadReplyBranchProviderRejected),
+			config.Uncertain.BranchTarget(PostThreadReplyBranchUncertain),
+			config.Defect.BranchTarget(PostThreadReplyBranchDefect),
+		},
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
 	})

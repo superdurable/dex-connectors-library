@@ -38,7 +38,7 @@ func TestGenerateIsDeterministicAndIncludesTypedOAuthCredentials(t *testing.T) {
 	require.Contains(t, text, "Annotations")
 	require.Contains(t, text, "sdkgo.StepAnnotations")
 	require.Contains(t, text, "`connector:\"annotations\"`")
-	require.Contains(t, text, ".HasStep()")
+	require.NotContains(t, text, ".HasStep()")
 	require.Contains(t, text, "MapToOperationInput")
 	require.Contains(t, text, "func(IN) AppendRowsInput")
 	require.Contains(t, text, "`connector:\"mapToOperationInput\"`")
