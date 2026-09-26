@@ -6,7 +6,9 @@ alwaysApply: true
 # Dex Connectors Library
 
 - Keep the Go SDK in sdkgo; keep every connector in its own Go module.
-- Group one company's connectors under one directory.
+- Group one company's connectors under one directory. The first directory
+  under connectors/ is the company, must match metadata.company, and must
+  contain logo.svg.
 - Keep provider calls in Dex Step Execute; never call providers from RPCs.
 - Register every Attribute and Stream in the consuming Flow schema.
 - Keep secrets out of durable state, Results, receipts, Streams, logs, generated

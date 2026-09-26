@@ -267,3 +267,21 @@ jobs:
               --manifest "${manifest}" --ui-root "${ui}/dist" \
               --output /tmp/connector-ui.tgz --digest-output /tmp/connector-ui.tgz.sha256
           done < <(find connectors -path '*/ui/package-lock.json' -print | sort)
+
+  site:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+      - run: sudo apt-get update && sudo apt-get install -y fonts-dejavu-core
+      - run: npm ci
+        working-directory: site
+      - run: npm test
+        working-directory: site
+      - run: npm run build
+        working-directory: site

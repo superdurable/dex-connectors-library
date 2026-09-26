@@ -3,6 +3,7 @@ __pycache__/
 *.py[cod]
 node_modules/
 dist/
+site/.catalog.yaml
 coverage/
 *.out
 *.test

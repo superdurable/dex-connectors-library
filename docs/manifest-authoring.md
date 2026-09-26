@@ -91,7 +91,9 @@ go run ./cmd/connectorctl generate --check connectors/openai/connector.yaml
 
 Adding a connector also requires its own `go.mod`, README, generated file, and
 tests. Add its repository-relative directory to the sorted root registry.
-Directories may have any depth below `connectors/`:
+Directories may have any depth below `connectors/`. The first directory is
+the company: `metadata.company` must slug to that folder, and the folder
+must contain `logo.svg`.
 
 ```bash
 go run ./cmd/connectorctl catalog --check --registry connectors.yaml
