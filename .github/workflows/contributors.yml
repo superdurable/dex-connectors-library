@@ -1,0 +1,75 @@
+name: Contributors
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: contributors-assets
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Update contributor cards
+    if: github.repository == 'superdurable/dex-connectors-library'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      OUTPUT_BRANCH: readme-assets
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+      - run: npm ci --prefix site
+      - run: npm test --prefix site
+
+      - name: Load generated assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          assets="$RUNNER_TEMP/readme-assets"
+          if git ls-remote --exit-code --heads origin "$OUTPUT_BRANCH"; then
+            git fetch --depth=1 origin "$OUTPUT_BRANCH"
+            git worktree add --detach "$assets" FETCH_HEAD
+          else
+            status=$?
+            if [ "$status" -ne 2 ]; then exit "$status"; fi
+            git worktree add --detach "$assets" HEAD
+            git -C "$assets" checkout --orphan "$OUTPUT_BRANCH"
+            git -C "$assets" rm -rf .
+          fi
+
+      - name: Render contributors from main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node site/scripts/contributors.mjs \
+            --repository "$GITHUB_REPOSITORY" \
+            --ref main \
+            --output "$RUNNER_TEMP/readme-assets"
+
+      - name: Publish changed assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          assets="$RUNNER_TEMP/readme-assets"
+          git -C "$assets" add contributors.json contributors-light.svg contributors-dark.svg
+          if git -C "$assets" diff --cached --quiet; then
+            echo "Contributor cards are already current."
+            exit 0
+          fi
+          git -C "$assets" config user.name 'github-actions[bot]'
+          git -C "$assets" config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git -C "$assets" commit -m 'chore: update contributor cards'
+          git -C "$assets" push origin "HEAD:refs/heads/$OUTPUT_BRANCH"
