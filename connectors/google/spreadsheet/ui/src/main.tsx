@@ -3,14 +3,16 @@ import { createRoot } from "react-dom/client";
 import { connectorStudioHostAPIVersion, isConnectorStudioMessage, observeConnectorStudioFrameAutoHeight, type ConnectorStudioCommand, type ConnectorStudioCommandResult, type ConnectorStudioHostReady } from "@superdurable/dex-connectors-react";
 import { SpreadsheetSetupView } from "./setup.js";
 import { SpreadsheetConfigurationUnit } from "./units.js";
+import { parseSheetTabs, parseSpreadsheetPage, type SpreadsheetFile } from "./provider.js";
 
 const connectorId = "google-sheets";
 
 function ConnectorApp() {
   const [ready, setReady] = useState<ConnectorStudioHostReady>();
   const [tabs, setTabs] = useState<string[]>([]);
+  const [spreadsheets, setSpreadsheets] = useState<SpreadsheetFile[]>([]);
   const [busy, setBusy] = useState(false);
-  const pending = useMemo(() => new Map<string, ConnectorStudioCommand["command"]>(), []);
+  const pending = useMemo(() => new Map<string, {resolve(value: Record<string, unknown>): void; reject(error: Error): void}>(), []);
   useEffect(() => ready ? observeConnectorStudioFrameAutoHeight(ready) : undefined, [ready]);
   useEffect(() => {
     const receive = (event: MessageEvent<unknown>) => {
@@ -18,29 +20,33 @@ function ConnectorApp() {
       if (event.data.type === "connector.host.ready") { setReady(event.data); return; }
       if (event.data.type !== "connector.command.result" || !ready || event.data.sessionNonce !== ready.sessionNonce) return;
       const result = event.data as ConnectorStudioCommandResult;
-      const command = pending.get(result.requestId); pending.delete(result.requestId); setBusy(pending.size > 0);
-      if (!result.ok) return;
-      if (command === "google.sheets.list-tabs") setTabs(Array.isArray(result.value?.tabs) ? result.value.tabs.filter((value): value is string => typeof value === "string") : []);
-      if (command === "google.picker.open-spreadsheet" && ready.target.kind === "configurationUnit") send("use.configuration.save", {value: result.value ?? {}});
+      const request = pending.get(result.requestId); pending.delete(result.requestId); setBusy(pending.size > 0);
+      if (!request) return;
+      if (result.ok) request.resolve(result.value ?? {});
+      else request.reject(new Error(result.error?.message ?? "Connector command failed"));
     };
     window.addEventListener("message", receive);
     return () => window.removeEventListener("message", receive);
   }, [pending, ready]);
-  const send = (command: ConnectorStudioCommand["command"], input?: Record<string, unknown>) => {
-    if (!ready || !ready.capabilities.includes(requiredCapability(command))) return;
-    const requestId = crypto.randomUUID(); pending.set(requestId, command); setBusy(true);
+  const send = (command: ConnectorStudioCommand["command"], capability: string, input?: Record<string, unknown>) => new Promise<Record<string, unknown>>((resolve, reject) => {
+    if (!ready || !ready.capabilities.includes(capability)) { reject(new Error(`Missing capability ${capability}`)); return; }
+    const requestId = crypto.randomUUID(); pending.set(requestId, {resolve, reject}); setBusy(true);
     window.parent.postMessage({type: "connector.command", protocolVersion: connectorStudioHostAPIVersion, sessionNonce: ready.sessionNonce, connectorId, requestId, command, input} satisfies ConnectorStudioCommand, "*");
+  });
+  const executeProvider = (commandId: string, capability: string, parameters: Record<string, string> = {}) => send("provider.command.execute", capability, {commandId, parameters});
+  const loadSpreadsheets = async () => {
+    const loaded: SpreadsheetFile[] = [];
+    let pageToken = "";
+    do {
+      const page = parseSpreadsheetPage(await executeProvider("listSpreadsheets", "google.drive.spreadsheets-list", pageToken ? {pageToken} : {}));
+      loaded.push(...page.files); pageToken = page.nextPageToken;
+    } while (pageToken);
+    setSpreadsheets(loaded);
   };
+  const loadTabs = async (spreadsheetId: string) => setTabs(parseSheetTabs(await executeProvider("listTabs", "google.sheets.tabs-list", {spreadsheetId})));
   if (!ready) return <p role="status">Waiting for Studio…</p>;
-  if (ready.target.kind === "connection") return <SpreadsheetSetupView connection={ready.connection} onConnect={() => send("oauth.connect")} onReconnect={() => send("oauth.reconnect")}/>;
-  return <SpreadsheetConfigurationUnit target={ready.target} tabs={tabs} busy={busy} onChooseSpreadsheet={() => send("google.picker.open-spreadsheet")} onLoadTabs={(spreadsheetId) => send("google.sheets.list-tabs", {spreadsheetId})} onSave={(value) => send("use.configuration.save", {value})}/>;
-}
-
-function requiredCapability(command: ConnectorStudioCommand["command"]): string {
-  if (command.startsWith("oauth.")) return "oauth.connection.manage";
-  if (command === "google.picker.open-spreadsheet") return "google.picker.spreadsheets";
-  if (command === "google.sheets.list-tabs") return "google.sheets.tabs-list";
-  return "use.configuration.write";
+  if (ready.target.kind === "connection") return <SpreadsheetSetupView connection={ready.connection} onConnect={() => void send("oauth.connect", "oauth.connection.manage")} onReconnect={() => void send("oauth.reconnect", "oauth.connection.manage")}/>;
+  return <SpreadsheetConfigurationUnit target={ready.target} spreadsheets={spreadsheets} tabs={tabs} busy={busy} onChooseSpreadsheet={() => void loadSpreadsheets()} onLoadTabs={(spreadsheetId) => void loadTabs(spreadsheetId)} onSave={(value) => void send("use.configuration.save", "use.configuration.write", {value})}/>;
 }
 
 const style = document.createElement("style");

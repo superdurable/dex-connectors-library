@@ -287,6 +287,7 @@ h2, h3 {
 .kind-query { background: var(--lime-soft); }
 .kind-mutation { background: #f3f6e4; }
 .kind-trigger { background: var(--water-soft); }
+.kind-ui-unit { background: #f3eafa; }
 
 @media (max-width: 720px) {
   .cards { grid-template-columns: 1fr; }

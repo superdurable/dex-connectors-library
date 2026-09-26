@@ -45,10 +45,10 @@ levels. The first directory under `connectors/` is the company. Its name is
 character removed, and that directory must contain `logo.svg`. CI rejects
 missing, unregistered, duplicate, unsafe, or symlinked paths, a missing
 company logo, and a company that does not match its directory. It generates
-the public catalog from the registered manifests. Each catalog entry lists
-triggers by name and description, and operations by name, kind, and
-description, so the directory can show and search supported actions without
-reading provider code.
+the public catalog from the registered manifests. Each catalog entry lists UI
+units and Triggers by name and description, and operations by name, kind, and
+description, so the directory can show and search supported configuration and
+actions without reading provider code.
 
 The `Release Connectors and Catalog` workflow runs automatically after a push
 to `main`. It compares every declared manifest version with reachable tags and

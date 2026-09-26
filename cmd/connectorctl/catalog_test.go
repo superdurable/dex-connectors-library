@@ -162,12 +162,14 @@ func TestCatalogCheckAcceptsRepositoryCompanies(t *testing.T) {
 	require.NoError(t, catalogCommand([]string{"--check", "--registry", filepath.Join("..", "..", "connectors.yaml")}))
 }
 
-func TestCatalogIncludesOperationsAndTriggers(t *testing.T) {
+func TestCatalogIncludesUIUnitsOperationsAndTriggers(t *testing.T) {
 	entries, err := loadConnectorDirectoryEntries(filepath.Join("..", "..", "connectors.yaml"))
 	require.NoError(t, err)
 	encoded, err := encodeConnectorCatalog(entries)
 	require.NoError(t, err)
 	catalog := string(encoded)
+	require.Contains(t, catalog, "name: channelPicker")
+	require.Contains(t, catalog, "name: searchQueryInput")
 	require.Contains(t, catalog, "name: messageReceived")
 	require.Contains(t, catalog, "name: getMessage")
 	require.Contains(t, catalog, "kind: query")

@@ -24,6 +24,9 @@ connectors:
     description: Send mail.
     version: v0.1.0
     directory: connectors/acme/mail
+    uiUnits:
+      - name: channelPicker
+        description: Select one channel.
     triggers:
       - name: messageReceived
         description: Receive a message.
@@ -36,7 +39,11 @@ connectors:
   assert.equal(png.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
   assert.equal(companyCountLine({
     connectors: [
-      { operations: [{ name: "sendMessage" }], triggers: [{ name: "messageReceived" }] },
+      {
+        uiUnits: [{ name: "channelPicker" }],
+        operations: [{ name: "sendMessage" }],
+        triggers: [{ name: "messageReceived" }],
+      },
     ],
-  }), "1 connector · 1 operation · 1 trigger");
+  }), "1 connector · 1 UI unit · 1 operation · 1 trigger");
 });

@@ -9,8 +9,8 @@ import {
   connectorMatchesQuery,
   groupCatalog,
   readCatalog,
+  type CatalogCapability,
   type CatalogConnector,
-  type CatalogOperation,
 } from "./catalogModel.mjs";
 
 const logoOrigin = import.meta.env.DEV ? "local" : "published";
@@ -75,6 +75,7 @@ function CatalogTotals({ connectors }: { connectors: CatalogConnector[] }) {
   const items = [
     ["companies", totals.companies],
     ["connectors", totals.connectors],
+    ["UI units", totals.uiUnits],
     ["operations", totals.operations],
     ["triggers", totals.triggers],
   ] as const;
@@ -108,7 +109,7 @@ function CatalogPage({ catalog }: { catalog: LoadState<CatalogConnector[]> }) {
           id="connector-search"
           type="search"
           value={query}
-          placeholder="Try send, messageReceived, or Gmail"
+          placeholder="Try channelPicker, send, messageReceived, or Gmail"
           onChange={(event) => setQuery(event.target.value)}
         />
       </form>
@@ -141,6 +142,7 @@ function CatalogPage({ catalog }: { catalog: LoadState<CatalogConnector[]> }) {
 
 function CapabilityChips({ connector }: { connector: CatalogConnector }) {
   const chips = [
+    ...connector.uiUnits.map((capability) => ({ ...capability, key: `ui-unit-${capability.name}` })),
     ...connector.triggers.map((capability) => ({ ...capability, key: `trigger-${capability.name}` })),
     ...connector.operations.map((capability) => ({ ...capability, key: `operation-${capability.name}` })),
   ];
@@ -194,13 +196,14 @@ function ConnectorPage({ catalog }: { catalog: LoadState<CatalogConnector[]> }) 
         </div>
       </div>
       <p className="description detail-description">{connector.description}</p>
+      <CapabilityList title="UI units" capabilities={connector.uiUnits} />
       <CapabilityList title="Triggers" capabilities={connector.triggers} />
       <CapabilityList title="Operations" capabilities={connector.operations} />
     </article>
   );
 }
 
-function CapabilityList({ title, capabilities }: { title: string; capabilities: CatalogOperation[] }) {
+function CapabilityList({ title, capabilities }: { title: string; capabilities: CatalogCapability[] }) {
   if (capabilities.length === 0) {
     return null;
   }
@@ -210,7 +213,7 @@ function CapabilityList({ title, capabilities }: { title: string; capabilities: 
       <ul className="operations">
         {capabilities.map((capability) => (
           <li key={`${capability.kind}-${capability.name}`}>
-            <span className={`kind kind-${capability.kind}`}>{capability.kind}</span>
+            <span className={`kind kind-${capability.kind}`}>{capabilityKindLabel(capability.kind)}</span>
             <span>
               <strong>{capability.name}</strong>
               <span className="description">{capability.description}</span>
@@ -220,6 +223,10 @@ function CapabilityList({ title, capabilities }: { title: string; capabilities: 
       </ul>
     </section>
   );
+}
+
+function capabilityKindLabel(kind: string): string {
+  return kind === "ui-unit" ? "UI unit" : kind;
 }
 
 function errorMessage(error: unknown): string {

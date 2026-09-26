@@ -64,10 +64,7 @@ export type ConnectorStudioCommandType =
   | "oauth.connect"
   | "oauth.reconnect"
   | "oauth.revoke"
-  | "google.picker.open-spreadsheet"
-  | "google.sheets.list-tabs"
-  | "slack.channels.list"
-  | "slack.users.list"
+  | "provider.command.execute"
   | "use.configuration.save";
 
 export interface ConnectorStudioCommand {
@@ -109,10 +106,7 @@ const commandTypes = new Set<ConnectorStudioCommandType>([
   "oauth.connect",
   "oauth.reconnect",
   "oauth.revoke",
-  "google.picker.open-spreadsheet",
-  "google.sheets.list-tabs",
-  "slack.channels.list",
-  "slack.users.list",
+  "provider.command.execute",
   "use.configuration.save",
 ]);
 

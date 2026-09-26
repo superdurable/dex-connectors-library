@@ -1,8 +1,10 @@
 import type { ConnectorStudioConfigurationUnitTarget } from "@superdurable/dex-connectors-react";
 import { useState, type ReactNode } from "react";
+import type { SpreadsheetFile } from "./provider.js";
 
 export interface SpreadsheetUnitProps {
   target: ConnectorStudioConfigurationUnitTarget;
+  spreadsheets?: SpreadsheetFile[];
   tabs: string[];
   busy?: boolean;
   onChooseSpreadsheet(): void;
@@ -18,12 +20,16 @@ export function SpreadsheetConfigurationUnit(props: SpreadsheetUnitProps) {
   return <p role="alert">Unsupported Google Sheets configuration unit: {target.unitId}</p>;
 }
 
-function SpreadsheetPickerUnit({target, busy, onChooseSpreadsheet, onSave}: SpreadsheetUnitProps) {
+function SpreadsheetPickerUnit({target, busy, onChooseSpreadsheet, onSave, spreadsheets = []}: SpreadsheetUnitProps) {
   const [spreadsheetId, setSpreadsheetId] = useState(stringValue(target.value.spreadsheetId));
-  const spreadsheetName = stringValue(target.value.spreadsheetName);
+  const [spreadsheetName, setSpreadsheetName] = useState(stringValue(target.value.spreadsheetName));
   return <UnitFrame target={target}>
     <button disabled={busy} onClick={onChooseSpreadsheet} type="button">Choose spreadsheet</button>
     {spreadsheetName && <p><strong>Spreadsheet:</strong> {spreadsheetName}</p>}
+    {spreadsheets.length > 0 && <label>Spreadsheet<select value={spreadsheetId} onChange={(event) => {
+      setSpreadsheetId(event.target.value);
+      setSpreadsheetName(spreadsheets.find((file) => file.id === event.target.value)?.name ?? "");
+    }}><option value="">Select a spreadsheet</option>{spreadsheets.map((file) => <option key={file.id} value={file.id}>{file.name}</option>)}</select></label>}
     <label>Spreadsheet ID<input value={spreadsheetId} onChange={(event) => setSpreadsheetId(event.target.value)}/></label>
     <button disabled={busy || (target.required && spreadsheetId.length === 0)} onClick={() => onSave({spreadsheetId, spreadsheetName})} type="button">Save</button>
   </UnitFrame>;

@@ -7,10 +7,10 @@ explicit.
 
 [![Dex Connectors](https://superdurable.github.io/dex-connectors-library/card.png)](https://superdurable.github.io/dex-connectors-library/)
 
-The directory lists each published connector, its company, and the triggers
-and operations in that release. Search matches those action names. The first
-folder under `connectors/` is the company name, and that folder contains
-`logo.svg`.
+The directory lists each published connector, its company, reusable UI units,
+triggers, and operations. Search matches all of those names and descriptions.
+The first folder under `connectors/` is the company name, and that folder
+contains `logo.svg`.
 
 Each connector is its own Go module. Release tags use the module directory,
 such as `connectors/github/vX.Y.Z` and `connectors/google/gmail/vX.Y.Z`.

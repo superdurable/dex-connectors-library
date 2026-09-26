@@ -118,6 +118,16 @@ studio:
     backendCapabilities: [oauth.connection.manage, use.configuration.write, slack.channels-list]
     mockScenarios: [not-configured, connected, revoked]
     icon: icon.svg
+  commands:
+    - id: listChannels
+      capability: slack.channels-list
+      request:
+        method: GET
+        url: https://slack.com/api/conversations.list
+        credential: {field: bot_token, scheme: bearer}
+        fixedQuery: {exclude_archived: "true", limit: "200"}
+        parameters:
+          - {name: cursor, location: query, target: cursor}
   units:
     - id: channelPicker
       goName: ChannelPicker
@@ -133,11 +143,22 @@ creates a deterministic tarball. Connector UI runs in a sandbox iframe and may
 request only the listed Host API capabilities. It must never receive or render
 credential values.
 
+`studio.commands` is a release-owned allowlist for provider reads used by the
+setup bundle. The iframe invokes every entry through the single
+`provider.command.execute` Host API command. Dex injects the named secret,
+allows only declared path/query parameters, bounds the JSON response, and never
+returns credential material. Provider pagination, response projection, and
+filtering remain connector UI code; Dex Web does not implement any provider's
+resource semantics. Studio commands currently support HTTPS `GET`, bearer
+credentials, fixed query values, and explicit path or query parameters.
+
 `studio.units` is the release-owned catalog of small UI components. It does
 not decide which operations or Triggers display a unit. A Flow composes unit
 instances in each generated Step or Trigger binding config and maps named ports
 to its own configuration object with JSON Pointers. Unit IDs and port names are
 generated as Go constants so Flow code does not repeat release-owned strings.
+The public Connector catalog publishes each unit ID and description so the
+GitHub Pages directory can display and search available UI units.
 
 The same bundle entrypoint renders either the connection surface or exactly one
 configuration unit, as selected by Connector Studio Host API 0.2. Connection

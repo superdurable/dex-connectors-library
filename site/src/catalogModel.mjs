@@ -48,6 +48,7 @@ export function readCatalog(text) {
       version: requiredText(connector.version, "version"),
       directory,
       companyDirectory: companyDirectory(directory),
+      uiUnits: readCapabilities(connector.uiUnits, "ui-unit"),
       triggers: readCapabilities(connector.triggers, "trigger"),
       operations: readCapabilities(connector.operations, ""),
     };
@@ -64,6 +65,7 @@ export function connectorMatchesQuery(connector, query) {
     connector.name,
     connector.description,
     connector.id,
+    ...connector.uiUnits.flatMap((capability) => [capability.name, capability.description, capability.kind]),
     ...connector.triggers.flatMap((capability) => [capability.name, capability.description, capability.kind]),
     ...connector.operations.flatMap((capability) => [capability.name, capability.description, capability.kind]),
   ]
@@ -74,16 +76,19 @@ export function connectorMatchesQuery(connector, query) {
 
 export function catalogTotals(connectors) {
   const companies = new Set();
+  let uiUnits = 0;
   let triggers = 0;
   let operations = 0;
   for (const connector of connectors) {
     companies.add(connector.company);
+    uiUnits += connector.uiUnits.length;
     triggers += connector.triggers.length;
     operations += connector.operations.length;
   }
   return {
     companies: companies.size,
     connectors: connectors.length,
+    uiUnits,
     triggers,
     operations,
   };

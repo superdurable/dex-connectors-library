@@ -50,6 +50,7 @@ type connectorCatalogItem struct {
 	Description string              `yaml:"description"`
 	Version     string              `yaml:"version"`
 	Directory   string              `yaml:"directory"`
+	UIUnits     []catalogCapability `yaml:"uiUnits"`
 	Triggers    []catalogCapability `yaml:"triggers"`
 	Operations  []catalogCapability `yaml:"operations"`
 }
@@ -382,6 +383,13 @@ func encodeConnectorCatalog(entries []connectorDirectoryEntry) ([]byte, error) {
 	}
 	for _, entry := range entries {
 		metadata := entry.Manifest.Metadata
+		uiUnits := []catalogCapability{}
+		if entry.Manifest.Spec.Studio != nil {
+			uiUnits = make([]catalogCapability, 0, len(entry.Manifest.Spec.Studio.Units))
+			for _, unit := range entry.Manifest.Spec.Studio.Units {
+				uiUnits = append(uiUnits, catalogCapability{Name: unit.ID, Description: unit.Description})
+			}
+		}
 		triggers := make([]catalogCapability, 0, len(entry.Manifest.Spec.Triggers))
 		for _, trigger := range entry.Manifest.Spec.Triggers {
 			triggers = append(triggers, catalogCapability{Name: trigger.Name, Description: trigger.Description})
@@ -395,7 +403,7 @@ func encodeConnectorCatalog(entries []connectorDirectoryEntry) ([]byte, error) {
 		catalog.Connectors = append(catalog.Connectors, connectorCatalogItem{
 			Company: metadata.Company, ID: metadata.Name, Name: metadata.DisplayName,
 			Description: metadata.Description, Version: metadata.Version, Directory: entry.Directory,
-			Triggers: triggers, Operations: operations,
+			UIUnits: uiUnits, Triggers: triggers, Operations: operations,
 		})
 	}
 	encoded, err := yaml.Marshal(catalog)

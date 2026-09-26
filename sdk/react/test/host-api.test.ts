@@ -16,8 +16,8 @@ describe("Connector Studio Host API", () => {
 
   it("accepts resource and use-configuration commands", () => {
     const common = {protocolVersion: connectorStudioHostAPIVersion, sessionNonce: "nonce", connectorId: "slack", requestId: "request", type: "connector.command"};
-    expect(isConnectorStudioMessage({...common, command: "slack.channels.list"})).toBe(true);
-    expect(isConnectorStudioMessage({...common, command: "slack.users.list"})).toBe(true);
+    expect(isConnectorStudioMessage({...common, command: "provider.command.execute", input: {commandId: "listChannels", parameters: {cursor: "next"}}})).toBe(true);
+    expect(isConnectorStudioMessage({...common, command: "slack.channels.list"})).toBe(false);
     expect(isConnectorStudioMessage({...common, command: "use.configuration.save", input: {value: {channelId: "C123"}}})).toBe(true);
   });
 

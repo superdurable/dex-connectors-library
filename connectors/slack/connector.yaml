@@ -66,6 +66,25 @@ spec:
       backendCapabilities: [oauth.connection.manage, use.configuration.write, slack.channels-list, slack.users-list]
       mockScenarios: [not-configured, authorization-pending, connected, insufficient-scope, revoked, broker-unavailable, ready]
       icon: icon.svg
+    commands:
+      - id: listChannels
+        capability: slack.channels-list
+        request:
+          method: GET
+          url: https://slack.com/api/conversations.list
+          credential: {field: bot_token, scheme: bearer}
+          fixedQuery: {exclude_archived: "true", limit: "200", types: "public_channel,private_channel"}
+          parameters:
+            - {name: cursor, location: query, target: cursor}
+      - id: listUsers
+        capability: slack.users-list
+        request:
+          method: GET
+          url: https://slack.com/api/users.list
+          credential: {field: bot_token, scheme: bearer}
+          fixedQuery: {limit: "200"}
+          parameters:
+            - {name: cursor, location: query, target: cursor}
     units:
       - id: channelPicker
         goName: ChannelPicker
