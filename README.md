@@ -8,10 +8,16 @@
 
 [![Dex Connectors directory](https://superdurable.github.io/dex-connectors-library/card.png)](https://superdurable.github.io/dex-connectors-library/)
 
-Dex Connectors Library is the open-source boundary between Dex Flows and
-external providers. Credentials stay outside durable Flow state. Provider call
-identity comes from Dex Step execution identity, and every provider outcome is
-explicit.
+Dex Connectors Library is the open-source library that connects Dex
+applications to products and services across the internet.
+
+Events from those products can enter Dex through Connector Triggers, either
+starting a new Flow execution or invoking a typed Flow RPC on one already
+running. In the other direction, Dex applications compose reusable Connector
+Steps into Flows to call provider APIs. Those Steps cover Query and Mutation
+operations, timeout and retry policy, persisting read results in Attributes,
+and streaming progress from long-running operations. Connectors also include
+reusable UI units that Dex Web composes to configure and use those products.
 
 The directory lists each published connector, its company, reusable UI units,
 triggers, and operations. Search matches all of those names and descriptions.
