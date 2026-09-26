@@ -178,6 +178,19 @@ The integration suite verifies:
   transition with its Result Attribute.
 - Gmail unknown sends route to the uncertainty branch without an automatic
   resend.
+- a Trigger inbox consumes an RPC event whose Flow completed or never started,
+  and a restarted runner replays past it (Slack thread-approval steps 8 and 9),
+  logging each skip once and each replay summary;
+- inbox replay waits for an unavailable Worker and then applies the pending RPC
+  exactly once, logging every backoff with its scheduled delay and the recovery;
+- an RPC handler's `MarkTriggerUndeliverable` consumes the event without
+  applying it;
+- a handler that returns another Flow's transient Dex error keeps the event
+  pending until the other Flow recovers;
+- a Flow start that the Dex Server rejects, such as a Step heartbeat below the
+  server minimum, keeps its event, and replay starts the fixed Flow;
+- an RPC that Dex applied but whose response the client cannot decode is
+  consumed after one application.
 
 ## Manual API and Dex Web acceptance
 

@@ -6,11 +6,13 @@ package sdkgo_test
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/internal/testsupport"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -96,6 +98,7 @@ func TestTriggerBindingDefinitionRequiresStaticNames(t *testing.T) {
 func TestDexFlowTriggerTargetConsumesFilteredEventBeforeRouting(t *testing.T) {
 	resolverCalled := false
 	inputMapperCalled := false
+	logs := testsupport.NewLogRecorder()
 	target := sdkgo.NewDexFlowTriggerTarget(
 		&dex.Client{},
 		&filterTestFlow{},
@@ -108,16 +111,30 @@ func TestDexFlowTriggerTargetConsumesFilteredEventBeforeRouting(t *testing.T) {
 			inputMapperCalled = true
 			return "input"
 		},
+		sdkgo.WithTriggerLogger(logs.Logger().With("binding", "approval-start")),
 	)
 
-	require.NoError(t, target.HandleTrigger(context.Background(), sdkgo.TriggerEvent[string]{ID: "event-id", Payload: "ignored"}))
+	require.NoError(t, target.HandleTrigger(context.Background(), sdkgo.TriggerEvent[string]{ID: "event-id", Payload: "SENTINEL-MESSAGE-TEXT"}))
 	require.False(t, resolverCalled)
 	require.False(t, inputMapperCalled)
+	requireSingleFilteredRecord(t, logs, "flow_start", "approval-start")
+}
+
+// requireSingleFilteredRecord checks the only record a Dex target logs for a filtered event.
+func requireSingleFilteredRecord(t *testing.T, logs *testsupport.LogRecorder, target string, binding string) {
+	t.Helper()
+	records := logs.Records()
+	require.Len(t, records, 1)
+	require.Equal(t, slog.LevelInfo, records[0].Level)
+	require.Equal(t, "trigger event skipped: filtered", records[0].Message)
+	require.Equal(t, map[string]string{"binding": binding, "target": target, "event_id": "event-id"}, records[0].Attrs)
+	require.NotContains(t, logs.Text(), "SENTINEL")
 }
 
 func TestDexRPCTriggerTargetConsumesFilteredEventBeforeRouting(t *testing.T) {
 	resolverCalled := false
 	inputMapperCalled := false
+	logs := testsupport.NewLogRecorder()
 	flow := &filterTestFlow{}
 	target := sdkgo.NewDexRPCTriggerTarget(
 		&dex.Client{},
@@ -131,9 +148,11 @@ func TestDexRPCTriggerTargetConsumesFilteredEventBeforeRouting(t *testing.T) {
 			inputMapperCalled = true
 			return 42
 		},
+		sdkgo.WithTriggerLogger(logs.Logger().With("binding", "approval-reply")),
 	)
 
-	require.NoError(t, target.HandleTrigger(context.Background(), sdkgo.TriggerEvent[string]{ID: "event-id", Payload: "ignored"}))
+	require.NoError(t, target.HandleTrigger(context.Background(), sdkgo.TriggerEvent[string]{ID: "event-id", Payload: "SENTINEL-MESSAGE-TEXT"}))
 	require.False(t, resolverCalled)
 	require.False(t, inputMapperCalled)
+	requireSingleFilteredRecord(t, logs, "rpc", "approval-reply")
 }

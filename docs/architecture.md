@@ -79,6 +79,68 @@ are immediate best-effort messages and remain outside that commit.
 available to advanced concrete Steps. RPC is rejected because it lacks a Step
 execution ID.
 
+## Trigger delivery
+
+```text
+provider transport (Socket Mode, polling)
+   |
+   +-- TriggerSource matches and decodes the event
+   +-- PrepareTriggerDelivery ---------> local inbox fsync (generated local factories)
+   +-- provider acknowledgement
+   |
+   +-- durable inbox HandleTrigger
+          +-- application wrapper (optional)
+                 +-- Dex target: filter -> Flow ID -> StartFlow or InvokeRPC
+                        +-- Dex Server -> Worker RPC handler
+   |
+   +-- nil or UndeliverableTriggerError -> remove the event from the inbox
+   +-- any other error ------------------> keep the event; retry with backoff
+```
+
+The Dex targets classify errors. Only causes that belong to the event are
+undeliverable:
+
+- a closed or never-started Flow;
+- an RPC handler's own `MarkTriggerUndeliverable` error: a Worker
+  `FailedPrecondition` whose detail starts with `Trigger event is
+  undeliverable`;
+- input that cannot be encoded;
+- an empty Flow ID or event ID.
+
+Everything else is retryable, because retrying after a fix can deliver it:
+
+- Dex or Worker unavailability, lock conflicts, and timeouts;
+- handler errors, including another Flow's Dex error that a handler returns;
+- a Channel message that another update consumed first;
+- Flow definition errors, and requests that the Dex Server rejects as invalid,
+  such as a Step option below its configured minimum.
+
+The RPC target returns nil for a response it cannot decode, because Dex already
+applied the RPC. `sdkgo.DeliverTrigger` retries from 250 milliseconds, doubling
+to 30 seconds, and stops waiting as soon as its context ends.
+
+A Trigger runner replays its durable inbox at `Run` start, in order, with the
+same backoff. Replay holds the inbox lock for one attempt at a time, so
+`PrepareTrigger` never waits for a backoff. Sources still deliver new events
+only after replay returns; otherwise a new event could overtake an older
+pending one, such as a reply overtaking its pending root. Replay never fails
+because of one event; only an unreadable inbox at startup ends `Run` with an
+error. Runners built by `sdkgo.NewTrigger` hand their source a target that
+treats undeliverable events as consumed.
+
+An RPC target consumes an event whose Flow has not started yet, because it
+cannot tell that event from one whose Flow will never exist. A runner that
+feeds both a Flow start and that Flow's RPCs must therefore deliver the start
+first.
+
+Every stage logs through `log/slog`, to `slog.Default()` unless the
+application passes a logger. The component that consumes an event logs its
+skip once: the durable inbox or runner for an undeliverable event, and the Dex
+target for a filtered one. `DeliverTrigger` logs each backoff and the recovery,
+and the inbox logs replay summaries and its own I/O failures. Records carry
+IDs and error messages, never payloads. `sdkgo/README.md` lists the messages
+and attribute keys.
+
 ## Generated provider surface
 
 Each manifest supplies:
