@@ -96,6 +96,23 @@ spec:
         - {credential: bot_token, source: access_token}
         - {credential: user_token, source: authed_user.access_token}
       pkce: true
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.2.0 <0.3.0"
+      backendCapabilities: [oauth.connection.manage, slack.channels-list]
+      mockScenarios: [ready]
+      icon: icon.svg
+    commands:
+      - id: listChannels
+        capability: slack.channels-list
+        request:
+          method: GET
+          url: https://slack.com/api/conversations.list
+          credential: {field: bot_token, scheme: bearer}
+          fixedQuery: {limit: "200"}
+          parameters:
+            - {name: cursor, location: query, target: cursor}
   operations:
     - name: getThing
       goName: GetThing
@@ -111,6 +128,8 @@ spec:
 	require.NoError(t, err)
 	require.Equal(t, []string{"channels:history"}, manifest.Spec.Auth.OAuth2.UserScopes)
 	require.Equal(t, "authed_user.access_token", manifest.Spec.Auth.OAuth2.CredentialMappings[1].Source)
+	require.Equal(t, "listChannels", manifest.Spec.Studio.Commands[0].ID)
+	require.Equal(t, "bot_token", manifest.Spec.Studio.Commands[0].Request.Credential.Field)
 }
 
 func TestDecodeOAuthManifestFixture(t *testing.T) {
@@ -190,9 +209,16 @@ spec:
     setup:
       entrypoint: index.html
       hostApiRange: ">=0.1.0 <0.2.0"
-      backendCapabilities: [configuration.write]
+      backendCapabilities: [configuration.write, channels.list]
       mockScenarios: [not-configured, ready]
       icon: icon.svg
+    units:
+      - id: channelPicker
+        goName: ChannelPicker
+        description: Select a provider channel.
+        backendCapabilities: [channels.list]
+        outputs:
+          - {name: channelId, goName: ChannelID, type: string}
   operations:
     - name: getThing
       goName: GetThing
@@ -209,6 +235,8 @@ spec:
 	require.NotNil(t, manifest.Spec.Studio)
 	require.Equal(t, "index.html", manifest.Spec.Studio.Setup.Entrypoint)
 	require.Contains(t, manifest.Spec.Studio.Setup.BackendCapabilities, "configuration.write")
+	require.Equal(t, "channelPicker", manifest.Spec.Studio.Units[0].ID)
+	require.Equal(t, "channelId", manifest.Spec.Studio.Units[0].Outputs[0].Name)
 }
 
 func TestRejectProviderIdempotencyAndInvalidProgress(t *testing.T) {

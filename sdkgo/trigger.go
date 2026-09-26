@@ -56,9 +56,10 @@ type TriggerBindingRef struct {
 
 // TriggerBindingDefinition exposes one static application binding to tooling.
 type TriggerBindingDefinition struct {
-	Definition     TriggerDefinition `json:"definition" yaml:"definition"`
-	ConnectionName string            `json:"connectionName" yaml:"connectionName"`
-	BindingName    string            `json:"bindingName" yaml:"bindingName"`
+	Definition      TriggerDefinition         `json:"definition" yaml:"definition"`
+	ConnectionName  string                    `json:"connectionName" yaml:"connectionName"`
+	BindingName     string                    `json:"bindingName" yaml:"bindingName"`
+	ConfigurationUI *ConnectorConfigurationUI `json:"configurationUI,omitempty" yaml:"configurationUI,omitempty"`
 }
 
 // Validate checks the static identity used by Flow Definition tooling.
@@ -68,6 +69,11 @@ func (definition TriggerBindingDefinition) Validate() error {
 	}
 	if strings.TrimSpace(definition.ConnectionName) == "" || strings.TrimSpace(definition.BindingName) == "" {
 		return fmt.Errorf("trigger binding connection name and binding name are required")
+	}
+	if definition.ConfigurationUI != nil {
+		if err := definition.ConfigurationUI.Validate(); err != nil {
+			return fmt.Errorf("trigger binding configuration UI: %w", err)
+		}
 	}
 	return nil
 }

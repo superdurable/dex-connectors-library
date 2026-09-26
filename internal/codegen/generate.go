@@ -33,6 +33,16 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 	write("\t\"github.com/superdurable/dex-connectors-library/sdkgo/localconfig\"\n")
 	write("\t\"github.com/superdurable/dex/sdk-go/dex\"\n)\n\n")
 	write("const ConnectorID = %s\n\n", strconv.Quote(manifest.Metadata.Name))
+	if manifest.Spec.Studio != nil && len(manifest.Spec.Studio.Units) > 0 {
+		write("const (\n")
+		for _, unit := range manifest.Spec.Studio.Units {
+			write("\tUIUnit%s = %s\n", unit.GoName, strconv.Quote(unit.ID))
+			for _, port := range append(append([]schema.StudioUnitPort(nil), unit.Inputs...), unit.Outputs...) {
+				write("\tUI%sPort%s = %s\n", unit.GoName, port.GoName, strconv.Quote(port.Name))
+			}
+		}
+		write(")\n\n")
+	}
 	for _, field := range append(append([]schema.Field(nil), manifest.Spec.Configuration.Fields...), manifest.Spec.Auth.Fields...) {
 		if field.Type != "enum" {
 			continue
@@ -202,10 +212,16 @@ func writeTriggerFactory(output *bytes.Buffer, manifest schema.Manifest, trigger
 	write("\ttriggerName struct{} `connector:\"triggerName=%s\"`\n", trigger.Name)
 	write("\tConnectionName string `connector:\"connectionName\"`\n")
 	write("\tBindingName string `connector:\"bindingName\"`\n")
+	if manifest.Spec.Studio != nil && len(manifest.Spec.Studio.Units) > 0 {
+		write("\tConfigurationUI sdkgo.ConnectorConfigurationUI `connector:\"configurationUI\"`\n")
+	}
 	write("}\n\n")
 	write("func Define%sTriggerBinding(config %sTriggerBindingConfig) sdkgo.TriggerBindingDefinition {\n", trigger.GoName, trigger.GoName)
 	write("\treturn sdkgo.MustTriggerBindingDefinition(sdkgo.TriggerBindingDefinition{\n")
 	write("\t\tDefinition: %sTriggerDefinition, ConnectionName: config.ConnectionName, BindingName: config.BindingName,\n", trigger.GoName)
+	if manifest.Spec.Studio != nil && len(manifest.Spec.Studio.Units) > 0 {
+		write("\t\tConfigurationUI: &config.ConfigurationUI,\n")
+	}
 	write("\t})\n}\n\n")
 	write("type %sTriggerConfig struct {\n", trigger.GoName)
 	write("\tsdkgo.TriggerFactoryConfigMarker `connector:\"factory=trigger\"`\n")
@@ -249,6 +265,9 @@ func writeOperationFactory(output *bytes.Buffer, manifest schema.Manifest, opera
 	write("\toperationID struct{} `connector:\"operationId=%s\"`\n", operation.Name)
 	write("\tStepType string `connector:\"stepType\"`\n")
 	write("\tAnnotations sdkgo.StepAnnotations `connector:\"annotations\"`\n")
+	if manifest.Spec.Studio != nil && len(manifest.Spec.Studio.Units) > 0 {
+		write("\tConfigurationUI sdkgo.ConnectorConfigurationUI `connector:\"configurationUI\"`\n")
+	}
 	write("\tConnection Connection `connector:\"connection\"`\n")
 	write("\tConnectionName string `connector:\"connectionName\"`\n")
 	write("\tMapToOperationInput func(IN) %s `connector:\"mapToOperationInput\"`\n", operation.InputType)
@@ -276,6 +295,9 @@ func writeOperationFactory(output *bytes.Buffer, manifest schema.Manifest, opera
 	write("\t}\n")
 	write("\treturn sdkgo.MustNew%sStep(sdkgo.%sStepConfig[IN, %s, %s]{\n", kind, kind, operation.InputType, operation.OutputType)
 	write("\t\tStepType: config.StepType, Annotations: config.Annotations,\n")
+	if manifest.Spec.Studio != nil && len(manifest.Spec.Studio.Units) > 0 {
+		write("\t\tConfigurationUI: config.ConfigurationUI,\n")
+	}
 	write("\t\tOperation: config.Connection.client.%s(), Connection: config.Connection.reference,\n", operation.GoName)
 	write("\t\tMapToOperationInput: config.MapToOperationInput,\n")
 	if operationHasOptionalBranch(operation) {

@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -26,13 +27,19 @@ const (
 	EnvironmentVariable = "DEX_CONNECTOR_CONFIG_FILE"
 	// SchemaVersion identifies the supported local connection file contract.
 	SchemaVersion = "connectors.dex.dev/local-connections/v1alpha1"
+	// UseConfigurationsFileName is the non-secret sidecar written beside the connection file.
+	UseConfigurationsFileName = "use-configurations.json"
+	// UseConfigurationsSchemaVersion identifies the operation-use sidecar contract.
+	UseConfigurationsSchemaVersion = "connectors.dex.dev/local-use-configurations/v1alpha1"
 )
 
 // Store retains startup configuration while reloading credentials for every provider call.
 type Store struct {
-	path                 string
-	configuration        map[connectionKey]json.RawMessage
-	triggerConfiguration map[triggerBindingKey]json.RawMessage
+	path                   string
+	useConfigurationsPath  string
+	configuration          map[connectionKey]json.RawMessage
+	triggerConfiguration   map[triggerBindingKey]json.RawMessage
+	operationConfiguration map[sdkgo.ConnectorConfigurationRef]json.RawMessage
 }
 
 type connectionKey struct {
@@ -72,6 +79,20 @@ type connectionRecord struct {
 	CredentialExpiresAt *time.Time      `json:"credentialExpiresAt,omitempty"`
 }
 
+type localUseConfigurationsFile struct {
+	SchemaVersion           string                         `json:"schemaVersion"`
+	OperationConfigurations []operationConfigurationRecord `json:"operationConfigurations"`
+}
+
+type operationConfigurationRecord struct {
+	ConnectorID    string          `json:"connectorId"`
+	ConnectionName string          `json:"connectionName"`
+	OperationID    string          `json:"operationId"`
+	FlowType       string          `json:"flowType"`
+	StepType       string          `json:"stepType"`
+	Configuration  json.RawMessage `json:"configuration"`
+}
+
 // LoadFile validates path and snapshots each connection's non-secret configuration.
 func LoadFile(path string) (*Store, error) {
 	if strings.TrimSpace(path) == "" {
@@ -95,7 +116,53 @@ func LoadFile(path string) (*Store, error) {
 		key := triggerBindingKey{connectorID: record.ConnectorID, connectionName: record.ConnectionName, triggerName: record.TriggerName, bindingName: record.BindingName}
 		triggerConfiguration[key] = append(json.RawMessage(nil), record.Configuration...)
 	}
-	return &Store{path: absolutePath, configuration: configuration, triggerConfiguration: triggerConfiguration}, nil
+	useConfigurationsPath := filepath.Join(filepath.Dir(absolutePath), UseConfigurationsFileName)
+	useConfigurations, err := readUseConfigurationsFile(useConfigurationsPath, file.Connections)
+	if err != nil {
+		return nil, err
+	}
+	operationConfiguration := make(map[sdkgo.ConnectorConfigurationRef]json.RawMessage, len(useConfigurations.OperationConfigurations))
+	for _, record := range useConfigurations.OperationConfigurations {
+		reference := sdkgo.ConnectorConfigurationRef{
+			ConnectorID: record.ConnectorID, ConnectionName: record.ConnectionName,
+			OperationID: record.OperationID, FlowType: record.FlowType, StepType: record.StepType,
+		}
+		operationConfiguration[reference] = append(json.RawMessage(nil), record.Configuration...)
+	}
+	return &Store{
+		path: absolutePath, useConfigurationsPath: useConfigurationsPath,
+		configuration: configuration, triggerConfiguration: triggerConfiguration,
+		operationConfiguration: operationConfiguration,
+	}, nil
+}
+
+// LoadOperationConfiguration strictly decodes one Connector Step use's
+// startup configuration snapshot. Dex retries never reload this value.
+func LoadOperationConfiguration[T any](
+	store *Store,
+	reference sdkgo.ConnectorConfigurationRef,
+) (sdkgo.ConnectorLoadedConfiguration[T], error) {
+	var value T
+	if store == nil {
+		return sdkgo.ConnectorLoadedConfiguration[T]{}, fmt.Errorf("local connector configuration store is required")
+	}
+	if err := reference.Validate(); err != nil {
+		return sdkgo.ConnectorLoadedConfiguration[T]{}, err
+	}
+	configuration, ok := store.operationConfiguration[reference]
+	if !ok {
+		return sdkgo.ConnectorLoadedConfiguration[T]{}, fmt.Errorf(
+			"connector %q connection %q operation %q Flow %q Step %q is not configured",
+			reference.ConnectorID, reference.ConnectionName, reference.OperationID, reference.FlowType, reference.StepType,
+		)
+	}
+	if err := decodeStrict(configuration, &value); err != nil {
+		return sdkgo.ConnectorLoadedConfiguration[T]{}, fmt.Errorf(
+			"decode connector %q connection %q operation %q Flow %q Step %q configuration: %w",
+			reference.ConnectorID, reference.ConnectionName, reference.OperationID, reference.FlowType, reference.StepType, err,
+		)
+	}
+	return sdkgo.ConnectorLoadedConfiguration[T]{Reference: reference, Value: value}, nil
 }
 
 // DecodeTriggerConfiguration decodes one trigger binding's startup configuration.
@@ -132,6 +199,14 @@ func (store *Store) Path() string {
 		return ""
 	}
 	return store.path
+}
+
+// UseConfigurationsPath returns the expected non-secret operation-use sidecar path.
+func (store *Store) UseConfigurationsPath() string {
+	if store == nil {
+		return ""
+	}
+	return store.useConfigurationsPath
 }
 
 // DecodeConfiguration decodes the startup snapshot for one named connection.
@@ -426,6 +501,68 @@ func readFile(path string) (localConnectionsFile, error) {
 			return localConnectionsFile{}, fmt.Errorf("connector %q connection %q trigger %q binding %q is duplicated", record.ConnectorID, record.ConnectionName, record.TriggerName, record.BindingName)
 		}
 		seenTriggerBindings[key] = true
+	}
+	return file, nil
+}
+
+func readUseConfigurationsFile(
+	path string,
+	connections []connectionRecord,
+) (localUseConfigurationsFile, error) {
+	info, err := os.Lstat(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		return localUseConfigurationsFile{
+			SchemaVersion:           UseConfigurationsSchemaVersion,
+			OperationConfigurations: []operationConfigurationRecord{},
+		}, nil
+	}
+	if err != nil {
+		return localUseConfigurationsFile{}, fmt.Errorf("inspect connector use configuration file: %w", err)
+	}
+	if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
+		return localUseConfigurationsFile{}, fmt.Errorf("connector use configuration file must be a regular file")
+	}
+	if info.Mode().Perm() != 0o600 {
+		return localUseConfigurationsFile{}, fmt.Errorf("connector use configuration file permissions must be 0600")
+	}
+	contents, err := os.ReadFile(path)
+	if err != nil {
+		return localUseConfigurationsFile{}, fmt.Errorf("read connector use configuration file: %w", err)
+	}
+	var file localUseConfigurationsFile
+	if err := decodeStrict(contents, &file); err != nil {
+		return localUseConfigurationsFile{}, fmt.Errorf("decode connector use configuration file: %w", err)
+	}
+	if file.SchemaVersion != UseConfigurationsSchemaVersion {
+		return localUseConfigurationsFile{}, fmt.Errorf("unsupported connector use configuration schema version %q", file.SchemaVersion)
+	}
+	knownConnections := make(map[connectionKey]bool, len(connections))
+	for _, connection := range connections {
+		knownConnections[connectionKey{connectorID: connection.ConnectorID, connectionName: connection.ConnectionName}] = true
+	}
+	seen := make(map[sdkgo.ConnectorConfigurationRef]bool, len(file.OperationConfigurations))
+	for index, record := range file.OperationConfigurations {
+		reference := sdkgo.ConnectorConfigurationRef{
+			ConnectorID: record.ConnectorID, ConnectionName: record.ConnectionName,
+			OperationID: record.OperationID, FlowType: record.FlowType, StepType: record.StepType,
+		}
+		if err := reference.Validate(); err != nil {
+			return localUseConfigurationsFile{}, fmt.Errorf("operation configuration %d identity: %w", index, err)
+		}
+		if !knownConnections[connectionKey{connectorID: record.ConnectorID, connectionName: record.ConnectionName}] {
+			return localUseConfigurationsFile{}, fmt.Errorf("operation configuration %d references an unknown connection", index)
+		}
+		if seen[reference] {
+			return localUseConfigurationsFile{}, fmt.Errorf(
+				"connector %q connection %q operation %q Flow %q Step %q configuration is duplicated",
+				reference.ConnectorID, reference.ConnectionName, reference.OperationID, reference.FlowType, reference.StepType,
+			)
+		}
+		seen[reference] = true
+		var object map[string]json.RawMessage
+		if len(record.Configuration) == 0 || decodeStrict(record.Configuration, &object) != nil || object == nil {
+			return localUseConfigurationsFile{}, fmt.Errorf("operation configuration %d configuration must be a JSON object", index)
+		}
 	}
 	return file, nil
 }
