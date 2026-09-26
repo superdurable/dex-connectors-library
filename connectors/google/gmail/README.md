@@ -31,6 +31,60 @@ start request IDs and application-owned RPC state perform final deduplication.
 The application chooses the durable key, retention policy, locks, and duplicate
 response.
 
+Use one `NewLocalMessageTriggerRunner` for every Gmail message Trigger route on
+a connection. It persists each matched event in a binding-specific inbox before
+delivering it, and then:
+
+- lists every reply route before any root route in each poll, then delivers
+  every root before any reply. A reply's root reaches Gmail first, so the root
+  of every reply the runner delivers has already reached Dex;
+- consumes an undeliverable event, such as a reply in a thread whose Flow
+  finished or never started, and keeps scanning;
+- ends the poll at any other failure, such as a Dex outage. Every later poll
+  retries that event first, before any later message, until the target
+  consumes it, even after newer mail pushes it off the polled page;
+- replays pending events at startup, roots first, with backoff from 250
+  milliseconds to 30 seconds, and never ends the process because of one event.
+
+The generated per-Trigger factories run independent pollers that do not order
+roots before replies. Since v0.11.0, which requires sdkgo v0.9.0, an RPC target
+consumes a reply whose Flow does not exist yet. A reply that its poller sees
+before the root poller starts the Flow is therefore lost, where v0.10.0 and
+earlier retried it. Applications that ran separate root and reply pollers must
+switch to the shared runner whenever one Trigger starts a Flow and another
+continues it.
+
+The runner logs through `log/slog`, to `slog.Default()` unless you pass
+`gmail.WithLogger(logger)` to `NewLocalMessageTriggerRunner` or `New`; the
+logger also reaches the durable inboxes that `NewLocalMessageTriggerRunner`
+creates. A failed poll or delivery is retried on the next poll, so its `delay`
+is the poll interval:
+
+| Level | Message | Emitted by | Attributes |
+| --- | --- | --- | --- |
+| WARN | `gmail poll failed; retrying` | the poller, when a list, a message read, or the inbox write fails | `attempt`, `delay`, `error`, and `thread_id` and `event_id` when one message failed |
+| WARN | `trigger delivery failed; retrying` | the poller, when the target fails | `thread_id`, `event_id`, `attempt`, `delay`, `flow_id` for a Dex error, `error` |
+| INFO | `trigger delivered after retry` | the poller, when a later poll delivers that event | `thread_id`, `event_id`, `attempts` |
+| WARN | `trigger event skipped: undeliverable` | the durable inbox with `NewLocalMessageTriggerRunner`; the poller without an inbox | `thread_id`, `event_id`, `flow_id` for a Dex error, `error` |
+| DEBUG | `trigger event ignored` | the poller | `thread_id`, `event_id`, and `reason`: `not_a_reply`, `not_a_root`, or `matcher_mismatch` |
+
+Every record carries `connector`, `connection`, `trigger`, and `binding`.
+`event_id` is the Gmail message ID. The poller passes `thread_id` to the
+inbox's and the Dex targets' records too, so one `thread_id` finds every record
+about a thread; events that the inbox replays at startup carry only their
+`event_id`. `attempt` on a failed poll counts the polls that failed in a row
+and starts again after a poll that reaches Gmail. `attempt` on a failed
+delivery counts that event's failed deliveries. A failed event that is later
+consumed as undeliverable logs only the skip, never `trigger delivered after
+retry`. Records never contain senders, recipients, subjects, snippets, bodies,
+the search query, or tokens. The runner also emits the durable inbox's replay
+and I/O records described in the SDK README.
+
+The generated per-Trigger factories pass `WithLogger` only to their poller,
+and their poller records carry no `binding`. Their durable inbox and runner
+records go to `slog.Default()`, so call `slog.SetDefault` when you use them,
+or use `NewLocalMessageTriggerRunner`.
+
 `GetMessage` returns decoded headers, text, HTML, snippet, labels, and received
 time. `ReplyToMessage` reads the source metadata and sends with Gmail thread
 ID, `In-Reply-To`, and `References` preserved.

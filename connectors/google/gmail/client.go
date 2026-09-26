@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"mime"
 	"mime/multipart"
 	"net/http"
@@ -30,10 +31,21 @@ type Option func(*clientOptions)
 type clientOptions struct {
 	httpClient *http.Client
 	now        func() time.Time
+	logger     *slog.Logger
 }
 
 func WithHTTPClient(client *http.Client) Option {
 	return func(options *clientOptions) { options.httpClient = client }
+}
+
+// WithLogger sends the Trigger pollers' records to logger: failed polls, ignored and skipped messages,
+// delivery retries, and the durable inboxes that NewLocalMessageTriggerRunner creates. Without this
+// option, or with a nil logger, records go to slog.Default() as of each record. Records carry message
+// and thread IDs and error messages, never senders, subjects, snippets, bodies, or tokens. The generated
+// per-Trigger factories, such as NewLocalReplyReceivedTrigger, pass logger to their poller only; their
+// durable inbox and runner records go to slog.Default(), so call slog.SetDefault when you use them.
+func WithLogger(logger *slog.Logger) Option {
+	return func(options *clientOptions) { options.logger = logger }
 }
 
 func withClock(now func() time.Time) Option {
@@ -49,6 +61,7 @@ type Client struct {
 	pollInterval     time.Duration
 	pollPageSize     int
 	now              func() time.Time
+	logger           *slog.Logger
 }
 
 type SendMessageInput struct {
@@ -104,6 +117,7 @@ func New(config Config, credentials sdkgo.CredentialProvider[Credentials], optio
 		endpoint: endpoint, httpClient: dependencies.httpClient, credentials: credentials,
 		maxResponseBytes: config.MaxResponseBytes, maxMessageBytes: config.MaxMessageBytes,
 		pollInterval: config.PollInterval, pollPageSize: int(config.PollPageSize), now: dependencies.now,
+		logger: dependencies.logger,
 	}, nil
 }
 

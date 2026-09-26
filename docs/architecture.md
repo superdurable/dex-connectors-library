@@ -204,11 +204,19 @@ duplicate keys are an explicit conflict and ambiguous writes remain uncertain.
 
 ## Gmail connector
 
-Gmail is a separate module and OAuth Connection. It requests OIDC identity and
-`gmail.send`, sends only from the verified primary address, and never reads the
-inbox, sent mail, profile, or aliases. Gmail has no server-side idempotency
-guarantee, so ambiguous sends route to recovery and are never automatically
-repeated.
+Gmail is a separate module and OAuth Connection. It requests OIDC identity,
+`gmail.readonly`, and `gmail.send`. Its Triggers read inbox message metadata,
+`GetMessage` reads one message, and sends use only the verified primary
+address. It never modifies or deletes messages. Gmail has no server-side
+idempotency guarantee, so ambiguous sends route to recovery and are never
+automatically repeated.
+
+`NewLocalMessageTriggerRunner` lists every reply route before any root route in
+each poll, then delivers every root before any reply, and ends a poll at the
+first retryable failure. Every later poll retries that event before any listed
+message, even after newer mail pushes it off the polled page. Gmail receives a
+thread's root before any reply to it, so the root of every reply the runner
+delivers has already started its Flow.
 
 ## LinkedIn connector
 
