@@ -42,6 +42,7 @@ func GoTo[T any](target dex.Step[T]) Target[T] {
 }
 
 // HasStep reports whether the target names a Step.
+// Generated factories skip an empty optional branch target.
 func (target Target[T]) HasStep() bool {
 	return targetHasStep(target.target)
 }
@@ -214,7 +215,7 @@ func (step QueryStep[STEP_IN, OP_IN, OUT]) Execute(ctx dex.Context, input STEP_I
 			return nil, err
 		}
 	}
-	return routeBranch("query", result.Branch, result, step.branches, step.optionalBranches)
+	return routeBranch(step.branches, step.optionalBranches, result.Branch, result, "query")
 }
 
 func (step QueryStep[STEP_IN, OP_IN, OUT]) runOptions() []RunOption {
@@ -242,7 +243,7 @@ func (step MutationStep[STEP_IN, OP_IN, OUT]) Execute(ctx dex.Context, input STE
 			return nil, err
 		}
 	}
-	return routeBranch("mutation", result.Branch, result, step.branches, step.optionalBranches)
+	return routeBranch(step.branches, step.optionalBranches, result.Branch, result, "mutation")
 }
 
 func (step MutationStep[STEP_IN, OP_IN, OUT]) runOptions() []RunOption {
@@ -298,11 +299,14 @@ func validateBranchTargets[T any](definitions []BranchDefinition, targets []Bran
 		if !expected[target.branch] {
 			return nil, nil, fmt.Errorf("branch target %q is not declared by the operation", target.branch)
 		}
+		if !targetHasStep(target.target) {
+			if optional[target.branch] {
+				continue
+			}
+			return nil, nil, fmt.Errorf("branch target %q must name a Step", target.branch)
+		}
 		if resolved[target.branch] != nil {
 			return nil, nil, fmt.Errorf("branch target %q is duplicated", target.branch)
-		}
-		if !targetHasStep(target.target) {
-			return nil, nil, fmt.Errorf("branch target %q must name a Step", target.branch)
 		}
 		resolved[target.branch] = target.target
 	}
@@ -314,7 +318,7 @@ func validateBranchTargets[T any](definitions []BranchDefinition, targets []Bran
 	return resolved, optional, nil
 }
 
-func routeBranch[T any](kind string, branch BranchID, result T, branches map[BranchID]dex.Step[T], optional map[BranchID]bool) (*dex.StepDecision, error) {
+func routeBranch[T any](branches map[BranchID]dex.Step[T], optional map[BranchID]bool, branch BranchID, result T, kind string) (*dex.StepDecision, error) {
 	if target := branches[branch]; target != nil {
 		return dex.GoTo(target, result), nil
 	}

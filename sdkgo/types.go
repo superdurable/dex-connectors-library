@@ -77,12 +77,15 @@ const (
 	UncertainBranchID BranchID = "uncertain"
 )
 
+// BranchDefinition is one stable route an operation can select.
 type BranchDefinition struct {
-	ID          BranchID `json:"id" yaml:"id"`
-	Description string   `json:"description" yaml:"description"`
-	// Optional is true when an application may omit the branch target.
-	// Selecting an omitted optional branch ForceFails the Flow after the Result is stored.
-	// The zero value requires a target.
+	// ID is the stable branch name returned in a Query or Mutation result.
+	ID BranchID `json:"id" yaml:"id"`
+	// Description explains the route for connector authors and generated docs.
+	Description string `json:"description" yaml:"description"`
+	// Optional means an application may omit the branch target.
+	// An omitted optional branch fails the Flow when the operation selects it.
+	// Leave this false for a happy-path branch the application must connect.
 	Optional bool `json:"optional,omitempty" yaml:"optional,omitempty"`
 }
 

@@ -219,6 +219,25 @@ func TestOptionalBranchMayBeOmittedAndForceFailsWhenSelected(t *testing.T) {
 		},
 	})
 	require.ErrorContains(t, err, "branch target \"failed\" is required")
+
+	emptyOptional := queryDefinition(testQueryRef)
+	for index := range emptyOptional.Branches {
+		if emptyOptional.Branches[index].ID == testQueryDefect {
+			emptyOptional.Branches[index].Optional = true
+		}
+	}
+	_, err = sdkgo.NewQueryStep(sdkgo.QueryStepConfig[string, string, string]{
+		StepType:    "EmptyOptional",
+		Annotations: sdkgo.StepAnnotations{GroupID: "test", GroupLabel: "Test", Explanation: "test query"},
+		Operation:   &factoryQuery{definition: emptyOptional}, Connection: testConnection,
+		MapToOperationInput: func(input string) string { return input },
+		Branches: []sdkgo.BranchTarget[sdkgo.QueryResult[string]]{
+			sdkgo.GoToBranch(testQuerySucceeded, factoryTarget{}),
+			sdkgo.GoToBranch(testQueryFailed, factoryTarget{}),
+			sdkgo.Target[sdkgo.QueryResult[string]]{}.BranchTarget(testQueryDefect),
+		},
+	})
+	require.NoError(t, err)
 }
 
 func TestUndeclaredBranchStillFails(t *testing.T) {

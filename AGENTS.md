@@ -23,22 +23,6 @@ behavior.
 - Keep secrets out of Flow input, Attributes, Results, receipts, Streams, logs,
   generated values, and release artifacts.
 
-## Dex semantics
-
-Before changing Connector Step options, branches, retry, durability, or other
-Dex semantics, load the installed dex-developer skill. Codex uses
-`$dex-developer`, Claude Code uses `/dex:dex-developer`, and Cursor uses the
-installed dex-developer skill. If the skill is unavailable, stop and use
-https://docs.superdurable.io/build-with-ai/dex-developer-skill.
-
-Only a happy-path branch stays required. Mark every other branch
-`optional: true`. An application that does not wire an optional branch
-ForceFails the Flow when that branch is selected.
-
-Execute durability defaults to async. Use sync only when the operation is very
-likely to run longer than seven seconds. Do not choose sync because the timeout
-ceiling is 30 seconds.
-
 ## Connector Authoring
 
 - connector.yaml is the source for company, release version, generated Config,
@@ -54,6 +38,24 @@ ceiling is 30 seconds.
   Paths may have any depth below connectors/.
 - Add, move, or remove a registry entry only when the connector directory
   changes. Version-only changes do not modify the registry.
+
+## Dex semantics
+
+Before changing Connector Step options, branches, retry, durability, or other
+Dex semantics, load the installed dex-developer skill. Cursor uses the
+dex-developer skill, Codex uses `$dex-developer`, and Claude Code uses
+`/dex:dex-developer`. If the skill is unavailable, stop and follow
+https://docs.superdurable.io/build-with-ai/dex-developer-skill.
+
+Only a happy-path branch is required. Mark every other branch `optional: true`.
+An unwired optional branch fails the Flow when the operation selects it. Mark a
+non-happy-path branch required only when the application must choose a
+different continuation, and say why in the branch description.
+
+Execute durability defaults to async. Use sync only when the operation is very
+likely to exceed 7 seconds. That matches the Dex ASYNC local-activity limit.
+Such operations are rare. An LLM generation call can use sync. Do not choose
+sync because the Execute timeout ceiling is 30 seconds.
 
 ## Versioning and Release Order
 

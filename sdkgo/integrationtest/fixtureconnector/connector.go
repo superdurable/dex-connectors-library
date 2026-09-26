@@ -222,7 +222,7 @@ func NewLookupWidgetStep[IN any](config LookupWidgetStepConfig[IN]) sdkgo.QueryS
 }
 
 func lookupWidgetBranches[IN any](config LookupWidgetStepConfig[IN]) []sdkgo.BranchTarget[LookupWidgetResult] {
-	branches := []sdkgo.BranchTarget[LookupWidgetResult]{}
+	branches := make([]sdkgo.BranchTarget[LookupWidgetResult], 0, 4)
 	if config.Found.HasStep() {
 		branches = append(branches, config.Found.BranchTarget(lookupWidgetFound))
 	}
@@ -269,7 +269,7 @@ func NewCreateWidgetStep[IN any](config CreateWidgetStepConfig[IN]) sdkgo.Mutati
 }
 
 func createWidgetBranches[IN any](config CreateWidgetStepConfig[IN]) []sdkgo.BranchTarget[CreateWidgetResult] {
-	branches := []sdkgo.BranchTarget[CreateWidgetResult]{}
+	branches := make([]sdkgo.BranchTarget[CreateWidgetResult], 0, 4)
 	if config.Completed.HasStep() {
 		branches = append(branches, config.Completed.BranchTarget(createWidgetCompleted))
 	}

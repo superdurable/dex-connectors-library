@@ -253,11 +253,11 @@ func writeOperationFactory(output *bytes.Buffer, manifest schema.Manifest, opera
 	write("\tConnectionName string `connector:\"connectionName\"`\n")
 	write("\tMapToOperationInput func(IN) %s `connector:\"mapToOperationInput\"`\n", operation.InputType)
 	for _, branch := range operation.Branches {
-		tag := fmt.Sprintf("branch=%s", branch.ID)
+		tag := branch.ID
 		if branch.Optional {
 			tag += ",optional"
 		}
-		write("\t%s sdkgo.Target[%sResult] `connector:%s`\n", branch.GoName, operation.GoName, strconv.Quote(tag))
+		write("\t%s sdkgo.Target[%sResult] `connector:\"branch=%s\"`\n", branch.GoName, operation.GoName, tag)
 	}
 	write("\tResultAttribute *dex.Attribute[sdkgo.%sResult[%s]] `connector:\"resultAttribute\"`\n", kind, operation.OutputType)
 	if contains(operation.Progress, "structured") {
@@ -279,7 +279,7 @@ func writeOperationFactory(output *bytes.Buffer, manifest schema.Manifest, opera
 	write("\t\tOperation: config.Connection.client.%s(), Connection: config.Connection.reference,\n", operation.GoName)
 	write("\t\tMapToOperationInput: config.MapToOperationInput,\n")
 	write("\t\tBranches: func() []sdkgo.BranchTarget[%sResult] {\n", operation.GoName)
-	write("\t\t\tbranches := []sdkgo.BranchTarget[%sResult]{}\n", operation.GoName)
+	write("\t\t\tbranches := make([]sdkgo.BranchTarget[%sResult], 0, %d)\n", operation.GoName, len(operation.Branches))
 	for _, branch := range operation.Branches {
 		write("\t\t\tif config.%s.HasStep() {\n", branch.GoName)
 		write("\t\t\t\tbranches = append(branches, config.%s.BranchTarget(%sBranch%s))\n", branch.GoName, operation.GoName, branch.GoName)

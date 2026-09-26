@@ -186,8 +186,8 @@ The integration suite verifies:
 2. Confirm a Flow can be authored with factory values directly inside
    `dex.DefineStep`/`dex.DefineStartStep`, without provider concrete Steps.
 3. Confirm every required branch has one target. An omitted optional branch
-   ForceFails the Flow. Mutation uncertainty cannot be mistaken for a provider
-   rejection.
+   ForceFails the Flow when selected. Mutation uncertainty cannot be mistaken
+   for a provider rejection.
 4. Confirm `ConnectionRef` is bound at Flow registration, not accepted from
    public start input.
 5. Confirm the Flow explicitly registers each Attribute and Stream passed to a

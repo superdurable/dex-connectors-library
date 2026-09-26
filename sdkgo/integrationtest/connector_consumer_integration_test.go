@@ -175,7 +175,7 @@ func (optionalDefectQuery) Definition() sdkgo.QueryDefinition {
 		},
 		StepDefaults: sdkgo.StepDefaults{
 			ExecuteMethodTimeout: 10 * time.Second,
-			ExecuteDurability:    dex.StepDurabilitySync,
+			ExecuteDurability:    dex.StepDurabilityAsync,
 		},
 	}
 }

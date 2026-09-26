@@ -16,9 +16,6 @@ openai.NewCreateResponseStep(openai.CreateResponseStepConfig[Input]{
     Connection: openAIConnection,
     MapToOperationInput: mapToOperationInput,
     Completed: sdkgo.GoTo(CompletedStep{}),
-    Failed:    sdkgo.GoTo(FailedStep{}),
-    Uncertain: sdkgo.GoTo(ReconcileStep{}),
-    Defect:    sdkgo.GoTo(FailedStep{}),
 })
 ```
 
@@ -34,9 +31,10 @@ configured client to a validated logical `ConnectionRef`, so an HTTP, OpenAI,
 Gmail, or Sheets connection cannot be passed to another connector factory.
 The same typed connection can be reused by operations from that connector.
 
-The factory owns one provider invocation and one `dex.GoTo`. The application
-supplies a stable Step type, annotations, registration-time typed Connection,
-pure `MapToOperationInput`, and one typed target for every declared branch.
+The factory owns one provider invocation and then either one `dex.GoTo` or a
+Flow failure. The application supplies a stable Step type, annotations,
+registration-time typed Connection, pure `MapToOperationInput`, and one typed
+target for every required branch. Optional branches may be left empty.
 A target receives only the current Connector Result:
 
 ```go
@@ -104,11 +102,10 @@ type QueryResult[T any] struct {
 
 There is no public fixed Outcome enum. Provider-specific branches may express
 `found`, `notFound`, `completed`, `rejected`, or other durable Process
-vocabulary. A required branch must have exactly one GoTo target. An optional
-branch may be omitted. Selecting an omitted optional branch stores the Result
-when one is configured, then ForceFails the Flow instead of retrying. Missing
-required targets, duplicate targets, and unknown targets reject factory
-construction.
+vocabulary. A required branch must have exactly one GoTo target. A missing,
+duplicate, or unknown required target rejects factory construction. An optional
+branch may omit its target. Selecting that branch writes the Result Attribute
+when one is configured, then fails the Flow. It does not enter Execute retry.
 
 Operation implementations cannot return an unclassified Go error. They return:
 
@@ -117,8 +114,8 @@ Operation implementations cannot return an unclassified Go error. They return:
 
 Only Retry becomes a non-nil Go error and enters the Dex Execute retry policy.
 A positive provider delay becomes `dex.RetryAfter`; zero delay uses the Step
-policy. A branch or uncertainty returns `error == nil`. A wired branch is routed to
-its target. An omitted optional branch ForceFails the Flow.
+policy. A branch or uncertainty returns `error == nil`. A required branch is
+routed by the Process. An unwired optional branch fails the Flow.
 
 Mutation uncertainty is not an ordinary caller-selected branch. After a
 request dispatch, a lost connection, truncated response, ambiguous server
@@ -143,8 +140,9 @@ dex.Attribute[sdkgo.QueryResult[OUT]]
 dex.Attribute[sdkgo.MutationResult[OUT]]
 ```
 
-The factory writes the complete Result before choosing its branch. Attribute
-write and `GoTo` are returned in one Dex Execute response and commit together.
+The factory writes the complete Result before choosing its branch. The
+Attribute write and the branch decision, including a failure for an unwired
+optional branch, are returned in one Dex Execute response and commit together.
 If a post-mutation Attribute write must be retried, the same Step execution
 retains its Call ID and idempotency key.
 
@@ -158,11 +156,11 @@ write the resource.
 
 Manifest execution defaults generate `StepDefaults`: Execute timeout,
 optional heartbeat timeout, retry policy, and durability. HTTP defaults are
-30 seconds and a five-attempt/two-minute window. OpenAI defaults are 150
-seconds and a five-attempt/five-minute window. Execute durability is
-asynchronous unless the operation is very likely to run longer than seven
-seconds. Response creation stays synchronous. Response retrieval uses the
-asynchronous HTTP defaults.
+30 seconds and a five-attempt/two-minute window. OpenAI response creation
+defaults are 150 seconds and a five-attempt/five-minute window. Execute
+durability is asynchronous unless the operation is very likely to run longer
+than seven seconds. Response creation uses synchronous durability. A response
+retrieval uses the asynchronous HTTP defaults.
 
 `StepOptionsOverride` overlays non-zero Execute fields and can add
 `dex.ProceedToOnExecuteFailure`. That recovery target accepts the original
