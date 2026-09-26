@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: MIT
 
 import { useEffect, useState } from "react";
-import { Link, Route, Routes, useParams } from "react-router-dom";
+import { Link, Route, Routes, useLocation, useParams } from "react-router-dom";
 
 import { DexMark } from "./DexMark";
+import { WhatIsDexConnectors } from "./WhatIsDexConnectors";
 import {
   catalogDocumentUrl,
   catalogTotals,
@@ -25,6 +26,8 @@ type LoadState<T> =
 
 export function App() {
   const [catalog, setCatalog] = useState<LoadState<CatalogConnector[]>>({ status: "loading" });
+  const location = useLocation();
+  const isExplainer = location.pathname === "/what-is-dex-connectors";
 
   useEffect(() => {
     const controller = new AbortController();
@@ -61,12 +64,21 @@ export function App() {
         <p className="lede">
           Open sourced and trusted connectors, take your process from prototype to production.
         </p>
-        {catalog.status === "ready" ? <CatalogTotals connectors={catalog.value} /> : null}
+        <nav className="site-tabs" aria-label="Connector site">
+          <Link className={`site-tab${isExplainer ? "" : " active"}`} to="/">
+            Connectors
+          </Link>
+          <Link className={`site-tab${isExplainer ? " active" : ""}`} to="/what-is-dex-connectors">
+            What is Dex Connectors
+          </Link>
+        </nav>
+        {!isExplainer && catalog.status === "ready" ? <CatalogTotals connectors={catalog.value} /> : null}
       </header>
       <main>
         <Routes>
           <Route path="/" element={<CatalogPage catalog={catalog} />} />
           <Route path="/connectors/:id" element={<ConnectorPage catalog={catalog} />} />
+          <Route path="/what-is-dex-connectors" element={<WhatIsDexConnectors />} />
         </Routes>
       </main>
     </div>
