@@ -33,7 +33,6 @@ type Status string
 const (
 	StatusWaitingForReply Status = "waitingForReply"
 	StatusReplying        Status = "replying"
-	StatusNeedsRecovery   Status = "needsRecovery"
 	StatusCompleted       Status = "completed"
 )
 
@@ -50,7 +49,6 @@ type ThreadState struct {
 	ReplyEventID   string        `json:"replyEventId,omitempty"`
 	ReplyMessageID string        `json:"replyMessageId,omitempty"`
 	Status         Status        `json:"status"`
-	FailureMessage string        `json:"failureMessage,omitempty"`
 }
 
 type ReplyResult struct {
@@ -83,11 +81,9 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			MapToOperationInput: func(input Input) gmail.GetMessageInput {
 				return gmail.GetMessageInput{MessageID: input.MessageID}
 			},
-			Read: sdkgo.GoTo(messageLoaded{}), NotFound: sdkgo.GoTo(messageReadFailed{}),
-			ProviderRejected: sdkgo.GoTo(messageReadFailed{}), InvalidResponse: sdkgo.GoTo(messageReadFailed{}), Defect: sdkgo.GoTo(messageReadFailed{}),
+			Read: sdkgo.GoTo(messageLoaded{}),
 		})),
 		dex.DefineStep(messageLoaded{}),
-		dex.DefineStep(messageReadFailed{}),
 		dex.DefineStep(gmail.NewReplyToMessageStep(gmail.ReplyToMessageStepConfig[ThreadState]{
 			StepType: replyMessageStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{GroupID: "gmail", GroupLabel: "Gmail", Explanation: "Reply after the received email Trigger invokes the typed RPC."},
@@ -95,12 +91,10 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			MapToOperationInput: func(state ThreadState) gmail.ReplyToMessageInput {
 				return gmail.ReplyToMessageInput{MessageID: state.ReplyMessageID, TextBody: "Processing complete."}
 			},
-			Sent: sdkgo.GoTo(replySent{}), ProviderRejected: sdkgo.GoTo(replyNeedsRecovery{}),
-			InvalidResponse: sdkgo.GoTo(replyNeedsRecovery{}), Uncertain: sdkgo.GoTo(replyNeedsRecovery{}), Defect: sdkgo.GoTo(replyNeedsRecovery{}),
+			Sent:            sdkgo.GoTo(replySent{}),
 			ResultAttribute: &replyResultAttribute,
 		})),
 		dex.DefineStep(replySent{}),
-		dex.DefineStep(replyNeedsRecovery{}),
 	}
 }
 
@@ -142,7 +136,6 @@ func (flow *Flow) ReceiveEmailReply(ctx dex.Context, input ReceiveEmailReplyInpu
 	state.Status = StatusReplying
 	state.ReplyEventID = input.EventID
 	state.ReplyMessageID = input.MessageID
-	state.FailureMessage = ""
 	if err := threadStateAttribute.Set(ctx, state); err != nil {
 		return nil, err
 	}
@@ -249,16 +242,6 @@ func (messageLoaded) Execute(ctx dex.Context, result readMessageOutput) (*dex.St
 	return dex.DeadEnd(), nil
 }
 
-// dex:group group-id:recovery group-label:"Recovery"
-// dex:explanation text:"Fail when Gmail cannot provide the message that started the Flow."
-type messageReadFailed struct {
-	dex.StepDefaultsNoWaitFor[readMessageOutput]
-}
-
-func (messageReadFailed) Execute(_ dex.Context, result readMessageOutput) (*dex.StepDecision, error) {
-	return dex.ForceFail(failureMessage(result.Branch, result.Failure)), nil
-}
-
 type replyMessageOutput = gmail.ReplyToMessageResult
 
 // dex:group group-id:gmail group-label:"Gmail"
@@ -281,36 +264,6 @@ func (replySent) Execute(ctx dex.Context, _ replyMessageOutput) (*dex.StepDecisi
 		return nil, err
 	}
 	return dex.GracefulComplete(state), nil
-}
-
-// dex:group group-id:recovery group-label:"Recovery"
-// dex:explanation text:"Pause after a terminal or uncertain Gmail reply outcome for explicit recovery."
-type replyNeedsRecovery struct {
-	dex.StepDefaultsNoWaitFor[replyMessageOutput]
-}
-
-func (replyNeedsRecovery) GetStepOptions() *dex.StepOptions {
-	return &dex.StepOptions{ExecuteLockAttributes: []dex.AttributeLock{dex.LockAttribute(threadStateAttribute)}}
-}
-
-func (replyNeedsRecovery) Execute(ctx dex.Context, result replyMessageOutput) (*dex.StepDecision, error) {
-	state, err := threadStateAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	state.Status = StatusNeedsRecovery
-	state.FailureMessage = failureMessage(result.Branch, result.Failure)
-	if err := threadStateAttribute.Set(ctx, state); err != nil {
-		return nil, err
-	}
-	return dex.DeadEnd(), nil
-}
-
-func failureMessage(branch sdkgo.BranchID, failure *sdkgo.Failure) string {
-	if failure == nil {
-		return string(branch)
-	}
-	return fmt.Sprintf("%s: %s", branch, failure.Message)
 }
 
 // NewStartTriggerFilter creates the application's Gmail root-message admission rule.

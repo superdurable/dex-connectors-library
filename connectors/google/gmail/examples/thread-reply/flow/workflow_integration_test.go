@@ -28,7 +28,7 @@ import (
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
-func TestThreadReplyExampleCompletesOnceAndPreservesUncertainOutcomeWithRealDex(t *testing.T) {
+func TestThreadReplyExampleCompletesOnceAndFailsUnwiredUncertainOutcomeWithRealDex(t *testing.T) {
 	provider := newGmailProvider(t)
 	defer provider.Close()
 	flow, harness := newGmailIntegrationHarness(t, provider.URL)
@@ -97,11 +97,9 @@ func TestThreadReplyExampleCompletesOnceAndPreservesUncertainOutcomeWithRealDex(
 		},
 	}
 	require.NoError(t, replyTarget.HandleTrigger(ctx, uncertainReply))
-	waitForGmailStatus(t, ctx, harness.client, flow, uncertainFlowID, StatusNeedsRecovery)
-	var uncertainSummary map[string]any
-	require.NoError(t, harness.client.InvokeRPC(ctx, uncertainFlowID, flow.GetDexSummary, nil, &uncertainSummary))
-	require.Contains(t, uncertainSummary, "gmail-thread-reply-result")
-	require.NoError(t, replyTarget.HandleTrigger(ctx, uncertainReply))
+	uncertainResult, err := harness.client.WaitForFlow(ctx, uncertainFlowID, dex.WaitForFlowOptions{})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowFailed, uncertainResult.Status)
 	require.Equal(t, 1, provider.sendCount(uncertainThreadID))
 }
 

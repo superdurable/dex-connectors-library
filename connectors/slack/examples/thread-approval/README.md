@@ -436,11 +436,10 @@ the app, and reconnect in Dex Web so OAuth returns a new user token.
 
 ### `Processing complete.` is not posted
 
-Confirm that the bot has `chat:write` and is a member of the channel. Inspect the
-Flow state. A provider-rejected, uncertain, or defective completion enters
-`needsRecovery`; the example never blindly resends an uncertain external write.
-An initial read with a provider rejection, invalid response, or local defect
-fails the Flow before it waits for approval.
+Confirm that the bot has `chat:write` and is a member of the channel. The example
+wires only the happy-path branches. An unwired optional branch, including a
+provider rejection or an uncertain write, fails the Flow and does not resend
+the reply.
 
 ### Configuration changes do not affect the running Worker
 

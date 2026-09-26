@@ -27,7 +27,7 @@ import (
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
-func TestThreadApprovalExampleCompletesOnceAndPreservesUncertainOutcomeWithRealDex(t *testing.T) {
+func TestThreadApprovalExampleCompletesOnceAndFailsUnwiredUncertainOutcomeWithRealDex(t *testing.T) {
 	provider := newSlackProvider(t)
 	defer provider.Close()
 	flow, harness := newSlackIntegrationHarness(t, provider.URL)
@@ -85,11 +85,9 @@ func TestThreadApprovalExampleCompletesOnceAndPreservesUncertainOutcomeWithRealD
 		},
 	}
 	require.NoError(t, replyTarget.HandleTrigger(ctx, uncertainReply))
-	waitForSlackStatus(t, ctx, harness.client, flow, uncertainFlowID, StatusNeedsRecovery)
-	var uncertainSummary map[string]any
-	require.NoError(t, harness.client.InvokeRPC(ctx, uncertainFlowID, flow.GetDexSummary, nil, &uncertainSummary))
-	require.Contains(t, uncertainSummary, "slack-thread-approval-post-reply-result")
-	require.NoError(t, replyTarget.HandleTrigger(ctx, uncertainReply))
+	uncertainResult, err := harness.client.WaitForFlow(ctx, uncertainFlowID, dex.WaitForFlowOptions{})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowFailed, uncertainResult.Status)
 	require.Equal(t, 1, provider.postCount("3.0"))
 }
 
