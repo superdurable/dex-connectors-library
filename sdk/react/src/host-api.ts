@@ -91,10 +91,19 @@ export interface ConnectorStudioCommandResult {
   error?: { code: string; message: string };
 }
 
+export interface ConnectorStudioFrameResize {
+  type: "connector.frame.resize";
+  protocolVersion: typeof connectorStudioHostAPIVersion;
+  sessionNonce: string;
+  connectorId: string;
+  height: number;
+}
+
 export type ConnectorStudioMessage =
   | ConnectorStudioHostReady
   | ConnectorStudioCommand
-  | ConnectorStudioCommandResult;
+  | ConnectorStudioCommandResult
+  | ConnectorStudioFrameResize;
 
 const commandTypes = new Set<ConnectorStudioCommandType>([
   "oauth.connect",
@@ -136,6 +145,12 @@ export function isConnectorStudioMessage(value: unknown): value is ConnectorStud
       && typeof message.ok === "boolean"
       && (message.value === undefined || isRecord(message.value))
       && (message.error === undefined || isCommandError(message.error));
+  }
+  if (message.type === "connector.frame.resize") {
+    return typeof message.height === "number"
+      && Number.isInteger(message.height)
+      && message.height >= 80
+      && message.height <= 4096;
   }
   return false;
 }

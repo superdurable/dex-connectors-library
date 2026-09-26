@@ -66,4 +66,18 @@ describe("Connector Studio Host API", () => {
     expect(isConnectorStudioMessage({ ...common, type: "connector.command", command: "credential.read" })).toBe(false);
     expect(isConnectorStudioMessage({ ...common, type: "connector.command.result", ok: "yes" })).toBe(false);
   });
+
+  it("accepts bounded frame resize messages", () => {
+    const resize = {
+      type: "connector.frame.resize",
+      protocolVersion: connectorStudioHostAPIVersion,
+      sessionNonce: "nonce",
+      connectorId: "slack",
+      height: 384,
+    };
+    expect(isConnectorStudioMessage(resize)).toBe(true);
+    expect(isConnectorStudioMessage({...resize, height: 0})).toBe(false);
+    expect(isConnectorStudioMessage({...resize, height: 4097})).toBe(false);
+    expect(isConnectorStudioMessage({...resize, height: 384.5})).toBe(false);
+  });
 });

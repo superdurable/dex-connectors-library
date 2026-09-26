@@ -1,6 +1,6 @@
 import { StrictMode, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { connectorStudioHostAPIVersion, isConnectorStudioMessage, type ConnectorStudioCommand, type ConnectorStudioCommandResult, type ConnectorStudioHostReady } from "@superdurable/dex-connectors-react";
+import { connectorStudioHostAPIVersion, isConnectorStudioMessage, observeConnectorStudioFrameAutoHeight, type ConnectorStudioCommand, type ConnectorStudioCommandResult, type ConnectorStudioHostReady } from "@superdurable/dex-connectors-react";
 import { SlackSetupView } from "./setup.js";
 import { SlackConfigurationUnit, type SlackChannel, type SlackUser } from "./units.js";
 
@@ -12,6 +12,7 @@ function ConnectorApp() {
   const [users, setUsers] = useState<SlackUser[]>([]);
   const [busy, setBusy] = useState(false);
   const pending = useMemo(() => new Map<string, ConnectorStudioCommand["command"]>(), []);
+  useEffect(() => ready ? observeConnectorStudioFrameAutoHeight(ready) : undefined, [ready]);
 
   useEffect(() => {
     const receive = (event: MessageEvent<unknown>) => {

@@ -1,6 +1,6 @@
 import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { connectorStudioHostAPIVersion, isConnectorStudioMessage, type ConnectorStudioCommand, type ConnectorStudioHostReady } from "@superdurable/dex-connectors-react";
+import { connectorStudioHostAPIVersion, isConnectorStudioMessage, observeConnectorStudioFrameAutoHeight, type ConnectorStudioCommand, type ConnectorStudioHostReady } from "@superdurable/dex-connectors-react";
 import { GmailSetupView } from "./setup.js";
 import { GmailConfigurationUnit } from "./units.js";
 
@@ -8,6 +8,7 @@ const connectorId = "gmail";
 
 function ConnectorApp() {
   const [ready, setReady] = useState<ConnectorStudioHostReady>();
+  useEffect(() => ready ? observeConnectorStudioFrameAutoHeight(ready) : undefined, [ready]);
   useEffect(() => {
     const receive = (event: MessageEvent<unknown>) => {
       if (event.source === window.parent && isConnectorStudioMessage(event.data) && event.data.type === "connector.host.ready" && event.data.connectorId === connectorId) setReady(event.data);

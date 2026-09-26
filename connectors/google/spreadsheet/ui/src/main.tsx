@@ -1,6 +1,6 @@
 import { StrictMode, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { connectorStudioHostAPIVersion, isConnectorStudioMessage, type ConnectorStudioCommand, type ConnectorStudioCommandResult, type ConnectorStudioHostReady } from "@superdurable/dex-connectors-react";
+import { connectorStudioHostAPIVersion, isConnectorStudioMessage, observeConnectorStudioFrameAutoHeight, type ConnectorStudioCommand, type ConnectorStudioCommandResult, type ConnectorStudioHostReady } from "@superdurable/dex-connectors-react";
 import { SpreadsheetSetupView } from "./setup.js";
 import { SpreadsheetConfigurationUnit } from "./units.js";
 
@@ -11,6 +11,7 @@ function ConnectorApp() {
   const [tabs, setTabs] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const pending = useMemo(() => new Map<string, ConnectorStudioCommand["command"]>(), []);
+  useEffect(() => ready ? observeConnectorStudioFrameAutoHeight(ready) : undefined, [ready]);
   useEffect(() => {
     const receive = (event: MessageEvent<unknown>) => {
       if (event.source !== window.parent || !isConnectorStudioMessage(event.data) || event.data.connectorId !== connectorId) return;
