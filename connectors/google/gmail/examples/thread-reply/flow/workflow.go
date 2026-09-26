@@ -23,6 +23,8 @@ const (
 	replyMessageStepType = "ReplyToReceivedEmail"
 )
 
+var errThreadNotReady = errors.New("Gmail thread is still reading its root message")
+
 var (
 	threadStateAttribute = dex.DefineAttribute[ThreadState]("gmail-thread-reply-state")
 	replyResultAttribute = dex.DefineAttribute[gmail.ReplyToMessageResult]("gmail-thread-reply-result")
@@ -164,6 +166,11 @@ func (flow *Flow) ReceiveEmailReply(ctx dex.Context, input ReceiveEmailReplyInpu
 	}
 	if state.ReplyEventID == input.EventID {
 		return &dex.RPCResult[ReplyResult]{Output: ReplyResult{Duplicate: true, Status: state.Status}}, nil
+	}
+	if state.Status == "" {
+		// The Flow is still reading its root message. The error keeps the reply pending, so the
+		// Trigger retries it after the Flow starts waiting instead of consuming it as a no-op.
+		return nil, errThreadNotReady
 	}
 	if state.Status != StatusWaitingForReply {
 		return &dex.RPCResult[ReplyResult]{Output: ReplyResult{Status: state.Status}}, nil

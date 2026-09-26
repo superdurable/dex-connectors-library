@@ -7,10 +7,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
+	"io"
+	"log/slog"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -23,14 +25,33 @@ import (
 )
 
 func main() {
+	logger := newLogger(os.Stderr, os.Getenv("LOG_LEVEL"))
+	// The Dex SDK and any other library that logs to slog.Default() share the same handler.
+	slog.SetDefault(logger)
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	if err := run(ctx); err != nil {
-		log.Fatal(err)
+	if err := run(ctx, logger); err != nil {
+		logger.Error("thread-reply stopped", "error", err)
+		os.Exit(1)
 	}
 }
 
-func run(ctx context.Context) error {
+// newLogger writes text records to output at LOG_LEVEL (debug, info, warn, or error; info by default).
+// Set LOG_LEVEL=debug to see every Gmail message the Triggers ignore and every delivery.
+func newLogger(output io.Writer, levelName string) *slog.Logger {
+	level := slog.LevelInfo
+	invalid := false
+	if strings.TrimSpace(levelName) != "" {
+		invalid = level.UnmarshalText([]byte(strings.TrimSpace(levelName))) != nil
+	}
+	logger := slog.New(slog.NewTextHandler(output, &slog.HandlerOptions{Level: level}))
+	if invalid {
+		logger.Warn("LOG_LEVEL is not debug, info, warn, or error; using info", "log_level", levelName)
+	}
+	return logger
+}
+
+func run(ctx context.Context, logger *slog.Logger) error {
 	store, err := localconfig.LoadFromEnvironment()
 	if err != nil {
 		return err
@@ -80,13 +101,6 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
 	}
-	startRunner, err := gmail.NewLocalMessageReceivedTrigger(
-		store, threadreply.ConnectionName, threadreply.StartTriggerBinding,
-		sdkgo.NewDexFlowTriggerTarget(client, flow, startTriggerFilter, threadreply.ResolveFlowID, threadreply.MapToFlowInput),
-	)
-	if err != nil {
-		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
-	}
 	var replyTriggerConfiguration gmail.ReplyReceivedTriggerConfiguration
 	if err := store.DecodeTriggerConfiguration(
 		gmail.ConnectorID, threadreply.ConnectionName, gmail.ReplyReceivedTriggerDefinition.Trigger.TriggerName,
@@ -98,28 +112,92 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
 	}
-	replyRunner, err := gmail.NewLocalReplyReceivedTrigger(
-		store, threadreply.ConnectionName, threadreply.ReplyTriggerBinding,
-		sdkgo.NewDexRPCTriggerTarget(
-			client, flow.ReceiveEmailReply, replyTriggerFilter, threadreply.ResolveFlowID,
-			threadreply.MapToReceiveEmailReplyInput,
-		),
-	)
+	// One ordered runner delivers every root message before any reply in the same poll. The runner, its
+	// durable inboxes, and the Dex targets log every skipped message and every retry, so the example needs
+	// no wrapper of its own.
+	triggerRunner, err := gmail.NewLocalMessageTriggerRunner(store, threadreply.ConnectionName, gmail.LocalMessageTriggerRunnerConfig{
+		MessageReceivedRoutes: []gmail.LocalMessageReceivedTriggerRoute{{
+			BindingName: threadreply.StartTriggerBinding,
+			Target: sdkgo.NewDexFlowTriggerTarget(
+				client, flow, startTriggerFilter, threadreply.ResolveFlowID, threadreply.MapToFlowInput,
+				sdkgo.WithTriggerLogger(bindingLogger(
+					logger, gmail.MessageReceivedTriggerDefinition.Trigger.TriggerName, threadreply.StartTriggerBinding,
+				)),
+			),
+		}},
+		ReplyReceivedRoutes: []gmail.LocalReplyReceivedTriggerRoute{{
+			BindingName: threadreply.ReplyTriggerBinding,
+			Target: sdkgo.NewDexRPCTriggerTarget(
+				client, flow.ReceiveEmailReply, replyTriggerFilter, threadreply.ResolveFlowID,
+				threadreply.MapToReceiveEmailReplyInput,
+				sdkgo.WithTriggerLogger(bindingLogger(
+					logger, gmail.ReplyReceivedTriggerDefinition.Trigger.TriggerName, threadreply.ReplyTriggerBinding,
+				)),
+			),
+		}},
+	}, gmail.WithLogger(logger))
 	if err != nil {
+		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
+	}
+	// Worker.Start fails at once when the Dex Server is unreachable, so wait for it first.
+	if err := waitForDexServer(ctx, client.HealthCheck, logger); err != nil {
+		if ctx.Err() != nil {
+			// Control-C while waiting is a clean shutdown, not a failure.
+			err = nil
+		}
 		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
 	}
 	runCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	runResults := make(chan error, 3)
+	runResults := make(chan error, 2)
 	go func() { runResults <- worker.Start() }()
-	go func() { runResults <- startRunner.Run(runCtx) }()
-	go func() { runResults <- replyRunner.Run(runCtx) }()
+	go func() { runResults <- triggerRunner.Run(runCtx) }()
 	select {
 	case <-ctx.Done():
 	case err = <-runResults:
 	}
 	cancel()
+	if ctx.Err() != nil && errors.Is(err, context.Canceled) {
+		// Control-C during a long startup replay is a clean shutdown, not a failure.
+		err = nil
+	}
 	return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
+}
+
+// bindingLogger labels a Dex target's records, such as a filtered message, with the same connector,
+// connection, trigger, and binding keys that the runner and the durable inbox use.
+func bindingLogger(logger *slog.Logger, trigger string, binding string) *slog.Logger {
+	return logger.With("connector", gmail.ConnectorID, "connection", threadreply.ConnectionName, "trigger", trigger, "binding", binding)
+}
+
+// waitForDexServer returns once the Dex Server answers a health check. It logs a WARN record for each
+// failed check and retries with delays that grow from 250 milliseconds to 30 seconds, then logs an INFO
+// record when a later check succeeds. It returns ctx.Err() when ctx ends first.
+func waitForDexServer(ctx context.Context, healthCheck func(context.Context) (dex.HealthInfo, error), logger *slog.Logger) error {
+	delay := 250 * time.Millisecond
+	for attempt := 1; ; attempt++ {
+		attemptCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		_, err := healthCheck(attemptCtx)
+		cancel()
+		if err == nil {
+			if attempt > 1 {
+				logger.Info("dex server available after retry", "attempts", attempt)
+			}
+			return nil
+		}
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		logger.Warn("dex server unavailable; retrying", "attempt", attempt, "delay", delay, "error", err.Error())
+		timer := time.NewTimer(delay)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return ctx.Err()
+		case <-timer.C:
+		}
+		delay = min(2*delay, 30*time.Second)
+	}
 }
 
 func stopWorker(worker *dex.Worker) error {

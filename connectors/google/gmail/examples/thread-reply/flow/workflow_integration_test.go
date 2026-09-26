@@ -204,7 +204,7 @@ func gmailIntegrationMessageJSON(messageID string, threadID string, isReply bool
 		{"name": "Message-ID", "value": "<" + messageID + "@example.com>"},
 		{"name": "From", "value": "Sender <sender@example.com>"},
 		{"name": "To", "value": "owner@example.com"},
-		{"name": "Subject", "value": "Approval request"},
+		{"name": "Subject", "value": "SENTINEL-SUBJECT Approval request"},
 	}
 	if isReply {
 		headers = append(headers,
@@ -214,10 +214,10 @@ func gmailIntegrationMessageJSON(messageID string, threadID string, isReply bool
 	}
 	contents, err := json.Marshal(map[string]any{
 		"id": messageID, "threadId": threadID, "labelIds": []string{"INBOX"},
-		"snippet": "approval granted", "internalDate": "1000",
+		"snippet": "SENTINEL-SNIPPET approval granted", "internalDate": "1000",
 		"payload": map[string]any{
 			"mimeType": "text/plain", "headers": headers,
-			"body": map[string]string{"data": base64.RawURLEncoding.EncodeToString([]byte("approval granted"))},
+			"body": map[string]string{"data": base64.RawURLEncoding.EncodeToString([]byte("SENTINEL-BODY approval granted"))},
 		},
 	})
 	if err != nil {

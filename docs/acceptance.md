@@ -190,7 +190,10 @@ The integration suite verifies:
 - a Flow start that the Dex Server rejects, such as a Step heartbeat below the
   server minimum, keeps its event, and replay starts the fixed Flow;
 - an RPC that Dex applied but whose response the client cannot decode is
-  consumed after one application.
+  consumed after one application;
+- the Gmail ordered runner consumes a reply to a completed thread, completes a
+  thread whose root and reply share one poll page or arrive between the poll's
+  list calls, and keeps polling after a restart rescan.
 
 ## Manual API and Dex Web acceptance
 
