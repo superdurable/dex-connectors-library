@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Super Durable
+// SPDX-License-Identifier: MIT
+
 import type { ReactElement } from "react";
 
 export type ConnectionState =

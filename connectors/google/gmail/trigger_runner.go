@@ -15,23 +15,32 @@ import (
 
 // MessageReceivedTriggerRoute binds one root-message configuration to its application target.
 type MessageReceivedTriggerRoute struct {
-	BindingName   string
+	// BindingName names this configured Trigger binding.
+	BindingName string
+	// Configuration is the configuration for message received trigger route.
 	Configuration MessageReceivedTriggerConfiguration
-	Target        sdkgo.TriggerTarget[MessageEvent]
+	// Target routes accepted events into the application.
+	Target sdkgo.TriggerTarget[MessageEvent]
 }
 
 // ReplyReceivedTriggerRoute binds one reply configuration to its application target.
 type ReplyReceivedTriggerRoute struct {
-	BindingName   string
+	// BindingName names this configured Trigger binding.
+	BindingName string
+	// Configuration is the configuration for reply received trigger route.
 	Configuration ReplyReceivedTriggerConfiguration
-	Target        sdkgo.TriggerTarget[MessageEvent]
+	// Target routes accepted events into the application.
+	Target sdkgo.TriggerTarget[MessageEvent]
 }
 
 // MessageTriggerRunnerConfig configures Gmail message Triggers that share one ordered poller.
 type MessageTriggerRunnerConfig struct {
-	Connection            Connection
+	// Connection specifies connection for message trigger runner config.
+	Connection Connection
+	// MessageReceivedRoutes specifies message received routes for message trigger runner config.
 	MessageReceivedRoutes []MessageReceivedTriggerRoute
-	ReplyReceivedRoutes   []ReplyReceivedTriggerRoute
+	// ReplyReceivedRoutes specifies reply received routes for message trigger runner config.
+	ReplyReceivedRoutes []ReplyReceivedTriggerRoute
 }
 
 // MessageTriggerRunner polls every configured Gmail route and delivers root messages before replies.
@@ -144,20 +153,26 @@ func (runner *MessageTriggerRunner) poll(ctx context.Context) error {
 
 // LocalMessageReceivedTriggerRoute binds one stored root-message configuration to its application target.
 type LocalMessageReceivedTriggerRoute struct {
+	// BindingName names this configured Trigger binding.
 	BindingName string
-	Target      sdkgo.TriggerTarget[MessageEvent]
+	// Target routes accepted events into the application.
+	Target sdkgo.TriggerTarget[MessageEvent]
 }
 
 // LocalReplyReceivedTriggerRoute binds one stored reply configuration to its application target.
 type LocalReplyReceivedTriggerRoute struct {
+	// BindingName names this configured Trigger binding.
 	BindingName string
-	Target      sdkgo.TriggerTarget[MessageEvent]
+	// Target routes accepted events into the application.
+	Target sdkgo.TriggerTarget[MessageEvent]
 }
 
 // LocalMessageTriggerRunnerConfig selects stored Gmail message Trigger bindings.
 type LocalMessageTriggerRunnerConfig struct {
+	// MessageReceivedRoutes specifies message received routes for local message trigger runner config.
 	MessageReceivedRoutes []LocalMessageReceivedTriggerRoute
-	ReplyReceivedRoutes   []LocalReplyReceivedTriggerRoute
+	// ReplyReceivedRoutes specifies reply received routes for local message trigger runner config.
+	ReplyReceivedRoutes []LocalReplyReceivedTriggerRoute
 }
 
 // NewLocalMessageTriggerRunner loads stored bindings and creates one durable, ordered Gmail runner. The

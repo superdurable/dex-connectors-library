@@ -145,22 +145,23 @@ func TestDeliverTriggerWaitsTheRetrySchedule(t *testing.T) {
 
 // TestDeliverTriggerStopsWaitingWhenContextEnds cancels during a long backoff, not during an attempt.
 func TestDeliverTriggerStopsWaitingWhenContextEnds(t *testing.T) {
-	previousDelay := triggerRetryInitialDelay
-	triggerRetryInitialDelay = time.Hour
-	t.Cleanup(func() { triggerRetryInitialDelay = previousDelay })
+	previousWait := waitForTriggerRetry
+	waiting := make(chan struct{})
+	waitForTriggerRetry = func(ctx context.Context, _ time.Duration) error {
+		close(waiting)
+		<-ctx.Done()
+		return ctx.Err()
+	}
+	t.Cleanup(func() { waitForTriggerRetry = previousWait })
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	attempted := make(chan struct{})
 	result := make(chan error, 1)
 	go func() {
 		result <- DeliverTrigger(ctx, TriggerTargetFunc[string](func(context.Context, TriggerEvent[string]) error {
-			close(attempted)
 			return errors.New("Dex is unavailable")
 		}), TriggerEvent[string]{ID: "Ev1"})
 	}()
-	<-attempted
-	// Give DeliverTrigger time to start waiting before cancelling.
-	time.Sleep(50 * time.Millisecond)
+	<-waiting
 	cancel()
 	select {
 	case err := <-result:

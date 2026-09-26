@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Super Durable
+// SPDX-License-Identifier: MIT
+
 import { connectorStudioHostAPIVersion, type ConnectorStudioFrameResize, type ConnectorStudioHostReady } from "./host-api.js";
 
 export function observeConnectorStudioFrameAutoHeight(ready: ConnectorStudioHostReady): () => void {

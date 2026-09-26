@@ -1,0 +1,14 @@
+---
+description: Natural and precise product documentation voice
+globs: docs/**/*.md
+alwaysApply: false
+---
+
+# Documentation Voice
+
+Write plain, direct English. Use short sentences and concrete Dex terms. State
+the problem, then the mechanism. Avoid chatbot filler, marketing tone, stacked
+synonyms, and prose that repeats a diagram or example.
+
+Use inline code normally for identifiers in Markdown. Copy application snippets
+from runnable examples and never invent APIs.

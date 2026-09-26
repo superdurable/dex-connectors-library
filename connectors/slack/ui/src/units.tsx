@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Super Durable
+// SPDX-License-Identifier: MIT
+
 import type { ConnectorStudioConfigurationUnitTarget } from "@superdurable/dex-connectors-react";
 import { useState, type ReactNode } from "react";
 

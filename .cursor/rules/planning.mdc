@@ -1,0 +1,25 @@
+---
+description: Required sections and standards for implementation plans
+alwaysApply: true
+---
+
+# Plan Requirements
+
+Every implementation plan includes Tests, Documentation, and UI/UX. Use
+`N/A: <one-line reason>` only when a section genuinely does not apply.
+
+## Tests
+
+List specific scenarios and why each needs unit, integration, or E2E coverage.
+Prefer a real Dex integration test for Step, retry, Trigger delivery, Stream,
+Attribute, RPC, and transition behavior.
+
+## Documentation
+
+Identify the owning module README, `docs/` contract page, public Go docs, and
+runnable examples affected by the change.
+
+## UI/UX
+
+State whether React primitives, Connector Studio UI, or the directory site is
+affected. Do not invent UI work for changes without a visible surface.

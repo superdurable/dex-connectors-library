@@ -1,36 +1,47 @@
 ---
-description: Dex connector repository architecture and authoring rules
+description: Connector architecture and repository-wide code-quality constraints
 alwaysApply: true
 ---
 
 # Dex Connectors Library
 
-- Keep the Go SDK in sdkgo; keep every connector in its own Go module.
-- Group one company's connectors under one directory. The first directory
-  under connectors/ is the company, must match metadata.company, and must
-  contain logo.svg.
-- Keep provider calls in Dex Step Execute; never call providers from RPCs.
-- Register every Attribute and Stream in the consuming Flow schema.
-- Keep secrets out of durable state, Results, receipts, Streams, logs, generated
-  values, and release artifacts.
-- Treat connector.yaml as the source for company, release version, and
-  generated connector APIs.
-- Prefer operation-specific factories; generic Query/Mutation factories are
-  advanced escape hatches.
-- Every connector needs its own go.mod, README, manifest, generated code, and
-  provider tests.
-- Register every connector in the sorted root connectors.yaml list. Paths may
-  have any depth below connectors/.
-- Before changing Connector Step options, branches, retry, durability, or other
-  Dex semantics, load the installed dex-developer skill. Cursor uses the
-  dex-developer skill, Codex uses `$dex-developer`, and Claude Code uses
-  `/dex:dex-developer`. If it is unavailable, stop and follow
-  https://docs.superdurable.io/build-with-ai/dex-developer-skill.
-- Only a happy-path branch is required. Mark every other branch `optional: true`.
-  An unwired optional branch fails the Flow when selected. Mark a non-happy-path
-  branch required only when the application must choose a different continuation,
-  and say why in the branch description.
-- Execute durability defaults to async. Use sync only when the operation is very
-  likely to exceed 7 seconds, matching the Dex ASYNC local-activity limit. An LLM
-  generation call can use sync. Do not choose sync because the timeout ceiling
-  is 30 seconds.
+- Keep `sdkgo` and each connector in separate Go modules.
+- The first connector directory is its company, matches `metadata.company`, and
+  contains `logo.svg`.
+- `connector.yaml` owns generated Config, Credentials, definitions, factories,
+  branches, UI metadata, and defaults. Never edit generated connector code.
+- Register each connector in sorted `connectors.yaml`.
+- Keep provider operation calls in Step `Execute` and out of RPC handlers.
+  Trigger sources may poll or subscribe before routing events to a Flow.
+- Preserve durable and released identities and register every Attribute and
+  Stream in its consuming Flow schema.
+- Keep secrets out of durable state, results, receipts, Streams, logs, generated
+  values, UI artifacts, catalogs, and releases.
+- Load the dex-developer skill before changing Step, retry, durability, Trigger,
+  or Flow-example semantics.
+
+## Code Quality
+
+- Prefer complete domain names. Boolean helpers and internal fields use predicate
+  names. Stable public and wire names do not change for style.
+- Use constructor injection and fail fast on missing required dependencies.
+- Lift stateful or reused closures into explicit struct methods.
+- Keep one struct's methods in one primary file. Put callers above callees.
+- Preserve existing comments. New comments explain non-obvious reasons and stay
+  under 20 words unless they document returns or public APIs.
+- Document every hand-written public SDK and connector declaration and field;
+  skip generated and non-public declarations.
+- Handle every error. Add a short reason only for unavoidable best-effort errors.
+- Validate untrusted provider, user, and file input. Use named must helpers only
+  for trusted invariants.
+- Keep the MIT SPDX header on hand-written Go, Python, TypeScript, TSX, CSS, and
+  HTML source.
+
+## Tests
+
+- Run all modules with `GOWORK=off` and use the repository Makefile.
+- Prefer real Dex integration tests across Worker, Client, persistence, retry,
+  Trigger, RPC, Attribute, Stream, and transition boundaries.
+- Use unique Flow IDs and convergence polling. Fixed waits are only for behavior
+  inside the system under test or elapsed-time assertions.
+- Never skip or gate a failure merely to make a suite pass.

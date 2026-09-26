@@ -24,16 +24,19 @@ import (
 
 const userAgent = "superdurable-dex-linkedin-connector/0.1"
 
+// Option configures Client construction.
 type Option func(*clientOptions)
 
 type clientOptions struct {
 	httpClient *http.Client
 }
 
+// WithHTTPClient overrides the default HTTP client; the caller retains ownership.
 func WithHTTPClient(client *http.Client) Option {
 	return func(options *clientOptions) { options.httpClient = client }
 }
 
+// Client executes authenticated linkedinconnector requests for connector operations.
 type Client struct {
 	userInfoURL      *url.URL
 	maxResponseBytes int64
@@ -41,18 +44,28 @@ type Client struct {
 	credentials      sdkgo.CredentialProvider[Credentials]
 }
 
+// GetAuthenticatedProfileInput contains the provider request fields for get authenticated profile.
 type GetAuthenticatedProfileInput struct{}
 
+// AuthenticatedProfile represents the connector's authenticated profile data.
 type AuthenticatedProfile struct {
-	Subject       string `json:"subject"`
-	Name          string `json:"name,omitempty"`
-	GivenName     string `json:"givenName,omitempty"`
-	FamilyName    string `json:"familyName,omitempty"`
-	PictureURL    string `json:"pictureUrl,omitempty"`
-	Locale        string `json:"locale,omitempty"`
+	// Subject is the message subject.
+	Subject string `json:"subject"`
+	// Name is the name for authenticated profile.
+	Name string `json:"name,omitempty"`
+	// GivenName is the given name for authenticated profile.
+	GivenName string `json:"givenName,omitempty"`
+	// FamilyName is the family name for authenticated profile.
+	FamilyName string `json:"familyName,omitempty"`
+	// PictureURL is the picture URL for authenticated profile.
+	PictureURL string `json:"pictureUrl,omitempty"`
+	// Locale is the locale for authenticated profile.
+	Locale string `json:"locale,omitempty"`
+	// VerifiedEmail is the verified email for authenticated profile.
 	VerifiedEmail string `json:"verifiedEmail"`
 }
 
+// GetAuthenticatedProfileOperation implements the get authenticated profile connector operation.
 type GetAuthenticatedProfileOperation struct{ client *Client }
 
 type userInfo struct {
@@ -75,6 +88,7 @@ type providerResponse struct {
 
 var errResponseTooLarge = errors.New("LinkedIn response exceeds the configured size limit")
 
+// New validates configuration and constructs an authenticated linkedinconnector client.
 func New(config Config, credentials sdkgo.CredentialProvider[Credentials], options ...Option) (*Client, error) {
 	config = withConfigDefaults(config)
 	if err := config.Validate(); err != nil {
@@ -117,14 +131,17 @@ func New(config Config, credentials sdkgo.CredentialProvider[Credentials], optio
 	}, nil
 }
 
+// GetAuthenticatedProfile returns the GetAuthenticatedProfile operation bound to this client.
 func (client *Client) GetAuthenticatedProfile() GetAuthenticatedProfileOperation {
 	return GetAuthenticatedProfileOperation{client: client}
 }
 
+// Definition returns the immutable connector operation definition.
 func (GetAuthenticatedProfileOperation) Definition() sdkgo.QueryDefinition {
 	return GetAuthenticatedProfileDefinition
 }
 
+// Invoke executes one provider call and classifies its attempt.
 func (operation GetAuthenticatedProfileOperation) Invoke(call sdkgo.Call, _ GetAuthenticatedProfileInput) sdkgo.QueryAttempt[AuthenticatedProfile] {
 	credential, failure := operation.client.resolveCredential(call)
 	if failure != nil {

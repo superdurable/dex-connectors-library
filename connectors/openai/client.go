@@ -18,14 +18,17 @@ import (
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 
+// Option configures Client construction.
 type Option func(*clientOptions)
 
 type clientOptions struct{ httpClient *http.Client }
 
+// WithHTTPClient overrides the default HTTP client; the caller retains ownership.
 func WithHTTPClient(client *http.Client) Option {
 	return func(options *clientOptions) { options.httpClient = client }
 }
 
+// Client executes authenticated OpenAI requests for connector operations.
 type Client struct {
 	endpoint         *url.URL
 	httpClient       *http.Client
@@ -34,50 +37,78 @@ type Client struct {
 	maxSSEEventBytes int
 }
 
+// StructuredOutput configures a JSON Schema response format for CreateRequest.
 type StructuredOutput struct {
-	Name        string         `json:"name"`
-	Description string         `json:"description,omitempty"`
-	Schema      map[string]any `json:"schema"`
-	Strict      bool           `json:"strict"`
+	// Name is the schema name sent to OpenAI.
+	Name string `json:"name"`
+	// Description optionally explains the schema to the model.
+	Description string `json:"description,omitempty"`
+	// Schema is the JSON Schema sent to OpenAI.
+	Schema map[string]any `json:"schema"`
+	// Strict requests exact schema adherence when true.
+	Strict bool `json:"strict"`
 }
 
+// CreateRequest contains the provider request fields for create.
 type CreateRequest struct {
-	Model            string
-	Input            any
-	Instructions     string
+	// Model specifies model for create request.
+	Model string
+	// Input specifies input for create request.
+	Input any
+	// Instructions specifies instructions for create request.
+	Instructions string
+	// StructuredOutput specifies structured output for create request.
 	StructuredOutput *StructuredOutput
 }
 
+// RetrieveRequest contains the provider request fields for retrieve.
 type RetrieveRequest struct {
+	// ResponseID is the OpenAI response identifier.
 	ResponseID string
 }
 
+// Usage represents the connector's usage data.
 type Usage struct {
-	InputTokens           int `json:"inputTokens"`
-	CachedInputTokens     int `json:"cachedInputTokens"`
-	OutputTokens          int `json:"outputTokens"`
+	// InputTokens is the number of input tokens billed by the provider.
+	InputTokens int `json:"inputTokens"`
+	// CachedInputTokens is the cached subset of InputTokens.
+	CachedInputTokens int `json:"cachedInputTokens"`
+	// OutputTokens is the number of output tokens billed by the provider.
+	OutputTokens int `json:"outputTokens"`
+	// ReasoningOutputTokens is the reasoning subset of OutputTokens.
 	ReasoningOutputTokens int `json:"reasoningOutputTokens"`
-	TotalTokens           int `json:"totalTokens"`
+	// TotalTokens is the total number of billed tokens.
+	TotalTokens int `json:"totalTokens"`
 }
 
+// Response contains the normalized fields returned by the OpenAI Responses API.
 type Response struct {
-	ID         string `json:"id"`
-	Model      string `json:"model"`
-	Status     string `json:"status"`
+	// ID is the stable provider identifier.
+	ID string `json:"id"`
+	// Model is the model returned by OpenAI.
+	Model string `json:"model"`
+	// Status is the status returned by OpenAI.
+	Status string `json:"status"`
+	// OutputText is the output text returned by OpenAI.
 	OutputText string `json:"outputText"`
-	Usage      Usage  `json:"usage"`
+	// Usage is the usage returned by OpenAI.
+	Usage Usage `json:"usage"`
 }
 
+// CreateResponseOperation implements the create connector operation.
 type CreateResponseOperation struct{ client *Client }
 
+// RetrieveResponseOperation implements the retrieve connector operation.
 type RetrieveResponseOperation struct{ client *Client }
 
 type requestFailure struct {
 	failure sdkgo.Failure
 }
 
+// Error returns the safe human-readable failure message.
 func (failure *requestFailure) Error() string { return failure.failure.Message }
 
+// New validates configuration and constructs an authenticated OpenAI client.
 func New(config Config, credentials sdkgo.CredentialProvider[Credentials], options ...Option) (*Client, error) {
 	config = withConfigDefaults(config)
 	if err := config.Validate(); err != nil {
@@ -113,22 +144,27 @@ func New(config Config, credentials sdkgo.CredentialProvider[Credentials], optio
 	}, nil
 }
 
+// CreateResponse returns the CreateResponse operation bound to this client.
 func (client *Client) CreateResponse() CreateResponseOperation {
 	return CreateResponseOperation{client: client}
 }
 
+// RetrieveResponse returns the RetrieveResponse operation bound to this client.
 func (client *Client) RetrieveResponse() RetrieveResponseOperation {
 	return RetrieveResponseOperation{client: client}
 }
 
+// Definition returns the immutable connector operation definition.
 func (CreateResponseOperation) Definition() sdkgo.MutationDefinition {
 	return CreateResponseDefinition
 }
 
+// IdempotencyKey derives the provider key from the stable connector call ID.
 func (CreateResponseOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateRequest) sdkgo.IdempotencyKey {
 	return sdkgo.IdempotencyKey(callID)
 }
 
+// Invoke executes one provider call and classifies its attempt.
 func (operation CreateResponseOperation) Invoke(call sdkgo.Call, input CreateRequest) sdkgo.MutationAttempt[Response] {
 	if input.Model == "" || input.Input == nil {
 		failure := openAIFailure(sdkgo.FailureValidation, "createResponse", "model and input are required")
@@ -173,10 +209,12 @@ func (operation CreateResponseOperation) Invoke(call sdkgo.Call, input CreateReq
 	return sdkgo.NewMutationBranch(CreateResponseBranchCompleted, result, nil, responseReceipt(call, requestID, response.Header, result.ID))
 }
 
+// Definition returns the immutable connector operation definition.
 func (RetrieveResponseOperation) Definition() sdkgo.QueryDefinition {
 	return RetrieveResponseDefinition
 }
 
+// Invoke executes one provider call and classifies its attempt.
 func (operation RetrieveResponseOperation) Invoke(call sdkgo.Call, input RetrieveRequest) sdkgo.QueryAttempt[Response] {
 	if input.ResponseID == "" {
 		failure := openAIFailure(sdkgo.FailureValidation, "retrieveResponse", "response ID is required")
@@ -193,8 +231,8 @@ func (operation RetrieveResponseOperation) Invoke(call sdkgo.Call, input Retriev
 	defer response.Body.Close()
 	requestID := response.Header.Get("X-Request-Id")
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		failure, retryAfter, retry := classifyOpenAIStatus("retrieveResponse", response.StatusCode, response.Header)
-		if retry {
+		failure, retryAfter, isRetryable := classifyOpenAIStatus("retrieveResponse", response.StatusCode, response.Header)
+		if isRetryable {
 			return sdkgo.NewQueryRetry[Response](failure, retryAfter)
 		}
 		branch := RetrieveResponseBranchProviderRejected
@@ -263,8 +301,8 @@ func (client *Client) readResponse(body io.Reader, operation string) (wireRespon
 }
 
 func createStatusAttempt(call sdkgo.Call, status int, header http.Header, requestID string) sdkgo.MutationAttempt[Response] {
-	failure, retryAfter, retry := classifyOpenAIStatus("createResponse", status, header)
-	if retry {
+	failure, retryAfter, isRetryable := classifyOpenAIStatus("createResponse", status, header)
+	if isRetryable {
 		return sdkgo.NewMutationRetry[Response](failure, retryAfter)
 	}
 	receipt := responseReceipt(call, requestID, header, "")
@@ -276,7 +314,7 @@ func createStatusAttempt(call sdkgo.Call, status int, header http.Header, reques
 
 func classifyOpenAIStatus(operation string, status int, header http.Header) (sdkgo.Failure, time.Duration, bool) {
 	kind := sdkgo.FailureProviderRejection
-	retry := false
+	isRetryable := false
 	switch status {
 	case http.StatusUnauthorized:
 		kind = sdkgo.FailureAuthentication
@@ -288,11 +326,11 @@ func classifyOpenAIStatus(operation string, status int, header http.Header) (sdk
 		kind = sdkgo.FailureConflict
 	case http.StatusTooManyRequests:
 		kind = sdkgo.FailureRateLimit
-		retry = true
+		isRetryable = true
 	default:
 		if status >= 500 {
 			kind = sdkgo.FailureAvailability
-			retry = operation == "retrieveResponse"
+			isRetryable = operation == "retrieveResponse"
 		}
 	}
 	var retryAfter time.Duration
@@ -301,7 +339,7 @@ func classifyOpenAIStatus(operation string, status int, header http.Header) (sdk
 			retryAfter = time.Duration(seconds) * time.Second
 		}
 	}
-	return openAIFailure(kind, operation, "provider returned HTTP "+strconv.Itoa(status)), retryAfter, retry
+	return openAIFailure(kind, operation, "provider returned HTTP "+strconv.Itoa(status)), retryAfter, isRetryable
 }
 
 func openAIFailure(kind sdkgo.FailureKind, operation, message string) sdkgo.Failure {

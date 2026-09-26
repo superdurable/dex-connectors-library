@@ -19,6 +19,7 @@ import (
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 
+// Option configures Client construction.
 type Option func(*clientOptions)
 
 type clientOptions struct {
@@ -26,6 +27,7 @@ type clientOptions struct {
 	now        func() time.Time
 }
 
+// WithHTTPClient overrides the default HTTP client; the caller retains ownership.
 func WithHTTPClient(client *http.Client) Option {
 	return func(options *clientOptions) { options.httpClient = client }
 }
@@ -34,6 +36,7 @@ func withClock(now func() time.Time) Option {
 	return func(options *clientOptions) { options.now = now }
 }
 
+// Client executes authenticated Google Sheets requests for connector operations.
 type Client struct {
 	endpoint         *url.URL
 	httpClient       *http.Client
@@ -43,46 +46,77 @@ type Client struct {
 	now              func() time.Time
 }
 
+// GetValuesInput contains the provider request fields for get values.
 type GetValuesInput struct {
+	// SpreadsheetID is the Google Sheets spreadsheet identifier.
 	SpreadsheetID string `json:"spreadsheetId"`
-	Range         string `json:"range"`
+	// Range is an A1 notation range.
+	Range string `json:"range"`
 }
 
+// GetValuesOutput contains the provider response fields for get values.
 type GetValuesOutput struct {
-	Range          string     `json:"range"`
-	MajorDimension string     `json:"majorDimension"`
-	Values         [][]string `json:"values"`
+	// Range is an A1 notation range.
+	Range string `json:"range"`
+	// MajorDimension is the major dimension returned by Google Sheets.
+	MajorDimension string `json:"majorDimension"`
+	// Values is the values returned by Google Sheets.
+	Values [][]string `json:"values"`
 }
 
+// FindRowInput contains the provider request fields for find row.
 type FindRowInput struct {
+	// SpreadsheetID is the Google Sheets spreadsheet identifier.
 	SpreadsheetID string `json:"spreadsheetId"`
-	SheetName     string `json:"sheetName"`
-	KeyColumn     string `json:"keyColumn"`
-	KeyValue      string `json:"keyValue"`
+	// SheetName is the worksheet title.
+	SheetName string `json:"sheetName"`
+	// KeyColumn specifies key column for find row input.
+	KeyColumn string `json:"keyColumn"`
+	// KeyValue specifies key value for find row input.
+	KeyValue string `json:"keyValue"`
 }
 
+// FindRowOutput contains the provider response fields for find row.
 type FindRowOutput struct {
-	RowNumber       int64             `json:"rowNumber,omitempty"`
-	Values          map[string]string `json:"values,omitempty"`
-	ConflictingRows []int64           `json:"conflictingRows,omitempty"`
+	// RowNumber is the one-based sheet row number.
+	RowNumber int64 `json:"rowNumber,omitempty"`
+	// Values is the values returned by Google Sheets.
+	Values map[string]string `json:"values,omitempty"`
+	// ConflictingRows is the conflicting rows returned by Google Sheets.
+	ConflictingRows []int64 `json:"conflictingRows,omitempty"`
 }
 
+// UpsertRowInput contains the provider request fields for upsert row.
 type UpsertRowInput struct {
-	SpreadsheetID string            `json:"spreadsheetId"`
-	SheetName     string            `json:"sheetName"`
-	KeyColumn     string            `json:"keyColumn"`
-	KeyValue      string            `json:"keyValue"`
-	Values        map[string]string `json:"values"`
+	// SpreadsheetID is the Google Sheets spreadsheet identifier.
+	SpreadsheetID string `json:"spreadsheetId"`
+	// SheetName is the worksheet title.
+	SheetName string `json:"sheetName"`
+	// KeyColumn specifies key column for upsert row input.
+	KeyColumn string `json:"keyColumn"`
+	// KeyValue specifies key value for upsert row input.
+	KeyValue string `json:"keyValue"`
+	// Values specifies values for upsert row input.
+	Values map[string]string `json:"values"`
 }
 
+// UpsertRowOutput contains the provider response fields for upsert row.
 type UpsertRowOutput struct {
-	Action       string `json:"action"`
-	RowNumber    int64  `json:"rowNumber"`
+	// Action is the action returned by Google Sheets.
+	Action string `json:"action"`
+	// RowNumber is the one-based sheet row number.
+	RowNumber int64 `json:"rowNumber"`
+	// UpdatedRange is the updated range returned by Google Sheets.
 	UpdatedRange string `json:"updatedRange"`
 }
 
+// GetValuesOperation implements the get values connector operation.
 type GetValuesOperation struct{ client *Client }
+
+// FindRowOperation implements the find row connector operation.
 type FindRowOperation struct{ client *Client }
+
+// UpsertRowOperation implements the upsert row connector operation.
 type UpsertRowOperation struct{ client *Client }
 
 type valuesResponse struct {
@@ -110,8 +144,10 @@ type providerRequestError struct {
 	message string
 }
 
+// Error returns the safe human-readable failure message.
 func (failure *providerRequestError) Error() string { return failure.message }
 
+// New validates configuration and constructs an authenticated Google Sheets client.
 func New(config Config, credentials sdkgo.CredentialProvider[Credentials], options ...Option) (*Client, error) {
 	config = withConfigDefaults(config)
 	if err := config.Validate(); err != nil {
@@ -146,12 +182,19 @@ func New(config Config, credentials sdkgo.CredentialProvider[Credentials], optio
 	}, nil
 }
 
+// GetValues returns the GetValues operation bound to this client.
 func (client *Client) GetValues() GetValuesOperation { return GetValuesOperation{client: client} }
-func (client *Client) FindRow() FindRowOperation     { return FindRowOperation{client: client} }
+
+// FindRow returns the FindRow operation bound to this client.
+func (client *Client) FindRow() FindRowOperation { return FindRowOperation{client: client} }
+
+// UpsertRow returns the UpsertRow operation bound to this client.
 func (client *Client) UpsertRow() UpsertRowOperation { return UpsertRowOperation{client: client} }
 
+// Definition returns the immutable connector operation definition.
 func (GetValuesOperation) Definition() sdkgo.QueryDefinition { return GetValuesDefinition }
 
+// Invoke executes one provider call and classifies its attempt.
 func (operation GetValuesOperation) Invoke(call sdkgo.Call, input GetValuesInput) sdkgo.QueryAttempt[GetValuesOutput] {
 	if strings.TrimSpace(input.SpreadsheetID) == "" || strings.TrimSpace(input.Range) == "" {
 		return sdkgo.NewQueryBranch(GetValuesBranchDefect, GetValuesOutput{}, failurePointer(sdkgo.FailureValidation, "getValues", "spreadsheet ID and range are required"), sdkgo.Receipt{})
@@ -176,7 +219,11 @@ func (operation GetValuesOperation) Invoke(call sdkgo.Call, input GetValuesInput
 	if result.status == http.StatusNotFound {
 		return sdkgo.NewQueryBranch(GetValuesBranchNotFound, GetValuesOutput{}, failurePointer(sdkgo.FailureNotFound, "getValues", "spreadsheet or range was not found"), receipt)
 	}
-	if retry, delay := retryableStatus(result.status, result.header); retry {
+	retry, delay, retryAfterErr := classifyRetryableStatus(result.status, result.header)
+	if retryAfterErr != nil {
+		return sdkgo.NewQueryRetry[GetValuesOutput](sheetFailure(sdkgo.FailureProtocol, "getValues", "provider returned an invalid Retry-After header"), 0)
+	}
+	if retry {
 		return sdkgo.NewQueryRetry[GetValuesOutput](sheetFailure(statusFailureKind(result.status), "getValues", "provider temporarily rejected the query"), delay)
 	}
 	if result.status < 200 || result.status >= 300 {
@@ -189,8 +236,10 @@ func (operation GetValuesOperation) Invoke(call sdkgo.Call, input GetValuesInput
 	return sdkgo.NewQueryBranch(GetValuesBranchRead, convertValues(values), nil, receipt)
 }
 
+// Definition returns the immutable connector operation definition.
 func (FindRowOperation) Definition() sdkgo.QueryDefinition { return FindRowDefinition }
 
+// Invoke executes one provider call and classifies its attempt.
 func (operation FindRowOperation) Invoke(call sdkgo.Call, input FindRowInput) sdkgo.QueryAttempt[FindRowOutput] {
 	if err := validateFindInput(input); err != nil {
 		return sdkgo.NewQueryBranch(FindRowBranchDefect, FindRowOutput{}, failurePointer(sdkgo.FailureValidation, "findRow", err.Error()), sdkgo.Receipt{})
@@ -215,7 +264,11 @@ func (operation FindRowOperation) Invoke(call sdkgo.Call, input FindRowInput) sd
 	if result.status == http.StatusNotFound {
 		return sdkgo.NewQueryBranch(FindRowBranchNotFound, FindRowOutput{}, failurePointer(sdkgo.FailureNotFound, "findRow", "spreadsheet or sheet was not found"), receipt)
 	}
-	if retry, delay := retryableStatus(result.status, result.header); retry {
+	retry, delay, retryAfterErr := classifyRetryableStatus(result.status, result.header)
+	if retryAfterErr != nil {
+		return sdkgo.NewQueryRetry[FindRowOutput](sheetFailure(sdkgo.FailureProtocol, "findRow", "provider returned an invalid Retry-After header"), 0)
+	}
+	if retry {
 		return sdkgo.NewQueryRetry[FindRowOutput](sheetFailure(statusFailureKind(result.status), "findRow", "provider temporarily rejected the query"), delay)
 	}
 	if result.status < 200 || result.status >= 300 {
@@ -229,12 +282,15 @@ func (operation FindRowOperation) Invoke(call sdkgo.Call, input FindRowInput) sd
 	return sdkgo.NewQueryBranch(branch, found, findFailure, receipt)
 }
 
+// Definition returns the immutable connector operation definition.
 func (UpsertRowOperation) Definition() sdkgo.MutationDefinition { return UpsertRowDefinition }
 
+// IdempotencyKey derives the provider key from the stable connector call ID.
 func (UpsertRowOperation) IdempotencyKey(callID sdkgo.CallID, _ UpsertRowInput) sdkgo.IdempotencyKey {
 	return sdkgo.IdempotencyKey(callID)
 }
 
+// Invoke executes one provider call and classifies its attempt.
 func (operation UpsertRowOperation) Invoke(call sdkgo.Call, input UpsertRowInput) sdkgo.MutationAttempt[UpsertRowOutput] {
 	findInput := FindRowInput{SpreadsheetID: input.SpreadsheetID, SheetName: input.SheetName, KeyColumn: input.KeyColumn, KeyValue: input.KeyValue}
 	if err := validateFindInput(findInput); err != nil || len(input.Values) == 0 {
@@ -261,7 +317,11 @@ func (operation UpsertRowOperation) Invoke(call sdkgo.Call, input UpsertRowInput
 		return sdkgo.NewMutationRetry[UpsertRowOutput](sheetFailure(sdkgo.FailureAvailability, "upsertRow", "provider is unavailable before write"), 0)
 	}
 	lookupReceipt := operation.client.receipt(call, lookup, "")
-	if retry, delay := retryableStatus(lookup.status, lookup.header); retry {
+	retry, delay, retryAfterErr := classifyRetryableStatus(lookup.status, lookup.header)
+	if retryAfterErr != nil {
+		return sdkgo.NewMutationRetry[UpsertRowOutput](sheetFailure(sdkgo.FailureProtocol, "upsertRow", "provider returned an invalid Retry-After header"), 0)
+	}
+	if retry {
 		return sdkgo.NewMutationRetry[UpsertRowOutput](sheetFailure(statusFailureKind(lookup.status), "upsertRow", "provider temporarily rejected the pre-write query"), delay)
 	}
 	if lookup.status < 200 || lookup.status >= 300 {
@@ -307,7 +367,10 @@ func (operation UpsertRowOperation) Invoke(call sdkgo.Call, input UpsertRowInput
 	}
 	receipt := operation.client.receipt(call, writeResult, fmt.Sprintf("%s#%s!%d", input.SpreadsheetID, input.SheetName, rowNumber))
 	if writeResult.status == http.StatusTooManyRequests {
-		delay := retryAfterDelay(writeResult.header)
+		delay, err := retryAfterDelay(writeResult.header)
+		if err != nil {
+			return sdkgo.NewMutationRetry[UpsertRowOutput](sheetFailure(sdkgo.FailureProtocol, "upsertRow", "provider returned an invalid Retry-After header"), 0)
+		}
 		return sdkgo.NewMutationRetry[UpsertRowOutput](sheetFailure(statusFailureKind(writeResult.status), "upsertRow", "provider conclusively rejected the write temporarily"), delay)
 	}
 	if writeResult.status >= 500 {
@@ -477,19 +540,30 @@ func validateFindInput(input FindRowInput) error {
 
 func quoteSheet(name string) string { return "'" + strings.ReplaceAll(name, "'", "''") + "'" }
 
-func retryableStatus(status int, header http.Header) (bool, time.Duration) {
+func classifyRetryableStatus(status int, header http.Header) (bool, time.Duration, error) {
 	if status != http.StatusTooManyRequests && status < 500 {
-		return false, 0
+		return false, 0, nil
 	}
-	return true, retryAfterDelay(header)
+	delay, err := retryAfterDelay(header)
+	return true, delay, err
 }
 
-func retryAfterDelay(header http.Header) time.Duration {
-	seconds, _ := strconv.Atoi(header.Get("Retry-After"))
-	if seconds > 0 {
-		return time.Duration(seconds) * time.Second
+func retryAfterDelay(header http.Header) (time.Duration, error) {
+	value := header.Get("Retry-After")
+	if value == "" {
+		return 0, nil
 	}
-	return 0
+	seconds, err := strconv.Atoi(value)
+	if err != nil {
+		return 0, fmt.Errorf("parse Retry-After %q: %w", value, err)
+	}
+	if seconds < 0 {
+		return 0, fmt.Errorf("parse Retry-After %q: value cannot be negative", value)
+	}
+	if seconds > 0 {
+		return time.Duration(seconds) * time.Second, nil
+	}
+	return 0, nil
 }
 
 func statusFailureKind(status int) sdkgo.FailureKind {

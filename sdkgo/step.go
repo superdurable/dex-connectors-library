@@ -47,11 +47,12 @@ func (target Target[T]) HasStep() bool {
 	return targetHasStep(target.target)
 }
 
-// BranchTarget binds this target to a generated operation branch.
+// BranchTarget binds this typed target to one declared operation branch.
 func (target Target[T]) BranchTarget(branch BranchID) BranchTarget[T] {
 	return GoToBranch(branch, target.target)
 }
 
+// BranchTarget pairs a stable operation branch with its typed Dex Step destination.
 type BranchTarget[T any] struct {
 	branch BranchID
 	target dex.Step[T]
@@ -62,36 +63,63 @@ func GoToBranch[T any](branch BranchID, target dex.Step[T]) BranchTarget[T] {
 	return BranchTarget[T]{branch: branch, target: target}
 }
 
+// QueryStepConfig configures an advanced generic query Step; generated factories are preferred.
 type QueryStepConfig[STEP_IN, OP_IN, OUT any] struct {
-	StepType            string
-	Annotations         StepAnnotations
-	ConfigurationUI     ConnectorConfigurationUI
-	Operation           Query[OP_IN, OUT]
-	Connection          ConnectionRef
+	// StepType is the stable Dex Step type.
+	StepType string
+	// Annotations provides the Step's group and explanation metadata.
+	Annotations StepAnnotations
+	// ConfigurationUI describes optional Connector Studio configuration units.
+	ConfigurationUI ConnectorConfigurationUI
+	// Operation identifies the connector operation.
+	Operation Query[OP_IN, OUT]
+	// Connection selects the credential reference used by the operation.
+	Connection ConnectionRef
+	// MapToOperationInput maps typed Step input to the connector operation input.
 	MapToOperationInput func(STEP_IN) OP_IN
-	Branches            []BranchTarget[QueryResult[OUT]]
-	ResultAttribute     *dex.Attribute[QueryResult[OUT]]
-	ProgressStream      *dex.Stream[ProgressUpdate]
-	TextStream          *dex.Stream[string]
-	TextOptions         []dex.BufferedTextStreamOption
+	// Branches declares the operation's stable terminal routes.
+	Branches []BranchTarget[QueryResult[OUT]]
+	// ResultAttribute stores the terminal result when non-nil.
+	ResultAttribute *dex.Attribute[QueryResult[OUT]]
+	// ProgressStream receives best-effort structured progress when non-nil.
+	ProgressStream *dex.Stream[ProgressUpdate]
+	// TextStream receives ordered buffered text when non-nil.
+	TextStream *dex.Stream[string]
+	// TextOptions configures BufferedTextStream when TextStream is set.
+	TextOptions []dex.BufferedTextStreamOption
+	// StepOptionsOverride overrides execute-only defaults; WaitFor options are rejected.
 	StepOptionsOverride *dex.StepOptions
 }
 
+// MutationStepConfig configures an advanced generic mutation Step; generated factories are preferred.
 type MutationStepConfig[STEP_IN, OP_IN, OUT any] struct {
-	StepType            string
-	Annotations         StepAnnotations
-	ConfigurationUI     ConnectorConfigurationUI
-	Operation           Mutation[OP_IN, OUT]
-	Connection          ConnectionRef
+	// StepType is the stable Dex Step type.
+	StepType string
+	// Annotations provides the Step's group and explanation metadata.
+	Annotations StepAnnotations
+	// ConfigurationUI describes optional Connector Studio configuration units.
+	ConfigurationUI ConnectorConfigurationUI
+	// Operation identifies the connector operation.
+	Operation Mutation[OP_IN, OUT]
+	// Connection selects the credential reference used by the operation.
+	Connection ConnectionRef
+	// MapToOperationInput maps typed Step input to the connector operation input.
 	MapToOperationInput func(STEP_IN) OP_IN
-	Branches            []BranchTarget[MutationResult[OUT]]
-	ResultAttribute     *dex.Attribute[MutationResult[OUT]]
-	ProgressStream      *dex.Stream[ProgressUpdate]
-	TextStream          *dex.Stream[string]
-	TextOptions         []dex.BufferedTextStreamOption
+	// Branches declares the operation's stable terminal routes.
+	Branches []BranchTarget[MutationResult[OUT]]
+	// ResultAttribute stores the terminal result when non-nil.
+	ResultAttribute *dex.Attribute[MutationResult[OUT]]
+	// ProgressStream receives best-effort structured progress when non-nil.
+	ProgressStream *dex.Stream[ProgressUpdate]
+	// TextStream receives ordered buffered text when non-nil.
+	TextStream *dex.Stream[string]
+	// TextOptions configures BufferedTextStream when TextStream is set.
+	TextOptions []dex.BufferedTextStreamOption
+	// StepOptionsOverride overrides execute-only defaults; WaitFor options are rejected.
 	StepOptionsOverride *dex.StepOptions
 }
 
+// QueryStep executes a query operation and routes its declared result branch.
 type QueryStep[STEP_IN, OP_IN, OUT any] struct {
 	dex.NoWaitFor[STEP_IN]
 	stepType            string
@@ -109,6 +137,7 @@ type QueryStep[STEP_IN, OP_IN, OUT any] struct {
 	stepOptions         *dex.StepOptions
 }
 
+// MutationStep executes a mutation operation and routes its declared result branch.
 type MutationStep[STEP_IN, OP_IN, OUT any] struct {
 	dex.NoWaitFor[STEP_IN]
 	stepType            string
@@ -126,8 +155,9 @@ type MutationStep[STEP_IN, OP_IN, OUT any] struct {
 	stepOptions         *dex.StepOptions
 }
 
+// NewQueryStep constructs query step after validating its inputs.
 func NewQueryStep[STEP_IN, OP_IN, OUT any](config QueryStepConfig[STEP_IN, OP_IN, OUT]) (QueryStep[STEP_IN, OP_IN, OUT], error) {
-	if nilValue(config.Operation) {
+	if isNilValue(config.Operation) {
 		return QueryStep[STEP_IN, OP_IN, OUT]{}, fmt.Errorf("query operation is required")
 	}
 	definition := config.Operation.Definition()
@@ -159,6 +189,7 @@ func NewQueryStep[STEP_IN, OP_IN, OUT any](config QueryStepConfig[STEP_IN, OP_IN
 	}, nil
 }
 
+// MustNewQueryStep constructs new query step or panics when static application wiring is invalid.
 func MustNewQueryStep[STEP_IN, OP_IN, OUT any](config QueryStepConfig[STEP_IN, OP_IN, OUT]) QueryStep[STEP_IN, OP_IN, OUT] {
 	step, err := NewQueryStep(config)
 	if err != nil {
@@ -167,8 +198,9 @@ func MustNewQueryStep[STEP_IN, OP_IN, OUT any](config QueryStepConfig[STEP_IN, O
 	return step
 }
 
+// NewMutationStep constructs mutation step after validating its inputs.
 func NewMutationStep[STEP_IN, OP_IN, OUT any](config MutationStepConfig[STEP_IN, OP_IN, OUT]) (MutationStep[STEP_IN, OP_IN, OUT], error) {
-	if nilValue(config.Operation) {
+	if isNilValue(config.Operation) {
 		return MutationStep[STEP_IN, OP_IN, OUT]{}, fmt.Errorf("mutation operation is required")
 	}
 	definition := config.Operation.Definition()
@@ -200,6 +232,7 @@ func NewMutationStep[STEP_IN, OP_IN, OUT any](config MutationStepConfig[STEP_IN,
 	}, nil
 }
 
+// MustNewMutationStep constructs new mutation step or panics when static application wiring is invalid.
 func MustNewMutationStep[STEP_IN, OP_IN, OUT any](config MutationStepConfig[STEP_IN, OP_IN, OUT]) MutationStep[STEP_IN, OP_IN, OUT] {
 	step, err := NewMutationStep(config)
 	if err != nil {
@@ -208,12 +241,15 @@ func MustNewMutationStep[STEP_IN, OP_IN, OUT any](config MutationStepConfig[STEP
 	return step
 }
 
+// GetStepType returns the stable Dex Step type.
 func (step QueryStep[STEP_IN, OP_IN, OUT]) GetStepType() string { return step.stepType }
 
+// GetStepOptions returns an isolated copy of the Dex Step options.
 func (step QueryStep[STEP_IN, OP_IN, OUT]) GetStepOptions() *dex.StepOptions {
 	return cloneStepOptions(step.stepOptions)
 }
 
+// Annotations returns the immutable Step authoring metadata.
 func (step QueryStep[STEP_IN, OP_IN, OUT]) Annotations() StepAnnotations { return step.annotations }
 
 // ConfigurationUI returns an isolated copy of this Connector Step's optional
@@ -222,6 +258,7 @@ func (step QueryStep[STEP_IN, OP_IN, OUT]) ConfigurationUI() ConnectorConfigurat
 	return cloneConnectorConfigurationUI(step.configurationUI)
 }
 
+// Execute invokes the connector operation, stores its result, and routes its branch.
 func (step QueryStep[STEP_IN, OP_IN, OUT]) Execute(ctx dex.Context, input STEP_IN) (*dex.StepDecision, error) {
 	operationInput := step.mapToOperationInput(input)
 	result, err := RunQuery(ctx, step.operation, step.connection, operationInput, step.runOptions()...)
@@ -240,12 +277,15 @@ func (step QueryStep[STEP_IN, OP_IN, OUT]) runOptions() []RunOption {
 	return factoryRunOptions(step.progressStream, step.textStream, step.textOptions)
 }
 
+// GetStepType returns the stable Dex Step type.
 func (step MutationStep[STEP_IN, OP_IN, OUT]) GetStepType() string { return step.stepType }
 
+// GetStepOptions returns an isolated copy of the Dex Step options.
 func (step MutationStep[STEP_IN, OP_IN, OUT]) GetStepOptions() *dex.StepOptions {
 	return cloneStepOptions(step.stepOptions)
 }
 
+// Annotations returns the immutable Step authoring metadata.
 func (step MutationStep[STEP_IN, OP_IN, OUT]) Annotations() StepAnnotations {
 	return step.annotations
 }
@@ -256,6 +296,7 @@ func (step MutationStep[STEP_IN, OP_IN, OUT]) ConfigurationUI() ConnectorConfigu
 	return cloneConnectorConfigurationUI(step.configurationUI)
 }
 
+// Execute invokes the connector operation, stores its result, and routes its branch.
 func (step MutationStep[STEP_IN, OP_IN, OUT]) Execute(ctx dex.Context, input STEP_IN) (*dex.StepDecision, error) {
 	operationInput := step.mapToOperationInput(input)
 	result, err := RunMutation(ctx, step.operation, step.connection, operationInput, step.runOptions()...)
@@ -274,6 +315,7 @@ func (step MutationStep[STEP_IN, OP_IN, OUT]) runOptions() []RunOption {
 	return factoryRunOptions(step.progressStream, step.textStream, step.textOptions)
 }
 
+// StepRef creates a non-executable reference to a stable Dex Step type.
 func StepRef[T any](stableStepType string) dex.Step[T] {
 	return stepReference[T]{stepType: stableStepType}
 }
@@ -283,12 +325,15 @@ type stepReference[T any] struct {
 	stepType string
 }
 
+// GetStepOptions returns an isolated copy of the Dex Step options.
 func (stepReference[T]) GetStepOptions() *dex.StepOptions {
 	return &dex.StepOptions{ExecuteMethodTimeout: -1}
 }
 
+// GetStepType returns the stable Dex Step type.
 func (reference stepReference[T]) GetStepType() string { return reference.stepType }
 
+// Execute invokes the connector operation, stores its result, and routes its branch.
 func (reference stepReference[T]) Execute(dex.Context, T) (*dex.StepDecision, error) {
 	return nil, fmt.Errorf("connector StepRef %q cannot execute", reference.stepType)
 }
@@ -353,7 +398,7 @@ func routeBranch[T any](branches map[BranchID]dex.Step[T], optional map[BranchID
 }
 
 func targetHasStep[T any](target dex.Step[T]) bool {
-	return !nilValue(target) && strings.TrimSpace(dex.GetFinalStepType(target)) != ""
+	return !isNilValue(target) && strings.TrimSpace(dex.GetFinalStepType(target)) != ""
 }
 
 func stepOptions(defaults StepDefaults, override *dex.StepOptions) (*dex.StepOptions, error) {
@@ -435,7 +480,7 @@ func cloneStepOptions(options *dex.StepOptions) *dex.StepOptions {
 	return &clone
 }
 
-func nilValue(value any) bool {
+func isNilValue(value any) bool {
 	if value == nil {
 		return true
 	}

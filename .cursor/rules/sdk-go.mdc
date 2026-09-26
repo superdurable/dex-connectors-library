@@ -1,0 +1,20 @@
+---
+description: Connector Go SDK naming, API, documentation, and option patterns
+globs: sdkgo/**/*
+alwaysApply: false
+---
+
+# Go Connector SDK Conventions
+
+- Prefer precise domain names and thin public APIs.
+- Use pointers for optional fields when zero has a separate meaning.
+- Use apply methods for functional options, never marker interfaces plus a type
+  switch.
+- Seal schema-erasure interfaces with unexported methods.
+- Document every hand-written public type, field, constant, interface, method,
+  function, constructor, default, side effect, error, and lifecycle constraint.
+  Generated declarations are exempt.
+- Keep complete Go examples for related API families in package docs, READMEs,
+  or runnable examples.
+- Keep public signatures compatible with released tags unless the change follows
+  the repository's breaking-release policy.

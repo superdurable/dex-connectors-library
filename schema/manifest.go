@@ -280,7 +280,7 @@ func (manifest Manifest) Validate() error {
 	if manifest.Spec.Auth.Type == "oauth2" {
 		if manifest.Spec.Auth.OAuth2 == nil {
 			problems = append(problems, "oauth2 auth requires oauth2 metadata")
-		} else if manifest.Spec.Auth.ConnectionKind == "" || !httpsURL(manifest.Spec.Auth.OAuth2.AuthorizationEndpoint) || !httpsURL(manifest.Spec.Auth.OAuth2.TokenEndpoint) || len(manifest.Spec.Auth.OAuth2.Scopes) == 0 {
+		} else if manifest.Spec.Auth.ConnectionKind == "" || !isHTTPSURL(manifest.Spec.Auth.OAuth2.AuthorizationEndpoint) || !isHTTPSURL(manifest.Spec.Auth.OAuth2.TokenEndpoint) || len(manifest.Spec.Auth.OAuth2.Scopes) == 0 {
 			problems = append(problems, "oauth2 auth requires connectionKind, endpoints, and scopes")
 		} else {
 			if manifest.Spec.Auth.OAuth2.Protocol != "oauth2" && manifest.Spec.Auth.OAuth2.Protocol != "oidc" {
@@ -288,7 +288,7 @@ func (manifest Manifest) Validate() error {
 			}
 			if manifest.Spec.Auth.OAuth2.Protocol == "oidc" {
 				oidc := manifest.Spec.Auth.OAuth2.OIDC
-				if oidc == nil || !httpsURL(oidc.Issuer) || !httpsURL(oidc.DiscoveryEndpoint) || !httpsURL(oidc.UserInfoEndpoint) || !oidc.NonceRequired {
+				if oidc == nil || !isHTTPSURL(oidc.Issuer) || !isHTTPSURL(oidc.DiscoveryEndpoint) || !isHTTPSURL(oidc.UserInfoEndpoint) || !oidc.NonceRequired {
 					problems = append(problems, "oidc auth requires HTTPS issuer, discovery, UserInfo, and nonce")
 				}
 			} else if manifest.Spec.Auth.OAuth2.OIDC != nil {
@@ -309,7 +309,7 @@ func (manifest Manifest) Validate() error {
 			}
 			seenMappings := map[string]bool{}
 			for _, mapping := range manifest.Spec.Auth.OAuth2.CredentialMappings {
-				if !credentialFields[mapping.Credential] || seenMappings[mapping.Credential] || !validJSONPath(mapping.Source) {
+				if !credentialFields[mapping.Credential] || seenMappings[mapping.Credential] || !isValidJSONPath(mapping.Source) {
 					problems = append(problems, "oauth2 credential mappings require unique credential fields and dotted JSON response paths")
 				}
 				seenMappings[mapping.Credential] = true
@@ -320,19 +320,19 @@ func (manifest Manifest) Validate() error {
 	}
 	if manifest.Spec.Studio != nil {
 		setup := manifest.Spec.Studio.Setup
-		if !safeStudioAssetPath(setup.Entrypoint, ".html") {
+		if !isSafeStudioAssetPath(setup.Entrypoint, ".html") {
 			problems = append(problems, "studio setup entrypoint must be a safe relative .html path")
 		}
-		if !safeStudioIconPath(setup.Icon) {
+		if !isSafeStudioIconPath(setup.Icon) {
 			problems = append(problems, "studio setup icon must be a safe relative .png or .svg path")
 		}
 		if strings.TrimSpace(setup.HostAPIRange) == "" {
 			problems = append(problems, "studio setup hostApiRange is required")
 		}
-		if len(setup.BackendCapabilities) == 0 || !validUniqueStrings(setup.BackendCapabilities, capabilityPattern) {
+		if len(setup.BackendCapabilities) == 0 || !hasValidUniqueStrings(setup.BackendCapabilities, capabilityPattern) {
 			problems = append(problems, "studio setup backendCapabilities must be non-empty, unique capability IDs")
 		}
-		if len(setup.MockScenarios) == 0 || !validUniqueStrings(setup.MockScenarios, mockScenarioPattern) {
+		if len(setup.MockScenarios) == 0 || !hasValidUniqueStrings(setup.MockScenarios, mockScenarioPattern) {
 			problems = append(problems, "studio setup mockScenarios must be non-empty, unique scenario IDs")
 		}
 		setupCapabilities := make(map[string]bool, len(setup.BackendCapabilities))
@@ -368,7 +368,7 @@ func (manifest Manifest) Validate() error {
 			if strings.TrimSpace(unit.Description) == "" {
 				problems = append(problems, "studio unit "+unit.ID+": description is required")
 			}
-			if !validUniqueStrings(unit.BackendCapabilities, capabilityPattern) {
+			if !hasValidUniqueStrings(unit.BackendCapabilities, capabilityPattern) {
 				problems = append(problems, "studio unit "+unit.ID+": backendCapabilities must be unique capability IDs")
 			}
 			for _, capability := range unit.BackendCapabilities {
@@ -569,7 +569,7 @@ func validateStudioCommand(command StudioCommand, authFields map[string]Field) [
 	return problems
 }
 
-func validJSONPath(value string) bool {
+func isValidJSONPath(value string) bool {
 	parts := strings.Split(value, ".")
 	if len(parts) == 0 {
 		return false
@@ -602,14 +602,14 @@ func validateFields(prefix string, fields []Field, allowSecret bool) []string {
 		if field.Type == "enum" && len(field.Enum) == 0 {
 			problems = append(problems, prefix+" enum fields require values")
 		}
-		if field.Default != nil && !validDefault(field) {
+		if field.Default != nil && !isValidDefault(field) {
 			problems = append(problems, prefix+" field "+field.Name+" has an invalid default")
 		}
 	}
 	return problems
 }
 
-func validDefault(field Field) bool {
+func isValidDefault(field Field) bool {
 	switch field.Type {
 	case "string", "url", "enum":
 		value, ok := field.Default.(string)
@@ -617,7 +617,7 @@ func validDefault(field Field) bool {
 			return false
 		}
 		if field.Type == "url" {
-			return absoluteURL(value)
+			return isAbsoluteURL(value)
 		}
 		if field.Type == "enum" {
 			for _, allowed := range field.Enum {
@@ -668,28 +668,28 @@ func validDefault(field Field) bool {
 	}
 }
 
-func absoluteURL(value string) bool {
+func isAbsoluteURL(value string) bool {
 	parsed, err := url.Parse(value)
 	return err == nil && parsed.Scheme != "" && parsed.Hostname() != ""
 }
 
-func httpsURL(value string) bool {
+func isHTTPSURL(value string) bool {
 	parsed, err := url.Parse(value)
 	return err == nil && parsed.Scheme == "https" && parsed.Hostname() != ""
 }
 
-func safeStudioAssetPath(value string, suffix string) bool {
+func isSafeStudioAssetPath(value string, suffix string) bool {
 	cleaned := filepath.Clean(value)
 	return value != "" && value == filepath.ToSlash(value) && cleaned == value &&
 		!filepath.IsAbs(value) && value != "." && !strings.HasPrefix(value, "../") &&
 		strings.HasSuffix(strings.ToLower(value), suffix)
 }
 
-func safeStudioIconPath(value string) bool {
-	return safeStudioAssetPath(value, ".png") || safeStudioAssetPath(value, ".svg")
+func isSafeStudioIconPath(value string) bool {
+	return isSafeStudioAssetPath(value, ".png") || isSafeStudioAssetPath(value, ".svg")
 }
 
-func validUniqueStrings(values []string, pattern *regexp.Regexp) bool {
+func hasValidUniqueStrings(values []string, pattern *regexp.Regexp) bool {
 	seen := map[string]bool{}
 	for _, value := range values {
 		if !pattern.MatchString(value) || seen[value] {

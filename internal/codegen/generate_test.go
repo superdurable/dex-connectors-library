@@ -60,6 +60,19 @@ func TestGenerateIsDeterministicAndIncludesTypedOAuthCredentials(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestGenerateRejectsInvalidExecutionDuration(t *testing.T) {
+	file, err := os.Open("../../schema/testdata/google-oauth.yaml")
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, file.Close()) })
+	manifest, err := schema.Decode(file)
+	require.NoError(t, err)
+	manifest.Spec.Operations[0].Execution.ExecuteMethodTimeout = "eventually"
+
+	_, err = codegen.Generate(manifest)
+
+	require.ErrorContains(t, err, "execute method timeout")
+}
+
 func TestGenerateIncludesTypedProviderTriggers(t *testing.T) {
 	manifest, err := schema.Decode(strings.NewReader(`
 apiVersion: connectors.dex.dev/v1alpha1

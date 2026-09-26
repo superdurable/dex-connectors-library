@@ -17,7 +17,9 @@ import (
 
 // TriggerRef is the stable manifest identity of one connector trigger.
 type TriggerRef struct {
+	// ConnectorID identifies the connector manifest.
 	ConnectorID string `json:"connectorId" yaml:"connectorId"`
+	// TriggerName identifies the Trigger within its connector manifest.
 	TriggerName string `json:"triggerName" yaml:"triggerName"`
 }
 
@@ -34,8 +36,10 @@ func (reference TriggerRef) Validate() error {
 
 // TriggerDefinition describes one provider event source declared by a connector manifest.
 type TriggerDefinition struct {
-	Trigger     TriggerRef `json:"trigger" yaml:"trigger"`
-	Description string     `json:"description" yaml:"description"`
+	// Trigger is the stable manifest identity for the provider event source.
+	Trigger TriggerRef `json:"trigger" yaml:"trigger"`
+	// Description explains the provider event source to application tooling.
+	Description string `json:"description" yaml:"description"`
 }
 
 // Validate checks a trigger definition before a runner starts.
@@ -51,16 +55,23 @@ func (definition TriggerDefinition) Validate() error {
 
 // TriggerBindingRef identifies one configured use of a connector trigger.
 type TriggerBindingRef struct {
+	// Connection selects the credential reference used by the source.
 	Connection ConnectionRef `json:"connection" yaml:"connection"`
-	Trigger    TriggerRef    `json:"trigger" yaml:"trigger"`
-	Name       string        `json:"name" yaml:"name"`
+	// Trigger identifies the provider event source.
+	Trigger TriggerRef `json:"trigger" yaml:"trigger"`
+	// Name is the stable application binding name.
+	Name string `json:"name" yaml:"name"`
 }
 
 // TriggerBindingDefinition exposes one static application binding to tooling.
 type TriggerBindingDefinition struct {
-	Definition      TriggerDefinition         `json:"definition" yaml:"definition"`
-	ConnectionName  string                    `json:"connectionName" yaml:"connectionName"`
-	BindingName     string                    `json:"bindingName" yaml:"bindingName"`
+	// Definition is the immutable Trigger definition.
+	Definition TriggerDefinition `json:"definition" yaml:"definition"`
+	// ConnectionName names the configured provider connection.
+	ConnectionName string `json:"connectionName" yaml:"connectionName"`
+	// BindingName names this configured Trigger binding.
+	BindingName string `json:"bindingName" yaml:"bindingName"`
+	// ConfigurationUI describes optional Connector Studio configuration units.
 	ConfigurationUI *ConnectorConfigurationUI `json:"configurationUI,omitempty" yaml:"configurationUI,omitempty"`
 }
 
@@ -104,15 +115,19 @@ func (binding TriggerBindingRef) Validate() error {
 
 // TriggerEvent is one provider event with a stable provider identity.
 type TriggerEvent[T any] struct {
-	ID         string    `json:"eventId"`
+	// ID is the stable provider identifier.
+	ID string `json:"eventId"`
+	// OccurredAt records when the provider event occurred.
 	OccurredAt time.Time `json:"occurredAt"`
-	Payload    T         `json:"payload"`
+	// Payload is the connector-normalized provider event body.
+	Payload T `json:"payload"`
 }
 
 // TriggerTarget handles one event after the provider transport acknowledges receipt.
 // HandleTrigger returns nil when it consumes the event, an UndeliverableTriggerError when no retry can
 // deliver it, or another error to keep the event pending for a retry.
 type TriggerTarget[T any] interface {
+	// HandleTrigger consumes, retries, or marks one provider event undeliverable.
 	HandleTrigger(context.Context, TriggerEvent[T]) error
 }
 
@@ -120,6 +135,7 @@ type TriggerTarget[T any] interface {
 // A prepared event stays pending until the target consumes it by returning nil or an
 // UndeliverableTriggerError.
 type TriggerDeliveryPreparer[T any] interface {
+	// PrepareTrigger persists an event before provider acknowledgement.
 	PrepareTrigger(context.Context, TriggerEvent[T]) error
 }
 
@@ -128,6 +144,7 @@ type TriggerDeliveryPreparer[T any] interface {
 // event pending at the call has been consumed, ctx.Err() when ctx ends first, or an error when the
 // persisted events cannot be read.
 type TriggerDeliveryReplayer interface {
+	// ReplayTriggerDeliveries drains events left pending by an earlier process.
 	ReplayTriggerDeliveries(context.Context) error
 }
 
@@ -154,22 +171,30 @@ func PrepareTriggerDelivery[T any](ctx context.Context, target TriggerTarget[T],
 // than stopping later deliveries. A TriggerRunner passes Run a target that already returns nil for
 // undeliverable events; sources must use PrepareTriggerDelivery instead of asserting target interfaces.
 type TriggerSource[T any] interface {
+	// Run processes provider events until cancellation or an unrecoverable error.
 	Run(context.Context, TriggerTarget[T]) error
 }
 
 // TriggerRunner is a configured long-running connector trigger.
 type TriggerRunner interface {
+	// Run processes provider events until cancellation or an unrecoverable error.
 	Run(context.Context) error
+	// Definition returns the immutable connector operation definition.
 	Definition() TriggerDefinition
+	// Binding returns the configured Trigger binding identity.
 	Binding() TriggerBindingRef
 }
 
 // TriggerConfig configures one provider source and application target.
 type TriggerConfig[T any] struct {
+	// Definition is the immutable Trigger definition.
 	Definition TriggerDefinition
-	Binding    TriggerBindingRef
-	Source     TriggerSource[T]
-	Target     TriggerTarget[T]
+	// Binding is the configured Trigger binding identity.
+	Binding TriggerBindingRef
+	// Source polls or subscribes to provider events.
+	Source TriggerSource[T]
+	// Target routes accepted events into the application.
+	Target TriggerTarget[T]
 	// Logger receives the runner's records, such as an undeliverable event it consumes. Nil uses
 	// slog.Default() as of each record.
 	Logger *slog.Logger
@@ -214,6 +239,7 @@ func MustNewTrigger[T any](config TriggerConfig[T]) TriggerRunner {
 	return runner
 }
 
+// Run processes provider events until cancellation or an unrecoverable error.
 func (runner *triggerRunner[T]) Run(ctx context.Context) error {
 	if replayer, ok := runner.target.(TriggerDeliveryReplayer); ok {
 		if err := replayer.ReplayTriggerDeliveries(ctx); err != nil {
@@ -225,8 +251,10 @@ func (runner *triggerRunner[T]) Run(ctx context.Context) error {
 	})
 }
 
+// Definition returns the immutable connector operation definition.
 func (runner *triggerRunner[T]) Definition() TriggerDefinition { return runner.definition }
 
+// Binding returns the configured Trigger binding identity.
 func (runner *triggerRunner[T]) Binding() TriggerBindingRef { return runner.binding }
 
 // TriggerFactoryConfigMarker identifies generated provider Trigger factory configs.
@@ -250,8 +278,9 @@ type FlowInputMapper[EVENT, INPUT any] func(TriggerEvent[EVENT]) INPUT
 type RPCInputMapper[EVENT, INPUT any] func(TriggerEvent[EVENT]) INPUT
 
 // NewDexFlowTriggerTarget creates a filtered target that starts a typed Dex Flow.
-// The event ID is the Flow-start request ID, so a duplicate start returns nil. An empty Flow ID or event
-// ID, or an input that cannot be encoded, returns an UndeliverableTriggerError. Every other error is
+// The event ID is the Flow-start request ID and Flow ID reuse is disallowed, so a duplicate start returns
+// nil even after the original Flow completes. An empty Flow ID or event ID, or an input that cannot be
+// encoded, returns an UndeliverableTriggerError. Every other error is
 // returned unchanged for a retry, including a start that the Dex Server rejects as invalid, such as a
 // Step option below the server's configured minimum, so the event replays once the Flow is fixed.
 // It logs an INFO "trigger event skipped: filtered" record when the filter rejects an event and a DEBUG
@@ -280,7 +309,10 @@ func NewDexFlowTriggerTarget[EVENT, INPUT any](
 		}
 		input := mapToFlowInput(event)
 		requestID := event.ID
-		_, err := client.StartFlow(ctx, flow, flowID, input, dex.StartFlowOptions{RequestID: &requestID})
+		_, err := client.StartFlow(ctx, flow, flowID, input, dex.StartFlowOptions{
+			IDReusePolicy: dex.IDReuseDisallow,
+			RequestID:     &requestID,
+		})
 		var alreadyStarted *dex.FlowAlreadyStartedError
 		if err == nil || errors.As(err, &alreadyStarted) {
 			log.Debug(ctx, "trigger event delivered",

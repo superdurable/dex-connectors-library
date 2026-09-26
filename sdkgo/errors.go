@@ -12,26 +12,42 @@ import (
 type FailureKind string
 
 const (
-	FailureValidation        FailureKind = "VALIDATION"
-	FailureAuthentication    FailureKind = "AUTHENTICATION"
-	FailureAuthorization     FailureKind = "AUTHORIZATION"
-	FailureNotFound          FailureKind = "NOT_FOUND"
-	FailureConflict          FailureKind = "CONFLICT"
-	FailureRateLimit         FailureKind = "RATE_LIMIT"
-	FailureAvailability      FailureKind = "AVAILABILITY"
+	// FailureValidation identifies invalid application or connector input.
+	FailureValidation FailureKind = "VALIDATION"
+	// FailureAuthentication identifies missing, expired, or invalid credentials.
+	FailureAuthentication FailureKind = "AUTHENTICATION"
+	// FailureAuthorization identifies credentials without required permission.
+	FailureAuthorization FailureKind = "AUTHORIZATION"
+	// FailureNotFound identifies a provider resource that does not exist.
+	FailureNotFound FailureKind = "NOT_FOUND"
+	// FailureConflict identifies provider state that conflicts with the request.
+	FailureConflict FailureKind = "CONFLICT"
+	// FailureRateLimit identifies provider throttling that may succeed after retry.
+	FailureRateLimit FailureKind = "RATE_LIMIT"
+	// FailureAvailability identifies temporary provider unavailability.
+	FailureAvailability FailureKind = "AVAILABILITY"
+	// FailureProviderRejection identifies another conclusive provider refusal.
 	FailureProviderRejection FailureKind = "PROVIDER_REJECTION"
-	FailureTransport         FailureKind = "TRANSPORT"
-	FailureResponseTooLarge  FailureKind = "RESPONSE_TOO_LARGE"
-	FailureProtocol          FailureKind = "PROTOCOL"
-	FailureLocalDefect       FailureKind = "LOCAL_DEFECT"
+	// FailureTransport identifies a request whose provider outcome may be unknown.
+	FailureTransport FailureKind = "TRANSPORT"
+	// FailureResponseTooLarge identifies a response beyond the configured safety limit.
+	FailureResponseTooLarge FailureKind = "RESPONSE_TOO_LARGE"
+	// FailureProtocol identifies a provider response that violates its documented contract.
+	FailureProtocol FailureKind = "PROTOCOL"
+	// FailureLocalDefect identifies invalid connector wiring or an internal defect.
+	FailureLocalDefect FailureKind = "LOCAL_DEFECT"
 )
 
 // Failure is safe to persist. It must never contain credentials or provider bodies.
 type Failure struct {
-	Kind      FailureKind `json:"kind"`
-	Provider  string      `json:"provider"`
-	Operation string      `json:"operation"`
-	Message   string      `json:"message"`
+	// Kind is the kind associated with this failure.
+	Kind FailureKind `json:"kind"`
+	// Provider names the external provider without exposing credentials.
+	Provider string `json:"provider"`
+	// Operation identifies the connector operation.
+	Operation string `json:"operation"`
+	// Message is the message associated with this failure.
+	Message string `json:"message"`
 }
 
 func (failure Failure) validate() error {
@@ -56,9 +72,11 @@ func (failure Failure) validate() error {
 
 // RetryError is the only connector error that asks Dex to retry a Step.
 type RetryError struct {
+	// Failure is the retryable provider or connector failure.
 	Failure Failure
 }
 
+// Error returns the safe human-readable failure message.
 func (err *RetryError) Error() string {
 	return fmt.Sprintf("connector %s %s retry (%s): %s", err.Failure.Provider, err.Failure.Operation, err.Failure.Kind, err.Failure.Message)
 }
@@ -92,6 +110,7 @@ func NewQueryBranch[T any](branch BranchID, value T, failure *Failure, receipt R
 	return attempt
 }
 
+// NewQueryRetry records a retryable query failure and optional provider-requested delay.
 func NewQueryRetry[T any](failure Failure, retryAfter time.Duration) QueryAttempt[T] {
 	return QueryAttempt[T]{kind: queryAttemptRetry, failure: failure, retryAfter: retryAfter}
 }
@@ -133,6 +152,7 @@ func NewMutationUncertain[T any](value T, failure Failure, receipt Receipt) Muta
 	}
 }
 
+// NewMutationRetry records a retryable mutation failure and optional provider-requested delay.
 func NewMutationRetry[T any](failure Failure, retryAfter time.Duration) MutationAttempt[T] {
 	return MutationAttempt[T]{kind: mutationAttemptRetry, failure: failure, retryAfter: retryAfter}
 }

@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Super Durable
+// SPDX-License-Identifier: MIT
+
 import { createReadStream, existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";

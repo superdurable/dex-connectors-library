@@ -1,5 +1,5 @@
-# Copyright (c) 2026 Super Durable, Inc.
-# SPDX-License-Identifier: LicenseRef-Sustainable-Use-1.0
+# Copyright (c) 2026 Super Durable
+# SPDX-License-Identifier: MIT
 
 import re
 import tempfile

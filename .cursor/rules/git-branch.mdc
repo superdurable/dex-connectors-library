@@ -1,0 +1,17 @@
+---
+description: Branch from latest origin/main before starting feature work
+alwaysApply: true
+---
+
+# Git Branches
+
+Fetch `origin/main` before creating a feature branch. Start the branch from
+that exact ref, never from stale local `main`, another feature branch, or an old
+commit.
+
+```bash
+git fetch origin main --tags
+git switch -c <branch> origin/main
+```
+
+Cursor and Codex hooks call `script/branch_off_main_policy.py` to enforce this.

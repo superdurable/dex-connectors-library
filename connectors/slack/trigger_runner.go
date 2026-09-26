@@ -14,23 +14,32 @@ import (
 
 // ChannelThreadCreatedTriggerRoute binds one root-message configuration to its application target.
 type ChannelThreadCreatedTriggerRoute struct {
-	BindingName   string
+	// BindingName names this configured Trigger binding.
+	BindingName string
+	// Configuration is the configuration for channel thread created trigger route.
 	Configuration ChannelThreadCreatedTriggerConfiguration
-	Target        sdkgo.TriggerTarget[MessageEvent]
+	// Target routes accepted events into the application.
+	Target sdkgo.TriggerTarget[MessageEvent]
 }
 
 // ThreadReplyCreatedTriggerRoute binds one reply-message configuration to its application target.
 type ThreadReplyCreatedTriggerRoute struct {
-	BindingName   string
+	// BindingName names this configured Trigger binding.
+	BindingName string
+	// Configuration is the configuration for thread reply created trigger route.
 	Configuration ThreadReplyCreatedTriggerConfiguration
-	Target        sdkgo.TriggerTarget[MessageEvent]
+	// Target routes accepted events into the application.
+	Target sdkgo.TriggerTarget[MessageEvent]
 }
 
 // MessageTriggerRunnerConfig configures Slack message Triggers that share one Socket Mode connection.
 type MessageTriggerRunnerConfig struct {
-	Connection                 Connection
+	// Connection specifies connection for message trigger runner config.
+	Connection Connection
+	// ChannelThreadCreatedRoutes specifies channel thread created routes for message trigger runner config.
 	ChannelThreadCreatedRoutes []ChannelThreadCreatedTriggerRoute
-	ThreadReplyCreatedRoutes   []ThreadReplyCreatedTriggerRoute
+	// ThreadReplyCreatedRoutes specifies thread reply created routes for message trigger runner config.
+	ThreadReplyCreatedRoutes []ThreadReplyCreatedTriggerRoute
 }
 
 // MessageTriggerRunner receives Slack messages through one Socket Mode connection and dispatches matching routes.
@@ -90,20 +99,26 @@ func (runner *MessageTriggerRunner) Run(ctx context.Context) error {
 
 // LocalChannelThreadCreatedTriggerRoute binds one stored root-message configuration to its application target.
 type LocalChannelThreadCreatedTriggerRoute struct {
+	// BindingName names this configured Trigger binding.
 	BindingName string
-	Target      sdkgo.TriggerTarget[MessageEvent]
+	// Target routes accepted events into the application.
+	Target sdkgo.TriggerTarget[MessageEvent]
 }
 
 // LocalThreadReplyCreatedTriggerRoute binds one stored reply-message configuration to its application target.
 type LocalThreadReplyCreatedTriggerRoute struct {
+	// BindingName names this configured Trigger binding.
 	BindingName string
-	Target      sdkgo.TriggerTarget[MessageEvent]
+	// Target routes accepted events into the application.
+	Target sdkgo.TriggerTarget[MessageEvent]
 }
 
 // LocalMessageTriggerRunnerConfig selects stored Slack message Trigger bindings.
 type LocalMessageTriggerRunnerConfig struct {
+	// ChannelThreadCreatedRoutes specifies channel thread created routes for local message trigger runner config.
 	ChannelThreadCreatedRoutes []LocalChannelThreadCreatedTriggerRoute
-	ThreadReplyCreatedRoutes   []LocalThreadReplyCreatedTriggerRoute
+	// ThreadReplyCreatedRoutes specifies thread reply created routes for local message trigger runner config.
+	ThreadReplyCreatedRoutes []LocalThreadReplyCreatedTriggerRoute
 }
 
 // NewLocalMessageTriggerRunner loads stored bindings and creates one durable Socket Mode runner. The

@@ -35,6 +35,7 @@ var (
 	githubLoginPattern = regexp.MustCompile(`^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$`)
 )
 
+// Option configures Client construction.
 type Option func(*clientOptions)
 
 type clientOptions struct {
@@ -42,14 +43,17 @@ type clientOptions struct {
 	now        func() time.Time
 }
 
+// WithHTTPClient overrides the default HTTP client; the caller retains ownership.
 func WithHTTPClient(client *http.Client) Option {
 	return func(options *clientOptions) { options.httpClient = client }
 }
 
+// WithClock overrides wall-clock reads, primarily for deterministic tests.
 func WithClock(now func() time.Time) Option {
 	return func(options *clientOptions) { options.now = now }
 }
 
+// Client executes authenticated GitHub requests for connector operations.
 type Client struct {
 	baseURL                *url.URL
 	apiVersion             string
@@ -61,59 +65,103 @@ type Client struct {
 	now                    func() time.Time
 }
 
+// GetAuthenticatedProfileInput contains the provider request fields for get authenticated profile.
 type GetAuthenticatedProfileInput struct{}
 
+// AuthenticatedProfile represents the connector's authenticated profile data.
 type AuthenticatedProfile struct {
-	Subject         string     `json:"subject"`
-	Login           string     `json:"login"`
-	Name            string     `json:"name,omitempty"`
-	VerifiedEmail   string     `json:"verifiedEmail"`
-	AvatarURL       string     `json:"avatarUrl,omitempty"`
-	ProfileURL      string     `json:"profileUrl,omitempty"`
-	Company         string     `json:"company,omitempty"`
-	BlogURL         string     `json:"blogUrl,omitempty"`
-	Location        string     `json:"location,omitempty"`
-	Bio             string     `json:"bio,omitempty"`
-	TwitterUsername string     `json:"twitterUsername,omitempty"`
-	PublicRepos     int64      `json:"publicRepos"`
-	Followers       int64      `json:"followers"`
-	Following       int64      `json:"following"`
-	CreatedAt       *time.Time `json:"createdAt,omitempty"`
-	UpdatedAt       *time.Time `json:"updatedAt,omitempty"`
-}
-
-type ListPublicRepositoriesInput struct {
+	// Subject is the message subject.
+	Subject string `json:"subject"`
+	// Login is the login for authenticated profile.
 	Login string `json:"login"`
-	Limit int    `json:"limit,omitempty"`
+	// Name is the name for authenticated profile.
+	Name string `json:"name,omitempty"`
+	// VerifiedEmail is the verified email for authenticated profile.
+	VerifiedEmail string `json:"verifiedEmail"`
+	// AvatarURL is the avatar URL for authenticated profile.
+	AvatarURL string `json:"avatarUrl,omitempty"`
+	// ProfileURL is the profile URL for authenticated profile.
+	ProfileURL string `json:"profileUrl,omitempty"`
+	// Company is the company for authenticated profile.
+	Company string `json:"company,omitempty"`
+	// BlogURL is the blog URL for authenticated profile.
+	BlogURL string `json:"blogUrl,omitempty"`
+	// Location is the location for authenticated profile.
+	Location string `json:"location,omitempty"`
+	// Bio is the bio for authenticated profile.
+	Bio string `json:"bio,omitempty"`
+	// TwitterUsername is the twitter username for authenticated profile.
+	TwitterUsername string `json:"twitterUsername,omitempty"`
+	// PublicRepos is the public repos for authenticated profile.
+	PublicRepos int64 `json:"publicRepos"`
+	// Followers is the followers for authenticated profile.
+	Followers int64 `json:"followers"`
+	// Following is the following for authenticated profile.
+	Following int64 `json:"following"`
+	// CreatedAt is the created at for authenticated profile.
+	CreatedAt *time.Time `json:"createdAt,omitempty"`
+	// UpdatedAt is the updated at for authenticated profile.
+	UpdatedAt *time.Time `json:"updatedAt,omitempty"`
 }
 
+// ListPublicRepositoriesInput contains the provider request fields for list public repositories.
+type ListPublicRepositoriesInput struct {
+	// Login specifies login for list public repositories input.
+	Login string `json:"login"`
+	// Limit specifies limit for list public repositories input.
+	Limit int `json:"limit,omitempty"`
+}
+
+// PublicRepositories represents the connector's public repositories data.
 type PublicRepositories struct {
+	// Repositories is the repositories for public repositories.
 	Repositories []Repository `json:"repositories"`
-	Truncated    bool         `json:"truncated"`
+	// Truncated is the truncated for public repositories.
+	Truncated bool `json:"truncated"`
 }
 
+// Repository represents the connector's repository data.
 type Repository struct {
-	ID              int64      `json:"id"`
-	Name            string     `json:"name"`
-	FullName        string     `json:"fullName"`
-	Description     string     `json:"description,omitempty"`
-	ProfileURL      string     `json:"profileUrl,omitempty"`
-	HomepageURL     string     `json:"homepageUrl,omitempty"`
-	Language        string     `json:"language,omitempty"`
-	Topics          []string   `json:"topics,omitempty"`
-	Fork            bool       `json:"fork"`
-	Archived        bool       `json:"archived"`
-	Disabled        bool       `json:"disabled"`
-	StargazersCount int64      `json:"stargazersCount"`
-	ForksCount      int64      `json:"forksCount"`
-	OpenIssuesCount int64      `json:"openIssuesCount"`
-	CreatedAt       *time.Time `json:"createdAt,omitempty"`
-	UpdatedAt       *time.Time `json:"updatedAt,omitempty"`
-	PushedAt        *time.Time `json:"pushedAt,omitempty"`
+	// ID is the stable provider identifier.
+	ID int64 `json:"id"`
+	// Name is the name for repository.
+	Name string `json:"name"`
+	// FullName is the full name for repository.
+	FullName string `json:"fullName"`
+	// Description is the description for repository.
+	Description string `json:"description,omitempty"`
+	// ProfileURL is the profile URL for repository.
+	ProfileURL string `json:"profileUrl,omitempty"`
+	// HomepageURL is the homepage URL for repository.
+	HomepageURL string `json:"homepageUrl,omitempty"`
+	// Language is the language for repository.
+	Language string `json:"language,omitempty"`
+	// Topics is the topics for repository.
+	Topics []string `json:"topics,omitempty"`
+	// Fork is the fork for repository.
+	Fork bool `json:"fork"`
+	// Archived is the archived for repository.
+	Archived bool `json:"archived"`
+	// Disabled is the disabled for repository.
+	Disabled bool `json:"disabled"`
+	// StargazersCount is the stargazers count for repository.
+	StargazersCount int64 `json:"stargazersCount"`
+	// ForksCount is the forks count for repository.
+	ForksCount int64 `json:"forksCount"`
+	// OpenIssuesCount is the open issues count for repository.
+	OpenIssuesCount int64 `json:"openIssuesCount"`
+	// CreatedAt is the created at for repository.
+	CreatedAt *time.Time `json:"createdAt,omitempty"`
+	// UpdatedAt is the updated at for repository.
+	UpdatedAt *time.Time `json:"updatedAt,omitempty"`
+	// PushedAt is the pushed at for repository.
+	PushedAt *time.Time `json:"pushedAt,omitempty"`
 }
 
+// GetAuthenticatedProfileOperation implements the get authenticated profile connector operation.
 type GetAuthenticatedProfileOperation struct{ client *Client }
 
+// ListPublicRepositoriesOperation implements the list public repositories connector operation.
 type ListPublicRepositoriesOperation struct{ client *Client }
 
 type githubUser struct {
@@ -170,12 +218,13 @@ type providerResponse struct {
 }
 
 type terminalResponse struct {
-	branch  sdkgo.BranchID
-	failure sdkgo.Failure
-	retry   bool
-	delay   time.Duration
+	branch      sdkgo.BranchID
+	failure     sdkgo.Failure
+	isRetryable bool
+	delay       time.Duration
 }
 
+// New validates configuration and constructs an authenticated GitHub client.
 func New(config Config, credentials sdkgo.CredentialProvider[Credentials], options ...Option) (*Client, error) {
 	config = withConfigDefaults(config)
 	if err := config.Validate(); err != nil {
@@ -231,18 +280,22 @@ func New(config Config, credentials sdkgo.CredentialProvider[Credentials], optio
 	}, nil
 }
 
+// GetAuthenticatedProfile returns the GetAuthenticatedProfile operation bound to this client.
 func (client *Client) GetAuthenticatedProfile() GetAuthenticatedProfileOperation {
 	return GetAuthenticatedProfileOperation{client: client}
 }
 
+// ListPublicRepositories returns the ListPublicRepositories operation bound to this client.
 func (client *Client) ListPublicRepositories() ListPublicRepositoriesOperation {
 	return ListPublicRepositoriesOperation{client: client}
 }
 
+// Definition returns the immutable connector operation definition.
 func (GetAuthenticatedProfileOperation) Definition() sdkgo.QueryDefinition {
 	return GetAuthenticatedProfileDefinition
 }
 
+// Invoke executes one provider call and classifies its attempt.
 func (operation GetAuthenticatedProfileOperation) Invoke(call sdkgo.Call, _ GetAuthenticatedProfileInput) sdkgo.QueryAttempt[AuthenticatedProfile] {
 	credential, failure := operation.client.resolveCredential(call, "getAuthenticatedProfile")
 	if failure != nil {
@@ -302,10 +355,12 @@ func (operation GetAuthenticatedProfileOperation) Invoke(call sdkgo.Call, _ GetA
 	return sdkgo.NewQueryBranch(GetAuthenticatedProfileBranchProfileLoaded, profile, nil, combinedReceipt)
 }
 
+// Definition returns the immutable connector operation definition.
 func (ListPublicRepositoriesOperation) Definition() sdkgo.QueryDefinition {
 	return ListPublicRepositoriesDefinition
 }
 
+// Invoke executes one provider call and classifies its attempt.
 func (operation ListPublicRepositoriesOperation) Invoke(call sdkgo.Call, input ListPublicRepositoriesInput) sdkgo.QueryAttempt[PublicRepositories] {
 	login := strings.TrimSpace(input.Login)
 	if !githubLoginPattern.MatchString(login) {
@@ -446,8 +501,8 @@ func (client *Client) classify(operation string, response providerResponse, bran
 	}
 	if response.statusCode == http.StatusTooManyRequests || isRateLimited(response) {
 		return &terminalResponse{
-			failure: providerFailure(operation, sdkgo.FailureRateLimit, "GitHub rate limit was reached"),
-			retry:   true, delay: retryDelay(response.header, client.now()),
+			failure:     providerFailure(operation, sdkgo.FailureRateLimit, "GitHub rate limit was reached"),
+			isRetryable: true, delay: retryDelay(response.header, client.now()),
 		}
 	}
 	switch response.statusCode {
@@ -459,7 +514,7 @@ func (client *Client) classify(operation string, response providerResponse, bran
 		return &terminalResponse{branch: branches.notFound, failure: providerFailure(operation, sdkgo.FailureNotFound, "GitHub resource was not found")}
 	default:
 		if response.statusCode >= 500 {
-			return &terminalResponse{failure: providerFailure(operation, sdkgo.FailureAvailability, "GitHub is unavailable"), retry: true}
+			return &terminalResponse{failure: providerFailure(operation, sdkgo.FailureAvailability, "GitHub is unavailable"), isRetryable: true}
 		}
 		return &terminalResponse{branch: branches.providerRejected, failure: providerFailure(operation, sdkgo.FailureProviderRejection, "GitHub rejected the request")}
 	}
@@ -491,14 +546,14 @@ func repositoryBranches() responseBranches {
 }
 
 func profileTerminalAttempt(terminal terminalResponse, receipt sdkgo.Receipt) sdkgo.QueryAttempt[AuthenticatedProfile] {
-	if terminal.retry {
+	if terminal.isRetryable {
 		return sdkgo.NewQueryRetry[AuthenticatedProfile](terminal.failure, terminal.delay)
 	}
 	return sdkgo.NewQueryBranch(terminal.branch, AuthenticatedProfile{}, &terminal.failure, receipt)
 }
 
 func repositoriesTerminalAttempt(terminal terminalResponse, receipt sdkgo.Receipt) sdkgo.QueryAttempt[PublicRepositories] {
-	if terminal.retry {
+	if terminal.isRetryable {
 		return sdkgo.NewQueryRetry[PublicRepositories](terminal.failure, terminal.delay)
 	}
 	return sdkgo.NewQueryBranch(terminal.branch, PublicRepositories{}, &terminal.failure, receipt)

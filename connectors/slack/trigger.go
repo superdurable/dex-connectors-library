@@ -8,10 +8,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"net"
-	"net/http"
 	"net/url"
 	"runtime"
 	"strings"
@@ -21,28 +19,44 @@ import (
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 
+// MessageMatcher filters Slack messages by text and posting user.
 type MessageMatcher struct {
-	MessageContains string   `json:"messageContains,omitempty"`
-	PosterUserIDs   []string `json:"posterUserIds,omitempty"`
+	// MessageContains requires this case-insensitive substring when non-empty.
+	MessageContains string `json:"messageContains,omitempty"`
+	// PosterUserIDs limits matches to these Slack user IDs when non-empty.
+	PosterUserIDs []string `json:"posterUserIds,omitempty"`
 }
 
+// ChannelThreadCreatedTriggerConfiguration configures channel thread created trigger.
 type ChannelThreadCreatedTriggerConfiguration struct {
-	ChannelID            string         `json:"channelId"`
+	// ChannelID is the Slack channel identifier.
+	ChannelID string `json:"channelId"`
+	// ThreadTriggerMatcher specifies thread trigger matcher for channel thread created trigger configuration.
 	ThreadTriggerMatcher MessageMatcher `json:"threadTriggerMatcher"`
 }
 
+// ThreadReplyCreatedTriggerConfiguration configures thread reply created trigger.
 type ThreadReplyCreatedTriggerConfiguration struct {
-	ChannelID          string         `json:"channelId"`
+	// ChannelID is the Slack channel identifier.
+	ChannelID string `json:"channelId"`
+	// ThreadReplyMatcher specifies thread reply matcher for thread reply created trigger configuration.
 	ThreadReplyMatcher MessageMatcher `json:"threadReplyMatcher"`
 }
 
+// MessageEvent is one normalized message provider event.
 type MessageEvent struct {
-	TeamID          string `json:"teamId"`
-	ChannelID       string `json:"channelId"`
-	Timestamp       string `json:"timestamp"`
+	// TeamID is the team ID returned by Slack.
+	TeamID string `json:"teamId"`
+	// ChannelID is the Slack channel identifier.
+	ChannelID string `json:"channelId"`
+	// Timestamp is the Slack message timestamp identifier.
+	Timestamp string `json:"timestamp"`
+	// ThreadTimestamp is the Slack parent message timestamp.
 	ThreadTimestamp string `json:"threadTimestamp"`
-	UserID          string `json:"userId"`
-	Text            string `json:"text"`
+	// UserID is the Slack user identifier.
+	UserID string `json:"userId"`
+	// Text is the text returned by Slack.
+	Text string `json:"text"`
 }
 
 type socketConnection interface {
@@ -103,6 +117,7 @@ type socketModeDisconnect struct {
 	reason string
 }
 
+// Error returns the safe human-readable failure message.
 func (disconnect *socketModeDisconnect) Error() string {
 	return "Slack requested a Socket Mode reconnect: " + disconnect.reason
 }
@@ -131,6 +146,7 @@ type socketOpenResponse struct {
 	URL   string `json:"url"`
 }
 
+// Validate returns an error when the value violates its public contract.
 func (configuration ChannelThreadCreatedTriggerConfiguration) Validate() error {
 	if strings.TrimSpace(configuration.ChannelID) == "" {
 		return fmt.Errorf("Slack channel ID is required")
@@ -138,6 +154,7 @@ func (configuration ChannelThreadCreatedTriggerConfiguration) Validate() error {
 	return configuration.ThreadTriggerMatcher.validate(false)
 }
 
+// Validate returns an error when the value violates its public contract.
 func (configuration ThreadReplyCreatedTriggerConfiguration) Validate() error {
 	if strings.TrimSpace(configuration.ChannelID) == "" {
 		return fmt.Errorf("Slack channel ID is required")
@@ -159,27 +176,7 @@ func (matcher MessageMatcher) validate(requiresPoster bool) error {
 	return nil
 }
 
-func (client *Client) channelThreadCreatedTriggerSource(connection sdkgo.ConnectionRef, configuration ChannelThreadCreatedTriggerConfiguration) *messageTriggerSource {
-	if err := configuration.Validate(); err != nil {
-		panic(err)
-	}
-	return &messageTriggerSource{
-		client: client, connection: connection,
-		channelID: configuration.ChannelID, matcher: configuration.ThreadTriggerMatcher, triggerName: "channelThreadCreated",
-	}
-}
-
-func (client *Client) threadReplyCreatedTriggerSource(connection sdkgo.ConnectionRef, configuration ThreadReplyCreatedTriggerConfiguration) *messageTriggerSource {
-	if err := configuration.Validate(); err != nil {
-		panic(err)
-	}
-	return &messageTriggerSource{
-		client: client, connection: connection,
-		channelID: configuration.ChannelID, matcher: configuration.ThreadReplyMatcher, requiresThread: true,
-		triggerName: "threadReplyCreated",
-	}
-}
-
+// Run processes provider events until cancellation or an unrecoverable error.
 func (source *messageTriggerSource) Run(ctx context.Context, target sdkgo.TriggerTarget[MessageEvent]) error {
 	return runMessageTriggerRoutes(ctx, []messageTriggerRoute{{source: source, target: target}})
 }
@@ -277,10 +274,10 @@ func runMessageTriggerConnection(ctx context.Context, routes []messageTriggerRou
 	if err != nil {
 		return false, fmt.Errorf("connect Slack Socket Mode: %w", redactSocketURL(err, socketURL))
 	}
-	defer connection.Close()
+	defer closeSocketConnection(connection)
 	// Pings extend the read deadline, so a quiet connection can read for as long as Slack keeps it open.
 	// Close it as soon as ctx ends, so Run returns at once instead of waiting for Slack to disconnect.
-	stopClosingOnCancel := context.AfterFunc(ctx, func() { _ = connection.Close() })
+	stopClosingOnCancel := context.AfterFunc(ctx, func() { closeSocketConnection(connection) })
 	defer stopClosingOnCancel()
 	source.log(ctx, slog.LevelInfo, "slack socket mode connected", source.connectionAttrs(), slog.Bool("reconnect", reconnecting))
 	received := false
@@ -407,33 +404,26 @@ func (source *messageTriggerSource) matchEvent(envelope socketEnvelope) (sdkgo.T
 		return sdkgo.TriggerEvent[MessageEvent]{}, ignoredMessage{}, err
 	}
 	message := payload.Event
-	ignore := func(reason string) (sdkgo.TriggerEvent[MessageEvent], ignoredMessage, error) {
-		ignored := ignoredMessage{reason: reason, eventID: payload.EventID, channel: message.Channel}
-		if reason == "subtype" {
-			ignored.subtype = message.Subtype
-		}
-		return sdkgo.TriggerEvent[MessageEvent]{}, ignored, nil
-	}
 	isReply := message.ThreadTS != "" && message.ThreadTS != message.Timestamp
 	switch {
 	case payload.EventID == "":
-		return ignore("missing_event_id")
+		return ignoredMessageResult(payload, message, "missing_event_id")
 	case message.Type != "message":
-		return ignore("not_a_message")
+		return ignoredMessageResult(payload, message, "not_a_message")
 	case message.Subtype != "":
-		return ignore("subtype")
+		return ignoredMessageResult(payload, message, "subtype")
 	case message.BotID != "":
-		return ignore("bot")
+		return ignoredMessageResult(payload, message, "bot")
 	case message.User == "":
-		return ignore("missing_user")
+		return ignoredMessageResult(payload, message, "missing_user")
 	case message.Channel != source.channelID:
-		return ignore("channel_mismatch")
+		return ignoredMessageResult(payload, message, "channel_mismatch")
 	case source.requiresThread && !isReply:
-		return ignore("not_a_reply")
+		return ignoredMessageResult(payload, message, "not_a_reply")
 	case !source.requiresThread && isReply:
-		return ignore("not_a_root")
+		return ignoredMessageResult(payload, message, "not_a_root")
 	case !source.matcher.matches(message.User, message.Text):
-		return ignore("matcher_mismatch")
+		return ignoredMessageResult(payload, message, "matcher_mismatch")
 	}
 	threadTimestamp := message.ThreadTS
 	if !isReply {
@@ -446,6 +436,19 @@ func (source *messageTriggerSource) matchEvent(envelope socketEnvelope) (sdkgo.T
 			ThreadTimestamp: threadTimestamp, UserID: message.User, Text: message.Text,
 		},
 	}, ignoredMessage{}, nil
+}
+
+func ignoredMessageResult(payload eventsAPIPayload, message messageEvent, reason string) (sdkgo.TriggerEvent[MessageEvent], ignoredMessage, error) {
+	ignored := ignoredMessage{reason: reason, eventID: payload.EventID, channel: message.Channel}
+	if reason == "subtype" {
+		ignored.subtype = message.Subtype
+	}
+	return sdkgo.TriggerEvent[MessageEvent]{}, ignored, nil
+}
+
+func closeSocketConnection(connection socketConnection) {
+	// Closing is best-effort because a prior read or cancellation usually closed the socket first.
+	_ = connection.Close()
 }
 
 // logger returns the client's logger, or slog.Default() as of the call, with the source's binding
@@ -487,15 +490,8 @@ func (source *messageTriggerSource) log(ctx context.Context, level slog.Level, m
 	record := slog.NewRecord(time.Now(), level, message, pcs[0])
 	record.AddAttrs(base...)
 	record.AddAttrs(attrs...)
+	// Logging is best-effort because a handler failure cannot change Trigger delivery state.
 	_ = logger.Handler().Handle(ctx, record)
-}
-
-// triggerLogger returns the configured logger or, as of the call, slog.Default().
-func (client *Client) triggerLogger() *slog.Logger {
-	if client != nil && client.logger != nil {
-		return client.logger
-	}
-	return slog.Default()
 }
 
 func (matcher MessageMatcher) matches(userID string, text string) bool {
@@ -511,34 +507,6 @@ func (matcher MessageMatcher) matches(userID string, text string) bool {
 		}
 	}
 	return false
-}
-
-func (client *Client) openSocketModeConnection(ctx context.Context, appToken string) (string, error) {
-	target := strings.TrimRight(client.endpoint.String(), "/") + "/apps.connections.open"
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, target, nil)
-	if err != nil {
-		return "", fmt.Errorf("build Slack Socket Mode open request: %w", err)
-	}
-	request.Header.Set("Authorization", "Bearer "+appToken)
-	response, err := client.httpClient.Do(request)
-	if err != nil {
-		return "", fmt.Errorf("open Slack Socket Mode connection: %w", err)
-	}
-	defer response.Body.Close()
-	contents, err := io.ReadAll(io.LimitReader(response.Body, client.maxResponseBytes+1))
-	if err != nil || int64(len(contents)) > client.maxResponseBytes {
-		return "", fmt.Errorf("read Slack Socket Mode open response")
-	}
-	var decoded socketOpenResponse
-	decodeErr := json.Unmarshal(contents, &decoded)
-	if response.StatusCode >= 200 && response.StatusCode < 300 && decodeErr != nil {
-		return "", fmt.Errorf("decode Slack Socket Mode open response: %w", decodeErr)
-	}
-	if response.StatusCode < 200 || response.StatusCode >= 300 || !decoded.OK || decoded.URL == "" {
-		// Slack's error code, such as invalid_auth, names the cause without revealing the token.
-		return "", fmt.Errorf("Slack rejected the Socket Mode connection: %s (HTTP %d)", slackCode(decoded.Error), response.StatusCode)
-	}
-	return decoded.URL, nil
 }
 
 // slackCode returns a Slack error or reason code such as invalid_auth, or "unknown" when the value is not a
@@ -594,16 +562,20 @@ func newWebSocketConnection(ctx context.Context, target string) (socketConnectio
 	return &webSocketConnection{connection: connection}, nil
 }
 
+// ReadJSON decodes the next complete streaming JSON message.
 func (connection *webSocketConnection) ReadJSON(value any) error {
 	return connection.connection.ReadJSON(value)
 }
 
+// WriteJSON encodes and sends one streaming JSON message.
 func (connection *webSocketConnection) WriteJSON(value any) error {
 	return connection.connection.WriteJSON(value)
 }
 
+// SetReadDeadline sets the next streaming read deadline.
 func (connection *webSocketConnection) SetReadDeadline(deadline time.Time) error {
 	return connection.connection.SetReadDeadline(deadline)
 }
 
+// Close releases the underlying streaming response body.
 func (connection *webSocketConnection) Close() error { return connection.connection.Close() }

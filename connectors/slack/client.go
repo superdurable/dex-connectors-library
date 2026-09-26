@@ -6,6 +6,7 @@ package slack
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -22,6 +23,7 @@ import (
 
 const maximumThreadPageSize = 15
 
+// Option configures Client construction.
 type Option func(*clientOptions)
 
 type clientOptions struct {
@@ -51,6 +53,7 @@ func WithLogger(logger *slog.Logger) Option {
 	return func(options *clientOptions) { options.logger = logger }
 }
 
+// Client executes authenticated Slack requests for connector operations.
 type Client struct {
 	endpoint             *url.URL
 	httpClient           *http.Client
@@ -62,54 +65,90 @@ type Client struct {
 	logger               *slog.Logger
 }
 
+// Message represents the connector's message data.
 type Message struct {
-	ChannelID       string `json:"channelId"`
-	Timestamp       string `json:"timestamp"`
-	ThreadTimestamp string `json:"threadTimestamp,omitempty"`
-	UserID          string `json:"userId,omitempty"`
-	Text            string `json:"text"`
-}
-
-type ListThreadMessagesInput struct {
-	ChannelID       string `json:"channelId"`
-	ThreadTimestamp string `json:"threadTimestamp"`
-	Cursor          string `json:"cursor,omitempty"`
-	PageSize        int    `json:"pageSize"`
-}
-
-type ListThreadMessagesOutput struct {
-	Messages   []Message `json:"messages"`
-	NextCursor string    `json:"nextCursor,omitempty"`
-}
-
-type GetThreadReplyInput struct {
-	ChannelID       string `json:"channelId"`
-	ThreadTimestamp string `json:"threadTimestamp"`
-	ReplyTimestamp  string `json:"replyTimestamp"`
-}
-
-type GetThreadReplyOutput struct {
-	Message Message `json:"message"`
-}
-
-type PostChannelMessageInput struct {
+	// ChannelID is the Slack channel identifier.
 	ChannelID string `json:"channelId"`
-	Text      string `json:"text"`
+	// Timestamp is the Slack message timestamp identifier.
+	Timestamp string `json:"timestamp"`
+	// ThreadTimestamp is the Slack parent message timestamp.
+	ThreadTimestamp string `json:"threadTimestamp,omitempty"`
+	// UserID is the Slack user identifier.
+	UserID string `json:"userId,omitempty"`
+	// Text is the text for message.
+	Text string `json:"text"`
 }
 
-type PostThreadReplyInput struct {
-	ChannelID       string `json:"channelId"`
+// ListThreadMessagesInput contains the provider request fields for list thread messages.
+type ListThreadMessagesInput struct {
+	// ChannelID is the Slack channel identifier.
+	ChannelID string `json:"channelId"`
+	// ThreadTimestamp is the Slack parent message timestamp.
 	ThreadTimestamp string `json:"threadTimestamp"`
-	Text            string `json:"text"`
+	// Cursor specifies cursor for list thread messages input.
+	Cursor string `json:"cursor,omitempty"`
+	// PageSize specifies page size for list thread messages input.
+	PageSize int `json:"pageSize"`
 }
 
-type PostMessageOutput struct {
+// ListThreadMessagesOutput contains the provider response fields for list thread messages.
+type ListThreadMessagesOutput struct {
+	// Messages is the messages returned by Slack.
+	Messages []Message `json:"messages"`
+	// NextCursor is the next cursor returned by Slack.
+	NextCursor string `json:"nextCursor,omitempty"`
+}
+
+// GetThreadReplyInput contains the provider request fields for get thread reply.
+type GetThreadReplyInput struct {
+	// ChannelID is the Slack channel identifier.
+	ChannelID string `json:"channelId"`
+	// ThreadTimestamp is the Slack parent message timestamp.
+	ThreadTimestamp string `json:"threadTimestamp"`
+	// ReplyTimestamp is the Slack reply message timestamp.
+	ReplyTimestamp string `json:"replyTimestamp"`
+}
+
+// GetThreadReplyOutput contains the provider response fields for get thread reply.
+type GetThreadReplyOutput struct {
+	// Message is the message returned by Slack.
 	Message Message `json:"message"`
 }
 
+// PostChannelMessageInput contains the provider request fields for post channel message.
+type PostChannelMessageInput struct {
+	// ChannelID is the Slack channel identifier.
+	ChannelID string `json:"channelId"`
+	// Text specifies text for post channel message input.
+	Text string `json:"text"`
+}
+
+// PostThreadReplyInput contains the provider request fields for post thread reply.
+type PostThreadReplyInput struct {
+	// ChannelID is the Slack channel identifier.
+	ChannelID string `json:"channelId"`
+	// ThreadTimestamp is the Slack parent message timestamp.
+	ThreadTimestamp string `json:"threadTimestamp"`
+	// Text specifies text for post thread reply input.
+	Text string `json:"text"`
+}
+
+// PostMessageOutput contains the provider response fields for post message.
+type PostMessageOutput struct {
+	// Message is the message returned by Slack.
+	Message Message `json:"message"`
+}
+
+// ListThreadMessagesOperation implements the list thread messages connector operation.
 type ListThreadMessagesOperation struct{ client *Client }
+
+// GetThreadReplyOperation implements the get thread reply connector operation.
 type GetThreadReplyOperation struct{ client *Client }
+
+// PostChannelMessageOperation implements the post channel message connector operation.
 type PostChannelMessageOperation struct{ client *Client }
+
+// PostThreadReplyOperation implements the post thread reply connector operation.
 type PostThreadReplyOperation struct{ client *Client }
 
 type slackMessage struct {
@@ -145,6 +184,7 @@ var (
 	errSlackResponseTooLarge = errors.New("Slack response exceeds configured size limit")
 )
 
+// New validates configuration and constructs an authenticated Slack client.
 func New(config Config, credentials sdkgo.CredentialProvider[Credentials], options ...Option) (*Client, error) {
 	config = withConfigDefaults(config)
 	if err := config.Validate(); err != nil {
@@ -180,26 +220,89 @@ func New(config Config, credentials sdkgo.CredentialProvider[Credentials], optio
 	}, nil
 }
 
+// ListThreadMessages returns the ListThreadMessages operation bound to this client.
 func (client *Client) ListThreadMessages() ListThreadMessagesOperation {
 	return ListThreadMessagesOperation{client: client}
 }
 
+// GetThreadReply returns the GetThreadReply operation bound to this client.
 func (client *Client) GetThreadReply() GetThreadReplyOperation {
 	return GetThreadReplyOperation{client: client}
 }
 
+// PostChannelMessage returns the PostChannelMessage operation bound to this client.
 func (client *Client) PostChannelMessage() PostChannelMessageOperation {
 	return PostChannelMessageOperation{client: client}
 }
 
+// PostThreadReply returns the PostThreadReply operation bound to this client.
 func (client *Client) PostThreadReply() PostThreadReplyOperation {
 	return PostThreadReplyOperation{client: client}
 }
 
+func (client *Client) channelThreadCreatedTriggerSource(connection sdkgo.ConnectionRef, configuration ChannelThreadCreatedTriggerConfiguration) *messageTriggerSource {
+	if err := configuration.Validate(); err != nil {
+		panic(err)
+	}
+	return &messageTriggerSource{
+		client: client, connection: connection,
+		channelID: configuration.ChannelID, matcher: configuration.ThreadTriggerMatcher, triggerName: "channelThreadCreated",
+	}
+}
+
+func (client *Client) threadReplyCreatedTriggerSource(connection sdkgo.ConnectionRef, configuration ThreadReplyCreatedTriggerConfiguration) *messageTriggerSource {
+	if err := configuration.Validate(); err != nil {
+		panic(err)
+	}
+	return &messageTriggerSource{
+		client: client, connection: connection,
+		channelID: configuration.ChannelID, matcher: configuration.ThreadReplyMatcher, requiresThread: true,
+		triggerName: "threadReplyCreated",
+	}
+}
+
+// triggerLogger returns the configured logger or, as of the call, slog.Default().
+func (client *Client) triggerLogger() *slog.Logger {
+	if client != nil && client.logger != nil {
+		return client.logger
+	}
+	return slog.Default()
+}
+
+func (client *Client) openSocketModeConnection(ctx context.Context, appToken string) (string, error) {
+	target := strings.TrimRight(client.endpoint.String(), "/") + "/apps.connections.open"
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, target, nil)
+	if err != nil {
+		return "", fmt.Errorf("build Slack Socket Mode open request: %w", err)
+	}
+	request.Header.Set("Authorization", "Bearer "+appToken)
+	response, err := client.httpClient.Do(request)
+	if err != nil {
+		return "", fmt.Errorf("open Slack Socket Mode connection: %w", err)
+	}
+	defer response.Body.Close()
+	contents, err := io.ReadAll(io.LimitReader(response.Body, client.maxResponseBytes+1))
+	if err != nil || int64(len(contents)) > client.maxResponseBytes {
+		return "", fmt.Errorf("read Slack Socket Mode open response")
+	}
+	var decoded socketOpenResponse
+	decodeErr := json.Unmarshal(contents, &decoded)
+	if response.StatusCode >= 200 && response.StatusCode < 300 && decodeErr != nil {
+		return "", fmt.Errorf("decode Slack Socket Mode open response: %w", decodeErr)
+	}
+	if response.StatusCode < 200 || response.StatusCode >= 300 || !decoded.OK || decoded.URL == "" {
+		// Slack's error code names the cause without revealing the token.
+		return "", fmt.Errorf("Slack rejected the Socket Mode connection: %s (HTTP %d)", slackCode(decoded.Error), response.StatusCode)
+	}
+	return decoded.URL, nil
+}
+
+// Definition returns the immutable connector operation definition.
 func (ListThreadMessagesOperation) Definition() sdkgo.QueryDefinition {
 	return ListThreadMessagesDefinition
 }
 
+// Invoke executes one provider call and classifies its attempt.
 func (operation ListThreadMessagesOperation) Invoke(call sdkgo.Call, input ListThreadMessagesInput) sdkgo.QueryAttempt[ListThreadMessagesOutput] {
 	if strings.TrimSpace(input.ChannelID) == "" || strings.TrimSpace(input.ThreadTimestamp) == "" || input.PageSize < 1 || input.PageSize > maximumThreadPageSize {
 		return sdkgo.NewQueryBranch(ListThreadMessagesBranchDefect, ListThreadMessagesOutput{}, slackFailurePointer("listThreadMessages", sdkgo.FailureValidation, "channel, thread timestamp, and page size from 1 through 15 are required"), sdkgo.Receipt{})
@@ -238,10 +341,12 @@ func (operation ListThreadMessagesOperation) Invoke(call sdkgo.Call, input ListT
 	return sdkgo.NewQueryBranch(ListThreadMessagesBranchRead, ListThreadMessagesOutput{Messages: messages, NextCursor: response.decoded.ResponseMetadata.NextCursor}, nil, operation.client.receipt(call, response, ""))
 }
 
+// Definition returns the immutable connector operation definition.
 func (GetThreadReplyOperation) Definition() sdkgo.QueryDefinition {
 	return GetThreadReplyDefinition
 }
 
+// Invoke executes one provider call and classifies its attempt.
 func (operation GetThreadReplyOperation) Invoke(call sdkgo.Call, input GetThreadReplyInput) sdkgo.QueryAttempt[GetThreadReplyOutput] {
 	if strings.TrimSpace(input.ChannelID) == "" || strings.TrimSpace(input.ThreadTimestamp) == "" || strings.TrimSpace(input.ReplyTimestamp) == "" || input.ReplyTimestamp == input.ThreadTimestamp {
 		return sdkgo.NewQueryBranch(GetThreadReplyBranchDefect, GetThreadReplyOutput{}, slackFailurePointer("getThreadReply", sdkgo.FailureValidation, "channel, thread timestamp, and a distinct reply timestamp are required"), sdkgo.Receipt{})
@@ -281,26 +386,32 @@ func (operation GetThreadReplyOperation) Invoke(call sdkgo.Call, input GetThread
 	return sdkgo.NewQueryBranch(GetThreadReplyBranchNotFound, GetThreadReplyOutput{}, slackFailurePointer("getThreadReply", sdkgo.FailureNotFound, "Slack thread reply was not found"), operation.client.receipt(call, response, ""))
 }
 
+// Definition returns the immutable connector operation definition.
 func (PostChannelMessageOperation) Definition() sdkgo.MutationDefinition {
 	return PostChannelMessageDefinition
 }
 
+// IdempotencyKey derives the provider key from the stable connector call ID.
 func (PostChannelMessageOperation) IdempotencyKey(callID sdkgo.CallID, _ PostChannelMessageInput) sdkgo.IdempotencyKey {
 	return sdkgo.IdempotencyKey(callID)
 }
 
+// Invoke executes one provider call and classifies its attempt.
 func (operation PostChannelMessageOperation) Invoke(call sdkgo.Call, input PostChannelMessageInput) sdkgo.MutationAttempt[PostMessageOutput] {
 	return operation.client.postMessage(call, "postChannelMessage", input.ChannelID, "", input.Text, PostChannelMessageBranchSent, PostChannelMessageBranchProviderRejected, PostChannelMessageBranchUncertain, PostChannelMessageBranchDefect)
 }
 
+// Definition returns the immutable connector operation definition.
 func (PostThreadReplyOperation) Definition() sdkgo.MutationDefinition {
 	return PostThreadReplyDefinition
 }
 
+// IdempotencyKey derives the provider key from the stable connector call ID.
 func (PostThreadReplyOperation) IdempotencyKey(callID sdkgo.CallID, _ PostThreadReplyInput) sdkgo.IdempotencyKey {
 	return sdkgo.IdempotencyKey(callID)
 }
 
+// Invoke executes one provider call and classifies its attempt.
 func (operation PostThreadReplyOperation) Invoke(call sdkgo.Call, input PostThreadReplyInput) sdkgo.MutationAttempt[PostMessageOutput] {
 	return operation.client.postMessage(call, "postThreadReply", input.ChannelID, input.ThreadTimestamp, input.Text, PostThreadReplyBranchSent, PostThreadReplyBranchProviderRejected, PostThreadReplyBranchUncertain, PostThreadReplyBranchDefect)
 }
