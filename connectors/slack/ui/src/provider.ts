@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Super Durable
+// SPDX-License-Identifier: MIT
+
 import type { SlackChannel, SlackUser } from "./units.js";
 
 export interface SlackChannelPage { channels: SlackChannel[]; nextCursor: string; }

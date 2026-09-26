@@ -23,32 +23,46 @@ import (
 
 // MessageMatcher filters received Gmail messages by sender and text.
 type MessageMatcher struct {
-	MessageContains string   `json:"messageContains,omitempty"`
-	SenderEmails    []string `json:"senderEmails,omitempty"`
+	// MessageContains requires this case-insensitive substring when non-empty.
+	MessageContains string `json:"messageContains,omitempty"`
+	// SenderEmails limits matches to these canonical sender addresses when non-empty.
+	SenderEmails []string `json:"senderEmails,omitempty"`
 }
 
 // MessageReceivedTriggerConfiguration configures root-message polling.
 type MessageReceivedTriggerConfiguration struct {
-	SearchQuery    string         `json:"searchQuery,omitempty"`
+	// SearchQuery specifies search query for message received trigger configuration.
+	SearchQuery string `json:"searchQuery,omitempty"`
+	// MessageMatcher specifies message matcher for message received trigger configuration.
 	MessageMatcher MessageMatcher `json:"messageMatcher,omitempty"`
 }
 
 // ReplyReceivedTriggerConfiguration configures reply polling.
 type ReplyReceivedTriggerConfiguration struct {
-	SearchQuery  string         `json:"searchQuery,omitempty"`
+	// SearchQuery specifies search query for reply received trigger configuration.
+	SearchQuery string `json:"searchQuery,omitempty"`
+	// ReplyMatcher specifies reply matcher for reply received trigger configuration.
 	ReplyMatcher MessageMatcher `json:"replyMatcher,omitempty"`
 }
 
 // MessageEvent is the stable, metadata-only payload emitted by Gmail Triggers.
 type MessageEvent struct {
-	PrimaryEmail string    `json:"primaryEmail"`
-	MessageID    string    `json:"messageId"`
-	ThreadID     string    `json:"threadId"`
-	From         string    `json:"from"`
-	Subject      string    `json:"subject"`
-	Snippet      string    `json:"snippet,omitempty"`
-	ReceivedAt   time.Time `json:"receivedAt"`
-	IsReply      bool      `json:"isReply"`
+	// PrimaryEmail is the primary email returned by Gmail.
+	PrimaryEmail string `json:"primaryEmail"`
+	// MessageID is the provider message identifier.
+	MessageID string `json:"messageId"`
+	// ThreadID is the provider conversation thread identifier.
+	ThreadID string `json:"threadId"`
+	// From is the sender address.
+	From string `json:"from"`
+	// Subject is the message subject.
+	Subject string `json:"subject"`
+	// Snippet is the snippet returned by Gmail.
+	Snippet string `json:"snippet,omitempty"`
+	// ReceivedAt is the received at returned by Gmail.
+	ReceivedAt time.Time `json:"receivedAt"`
+	// IsReply is the is reply returned by Gmail.
+	IsReply bool `json:"isReply"`
 }
 
 type messagePollingTriggerSource struct {
@@ -109,36 +123,7 @@ func (matcher MessageMatcher) validate() error {
 	return nil
 }
 
-func (client *Client) messageReceivedTriggerSource(connection sdkgo.ConnectionRef, configuration MessageReceivedTriggerConfiguration) sdkgo.TriggerSource[MessageEvent] {
-	return client.messageReceivedPollingSource(connection, configuration)
-}
-
-func (client *Client) replyReceivedTriggerSource(connection sdkgo.ConnectionRef, configuration ReplyReceivedTriggerConfiguration) sdkgo.TriggerSource[MessageEvent] {
-	return client.replyReceivedPollingSource(connection, configuration)
-}
-
-func (client *Client) messageReceivedPollingSource(connection sdkgo.ConnectionRef, configuration MessageReceivedTriggerConfiguration) *messagePollingTriggerSource {
-	if err := configuration.Validate(); err != nil {
-		panic(err)
-	}
-	return &messagePollingTriggerSource{
-		client: client, connection: connection, searchQuery: configuration.SearchQuery,
-		matcher: configuration.MessageMatcher, delivered: make(map[string]bool),
-		triggerName: "messageReceived",
-	}
-}
-
-func (client *Client) replyReceivedPollingSource(connection sdkgo.ConnectionRef, configuration ReplyReceivedTriggerConfiguration) *messagePollingTriggerSource {
-	if err := configuration.Validate(); err != nil {
-		panic(err)
-	}
-	return &messagePollingTriggerSource{
-		client: client, connection: connection, searchQuery: configuration.SearchQuery,
-		matcher: configuration.ReplyMatcher, requiresReply: true, delivered: make(map[string]bool),
-		triggerName: "replyReceived",
-	}
-}
-
+// Run processes provider events until cancellation or an unrecoverable error.
 func (source *messagePollingTriggerSource) Run(ctx context.Context, target sdkgo.TriggerTarget[MessageEvent]) error {
 	for {
 		if err := source.scan(ctx, target); err != nil && ctx.Err() != nil {
@@ -352,15 +337,8 @@ func (source *messagePollingTriggerSource) log(ctx context.Context, level slog.L
 		record.AddAttrs(slog.String("binding", source.bindingName))
 	}
 	record.AddAttrs(attrs...)
+	// Logging is best-effort because a handler failure cannot change Trigger delivery state.
 	_ = logger.Handler().Handle(ctx, record)
-}
-
-// triggerLogger returns the configured logger or, as of the call, slog.Default().
-func (client *Client) triggerLogger() *slog.Logger {
-	if client != nil && client.logger != nil {
-		return client.logger
-	}
-	return slog.Default()
 }
 
 func (source *messagePollingTriggerSource) listMessages(ctx context.Context, credentials Credentials) (gmailMessageList, error) {

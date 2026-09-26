@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Super Durable
+// SPDX-License-Identifier: MIT
+
 import { ConnectionStatus, type ConnectorConnectionView } from "@superdurable/dex-connectors-react";
 
 export interface GmailSetupViewProps { connection: ConnectorConnectionView; onConnect(): void; onReconnect(): void; }

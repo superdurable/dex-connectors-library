@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Super Durable
+// SPDX-License-Identifier: MIT
+
 export interface SpreadsheetFile { id: string; name: string; }
 
 export function parseSpreadsheetPage(value: Record<string, unknown>): {files: SpreadsheetFile[]; nextPageToken: string} {

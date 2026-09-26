@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Super Durable
+// SPDX-License-Identifier: MIT
+
 export const connectorStudioHostAPIVersion = "0.2.0" as const;
 
 export type ConnectorConnectionState =

@@ -213,8 +213,10 @@ func uiArtifact(args []string) error {
 	}
 	failed := true
 	defer func() {
+		// Early-failure cleanup is best-effort; successful closes are checked below.
 		_ = archive.Close()
 		if failed {
+			// Preserve the primary build error when removing an incomplete artifact also fails.
 			_ = os.Remove(*output)
 		}
 	}()
@@ -372,10 +374,13 @@ func load(path string) (schema.Manifest, error) {
 	if err != nil {
 		return schema.Manifest{}, fmt.Errorf("open %s: %w", path, err)
 	}
-	defer file.Close()
 	manifest, err := schema.Decode(file)
+	closeErr := file.Close()
 	if err != nil {
-		return schema.Manifest{}, fmt.Errorf("validate %s: %w", path, err)
+		return schema.Manifest{}, errors.Join(fmt.Errorf("validate %s: %w", path, err), closeErr)
+	}
+	if closeErr != nil {
+		return schema.Manifest{}, fmt.Errorf("close %s: %w", path, closeErr)
 	}
 	return manifest, nil
 }

@@ -1,4 +1,4 @@
-.PHONY: check test test-integration test-dex-compat-current test-dex-compat-released react
+.PHONY: check test test-integration test-dex-compat-current test-dex-compat-released react githooks
 
 check: test react
 
@@ -9,7 +9,7 @@ test:
 		module=$${manifest%/connector.yaml}; \
 		(cd "$$module" && GOWORK=off go test -race ./... && GOWORK=off go vet ./...) || exit 1; \
 	done
-	python3 -m unittest script/release/component_release_test.py script/dex_compatibility_test.py
+	python3 -m unittest script/release/component_release_test.py script/dex_compatibility_test.py script/branch_off_main_policy_test.py script/agent_rules_test.py
 	go test -race ./...
 	go vet ./...
 	@find connectors -name connector.yaml -print | sort | while IFS= read -r manifest; do \
@@ -42,3 +42,6 @@ react:
 		go run ./cmd/connectorctl ui-artifact --manifest "$$manifest" --ui-root "$$ui/dist" \
 			--output /tmp/connector-ui.tgz --digest-output /tmp/connector-ui.tgz.sha256 || exit 1; \
 	done
+
+githooks:
+	sh script/install-githooks

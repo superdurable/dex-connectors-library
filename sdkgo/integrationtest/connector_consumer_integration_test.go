@@ -436,6 +436,53 @@ func TestTriggerTargetsResolveFlowAndApplicationRPCOwnsDeduplicationWithRealDex(
 	require.Equal(t, triggerAdapterState{StartEventID: rootEventID, ApprovalEventID: replyEventID, ApprovalCount: 1}, state)
 }
 
+type completedTriggerFlow struct{ dex.FlowDefaults }
+
+func (*completedTriggerFlow) GetSteps() []dex.StepDef {
+	return []dex.StepDef{dex.DefineStartStep(completedTriggerStep{})}
+}
+
+func (*completedTriggerFlow) GetPersistenceSchema() dex.PersistenceSchema {
+	return dex.PersistenceSchema{}
+}
+
+type completedTriggerStep struct {
+	dex.StepDefaultsNoWaitFor[string]
+}
+
+func (completedTriggerStep) Execute(_ dex.Context, input string) (*dex.StepDecision, error) {
+	return dex.GracefulComplete(input), nil
+}
+
+func TestDexFlowTriggerTargetDisallowsIDReuseAfterCompletionWithRealDex(t *testing.T) {
+	flow := &completedTriggerFlow{}
+	harness := newDexHarness(t, []dex.Flow{flow})
+	harness.startWorker(t)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	testRunID := strconv.FormatInt(time.Now().UnixNano(), 10)
+	flowID := "completed-trigger-" + testRunID
+	logs := newLogRecorder(t)
+	target := sdkgo.NewDexFlowTriggerTarget(
+		harness.client,
+		flow,
+		func(sdkgo.TriggerEvent[string]) bool { return true },
+		func(sdkgo.TriggerEvent[string]) string { return flowID },
+		func(event sdkgo.TriggerEvent[string]) string { return event.Payload },
+		sdkgo.WithTriggerLogger(logs.logger()),
+	)
+	event := sdkgo.TriggerEvent[string]{ID: "completed-event-" + testRunID, Payload: "complete"}
+
+	require.NoError(t, target.HandleTrigger(ctx, event))
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, result.Status)
+	// A provider rescan after process restart must not create a new run for a completed Flow ID.
+	require.NoError(t, target.HandleTrigger(ctx, event))
+	require.Len(t, logs.find("trigger event delivered", map[string]string{"duplicate": "false"}), 1)
+	require.Len(t, logs.find("trigger event delivered", map[string]string{"duplicate": "true"}), 1)
+}
+
 type dexHarness struct {
 	registry      *dex.Registry
 	cache         *blobcache.Cache

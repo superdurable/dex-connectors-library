@@ -76,6 +76,21 @@ func TestGetValuesClassifiesAuthenticationAndRateLimit(t *testing.T) {
 	}
 }
 
+func TestGetValuesRejectsMalformedRetryAfter(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		response.Header().Set("Retry-After", "later")
+		response.WriteHeader(http.StatusTooManyRequests)
+	}))
+	defer server.Close()
+	client := newSheetsClient(t, server.URL)
+
+	_, err := sdkgo.RunQuery(newDexContext("get-values-invalid-retry-after"), client.GetValues(), sheetsConnection, spreadsheet.GetValuesInput{SpreadsheetID: "sheet", Range: "Customers!A:B"})
+
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	require.Equal(t, sdkgo.FailureProtocol, retry.Failure.Kind)
+}
+
 func TestGetValuesMissingConnectionUsesDefectBranch(t *testing.T) {
 	client, err := spreadsheet.New(spreadsheet.Config{}, sdkgo.StaticCredentialProvider[spreadsheet.Credentials]{})
 	require.NoError(t, err)

@@ -73,6 +73,21 @@ func TestRateLimitIsTheOnlyAutomaticRetryPath(t *testing.T) {
 	require.Equal(t, sdkgo.FailureRateLimit, retry.Failure.Kind)
 }
 
+func TestRateLimitRejectsMalformedRetryAfter(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		response.Header().Set("Retry-After", "later")
+		response.WriteHeader(http.StatusTooManyRequests)
+	}))
+	defer server.Close()
+	client := newGmailClient(t, server.URL)
+
+	_, err := sdkgo.RunMutation(newGmailDexContext("send-invalid-retry-after"), client.SendMessage(), gmailConnection, gmail.SendMessageInput{To: []string{"customer@example.com"}, Subject: "Progress", TextBody: "Update"})
+
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	require.Equal(t, sdkgo.FailureProtocol, retry.Failure.Kind)
+}
+
 func TestProviderRejectionIsTerminal(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
 		response.WriteHeader(http.StatusForbidden)

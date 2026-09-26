@@ -87,6 +87,7 @@ func (log Logger) write(ctx context.Context, level slog.Level, message string, a
 	record.AddAttrs(log.attrs...)
 	record.AddAttrs(contextAttrs(ctx, log.attrs, attrs)...)
 	record.AddAttrs(attrs...)
+	// Logging is best-effort because a handler failure cannot change Trigger delivery state.
 	_ = logger.Handler().Handle(ctx, record)
 }
 

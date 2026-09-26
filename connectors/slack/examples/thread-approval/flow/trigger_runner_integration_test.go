@@ -204,7 +204,7 @@ func TestThreadApprovalRunnerRetriesApprovalWhileThreadIsReadingWithRealDex(t *t
 	firstRun := setup.startRunner(t, ctx)
 	fake.waitForConnection(t)
 	fake.send(t, teamID, "EvRootSlow-"+teamID, socketModeMessage("80.0", "", "U1", sentinelText+" request approval"))
-	time.Sleep(time.Second)
+	fake.waitForRepliesRequest(t)
 	fake.send(t, teamID, "EvApproveSlow-"+teamID, socketModeMessage("80.1", "80.0", "U2", sentinelText+" approve"))
 	requireSlackFlowCompleted(t, ctx, setup, flowID("80.0"))
 	require.Equal(t, 1, fake.postCount("80.0"))
@@ -436,13 +436,14 @@ func (running *runningTriggerRunner) stop(t *testing.T) {
 // slackPingInterval.
 type socketModeSlack struct {
 	*httptest.Server
-	envelopes   chan map[string]any
-	acks        chan string
-	connections chan struct{}
-	mutex       sync.Mutex
-	posts       map[string]int
-	open        map[*websocket.Conn]bool
-	pongs       int
+	envelopes      chan map[string]any
+	acks           chan string
+	connections    chan struct{}
+	repliesStarted chan struct{}
+	mutex          sync.Mutex
+	posts          map[string]int
+	open           map[*websocket.Conn]bool
+	pongs          int
 	// repliesDelay slows conversations.replies, as real Slack latency or a rate-limit backoff does.
 	repliesDelay time.Duration
 }
@@ -457,7 +458,8 @@ func newSocketModeSlack(t *testing.T) *socketModeSlack {
 	t.Helper()
 	fake := &socketModeSlack{
 		envelopes: make(chan map[string]any), acks: make(chan string, 32),
-		connections: make(chan struct{}, 8), posts: map[string]int{}, open: map[*websocket.Conn]bool{},
+		connections: make(chan struct{}, 8), repliesStarted: make(chan struct{}, 8),
+		posts: map[string]int{}, open: map[*websocket.Conn]bool{},
 	}
 	upgrader := websocket.Upgrader{}
 	fake.Server = httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
@@ -468,6 +470,10 @@ func newSocketModeSlack(t *testing.T) *socketModeSlack {
 		case "/socket":
 			fake.serveSocket(upgrader, response, request)
 		case "/conversations.replies":
+			select {
+			case fake.repliesStarted <- struct{}{}:
+			default:
+			}
 			fake.mutex.Lock()
 			delay := fake.repliesDelay
 			fake.mutex.Unlock()
@@ -492,6 +498,15 @@ func newSocketModeSlack(t *testing.T) *socketModeSlack {
 	t.Cleanup(fake.Server.Close)
 	t.Cleanup(func() { close(fake.envelopes) })
 	return fake
+}
+
+func (fake *socketModeSlack) waitForRepliesRequest(t *testing.T) {
+	t.Helper()
+	select {
+	case <-fake.repliesStarted:
+	case <-time.After(slackRunnerDeadline):
+		t.Fatal("Slack conversations.replies request did not start")
+	}
 }
 
 func (fake *socketModeSlack) serveSocket(upgrader websocket.Upgrader, response http.ResponseWriter, request *http.Request) {

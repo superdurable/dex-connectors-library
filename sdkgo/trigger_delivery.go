@@ -242,6 +242,7 @@ type undeliverableConsumingTarget[T any] struct {
 	log    triggerlog.Logger
 }
 
+// HandleTrigger performs the handle trigger behavior for undeliverableConsumingTarget.
 func (target undeliverableConsumingTarget[T]) HandleTrigger(ctx context.Context, event TriggerEvent[T]) error {
 	err := target.target.HandleTrigger(ctx, event)
 	if IsTriggerUndeliverable(err) {
@@ -253,6 +254,7 @@ func (target undeliverableConsumingTarget[T]) HandleTrigger(ctx context.Context,
 	return err
 }
 
+// PrepareTrigger performs the prepare trigger behavior for undeliverableConsumingTarget.
 func (target undeliverableConsumingTarget[T]) PrepareTrigger(ctx context.Context, event TriggerEvent[T]) error {
 	return PrepareTriggerDelivery(ctx, target.target, event)
 }

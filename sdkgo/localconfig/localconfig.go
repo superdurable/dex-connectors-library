@@ -350,6 +350,7 @@ func NewDurableTriggerTarget[T any](
 	return &durableTriggerTarget[T]{path: path, target: target, log: log, pendingRemoval: make(map[string]bool)}, nil
 }
 
+// PrepareTrigger performs the prepare trigger behavior for durableTriggerTarget.
 func (target *durableTriggerTarget[T]) PrepareTrigger(ctx context.Context, event sdkgo.TriggerEvent[T]) error {
 	if strings.TrimSpace(event.ID) == "" {
 		return fmt.Errorf("Trigger event ID is required")
@@ -374,6 +375,7 @@ func (target *durableTriggerTarget[T]) PrepareTrigger(ctx context.Context, event
 	return nil
 }
 
+// HandleTrigger performs the handle trigger behavior for durableTriggerTarget.
 func (target *durableTriggerTarget[T]) HandleTrigger(ctx context.Context, event sdkgo.TriggerEvent[T]) error {
 	target.mutex.Lock()
 	defer target.mutex.Unlock()
@@ -540,6 +542,7 @@ func (target *durableTriggerTarget[T]) writeInbox(inbox triggerInboxFile[T]) err
 	return errors.Join(directory.Sync(), directory.Close())
 }
 
+// Resolve returns credentials for one connector call without persisting them.
 func (provider credentialProvider[C]) Resolve(call sdkgo.Call) (C, error) {
 	var zero C
 	if call.Connection.Name != provider.connectionName {

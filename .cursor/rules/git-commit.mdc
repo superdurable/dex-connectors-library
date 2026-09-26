@@ -1,0 +1,15 @@
+---
+description: Keep commits human-authored and never bypass hooks
+alwaysApply: true
+---
+
+# Git Commits
+
+- Never add Cursor or another AI tool as Author, Committer, `Co-authored-by`, or
+  `Made-with` attribution.
+- Never use `git commit --no-verify` or `-n`.
+- Human `Co-authored-by` trailers for real people are allowed.
+- After every commit, run `git log -1 --format='%an %ae%n%B'`. Amend immediately
+  if forbidden attribution remains, then verify again before pushing.
+- `.githooks/commit-msg` strips Cursor attribution, and the Cursor shell hook
+  rejects attempts to bypass verification.

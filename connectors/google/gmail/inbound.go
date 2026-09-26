@@ -5,7 +5,6 @@ package gmail
 
 import (
 	"bytes"
-	"context"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
@@ -17,7 +16,6 @@ import (
 	"net/http"
 	"net/mail"
 	"net/textproto"
-	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -27,32 +25,50 @@ import (
 
 // GetMessageInput identifies one Gmail message.
 type GetMessageInput struct {
+	// MessageID is the provider message identifier.
 	MessageID string `json:"messageId"`
 }
 
 // ReplyToMessageInput identifies a message and supplies the reply body.
 type ReplyToMessageInput struct {
+	// MessageID is the provider message identifier.
 	MessageID string `json:"messageId"`
-	TextBody  string `json:"textBody"`
-	HTMLBody  string `json:"htmlBody,omitempty"`
+	// TextBody is the plain-text message body.
+	TextBody string `json:"textBody"`
+	// HTMLBody is the optional HTML message body.
+	HTMLBody string `json:"htmlBody,omitempty"`
 }
 
 // Message is one decoded Gmail message.
 type Message struct {
-	MessageID    string    `json:"messageId"`
-	ThreadID     string    `json:"threadId"`
-	RFCMessageID string    `json:"rfcMessageId,omitempty"`
-	InReplyTo    string    `json:"inReplyTo,omitempty"`
-	References   string    `json:"references,omitempty"`
-	From         string    `json:"from"`
-	ReplyTo      string    `json:"replyTo,omitempty"`
-	To           []string  `json:"to,omitempty"`
-	Subject      string    `json:"subject"`
-	TextBody     string    `json:"textBody,omitempty"`
-	HTMLBody     string    `json:"htmlBody,omitempty"`
-	Snippet      string    `json:"snippet,omitempty"`
-	ReceivedAt   time.Time `json:"receivedAt"`
-	LabelIDs     []string  `json:"labelIds,omitempty"`
+	// MessageID is the provider message identifier.
+	MessageID string `json:"messageId"`
+	// ThreadID is the provider conversation thread identifier.
+	ThreadID string `json:"threadId"`
+	// RFCMessageID is the decoded Message-ID header.
+	RFCMessageID string `json:"rfcMessageId,omitempty"`
+	// InReplyTo is the decoded In-Reply-To header.
+	InReplyTo string `json:"inReplyTo,omitempty"`
+	// References is the decoded References header.
+	References string `json:"references,omitempty"`
+	// From is the sender address.
+	From string `json:"from"`
+	// ReplyTo is the decoded Reply-To header.
+	ReplyTo string `json:"replyTo,omitempty"`
+	// To lists recipient addresses.
+	To []string `json:"to,omitempty"`
+	// Subject is the message subject.
+	Subject string `json:"subject"`
+	// TextBody is the plain-text message body.
+	TextBody string `json:"textBody,omitempty"`
+	// HTMLBody is the optional HTML message body.
+	HTMLBody string `json:"htmlBody,omitempty"`
+	// Snippet is the snippet for message.
+	Snippet string `json:"snippet,omitempty"`
+	// ReceivedAt is the received at for message.
+	ReceivedAt time.Time `json:"receivedAt"`
+	// LabelIDs lists the Gmail labels applied to the message.
+	LabelIDs []string `json:"labelIds,omitempty"`
 }
 
 // GetMessageOperation reads one Gmail message.
@@ -90,14 +106,6 @@ type gmailHTTPResult struct {
 	statusCode int
 	header     http.Header
 	body       []byte
-}
-
-// GetMessage returns the query operation for one Gmail message.
-func (client *Client) GetMessage() GetMessageOperation { return GetMessageOperation{client: client} }
-
-// ReplyToMessage returns the mutation operation for one Gmail reply.
-func (client *Client) ReplyToMessage() ReplyToMessageOperation {
-	return ReplyToMessageOperation{client: client}
 }
 
 // Definition returns the generated GetMessage operation definition.
@@ -145,7 +153,11 @@ func (operation ReplyToMessageOperation) Invoke(call sdkgo.Call, input ReplyToMe
 	resource, result, err := operation.client.readMessage(call.Context, credentials, input.MessageID, "metadata")
 	if err != nil {
 		if result.statusCode == 0 || result.statusCode == http.StatusTooManyRequests || result.statusCode >= 500 {
-			return sdkgo.NewMutationRetry[SendMessageOutput](gmailOperationFailure("replyToMessage", sdkgo.FailureAvailability, "Gmail source message is temporarily unavailable"), retryAfter(result.header))
+			delay, retryAfterErr := retryAfter(result.header)
+			if retryAfterErr != nil {
+				return sdkgo.NewMutationRetry[SendMessageOutput](gmailOperationFailure("replyToMessage", sdkgo.FailureProtocol, "Gmail returned an invalid Retry-After header"), 0)
+			}
+			return sdkgo.NewMutationRetry[SendMessageOutput](gmailOperationFailure("replyToMessage", sdkgo.FailureAvailability, "Gmail source message is temporarily unavailable"), delay)
 		}
 		if result.statusCode >= 200 && result.statusCode < 300 {
 			return sdkgo.NewMutationBranch(ReplyToMessageBranchInvalidResponse, SendMessageOutput{}, gmailOperationFailurePointer("replyToMessage", sdkgo.FailureProtocol, "Gmail returned an invalid source message response"), operation.client.receipt(call, googleRequestID(result.header), input.MessageID))
@@ -193,7 +205,11 @@ func (operation ReplyToMessageOperation) sendReply(call sdkgo.Call, credentials 
 		return sdkgo.NewMutationUncertain(SendMessageOutput{}, gmailOperationFailure("replyToMessage", sdkgo.FailureAvailability, "Gmail reply outcome is unknown"), receipt)
 	}
 	if response.StatusCode == http.StatusTooManyRequests {
-		return sdkgo.NewMutationRetry[SendMessageOutput](gmailOperationFailure("replyToMessage", sdkgo.FailureRateLimit, "Gmail temporarily rejected the reply"), retryAfter(response.Header))
+		delay, err := retryAfter(response.Header)
+		if err != nil {
+			return sdkgo.NewMutationRetry[SendMessageOutput](gmailOperationFailure("replyToMessage", sdkgo.FailureProtocol, "Gmail returned an invalid Retry-After header"), 0)
+		}
+		return sdkgo.NewMutationRetry[SendMessageOutput](gmailOperationFailure("replyToMessage", sdkgo.FailureRateLimit, "Gmail temporarily rejected the reply"), delay)
 	}
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		return sdkgo.NewMutationBranch(ReplyToMessageBranchProviderRejected, SendMessageOutput{}, gmailOperationFailurePointer("replyToMessage", statusFailureKind(response.StatusCode), "Gmail rejected the reply"), receipt)
@@ -206,39 +222,13 @@ func (operation ReplyToMessageOperation) sendReply(call sdkgo.Call, credentials 
 	return sdkgo.NewMutationBranch(ReplyToMessageBranchSent, SendMessageOutput{Sender: credentials.PrimaryEmail, Recipients: []string{recipient}, MessageID: sent.ID, ThreadID: threadID}, nil, receipt)
 }
 
-func (client *Client) readMessage(ctx context.Context, credentials Credentials, messageID string, format string) (gmailMessageResource, gmailHTTPResult, error) {
-	query := url.Values{"format": {format}}
-	if format == "metadata" {
-		for _, name := range []string{"Message-ID", "In-Reply-To", "References", "From", "Reply-To", "To", "Subject"} {
-			query.Add("metadataHeaders", name)
-		}
-	}
-	target := strings.TrimRight(client.endpoint.String(), "/") + "/users/me/messages/" + url.PathEscape(messageID) + "?" + query.Encode()
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
-	if err != nil {
-		return gmailMessageResource{}, gmailHTTPResult{}, err
-	}
-	request.Header.Set("Authorization", "Bearer "+credentials.AccessToken.Reveal())
-	response, err := client.httpClient.Do(request)
-	if err != nil {
-		return gmailMessageResource{}, gmailHTTPResult{}, err
-	}
-	defer response.Body.Close()
-	result := gmailHTTPResult{statusCode: response.StatusCode, header: response.Header.Clone()}
-	result.body, err = io.ReadAll(io.LimitReader(response.Body, client.maxResponseBytes+1))
-	if err != nil || int64(len(result.body)) > client.maxResponseBytes || response.StatusCode < 200 || response.StatusCode >= 300 {
-		return gmailMessageResource{}, result, fmt.Errorf("Gmail message lookup failed")
-	}
-	var resource gmailMessageResource
-	if err := json.Unmarshal(result.body, &resource); err != nil {
-		return gmailMessageResource{}, result, err
-	}
-	return resource, result, nil
-}
-
 func classifyGetMessageFailure(result gmailHTTPResult, err error) sdkgo.QueryAttempt[Message] {
 	if result.statusCode == http.StatusTooManyRequests || result.statusCode >= 500 || result.statusCode == 0 {
-		return sdkgo.NewQueryRetry[Message](gmailOperationFailure("getMessage", sdkgo.FailureAvailability, "Gmail message is temporarily unavailable"), retryAfter(result.header))
+		delay, retryAfterErr := retryAfter(result.header)
+		if retryAfterErr != nil {
+			return sdkgo.NewQueryRetry[Message](gmailOperationFailure("getMessage", sdkgo.FailureProtocol, "Gmail returned an invalid Retry-After header"), 0)
+		}
+		return sdkgo.NewQueryRetry[Message](gmailOperationFailure("getMessage", sdkgo.FailureAvailability, "Gmail message is temporarily unavailable"), delay)
 	}
 	if result.statusCode == http.StatusNotFound {
 		return sdkgo.NewQueryBranch(GetMessageBranchNotFound, Message{}, nil, sdkgo.Receipt{})
@@ -271,33 +261,37 @@ func decodeGmailMessage(resource gmailMessageResource) (Message, error) {
 }
 
 func decodeGmailBodies(part gmailMessagePart) (string, string, error) {
-	var textBodies []string
-	var htmlBodies []string
-	var visit func(gmailMessagePart) error
-	visit = func(current gmailMessagePart) error {
-		if current.Body.Data != "" {
-			decoded, err := base64.RawURLEncoding.DecodeString(current.Body.Data)
-			if err != nil {
-				return err
-			}
-			switch strings.ToLower(current.MimeType) {
-			case "text/plain":
-				textBodies = append(textBodies, string(decoded))
-			case "text/html":
-				htmlBodies = append(htmlBodies, string(decoded))
-			}
-		}
-		for _, child := range current.Parts {
-			if err := visit(child); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-	if err := visit(part); err != nil {
+	decoder := gmailBodyDecoder{}
+	if err := decoder.visit(part); err != nil {
 		return "", "", err
 	}
-	return strings.Join(textBodies, "\n"), strings.Join(htmlBodies, "\n"), nil
+	return strings.Join(decoder.textBodies, "\n"), strings.Join(decoder.htmlBodies, "\n"), nil
+}
+
+type gmailBodyDecoder struct {
+	textBodies []string
+	htmlBodies []string
+}
+
+func (decoder *gmailBodyDecoder) visit(part gmailMessagePart) error {
+	if part.Body.Data != "" {
+		decoded, err := base64.RawURLEncoding.DecodeString(part.Body.Data)
+		if err != nil {
+			return err
+		}
+		switch strings.ToLower(part.MimeType) {
+		case "text/plain":
+			decoder.textBodies = append(decoder.textBodies, string(decoded))
+		case "text/html":
+			decoder.htmlBodies = append(decoder.htmlBodies, string(decoded))
+		}
+	}
+	for _, child := range part.Parts {
+		if err := decoder.visit(child); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func gmailHeaders(headers []gmailMessageHeader) map[string]string {
@@ -350,25 +344,24 @@ func buildReplyMIMEMessage(call sdkgo.Call, sender string, recipient string, sou
 		subject = "Re: " + subject
 	}
 	var message bytes.Buffer
-	writeHeader := func(name string, value string) { fmt.Fprintf(&message, "%s: %s\r\n", name, value) }
-	writeHeader("From", sender)
-	writeHeader("To", recipient)
-	writeHeader("Subject", mime.QEncoding.Encode("UTF-8", subject))
-	writeHeader("Message-ID", "<"+string(call.IdempotencyKey)+"@dex.superdurable.dev>")
-	writeHeader("In-Reply-To", source.RFCMessageID)
+	mustWriteMIMEHeader(&message, "From", sender)
+	mustWriteMIMEHeader(&message, "To", recipient)
+	mustWriteMIMEHeader(&message, "Subject", mime.QEncoding.Encode("UTF-8", subject))
+	mustWriteMIMEHeader(&message, "Message-ID", "<"+string(call.IdempotencyKey)+"@dex.superdurable.dev>")
+	mustWriteMIMEHeader(&message, "In-Reply-To", source.RFCMessageID)
 	references := strings.TrimSpace(source.References + " " + source.RFCMessageID)
-	writeHeader("References", references)
-	writeHeader("X-Dex-Call-ID", string(call.ID))
-	writeHeader("MIME-Version", "1.0")
+	mustWriteMIMEHeader(&message, "References", references)
+	mustWriteMIMEHeader(&message, "X-Dex-Call-ID", string(call.ID))
+	mustWriteMIMEHeader(&message, "MIME-Version", "1.0")
 	if input.HTMLBody == "" {
-		writeHeader("Content-Type", `text/plain; charset="UTF-8"`)
-		writeHeader("Content-Transfer-Encoding", "8bit")
-		message.WriteString("\r\n" + normalizeBody(input.TextBody))
+		mustWriteMIMEHeader(&message, "Content-Type", `text/plain; charset="UTF-8"`)
+		mustWriteMIMEHeader(&message, "Content-Transfer-Encoding", "8bit")
+		message.WriteString("\r\n" + convertLineEndingsToCRLF(input.TextBody))
 		return message.Bytes(), nil
 	}
 	hash := sha256.Sum256([]byte(call.IdempotencyKey))
 	boundary := "dex-" + hex.EncodeToString(hash[:12])
-	writeHeader("Content-Type", `multipart/alternative; boundary="`+boundary+`"`)
+	mustWriteMIMEHeader(&message, "Content-Type", `multipart/alternative; boundary="`+boundary+`"`)
 	message.WriteString("\r\n")
 	writer := multipart.NewWriter(&message)
 	if err := writer.SetBoundary(boundary); err != nil {
@@ -380,7 +373,7 @@ func buildReplyMIMEMessage(call sdkgo.Call, sender string, recipient string, sou
 	if err != nil {
 		return nil, err
 	}
-	if _, err := io.WriteString(textPart, normalizeBody(input.TextBody)); err != nil {
+	if _, err := io.WriteString(textPart, convertLineEndingsToCRLF(input.TextBody)); err != nil {
 		return nil, err
 	}
 	htmlHeader := make(textproto.MIMEHeader)
@@ -389,7 +382,7 @@ func buildReplyMIMEMessage(call sdkgo.Call, sender string, recipient string, sou
 	if err != nil {
 		return nil, err
 	}
-	if _, err := io.WriteString(htmlPart, normalizeBody(input.HTMLBody)); err != nil {
+	if _, err := io.WriteString(htmlPart, convertLineEndingsToCRLF(input.HTMLBody)); err != nil {
 		return nil, err
 	}
 	if err := writer.Close(); err != nil {

@@ -25,6 +25,7 @@ var (
 // CallID is the stable identity of one provider call across Step retries.
 type CallID string
 
+// Validate returns an error when the value violates its public contract.
 func (id CallID) Validate() error {
 	if id == "" {
 		return fmt.Errorf("call ID is required")
@@ -40,10 +41,13 @@ type IdempotencyKey string
 
 // ConnectionRef is a logical credential reference safe to persist in a Flow.
 type ConnectionRef struct {
+	// Provider names the external provider without exposing credentials.
 	Provider string `json:"provider" yaml:"provider"`
-	Name     string `json:"name" yaml:"name"`
+	// Name is the configured connection name within Provider.
+	Name string `json:"name" yaml:"name"`
 }
 
+// Validate returns an error when the value violates its public contract.
 func (ref ConnectionRef) Validate() error {
 	if strings.TrimSpace(ref.Provider) == "" || strings.TrimSpace(ref.Name) == "" {
 		return fmt.Errorf("connection provider and name are required")
@@ -53,10 +57,13 @@ func (ref ConnectionRef) Validate() error {
 
 // OperationRef is the stable manifest identity of one connector operation.
 type OperationRef struct {
+	// ConnectorID identifies the connector manifest.
 	ConnectorID string `json:"connectorId" yaml:"connectorId"`
+	// OperationID identifies the operation within its connector manifest.
 	OperationID string `json:"operationId" yaml:"operationId"`
 }
 
+// Validate returns an error when the value violates its public contract.
 func (ref OperationRef) Validate() error {
 	if !connectorIDPattern.MatchString(ref.ConnectorID) {
 		return fmt.Errorf("connector ID must be DNS-like and 2-63 characters")
@@ -91,88 +98,140 @@ type BranchDefinition struct {
 
 // StepDefaults are the execute-only Dex options owned by an operation definition.
 type StepDefaults struct {
-	ExecuteMethodTimeout time.Duration      `json:"executeMethodTimeout" yaml:"executeMethodTimeout"`
-	HeartbeatTimeout     time.Duration      `json:"heartbeatTimeout,omitempty" yaml:"heartbeatTimeout,omitempty"`
-	ExecuteRetry         *dex.RetryPolicy   `json:"executeRetry,omitempty" yaml:"executeRetry,omitempty"`
-	ExecuteDurability    dex.StepDurability `json:"executeDurability" yaml:"executeDurability"`
+	// ExecuteMethodTimeout sets the maximum Execute duration; zero uses the Dex default.
+	ExecuteMethodTimeout time.Duration `json:"executeMethodTimeout" yaml:"executeMethodTimeout"`
+	// HeartbeatTimeout sets the heartbeat timeout; zero disables heartbeats.
+	HeartbeatTimeout time.Duration `json:"heartbeatTimeout,omitempty" yaml:"heartbeatTimeout,omitempty"`
+	// ExecuteRetry sets the Dex Execute retry policy; nil uses the Dex default.
+	ExecuteRetry *dex.RetryPolicy `json:"executeRetry,omitempty" yaml:"executeRetry,omitempty"`
+	// ExecuteDurability selects the Dex Execute durability mode.
+	ExecuteDurability dex.StepDurability `json:"executeDurability" yaml:"executeDurability"`
 }
 
+// QueryDefinition declares a query's identity, result branches, and Dex Step defaults.
 type QueryDefinition struct {
-	Operation    OperationRef       `json:"operation" yaml:"operation"`
-	Branches     []BranchDefinition `json:"branches" yaml:"branches"`
-	StepDefaults StepDefaults       `json:"stepDefaults" yaml:"stepDefaults"`
+	// Operation identifies the connector operation.
+	Operation OperationRef `json:"operation" yaml:"operation"`
+	// Branches declares the operation's stable terminal routes.
+	Branches []BranchDefinition `json:"branches" yaml:"branches"`
+	// StepDefaults provides the operation-owned Dex Execute defaults.
+	StepDefaults StepDefaults `json:"stepDefaults" yaml:"stepDefaults"`
 }
 
+// MutationDefinition declares a mutation's identity, result branches, and Dex Step defaults.
 type MutationDefinition struct {
-	Operation    OperationRef       `json:"operation" yaml:"operation"`
-	Branches     []BranchDefinition `json:"branches" yaml:"branches"`
-	StepDefaults StepDefaults       `json:"stepDefaults" yaml:"stepDefaults"`
+	// Operation identifies the connector operation.
+	Operation OperationRef `json:"operation" yaml:"operation"`
+	// Branches declares the operation's stable terminal routes.
+	Branches []BranchDefinition `json:"branches" yaml:"branches"`
+	// StepDefaults provides the operation-owned Dex Execute defaults.
+	StepDefaults StepDefaults `json:"stepDefaults" yaml:"stepDefaults"`
 }
 
+// Query defines a read-only provider operation invoked by RunQuery.
 type Query[IN, OUT any] interface {
+	// Definition returns the immutable connector operation definition.
 	Definition() QueryDefinition
+	// Invoke executes one provider call and classifies its attempt.
 	Invoke(Call, IN) QueryAttempt[OUT]
 }
 
+// Mutation defines an idempotent provider operation invoked by RunMutation.
 type Mutation[IN, OUT any] interface {
+	// Definition returns the immutable connector operation definition.
 	Definition() MutationDefinition
+	// IdempotencyKey derives a provider-safe key from the stable call identity.
 	IdempotencyKey(CallID, IN) IdempotencyKey
+	// Invoke executes one provider call and classifies its attempt.
 	Invoke(Call, IN) MutationAttempt[OUT]
 }
 
 // Call carries Dex identity and provider-safe metadata for one invocation.
 type Call struct {
-	Context        dex.Context    `json:"-"`
-	ID             CallID         `json:"id"`
+	// Context is the active Dex Step context and is never serialized.
+	Context dex.Context `json:"-"`
+	// ID is the stable connector call identity derived from Dex execution identity.
+	ID CallID `json:"id"`
+	// IdempotencyKey is the provider-safe deduplication key for the call.
 	IdempotencyKey IdempotencyKey `json:"idempotencyKey,omitempty"`
-	Connection     ConnectionRef  `json:"connection"`
-	Operation      OperationRef   `json:"operation"`
-	progress       *progressReporter
-	text           *dex.BufferedTextStream
+	// Connection selects the credential reference for this invocation.
+	Connection ConnectionRef `json:"connection"`
+	// Operation identifies the connector operation.
+	Operation OperationRef `json:"operation"`
+	progress  *progressReporter
+	text      *dex.BufferedTextStream
 }
 
+// QueryResult is the validated terminal result returned by RunQuery.
 type QueryResult[T any] struct {
-	Branch  BranchID `json:"branch"`
-	Value   T        `json:"value"`
-	Receipt Receipt  `json:"receipt"`
+	// Branch is the stable route selected by the operation.
+	Branch BranchID `json:"branch"`
+	// Value is the typed operation result.
+	Value T `json:"value"`
+	// Receipt contains safe provider correlation metadata.
+	Receipt Receipt `json:"receipt"`
+	// Failure describes the terminal failure, or is nil on success.
 	Failure *Failure `json:"failure,omitempty"`
 }
 
+// MutationResult is the validated terminal result returned by RunMutation.
 type MutationResult[T any] struct {
-	Branch  BranchID `json:"branch"`
-	Value   T        `json:"value"`
-	Receipt Receipt  `json:"receipt"`
+	// Branch is the stable route selected by the operation.
+	Branch BranchID `json:"branch"`
+	// Value is the typed operation result.
+	Value T `json:"value"`
+	// Receipt contains safe provider correlation metadata.
+	Receipt Receipt `json:"receipt"`
+	// Failure describes the terminal failure, or is nil on success.
 	Failure *Failure `json:"failure,omitempty"`
 }
 
 // Receipt contains only safe provider correlation data.
 type Receipt struct {
-	CallID            CallID            `json:"callId"`
-	IdempotencyKey    IdempotencyKey    `json:"idempotencyKey,omitempty"`
-	Provider          string            `json:"provider"`
-	ProviderObjectID  string            `json:"providerObjectId,omitempty"`
-	ProviderRequestID string            `json:"providerRequestId,omitempty"`
-	ObservedAt        time.Time         `json:"observedAt"`
-	Metadata          map[string]string `json:"metadata,omitempty"`
+	// CallID identifies the stable provider call across Dex retries.
+	CallID CallID `json:"callId"`
+	// IdempotencyKey is the provider-safe deduplication key for the call.
+	IdempotencyKey IdempotencyKey `json:"idempotencyKey,omitempty"`
+	// Provider names the external provider without exposing credentials.
+	Provider string `json:"provider"`
+	// ProviderObjectID is the provider object's safe correlation identifier.
+	ProviderObjectID string `json:"providerObjectId,omitempty"`
+	// ProviderRequestID is the provider request's safe correlation identifier.
+	ProviderRequestID string `json:"providerRequestId,omitempty"`
+	// ObservedAt records when the provider result was observed.
+	ObservedAt time.Time `json:"observedAt"`
+	// Metadata contains additional safe provider correlation values.
+	Metadata map[string]string `json:"metadata,omitempty"`
 }
 
 // Progress contains provider progress before Dex identity is added.
 type Progress struct {
-	Phase            string
-	Message          string
-	Percent          *float64
+	// Phase is a stable provider-specific progress phase.
+	Phase string
+	// Message is optional provider-safe progress text.
+	Message string
+	// Percent is optional progress in the inclusive range 0 through 1.
+	Percent *float64
+	// ProviderSequence is the provider's optional monotonic progress sequence.
 	ProviderSequence *int64
 }
 
 // ProgressUpdate is a structured, best-effort Dex Stream message.
 type ProgressUpdate struct {
-	CallID           CallID   `json:"callId"`
-	Attempt          int32    `json:"attempt"`
-	Sequence         uint64   `json:"sequence"`
-	Phase            string   `json:"phase"`
-	Message          string   `json:"message,omitempty"`
-	Percent          *float64 `json:"percent,omitempty"`
-	ProviderSequence *int64   `json:"providerSequence,omitempty"`
+	// CallID identifies the stable provider call across Dex retries.
+	CallID CallID `json:"callId"`
+	// Attempt is the one-based Dex Execute attempt number.
+	Attempt int32 `json:"attempt"`
+	// Sequence is the connector-assigned monotonic progress sequence.
+	Sequence uint64 `json:"sequence"`
+	// Phase is the stable provider-specific progress phase.
+	Phase string `json:"phase"`
+	// Message is optional provider-safe progress text.
+	Message string `json:"message,omitempty"`
+	// Percent is optional progress in the inclusive range 0 through 1.
+	Percent *float64 `json:"percent,omitempty"`
+	// ProviderSequence is the provider's optional monotonic progress sequence.
+	ProviderSequence *int64 `json:"providerSequence,omitempty"`
 }
 
 type progressReporter struct {
@@ -207,8 +266,10 @@ func (call Call) WriteText(value string) error {
 	return call.text.Write(value)
 }
 
+// HasProgressStream reports whether structured progress output is configured.
 func (call Call) HasProgressStream() bool { return call.progress != nil }
 
+// HasTextStream reports whether buffered text output is configured.
 func (call Call) HasTextStream() bool { return call.text != nil }
 
 type runConfig struct {
@@ -256,8 +317,9 @@ func WithTextStream(stream dex.Stream[string], options ...dex.BufferedTextStream
 	return textStreamOption{stream: stream, options: append([]dex.BufferedTextStreamOption(nil), options...)}
 }
 
+// RunQuery invokes a query inside a Dex Step and validates its terminal attempt.
 func RunQuery[IN, OUT any](ctx dex.Context, operation Query[IN, OUT], connection ConnectionRef, input IN, options ...RunOption) (QueryResult[OUT], error) {
-	if nilValue(operation) {
+	if isNilValue(operation) {
 		return failedQuery[OUT](QueryDefinition{}, "connector query is required"), nil
 	}
 	definition := operation.Definition()
@@ -274,8 +336,9 @@ func RunQuery[IN, OUT any](ctx dex.Context, operation Query[IN, OUT], connection
 	return queryResult(call, definition, operation.Invoke(call, input))
 }
 
+// RunMutation invokes a mutation inside a Dex Step using a stable idempotency key.
 func RunMutation[IN, OUT any](ctx dex.Context, operation Mutation[IN, OUT], connection ConnectionRef, input IN, options ...RunOption) (MutationResult[OUT], error) {
-	if nilValue(operation) {
+	if isNilValue(operation) {
 		return failedMutation[OUT](MutationDefinition{}, "connector mutation is required"), nil
 	}
 	definition := operation.Definition()
@@ -459,6 +522,14 @@ func completeReceipt(receipt Receipt, call Call) (Receipt, error) {
 	return receipt, nil
 }
 
+func mustCompleteEmptyReceipt(call Call) Receipt {
+	receipt, err := completeReceipt(Receipt{}, call)
+	if err != nil {
+		panic(fmt.Sprintf("complete empty connector receipt: %v", err))
+	}
+	return receipt
+}
+
 func failedQuery[T any](definition QueryDefinition, message string) QueryResult[T] {
 	failure := localFailure(definition.Operation, message)
 	return QueryResult[T]{Branch: DefectBranchID, Failure: &failure}
@@ -466,7 +537,7 @@ func failedQuery[T any](definition QueryDefinition, message string) QueryResult[
 
 func failedQueryForCall[T any](definition QueryDefinition, call Call, message string) QueryResult[T] {
 	result := failedQuery[T](definition, message)
-	result.Receipt, _ = completeReceipt(Receipt{}, call)
+	result.Receipt = mustCompleteEmptyReceipt(call)
 	return result
 }
 
@@ -477,7 +548,7 @@ func failedMutation[T any](definition MutationDefinition, message string) Mutati
 
 func failedMutationForCall[T any](definition MutationDefinition, call Call, message string) MutationResult[T] {
 	result := failedMutation[T](definition, message)
-	result.Receipt, _ = completeReceipt(Receipt{}, call)
+	result.Receipt = mustCompleteEmptyReceipt(call)
 	return result
 }
 

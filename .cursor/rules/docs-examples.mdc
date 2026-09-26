@@ -1,0 +1,11 @@
+---
+description: Documentation snippets must come from runnable examples
+globs: docs/**/*.md
+alwaysApply: false
+---
+
+# Documentation Examples
+
+Application snippets must be copied from runnable files under `examples/` or a
+connector's `examples/` tree. Link the example path. If an API does not exist,
+implement and verify the example before documenting it.

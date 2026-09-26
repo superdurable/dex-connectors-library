@@ -130,10 +130,11 @@ func TestPollingTriggersSeparateRootsAndRepliesAndSuppressRescans(t *testing.T) 
 	})
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	runnerErrors := make(chan error, 2)
 	var waitGroup sync.WaitGroup
 	waitGroup.Add(2)
-	go func() { defer waitGroup.Done(); _ = rootRunner.Run(ctx) }()
-	go func() { defer waitGroup.Done(); _ = replyRunner.Run(ctx) }()
+	go func() { defer waitGroup.Done(); runnerErrors <- rootRunner.Run(ctx) }()
+	go func() { defer waitGroup.Done(); runnerErrors <- replyRunner.Run(ctx) }()
 
 	root := receiveTriggerEvent(t, rootEvents)
 	reply := receiveTriggerEvent(t, replyEvents)
@@ -150,6 +151,10 @@ func TestPollingTriggersSeparateRootsAndRepliesAndSuppressRescans(t *testing.T) 
 	}
 	cancel()
 	waitGroup.Wait()
+	close(runnerErrors)
+	for err := range runnerErrors {
+		require.ErrorIs(t, err, context.Canceled)
+	}
 	require.Empty(t, rootEvents)
 	require.Empty(t, replyEvents)
 }

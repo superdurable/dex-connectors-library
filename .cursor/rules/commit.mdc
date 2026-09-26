@@ -1,0 +1,10 @@
+---
+description: Commit every agent turn that changes repository files
+alwaysApply: true
+---
+
+# Commit Every Changing Turn
+
+End every changing turn with one commit on the current branch and a clean
+working tree. Do not create empty commits for discussion-only turns. Preserve
+unrelated user files and changes.

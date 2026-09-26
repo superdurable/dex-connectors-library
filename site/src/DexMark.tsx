@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Super Durable
+// SPDX-License-Identifier: MIT
+
 export function DexMark({ size = 30 }: { size?: number }) {
   const center = size / 2;
   const radius = size * 0.336;

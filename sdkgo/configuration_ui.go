@@ -16,24 +16,33 @@ var connectorUIIdentifierPattern = regexp.MustCompile(`^[a-z][A-Za-z0-9]*$`)
 // It contains presentation metadata only; configuration values are loaded
 // separately at application startup.
 type ConnectorConfigurationUI struct {
+	// Units lists reusable UI units in application composition order.
 	Units []ConnectorUIUnit `json:"units" yaml:"units"`
 }
 
 // ConnectorUIUnit is one reusable unit from a Connector release's Studio unit
 // catalog. Bindings connect the unit's named ports to configuration JSON paths.
 type ConnectorUIUnit struct {
-	ID          string               `json:"id" yaml:"id"`
-	UnitID      string               `json:"unitId" yaml:"unitId"`
-	Label       string               `json:"label" yaml:"label"`
-	Description string               `json:"description,omitempty" yaml:"description,omitempty"`
-	Required    bool                 `json:"required" yaml:"required"`
-	Bindings    []ConnectorUIBinding `json:"bindings" yaml:"bindings"`
+	// ID is the stable application-local identity of this unit use.
+	ID string `json:"id" yaml:"id"`
+	// UnitID identifies a unit in the connector's released UI catalog.
+	UnitID string `json:"unitId" yaml:"unitId"`
+	// Label is the application-facing unit label.
+	Label string `json:"label" yaml:"label"`
+	// Description optionally explains the unit's purpose.
+	Description string `json:"description,omitempty" yaml:"description,omitempty"`
+	// Required reports whether the application must configure this unit.
+	Required bool `json:"required" yaml:"required"`
+	// Bindings map unit ports to application-owned configuration paths.
+	Bindings []ConnectorUIBinding `json:"bindings" yaml:"bindings"`
 }
 
 // ConnectorUIBinding maps one Connector UI unit port to an RFC 6901 JSON
 // Pointer in the application-owned configuration object.
 type ConnectorUIBinding struct {
-	Port        string `json:"port" yaml:"port"`
+	// Port names an input or output declared by the released unit.
+	Port string `json:"port" yaml:"port"`
+	// JSONPointer is an RFC 6901 path into application configuration.
 	JSONPointer string `json:"jsonPointer" yaml:"jsonPointer"`
 }
 
@@ -41,19 +50,26 @@ type ConnectorUIBinding struct {
 // stable Connector Step use. FlowType and StepType prevent two uses of the same
 // operation and connection from sharing configuration implicitly.
 type ConnectorConfigurationRef struct {
-	ConnectorID    string `json:"connectorId" yaml:"connectorId"`
+	// ConnectorID identifies the connector manifest.
+	ConnectorID string `json:"connectorId" yaml:"connectorId"`
+	// ConnectionName names the configured provider connection.
 	ConnectionName string `json:"connectionName" yaml:"connectionName"`
-	OperationID    string `json:"operationId" yaml:"operationId"`
-	FlowType       string `json:"flowType" yaml:"flowType"`
-	StepType       string `json:"stepType" yaml:"stepType"`
+	// OperationID identifies the operation within its connector manifest.
+	OperationID string `json:"operationId" yaml:"operationId"`
+	// FlowType is the stable Dex Flow type that owns the Step.
+	FlowType string `json:"flowType" yaml:"flowType"`
+	// StepType is the stable Dex Step type.
+	StepType string `json:"stepType" yaml:"stepType"`
 }
 
 // ConnectorLoadedConfiguration is one strictly decoded, startup-time
 // configuration snapshot together with the identity from which it was loaded.
 // Applications explicitly use Value when mapping Flow state to operation input.
 type ConnectorLoadedConfiguration[T any] struct {
+	// Reference identifies the Connector Step use that owns Value.
 	Reference ConnectorConfigurationRef
-	Value     T
+	// Value is the strictly decoded startup-time configuration snapshot.
+	Value T
 }
 
 // Validate checks the static UI declaration independently of a Connector's
@@ -87,7 +103,7 @@ func (configuration ConnectorConfigurationUI) Validate() error {
 				return fmt.Errorf("Connector UI unit %q port %q is duplicated", unit.ID, binding.Port)
 			}
 			ports[binding.Port] = true
-			if !validConnectorJSONPointer(binding.JSONPointer) {
+			if !isValidConnectorJSONPointer(binding.JSONPointer) {
 				return fmt.Errorf("Connector UI unit %q port %q has an invalid JSON Pointer", unit.ID, binding.Port)
 			}
 		}
@@ -121,7 +137,7 @@ func cloneConnectorConfigurationUI(configuration ConnectorConfigurationUI) Conne
 	return cloned
 }
 
-func validConnectorJSONPointer(pointer string) bool {
+func isValidConnectorJSONPointer(pointer string) bool {
 	if pointer == "" || !strings.HasPrefix(pointer, "/") {
 		return false
 	}

@@ -13,6 +13,7 @@ import (
 
 var branchIDPattern = regexp.MustCompile(`^[a-z][A-Za-z0-9]+$`)
 
+// Validate returns an error when the value violates its public contract.
 func (definition QueryDefinition) Validate() error {
 	if err := definition.Operation.Validate(); err != nil {
 		return err
@@ -30,6 +31,7 @@ func (definition QueryDefinition) Validate() error {
 	return validateDefinitionOptions(definition.StepDefaults)
 }
 
+// Validate returns an error when the value violates its public contract.
 func (definition MutationDefinition) Validate() error {
 	if err := definition.Operation.Validate(); err != nil {
 		return err

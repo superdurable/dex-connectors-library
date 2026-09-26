@@ -6,6 +6,7 @@ package gmail
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
@@ -26,6 +27,7 @@ import (
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 
+// Option configures Client construction.
 type Option func(*clientOptions)
 
 type clientOptions struct {
@@ -34,6 +36,7 @@ type clientOptions struct {
 	logger     *slog.Logger
 }
 
+// WithHTTPClient overrides the default HTTP client; the caller retains ownership.
 func WithHTTPClient(client *http.Client) Option {
 	return func(options *clientOptions) { options.httpClient = client }
 }
@@ -52,6 +55,7 @@ func withClock(now func() time.Time) Option {
 	return func(options *clientOptions) { options.now = now }
 }
 
+// Client executes authenticated Gmail requests for connector operations.
 type Client struct {
 	endpoint         *url.URL
 	httpClient       *http.Client
@@ -64,20 +68,31 @@ type Client struct {
 	logger           *slog.Logger
 }
 
+// SendMessageInput contains the provider request fields for send message.
 type SendMessageInput struct {
-	To       []string `json:"to"`
-	Subject  string   `json:"subject"`
-	TextBody string   `json:"textBody"`
-	HTMLBody string   `json:"htmlBody,omitempty"`
+	// To lists recipient addresses.
+	To []string `json:"to"`
+	// Subject is the message subject.
+	Subject string `json:"subject"`
+	// TextBody is the plain-text message body.
+	TextBody string `json:"textBody"`
+	// HTMLBody is the optional HTML message body.
+	HTMLBody string `json:"htmlBody,omitempty"`
 }
 
+// SendMessageOutput contains the provider response fields for send message.
 type SendMessageOutput struct {
-	Sender     string   `json:"sender"`
+	// Sender is the authenticated sender address.
+	Sender string `json:"sender"`
+	// Recipients lists the resolved recipient addresses.
 	Recipients []string `json:"recipients"`
-	MessageID  string   `json:"messageId"`
-	ThreadID   string   `json:"threadId"`
+	// MessageID is the provider message identifier.
+	MessageID string `json:"messageId"`
+	// ThreadID is the provider conversation thread identifier.
+	ThreadID string `json:"threadId"`
 }
 
+// SendMessageOperation implements the send message connector operation.
 type SendMessageOperation struct{ client *Client }
 
 type sendResponse struct {
@@ -85,6 +100,7 @@ type sendResponse struct {
 	ThreadID string `json:"threadId"`
 }
 
+// New validates configuration and constructs an authenticated Gmail client.
 func New(config Config, credentials sdkgo.CredentialProvider[Credentials], options ...Option) (*Client, error) {
 	config = withConfigDefaults(config)
 	if err := config.Validate(); err != nil {
@@ -121,14 +137,64 @@ func New(config Config, credentials sdkgo.CredentialProvider[Credentials], optio
 	}, nil
 }
 
+// SendMessage returns the SendMessage operation bound to this client.
 func (client *Client) SendMessage() SendMessageOperation { return SendMessageOperation{client: client} }
 
+// GetMessage returns the query operation for one Gmail message.
+func (client *Client) GetMessage() GetMessageOperation { return GetMessageOperation{client: client} }
+
+// ReplyToMessage returns the mutation operation for one Gmail reply.
+func (client *Client) ReplyToMessage() ReplyToMessageOperation {
+	return ReplyToMessageOperation{client: client}
+}
+
+func (client *Client) messageReceivedTriggerSource(connection sdkgo.ConnectionRef, configuration MessageReceivedTriggerConfiguration) sdkgo.TriggerSource[MessageEvent] {
+	return client.messageReceivedPollingSource(connection, configuration)
+}
+
+func (client *Client) replyReceivedTriggerSource(connection sdkgo.ConnectionRef, configuration ReplyReceivedTriggerConfiguration) sdkgo.TriggerSource[MessageEvent] {
+	return client.replyReceivedPollingSource(connection, configuration)
+}
+
+func (client *Client) messageReceivedPollingSource(connection sdkgo.ConnectionRef, configuration MessageReceivedTriggerConfiguration) *messagePollingTriggerSource {
+	if err := configuration.Validate(); err != nil {
+		panic(err)
+	}
+	return &messagePollingTriggerSource{
+		client: client, connection: connection, searchQuery: configuration.SearchQuery,
+		matcher: configuration.MessageMatcher, delivered: make(map[string]bool),
+		triggerName: "messageReceived",
+	}
+}
+
+func (client *Client) replyReceivedPollingSource(connection sdkgo.ConnectionRef, configuration ReplyReceivedTriggerConfiguration) *messagePollingTriggerSource {
+	if err := configuration.Validate(); err != nil {
+		panic(err)
+	}
+	return &messagePollingTriggerSource{
+		client: client, connection: connection, searchQuery: configuration.SearchQuery,
+		matcher: configuration.ReplyMatcher, requiresReply: true, delivered: make(map[string]bool),
+		triggerName: "replyReceived",
+	}
+}
+
+// triggerLogger returns the configured logger or, as of the call, slog.Default().
+func (client *Client) triggerLogger() *slog.Logger {
+	if client != nil && client.logger != nil {
+		return client.logger
+	}
+	return slog.Default()
+}
+
+// Definition returns the immutable connector operation definition.
 func (SendMessageOperation) Definition() sdkgo.MutationDefinition { return SendMessageDefinition }
 
+// IdempotencyKey derives the provider key from the stable connector call ID.
 func (SendMessageOperation) IdempotencyKey(callID sdkgo.CallID, _ SendMessageInput) sdkgo.IdempotencyKey {
 	return sdkgo.IdempotencyKey(callID)
 }
 
+// Invoke executes one provider call and classifies its attempt.
 func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageInput) sdkgo.MutationAttempt[SendMessageOutput] {
 	credential, err := operation.client.credentials.Resolve(call)
 	if err != nil || credential.Validate() != nil {
@@ -168,7 +234,11 @@ func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageI
 		return sdkgo.NewMutationUncertain(SendMessageOutput{}, gmailFailure(sdkgo.FailureTransport, "Gmail send response could not be confirmed"), receipt)
 	}
 	if response.StatusCode == http.StatusTooManyRequests {
-		return sdkgo.NewMutationRetry[SendMessageOutput](gmailFailure(sdkgo.FailureRateLimit, "Gmail temporarily rejected the send"), retryAfter(response.Header))
+		delay, err := retryAfter(response.Header)
+		if err != nil {
+			return sdkgo.NewMutationRetry[SendMessageOutput](gmailFailure(sdkgo.FailureProtocol, "Gmail returned an invalid Retry-After header"), 0)
+		}
+		return sdkgo.NewMutationRetry[SendMessageOutput](gmailFailure(sdkgo.FailureRateLimit, "Gmail temporarily rejected the send"), delay)
 	}
 	if response.StatusCode >= 500 {
 		return sdkgo.NewMutationUncertain(SendMessageOutput{}, gmailFailure(sdkgo.FailureAvailability, "Gmail send outcome is unknown"), receipt)
@@ -222,22 +292,21 @@ func parseMailbox(value string) (*mail.Address, error) {
 
 func buildMIMEMessage(call sdkgo.Call, sender string, recipients []string, input SendMessageInput) ([]byte, error) {
 	var message bytes.Buffer
-	writeHeader := func(name, value string) { fmt.Fprintf(&message, "%s: %s\r\n", name, value) }
-	writeHeader("From", sender)
-	writeHeader("To", strings.Join(recipients, ", "))
-	writeHeader("Subject", mime.QEncoding.Encode("UTF-8", input.Subject))
-	writeHeader("Message-ID", "<"+string(call.IdempotencyKey)+"@dex.superdurable.dev>")
-	writeHeader("X-Dex-Call-ID", string(call.ID))
-	writeHeader("MIME-Version", "1.0")
+	mustWriteMIMEHeader(&message, "From", sender)
+	mustWriteMIMEHeader(&message, "To", strings.Join(recipients, ", "))
+	mustWriteMIMEHeader(&message, "Subject", mime.QEncoding.Encode("UTF-8", input.Subject))
+	mustWriteMIMEHeader(&message, "Message-ID", "<"+string(call.IdempotencyKey)+"@dex.superdurable.dev>")
+	mustWriteMIMEHeader(&message, "X-Dex-Call-ID", string(call.ID))
+	mustWriteMIMEHeader(&message, "MIME-Version", "1.0")
 	if input.HTMLBody == "" {
-		writeHeader("Content-Type", `text/plain; charset="UTF-8"`)
-		writeHeader("Content-Transfer-Encoding", "8bit")
-		message.WriteString("\r\n" + normalizeBody(input.TextBody))
+		mustWriteMIMEHeader(&message, "Content-Type", `text/plain; charset="UTF-8"`)
+		mustWriteMIMEHeader(&message, "Content-Transfer-Encoding", "8bit")
+		message.WriteString("\r\n" + convertLineEndingsToCRLF(input.TextBody))
 		return message.Bytes(), nil
 	}
 	hash := sha256.Sum256([]byte(call.IdempotencyKey))
 	boundary := "dex-" + hex.EncodeToString(hash[:12])
-	writeHeader("Content-Type", `multipart/alternative; boundary="`+boundary+`"`)
+	mustWriteMIMEHeader(&message, "Content-Type", `multipart/alternative; boundary="`+boundary+`"`)
 	message.WriteString("\r\n")
 	writer := multipart.NewWriter(&message)
 	if err := writer.SetBoundary(boundary); err != nil {
@@ -249,7 +318,7 @@ func buildMIMEMessage(call sdkgo.Call, sender string, recipients []string, input
 	if err != nil {
 		return nil, err
 	}
-	if _, err := io.WriteString(textPart, normalizeBody(input.TextBody)); err != nil {
+	if _, err := io.WriteString(textPart, convertLineEndingsToCRLF(input.TextBody)); err != nil {
 		return nil, err
 	}
 	htmlHeader := make(textproto.MIMEHeader)
@@ -258,7 +327,7 @@ func buildMIMEMessage(call sdkgo.Call, sender string, recipients []string, input
 	if err != nil {
 		return nil, err
 	}
-	if _, err := io.WriteString(htmlPart, normalizeBody(input.HTMLBody)); err != nil {
+	if _, err := io.WriteString(htmlPart, convertLineEndingsToCRLF(input.HTMLBody)); err != nil {
 		return nil, err
 	}
 	if err := writer.Close(); err != nil {
@@ -267,18 +336,64 @@ func buildMIMEMessage(call sdkgo.Call, sender string, recipients []string, input
 	return message.Bytes(), nil
 }
 
-func normalizeBody(value string) string {
+func mustWriteMIMEHeader(message *bytes.Buffer, name string, value string) {
+	if _, err := fmt.Fprintf(message, "%s: %s\r\n", name, value); err != nil {
+		panic(fmt.Sprintf("write MIME header: %v", err))
+	}
+}
+
+func convertLineEndingsToCRLF(value string) string {
 	value = strings.ReplaceAll(value, "\r\n", "\n")
 	value = strings.ReplaceAll(value, "\r", "\n")
 	return strings.ReplaceAll(value, "\n", "\r\n")
 }
 
-func retryAfter(header http.Header) time.Duration {
-	seconds, _ := strconv.Atoi(header.Get("Retry-After"))
-	if seconds > 0 {
-		return time.Duration(seconds) * time.Second
+func (client *Client) readMessage(ctx context.Context, credentials Credentials, messageID string, format string) (gmailMessageResource, gmailHTTPResult, error) {
+	query := url.Values{"format": {format}}
+	if format == "metadata" {
+		for _, name := range []string{"Message-ID", "In-Reply-To", "References", "From", "Reply-To", "To", "Subject"} {
+			query.Add("metadataHeaders", name)
+		}
 	}
-	return 0
+	target := strings.TrimRight(client.endpoint.String(), "/") + "/users/me/messages/" + url.PathEscape(messageID) + "?" + query.Encode()
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
+	if err != nil {
+		return gmailMessageResource{}, gmailHTTPResult{}, err
+	}
+	request.Header.Set("Authorization", "Bearer "+credentials.AccessToken.Reveal())
+	response, err := client.httpClient.Do(request)
+	if err != nil {
+		return gmailMessageResource{}, gmailHTTPResult{}, err
+	}
+	defer response.Body.Close()
+	result := gmailHTTPResult{statusCode: response.StatusCode, header: response.Header.Clone()}
+	result.body, err = io.ReadAll(io.LimitReader(response.Body, client.maxResponseBytes+1))
+	if err != nil || int64(len(result.body)) > client.maxResponseBytes || response.StatusCode < 200 || response.StatusCode >= 300 {
+		return gmailMessageResource{}, result, fmt.Errorf("Gmail message lookup failed")
+	}
+	var resource gmailMessageResource
+	if err := json.Unmarshal(result.body, &resource); err != nil {
+		return gmailMessageResource{}, result, err
+	}
+	return resource, result, nil
+}
+
+func retryAfter(header http.Header) (time.Duration, error) {
+	value := header.Get("Retry-After")
+	if value == "" {
+		return 0, nil
+	}
+	seconds, err := strconv.Atoi(value)
+	if err != nil {
+		return 0, fmt.Errorf("parse Retry-After %q: %w", value, err)
+	}
+	if seconds < 0 {
+		return 0, fmt.Errorf("parse Retry-After %q: value cannot be negative", value)
+	}
+	if seconds > 0 {
+		return time.Duration(seconds) * time.Second, nil
+	}
+	return 0, nil
 }
 
 func statusFailureKind(status int) sdkgo.FailureKind {

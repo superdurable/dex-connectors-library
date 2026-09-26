@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Super Durable
+// SPDX-License-Identifier: MIT
+
 export { ConnectionStatus } from "./connection-status.js";
 export type { ConnectionStatusProps, ConnectionState } from "./connection-status.js";
 export { connectorStudioHostAPIVersion, isConnectorStudioMessage } from "./host-api.js";
