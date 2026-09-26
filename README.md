@@ -1,5 +1,9 @@
 # Dex Connectors Library
 
+[Dex main repository](https://github.com/superdurable/dex) ·
+[Documentation](https://docs.superdurable.io) ·
+[Connector directory](https://superdurable.github.io/dex-connectors-library/)
+
 ## Overview
 
 [![Dex Connectors directory](https://superdurable.github.io/dex-connectors-library/card.png)](https://superdurable.github.io/dex-connectors-library/)
@@ -11,6 +15,25 @@ explicit.
 
 The directory lists each published connector, its company, reusable UI units,
 triggers, and operations. Search matches all of those names and descriptions.
+
+## Contribute a connector
+
+Use the official
+[Dex Connector Contributor skill](https://github.com/superdurable/dex-skills/blob/main/dex-connector-contributor/SKILL.md)
+to add or modify a connector, operation, Trigger, or configuration UI unit.
+The skill guides an agent through provider public APIs or official SDKs,
+manifest-first code generation, a connector-local runnable example, complete
+testing, and an upstream pull request. It also discovers or helps create the
+contributor's GitHub fork before checking it out locally.
+
+Invoke it through the `superdurable-dex` plugin:
+
+- Codex: `$dex-connector-contributor`
+- Claude Code: `/superdurable-dex:dex-connector-contributor`
+- Cursor: `/dex-connector-contributor`
+
+See the [Dex Skills installation guide](https://github.com/superdurable/dex-skills#install)
+for plugin setup and the complete contribution workflow.
 
 ## Use a connector
 
