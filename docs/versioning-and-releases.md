@@ -40,10 +40,15 @@ minor selection.
 
 The root `connectors.yaml` file is a sorted allowlist of connector directories.
 Each path starts below `connectors/` and may have any number of directory
-levels. CI rejects missing, unregistered, duplicate, unsafe, or symlinked
-paths. The first directory under `connectors/` is the company. It must match
-`metadata.company` and contain `logo.svg`. The catalog lists each connector's
-triggers (`name`, `description`) and operations (`name`, `kind`, `description`).
+levels. The first directory under `connectors/` is the company. Its name is
+`metadata.company` with letters and digits lowercased and every other
+character removed, and that directory must contain `logo.svg`. CI rejects
+missing, unregistered, duplicate, unsafe, or symlinked paths, a missing
+company logo, and a company that does not match its directory. It generates
+the public catalog from the registered manifests. Each catalog entry lists
+triggers by name and description, and operations by name, kind, and
+description, so the directory can show and search supported actions without
+reading provider code.
 
 The `Release Connectors and Catalog` workflow runs automatically after a push
 to `main`. It compares every declared manifest version with reachable tags and
@@ -60,8 +65,11 @@ connector input and only retries incomplete releases. The workflow:
 8. uploads `connector-release.json`, optional `connector-ui.tgz`, and digests;
 9. verifies the published Go module is downloadable;
 10. runs Released compatibility against the new component tag;
-11. publishes the directory site, `catalog.yaml`, and `card.png` to GitHub Pages
-    when releases succeed or none are pending. A failed release skips publishing.
+11. publishes the directory site, `catalog.yaml`, and `card.png` to GitHub
+    Pages when connector releases succeed or none are pending. A failed
+    release skips that publish. The site is
+    `https://superdurable.github.io/dex-connectors-library/` and the README
+    preview is `card.png` beside `catalog.yaml`.
 
 The workflow uploads `connector-release.complete` only after both publication
 checks pass. A rerun repairs any release without that marker before publishing

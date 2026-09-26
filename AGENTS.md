@@ -14,6 +14,8 @@ behavior.
 - Keep the Go SDK in sdkgo and every connector in its own Go module.
 - Group one company's connectors below one directory, such as
   connectors/google/gmail and connectors/google/spreadsheet.
+- The first directory under connectors/ is the company. It must match
+  metadata.company and contain logo.svg.
 - Keep provider calls in Dex Step Execute. Do not call providers from RPCs.
 - Preserve stable Flow, Step, Attribute, Stream, connector, operation, and
   branch identities.
@@ -33,8 +35,7 @@ behavior.
 - Every connector has its own go.mod, README, manifest, generated code, and
   provider tests.
 - Register every connector directory in the sorted root connectors.yaml list.
-  Paths may have any depth below connectors/. The first directory is the
-  company, must match metadata.company, and must contain logo.svg.
+  Paths may have any depth below connectors/.
 - Add, move, or remove a registry entry only when the connector directory
   changes. Version-only changes do not modify the registry.
 

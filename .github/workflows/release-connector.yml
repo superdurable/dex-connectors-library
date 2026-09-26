@@ -268,17 +268,21 @@ jobs:
           cache-dependency-path: site/package-lock.json
       - name: Generate public Connector catalog
         run: |
+          mkdir -p dist/pages
           go run ./cmd/connectorctl catalog \
             --registry connectors.yaml \
             --output dist/pages/catalog.yaml
-      - name: Build the connector directory and catalog card
+      - name: Build directory site and preview card
         run: |
           sudo apt-get update
           sudo apt-get install -y fonts-dejavu-core
           npm ci --prefix site
           npm test --prefix site
           npm run build --prefix site
-          node site/scripts/render-card.mjs --catalog dist/pages/catalog.yaml --output dist/pages/card.png
+          node site/scripts/render-card.mjs \
+            --catalog dist/pages/catalog.yaml \
+            --repository . \
+            --output dist/pages/card.png
           cp -a site/dist/. dist/pages/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4

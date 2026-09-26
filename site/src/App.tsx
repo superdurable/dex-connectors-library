@@ -1,172 +1,230 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, Route, Routes, useParams } from "react-router-dom";
+
+import { DexMark } from "./DexMark";
 import {
   catalogDocumentUrl,
   catalogTotals,
-  companyDirectory,
   companyLogoUrl,
   connectorMatchesQuery,
   groupCatalog,
   readCatalog,
   type CatalogConnector,
+  type CatalogOperation,
 } from "./catalogModel.mjs";
-import { DexMark } from "./DexMark";
+
+const logoOrigin = import.meta.env.DEV ? "local" : "published";
+
+type LoadState<T> =
+  | { status: "loading" }
+  | { status: "ready"; value: T }
+  | { status: "failed"; message: string };
 
 export function App() {
-  const catalog = useCatalog();
-  return (
-    <Routes>
-      <Route path="/" element={<Directory catalog={catalog} />} />
-      <Route path="/connectors/:connectorId" element={<DetailRoute catalog={catalog} />} />
-    </Routes>
-  );
-}
+  const [catalog, setCatalog] = useState<LoadState<CatalogConnector[]>>({ status: "loading" });
 
-function DetailRoute({ catalog }: { catalog: CatalogState }) {
-  const { connectorId } = useParams();
-  return <ConnectorDetail catalog={catalog} connectorId={connectorId ?? ""} />;
-}
-
-function Directory({ catalog }: { catalog: CatalogState }) {
-  const [query, setQuery] = useState("");
-  const visible = useMemo(() => {
-    if (catalog.status !== "ready") {
-      return [];
-    }
-    return catalog.connectors.filter((connector) => connectorMatchesQuery(connector, query));
-  }, [catalog, query]);
-  const totals = catalog.status === "ready" ? catalogTotals(catalog.connectors) : null;
-  return (
-    <main className="page">
-      <header className="masthead">
-        <Link className="wordmark" to="/">
-          <DexMark size={36} />
-          <span>Dex</span>
-          <span className="wordmark-rest">Connectors</span>
-        </Link>
-        {totals ? (
-          <p className="totals">
-            <strong>{totals.companies}</strong> companies
-            <strong>{totals.connectors}</strong> connectors
-            <strong>{totals.operations}</strong> operations
-            <strong>{totals.triggers}</strong> triggers
-          </p>
-        ) : null}
-      </header>
-      <p className="lede">Take a process from a prototype to production with open sourced and trusted connectors.</p>
-      <label className="search" htmlFor="connector-search">
-        Search
-        <input
-          id="connector-search"
-          value={query}
-          placeholder="Try send, messageReceived, or Gmail"
-          onChange={(event) => setQuery(event.target.value)}
-        />
-      </label>
-      {catalog.status === "error" ? <p className="status">{catalog.message}</p> : null}
-      {catalog.status === "loading" ? <p className="status">Loading the catalog.</p> : null}
-      <div className="groups">
-        {groupCatalog(visible).map((group) => (
-          <section className="group" key={group.companyDirectory}>
-            <h2>
-              <img src={companyLogoUrl(group.companyDirectory, logoSource())} alt="" />
-              {group.company}
-            </h2>
-            <div className="cards">
-              {group.connectors.map((connector) => (
-                <Link className="card" key={connector.id} to={`/connectors/${connector.id}`}>
-                  <h3>{connector.name}</h3>
-                  <p>{connector.description}</p>
-                  <CapabilityList connector={connector} />
-                </Link>
-              ))}
-            </div>
-          </section>
-        ))}
-      </div>
-    </main>
-  );
-}
-
-function ConnectorDetail({ catalog, connectorId }: { catalog: CatalogState; connectorId: string }) {
-  const connector = catalog.status === "ready"
-    ? catalog.connectors.find((item) => item.id === connectorId)
-    : undefined;
-  return (
-    <main className="page">
-      <header className="masthead">
-        <Link className="wordmark" to="/">
-          <DexMark size={36} />
-          <span>Dex</span>
-          <span className="wordmark-rest">Connectors</span>
-        </Link>
-      </header>
-      {catalog.status === "loading" ? <p className="status">Loading the catalog.</p> : null}
-      {catalog.status === "error" ? <p className="status">{catalog.message}</p> : null}
-      {catalog.status === "ready" && !connector ? <p className="status">That connector is not in the catalog.</p> : null}
-      {connector ? (
-        <article className="detail">
-          <img src={companyLogoUrl(companyDirectory(connector.directory), logoSource())} alt="" />
-          <h1>{connector.name}</h1>
-          <p>{connector.description}</p>
-          <p className="meta">{connector.company} · {connector.version}</p>
-          <h2>Triggers</h2>
-          <CapabilityList connector={connector} only="trigger" />
-          <h2>Operations</h2>
-          <CapabilityList connector={connector} only="operation" />
-        </article>
-      ) : null}
-    </main>
-  );
-}
-
-function CapabilityList({ connector, only }: { connector: CatalogConnector; only?: "trigger" | "operation" }) {
-  const capabilities = only === "trigger"
-    ? connector.triggers
-    : only === "operation"
-      ? connector.operations
-      : [...connector.triggers, ...connector.operations];
-  if (capabilities.length === 0) {
-    return <p className="empty">None published.</p>;
-  }
-  return (
-    <ul className="chips">
-      {capabilities.map((capability) => (
-        <li className={`chip kind-${capability.kind || "trigger"}`} key={`${capability.kind}-${capability.name}`}>
-          {capability.name}
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-type CatalogState =
-  | { status: "loading" }
-  | { status: "ready"; connectors: CatalogConnector[] }
-  | { status: "error"; message: string };
-
-function useCatalog(): CatalogState {
-  const [state, setState] = useState<CatalogState>({ status: "loading" });
   useEffect(() => {
     const controller = new AbortController();
-    fetch(catalogDocumentUrl(), { signal: controller.signal })
+    const url = catalogDocumentUrl(import.meta.env.DEV, import.meta.env.BASE_URL);
+    fetch(url, { signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) {
-          throw new Error(`catalog request failed: ${response.status}`);
+          throw new Error(`catalog request failed (${response.status})`);
         }
-        setState({ status: "ready", connectors: readCatalog(await response.text()) });
+        return response.text();
       })
+      .then((text) => setCatalog({ status: "ready", value: readCatalog(text) }))
       .catch((error: unknown) => {
         if (controller.signal.aborted) {
           return;
         }
-        setState({ status: "error", message: error instanceof Error ? error.message : "catalog request failed" });
+        setCatalog({ status: "failed", message: errorMessage(error) });
       });
     return () => controller.abort();
   }, []);
-  return state;
+
+  return (
+    <div className="page">
+      <header className="masthead">
+        <Link className="wordmark" to="/">
+          <span className="brand-symbol">
+            <DexMark size={36} />
+          </span>
+          <span className="wordmark-text">
+            <b>Dex</b>
+            <span>Connectors</span>
+          </span>
+        </Link>
+        <p className="lede">
+          Take a process from a prototype to production with open sourced and trusted connectors.
+        </p>
+        {catalog.status === "ready" ? <CatalogTotals connectors={catalog.value} /> : null}
+      </header>
+      <main>
+        <Routes>
+          <Route path="/" element={<CatalogPage catalog={catalog} />} />
+          <Route path="/connectors/:id" element={<ConnectorPage catalog={catalog} />} />
+        </Routes>
+      </main>
+    </div>
+  );
 }
 
-function logoSource(): "local" | "published" {
-  return import.meta.env.DEV ? "local" : "published";
+function CatalogTotals({ connectors }: { connectors: CatalogConnector[] }) {
+  const totals = catalogTotals(connectors);
+  const items = [
+    ["companies", totals.companies],
+    ["connectors", totals.connectors],
+    ["operations", totals.operations],
+    ["triggers", totals.triggers],
+  ] as const;
+  return (
+    <dl className="totals">
+      {items.map(([label, count]) => (
+        <div key={label}>
+          <dt>{label}</dt>
+          <dd>{count}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function CatalogPage({ catalog }: { catalog: LoadState<CatalogConnector[]> }) {
+  const [query, setQuery] = useState("");
+  if (catalog.status === "loading") {
+    return <p className="status">Loading catalog…</p>;
+  }
+  if (catalog.status === "failed") {
+    return <p className="status failed">{catalog.message}</p>;
+  }
+  const matched = catalog.value.filter((connector) => connectorMatchesQuery(connector, query));
+  const groups = groupCatalog(matched);
+  return (
+    <div className="companies">
+      <form className="search" role="search" onSubmit={(event) => event.preventDefault()}>
+        <label htmlFor="connector-search">Search</label>
+        <input
+          id="connector-search"
+          type="search"
+          value={query}
+          placeholder="Try send, messageReceived, or Gmail"
+          onChange={(event) => setQuery(event.target.value)}
+        />
+      </form>
+      {groups.length === 0 ? <p className="status">No connector matches that search.</p> : null}
+      {groups.map((group) => (
+        <section key={group.company} className="company">
+          <div className="company-heading">
+            <img src={companyLogoUrl(group.companyDirectory, logoOrigin)} alt="" width={56} height={56} />
+            <h2>{group.company}</h2>
+          </div>
+          <ul className="cards">
+            {group.connectors.map((connector) => (
+              <li key={connector.id}>
+                <Link className="card" to={`/connectors/${connector.id}`}>
+                  <span className="card-title">
+                    <span>{connector.name}</span>
+                    <span className="version">{connector.version}</span>
+                  </span>
+                  <span className="description">{connector.description}</span>
+                  <CapabilityChips connector={connector} />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+    </div>
+  );
+}
+
+function CapabilityChips({ connector }: { connector: CatalogConnector }) {
+  const chips = [
+    ...connector.triggers.map((capability) => ({ ...capability, key: `trigger-${capability.name}` })),
+    ...connector.operations.map((capability) => ({ ...capability, key: `operation-${capability.name}` })),
+  ];
+  if (chips.length === 0) {
+    return null;
+  }
+  return (
+    <span className="chips">
+      {chips.map((capability) => (
+        <span key={capability.key} className={`kind kind-${capability.kind}`}>
+          {capability.name}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+function ConnectorPage({ catalog }: { catalog: LoadState<CatalogConnector[]> }) {
+  const { id } = useParams();
+  const connector =
+    catalog.status === "ready" ? catalog.value.find((item) => item.id === id) : undefined;
+
+  if (catalog.status === "loading") {
+    return <p className="status">Loading catalog…</p>;
+  }
+  if (catalog.status === "failed") {
+    return <p className="status failed">{catalog.message}</p>;
+  }
+  if (!connector) {
+    return (
+      <p className="status failed">
+        This catalog does not include that connector. <Link to="/">Back to the directory</Link>
+      </p>
+    );
+  }
+
+  return (
+    <article className="detail">
+      <p className="back">
+        <Link to="/">All connectors</Link>
+      </p>
+      <div className="detail-heading">
+        <img src={companyLogoUrl(connector.companyDirectory, logoOrigin)} alt="" width={64} height={64} />
+        <div>
+          <p className="company-name">{connector.company}</p>
+          <h2>{connector.name}</h2>
+          <p className="version-line">
+            {connector.version}
+            <span>{connector.directory}</span>
+          </p>
+        </div>
+      </div>
+      <p className="description detail-description">{connector.description}</p>
+      <CapabilityList title="Triggers" capabilities={connector.triggers} />
+      <CapabilityList title="Operations" capabilities={connector.operations} />
+    </article>
+  );
+}
+
+function CapabilityList({ title, capabilities }: { title: string; capabilities: CatalogOperation[] }) {
+  if (capabilities.length === 0) {
+    return null;
+  }
+  return (
+    <section>
+      <h3>{title}</h3>
+      <ul className="operations">
+        {capabilities.map((capability) => (
+          <li key={`${capability.kind}-${capability.name}`}>
+            <span className={`kind kind-${capability.kind}`}>{capability.kind}</span>
+            <span>
+              <strong>{capability.name}</strong>
+              <span className="description">{capability.description}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function errorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  return "The request failed.";
 }

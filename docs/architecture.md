@@ -10,7 +10,8 @@
 - `sdk/react/` owns credential-free connection-status primitives.
 - `connectors/` owns independently released provider modules and their source
   manifests. Connectors from one company are grouped below one company
-  directory, which contains `logo.svg`, without sharing a module or release.
+  directory without sharing a module or release. That company directory
+  contains `logo.svg`.
 - `site/` is the static directory published with the catalog.
 - `cmd/connectorctl/` validates, generates, checks, and catalogs manifests,
   plans declared releases, and creates versioned release artifacts.

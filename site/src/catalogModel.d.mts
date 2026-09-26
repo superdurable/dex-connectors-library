@@ -1,8 +1,4 @@
-export type CatalogCapability = {
-  name: string;
-  kind: string;
-  description: string;
-};
+export const rawRepositoryRoot: string;
 
 export type CatalogConnector = {
   company: string;
@@ -11,29 +7,36 @@ export type CatalogConnector = {
   description: string;
   version: string;
   directory: string;
-  triggers: CatalogCapability[];
-  operations: CatalogCapability[];
+  companyDirectory: string;
+  triggers: CatalogOperation[];
+  operations: CatalogOperation[];
 };
 
-export type CatalogGroup = {
-  companyDirectory: string;
+export type CompanyGroup = {
   company: string;
+  companyDirectory: string;
   connectors: CatalogConnector[];
+};
+
+export type CatalogOperation = {
+  name: string;
+  kind: string;
+  description: string;
 };
 
 export type CatalogTotals = {
   companies: number;
   connectors: number;
-  operations: number;
   triggers: number;
+  operations: number;
 };
 
 export function companyDirectory(directory: string): string;
-export function connectorManifestUrl(connector: CatalogConnector): string;
-export function companyLogoUrl(company: string, source: "local" | "published"): string;
-export function catalogDocumentUrl(): string;
-export function readCatalog(catalogText: string): CatalogConnector[];
-export function readOperations(manifestText: string): CatalogCapability[];
+export function connectorManifestUrl(directory: string, version: string): string;
+export function companyLogoUrl(company: string, origin: "local" | "published"): string;
+export function catalogDocumentUrl(isDev: boolean, baseUrl: string): string;
+export function readCatalog(text: string): CatalogConnector[];
 export function connectorMatchesQuery(connector: CatalogConnector, query: string): boolean;
 export function catalogTotals(connectors: CatalogConnector[]): CatalogTotals;
-export function groupCatalog(connectors: CatalogConnector[]): CatalogGroup[];
+export function groupCatalog(connectors: CatalogConnector[]): CompanyGroup[];
+export function readOperations(text: string): CatalogOperation[];

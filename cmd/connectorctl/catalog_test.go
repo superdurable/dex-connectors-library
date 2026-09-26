@@ -127,7 +127,7 @@ func TestReleaseMatrixFindsEveryDeclaredRepositoryVersion(t *testing.T) {
 	require.Contains(t, string(contents), `"version":"v0.8.0"`)
 }
 
-func TestCatalogRejectsMissingCompanyLogo(t *testing.T) {
+func TestDirectoryRegistryRejectsMissingCompanyLogo(t *testing.T) {
 	repositoryRoot := t.TempDir()
 	writeConnectorFixture(t, repositoryRoot, "connectors/acme/mail", "example.com/connectors/acme/mail")
 	require.NoError(t, os.Remove(filepath.Join(repositoryRoot, "connectors", "acme", "logo.svg")))
@@ -138,17 +138,16 @@ directories:
   - connectors/acme/mail
 `), 0o600))
 	_, err := loadConnectorDirectoryEntries(registryPath)
-	require.ErrorContains(t, err, "company logo is missing")
+	require.ErrorContains(t, err, "company logo")
 }
 
-func TestCatalogRejectsCompanyDirectoryMismatch(t *testing.T) {
+func TestDirectoryRegistryRejectsCompanyDirectoryMismatch(t *testing.T) {
 	repositoryRoot := t.TempDir()
 	writeConnectorFixture(t, repositoryRoot, "connectors/acme/mail", "example.com/connectors/acme/mail")
 	manifestPath := filepath.Join(repositoryRoot, "connectors", "acme", "mail", "connector.yaml")
-	contents, err := os.ReadFile(manifestPath)
+	manifest, err := os.ReadFile(manifestPath)
 	require.NoError(t, err)
-	contents = []byte(strings.Replace(string(contents), "company: acme", "company: Other", 1))
-	require.NoError(t, os.WriteFile(manifestPath, contents, 0o600))
+	require.NoError(t, os.WriteFile(manifestPath, []byte(strings.Replace(string(manifest), "company: acme", "company: Other", 1)), 0o600))
 	registryPath := filepath.Join(repositoryRoot, "connectors.yaml")
 	require.NoError(t, os.WriteFile(registryPath, []byte(`apiVersion: connectors.dex.dev/directory-list/v1alpha1
 kind: ConnectorDirectoryList
@@ -159,21 +158,20 @@ directories:
 	require.ErrorContains(t, err, "must match directory acme")
 }
 
-func TestCatalogIncludesTriggersAndOperations(t *testing.T) {
-	encoded, err := encodeConnectorCatalog(mustLoadRealConnectorEntries(t))
-	require.NoError(t, err)
-	catalog := string(encoded)
-	require.Contains(t, catalog, "messageReceived")
-	require.Contains(t, catalog, "getMessage")
-	require.Contains(t, catalog, "kind: query")
-	require.Contains(t, catalog, "kind: mutation")
+func TestCatalogCheckAcceptsRepositoryCompanies(t *testing.T) {
+	require.NoError(t, catalogCommand([]string{"--check", "--registry", filepath.Join("..", "..", "connectors.yaml")}))
 }
 
-func mustLoadRealConnectorEntries(t *testing.T) []connectorDirectoryEntry {
-	t.Helper()
+func TestCatalogIncludesOperationsAndTriggers(t *testing.T) {
 	entries, err := loadConnectorDirectoryEntries(filepath.Join("..", "..", "connectors.yaml"))
 	require.NoError(t, err)
-	return entries
+	encoded, err := encodeConnectorCatalog(entries)
+	require.NoError(t, err)
+	catalog := string(encoded)
+	require.Contains(t, catalog, "name: messageReceived")
+	require.Contains(t, catalog, "name: getMessage")
+	require.Contains(t, catalog, "kind: query")
+	require.Contains(t, catalog, "kind: mutation")
 }
 
 func writeConnectorFixture(t *testing.T, repositoryRoot, directory, modulePath string) {
@@ -182,12 +180,14 @@ func writeConnectorFixture(t *testing.T, repositoryRoot, directory, modulePath s
 	require.NoError(t, os.MkdirAll(connectorDirectory, 0o755))
 	fixture, err := os.ReadFile(filepath.Join("..", "..", "schema", "testdata", "google-oauth.yaml"))
 	require.NoError(t, err)
-	fixtureText := strings.Replace(string(fixture), "name: google-sheets-fixture", "name: fixture-connector", 1)
+	contents := strings.Replace(string(fixture), "name: google-sheets-fixture", "name: fixture-connector", 1)
 	if strings.HasPrefix(directory, "connectors/") {
-		companyDirectory := strings.Split(directory, "/")[1]
-		fixtureText = strings.Replace(fixtureText, "company: Google", "company: "+companyDirectory, 1)
-		require.NoError(t, os.WriteFile(filepath.Join(repositoryRoot, "connectors", companyDirectory, "logo.svg"), []byte("<svg xmlns=\"http://www.w3.org/2000/svg\"/>\n"), 0o600))
+		companyDir := strings.Split(strings.TrimPrefix(directory, "connectors/"), "/")[0]
+		contents = strings.Replace(contents, "company: Google", "company: "+companyDir, 1)
+		logoDirectory := filepath.Join(repositoryRoot, "connectors", companyDir)
+		require.NoError(t, os.MkdirAll(logoDirectory, 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(logoDirectory, "logo.svg"), []byte(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"></svg>`), 0o600))
 	}
-	require.NoError(t, os.WriteFile(filepath.Join(connectorDirectory, "connector.yaml"), []byte(fixtureText), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(connectorDirectory, "connector.yaml"), []byte(contents), 0o600))
 	require.NoError(t, os.WriteFile(filepath.Join(connectorDirectory, "go.mod"), []byte("module "+modulePath+"\n\ngo 1.24\n"), 0o600))
 }

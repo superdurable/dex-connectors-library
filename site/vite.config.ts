@@ -1,30 +1,31 @@
+import { createReadStream, existsSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { readFile } from "node:fs/promises";
-import { defineConfig } from "vite";
+import { fileURLToPath } from "node:url";
+
 import react from "@vitejs/plugin-react";
-import type { Plugin } from "vite";
+import { defineConfig, type Plugin } from "vite";
 
-const siteRoot = path.dirname(new URL(import.meta.url).pathname);
+const siteRoot = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(siteRoot, "..");
-
-export default defineConfig(({ command }) => ({
-  base: command === "serve" ? "/" : "/dex-connectors-library/",
-  plugins: [react(), serveLocalCatalog(), serveCompanyLogos()],
-}));
+const localCatalogPath = path.join(siteRoot, ".catalog.yaml");
 
 function serveLocalCatalog(): Plugin {
   return {
     name: "serve-local-catalog",
     configureServer(server) {
-      server.middlewares.use(async (request, response, next) => {
-        const url = request.url?.split("?")[0];
+      server.middlewares.use((request, response, next) => {
+        const url = request.url?.split("?")[0] ?? "";
         if (url !== "/catalog.yaml") {
           next();
           return;
         }
-        const catalog = await readFile(path.join(siteRoot, ".catalog.yaml"));
-        response.setHeader("Content-Type", "application/yaml");
-        response.end(catalog);
+        if (!existsSync(localCatalogPath)) {
+          response.statusCode = 404;
+          response.end("local catalog is missing; run npm run dev");
+          return;
+        }
+        response.setHeader("content-type", "text/yaml");
+        response.end(readFileSync(localCatalogPath));
       });
     },
   };
@@ -34,23 +35,29 @@ function serveCompanyLogos(): Plugin {
   return {
     name: "serve-company-logos",
     configureServer(server) {
-      server.middlewares.use(async (request, response, next) => {
+      server.middlewares.use((request, response, next) => {
         const url = request.url?.split("?")[0] ?? "";
-        const match = url.match(/^\/connectors\/([a-z0-9]+)\/logo\.svg$/);
-        if (!match) {
+        const match = url.match(/^\/connectors\/([^/]+)\/logo\.svg$/);
+        if (!match || match[1] === "." || match[1] === "..") {
           next();
           return;
         }
         const logoPath = path.resolve(repositoryRoot, "connectors", match[1], "logo.svg");
         const connectorsRoot = path.resolve(repositoryRoot, "connectors") + path.sep;
-        if (!logoPath.startsWith(connectorsRoot)) {
-          next();
+        if (!logoPath.startsWith(connectorsRoot) || !existsSync(logoPath)) {
+          response.statusCode = 404;
+          response.end("logo not found");
           return;
         }
-        const logo = await readFile(logoPath);
-        response.setHeader("Content-Type", "image/svg+xml");
-        response.end(logo);
+        response.setHeader("content-type", "image/svg+xml");
+        createReadStream(logoPath).pipe(response);
       });
     },
   };
 }
+
+export default defineConfig(({ command }) => ({
+  base: command === "serve" ? "/" : "/dex-connectors-library/",
+  plugins: [react(), serveLocalCatalog(), serveCompanyLogos()],
+  build: { outDir: "dist", emptyOutDir: true },
+}));

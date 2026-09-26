@@ -1,58 +1,61 @@
 import { parse } from "yaml";
 
+export const rawRepositoryRoot =
+  "https://raw.githubusercontent.com/superdurable/dex-connectors-library";
+
 export function companyDirectory(directory) {
-  const segments = directory.split("/");
-  if (segments.length < 2 || segments[0] !== "connectors" || segments[1] === "") {
-    throw new Error(`connector directory must start with a company folder: ${directory}`);
+  if (!directory.startsWith("connectors/")) {
+    throw new Error(`connector directory must start with connectors/: ${directory}`);
   }
-  return segments[1];
-}
-
-export function connectorManifestUrl(connector) {
-  const tag = `${connector.directory}/${connector.version}`;
-  return `https://raw.githubusercontent.com/superdurable/dex-connectors-library/${tag}/${connector.directory}/connector.yaml`;
-}
-
-export function companyLogoUrl(company, source) {
-  const path = `connectors/${company}/logo.svg`;
-  if (source === "local") {
-    return `/${path}`;
+  const company = directory.slice("connectors/".length).split("/")[0];
+  if (!company || company === "." || company === "..") {
+    throw new Error(`connector directory is missing a company: ${directory}`);
   }
-  return `https://raw.githubusercontent.com/superdurable/dex-connectors-library/main/${path}`;
+  return company;
 }
 
-export function catalogDocumentUrl() {
-  if (import.meta.env.DEV) {
+export function connectorManifestUrl(directory, version) {
+  return `${rawRepositoryRoot}/${directory}/${version}/${directory}/connector.yaml`;
+}
+
+export function companyLogoUrl(company, origin) {
+  if (origin === "local") {
+    return `/connectors/${company}/logo.svg`;
+  }
+  return `${rawRepositoryRoot}/main/connectors/${company}/logo.svg`;
+}
+
+export function catalogDocumentUrl(isDev, baseUrl) {
+  if (isDev) {
     return "/catalog.yaml";
   }
-  return `${import.meta.env.BASE_URL}catalog.yaml`;
+  const base = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
+  return `${base}catalog.yaml`;
 }
 
-export function readCatalog(catalogText) {
-  const document = parse(catalogText);
-  const connectors = Array.isArray(document?.connectors) ? document.connectors : [];
-  return connectors.map((connector) => ({
-    company: String(connector.company ?? ""),
-    id: String(connector.id ?? ""),
-    name: String(connector.name ?? ""),
-    description: String(connector.description ?? ""),
-    version: String(connector.version ?? ""),
-    directory: String(connector.directory ?? ""),
-    triggers: readCapabilities(connector.triggers, "trigger"),
-    operations: readCapabilities(connector.operations, ""),
-  }));
-}
-
-export function readOperations(manifestText) {
-  const document = parse(manifestText);
-  return [
-    ...readCapabilities(document?.spec?.triggers, "trigger"),
-    ...readCapabilities(document?.spec?.operations, ""),
-  ];
+export function readCatalog(text) {
+  const document = parse(text);
+  if (!document || !Array.isArray(document.connectors)) {
+    throw new Error("catalog is missing connectors");
+  }
+  return document.connectors.map((connector) => {
+    const directory = requiredText(connector.directory, "directory");
+    return {
+      company: requiredText(connector.company, "company"),
+      id: requiredText(connector.id, "id"),
+      name: requiredText(connector.name, "name"),
+      description: requiredText(connector.description, "description"),
+      version: requiredText(connector.version, "version"),
+      directory,
+      companyDirectory: companyDirectory(directory),
+      triggers: readCapabilities(connector.triggers, "trigger"),
+      operations: readCapabilities(connector.operations, ""),
+    };
+  });
 }
 
 export function connectorMatchesQuery(connector, query) {
-  const tokens = query.toLowerCase().split(/\s+/).filter(Boolean);
+  const tokens = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
   if (tokens.length === 0) {
     return true;
   }
@@ -61,43 +64,86 @@ export function connectorMatchesQuery(connector, query) {
     connector.name,
     connector.description,
     connector.id,
-    ...connector.triggers.flatMap(capabilityText),
-    ...connector.operations.flatMap(capabilityText),
-  ].join("\n").toLowerCase();
+    ...connector.triggers.flatMap((capability) => [capability.name, capability.description, capability.kind]),
+    ...connector.operations.flatMap((capability) => [capability.name, capability.description, capability.kind]),
+  ]
+    .join("\n")
+    .toLowerCase();
   return tokens.every((token) => haystack.includes(token));
 }
 
 export function catalogTotals(connectors) {
+  const companies = new Set();
+  let triggers = 0;
+  let operations = 0;
+  for (const connector of connectors) {
+    companies.add(connector.company);
+    triggers += connector.triggers.length;
+    operations += connector.operations.length;
+  }
   return {
-    companies: new Set(connectors.map((connector) => companyDirectory(connector.directory))).size,
+    companies: companies.size,
     connectors: connectors.length,
-    operations: connectors.reduce((total, connector) => total + connector.operations.length, 0),
-    triggers: connectors.reduce((total, connector) => total + connector.triggers.length, 0),
+    triggers,
+    operations,
   };
 }
 
 export function groupCatalog(connectors) {
-  const groups = new Map();
+  const groups = [];
+  const byCompany = new Map();
   for (const connector of connectors) {
-    const company = companyDirectory(connector.directory);
-    const group = groups.get(company) ?? { companyDirectory: company, company: connector.company, connectors: [] };
+    let group = byCompany.get(connector.company);
+    if (!group) {
+      group = {
+        company: connector.company,
+        companyDirectory: connector.companyDirectory,
+        connectors: [],
+      };
+      byCompany.set(connector.company, group);
+      groups.push(group);
+    }
     group.connectors.push(connector);
-    groups.set(company, group);
   }
-  return [...groups.values()].sort((left, right) => left.company.localeCompare(right.company));
+  return groups;
 }
 
-function readCapabilities(values, defaultKind) {
-  if (!Array.isArray(values)) {
-    return [];
+export function readOperations(text) {
+  const document = parse(text);
+  const spec = document?.spec ?? {};
+  const triggers = Array.isArray(spec.triggers) ? spec.triggers : [];
+  const operations = Array.isArray(spec.operations) ? spec.operations : [];
+  const listed = [
+    ...triggers.map((operation) => ({ ...operation, kind: operation.kind || "trigger" })),
+    ...operations,
+  ];
+  if (listed.length === 0) {
+    throw new Error("connector manifest is missing operations");
   }
-  return values.map((value) => ({
-    name: String(value?.name ?? ""),
-    kind: String(value?.kind ?? defaultKind),
-    description: String(value?.description ?? ""),
+  return listed.map((operation) => ({
+    name: requiredText(operation.name, "operation name"),
+    kind: requiredText(operation.kind, "operation kind"),
+    description: requiredText(operation.description, "operation description"),
   }));
 }
 
-function capabilityText(capability) {
-  return [capability.name, capability.kind, capability.description];
+function readCapabilities(value, fixedKind) {
+  if (value == null) {
+    return [];
+  }
+  if (!Array.isArray(value)) {
+    throw new Error("catalog capabilities must be a list");
+  }
+  return value.map((capability) => ({
+    name: requiredText(capability.name, "capability name"),
+    kind: fixedKind || requiredText(capability.kind, "operation kind"),
+    description: requiredText(capability.description, "capability description"),
+  }));
+}
+
+function requiredText(value, label) {
+  if (typeof value !== "string" || value.trim() === "") {
+    throw new Error(`catalog entry is missing ${label}`);
+  }
+  return value;
 }

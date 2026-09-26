@@ -4,7 +4,6 @@ __pycache__/
 node_modules/
 dist/
 site/.catalog.yaml
-site/tsconfig.tsbuildinfo
 coverage/
 *.out
 *.test
