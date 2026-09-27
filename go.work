@@ -9,6 +9,7 @@ use (
 	./connectors/google/spreadsheet
 	./connectors/linkedin
 	./connectors/meta
+	./connectors/mistral
 	./connectors/openai
 	./connectors/slack
 	./connectors/xai
