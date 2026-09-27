@@ -182,6 +182,23 @@ types. The completed Response object is authoritative for value and usage.
 Early EOF or a missing terminal event is uncertain and can be reconciled with
 RetrieveResponse.
 
+## Gemini connector
+
+Gemini is a separate Google module and API-key Connection. Its
+`generateContent` operation calls the stateless Gemini API
+`models.generateContent` method, so it is a Query: a lost response retries
+instead of selecting uncertainty, and no idempotency key exists. Branches are
+`generated`, `truncated`, `blocked`, `providerRejected`, `invalidResponse`,
+and `defect`; only `generated` is required. The key travels only in the
+`x-goog-api-key` header, and redirects are disabled.
+
+The request maps JSON Schema output to `generationConfig.responseJsonSchema`
+and the thinking budget to `thinkingConfig.thinkingBudget`. Responses are
+bounded by `maxResponseBytes`; `RetryInfo` or `Retry-After` delays schedule
+the Dex retry for 408, 429, and retryable 5xx responses. The call does not
+stream, so its heartbeat timeout equals its 300-second synchronous Execute
+timeout.
+
 ## GitHub connector
 
 GitHub exposes generated Query factories for authenticated profile plus primary

@@ -13,6 +13,11 @@ GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
 cd ../..
 
+cd connectors/google/gemini
+GOWORK=off go test -race ./...
+GOWORK=off go vet ./...
+cd ../../..
+
 cd connectors/google/spreadsheet
 GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
@@ -42,8 +47,9 @@ cd ../..
 make check
 go test -race ./...
 go vet ./...
-go run ./cmd/connectorctl validate connectors/github/connector.yaml connectors/google/gmail/connector.yaml connectors/google/spreadsheet/connector.yaml connectors/linkedin/connector.yaml connectors/openai/connector.yaml connectors/slack/connector.yaml
+go run ./cmd/connectorctl validate connectors/github/connector.yaml connectors/google/gemini/connector.yaml connectors/google/gmail/connector.yaml connectors/google/spreadsheet/connector.yaml connectors/linkedin/connector.yaml connectors/openai/connector.yaml connectors/slack/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/github/connector.yaml
+go run ./cmd/connectorctl generate --check connectors/google/gemini/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/google/gmail/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/google/spreadsheet/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/linkedin/connector.yaml
@@ -88,6 +94,9 @@ The suite must prove:
   bodies do not enter Result, Failure, Receipt, Stream, or logs;
 - OpenAI provider classification, idempotency, response bounds, SSE,
   uncertainty, and recovery tests remain green;
+- Gemini header-only API-key auth, redirect refusal, request mapping, finish
+  and block reason branches, response bounds, RetryInfo delays, and local input
+  validation tests remain green;
 - GitHub profile/email selection, scope/revocation branches, response bounds,
   public-only pagination, deduplication, sorting, truncation, and rate-limit
   delay tests remain green;
@@ -178,6 +187,12 @@ The integration suite verifies:
   transition with its Result Attribute.
 - Gmail unknown sends route to the uncertainty branch without an automatic
   resend.
+- A silent Gemini generation longer than a short heartbeat override retries,
+  the Gemini heartbeat default outlives it, a `RetryInfo` delay schedules the
+  Dex retry, and a replacement Worker retries a generation interrupted by a
+  Worker crash.
+- The Gemini generate-summary example completes generated, blocked, and
+  truncated routes and fails an unwired rejection without a retry.
 - a Trigger inbox consumes an RPC event whose Flow completed or never started,
   and a restarted runner replays past it (Slack thread-approval steps 8 and 9),
   logging each skip once and each replay summary;
