@@ -61,7 +61,7 @@ function MemberPickerUnit({target, users, busy, loadError, onLoadUsers, onSave}:
     {users.length > 0 && <fieldset aria-label="Members" className="studio-options">
       {users.map((user) => <label className="studio-option" key={user.id}>
         <input checked={memberIds.includes(user.id)} onChange={(event) => setMemberIds(event.target.checked ? [...memberIds, user.id] : memberIds.filter((id) => id !== user.id))} type="checkbox"/>
-        <span className="studio-option-label">{user.imageUrl && <img alt="" src={user.imageUrl} style={{width: 20, height: 20, borderRadius: 5, marginRight: 6, verticalAlign: -5}}/>}{user.displayName}</span>
+        <span className="studio-option-label">{user.imageUrl && <img alt="" src={user.imageUrl}/>}{user.displayName}</span>
         <span className="studio-option-id">{user.id}</span>
       </label>)}
     </fieldset>}
