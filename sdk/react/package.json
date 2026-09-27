@@ -1,7 +1,7 @@
 {
   "name": "@superdurable/dex-connectors-react",
-  "version": "0.1.0-alpha.1",
-  "description": "Credential-safe connection status components for Dex connector UIs",
+  "version": "0.1.0-alpha.2",
+  "description": "Credential-safe connection status, Studio Host API client, Dex Web styling, and live model picker for Dex connector UIs",
   "license": "MIT",
   "type": "module",
   "main": "dist/index.js",
@@ -12,13 +12,16 @@
       "import": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "test": "vitest run"
   },
   "peerDependencies": {
-    "react": ">=18"
+    "react": ">=18",
+    "react-dom": ">=18"
   },
   "devDependencies": {
     "@types/react": "^19.1.16",
