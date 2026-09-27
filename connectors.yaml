@@ -6,5 +6,6 @@ directories:
   - connectors/google/gmail
   - connectors/google/spreadsheet
   - connectors/linkedin
+  - connectors/meta
   - connectors/openai
   - connectors/slack
