@@ -1,6 +1,7 @@
 apiVersion: connectors.dex.dev/catalog-source/v1alpha1
 kind: ConnectorCatalogSource
 directories:
+  - connectors/alibaba/qwen
   - connectors/anthropic
   - connectors/deepseek
   - connectors/github
