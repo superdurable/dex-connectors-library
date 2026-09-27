@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Kimi">
+  <rect width="64" height="64" rx="14" fill="#1f2937"/>
+  <path fill="#fff" d="M18 16h7v13.2L36.6 16H45L32.4 30.6 46 48h-8.6l-9.9-13.1-2.5 2.8V48h-7z"/>
+</svg>

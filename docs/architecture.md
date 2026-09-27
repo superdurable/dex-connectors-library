@@ -296,6 +296,28 @@ through the Dex Web broker, labels each model with its display name and token
 limits, and hides any model whose output modalities omit text behind
 **Show all models**.
 
+## Kimi connector
+
+Kimi is a separate Moonshot AI module and API-key Connection for the Kimi
+API. Its `generateText` operation is the shared text-generation Query: the
+connector declares only an `openaichat` Profile for
+`POST {endpoint}/chat/completions`, and the `sdkgo/llm` pipeline owns
+validation, the error table, schema checks, streaming, and heartbeats. Kimi
+runs two platforms whose keys are not interchangeable, so the `endpoint`
+field accepts only `https://api.moonshot.ai/v1` (the default) or
+`https://api.moonshot.cn/v1`; the key travels only as a bearer token to that
+host, and tests reach a loopback fake provider through `WithBaseURLForTest`.
+Every request streams, because Kimi's gateway ends a non-streaming request
+that stays silent for 900 seconds, so the operation uses the streaming
+budget: a 900-second sync Execute, a 60-second heartbeat timeout, and four
+attempts over 30 minutes. Kimi fixes sampling, so a request temperature
+selects `defect`, and a 429 is classified by its error type.
+
+The Studio bundle's `modelPicker` lists `GET https://api.moonshot.ai/v1/models`
+through the Dex Web broker, falls back to `GET https://api.moonshot.cn/v1/models`
+when the global platform rejects the key, and hides retired model families
+behind **Show all models**.
+
 ## GitHub connector
 
 GitHub exposes generated Query factories for authenticated profile plus primary

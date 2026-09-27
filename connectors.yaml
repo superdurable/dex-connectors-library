@@ -10,6 +10,7 @@ directories:
   - connectors/linkedin
   - connectors/meta
   - connectors/mistral
+  - connectors/moonshot/kimi
   - connectors/openai
   - connectors/slack
   - connectors/stripe
