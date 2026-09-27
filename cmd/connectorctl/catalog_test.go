@@ -125,7 +125,7 @@ func TestReleaseMatrixFindsEveryDeclaredRepositoryVersion(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, string(contents), "count=7")
 	require.Contains(t, string(contents), `"directory":"connectors/google/gmail"`)
-	require.Contains(t, string(contents), `"version":"v0.10.0"`)
+	require.Contains(t, string(contents), `"version":"v0.10.1"`)
 }
 
 func TestDirectoryRegistryRejectsMissingCompanyLogo(t *testing.T) {
