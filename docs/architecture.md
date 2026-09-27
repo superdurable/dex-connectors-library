@@ -251,6 +251,28 @@ history, or real-world identity. Missing verified email, insufficient
 authorization, revoked authorization, not-found, terminal provider failure,
 safe retry, and local defect remain distinct branches or retry behavior.
 
+## Stripe connector
+
+Stripe is an API-key Connector for hosted Checkout Sessions that accept US
+bank account payments. `CreateACHCheckoutSession` uses the stable Dex Call ID
+as Stripe's idempotency key. A response lost after dispatch or a provider 5xx
+is uncertain and must be reconciled with `GetCheckoutSession`; the application
+must not create an unrelated replacement charge.
+
+The connector exposes one signed-webhook Trigger for Checkout completion,
+delayed-payment success, delayed-payment failure, and expiration. One HTTP
+handler verifies the exact bounded request body, prepares every matching event
+in a binding-specific durable inbox, queues it for ordered delivery, and only
+then acknowledges Stripe. Temporary persistence or queue failures return a
+retryable HTTP status; target delivery retries independently. Applications own
+event-ID deduplication and treat delayed-payment success, not hosted Checkout
+completion alone, as proof of ACH settlement.
+
+Only session IDs, status, currency, amount, expiry, client reference, URL, and
+application metadata enter durable state. API keys, webhook secrets, raw
+provider bodies, and customer bank or payment-method data stay outside Flow
+state, Results, Receipts, Failures, and logs.
+
 ## Studio UI distribution
 
 A manifest may declare a setup entrypoint, Host API range, backend capability

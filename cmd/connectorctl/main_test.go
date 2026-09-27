@@ -18,39 +18,41 @@ func TestCatalogLoadsRepositoryDirectoryRegistry(t *testing.T) {
 	registry := filepath.Join("..", "..", "connectors.yaml")
 	entries, err := loadConnectorDirectoryEntries(registry)
 	require.NoError(t, err)
-	require.Len(t, entries, 7)
-	require.Equal(t, []string{"github", "gemini", "gmail", "google-sheets", "linkedin", "openai", "slack"}, []string{
+	require.Len(t, entries, 8)
+	require.Equal(t, []string{"github", "gemini", "gmail", "google-sheets", "linkedin", "openai", "slack", "stripe"}, []string{
 		entries[0].Manifest.Metadata.Name, entries[1].Manifest.Metadata.Name, entries[2].Manifest.Metadata.Name,
 		entries[3].Manifest.Metadata.Name, entries[4].Manifest.Metadata.Name, entries[5].Manifest.Metadata.Name,
-		entries[6].Manifest.Metadata.Name,
+		entries[6].Manifest.Metadata.Name, entries[7].Manifest.Metadata.Name,
 	})
-	require.Equal(t, []string{"v0.7.0", "v0.1.0", "v0.11.0", "v0.7.0", "v0.6.0", "v0.6.0", "v0.10.0"}, []string{
+	require.Equal(t, []string{"v0.7.0", "v0.1.0", "v0.11.0", "v0.7.0", "v0.6.0", "v0.6.0", "v0.10.0", "v0.1.0"}, []string{
 		entries[0].Manifest.Metadata.Version, entries[1].Manifest.Metadata.Version, entries[2].Manifest.Metadata.Version,
 		entries[3].Manifest.Metadata.Version, entries[4].Manifest.Metadata.Version, entries[5].Manifest.Metadata.Version,
-		entries[6].Manifest.Metadata.Version,
+		entries[6].Manifest.Metadata.Version, entries[7].Manifest.Metadata.Version,
 	})
 }
 
 func TestRegisteredOperationsKeepOnlyHappyPathBranchesRequired(t *testing.T) {
 	happyBranchByOperation := map[string]string{
-		"generateContent":         "generated",
-		"getAuthenticatedProfile": "profileLoaded",
-		"listPublicRepositories":  "repositoriesLoaded",
-		"listMergedPullRequests":  "listed",
-		"listPullRequestFiles":    "listed",
-		"listCommits":             "listed",
-		"getMessage":              "read",
-		"sendMessage":             "sent",
-		"replyToMessage":          "sent",
-		"getValues":               "read",
-		"findRow":                 "found",
-		"upsertRow":               "upserted",
-		"createResponse":          "completed",
-		"retrieveResponse":        "found",
-		"listThreadMessages":      "read",
-		"getThreadReply":          "found",
-		"postChannelMessage":      "sent",
-		"postThreadReply":         "sent",
+		"generateContent":          "generated",
+		"getAuthenticatedProfile":  "profileLoaded",
+		"listPublicRepositories":   "repositoriesLoaded",
+		"listMergedPullRequests":   "listed",
+		"listPullRequestFiles":     "listed",
+		"listCommits":              "listed",
+		"getMessage":               "read",
+		"sendMessage":              "sent",
+		"replyToMessage":           "sent",
+		"getValues":                "read",
+		"findRow":                  "found",
+		"upsertRow":                "upserted",
+		"createResponse":           "completed",
+		"retrieveResponse":         "found",
+		"listThreadMessages":       "read",
+		"getThreadReply":           "found",
+		"postChannelMessage":       "sent",
+		"postThreadReply":          "sent",
+		"createACHCheckoutSession": "created",
+		"getCheckoutSession":       "found",
 	}
 	entries, err := loadConnectorDirectoryEntries(filepath.Join("..", "..", "connectors.yaml"))
 	require.NoError(t, err)
@@ -140,7 +142,7 @@ func TestReleaseArtifactIsDeterministicAndVersioned(t *testing.T) {
 }
 
 func TestGeneratedConnectorsAreCurrent(t *testing.T) {
-	for _, manifest := range []string{"github", "google/gmail", "google/spreadsheet", "linkedin", "openai", "slack"} {
+	for _, manifest := range []string{"github", "google/gmail", "google/spreadsheet", "linkedin", "openai", "slack", "stripe"} {
 		path := filepath.Join("..", "..", "connectors", filepath.FromSlash(manifest), "connector.yaml")
 		require.NoError(t, generate([]string{"--check", path}))
 	}

@@ -1,0 +1,91 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: stripe
+  displayName: Stripe
+  description: Create and reconcile hosted ACH Checkout Sessions and receive signed Checkout Session events.
+  company: Stripe
+  version: v0.1.0
+spec:
+  provider: stripe
+  codegen:
+    go:
+      package: stripe
+  configuration:
+    fields:
+      - name: endpoint
+        goName: Endpoint
+        type: url
+        description: Stripe API endpoint.
+        required: false
+        default: https://api.stripe.com/v1
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum provider response size.
+        required: false
+        default: 1048576
+      - name: webhookMaxBodyBytes
+        goName: WebhookMaxBodyBytes
+        type: integer
+        description: Maximum signed webhook body size.
+        required: false
+        default: 1048576
+      - name: webhookSignatureTolerance
+        goName: WebhookSignatureTolerance
+        type: duration
+        description: Maximum age accepted for a Stripe webhook signature.
+        required: false
+        default: 5m
+  auth:
+    type: apiKey
+    connectionKind: stripe-secret-key-webhook
+    fields:
+      - name: secret_key
+        goName: SecretKey
+        type: secretString
+        description: Stripe restricted or secret API key with Checkout Session access.
+        required: true
+      - name: webhook_secret
+        goName: WebhookSecret
+        type: secretString
+        description: Signing secret for the configured Stripe webhook endpoint.
+        required: true
+  triggers:
+    - name: checkoutSessionUpdated
+      goName: CheckoutSessionUpdated
+      eventType: CheckoutSessionEvent
+      configurationType: CheckoutSessionUpdatedTriggerConfiguration
+      description: Receive a verified Checkout Session completion, delayed-payment, or expiration event.
+  operations:
+    - name: createACHCheckoutSession
+      goName: CreateACHCheckoutSession
+      inputType: CreateACHCheckoutSessionInput
+      outputType: CheckoutSession
+      kind: mutation
+      description: Create one Stripe-hosted Checkout Session for a US bank account payment.
+      idempotency: required
+      branches:
+        - {id: created, goName: Created, description: Stripe created the Checkout Session.}
+        - {id: providerRejected, goName: ProviderRejected, description: Stripe conclusively rejected the Checkout Session request., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The dispatched Checkout Session outcome cannot be confirmed., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Stripe returned an invalid or oversized Checkout Session response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &stripeExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+    - name: getCheckoutSession
+      goName: GetCheckoutSession
+      inputType: GetCheckoutSessionInput
+      outputType: CheckoutSession
+      kind: query
+      description: Retrieve one Checkout Session by Stripe ID.
+      idempotency: none
+      branches:
+        - {id: found, goName: Found, description: The Checkout Session exists and was returned.}
+        - {id: notFound, goName: NotFound, description: The Checkout Session does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Stripe conclusively rejected the Checkout Session query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Stripe returned an invalid or oversized Checkout Session response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *stripeExecution

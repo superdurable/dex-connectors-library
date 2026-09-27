@@ -9,6 +9,7 @@ use (
 	./connectors/linkedin
 	./connectors/openai
 	./connectors/slack
+	./connectors/stripe
 	./examples/local-config
 	./sdkgo
 )
