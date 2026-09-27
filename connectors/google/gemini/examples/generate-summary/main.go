@@ -23,9 +23,6 @@ import (
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
-// summaryModelVariable selects the Gemini model instead of generatesummary.SummaryModel.
-const summaryModelVariable = "GEMINI_SUMMARY_MODEL"
-
 func main() {
 	logger := newLogger(os.Stderr, os.Getenv("LOG_LEVEL"))
 	slog.SetDefault(logger)
@@ -60,7 +57,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	flow := newSummaryFlow(connection)
+	flow := generatesummary.NewFlow(connection)
 	registry, err := dex.NewRegistry([]dex.Flow{flow})
 	if err != nil {
 		return fmt.Errorf("register Gemini summary Flow: %w", err)
@@ -92,7 +89,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 		}
 		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
 	}
-	logger.Info("gemini summary worker starting", "connection", generatesummary.ConnectionName, "model", flow.Model())
+	logger.Info("gemini summary worker starting", "connection", generatesummary.ConnectionName)
 	workerResult := make(chan error, 1)
 	go func() { workerResult <- worker.Start() }()
 	select {
@@ -129,11 +126,6 @@ func waitForDexServer(ctx context.Context, healthCheck func(context.Context) (de
 		}
 		delay = min(2*delay, 30*time.Second)
 	}
-}
-
-// newSummaryFlow reads the model from summaryModelVariable, so a project can switch models without editing code.
-func newSummaryFlow(connection gemini.Connection) *generatesummary.Flow {
-	return generatesummary.NewFlow(connection, os.Getenv(summaryModelVariable))
 }
 
 func stopWorker(worker *dex.Worker) error {

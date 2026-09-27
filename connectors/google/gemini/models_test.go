@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	generatesummary "github.com/superdurable/dex-connectors-library/connectors/google/gemini/examples/generate-summary/flow"
+	gemini "github.com/superdurable/dex-connectors-library/connectors/google/gemini"
 )
 
 // liveDefaultModel is the model TestLiveGenerateContent calls when GEMINI_CONNECTOR_TEST_MODEL is unset.
@@ -19,7 +19,7 @@ const liveDefaultModel = "gemini-3.5-flash-lite"
 // TestDocumentedModelsAreOpenToNewProjects keeps the live test and READMEs off Gemini 2.x models, which new projects cannot call.
 func TestDocumentedModelsAreOpenToNewProjects(t *testing.T) {
 	restricted := []string{"gemini-2.0-", "gemini-2.5-"}
-	require.Equal(t, generatesummary.SummaryModel, liveDefaultModel, "the live test verifies the model that the example calls")
+	require.Equal(t, gemini.DefaultConfig().Model, liveDefaultModel, "the live test verifies the model that a blank connection calls")
 	for _, prefix := range restricted {
 		require.NotContains(t, liveDefaultModel, prefix)
 	}

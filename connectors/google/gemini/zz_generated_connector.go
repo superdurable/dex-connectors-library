@@ -18,6 +18,7 @@ import (
 const ConnectorID = "gemini"
 
 type Config struct {
+	Model            string `json:"model,omitempty" yaml:"model,omitempty"`
 	Endpoint         string `json:"endpoint,omitempty" yaml:"endpoint,omitempty"`
 	MaxResponseBytes int64  `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
 }
@@ -96,6 +97,7 @@ func (Connection) GoString() string { return "gemini.Connection{[REDACTED]}" }
 
 func DefaultConfig() Config {
 	return Config{
+		Model:            "gemini-3.5-flash-lite",
 		Endpoint:         "https://generativelanguage.googleapis.com/v1beta",
 		MaxResponseBytes: 8388608,
 	}
@@ -103,6 +105,9 @@ func DefaultConfig() Config {
 
 func withConfigDefaults(config Config) Config {
 	defaults := DefaultConfig()
+	if config.Model == "" {
+		config.Model = defaults.Model
+	}
 	if config.Endpoint == "" {
 		config.Endpoint = defaults.Endpoint
 	}

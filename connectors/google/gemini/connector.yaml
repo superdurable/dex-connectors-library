@@ -13,6 +13,12 @@ spec:
       package: gemini
   configuration:
     fields:
+      - name: model
+        goName: Model
+        type: string
+        description: "Gemini model for this connection, such as gemini-3.5-flash-lite or gemini-3.8-flash. Blank uses gemini-3.5-flash-lite. A request that names a model overrides it."
+        required: false
+        default: gemini-3.5-flash-lite
       - name: endpoint
         goName: Endpoint
         type: url

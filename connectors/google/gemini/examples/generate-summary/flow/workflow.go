@@ -19,10 +19,8 @@ import (
 const (
 	// FlowType is the stable Flow identity that Dex Web Start Flow sends from the Flow Definition.
 	FlowType = "GeminiGenerateSummary"
-	// ConnectionName is the static Dex Web connection that holds the Gemini API key.
+	// ConnectionName is the static Dex Web connection that holds the Gemini API key and model.
 	ConnectionName = "gemini-api"
-	// SummaryModel is the default model; unlike Gemini 2.5 models, a new Google AI Studio project can call it.
-	SummaryModel = "gemini-3.5-flash-lite"
 
 	generateSummaryStepType = "GenerateSummary"
 	maxTitleCharacters      = 200
@@ -77,21 +75,13 @@ type SummaryOutcome struct {
 type Flow struct {
 	dex.FlowDefaults
 	connection gemini.Connection
-	model      string
 }
 
-// NewFlow binds the trusted Gemini Connection and the model at registration time. An empty model
-// selects SummaryModel.
-func NewFlow(connection gemini.Connection, model string) *Flow {
-	model = strings.TrimSpace(model)
-	if model == "" {
-		model = SummaryModel
-	}
-	return &Flow{connection: connection, model: model}
+// NewFlow binds the trusted Gemini Connection at registration time. The
+// GenerateSummary Step calls the model chosen for that connection in Dex Web.
+func NewFlow(connection gemini.Connection) *Flow {
+	return &Flow{connection: connection}
 }
-
-// Model is the Gemini model that the GenerateSummary Step calls.
-func (flow *Flow) Model() string { return flow.model }
 
 func (*Flow) GetFlowType() string { return FlowType }
 
@@ -174,10 +164,10 @@ func optionalAttribute[T any](ctx dex.Context, attribute dex.Attribute[T]) (T, e
 	return value, err
 }
 
-// MapToGenerateContentRequest maps the start input to the Gemini request, leaving Temperature and ThinkingBudget nil for Gemini 3.
+// MapToGenerateContentRequest maps the start input to the Gemini request. Model stays empty so the
+// connection's model applies, and Temperature and ThinkingBudget stay nil for Gemini 3.
 func (flow *Flow) MapToGenerateContentRequest(request SummaryRequest) gemini.GenerateContentRequest {
 	return gemini.GenerateContentRequest{
-		Model: flow.model,
 		SystemInstruction: "You write concise newsletter summaries. Use only facts stated in the provided text. " +
 			"Return a headline, a two-sentence summary, and up to five key points.",
 		Contents: []gemini.Content{{Role: "user", Parts: []gemini.Part{{

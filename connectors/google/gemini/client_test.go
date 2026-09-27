@@ -518,6 +518,32 @@ func TestGenerateContentRetriesTransportFailures(t *testing.T) {
 	}
 }
 
+func TestGenerateContentUsesTheConnectionModelUnlessTheRequestNamesOne(t *testing.T) {
+	for _, test := range []struct {
+		name            string
+		connectionModel string
+		requestModel    string
+		wantPath        string
+	}{
+		{name: "default connection model", wantPath: "/models/gemini-3.5-flash-lite:generateContent"},
+		{name: "configured connection model", connectionModel: "gemini-3.8-flash", wantPath: "/models/gemini-3.8-flash:generateContent"},
+		{name: "connection model with prefix and spaces", connectionModel: " models/gemini-3.8-flash\n", wantPath: "/models/gemini-3.8-flash:generateContent"},
+		{name: "request overrides the connection", connectionModel: "gemini-3.8-flash", requestModel: "models/gemini-3.5-pro", wantPath: "/models/gemini-3.5-pro:generateContent"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			provider := newFakeGemini(t, replyJSON(http.StatusOK, stopResponse("ok")))
+			client := newTestClientWithConfig(t, gemini.Config{Endpoint: provider.URL, Model: test.connectionModel})
+			result, err := runGenerate(t, client, gemini.GenerateContentRequest{Model: test.requestModel, Contents: userPrompt("Hi")})
+			require.NoError(t, err)
+			require.Equal(t, gemini.GenerateContentBranchGenerated, result.Branch)
+			requests := provider.recorded()
+			require.Len(t, requests, 1)
+			require.Equal(t, test.wantPath, requests[0].Path)
+			require.NotContains(t, requests[0].Body, "model", "the model travels only in the path")
+		})
+	}
+}
+
 func TestGenerateContentRejectsInvalidInputBeforeDispatch(t *testing.T) {
 	valid := func() gemini.GenerateContentRequest {
 		return gemini.GenerateContentRequest{Model: "gemini-2.5-flash", Contents: userPrompt("Hi")}
@@ -526,7 +552,7 @@ func TestGenerateContentRejectsInvalidInputBeforeDispatch(t *testing.T) {
 		name   string
 		mutate func(*gemini.GenerateContentRequest)
 	}{
-		{name: "empty model", mutate: func(input *gemini.GenerateContentRequest) { input.Model = "" }},
+		{name: "bare models prefix", mutate: func(input *gemini.GenerateContentRequest) { input.Model = "models/" }},
 		{name: "model path traversal", mutate: func(input *gemini.GenerateContentRequest) { input.Model = "../files/x" }},
 		{name: "model with method suffix", mutate: func(input *gemini.GenerateContentRequest) { input.Model = "gemini-2.5-flash:countTokens" }},
 		{name: "model with query", mutate: func(input *gemini.GenerateContentRequest) { input.Model = "gemini-2.5-flash?key=x" }},
@@ -620,7 +646,7 @@ func TestConnectorValuesNeverRenderTheAPIKey(t *testing.T) {
 	require.ErrorContains(t, err, "cannot be serialized")
 }
 
-func TestNewValidatesEndpointAndOptions(t *testing.T) {
+func TestNewValidatesModelEndpointAndOptions(t *testing.T) {
 	credentials := sdkgo.StaticCredentialProvider[gemini.Credentials]{}
 	for _, test := range []struct {
 		name     string
@@ -648,13 +674,19 @@ func TestNewValidatesEndpointAndOptions(t *testing.T) {
 			}
 		})
 	}
+	for _, model := range []string{"models/", "../files/x", "gemini 3.8 flash", "gemini-3.8-flash:countTokens", "tunedModels/custom"} {
+		_, err := gemini.New(gemini.Config{Model: model}, credentials)
+		require.ErrorContains(t, err, "Gemini model must be a Gemini model ID", "model %q", model)
+	}
 	_, err := gemini.New(gemini.Config{MaxResponseBytes: -1}, credentials)
 	require.ErrorContains(t, err, "cannot be negative")
 	_, err = gemini.New(gemini.Config{}, nil)
 	require.ErrorContains(t, err, "credential provider is required")
 	_, err = gemini.New(gemini.Config{}, credentials, nil)
 	require.ErrorContains(t, err, "option is nil")
-	require.Equal(t, gemini.Config{Endpoint: "https://generativelanguage.googleapis.com/v1beta", MaxResponseBytes: 8 << 20}, gemini.DefaultConfig())
+	require.Equal(t, gemini.Config{
+		Model: "gemini-3.5-flash-lite", Endpoint: "https://generativelanguage.googleapis.com/v1beta", MaxResponseBytes: 8 << 20,
+	}, gemini.DefaultConfig())
 }
 
 type countingTransport struct {
@@ -680,6 +712,47 @@ func TestWithHTTPClientUsesTheCallerTransportWithoutMutatingIt(t *testing.T) {
 	require.Equal(t, 1, transport.requests)
 	require.Nil(t, callerClient.CheckRedirect, "the connector configures its own copy")
 	require.Zero(t, callerClient.Timeout)
+}
+
+// TestNewLocalConnectionUsesTheModelChosenInDexWeb reads the model that Dex Web
+// Connections saves as connection configuration.
+func TestNewLocalConnectionUsesTheModelChosenInDexWeb(t *testing.T) {
+	provider := newFakeGemini(t, replyJSON(http.StatusOK, stopResponse("local")))
+	path := filepath.Join(t.TempDir(), "connections.json")
+	writeConnection := func(model string) *localconfig.Store {
+		contents, err := json.Marshal(map[string]any{
+			"schemaVersion": localconfig.SchemaVersion,
+			"connections": []any{map[string]any{
+				"connectorId": gemini.ConnectorID, "modulePath": "github.com/superdurable/dex-connectors-library/connectors/google/gemini",
+				"moduleVersion": "v0.1.0", "provider": "google", "connectionName": "gemini-local",
+				"configuration": map[string]any{"endpoint": provider.URL, "model": model},
+				"credentials":   map[string]any{"api_key": "AIzaLOCAL-model-key"},
+			}},
+		})
+		require.NoError(t, err)
+		require.NoError(t, os.WriteFile(path, contents, 0o600))
+		store, err := localconfig.LoadFile(path)
+		require.NoError(t, err)
+		return store
+	}
+	connection, err := gemini.NewLocalConnection(writeConnection("gemini-3.8-flash"), "gemini-local")
+	require.NoError(t, err)
+	step := gemini.NewGenerateContentStep(gemini.GenerateContentStepConfig[string]{
+		StepType: "GenerateLocal", ConnectionName: "gemini-local", Annotations: geminiAnnotations(), Connection: connection,
+		MapToOperationInput: func(prompt string) gemini.GenerateContentRequest {
+			return gemini.GenerateContentRequest{Contents: userPrompt(prompt)}
+		},
+		Generated: sdkgo.GoTo(generatedTarget{}),
+	})
+	decision, err := step.Execute(testsupport.NewDexContext("local-model-flow", "local-model-step"), "Hi")
+	require.NoError(t, err)
+	require.NotNil(t, decision)
+	requests := provider.recorded()
+	require.Len(t, requests, 1)
+	require.Equal(t, "/models/gemini-3.8-flash:generateContent", requests[0].Path)
+
+	_, err = gemini.NewLocalConnection(writeConnection("gemini 3.8 flash"), "gemini-local")
+	require.ErrorContains(t, err, "Gemini model must be a Gemini model ID", "a mistyped model fails at startup, not on the first call")
 }
 
 func TestNewLocalConnectionReloadsCredentialsForEveryCall(t *testing.T) {

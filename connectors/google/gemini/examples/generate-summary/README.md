@@ -72,9 +72,11 @@ requires a published Gemini release omits `--connector-release-override`.
 
 Open the Dex Web URL that dexcli prints and select **Connections**. Select
 `gemini / gemini-api`, which is used by the `GenerateSummary` Step of
-`GeminiGenerateSummary`. In the host-owned form, enter a Gemini API key from
-Google AI Studio in `api_key`, leave `endpoint` and `maxResponseBytes` at their
-defaults, and save. The status becomes **Ready**. The key is stored only in the
+`GeminiGenerateSummary`. In the host-owned form, enter the model to call in
+`model`, such as `gemini-3.8-flash`, or leave it blank for
+`gemini-3.5-flash-lite`, which a new Google AI Studio project can use. Enter a
+Gemini API key from Google AI Studio in `api_key`, leave `endpoint` and
+`maxResponseBytes` at their defaults, and save. The status becomes **Ready**. The key is stored only in the
 plaintext development file shown on the page; never commit or share it.
 
 In a second terminal, start the Worker from `connectors/google/gemini` with
@@ -86,13 +88,13 @@ export DEX_CONNECTOR_CONFIG_FILE="$HOME/.dex/connectors/connections.json"
 go run ./examples/generate-summary
 ```
 
-The Worker calls `gemini-3.5-flash-lite`, which a new Google AI Studio project
-can use. Set `GEMINI_SUMMARY_MODEL`, such as `gemini-3.8-flash`, to call
-another model. The Worker listens on `127.0.0.1:8815`. Override
+The Worker calls the connection's model. It reads connection configuration at
+startup, so restart it after changing the model in Dex Web. The Worker listens
+on `127.0.0.1:8815`. Override
 `DEX_FLOW_SERVICE_ADDRESS`, `DEX_WORKER_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR`
 when needed. If the Dex Server is unreachable, the Worker logs `dex server
-unavailable; retrying` and starts once Dex answers. It logs the connection name
-and model, never the key.
+unavailable; retrying` and starts once Dex answers. It logs the connection name,
+never the key.
 
 In the Run workspace, choose **Start Flow**, select `GeminiGenerateSummary`,
 choose the Worker at `127.0.0.1:8815`, enter a Flow ID, and submit this input:

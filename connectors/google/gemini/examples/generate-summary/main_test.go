@@ -120,16 +120,6 @@ func TestRunWaitsForUnreachableDexServerAndStopsCleanly(t *testing.T) {
 	}
 }
 
-// TestSummaryModelComesFromTheEnvironment lets a project choose another Gemini model without editing code.
-func TestSummaryModelComesFromTheEnvironment(t *testing.T) {
-	t.Setenv(summaryModelVariable, "")
-	require.Equal(t, generatesummary.SummaryModel, newSummaryFlow(gemini.Connection{}).Model())
-	t.Setenv(summaryModelVariable, "gemini-3.8-flash")
-	flow := newSummaryFlow(gemini.Connection{})
-	require.Equal(t, "gemini-3.8-flash", flow.Model())
-	require.Equal(t, "gemini-3.8-flash", flow.MapToGenerateContentRequest(generatesummary.SummaryRequest{Text: "x"}).Model)
-}
-
 func TestRunRequiresTheLocalConnectionFile(t *testing.T) {
 	t.Setenv(localconfig.EnvironmentVariable, filepath.Join(t.TempDir(), "missing.json"))
 	require.Error(t, run(context.Background(), slog.New(slog.NewTextHandler(&lockedBuffer{}, nil))))

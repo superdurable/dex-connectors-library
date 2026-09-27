@@ -51,7 +51,7 @@ func TestGenerateSummaryExampleRoutesGeminiOutcomesWithRealDex(t *testing.T) {
 		require.Equal(t, 42, outcome.Usage.TotalTokens)
 		requests := provider.requestsFor("GENERATE " + testRunID)
 		require.Len(t, requests, 1)
-		require.Equal(t, "/v1beta/models/gemini-3.5-flash-lite:generateContent", requests[0].path)
+		require.Equal(t, "/v1beta/models/gemini-3.8-flash:generateContent", requests[0].path, "the connection model applies")
 		require.Empty(t, requests[0].query)
 		require.Equal(t, integrationAPIKey, requests[0].apiKey)
 		require.Equal(t, "application/json", requests[0].generationConfig["responseMimeType"])
@@ -199,13 +199,13 @@ type summaryIntegrationHarness struct {
 func newSummaryIntegrationHarness(t *testing.T, providerURL string) (*Flow, *summaryIntegrationHarness) {
 	t.Helper()
 	reference := sdkgo.ConnectionRef{Provider: "google", Name: ConnectionName}
-	providerClient, err := gemini.New(gemini.Config{Endpoint: providerURL + "/v1beta"}, sdkgo.StaticCredentialProvider[gemini.Credentials]{
+	providerClient, err := gemini.New(gemini.Config{Endpoint: providerURL + "/v1beta", Model: "gemini-3.8-flash"}, sdkgo.StaticCredentialProvider[gemini.Credentials]{
 		reference: {APIKey: sdkgo.NewSecretString(integrationAPIKey)},
 	})
 	require.NoError(t, err)
 	connection, err := gemini.NewConnection(providerClient, reference)
 	require.NoError(t, err)
-	flow := NewFlow(connection, "")
+	flow := NewFlow(connection)
 	registry, err := dex.NewRegistry([]dex.Flow{flow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})

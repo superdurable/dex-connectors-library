@@ -66,6 +66,7 @@ func WithHTTPClient(client *http.Client) Option {
 // provider is safe for concurrent use.
 type Client struct {
 	endpoint         string
+	model            string
 	httpClient       *http.Client
 	credentials      sdkgo.CredentialProvider[Credentials]
 	maxResponseBytes int64
@@ -88,7 +89,8 @@ type Content struct {
 
 // GenerateContentRequest is the provider input for GenerateContent.
 //
-// Model accepts a model ID such as "gemini-3.5-flash-lite" or "models/gemini-3.5-flash-lite".
+// Model accepts a model ID such as "gemini-3.5-flash-lite" or
+// "models/gemini-3.5-flash-lite"; empty uses the connection's configured model.
 // ResponseJSONSchema maps to generationConfig.responseJsonSchema and defaults
 // ResponseMIMEType to application/json. ThinkingBudget maps to
 // generationConfig.thinkingConfig.thinkingBudget: nil leaves the model default,
@@ -98,8 +100,10 @@ type Content struct {
 // recommends their default temperature of 1.0, so leave ThinkingBudget and
 // Temperature nil for them.
 type GenerateContentRequest struct {
-	// Model is the Gemini model ID, with or without the "models/" prefix.
-	Model string `json:"model"`
+	// Model is the Gemini model ID, with or without the "models/" prefix. It
+	// overrides the connection's configured model for this request; empty uses
+	// the connection model.
+	Model string `json:"model,omitempty"`
 	// SystemInstruction is optional system text sent as systemInstruction.parts[0].text.
 	SystemInstruction string `json:"systemInstruction,omitempty"`
 	// Contents holds the conversation turns in order. At least one Content is required.
@@ -231,13 +235,20 @@ type wireGoogleError struct {
 	} `json:"error"`
 }
 
-// New creates a Gemini API client. It applies Config defaults, validates the
-// endpoint and maxResponseBytes, and returns an error for a nil credential
-// provider or a nil Option. Credentials are resolved again for every call.
+// New creates a Gemini API client. It trims surrounding whitespace from the
+// model, applies Config defaults, validates the model, endpoint, and
+// maxResponseBytes, and returns an error for a nil credential provider or a nil
+// Option. Credentials are resolved again for every call.
 func New(config Config, credentials sdkgo.CredentialProvider[Credentials], options ...Option) (*Client, error) {
+	// Dex Web collects the model in a free-text field.
+	config.Model = strings.TrimSpace(config.Model)
 	config = withConfigDefaults(config)
 	if err := config.Validate(); err != nil {
 		return nil, err
+	}
+	model, isValidModel := trimModelPrefixAndValidate(config.Model)
+	if !isValidModel {
+		return nil, fmt.Errorf("Gemini model must be a Gemini model ID such as gemini-3.5-flash-lite")
 	}
 	endpoint, err := validateAndTrimEndpoint(config.Endpoint)
 	if err != nil {
@@ -266,7 +277,7 @@ func New(config Config, credentials sdkgo.CredentialProvider[Credentials], optio
 	}
 	httpClient.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
 	return &Client{
-		endpoint: endpoint, httpClient: httpClient, credentials: credentials,
+		endpoint: endpoint, model: model, httpClient: httpClient, credentials: credentials,
 		maxResponseBytes: config.MaxResponseBytes,
 	}, nil
 }
@@ -292,7 +303,7 @@ func (GenerateContentOperation) Definition() sdkgo.QueryDefinition {
 // failures and retryable HTTP statuses return Retry; every other outcome
 // selects a branch. Failures never contain provider text, prompts, or the key.
 func (operation GenerateContentOperation) Invoke(call sdkgo.Call, input GenerateContentRequest) sdkgo.QueryAttempt[GenerateContentResponse] {
-	model, body, failure := encodeGenerateContentRequest(input)
+	model, body, failure := encodeGenerateContentRequest(input, operation.client.model)
 	if failure != nil {
 		return sdkgo.NewQueryBranch(GenerateContentBranchDefect, GenerateContentResponse{}, failure, sdkgo.Receipt{})
 	}
@@ -327,10 +338,13 @@ func (operation GenerateContentOperation) Invoke(call sdkgo.Call, input Generate
 
 // encodeGenerateContentRequest validates input locally, so a request that the
 // provider would certainly reject selects defect without dispatch.
-func encodeGenerateContentRequest(input GenerateContentRequest) (string, []byte, *sdkgo.Failure) {
-	model := strings.TrimPrefix(input.Model, "models/")
-	if !modelIDPattern.MatchString(model) {
-		return "", nil, failurePointer(sdkgo.FailureValidation, "model must be a Gemini model ID such as gemini-3.5-flash-lite")
+func encodeGenerateContentRequest(input GenerateContentRequest, connectionModel string) (string, []byte, *sdkgo.Failure) {
+	model := connectionModel
+	if input.Model != "" {
+		var isValidModel bool
+		if model, isValidModel = trimModelPrefixAndValidate(input.Model); !isValidModel {
+			return "", nil, failurePointer(sdkgo.FailureValidation, "model must be a Gemini model ID such as gemini-3.5-flash-lite")
+		}
 	}
 	if len(input.Contents) == 0 {
 		return "", nil, failurePointer(sdkgo.FailureValidation, "at least one content is required")
@@ -595,6 +609,13 @@ func retryAfterDelay(header http.Header, now time.Time) time.Duration {
 		return min(retryAt.Sub(now), maxProviderRetryDelay)
 	}
 	return 0
+}
+
+// trimModelPrefixAndValidate accepts only a bare model ID so the model cannot
+// change the request path.
+func trimModelPrefixAndValidate(value string) (string, bool) {
+	model := strings.TrimPrefix(value, "models/")
+	return model, modelIDPattern.MatchString(model)
 }
 
 func validateAndTrimEndpoint(value string) (string, error) {

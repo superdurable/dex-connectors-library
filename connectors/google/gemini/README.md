@@ -20,7 +20,9 @@ header is never forwarded, and keeps it out of Results, Failures, Receipts,
 and formatted values.
 
 Dex Web **Connections** renders the manifest form for this API-key connection;
-the connector ships no Studio bundle. Applications load the local development
+the connector ships no Studio bundle. The person who creates the connection
+chooses its model in the form's `model` text field, so Flows that leave the
+request `Model` empty switch models without a code change. Applications load the local development
 store and create the typed Connection once at startup, as
 [`examples/generate-summary/main.go`](examples/generate-summary/main.go) does:
 
@@ -40,6 +42,7 @@ effect without a restart. Configuration is captured at startup:
 
 | Field | Default | Meaning |
 | --- | --- | --- |
+| `model` | `gemini-3.5-flash-lite` | Model that every request on this connection calls unless the request sets `Model`. Accepts `gemini-3.8-flash` or `models/gemini-3.8-flash`; `New` and `NewLocalConnection` reject anything else. |
 | `endpoint` | `https://generativelanguage.googleapis.com/v1beta` | API base URL. HTTPS is required except for loopback test servers. |
 | `maxResponseBytes` | `8388608` (8 MiB) | Larger responses select `invalidResponse`; nothing is truncated silently. |
 
@@ -70,7 +73,6 @@ dex.DefineStep(gemini.NewGenerateContentStep(gemini.GenerateContentStepConfig[Su
 ```go
 func (flow *Flow) MapToGenerateContentRequest(request SummaryRequest) gemini.GenerateContentRequest {
 	return gemini.GenerateContentRequest{
-		Model: flow.model,
 		SystemInstruction: "You write concise newsletter summaries. Use only facts stated in the provided text. " +
 			"Return a headline, a two-sentence summary, and up to five key points.",
 		Contents: []gemini.Content{{Role: "user", Parts: []gemini.Part{{
@@ -86,7 +88,7 @@ The request maps to the documented REST body:
 
 | `GenerateContentRequest` | Gemini API |
 | --- | --- |
-| `Model` (`gemini-3.5-flash-lite` or `models/gemini-3.5-flash-lite`) | path `models/{model}:generateContent` |
+| `Model` (`gemini-3.5-flash-lite` or `models/gemini-3.5-flash-lite`; empty uses the connection `model`) | path `models/{model}:generateContent` |
 | `SystemInstruction` | `systemInstruction.parts[0].text` |
 | `Contents[].Role` (`user`, `model`, or empty) and `Parts[].Text` | `contents[]` |
 | `ResponseMIMEType` | `generationConfig.responseMimeType` |
@@ -103,7 +105,7 @@ they treat `thinkingBudget` as a legacy setting that may not turn thinking off.
 `MaxOutputTokens` includes thought tokens.
 
 The connector sends `responseJsonSchema`, not the deprecated OpenAPI-subset
-`responseSchema`. Invalid local input, such as a missing model, an empty part,
+`responseSchema`. Invalid local input, such as an invalid model ID, an empty part,
 an unknown role, or an out-of-range temperature, selects `defect` before any
 provider call.
 
