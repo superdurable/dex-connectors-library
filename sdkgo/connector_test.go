@@ -349,6 +349,17 @@ func TestZeroAttemptsFailClosed(t *testing.T) {
 	require.Equal(t, testMutationDefect, mutationResult.Branch)
 }
 
+func TestQuotaExhaustedIsAValidFailureKind(t *testing.T) {
+	ctx := testsupport.NewDexContext("customer/42", "step-execution-1")
+	quota := failure(sdkgo.FailureQuotaExhausted, "provider credit is exhausted")
+	result, err := sdkgo.RunQuery(ctx, &queryOperation{
+		useSet: true, attempt: sdkgo.NewQueryBranch(testQueryFailed, "", &quota, sdkgo.Receipt{}),
+	}, testConnection, "profile")
+	require.NoError(t, err)
+	require.Equal(t, testQueryFailed, result.Branch)
+	require.Equal(t, sdkgo.FailureKind("QUOTA_EXHAUSTED"), result.Failure.Kind)
+}
+
 type invalidQuery struct{}
 
 func (invalidQuery) Definition() sdkgo.QueryDefinition {

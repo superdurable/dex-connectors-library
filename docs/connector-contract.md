@@ -309,6 +309,190 @@ The Studio BFF loads artifacts directly from the trusted Connector release;
 the Java Control Plane is not on this path. OAuth callback, refresh, revoke,
 Picker token, and credential-broker behavior remain owned by SuperVerse.
 
+## Text generation connectors
+
+Every LLM lab connector exposes one uniform operation, `generateText`, so an
+application can switch labs by changing only the connection. The Go form is in
+`sdkgo/llm`; `sdkgo/README.md` shows how a connector builds it.
+
+### The generateText operation
+
+The manifest declares:
+
+- `name: generateText`, `goName: GenerateText`, `inputType: GenerateTextRequest`,
+  `outputType: GenerateTextResponse`;
+- `kind: query` and `idempotency: none`, because generation creates no provider
+  resource and no lab documents a generation idempotency key, so a repeated
+  call only bills the tokens again;
+- `durability: sync`, because a generation usually exceeds seven seconds and
+  an async fallback attempt would send the call to the provider again;
+  `llm.NewTextGenerationQuery` rejects any other durability;
+- `progress: [text]`, so the generated factory accepts a text Stream;
+- exactly these branches, the same IDs Gemini's `generateContent` uses:
+
+```yaml
+branches:
+  - {id: generated, goName: Generated, description: The model finished normally and returned text.}
+  - {id: truncated, goName: Truncated, description: The model stopped at the output token limit and returned any partial text., optional: true}
+  - {id: blocked, goName: Blocked, description: "The provider stopped the response for a content policy, or the model refused.", optional: true}
+  - {id: providerRejected, goName: ProviderRejected, description: "The provider conclusively rejected the request, such as invalid credentials, an unknown model, or exhausted quota.", optional: true}
+  - {id: invalidResponse, goName: InvalidResponse, description: "The provider returned a malformed, oversized, or unusable response, including structured output that does not match its schema.", optional: true}
+  - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+```
+
+Descriptions may name the provider; the IDs and optionality may not change.
+`llm.TextGenerationBranchDefinitions()` returns the same set, and
+`llm.NewTextGenerationQuery` rejects any other set or operation ID.
+
+The hand-written client aliases the contract types,
+`type GenerateTextRequest = llm.TextGenerationRequest` and
+`type GenerateTextResponse = llm.TextGenerationResponse`, so the generated
+`GenerateTextResult` is one Go type across connectors, `llm.TextGenerationResult`.
+`GenerateText()` returns the `*llm.TextGenerationQuery`.
+
+The request carries `model`, `instructions`, `messages` (role `user` or
+`assistant`, with text), `structuredOutput` (`name`, `description`, and a
+JSON Schema), `maxOutputTokens`, `temperature` (nil is never sent), and
+`reasoningEffort`. The response carries `text`, `requestedModel`,
+`servedModel`, `responseId`, `finishReason` (`stop`, `length`,
+`contentPolicy`, or `refusal`), a pattern-bounded `providerFinishReason`, and
+`usage` in input, cached-input, output, reasoning, and total tokens. Only the
+`generated` and `truncated` Results carry text.
+
+A streaming connector writes each text delta to the Step's text Stream as it
+arrives, before the finish reason is known, and a retry does not remove it.
+The text Stream is a plain `dex.Stream[string]` without Call ID, attempt, or
+sequence, so its consumers cannot group retry duplicates. After a Retry it
+can hold the interrupted attempt's partial text followed by the whole text of
+the next attempt, and a streamed attempt that selects `blocked` or
+`invalidResponse` can leave text there. The Result's `text` is the only
+authoritative text; the text Stream is progress.
+
+A request field that the connector's wire format does not declare, or that
+the chosen model does not accept, selects `defect` with zero provider requests.
+Structured output accepts a portable JSON Schema subset: an object root, every
+object with `additionalProperties: false` and every property required, and the
+keywords `type`, `properties`, `items`, `enum`, `const`, `description`,
+`title`, `minimum`, `maximum`, `minLength`, `maxLength`, `minItems`,
+`maxItems`, and `format` (`date-time`, `date`, `time`, `uuid`), at most ten
+levels deep. The returned text is validated against the application's original
+schema even when a provider enforces less; a mismatch selects
+`invalidResponse` and names the JSON pointer, never the value. A nullable node
+still applies its `enum` and `const`, so `null` passes only when they allow
+it. Every number, in the schema or the returned text, is at most 256
+characters with an exponent of magnitude at most 400, so the model cannot make
+exact validation expensive.
+
+A 402, or a profile rule for a billing error such as a quota 429, selects
+`providerRejected` with `FailureQuotaExhausted`, because waiting does not
+restore credit. A lab that reports a content-policy block as an error, such as
+Kimi's 400 `content_filter` or Meta's 400 `content_policy_violation`, maps it
+with `llm.BlockedOutcome()`, so every lab's content-policy stop lands on
+`blocked`. 408, 429, and 5xx other than 501, transport failures, and
+interrupted event streams return Retry, honoring `Retry-After` up to one hour.
+A 2xx response to a streaming request that is not `text/event-stream`, as
+from a gateway that ignores streaming, is decoded as a complete response, so
+a finished generation is kept and an error object is classified instead of
+being retried.
+
+### Families
+
+- **Chat Completions** labs (xAI, Mistral, DeepSeek, Meta, Qwen, and Kimi) use
+  `sdkgo/llm/openaichat` with a declarative `Profile` in the connector's
+  `profile.go`. A profile declares the path, credential slot and fixed headers,
+  instructions role, token-limit field, reasoning-effort map, temperature
+  policy, structured-output mode, streaming, a request-field allowlist for
+  strict request schemas, finish-token extensions, error rules, response
+  header names, and per-model rules by ID prefix or anchored pattern. The
+  wire format sends the model in the body, so it uses the body model-ID rule.
+- **Native** APIs (OpenAI Responses, Gemini `generateContent`, Claude Messages,
+  and Cohere v2 chat) supply an `llm.WireFormat` struct of functions inside
+  their own connector module, including the model-ID rule for where their
+  model travels. The pipeline, error table, schema checks, event reader, and
+  heartbeat stay shared.
+
+A generation endpoint that stores a resource by default is a Mutation, not
+`generateText`. OpenAI Responses and any Responses-compatible endpoint must
+send `store: false`, so the call keeps Query semantics and an existing
+`createResponse` Mutation stays separate.
+
+### Model precedence and the picker
+
+The request's `model`, with surrounding whitespace trimmed, wins; a blank one
+uses the connection's configured `model`, trimmed the same way, which the
+connector defaults from its manifest and may leave blank. A blank result, or a
+model that fails the connector's model-ID rule, selects `defect` without a
+request. Once the model
+is valid, `requestedModel` is set on every branch; `servedModel` is the
+provider's echo, or empty when the provider reports none. A body model is
+1 to 256 bytes of printable ASCII; a path-segment model matches
+`^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$` after one leading `models/` is removed.
+`sdkgo/llm/llmtest/testdata/model_id_cases.json` pins both rules for the
+TypeScript validator.
+
+Every lab ships the per-Step picker unit `modelPicker` with one string output
+port, `model`. A Flow adds the unit to the Step's `ConfigurationUI` and binds
+the port to a JSON Pointer such as `/model` in its own configuration shape.
+The application loads the pick once at startup with
+`localconfig.LoadOperationConfiguration`, treats
+`localconfig.ErrConfigurationNotFound` or an empty `model` as "inherit the
+connection model", and sets the pick as the request's `model` in
+`MapToOperationInput`.
+
+The unit lists models through a Studio command:
+
+- The command ID is `listModels`, its capability is `<connector>.models-list`,
+  and both the unit and `studio.setup` declare that capability.
+- It is a read-only `GET` pinned to the provider's list URL, with
+  `credential: {field: api_key, scheme: bearer}`, so the Dex Web broker injects
+  the key and the key never reaches the browser frame.
+- A lab whose keys work on only one of several fixed hosts declares one
+  command per host, `listModels` for the primary host and one more ID for each
+  other host, and the bundle tries them in order with
+  `executeFirstAcceptedProviderCommand`. Hosts are never templated from iframe
+  parameters.
+- A list failure falls back to manual model entry.
+
+### Liveness and budgets
+
+While an attempt is in flight, the pipeline records a nil heartbeat every 5
+seconds and stops before `Invoke` returns, so even Dex's 10-second minimum
+`heartbeatTimeout` sees two beats of a silent attempt. `generateText` uses a
+`heartbeatTimeout` of 60 seconds whether or not it streams, and
+`llm.NewTextGenerationQuery` rejects a non-zero value below 10 seconds or an
+Execute timeout that does not exceed the request timeout. The heartbeat proves
+that the Worker's attempt is alive, not that the provider is progressing, so
+the connector's request timeout, the Execute timeout minus 30 seconds, bounds
+a hung provider. A profile may add a stall timeout that returns Retry when no
+byte, including a keep-alive comment, arrives for that long.
+
+A nil heartbeat carries no checkpoint, and Dex clears any persisted heartbeat
+details when it receives one, so retries never resume from a checkpoint. A
+business Step that calls `sdkgo.RunQuery` with `generateText` loses any
+heartbeat checkpoint it recorded before the call, and must not combine the two.
+A Worker lost mid-exchange, or an application override to async durability
+whose call outlasts the local phase, repeats the provider call on the next
+attempt, which bills the tokens again.
+
+A streaming `generateText` uses an `executeMethodTimeout` of 900 seconds and a
+retry policy of 2 seconds initial interval, coefficient 2, 60 seconds maximum
+interval, 4 attempts, and 30 minutes total. A provider documented to queue
+for up to 10 minutes may use 1200 seconds with a stall timeout.
+
+### Shared code boundary
+
+The root `sdkgo` package stays provider-neutral. `sdkgo/providerhttp` and the
+`sdkgo/llm` packages hold shared behavior, and a subpackage holds a wire format
+only when at least two connectors use it. No `sdkgo` package contains a
+provider host, model ID, error-code value, or credential; those live in each
+connector's manifest and profile. `llm.WireFormat` and `llm.RequestFeatures`
+grow only by new fields, so a connector built against an older SDK rejects a
+newer request field instead of ignoring it. Under minimal version selection a
+released connector can link a newer `sdkgo`, so a family wire format such as
+`openaichat` declares a later `RequestFeatures` flag only when a new Profile
+field, whose zero value leaves it off, opts in; it never turns a new request
+field on for connectors whose Profile never vetted it.
+
 ## Query, RPC, and Action
 
 Provider Query reads an external system inside a Step. Dex RPC reads or
