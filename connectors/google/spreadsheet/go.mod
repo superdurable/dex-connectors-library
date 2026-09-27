@@ -5,7 +5,7 @@ go 1.24.0
 require (
 	github.com/stretchr/testify v1.11.1
 	github.com/superdurable/dex-connectors-library/sdkgo v0.8.0
-	github.com/superdurable/dex/sdk-go v0.11.3
+	github.com/superdurable/dex/sdk-go v0.13.1
 )
 
 require (

@@ -95,6 +95,22 @@ PR body, or direct commit message. A v0 breaking release cannot use a patch
 bump. At v1 or later, a breaking release requires a major bump and the Go
 module path must be migrated before publishing v2 or later.
 
+## Automated Dex dependency maintenance
+
+The **Update Dex dependencies** workflow runs daily and can also be dispatched
+manually. It compares every current Connector Go module with the latest stable
+Dex Go SDK and Blob Cache modules, and compares `.dex-compat-version` with the
+latest stable Dex CLI release. The CLI artifact contains the matching Dex Server
+and Web build. When an input is newer, the workflow refreshes module locks and
+the pinned Linux CLI checksum on the fixed
+`automation/update-dex-dependencies` branch, creates or refreshes one pull
+request, and dispatches CI explicitly.
+
+The updater never changes Connector SDK requirements inside released connector
+modules. Connector SDK releases must still land first; later connector PRs pin
+that exact published SDK version according to the release-order policy. The
+updater ignores prereleases and never approves or merges its pull request.
+
 ## Local verification
 
 Run the SDK as a standalone consumer would:

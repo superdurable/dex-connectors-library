@@ -249,7 +249,9 @@ nonce-bound `postMessage` Host API and never receives provider credentials.
 
 ## Static visualization boundary
 
-Factory execution and visualization use Dex Server, CLI, and Go SDK v0.11.3.
+Factory execution and visualization use the Dex CLI release pinned in
+`.dex-compat-version`, including its Server and Web build. Go modules pin their
+Dex Go SDK version independently.
 Dex CLI recognizes the canonical static factory form documented in the
 example. Dynamic Step type, branch collection, or target construction remains
 unsupported because it cannot be represented reliably by static analysis.

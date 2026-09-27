@@ -6,7 +6,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/stretchr/testify v1.11.1
 	github.com/superdurable/dex/blob-cache-go v0.1.0
-	github.com/superdurable/dex/sdk-go v0.11.3
+	github.com/superdurable/dex/sdk-go v0.13.1
 	google.golang.org/grpc v1.79.3
 	gopkg.in/yaml.v3 v3.0.1
 )

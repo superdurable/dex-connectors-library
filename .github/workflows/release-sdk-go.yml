@@ -41,10 +41,14 @@ jobs:
           go test -race ./...
           go vet ./...
       - name: Download Dex and Temporal CLIs
+        shell: bash
         run: |
+          dex_cli_tag="$(tr -d '[:space:]' < .dex-compat-version)"
+          dex_cli_version="${dex_cli_tag#cli-}"
+          dex_cli_archive="dexcli_${dex_cli_version}_linux_amd64.tar.gz"
           curl --fail --location --output dexcli.tar.gz \
-            https://github.com/superdurable/dex/releases/download/cli-v0.11.3/dexcli_v0.11.3_linux_amd64.tar.gz
-          echo "91197aa7afb66468c1b8da8d662e3c321257664e0bd57dae11e4b78337509e34  dexcli.tar.gz" | sha256sum --check
+            "https://github.com/superdurable/dex/releases/download/${dex_cli_tag}/${dex_cli_archive}"
+          echo "$(tr -d '[:space:]' < DEX_CLI_LINUX_AMD64_SHA256)  dexcli.tar.gz" | sha256sum --check
           tar --extract --gzip --file dexcli.tar.gz
           curl --fail --location --output temporal.tar.gz \
             https://github.com/temporalio/cli/releases/download/v1.9.1/temporal_cli_1.9.1_linux_amd64.tar.gz

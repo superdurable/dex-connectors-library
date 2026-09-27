@@ -1,0 +1,143 @@
+name: Update Dex dependencies
+
+on:
+  schedule:
+    - cron: "37 16 * * *"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: update-dex-dependencies
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+      UPDATE_BRANCH: automation/update-dex-dependencies
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+          cache-dependency-path: |
+            go.sum
+            sdkgo/go.sum
+            connectors/**/go.sum
+      - name: Resolve latest stable Dex dependencies
+        id: releases
+        shell: bash
+        run: |
+          sdk_version="$(go list -m -f '{{.Version}}' github.com/superdurable/dex/sdk-go@latest)"
+          blob_cache_version="$(go list -m -f '{{.Version}}' github.com/superdurable/dex/blob-cache-go@latest)"
+          cli_tag="$(
+            gh api --paginate repos/superdurable/dex/releases \
+              --jq '.[] | select(.draft == false and .prerelease == false) | .tag_name' |
+              grep -E '^cli-v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$' |
+              sort -V |
+              tail -1
+          )"
+          checksums="$RUNNER_TEMP/dex-checksums.txt"
+          gh release download "$cli_tag" \
+            --repo superdurable/dex \
+            --pattern checksums.txt \
+            --output "$checksums"
+          cli_archive="dexcli_${cli_tag#cli-v}_linux_amd64.tar.gz"
+          cli_checksum="$(awk -v archive="$cli_archive" '$2 == archive || $2 == "./" archive {print $1}' "$checksums")"
+          if [[ ! "$sdk_version" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "Dex Go SDK did not return a stable version: $sdk_version" >&2
+            exit 1
+          fi
+          if [[ ! "$blob_cache_version" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "Dex Blob Cache did not return a stable version: $blob_cache_version" >&2
+            exit 1
+          fi
+          if [[ ! "$cli_checksum" =~ ^[0-9a-f]{64}$ ]]; then
+            echo "Dex CLI checksum was not found for $cli_archive" >&2
+            exit 1
+          fi
+          {
+            echo "sdk_version=$sdk_version"
+            echo "blob_cache_version=$blob_cache_version"
+            echo "cli_tag=$cli_tag"
+            echo "cli_checksum=$cli_checksum"
+          } >> "$GITHUB_OUTPUT"
+      - name: Update dependency pins
+        id: update
+        run: |
+          python3 script/update_dex_dependencies.py \
+            --sdk-version "${{ steps.releases.outputs.sdk_version }}" \
+            --blob-cache-version "${{ steps.releases.outputs.blob_cache_version }}" \
+            --cli-tag "${{ steps.releases.outputs.cli_tag }}" \
+            --cli-checksum "${{ steps.releases.outputs.cli_checksum }}"
+      - name: Refresh module locks and validate
+        if: steps.update.outputs.changed == 'true'
+        shell: bash
+        run: |
+          while IFS= read -r go_mod; do
+            module="${go_mod%/go.mod}"
+            (cd "$module" && GOWORK=off go mod tidy)
+          done < <(find sdkgo connectors -name go.mod -print | sort)
+          python3 -m unittest script/update_dex_dependencies_test.py
+          make test
+          git add \
+            .dex-compat-version \
+            DEX_CLI_LINUX_AMD64_SHA256 \
+            go.work.sum \
+            sdkgo/go.mod \
+            sdkgo/go.sum \
+            connectors
+          git diff --cached --check
+      - name: Create or update dependency pull request
+        if: steps.update.outputs.changed == 'true'
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          remote_sha="$(git ls-remote --heads origin "$UPDATE_BRANCH" | awk '{print $1}')"
+          if [[ -n "$remote_sha" ]]; then
+            git fetch origin "$UPDATE_BRANCH:refs/remotes/origin/$UPDATE_BRANCH"
+          fi
+          git switch -C "$UPDATE_BRANCH"
+          git commit -m "tooling: update Dex dependencies"
+          if [[ -n "$remote_sha" ]]; then
+            git push \
+              --force-with-lease="refs/heads/$UPDATE_BRANCH:$remote_sha" \
+              origin "HEAD:refs/heads/$UPDATE_BRANCH"
+          else
+            git push --set-upstream origin "$UPDATE_BRANCH"
+          fi
+
+          body_file="$RUNNER_TEMP/dex-dependency-update.md"
+          {
+            echo "## Summary"
+            echo
+            echo "- Dex Go SDK: ${{ steps.update.outputs.sdk_previous }} → ${{ steps.update.outputs.sdk_latest }}"
+            echo "- Dex Blob Cache: ${{ steps.update.outputs.blob_cache_previous }} → ${{ steps.update.outputs.blob_cache_latest }}"
+            echo "- Dex CLI with embedded Server/Web: ${{ steps.update.outputs.cli_previous }} → ${{ steps.update.outputs.cli_latest }}"
+            echo
+            echo "This PR was generated by the scheduled Dex dependency updater."
+            echo "It does not alter Connector SDK release pins or merge itself."
+          } > "$body_file"
+          pr_number="$(gh pr list --state open --head "$UPDATE_BRANCH" --json number --jq '.[0].number // empty')"
+          if [[ -n "$pr_number" ]]; then
+            gh pr edit "$pr_number" \
+              --title "tooling: update Dex dependencies" \
+              --body-file "$body_file"
+          else
+            gh pr create \
+              --base main \
+              --head "$UPDATE_BRANCH" \
+              --title "tooling: update Dex dependencies" \
+              --body-file "$body_file"
+          fi
+          gh workflow run ci.yml --ref "$UPDATE_BRANCH"

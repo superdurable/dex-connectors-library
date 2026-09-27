@@ -65,7 +65,7 @@ func TestClassifyDexTriggerError(t *testing.T) {
 		{"Worker error without details", &dex.WorkerInvocationError{ServiceError: serviceError(codes.FailedPrecondition, "worker failed")}},
 		{"lock conflict", &dex.RPCLockConflictError{ServiceError: serviceError(codes.Aborted, "lock conflict")}},
 		{"long poll timeout", &dex.LongPollTimeoutError{ServiceError: serviceError(codes.DeadlineExceeded, "long poll timed out")}},
-		{"wait handler timeout", &dex.WaitHandlerTimeoutError{ServiceError: serviceError(codes.DeadlineExceeded, "wait timed out")}},
+		{"request timeout", &dex.RequestTimeoutError{ServiceError: serviceError(codes.DeadlineExceeded, "request timed out")}},
 		{"Channel message consumed concurrently", &dex.ChannelMessageNotFoundError{ServiceError: serviceError(codes.NotFound, "message not found")}},
 		{"undecodable output", &dex.ValueMappingError{Operation: "decode", Err: errors.New("json: cannot unmarshal")}},
 		{"unregistered Flow", &dex.FlowDefinitionError{FlowType: "approval", Err: errors.New("not registered")}},
