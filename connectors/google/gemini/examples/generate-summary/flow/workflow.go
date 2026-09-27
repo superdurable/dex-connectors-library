@@ -71,16 +71,33 @@ type SummaryOutcome struct {
 	Usage        gemini.Usage `json:"usage"`
 }
 
+// SummaryModelConfiguration is the GenerateSummary Step's model pick from Dex Web.
+// An empty Model uses the connection's model.
+type SummaryModelConfiguration struct {
+	Model string `json:"model"`
+}
+
+// SummaryModelConfigurationRef identifies the GenerateSummary Step's use configuration.
+func SummaryModelConfigurationRef() sdkgo.ConnectorConfigurationRef {
+	return sdkgo.ConnectorConfigurationRef{
+		ConnectorID: gemini.ConnectorID, ConnectionName: ConnectionName, OperationID: "generateContent",
+		FlowType: FlowType, StepType: generateSummaryStepType,
+	}
+}
+
 // Flow summarizes one piece of text with Gemini.
 type Flow struct {
 	dex.FlowDefaults
-	connection gemini.Connection
+	connection   gemini.Connection
+	summaryModel SummaryModelConfiguration
 }
 
-// NewFlow binds the trusted Gemini Connection at registration time. The
-// GenerateSummary Step calls the model chosen for that connection in Dex Web.
-func NewFlow(connection gemini.Connection) *Flow {
-	return &Flow{connection: connection}
+// NewFlow binds the trusted Gemini Connection and the GenerateSummary Step's
+// model pick at registration time. The Step calls the picked model, or the
+// connection's model when the pick is empty.
+func NewFlow(connection gemini.Connection, summaryModel SummaryModelConfiguration) *Flow {
+	summaryModel.Model = strings.TrimSpace(summaryModel.Model)
+	return &Flow{connection: connection, summaryModel: summaryModel}
 }
 
 func (*Flow) GetFlowType() string { return FlowType }
@@ -94,6 +111,11 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				GroupID: "gemini", GroupLabel: "Gemini",
 				Explanation: "Ask Gemini for a structured JSON summary of the submitted text.",
 			},
+			ConfigurationUI: sdkgo.ConnectorConfigurationUI{Units: []sdkgo.ConnectorUIUnit{{
+				ID: "summaryModel", UnitID: gemini.UIUnitModelPicker, Label: "Summary model",
+				Description: "Choose the Gemini model that writes the summary, or keep the connection's model.",
+				Bindings:    []sdkgo.ConnectorUIBinding{{Port: gemini.UIModelPickerPortModel, JSONPointer: "/model"}},
+			}}},
 			Connection:          flow.connection,
 			MapToOperationInput: flow.MapToGenerateContentRequest,
 			Generated:           sdkgo.GoTo(summaryGenerated{}),
@@ -164,10 +186,11 @@ func optionalAttribute[T any](ctx dex.Context, attribute dex.Attribute[T]) (T, e
 	return value, err
 }
 
-// MapToGenerateContentRequest maps the start input to the Gemini request. Model stays empty so the
-// connection's model applies, and Temperature and ThinkingBudget stay nil for Gemini 3.
+// MapToGenerateContentRequest maps the start input to the Gemini request. Model is the Step's pick,
+// empty when the connection's model applies, and Temperature and ThinkingBudget stay nil for Gemini 3.
 func (flow *Flow) MapToGenerateContentRequest(request SummaryRequest) gemini.GenerateContentRequest {
 	return gemini.GenerateContentRequest{
+		Model: flow.summaryModel.Model,
 		SystemInstruction: "You write concise newsletter summaries. Use only facts stated in the provided text. " +
 			"Return a headline, a two-sentence summary, and up to five key points.",
 		Contents: []gemini.Content{{Role: "user", Parts: []gemini.Part{{

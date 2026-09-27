@@ -8,7 +8,7 @@ output, thinking budgets, token usage, and explicit safety outcomes.
 Install a published component release:
 
 ```bash
-go get github.com/superdurable/dex-connectors-library/connectors/google/gemini@v0.1.0
+go get github.com/superdurable/dex-connectors-library/connectors/google/gemini@v0.2.0
 ```
 
 ## Connection
@@ -19,10 +19,11 @@ Gemini API key from Google AI Studio. The connector sends it only in the
 header is never forwarded, and keeps it out of Results, Failures, Receipts,
 and formatted values.
 
-Dex Web **Connections** renders the manifest form for this API-key connection;
-the connector ships no Studio bundle. The person who creates the connection
-chooses its model in the form's `model` text field, so Flows that leave the
-request `Model` empty switch models without a code change. Applications load the local development
+Dex Web **Connections** renders the manifest form for this API-key connection.
+The person who creates the connection enters the key and may set the
+connection's default model in the form's `model` text field. Each Flow Step
+can then pick its own model from Gemini's live model list; see
+[Choose a model per Step](#choose-a-model-per-step). Applications load the local development
 store and create the typed Connection once at startup, as
 [`examples/generate-summary/main.go`](examples/generate-summary/main.go) does:
 
@@ -62,6 +63,11 @@ dex.DefineStep(gemini.NewGenerateContentStep(gemini.GenerateContentStepConfig[Su
 		GroupID: "gemini", GroupLabel: "Gemini",
 		Explanation: "Ask Gemini for a structured JSON summary of the submitted text.",
 	},
+	ConfigurationUI: sdkgo.ConnectorConfigurationUI{Units: []sdkgo.ConnectorUIUnit{{
+		ID: "summaryModel", UnitID: gemini.UIUnitModelPicker, Label: "Summary model",
+		Description: "Choose the Gemini model that writes the summary, or keep the connection's model.",
+		Bindings:    []sdkgo.ConnectorUIBinding{{Port: gemini.UIModelPickerPortModel, JSONPointer: "/model"}},
+	}}},
 	Connection:          flow.connection,
 	MapToOperationInput: flow.MapToGenerateContentRequest,
 	Generated:           sdkgo.GoTo(summaryGenerated{}),
@@ -73,6 +79,7 @@ dex.DefineStep(gemini.NewGenerateContentStep(gemini.GenerateContentStepConfig[Su
 ```go
 func (flow *Flow) MapToGenerateContentRequest(request SummaryRequest) gemini.GenerateContentRequest {
 	return gemini.GenerateContentRequest{
+		Model: flow.summaryModel.Model,
 		SystemInstruction: "You write concise newsletter summaries. Use only facts stated in the provided text. " +
 			"Return a headline, a two-sentence summary, and up to five key points.",
 		Contents: []gemini.Content{{Role: "user", Parts: []gemini.Part{{
@@ -121,6 +128,40 @@ bounds from the request and enforce them in the application after decoding
 first candidate. `Usage` reports prompt, candidate, thoughts, cached-content,
 and total tokens. `ResponseID`, `ModelVersion`, `FinishReason`, and
 `BlockReason` keep Gemini's identifiers and enum values.
+
+## Choose a model per Step
+
+The connector ships a Connector Studio bundle with one configuration unit,
+`modelPicker` (`gemini.UIUnitModelPicker`, output port
+`gemini.UIModelPickerPortModel`). A Flow adds it to a Step's
+`ConfigurationUI`, as the Step above does, and Dex Web **Connections** then
+shows a tab for that Step. The tab lists models live through the bundle's
+`listModels` command, which Dex Web runs with the stored key:
+`GET https://generativelanguage.googleapis.com/v1beta/openai/models`. That
+OpenAI-compatible list accepts the key as a bearer token, which the Dex Web
+broker injects; the key never reaches the browser frame. Because the list is
+live, a model Google adds appears without a connector release.
+
+The list has no capability field, so IDs that name embedding, Imagen, Veo,
+TTS, audio, or live models stay behind **Show all models**. The user can also
+keep the connection's model, which saves an empty `model`, or type any model
+ID, for example when the key cannot list models.
+
+The application reads the pick once at startup and passes it as the request
+`Model`. An empty pick falls back to the connection's `model`, and that falls
+back to `gemini-3.5-flash-lite`. Restart the application after saving a pick.
+The example reads it like this:
+
+```go
+loaded, err := localconfig.LoadOperationConfiguration[generatesummary.SummaryModelConfiguration](
+	store, generatesummary.SummaryModelConfigurationRef(),
+)
+```
+
+Upgrading an existing `v0.1.0` connection: Dex Web through Dex CLI v0.13.8
+shows a connection saved for another connector version as **Conflict**. Change
+that record's `moduleVersion` to `v0.2.0` in the connection file that Dex Web
+shows, or remove the record and save the connection again.
 
 ## Branches, retry, and Query semantics
 
