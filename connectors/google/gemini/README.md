@@ -107,6 +107,14 @@ The connector sends `responseJsonSchema`, not the deprecated OpenAPI-subset
 an unknown role, or an out-of-range temperature, selects `defect` before any
 provider call.
 
+The connector sends `ResponseJSONSchema` unchanged, and Gemini accepts only
+part of JSON Schema. In a live `gemini-3.5-flash-lite` run, a response schema
+with `maxLength`, `minLength`, `maxItems`, `minItems`, `minimum`, and `maximum`
+bounds selected `providerRejected` with HTTP 400 `INVALID_ARGUMENT`; the same
+schema without those bounds generated. When a schema is rejected, remove the
+bounds from the request and enforce them in the application after decoding
+`Text`.
+
 `GenerateContentResponse.Text` concatenates the non-thought text parts of the
 first candidate. `Usage` reports prompt, candidate, thoughts, cached-content,
 and total tokens. `ResponseID`, `ModelVersion`, `FinishReason`, and
