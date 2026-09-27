@@ -245,9 +245,253 @@ Flow constructor and explicitly use `loaded.Value` inside
 `MapToOperationInput`. The identity includes Flow and Step types, so two uses of
 the same operation never share configuration implicitly.
 
+When the sidecar holds nothing for that identity, for example because nobody
+has saved the Step's configuration in Dex Web yet, the error wraps
+`localconfig.ErrConfigurationNotFound`. Test for it with `errors.Is` to fall
+back to a default; every other error means the saved value is invalid. The
+message text is unchanged from v0.9.
+
 Every operation declares the standard `defect` branch. Mutations declare the
 standard `uncertain` branch only when a dispatched provider call can have an
 unknown outcome; otherwise generated factories do not require that target.
+
+## Text generation connectors
+
+Every lab connector exposes the same `generateText` Query, built on a shared
+framework in three subpackages instead of its own request pipeline:
+
+- `providerhttp` holds provider-neutral HTTP safety helpers: a client copy that
+  never follows redirects, base-URL and header-safe credential checks, bounded
+  body reads, `Retry-After` parsing capped at one hour, error-token extraction
+  that never returns message text, and a bounded server-sent event reader.
+- `llm` holds the contract types (`TextGenerationRequest`,
+  `TextGenerationResponse`, `Usage`, finish reasons, reasoning effort), the six
+  branch IDs, the model-ID rules and precedence, the `ErrorRule` table, the
+  portable structured-output subset with its transforms and post-validation,
+  and `TextGenerationQuery`, the pipeline that implements
+  `sdkgo.Query[TextGenerationRequest, TextGenerationResponse]`.
+- `llm/openaichat` is the OpenAI-compatible Chat Completions wire format,
+  configured by a declarative `Profile`.
+
+The root package stays provider-neutral. A subpackage holds a wire format only
+when at least two connectors use it, and no `sdkgo` package contains a provider
+host, model ID, error-code value, or credential: those stay in each connector's
+manifest and profile. The contract is specified in
+[Text generation connectors](../docs/connector-contract.md#text-generation-connectors).
+
+### Build a generateText Query
+
+A connector aliases the contract types and builds its Query once per client.
+The fixture connector in
+[`integrationtest/fixturellm/client.go`](integrationtest/fixturellm/client.go)
+declares its provider's dialect:
+
+```go
+var chatProfile = openaichat.Profile{
+	ProviderName:               ConnectorID,
+	ChatCompletionsPath:        "/v1/chat/completions",
+	InstructionsRole:           openaichat.InstructionsRoleDeveloper,
+	MaxTokensField:             openaichat.MaxTokensFieldMaxCompletionTokens,
+	Temperature:                llm.TemperatureRange(0, 1.5),
+	StructuredOutput:           llm.StructuredOutputRules{Mode: llm.StructuredOutputModeJSONSchema},
+	ShouldSendStrictJSONSchema: true,
+	Streaming:                  openaichat.StreamingPolicyAlways,
+	ShouldRequestStreamUsage:   true,
+	ErrorRules: []llm.ErrorRule{
+		{StatusCode: http.StatusTooManyRequests, ErrorToken: "fixture_quota_exhausted", Outcome: llm.QuotaExhaustedOutcome()},
+		{StatusCode: http.StatusBadRequest, ErrorToken: "fixture_content_filter", Outcome: llm.BlockedOutcome()},
+	},
+	RateLimitHeaders: []string{"x-ratelimit-remaining-requests"},
+	ModelRules: []openaichat.ModelRule{{
+		ModelIDPrefix: "fixture-reasoner", Temperature: &temperatureNotAccepted,
+		ReasoningEfforts: map[llm.ReasoningEffort]string{llm.ReasoningEffortLow: "low", llm.ReasoningEffortHigh: "high"},
+	}},
+}
+```
+
+and returns the pipeline from its hand-written client, where the generated
+Step factory finds it:
+
+```go
+wireFormat, err := openaichat.NewWireFormat(&chatProfile)
+if err != nil {
+	return nil, err
+}
+generateText, err := llm.NewTextGenerationQuery(&llm.TextGenerationQueryConfig{
+	Definition: GenerateTextDefinition, WireFormat: wireFormat,
+	BaseURL: config.Endpoint, ConnectionModel: config.Model,
+	HTTPClient: resolved.httpClient, RequestTimeout: requestTimeout,
+	ResolveCredential: func(call sdkgo.Call) (sdkgo.SecretString, error) {
+		credential, err := credentials.Resolve(call)
+		return credential.APIKey, err
+	},
+	MaxResponseBytes:    cmp.Or(config.MaxResponseBytes, defaultMaxResponseBytes),
+	MaxStreamEventBytes: maxStreamEventBytes,
+})
+if err != nil {
+	return nil, fmt.Errorf("fixture-llm: %w", err)
+}
+return &Client{generateText: generateText}, nil
+```
+
+```go
+func (client *Client) GenerateText() *llm.TextGenerationQuery {
+	return client.generateText
+}
+```
+
+`NewTextGenerationQuery` requires the operation ID `generateText`, exactly
+the branches of `llm.TextGenerationBranchDefinitions()`, and Step defaults
+with sync Execute durability, a heartbeat timeout of zero or at least 10
+seconds, and an Execute timeout longer than the request timeout. It trims the
+connection model, so a blank one means every request must name a model. The
+wire format carries the model-ID rule, because it follows from where the
+model travels: `openaichat` sends it in the body and uses
+`llm.ModelIDRuleBody`. The constructor copies the wire format's map and
+slices; its functions and any state they capture stay shared. A native API,
+such as Claude Messages, supplies an `llm.WireFormat` struct of functions from
+its own module instead of a Profile; the pipeline, error table, schema checks,
+and event reader stay shared.
+
+Every Invoke runs the same order: resolve and validate the model, validate the
+request against the wire format's declared `RequestFeatures` and the model's
+rules, check and transform the structured-output schema, resolve a header-safe
+credential, build the request, dispatch it, classify a non-2xx status, then
+decode, map the finish reason, join non-reasoning text, and post-validate
+structured output against the application's original schema. Every step
+before dispatch selects `defect` without a provider request, and a non-zero
+request field the wire format does not declare also selects `defect`, so an
+older connector never silently ignores a newer field.
+
+| Outcome | Branch or Retry | Failure kind |
+| --- | --- | --- |
+| Normal finish with text | `generated` | none |
+| Output token limit | `truncated`, with any partial text | `RESPONSE_TOO_LARGE` |
+| Content policy or refusal, or an error that a rule maps with `llm.BlockedOutcome()`, such as a 400 `content_filter` | `blocked`, without text | `PROVIDER_REJECTION` |
+| 401, 403, 404, 409, 501, and other 4xx | `providerRejected` | authentication, authorization, not found, conflict, or rejection |
+| 402, or a quota rule such as a billing 429 | `providerRejected` | `QUOTA_EXHAUSTED`; never retried |
+| 408, 429, 5xx except 501, a dropped connection, an interrupted event stream, a stall | Retry, after the provider's delay when it sends one | availability, rate limit, or transport |
+| Malformed, oversized, or schema-mismatched response, or an unmatched 2xx error object | `invalidResponse` | protocol or response too large |
+| Invalid model, request, schema, or credential | `defect`, zero requests | validation, authentication, or local defect |
+
+A streaming request answered with a 2xx body that is not `text/event-stream`,
+as from a gateway that ignores streaming, is decoded as a complete response,
+so a finished generation or a 2xx error object is classified instead of being
+retried as an interrupted stream. A structured-output mismatch names the JSON
+pointer, never the value, and a returned number longer than 256 characters or
+with an exponent beyond 400 selects `invalidResponse` before any exact
+arithmetic. Failures and Receipts never contain prompts, provider message
+text, or credentials; a provider model, response ID, or finish token that
+contains the credential selects `invalidResponse`. A Receipt carries the Call
+ID, provider, response ID, request ID, and only the rate-limit headers the
+profile lists.
+
+While an attempt is in flight, the pipeline records a nil Dex heartbeat every
+5 seconds, so every valid `heartbeatTimeout`, including Dex's 10-second
+minimum, detects a lost Worker even while a non-streaming provider stays
+silent. The heartbeat stops before Invoke returns. It proves only that the
+Worker's attempt is alive, so the request timeout, which should be the
+Execute timeout minus 30 seconds, bounds a hung provider. A profile's
+`StallTimeout` also returns Retry when no byte, counting keep-alive comments,
+arrives for that long. A nil heartbeat clears any heartbeat checkpoint, so a
+business Step that runs the Query through `sdkgo.RunQuery` must not rely on
+its own heartbeat checkpoints. Keep the Step sync: an application override to
+async durability sends a call that outlasts the seven-second local phase to
+the provider a second time.
+
+Streamed text reaches the Step's text Stream as it arrives, before the finish
+reason is known, and a retry does not remove it. After a Retry the text
+Stream can hold the interrupted attempt's partial text followed by the whole
+text of the next attempt, and a streamed attempt that selects `blocked` or
+`invalidResponse` can leave text on the Stream although its Result has none.
+The Result's `Text` is the only authoritative text.
+
+### Choose the model
+
+The request's `Model`, trimmed, wins; a blank one uses the connection's model.
+`RequestedModel` is set on every branch once the model is valid, and
+`ServedModel` is the provider's echo. `llm.ModelIDRuleBody` accepts 1 to 256
+bytes of printable ASCII, and `llm.ModelIDRulePathSegment` accepts a URL path
+segment after stripping one `models/`. The shared cases in
+[`llm/llmtest/testdata/model_id_cases.json`](llm/llmtest/testdata/model_id_cases.json)
+pin both rules for the TypeScript picker.
+
+An application reads a Step's model pick once at startup with
+`localconfig.LoadOperationConfiguration`. An error that matches
+`errors.Is(err, localconfig.ErrConfigurationNotFound)` means no pick was
+saved, so the Step inherits the connection's model. The Step's
+`MapToOperationInput` then sets the loaded pick as the request's `Model`, and
+an empty pick also inherits the connection's model.
+
+### Prove a connector
+
+`llm/llmtest` holds the conformance kit. `RunTextGenerationExchangeSuite` runs
+the provider-exchange cases against a credential-safe fake provider without
+Dex, and `RunTextGenerationDexScenarios` runs one-Step Flows through a real
+Worker. Both take closures, because each connector generates its own
+Connection and Step config types. A Chat Completions connector describes its
+replies with `openaichattest.NewProviderDialect`, as the fixture connector does
+in [`integrationtest/fixturellm/exchange_test.go`](integrationtest/fixturellm/exchange_test.go):
+
+```go
+var fixtureDialect = openaichattest.NewProviderDialect(&openaichattest.ProviderDialectConfig{
+	ConnectionModel: "fixture-model-a", AlternateModel: "fixture-reasoner-b", IsStreaming: true,
+	QuotaExhaustedStatusCode: http.StatusTooManyRequests, QuotaExhaustedErrorToken: "fixture_quota_exhausted",
+	ContentPolicyErrorToken: "fixture_content_filter",
+})
+```
+
+```go
+func TestGenerateTextFollowsTheExchangeContract(t *testing.T) {
+	temperatureAboveRange, temperature := 1.6, 0.2
+	llmtest.RunTextGenerationExchangeSuite(t, &llmtest.TextGenerationExchangeSuite{
+		Dialect:  fixtureDialect,
+		NewQuery: newFixtureQuery,
+		LocallyRejectedRequests: []llmtest.NamedTextGenerationRequest{
+			{Name: "temperature above the model range", Request: llm.TextGenerationRequest{Temperature: &temperatureAboveRange}},
+			{Name: "temperature on a reasoning model", Request: llm.TextGenerationRequest{
+				Model: "fixture-reasoner-b", Temperature: &temperature,
+			}},
+			{Name: "reasoning effort on a model without effort", Request: llm.TextGenerationRequest{
+				ReasoningEffort: llm.ReasoningEffortHigh,
+			}},
+			{Name: "unmapped reasoning effort", Request: llm.TextGenerationRequest{
+				Model: "fixture-reasoner-b", ReasoningEffort: llm.ReasoningEffortMax,
+			}},
+		},
+	})
+}
+
+func newFixtureQuery(t testing.TB, connection llmtest.FakeConnection) *llm.TextGenerationQuery {
+	client := newFixtureClient(t, connection)
+	return client.GenerateText()
+}
+
+func newFixtureClient(t testing.TB, connection llmtest.FakeConnection) *fixturellm.Client {
+	t.Helper()
+	client, err := fixturellm.New(fixturellm.Config{
+		Model: connection.Model, Endpoint: connection.BaseURL, MaxResponseBytes: connection.MaxResponseBytes,
+	}, sdkgo.StaticCredentialProvider[fixturellm.Credentials]{connection.Reference: {APIKey: connection.APIKey}})
+	require.NoError(t, err)
+	return client
+}
+```
+
+A Chat Completions dialect also adds the optional cases: a content-policy
+error when `ContentPolicyErrorToken` is set, a 2xx error object, an
+interrupted stream and a complete body for a streaming request when
+`IsStreaming` is set, and a request that sends no optional or sampling field.
+`ErrorTokenPointers` places the error tokens where the Profile reads them, such
+as `/type` and `/code` for a top-level error envelope, and the quota case
+requires the Failure to name the quota token. The exchange suite runs without
+Dex and records no text Stream; the real-Dex scenarios prove the streamed
+text and its order.
+
+The real-Dex scenarios use the Dex Server at `DEX_FLOW_SERVICE_ADDRESS`, or
+`127.0.0.1:8801` when it is unset, and fail when that server is unreachable.
+The caller's test file carries `//go:build integration`, as
+[`integrationtest/llm_scenarios_integration_test.go`](integrationtest/llm_scenarios_integration_test.go)
+does.
 
 ## Local development
 
@@ -286,6 +530,16 @@ Trigger delivery through the local inbox:
 - replay while the Worker is unavailable;
 - the log records for each skip, filter, backoff, recovery, and replay summary,
   with a sentinel that proves message text never reaches a record.
+
+The `integrationtest/fixturellm` package is a lab connector built on `llm` and
+`openaichat`. Its exchange test runs with the ordinary suite, and the
+integration run adds the real-Dex text-generation scenarios: a generated
+result streamed in order, a rate limit retried after its `Retry-After`, an
+unwired optional branch that fails the Flow, a Step's model pick overriding
+the connection model, a provider that stays silent past Dex's minimum
+heartbeat timeout, a Worker lost mid-exchange whose call is repeated on a new
+Worker, and an interrupted stream whose partial text stays on the text Stream
+before the retry's text. The silent provider takes about 20 seconds.
 
 Run it against a real Dex Server:
 

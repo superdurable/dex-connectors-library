@@ -156,6 +156,26 @@ func TestStoreLoadsIsolatedOperationConfigurationSnapshot(t *testing.T) {
 	require.Equal(t, "C123", loaded.Value.ChannelID)
 }
 
+func TestStoreReportsMissingOperationConfigurationAsNotFound(t *testing.T) {
+	directory := t.TempDir()
+	path := filepath.Join(directory, "connections.json")
+	writeConnections(t, path, "https://example.test", "token", time.Now().Add(time.Hour))
+	saved := sdkgo.ConnectorConfigurationRef{
+		ConnectorID: "gmail", ConnectionName: "sender", OperationID: "sendMessage",
+		FlowType: "ApprovalFlow", StepType: "SendApproval",
+	}
+	writeUseConfigurations(t, directory, saved, map[string]any{"channelId": "C123"})
+	store, err := localconfig.LoadFile(path)
+	require.NoError(t, err)
+
+	unsaved := saved
+	unsaved.StepType = "SendReminder"
+	_, err = localconfig.LoadOperationConfiguration[testOperationConfiguration](store, unsaved)
+	require.ErrorIs(t, err, localconfig.ErrConfigurationNotFound)
+	require.EqualError(t, err,
+		`connector "gmail" connection "sender" operation "sendMessage" Flow "ApprovalFlow" Step "SendReminder" is not configured`)
+}
+
 func TestStoreRejectsInvalidOperationConfigurationSidecar(t *testing.T) {
 	directory := t.TempDir()
 	path := filepath.Join(directory, "connections.json")
@@ -170,6 +190,7 @@ func TestStoreRejectsInvalidOperationConfigurationSidecar(t *testing.T) {
 	require.NoError(t, err)
 	_, err = localconfig.LoadOperationConfiguration[testOperationConfiguration](store, reference)
 	require.ErrorContains(t, err, "unknown field")
+	require.NotErrorIs(t, err, localconfig.ErrConfigurationNotFound)
 
 	reference.ConnectionName = "missing"
 	writeUseConfigurations(t, directory, reference, map[string]any{"channelId": "C123"})
