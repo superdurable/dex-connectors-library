@@ -10,3 +10,4 @@ directories:
   - connectors/meta
   - connectors/openai
   - connectors/slack
+  - connectors/xai

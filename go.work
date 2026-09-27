@@ -11,6 +11,7 @@ use (
 	./connectors/meta
 	./connectors/openai
 	./connectors/slack
+	./connectors/xai
 	./examples/local-config
 	./sdkgo
 )

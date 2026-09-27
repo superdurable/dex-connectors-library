@@ -58,12 +58,19 @@ npm run build
 cd ../../openai
 GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
-cd ../..
+cd ../xai
+GOWORK=off go test -race ./...
+GOWORK=off go vet ./...
+cd ui
+npm ci
+npm test
+npm run build
+cd ../../..
 
 make check
 go test -race ./...
 go vet ./...
-go run ./cmd/connectorctl validate connectors/anthropic/connector.yaml connectors/github/connector.yaml connectors/google/gemini/connector.yaml connectors/google/gmail/connector.yaml connectors/google/spreadsheet/connector.yaml connectors/linkedin/connector.yaml connectors/meta/connector.yaml connectors/openai/connector.yaml connectors/slack/connector.yaml
+go run ./cmd/connectorctl validate connectors/anthropic/connector.yaml connectors/github/connector.yaml connectors/google/gemini/connector.yaml connectors/google/gmail/connector.yaml connectors/google/spreadsheet/connector.yaml connectors/linkedin/connector.yaml connectors/meta/connector.yaml connectors/openai/connector.yaml connectors/slack/connector.yaml connectors/xai/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/anthropic/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/github/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/google/gemini/connector.yaml
@@ -72,6 +79,7 @@ go run ./cmd/connectorctl generate --check connectors/google/spreadsheet/connect
 go run ./cmd/connectorctl generate --check connectors/linkedin/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/meta/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/openai/connector.yaml
+go run ./cmd/connectorctl generate --check connectors/xai/connector.yaml
 go run ./cmd/connectorctl catalog --check --registry connectors.yaml
 go run ./cmd/connectorctl release-matrix --registry connectors.yaml
 go run ./cmd/connectorctl catalog --registry connectors.yaml --output /tmp/catalog.yaml
@@ -126,6 +134,12 @@ The suite must prove:
   as quota, 501 kept a rejection, mid-stream retry of Claude's transient
   error types, and loopback-only test base URL, and its model picker pages
   the live model list with `after_id`;
+- xAI Grok passes the shared `llmtest` exchange suite with its streaming
+  Profile and xAI's top-level `code` error envelope, per-model reasoning
+  efforts, the `end_turn` finish, an endpoint limited to the global and US
+  regional hosts, and a loopback-only test base URL, and its model picker
+  shows aliases, hides multi-agent and non-text models, and falls back to the
+  US regional list;
 - GitHub profile/email selection, scope/revocation branches, response bounds,
   public-only pagination, deduplication, sorting, truncation, and rate-limit
   delay tests remain green;
@@ -227,6 +241,9 @@ The integration suite verifies:
   streams the generated text.
 - Claude `generateText` runs the shared `llmtest` real-Dex scenarios, and the
   Claude summarize-text example completes generated and refused routes and
+  streams the generated text.
+- xAI Grok `generateText` runs the shared `llmtest` real-Dex scenarios, and
+  the Grok summarize-text example completes generated and blocked routes and
   streams the generated text.
 - a Trigger inbox consumes an RPC event whose Flow completed or never started,
   and a restarted runner replays past it (Slack thread-approval steps 8 and 9),

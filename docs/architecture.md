@@ -235,6 +235,26 @@ through the Dex Web broker with a fixed `anthropic-version` header and pages
 with `after_id`. Dex Web `cli-v0.13.8` and earlier drop fixed headers, so the
 list fails there and the picker offers manual model ID entry.
 
+## xAI Grok connector
+
+Grok is the xAI company's module, in `connectors/xai` with Go package `grok`,
+and an API-key Connection. Its `generateText` operation is the shared
+text-generation Query: the connector declares only an `openaichat` Profile
+for `POST {endpoint}/chat/completions`, and the `sdkgo/llm` pipeline owns
+validation, the error table, schema checks, streaming, and heartbeats. The
+`endpoint` configuration accepts only `https://api.x.ai/v1` and the US
+regional `https://us.api.x.ai/v1`, so the bearer key reaches no other host;
+tests reach a loopback fake provider through `WithBaseURLForTest`. Every
+request streams, so the operation uses the streaming budget: a 900-second
+sync Execute, a 60-second heartbeat timeout, and four attempts over 30
+minutes. Model rules follow xAI's per-model reasoning efforts, and error
+tokens come from xAI's top-level `code` field.
+
+The Studio bundle's `modelPicker` lists `GET https://api.x.ai/v1/language-models`
+through the Dex Web broker, falls back to `GET https://us.api.x.ai/v1/models`,
+and hides multi-agent models, which do not serve Chat Completions, and
+non-text models behind **Show all models**.
+
 ## GitHub connector
 
 GitHub exposes generated Query factories for authenticated profile plus primary
