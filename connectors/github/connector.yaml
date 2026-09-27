@@ -3,9 +3,9 @@ kind: Connector
 metadata:
   name: github
   displayName: GitHub
-  description: Read an authenticated GitHub profile, verified primary email, and bounded public repositories.
+  description: Read an authenticated GitHub profile, verified primary email, bounded public repositories, and bounded public repository changes.
   company: GitHub
-  version: v0.6.0
+  version: v0.7.0
 spec:
   provider: github
   codegen:
@@ -49,6 +49,24 @@ spec:
         description: Maximum public repositories returned by one invocation.
         required: false
         default: 500
+      - name: maxPullRequestBodyCharacters
+        goName: MaxPullRequestBodyCharacters
+        type: integer
+        description: Maximum Unicode characters kept from one merged pull request body.
+        required: false
+        default: 4000
+      - name: maxPatchCharacters
+        goName: MaxPatchCharacters
+        type: integer
+        description: Maximum Unicode characters kept from one changed-file patch.
+        required: false
+        default: 4000
+      - name: maxCommitMessageCharacters
+        goName: MaxCommitMessageCharacters
+        type: integer
+        description: Maximum Unicode characters kept from one commit message.
+        required: false
+        default: 4000
   auth:
     type: oauth2
     connectionKind: github-oauth
@@ -103,3 +121,57 @@ spec:
         - {id: invalidResponse, goName: InvalidResponse, description: GitHub returned an invalid or oversized repository response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution: *githubQueryExecution
+    - name: listMergedPullRequests
+      goName: ListMergedPullRequests
+      inputType: ListMergedPullRequestsInput
+      outputType: MergedPullRequestPage
+      kind: query
+      description: List one bounded page of pull requests merged into a public repository within a time window.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: One bounded page of merged pull requests was loaded.}
+        - {id: insufficientScope, goName: InsufficientScope, description: The OAuth grant does not match the required scopes., optional: true}
+        - {id: authorizationRevoked, goName: AuthorizationRevoked, description: The OAuth grant is invalid or revoked., optional: true}
+        - {id: notFound, goName: NotFound, description: The requested GitHub resource was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "GitHub conclusively rejected the search, including a repository it cannot search.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: GitHub returned an invalid or oversized search response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &githubChangeQueryExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 65m}
+    - name: listPullRequestFiles
+      goName: ListPullRequestFiles
+      inputType: ListPullRequestFilesInput
+      outputType: PullRequestFilePage
+      kind: query
+      description: List one bounded page of files changed by a public repository pull request.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: One bounded page of changed files was loaded.}
+        - {id: insufficientScope, goName: InsufficientScope, description: The OAuth grant does not match the required scopes., optional: true}
+        - {id: authorizationRevoked, goName: AuthorizationRevoked, description: The OAuth grant is invalid or revoked., optional: true}
+        - {id: notFound, goName: NotFound, description: The repository or pull request was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: GitHub conclusively rejected the changed-file query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: GitHub returned an invalid or oversized changed-file response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *githubChangeQueryExecution
+    - name: listCommits
+      goName: ListCommits
+      inputType: ListCommitsInput
+      outputType: CommitPage
+      kind: query
+      description: List one bounded page of public repository commits within a time window.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "One bounded page of commits was loaded; an empty repository has no commits."}
+        - {id: insufficientScope, goName: InsufficientScope, description: The OAuth grant does not match the required scopes., optional: true}
+        - {id: authorizationRevoked, goName: AuthorizationRevoked, description: The OAuth grant is invalid or revoked., optional: true}
+        - {id: notFound, goName: NotFound, description: The repository or starting ref was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: GitHub conclusively rejected the commit query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: GitHub returned an invalid or oversized commit response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *githubChangeQueryExecution

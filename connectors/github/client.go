@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package githubconnector provides bounded, authenticated GitHub profile queries.
+// Package githubconnector provides bounded, authenticated GitHub profile and public repository queries.
 package githubconnector
 
 import (
@@ -55,14 +55,17 @@ func WithClock(now func() time.Time) Option {
 
 // Client executes authenticated GitHub requests for connector operations.
 type Client struct {
-	baseURL                *url.URL
-	apiVersion             string
-	maxResponseBytes       int64
-	defaultRepositoryLimit int
-	maxRepositories        int
-	httpClient             *http.Client
-	credentials            sdkgo.CredentialProvider[Credentials]
-	now                    func() time.Time
+	baseURL                      *url.URL
+	apiVersion                   string
+	maxResponseBytes             int64
+	defaultRepositoryLimit       int
+	maxRepositories              int
+	maxPullRequestBodyCharacters int
+	maxPatchCharacters           int
+	maxCommitMessageCharacters   int
+	httpClient                   *http.Client
+	credentials                  sdkgo.CredentialProvider[Credentials]
+	now                          func() time.Time
 }
 
 // GetAuthenticatedProfileInput contains the provider request fields for get authenticated profile.
@@ -276,7 +279,9 @@ func New(config Config, credentials sdkgo.CredentialProvider[Credentials], optio
 	return &Client{
 		baseURL: baseURL, apiVersion: config.APIVersion, maxResponseBytes: config.MaxResponseBytes,
 		defaultRepositoryLimit: int(config.DefaultRepositoryLimit), maxRepositories: int(config.MaxRepositories),
-		httpClient: httpClient, credentials: credentials, now: dependencies.now,
+		maxPullRequestBodyCharacters: int(config.MaxPullRequestBodyCharacters), maxPatchCharacters: int(config.MaxPatchCharacters),
+		maxCommitMessageCharacters: int(config.MaxCommitMessageCharacters), httpClient: httpClient,
+		credentials: credentials, now: dependencies.now,
 	}, nil
 }
 
@@ -288,6 +293,21 @@ func (client *Client) GetAuthenticatedProfile() GetAuthenticatedProfileOperation
 // ListPublicRepositories returns the ListPublicRepositories operation bound to this client.
 func (client *Client) ListPublicRepositories() ListPublicRepositoriesOperation {
 	return ListPublicRepositoriesOperation{client: client}
+}
+
+// ListMergedPullRequests returns the ListMergedPullRequests operation bound to this client.
+func (client *Client) ListMergedPullRequests() ListMergedPullRequestsOperation {
+	return ListMergedPullRequestsOperation{client: client}
+}
+
+// ListPullRequestFiles returns the ListPullRequestFiles operation bound to this client.
+func (client *Client) ListPullRequestFiles() ListPullRequestFilesOperation {
+	return ListPullRequestFilesOperation{client: client}
+}
+
+// ListCommits returns the ListCommits operation bound to this client.
+func (client *Client) ListCommits() ListCommitsOperation {
+	return ListCommitsOperation{client: client}
 }
 
 // Definition returns the immutable connector operation definition.
@@ -495,6 +515,8 @@ func (client *Client) get(call sdkgo.Call, credential Credentials, path string, 
 
 var errResponseTooLarge = errors.New("GitHub response exceeds the configured size limit")
 
+// classify maps a non-success response. Every rate limit, including a headerless 403 secondary limit,
+// retries after GitHub's delay.
 func (client *Client) classify(operation string, response providerResponse, branches responseBranches) *terminalResponse {
 	if response.statusCode >= 200 && response.statusCode < 300 {
 		return nil
@@ -671,18 +693,39 @@ func safeRequestID(header http.Header) string {
 	return ""
 }
 
+// isRateLimited reports a 403 rate limit. A secondary limit may omit rate-limit headers, so its message
+// also identifies it.
 func isRateLimited(response providerResponse) bool {
-	return response.statusCode == http.StatusForbidden && (response.header.Get("Retry-After") != "" || response.header.Get("X-RateLimit-Remaining") == "0")
+	if response.statusCode != http.StatusForbidden {
+		return false
+	}
+	return response.header.Get("Retry-After") != "" || response.header.Get("X-RateLimit-Remaining") == "0" ||
+		hasRateLimitMessage(response.body)
 }
 
+// hasRateLimitMessage reads only the bounded error body's message field. The body never enters a
+// Failure.
+func hasRateLimitMessage(body []byte) bool {
+	var providerError struct {
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal(body, &providerError); err != nil {
+		return false
+	}
+	return strings.Contains(strings.ToLower(providerError.Message), "rate limit")
+}
+
+// retryDelay returns Retry-After, else X-RateLimit-Reset when X-RateLimit-Remaining is 0 (GitHub always
+// sends the reset), else one minute.
 func retryDelay(header http.Header, now time.Time) time.Duration {
 	if seconds, err := strconv.ParseInt(header.Get("Retry-After"), 10, 64); err == nil && seconds > 0 {
 		return time.Duration(seconds) * time.Second
 	}
-	if reset, err := strconv.ParseInt(header.Get("X-RateLimit-Reset"), 10, 64); err == nil {
-		delay := time.Unix(reset, 0).Sub(now)
-		if delay > 0 {
-			return delay
+	if header.Get("X-RateLimit-Remaining") == "0" {
+		if reset, err := strconv.ParseInt(header.Get("X-RateLimit-Reset"), 10, 64); err == nil {
+			if delay := time.Unix(reset, 0).Sub(now); delay > 0 {
+				return delay
+			}
 		}
 	}
 	return time.Minute

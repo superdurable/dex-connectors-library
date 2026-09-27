@@ -104,16 +104,27 @@ func TestGetAuthenticatedProfileClassifiesAuthorizationAndRateLimit(t *testing.T
 		name       string
 		status     int
 		headers    map[string]string
+		body       string
 		wantBranch sdkgo.BranchID
 		wantKind   sdkgo.FailureKind
 		wantRetry  time.Duration
 	}{
 		{name: "revoked", status: http.StatusUnauthorized, wantBranch: githubconnector.GetAuthenticatedProfileBranchAuthorizationRevoked, wantKind: sdkgo.FailureAuthentication},
 		{name: "forbidden", status: http.StatusForbidden, wantBranch: githubconnector.GetAuthenticatedProfileBranchInsufficientScope, wantKind: sdkgo.FailureAuthorization},
+		{
+			name: "forbidden with remaining quota", status: http.StatusForbidden, headers: map[string]string{"X-RateLimit-Remaining": "4987"},
+			body: `{"message":"Resource not accessible by integration"}`, wantBranch: githubconnector.GetAuthenticatedProfileBranchInsufficientScope, wantKind: sdkgo.FailureAuthorization,
+		},
 		{name: "not found", status: http.StatusNotFound, wantBranch: githubconnector.GetAuthenticatedProfileBranchNotFound, wantKind: sdkgo.FailureNotFound},
 		{name: "provider rejected", status: http.StatusBadRequest, wantBranch: githubconnector.GetAuthenticatedProfileBranchProviderRejected, wantKind: sdkgo.FailureProviderRejection},
 		{name: "primary rate limit", status: http.StatusForbidden, headers: map[string]string{"X-RateLimit-Remaining": "0", "X-RateLimit-Reset": "1767225635"}, wantKind: sdkgo.FailureRateLimit, wantRetry: 30 * time.Second},
 		{name: "secondary rate limit", status: http.StatusTooManyRequests, headers: map[string]string{"Retry-After": "7"}, wantKind: sdkgo.FailureRateLimit, wantRetry: 7 * time.Second},
+		{
+			name: "secondary rate limit without retry-after", status: http.StatusForbidden,
+			headers:  map[string]string{"X-RateLimit-Remaining": "4987", "X-RateLimit-Reset": "1767229205"},
+			body:     `{"message":"You have exceeded a secondary rate limit. Please wait a few minutes before you try again."}`,
+			wantKind: sdkgo.FailureRateLimit, wantRetry: time.Minute,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -122,6 +133,7 @@ func TestGetAuthenticatedProfileClassifiesAuthorizationAndRateLimit(t *testing.T
 					response.Header().Set(name, value)
 				}
 				response.WriteHeader(test.status)
+				_, _ = response.Write([]byte(test.body))
 			}))
 			defer server.Close()
 			client := newClient(t, server.URL, githubconnector.Config{}, githubconnector.WithClock(func() time.Time {

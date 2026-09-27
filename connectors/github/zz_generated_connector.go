@@ -18,12 +18,15 @@ import (
 const ConnectorID = "github"
 
 type Config struct {
-	BaseURL                string        `json:"baseUrl,omitempty" yaml:"baseUrl,omitempty"`
-	APIVersion             string        `json:"apiVersion,omitempty" yaml:"apiVersion,omitempty"`
-	Timeout                time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty"`
-	MaxResponseBytes       int64         `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
-	DefaultRepositoryLimit int64         `json:"defaultRepositoryLimit,omitempty" yaml:"defaultRepositoryLimit,omitempty"`
-	MaxRepositories        int64         `json:"maxRepositories,omitempty" yaml:"maxRepositories,omitempty"`
+	BaseURL                      string        `json:"baseUrl,omitempty" yaml:"baseUrl,omitempty"`
+	APIVersion                   string        `json:"apiVersion,omitempty" yaml:"apiVersion,omitempty"`
+	Timeout                      time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty"`
+	MaxResponseBytes             int64         `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
+	DefaultRepositoryLimit       int64         `json:"defaultRepositoryLimit,omitempty" yaml:"defaultRepositoryLimit,omitempty"`
+	MaxRepositories              int64         `json:"maxRepositories,omitempty" yaml:"maxRepositories,omitempty"`
+	MaxPullRequestBodyCharacters int64         `json:"maxPullRequestBodyCharacters,omitempty" yaml:"maxPullRequestBodyCharacters,omitempty"`
+	MaxPatchCharacters           int64         `json:"maxPatchCharacters,omitempty" yaml:"maxPatchCharacters,omitempty"`
+	MaxCommitMessageCharacters   int64         `json:"maxCommitMessageCharacters,omitempty" yaml:"maxCommitMessageCharacters,omitempty"`
 }
 
 type Credentials struct {
@@ -100,12 +103,15 @@ func (Connection) GoString() string { return "githubconnector.Connection{[REDACT
 
 func DefaultConfig() Config {
 	return Config{
-		BaseURL:                "https://api.github.com",
-		APIVersion:             "2026-03-10",
-		Timeout:                time.Duration(15000000000),
-		MaxResponseBytes:       2097152,
-		DefaultRepositoryLimit: 100,
-		MaxRepositories:        500,
+		BaseURL:                      "https://api.github.com",
+		APIVersion:                   "2026-03-10",
+		Timeout:                      time.Duration(15000000000),
+		MaxResponseBytes:             2097152,
+		DefaultRepositoryLimit:       100,
+		MaxRepositories:              500,
+		MaxPullRequestBodyCharacters: 4000,
+		MaxPatchCharacters:           4000,
+		MaxCommitMessageCharacters:   4000,
 	}
 }
 
@@ -129,6 +135,15 @@ func withConfigDefaults(config Config) Config {
 	if config.MaxRepositories == 0 {
 		config.MaxRepositories = defaults.MaxRepositories
 	}
+	if config.MaxPullRequestBodyCharacters == 0 {
+		config.MaxPullRequestBodyCharacters = defaults.MaxPullRequestBodyCharacters
+	}
+	if config.MaxPatchCharacters == 0 {
+		config.MaxPatchCharacters = defaults.MaxPatchCharacters
+	}
+	if config.MaxCommitMessageCharacters == 0 {
+		config.MaxCommitMessageCharacters = defaults.MaxCommitMessageCharacters
+	}
 	return config
 }
 
@@ -150,6 +165,15 @@ func (config Config) Validate() error {
 	}
 	if config.MaxRepositories < 0 {
 		return fmt.Errorf("configuration maxRepositories cannot be negative")
+	}
+	if config.MaxPullRequestBodyCharacters < 0 {
+		return fmt.Errorf("configuration maxPullRequestBodyCharacters cannot be negative")
+	}
+	if config.MaxPatchCharacters < 0 {
+		return fmt.Errorf("configuration maxPatchCharacters cannot be negative")
+	}
+	if config.MaxCommitMessageCharacters < 0 {
+		return fmt.Errorf("configuration maxCommitMessageCharacters cannot be negative")
 	}
 	return nil
 }
@@ -337,6 +361,273 @@ func NewListPublicRepositoriesStep[IN any](config ListPublicRepositoriesStepConf
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(ListPublicRepositoriesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListMergedPullRequestsBranchListed sdkgo.BranchID = "listed"
+const ListMergedPullRequestsBranchInsufficientScope sdkgo.BranchID = "insufficientScope"
+const ListMergedPullRequestsBranchAuthorizationRevoked sdkgo.BranchID = "authorizationRevoked"
+const ListMergedPullRequestsBranchNotFound sdkgo.BranchID = "notFound"
+const ListMergedPullRequestsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListMergedPullRequestsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListMergedPullRequestsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListMergedPullRequestsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listMergedPullRequests"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListMergedPullRequestsBranchListed, Description: "One bounded page of merged pull requests was loaded."},
+		{ID: ListMergedPullRequestsBranchInsufficientScope, Description: "The OAuth grant does not match the required scopes.", Optional: true},
+		{ID: ListMergedPullRequestsBranchAuthorizationRevoked, Description: "The OAuth grant is invalid or revoked.", Optional: true},
+		{ID: ListMergedPullRequestsBranchNotFound, Description: "The requested GitHub resource was not found.", Optional: true},
+		{ID: ListMergedPullRequestsBranchProviderRejected, Description: "GitHub conclusively rejected the search, including a repository it cannot search.", Optional: true},
+		{ID: ListMergedPullRequestsBranchInvalidResponse, Description: "GitHub returned an invalid or oversized search response.", Optional: true},
+		{ID: ListMergedPullRequestsBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(3900000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListMergedPullRequestsResult = sdkgo.QueryResult[MergedPullRequestPage]
+
+type ListMergedPullRequestsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                 `connector:"connectorId=github"`
+	operationID                    struct{}                                                 `connector:"operationId=listMergedPullRequests"`
+	StepType                       string                                                   `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                     Connection                                               `connector:"connection"`
+	ConnectionName                 string                                                   `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListMergedPullRequestsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListMergedPullRequestsResult]               `connector:"branch=listed"`
+	InsufficientScope              sdkgo.Target[ListMergedPullRequestsResult]               `connector:"branch=insufficientScope,optional"`
+	AuthorizationRevoked           sdkgo.Target[ListMergedPullRequestsResult]               `connector:"branch=authorizationRevoked,optional"`
+	NotFound                       sdkgo.Target[ListMergedPullRequestsResult]               `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListMergedPullRequestsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListMergedPullRequestsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListMergedPullRequestsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[MergedPullRequestPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+}
+
+func NewListMergedPullRequestsStep[IN any](config ListMergedPullRequestsStepConfig[IN]) sdkgo.QueryStep[IN, ListMergedPullRequestsInput, MergedPullRequestPage] {
+	if err := config.Connection.validate(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("github connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListMergedPullRequestsInput, MergedPullRequestPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.client.ListMergedPullRequests(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListMergedPullRequestsResult] {
+			branches := make([]sdkgo.BranchTarget[ListMergedPullRequestsResult], 0, 7)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListMergedPullRequestsBranchListed))
+			}
+			if config.InsufficientScope.HasStep() {
+				branches = append(branches, config.InsufficientScope.BranchTarget(ListMergedPullRequestsBranchInsufficientScope))
+			}
+			if config.AuthorizationRevoked.HasStep() {
+				branches = append(branches, config.AuthorizationRevoked.BranchTarget(ListMergedPullRequestsBranchAuthorizationRevoked))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListMergedPullRequestsBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListMergedPullRequestsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListMergedPullRequestsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListMergedPullRequestsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListPullRequestFilesBranchListed sdkgo.BranchID = "listed"
+const ListPullRequestFilesBranchInsufficientScope sdkgo.BranchID = "insufficientScope"
+const ListPullRequestFilesBranchAuthorizationRevoked sdkgo.BranchID = "authorizationRevoked"
+const ListPullRequestFilesBranchNotFound sdkgo.BranchID = "notFound"
+const ListPullRequestFilesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListPullRequestFilesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListPullRequestFilesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListPullRequestFilesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listPullRequestFiles"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListPullRequestFilesBranchListed, Description: "One bounded page of changed files was loaded."},
+		{ID: ListPullRequestFilesBranchInsufficientScope, Description: "The OAuth grant does not match the required scopes.", Optional: true},
+		{ID: ListPullRequestFilesBranchAuthorizationRevoked, Description: "The OAuth grant is invalid or revoked.", Optional: true},
+		{ID: ListPullRequestFilesBranchNotFound, Description: "The repository or pull request was not found.", Optional: true},
+		{ID: ListPullRequestFilesBranchProviderRejected, Description: "GitHub conclusively rejected the changed-file query.", Optional: true},
+		{ID: ListPullRequestFilesBranchInvalidResponse, Description: "GitHub returned an invalid or oversized changed-file response.", Optional: true},
+		{ID: ListPullRequestFilesBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(3900000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListPullRequestFilesResult = sdkgo.QueryResult[PullRequestFilePage]
+
+type ListPullRequestFilesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                               `connector:"connectorId=github"`
+	operationID                    struct{}                                               `connector:"operationId=listPullRequestFiles"`
+	StepType                       string                                                 `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                     Connection                                             `connector:"connection"`
+	ConnectionName                 string                                                 `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListPullRequestFilesInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListPullRequestFilesResult]               `connector:"branch=listed"`
+	InsufficientScope              sdkgo.Target[ListPullRequestFilesResult]               `connector:"branch=insufficientScope,optional"`
+	AuthorizationRevoked           sdkgo.Target[ListPullRequestFilesResult]               `connector:"branch=authorizationRevoked,optional"`
+	NotFound                       sdkgo.Target[ListPullRequestFilesResult]               `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListPullRequestFilesResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListPullRequestFilesResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListPullRequestFilesResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[PullRequestFilePage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewListPullRequestFilesStep[IN any](config ListPullRequestFilesStepConfig[IN]) sdkgo.QueryStep[IN, ListPullRequestFilesInput, PullRequestFilePage] {
+	if err := config.Connection.validate(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("github connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListPullRequestFilesInput, PullRequestFilePage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.client.ListPullRequestFiles(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListPullRequestFilesResult] {
+			branches := make([]sdkgo.BranchTarget[ListPullRequestFilesResult], 0, 7)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListPullRequestFilesBranchListed))
+			}
+			if config.InsufficientScope.HasStep() {
+				branches = append(branches, config.InsufficientScope.BranchTarget(ListPullRequestFilesBranchInsufficientScope))
+			}
+			if config.AuthorizationRevoked.HasStep() {
+				branches = append(branches, config.AuthorizationRevoked.BranchTarget(ListPullRequestFilesBranchAuthorizationRevoked))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListPullRequestFilesBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListPullRequestFilesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListPullRequestFilesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListPullRequestFilesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListCommitsBranchListed sdkgo.BranchID = "listed"
+const ListCommitsBranchInsufficientScope sdkgo.BranchID = "insufficientScope"
+const ListCommitsBranchAuthorizationRevoked sdkgo.BranchID = "authorizationRevoked"
+const ListCommitsBranchNotFound sdkgo.BranchID = "notFound"
+const ListCommitsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListCommitsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListCommitsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListCommitsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listCommits"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListCommitsBranchListed, Description: "One bounded page of commits was loaded; an empty repository has no commits."},
+		{ID: ListCommitsBranchInsufficientScope, Description: "The OAuth grant does not match the required scopes.", Optional: true},
+		{ID: ListCommitsBranchAuthorizationRevoked, Description: "The OAuth grant is invalid or revoked.", Optional: true},
+		{ID: ListCommitsBranchNotFound, Description: "The repository or starting ref was not found.", Optional: true},
+		{ID: ListCommitsBranchProviderRejected, Description: "GitHub conclusively rejected the commit query.", Optional: true},
+		{ID: ListCommitsBranchInvalidResponse, Description: "GitHub returned an invalid or oversized commit response.", Optional: true},
+		{ID: ListCommitsBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(3900000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListCommitsResult = sdkgo.QueryResult[CommitPage]
+
+type ListCommitsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                      `connector:"connectorId=github"`
+	operationID                    struct{}                                      `connector:"operationId=listCommits"`
+	StepType                       string                                        `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                     Connection                                    `connector:"connection"`
+	ConnectionName                 string                                        `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListCommitsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListCommitsResult]               `connector:"branch=listed"`
+	InsufficientScope              sdkgo.Target[ListCommitsResult]               `connector:"branch=insufficientScope,optional"`
+	AuthorizationRevoked           sdkgo.Target[ListCommitsResult]               `connector:"branch=authorizationRevoked,optional"`
+	NotFound                       sdkgo.Target[ListCommitsResult]               `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListCommitsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListCommitsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListCommitsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[CommitPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewListCommitsStep[IN any](config ListCommitsStepConfig[IN]) sdkgo.QueryStep[IN, ListCommitsInput, CommitPage] {
+	if err := config.Connection.validate(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("github connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListCommitsInput, CommitPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.client.ListCommits(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListCommitsResult] {
+			branches := make([]sdkgo.BranchTarget[ListCommitsResult], 0, 7)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListCommitsBranchListed))
+			}
+			if config.InsufficientScope.HasStep() {
+				branches = append(branches, config.InsufficientScope.BranchTarget(ListCommitsBranchInsufficientScope))
+			}
+			if config.AuthorizationRevoked.HasStep() {
+				branches = append(branches, config.AuthorizationRevoked.BranchTarget(ListCommitsBranchAuthorizationRevoked))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListCommitsBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListCommitsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListCommitsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListCommitsBranchDefect))
 			}
 			return branches
 		}(),

@@ -182,7 +182,10 @@ optional heartbeat timeout, retry policy, and durability. HTTP defaults are
 defaults are 150 seconds and a five-attempt/five-minute window. Execute
 durability is asynchronous unless the operation is very likely to run longer
 than seven seconds. Response creation uses synchronous durability. A response
-retrieval uses the asynchronous HTTP defaults.
+retrieval uses the asynchronous HTTP defaults. GitHub repository change
+queries use a five-attempt/65-minute window, because Dex fails a Step whose
+provider delay does not fit in the remaining window and GitHub's primary rate
+limit resets hourly.
 
 `StepOptionsOverride` overlays non-zero Execute fields and can add
 `dex.ProceedToOnExecuteFailure`. That recovery target accepts the original
