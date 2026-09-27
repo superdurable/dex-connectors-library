@@ -1,0 +1,79 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: deepseek
+  displayName: DeepSeek
+  description: DeepSeek API text generation with DeepSeek Flash and Pro models, JSON Output structured output, thinking effort, token usage, and streamed text.
+  company: DeepSeek
+  version: v0.1.0
+spec:
+  provider: deepseek
+  codegen:
+    go:
+      package: deepseek
+  configuration:
+    fields:
+      - name: model
+        goName: Model
+        type: string
+        description: "DeepSeek model for this connection, such as deepseek-flash or deepseek-v4-pro. Blank uses deepseek-flash. A request that names a model overrides it."
+        required: false
+        default: deepseek-flash
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum total provider response size, counting keep-alive comments and streamed reasoning chunks. A larger response selects invalidResponse.
+        required: false
+        default: 67108864
+  auth:
+    type: apiKey
+    connectionKind: deepseek-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        description: DeepSeek API key from the DeepSeek Platform, sent only in the Authorization bearer header.
+        required: true
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.2.0 <0.3.0"
+      backendCapabilities: [use.configuration.write, deepseek.models-list]
+      mockScenarios: [not-configured, connected]
+      icon: icon.svg
+    commands:
+      - id: listModels
+        capability: deepseek.models-list
+        request:
+          method: GET
+          url: https://api.deepseek.com/models
+          credential: {field: api_key, scheme: bearer}
+    units:
+      - id: modelPicker
+        goName: ModelPicker
+        description: Choose one Step's DeepSeek model from the DeepSeek API's live model list.
+        backendCapabilities: [deepseek.models-list]
+        outputs:
+          - {name: model, goName: Model, type: string}
+  operations:
+    - name: generateText
+      goName: GenerateText
+      inputType: GenerateTextRequest
+      outputType: GenerateTextResponse
+      kind: query
+      description: Generate text or JSON Output structured output with a DeepSeek model through the stateless Chat Completions endpoint.
+      idempotency: none
+      branches:
+        - {id: generated, goName: Generated, description: The model finished normally and returned text.}
+        - {id: truncated, goName: Truncated, description: The model stopped at the output token limit and returned any partial text., optional: true}
+        - {id: blocked, goName: Blocked, description: "DeepSeek stopped the response for a content policy, or the model refused.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "DeepSeek conclusively rejected the request, such as invalid credentials, invalid parameters, or an insufficient balance.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "DeepSeek returned a malformed, oversized, or unusable response, including structured output that does not match its schema.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      progress: [text]
+      execution:
+        # DeepSeek queues requests up to 10 minutes with keep-alives, so the queued streaming budget applies.
+        executeMethodTimeout: 1200s
+        heartbeatTimeout: 60s
+        durability: sync
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 4, totalDuration: 30m}

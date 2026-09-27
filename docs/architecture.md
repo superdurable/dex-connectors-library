@@ -275,6 +275,27 @@ through the Dex Web broker, shows models whose card sets
 `capabilities.completion_chat` and is not archived, and hides the rest behind
 **Show all models**.
 
+## DeepSeek connector
+
+DeepSeek is a separate module and API-key Connection for the DeepSeek API.
+Its `generateText` operation is the shared text-generation Query: the
+connector declares only an `openaichat` Profile for
+`POST https://api.deepseek.com/chat/completions`, which has no `/v1` segment,
+and the `sdkgo/llm` pipeline owns validation, the error table, schema checks,
+streaming, and heartbeats. DeepSeek accepts only `json_object` output, so
+structured output sends the schema as an instruction and relies on the shared
+post-validation. Every request streams, and DeepSeek holds a queued request
+open with keep-alive comments for up to 10 minutes before inference starts,
+so the operation uses the queued budget: a 1200-second sync Execute, a
+60-second heartbeat timeout, four attempts over 30 minutes, and a 5-minute
+stall rule. The key travels only as a bearer token to the one fixed host;
+tests reach a loopback fake provider through `WithBaseURLForTest`.
+
+The Studio bundle's `modelPicker` lists `GET https://api.deepseek.com/models`
+through the Dex Web broker, labels each model with its display name and token
+limits, and hides any model whose output modalities omit text behind
+**Show all models**.
+
 ## GitHub connector
 
 GitHub exposes generated Query factories for authenticated profile plus primary
