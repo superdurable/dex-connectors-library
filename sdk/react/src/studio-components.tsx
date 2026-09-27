@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import type { ButtonHTMLAttributes, ReactElement, ReactNode } from "react";
+import { cloneElement, Fragment, isValidElement, useId, type ButtonHTMLAttributes, type ReactElement, type ReactNode } from "react";
 
 /** StudioSurfaceProps configures the card that frames one Studio surface. */
 export interface StudioSurfaceProps {
@@ -38,9 +38,21 @@ export interface StudioFieldProps {
   children: ReactNode;
 }
 
-/** StudioField labels one form control, with an optional hint below it. */
+/**
+ * StudioField labels one form control, with an optional hint below it. The
+ * hint sits outside the label, so it is not part of the control's accessible
+ * name; when children is a single element, StudioField adds the hint's ID to
+ * that element's aria-describedby.
+ */
 export function StudioField({label, hint, children}: StudioFieldProps): ReactElement {
-  return <label className="studio-field"><span>{label}</span>{children}{hint && <small>{hint}</small>}</label>;
+  const hintId = useId();
+  const control = hint && isValidElement<{"aria-describedby"?: string}>(children) && children.type !== Fragment
+    ? cloneElement(children, {"aria-describedby": [children.props["aria-describedby"], hintId].filter(Boolean).join(" ")})
+    : children;
+  return <div className="studio-field">
+    <label><span>{label}</span>{control}</label>
+    {hint && <small id={hintId}>{hint}</small>}
+  </div>;
 }
 
 /** StudioButtonProps configures a Dex Web button; primary uses the CTA green. */

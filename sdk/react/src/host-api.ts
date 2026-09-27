@@ -61,6 +61,25 @@ export interface ConnectorStudioHostReady {
   capabilities: string[];
   connection: ConnectorConnectionView;
   target: ConnectorStudioTarget;
+  /** theme is the host's colour theme. Bundles use "light" when it is absent or unknown. */
+  theme?: "light" | "dark";
+  /**
+   * themeTokens are the host's current values for allowlisted --studio-* CSS
+   * custom properties, keyed by property name. Bundles apply only names in
+   * connectorStudioThemeTokenNames whose values pass
+   * isConnectorStudioThemeTokenValue, and keep their embedded defaults for
+   * every other token.
+   */
+  themeTokens?: Record<string, string>;
+  /**
+   * stylesheet is the host's canonical Studio stylesheet, re-sent with every
+   * ready message. It styles the connectorStudioClassNames contract and
+   * declares the token defaults for both themes. Bundles install it in place
+   * of the connectorStudioStyles they were built with when it passes
+   * isConnectorStudioStylesheet, so a Dex Web restyle reaches released bundles.
+   * Bundles keep connectorStudioStyles when it is absent or rejected.
+   */
+  stylesheet?: string;
 }
 
 export type ConnectorStudioCommandType =

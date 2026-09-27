@@ -8,7 +8,7 @@ output, thinking budgets, token usage, and explicit safety outcomes.
 Install a published component release:
 
 ```bash
-go get github.com/superdurable/dex-connectors-library/connectors/google/gemini@v0.2.0
+go get github.com/superdurable/dex-connectors-library/connectors/google/gemini@v0.2.1
 ```
 
 ## Connection
@@ -158,10 +158,11 @@ loaded, err := localconfig.LoadOperationConfiguration[generatesummary.SummaryMod
 )
 ```
 
-Upgrading an existing `v0.1.0` connection: Dex Web through Dex CLI v0.13.8
-shows a connection saved for another connector version as **Conflict**. Change
-that record's `moduleVersion` to `v0.2.0` in the connection file that Dex Web
-shows, or remove the record and save the connection again.
+Upgrading an existing `v0.1.0` or `v0.2.0` connection: Dex Web through Dex CLI
+v0.13.8 shows a connection saved for another connector version as
+**Conflict**. Change that record's `moduleVersion` to `v0.2.1` in the
+connection file that Dex Web shows, or remove the record and save the connection
+again.
 
 ## Branches, retry, and Query semantics
 

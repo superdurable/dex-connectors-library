@@ -300,10 +300,21 @@ Connector UI executes in an opaque-origin iframe and communicates through the
 versioned, nonce-bound Studio Host API. Host API 0.2 selects either the
 connection surface or one isolated configuration unit. Messages contain only
 safe connection status, provider identity, unit port values, configuration,
-and a bounded frame height. Connector bundles report content changes with
+a bounded frame height, the host theme (`light` or `dark`), `--studio-*`
+theme tokens whose names and values the host and `sdk/react` both validate,
+and the host's Studio stylesheet. Connector bundles report content changes with
 `connector.frame.resize` so the host can fit the opaque-origin iframe without
 reading its DOM. OAuth tokens, API keys, client secrets, and refresh tokens
 never enter iframe props, messages, markup, logs, or artifacts.
+
+Dex Web owns how bundles look. A bundle renders only the `studio-*` classes in
+`sdk/react`'s `connectorStudioClassNames`, and the ready message's optional
+`stylesheet` carries the canonical rules for them. The field is additive, so
+the protocol version stays 0.2.0. A bundle installs the stylesheet when it is
+at most 65,536 UTF-16 code units, contains no `</`, and has a selector for
+every class the bundle knows. Otherwise it keeps the copy of the rules compiled
+into it. The host applies stricter authoring rules to its own copy;
+`sdk/react/README.md` lists them and the markup each class expects.
 
 The Studio BFF loads artifacts directly from the trusted Connector release;
 the Java Control Plane is not on this path. OAuth callback, refresh, revoke,

@@ -5,7 +5,7 @@ metadata:
   displayName: Gemini
   description: Google Gemini API text generation with JSON Schema structured output, thinking budgets, token usage, and explicit safety outcomes.
   company: Google
-  version: v0.2.0
+  version: v0.2.1
 spec:
   provider: google
   codegen:

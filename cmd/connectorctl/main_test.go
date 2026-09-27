@@ -25,7 +25,7 @@ func TestCatalogLoadsRepositoryDirectoryRegistry(t *testing.T) {
 		entries[3].Manifest.Metadata.Name, entries[4].Manifest.Metadata.Name, entries[5].Manifest.Metadata.Name,
 		entries[6].Manifest.Metadata.Name,
 	})
-	require.Equal(t, []string{"v0.7.0", "v0.2.0", "v0.11.0", "v0.7.0", "v0.6.0", "v0.6.0", "v0.10.1"}, []string{
+	require.Equal(t, []string{"v0.7.0", "v0.2.1", "v0.11.1", "v0.7.1", "v0.6.0", "v0.6.0", "v0.10.2"}, []string{
 		entries[0].Manifest.Metadata.Version, entries[1].Manifest.Metadata.Version, entries[2].Manifest.Metadata.Version,
 		entries[3].Manifest.Metadata.Version, entries[4].Manifest.Metadata.Version, entries[5].Manifest.Metadata.Version,
 		entries[6].Manifest.Metadata.Version,
@@ -102,7 +102,7 @@ func TestCatalogCommandWritesDeterministicYAML(t *testing.T) {
 	require.Equal(t, firstContent, secondContent)
 	require.Contains(t, string(firstContent), "apiVersion: connectors.dex.dev/catalog/v1alpha1")
 	require.Contains(t, string(firstContent), "directory: connectors/google/gmail")
-	require.Contains(t, string(firstContent), "version: v0.10.1")
+	require.Contains(t, string(firstContent), "version: v0.10.2")
 }
 
 func TestReleaseArtifactIsDeterministicAndVersioned(t *testing.T) {
