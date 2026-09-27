@@ -149,8 +149,55 @@ setup bundle. The iframe invokes every entry through the single
 allows only declared path/query parameters, bounds the JSON response, and never
 returns credential material. Provider pagination, response projection, and
 filtering remain connector UI code; Dex Web does not implement any provider's
-resource semantics. Studio commands currently support HTTPS `GET`, bearer
-credentials, fixed query values, and explicit path or query parameters.
+resource semantics. Studio commands support HTTPS `GET`, fixed query values,
+fixed headers, explicit path or query parameters, and two credential schemes:
+
+- `bearer` sends `Authorization: Bearer <secret>`.
+- `header` sends the raw secret in the header that `credential.header` names,
+  such as `x-goog-api-key` for Gemini or `x-api-key` for Anthropic. Only this
+  scheme declares `header`.
+
+`fixedHeaders` maps non-secret header names to values that Dex sends with
+every request, such as a provider API version. Secrets belong only in the
+credential field.
+
+```yaml
+commands:
+  - id: listModels
+    capability: anthropic.models-list
+    request:
+      method: GET
+      url: https://api.anthropic.com/v1/models
+      credential: {field: api_key, scheme: header, header: x-api-key}
+      fixedHeaders: {anthropic-version: "2023-06-01"}
+```
+
+`credential.header` and every `fixedHeaders` name must be an RFC 7230 token.
+Names compare case-insensitively, and `_` matches `-`, because CGI-style
+servers merge the two. Validation rejects these names because the broker, the
+HTTP transport, or intermediaries own them:
+
+- `Authorization`. Use the `bearer` scheme.
+- `Accept`, which Dex sets.
+- `Host`, `Content-Length`, `Transfer-Encoding`, `Connection`, `Keep-Alive`,
+  `TE`, `Trailer`, `Upgrade`, and every `Proxy-*` name.
+- `Cookie`, `Set-Cookie`, `Origin`, `Referer`, `Forwarded`, and every
+  `X-Forwarded-*` name.
+- `X-HTTP-Method`, `X-HTTP-Method-Override`, and `X-Method-Override`, which
+  could turn the `GET` into another method.
+
+`fixedHeaders` names must be unique under the same comparison and cannot
+repeat the credential header. Each value is 1 to 256 printable ASCII characters
+(`0x20`-`0x7E`) without leading or trailing spaces. Dex Web rejects a command
+whose fixed header value contains the credential value before it sends the
+request.
+
+Dex Web `cli-v0.13.8` and earlier ignore `credential.header` and
+`fixedHeaders` when they load release metadata. They reject every scheme other
+than `bearer` before sending a request. They run a command that declares
+`fixedHeaders` without those headers, so the provider may reject it. Connector
+UI must handle either failure like any other command error. `ModelPicker` in
+`@superdurable/dex-connectors-react` then offers manual model ID entry.
 
 `studio.units` is the release-owned catalog of small UI components. It does
 not decide which operations or Triggers display a unit. A Flow composes unit

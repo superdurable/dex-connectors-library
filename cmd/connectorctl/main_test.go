@@ -5,6 +5,7 @@ package main
 
 import (
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -158,9 +159,17 @@ func TestStudioUIArtifactIsDeterministicAndIncludedInRelease(t *testing.T) {
     setup:
       entrypoint: index.html
       hostApiRange: ">=0.1.0 <0.2.0"
-      backendCapabilities: [configuration.write]
+      backendCapabilities: [configuration.write, sheets.models-list]
       mockScenarios: [not-configured, ready]
       icon: icon.svg
+    commands:
+      - id: listModels
+        capability: sheets.models-list
+        request:
+          method: GET
+          url: https://models.example.com/v1/models
+          credential: {field: access_token, scheme: header, header: x-goog-api-key}
+          fixedHeaders: {x-api-version: "2023-06-01"}
   operations:
 `, 1))
 	manifest := filepath.Join(directory, "connector.yaml")
@@ -190,6 +199,25 @@ func TestStudioUIArtifactIsDeterministicAndIncludedInRelease(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, string(releaseBytes), `"artifact": "connector-ui.tgz"`)
 	require.Contains(t, string(releaseBytes), `"entrypoint": "index.html"`)
+	var releaseWire struct {
+		Manifest struct {
+			Spec struct {
+				Studio struct {
+					Commands []struct {
+						Request struct {
+							Credential   map[string]string `json:"credential"`
+							FixedHeaders map[string]string `json:"fixedHeaders"`
+						} `json:"request"`
+					} `json:"commands"`
+				} `json:"studio"`
+			} `json:"spec"`
+		} `json:"manifest"`
+	}
+	require.NoError(t, json.Unmarshal(releaseBytes, &releaseWire))
+	require.Len(t, releaseWire.Manifest.Spec.Studio.Commands, 1)
+	commandRequest := releaseWire.Manifest.Spec.Studio.Commands[0].Request
+	require.Equal(t, map[string]string{"field": "access_token", "scheme": "header", "header": "x-goog-api-key"}, commandRequest.Credential)
+	require.Equal(t, map[string]string{"x-api-version": "2023-06-01"}, commandRequest.FixedHeaders)
 }
 
 func TestStudioUIArtifactRejectsActiveSVG(t *testing.T) {
