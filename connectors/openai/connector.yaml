@@ -5,7 +5,7 @@ metadata:
   displayName: OpenAI
   description: OpenAI Responses API text generation and stored responses with JSON Schema structured output, reasoning effort, token usage, streamed text, and recovery metadata.
   company: OpenAI
-  version: v0.7.0
+  version: v0.7.1
 spec:
   provider: openai
   codegen:

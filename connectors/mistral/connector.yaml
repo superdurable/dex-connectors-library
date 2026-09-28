@@ -5,7 +5,7 @@ metadata:
   displayName: Mistral AI
   description: Mistral AI text generation with Mistral Large, Medium, Small, and Ministral models, JSON Schema structured output, reasoning effort, token usage, and streamed text.
   company: Mistral
-  version: v0.1.0
+  version: v0.1.1
 spec:
   provider: mistral
   codegen:

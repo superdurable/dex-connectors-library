@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -266,23 +267,15 @@ func TestReleaseMatrixFiltersOneCatalogDirectory(t *testing.T) {
 }
 
 func TestReleaseMatrixIncludesPublishedVersionAtRequestedSource(t *testing.T) {
-	repositoryRoot := filepath.Join("..", "..")
-	entries, err := loadConnectorDirectoryEntries(filepath.Join(repositoryRoot, "catalog.yaml"))
-	require.NoError(t, err)
-	latestReleases, err := latestReachableConnectorReleases(repositoryRoot)
-	require.NoError(t, err)
-	selectedDirectory := ""
-	selectedSourceCommit := ""
-	for _, entry := range entries {
-		latestRelease := latestReleases[entry.Directory]
-		if latestRelease.Version == entry.Manifest.Metadata.Version {
-			selectedDirectory = entry.Directory
-			selectedSourceCommit = latestRelease.SourceCommit
-			break
-		}
-	}
-	require.NotEmpty(t, selectedDirectory)
-	require.NotEmpty(t, selectedSourceCommit)
+	repositoryRoot := t.TempDir()
+	selectedDirectory := "connectors/acme/chat"
+	writeConnectorFixture(t, repositoryRoot, selectedDirectory, "example.com/connectors/acme/chat")
+	require.NoError(t, os.WriteFile(filepath.Join(repositoryRoot, "catalog.yaml"), []byte(`apiVersion: connectors.dex.dev/catalog-source/v1alpha1
+kind: ConnectorCatalogSource
+directories:
+  - connectors/acme/chat
+`), 0o600))
+	selectedSourceCommit := initializeConnectorReleaseRepository(t, repositoryRoot, selectedDirectory+"/v0.1.0")
 	githubOutput := filepath.Join(t.TempDir(), "github-output")
 	require.NoError(t, releaseMatrixCommand([]string{
 		"--catalog", filepath.Join(repositoryRoot, "catalog.yaml"),
@@ -294,6 +287,28 @@ func TestReleaseMatrixIncludesPublishedVersionAtRequestedSource(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, string(contents), "count=1")
 	require.Contains(t, string(contents), fmt.Sprintf(`"directory":%q`, selectedDirectory))
+}
+
+func initializeConnectorReleaseRepository(t *testing.T, repositoryRoot, tag string) string {
+	t.Helper()
+	for _, args := range [][]string{
+		{"init"},
+		{"config", "user.name", "Connector release test"},
+		{"config", "user.email", "connector-release-test@example.com"},
+		{"add", "."},
+		{"commit", "-m", "Add connector release fixture"},
+		{"tag", tag},
+	} {
+		command := exec.Command("git", args...)
+		command.Dir = repositoryRoot
+		output, err := command.CombinedOutput()
+		require.NoError(t, err, "%s", output)
+	}
+	command := exec.Command("git", "rev-parse", "HEAD")
+	command.Dir = repositoryRoot
+	output, err := command.Output()
+	require.NoError(t, err)
+	return strings.TrimSpace(string(output))
 }
 
 func TestCatalogIncludesUIUnitsOperationsAndTriggers(t *testing.T) {
