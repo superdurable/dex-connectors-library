@@ -12,7 +12,39 @@ permissions:
   contents: read
 
 jobs:
-  go:
+  connector-plan:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      count: ${{ steps.plan.outputs.count }}
+    env:
+      CONNECTOR_SCOPE: ${{ (github.event_name == 'pull_request' || github.event_name == 'push') && 'changed' || 'all' }}
+      CONNECTOR_BASE: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+      CONNECTOR_HEAD: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Plan affected Connector shards
+        id: plan
+        run: |
+          make catalog-check
+          arguments=(
+            --catalog catalog.yaml
+            --scope "${CONNECTOR_SCOPE}"
+            --head "${CONNECTOR_HEAD}"
+            --max-shards 256
+            --github-output "${GITHUB_OUTPUT}"
+          )
+          if [ "${CONNECTOR_SCOPE}" = changed ]; then
+            arguments+=(--base "${CONNECTOR_BASE}")
+          fi
+          GOWORK=off go run ./cmd/connectorctl test-matrix "${arguments[@]}"
+
+  common:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -25,37 +57,44 @@ jobs:
           cache-dependency-path: |
             go.sum
             sdkgo/go.sum
-            connectors/**/go.sum
-      - name: Test standalone Connector Go SDK module
-        working-directory: sdkgo
-        env:
-          GOWORK: "off"
-        run: |
-          go test -race ./...
-          go vet ./...
-      - name: Test repository tooling
-        run: python3 -m unittest script/release/component_release_test.py script/dex_compatibility_test.py script/branch_off_main_policy_test.py script/agent_rules_test.py script/studio_bundle_theme_check_test.py
-      - name: Test every standalone Connector module
-        run: |
-          while IFS= read -r manifest; do
-            module="${manifest%/connector.yaml}"
-            (cd "${module}" && GOWORK=off go test -race ./... && GOWORK=off go vet ./...)
-          done < <(find connectors -name connector.yaml -print | sort)
-      - run: go test -race ./...
-      - run: go vet ./...
-      - name: Validate every manifest and generated Connector
-        run: |
-          while IFS= read -r manifest; do
-            go run ./cmd/connectorctl validate "${manifest}"
-            go run ./cmd/connectorctl generate --check "${manifest}"
-          done < <(find connectors -name connector.yaml -print | sort)
-      - name: Validate directory registry and declared release versions
-        run: |
-          go run ./cmd/connectorctl catalog --check --registry connectors.yaml
-          go run ./cmd/connectorctl release-matrix --registry connectors.yaml
-          go run ./cmd/connectorctl catalog --registry connectors.yaml --output /tmp/catalog.yaml
+      - run: make test-common
 
-  dex-integration:
+  connectors:
+    needs: connector-plan
+    if: needs.connector-plan.outputs.count != '0'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 32
+      matrix: ${{ fromJSON(needs.connector-plan.outputs.matrix) }}
+    env:
+      CONNECTOR_SCOPE: ${{ (github.event_name == 'pull_request' || github.event_name == 'push') && 'changed' || 'all' }}
+      CONNECTOR_BASE: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+      CONNECTOR_HEAD: ${{ github.sha }}
+      CONNECTOR_SHARD_INDEX: ${{ matrix.shard_index }}
+      CONNECTOR_SHARD_COUNT: ${{ matrix.shard_count }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+          cache-dependency-path: |
+            go.sum
+            connectors/**/go.sum
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            sdk/react/package-lock.json
+            connectors/**/ui/package-lock.json
+      - name: Test affected standalone Connector modules
+        run: make test-connectors studio-bundle-theme react-connectors
+
+  dex-integration-sdk:
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     steps:
@@ -67,6 +106,58 @@ jobs:
           cache-dependency-path: |
             go.sum
             sdkgo/go.sum
+      - name: Download Dex and Temporal CLIs
+        run: |
+          python3 script/dex_compatibility.py install-dexcli --output ./dexcli
+          curl --fail --location --output temporal.tar.gz \
+            https://github.com/temporalio/cli/releases/download/v1.9.1/temporal_cli_1.9.1_linux_amd64.tar.gz
+          echo "09a0326a51db84d02735e53542b9ebd8c4758daf47482a9ab0abce15844e60d5  temporal.tar.gz" | sha256sum --check
+          mkdir temporal-cli
+          tar --extract --gzip --file temporal.tar.gz --directory temporal-cli
+          echo "$PWD/temporal-cli" >> "$GITHUB_PATH"
+      - name: Run shared SDK integration suite
+        run: |
+          ./dexcli dev -dex-port 18801 -web-port 18802 -open=false \
+            -blob-store-dir /tmp/dex-connectors/blobs \
+            -sqlite-db-filename /tmp/dex-connectors/dex.sqlite.db \
+            -server-log-folder /tmp/dex-connectors/logs > /tmp/dex-connectors-server.log 2>&1 &
+          dex_pid=$!
+          trap 'kill "$dex_pid" 2>/dev/null || true' EXIT
+          for _ in $(seq 1 120); do
+            if (echo > /dev/tcp/127.0.0.1/18801) 2>/dev/null; then
+              DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:18801 make test-sdk-integration
+              exit
+            fi
+            if ! kill -0 "$dex_pid" 2>/dev/null; then break; fi
+            sleep 0.25
+          done
+          cat /tmp/dex-connectors-server.log
+          exit 1
+
+  dex-integration-connectors:
+    needs: connector-plan
+    if: github.event_name != 'schedule' && needs.connector-plan.outputs.count != '0'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 32
+      matrix: ${{ fromJSON(needs.connector-plan.outputs.matrix) }}
+    env:
+      CONNECTOR_SCOPE: ${{ (github.event_name == 'pull_request' || github.event_name == 'push') && 'changed' || 'all' }}
+      CONNECTOR_BASE: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+      CONNECTOR_HEAD: ${{ github.sha }}
+      CONNECTOR_SHARD_INDEX: ${{ matrix.shard_index }}
+      CONNECTOR_SHARD_COUNT: ${{ matrix.shard_count }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+          cache-dependency-path: |
+            go.sum
             connectors/**/go.sum
       - name: Download Dex and Temporal CLIs
         run: |
@@ -77,8 +168,7 @@ jobs:
           mkdir temporal-cli
           tar --extract --gzip --file temporal.tar.gz --directory temporal-cli
           echo "$PWD/temporal-cli" >> "$GITHUB_PATH"
-          temporal-cli/temporal --version
-      - name: Run real Dex integration suite
+      - name: Run affected Connector integration suites
         run: |
           ./dexcli dev -dex-port 18801 -web-port 18802 -open=false \
             -blob-store-dir /tmp/dex-connectors/blobs \
@@ -86,27 +176,32 @@ jobs:
             -server-log-folder /tmp/dex-connectors/logs > /tmp/dex-connectors-server.log 2>&1 &
           dex_pid=$!
           trap 'kill "$dex_pid" 2>/dev/null || true' EXIT
-          ready=false
           for _ in $(seq 1 120); do
             if (echo > /dev/tcp/127.0.0.1/18801) 2>/dev/null; then
-              ready=true
-              break
+              DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:18801 make test-connector-integration
+              exit
             fi
-            if ! kill -0 "$dex_pid" 2>/dev/null; then
-              cat /tmp/dex-connectors-server.log
-              exit 1
-            fi
+            if ! kill -0 "$dex_pid" 2>/dev/null; then break; fi
             sleep 0.25
           done
-          if [ "$ready" != true ]; then
-            cat /tmp/dex-connectors-server.log
-            exit 1
-          fi
-          DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:18801 GOWORK=off make test-integration
+          cat /tmp/dex-connectors-server.log
+          exit 1
 
   dex-compat-current:
-    if: github.event_name != 'schedule'
+    needs: connector-plan
+    if: github.event_name != 'schedule' && needs.connector-plan.outputs.count != '0'
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 32
+      matrix: ${{ fromJSON(needs.connector-plan.outputs.matrix) }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      CONNECTOR_SCOPE: ${{ (github.event_name == 'pull_request' || github.event_name == 'push') && 'changed' || 'all' }}
+      CONNECTOR_BASE: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+      CONNECTOR_HEAD: ${{ github.sha }}
+      CONNECTOR_SHARD_INDEX: ${{ matrix.shard_index }}
+      CONNECTOR_SHARD_COUNT: ${{ matrix.shard_count }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -114,26 +209,25 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
-          cache: true
-          cache-dependency-path: |
-            go.sum
-            sdkgo/go.sum
-            connectors/**/go.sum
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-          cache: npm
-          cache-dependency-path: |
-            sdk/react/package-lock.json
-            connectors/**/ui/package-lock.json
-      - name: Test current Connector source with pinned Dex CLI and Web
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: make test-dex-compat-current
+      - run: make test-dex-compat-current
 
   dex-compat-released:
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    needs: connector-plan
+    if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && needs.connector-plan.outputs.count != '0'
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 32
+      matrix: ${{ fromJSON(needs.connector-plan.outputs.matrix) }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      DEX_CLI_VERSION: latest
+      CONNECTOR_SCOPE: all
+      CONNECTOR_SHARD_INDEX: ${{ matrix.shard_index }}
+      CONNECTOR_SHARD_COUNT: ${{ matrix.shard_count }}
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-go@v6
@@ -142,11 +236,7 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-      - name: Test latest published Connectors with latest stable Dex CLI and Web
-        env:
-          GH_TOKEN: ${{ github.token }}
-          DEX_CLI_VERSION: latest
-        run: make test-dex-compat-released
+      - run: make test-dex-compat-released
 
   dex-compat-canary-issue:
     if: ${{ always() && github.event_name == 'schedule' }}
@@ -211,65 +301,26 @@ jobs:
               `- Connector commit: ${context.sha}`,
               `- Result: ${process.env.CANARY_RESULT}`,
               "",
-              "Inspect the run log for the resolved Dex tag, connector tag, source commit, and artifact digest. Fix current source, publish a new connector release when required, then rerun the canary. This issue closes automatically after a successful scheduled run.",
+              "Inspect the failed shard for the resolved Dex tag, connector tag, source commit, and artifact digest. Fix current source, publish a new connector release when required, then rerun the canary. This issue closes automatically after a successful scheduled run.",
             ].join("\n");
             if (issue) {
-              await github.rest.issues.addLabels({
-                ...context.repo,
-                issue_number: issue.number,
-                labels: [label],
-              });
-              await github.rest.issues.update({
-                ...context.repo,
-                issue_number: issue.number,
-                title: issueTitle,
-                body,
-                state: "open",
-              });
+              await github.rest.issues.addLabels({ ...context.repo, issue_number: issue.number, labels: [label] });
+              await github.rest.issues.update({ ...context.repo, issue_number: issue.number, title: issueTitle, body, state: "open" });
             } else {
-              await github.rest.issues.create({
-                ...context.repo,
-                title: issueTitle,
-                body,
-                labels: [label],
-              });
+              await github.rest.issues.create({ ...context.repo, title: issueTitle, body, labels: [label] });
             }
 
   react:
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: sdk/react
     steps:
       - uses: actions/checkout@v6
-      - name: Check that every Connector Studio UI uses the shared theme
-        working-directory: .
-        run: python3 script/studio_bundle_theme_check.py
       - uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: npm
           cache-dependency-path: sdk/react/package-lock.json
-      - uses: actions/setup-go@v6
-        with:
-          go-version-file: go.mod
-      - run: npm ci
-      - run: npm test
-      - run: npm run build
-      - name: Test and build every Connector Studio UI
-        working-directory: .
-        run: |
-          while IFS= read -r lock; do
-            ui="${lock%/package-lock.json}"
-            npm ci --prefix "${ui}"
-            npm test --prefix "${ui}"
-            npm run build --prefix "${ui}"
-            manifest="${ui%/ui}/connector.yaml"
-            go run ./cmd/connectorctl ui-artifact \
-              --manifest "${manifest}" --ui-root "${ui}/dist" \
-              --output /tmp/connector-ui.tgz --digest-output /tmp/connector-ui.tgz.sha256
-          done < <(find connectors -path '*/ui/package-lock.json' -print | sort)
+      - run: make react-sdk
 
   site:
     if: github.event_name != 'schedule'

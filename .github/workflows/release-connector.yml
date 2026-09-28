@@ -4,6 +4,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      connector_directory:
+        description: Registered Connector directory to repair; leave empty to rebuild only the catalog site
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -40,21 +45,28 @@ jobs:
           cache-dependency-path: |
             sdk/react/package-lock.json
             connectors/**/ui/package-lock.json
-      - name: Validate connector registry and declared versions
+      - name: Validate Connector catalog source and declared versions
         run: |
-          go run ./cmd/connectorctl catalog --check --registry connectors.yaml
-          go run ./cmd/connectorctl release-matrix --registry connectors.yaml
-      - name: Test current Connector source with pinned Dex CLI and Web
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: make test-dex-compat-current
-      - name: Build release recovery matrix
+          GOWORK=off go run ./cmd/connectorctl catalog --check --catalog catalog.yaml
+          GOWORK=off go run ./cmd/connectorctl release-matrix --catalog catalog.yaml
+      - name: Build pending or targeted repair matrix
         id: matrix
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REPAIR_DIRECTORY: ${{ inputs.connector_directory }}
+          SOURCE_SHA: ${{ github.sha }}
         run: |
-          go run ./cmd/connectorctl release-matrix \
-            --registry connectors.yaml \
-            --include-published \
-            --github-output "${GITHUB_OUTPUT}"
+          if [ "${EVENT_NAME}" = workflow_dispatch ] && [ -z "${REPAIR_DIRECTORY}" ]; then
+            printf 'matrix={"include":[]}\ncount=0\n' >> "${GITHUB_OUTPUT}"
+            exit
+          fi
+          arguments=(--catalog catalog.yaml --github-output "${GITHUB_OUTPUT}")
+          if [ "${EVENT_NAME}" = workflow_dispatch ]; then
+            arguments+=(--directory "${REPAIR_DIRECTORY}" --include-published)
+          else
+            arguments+=(--include-published-at "${SOURCE_SHA}")
+          fi
+          GOWORK=off go run ./cmd/connectorctl release-matrix "${arguments[@]}"
 
   release:
     needs: plan
@@ -116,6 +128,11 @@ jobs:
             echo "source_sha=${source_sha}"
             echo "tag=${release_tag}"
           } >> "${GITHUB_OUTPUT}"
+      - name: Verify current Connector with pinned Dex CLI and Web
+        if: steps.state.outputs.release_required == 'true' && steps.state.outputs.source_sha == github.sha
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 script/dex_compatibility.py current --connector-directories "${COMPONENT_PATH}"
       - name: Restore tagged release source for recovery
         if: steps.state.outputs.release_required == 'true' && steps.state.outputs.source_sha != github.sha
         run: git checkout --detach "${{ steps.state.outputs.source_sha }}"
@@ -270,7 +287,7 @@ jobs:
         run: |
           mkdir -p dist/pages
           go run ./cmd/connectorctl catalog \
-            --registry connectors.yaml \
+            --catalog catalog.yaml \
             --output dist/pages/catalog.yaml
       - name: Build directory site and preview card
         run: |

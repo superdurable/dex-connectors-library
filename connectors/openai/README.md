@@ -34,3 +34,10 @@ response. Other conclusive API refusals use `providerRejected`.
 `RetrieveResponse` additionally exposes `notFound` and `invalidResponse`.
 Invalid local input or connection configuration uses the standard `defect`
 branch, while an ambiguous dispatched mutation uses `uncertain`.
+
+When a factory supplies progress or text Streams, `CreateResponse` sends
+`stream=true`. Its bounded SSE reader accepts lifecycle, text-delta, completed,
+failed, incomplete, and error events while ignoring unknown event types. The
+completed Response is authoritative for value and usage. Early EOF or a
+missing terminal event is uncertain and can be reconciled with
+`RetrieveResponse`.

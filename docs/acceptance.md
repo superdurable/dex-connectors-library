@@ -1,377 +1,131 @@
-# Connector modules v0.1.0 acceptance
+# Connector library acceptance
 
 ## Automated checks
 
+Run the repository-wide shared and catalog checks:
+
 ```bash
-cd sdkgo
-GOWORK=off go test -race ./...
-GOWORK=off go vet ./...
-cd ../..
-
-cd connectors/anthropic
-GOWORK=off go test -race ./...
-GOWORK=off go vet ./...
-cd ui
-npm ci
-npm test
-npm run build
-cd ../../..
-
-cd connectors/deepseek
-GOWORK=off go test -race ./...
-GOWORK=off go vet ./...
-cd ui
-npm ci
-npm test
-npm run build
-cd ../../..
-
-cd connectors/github
-GOWORK=off go test -race ./...
-GOWORK=off go vet ./...
-cd ../..
-
-cd connectors/google/gemini
-GOWORK=off go test -race ./...
-GOWORK=off go vet ./...
-cd ../../..
-
-cd connectors/google/spreadsheet
-GOWORK=off go test -race ./...
-GOWORK=off go vet ./...
-cd ui
-npm ci
-npm test
-npm run build
-cd ../../../..
-
-cd connectors/google/gmail
-GOWORK=off go test -race ./...
-GOWORK=off go vet ./...
-cd ui
-npm ci
-npm test
-npm run build
-cd ../../../..
-
-cd connectors/linkedin
-GOWORK=off go test -race ./...
-GOWORK=off go vet ./...
-cd ../meta
-GOWORK=off go test -race ./...
-GOWORK=off go vet ./...
-cd ui
-npm ci
-npm test
-npm run build
-cd ../../mistral
-GOWORK=off go test -race ./...
-GOWORK=off go vet ./...
-cd ui
-npm ci
-npm test
-npm run build
-cd ../../moonshot/kimi
-GOWORK=off go test -race ./...
-GOWORK=off go vet ./...
-cd ui
-npm ci
-npm test
-npm run build
-cd ../../../openai
-GOWORK=off go test -race ./...
-GOWORK=off go vet ./...
-cd ../xai
-GOWORK=off go test -race ./...
-GOWORK=off go vet ./...
-cd ui
-npm ci
-npm test
-npm run build
-cd ../../..
-
-cd connectors/stripe
-GOWORK=off go test -race ./...
-GOWORK=off go vet ./...
-cd ../..
-
-make check
-go test -race ./...
-go vet ./...
-go run ./cmd/connectorctl validate connectors/anthropic/connector.yaml connectors/deepseek/connector.yaml connectors/github/connector.yaml connectors/google/gemini/connector.yaml connectors/google/gmail/connector.yaml connectors/google/spreadsheet/connector.yaml connectors/linkedin/connector.yaml connectors/meta/connector.yaml connectors/mistral/connector.yaml connectors/moonshot/kimi/connector.yaml connectors/openai/connector.yaml connectors/slack/connector.yaml connectors/stripe/connector.yaml connectors/xai/connector.yaml
-go run ./cmd/connectorctl generate --check connectors/anthropic/connector.yaml
-go run ./cmd/connectorctl generate --check connectors/deepseek/connector.yaml
-go run ./cmd/connectorctl generate --check connectors/github/connector.yaml
-go run ./cmd/connectorctl generate --check connectors/google/gemini/connector.yaml
-go run ./cmd/connectorctl generate --check connectors/google/gmail/connector.yaml
-go run ./cmd/connectorctl generate --check connectors/google/spreadsheet/connector.yaml
-go run ./cmd/connectorctl generate --check connectors/linkedin/connector.yaml
-go run ./cmd/connectorctl generate --check connectors/meta/connector.yaml
-go run ./cmd/connectorctl generate --check connectors/mistral/connector.yaml
-go run ./cmd/connectorctl generate --check connectors/moonshot/kimi/connector.yaml
-go run ./cmd/connectorctl generate --check connectors/openai/connector.yaml
-go run ./cmd/connectorctl generate --check connectors/stripe/connector.yaml
-go run ./cmd/connectorctl generate --check connectors/xai/connector.yaml
-go run ./cmd/connectorctl catalog --check --registry connectors.yaml
-go run ./cmd/connectorctl release-matrix --registry connectors.yaml
-go run ./cmd/connectorctl catalog --registry connectors.yaml --output /tmp/catalog.yaml
-make test-dex-compat-current
+make test-common catalog-check
 ```
 
-The suite must prove:
+Run every registered connector, Studio bundle, and React package:
 
-- the SDK and every provider connector compile and test independently of
-  `go.work`;
-- generated operation-specific factories expose typed branch fields and typed,
-  non-serializable connector Connections;
-- the directory registry and generated catalog are complete and deterministic,
-  and release artifacts are versioned and checksummed;
-- typed `sdkgo.GoTo` targets can be converted into generic branch targets
-  without exposing their underlying Dex Step;
-- component release planning handles first, minor, patch, major, no-change,
-  path-scoped, and breaking-change cases;
-- branch definitions reject empty, duplicate, invalid, and missing defect
-  branches while allowing Mutations to omit uncertainty;
-- factories reject missing, duplicate, and unknown targets and require every
-  target to accept the typed factory output;
-- Query invalid Attempt routes to defect, while Mutation invalid Attempt and
-  explicit uncertainty route to uncertainty;
-- Retry is the only Attempt that returns a Go error;
-- configured Result Attributes and Streams are used directly by the factory;
-- operation defaults merge with non-zero application Execute overrides and
-  WaitFor-only options are rejected;
-- Call ID and idempotency key are stable across Dex attempt, Run, and Worker
-  changes and change with Step execution or operation identity;
-- RPC fails before credentials and providers;
-- manifest generation is deterministic, `--check` catches drift, and generated
-  Config/Credentials/branches/definitions compile;
-- OAuth2 and OIDC fixtures preserve protocol, connection kind, HTTPS endpoints,
-  discovery metadata, nonce, scopes, PKCE, operation authorization, and typed
-  secret fields without implementing provider OAuth;
-- `SecretString`, API keys, OAuth tokens, authorization headers, and provider
-  bodies do not enter Result, Failure, Receipt, Stream, or logs;
-- OpenAI provider classification, idempotency, response bounds, SSE,
-  uncertainty, and recovery tests remain green;
-- Gemini header-only API-key auth, redirect refusal, request mapping, finish
-  and block reason branches, response bounds, RetryInfo delays, and local input
-  validation tests remain green;
-- Meta passes the shared `llmtest` exchange suite with its streaming
-  Profile, Meta's 400 `content_policy_violation` block, mid-stream retry of
-  Meta's retryable error types and codes, including code-only error objects,
-  per-model `max` reasoning effort, and loopback-only test base URL, and its
-  model picker keeps only Muse Spark models visible;
-- Claude passes the shared `llmtest` exchange suite with its native Messages
-  wire format, the `anthropic-version` and optional `anthropic-workspace-id`
-  headers, per-model effort and temperature rules, the spend-cap 429 and 402
-  as quota, 501 kept a rejection, mid-stream retry of Claude's transient
-  error types, and loopback-only test base URL, and its model picker pages
-  the live model list with `after_id`;
-- xAI Grok passes the shared `llmtest` exchange suite with its streaming
-  Profile and xAI's top-level `code` error envelope, per-model reasoning
-  efforts, the `end_turn` finish, an endpoint limited to the global and US
-  regional hosts, and a loopback-only test base URL, and its model picker
-  shows aliases, hides multi-agent and non-text models, and falls back to the
-  US regional list;
-- Mistral passes the shared `llmtest` exchange suite with its streaming
-  Profile, Mistral's top-level error envelope, the request-field allowlist
-  without `stream_options`, `model_length` truncation, `none` and `high`
-  reasoning effort only on adjustable-reasoning models, the three documented
-  endpoints, and loopback-only test base URL, and its model picker shows only
-  chat-capable, unarchived models and badges deprecation;
-- DeepSeek passes the shared `llmtest` exchange suite with its streaming
-  Profile, sends `json_object` output with the schema instruction and no
-  `/v1` path, keeps queued streams alive through keep-alive comments until the
-  stall rule retries a silent one, rejects temperatures and coerced efforts
-  locally, maps 402 insufficient balance to `QUOTA_EXHAUSTED`, and its model
-  picker labels models and hides any model that cannot return text;
-- Kimi passes the shared `llmtest` exchange suite with its streaming Profile,
-  a 400 `content_filter` mapped to blocked, 429 classified by error type
-  (exhausted quota rejected, overload and rate limit retried), mid-stream
-  retry of Kimi's retryable error types, locally rejected temperature and
-  per-model reasoning effort, the two-platform endpoint allowlist, and a
-  loopback-only test base URL, and its model picker falls back from the global
-  to the China platform and hides retired model families;
-- GitHub profile/email selection, scope/revocation branches, response bounds,
-  public-only pagination, deduplication, sorting, truncation, and rate-limit
-  delay tests remain green;
-- LinkedIn OIDC UserInfo claim filtering, verified-email, authorization,
-  not-found, response-bound, redirect, and rate-limit tests remain green;
-- Sheets query-before-mutate, duplicate-key, bounded-response, and uncertainty
-  tests remain green;
-- Gmail sender validation, MIME encoding, terminal rejection, rate-limit, and
-  uncertain-send tests remain green;
-- Stripe ACH request mapping, idempotency, reconciliation, response bounds,
-  redirect refusal, webhook signature/timestamp checks, durable-before-ack
-  delivery, event filtering, and secret redaction tests remain green;
-- Studio Host API, setup component, deterministic tarball, digest, and React
-  build tests remain green.
+```bash
+make check
+```
+
+Each connector README owns its exact unit, vet, integration, live, example, and
+UI verification commands. Connector modules always run with `GOWORK=off`; a
+local workspace is optional and generated with `make workspace`.
+
+The automated suite must prove these cross-connector contracts:
+
+- `catalog.yaml` is sorted, complete, safe, and contains each connector once;
+- every discovered manifest is registered and every registered directory has
+  a valid manifest, module path, matching company directory, and company logo;
+- public catalog expansion preserves the published schema, ordering, and
+  byte-for-byte determinism;
+- every operation has exactly one non-optional branch without naming any
+  connector, operation, branch, or timeout in shared tests;
+- generated Config, Credentials, definitions, factories, Triggers, branches,
+  Attributes, Streams, and defaults match each connector manifest;
+- generated code is current and standalone modules compile without a workspace;
+- release planning validates semantic-version transitions and produces only
+  pending connector releases by default;
+- UI and release artifacts are deterministic, checksummed, credential-safe,
+  and reject active or unsafe content;
+- secrets and provider payloads never enter durable state, Results, receipts,
+  Streams, logs, generated values, catalogs, or release artifacts.
+
+## Change selection and sharding
+
+Inspect all connectors or one changed range with the same selector used by CI:
+
+```bash
+go run ./cmd/connectorctl test-matrix --catalog catalog.yaml --scope all
+go run ./cmd/connectorctl test-matrix --catalog catalog.yaml --scope changed \
+  --base origin/main --head HEAD
+```
+
+Selector tests cover connector-local edits, catalog additions and removals,
+shared SDK or schema edits, documentation-only edits, nested connector paths,
+and fail-safe unknown shared source changes. Shard tests cover 1, 256, and more
+than 256 connectors, proving deterministic assignment without duplication or
+omission.
+
+CI behavior is accepted when:
+
+- pull requests and ordinary pushes test only affected connector shards;
+- shared contract changes select the complete catalog;
+- documentation, agent-rule, and directory-site-only changes run shared checks
+  without connector module jobs;
+- scheduled compatibility selects the complete catalog;
+- no matrix creates more than 256 jobs and Connector jobs cap parallelism at 32.
 
 ## Dex CLI and Web compatibility
 
-`make test-dex-compat-current` is the pull-request gate. It uses the Dex release
-pinned in `.dex-compat-version` and discovers every
-manifest and every example Flow containing `GetSteps`. Each current connector
-is exposed through a temporary file-backed Go module proxy at an exact test
-version, without adding a `replace` directive. The pinned Dex CLI runs
-schema 2.0 visualization twice in clean consumer modules. Output must be valid,
-free of error diagnostics, byte-for-byte deterministic, and contain complete
-connector identities.
-
-The same run builds real release metadata and Studio UI tarballs from the
-working tree. It injects the connector-owned compatibility test into the Web
-package from the matching Dex release. The test verifies catalog resolution,
-checksums, UI caching and sandbox headers, OAuth authorization parameters, and
-Dex Web's API-key and OAuth security suites with local mock providers.
-
-`make test-dex-compat-released` is the post-release check. It uses the pinned
-Dex baseline. The scheduled and manually dispatched canary sets
-`DEX_CLI_VERSION=latest`. Both variants
-selects the highest stable component tag for each connector, downloads public
-Go modules plus unmodified GitHub release metadata and UI assets, verifies all
-digests, and repeats the clean-consumer CLI and Dex Web checks. GitHub API,
-checksum, missing-release, and download errors fail the run.
-
-The logs identify the selected Dex tag, connector tag, source commit, and
-metadata digest. Use these overrides to reproduce a failure:
+Current compatibility uses the Dex release pinned in `.dex-compat-version` and
+accepts an explicit connector-directory set:
 
 ```bash
-DEX_CLI_VERSION=cli-v0.13.7 make test-dex-compat-current
-DEX_CLI_VERSION=latest make test-dex-compat-released
-DEX_CLI_VERSION=cli-v0.13.7 CONNECTOR_RELEASE_TAG=connectors/slack/v0.7.0 make test-dex-compat-released
+make test-dex-compat-current
 ```
 
-The scheduled latest-version canary intentionally fails when an existing
-connector release is incompatible with a newly published Dex release. Fix
-current source, publish a new connector component version, and rerun the tagged
-canary; do not add a permanent allowlist. A failure opens or updates the single
-`dex-compatibility` issue. A later successful scheduled run closes it.
+It builds selected connectors through a temporary file-backed Go module proxy,
+runs schema 2.0 visualization twice in clean consumer modules, and checks valid,
+deterministic output with complete identities. It also builds real release
+metadata and optional Studio UI artifacts, then runs Dex Web's catalog,
+checksum, caching, sandbox, OAuth, and API-key security suites.
 
-## Real Dex Server integration
+Released compatibility downloads the selected public component tags and their
+unmodified release artifacts:
 
-Install Temporal CLI 1.9.1 and start the Dex CLI version pinned in
-`.dex-compat-version`. Connector Go
-modules continue to use their pinned Dex SDK versions:
+```bash
+make test-dex-compat-released
+```
+
+The scheduled canary uses `DEX_CLI_VERSION=latest` and the complete catalog.
+Logs identify the selected Dex tag, connector tag, source commit, and artifact
+digest. Exact tags can be supplied for failure reproduction.
+
+## Real Dex integration
+
+With the pinned Dex CLI development server running, execute:
 
 ```bash
 dexcli dev
 make test-integration
 ```
 
-The integration suite verifies:
-
-- a standalone fixture connector consumes only the public SDK API to define
-  typed Connection/Credentials, Query/Mutation operations, and
-  operation-specific factories;
-- the fixture connector registers those factories in a real Dex Flow and
-  preserves Call ID, idempotency, Attribute, Stream, and retry behavior;
-- provider connector examples register factory Steps with typed `StepRef` targets;
-- GitHub and LinkedIn signup profile factories persist their typed Result
-  Attributes atomically with terminal transitions;
-- Query Retry succeeds under the generated Dex retry defaults;
-- terminal Query branch does not use Dex retry;
-- Mutation rate-limit retry retains Call ID/idempotency key and creates one
-  provider write;
-- post-dispatch uncertainty routes to a reconciliation factory Query without
-  repeating the Mutation;
-- Result Attribute and branch transition commit together;
-- a registered target's real Step options apply after StepRef resolution;
-- Worker restart resumes recovery;
-- Flow RPC cannot invoke a provider;
-- a factory OpenAI Mutation writes structured/text Streams, preserves text
-  order, flushes the tail, and persists its typed Result Attribute;
-- retry Stream messages retain Call ID and separate Attempt/Sequence.
-- Sheets query-before-mutate commits one stable keyed row and the branch
-  transition with its Result Attribute.
-- Gmail unknown sends route to the uncertainty branch without an automatic
-  resend.
-- A silent Gemini generation longer than a short heartbeat override retries,
-  the Gemini heartbeat default outlives it, a `RetryInfo` delay schedules the
-  Dex retry, and a replacement Worker retries a generation interrupted by a
-  Worker crash.
-- The Gemini generate-summary example completes generated, blocked, and
-  truncated routes and fails an unwired rejection without a retry.
-- Meta `generateText` runs the shared `llmtest` real-Dex scenarios, and the
-  Meta summarize-text example completes generated and blocked routes and
-  streams the generated text.
-- Claude `generateText` runs the shared `llmtest` real-Dex scenarios, and the
-  Claude summarize-text example completes generated and refused routes and
-  streams the generated text.
-- xAI Grok `generateText` runs the shared `llmtest` real-Dex scenarios, and
-  the Grok summarize-text example completes generated and blocked routes and
-  streams the generated text.
-- Mistral `generateText` runs the shared `llmtest` real-Dex scenarios, and the
-  mistral-summarize-text example completes generated, `model_length`
-  truncated, and blocked routes and streams the generated text.
-- DeepSeek `generateText` runs the shared `llmtest` real-Dex scenarios, and
-  the DeepSeek summarize-text example completes generated and blocked routes,
-  streams the generated text, and fails an unwired 402 without a retry.
-- Kimi `generateText` runs the shared `llmtest` real-Dex scenarios, and the
-  Kimi summarize-text example completes generated and `content_filter`
-  blocked routes, streams the generated text, and fails an unwired quota
-  rejection without a retry.
-- a Trigger inbox consumes an RPC event whose Flow completed or never started,
-  and a restarted runner replays past it (Slack thread-approval steps 8 and 9),
-  logging each skip once and each replay summary;
-- inbox replay waits for an unavailable Worker and then applies the pending RPC
-  exactly once, logging every backoff with its scheduled delay and the recovery;
-- an RPC handler's `MarkTriggerUndeliverable` consumes the event without
-  applying it;
-- a handler that returns another Flow's transient Dex error keeps the event
-  pending until the other Flow recovers;
-- a Flow start that the Dex Server rejects, such as a Step heartbeat below the
-  server minimum, keeps its event, and replay starts the fixed Flow;
-- an RPC that Dex applied but whose response the client cannot decode is
-  consumed after one application;
-- the Gmail ordered runner consumes a reply to a completed thread, completes a
-  thread whose root and reply share one poll page or arrive between the poll's
-  list calls, and keeps polling after a restart rescan.
-
-## Manual API and Dex Web acceptance
-
-1. Read the generated provider files and confirm YAML is the only source of
-   Config, Credentials, branch constants, definitions, and defaults.
-2. Confirm a Flow can be authored with factory values directly inside
-   `dex.DefineStep`/`dex.DefineStartStep`, without provider concrete Steps.
-3. Confirm every required branch has one target. An omitted optional branch
-   ForceFails the Flow when selected. Mutation uncertainty cannot be mistaken
-   for a provider rejection.
-4. Confirm `ConnectionRef` is bound at Flow registration, not accepted from
-   public start input.
-5. Confirm the Flow explicitly registers each Attribute and Stream passed to a
-   Connector Step.
-6. Generate schema 2.0 with the pinned dexcli baseline and verify factory Steps, branches,
-   Result Attributes, and Streams render in Dex Web 2.0.
+Shared integration tests cover behavior that crosses real Worker, Client,
+persistence, retry, Trigger, RPC, Attribute, Stream, or transition boundaries.
+Connector-local integration tests own provider-specific branches, execution
+defaults, delivery ordering, recovery, and example behavior. Unit tests do not
+simulate those boundaries merely to duplicate an integration assertion.
 
 ## Release acceptance
 
-1. Raise GitHub's manifest version by one valid SemVer step, merge to `main`,
-   and confirm its directory-prefixed tag and release artifact are created.
-2. Run the opt-in GitHub live test with a dedicated account and exact
-   `read:user user:email` scopes; confirm no private repository data is read.
-3. Raise LinkedIn's manifest version and confirm the automatic workflow creates
-   only the declared release.
-4. Run the opt-in LinkedIn live test with a dedicated member and exact
-   `openid profile email` scopes; confirm only OIDC UserInfo claims are read.
-5. In clean temporary modules, download each public tag with `GOWORK=off` and
-   compile its operation-specific factory example.
-6. Confirm each release note contains only commits that changed that connector
-   and retains `## Breaking Changes` with `None.` when appropriate.
-7. Raise Google Sheets and Gmail versions in one PR. Confirm the matrix releases
-   both independently with `connector-release.json`, UI artifacts, and digests.
-8. Confirm the Pages catalog updates only after every requested release passes,
-   and a manual workflow rerun repairs missing assets or completion markers
-   without replacing tags.
+Normal `main` pushes produce a matrix containing only connectors whose manifest
+version requests the next patch, minor, or major release. Each connector job
+runs current compatibility before publication and released compatibility after
+publication. More than 256 pending releases fails with guidance to split work
+by independently released module.
 
-The required compatibility gate uses `.dex-compat-version`. The scheduled
-canary selects the latest stable Dex CLI release dynamically. Connector
-releases must retain deterministic schema 2.0 output and complete
-nodes, branches, Attribute edges, Stream edges, and trigger bindings in Dex Web
-2.0.
+A workflow rerun keeps its original matrix. Manual repair accepts one optional,
+catalog-validated connector directory; an empty value rebuilds only the public
+catalog and site. Pages deployment occurs only after every requested release
+succeeds or when no connector release is requested.
+
+The public `ConnectorCatalog`, `dist/pages/catalog.yaml`, URLs, search, and
+connector detail wire format remain unchanged.
 
 ## Documentation and UI/UX
 
-Contract changes update `connector-contract.md`; component/data flow changes
-update `architecture.md`; provider manifests and their examples show canonical
-authoring. The shared G2c contract ships the bundle format and
-protocol; SuperVerse G6a owns the BFF loader, OAuth callbacks, credential
-broker, and Studio environment pages.
+Public contract changes update the owning root contract page. Every connector
+README owns provider architecture, security boundaries, runnable examples, and
+verification. Documentation snippets come from runnable files in that
+connector's `examples/` tree.
+
+React primitives and Connector Studio behavior are unchanged. Directory-site
+virtualization and pagination for very large catalogs are intentionally outside
+this acceptance scope.

@@ -5,7 +5,7 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "dev": "go run ../cmd/connectorctl catalog --registry ../connectors.yaml --output .catalog.yaml && vite",
+    "dev": "GOWORK=off go run ../cmd/connectorctl catalog --catalog ../catalog.yaml --output .catalog.yaml && vite",
     "build": "tsc -p tsconfig.json && vite build",
     "test": "node --test src/catalogModel.test.mjs scripts/render-card.test.mjs scripts/contributors.test.mjs",
     "render-card": "node scripts/render-card.mjs"

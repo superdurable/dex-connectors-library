@@ -25,13 +25,14 @@ import (
 )
 
 const (
-	connectorDirectoryListAPIVersion = "connectors.dex.dev/directory-list/v1alpha1"
+	connectorCatalogSourceAPIVersion = "connectors.dex.dev/catalog-source/v1alpha1"
 	connectorCatalogAPIVersion       = "connectors.dex.dev/catalog/v1alpha1"
+	maximumGitHubActionsMatrixJobs   = 256
 )
 
 var connectorVersionPattern = regexp.MustCompile(`^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$`)
 
-type connectorDirectoryList struct {
+type connectorCatalogSource struct {
 	APIVersion  string   `yaml:"apiVersion"`
 	Kind        string   `yaml:"kind"`
 	Directories []string `yaml:"directories"`
@@ -80,18 +81,23 @@ type connectorReleaseMatrixItem struct {
 	DisplayName  string `json:"display_name"`
 }
 
+type reachableConnectorRelease struct {
+	Version      string
+	SourceCommit string
+}
+
 func catalogCommand(args []string) error {
 	flags := flag.NewFlagSet("catalog", flag.ContinueOnError)
 	check := flags.Bool("check", false, "validate without writing a catalog")
-	registryPath := flags.String("registry", "", "connector directory registry")
+	catalogPath := flags.String("catalog", "", "connector catalog source")
 	outputPath := flags.String("output", "", "generated catalog path")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
-	if flags.NArg() != 0 || *registryPath == "" || (*check && *outputPath != "") || (!*check && *outputPath == "") {
-		return errors.New("usage: connectorctl catalog --registry PATH (--check | --output PATH)")
+	if flags.NArg() != 0 || *catalogPath == "" || (*check && *outputPath != "") || (!*check && *outputPath == "") {
+		return errors.New("usage: connectorctl catalog --catalog PATH (--check | --output PATH)")
 	}
-	entries, err := loadConnectorDirectoryEntries(*registryPath)
+	entries, err := loadConnectorDirectoryEntries(*catalogPath)
 	if err != nil {
 		return err
 	}
@@ -113,37 +119,67 @@ func catalogCommand(args []string) error {
 
 func releaseMatrixCommand(args []string) error {
 	flags := flag.NewFlagSet("release-matrix", flag.ContinueOnError)
-	registryPath := flags.String("registry", "", "connector directory registry")
+	catalogPath := flags.String("catalog", "", "connector catalog source")
+	directoryFilter := flags.String("directory", "", "one registered connector directory")
 	includePublished := flags.Bool("include-published", false, "include versions with reachable tags for recovery checks")
+	includePublishedAt := flags.String("include-published-at", "", "include published versions whose tag resolves to this revision")
 	githubOutputPath := flags.String("github-output", "", "GitHub Actions output path")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
-	if flags.NArg() != 0 || *registryPath == "" {
-		return errors.New("usage: connectorctl release-matrix --registry PATH [--include-published] [--github-output PATH]")
+	if flags.NArg() != 0 || *catalogPath == "" {
+		return errors.New("usage: connectorctl release-matrix --catalog PATH [--directory DIRECTORY] [--include-published | --include-published-at REV] [--github-output PATH]")
 	}
-	entries, err := loadConnectorDirectoryEntries(*registryPath)
+	if *includePublished && *includePublishedAt != "" {
+		return errors.New("include-published and include-published-at cannot be combined")
+	}
+	entries, err := loadConnectorDirectoryEntries(*catalogPath)
 	if err != nil {
 		return err
 	}
-	repositoryRoot := filepath.Dir(*registryPath)
+	if *directoryFilter != "" {
+		var selected *connectorDirectoryEntry
+		for index := range entries {
+			if entries[index].Directory == *directoryFilter {
+				selected = &entries[index]
+				break
+			}
+		}
+		if selected == nil {
+			return fmt.Errorf("connector directory is not in the catalog: %s", *directoryFilter)
+		}
+		entries = []connectorDirectoryEntry{*selected}
+	}
+	repositoryRoot := filepath.Dir(*catalogPath)
+	latestReleases, err := latestReachableConnectorReleases(repositoryRoot)
+	if err != nil {
+		return err
+	}
+	includedSourceCommit := ""
+	if *includePublishedAt != "" {
+		includedSourceCommit, err = gitRevisionCommit(repositoryRoot, *includePublishedAt)
+		if err != nil {
+			return err
+		}
+	}
 	matrix := connectorReleaseMatrix{Include: make([]connectorReleaseMatrixItem, 0, len(entries))}
 	for _, entry := range entries {
-		latestVersion, latestErr := latestReachableConnectorVersion(repositoryRoot, entry.Directory+"/")
-		if latestErr != nil {
-			return latestErr
-		}
-		isPending, transitionErr := validateConnectorVersionTransition(latestVersion, entry.Manifest.Metadata.Version)
+		latestRelease := latestReleases[entry.Directory]
+		isPending, transitionErr := validateConnectorVersionTransition(latestRelease.Version, entry.Manifest.Metadata.Version)
 		if transitionErr != nil {
 			return fmt.Errorf("%s: %w", entry.Directory, transitionErr)
 		}
-		if !isPending && !*includePublished {
+		isPublishedAtIncludedSource := includedSourceCommit != "" && latestRelease.SourceCommit == includedSourceCommit
+		if !isPending && !*includePublished && !isPublishedAtIncludedSource {
 			continue
 		}
 		matrix.Include = append(matrix.Include, connectorReleaseMatrixItem{
 			Directory: entry.Directory, ManifestPath: entry.ManifestPath, TagPrefix: entry.Directory + "/",
 			Version: entry.Manifest.Metadata.Version, DisplayName: entry.Manifest.Metadata.DisplayName,
 		})
+	}
+	if err := validateConnectorReleaseMatrixSize(matrix); err != nil {
+		return err
 	}
 	encoded, err := json.Marshal(matrix)
 	if err != nil {
@@ -160,53 +196,29 @@ func releaseMatrixCommand(args []string) error {
 	return nil
 }
 
-func loadConnectorDirectoryEntries(registryPath string) ([]connectorDirectoryEntry, error) {
-	registryContents, err := os.ReadFile(registryPath)
+func validateConnectorReleaseMatrixSize(matrix connectorReleaseMatrix) error {
+	if len(matrix.Include) > maximumGitHubActionsMatrixJobs {
+		return fmt.Errorf("release matrix contains %d connectors; split the release into at most %d connectors", len(matrix.Include), maximumGitHubActionsMatrixJobs)
+	}
+	return nil
+}
+
+func loadConnectorDirectoryEntries(catalogPath string) ([]connectorDirectoryEntry, error) {
+	catalogSource, err := loadConnectorCatalogSource(catalogPath)
 	if err != nil {
-		return nil, fmt.Errorf("open connector directory registry: %w", err)
+		return nil, err
 	}
-	decoder := yaml.NewDecoder(strings.NewReader(string(registryContents)))
-	decoder.KnownFields(true)
-	var registry connectorDirectoryList
-	if err := decoder.Decode(&registry); err != nil {
-		return nil, fmt.Errorf("decode connector directory registry: %w", err)
-	}
-	var extraDocument any
-	if err := decoder.Decode(&extraDocument); err != io.EOF {
-		if err == nil {
-			return nil, errors.New("connector directory registry must contain one YAML document")
-		}
-		return nil, fmt.Errorf("decode connector directory registry: %w", err)
-	}
-	if registry.APIVersion != connectorDirectoryListAPIVersion {
-		return nil, fmt.Errorf("connector directory registry apiVersion must be %s", connectorDirectoryListAPIVersion)
-	}
-	if registry.Kind != "ConnectorDirectoryList" {
-		return nil, errors.New("connector directory registry kind must be ConnectorDirectoryList")
-	}
-	if len(registry.Directories) == 0 {
-		return nil, errors.New("connector directory registry is empty")
-	}
-	if !sort.StringsAreSorted(registry.Directories) {
-		return nil, errors.New("connector directories must be sorted")
-	}
-	repositoryRoot, err := filepath.Abs(filepath.Dir(registryPath))
+	repositoryRoot, err := filepath.Abs(filepath.Dir(catalogPath))
 	if err != nil {
 		return nil, fmt.Errorf("resolve repository root: %w", err)
 	}
-	registeredDirectories := make(map[string]bool, len(registry.Directories))
-	for _, directory := range registry.Directories {
-		if err := validateConnectorDirectory(directory); err != nil {
-			return nil, err
-		}
-		if registeredDirectories[directory] {
-			return nil, fmt.Errorf("duplicate connector directory: %s", directory)
-		}
+	registeredDirectories := make(map[string]bool, len(catalogSource.Directories))
+	for _, directory := range catalogSource.Directories {
 		registeredDirectories[directory] = true
 	}
-	connectorIDs := make(map[string]bool, len(registry.Directories))
-	entries := make([]connectorDirectoryEntry, 0, len(registry.Directories))
-	for _, directory := range registry.Directories {
+	connectorIDs := make(map[string]bool, len(catalogSource.Directories))
+	entries := make([]connectorDirectoryEntry, 0, len(catalogSource.Directories))
+	for _, directory := range catalogSource.Directories {
 		if err := rejectSymlinkPath(repositoryRoot, directory); err != nil {
 			return nil, err
 		}
@@ -251,6 +263,53 @@ func loadConnectorDirectoryEntries(registryPath string) ([]connectorDirectoryEnt
 		return nil, err
 	}
 	return entries, nil
+}
+
+func loadConnectorCatalogSource(catalogPath string) (connectorCatalogSource, error) {
+	catalogContents, err := os.ReadFile(catalogPath)
+	if err != nil {
+		return connectorCatalogSource{}, fmt.Errorf("open connector catalog source: %w", err)
+	}
+	return decodeConnectorCatalogSource(catalogContents)
+}
+
+func decodeConnectorCatalogSource(catalogContents []byte) (connectorCatalogSource, error) {
+	decoder := yaml.NewDecoder(strings.NewReader(string(catalogContents)))
+	decoder.KnownFields(true)
+	var catalogSource connectorCatalogSource
+	if err := decoder.Decode(&catalogSource); err != nil {
+		return connectorCatalogSource{}, fmt.Errorf("decode connector catalog source: %w", err)
+	}
+	var extraDocument any
+	if err := decoder.Decode(&extraDocument); err != io.EOF {
+		if err == nil {
+			return connectorCatalogSource{}, errors.New("connector catalog source must contain one YAML document")
+		}
+		return connectorCatalogSource{}, fmt.Errorf("decode connector catalog source: %w", err)
+	}
+	if catalogSource.APIVersion != connectorCatalogSourceAPIVersion {
+		return connectorCatalogSource{}, fmt.Errorf("connector catalog source apiVersion must be %s", connectorCatalogSourceAPIVersion)
+	}
+	if catalogSource.Kind != "ConnectorCatalogSource" {
+		return connectorCatalogSource{}, errors.New("connector catalog source kind must be ConnectorCatalogSource")
+	}
+	if len(catalogSource.Directories) == 0 {
+		return connectorCatalogSource{}, errors.New("connector catalog source is empty")
+	}
+	if !sort.StringsAreSorted(catalogSource.Directories) {
+		return connectorCatalogSource{}, errors.New("connector directories must be sorted")
+	}
+	registeredDirectories := make(map[string]bool, len(catalogSource.Directories))
+	for _, directory := range catalogSource.Directories {
+		if err := validateConnectorDirectory(directory); err != nil {
+			return connectorCatalogSource{}, err
+		}
+		if registeredDirectories[directory] {
+			return connectorCatalogSource{}, fmt.Errorf("duplicate connector directory: %s", directory)
+		}
+		registeredDirectories[directory] = true
+	}
+	return catalogSource, nil
 }
 
 func connectorCompanyDirectory(directory string) (string, error) {
@@ -413,24 +472,53 @@ func encodeConnectorCatalog(entries []connectorDirectoryEntry) ([]byte, error) {
 	return encoded, nil
 }
 
-func latestReachableConnectorVersion(repositoryRoot, tagPrefix string) (string, error) {
-	command := exec.Command("git", "for-each-ref", "--merged=HEAD", "--format=%(refname:short)", "refs/tags/"+tagPrefix+"*")
+func latestReachableConnectorReleases(repositoryRoot string) (map[string]reachableConnectorRelease, error) {
+	command := exec.Command(
+		"git", "for-each-ref", "--merged=HEAD",
+		"--format=%(refname:short)%09%(objectname)%09%(*objectname)",
+		"refs/tags/connectors/",
+	)
 	command.Dir = repositoryRoot
 	output, err := command.Output()
 	if err != nil {
-		return "", fmt.Errorf("list connector release tags: %w", err)
+		return nil, fmt.Errorf("list connector release tags: %w", err)
 	}
-	latest := ""
-	for _, tag := range strings.Fields(string(output)) {
-		version := strings.TrimPrefix(tag, tagPrefix)
+	latest := make(map[string]reachableConnectorRelease)
+	for _, line := range strings.Split(strings.TrimSuffix(string(output), "\n"), "\n") {
+		fields := strings.Split(line, "\t")
+		if len(fields) != 3 {
+			continue
+		}
+		tag := fields[0]
+		separator := strings.LastIndex(tag, "/")
+		if separator < 0 {
+			continue
+		}
+		directory := tag[:separator]
+		version := tag[separator+1:]
 		if !connectorVersionPattern.MatchString(version) {
 			continue
 		}
-		if latest == "" || compareConnectorVersions(version, latest) > 0 {
-			latest = version
+		current := latest[directory]
+		if current.Version == "" || compareConnectorVersions(version, current.Version) > 0 {
+			sourceCommit := fields[1]
+			if fields[2] != "" {
+				sourceCommit = fields[2]
+			}
+			latest[directory] = reachableConnectorRelease{Version: version, SourceCommit: sourceCommit}
 		}
 	}
 	return latest, nil
+}
+
+func gitRevisionCommit(repositoryRoot string, revision string) (string, error) {
+	command := exec.Command("git", "rev-parse", "--verify", revision+"^{commit}")
+	command.Dir = repositoryRoot
+	output, err := command.Output()
+	if err != nil {
+		return "", fmt.Errorf("resolve Git revision %s: %w", revision, err)
+	}
+	return strings.TrimSpace(string(output)), nil
 }
 
 func validateConnectorVersionTransition(baseline, target string) (bool, error) {

@@ -4,6 +4,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -55,113 +56,244 @@ func TestConnectorVersionTransitions(t *testing.T) {
 	}
 }
 
-func TestDirectoryRegistryRejectsUnregisteredManifest(t *testing.T) {
+func TestCatalogSourceRejectsUnregisteredManifest(t *testing.T) {
 	repositoryRoot := t.TempDir()
 	writeConnectorFixture(t, repositoryRoot, "connectors/company/product", "example.com/connectors/company/product")
 	writeConnectorFixture(t, repositoryRoot, "connectors/company/platform/deep/service", "example.com/connectors/company/platform/deep/service")
-	registryPath := filepath.Join(repositoryRoot, "connectors.yaml")
-	require.NoError(t, os.WriteFile(registryPath, []byte(`apiVersion: connectors.dex.dev/directory-list/v1alpha1
-kind: ConnectorDirectoryList
+	catalogPath := filepath.Join(repositoryRoot, "catalog.yaml")
+	require.NoError(t, os.WriteFile(catalogPath, []byte(`apiVersion: connectors.dex.dev/catalog-source/v1alpha1
+kind: ConnectorCatalogSource
 directories:
   - connectors/company/product
 `), 0o600))
-	_, err := loadConnectorDirectoryEntries(registryPath)
+	_, err := loadConnectorDirectoryEntries(catalogPath)
 	require.ErrorContains(t, err, "not registered")
 }
 
-func TestDirectoryRegistryRejectsSymlinkedDirectory(t *testing.T) {
+func TestCatalogSourceRejectsSymlinkedDirectory(t *testing.T) {
 	repositoryRoot := t.TempDir()
 	writeConnectorFixture(t, repositoryRoot, "actual/example", "example.com/connectors/company/example")
 	require.NoError(t, os.MkdirAll(filepath.Join(repositoryRoot, "connectors", "company"), 0o755))
 	require.NoError(t, os.Symlink(filepath.Join(repositoryRoot, "actual", "example"), filepath.Join(repositoryRoot, "connectors", "company", "example")))
-	registryPath := filepath.Join(repositoryRoot, "connectors.yaml")
-	require.NoError(t, os.WriteFile(registryPath, []byte(`apiVersion: connectors.dex.dev/directory-list/v1alpha1
-kind: ConnectorDirectoryList
+	catalogPath := filepath.Join(repositoryRoot, "catalog.yaml")
+	require.NoError(t, os.WriteFile(catalogPath, []byte(`apiVersion: connectors.dex.dev/catalog-source/v1alpha1
+kind: ConnectorCatalogSource
 directories:
   - connectors/company/example
 `), 0o600))
-	_, err := loadConnectorDirectoryEntries(registryPath)
+	_, err := loadConnectorDirectoryEntries(catalogPath)
 	require.ErrorContains(t, err, "cannot contain symlinks")
 }
 
-func TestDirectoryRegistryRejectsMissingDuplicateAndUnsortedDirectories(t *testing.T) {
+func TestCatalogSourceRejectsMissingDuplicateAndUnsortedDirectories(t *testing.T) {
 	repositoryRoot := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(repositoryRoot, "connectors", "missing"), 0o755))
-	registryPath := filepath.Join(repositoryRoot, "connectors.yaml")
-	require.NoError(t, os.WriteFile(registryPath, []byte(`apiVersion: connectors.dex.dev/directory-list/v1alpha1
-kind: ConnectorDirectoryList
+	catalogPath := filepath.Join(repositoryRoot, "catalog.yaml")
+	require.NoError(t, os.WriteFile(catalogPath, []byte(`apiVersion: connectors.dex.dev/catalog-source/v1alpha1
+kind: ConnectorCatalogSource
 directories:
   - connectors/missing
 `), 0o600))
-	_, err := loadConnectorDirectoryEntries(registryPath)
+	_, err := loadConnectorDirectoryEntries(catalogPath)
 	require.ErrorContains(t, err, "connector manifest is missing")
 
-	require.NoError(t, os.WriteFile(registryPath, []byte(`apiVersion: connectors.dex.dev/directory-list/v1alpha1
-kind: ConnectorDirectoryList
+	require.NoError(t, os.WriteFile(catalogPath, []byte(`apiVersion: connectors.dex.dev/catalog-source/v1alpha1
+kind: ConnectorCatalogSource
 directories:
   - connectors/missing
   - connectors/missing
 `), 0o600))
-	_, err = loadConnectorDirectoryEntries(registryPath)
+	_, err = loadConnectorDirectoryEntries(catalogPath)
 	require.ErrorContains(t, err, "duplicate connector directory")
 
-	require.NoError(t, os.WriteFile(registryPath, []byte(`apiVersion: connectors.dex.dev/directory-list/v1alpha1
-kind: ConnectorDirectoryList
+	require.NoError(t, os.WriteFile(catalogPath, []byte(`apiVersion: connectors.dex.dev/catalog-source/v1alpha1
+kind: ConnectorCatalogSource
 directories:
   - connectors/zeta
   - connectors/alpha
 `), 0o600))
-	_, err = loadConnectorDirectoryEntries(registryPath)
+	_, err = loadConnectorDirectoryEntries(catalogPath)
 	require.ErrorContains(t, err, "must be sorted")
 }
 
 func TestReleaseMatrixFindsEveryDeclaredRepositoryVersion(t *testing.T) {
 	githubOutput := filepath.Join(t.TempDir(), "github-output")
 	require.NoError(t, releaseMatrixCommand([]string{
-		"--registry", filepath.Join("..", "..", "connectors.yaml"),
+		"--catalog", filepath.Join("..", "..", "catalog.yaml"),
 		"--include-published",
 		"--github-output", githubOutput,
 	}))
 	contents, err := os.ReadFile(githubOutput)
 	require.NoError(t, err)
-	require.Contains(t, string(contents), fmt.Sprintf("count=%d", len(registeredConnectorDirectories(t))))
-	require.Contains(t, string(contents), `"directory":"connectors/google/gmail"`)
-	require.Contains(t, string(contents), fmt.Sprintf(`"version":%q`, readManifestIdentity(t, "connectors/google/gmail").Version))
+	entries, err := loadConnectorDirectoryEntries(filepath.Join("..", "..", "catalog.yaml"))
+	require.NoError(t, err)
+	require.Contains(t, string(contents), fmt.Sprintf("count=%d", len(entries)))
+	for _, entry := range entries {
+		require.Contains(t, string(contents), fmt.Sprintf(`"directory":%q`, entry.Directory))
+		require.Contains(t, string(contents), fmt.Sprintf(`"version":%q`, entry.Manifest.Metadata.Version))
+	}
 }
 
-func TestDirectoryRegistryRejectsMissingCompanyLogo(t *testing.T) {
+func TestReleaseMatrixDefaultsToPendingVersions(t *testing.T) {
+	catalogPath := filepath.Join("..", "..", "catalog.yaml")
+	entries, err := loadConnectorDirectoryEntries(catalogPath)
+	require.NoError(t, err)
+	latestReleases, err := latestReachableConnectorReleases(filepath.Dir(catalogPath))
+	require.NoError(t, err)
+	expectedDirectories := []string{}
+	for _, entry := range entries {
+		isPending, transitionErr := validateConnectorVersionTransition(
+			latestReleases[entry.Directory].Version,
+			entry.Manifest.Metadata.Version,
+		)
+		require.NoError(t, transitionErr)
+		if isPending {
+			expectedDirectories = append(expectedDirectories, entry.Directory)
+		}
+	}
+
+	githubOutput := filepath.Join(t.TempDir(), "github-output")
+	require.NoError(t, releaseMatrixCommand([]string{
+		"--catalog", catalogPath,
+		"--github-output", githubOutput,
+	}))
+	matrix := readReleaseMatrixOutput(t, githubOutput)
+	actualDirectories := make([]string, 0, len(matrix.Include))
+	for _, item := range matrix.Include {
+		actualDirectories = append(actualDirectories, item.Directory)
+	}
+	require.Equal(t, expectedDirectories, actualDirectories)
+}
+
+func TestReleaseMatrixRejectsMoreThanGitHubJobLimit(t *testing.T) {
+	require.NoError(t, validateConnectorReleaseMatrixSize(connectorReleaseMatrix{
+		Include: make([]connectorReleaseMatrixItem, maximumGitHubActionsMatrixJobs),
+	}))
+	require.ErrorContains(t, validateConnectorReleaseMatrixSize(connectorReleaseMatrix{
+		Include: make([]connectorReleaseMatrixItem, maximumGitHubActionsMatrixJobs+1),
+	}), "split the release")
+}
+
+func TestCatalogSourceRejectsMissingCompanyLogo(t *testing.T) {
 	repositoryRoot := t.TempDir()
 	writeConnectorFixture(t, repositoryRoot, "connectors/acme/mail", "example.com/connectors/acme/mail")
 	require.NoError(t, os.Remove(filepath.Join(repositoryRoot, "connectors", "acme", "logo.svg")))
-	registryPath := filepath.Join(repositoryRoot, "connectors.yaml")
-	require.NoError(t, os.WriteFile(registryPath, []byte(`apiVersion: connectors.dex.dev/directory-list/v1alpha1
-kind: ConnectorDirectoryList
+	catalogPath := filepath.Join(repositoryRoot, "catalog.yaml")
+	require.NoError(t, os.WriteFile(catalogPath, []byte(`apiVersion: connectors.dex.dev/catalog-source/v1alpha1
+kind: ConnectorCatalogSource
 directories:
   - connectors/acme/mail
 `), 0o600))
-	_, err := loadConnectorDirectoryEntries(registryPath)
+	_, err := loadConnectorDirectoryEntries(catalogPath)
 	require.ErrorContains(t, err, "company logo")
 }
 
-func TestDirectoryRegistryRejectsCompanyDirectoryMismatch(t *testing.T) {
+func TestCatalogSourceRejectsCompanyDirectoryMismatch(t *testing.T) {
 	repositoryRoot := t.TempDir()
 	writeConnectorFixture(t, repositoryRoot, "connectors/acme/mail", "example.com/connectors/acme/mail")
 	manifestPath := filepath.Join(repositoryRoot, "connectors", "acme", "mail", "connector.yaml")
 	manifest, err := os.ReadFile(manifestPath)
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(manifestPath, []byte(strings.Replace(string(manifest), "company: acme", "company: Other", 1)), 0o600))
-	registryPath := filepath.Join(repositoryRoot, "connectors.yaml")
-	require.NoError(t, os.WriteFile(registryPath, []byte(`apiVersion: connectors.dex.dev/directory-list/v1alpha1
-kind: ConnectorDirectoryList
+	catalogPath := filepath.Join(repositoryRoot, "catalog.yaml")
+	require.NoError(t, os.WriteFile(catalogPath, []byte(`apiVersion: connectors.dex.dev/catalog-source/v1alpha1
+kind: ConnectorCatalogSource
 directories:
   - connectors/acme/mail
 `), 0o600))
-	_, err = loadConnectorDirectoryEntries(registryPath)
+	_, err = loadConnectorDirectoryEntries(catalogPath)
 	require.ErrorContains(t, err, "must match directory acme")
 }
 
+func TestCatalogSourceRejectsDuplicateConnectorIDAndModulePathMismatch(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	writeConnectorFixture(t, repositoryRoot, "connectors/acme/chat", "example.com/connectors/acme/chat")
+	writeConnectorFixture(t, repositoryRoot, "connectors/other/mail", "example.com/connectors/other/mail")
+	catalogPath := filepath.Join(repositoryRoot, "catalog.yaml")
+	require.NoError(t, os.WriteFile(catalogPath, []byte(`apiVersion: connectors.dex.dev/catalog-source/v1alpha1
+kind: ConnectorCatalogSource
+directories:
+  - connectors/acme/chat
+  - connectors/other/mail
+`), 0o600))
+	_, err := loadConnectorDirectoryEntries(catalogPath)
+	require.ErrorContains(t, err, "duplicate connector ID")
+
+	require.NoError(t, os.WriteFile(
+		filepath.Join(repositoryRoot, "connectors", "other", "mail", "connector.yaml"),
+		[]byte(strings.Replace(readFixtureManifest(t), "name: google-sheets-fixture", "name: other-mail", 1)),
+		0o600,
+	))
+	_, err = loadConnectorDirectoryEntries(catalogPath)
+	require.ErrorContains(t, err, "company Google must match directory other")
+
+	manifestPath := filepath.Join(repositoryRoot, "connectors", "other", "mail", "connector.yaml")
+	manifest, readErr := os.ReadFile(manifestPath)
+	require.NoError(t, readErr)
+	require.NoError(t, os.WriteFile(manifestPath, []byte(strings.Replace(string(manifest), "company: Google", "company: other", 1)), 0o600))
+	require.NoError(t, os.WriteFile(
+		filepath.Join(repositoryRoot, "connectors", "other", "mail", "go.mod"),
+		[]byte("module example.com/wrong\n\ngo 1.24\n"),
+		0o600,
+	))
+	_, err = loadConnectorDirectoryEntries(catalogPath)
+	require.ErrorContains(t, err, "must end in /connectors/other/mail")
+}
+
 func TestCatalogCheckAcceptsRepositoryCompanies(t *testing.T) {
-	require.NoError(t, catalogCommand([]string{"--check", "--registry", filepath.Join("..", "..", "connectors.yaml")}))
+	require.NoError(t, catalogCommand([]string{"--check", "--catalog", filepath.Join("..", "..", "catalog.yaml")}))
+}
+
+func TestReleaseMatrixFiltersOneCatalogDirectory(t *testing.T) {
+	entries, err := loadConnectorDirectoryEntries(filepath.Join("..", "..", "catalog.yaml"))
+	require.NoError(t, err)
+	selectedDirectory := entries[0].Directory
+	githubOutput := filepath.Join(t.TempDir(), "github-output")
+	require.NoError(t, releaseMatrixCommand([]string{
+		"--catalog", filepath.Join("..", "..", "catalog.yaml"),
+		"--directory", selectedDirectory,
+		"--include-published",
+		"--github-output", githubOutput,
+	}))
+	contents, err := os.ReadFile(githubOutput)
+	require.NoError(t, err)
+	require.Contains(t, string(contents), "count=1")
+	require.Contains(t, string(contents), fmt.Sprintf(`"directory":%q`, selectedDirectory))
+	require.ErrorContains(t, releaseMatrixCommand([]string{
+		"--catalog", filepath.Join("..", "..", "catalog.yaml"),
+		"--directory", "connectors/not-registered",
+	}), "not in the catalog")
+}
+
+func TestReleaseMatrixIncludesPublishedVersionAtRequestedSource(t *testing.T) {
+	repositoryRoot := filepath.Join("..", "..")
+	entries, err := loadConnectorDirectoryEntries(filepath.Join(repositoryRoot, "catalog.yaml"))
+	require.NoError(t, err)
+	latestReleases, err := latestReachableConnectorReleases(repositoryRoot)
+	require.NoError(t, err)
+	selectedDirectory := ""
+	selectedSourceCommit := ""
+	for _, entry := range entries {
+		latestRelease := latestReleases[entry.Directory]
+		if latestRelease.Version == entry.Manifest.Metadata.Version {
+			selectedDirectory = entry.Directory
+			selectedSourceCommit = latestRelease.SourceCommit
+			break
+		}
+	}
+	require.NotEmpty(t, selectedDirectory)
+	require.NotEmpty(t, selectedSourceCommit)
+	githubOutput := filepath.Join(t.TempDir(), "github-output")
+	require.NoError(t, releaseMatrixCommand([]string{
+		"--catalog", filepath.Join(repositoryRoot, "catalog.yaml"),
+		"--directory", selectedDirectory,
+		"--include-published-at", selectedSourceCommit,
+		"--github-output", githubOutput,
+	}))
+	contents, err := os.ReadFile(githubOutput)
+	require.NoError(t, err)
+	require.Contains(t, string(contents), "count=1")
+	require.Contains(t, string(contents), fmt.Sprintf(`"directory":%q`, selectedDirectory))
 }
 
 func TestCatalogIncludesUIUnitsOperationsAndTriggers(t *testing.T) {
@@ -199,9 +331,7 @@ func writeConnectorFixture(t *testing.T, repositoryRoot, directory, modulePath s
 	t.Helper()
 	connectorDirectory := filepath.Join(repositoryRoot, filepath.FromSlash(directory))
 	require.NoError(t, os.MkdirAll(connectorDirectory, 0o755))
-	fixture, err := os.ReadFile(filepath.Join("..", "..", "schema", "testdata", "google-oauth.yaml"))
-	require.NoError(t, err)
-	contents := strings.Replace(string(fixture), "name: google-sheets-fixture", "name: fixture-connector", 1)
+	contents := strings.Replace(readFixtureManifest(t), "name: google-sheets-fixture", "name: fixture-connector", 1)
 	if strings.HasPrefix(directory, "connectors/") {
 		companyDir := strings.Split(strings.TrimPrefix(directory, "connectors/"), "/")[0]
 		contents = strings.Replace(contents, "company: Google", "company: "+companyDir, 1)
@@ -211,4 +341,27 @@ func writeConnectorFixture(t *testing.T, repositoryRoot, directory, modulePath s
 	}
 	require.NoError(t, os.WriteFile(filepath.Join(connectorDirectory, "connector.yaml"), []byte(contents), 0o600))
 	require.NoError(t, os.WriteFile(filepath.Join(connectorDirectory, "go.mod"), []byte("module "+modulePath+"\n\ngo 1.24\n"), 0o600))
+}
+
+func readFixtureManifest(t *testing.T) string {
+	t.Helper()
+	fixture, err := os.ReadFile(filepath.Join("..", "..", "schema", "testdata", "google-oauth.yaml"))
+	require.NoError(t, err)
+	return string(fixture)
+}
+
+func readReleaseMatrixOutput(t *testing.T, path string) connectorReleaseMatrix {
+	t.Helper()
+	contents, err := os.ReadFile(path)
+	require.NoError(t, err)
+	for _, line := range strings.Split(string(contents), "\n") {
+		if !strings.HasPrefix(line, "matrix=") {
+			continue
+		}
+		var matrix connectorReleaseMatrix
+		require.NoError(t, json.Unmarshal([]byte(strings.TrimPrefix(line, "matrix=")), &matrix))
+		return matrix
+	}
+	require.FailNow(t, "GitHub output has no release matrix")
+	return connectorReleaseMatrix{}
 }

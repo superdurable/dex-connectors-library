@@ -122,3 +122,20 @@ local credential does not revoke the Google grant.
 
 [`examples/thread-reply`](examples/thread-reply) combines a Flow-start target,
 `GetMessage`, a typed reply RPC, and `ReplyToMessage` in one runnable Flow.
+
+## Verification
+
+```bash
+GOWORK=off go test -race ./...
+GOWORK=off go vet ./...
+npm ci --prefix ui
+npm test --prefix ui
+npm run build --prefix ui
+```
+
+With the pinned Dex development server running, the same module owns its real
+Worker, Trigger delivery, RPC, persistence, and transition coverage:
+
+```bash
+GOWORK=off go test -tags=integration ./... -count=1 -v
+```

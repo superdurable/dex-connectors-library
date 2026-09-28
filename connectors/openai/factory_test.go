@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	openai "github.com/superdurable/dex-connectors-library/connectors/openai"
@@ -51,6 +52,9 @@ func TestOperationSpecificFactoriesUseTypedConnectionAndResources(t *testing.T) 
 		ResultAttribute: &result, ProgressStream: &progress, TextStream: &text,
 	})
 	require.Equal(t, "CreateResponse", create.GetStepType())
+	createOptions := create.GetStepOptions()
+	require.Equal(t, dex.StepDurabilitySync, createOptions.ExecuteDurability)
+	require.Equal(t, 150*time.Second, createOptions.ExecuteMethodTimeout)
 
 	retrieve := openai.NewRetrieveResponseStep(openai.RetrieveResponseStepConfig[string]{
 		StepType: "RetrieveResponse", Annotations: openAIAnnotations(), Connection: connection,
@@ -60,6 +64,27 @@ func TestOperationSpecificFactoriesUseTypedConnectionAndResources(t *testing.T) 
 		Defect: sdkgo.GoTo(retrieveTarget{}),
 	})
 	require.Equal(t, "RetrieveResponse", retrieve.GetStepType())
+	retrieveOptions := retrieve.GetStepOptions()
+	require.Equal(t, dex.StepDurabilityAsync, retrieveOptions.ExecuteDurability)
+	require.Equal(t, 30*time.Second, retrieveOptions.ExecuteMethodTimeout)
+}
+
+func TestOpenAIDefinitionsOwnTheirBranchIdentities(t *testing.T) {
+	createBranches := map[sdkgo.BranchID]bool{}
+	for _, branch := range openai.CreateResponseDefinition.Branches {
+		createBranches[branch.ID] = branch.Optional
+	}
+	require.Equal(t, map[sdkgo.BranchID]bool{
+		"completed": false, "failed": true, "providerRejected": true, "uncertain": true, "defect": true,
+	}, createBranches)
+
+	retrieveBranches := map[sdkgo.BranchID]bool{}
+	for _, branch := range openai.RetrieveResponseDefinition.Branches {
+		retrieveBranches[branch.ID] = branch.Optional
+	}
+	require.Equal(t, map[sdkgo.BranchID]bool{
+		"found": false, "notFound": true, "providerRejected": true, "invalidResponse": true, "defect": true,
+	}, retrieveBranches)
 }
 
 func TestTypedConnectionCannotSerializeAndRequiredBranchFailsClosed(t *testing.T) {

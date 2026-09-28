@@ -133,11 +133,20 @@ class ThemeEntryPointCall:
 
 def main(arguments: list[str]) -> int:
     repository_root = Path(arguments[0]).resolve() if arguments else ROOT
-    user_interface_directories = find_studio_user_interface_directories(repository_root)
+    selection_arguments = arguments[2:] if len(arguments) > 1 and arguments[1] == "--selected" else None
+    connector_directories = (
+        selected_connector_directories(repository_root, selection_arguments)
+        if selection_arguments is not None
+        else None
+    )
+    user_interface_directories = find_studio_user_interface_directories(repository_root, connector_directories)
     if not user_interface_directories:
+        if connector_directories is not None:
+            print("0 selected Connector Studio UIs use the shared theme")
+            return 0
         print(f"no Connector Studio UIs found below {repository_root / 'connectors'}", file=sys.stderr)
         return 1
-    violations = find_studio_bundle_theme_violations(repository_root)
+    violations = find_studio_bundle_theme_violations(repository_root, connector_directories)
     if violations:
         print("Connector Studio bundles must use the shared sdk/react theme:", file=sys.stderr)
         for violation in violations:
@@ -154,13 +163,27 @@ def main(arguments: list[str]) -> int:
     return 0
 
 
-def find_studio_bundle_theme_violations(repository_root: Path) -> list[StudioBundleThemeViolation]:
+def selected_connector_directories(repository_root: Path, arguments: list[str]) -> list[Path]:
+    connectors_root = (repository_root / "connectors").resolve()
+    selected: list[Path] = []
+    for argument in arguments:
+        connector_directory = (repository_root / argument).resolve()
+        if not connector_directory.is_relative_to(connectors_root) or not (connector_directory / "connector.yaml").is_file():
+            raise ValueError(f"invalid connector directory: {argument}")
+        selected.append(connector_directory)
+    return selected
+
+
+def find_studio_bundle_theme_violations(
+    repository_root: Path,
+    connector_directories: list[Path] | None = None,
+) -> list[StudioBundleThemeViolation]:
     studio_theme_path = repository_root / STUDIO_THEME_SOURCE
     contract_class_names = read_studio_class_contract(studio_theme_path)
     if not contract_class_names:
         return [StudioBundleThemeViolation(studio_theme_path, "does not declare the connectorStudioClassNames contract")]
     violations: list[StudioBundleThemeViolation] = []
-    for user_interface_directory in find_studio_user_interface_directories(repository_root):
+    for user_interface_directory in find_studio_user_interface_directories(repository_root, connector_directories):
         violations.extend(find_user_interface_violations(user_interface_directory, contract_class_names))
     return violations
 
@@ -173,7 +196,16 @@ def read_studio_class_contract(studio_theme_path: Path) -> frozenset[str]:
     return frozenset(re.findall(r"""["'](studio-[\w-]+)["']""", match.group("class_names"))) if match else frozenset()
 
 
-def find_studio_user_interface_directories(repository_root: Path) -> list[Path]:
+def find_studio_user_interface_directories(
+    repository_root: Path,
+    connector_directories: list[Path] | None = None,
+) -> list[Path]:
+    if connector_directories is not None:
+        return sorted(
+            connector_directory / "ui"
+            for connector_directory in connector_directories
+            if (connector_directory / "ui" / "package.json").is_file()
+        )
     connectors_root = repository_root / "connectors"
     directories: list[Path] = []
     for directory, subdirectories, files in os.walk(connectors_root):

@@ -25,3 +25,13 @@ retry instead of producing a branch.
 
 The `ui/` package builds the credential-safe Studio setup bundle published as
 `connector-ui.tgz` with the Connector release.
+
+## Verification
+
+```bash
+GOWORK=off go test -race ./...
+GOWORK=off go vet ./...
+npm ci --prefix ui
+npm test --prefix ui
+npm run build --prefix ui
+```

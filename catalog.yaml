@@ -1,5 +1,5 @@
-apiVersion: connectors.dex.dev/directory-list/v1alpha1
-kind: ConnectorDirectoryList
+apiVersion: connectors.dex.dev/catalog-source/v1alpha1
+kind: ConnectorCatalogSource
 directories:
   - connectors/anthropic
   - connectors/deepseek

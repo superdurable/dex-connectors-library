@@ -34,7 +34,7 @@ func main() {
 
 func run(args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: connectorctl <validate|catalog|release-matrix|generate|ui-artifact|release-artifact> [path ...]")
+		return errors.New("usage: connectorctl <validate|catalog|release-matrix|test-matrix|generate|ui-artifact|release-artifact> [path ...]")
 	}
 	switch args[0] {
 	case "validate":
@@ -53,6 +53,8 @@ func run(args []string) error {
 		return catalogCommand(args[1:])
 	case "release-matrix":
 		return releaseMatrixCommand(args[1:])
+	case "test-matrix":
+		return testMatrixCommand(args[1:])
 	case "generate":
 		return generate(args[1:])
 	case "ui-artifact":

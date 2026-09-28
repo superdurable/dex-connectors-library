@@ -7,4 +7,6 @@ site/.catalog.yaml
 coverage/
 *.out
 *.test
+go.work
+go.work.sum
 .idea/
