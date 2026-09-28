@@ -5,7 +5,7 @@ metadata:
   displayName: Alibaba Cloud Model Studio Qwen
   description: Alibaba Cloud Model Studio text generation with Qwen models, JSON object structured output validated against a schema, Qwen3.8 reasoning effort, token usage, and streamed text.
   company: Alibaba
-  version: v0.1.0
+  version: v0.1.1
 spec:
   provider: alibaba
   codegen:

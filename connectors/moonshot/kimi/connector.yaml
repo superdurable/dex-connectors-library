@@ -5,7 +5,7 @@ metadata:
   displayName: Kimi API
   description: Moonshot AI Kimi API text generation with Kimi K3 and K2 models, JSON Schema structured output, K3 reasoning effort, token usage, and streamed text.
   company: Moonshot
-  version: v0.1.0
+  version: v0.1.1
 spec:
   provider: moonshot
   codegen:

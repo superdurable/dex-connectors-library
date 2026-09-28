@@ -5,7 +5,7 @@ metadata:
   displayName: DeepSeek
   description: DeepSeek API text generation with DeepSeek Flash and Pro models, JSON Output structured output, thinking effort, token usage, and streamed text.
   company: DeepSeek
-  version: v0.1.0
+  version: v0.1.1
 spec:
   provider: deepseek
   codegen:
