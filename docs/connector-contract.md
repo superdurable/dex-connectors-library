@@ -245,7 +245,8 @@ Step defaults, and identity constants. CI runs `connectorctl generate --check`
 to reject drift.
 
 The provider-neutral SDK and every connector are independently released Go
-modules. Connector modules pin an already-published SDK version. Directory-
+modules. Connector modules pin an already-published SDK version, and any
+connector module they require at a released, complete tag. Directory-
 prefixed Git tags record published versions. Each manifest declares its next
 release version, while generated application APIs remain version-independent.
 

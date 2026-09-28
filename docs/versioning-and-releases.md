@@ -30,7 +30,8 @@ GitHub Release titles are human-readable labels. SDK releases use
 An SDK API change is merged and released before any connector consumes it. A
 later connector PR pins that exact published SDK version. Connector modules may
 not use a workspace replacement, pseudo-version, branch, or commit SHA in their
-checked-in `go.mod`.
+checked-in `go.mod`. The same order applies when a connector requires another
+connector module; see [Connector dependencies](#connector-dependencies).
 
 The `Release Connector Go SDK` workflow runs only on `main`. It verifies the
 standalone module with `GOWORK=off`, finds the latest reachable SDK component
@@ -60,8 +61,12 @@ the original push commit, retaining its release matrix. The workflow:
 1. runs the selected connector's Current compatibility gate against the pinned
    Dex CLI/Web baseline;
 2. verifies generated code and the standalone connector with `GOWORK=off`;
-3. rejects `replace`, pseudo-version, branch, or SHA SDK dependencies;
-4. proves the exact SDK tag is reachable and downloadable;
+3. rejects `replace`, pseudo-version, branch, or SHA dependencies on the SDK
+   or another connector, and any other module from this repository;
+4. proves the exact SDK tag and every required connector tag are reachable
+   from `main` and downloadable with `GOPROXY=direct` against the committed
+   `go.sum`, and that each required connector release carries
+   `connector-release.complete`;
 5. verifies the declared version is the next patch, minor, or major;
 6. includes only commits that changed that connector directory;
 7. builds and tests an optional Connector Studio UI;
@@ -98,6 +103,52 @@ PR body, or direct commit message. A v0 breaking release cannot use a patch
 bump. At v1 or later, a breaking release requires a major bump and the Go
 module path must be migrated before publishing v2 or later.
 
+## Connector dependencies
+
+A connector module may require another connector module, for example a
+connector that routes each request to one provider connector's Query. Every
+`github.com/superdurable/dex-connectors-library/connectors/...` requirement in
+a connector's `go.mod`, direct or `// indirect`, must:
+
+- be an exact stable version such as `v0.7.0`, never a `replace`,
+  pseudo-version, prerelease, branch, or commit SHA;
+- have its tag, such as `connectors/openai/v0.7.0`, reachable from `main`;
+- have a GitHub release that carries `connector-release.complete`, so a
+  release that failed before its final check does not count;
+- download with `GOWORK=off GOPROXY=direct`.
+
+The SDK pin also needs a reachable tag and a direct download. No other module
+from this repository may be required at any version: not the root tooling
+module, another SDK major path such as `sdkgo/v2`, or an `examples/` module.
+
+The check runs each download inside the connector module, so Go verifies it
+against the committed `go.sum`. The check never edits `go.sum`. When a
+download would add an entry, the check restores the file and fails. Run
+`go mod tidy` in the connector and commit the result.
+
+`make test-connectors` runs this check for each affected connector on pull
+requests and `main` and for every connector on the scheduled run. The release
+job runs it again before publishing. Release the dependency first:
+merge its PR, wait for `connector-release.complete`, then pin that exact tag
+in a later PR for the dependent connector. Until then, the dependent PR fails
+CI. This also keeps one released module per PR.
+
+Go uses minimal version selection, so the pin is a minimum. An application
+that requires `connectors/openai v0.8.0` directly and a connector that pins
+`v0.7.0` builds both against `v0.8.0`. The dependent connector therefore runs
+code it was not released with. A v0 minor may break its build or change a
+default it relies on. Batch dependency upgrades into planned releases of the
+dependent connector instead of releasing it after every dependency release.
+Upgrade immediately for a security fix.
+
+CI also runs an advisory job for every connector that requires another
+connector. It generates `go.work` with `make workspace` and runs `go vet ./...`
+and `go test ./...` in workspace mode, so the dependent builds against the
+current source of its dependencies.
+A failure warns a dependency PR that it breaks a dependent. It does not block
+merge, because that PR cannot change the dependent under the
+one-released-module rule.
+
 ## Local verification
 
 Run the SDK as a standalone consumer would:
@@ -133,6 +184,19 @@ Release planning is covered by temporary-repository tests:
 ```bash
 python3 -m unittest script/release/component_release_test.py
 ```
+
+Validate one connector's SDK and connector dependencies as CI does:
+
+```bash
+git fetch origin main --tags
+python3 script/release/component_release.py validate-connector \
+  --component-path connectors/openai \
+  --sdk-module github.com/superdurable/dex-connectors-library/sdkgo
+```
+
+The check reads GitHub releases through an authenticated `gh` and compares
+tags with `origin/main`. Pass `--main-ref` to compare with another ref. It
+never edits the connector's `go.sum`.
 
 Run the compatibility modes locally:
 

@@ -140,6 +140,24 @@ class AgentRulesTest(unittest.TestCase):
         ):
             self.assertIn(fragment, normalized_contents)
 
+    def test_rules_require_released_complete_connector_dependencies(self) -> None:
+        paths = (
+            ROOT / "AGENTS.md",
+            ROOT / ".cursor" / "rules" / "release.mdc",
+        )
+        rules = (
+            "A connector may require another connector module only at an exact released tag that is "
+            "reachable from `main` and whose GitHub release has `connector-release.complete`. "
+            "Release the dependency first and pin it in a later PR.",
+            "From this repository, connector modules may require only the SDK and other connector modules, "
+            "never the root module or an `examples/` module.",
+        )
+        for path in paths:
+            with self.subTest(path=path):
+                contents = " ".join(path.read_text(encoding="utf-8").split())
+                for rule in rules:
+                    self.assertIn(rule, contents)
+
     def test_cursor_hook_rejects_skipping_git_hooks(self) -> None:
         payload = json.dumps({"command": "git commit --no-verify -m test"})
 

@@ -141,8 +141,10 @@ jobs:
         env:
           GOWORK: "off"
         run: go run ./cmd/connectorctl generate --check "${MANIFEST_PATH}"
-      - name: Validate published SDK dependency
+      - name: Validate published SDK and connector dependencies
         if: steps.state.outputs.release_required == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           python3 script/release/component_release.py validate-connector \
             --component-path "${COMPONENT_PATH}" \

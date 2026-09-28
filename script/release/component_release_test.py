@@ -5,11 +5,13 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import re
 import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 SCRIPT = Path(__file__).with_name("component_release.py")
 SPEC = importlib.util.spec_from_file_location("component_release", SCRIPT)
@@ -17,6 +19,54 @@ assert SPEC is not None and SPEC.loader is not None
 release = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = release
 SPEC.loader.exec_module(release)
+
+LIBRARY = "github.com/superdurable/dex-connectors-library"
+SDK_MODULE = f"{LIBRARY}/sdkgo"
+COMPLETE_RELEASE_ASSETS = frozenset(
+    {"connector-release.json", "connector-release.json.sha256", "connector-release.complete"}
+)
+SDK_GO_SUM_LINES = (
+    f"{SDK_MODULE} v0.1.0 h1:c2RrZ286U0RLCg==\n"
+    f"{SDK_MODULE} v0.1.0/go.mod h1:c2RrZ28tbW9kCg==\n"
+)
+ANTHROPIC_GO_SUM_LINES = (
+    f"{LIBRARY}/connectors/anthropic v0.1.0 h1:YW50aHJvcGljCg==\n"
+    f"{LIBRARY}/connectors/anthropic v0.1.0/go.mod h1:YW50aHJvcGljLW1vZAo=\n"
+)
+
+
+class OfflineDependencyReleaseLookup(release.DependencyReleaseLookup):
+    """Uses the temporary repository's tags and fake GitHub releases and downloads."""
+
+    def __init__(
+        self,
+        assets_by_tag: dict[str, frozenset[str]] | None = None,
+        undownloadable_modules: set[str] | None = None,
+        go_sum_lines_by_module: dict[str, str] | None = None,
+    ) -> None:
+        super().__init__("main")
+        self.assets_by_tag = assets_by_tag or {}
+        self.undownloadable_modules = undownloadable_modules or set()
+        self.go_sum_lines_by_module = go_sum_lines_by_module or {}
+        self.release_lookups: list[str] = []
+        self.downloads: list[tuple[str, str]] = []
+
+    def release_asset_names(self, tag: str) -> frozenset[str]:
+        self.release_lookups.append(tag)
+        if tag not in self.assets_by_tag:
+            raise ValueError(f"cannot read the GitHub release for {tag}: release not found")
+        return self.assets_by_tag[tag]
+
+    def download_module_directly(self, component_path: Path, module: str, version: str) -> None:
+        self.downloads.append((module, version))
+        if module in self.undownloadable_modules:
+            raise ValueError(f"{module}@{version} is not downloadable with GOWORK=off GOPROXY=direct: not found")
+        # Like go mod download, add the module's checksums when go.sum lacks them.
+        go_sum_lines = self.go_sum_lines_by_module.get(module, "")
+        go_sum_path = component_path / "go.sum"
+        existing_go_sum = go_sum_path.read_text(encoding="utf-8") if go_sum_path.is_file() else ""
+        if go_sum_lines not in existing_go_sum:
+            go_sum_path.write_text(existing_go_sum + go_sum_lines, encoding="utf-8")
 
 
 class ComponentReleaseTest(unittest.TestCase):
@@ -66,6 +116,42 @@ class ComponentReleaseTest(unittest.TestCase):
         (module / "connector.go").write_text("package openai\n", encoding="utf-8")
         self.commit("connector(openai): add connector")
         return module
+
+    def enter_repository(self) -> None:
+        previous = Path.cwd()
+        os.chdir(self.repository)
+        self.addCleanup(os.chdir, previous)
+
+    def release_provider_connector(self, directory: str, version: str) -> None:
+        module = self.repository / "connectors" / directory
+        module.mkdir(parents=True)
+        (module / "go.mod").write_text(
+            f"module {LIBRARY}/connectors/{directory}\n\ngo 1.24\n\nrequire {SDK_MODULE} v0.1.0\n",
+            encoding="utf-8",
+        )
+        (module / "connector.go").write_text("package provider\n", encoding="utf-8")
+        self.commit(f"connector({directory}): release provider")
+        self.git("tag", f"connectors/{directory}/{version}")
+
+    def dependent_connector(self, *connector_requirements: str) -> None:
+        module = self.repository / "connectors/superdurable/llm"
+        module.mkdir(parents=True, exist_ok=True)
+        requirements = "".join(f"\t{requirement}\n" for requirement in connector_requirements)
+        (module / "go.mod").write_text(
+            f"module {LIBRARY}/connectors/superdurable/llm\n\n"
+            "go 1.24\n\n"
+            "require (\n"
+            "\tgithub.com/stretchr/testify v1.11.1\n"
+            f"{requirements}"
+            f"\t{SDK_MODULE} v0.1.0\n"
+            ")\n",
+            encoding="utf-8",
+        )
+
+    def assert_tag_reaches_head_but_not_main(self, tag: str) -> None:
+        self.git("merge-base", "--is-ancestor", tag, "HEAD")
+        main_ancestry = subprocess.run(("git", "merge-base", "--is-ancestor", tag, "main"), cwd=self.repository)
+        self.assertNotEqual(main_ancestry.returncode, 0, f"{tag} must not be reachable from main")
 
     def test_first_release_is_v010(self) -> None:
         plan = self.plan("minor")
@@ -153,37 +239,23 @@ class ComponentReleaseTest(unittest.TestCase):
 
     def test_connector_requires_released_sdk_without_replace(self) -> None:
         self.connector()
-        previous = Path.cwd()
-        os.chdir(self.repository)
-        self.addCleanup(os.chdir, previous)
-        original_run = subprocess.run
-
-        def run_without_network(*arguments: object, **keywords: object) -> subprocess.CompletedProcess[str]:
-            command = arguments[0]
-            if isinstance(command, tuple) and command[:3] == ("go", "mod", "download"):
-                return subprocess.CompletedProcess(command, 0, "", "")
-            return original_run(*arguments, **keywords)
-
-        release.subprocess.run = run_without_network
-        self.addCleanup(setattr, release.subprocess, "run", original_run)
+        self.enter_repository()
+        lookup = OfflineDependencyReleaseLookup()
         self.assertEqual(
-            release.validate_connector(
-                "connectors/openai", "github.com/superdurable/dex-connectors-library/sdkgo"
-            ),
-            "v0.1.0",
+            release.validate_connector("connectors/openai", SDK_MODULE, lookup),
+            ("sdkgo/v0.1.0",),
         )
+        self.assertEqual(lookup.downloads, [(SDK_MODULE, "v0.1.0")])
+        self.assertEqual(lookup.release_lookups, [])
 
     def test_connector_rejects_replace_and_pseudo_version(self) -> None:
         module = self.connector(
             "\nreplace github.com/superdurable/dex-connectors-library/sdkgo => ../../sdkgo\n"
         )
-        previous = Path.cwd()
-        os.chdir(self.repository)
-        self.addCleanup(os.chdir, previous)
+        self.enter_repository()
+        lookup = OfflineDependencyReleaseLookup()
         with self.assertRaisesRegex(ValueError, "replace directives"):
-            release.validate_connector(
-                "connectors/openai", "github.com/superdurable/dex-connectors-library/sdkgo"
-            )
+            release.validate_connector("connectors/openai", SDK_MODULE, lookup)
         (module / "go.mod").write_text(
             "module example.com/connectors/openai\n\n"
             "go 1.24\n\n"
@@ -191,9 +263,313 @@ class ComponentReleaseTest(unittest.TestCase):
             encoding="utf-8",
         )
         with self.assertRaisesRegex(ValueError, "invalid stable semantic version"):
-            release.validate_connector(
-                "connectors/openai", "github.com/superdurable/dex-connectors-library/sdkgo"
+            release.validate_connector("connectors/openai", SDK_MODULE, lookup)
+        self.assertEqual(lookup.downloads, [])
+
+    def test_connector_requires_exactly_one_sdk_version(self) -> None:
+        module = self.connector()
+        (module / "go.mod").write_text("module example.com/connectors/openai\n\ngo 1.24\n", encoding="utf-8")
+        self.enter_repository()
+        with self.assertRaisesRegex(ValueError, "exactly one"):
+            release.validate_connector("connectors/openai", SDK_MODULE, OfflineDependencyReleaseLookup())
+
+    def test_connector_sdk_release_tag_must_exist(self) -> None:
+        module = self.connector()
+        (module / "go.mod").write_text(
+            f"module example.com/connectors/openai\n\ngo 1.24\n\nrequire {SDK_MODULE} v0.2.0\n",
+            encoding="utf-8",
+        )
+        self.enter_repository()
+        lookup = OfflineDependencyReleaseLookup()
+        with self.assertRaisesRegex(ValueError, "connector SDK release tag is missing: sdkgo/v0.2.0"):
+            release.validate_connector("connectors/openai", SDK_MODULE, lookup)
+        self.assertEqual(lookup.downloads, [])
+
+    def test_connector_sdk_release_must_be_reachable_from_main_not_only_head(self) -> None:
+        self.git("tag", "sdkgo/v0.1.0")
+        self.git("switch", "--quiet", "-c", "pull-request")
+        (self.repository / "sdkgo/sdk.go").write_text("package sdkgo\n\nconst Version = 2\n", encoding="utf-8")
+        self.commit("sdkgo: add API on an unmerged branch")
+        self.git("tag", "sdkgo/v0.2.0")
+        module = self.repository / "connectors/openai"
+        module.mkdir(parents=True)
+        (module / "go.mod").write_text(
+            f"module example.com/connectors/openai\n\ngo 1.24\n\nrequire {SDK_MODULE} v0.2.0\n",
+            encoding="utf-8",
+        )
+        self.commit("connector(openai): pin the unmerged SDK")
+        self.assert_tag_reaches_head_but_not_main("sdkgo/v0.2.0")
+        self.enter_repository()
+        lookup = OfflineDependencyReleaseLookup()
+        with self.assertRaisesRegex(ValueError, "connector SDK release is not reachable from main: sdkgo/v0.2.0"):
+            release.validate_connector("connectors/openai", SDK_MODULE, lookup)
+        self.assertEqual(lookup.downloads, [])
+
+    def test_connector_accepts_released_complete_connector_dependencies(self) -> None:
+        self.git("tag", "sdkgo/v0.1.0")
+        self.release_provider_connector("anthropic", "v0.1.0")
+        self.release_provider_connector("google/gemini", "v0.3.0")
+        self.dependent_connector(
+            f"{LIBRARY}/connectors/anthropic v0.1.0",
+            f"{LIBRARY}/connectors/google/gemini v0.3.0 // indirect",
+            "google.golang.org/genproto/googleapis/rpc v0.0.0-20260923000000-deadbeefdead // indirect",
+        )
+        self.commit("connector(llm): add dependent connector")
+        self.enter_repository()
+        lookup = OfflineDependencyReleaseLookup(
+            {
+                "connectors/anthropic/v0.1.0": COMPLETE_RELEASE_ASSETS,
+                "connectors/google/gemini/v0.3.0": COMPLETE_RELEASE_ASSETS,
+            }
+        )
+        self.assertEqual(
+            release.validate_connector("connectors/superdurable/llm", SDK_MODULE, lookup),
+            ("sdkgo/v0.1.0", "connectors/anthropic/v0.1.0", "connectors/google/gemini/v0.3.0"),
+        )
+        self.assertEqual(lookup.release_lookups, ["connectors/anthropic/v0.1.0", "connectors/google/gemini/v0.3.0"])
+        self.assertEqual(
+            lookup.downloads,
+            [
+                (SDK_MODULE, "v0.1.0"),
+                (f"{LIBRARY}/connectors/anthropic", "v0.1.0"),
+                (f"{LIBRARY}/connectors/google/gemini", "v0.3.0"),
+            ],
+        )
+
+    def test_connector_dependency_rejects_unreleased_versions(self) -> None:
+        self.git("tag", "sdkgo/v0.1.0")
+        self.enter_repository()
+        for version in ("v0.0.0-20260923000000-deadbeefdead", "v0.7.1-0.20260923000000-deadbeefdead", "v0.7.0-rc.1"):
+            with self.subTest(version=version):
+                self.dependent_connector(f"{LIBRARY}/connectors/openai {version}")
+                lookup = OfflineDependencyReleaseLookup()
+                with self.assertRaisesRegex(
+                    ValueError, "connectors/openai must pin a released version: invalid stable semantic version"
+                ):
+                    release.validate_connector("connectors/superdurable/llm", SDK_MODULE, lookup)
+                self.assertEqual(lookup.release_lookups, [])
+                self.assertEqual(lookup.downloads, [])
+
+    def test_connector_dependency_rejects_branch_and_commit_versions(self) -> None:
+        self.git("tag", "sdkgo/v0.1.0")
+        self.enter_repository()
+        for version in ("main", "deadbeefdead"):
+            with self.subTest(version=version):
+                self.dependent_connector(f"{LIBRARY}/connectors/openai {version}")
+                lookup = OfflineDependencyReleaseLookup()
+                with self.assertRaisesRegex(ValueError, "must be of the form v1.2.3"):
+                    release.validate_connector("connectors/superdurable/llm", SDK_MODULE, lookup)
+                self.assertEqual(lookup.downloads, [])
+
+    def test_connector_dependency_release_tag_must_exist(self) -> None:
+        self.git("tag", "sdkgo/v0.1.0")
+        self.dependent_connector(f"{LIBRARY}/connectors/openai v0.7.0")
+        self.commit("connector(llm): add dependent connector")
+        self.enter_repository()
+        lookup = OfflineDependencyReleaseLookup({"connectors/openai/v0.7.0": COMPLETE_RELEASE_ASSETS})
+        with self.assertRaisesRegex(ValueError, "release tag is missing: connectors/openai/v0.7.0"):
+            release.validate_connector("connectors/superdurable/llm", SDK_MODULE, lookup)
+        self.assertEqual(lookup.release_lookups, [])
+        self.assertEqual(lookup.downloads, [])
+
+    def test_connector_dependency_release_must_be_reachable_from_main(self) -> None:
+        self.git("tag", "sdkgo/v0.1.0")
+        self.git("switch", "--quiet", "-c", "unmerged-provider")
+        self.release_provider_connector("openai", "v0.7.0")
+        self.git("switch", "--quiet", "main")
+        self.dependent_connector(f"{LIBRARY}/connectors/openai v0.7.0")
+        self.commit("connector(llm): add dependent connector")
+        self.enter_repository()
+        lookup = OfflineDependencyReleaseLookup({"connectors/openai/v0.7.0": COMPLETE_RELEASE_ASSETS})
+        with self.assertRaisesRegex(ValueError, "not reachable from main: connectors/openai/v0.7.0"):
+            release.validate_connector("connectors/superdurable/llm", SDK_MODULE, lookup)
+        self.assertEqual(lookup.downloads, [])
+
+    def test_connector_dependency_release_must_be_reachable_from_main_not_only_head(self) -> None:
+        self.git("tag", "sdkgo/v0.1.0")
+        self.git("switch", "--quiet", "-c", "pull-request")
+        self.release_provider_connector("openai", "v0.7.0")
+        self.dependent_connector(f"{LIBRARY}/connectors/openai v0.7.0")
+        self.commit("connector(llm): add dependent connector")
+        self.assert_tag_reaches_head_but_not_main("connectors/openai/v0.7.0")
+        self.enter_repository()
+        lookup = OfflineDependencyReleaseLookup({"connectors/openai/v0.7.0": COMPLETE_RELEASE_ASSETS})
+        with self.assertRaisesRegex(
+            ValueError, "connector dependency release is not reachable from main: connectors/openai/v0.7.0"
+        ):
+            release.validate_connector("connectors/superdurable/llm", SDK_MODULE, lookup)
+        self.assertEqual(lookup.release_lookups, [])
+        self.assertEqual(lookup.downloads, [])
+
+    def test_connector_rejects_other_modules_from_this_repository(self) -> None:
+        self.git("tag", "sdkgo/v0.1.0")
+        self.enter_repository()
+        for requirement in (
+            f"{LIBRARY} v0.1.1-0.20260928041452-7b7fbe591824",
+            f"{LIBRARY} v0.1.0",
+            f"{LIBRARY}/sdkgo/v2 v2.0.0-20260928041452-7b7fbe591824",
+            f"{LIBRARY}/examples/local-config v0.1.0",
+            f"{LIBRARY}/connectors v0.1.0",
+        ):
+            with self.subTest(requirement=requirement):
+                self.dependent_connector(requirement)
+                lookup = OfflineDependencyReleaseLookup()
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "may require only the SDK and released connector modules from this repository: "
+                    f"{re.escape(requirement.split()[0])}$",
+                ):
+                    release.validate_connector("connectors/superdurable/llm", SDK_MODULE, lookup)
+                self.assertEqual(lookup.downloads, [])
+
+    def test_connector_download_rejects_missing_go_sum_entries_without_editing_go_sum(self) -> None:
+        self.git("tag", "sdkgo/v0.1.0")
+        self.release_provider_connector("anthropic", "v0.1.0")
+        self.dependent_connector(f"{LIBRARY}/connectors/anthropic v0.1.0")
+        self.commit("connector(llm): add dependent connector")
+        self.enter_repository()
+        go_sum_path = Path("connectors/superdurable/llm/go.sum")
+        go_sum_path.write_text(SDK_GO_SUM_LINES, encoding="utf-8")
+        stale_go_sum = go_sum_path.read_bytes()
+        lookup = self.go_sum_writing_lookup()
+        with self.assertRaisesRegex(
+            ValueError,
+            re.escape(
+                f"connectors/superdurable/llm/go.sum is missing entries for {LIBRARY}/connectors/anthropic@v0.1.0; "
+                "run go mod tidy"
+            ),
+        ):
+            release.validate_connector("connectors/superdurable/llm", SDK_MODULE, lookup)
+        self.assertEqual(go_sum_path.read_bytes(), stale_go_sum)
+        self.assertEqual(lookup.downloads, [(SDK_MODULE, "v0.1.0"), (f"{LIBRARY}/connectors/anthropic", "v0.1.0")])
+
+        go_sum_path.unlink()
+        with self.assertRaisesRegex(ValueError, re.escape(f"go.sum is missing entries for {SDK_MODULE}@v0.1.0")):
+            release.validate_connector("connectors/superdurable/llm", SDK_MODULE, self.go_sum_writing_lookup())
+        self.assertFalse(go_sum_path.exists())
+
+    def test_connector_download_accepts_complete_go_sum(self) -> None:
+        self.git("tag", "sdkgo/v0.1.0")
+        self.release_provider_connector("anthropic", "v0.1.0")
+        self.dependent_connector(f"{LIBRARY}/connectors/anthropic v0.1.0")
+        (self.repository / "connectors/superdurable/llm/go.sum").write_text(
+            SDK_GO_SUM_LINES + ANTHROPIC_GO_SUM_LINES, encoding="utf-8"
+        )
+        self.commit("connector(llm): add dependent connector")
+        self.enter_repository()
+        self.assertEqual(
+            release.validate_connector("connectors/superdurable/llm", SDK_MODULE, self.go_sum_writing_lookup()),
+            ("sdkgo/v0.1.0", "connectors/anthropic/v0.1.0"),
+        )
+        self.assertEqual(self.git("status", "--porcelain"), "")
+
+    def go_sum_writing_lookup(self) -> OfflineDependencyReleaseLookup:
+        return OfflineDependencyReleaseLookup(
+            {"connectors/anthropic/v0.1.0": COMPLETE_RELEASE_ASSETS},
+            go_sum_lines_by_module={
+                SDK_MODULE: SDK_GO_SUM_LINES,
+                f"{LIBRARY}/connectors/anthropic": ANTHROPIC_GO_SUM_LINES,
+            },
+        )
+
+    def test_connector_dependency_release_must_be_complete(self) -> None:
+        self.git("tag", "sdkgo/v0.1.0")
+        self.release_provider_connector("openai", "v0.7.0")
+        self.dependent_connector(f"{LIBRARY}/connectors/openai v0.7.0")
+        self.commit("connector(llm): add dependent connector")
+        self.enter_repository()
+        incomplete = OfflineDependencyReleaseLookup(
+            {"connectors/openai/v0.7.0": frozenset({"connector-release.json", "connector-release.json.sha256"})}
+        )
+        with self.assertRaisesRegex(
+            ValueError, "incomplete: connectors/openai/v0.7.0 has no connector-release.complete asset"
+        ):
+            release.validate_connector("connectors/superdurable/llm", SDK_MODULE, incomplete)
+        self.assertEqual(incomplete.downloads, [])
+        unpublished = OfflineDependencyReleaseLookup()
+        with self.assertRaisesRegex(ValueError, "cannot read the GitHub release for connectors/openai/v0.7.0"):
+            release.validate_connector("connectors/superdurable/llm", SDK_MODULE, unpublished)
+        self.assertEqual(unpublished.downloads, [])
+
+    def test_connector_dependency_must_download_directly(self) -> None:
+        self.git("tag", "sdkgo/v0.1.0")
+        self.release_provider_connector("openai", "v0.7.0")
+        self.dependent_connector(f"{LIBRARY}/connectors/openai v0.7.0")
+        self.commit("connector(llm): add dependent connector")
+        self.enter_repository()
+        lookup = OfflineDependencyReleaseLookup(
+            {"connectors/openai/v0.7.0": COMPLETE_RELEASE_ASSETS},
+            undownloadable_modules={f"{LIBRARY}/connectors/openai"},
+        )
+        with self.assertRaisesRegex(ValueError, "connectors/openai@v0.7.0 is not downloadable"):
+            release.validate_connector("connectors/superdurable/llm", SDK_MODULE, lookup)
+
+    def test_connector_dependency_tag_uses_the_module_directory(self) -> None:
+        self.assertEqual(
+            release.connector_dependency_tag(f"{LIBRARY}/connectors/google/gemini", "v0.3.0"),
+            "connectors/google/gemini/v0.3.0",
+        )
+        self.assertEqual(
+            release.connector_dependency_tag(f"{LIBRARY}/connectors/openai/v2", "v2.1.0"),
+            "connectors/openai/v2.1.0",
+        )
+
+    def test_dependency_lookup_requires_the_main_ref(self) -> None:
+        self.git("tag", "sdkgo/v0.1.0")
+        self.enter_repository()
+        lookup = release.DependencyReleaseLookup("origin/main")
+        with self.assertRaisesRegex(ValueError, "main branch ref is missing: origin/main"):
+            lookup.is_tag_reachable_from_main("sdkgo/v0.1.0")
+        self.assertTrue(release.DependencyReleaseLookup("main").is_tag_reachable_from_main("sdkgo/v0.1.0"))
+
+    def test_dependency_lookup_reads_github_release_assets(self) -> None:
+        fake_gh = self.repository / "fake-gh"
+        fake_gh.write_text(
+            "#!/bin/sh\n"
+            'if [ "$1 $2 $4 $5 $6 $7" != "release view --json assets --jq .assets[].name" ]; then exit 2; fi\n'
+            'if [ "$3" = connectors/openai/v0.7.0 ]; then\n'
+            "  printf 'connector-release.json\\nconnector-release.complete\\n'\n"
+            "  exit 0\n"
+            "fi\n"
+            "echo 'release not found' >&2\n"
+            "exit 1\n",
+            encoding="utf-8",
+        )
+        fake_gh.chmod(0o755)
+        lookup = release.DependencyReleaseLookup("main")
+        with mock.patch.dict(os.environ, {"GH_BIN": str(fake_gh)}):
+            self.assertEqual(
+                lookup.release_asset_names("connectors/openai/v0.7.0"),
+                frozenset({"connector-release.json", "connector-release.complete"}),
             )
+            with self.assertRaisesRegex(ValueError, "connectors/openai/v0.8.0: release not found"):
+                lookup.release_asset_names("connectors/openai/v0.8.0")
+
+    def test_dependency_lookup_downloads_in_standalone_direct_mode(self) -> None:
+        invocations: list[tuple[object, dict[str, object]]] = []
+        results = [
+            subprocess.CompletedProcess((), 0, "", ""),
+            subprocess.CompletedProcess((), 1, "", "unknown revision connectors/openai/v0.7.0\n"),
+        ]
+
+        def run_go(command: object, **keywords: object) -> subprocess.CompletedProcess[str]:
+            invocations.append((command, keywords))
+            return results.pop(0)
+
+        lookup = release.DependencyReleaseLookup("main")
+        module = f"{LIBRARY}/connectors/openai"
+        with mock.patch.object(release.subprocess, "run", run_go):
+            lookup.download_module_directly(self.repository, module, "v0.7.0")
+            with self.assertRaisesRegex(ValueError, "not downloadable .*: unknown revision connectors/openai/v0.7.0$"):
+                lookup.download_module_directly(self.repository, module, "v0.7.0")
+        command, keywords = invocations[0]
+        self.assertEqual(command, ("go", "mod", "download", f"{module}@v0.7.0"))
+        self.assertEqual(keywords["cwd"], self.repository)
+        environment = keywords["env"]
+        assert isinstance(environment, dict)
+        self.assertEqual(environment["GOWORK"], "off")
+        self.assertEqual(environment["GOPROXY"], "direct")
+        self.assertEqual(environment["GONOSUMDB"], LIBRARY)
 
     def test_connector_plan_ignores_other_component_tags(self) -> None:
         self.connector()
