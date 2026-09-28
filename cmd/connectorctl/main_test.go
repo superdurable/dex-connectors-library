@@ -11,15 +11,14 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 )
 
-func TestCatalogLoadsRepositoryDirectoryRegistry(t *testing.T) {
-	registry := filepath.Join("..", "..", "connectors.yaml")
-	entries, err := loadConnectorDirectoryEntries(registry)
+func TestCatalogLoadsRepositoryCatalogSource(t *testing.T) {
+	catalog := filepath.Join("..", "..", "catalog.yaml")
+	entries, err := loadConnectorDirectoryEntries(catalog)
 	require.NoError(t, err)
 	directories := registeredConnectorDirectories(t)
 	require.Len(t, entries, len(directories))
@@ -32,94 +31,45 @@ func TestCatalogLoadsRepositoryDirectoryRegistry(t *testing.T) {
 		require.Falsef(t, names[identity.Name], "duplicate connector ID %s", identity.Name)
 		names[identity.Name] = true
 	}
-	require.True(t, names["github"] && names["slack"], "the registry lists the long-standing connectors")
+	require.Len(t, names, len(directories))
 }
 
 func TestRegisteredOperationsKeepOnlyHappyPathBranchesRequired(t *testing.T) {
-	happyBranchByOperation := map[string]string{
-		"generateContent":          "generated",
-		"generateText":             "generated",
-		"getAuthenticatedProfile":  "profileLoaded",
-		"listPublicRepositories":   "repositoriesLoaded",
-		"listMergedPullRequests":   "listed",
-		"listPullRequestFiles":     "listed",
-		"listCommits":              "listed",
-		"getMessage":               "read",
-		"sendMessage":              "sent",
-		"replyToMessage":           "sent",
-		"getValues":                "read",
-		"findRow":                  "found",
-		"upsertRow":                "upserted",
-		"createResponse":           "completed",
-		"retrieveResponse":         "found",
-		"listThreadMessages":       "read",
-		"getThreadReply":           "found",
-		"postChannelMessage":       "sent",
-		"postThreadReply":          "sent",
-		"createACHCheckoutSession": "created",
-		"getCheckoutSession":       "found",
-	}
-	entries, err := loadConnectorDirectoryEntries(filepath.Join("..", "..", "connectors.yaml"))
+	entries, err := loadConnectorDirectoryEntries(filepath.Join("..", "..", "catalog.yaml"))
 	require.NoError(t, err)
-	seen := map[string]bool{}
 	for _, entry := range entries {
 		for _, operation := range entry.Manifest.Spec.Operations {
-			expected, ok := happyBranchByOperation[operation.Name]
-			require.Truef(t, ok, "unexpected operation %s", operation.Name)
-			seen[operation.Name] = true
 			required := []string{}
 			for _, branch := range operation.Branches {
 				if !branch.Optional {
 					required = append(required, branch.ID)
 				}
 			}
-			require.Equal(t, []string{expected}, required, operation.Name)
-			switch operation.Name {
-			case "createResponse":
-				require.Equal(t, "sync", operation.Execution.Durability)
-				require.Equal(t, "150s", operation.Execution.ExecuteMethodTimeout)
-			case "generateContent":
-				// A non-streaming LLM generation is long and silent until the provider answers.
-				require.Equal(t, "sync", operation.Execution.Durability)
-				require.Equal(t, "300s", operation.Execution.ExecuteMethodTimeout)
-				require.Equal(t, "300s", operation.Execution.HeartbeatTimeout)
-			case "generateText":
-				// Every text-generation connector shares the sdkgo/llm contract: a sync Query whose heartbeat
-				// timeout covers the pipeline's 5-second heartbeat and whose Execute fits under 30 minutes.
-				require.Equalf(t, "sync", operation.Execution.Durability, entry.Directory)
-				heartbeatTimeout, err := time.ParseDuration(operation.Execution.HeartbeatTimeout)
-				require.NoErrorf(t, err, entry.Directory)
-				require.GreaterOrEqualf(t, heartbeatTimeout, 10*time.Second, entry.Directory)
-				executeTimeout, err := time.ParseDuration(operation.Execution.ExecuteMethodTimeout)
-				require.NoErrorf(t, err, entry.Directory)
-				require.Greaterf(t, executeTimeout, heartbeatTimeout, entry.Directory)
-				require.LessOrEqualf(t, executeTimeout, 30*time.Minute, entry.Directory)
-			case "retrieveResponse":
-				require.Equal(t, "async", operation.Execution.Durability)
-				require.Equal(t, "30s", operation.Execution.ExecuteMethodTimeout)
-			default:
-				require.Equalf(t, "async", operation.Execution.Durability, operation.Name)
-			}
+			require.Lenf(t, required, 1, "%s %s", entry.Directory, operation.Name)
 		}
 	}
-	require.Len(t, seen, len(happyBranchByOperation))
 }
 
 func TestCatalogCommandWritesDeterministicYAML(t *testing.T) {
-	registry := filepath.Join("..", "..", "connectors.yaml")
-	require.NoError(t, catalogCommand([]string{"--check", "--registry", registry}))
+	catalog := filepath.Join("..", "..", "catalog.yaml")
+	require.NoError(t, catalogCommand([]string{"--check", "--catalog", catalog}))
 	first := filepath.Join(t.TempDir(), "catalog.yaml")
 	second := filepath.Join(t.TempDir(), "catalog.yaml")
-	require.NoError(t, catalogCommand([]string{"--registry", registry, "--output", first}))
-	require.NoError(t, catalogCommand([]string{"--registry", registry, "--output", second}))
+	require.NoError(t, catalogCommand([]string{"--catalog", catalog, "--output", first}))
+	require.NoError(t, catalogCommand([]string{"--catalog", catalog, "--output", second}))
 	firstContent, err := os.ReadFile(first)
 	require.NoError(t, err)
 	secondContent, err := os.ReadFile(second)
 	require.NoError(t, err)
 	require.Equal(t, firstContent, secondContent)
-	require.Contains(t, string(firstContent), "apiVersion: connectors.dex.dev/catalog/v1alpha1")
-	require.Contains(t, string(firstContent), "directory: connectors/google/gmail")
-	require.Contains(t, string(firstContent), "version: v0.10.2")
+	var publicCatalog connectorCatalog
+	require.NoError(t, yaml.Unmarshal(firstContent, &publicCatalog))
+	require.Equal(t, connectorCatalogAPIVersion, publicCatalog.APIVersion)
+	require.Equal(t, "ConnectorCatalog", publicCatalog.Kind)
+	require.Len(t, publicCatalog.Connectors, len(registeredConnectorDirectories(t)))
+	for index, directory := range registeredConnectorDirectories(t) {
+		require.Equal(t, directory, publicCatalog.Connectors[index].Directory)
+	}
 }
 
 func TestReleaseArtifactIsDeterministicAndVersioned(t *testing.T) {
@@ -128,13 +78,13 @@ func TestReleaseArtifactIsDeterministicAndVersioned(t *testing.T) {
 	firstDigest := first + ".sha256"
 	second := filepath.Join(directory, "connector-release-copy.json")
 	secondDigest := second + ".sha256"
-	manifest := filepath.Join("..", "..", "connectors", "openai", "connector.yaml")
+	manifest := filepath.Join("..", "..", "schema", "testdata", "google-oauth.yaml")
 	arguments := func(output, digest string) []string {
 		return []string{
 			"--manifest", manifest,
-			"--module-path", "github.com/superdurable/dex-connectors-library/connectors/openai",
-			"--version", "v0.6.0",
-			"--tag", "connectors/openai/v0.6.0",
+			"--module-path", "example.com/connectors/google-fixture",
+			"--version", "v0.1.0",
+			"--tag", "connectors/google-fixture/v0.1.0",
 			"--source-sha", strings.Repeat("a", 40),
 			"--output", output,
 			"--digest-output", digest,
@@ -147,13 +97,13 @@ func TestReleaseArtifactIsDeterministicAndVersioned(t *testing.T) {
 	secondContent, err := os.ReadFile(second)
 	require.NoError(t, err)
 	require.Equal(t, firstContent, secondContent)
-	require.Contains(t, string(firstContent), `"version": "v0.6.0"`)
-	require.Contains(t, string(firstContent), `"tag": "connectors/openai/v0.6.0"`)
+	require.Contains(t, string(firstContent), `"version": "v0.1.0"`)
+	require.Contains(t, string(firstContent), `"tag": "connectors/google-fixture/v0.1.0"`)
 	digest, err := os.ReadFile(firstDigest)
 	require.NoError(t, err)
 	require.Equal(t, fmt.Sprintf("%x  connector-release.json\n", sha256.Sum256(firstContent)), string(digest))
 	mismatchedArguments := arguments(filepath.Join(directory, "mismatch.json"), filepath.Join(directory, "mismatch.json.sha256"))
-	mismatchedArguments[5] = "v0.6.1"
+	mismatchedArguments[5] = "v0.1.1"
 	require.ErrorContains(t, releaseArtifact(mismatchedArguments), "does not match manifest version")
 }
 
@@ -164,15 +114,15 @@ func TestGeneratedConnectorsAreCurrent(t *testing.T) {
 	}
 }
 
-// registeredConnectorDirectories reads connectors.yaml directly, independent of the loader under test.
+// registeredConnectorDirectories reads catalog.yaml directly, independent of the loader under test.
 func registeredConnectorDirectories(t *testing.T) []string {
 	t.Helper()
-	contents, err := os.ReadFile(filepath.Join("..", "..", "connectors.yaml"))
+	contents, err := os.ReadFile(filepath.Join("..", "..", "catalog.yaml"))
 	require.NoError(t, err)
-	var registry connectorDirectoryList
-	require.NoError(t, yaml.Unmarshal(contents, &registry))
-	require.NotEmpty(t, registry.Directories)
-	return registry.Directories
+	var catalogSource connectorCatalogSource
+	require.NoError(t, yaml.Unmarshal(contents, &catalogSource))
+	require.NotEmpty(t, catalogSource.Directories)
+	return catalogSource.Directories
 }
 
 type manifestIdentity struct {

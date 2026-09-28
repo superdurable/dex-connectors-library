@@ -54,10 +54,11 @@ Every implementation plan includes Tests, Documentation, and UI/UX. Use
   `sdkgo.NewMutationStep` are advanced escape hatches.
 - Every connector has its own `go.mod`, README, manifest, generated code, and
   provider tests.
-- Register every connector directory in the sorted root `connectors.yaml` list.
+- Register every connector directory in the sorted root `catalog.yaml` list.
   Paths may have any depth below `connectors/`.
-- Add, move, or remove a registry entry only when the connector directory
-  changes. Version-only changes do not modify the registry.
+- The catalog is the only shared file changed when adding a connector. Add,
+  move, or remove an entry only when its directory changes; version-only
+  changes do not modify it.
 - Never edit generated connector code. Change the manifest or generator and run
   the generation check.
 
@@ -95,8 +96,9 @@ Every implementation plan includes Tests, Documentation, and UI/UX. Use
   or commit SHAs.
 - If a connector needs an SDK change, release the SDK first. Upgrade connectors
   in later PRs only after that SDK tag exists.
-- During discovery, use `go.work` or a temporary local `replace` and run full
-  connector verification. Never commit that `replace`.
+- During discovery, use the ignored `go.work` from `make workspace` or a
+  temporary local `replace` and run full connector verification. Never commit
+  that `replace`.
 - Test every module with `GOWORK=off` before release.
 - Connector releases run automatically after merge to `main`; manual runs only
   repair incomplete releases or catalog deployment.

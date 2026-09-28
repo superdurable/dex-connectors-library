@@ -269,8 +269,13 @@ are grouped below that folder, such as `connectors/google/gmail` and
 
 Each connector is its own Go module. Release tags use the module directory,
 such as `connectors/github/vX.Y.Z` and `connectors/google/gmail/vX.Y.Z`.
-The manifest `metadata.version` is the release version. The root
-`connectors.yaml` registry is the source for the public catalog.
+The manifest `metadata.version` is the release version. The root `catalog.yaml`
+is the sorted membership allowlist used to generate the public catalog. Adding
+a connector changes no other shared inventory.
+
+The repository does not track a Go workspace. Run `make workspace` to generate
+an ignored local `go.work`; CI and release verification always use
+`GOWORK=off` for standalone modules.
 
 - [Connector contract](docs/connector-contract.md)
 - [Architecture](docs/architecture.md)

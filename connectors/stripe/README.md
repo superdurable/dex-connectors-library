@@ -132,3 +132,10 @@ and exposes `/webhooks/stripe` without logging event payloads.
 No live Stripe credentials are required by the deterministic test suite. The
 suite uses a fake provider and signed webhook fixtures; a live Stripe account
 and public HTTPS callback remain an operator-owned end-to-end check.
+
+## Verification
+
+```bash
+GOWORK=off go test -race ./...
+GOWORK=off go vet ./...
+```

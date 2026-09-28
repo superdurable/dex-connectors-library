@@ -207,3 +207,20 @@ failures retry instead of producing a branch.
 [`examples/thread-approval`](examples/thread-approval) combines both Triggers,
 `ListThreadMessages`, a typed reply RPC, and `PostThreadReply` in one runnable
 Flow.
+
+## Verification
+
+```bash
+GOWORK=off go test -race ./...
+GOWORK=off go vet ./...
+npm ci --prefix ui
+npm test --prefix ui
+npm run build --prefix ui
+```
+
+With the pinned Dex development server running, the connector owns its real
+Worker, Trigger delivery, RPC, persistence, and transition coverage:
+
+```bash
+GOWORK=off go test -tags=integration ./... -count=1 -v
+```

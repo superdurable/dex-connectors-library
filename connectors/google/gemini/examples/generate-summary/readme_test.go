@@ -17,7 +17,7 @@ func TestREADMECommandsRunFromTheirWorkingDirectory(t *testing.T) {
 	moduleRoot, err := filepath.Abs(filepath.Join("..", ".."))
 	require.NoError(t, err)
 	repositoryRoot := filepath.Dir(filepath.Dir(filepath.Dir(moduleRoot)))
-	require.FileExists(t, filepath.Join(repositoryRoot, "connectors.yaml"))
+	require.FileExists(t, filepath.Join(repositoryRoot, "catalog.yaml"))
 	readme, err := os.ReadFile("README.md")
 	require.NoError(t, err)
 

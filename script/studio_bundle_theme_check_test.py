@@ -86,6 +86,24 @@ class StudioBundleThemeCheckTest(unittest.TestCase):
         self.assertEqual([violation.describe(ROOT) for violation in violations], [])
         self.assertGreaterEqual(len(CHECK.find_studio_user_interface_directories(ROOT)), 4)
 
+    def test_checks_only_selected_connector_bundles(self) -> None:
+        selected = self.write_user_interface("acme/selected", {"main.tsx": THEMED_MAIN})
+        self.write_user_interface("acme/unselected", {"main.tsx": "export const App = () => <p>unstyled</p>;"})
+        connector_directories = [selected.parent]
+
+        violations = CHECK.find_studio_bundle_theme_violations(self.repository_root, connector_directories)
+
+        self.assertEqual([], violations)
+
+    def test_empty_selected_connector_set_is_a_success(self) -> None:
+        self.write_user_interface("acme/unselected", {"main.tsx": "export const App = () => <p>unstyled</p>;"})
+
+        with contextlib.redirect_stdout(io.StringIO()) as output:
+            result = CHECK.main([str(self.repository_root), "--selected"])
+
+        self.assertEqual(0, result)
+        self.assertIn("0 selected", output.getvalue())
+
     def test_accepts_theme_calls_and_the_model_picker_bundle(self) -> None:
         self.write_user_interface("acme/mail", {"main.tsx": THEMED_MAIN})
         self.write_user_interface(

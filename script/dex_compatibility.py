@@ -34,9 +34,14 @@ def main() -> int:
     parser.add_argument("--dex-version", default=os.environ.get("DEX_CLI_VERSION"))
     parser.add_argument("--output")
     parser.add_argument("--connector-tag", default=os.environ.get("CONNECTOR_RELEASE_TAG"))
+    parser.add_argument(
+        "--connector-directories",
+        help="comma-separated repository-relative connector directories; omitted selects every connector",
+    )
     args = parser.parse_args()
 
     root = Path(__file__).resolve().parents[1]
+    selected_directories = parse_connector_directories(root, args.connector_directories)
     configured_version = args.dex_version or (root / ".dex-compat-version").read_text().strip()
     dex_release = resolve_dex_release(configured_version)
     with tempfile.TemporaryDirectory(prefix="dex-compat-") as temporary:
@@ -53,10 +58,10 @@ def main() -> int:
         artifacts = temporary_root / "connector-artifacts"
         examples = temporary_root / "examples"
         if args.mode == "current":
-            build_current_artifacts(root, artifacts)
-            test_current_examples(root, examples, dexcli, temporary_root)
+            build_current_artifacts(root, artifacts, selected_directories)
+            test_current_examples(root, examples, dexcli, temporary_root, selected_directories)
         else:
-            releases = connector_releases(root, args.connector_tag)
+            releases = connector_releases(root, args.connector_tag, selected_directories)
             download_released_artifacts(releases, artifacts)
             test_released_examples(releases, examples, dexcli)
         test_dex_web(dex_release, root, artifacts, temporary_root)
@@ -169,10 +174,31 @@ def checksum_entry(contents: str, filename: str) -> str:
     raise RuntimeError(f"checksum file has no entry for {filename}")
 
 
-def manifests(root: Path) -> list[Path]:
-    discovered = sorted((root / "connectors").glob("**/connector.yaml"))
+def parse_connector_directories(root: Path, value: str | None) -> list[str] | None:
+    if value is None:
+        return None
+    requested = [directory for directory in value.split(",") if directory]
+    if len(requested) != len(set(requested)):
+        raise RuntimeError("connector directory selection contains duplicates")
+    available = {
+        manifest.parent.relative_to(root).as_posix()
+        for manifest in (root / "connectors").glob("**/connector.yaml")
+    }
+    for directory in requested:
+        if directory not in available:
+            raise RuntimeError(f"selected directory has no connector manifest: {directory}")
+    return requested
+
+
+def manifests(root: Path, connector_directories: list[str] | None = None) -> list[Path]:
+    if connector_directories is None:
+        discovered = sorted((root / "connectors").glob("**/connector.yaml"))
+    else:
+        discovered = [root / directory / "connector.yaml" for directory in connector_directories]
     if not discovered:
-        raise RuntimeError("no connector manifests found")
+        if connector_directories is None:
+            raise RuntimeError("no connector manifests found")
+        return []
     return discovered
 
 
@@ -183,20 +209,13 @@ def module_path(module_root: Path) -> str:
     return first.removeprefix("module ").strip()
 
 
-def build_current_artifacts(root: Path, output: Path) -> None:
+def build_current_artifacts(root: Path, output: Path, connector_directories: list[str] | None = None) -> None:
     commit = run(["git", "rev-parse", "HEAD"], root).stdout.strip()
-    matrix_output = run([
-        "go", "run", "./cmd/connectorctl", "release-matrix",
-        "--registry", "connectors.yaml", "--include-published",
-    ], root).stdout
-    release_matrix = json.loads(matrix_output)
-    declared_versions = {
-        item["manifest_path"]: item["version"]
-        for item in release_matrix["include"]
-    }
-    run(["npm", "ci"], root / "sdk" / "react")
-    run(["npm", "run", "build"], root / "sdk" / "react")
-    for manifest in manifests(root):
+    selected_manifests = manifests(root, connector_directories)
+    if any((manifest.parent / "ui" / "package-lock.json").exists() for manifest in selected_manifests):
+        run(["npm", "ci"], root / "sdk" / "react")
+        run(["npm", "run", "build"], root / "sdk" / "react")
+    for manifest in selected_manifests:
         connector_root = manifest.parent
         destination = output / connector_root.relative_to(root)
         destination.mkdir(parents=True)
@@ -208,11 +227,17 @@ def build_current_artifacts(root: Path, output: Path) -> None:
             run(["go", "run", "./cmd/connectorctl", "ui-artifact", "--manifest", str(manifest), "--ui-root", str(ui / "dist"), "--output", str(destination / "connector-ui.tgz"), "--digest-output", str(destination / "connector-ui.tgz.sha256")], root)
             arguments = ["--ui-artifact", str(destination / "connector-ui.tgz"), "--ui-digest", str(destination / "connector-ui.tgz.sha256")]
         relative = connector_root.relative_to(root).as_posix()
-        manifest_path = manifest.relative_to(root).as_posix()
-        version = declared_versions[manifest_path]
+        version = manifest_version(manifest)
         run(["go", "run", "./cmd/connectorctl", "release-artifact", "--manifest", str(manifest), "--module-path", module_path(connector_root), "--version", version, "--tag", f"{relative}/{version}", "--source-sha", commit, "--output", str(destination / "connector-release.json"), "--digest-output", str(destination / "connector-release.json.sha256"), *arguments], root)
         release = json.loads((destination / "connector-release.json").read_text())
         print(f"Current artifact: connector={release['connectorId']} tag={release['tag']} commit={commit} digest={checksum_entry((destination / 'connector-release.json.sha256').read_text(), 'connector-release.json')}", flush=True)
+
+
+def manifest_version(manifest: Path) -> str:
+    match = re.search(r"(?m)^  version: (v\d+\.\d+\.\d+)\s*$", manifest.read_text())
+    if not match:
+        raise RuntimeError(f"connector manifest has no stable metadata.version: {manifest}")
+    return match.group(1)
 
 
 def create_module_proxy(module_root: Path, proxy: Path) -> tuple[str, str]:
@@ -240,23 +265,31 @@ def create_module_proxy(module_root: Path, proxy: Path) -> tuple[str, str]:
     return name, version
 
 
-def flow_examples(root: Path) -> list[Path]:
+def flow_examples(root: Path, connector_directories: list[str] | None = None) -> list[Path]:
+    selected_roots = None if connector_directories is None else [root / directory for directory in connector_directories]
     examples = []
     for source in sorted((root / "connectors").glob("**/examples/**/flow/*.go")):
-        if "GetSteps(" in source.read_text():
+        if (selected_roots is None or any(connector_root in source.parents for connector_root in selected_roots)) \
+                and "GetSteps(" in source.read_text():
             examples.append(source.parent)
-    if not examples:
+    if not examples and connector_directories is None:
         raise RuntimeError("no Flow examples found")
     return examples
 
 
-def test_current_examples(root: Path, output: Path, dexcli: Path, temporary_root: Path) -> None:
+def test_current_examples(
+    root: Path,
+    output: Path,
+    dexcli: Path,
+    temporary_root: Path,
+    connector_directories: list[str] | None = None,
+) -> None:
     proxy = temporary_root / "proxy"
     proxies: dict[Path, tuple[str, str]] = {}
-    for manifest in manifests(root):
+    for manifest in manifests(root, connector_directories):
         proxies[manifest.parent] = create_module_proxy(manifest.parent, proxy)
-    for example in flow_examples(root):
-        connector_root = next(path for path in proxies if path in example.parents)
+    for example in flow_examples(root, connector_directories):
+        connector_root = max((path for path in proxies if path in example.parents), key=lambda path: len(path.parts))
         name, version = proxies[connector_root]
         consumer = output / example_consumer_name(connector_root.relative_to(root).as_posix(), example)
         run_visualize(example, consumer, dexcli, name, version, proxy.as_uri())
@@ -343,9 +376,16 @@ def validate_definition(definition: object, connector_module: str, version: str,
         raise RuntimeError(f"connector progress Stream edge is missing in {source}")
 
 
-def connector_releases(root: Path, only_tag: str | None) -> list[dict[str, object]]:
+def connector_releases(
+    root: Path,
+    only_tag: str | None,
+    connector_directories: list[str] | None = None,
+) -> list[dict[str, object]]:
     releases = github_releases(REPOSITORY)
-    current_prefixes = {manifest.parent.relative_to(root).as_posix() for manifest in manifests(root)}
+    current_prefixes = {
+        manifest.parent.relative_to(root).as_posix()
+        for manifest in manifests(root, connector_directories)
+    }
     stable = [
         release for release in releases
         if not release.get("draft") and not release.get("prerelease")

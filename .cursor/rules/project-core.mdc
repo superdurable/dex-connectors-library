@@ -10,7 +10,8 @@ alwaysApply: true
   contains `logo.svg`.
 - `connector.yaml` owns generated Config, Credentials, definitions, factories,
   branches, UI metadata, and defaults. Never edit generated connector code.
-- Register each connector in sorted `connectors.yaml`.
+- Register each connector in sorted `catalog.yaml`; it is the only shared file
+  changed when adding a connector.
 - Keep provider operation calls in Step `Execute` and out of RPC handlers.
   Trigger sources may poll or subscribe before routing events to a Flow.
 - Preserve durable and released identities and register every Attribute and

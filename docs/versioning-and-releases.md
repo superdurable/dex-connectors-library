@@ -38,7 +38,7 @@ tag, calculates the requested semantic-version bump, and publishes path-scoped
 release notes. The first SDK release is `sdkgo/v0.1.0` and must use the default
 minor selection.
 
-The root `connectors.yaml` file is a sorted allowlist of connector directories.
+The root `catalog.yaml` file is a sorted allowlist of connector directories.
 Each path starts below `connectors/` and may have any number of directory
 levels. The first directory under `connectors/` is the company. Its name is
 `metadata.company` with letters and digits lowercased and every other
@@ -52,10 +52,13 @@ actions without reading provider code.
 
 The `Release Connectors and Catalog` workflow runs automatically after a push
 to `main`. It compares every declared manifest version with reachable tags and
-publishes all requested versions in parallel. A manual run takes no version or
-connector input and only retries incomplete releases. The workflow:
+publishes only requested versions in parallel. A manual run accepts one
+optional registered connector directory for repair; leaving it empty rebuilds
+only the catalog and site. A workflow rerun includes published tags created at
+the original push commit, retaining its release matrix. The workflow:
 
-1. runs the Current compatibility gate against the pinned Dex CLI/Web baseline;
+1. runs the selected connector's Current compatibility gate against the pinned
+   Dex CLI/Web baseline;
 2. verifies generated code and the standalone connector with `GOWORK=off`;
 3. rejects `replace`, pseudo-version, branch, or SHA SDK dependencies;
 4. proves the exact SDK tag is reachable and downloadable;
@@ -113,16 +116,16 @@ GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
 ```
 
-Validate the directory registry after adding, moving, or deleting a connector:
+Validate the catalog source after adding, moving, or deleting a connector:
 
 ```bash
-go run ./cmd/connectorctl catalog --check --registry connectors.yaml
+go run ./cmd/connectorctl catalog --check --catalog catalog.yaml
 ```
 
 Generate the public catalog locally:
 
 ```bash
-go run ./cmd/connectorctl catalog --registry connectors.yaml --output dist/pages/catalog.yaml
+go run ./cmd/connectorctl catalog --catalog catalog.yaml --output dist/pages/catalog.yaml
 ```
 
 Release planning is covered by temporary-repository tests:
