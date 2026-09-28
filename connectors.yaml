@@ -11,4 +11,5 @@ directories:
   - connectors/mistral
   - connectors/openai
   - connectors/slack
+  - connectors/stripe
   - connectors/xai

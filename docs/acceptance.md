@@ -74,10 +74,15 @@ npm test
 npm run build
 cd ../../..
 
+cd connectors/stripe
+GOWORK=off go test -race ./...
+GOWORK=off go vet ./...
+cd ../..
+
 make check
 go test -race ./...
 go vet ./...
-go run ./cmd/connectorctl validate connectors/anthropic/connector.yaml connectors/github/connector.yaml connectors/google/gemini/connector.yaml connectors/google/gmail/connector.yaml connectors/google/spreadsheet/connector.yaml connectors/linkedin/connector.yaml connectors/meta/connector.yaml connectors/mistral/connector.yaml connectors/openai/connector.yaml connectors/slack/connector.yaml connectors/xai/connector.yaml
+go run ./cmd/connectorctl validate connectors/anthropic/connector.yaml connectors/github/connector.yaml connectors/google/gemini/connector.yaml connectors/google/gmail/connector.yaml connectors/google/spreadsheet/connector.yaml connectors/linkedin/connector.yaml connectors/meta/connector.yaml connectors/mistral/connector.yaml connectors/openai/connector.yaml connectors/slack/connector.yaml connectors/stripe/connector.yaml connectors/xai/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/anthropic/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/github/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/google/gemini/connector.yaml
@@ -87,6 +92,7 @@ go run ./cmd/connectorctl generate --check connectors/linkedin/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/meta/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/mistral/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/openai/connector.yaml
+go run ./cmd/connectorctl generate --check connectors/stripe/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/xai/connector.yaml
 go run ./cmd/connectorctl catalog --check --registry connectors.yaml
 go run ./cmd/connectorctl release-matrix --registry connectors.yaml
@@ -163,6 +169,9 @@ The suite must prove:
   tests remain green;
 - Gmail sender validation, MIME encoding, terminal rejection, rate-limit, and
   uncertain-send tests remain green;
+- Stripe ACH request mapping, idempotency, reconciliation, response bounds,
+  redirect refusal, webhook signature/timestamp checks, durable-before-ack
+  delivery, event filtering, and secret redaction tests remain green;
 - Studio Host API, setup component, deterministic tarball, digest, and React
   build tests remain green.
 

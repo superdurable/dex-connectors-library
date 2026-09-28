@@ -12,6 +12,7 @@ use (
 	./connectors/mistral
 	./connectors/openai
 	./connectors/slack
+	./connectors/stripe
 	./connectors/xai
 	./examples/local-config
 	./sdkgo
