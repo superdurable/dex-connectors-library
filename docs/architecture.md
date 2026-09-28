@@ -199,6 +199,23 @@ the Dex retry for 408, 429, and retryable 5xx responses. The call does not
 stream, so its heartbeat timeout equals its 300-second synchronous Execute
 timeout.
 
+## Meta connector
+
+Meta is a separate module and API-key Connection for Meta Model API. Its
+`generateText` operation is the shared text-generation Query: the connector
+declares only an `openaichat` Profile for `POST https://api.meta.ai/v1/chat/completions`,
+and the `sdkgo/llm` pipeline owns validation, the error table, schema checks,
+streaming, and heartbeats. Every request streams, because Meta ends a long
+non-streaming request with HTTP 504, so the operation uses the streaming
+budget: a 900-second sync Execute, a 60-second heartbeat timeout, and four
+attempts over 30 minutes. The key travels only as a bearer token to the one
+fixed host; tests reach a loopback fake provider through
+`WithBaseURLForTest`.
+
+The Studio bundle's `modelPicker` lists `GET https://api.meta.ai/v1/models`
+through the Dex Web broker and hides models outside Muse Spark behind
+**Show all models**.
+
 ## GitHub connector
 
 GitHub exposes generated Query factories for authenticated profile plus primary
