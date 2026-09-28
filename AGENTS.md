@@ -66,8 +66,8 @@ Every implementation plan includes Tests, Documentation, and UI/UX. Use
 
 - Before changing Connector Step options, branches, retry, durability, Trigger
   delivery, Flow examples, or other Dex semantics, load the installed
-  `dex-developer` skill. Cursor uses the dex-developer skill, Codex uses
-  `$dex-developer`, and Claude Code uses `/dex:dex-developer`.
+  `dex-connector-contributor` skill through the host's native skill mechanism.
+  It loads `dex-sdk` for shared Dex application semantics.
 - If the skill is unavailable, stop the Dex application-modeling portion and
   follow https://docs.superdurable.io/build-with-ai/dex-developer-skill.
 - Only a happy-path branch is required. Mark every other branch `optional: true`.
