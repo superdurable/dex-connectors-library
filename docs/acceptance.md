@@ -77,6 +77,32 @@ deterministic output with complete identities. It also builds real release
 metadata and optional Studio UI artifacts, then runs Dex Web's catalog,
 checksum, caching, sandbox, OAuth, and API-key security suites.
 
+The gate injects every `test/dexcompat/*_test.go.txt` into the Web package of
+the pinned Dex release and fails unless each top-level test passes. Each
+injected file must declare a top-level test, and each Dex Web security suite
+the gate selects must still have a passing test.
+
+`TestStudioCommandCredentialIsolation` proves that Studio commands keep each
+key on its own host. Its fixture, `test/dexcompat/credential-isolation`, is not
+a registered connector. Its connection has two optional secret fields, and each
+is bound to one Studio command on its own HTTPS host. Both commands share one
+capability, so only `credential.field` separates the keys. The gate builds the
+fixture's release with `connectorctl`. The test does not start `dexcli`. It
+builds Dex Web's connector setup inside the Web package with the configuration
+that `dexcli dev --connector-release-override` passes. Each fake provider host
+presents a certificate valid only for its own name. The test saves the keys
+through the Connections API, opens a UI session, and runs each command:
+
+- each command reaches only its own host, with only its own key as the bearer
+  credential;
+- a missing, blank, or whitespace-only field sends nothing to either host;
+- when its own host answers 401 echoing the `Authorization` header, answers
+  2xx with the key in the model list, or closes the connection, the command
+  fails with `CONNECTOR_PROVIDER_COMMAND_FAILED` after one request to that host
+  with only its own key;
+- no Dex Web response contains either key, and neither does any frame
+  message the host page builds from those responses.
+
 Released compatibility downloads the selected public component tags and their
 unmodified release artifacts:
 

@@ -1,0 +1,74 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: credential-isolation
+  displayName: Credential isolation fixture
+  description: Dex compatibility fixture whose connection holds two API keys, each bound to one Studio command on its own provider host.
+  company: Super Durable
+  version: v0.1.0
+spec:
+  provider: credential-isolation
+  codegen:
+    go:
+      package: credentialisolation
+  configuration:
+    fields: []
+  auth:
+    type: apiKey
+    connectionKind: credential-isolation-api-keys
+    fields:
+      - name: alpha_api_key
+        goName: AlphaAPIKey
+        type: secretString
+        description: Alpha provider key, sent only to models.alpha-provider.example.
+        required: false
+      - name: beta_api_key
+        goName: BetaAPIKey
+        type: secretString
+        description: Beta provider key, sent only to api.beta-provider.example.
+        required: false
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.2.0 <0.3.0"
+      backendCapabilities: [use.configuration.write, fixture.models-list]
+      mockScenarios: [not-configured, connected]
+      icon: icon.svg
+    commands:
+      # Both commands share one capability, so only credential.field keeps
+      # each key on its own host.
+      - id: listAlphaModels
+        capability: fixture.models-list
+        request:
+          method: GET
+          url: https://models.alpha-provider.example/v1/models
+          credential: {field: alpha_api_key, scheme: bearer}
+          fixedQuery: {limit: "100"}
+      - id: listBetaModels
+        capability: fixture.models-list
+        request:
+          method: GET
+          url: https://api.beta-provider.example/v1beta/models
+          credential: {field: beta_api_key, scheme: bearer}
+    units:
+      - id: modelPicker
+        goName: ModelPicker
+        description: Choose one model from the alpha and beta provider model lists.
+        backendCapabilities: [fixture.models-list]
+        outputs:
+          - {name: model, goName: Model, type: string}
+  operations:
+    - name: describeModel
+      goName: DescribeModel
+      inputType: DescribeModelRequest
+      outputType: DescribeModelResponse
+      kind: query
+      description: Describe one model. The compatibility gate never runs this operation.
+      idempotency: none
+      branches:
+        - {id: described, goName: Described, description: The provider described the model.}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 3, totalDuration: 2m}

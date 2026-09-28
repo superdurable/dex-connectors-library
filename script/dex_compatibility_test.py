@@ -10,11 +10,17 @@ from unittest.mock import patch
 from script.dex_compatibility import (
     connector_releases,
     create_module_proxy,
+    dex_web_compatibility_sources,
+    dex_web_compatibility_test_names,
     example_consumer_name,
     flow_examples,
     manifests,
     parse_connector_directories,
+    require_dex_web_security_tests_passed,
+    require_dex_web_tests_passed,
 )
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 class ModuleProxyTest(unittest.TestCase):
@@ -99,6 +105,62 @@ class ConnectorSelectionTest(unittest.TestCase):
                 selected = connector_releases(root, None, ["connectors/acme/mail"])
 
             self.assertEqual(["connectors/acme/mail/v0.1.0"], [release["tag_name"] for release in selected])
+
+
+class DexWebCompatibilityTestSelectionTest(unittest.TestCase):
+    def test_every_repository_compatibility_test_is_selected(self) -> None:
+        names = dex_web_compatibility_test_names(dex_web_compatibility_sources(ROOT))
+        self.assertIn("TestExternalConnectorCompatibility", names)
+        self.assertIn("TestStudioCommandCredentialIsolation", names)
+
+    def test_only_top_level_test_functions_are_selected(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary) / "fixture_test.go.txt"
+            source.write_text(
+                "package web\n\n"
+                "func TestSelected(t *testing.T) {\n}\n\n"
+                "func TestRenamedParameter(test *testing.T) {\n}\n\n"
+                "func TestTrailingComment(t *testing.T) { // scenario\n}\n\n"
+                "func (scenario *fixtureScenario) TestNotTopLevel(t *testing.T) {\n}\n\n"
+                "func testHelper(t *testing.T) {\n}\n\n"
+                "func TestMain(m *testing.M) {\n}\n"
+            )
+            self.assertEqual(
+                ["TestSelected", "TestRenamedParameter", "TestTrailingComment"],
+                dex_web_compatibility_test_names([source]),
+            )
+
+    def test_source_without_top_level_tests_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            selected = Path(temporary) / "selected_test.go.txt"
+            selected.write_text("package web\n\nfunc TestSelected(t *testing.T) {\n}\n")
+            unselected = Path(temporary) / "unselected_test.go.txt"
+            unselected.write_text("package web\n\nfunc testHelper(t *testing.T) {\n}\n")
+            with self.assertRaisesRegex(RuntimeError, "unselected_test.go.txt"):
+                dex_web_compatibility_test_names([selected, unselected])
+
+    def test_passing_run_is_accepted(self) -> None:
+        output = "=== RUN   TestSelected\n--- PASS: TestSelected (0.02s)\nPASS\n"
+        require_dex_web_tests_passed(output, ["TestSelected"])
+
+    def test_unselected_test_fails_even_when_go_test_passes(self) -> None:
+        output = "testing: warning: no tests to run\nPASS\nok  \tgithub.com/superdurable/dex/web\t0.1s\n"
+        with self.assertRaisesRegex(RuntimeError, "TestSelected"):
+            require_dex_web_tests_passed(output, ["TestSelected"])
+
+    def test_passing_subtest_does_not_stand_in_for_its_parent(self) -> None:
+        output = "    --- PASS: TestSelected/phase (0.01s)\n--- FAIL: TestSelected (0.02s)\n"
+        with self.assertRaisesRegex(RuntimeError, "TestSelected"):
+            require_dex_web_tests_passed(output, ["TestSelected"])
+
+    def test_security_prefix_is_satisfied_by_a_passing_test_it_selects(self) -> None:
+        output = "--- PASS: TestConnectorOAuthUsesPKCE (0.02s)\n--- PASS: TestSlackOAuth (0.01s)\n"
+        require_dex_web_security_tests_passed(output, ("TestConnectorOAuth", "TestSlackOAuth"))
+
+    def test_security_prefix_that_selects_nothing_fails(self) -> None:
+        output = "--- PASS: TestConnectorOAuthUsesPKCE (0.02s)\n    --- PASS: TestSlackOAuthRenamed/phase (0.01s)\n"
+        with self.assertRaisesRegex(RuntimeError, "TestSlackOAuth"):
+            require_dex_web_security_tests_passed(output, ("TestConnectorOAuth", "TestSlackOAuth"))
 
 
 if __name__ == "__main__":
