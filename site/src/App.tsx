@@ -11,7 +11,6 @@ import {
   catalogTotals,
   companyLogoUrl,
   connectorMatchesQuery,
-  groupCatalog,
   readCatalog,
   type CatalogCapability,
   type CatalogConnector,
@@ -115,9 +114,8 @@ function CatalogPage({ catalog }: { catalog: LoadState<CatalogConnector[]> }) {
     return <p className="status failed">{catalog.message}</p>;
   }
   const matched = catalog.value.filter((connector) => connectorMatchesQuery(connector, query));
-  const groups = groupCatalog(matched);
   return (
-    <div className="companies">
+    <div className="catalog">
       <form className="search" role="search" onSubmit={(event) => event.preventDefault()}>
         <label htmlFor="connector-search">Search</label>
         <input
@@ -128,29 +126,30 @@ function CatalogPage({ catalog }: { catalog: LoadState<CatalogConnector[]> }) {
           onChange={(event) => setQuery(event.target.value)}
         />
       </form>
-      {groups.length === 0 ? <p className="status">No connector matches that search.</p> : null}
-      {groups.map((group) => (
-        <section key={group.company} className="company">
-          <div className="company-heading">
-            <img src={companyLogoUrl(group.companyDirectory, logoOrigin)} alt="" width={56} height={56} />
-            <h2>{group.company}</h2>
-          </div>
-          <ul className="cards">
-            {group.connectors.map((connector) => (
-              <li key={connector.id}>
-                <Link className="card" to={`/connectors/${connector.id}`}>
-                  <span className="card-title">
-                    <span>{connector.name}</span>
-                    <span className="version">{connector.version}</span>
-                  </span>
-                  <span className="description">{connector.description}</span>
-                  <CapabilityChips connector={connector} />
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ))}
+      {matched.length === 0 ? <p className="status">No connector matches that search.</p> : null}
+      <ul className="cards">
+        {matched.map((connector) => (
+          <li key={connector.id}>
+            <Link className="card" to={`/connectors/${connector.id}`}>
+              <span className="card-meta">
+                <span className="card-company">
+                  <img
+                    src={companyLogoUrl(connector.companyDirectory, logoOrigin)}
+                    alt=""
+                    width={36}
+                    height={36}
+                  />
+                  <span>{connector.company}</span>
+                </span>
+                <span className="version">{connector.version}</span>
+              </span>
+              <span className="card-title">{connector.name}</span>
+              <span className="description">{connector.description}</span>
+              <CapabilityChips connector={connector} />
+            </Link>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -164,13 +163,20 @@ function CapabilityChips({ connector }: { connector: CatalogConnector }) {
   if (chips.length === 0) {
     return null;
   }
+  const visibleChips = chips.slice(0, 2);
+  const hiddenChipCount = chips.length - visibleChips.length;
   return (
     <span className="chips">
-      {chips.map((capability) => (
+      {visibleChips.map((capability) => (
         <span key={capability.key} className={`kind kind-${capability.kind}`}>
           {capability.name}
         </span>
       ))}
+      {hiddenChipCount > 0 ? (
+        <span className="kind kind-more" aria-label={`${hiddenChipCount} more capabilities`}>
+          +{hiddenChipCount}
+        </span>
+      ) : null}
     </span>
   );
 }
