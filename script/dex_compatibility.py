@@ -26,6 +26,14 @@ REPOSITORY = "superdurable/dex-connectors-library"
 DEX_REPOSITORY = "superdurable/dex"
 SYNTHETIC_VERSION_PREFIX = "v0.0."
 STABLE_VERSION = re.compile(r"^v(\d+)\.(\d+)\.(\d+)$")
+DEX_WEB_COMPATIBILITY_TESTS = Path("test") / "dexcompat"
+DEX_WEB_SECURITY_TESTS = ("TestConnectorOAuth", "TestSlackOAuth", "TestConnectorConnectionsAPI", "TestConnectorConnectionStore")
+TOP_LEVEL_GO_TEST = re.compile(r"^func (Test\w*)\(\w+ \*testing\.T\)", re.MULTILINE)
+CREDENTIAL_ISOLATION_FIXTURE = DEX_WEB_COMPATIBILITY_TESTS / "credential-isolation"
+# Dex Web accepts a local release override only under the official module path.
+CREDENTIAL_ISOLATION_MODULE_PATH = f"github.com/{REPOSITORY}/connectors/dex-compat-fixtures/credential-isolation"
+CREDENTIAL_ISOLATION_VERSION = "v0.1.0"
+CREDENTIAL_ISOLATION_RELEASE_ENVIRONMENT = "DEX_CONNECTOR_COMPAT_CREDENTIAL_ISOLATION_RELEASE"
 
 
 def main() -> int:
@@ -64,7 +72,8 @@ def main() -> int:
             releases = connector_releases(root, args.connector_tag, selected_directories)
             download_released_artifacts(releases, artifacts)
             test_released_examples(releases, examples, dexcli)
-        test_dex_web(dex_release, root, artifacts, temporary_root)
+        credential_isolation_release = build_credential_isolation_release(root, temporary_root / "credential-isolation-release")
+        test_dex_web(dex_release, root, artifacts, credential_isolation_release, temporary_root)
     return 0
 
 
@@ -450,7 +459,22 @@ def test_released_examples(releases: list[dict[str, object]], output: Path, dexc
             run_visualize(example, output / example_consumer_name(prefix, example), dexcli, connector_module, version)
 
 
-def test_dex_web(dex_release: dict[str, object], root: Path, artifacts: Path, temporary_root: Path) -> None:
+def build_credential_isolation_release(root: Path, output: Path) -> Path:
+    """Builds the fixture release; it sits outside connectors/, so catalog and example checks skip it."""
+    fixture = root / CREDENTIAL_ISOLATION_FIXTURE
+    manifest = fixture / "connector.yaml"
+    output.mkdir(parents=True)
+    commit = run(["git", "rev-parse", "HEAD"], root).stdout.strip()
+    tag = CREDENTIAL_ISOLATION_MODULE_PATH.removeprefix(f"github.com/{REPOSITORY}/") + "/" + CREDENTIAL_ISOLATION_VERSION
+    ui_artifact = output / "connector-ui.tgz"
+    ui_digest = output / "connector-ui.tgz.sha256"
+    run(["go", "run", "./cmd/connectorctl", "ui-artifact", "--manifest", str(manifest), "--ui-root", str(fixture / "ui"), "--output", str(ui_artifact), "--digest-output", str(ui_digest)], root)
+    run(["go", "run", "./cmd/connectorctl", "release-artifact", "--manifest", str(manifest), "--module-path", CREDENTIAL_ISOLATION_MODULE_PATH, "--version", CREDENTIAL_ISOLATION_VERSION, "--tag", tag, "--source-sha", commit, "--output", str(output / "connector-release.json"), "--digest-output", str(output / "connector-release.json.sha256"), "--ui-artifact", str(ui_artifact), "--ui-digest", str(ui_digest)], root)
+    print(f"Credential isolation fixture: tag={tag} commit={commit} digest={checksum_entry((output / 'connector-release.json.sha256').read_text(), 'connector-release.json')}", flush=True)
+    return output
+
+
+def test_dex_web(dex_release: dict[str, object], root: Path, artifacts: Path, credential_isolation_release: Path, temporary_root: Path) -> None:
     tag = str(dex_release["tag_name"])
     source_archive = temporary_root / "dex-source.tar.gz"
     download(f"https://github.com/{DEX_REPOSITORY}/archive/refs/tags/{tag}.tar.gz", source_archive)
@@ -460,14 +484,51 @@ def test_dex_web(dex_release: dict[str, object], root: Path, artifacts: Path, te
     if len(candidates) != 1:
         raise RuntimeError("Dex source archive has an unexpected layout")
     web = candidates[0] / "web"
-    shutil.copy2(root / "test" / "dexcompat" / "external_connector_compat_test.go.txt", web / "external_connector_compat_test.go")
+    compatibility_sources = dex_web_compatibility_sources(root)
+    for source in compatibility_sources:
+        shutil.copy2(source, web / source.name.removesuffix(".txt"))
     run(["npm", "ci"], web)
     run(["npm", "run", "build"], web)
     environment = os.environ.copy()
     environment["GOWORK"] = "off"
     environment["GOTOOLCHAIN"] = "auto"
     environment["DEX_CONNECTOR_COMPAT_ARTIFACT_ROOT"] = str(artifacts)
-    run(["go", "test", ".", "-run", "TestExternalConnectorCompatibility|TestConnectorOAuth|TestSlackOAuth|TestConnectorConnectionsAPI|TestConnectorConnectionStore", "-count=1", "-v"], web, environment)
+    environment[CREDENTIAL_ISOLATION_RELEASE_ENVIRONMENT] = str(credential_isolation_release)
+    compatibility_tests = dex_web_compatibility_test_names(compatibility_sources)
+    result = run(["go", "test", ".", "-run", "|".join((*compatibility_tests, *DEX_WEB_SECURITY_TESTS)), "-count=1", "-v"], web, environment)
+    require_dex_web_tests_passed(result.stdout, compatibility_tests)
+    require_dex_web_security_tests_passed(result.stdout, DEX_WEB_SECURITY_TESTS)
+
+
+def dex_web_compatibility_sources(root: Path) -> list[Path]:
+    sources = sorted((root / DEX_WEB_COMPATIBILITY_TESTS).glob("*_test.go.txt"))
+    if not sources:
+        raise RuntimeError(f"no Dex Web compatibility tests found in {DEX_WEB_COMPATIBILITY_TESTS}")
+    return sources
+
+
+def dex_web_compatibility_test_names(sources: list[Path]) -> list[str]:
+    names = []
+    for source in sources:
+        source_names = TOP_LEVEL_GO_TEST.findall(source.read_text())
+        if not source_names:
+            raise RuntimeError(f"Dex Web compatibility source declares no top-level tests: {source.name}")
+        names.extend(source_names)
+    return names
+
+
+def require_dex_web_tests_passed(output: str, names: list[str]) -> None:
+    """Fails when a compatibility test did not pass, including when -run selected nothing."""
+    for name in names:
+        if not re.search(rf"^--- PASS: {re.escape(name)} \(", output, re.MULTILINE):
+            raise RuntimeError(f"Dex Web compatibility test did not pass: {name}")
+
+
+def require_dex_web_security_tests_passed(output: str, prefixes: tuple[str, ...]) -> None:
+    """Fails when a Dex rename leaves a security test prefix selecting nothing."""
+    for prefix in prefixes:
+        if not re.search(rf"^--- PASS: {re.escape(prefix)}\w* \(", output, re.MULTILINE):
+            raise RuntimeError(f"no Dex Web security test named {prefix}* passed")
 
 
 def run(arguments: list[str], directory: Path, environment: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
