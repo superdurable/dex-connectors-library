@@ -17,7 +17,13 @@ import (
 
 const ConnectorID = "openai"
 
+const (
+	UIUnitModelPicker      = "modelPicker"
+	UIModelPickerPortModel = "model"
+)
+
 type Config struct {
+	Model            string `json:"model,omitempty" yaml:"model,omitempty"`
 	Endpoint         string `json:"endpoint,omitempty" yaml:"endpoint,omitempty"`
 	MaxResponseBytes int64  `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
 	MaxSSEEventBytes int64  `json:"maxSseEventBytes,omitempty" yaml:"maxSseEventBytes,omitempty"`
@@ -97,6 +103,7 @@ func (Connection) GoString() string { return "openai.Connection{[REDACTED]}" }
 
 func DefaultConfig() Config {
 	return Config{
+		Model:            "gpt-6-sol",
 		Endpoint:         "https://api.openai.com/v1",
 		MaxResponseBytes: 8388608,
 		MaxSSEEventBytes: 1048576,
@@ -105,6 +112,9 @@ func DefaultConfig() Config {
 
 func withConfigDefaults(config Config) Config {
 	defaults := DefaultConfig()
+	if config.Model == "" {
+		config.Model = defaults.Model
+	}
 	if config.Endpoint == "" {
 		config.Endpoint = defaults.Endpoint
 	}
@@ -170,6 +180,7 @@ type CreateResponseStepConfig[IN any] struct {
 	operationID                       struct{}                                       `connector:"operationId=createResponse"`
 	StepType                          string                                         `connector:"stepType"`
 	Annotations                       sdkgo.StepAnnotations                          `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                 `connector:"configurationUI"`
 	Connection                        Connection                                     `connector:"connection"`
 	ConnectionName                    string                                         `connector:"connectionName"`
 	MapToOperationInput               func(IN) CreateRequest                         `connector:"mapToOperationInput"`
@@ -194,7 +205,8 @@ func NewCreateResponseStep[IN any](config CreateResponseStepConfig[IN]) sdkgo.Mu
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateRequest, Response]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.CreateResponse(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.client.CreateResponse(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[CreateResponseResult] {
 			branches := make([]sdkgo.BranchTarget[CreateResponseResult], 0, 5)
@@ -252,6 +264,7 @@ type RetrieveResponseStepConfig[IN any] struct {
 	operationID                    struct{}                                    `connector:"operationId=retrieveResponse"`
 	StepType                       string                                      `connector:"stepType"`
 	Annotations                    sdkgo.StepAnnotations                       `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI              `connector:"configurationUI"`
 	Connection                     Connection                                  `connector:"connection"`
 	ConnectionName                 string                                      `connector:"connectionName"`
 	MapToOperationInput            func(IN) RetrieveRequest                    `connector:"mapToOperationInput"`
@@ -273,7 +286,8 @@ func NewRetrieveResponseStep[IN any](config RetrieveResponseStepConfig[IN]) sdkg
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, RetrieveRequest, Response]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.RetrieveResponse(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.client.RetrieveResponse(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[RetrieveResponseResult] {
 			branches := make([]sdkgo.BranchTarget[RetrieveResponseResult], 0, 5)
@@ -295,6 +309,94 @@ func NewRetrieveResponseStep[IN any](config RetrieveResponseStepConfig[IN]) sdkg
 			return branches
 		}(),
 		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GenerateTextBranchGenerated sdkgo.BranchID = "generated"
+const GenerateTextBranchTruncated sdkgo.BranchID = "truncated"
+const GenerateTextBranchBlocked sdkgo.BranchID = "blocked"
+const GenerateTextBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GenerateTextBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GenerateTextBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GenerateTextDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "generateText"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GenerateTextBranchGenerated, Description: "The model finished normally and returned text."},
+		{ID: GenerateTextBranchTruncated, Description: "The model stopped at the output token limit and returned any partial text.", Optional: true},
+		{ID: GenerateTextBranchBlocked, Description: "OpenAI stopped the response for a content or safety policy, or the model refused.", Optional: true},
+		{ID: GenerateTextBranchProviderRejected, Description: "OpenAI conclusively rejected the request, such as invalid credentials, an unknown model, or exhausted credits or spend limits.", Optional: true},
+		{ID: GenerateTextBranchInvalidResponse, Description: "OpenAI returned a malformed, oversized, or unusable response, including structured output that does not match its schema.", Optional: true},
+		{ID: GenerateTextBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(900000000000), HeartbeatTimeout: time.Duration(60000000000),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(2000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 4, TotalDuration: time.Duration(1800000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+}
+
+type GenerateTextResult = sdkgo.QueryResult[GenerateTextResponse]
+
+type GenerateTextStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                `connector:"connectorId=openai"`
+	operationID                    struct{}                                                `connector:"operationId=generateText"`
+	StepType                       string                                                  `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                   `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                          `connector:"configurationUI"`
+	Connection                     Connection                                              `connector:"connection"`
+	ConnectionName                 string                                                  `connector:"connectionName"`
+	MapToOperationInput            func(IN) GenerateTextRequest                            `connector:"mapToOperationInput"`
+	Generated                      sdkgo.Target[GenerateTextResult]                        `connector:"branch=generated"`
+	Truncated                      sdkgo.Target[GenerateTextResult]                        `connector:"branch=truncated,optional"`
+	Blocked                        sdkgo.Target[GenerateTextResult]                        `connector:"branch=blocked,optional"`
+	ProviderRejected               sdkgo.Target[GenerateTextResult]                        `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GenerateTextResult]                        `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GenerateTextResult]                        `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[GenerateTextResponse]] `connector:"resultAttribute"`
+	TextStream                     *dex.Stream[string]                                     `connector:"textStream"`
+	TextOptions                    []dex.BufferedTextStreamOption                          `connector:"textOptions"`
+	StepOptionsOverride            *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewGenerateTextStep[IN any](config GenerateTextStepConfig[IN]) sdkgo.QueryStep[IN, GenerateTextRequest, GenerateTextResponse] {
+	if err := config.Connection.validate(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("openai connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GenerateTextRequest, GenerateTextResponse]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.client.GenerateText(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GenerateTextResult] {
+			branches := make([]sdkgo.BranchTarget[GenerateTextResult], 0, 6)
+			if config.Generated.HasStep() {
+				branches = append(branches, config.Generated.BranchTarget(GenerateTextBranchGenerated))
+			}
+			if config.Truncated.HasStep() {
+				branches = append(branches, config.Truncated.BranchTarget(GenerateTextBranchTruncated))
+			}
+			if config.Blocked.HasStep() {
+				branches = append(branches, config.Blocked.BranchTarget(GenerateTextBranchBlocked))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GenerateTextBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GenerateTextBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GenerateTextBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute: config.ResultAttribute,
+		TextStream:      config.TextStream, TextOptions: config.TextOptions,
 		StepOptionsOverride: config.StepOptionsOverride,
 	})
 }

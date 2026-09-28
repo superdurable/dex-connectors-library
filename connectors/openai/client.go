@@ -1,7 +1,16 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package openai implements the OpenAI Responses API sdkgo.
+// Package openai implements the OpenAI Responses API as Dex Connector
+// operations: the provider-neutral generateText Query that every lab
+// connector shares, and the createResponse Mutation and retrieveResponse
+// Query for stored Responses.
+//
+// generateText runs on the shared sdkgo/llm pipeline with a Responses wire
+// format that sends store: false, so it creates no stored Response.
+// Applications build a Connection once at startup and wire
+// openai.NewGenerateTextStep into a Flow, as the runnable example in
+// examples/summarize-text does.
 package openai
 
 import (
@@ -16,14 +25,35 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/llm"
+	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
+
+// generateTextRequestTimeout stays 30 seconds below the 900-second Execute timeout, so a stalled exchange returns Retry first.
+const generateTextRequestTimeout = 870 * time.Second
+
+// rateLimitHeaderNames are the OpenAI rate-limit headers every operation copies into Receipt metadata.
+var rateLimitHeaderNames = []string{
+	"x-ratelimit-limit-requests", "x-ratelimit-remaining-requests", "x-ratelimit-reset-requests",
+	"x-ratelimit-limit-tokens", "x-ratelimit-remaining-tokens", "x-ratelimit-reset-tokens",
+}
+
+// GenerateTextRequest is the provider-neutral generateText input shared by every lab connector.
+type GenerateTextRequest = llm.TextGenerationRequest
+
+// GenerateTextResponse is the provider-neutral generateText output shared by every lab connector.
+type GenerateTextResponse = llm.TextGenerationResponse
 
 // Option configures Client construction.
 type Option func(*clientOptions)
 
 type clientOptions struct{ httpClient *http.Client }
 
-// WithHTTPClient overrides the default HTTP client; the caller retains ownership.
+// WithHTTPClient overrides the default HTTP client; the caller retains
+// ownership. generateText uses a copy that never follows redirects, so the
+// API key is never forwarded, and bounds each exchange at 870 seconds when the
+// client sets no timeout or a longer one. createResponse and retrieveResponse
+// use the client as given, so a longer timeout still applies to them.
 func WithHTTPClient(client *http.Client) Option {
 	return func(options *clientOptions) { options.httpClient = client }
 }
@@ -35,6 +65,7 @@ type Client struct {
 	credentials      sdkgo.CredentialProvider[Credentials]
 	maxResponseBytes int64
 	maxSSEEventBytes int
+	generateText     *llm.TextGenerationQuery
 }
 
 // StructuredOutput configures a JSON Schema response format for CreateRequest.
@@ -109,6 +140,14 @@ type requestFailure struct {
 func (failure *requestFailure) Error() string { return failure.failure.Message }
 
 // New validates configuration and constructs an authenticated OpenAI client.
+// A blank config.Model uses gpt-6-sol for generateText; createResponse always
+// sends its request's model. Credentials are resolved again for every
+// provider call. New returns an error for a nil credential provider, an
+// invalid endpoint, model, or response limit, or a nil option; it makes no
+// provider request. An endpoint that holds user information, a query, or a
+// fragment is accepted as in v0.6.0, but generateText then selects defect
+// without a request, because such a base URL can carry a secret or change
+// where the joined path points.
 func New(config Config, credentials sdkgo.CredentialProvider[Credentials], options ...Option) (*Client, error) {
 	config = withConfigDefaults(config)
 	if err := config.Validate(); err != nil {
@@ -138,10 +177,57 @@ func New(config Config, credentials sdkgo.CredentialProvider[Credentials], optio
 	if config.MaxResponseBytes < 1 || config.MaxSSEEventBytes < 1 {
 		return nil, fmt.Errorf("OpenAI response limits must be positive")
 	}
+	generateText, err := newGenerateTextQuery(&config, credentials, dependencies.httpClient)
+	if err != nil {
+		return nil, fmt.Errorf("OpenAI: %w", err)
+	}
 	return &Client{
 		endpoint: endpoint, httpClient: httpClient, credentials: credentials,
 		maxResponseBytes: config.MaxResponseBytes, maxSSEEventBytes: int(config.MaxSSEEventBytes),
+		generateText: generateText,
 	}, nil
+}
+
+// newGenerateTextQuery accepts every configuration createResponse accepted in v0.6.0.
+func newGenerateTextQuery(
+	config *Config, credentials sdkgo.CredentialProvider[Credentials], callerHTTPClient *http.Client,
+) (*llm.TextGenerationQuery, error) {
+	wireFormat := newResponsesWireFormat()
+	baseURL := config.Endpoint
+	if _, err := providerhttp.ValidateBaseURL(baseURL); err != nil {
+		// Encoding selects defect before any request, so the default endpoint is never contacted.
+		endpointErr := fmt.Errorf("the connection endpoint cannot be used by generateText: %w", err)
+		wireFormat.EncodeRequest = func(llm.EncodeRequestInput) (llm.EncodedRequest, error) {
+			return llm.EncodedRequest{}, endpointErr
+		}
+		baseURL = DefaultConfig().Endpoint
+	}
+	return llm.NewTextGenerationQuery(&llm.TextGenerationQueryConfig{
+		Definition: GenerateTextDefinition, WireFormat: wireFormat,
+		BaseURL: baseURL, ConnectionModel: config.Model,
+		HTTPClient: generateTextHTTPClient(callerHTTPClient), RequestTimeout: generateTextRequestTimeout,
+		ResolveCredential: func(call sdkgo.Call) (sdkgo.SecretString, error) {
+			credential, err := credentials.Resolve(call)
+			return credential.APIKey, err
+		},
+		MaxResponseBytes: config.MaxResponseBytes, MaxStreamEventBytes: int(config.MaxSSEEventBytes),
+	})
+}
+
+// generateTextHTTPClient caps a longer createResponse timeout below generateText's Execute timeout.
+func generateTextHTTPClient(callerHTTPClient *http.Client) *http.Client {
+	if callerHTTPClient == nil || (callerHTTPClient.Timeout >= 0 && callerHTTPClient.Timeout <= generateTextRequestTimeout) {
+		return callerHTTPClient
+	}
+	capped := *callerHTTPClient
+	capped.Timeout = generateTextRequestTimeout
+	return &capped
+}
+
+// GenerateText returns the generateText Query, which NewGenerateTextStep and
+// the llmtest suites run.
+func (client *Client) GenerateText() *llm.TextGenerationQuery {
+	return client.generateText
 }
 
 // CreateResponse returns the CreateResponse operation bound to this client.
@@ -355,13 +441,19 @@ func responseReceipt(call sdkgo.Call, requestID string, header http.Header, resp
 }
 
 type wireResponse struct {
-	ID     string `json:"id"`
-	Model  string `json:"model"`
-	Status string `json:"status"`
+	ID                string          `json:"id"`
+	Model             string          `json:"model"`
+	Status            string          `json:"status"`
+	Error             json.RawMessage `json:"error"`
+	IncompleteDetails *struct {
+		Reason string `json:"reason"`
+	} `json:"incomplete_details"`
 	Output []struct {
+		Type    string `json:"type"`
 		Content []struct {
-			Type string `json:"type"`
-			Text string `json:"text"`
+			Type    string `json:"type"`
+			Text    string `json:"text"`
+			Refusal string `json:"refusal"`
 		} `json:"content"`
 	} `json:"output"`
 	Usage struct {
@@ -398,10 +490,7 @@ func convertResponse(wire wireResponse) Response {
 
 func rateLimitMetadata(header http.Header) map[string]string {
 	metadata := map[string]string{}
-	for _, name := range []string{
-		"x-ratelimit-limit-requests", "x-ratelimit-remaining-requests", "x-ratelimit-reset-requests",
-		"x-ratelimit-limit-tokens", "x-ratelimit-remaining-tokens", "x-ratelimit-reset-tokens",
-	} {
+	for _, name := range rateLimitHeaderNames {
 		if value := header.Get(name); value != "" {
 			metadata[name] = value
 		}

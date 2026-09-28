@@ -3,9 +3,9 @@ kind: Connector
 metadata:
   name: openai
   displayName: OpenAI
-  description: OpenAI Responses API with structured output, usage, and recovery metadata.
+  description: OpenAI Responses API text generation and stored responses with JSON Schema structured output, reasoning effort, token usage, streamed text, and recovery metadata.
   company: OpenAI
-  version: v0.6.0
+  version: v0.7.0
 spec:
   provider: openai
   codegen:
@@ -13,22 +13,28 @@ spec:
       package: openai
   configuration:
     fields:
+      - name: model
+        goName: Model
+        type: string
+        description: "OpenAI model for generateText on this connection, such as gpt-6-sol or gpt-6-luna. Blank uses gpt-6-sol. A request that names a model overrides it. createResponse always sends its request's model."
+        required: false
+        default: gpt-6-sol
       - name: endpoint
         goName: Endpoint
         type: url
-        description: OpenAI Responses API endpoint.
+        description: "OpenAI API base URL that each operation appends its path to, such as /responses. HTTPS is required except for loopback test servers. The Studio model list always uses api.openai.com."
         required: false
         default: https://api.openai.com/v1
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: Maximum total response size.
+        description: "Maximum total response size in bytes, counting every byte of a stream. Each streamed text delta carries about 260 bytes of event framing, so the default holds roughly 30,000 streamed generateText output tokens; raise it for longer outputs."
         required: false
         default: 8388608
       - name: maxSseEventBytes
         goName: MaxSSEEventBytes
         type: integer
-        description: Maximum size of one server-sent event.
+        description: Maximum size of one server-sent event. The final Responses event repeats the whole response, so raise it for very long outputs.
         required: false
         default: 1048576
   auth:
@@ -38,8 +44,30 @@ spec:
       - name: api_key
         goName: APIKey
         type: secretString
-        description: OpenAI API key.
+        description: OpenAI API key, sent only in the Authorization bearer header.
         required: true
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.2.0 <0.3.0"
+      backendCapabilities: [use.configuration.write, openai.models-list]
+      mockScenarios: [not-configured, connected]
+      icon: icon.svg
+    commands:
+      # Pinned to api.openai.com: a custom endpoint does not move the list.
+      - id: listModels
+        capability: openai.models-list
+        request:
+          method: GET
+          url: https://api.openai.com/v1/models
+          credential: {field: api_key, scheme: bearer}
+    units:
+      - id: modelPicker
+        goName: ModelPicker
+        description: Choose one Step's OpenAI model from OpenAI's live model list.
+        backendCapabilities: [openai.models-list]
+        outputs:
+          - {name: model, goName: Model, type: string}
   operations:
     - name: createResponse
       goName: CreateResponse
@@ -76,3 +104,24 @@ spec:
         executeMethodTimeout: 30s
         durability: async
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+    - name: generateText
+      goName: GenerateText
+      inputType: GenerateTextRequest
+      outputType: GenerateTextResponse
+      kind: query
+      description: Generate text or JSON Schema structured output with an OpenAI model through the Responses API without storing the response.
+      idempotency: none
+      branches:
+        - {id: generated, goName: Generated, description: The model finished normally and returned text.}
+        - {id: truncated, goName: Truncated, description: The model stopped at the output token limit and returned any partial text., optional: true}
+        - {id: blocked, goName: Blocked, description: "OpenAI stopped the response for a content or safety policy, or the model refused.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "OpenAI conclusively rejected the request, such as invalid credentials, an unknown model, or exhausted credits or spend limits.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "OpenAI returned a malformed, oversized, or unusable response, including structured output that does not match its schema.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      progress: [text]
+      execution:
+        # Requests stream, so the shared streaming generateText budget applies.
+        executeMethodTimeout: 900s
+        heartbeatTimeout: 60s
+        durability: sync
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 4, totalDuration: 30m}
