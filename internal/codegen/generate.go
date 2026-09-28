@@ -96,7 +96,11 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 	generation.mustWrite("\tif err := reference.Validate(); err != nil { return Connection{}, fmt.Errorf(%q, err) }\n", manifest.Metadata.Name+" local connection: %w")
 	generation.mustWrite("\tvar config Config\n")
 	generation.mustWrite("\tif err := store.DecodeConfiguration(ConnectorID, connectionName, &config); err != nil { return Connection{}, err }\n")
-	generation.mustWrite("\tcredentials := localconfig.NewCredentialProvider(store, ConnectorID, connectionName, decodeLocalCredentials)\n")
+	if supportsCredentialRefresh(manifest.Spec.Auth) {
+		generation.mustWrite("\tcredentials := localconfig.NewRefreshingCredentialProvider(store, ConnectorID, connectionName, decodeLocalCredentials, encodeLocalCredentials)\n")
+	} else {
+		generation.mustWrite("\tcredentials := localconfig.NewCredentialProvider(store, ConnectorID, connectionName, decodeLocalCredentials)\n")
+	}
 	generation.mustWrite("\tclient, err := New(config, credentials, options...)\n")
 	generation.mustWrite("\tif err != nil { return Connection{}, err }\n")
 	generation.mustWrite("\treturn NewConnection(client, reference)\n}\n\n")
@@ -127,6 +131,33 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 	}
 	generation.mustWrite("\t}\n")
 	generation.mustWrite("\treturn credentials, credentials.Validate()\n}\n\n")
+	if supportsCredentialRefresh(manifest.Spec.Auth) {
+		generation.mustWrite("func encodeLocalCredentials(credentials Credentials) ([]byte, error) {\n")
+		generation.mustWrite("\tfields := struct {\n")
+		if len(manifest.Spec.Auth.Methods) > 0 {
+			generation.mustWrite("\t\tAuthMethodID string `json:\"auth_method\"`\n")
+		}
+		for _, field := range manifest.Spec.Auth.Fields {
+			fieldType := goType(field)
+			if field.Type == "secretString" {
+				fieldType = "string"
+			}
+			generation.mustWrite("\t\t%s %s `json:\"%s,omitempty\"`\n", field.GoName, fieldType, field.Name)
+		}
+		generation.mustWrite("\t}{\n")
+		if len(manifest.Spec.Auth.Methods) > 0 {
+			generation.mustWrite("\t\tAuthMethodID: credentials.AuthMethodID,\n")
+		}
+		for _, field := range manifest.Spec.Auth.Fields {
+			value := "credentials." + field.GoName
+			if field.Type == "secretString" {
+				value += ".Reveal()"
+			}
+			generation.mustWrite("\t\t%s: %s,\n", field.GoName, value)
+		}
+		generation.mustWrite("\t}\n")
+		generation.mustWrite("\treturn json.Marshal(fields)\n}\n\n")
+	}
 	generation.mustWrite("func (connection Connection) validate() error {\n")
 	generation.mustWrite("\tif connection.client == nil { return fmt.Errorf(%q) }\n", manifest.Metadata.Name+" connector connection is required")
 	generation.mustWrite("\treturn connection.reference.Validate()\n}\n\n")
@@ -560,6 +591,27 @@ func hasFieldType(manifest schema.Manifest, fieldType string) bool {
 func hasDefaults(fields []schema.Field) bool {
 	for _, field := range fields {
 		if field.Default != nil {
+			return true
+		}
+	}
+	return false
+}
+
+func supportsCredentialRefresh(auth schema.Auth) bool {
+	for _, method := range auth.Methods {
+		if oauthMapsRefreshToken(method.OAuth2) {
+			return true
+		}
+	}
+	return oauthMapsRefreshToken(auth.OAuth2)
+}
+
+func oauthMapsRefreshToken(oauth *schema.OAuth2) bool {
+	if oauth == nil {
+		return false
+	}
+	for _, mapping := range oauth.CredentialMappings {
+		if mapping.Source == "refresh_token" {
 			return true
 		}
 	}

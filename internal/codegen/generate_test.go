@@ -89,6 +89,10 @@ func TestGenerateValidatesOnlyTheSelectedAuthMethod(t *testing.T) {
 	require.Contains(t, text, "credential access_token is required")
 	require.Contains(t, text, "credential service_account_key is required")
 	require.Contains(t, text, "credential auth_method is invalid")
+	require.Contains(t, text, "localconfig.NewRefreshingCredentialProvider")
+	require.Contains(t, text, "func encodeLocalCredentials(credentials Credentials)")
+	require.Contains(t, text, "credentials.OAuthClientSecret.Reveal()")
+	require.Contains(t, text, "credentials.RefreshToken.Reveal()")
 	_, err = parser.ParseFile(token.NewFileSet(), "zz_generated_connector.go", strings.NewReader(text), parser.AllErrors)
 	require.NoError(t, err)
 }
