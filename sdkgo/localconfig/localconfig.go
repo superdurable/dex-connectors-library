@@ -97,6 +97,7 @@ type connectionRecord struct {
 	Configuration       json.RawMessage `json:"configuration"`
 	Credentials         json.RawMessage `json:"credentials"`
 	CredentialExpiresAt *time.Time      `json:"credentialExpiresAt,omitempty"`
+	CredentialStatus    string          `json:"credentialStatus,omitempty"`
 }
 
 type localUseConfigurationsFile struct {
@@ -624,6 +625,9 @@ func (provider *credentialProvider[C]) ResolveWithRefresh(
 		return zero, err
 	}
 	now := time.Now().UTC()
+	if file.Connections[recordIndex].CredentialStatus == "reauthorization_required" {
+		return zero, sdkgo.ErrReauthorizationRequired
+	}
 	state := sdkgo.CredentialRefreshState[C]{Credentials: credentials, ExpiresAt: file.Connections[recordIndex].CredentialExpiresAt, Now: now}
 	if !driver.RefreshRequired(state) {
 		if state.ExpiresAt != nil && !now.Before(*state.ExpiresAt) {
@@ -633,6 +637,12 @@ func (provider *credentialProvider[C]) ResolveWithRefresh(
 	}
 	result, err := driver.Refresh(ctx, state)
 	if err != nil {
+		if sdkgo.IsReauthorizationRequired(err) {
+			file.Connections[recordIndex].CredentialStatus = "reauthorization_required"
+			if writeErr := writeFile(provider.store.path, file); writeErr != nil {
+				return zero, errors.Join(err, writeErr)
+			}
+		}
 		return zero, fmt.Errorf("refresh connector %q connection %q credentials: %w", provider.connectorID, provider.connectionName, err)
 	}
 	if !result.ExpiresAt.After(now) {
@@ -648,6 +658,7 @@ func (provider *credentialProvider[C]) ResolveWithRefresh(
 	file.Connections[recordIndex].Credentials = append(json.RawMessage(nil), encoded...)
 	expiresAt := result.ExpiresAt.UTC()
 	file.Connections[recordIndex].CredentialExpiresAt = &expiresAt
+	file.Connections[recordIndex].CredentialStatus = ""
 	if err := writeFile(provider.store.path, file); err != nil {
 		return zero, err
 	}
@@ -664,6 +675,9 @@ func (provider *credentialProvider[C]) resolve(call sdkgo.Call) (C, error) {
 		return zero, err
 	}
 	record := file.Connections[recordIndex]
+	if record.CredentialStatus == "reauthorization_required" {
+		return zero, sdkgo.ErrReauthorizationRequired
+	}
 	if record.CredentialExpiresAt != nil && !time.Now().Before(*record.CredentialExpiresAt) {
 		return zero, fmt.Errorf("connector %q connection %q credentials are expired", provider.connectorID, provider.connectionName)
 	}

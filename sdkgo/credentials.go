@@ -9,6 +9,37 @@ import (
 	"time"
 )
 
+// ErrReauthorizationRequired marks a terminal credential refresh failure.
+// The selected authorization method must complete again before calls resume.
+var ErrReauthorizationRequired = errors.New("connector reauthorization is required")
+
+// ReauthorizationRequiredError wraps a provider error that cannot succeed through retry.
+// Connector drivers must provide a secret-safe cause.
+type ReauthorizationRequiredError struct {
+	cause error
+}
+
+// NewReauthorizationRequiredError marks cause as requiring interactive reauthorization.
+func NewReauthorizationRequiredError(cause error) error {
+	return &ReauthorizationRequiredError{cause: cause}
+}
+
+// Error reports a stable secret-safe message.
+func (*ReauthorizationRequiredError) Error() string { return ErrReauthorizationRequired.Error() }
+
+// Unwrap exposes the classification and safe provider cause.
+func (err *ReauthorizationRequiredError) Unwrap() []error {
+	if err.cause == nil {
+		return []error{ErrReauthorizationRequired}
+	}
+	return []error{ErrReauthorizationRequired, err.cause}
+}
+
+// IsReauthorizationRequired reports whether err is a terminal refresh failure.
+func IsReauthorizationRequired(err error) bool {
+	return errors.Is(err, ErrReauthorizationRequired)
+}
+
 // SecretString is intentionally not serializable and always renders redacted.
 type SecretString struct {
 	value string

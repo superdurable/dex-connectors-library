@@ -5,6 +5,7 @@ package sdkgo_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -40,4 +41,12 @@ func TestResolveCredentialRejectsMissingDependencies(t *testing.T) {
 	provider := sdkgo.StaticCredentialProvider[string]{reference: "secret"}
 	_, err = sdkgo.ResolveCredential(context.Background(), provider, sdkgo.Call{Connection: reference}, nil)
 	require.ErrorContains(t, err, "credential refresh driver is required")
+}
+
+func TestReauthorizationRequiredErrorPreservesClassification(t *testing.T) {
+	cause := errors.New("provider grant was revoked")
+	err := sdkgo.NewReauthorizationRequiredError(cause)
+	require.True(t, sdkgo.IsReauthorizationRequired(err))
+	require.ErrorIs(t, err, cause)
+	require.NotContains(t, err.Error(), cause.Error())
 }

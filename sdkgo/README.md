@@ -225,9 +225,12 @@ ordinary `CredentialProvider.Resolve` path.
 acquiring a process-local lock, so concurrent calls refresh once. A successful
 refresh must return a future expiry and the complete replacement credential
 value. The local provider writes that value through an atomic `0600` file
-replacement before returning it. A failed refresh leaves the existing file
-unchanged. When an OAuth provider omits a new refresh token, the driver must
-copy the prior refresh token into its result.
+replacement before returning it. A retryable failed refresh leaves the existing
+file unchanged. A driver wraps terminal provider responses such as
+`invalid_grant` with `NewReauthorizationRequiredError`; the local provider then
+persists only the `reauthorization_required` status and stops automatic retries.
+When an OAuth provider omits a new refresh token, the driver must copy the prior
+refresh token into its result.
 
 Hosted credential providers implement the same interface behind their trusted
 credential broker. Applications and Flow state receive only the resolved

@@ -188,6 +188,31 @@ func TestRefreshingCredentialProviderDoesNotPersistFailedRefresh(t *testing.T) {
 	require.Equal(t, before, after)
 }
 
+func TestRefreshingCredentialProviderPersistsReauthorizationRequiredState(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "connections.json")
+	writeConnections(t, path, "https://example.test", "expired-token", time.Now().Add(-time.Minute))
+	store, err := localconfig.LoadFile(path)
+	require.NoError(t, err)
+	provider := localconfig.NewRefreshingCredentialProvider(
+		store, "gmail", "sender", decodeTestCredentials, encodeTestCredentials,
+	)
+	calls := &atomic.Int32{}
+	driver := testRefreshDriver{
+		calls: calls, err: sdkgo.NewReauthorizationRequiredError(errors.New("invalid_grant")),
+	}
+	call := sdkgo.Call{Connection: sdkgo.ConnectionRef{Provider: "google", Name: "sender"}}
+	_, err = sdkgo.ResolveCredential(context.Background(), provider, call, driver)
+	require.ErrorIs(t, err, sdkgo.ErrReauthorizationRequired)
+	require.NotContains(t, err.Error(), "invalid_grant")
+	contents, readErr := os.ReadFile(path)
+	require.NoError(t, readErr)
+	require.Contains(t, string(contents), `"credentialStatus": "reauthorization_required"`)
+
+	_, err = sdkgo.ResolveCredential(context.Background(), provider, call, driver)
+	require.ErrorIs(t, err, sdkgo.ErrReauthorizationRequired)
+	require.Equal(t, int32(1), calls.Load())
+}
+
 func TestLoadFileRejectsSymlinkAndDuplicateConnection(t *testing.T) {
 	directory := t.TempDir()
 	target := filepath.Join(directory, "target.json")
