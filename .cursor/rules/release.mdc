@@ -12,6 +12,12 @@ alwaysApply: true
 - SDK tags use sdkgo/vX.Y.Z; connector tags use their module directory.
 - Connector modules depend on an exact published SDK version without replace,
   pseudo-version, branch, or commit SHA.
+- A connector may require another connector module only at an exact released
+  tag that is reachable from `main` and whose GitHub release has
+  `connector-release.complete`. Release the dependency first and pin it in a
+  later PR.
+- From this repository, connector modules may require only the SDK and other
+  connector modules, never the root module or an `examples/` module.
 - Release SDK changes before a later connector dependency-upgrade PR.
 - When discovering an SDK contract gap, develop SDK and connector changes
   together with the ignored `go.work` from `make workspace` or a temporary

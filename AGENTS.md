@@ -110,6 +110,12 @@ Every implementation plan includes Tests, Documentation, and UI/UX. Use
 - Core SDK tags use `sdkgo/vX.Y.Z`. Connector tags use the module directory,
   such as `connectors/openai/vX.Y.Z`.
 - Connector modules require an exact published Connector Go SDK release.
+- A connector may require another connector module only at an exact released
+  tag that is reachable from `main` and whose GitHub release has
+  `connector-release.complete`. Release the dependency first and pin it in a
+  later PR.
+- From this repository, connector modules may require only the SDK and other
+  connector modules, never the root module or an `examples/` module.
 - Connector `go.mod` files must not contain `replace`, pseudo-versions, branches,
   or commit SHAs.
 - If a connector needs an SDK change, release the SDK first. Upgrade connectors
