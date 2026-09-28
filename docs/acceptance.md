@@ -17,6 +17,15 @@ npm test
 npm run build
 cd ../../..
 
+cd connectors/deepseek
+GOWORK=off go test -race ./...
+GOWORK=off go vet ./...
+cd ui
+npm ci
+npm test
+npm run build
+cd ../../..
+
 cd connectors/github
 GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
@@ -82,8 +91,9 @@ cd ../..
 make check
 go test -race ./...
 go vet ./...
-go run ./cmd/connectorctl validate connectors/anthropic/connector.yaml connectors/github/connector.yaml connectors/google/gemini/connector.yaml connectors/google/gmail/connector.yaml connectors/google/spreadsheet/connector.yaml connectors/linkedin/connector.yaml connectors/meta/connector.yaml connectors/mistral/connector.yaml connectors/openai/connector.yaml connectors/slack/connector.yaml connectors/stripe/connector.yaml connectors/xai/connector.yaml
+go run ./cmd/connectorctl validate connectors/anthropic/connector.yaml connectors/deepseek/connector.yaml connectors/github/connector.yaml connectors/google/gemini/connector.yaml connectors/google/gmail/connector.yaml connectors/google/spreadsheet/connector.yaml connectors/linkedin/connector.yaml connectors/meta/connector.yaml connectors/mistral/connector.yaml connectors/openai/connector.yaml connectors/slack/connector.yaml connectors/stripe/connector.yaml connectors/xai/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/anthropic/connector.yaml
+go run ./cmd/connectorctl generate --check connectors/deepseek/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/github/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/google/gemini/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/google/gmail/connector.yaml
@@ -160,6 +170,12 @@ The suite must prove:
   reasoning effort only on adjustable-reasoning models, the three documented
   endpoints, and loopback-only test base URL, and its model picker shows only
   chat-capable, unarchived models and badges deprecation;
+- DeepSeek passes the shared `llmtest` exchange suite with its streaming
+  Profile, sends `json_object` output with the schema instruction and no
+  `/v1` path, keeps queued streams alive through keep-alive comments until the
+  stall rule retries a silent one, rejects temperatures and coerced efforts
+  locally, maps 402 insufficient balance to `QUOTA_EXHAUSTED`, and its model
+  picker labels models and hides any model that cannot return text;
 - GitHub profile/email selection, scope/revocation branches, response bounds,
   public-only pagination, deduplication, sorting, truncation, and rate-limit
   delay tests remain green;
@@ -271,6 +287,9 @@ The integration suite verifies:
 - Mistral `generateText` runs the shared `llmtest` real-Dex scenarios, and the
   mistral-summarize-text example completes generated, `model_length`
   truncated, and blocked routes and streams the generated text.
+- DeepSeek `generateText` runs the shared `llmtest` real-Dex scenarios, and
+  the DeepSeek summarize-text example completes generated and blocked routes,
+  streams the generated text, and fails an unwired 402 without a retry.
 - a Trigger inbox consumes an RPC event whose Flow completed or never started,
   and a restarted runner replays past it (Slack thread-approval steps 8 and 9),
   logging each skip once and each replay summary;
