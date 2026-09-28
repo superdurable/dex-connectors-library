@@ -18,8 +18,9 @@ alwaysApply: true
   Stream in its consuming Flow schema.
 - Keep secrets out of durable state, results, receipts, Streams, logs, generated
   values, UI artifacts, catalogs, and releases.
-- Load the dex-developer skill before changing Step, retry, durability, Trigger,
-  or Flow-example semantics.
+- Load the installed `dex-connector-contributor` skill through the host's native
+  skill mechanism before changing Step, retry, durability, Trigger, or
+  Flow-example semantics.
 
 ## Code Quality
 
