@@ -5,7 +5,7 @@ metadata:
   displayName: Claude
   description: Anthropic Claude Messages API text generation with JSON Schema structured output, effort, token usage, and streamed text.
   company: Anthropic
-  version: v0.1.1
+  version: v0.2.0
 spec:
   provider: anthropic
   codegen:

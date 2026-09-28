@@ -5,7 +5,7 @@ metadata:
   displayName: xAI Grok
   description: xAI Grok text generation with JSON Schema structured output, reasoning effort, token usage, and streamed text.
   company: xAI
-  version: v0.1.1
+  version: v0.2.0
 spec:
   provider: xai
   codegen:
