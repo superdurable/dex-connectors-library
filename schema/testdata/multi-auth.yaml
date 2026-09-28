@@ -1,0 +1,63 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: multi-auth-fixture
+  displayName: Multi Auth Fixture
+  description: Deterministic multi-authentication fixture.
+  company: Example
+  version: v0.1.0
+spec:
+  provider: example
+  codegen: {go: {package: multiauthfixture}}
+  configuration: {fields: []}
+  auth:
+    defaultMethod: googleOAuth
+    methods:
+      - id: googleOAuth
+        displayName: Google OAuth
+        description: Authorize an individual Google account.
+        recommended: true
+        type: oauth2
+        connectionKind: example-google-oauth
+        fields:
+          - {name: oauth_client_id, goName: OAuthClientID, type: string, description: OAuth application client ID., required: true}
+          - {name: oauth_client_secret, goName: OAuthClientSecret, type: secretString, description: OAuth application client secret., required: true}
+          - {name: access_token, goName: AccessToken, type: secretString, description: Short-lived access token., required: true}
+          - {name: refresh_token, goName: RefreshToken, type: secretString, description: Long-lived refresh token., required: true}
+        guide:
+          startURL: https://console.cloud.google.com/apis/credentials
+          steps: [Create a Web application and copy its client credentials.]
+        oauth2:
+          authorizationEndpoint: https://accounts.google.com/o/oauth2/v2/auth
+          tokenEndpoint: https://oauth2.googleapis.com/token
+          authorizationParameters: {access_type: offline, prompt: consent}
+          clientIDCredential: oauth_client_id
+          clientSecretCredential: oauth_client_secret
+          scopes: [openid]
+          credentialMappings:
+            - {credential: access_token, source: access_token}
+            - {credential: refresh_token, source: refresh_token}
+          pkce: true
+      - id: workspaceServiceAccount
+        displayName: Workspace service account
+        description: Use domain-wide delegation managed by a Workspace administrator.
+        type: serviceAccount
+        connectionKind: example-workspace-service-account
+        fields:
+          - {name: service_account_key, goName: ServiceAccountKey, type: secretString, description: Service-account JSON key., required: true}
+          - {name: delegated_user, goName: DelegatedUser, type: string, description: Workspace user to impersonate., required: true}
+        guide:
+          startURL: https://console.cloud.google.com/iam-admin/serviceaccounts
+          steps: [Create a service account and enable domain-wide delegation.]
+  operations:
+    - name: getThing
+      goName: GetThing
+      inputType: GetThingInput
+      outputType: GetThingOutput
+      kind: query
+      description: Get one thing.
+      idempotency: none
+      branches:
+        - {id: found, goName: Found, description: The thing was found.}
+        - {id: defect, goName: Defect, description: The request was invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}}

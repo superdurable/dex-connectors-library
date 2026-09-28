@@ -28,7 +28,26 @@ type testConfiguration struct {
 }
 
 type testCredentials struct {
-	AccessToken sdkgo.SecretString
+	AccessToken  sdkgo.SecretString
+	RefreshToken sdkgo.SecretString
+}
+
+type testRefreshDriver struct {
+	calls  *atomic.Int32
+	result sdkgo.CredentialRefreshResult[testCredentials]
+	err    error
+}
+
+func (driver testRefreshDriver) RefreshRequired(state sdkgo.CredentialRefreshState[testCredentials]) bool {
+	return state.ExpiresAt == nil || !state.Now.Add(time.Minute).Before(*state.ExpiresAt)
+}
+
+func (driver testRefreshDriver) Refresh(
+	_ context.Context,
+	_ sdkgo.CredentialRefreshState[testCredentials],
+) (sdkgo.CredentialRefreshResult[testCredentials], error) {
+	driver.calls.Add(1)
+	return driver.result, driver.err
 }
 
 type testTriggerConfiguration struct {
@@ -76,6 +95,122 @@ func TestLoadFromEnvironmentRejectsUnknownFieldsAndExpiredCredentials(t *testing
 	provider := localconfig.NewCredentialProvider(store, "gmail", "sender", decodeTestCredentials)
 	_, err = provider.Resolve(sdkgo.Call{Connection: sdkgo.ConnectionRef{Provider: "google", Name: "sender"}})
 	require.ErrorContains(t, err, "credentials are expired")
+}
+
+func TestRefreshingCredentialProviderPersistsRotatedCredentials(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "connections.json")
+	writeConnections(t, path, "https://example.test", "expired-token", time.Now().Add(-time.Minute))
+	store, err := localconfig.LoadFile(path)
+	require.NoError(t, err)
+	provider := localconfig.NewRefreshingCredentialProvider(
+		store, "gmail", "sender", decodeTestCredentials, encodeTestCredentials,
+	)
+	calls := &atomic.Int32{}
+	resultExpiry := time.Now().Add(time.Hour).UTC()
+	driver := testRefreshDriver{calls: calls, result: sdkgo.CredentialRefreshResult[testCredentials]{
+		Credentials: testCredentials{
+			AccessToken: sdkgo.NewSecretString("refreshed-token"), RefreshToken: sdkgo.NewSecretString("rotated-refresh-token"),
+		},
+		ExpiresAt: resultExpiry,
+	}}
+	call := sdkgo.Call{Connection: sdkgo.ConnectionRef{Provider: "google", Name: "sender"}}
+	credentials, err := sdkgo.ResolveCredential(context.Background(), provider, call, driver)
+	require.NoError(t, err)
+	require.Equal(t, "refreshed-token", credentials.AccessToken.Reveal())
+	require.Equal(t, int32(1), calls.Load())
+
+	contents, err := os.ReadFile(path)
+	require.NoError(t, err)
+	require.NotContains(t, string(contents), "expired-token")
+	require.Contains(t, string(contents), "refreshed-token")
+	require.Contains(t, string(contents), "rotated-refresh-token")
+	info, err := os.Stat(path)
+	require.NoError(t, err)
+	require.Equal(t, os.FileMode(0o600), info.Mode().Perm())
+
+	reloaded, err := provider.Resolve(call)
+	require.NoError(t, err)
+	require.Equal(t, "refreshed-token", reloaded.AccessToken.Reveal())
+	require.Equal(t, "rotated-refresh-token", reloaded.RefreshToken.Reveal())
+}
+
+func TestRefreshingCredentialProviderSerializesConcurrentRefresh(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "connections.json")
+	writeConnections(t, path, "https://example.test", "expired-token", time.Now().Add(-time.Minute))
+	store, err := localconfig.LoadFile(path)
+	require.NoError(t, err)
+	provider := localconfig.NewRefreshingCredentialProvider(
+		store, "gmail", "sender", decodeTestCredentials, encodeTestCredentials,
+	)
+	calls := &atomic.Int32{}
+	driver := testRefreshDriver{calls: calls, result: sdkgo.CredentialRefreshResult[testCredentials]{
+		Credentials: testCredentials{
+			AccessToken: sdkgo.NewSecretString("shared-token"), RefreshToken: sdkgo.NewSecretString("shared-refresh-token"),
+		},
+		ExpiresAt: time.Now().Add(time.Hour),
+	}}
+	call := sdkgo.Call{Connection: sdkgo.ConnectionRef{Provider: "google", Name: "sender"}}
+	results := make(chan error, 12)
+	for range 12 {
+		go func() {
+			credentials, resolveErr := sdkgo.ResolveCredential(context.Background(), provider, call, driver)
+			if resolveErr == nil && credentials.AccessToken.Reveal() != "shared-token" {
+				resolveErr = errors.New("resolved unexpected access token")
+			}
+			results <- resolveErr
+		}()
+	}
+	for range 12 {
+		require.NoError(t, <-results)
+	}
+	require.Equal(t, int32(1), calls.Load())
+}
+
+func TestRefreshingCredentialProviderDoesNotPersistFailedRefresh(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "connections.json")
+	writeConnections(t, path, "https://example.test", "expired-token", time.Now().Add(-time.Minute))
+	before, err := os.ReadFile(path)
+	require.NoError(t, err)
+	store, err := localconfig.LoadFile(path)
+	require.NoError(t, err)
+	provider := localconfig.NewRefreshingCredentialProvider(
+		store, "gmail", "sender", decodeTestCredentials, encodeTestCredentials,
+	)
+	driver := testRefreshDriver{
+		calls: &atomic.Int32{}, err: errors.New("provider rejected refresh token"),
+	}
+	_, err = sdkgo.ResolveCredential(context.Background(), provider, sdkgo.Call{
+		Connection: sdkgo.ConnectionRef{Provider: "google", Name: "sender"},
+	}, driver)
+	require.ErrorContains(t, err, "provider rejected refresh token")
+	after, readErr := os.ReadFile(path)
+	require.NoError(t, readErr)
+	require.Equal(t, before, after)
+}
+
+func TestRefreshingCredentialProviderPersistsReauthorizationRequiredState(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "connections.json")
+	writeConnections(t, path, "https://example.test", "expired-token", time.Now().Add(-time.Minute))
+	store, err := localconfig.LoadFile(path)
+	require.NoError(t, err)
+	provider := localconfig.NewRefreshingCredentialProvider(
+		store, "gmail", "sender", decodeTestCredentials, encodeTestCredentials,
+	)
+	calls := &atomic.Int32{}
+	driver := testRefreshDriver{
+		calls: calls, err: sdkgo.NewReauthorizationRequiredError(errors.New("invalid_grant")),
+	}
+	call := sdkgo.Call{Connection: sdkgo.ConnectionRef{Provider: "google", Name: "sender"}}
+	_, err = sdkgo.ResolveCredential(context.Background(), provider, call, driver)
+	require.ErrorIs(t, err, sdkgo.ErrReauthorizationRequired)
+	require.NotContains(t, err.Error(), "invalid_grant")
+	contents, readErr := os.ReadFile(path)
+	require.NoError(t, readErr)
+	require.Contains(t, string(contents), `"credentialStatus": "reauthorization_required"`)
+
+	_, err = sdkgo.ResolveCredential(context.Background(), provider, call, driver)
+	require.ErrorIs(t, err, sdkgo.ErrReauthorizationRequired)
+	require.Equal(t, int32(1), calls.Load())
 }
 
 func TestLoadFileRejectsSymlinkAndDuplicateConnection(t *testing.T) {
@@ -644,12 +779,21 @@ func pendingTriggerEventIDs(t *testing.T, directory string) []string {
 
 func decodeTestCredentials(contents json.RawMessage) (testCredentials, error) {
 	var raw struct {
-		AccessToken string `json:"access_token"`
+		AccessToken  string `json:"access_token"`
+		RefreshToken string `json:"refresh_token"`
 	}
 	if err := json.Unmarshal(contents, &raw); err != nil {
 		return testCredentials{}, err
 	}
-	return testCredentials{AccessToken: sdkgo.NewSecretString(raw.AccessToken)}, nil
+	return testCredentials{
+		AccessToken: sdkgo.NewSecretString(raw.AccessToken), RefreshToken: sdkgo.NewSecretString(raw.RefreshToken),
+	}, nil
+}
+
+func encodeTestCredentials(credentials testCredentials) (json.RawMessage, error) {
+	return json.Marshal(map[string]string{
+		"access_token": credentials.AccessToken.Reveal(), "refresh_token": credentials.RefreshToken.Reveal(),
+	})
 }
 
 func writeConnections(t *testing.T, path string, endpoint string, token string, expiresAt time.Time) {
@@ -659,7 +803,8 @@ func writeConnections(t *testing.T, path string, endpoint string, token string, 
 		"connections": []any{map[string]any{
 			"connectorId": "gmail", "modulePath": "github.com/superdurable/dex-connectors-library/connectors/google/gmail",
 			"moduleVersion": "v0.1.1", "provider": "google", "connectionName": "sender",
-			"configuration": map[string]any{"endpoint": endpoint}, "credentials": map[string]any{"access_token": token},
+			"configuration":       map[string]any{"endpoint": endpoint},
+			"credentials":         map[string]any{"access_token": token, "refresh_token": "refresh-token"},
 			"credentialExpiresAt": expiresAt.UTC().Format(time.RFC3339),
 		}},
 	})

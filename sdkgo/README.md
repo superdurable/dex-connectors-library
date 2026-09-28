@@ -209,6 +209,34 @@ message text, credentials, and tokens out of the errors it returns.
 Records report the SDK function that wrote them as their source, so a handler
 with `AddSource` points at the delivery code rather than a logging helper.
 
+## Renewable credentials
+
+Connectors that use renewable access credentials implement
+`CredentialRefreshDriver[C]`. The driver decides whether the current typed
+credential state needs refresh and exchanges it with the provider. It does not
+write files, databases, or object storage.
+
+The host owns refresh serialization and persistence through
+`RefreshingCredentialProvider[C]`. Connector operations call
+`ResolveCredential` with their driver. Static API-key providers retain the
+ordinary `CredentialProvider.Resolve` path.
+
+`localconfig.NewRefreshingCredentialProvider` reloads the connection after
+acquiring a process-local lock, so concurrent calls refresh once. A successful
+refresh must return a future expiry and the complete replacement credential
+value. The local provider writes that value through an atomic `0600` file
+replacement before returning it. A retryable failed refresh leaves the existing
+file unchanged. A driver wraps terminal provider responses such as
+`invalid_grant` with `NewReauthorizationRequiredError`; the local provider then
+persists only the `reauthorization_required` status and stops automatic retries.
+When an OAuth provider omits a new refresh token, the driver must copy the prior
+refresh token into its result.
+
+Hosted credential providers implement the same interface behind their trusted
+credential broker. Applications and Flow state receive only the resolved
+short-lived value; long-lived renewal material remains in the host's encrypted
+credential store.
+
 ## Connector Steps
 
 Connector Steps use `MapToOperationInput` to map application Step input to one

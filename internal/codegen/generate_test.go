@@ -73,6 +73,30 @@ func TestGenerateRejectsInvalidExecutionDuration(t *testing.T) {
 	require.ErrorContains(t, err, "execute method timeout")
 }
 
+func TestGenerateValidatesOnlyTheSelectedAuthMethod(t *testing.T) {
+	file, err := os.Open("../../schema/testdata/multi-auth.yaml")
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, file.Close()) })
+	manifest, err := schema.Decode(file)
+	require.NoError(t, err)
+	generated, err := codegen.Generate(manifest)
+	require.NoError(t, err)
+	text := string(generated)
+	require.Contains(t, text, "AuthMethodID")
+	require.Contains(t, text, "`json:\"auth_method\"`")
+	require.Contains(t, text, `case "googleOAuth":`)
+	require.Contains(t, text, `case "workspaceServiceAccount":`)
+	require.Contains(t, text, "credential access_token is required")
+	require.Contains(t, text, "credential service_account_key is required")
+	require.Contains(t, text, "credential auth_method is invalid")
+	require.Contains(t, text, "localconfig.NewRefreshingCredentialProvider")
+	require.Contains(t, text, "func encodeLocalCredentials(credentials Credentials)")
+	require.Contains(t, text, "credentials.OAuthClientSecret.Reveal()")
+	require.Contains(t, text, "credentials.RefreshToken.Reveal()")
+	_, err = parser.ParseFile(token.NewFileSet(), "zz_generated_connector.go", strings.NewReader(text), parser.AllErrors)
+	require.NoError(t, err)
+}
+
 func TestGenerateIncludesTypedProviderTriggers(t *testing.T) {
 	manifest, err := schema.Decode(strings.NewReader(`
 apiVersion: connectors.dex.dev/v1alpha1
