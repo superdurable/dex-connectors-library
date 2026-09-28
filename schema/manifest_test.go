@@ -177,11 +177,14 @@ func TestDecodeMultiAuthManifestFixture(t *testing.T) {
 	require.True(t, manifest.Spec.Auth.Methods[0].Recommended)
 	require.Equal(t, "serviceAccount", manifest.Spec.Auth.Methods[1].Type)
 	require.Equal(t, "oauth2", manifest.Spec.Auth.Methods[0].OAuth2.Protocol)
-	require.Equal(t, []string{"access_token", "refresh_token", "service_account_key", "delegated_user"}, []string{
+	require.Equal(t, "offline", manifest.Spec.Auth.Methods[0].OAuth2.AuthorizationParameters["access_type"])
+	require.Equal(t, []string{"oauth_client_id", "oauth_client_secret", "access_token", "refresh_token", "service_account_key", "delegated_user"}, []string{
 		manifest.Spec.Auth.Fields[0].Name,
 		manifest.Spec.Auth.Fields[1].Name,
 		manifest.Spec.Auth.Fields[2].Name,
 		manifest.Spec.Auth.Fields[3].Name,
+		manifest.Spec.Auth.Fields[4].Name,
+		manifest.Spec.Auth.Fields[5].Name,
 	})
 	for _, field := range manifest.Spec.Auth.Fields {
 		require.False(t, field.Required, "flattened union field %s must be method-optional", field.Name)

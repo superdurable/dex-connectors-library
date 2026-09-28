@@ -124,6 +124,8 @@ auth:
       type: oauth2
       connectionKind: gmail-google-oauth
       fields:
+        - {name: oauth_client_id, goName: OAuthClientID, type: string, description: OAuth application client ID., required: true}
+        - {name: oauth_client_secret, goName: OAuthClientSecret, type: secretString, description: OAuth application client secret., required: true}
         - {name: access_token, goName: AccessToken, type: secretString, description: Short-lived access token produced by OAuth., required: true}
         - {name: refresh_token, goName: RefreshToken, type: secretString, description: Long-lived refresh token produced by OAuth., required: true}
       guide:
@@ -132,6 +134,9 @@ auth:
       oauth2:
         authorizationEndpoint: https://accounts.google.com/o/oauth2/v2/auth
         tokenEndpoint: https://oauth2.googleapis.com/token
+        authorizationParameters: {access_type: offline, prompt: consent}
+        clientIDCredential: oauth_client_id
+        clientSecretCredential: oauth_client_secret
         scopes: [openid]
         pkce: true
     - id: workspaceServiceAccount

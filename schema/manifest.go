@@ -147,15 +147,18 @@ type AuthorizationGuide struct {
 }
 
 type OAuth2 struct {
-	AuthorizationEndpoint string                      `yaml:"authorizationEndpoint" json:"authorizationEndpoint"`
-	TokenEndpoint         string                      `yaml:"tokenEndpoint" json:"tokenEndpoint"`
-	Scopes                []string                    `yaml:"scopes" json:"scopes"`
-	UserScopes            []string                    `yaml:"userScopes,omitempty" json:"userScopes,omitempty"`
-	CredentialMappings    []OAuthCredentialMapping    `yaml:"credentialMappings,omitempty" json:"credentialMappings,omitempty"`
-	CredentialDerivations []OAuthCredentialDerivation `yaml:"credentialDerivations,omitempty" json:"credentialDerivations,omitempty"`
-	PKCE                  bool                        `yaml:"pkce" json:"pkce"`
-	Protocol              string                      `yaml:"protocol,omitempty" json:"protocol,omitempty"`
-	OIDC                  *OIDC                       `yaml:"oidc,omitempty" json:"oidc,omitempty"`
+	AuthorizationEndpoint   string                      `yaml:"authorizationEndpoint" json:"authorizationEndpoint"`
+	TokenEndpoint           string                      `yaml:"tokenEndpoint" json:"tokenEndpoint"`
+	AuthorizationParameters map[string]string           `yaml:"authorizationParameters,omitempty" json:"authorizationParameters,omitempty"`
+	ClientIDCredential      string                      `yaml:"clientIDCredential,omitempty" json:"clientIDCredential,omitempty"`
+	ClientSecretCredential  string                      `yaml:"clientSecretCredential,omitempty" json:"clientSecretCredential,omitempty"`
+	Scopes                  []string                    `yaml:"scopes" json:"scopes"`
+	UserScopes              []string                    `yaml:"userScopes,omitempty" json:"userScopes,omitempty"`
+	CredentialMappings      []OAuthCredentialMapping    `yaml:"credentialMappings,omitempty" json:"credentialMappings,omitempty"`
+	CredentialDerivations   []OAuthCredentialDerivation `yaml:"credentialDerivations,omitempty" json:"credentialDerivations,omitempty"`
+	PKCE                    bool                        `yaml:"pkce" json:"pkce"`
+	Protocol                string                      `yaml:"protocol,omitempty" json:"protocol,omitempty"`
+	OIDC                    *OIDC                       `yaml:"oidc,omitempty" json:"oidc,omitempty"`
 }
 
 type OAuthCredentialMapping struct {
@@ -766,6 +769,15 @@ func validateAuthMethod(prefix string, method AuthMethod) []string {
 	if oauth.Protocol != "oauth2" && oauth.Protocol != "oidc" {
 		problems = append(problems, prefix+" oauth2 protocol must be oauth2 or oidc")
 	}
+	reservedAuthorizationParameters := map[string]bool{
+		"client_id": true, "redirect_uri": true, "response_type": true, "scope": true,
+		"state": true, "code_challenge": true, "code_challenge_method": true,
+	}
+	for name, value := range oauth.AuthorizationParameters {
+		if strings.TrimSpace(name) == "" || strings.TrimSpace(value) == "" || reservedAuthorizationParameters[name] {
+			problems = append(problems, prefix+" oauth2 authorizationParameters must be non-empty and cannot override protocol parameters")
+		}
+	}
 	if oauth.Protocol == "oidc" {
 		oidc := oauth.OIDC
 		if oidc == nil || !isHTTPSURL(oidc.Issuer) || !isHTTPSURL(oidc.DiscoveryEndpoint) || !isHTTPSURL(oidc.UserInfoEndpoint) || !oidc.NonceRequired {
@@ -784,8 +796,14 @@ func validateAuthMethod(prefix string, method AuthMethod) []string {
 		}
 	}
 	credentialFields := make(map[string]bool, len(method.Fields))
+	credentialFieldTypes := make(map[string]string, len(method.Fields))
 	for _, field := range method.Fields {
 		credentialFields[field.Name] = true
+		credentialFieldTypes[field.Name] = field.Type
+	}
+	if (oauth.ClientIDCredential == "") != (oauth.ClientSecretCredential == "") ||
+		(oauth.ClientIDCredential != "" && (credentialFieldTypes[oauth.ClientIDCredential] == "" || credentialFieldTypes[oauth.ClientIDCredential] == "secretString" || credentialFieldTypes[oauth.ClientSecretCredential] != "secretString")) {
+		problems = append(problems, prefix+" oauth2 client credential mappings require a non-secret client ID field and secret client secret field")
 	}
 	seenMappings := map[string]bool{}
 	for _, mapping := range oauth.CredentialMappings {
