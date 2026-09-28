@@ -14,5 +14,6 @@ directories:
   - connectors/moonshot/kimi
   - connectors/openai
   - connectors/slack
+  - connectors/spotify
   - connectors/stripe
   - connectors/xai
