@@ -120,6 +120,20 @@ type Configuration struct {
 }
 
 type Auth struct {
+	Type           string              `yaml:"type,omitempty" json:"type,omitempty"`
+	ConnectionKind string              `yaml:"connectionKind,omitempty" json:"connectionKind,omitempty"`
+	Fields         []Field             `yaml:"fields,omitempty" json:"fields,omitempty"`
+	Guide          *AuthorizationGuide `yaml:"guide,omitempty" json:"guide,omitempty"`
+	OAuth2         *OAuth2             `yaml:"oauth2,omitempty" json:"oauth2,omitempty"`
+	DefaultMethod  string              `yaml:"defaultMethod,omitempty" json:"defaultMethod,omitempty"`
+	Methods        []AuthMethod        `yaml:"methods,omitempty" json:"methods,omitempty"`
+}
+
+type AuthMethod struct {
+	ID             string              `yaml:"id" json:"id"`
+	DisplayName    string              `yaml:"displayName" json:"displayName"`
+	Description    string              `yaml:"description" json:"description"`
+	Recommended    bool                `yaml:"recommended,omitempty" json:"recommended,omitempty"`
 	Type           string              `yaml:"type" json:"type"`
 	ConnectionKind string              `yaml:"connectionKind" json:"connectionKind"`
 	Fields         []Field             `yaml:"fields" json:"fields"`
@@ -264,16 +278,56 @@ func (manifest *Manifest) setImplicitAuthDefaults() {
 	if manifest.Spec.Auth.OAuth2 != nil && manifest.Spec.Auth.OAuth2.Protocol == "" {
 		manifest.Spec.Auth.OAuth2.Protocol = "oauth2"
 	}
+	for index := range manifest.Spec.Auth.Methods {
+		method := &manifest.Spec.Auth.Methods[index]
+		if method.OAuth2 != nil && method.OAuth2.Protocol == "" {
+			method.OAuth2.Protocol = "oauth2"
+		}
+	}
+	if len(manifest.Spec.Auth.Methods) > 0 {
+		manifest.Spec.Auth.Fields = manifest.Spec.Auth.allFields()
+	}
 	for index := range manifest.Spec.Operations {
 		if manifest.Spec.Operations[index].Authorization != "" {
 			continue
 		}
-		if manifest.Spec.Auth.Type == "none" {
+		if !manifest.Spec.Auth.requiresAuthorization() {
 			manifest.Spec.Operations[index].Authorization = "none"
 		} else {
 			manifest.Spec.Operations[index].Authorization = "required"
 		}
 	}
+}
+
+func (auth Auth) requiresAuthorization() bool {
+	if len(auth.Methods) == 0 {
+		return auth.Type != "none"
+	}
+	for _, method := range auth.Methods {
+		if method.Type != "none" {
+			return true
+		}
+	}
+	return false
+}
+
+func (auth Auth) allFields() []Field {
+	if len(auth.Methods) == 0 {
+		return auth.Fields
+	}
+	fields := make([]Field, 0)
+	seen := make(map[string]bool)
+	for _, method := range auth.Methods {
+		for _, field := range method.Fields {
+			if seen[field.Name] {
+				continue
+			}
+			field.Required = false
+			fields = append(fields, field)
+			seen[field.Name] = true
+		}
+	}
+	return fields
 }
 
 func (manifest Manifest) Validate() error {
@@ -303,79 +357,46 @@ func (manifest Manifest) Validate() error {
 		problems = append(problems, "spec.codegen.go.package must be a Go package name")
 	}
 	problems = append(problems, validateFields("configuration", manifest.Spec.Configuration.Fields, false)...)
-	if manifest.Spec.Auth.Type != "none" && manifest.Spec.Auth.Type != "apiKey" && manifest.Spec.Auth.Type != "oauth2" {
-		problems = append(problems, "spec.auth.type must be none, apiKey, or oauth2")
-	}
-	problems = append(problems, validateFields("auth", manifest.Spec.Auth.Fields, true)...)
-	if manifest.Spec.Auth.Type == "none" && len(manifest.Spec.Auth.Fields) != 0 {
-		problems = append(problems, "none auth cannot declare credential fields")
-	}
-	if manifest.Spec.Auth.Type != "none" && len(manifest.Spec.Auth.Fields) == 0 {
-		problems = append(problems, "credential auth requires at least one field")
-	}
-	if manifest.Spec.Auth.Type != "none" && manifest.Spec.Auth.ConnectionKind == "" {
-		problems = append(problems, "credential auth requires connectionKind")
-	}
-	if manifest.Spec.Auth.Type != "none" {
-		guide := manifest.Spec.Auth.Guide
-		if guide == nil || !isHTTPSURL(guide.StartURL) || len(guide.Steps) == 0 {
-			problems = append(problems, "credential auth requires an HTTPS authorization guide with steps")
-		} else {
-			for _, step := range guide.Steps {
-				if strings.TrimSpace(step) == "" {
-					problems = append(problems, "authorization guide steps must be non-empty")
+	if len(manifest.Spec.Auth.Methods) == 0 {
+		problems = append(problems, validateAuthMethod("spec.auth", AuthMethod{
+			Type: manifest.Spec.Auth.Type, ConnectionKind: manifest.Spec.Auth.ConnectionKind,
+			Fields: manifest.Spec.Auth.Fields, Guide: manifest.Spec.Auth.Guide, OAuth2: manifest.Spec.Auth.OAuth2,
+		})...)
+	} else {
+		if manifest.Spec.Auth.Type != "" || manifest.Spec.Auth.ConnectionKind != "" || manifest.Spec.Auth.Guide != nil || manifest.Spec.Auth.OAuth2 != nil {
+			problems = append(problems, "spec.auth methods cannot be combined with legacy auth fields")
+		}
+		seenMethodIDs := make(map[string]bool, len(manifest.Spec.Auth.Methods))
+		seenCredentialFields := make(map[string]Field)
+		recommendedMethods := 0
+		for _, method := range manifest.Spec.Auth.Methods {
+			if !operationPattern.MatchString(method.ID) || seenMethodIDs[method.ID] {
+				problems = append(problems, "spec.auth method IDs must be unique lower camel case values")
+			}
+			seenMethodIDs[method.ID] = true
+			if strings.TrimSpace(method.DisplayName) == "" || strings.TrimSpace(method.Description) == "" {
+				problems = append(problems, "spec.auth method "+method.ID+" requires displayName and description")
+			}
+			if method.Recommended {
+				recommendedMethods++
+			}
+			problems = append(problems, validateAuthMethod("spec.auth method "+method.ID, method)...)
+			for _, field := range method.Fields {
+				if field.Name == "auth_method" || field.GoName == "AuthMethodID" {
+					problems = append(problems, "auth_method and AuthMethodID are reserved for auth method selection")
 				}
+				if existing, found := seenCredentialFields[field.Name]; found && (existing.GoName != field.GoName || existing.Type != field.Type) {
+					problems = append(problems, "credential fields shared by auth methods must use the same goName and type")
+				}
+				seenCredentialFields[field.Name] = field
 			}
 		}
-	} else if manifest.Spec.Auth.Guide != nil {
-		problems = append(problems, "authorization guide requires credential auth")
-	}
-	if manifest.Spec.Auth.Type == "oauth2" {
-		if manifest.Spec.Auth.OAuth2 == nil {
-			problems = append(problems, "oauth2 auth requires oauth2 metadata")
-		} else if manifest.Spec.Auth.ConnectionKind == "" || !isHTTPSURL(manifest.Spec.Auth.OAuth2.AuthorizationEndpoint) || !isHTTPSURL(manifest.Spec.Auth.OAuth2.TokenEndpoint) || len(manifest.Spec.Auth.OAuth2.Scopes) == 0 {
-			problems = append(problems, "oauth2 auth requires connectionKind, endpoints, and scopes")
-		} else {
-			if manifest.Spec.Auth.OAuth2.Protocol != "oauth2" && manifest.Spec.Auth.OAuth2.Protocol != "oidc" {
-				problems = append(problems, "oauth2 protocol must be oauth2 or oidc")
-			}
-			if manifest.Spec.Auth.OAuth2.Protocol == "oidc" {
-				oidc := manifest.Spec.Auth.OAuth2.OIDC
-				if oidc == nil || !isHTTPSURL(oidc.Issuer) || !isHTTPSURL(oidc.DiscoveryEndpoint) || !isHTTPSURL(oidc.UserInfoEndpoint) || !oidc.NonceRequired {
-					problems = append(problems, "oidc auth requires HTTPS issuer, discovery, UserInfo, and nonce")
-				}
-			} else if manifest.Spec.Auth.OAuth2.OIDC != nil {
-				problems = append(problems, "oidc metadata requires oidc protocol")
-			}
-			for scopeKind, scopes := range map[string][]string{"scopes": manifest.Spec.Auth.OAuth2.Scopes, "userScopes": manifest.Spec.Auth.OAuth2.UserScopes} {
-				seenScopes := map[string]bool{}
-				for _, scope := range scopes {
-					if strings.TrimSpace(scope) == "" || seenScopes[scope] {
-						problems = append(problems, "oauth2 "+scopeKind+" must be non-empty and unique")
-					}
-					seenScopes[scope] = true
-				}
-			}
-			credentialFields := make(map[string]bool, len(manifest.Spec.Auth.Fields))
-			for _, field := range manifest.Spec.Auth.Fields {
-				credentialFields[field.Name] = true
-			}
-			seenMappings := map[string]bool{}
-			for _, mapping := range manifest.Spec.Auth.OAuth2.CredentialMappings {
-				if !credentialFields[mapping.Credential] || seenMappings[mapping.Credential] || !isValidJSONPath(mapping.Source) {
-					problems = append(problems, "oauth2 credential mappings require unique credential fields and dotted JSON response paths")
-				}
-				seenMappings[mapping.Credential] = true
-			}
-			for _, derivation := range manifest.Spec.Auth.OAuth2.CredentialDerivations {
-				if !credentialFields[derivation.Credential] || seenMappings[derivation.Credential] || !isHTTPSURL(derivation.Endpoint) || !isValidJSONPath(derivation.Source) || (derivation.VerifiedBy != "" && !isValidJSONPath(derivation.VerifiedBy)) {
-					problems = append(problems, "oauth2 credential derivations require unique credential fields, HTTPS endpoints, and dotted JSON response paths")
-				}
-				seenMappings[derivation.Credential] = true
-			}
+		if manifest.Spec.Auth.DefaultMethod == "" || !seenMethodIDs[manifest.Spec.Auth.DefaultMethod] {
+			problems = append(problems, "spec.auth.defaultMethod must identify a declared auth method")
 		}
-	} else if manifest.Spec.Auth.OAuth2 != nil {
-		problems = append(problems, "oauth2 metadata requires oauth2 auth")
+		if recommendedMethods > 1 {
+			problems = append(problems, "spec.auth may recommend at most one auth method")
+		}
 	}
 	if manifest.Spec.Studio != nil {
 		setup := manifest.Spec.Studio.Setup
@@ -509,7 +530,7 @@ func (manifest Manifest) Validate() error {
 		if operation.Authorization != "none" && operation.Authorization != "required" {
 			problems = append(problems, operation.Name+": authorization must be none or required")
 		}
-		if operation.Authorization == "required" && manifest.Spec.Auth.Type == "none" {
+		if operation.Authorization == "required" && !manifest.Spec.Auth.requiresAuthorization() {
 			problems = append(problems, operation.Name+": required authorization needs connector auth")
 		}
 		seenProgress := map[string]bool{}
@@ -699,6 +720,87 @@ func isValidJSONPath(value string) bool {
 		}
 	}
 	return true
+}
+
+func validateAuthMethod(prefix string, method AuthMethod) []string {
+	var problems []string
+	if method.Type != "none" && method.Type != "apiKey" && method.Type != "oauth2" && method.Type != "serviceAccount" {
+		problems = append(problems, prefix+" type must be none, apiKey, oauth2, or serviceAccount")
+	}
+	problems = append(problems, validateFields(prefix, method.Fields, true)...)
+	if method.Type == "none" && len(method.Fields) != 0 {
+		problems = append(problems, prefix+" none auth cannot declare credential fields")
+	}
+	if method.Type != "none" && len(method.Fields) == 0 {
+		problems = append(problems, prefix+" credential auth requires at least one field")
+	}
+	if method.Type != "none" && method.ConnectionKind == "" {
+		problems = append(problems, prefix+" credential auth requires connectionKind")
+	}
+	if method.Type != "none" {
+		if method.Guide == nil || !isHTTPSURL(method.Guide.StartURL) || len(method.Guide.Steps) == 0 {
+			problems = append(problems, prefix+" credential auth requires an HTTPS authorization guide with steps")
+		} else {
+			for _, step := range method.Guide.Steps {
+				if strings.TrimSpace(step) == "" {
+					problems = append(problems, prefix+" authorization guide steps must be non-empty")
+				}
+			}
+		}
+	} else if method.Guide != nil {
+		problems = append(problems, prefix+" authorization guide requires credential auth")
+	}
+	if method.Type != "oauth2" {
+		if method.OAuth2 != nil {
+			problems = append(problems, prefix+" oauth2 metadata requires oauth2 auth")
+		}
+		return problems
+	}
+	if method.OAuth2 == nil {
+		return append(problems, prefix+" oauth2 auth requires oauth2 metadata")
+	}
+	oauth := method.OAuth2
+	if method.ConnectionKind == "" || !isHTTPSURL(oauth.AuthorizationEndpoint) || !isHTTPSURL(oauth.TokenEndpoint) || len(oauth.Scopes) == 0 {
+		return append(problems, prefix+" oauth2 auth requires connectionKind, endpoints, and scopes")
+	}
+	if oauth.Protocol != "oauth2" && oauth.Protocol != "oidc" {
+		problems = append(problems, prefix+" oauth2 protocol must be oauth2 or oidc")
+	}
+	if oauth.Protocol == "oidc" {
+		oidc := oauth.OIDC
+		if oidc == nil || !isHTTPSURL(oidc.Issuer) || !isHTTPSURL(oidc.DiscoveryEndpoint) || !isHTTPSURL(oidc.UserInfoEndpoint) || !oidc.NonceRequired {
+			problems = append(problems, prefix+" oidc auth requires HTTPS issuer, discovery, UserInfo, and nonce")
+		}
+	} else if oauth.OIDC != nil {
+		problems = append(problems, prefix+" oidc metadata requires oidc protocol")
+	}
+	for scopeKind, scopes := range map[string][]string{"scopes": oauth.Scopes, "userScopes": oauth.UserScopes} {
+		seenScopes := map[string]bool{}
+		for _, scope := range scopes {
+			if strings.TrimSpace(scope) == "" || seenScopes[scope] {
+				problems = append(problems, prefix+" oauth2 "+scopeKind+" must be non-empty and unique")
+			}
+			seenScopes[scope] = true
+		}
+	}
+	credentialFields := make(map[string]bool, len(method.Fields))
+	for _, field := range method.Fields {
+		credentialFields[field.Name] = true
+	}
+	seenMappings := map[string]bool{}
+	for _, mapping := range oauth.CredentialMappings {
+		if !credentialFields[mapping.Credential] || seenMappings[mapping.Credential] || !isValidJSONPath(mapping.Source) {
+			problems = append(problems, prefix+" oauth2 credential mappings require unique credential fields and dotted JSON response paths")
+		}
+		seenMappings[mapping.Credential] = true
+	}
+	for _, derivation := range oauth.CredentialDerivations {
+		if !credentialFields[derivation.Credential] || seenMappings[derivation.Credential] || !isHTTPSURL(derivation.Endpoint) || !isValidJSONPath(derivation.Source) || (derivation.VerifiedBy != "" && !isValidJSONPath(derivation.VerifiedBy)) {
+			problems = append(problems, prefix+" oauth2 credential derivations require unique credential fields, HTTPS endpoints, and dotted JSON response paths")
+		}
+		seenMappings[derivation.Credential] = true
+	}
+	return problems
 }
 
 func validateFields(prefix string, fields []Field, allowSecret bool) []string {

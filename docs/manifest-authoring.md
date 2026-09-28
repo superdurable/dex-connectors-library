@@ -106,6 +106,52 @@ secret fields, without assuming a single-token OAuth response. Keep secret
 fields typed as `secretString` so code generation constructs `SecretString`
 at the provider boundary.
 
+### Multiple authentication methods
+
+Use `auth.methods` when one named connection can use more than one provider
+authentication model. Every method has a stable lower-camel ID, its own fields,
+guide, and optional OAuth metadata. `defaultMethod` must identify the method the
+setup UI selects first; mark at most one method `recommended`.
+
+```yaml
+auth:
+  defaultMethod: googleOAuth
+  methods:
+    - id: googleOAuth
+      displayName: Google OAuth
+      description: Authorize an individual Google or Workspace account.
+      recommended: true
+      type: oauth2
+      connectionKind: gmail-google-oauth
+      fields:
+        - {name: access_token, goName: AccessToken, type: secretString, description: Short-lived access token produced by OAuth., required: true}
+        - {name: refresh_token, goName: RefreshToken, type: secretString, description: Long-lived refresh token produced by OAuth., required: true}
+      guide:
+        startURL: https://console.cloud.google.com/apis/credentials
+        steps: [Create a Web application and add the Redirect URI shown by Dex Web.]
+      oauth2:
+        authorizationEndpoint: https://accounts.google.com/o/oauth2/v2/auth
+        tokenEndpoint: https://oauth2.googleapis.com/token
+        scopes: [openid]
+        pkce: true
+    - id: workspaceServiceAccount
+      displayName: Workspace service account
+      description: Use administrator-managed domain-wide delegation.
+      type: serviceAccount
+      connectionKind: gmail-workspace-service-account
+      fields:
+        - {name: service_account_key, goName: ServiceAccountKey, type: secretString, description: Service-account JSON key., required: true}
+        - {name: delegated_user, goName: DelegatedUser, type: string, description: Workspace user to impersonate., required: true}
+      guide:
+        startURL: https://console.cloud.google.com/iam-admin/serviceaccounts
+        steps: [Create a service account and enable domain-wide delegation.]
+```
+
+Generated credentials include `AuthMethodID` plus the union of method fields.
+Only the selected method's required fields are validated. Local configuration
+stores the selection as `auth_method`; hosted runtimes keep the selection in
+the immutable non-secret revision and resolve secrets through the broker.
+
 A Trigger declares a typed provider event and its binding-configuration type.
 The application decides whether an event starts a Flow, invokes an RPC, or uses
 another target:

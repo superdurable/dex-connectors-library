@@ -166,6 +166,28 @@ func TestDecodeOIDCManifestFixture(t *testing.T) {
 	require.Equal(t, "required", manifest.Spec.Operations[0].Authorization)
 }
 
+func TestDecodeMultiAuthManifestFixture(t *testing.T) {
+	file, err := os.Open("testdata/multi-auth.yaml")
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, file.Close()) })
+	manifest, err := schema.Decode(file)
+	require.NoError(t, err)
+	require.Equal(t, "googleOAuth", manifest.Spec.Auth.DefaultMethod)
+	require.Len(t, manifest.Spec.Auth.Methods, 2)
+	require.True(t, manifest.Spec.Auth.Methods[0].Recommended)
+	require.Equal(t, "serviceAccount", manifest.Spec.Auth.Methods[1].Type)
+	require.Equal(t, "oauth2", manifest.Spec.Auth.Methods[0].OAuth2.Protocol)
+	require.Equal(t, []string{"access_token", "refresh_token", "service_account_key", "delegated_user"}, []string{
+		manifest.Spec.Auth.Fields[0].Name,
+		manifest.Spec.Auth.Fields[1].Name,
+		manifest.Spec.Auth.Fields[2].Name,
+		manifest.Spec.Auth.Fields[3].Name,
+	})
+	for _, field := range manifest.Spec.Auth.Fields {
+		require.False(t, field.Required, "flattened union field %s must be method-optional", field.Name)
+	}
+}
+
 func TestRejectInvalidOIDCAndUnauthorizedOperation(t *testing.T) {
 	contents, err := os.ReadFile("testdata/linkedin-oidc.yaml")
 	require.NoError(t, err)

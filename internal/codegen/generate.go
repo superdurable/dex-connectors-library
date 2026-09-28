@@ -77,6 +77,9 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 	}
 	generation.mustWrite("}\n\n")
 	generation.mustWrite("type Credentials struct {\n")
+	if len(manifest.Spec.Auth.Methods) > 0 {
+		generation.mustWrite("\tAuthMethodID string\n")
+	}
 	for _, field := range manifest.Spec.Auth.Fields {
 		generation.mustWrite("\t%s %s\n", field.GoName, goType(field))
 	}
@@ -99,6 +102,9 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 	generation.mustWrite("\treturn NewConnection(client, reference)\n}\n\n")
 	generation.mustWrite("func decodeLocalCredentials(contents json.RawMessage) (Credentials, error) {\n")
 	generation.mustWrite("\tvar fields struct {\n")
+	if len(manifest.Spec.Auth.Methods) > 0 {
+		generation.mustWrite("\t\tAuthMethodID string `json:\"auth_method\"`\n")
+	}
 	for _, field := range manifest.Spec.Auth.Fields {
 		fieldType := goType(field)
 		if field.Type == "secretString" {
@@ -109,6 +115,9 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 	generation.mustWrite("\t}\n")
 	generation.mustWrite("\tif err := localconfig.DecodeCredentials(contents, &fields); err != nil { return Credentials{}, err }\n")
 	generation.mustWrite("\tcredentials := Credentials{\n")
+	if len(manifest.Spec.Auth.Methods) > 0 {
+		generation.mustWrite("\t\tAuthMethodID: fields.AuthMethodID,\n")
+	}
 	for _, field := range manifest.Spec.Auth.Fields {
 		value := "fields." + field.GoName
 		if field.Type == "secretString" {
@@ -155,8 +164,19 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 	}
 	generation.mustWrite("\treturn nil\n}\n\n")
 	generation.mustWrite("func (credentials Credentials) Validate() error {\n")
-	for _, field := range manifest.Spec.Auth.Fields {
-		writeFieldValidation(generation, "credentials."+field.GoName, field, "credential")
+	if len(manifest.Spec.Auth.Methods) == 0 {
+		for _, field := range manifest.Spec.Auth.Fields {
+			writeFieldValidation(generation, "credentials."+field.GoName, field, "credential")
+		}
+	} else {
+		generation.mustWrite("\tswitch credentials.AuthMethodID {\n")
+		for _, method := range manifest.Spec.Auth.Methods {
+			generation.mustWrite("\tcase %s:\n", strconv.Quote(method.ID))
+			for _, field := range method.Fields {
+				writeFieldValidation(generation, "credentials."+field.GoName, field, "credential")
+			}
+		}
+		generation.mustWrite("\tdefault:\n\t\treturn fmt.Errorf(%q)\n\t}\n", "credential auth_method is invalid")
 	}
 	generation.mustWrite("\treturn nil\n}\n\n")
 
