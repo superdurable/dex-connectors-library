@@ -54,6 +54,9 @@ Every implementation plan includes Tests, Documentation, and UI/UX. Use
   `sdkgo.NewMutationStep` are advanced escape hatches.
 - Every connector has its own `go.mod`, README, manifest, generated code, and
   provider tests.
+- Every connector has at least one runnable Flow under `examples/` with a
+  Worker entrypoint, strict FDG 2.0 generation instructions, deterministic
+  tests, and the connector's static `ConnectionName`.
 - Register every connector directory in the sorted root `catalog.yaml` list.
   Paths may have any depth below `connectors/`.
 - The catalog is the only shared file changed when adding a connector. Add,
@@ -61,6 +64,21 @@ Every implementation plan includes Tests, Documentation, and UI/UX. Use
   changes do not modify it.
 - Never edit generated connector code. Change the manifest or generator and run
   the generation check.
+
+### Connector Configuration UX
+
+- Keep provider constants and safe operational defaults in `connector.yaml`.
+  Do not make users transcribe endpoints, limits, scopes, or other fixed values.
+- Derive identity and resource fields from verified OAuth/OIDC claims or
+  declared read-only setup commands whenever the provider can supply them.
+  Do not replace derivation with explanatory copy or duplicate free-text input.
+- For every remaining user-supplied field, the authorization UI states the
+  provider URL to start from, the exact page path, how to create or find the
+  value, its expected format, and whether it is secret.
+- OAuth/OIDC setup identifies the provider application page, redirect URI,
+  enabled APIs, scopes, and consent requirements before starting authorization.
+- Configuration UI tests cover instructional links, derived outputs, defaulted
+  values, validation, and secret-safe rendering.
 
 ### Optional OAuth/OIDC Authorization Evidence
 

@@ -18,6 +18,12 @@ branches. Other conclusive LinkedIn API refusals use `providerRejected`, while
 malformed or oversized responses use `invalidResponse`. Invalid local input or
 connection configuration uses the standard `defect` branch.
 
+## Example
+
+[`examples/authenticated-profile`](examples/authenticated-profile) is a
+runnable Dex Web **Start Flow** example that loads the authorized member's
+verified UserInfo profile.
+
 ```bash
 GOWORK=off go test -race ./...
 GOWORK=off go vet ./...

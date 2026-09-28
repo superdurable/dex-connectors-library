@@ -125,6 +125,9 @@ retry under the generated Dex policy.
 
 ## Example
 
+[`examples/create-checkout-session`](examples/create-checkout-session) is a
+runnable Start Flow for creating one hosted ACH Checkout Session.
+
 [`examples/webhook-receiver`](examples/webhook-receiver) is a runnable local
 receiver that loads the connection file, starts the durable Trigger runtime,
 and exposes `/webhooks/stripe` without logging event payloads.
