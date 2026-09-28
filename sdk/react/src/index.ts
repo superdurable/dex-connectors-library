@@ -36,7 +36,9 @@ export type { ConnectorStudioClassName, ConnectorStudioTheme, ConnectorStudioThe
 export { StudioButton, StudioField, StudioHeader, StudioNotice, StudioSurface } from "./studio-components.js";
 export type { StudioButtonProps, StudioFieldProps, StudioHeaderProps, StudioNoticeProps, StudioSurfaceProps } from "./studio-components.js";
 export { ModelPicker, filterModelOptions, savedModel } from "./model-picker.js";
-export type { ModelListing, ModelOption, ModelPickerProps } from "./model-picker.js";
+export type { ModelListing, ModelListingNotice, ModelOption, ModelPickerProps } from "./model-picker.js";
+export { validateModelIDForRule } from "./model-id-rule.js";
+export type { ModelIDRule, ModelIDValidation } from "./model-id-rule.js";
 export { ModelPickerStudioApp, modelPickerUnitID, mountModelPickerBundle } from "./model-picker-bundle.js";
 export type { ModelPickerBundleConfig } from "./model-picker-bundle.js";
 export { executeFirstAcceptedProviderCommand, hasAnyModelIDFragment, openAICompatibleModelOptions, readProviderModelArray } from "./model-listing.js";

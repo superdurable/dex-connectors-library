@@ -26,6 +26,14 @@ export interface ModelPickerBundleConfig {
    * provider's JSON. It runs only for a configurationUnit target.
    */
   loadModels(client: ConnectorStudioClient): Promise<ModelListing>;
+  /**
+   * validateManualModel returns a message for an invalid typed model ID, or
+   * undefined to accept it. It is passed to ModelPicker, which disables Save
+   * while the message shows; see ModelPickerProps.validateManualModel.
+   */
+  validateManualModel?(model: string): string | undefined;
+  /** manualModelPlaceholder is passed to ModelPicker; it defaults to "model-id". */
+  manualModelPlaceholder?: string;
 }
 
 /**
@@ -33,7 +41,9 @@ export interface ModelPickerBundleConfig {
  * status card for the connection surface and ModelPicker for the modelPicker
  * unit. Credentials stay in the host form.
  */
-export function ModelPickerStudioApp({connectorId, providerName, iconUrl, loadModels}: ModelPickerBundleConfig): ReactElement {
+export function ModelPickerStudioApp({
+  connectorId, providerName, iconUrl, loadModels, validateManualModel, manualModelPlaceholder,
+}: ModelPickerBundleConfig): ReactElement {
   const client = useConnectorStudioClient(connectorId);
   const {ready} = client;
   useEffect(() => {
@@ -58,9 +68,11 @@ export function ModelPickerStudioApp({connectorId, providerName, iconUrl, loadMo
   }
   return <ModelPicker
     loadModels={loadModelsForSession}
+    manualModelPlaceholder={manualModelPlaceholder}
     onSave={(value) => client.send("use.configuration.save", "use.configuration.write", {value})}
     providerName={providerName}
     target={ready.target}
+    validateManualModel={validateManualModel}
   />;
 }
 

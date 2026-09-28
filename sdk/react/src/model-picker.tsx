@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { useCallback, useEffect, useState, type ReactElement } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactElement } from "react";
 
 import type { ConnectorStudioConfigurationUnitTarget } from "./host-api.js";
 import { StudioButton, StudioField, StudioHeader, StudioNotice, StudioSurface } from "./studio-components.js";
@@ -24,11 +24,25 @@ export interface ModelOption {
   isHiddenByDefault?: boolean;
 }
 
+/** ModelListingNotice is one message a loader shows with the listed models. */
+export interface ModelListingNotice {
+  /** tone is "attention" for a problem the user can act on, such as a provider that could not be listed, or "info". */
+  tone: "attention" | "info";
+  /** message is shown as written; it must not contain credential material. */
+  message: string;
+}
+
 /** ModelListing is the result of one live model list. */
 export interface ModelListing {
   models: ModelOption[];
   /** isTruncated reports that paging stopped before the provider's last page. */
   isTruncated?: boolean;
+  /**
+   * notices are shown in order above the models once the list loads, such as
+   * one per source of a combined list that could not be listed. A listing
+   * without notices renders as before.
+   */
+  notices?: ModelListingNotice[];
 }
 
 /** ModelPickerProps configures the shared live model picker unit. */
@@ -44,6 +58,18 @@ export interface ModelPickerProps {
    * means "use the connection's default model".
    */
   onSave(value: {model: string}): Promise<unknown>;
+  /**
+   * validateManualModel checks a typed model ID, with surrounding whitespace
+   * trimmed, before it can be saved. It returns a message for an invalid ID,
+   * which ModelPicker shows below the entry while Save stays disabled, or
+   * undefined to accept it. A model chosen from the list, the connection
+   * default, and a blank entry are not checked. When it is absent, every typed
+   * ID is accepted.
+   * It runs on every render, so it must be cheap and must not throw.
+   */
+  validateManualModel?(model: string): string | undefined;
+  /** manualModelPlaceholder is the placeholder of the model ID entry. It defaults to "model-id". */
+  manualModelPlaceholder?: string;
 }
 
 type ListState =
@@ -59,7 +85,9 @@ type SaveState = {status: "idle"} | {status: "saving"} | {status: "saved"; model
  * the connection's default, or type any model ID when listing fails or a model
  * is missing from the list.
  */
-export function ModelPicker({target, providerName, loadModels, onSave}: ModelPickerProps): ReactElement {
+export function ModelPicker({
+  target, providerName, loadModels, onSave, validateManualModel, manualModelPlaceholder = "model-id",
+}: ModelPickerProps): ReactElement {
   const initialModel = savedModel(target);
   const [listState, setListState] = useState<ListState>({status: "loading"});
   const [saveState, setSaveState] = useState<SaveState>({status: "idle"});
@@ -67,17 +95,24 @@ export function ModelPicker({target, providerName, loadModels, onSave}: ModelPic
   const [isShowingAll, setShowingAll] = useState(false);
   const [selectedModel, setSelectedModel] = useState(initialModel);
   const [manualModel, setManualModel] = useState("");
+  const hasChosenModelRef = useRef(false);
 
   const load = useCallback(() => {
+    // A choice made while loading or before Retry outranks the saved model.
+    const showSavedModelInEntry = () => {
+      if (hasChosenModelRef.current || initialModel === "") return;
+      setManualModel(initialModel);
+      setSelectedModel(initialModel);
+    };
     setListState({status: "loading"});
     loadModels().then(
       (listing) => {
         setListState({status: "loaded", listing});
-        if (initialModel !== "" && !listing.models.some((model) => model.id === initialModel)) setManualModel(initialModel);
+        if (!listing.models.some((model) => model.id === initialModel)) showSavedModelInEntry();
       },
       (error: unknown) => {
         setListState({status: "failed", message: error instanceof Error ? error.message : "Unknown error"});
-        if (initialModel !== "") setManualModel(initialModel);
+        showSavedModelInEntry();
       },
     );
   }, [initialModel, loadModels]);
@@ -86,7 +121,10 @@ export function ModelPicker({target, providerName, loadModels, onSave}: ModelPic
   const models = listState.status === "loaded" ? listState.listing.models : [];
   const visibleModels = filterModelOptions(models, query, isShowingAll);
   const hiddenCount = models.filter((model) => model.isHiddenByDefault).length;
+  const typedModel = manualModel.trim();
+  const manualModelProblem = typedModel === "" ? undefined : validateManualModel?.(typedModel);
   const chooseListedModel = (model: string) => {
+    hasChosenModelRef.current = true;
     setSelectedModel(model);
     setManualModel("");
   };
@@ -112,6 +150,7 @@ export function ModelPicker({target, providerName, loadModels, onSave}: ModelPic
         Show all models ({hiddenCount} hidden that may not support this Step)
       </label>}
       {listState.listing.isTruncated && <StudioNotice tone="attention">{providerName} returned more models than one list can show. Search, or enter a model ID.</StudioNotice>}
+      {listState.listing.notices?.map((notice, index) => <StudioNotice key={index} tone={notice.tone}>{notice.message}</StudioNotice>)}
     </>}
     <fieldset aria-label="Model" className="studio-options">
       <label className="studio-option">
@@ -127,13 +166,15 @@ export function ModelPicker({target, providerName, loadModels, onSave}: ModelPic
       </label>)}
     </fieldset>
     <StudioField hint="Any model ID the provider accepts, including one missing from the list." label="Or enter a model ID">
-      <input onChange={(event) => {
+      <input aria-invalid={manualModelProblem === undefined ? undefined : true} onChange={(event) => {
+        hasChosenModelRef.current = true;
         setManualModel(event.target.value);
         setSelectedModel(event.target.value.trim());
-      }} placeholder="model-id" type="text" value={manualModel}/>
+      }} placeholder={manualModelPlaceholder} type="text" value={manualModel}/>
     </StudioField>
+    {manualModelProblem !== undefined && <StudioNotice tone="attention">{manualModelProblem}</StudioNotice>}
     <div className="studio-actions">
-      <StudioButton disabled={saveState.status === "saving"} onClick={save} variant="primary">Save</StudioButton>
+      <StudioButton disabled={saveState.status === "saving" || manualModelProblem !== undefined} onClick={save} variant="primary">Save</StudioButton>
       <span className="studio-muted">{selectedModel === "" ? "Uses the connection's default model" : `Selected: ${selectedModel}`}</span>
     </div>
     {saveState.status === "saved" && <StudioNotice tone="success">Saved {saveState.model || "the connection default"}. Restart the application to use it.</StudioNotice>}
