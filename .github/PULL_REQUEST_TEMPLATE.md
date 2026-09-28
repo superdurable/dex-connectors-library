@@ -4,7 +4,21 @@
 
 ## Verification
 
-<!-- List automated tests and manual checks. -->
+Checked-in example path: <!-- Required for a new connector, user-visible capability, or behavioral fix. Otherwise write N/A with a reason. -->
+
+Dex Run evidence: <!-- Non-secret Run ID, terminal branch, and observed result or bounded side effect. -->
+
+Real provider exercised: <!-- Yes or no. -->
+
+Unverified live behavior: <!-- Write None, or name the exact behavior that was not safely verified. -->
+
+Configuration surface evidence: <!-- Provider links/paths and affected authorization, operation, Trigger, and UI fields audited in Dex Web Connections. -->
+
+Unverified configuration behavior: <!-- Write None, or name the exact untested page, scope, claim, picker, default, or blank behavior. -->
+
+Test commands and results:
+
+<!-- List every automated test and manual check with its result. -->
 
 ## Optional OAuth/OIDC authorization testing
 

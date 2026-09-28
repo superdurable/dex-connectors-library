@@ -129,6 +129,46 @@ Connector-local integration tests own provider-specific branches, execution
 defaults, delivery ordering, recovery, and example behavior. Unit tests do not
 simulate those boundaries merely to duplicate an integration assertion.
 
+## Connector-local example and live verification
+
+For a standalone connector contribution, the checked-in connector-local
+example is the minimal consuming Dex application and primary end-to-end test
+harness. Add one for every new connector or user-visible capability. For a
+behavioral fix, extend the smallest existing example that reproduces and proves
+the change. A documentation-only, generated-only, or internal refactor may rely
+on an existing example only when it still covers the unchanged public path and
+the pull request records why no example change was needed.
+
+The example imports the connector's public generated contract and exercises the
+changed operation, Trigger, or configuration unit. Do not substitute an ad hoc
+program or a future application. Verify the changed outcome rather than only a
+happy-path completion:
+
+- for a read, inspect the returned provider data and relevant pagination or
+  bounds;
+- for a Mutation, verify the provider side effect with a bounded read-back when
+  safe, then clean up any disposable resource;
+- for a failure or recovery change, drive the example into the changed branch
+  and inspect the expected durable state;
+- for a Trigger, deliver a real provider event and cover typed Flow start or RPC
+  routing, duplicate delivery, and restart recovery as applicable.
+
+Build the local release artifact, load it with
+`dexcli dev --connector-release-override`, configure the connection through Dex
+Web, and run the same checked-in example on the real Dex stack. Operation-only
+examples run through **Start Flow**; Trigger examples use their real ingress.
+A deterministic fake provider or headless routing check is supplementary and
+does not prove live provider behavior.
+
+When safe provider authorization is available, use the user-controlled Dex Web
+Connections or OAuth flow instead of requesting raw tokens or browser
+credentials. Confirm the connection is ready, run the same example, and record
+non-secret evidence of the Run ID, terminal branch, and provider result or
+bounded side effect. If authorization is unavailable, or the only live test
+would create unapproved cost or destructive effects, record the exact live
+behavior that remains unverified. Describe the result as structurally or
+Dex-integrated verified, not live or end-to-end verified.
+
 ## Release acceptance
 
 Normal `main` pushes produce a matrix containing only connectors whose manifest

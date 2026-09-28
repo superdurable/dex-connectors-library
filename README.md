@@ -227,11 +227,14 @@ standalone Skills bundle, but not both. Duplicate installations can shadow one
 another.
 
 Then use Dex Connector Contributor to add or modify a connector, operation,
-Trigger, or configuration UI unit. The skill guides an agent through provider
-public APIs or official SDKs, manifest-first code generation, a connector-local
-runnable example, complete testing, and an upstream pull request. It also
-discovers or helps create the contributor's GitHub fork before checking it out
-locally.
+Trigger, or configuration UI unit. The skill is a thin bootstrap: it discovers
+or helps create the contributor's GitHub fork, resolves the correct checkout,
+and loads this repository's instructions. After checkout, [AGENTS.md](AGENTS.md),
+the [architecture](docs/architecture.md), [connector contract](docs/connector-contract.md),
+[manifest guide](docs/manifest-authoring.md),
+[configuration guidance](docs/configuration-guidance.md),
+[acceptance criteria](docs/acceptance.md), and the owning connector README are
+the authoritative contribution workflow.
 
 Use this request template:
 
