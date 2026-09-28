@@ -5,10 +5,23 @@ package main
 
 import (
 	"fmt"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
+
+func TestConnectorTestSelectionAcceptsRelativeCatalogPath(t *testing.T) {
+	selected, err := selectConnectorTestDirectories(
+		filepath.Join("..", "..", "catalog.yaml"),
+		[]string{"connectors/example"},
+		"changed",
+		"HEAD",
+		"HEAD",
+	)
+	require.NoError(t, err)
+	require.Empty(t, selected)
+}
 
 func TestConnectorTestSelectionUsesLocalAndCatalogChanges(t *testing.T) {
 	directories := []string{

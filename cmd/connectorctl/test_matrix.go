@@ -99,10 +99,11 @@ func selectConnectorTestDirectories(
 	if scope == "all" {
 		return append([]string(nil), catalogDirectories...), nil
 	}
-	repositoryRoot, err := filepath.Abs(filepath.Dir(catalogPath))
+	absoluteCatalogPath, err := filepath.Abs(catalogPath)
 	if err != nil {
-		return nil, fmt.Errorf("resolve repository root: %w", err)
+		return nil, fmt.Errorf("resolve connector catalog path: %w", err)
 	}
+	repositoryRoot := filepath.Dir(absoluteCatalogPath)
 	mergeBase, err := gitOutput(repositoryRoot, "merge-base", baseRevision, headRevision)
 	if err != nil {
 		return nil, err
@@ -112,7 +113,7 @@ func selectConnectorTestDirectories(
 		return nil, err
 	}
 	changedPaths := splitNullTerminated(changedOutput)
-	relativeCatalogPath, err := filepath.Rel(repositoryRoot, catalogPath)
+	relativeCatalogPath, err := filepath.Rel(repositoryRoot, absoluteCatalogPath)
 	if err != nil {
 		return nil, fmt.Errorf("resolve connector catalog path: %w", err)
 	}
