@@ -1,0 +1,94 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: kimi
+  displayName: Kimi API
+  description: Moonshot AI Kimi API text generation with Kimi K3 and K2 models, JSON Schema structured output, K3 reasoning effort, token usage, and streamed text.
+  company: Moonshot
+  version: v0.1.0
+spec:
+  provider: moonshot
+  codegen:
+    go:
+      package: kimi
+  configuration:
+    fields:
+      - name: model
+        goName: Model
+        type: string
+        description: "Kimi model for this connection, such as kimi-k2.6 or kimi-k3. Blank uses kimi-k2.6. A request that names a model overrides it."
+        required: false
+        default: kimi-k2.6
+      - name: endpoint
+        goName: Endpoint
+        type: url
+        description: "Kimi API platform the key belongs to: https://api.moonshot.ai/v1 for platform.kimi.ai keys or https://api.moonshot.cn/v1 for platform.kimi.com keys. No other endpoint is accepted."
+        required: false
+        default: https://api.moonshot.ai/v1
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum total provider response size. A larger response selects invalidResponse.
+        required: false
+        default: 8388608
+  auth:
+    type: apiKey
+    connectionKind: kimi-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        description: Kimi API key from the Kimi API Platform console, sent only in the Authorization bearer header to the configured endpoint.
+        required: true
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.2.0 <0.3.0"
+      backendCapabilities: [use.configuration.write, kimi.models-list]
+      mockScenarios: [not-configured, connected]
+      icon: icon.svg
+    commands:
+      # A key works on only one platform, so the bundle tries the global host
+      # first and the China host second.
+      - id: listModels
+        capability: kimi.models-list
+        request:
+          method: GET
+          url: https://api.moonshot.ai/v1/models
+          credential: {field: api_key, scheme: bearer}
+      - id: listModelsChina
+        capability: kimi.models-list
+        request:
+          method: GET
+          url: https://api.moonshot.cn/v1/models
+          credential: {field: api_key, scheme: bearer}
+    units:
+      - id: modelPicker
+        goName: ModelPicker
+        description: Choose one Step's Kimi model from the Kimi API's live model list.
+        backendCapabilities: [kimi.models-list]
+        outputs:
+          - {name: model, goName: Model, type: string}
+  operations:
+    - name: generateText
+      goName: GenerateText
+      inputType: GenerateTextRequest
+      outputType: GenerateTextResponse
+      kind: query
+      description: Generate text or JSON Schema structured output with a Kimi model through the stateless Chat Completions endpoint.
+      idempotency: none
+      branches:
+        - {id: generated, goName: Generated, description: The model finished normally and returned text.}
+        - {id: truncated, goName: Truncated, description: The model stopped at the output token limit and returned any partial text., optional: true}
+        - {id: blocked, goName: Blocked, description: "Kimi's content safety review rejected the request or the output, or the model refused.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Kimi conclusively rejected the request, such as invalid credentials, a key from the other platform, an unknown model, or an exhausted balance.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Kimi returned a malformed, oversized, or unusable response, including structured output that does not match its schema.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      progress: [text]
+      execution:
+        # Requests stream, because Kimi's gateway ends a non-streaming request
+        # that is silent for 900 seconds, so the streaming budget applies.
+        executeMethodTimeout: 900s
+        heartbeatTimeout: 60s
+        durability: sync
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 4, totalDuration: 30m}
