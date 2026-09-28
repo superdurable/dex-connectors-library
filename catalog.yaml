@@ -17,4 +17,5 @@ directories:
   - connectors/slack
   - connectors/spotify
   - connectors/stripe
+  - connectors/superdurable/llm
   - connectors/xai

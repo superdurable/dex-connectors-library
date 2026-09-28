@@ -1,0 +1,132 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: llm
+  displayName: LLM
+  description: "One generateText Step for OpenAI, Claude, and Gemini models chosen as provider/model. Enter the default model and an API key for each provider you use; each key is sent only to its own provider. Every save replaces all keys, the default model, and the workspace ID, so re-enter every value you keep."
+  company: Super Durable
+  version: v0.1.0
+spec:
+  provider: llm
+  codegen:
+    go:
+      package: llmrouter
+  configuration:
+    fields:
+      - name: model
+        goName: Model
+        type: string
+        description: "Required default model for Steps that pick none, written provider/model, such as anthropic/claude-sonnet-5, openai/gpt-6-sol, or gemini/gemini-3.5-flash-lite, or a provider alone (openai, anthropic, or gemini) for that provider connector's default model. Take model IDs from each provider's models page or the Step's model picker. A Step pick or a request model overrides it. Every save replaces it."
+        required: true
+      - name: anthropicWorkspaceId
+        goName: AnthropicWorkspaceID
+        type: string
+        description: "Claude workspace ID from Claude Console > Settings > Workspaces, such as wrkspc_01JwQvzr7rXLA5AGx3HKfFUJ, sent as anthropic-workspace-id on Claude generation requests. A multi-workspace Anthropic key requires it; leave it blank for a key scoped to one workspace. The Step model list does not send it. Every save replaces it."
+        required: false
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Maximum complete provider response in bytes for every provider, counting every byte of a stream; enter a positive integer. OpenAI adds about 260 bytes of event framing per streamed text delta, so the default holds roughly 30,000 openai/ output tokens; raise it for longer outputs. Larger responses select invalidResponse."
+        required: false
+        default: 8388608
+  auth:
+    type: apiKey
+    connectionKind: llm-api-keys
+    fields:
+      - name: openai_api_key
+        goName: OpenAIAPIKey
+        type: secretString
+        description: "Secret OpenAI project API key from Platform > API keys, starting sk-, sent only to api.openai.com as a bearer token. Needed for openai/ models; leave it blank when no Step uses OpenAI. Every save replaces all three keys; re-enter each key you keep."
+        required: false
+      - name: anthropic_api_key
+        goName: AnthropicAPIKey
+        type: secretString
+        description: "Secret Claude API key from Claude Console > Settings > API keys, starting sk-ant-, sent only to api.anthropic.com as a bearer token. Needed for anthropic/ models; leave it blank when no Step uses Claude. Every save replaces all three keys; re-enter each key you keep."
+        required: false
+      - name: gemini_api_key
+        goName: GeminiAPIKey
+        type: secretString
+        description: "Secret Gemini API key from Google AI Studio > API keys, starting AIza, sent only to generativelanguage.googleapis.com. Needed for gemini/ models; leave it blank when no Step uses Gemini. Every save replaces all three keys; re-enter each key you keep."
+        required: false
+    guide:
+      startURL: https://platform.openai.com/api-keys
+      steps:
+        - "For openai/ models: select the OpenAI project that should own usage, open API keys, choose Create new secret key, and copy the sk- secret shown once into openai_api_key."
+        - "For anthropic/ models: open https://platform.claude.com/settings/keys, select the workspace, choose Create key, and copy the sk-ant- secret shown once into anthropic_api_key; copy the wrkspc_ ID from Settings > Workspaces only for a multi-workspace key."
+        - "For gemini/ models: open https://aistudio.google.com/api-keys, select the Google Cloud project that should own usage, choose Create API key, and copy the AIza key into gemini_api_key."
+        - "Enter the default model as provider/model and leave the key of every provider you do not use blank. Each save replaces every key and value, so re-enter the keys you keep."
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.2.0 <0.3.0"
+      backendCapabilities: [use.configuration.write, llm.models-list]
+      mockScenarios: [not-configured, connected]
+      icon: icon.svg
+    commands:
+      # Each command equals the pinned provider's released list command except
+      # its ID, capability, and credential field; manifest_test.go checks this.
+      - id: listOpenAIModels
+        capability: llm.models-list
+        request:
+          method: GET
+          url: https://api.openai.com/v1/models
+          credential: {field: openai_api_key, scheme: bearer}
+      # Dex Web releases before cli-v0.13.10 drop fixedHeaders, so Claude
+      # rejects this list there and the picker offers the default and manual entry.
+      - id: listAnthropicModels
+        capability: llm.models-list
+        request:
+          method: GET
+          url: https://api.anthropic.com/v1/models
+          credential: {field: anthropic_api_key, scheme: bearer}
+          fixedHeaders: {anthropic-version: "2023-06-01"}
+          fixedQuery: {limit: "1000"}
+          parameters:
+            - {name: afterId, location: query, target: after_id}
+      # Dex Web releases before cli-v0.13.10 reject the header scheme before
+      # sending, so the bundle falls back to the OpenAI-compatible list below.
+      - id: listGeminiModels
+        capability: llm.models-list
+        request:
+          method: GET
+          url: https://generativelanguage.googleapis.com/v1beta/models
+          credential: {field: gemini_api_key, scheme: header, header: x-goog-api-key}
+          fixedQuery: {pageSize: "1000"}
+          parameters:
+            - {name: pageToken, location: query, target: pageToken}
+      - id: listGeminiOpenAICompatibleModels
+        capability: llm.models-list
+        request:
+          method: GET
+          url: https://generativelanguage.googleapis.com/v1beta/openai/models
+          credential: {field: gemini_api_key, scheme: bearer}
+    units:
+      - id: modelPicker
+        goName: ModelPicker
+        description: Choose one Step's model as provider/model from the live OpenAI, Claude, and Gemini lists this connection's keys can reach, a provider's default model, or a typed provider/model ID. Blank keeps the connection's default model.
+        backendCapabilities: [llm.models-list]
+        outputs:
+          - {name: model, goName: Model, type: string}
+  operations:
+    - name: generateText
+      goName: GenerateText
+      inputType: GenerateTextRequest
+      outputType: GenerateTextResponse
+      kind: query
+      description: Generate text or JSON Schema structured output with the OpenAI, Claude, or Gemini model that provider/model selects, through that provider connector's stateless generateText Query.
+      idempotency: none
+      branches:
+        - {id: generated, goName: Generated, description: The model finished normally and returned text.}
+        - {id: truncated, goName: Truncated, description: The model stopped at the output token limit and returned any partial text., optional: true}
+        - {id: blocked, goName: Blocked, description: "The selected provider stopped the response for a content policy, or the model refused.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "The selected provider conclusively rejected the request, such as an invalid key, an unknown model, or exhausted quota.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "The selected provider returned a malformed, oversized, or unusable response, including structured output that does not match its schema.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, the model selection, a missing or mismatched provider key, connection configuration, or connector definition is invalid.", optional: true}
+      progress: [text]
+      execution:
+        # Covers every routed provider's generateText budget; New rejects a
+        # linked provider that needs a longer Execute timeout.
+        executeMethodTimeout: 900s
+        heartbeatTimeout: 60s
+        durability: sync
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 4, totalDuration: 30m}
