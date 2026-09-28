@@ -4,6 +4,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -123,9 +124,9 @@ func TestReleaseMatrixFindsEveryDeclaredRepositoryVersion(t *testing.T) {
 	}))
 	contents, err := os.ReadFile(githubOutput)
 	require.NoError(t, err)
-	require.Contains(t, string(contents), "count=8")
+	require.Contains(t, string(contents), fmt.Sprintf("count=%d", len(registeredConnectorDirectories(t))))
 	require.Contains(t, string(contents), `"directory":"connectors/google/gmail"`)
-	require.Contains(t, string(contents), `"version":"v0.10.2"`)
+	require.Contains(t, string(contents), fmt.Sprintf(`"version":%q`, readManifestIdentity(t, "connectors/google/gmail").Version))
 }
 
 func TestDirectoryRegistryRejectsMissingCompanyLogo(t *testing.T) {
