@@ -57,6 +57,7 @@ type Store struct {
 	path                   string
 	useConfigurationsPath  string
 	configuration          map[connectionKey]json.RawMessage
+	credentialMutexes      map[connectionKey]*sync.Mutex
 	triggerConfiguration   map[triggerBindingKey]json.RawMessage
 	operationConfiguration map[sdkgo.ConnectorConfigurationRef]json.RawMessage
 }
@@ -126,9 +127,11 @@ func LoadFile(path string) (*Store, error) {
 		return nil, err
 	}
 	configuration := make(map[connectionKey]json.RawMessage, len(file.Connections))
+	credentialMutexes := make(map[connectionKey]*sync.Mutex, len(file.Connections))
 	for _, record := range file.Connections {
 		key := connectionKey{connectorID: record.ConnectorID, connectionName: record.ConnectionName}
 		configuration[key] = append(json.RawMessage(nil), record.Configuration...)
+		credentialMutexes[key] = &sync.Mutex{}
 	}
 	triggerConfiguration := make(map[triggerBindingKey]json.RawMessage, len(file.TriggerBindings))
 	for _, record := range file.TriggerBindings {
@@ -150,7 +153,7 @@ func LoadFile(path string) (*Store, error) {
 	}
 	return &Store{
 		path: absolutePath, useConfigurationsPath: useConfigurationsPath,
-		configuration: configuration, triggerConfiguration: triggerConfiguration,
+		configuration: configuration, credentialMutexes: credentialMutexes, triggerConfiguration: triggerConfiguration,
 		operationConfiguration: operationConfiguration,
 	}, nil
 }
@@ -251,6 +254,10 @@ func (store *Store) DecodeConfiguration(connectorID string, connectionName strin
 // CredentialDecoder converts strict credential JSON into a generated credential type.
 type CredentialDecoder[C any] func(json.RawMessage) (C, error)
 
+// CredentialEncoder converts a generated credential type into its secret-bearing local JSON representation.
+// Implementations must reveal secrets only while constructing the returned bytes.
+type CredentialEncoder[C any] func(C) (json.RawMessage, error)
+
 // DecodeCredentials strictly decodes generated credential wire fields without exposing them through formatting.
 func DecodeCredentials(contents json.RawMessage, destination any) error {
 	if destination == nil {
@@ -275,9 +282,33 @@ func NewCredentialProvider[C any](
 	if decoder == nil {
 		panic("credential decoder is required")
 	}
-	return credentialProvider[C]{
-		store: store, connectorID: connectorID, connectionName: connectionName, decoder: decoder,
+	key := connectionKey{connectorID: connectorID, connectionName: connectionName}
+	mutex, ok := store.credentialMutexes[key]
+	if !ok {
+		panic("local connector connection is not configured")
 	}
+	return &credentialProvider[C]{
+		store: store, connectorID: connectorID, connectionName: connectionName, decoder: decoder, mutex: mutex,
+	}
+}
+
+// NewRefreshingCredentialProvider creates a provider that atomically persists refreshed credentials.
+// The returned CredentialProvider also implements sdkgo.RefreshingCredentialProvider. Callers use
+// sdkgo.ResolveCredential with the connector's refresh driver to opt into refresh behavior.
+func NewRefreshingCredentialProvider[C any](
+	store *Store,
+	connectorID string,
+	connectionName string,
+	decoder CredentialDecoder[C],
+	encoder CredentialEncoder[C],
+) sdkgo.CredentialProvider[C] {
+	if encoder == nil {
+		panic("credential encoder is required")
+	}
+	provider := NewCredentialProvider(store, connectorID, connectionName, decoder)
+	resolved := provider.(*credentialProvider[C])
+	resolved.encoder = encoder
+	return resolved
 }
 
 type credentialProvider[C any] struct {
@@ -285,6 +316,8 @@ type credentialProvider[C any] struct {
 	connectorID    string
 	connectionName string
 	decoder        CredentialDecoder[C]
+	encoder        CredentialEncoder[C]
+	mutex          *sync.Mutex
 }
 
 type durableTriggerTarget[T any] struct {
@@ -562,27 +595,144 @@ func (target *durableTriggerTarget[T]) writeInbox(inbox triggerInboxFile[T]) err
 }
 
 // Resolve returns credentials for one connector call without persisting them.
-func (provider credentialProvider[C]) Resolve(call sdkgo.Call) (C, error) {
+func (provider *credentialProvider[C]) Resolve(call sdkgo.Call) (C, error) {
+	provider.mutex.Lock()
+	defer provider.mutex.Unlock()
+	return provider.resolve(call)
+}
+
+// ResolveWithRefresh reloads, refreshes, and atomically persists one connection under a process-local lock.
+func (provider *credentialProvider[C]) ResolveWithRefresh(
+	ctx context.Context,
+	call sdkgo.Call,
+	driver sdkgo.CredentialRefreshDriver[C],
+) (C, error) {
+	var zero C
+	if driver == nil {
+		return zero, fmt.Errorf("credential refresh driver is required")
+	}
+	if provider.encoder == nil {
+		return zero, fmt.Errorf("connector %q connection %q does not support credential refresh", provider.connectorID, provider.connectionName)
+	}
+	provider.mutex.Lock()
+	defer provider.mutex.Unlock()
+	if call.Connection.Name != provider.connectionName {
+		return zero, fmt.Errorf("connector connection name %q does not match local connection %q", call.Connection.Name, provider.connectionName)
+	}
+	file, recordIndex, credentials, err := provider.loadCredentials()
+	if err != nil {
+		return zero, err
+	}
+	now := time.Now().UTC()
+	state := sdkgo.CredentialRefreshState[C]{Credentials: credentials, ExpiresAt: file.Connections[recordIndex].CredentialExpiresAt, Now: now}
+	if !driver.RefreshRequired(state) {
+		if state.ExpiresAt != nil && !now.Before(*state.ExpiresAt) {
+			return zero, fmt.Errorf("connector %q connection %q credentials are expired", provider.connectorID, provider.connectionName)
+		}
+		return credentials, nil
+	}
+	result, err := driver.Refresh(ctx, state)
+	if err != nil {
+		return zero, fmt.Errorf("refresh connector %q connection %q credentials: %w", provider.connectorID, provider.connectionName, err)
+	}
+	if !result.ExpiresAt.After(now) {
+		return zero, fmt.Errorf("refresh connector %q connection %q credentials: replacement expiry must be in the future", provider.connectorID, provider.connectionName)
+	}
+	encoded, err := provider.encoder(result.Credentials)
+	if err != nil {
+		return zero, fmt.Errorf("encode refreshed connector %q connection %q credentials: %w", provider.connectorID, provider.connectionName, err)
+	}
+	if len(encoded) == 0 {
+		return zero, fmt.Errorf("encode refreshed connector %q connection %q credentials: encoded credentials are empty", provider.connectorID, provider.connectionName)
+	}
+	file.Connections[recordIndex].Credentials = append(json.RawMessage(nil), encoded...)
+	expiresAt := result.ExpiresAt.UTC()
+	file.Connections[recordIndex].CredentialExpiresAt = &expiresAt
+	if err := writeFile(provider.store.path, file); err != nil {
+		return zero, err
+	}
+	return result.Credentials, nil
+}
+
+func (provider *credentialProvider[C]) resolve(call sdkgo.Call) (C, error) {
 	var zero C
 	if call.Connection.Name != provider.connectionName {
 		return zero, fmt.Errorf("connector connection name %q does not match local connection %q", call.Connection.Name, provider.connectionName)
 	}
-	file, err := readFile(provider.store.path)
+	file, recordIndex, credentials, err := provider.loadCredentials()
 	if err != nil {
 		return zero, err
 	}
-	record, ok := findRecord(file.Connections, provider.connectorID, provider.connectionName)
-	if !ok {
-		return zero, fmt.Errorf("connector %q connection %q is not configured", provider.connectorID, provider.connectionName)
-	}
+	record := file.Connections[recordIndex]
 	if record.CredentialExpiresAt != nil && !time.Now().Before(*record.CredentialExpiresAt) {
 		return zero, fmt.Errorf("connector %q connection %q credentials are expired", provider.connectorID, provider.connectionName)
 	}
-	credentials, err := provider.decoder(record.Credentials)
-	if err != nil {
-		return zero, fmt.Errorf("decode connector %q connection %q credentials: %w", provider.connectorID, provider.connectionName, err)
-	}
 	return credentials, nil
+}
+
+func (provider *credentialProvider[C]) loadCredentials() (localConnectionsFile, int, C, error) {
+	var zero C
+	file, err := readFile(provider.store.path)
+	if err != nil {
+		return localConnectionsFile{}, 0, zero, err
+	}
+	for index, record := range file.Connections {
+		if record.ConnectorID != provider.connectorID || record.ConnectionName != provider.connectionName {
+			continue
+		}
+		credentials, decodeErr := provider.decoder(record.Credentials)
+		if decodeErr != nil {
+			return localConnectionsFile{}, 0, zero, fmt.Errorf("decode connector %q connection %q credentials: %w", provider.connectorID, provider.connectionName, decodeErr)
+		}
+		return file, index, credentials, nil
+	}
+	return localConnectionsFile{}, 0, zero, fmt.Errorf("connector %q connection %q is not configured", provider.connectorID, provider.connectionName)
+}
+
+func writeFile(path string, file localConnectionsFile) (returnErr error) {
+	contents, err := json.MarshalIndent(file, "", "  ")
+	if err != nil {
+		return fmt.Errorf("encode connector configuration file: %w", err)
+	}
+	contents = append(contents, '\n')
+	temporary, err := os.CreateTemp(filepath.Dir(path), ".connections-*.json")
+	if err != nil {
+		return fmt.Errorf("create connector configuration update: %w", err)
+	}
+	temporaryPath := temporary.Name()
+	closed := false
+	defer func() {
+		if !closed {
+			returnErr = errors.Join(returnErr, temporary.Close())
+		}
+		if removeErr := os.Remove(temporaryPath); removeErr != nil && !errors.Is(removeErr, fs.ErrNotExist) {
+			returnErr = errors.Join(returnErr, fmt.Errorf("remove connector configuration update: %w", removeErr))
+		}
+	}()
+	if err := temporary.Chmod(0o600); err != nil {
+		return fmt.Errorf("secure connector configuration update: %w", err)
+	}
+	if _, err := temporary.Write(contents); err != nil {
+		return fmt.Errorf("write connector configuration update: %w", err)
+	}
+	if err := temporary.Sync(); err != nil {
+		return fmt.Errorf("sync connector configuration update: %w", err)
+	}
+	if err := temporary.Close(); err != nil {
+		return fmt.Errorf("close connector configuration update: %w", err)
+	}
+	closed = true
+	if err := os.Rename(temporaryPath, path); err != nil {
+		return fmt.Errorf("replace connector configuration file: %w", err)
+	}
+	directory, err := os.Open(filepath.Dir(path))
+	if err != nil {
+		return fmt.Errorf("open connector configuration directory: %w", err)
+	}
+	if err := directory.Sync(); err != nil {
+		return errors.Join(fmt.Errorf("sync connector configuration directory: %w", err), directory.Close())
+	}
+	return directory.Close()
 }
 
 func readFile(path string) (localConnectionsFile, error) {
