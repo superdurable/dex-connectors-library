@@ -107,9 +107,11 @@ jobs:
             go.sum
             sdkgo/go.sum
       - name: Download Dex and Temporal CLIs
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           python3 script/dex_compatibility.py install-dexcli --output ./dexcli
-          curl --fail --location --output temporal.tar.gz \
+          curl --fail --location --retry 4 --retry-all-errors --retry-delay 2 --output temporal.tar.gz \
             https://github.com/temporalio/cli/releases/download/v1.9.1/temporal_cli_1.9.1_linux_amd64.tar.gz
           echo "09a0326a51db84d02735e53542b9ebd8c4758daf47482a9ab0abce15844e60d5  temporal.tar.gz" | sha256sum --check
           mkdir temporal-cli
@@ -160,9 +162,11 @@ jobs:
             go.sum
             connectors/**/go.sum
       - name: Download Dex and Temporal CLIs
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           python3 script/dex_compatibility.py install-dexcli --output ./dexcli
-          curl --fail --location --output temporal.tar.gz \
+          curl --fail --location --retry 4 --retry-all-errors --retry-delay 2 --output temporal.tar.gz \
             https://github.com/temporalio/cli/releases/download/v1.9.1/temporal_cli_1.9.1_linux_amd64.tar.gz
           echo "09a0326a51db84d02735e53542b9ebd8c4758daf47482a9ab0abce15844e60d5  temporal.tar.gz" | sha256sum --check
           mkdir temporal-cli
