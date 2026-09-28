@@ -138,11 +138,10 @@ func loadSummaryModelConfiguration(store *localconfig.Store) (generatesummary.Su
 	loaded, err := localconfig.LoadOperationConfiguration[generatesummary.SummaryModelConfiguration](
 		store, generatesummary.SummaryModelConfigurationRef(),
 	)
+	if errors.Is(err, localconfig.ErrConfigurationNotFound) {
+		return generatesummary.SummaryModelConfiguration{}, nil
+	}
 	if err != nil {
-		// sdkgo v0.9.0 reports a missing Step configuration only in the message.
-		if strings.Contains(err.Error(), "is not configured") {
-			return generatesummary.SummaryModelConfiguration{}, nil
-		}
 		return generatesummary.SummaryModelConfiguration{}, err
 	}
 	return loaded.Value, nil

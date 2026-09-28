@@ -23,7 +23,9 @@ func TestDocumentedModelsAreOpenToNewProjects(t *testing.T) {
 	for _, prefix := range restricted {
 		require.NotContains(t, liveDefaultModel, prefix)
 	}
-	for _, path := range []string{"README.md", filepath.Join("examples", "generate-summary", "README.md")} {
+	for _, path := range []string{
+		"README.md", filepath.Join("examples", "generate-summary", "README.md"), filepath.Join("examples", "summarize-text", "README.md"),
+	} {
 		contents, err := os.ReadFile(path)
 		require.NoError(t, err)
 		for _, prefix := range restricted {
@@ -36,10 +38,13 @@ func TestDocumentedModelsAreOpenToNewProjects(t *testing.T) {
 func TestREADMEGoSnippetsComeFromTheRunnableExample(t *testing.T) {
 	readme, err := os.ReadFile("README.md")
 	require.NoError(t, err)
+	require.Contains(t, string(readme), "| `model` | `"+gemini.DefaultConfig().Model+"` |", "the README names the manifest's default model")
 	var exampleSources []string
 	for _, path := range []string{
 		filepath.Join("examples", "generate-summary", "main.go"),
 		filepath.Join("examples", "generate-summary", "flow", "workflow.go"),
+		filepath.Join("examples", "summarize-text", "main.go"),
+		filepath.Join("examples", "summarize-text", "flow", "workflow.go"),
 	} {
 		source, err := os.ReadFile(path)
 		require.NoError(t, err)

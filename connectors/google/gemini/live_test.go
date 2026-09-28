@@ -15,7 +15,90 @@ import (
 	gemini "github.com/superdurable/dex-connectors-library/connectors/google/gemini"
 	"github.com/superdurable/dex-connectors-library/connectors/google/gemini/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/llm"
 )
+
+// TestLiveGenerateText makes one unbilled unknown-model request and one tiny structured generation through generateText.
+func TestLiveGenerateText(t *testing.T) {
+	apiKey := os.Getenv("GEMINI_CONNECTOR_TEST_API_KEY")
+	if apiKey == "" {
+		t.Skip("GEMINI_CONNECTOR_TEST_API_KEY is not configured")
+	}
+	client, err := gemini.New(gemini.Config{Model: os.Getenv("GEMINI_CONNECTOR_TEST_MODEL")},
+		sdkgo.StaticCredentialProvider[gemini.Credentials]{geminiConnection: {APIKey: sdkgo.NewSecretString(apiKey)}})
+	require.NoError(t, err)
+	requireNoAPIKey := func(t *testing.T, value any) {
+		t.Helper()
+		encoded, err := json.Marshal(value)
+		require.NoError(t, err)
+		// A boolean assertion keeps the key out of the failure message.
+		require.False(t, strings.Contains(string(encoded), apiKey), "a Result contains the API key")
+	}
+
+	t.Run("unknown model is a conclusive rejection", func(t *testing.T) {
+		request := userTextRequest("Hi")
+		request.Model = "gemini-connector-test-no-such-model"
+		rejected, err := sdkgo.RunQuery(testsupport.NewDexContext("live-gemini-flow", "live-text-unknown-model-step"),
+			client.GenerateText(), geminiConnection, request)
+		require.NoError(t, err)
+		requireNoAPIKey(t, rejected)
+		require.Equal(t, gemini.GenerateTextBranchProviderRejected, rejected.Branch)
+		require.Equal(t, sdkgo.FailureNotFound, rejected.Failure.Kind, "an invalid API key is AUTHENTICATION: %s", rejected.Failure.Message)
+	})
+
+	t.Run("structured generation", func(t *testing.T) {
+		request := userTextRequest(`Reply with {"ok": true}.`)
+		request.StructuredOutput = &llm.StructuredOutput{Name: "probe", Schema: map[string]any{
+			"type": "object", "properties": map[string]any{"ok": map[string]any{"type": "boolean"}},
+			"required": []any{"ok"}, "additionalProperties": false,
+		}}
+		// MaxOutputTokens includes thought tokens, so it leaves headroom for the model's default thinking level.
+		request.MaxOutputTokens = 1024
+		generated, err := sdkgo.RunQuery(testsupport.NewDexContext("live-gemini-flow", "live-text-generate-step"),
+			client.GenerateText(), geminiConnection, request)
+		require.NoError(t, err)
+		requireNoAPIKey(t, generated)
+		if generated.Failure != nil && generated.Failure.Kind == sdkgo.FailureQuotaExhausted {
+			t.Fatalf("the Gemini project has no prepay credits (%s); add credits in Google AI Studio to verify generation", generated.Failure.Message)
+		}
+		require.Equal(t, gemini.GenerateTextBranchGenerated, generated.Branch, "failure: %+v", generated.Failure)
+		var answer struct {
+			OK bool `json:"ok"`
+		}
+		require.NoError(t, json.Unmarshal([]byte(generated.Value.Text), &answer))
+		require.True(t, answer.OK)
+		require.Equal(t, "STOP", generated.Value.ProviderFinishReason)
+		require.Positive(t, generated.Value.Usage.TotalTokens)
+		t.Logf("requestedModel=%s servedModel=%s finishReason=%s inputTokens=%d outputTokens=%d reasoningTokens=%d",
+			generated.Value.RequestedModel, generated.Value.ServedModel, generated.Value.ProviderFinishReason,
+			generated.Value.Usage.InputTokens, generated.Value.Usage.OutputTokens, generated.Value.Usage.ReasoningTokens)
+	})
+
+	// generateText sends these documented bounds to Gemini; a 400 here means one must move to the description.
+	t.Run("structured generation with documented numeric and array bounds", func(t *testing.T) {
+		request := userTextRequest(`Reply with {"score": 2, "tags": ["probe"]}.`)
+		request.StructuredOutput = &llm.StructuredOutput{Name: "bounded_probe", Schema: map[string]any{
+			"type": "object", "properties": map[string]any{
+				"score": map[string]any{"type": "integer", "minimum": 1, "maximum": 3},
+				"tags":  map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "minItems": 1, "maxItems": 2},
+			},
+			"required": []any{"score", "tags"}, "additionalProperties": false,
+		}}
+		request.MaxOutputTokens = 1024
+		generated, err := sdkgo.RunQuery(testsupport.NewDexContext("live-gemini-flow", "live-text-bounded-generate-step"),
+			client.GenerateText(), geminiConnection, request)
+		require.NoError(t, err)
+		requireNoAPIKey(t, generated)
+		require.Equal(t, gemini.GenerateTextBranchGenerated, generated.Branch, "failure: %+v", generated.Failure)
+		var answer struct {
+			Score int      `json:"score"`
+			Tags  []string `json:"tags"`
+		}
+		require.NoError(t, json.Unmarshal([]byte(generated.Value.Text), &answer))
+		require.True(t, answer.Score >= 1 && answer.Score <= 3, "score %d", answer.Score)
+		require.True(t, len(answer.Tags) >= 1 && len(answer.Tags) <= 2, "tags %v", answer.Tags)
+	})
+}
 
 // TestLiveGenerateContent makes one unbilled unknown-model request and one tiny structured generation.
 func TestLiveGenerateContent(t *testing.T) {

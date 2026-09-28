@@ -3,9 +3,9 @@ kind: Connector
 metadata:
   name: gemini
   displayName: Gemini
-  description: Google Gemini API text generation with JSON Schema structured output, thinking budgets, token usage, and explicit safety outcomes.
+  description: Google Gemini API text generation through the provider-neutral generateText Query and the native generateContent Query, with JSON Schema structured output, thinking controls, token usage, and explicit safety outcomes.
   company: Google
-  version: v0.2.1
+  version: v0.3.0
 spec:
   provider: google
   codegen:
@@ -48,9 +48,19 @@ spec:
       mockScenarios: [not-configured, connected]
       icon: icon.svg
     commands:
-      # The OpenAI-compatible list accepts the API key as a bearer token, which
-      # the Dex Web broker injects; the native list needs x-goog-api-key.
+      # The native list reports supportedGenerationMethods. Dex Web through
+      # cli-v0.13.8 rejects the header scheme before sending, so the bundle
+      # falls back to the OpenAI-compatible list, which accepts a bearer key.
       - id: listModels
+        capability: gemini.models-list
+        request:
+          method: GET
+          url: https://generativelanguage.googleapis.com/v1beta/models
+          credential: {field: api_key, scheme: header, header: x-goog-api-key}
+          fixedQuery: {pageSize: "1000"}
+          parameters:
+            - {name: pageToken, location: query, target: pageToken}
+      - id: listOpenAICompatibleModels
         capability: gemini.models-list
         request:
           method: GET
@@ -85,3 +95,25 @@ spec:
         heartbeatTimeout: 300s
         durability: sync
         retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 10m}
+    - name: generateText
+      goName: GenerateText
+      inputType: GenerateTextRequest
+      outputType: GenerateTextResponse
+      kind: query
+      description: Generate text or JSON Schema structured output with a Gemini model through the provider-neutral generateText contract over the stateless models.generateContent method.
+      idempotency: none
+      branches:
+        - {id: generated, goName: Generated, description: The model finished normally and returned text.}
+        - {id: truncated, goName: Truncated, description: The model stopped at the output token limit and returned any partial text., optional: true}
+        - {id: blocked, goName: Blocked, description: "Gemini blocked the prompt or stopped the response for safety, recitation, or another content policy.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Gemini conclusively rejected the request, such as an invalid API key, an unknown model, or depleted prepay credits.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Gemini returned a malformed, oversized, or unusable response, including structured output that does not match its schema.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      progress: [text]
+      execution:
+        # The pipeline heartbeats every 5 seconds, so a silent call keeps a
+        # short heartbeat timeout; the request timeout alone bounds a hung call.
+        executeMethodTimeout: 900s
+        heartbeatTimeout: 60s
+        durability: sync
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 4, totalDuration: 30m}
