@@ -1,0 +1,20 @@
+---
+description: Require reviewable OAuth or OIDC provider authorization evidence
+alwaysApply: true
+---
+
+# OAuth/OIDC Authorization Evidence
+
+- This evidence applies only when adding a connector or operation whose manifest
+  sets `spec.auth.type: oauth2`, including OAuth 2.0 and OpenID Connect.
+- Complete the real provider application, API, or scope configuration and attach
+  a screenshot to the pull request description. It need not show operation
+  execution, but must show the provider and relevant enabled APIs or scopes.
+- API keys, manually entered tokens, webhook secrets, and other static
+  credentials do not require this evidence.
+- Redact tokens, client secrets, account details, and unrelated personal data.
+  Do not commit authorization screenshots to the repository.
+- An author may skip the screenshot only when the pull request gives a specific
+  reason. Never fabricate authorization evidence or claim unperformed setup.
+- Reviewers confirm exactly one evidence option is selected, the requirement is
+  applied correctly, and the screenshot or skip reason is acceptable.

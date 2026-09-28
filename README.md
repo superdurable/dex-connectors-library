@@ -251,6 +251,19 @@ Cursor uses the same short slash command for both sources. See the
 for the exact Plugin and standalone installation commands, upgrade paths, and
 complete contribution workflow.
 
+When a contribution adds a connector or operation with
+`spec.auth.type: oauth2`, attach a screenshot of the real provider application,
+API, or scope configuration to the pull request description. The screenshot
+must show the provider and relevant enabled APIs or scopes, but does not need to
+show operation execution. This applies to OAuth 2.0 and OpenID Connect, not API
+keys or other static credentials.
+
+Redact tokens, client secrets, account details, and unrelated personal data, and
+do not commit the screenshot to the repository. An author may skip the
+screenshot by selecting the skip option in the pull request template and giving
+a specific reason. Reviewers decide whether the screenshot or reason is
+acceptable.
+
 ## Contributors
 
 Every GitHub user with an attributed commit on the default `main` branch is a
