@@ -16,55 +16,55 @@ spec:
       - name: baseUrl
         goName: BaseURL
         type: url
-        description: GitHub REST API base URL.
+        description: GitHub REST API base URL; leave blank for GitHub.com. Enter the absolute HTTPS API URL only when this connector explicitly supports the selected GitHub Enterprise host.
         required: false
         default: https://api.github.com
       - name: apiVersion
         goName: APIVersion
         type: string
-        description: GitHub REST API version header.
+        description: YYYY-MM-DD value sent as the X-GitHub-Api-Version header; leave blank for the connector-tested version and change only after verifying provider compatibility.
         required: false
         default: "2026-03-10"
       - name: timeout
         goName: Timeout
         type: duration
-        description: HTTP client timeout.
+        description: Maximum duration for one GitHub HTTP request, using a positive Go duration such as 15s or 1m; leave blank for the displayed default.
         required: false
         default: 15s
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: Maximum bytes accepted from one GitHub response.
+        description: Maximum bytes accepted from one GitHub response; enter a positive integer only to change the safety limit. Oversized responses select invalidResponse.
         required: false
         default: 2097152
       - name: defaultRepositoryLimit
         goName: DefaultRepositoryLimit
         type: integer
-        description: Default number of public repositories returned.
+        description: Positive repository count used when an invocation omits its limit; leave blank for the displayed default and keep it no greater than maxRepositories.
         required: false
         default: 100
       - name: maxRepositories
         goName: MaxRepositories
         type: integer
-        description: Maximum public repositories returned by one invocation.
+        description: Positive hard limit on public repositories returned by one invocation; increase only after accounting for provider pagination and Flow payload size.
         required: false
         default: 500
       - name: maxPullRequestBodyCharacters
         goName: MaxPullRequestBodyCharacters
         type: integer
-        description: Maximum Unicode characters kept from one merged pull request body.
+        description: Positive number of Unicode characters retained from each merged pull request body; longer bodies are truncated to this safety limit.
         required: false
         default: 4000
       - name: maxPatchCharacters
         goName: MaxPatchCharacters
         type: integer
-        description: Maximum Unicode characters kept from one changed-file patch.
+        description: Positive number of Unicode characters retained from each changed-file patch; longer patches are truncated to this safety limit.
         required: false
         default: 4000
       - name: maxCommitMessageCharacters
         goName: MaxCommitMessageCharacters
         type: integer
-        description: Maximum Unicode characters kept from one commit message.
+        description: Positive number of Unicode characters retained from each commit message; longer messages are truncated to this safety limit.
         required: false
         default: 4000
   auth:
@@ -74,8 +74,14 @@ spec:
       - name: access_token
         goName: AccessToken
         type: secretString
-        description: One-use GitHub OAuth access token.
+        description: Secret GitHub OAuth access token produced automatically after authorization; do not copy or enter a personal access token here.
         required: true
+    guide:
+      startURL: https://github.com/settings/developers
+      steps:
+        - Open Settings > Developer settings > OAuth Apps and choose New OAuth App or select the existing app for this Dex connection.
+        - Set Authorization callback URL to the exact Redirect URI shown below, then register or update the OAuth app.
+        - Copy Client ID, generate a new client secret if needed, and paste both below; the client secret is sensitive.
     oauth2:
       protocol: oauth2
       authorizationEndpoint: https://github.com/login/oauth/authorize

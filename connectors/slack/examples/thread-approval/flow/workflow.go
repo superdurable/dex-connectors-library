@@ -117,7 +117,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			},
 			ConfigurationUI: sdkgo.ConnectorConfigurationUI{Units: []sdkgo.ConnectorUIUnit{{
 				ID: "completionText", UnitID: slack.UIUnitTextInput, Label: "Completion reply", Required: true,
-				Bindings: []sdkgo.ConnectorUIBinding{{Port: slack.UITextInputPortText, JSONPointer: "/text"}},
+				Description: "Enter the Slack message posted to the thread after the configured approval reply arrives.",
+				Bindings:    []sdkgo.ConnectorUIBinding{{Port: slack.UITextInputPortText, JSONPointer: "/text"}},
 			}}},
 			Connection: flow.connection,
 			MapToOperationInput: func(state ThreadState) slack.PostThreadReplyInput {
@@ -151,17 +152,17 @@ func (*Flow) GetConnectorTriggerBindings() []sdkgo.TriggerBindingDefinition {
 		slack.DefineChannelThreadCreatedTriggerBinding(slack.ChannelThreadCreatedTriggerBindingConfig{
 			ConnectionName: ConnectionName, BindingName: StartTriggerBinding,
 			ConfigurationUI: sdkgo.ConnectorConfigurationUI{Units: []sdkgo.ConnectorUIUnit{
-				{ID: "channel", UnitID: slack.UIUnitChannelPicker, Label: "Approval channel", Required: true, Bindings: []sdkgo.ConnectorUIBinding{{Port: slack.UIChannelPickerPortChannelID, JSONPointer: "/channelId"}}},
-				{ID: "message", UnitID: slack.UIUnitTextInput, Label: "Start message contains", Bindings: []sdkgo.ConnectorUIBinding{{Port: slack.UITextInputPortText, JSONPointer: "/threadTriggerMatcher/messageContains"}}},
-				{ID: "members", UnitID: slack.UIUnitMemberPicker, Label: "Members allowed to start", Bindings: []sdkgo.ConnectorUIBinding{{Port: slack.UIMemberPickerPortMemberIDs, JSONPointer: "/threadTriggerMatcher/posterUserIds"}}},
+				{ID: "channel", UnitID: slack.UIUnitChannelPicker, Label: "Approval channel", Description: "Select the joined Slack channel whose new root threads may start this Flow; the picker stores its stable channel ID.", Required: true, Bindings: []sdkgo.ConnectorUIBinding{{Port: slack.UIChannelPickerPortChannelID, JSONPointer: "/channelId"}}},
+				{ID: "message", UnitID: slack.UIUnitTextInput, Label: "Start message contains", Description: "Enter plain text that the root thread message must contain; leave blank to match any message content.", Bindings: []sdkgo.ConnectorUIBinding{{Port: slack.UITextInputPortText, JSONPointer: "/threadTriggerMatcher/messageContains"}}},
+				{ID: "members", UnitID: slack.UIUnitMemberPicker, Label: "Members allowed to start", Description: "Select workspace members allowed to start the Flow; leave empty to allow any member posting in the selected channel.", Bindings: []sdkgo.ConnectorUIBinding{{Port: slack.UIMemberPickerPortMemberIDs, JSONPointer: "/threadTriggerMatcher/posterUserIds"}}},
 			}},
 		}),
 		slack.DefineThreadReplyCreatedTriggerBinding(slack.ThreadReplyCreatedTriggerBindingConfig{
 			ConnectionName: ConnectionName, BindingName: ReplyTriggerBinding,
 			ConfigurationUI: sdkgo.ConnectorConfigurationUI{Units: []sdkgo.ConnectorUIUnit{
-				{ID: "channel", UnitID: slack.UIUnitChannelPicker, Label: "Approval channel", Required: true, Bindings: []sdkgo.ConnectorUIBinding{{Port: slack.UIChannelPickerPortChannelID, JSONPointer: "/channelId"}}},
-				{ID: "message", UnitID: slack.UIUnitTextInput, Label: "Approval reply contains", Bindings: []sdkgo.ConnectorUIBinding{{Port: slack.UITextInputPortText, JSONPointer: "/threadReplyMatcher/messageContains"}}},
-				{ID: "approvers", UnitID: slack.UIUnitMemberPicker, Label: "Members allowed to approve", Required: true, Bindings: []sdkgo.ConnectorUIBinding{{Port: slack.UIMemberPickerPortMemberIDs, JSONPointer: "/threadReplyMatcher/posterUserIds"}}},
+				{ID: "channel", UnitID: slack.UIUnitChannelPicker, Label: "Approval channel", Description: "Select the same joined Slack channel used by the start Trigger; the picker stores its stable channel ID.", Required: true, Bindings: []sdkgo.ConnectorUIBinding{{Port: slack.UIChannelPickerPortChannelID, JSONPointer: "/channelId"}}},
+				{ID: "message", UnitID: slack.UIUnitTextInput, Label: "Approval reply contains", Description: "Enter plain text that an approval reply must contain, such as approved; leave blank to match any reply content.", Bindings: []sdkgo.ConnectorUIBinding{{Port: slack.UITextInputPortText, JSONPointer: "/threadReplyMatcher/messageContains"}}},
+				{ID: "approvers", UnitID: slack.UIUnitMemberPicker, Label: "Members allowed to approve", Description: "Select the workspace members whose thread replies count as approval; at least one approver is required.", Required: true, Bindings: []sdkgo.ConnectorUIBinding{{Port: slack.UIMemberPickerPortMemberIDs, JSONPointer: "/threadReplyMatcher/posterUserIds"}}},
 			}},
 		}),
 	}

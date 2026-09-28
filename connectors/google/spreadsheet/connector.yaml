@@ -16,19 +16,19 @@ spec:
       - name: endpoint
         goName: Endpoint
         type: url
-        description: Google Sheets API endpoint.
+        description: Google Sheets API base URL; leave blank for Google's public v4 API. Enter an absolute HTTPS URL only for an explicitly supported compatible gateway.
         required: false
         default: https://sheets.googleapis.com/v4
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: Maximum provider response size.
+        description: Maximum complete Google API response in bytes; enter a positive integer only to change the safety limit. Oversized responses select invalidResponse.
         required: false
         default: 4194304
       - name: maxRows
         goName: MaxRows
         type: integer
-        description: Maximum rows inspected by FindRow and UpsertRow.
+        description: Positive maximum row count inspected by FindRow and UpsertRow; increase only when the target sheet can exceed the displayed safety limit.
         required: false
         default: 10000
   auth:
@@ -38,8 +38,14 @@ spec:
       - name: access_token
         goName: AccessToken
         type: secretString
-        description: Short-lived Google OAuth access token.
+        description: Secret short-lived Google OAuth access token produced automatically after authorization; do not enter it manually.
         required: true
+    guide:
+      startURL: https://console.cloud.google.com/apis/credentials
+      steps:
+        - Select a Google Cloud project, open APIs & Services > Library, and enable both Google Sheets API and Google Drive API.
+        - In Google Auth Platform, configure Branding, Audience, and Data Access for the drive.file scope; add test users while the app is in Testing.
+        - Open Clients > Create client > Web application, add the exact Redirect URI shown below, then copy the client ID and one-time client secret.
     oauth2:
       authorizationEndpoint: https://accounts.google.com/o/oauth2/v2/auth
       tokenEndpoint: https://oauth2.googleapis.com/token
@@ -77,14 +83,14 @@ spec:
     units:
       - id: spreadsheetPicker
         goName: SpreadsheetPicker
-        description: Select one Google spreadsheet.
+        description: Select a spreadsheet returned by the authorized Google Drive account; the unit stores its provider spreadsheet ID and display name automatically.
         backendCapabilities: [google.drive.spreadsheets-list]
         outputs:
           - {name: spreadsheetId, goName: SpreadsheetID, type: string}
           - {name: spreadsheetName, goName: SpreadsheetName, type: string}
       - id: sheetTabPicker
         goName: SheetTabPicker
-        description: Select one tab from a spreadsheet.
+        description: Select a tab loaded from the chosen spreadsheet; choose the spreadsheet first so the unit can list its current tab titles.
         backendCapabilities: [google.sheets.tabs-list]
         inputs:
           - {name: spreadsheetId, goName: SpreadsheetID, type: string}
@@ -92,7 +98,7 @@ spec:
           - {name: tab, goName: Tab, type: string}
       - id: textInput
         goName: TextInput
-        description: Enter a range, key, or cell value.
+        description: Enter the exact A1 range, lookup key, or cell value requested by the operation label; spreadsheet and tab IDs are selected by their dedicated units.
         outputs:
           - {name: text, goName: Text, type: string}
   operations:

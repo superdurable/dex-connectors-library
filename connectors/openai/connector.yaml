@@ -22,19 +22,19 @@ spec:
       - name: endpoint
         goName: Endpoint
         type: url
-        description: "OpenAI API base URL that each operation appends its path to, such as /responses. HTTPS is required except for loopback test servers. The Studio model list always uses api.openai.com."
+        description: "OpenAI API base URL that each operation appends its path to, such as /responses; leave blank for the displayed public v1 default. Enter an absolute HTTPS URL only for a trusted compatible gateway, except for loopback test servers. The Studio model list always uses api.openai.com."
         required: false
         default: https://api.openai.com/v1
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: "Maximum total response size in bytes, counting every byte of a stream. Each streamed text delta carries about 260 bytes of event framing, so the default holds roughly 30,000 streamed generateText output tokens; raise it for longer outputs."
+        description: "Positive maximum total response size in bytes, counting every byte of a stream. Each streamed text delta carries about 260 bytes of event framing, so the displayed default holds roughly 30,000 streamed generateText output tokens; raise it only for longer outputs. Larger responses select invalidResponse."
         required: false
         default: 8388608
       - name: maxSseEventBytes
         goName: MaxSSEEventBytes
         type: integer
-        description: Maximum size of one server-sent event. The final Responses event repeats the whole response, so raise it for very long outputs.
+        description: Positive maximum size of one server-sent event in bytes. The final Responses event repeats the whole response, so raise it only for very long outputs. Oversized events select invalidResponse.
         required: false
         default: 1048576
   auth:
@@ -44,8 +44,14 @@ spec:
       - name: api_key
         goName: APIKey
         type: secretString
-        description: OpenAI API key, sent only in the Authorization bearer header.
+        description: Secret OpenAI project API key from Platform > API keys; copy the sk- value when it is created. It is sent only as an Authorization bearer token.
         required: true
+    guide:
+      startURL: https://platform.openai.com/api-keys
+      steps:
+        - Select the OpenAI project that should own usage, then open API keys.
+        - Choose Create new secret key, set the project permissions required by this connector, and copy the sk- secret shown once.
+        - Store the value here as a secret; leave endpoint and limit fields blank to use their displayed defaults.
   studio:
     setup:
       entrypoint: index.html
@@ -64,7 +70,7 @@ spec:
     units:
       - id: modelPicker
         goName: ModelPicker
-        description: Choose one Step's OpenAI model from OpenAI's live model list.
+        description: Select this Step's OpenAI model; the picker loads OpenAI's live api.openai.com model list and stores the selected model ID.
         backendCapabilities: [openai.models-list]
         outputs:
           - {name: model, goName: Model, type: string}

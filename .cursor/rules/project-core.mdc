@@ -10,6 +10,11 @@ alwaysApply: true
   contains `logo.svg`.
 - `connector.yaml` owns generated Config, Credentials, definitions, factories,
   branches, UI metadata, and defaults. Never edit generated connector code.
+- Every connector has a runnable Flow example with a Worker entrypoint, strict
+  FDG 2.0 instructions, deterministic tests, and its static `ConnectionName`.
+- Default fixed provider values, derive verified provider-owned fields, and ask
+  users only for values that cannot be produced safely. See
+  `connector-configuration-ux.mdc`.
 - Register each connector in sorted `catalog.yaml`; it is the only shared file
   changed when adding a connector.
 - Keep provider operation calls in Step `Execute` and out of RPC handlers.

@@ -32,8 +32,14 @@ spec:
       - name: api_key
         goName: APIKey
         type: secretString
-        description: DeepSeek API key from the DeepSeek Platform, sent only in the Authorization bearer header.
+        description: Secret DeepSeek API key from DeepSeek Platform > API keys; copy the sk- value when it is created. It is sent only as an Authorization bearer token.
         required: true
+    guide:
+      startURL: https://platform.deepseek.com/api_keys
+      steps:
+        - Open API keys in DeepSeek Platform and choose Create new secret key.
+        - Name the key for this Dex connection and copy the sk- secret shown after creation.
+        - Store the key here as a secret; model and response-limit fields can remain blank to use their displayed defaults.
   studio:
     setup:
       entrypoint: index.html

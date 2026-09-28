@@ -190,6 +190,7 @@ used by `PostThreadReply`:
 ConfigurationUI: sdkgo.ConnectorConfigurationUI{Units: []sdkgo.ConnectorUIUnit{{
 	ID: "completionText", UnitID: slack.UIUnitTextInput,
 	Label: "Completion reply", Required: true,
+	Description: "Enter the Slack message posted after the approval reply arrives.",
 	Bindings: []sdkgo.ConnectorUIBinding{{
 		Port: slack.UITextInputPortText, JSONPointer: "/text",
 	}},

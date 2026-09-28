@@ -26,6 +26,11 @@ retry instead of producing a branch.
 The `ui/` package builds the credential-safe Studio setup bundle published as
 `connector-ui.tgz` with the Connector release.
 
+## Example
+
+[`examples/upsert-contact`](examples/upsert-contact) is a runnable Dex Web
+**Start Flow** example that upserts one contact row by email address.
+
 ## Verification
 
 ```bash

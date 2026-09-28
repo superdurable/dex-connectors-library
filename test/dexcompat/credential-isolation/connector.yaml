@@ -27,6 +27,12 @@ spec:
         type: secretString
         description: Beta provider key, sent only to api.beta-provider.example.
         required: false
+    guide:
+      startURL: https://alpha-provider.example/settings/api-keys
+      steps:
+        - Create the synthetic alpha provider key on Settings > API keys and copy the secret value.
+        - Open https://beta-provider.example/settings/api-keys, create the synthetic beta provider key, and copy its secret value.
+        - Store each secret only in its matching field so the compatibility fixture can verify provider isolation.
   studio:
     setup:
       entrypoint: index.html

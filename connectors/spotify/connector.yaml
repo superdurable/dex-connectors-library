@@ -16,19 +16,19 @@ spec:
       - name: endpoint
         goName: Endpoint
         type: url
-        description: Spotify Web API endpoint.
+        description: Spotify Web API base URL; leave blank for Spotify's public v1 API and change only when Spotify publishes a compatible replacement.
         required: false
         default: https://api.spotify.com/v1
       - name: timeout
         goName: Timeout
         type: duration
-        description: HTTP client timeout.
+        description: Maximum duration for one Spotify HTTP request, using a positive Go duration such as 15s or 1m; leave blank for the displayed default.
         required: false
         default: 15s
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: Maximum bytes accepted from one Spotify response.
+        description: Maximum bytes accepted from one Spotify response; enter a positive integer only to change the safety limit. Oversized responses select invalidResponse.
         required: false
         default: 4194304
   auth:
@@ -38,8 +38,14 @@ spec:
       - name: access_token
         goName: AccessToken
         type: secretString
-        description: Short-lived Spotify OAuth access token.
+        description: Secret short-lived Spotify OAuth access token produced automatically after authorization; do not enter it manually.
         required: true
+    guide:
+      startURL: https://developer.spotify.com/dashboard
+      steps:
+        - In Spotify for Developers Dashboard, choose Create app or open the app used by this Dex connection.
+        - Open Settings, add the exact Redirect URI shown below, select Web API, and save the application settings.
+        - Copy Client ID and reveal Client Secret from the app Settings page; the client secret is sensitive.
     oauth2:
       authorizationEndpoint: https://accounts.spotify.com/authorize
       tokenEndpoint: https://accounts.spotify.com/api/token

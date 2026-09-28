@@ -46,6 +46,9 @@ spec:
         type: secretString
         description: OAuth access token.
         required: true
+    guide:
+      startURL: https://console.cloud.google.com/apis/credentials
+      steps: [Create an OAuth client and copy its credentials.]
     oauth2:
       protocol: oauth2
       authorizationEndpoint: https://accounts.google.com/o/oauth2/v2/auth

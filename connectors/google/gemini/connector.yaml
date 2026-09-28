@@ -22,13 +22,13 @@ spec:
       - name: endpoint
         goName: Endpoint
         type: url
-        description: Gemini API base endpoint. HTTPS is required except for loopback test servers.
+        description: Gemini API base URL; leave blank for Google's public v1beta endpoint. Enter an absolute HTTPS URL only for a compatible gateway, or a loopback URL for tests.
         required: false
         default: https://generativelanguage.googleapis.com/v1beta
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: Maximum total provider response size. A larger response selects invalidResponse.
+        description: Maximum complete provider response in bytes; enter a positive integer only when a gateway needs a different safety limit. Larger responses select invalidResponse.
         required: false
         default: 8388608
   auth:
@@ -38,8 +38,14 @@ spec:
       - name: api_key
         goName: APIKey
         type: secretString
-        description: Gemini API key from Google AI Studio, sent only in the x-goog-api-key header.
+        description: Secret Gemini API key from Google AI Studio > API keys; copy the generated key. It is sent only in the x-goog-api-key header.
         required: true
+    guide:
+      startURL: https://aistudio.google.com/api-keys
+      steps:
+        - Open Google AI Studio > API keys and select or import the Google Cloud project that should own usage.
+        - Choose Create API key, finish any billing prompt required by the selected tier, and copy the generated secret.
+        - Leave endpoint, model, and response-limit fields blank to use their displayed defaults unless a compatible gateway or pinned model is required.
   studio:
     setup:
       entrypoint: index.html
@@ -69,7 +75,7 @@ spec:
     units:
       - id: modelPicker
         goName: ModelPicker
-        description: Choose one Step's Gemini model from Gemini's live model list.
+        description: Select this Step's Gemini model; the picker loads Gemini's live models list and stores the selected model ID.
         backendCapabilities: [gemini.models-list]
         outputs:
           - {name: model, goName: Model, type: string}

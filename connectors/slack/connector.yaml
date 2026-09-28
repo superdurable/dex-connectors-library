@@ -16,19 +16,19 @@ spec:
       - name: endpoint
         goName: Endpoint
         type: url
-        description: Slack Web API endpoint.
+        description: Slack Web API base URL; leave blank for Slack's public API. Enter an absolute HTTPS URL only for an explicitly supported compatible gateway.
         required: false
         default: https://slack.com/api
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: Maximum provider response size.
+        description: Maximum complete Slack API response in bytes; enter a positive integer only to change the safety limit. Oversized responses select invalidResponse.
         required: false
         default: 4194304
       - name: maxMessageCharacters
         goName: MaxMessageCharacters
         type: integer
-        description: Maximum message text length accepted by this connector.
+        description: Positive maximum Slack message text length in Unicode characters; keep it within Slack's current message limit unless a compatible gateway differs.
         required: false
         default: 40000
   auth:
@@ -38,18 +38,24 @@ spec:
       - name: bot_token
         goName: BotToken
         type: secretString
-        description: Slack OAuth bot token.
+        description: Secret xoxb- Slack bot token produced automatically by OAuth after the app is installed; do not enter it manually.
         required: true
       - name: user_token
         goName: UserToken
         type: secretString
-        description: Slack OAuth user token used to read channel thread replies.
+        description: Secret xoxp- Slack user token produced automatically by OAuth for the displayed user scopes; do not enter it manually.
         required: true
       - name: app_token
         goName: AppToken
         type: secretString
-        description: Slack app-level Socket Mode token with connections:write.
+        description: Secret xapp- token from Slack app > Basic Information > App-Level Tokens; generate it with connections:write and copy the value shown once.
         required: true
+    guide:
+      startURL: https://api.slack.com/apps
+      steps:
+        - Create or select a Slack app; under OAuth & Permissions add the displayed bot and user token scopes, then add the exact Redirect URI shown below.
+        - Under Socket Mode, enable Socket Mode; under Basic Information > App-Level Tokens, generate an xapp- token with connections:write.
+        - Copy Client ID and Client Secret from Basic Information > App Credentials and paste them below; also paste the xapp- token in app_token.
     oauth2:
       authorizationEndpoint: https://slack.com/oauth/v2/authorize
       tokenEndpoint: https://slack.com/api/oauth.v2.access
@@ -88,19 +94,19 @@ spec:
     units:
       - id: channelPicker
         goName: ChannelPicker
-        description: Select one Slack channel.
+        description: Select one joined public or private channel loaded from the authorized workspace; the unit stores the stable Slack channel ID automatically.
         backendCapabilities: [slack.channels-list]
         outputs:
           - {name: channelId, goName: ChannelID, type: string}
       - id: memberPicker
         goName: MemberPicker
-        description: Select one or more Slack workspace members.
+        description: Select one or more active workspace members loaded from Slack; the unit stores stable Slack member IDs automatically.
         backendCapabilities: [slack.users-list]
         outputs:
           - {name: memberIds, goName: MemberIDs, type: stringList}
       - id: textInput
         goName: TextInput
-        description: Enter connector message or matching text.
+        description: Enter the literal message to post, or plain text an incoming Slack message must contain, depending on the operation or Trigger label.
         outputs:
           - {name: text, goName: Text, type: string}
   triggers:

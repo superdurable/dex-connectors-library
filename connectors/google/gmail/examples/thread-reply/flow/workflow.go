@@ -112,7 +112,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Annotations: sdkgo.StepAnnotations{GroupID: "gmail", GroupLabel: "Gmail", Explanation: "Reply after the received email Trigger invokes the typed RPC."},
 			ConfigurationUI: sdkgo.ConnectorConfigurationUI{Units: []sdkgo.ConnectorUIUnit{{
 				ID: "replyBody", UnitID: gmail.UIUnitTextInput, Label: "Completion reply", Required: true,
-				Bindings: []sdkgo.ConnectorUIBinding{{Port: gmail.UITextInputPortText, JSONPointer: "/textBody"}},
+				Description: "Enter the plain-text email body sent after the Flow receives the configured reply.",
+				Bindings:    []sdkgo.ConnectorUIBinding{{Port: gmail.UITextInputPortText, JSONPointer: "/textBody"}},
 			}}},
 			Connection: flow.connection,
 			MapToOperationInput: func(state ThreadState) gmail.ReplyToMessageInput {
@@ -143,17 +144,17 @@ func (*Flow) GetConnectorTriggerBindings() []sdkgo.TriggerBindingDefinition {
 		gmail.DefineMessageReceivedTriggerBinding(gmail.MessageReceivedTriggerBindingConfig{
 			ConnectionName: ConnectionName, BindingName: StartTriggerBinding,
 			ConfigurationUI: sdkgo.ConnectorConfigurationUI{Units: []sdkgo.ConnectorUIUnit{
-				{ID: "query", UnitID: gmail.UIUnitSearchQueryInput, Label: "Gmail search query", Bindings: []sdkgo.ConnectorUIBinding{{Port: gmail.UISearchQueryInputPortQuery, JSONPointer: "/searchQuery"}}},
-				{ID: "message", UnitID: gmail.UIUnitTextInput, Label: "Start message contains", Bindings: []sdkgo.ConnectorUIBinding{{Port: gmail.UITextInputPortText, JSONPointer: "/messageMatcher/messageContains"}}},
-				{ID: "senders", UnitID: gmail.UIUnitEmailListInput, Label: "Allowed root senders", Bindings: []sdkgo.ConnectorUIBinding{{Port: gmail.UIEmailListInputPortEmails, JSONPointer: "/messageMatcher/senderEmails"}}},
+				{ID: "query", UnitID: gmail.UIUnitSearchQueryInput, Label: "Gmail search query", Description: "Enter Gmail search syntax such as label:inbox is:unread; leave blank to inspect the most recent inbox messages.", Bindings: []sdkgo.ConnectorUIBinding{{Port: gmail.UISearchQueryInputPortQuery, JSONPointer: "/searchQuery"}}},
+				{ID: "message", UnitID: gmail.UIUnitTextInput, Label: "Start message contains", Description: "Enter plain text that the root message must contain; leave blank to match any message content.", Bindings: []sdkgo.ConnectorUIBinding{{Port: gmail.UITextInputPortText, JSONPointer: "/messageMatcher/messageContains"}}},
+				{ID: "senders", UnitID: gmail.UIUnitEmailListInput, Label: "Allowed root senders", Description: "Enter complete sender email addresses; leave blank to allow any sender matched by the Gmail query.", Bindings: []sdkgo.ConnectorUIBinding{{Port: gmail.UIEmailListInputPortEmails, JSONPointer: "/messageMatcher/senderEmails"}}},
 			}},
 		}),
 		gmail.DefineReplyReceivedTriggerBinding(gmail.ReplyReceivedTriggerBindingConfig{
 			ConnectionName: ConnectionName, BindingName: ReplyTriggerBinding,
 			ConfigurationUI: sdkgo.ConnectorConfigurationUI{Units: []sdkgo.ConnectorUIUnit{
-				{ID: "query", UnitID: gmail.UIUnitSearchQueryInput, Label: "Gmail search query", Bindings: []sdkgo.ConnectorUIBinding{{Port: gmail.UISearchQueryInputPortQuery, JSONPointer: "/searchQuery"}}},
-				{ID: "message", UnitID: gmail.UIUnitTextInput, Label: "Reply message contains", Bindings: []sdkgo.ConnectorUIBinding{{Port: gmail.UITextInputPortText, JSONPointer: "/replyMatcher/messageContains"}}},
-				{ID: "senders", UnitID: gmail.UIUnitEmailListInput, Label: "Allowed reply senders", Bindings: []sdkgo.ConnectorUIBinding{{Port: gmail.UIEmailListInputPortEmails, JSONPointer: "/replyMatcher/senderEmails"}}},
+				{ID: "query", UnitID: gmail.UIUnitSearchQueryInput, Label: "Gmail search query", Description: "Enter Gmail search syntax that can find thread replies; leave blank to inspect recent inbox messages.", Bindings: []sdkgo.ConnectorUIBinding{{Port: gmail.UISearchQueryInputPortQuery, JSONPointer: "/searchQuery"}}},
+				{ID: "message", UnitID: gmail.UIUnitTextInput, Label: "Reply message contains", Description: "Enter plain text that a reply must contain; leave blank to match any reply content.", Bindings: []sdkgo.ConnectorUIBinding{{Port: gmail.UITextInputPortText, JSONPointer: "/replyMatcher/messageContains"}}},
+				{ID: "senders", UnitID: gmail.UIUnitEmailListInput, Label: "Allowed reply senders", Description: "Enter complete sender email addresses; leave blank to allow any sender matched by the Gmail query.", Bindings: []sdkgo.ConnectorUIBinding{{Port: gmail.UIEmailListInputPortEmails, JSONPointer: "/replyMatcher/senderEmails"}}},
 			}},
 		}),
 	}
