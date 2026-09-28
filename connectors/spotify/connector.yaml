@@ -1,0 +1,68 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: spotify
+  displayName: Spotify
+  description: List bounded pages of tracks from playlists owned by or shared with the authenticated Spotify user.
+  company: Spotify
+  version: v0.1.0
+spec:
+  provider: spotify
+  codegen:
+    go:
+      package: spotify
+  configuration:
+    fields:
+      - name: endpoint
+        goName: Endpoint
+        type: url
+        description: Spotify Web API endpoint.
+        required: false
+        default: https://api.spotify.com/v1
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: HTTP client timeout.
+        required: false
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum bytes accepted from one Spotify response.
+        required: false
+        default: 4194304
+  auth:
+    type: oauth2
+    connectionKind: spotify-oauth
+    fields:
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        description: Short-lived Spotify OAuth access token.
+        required: true
+    oauth2:
+      authorizationEndpoint: https://accounts.spotify.com/authorize
+      tokenEndpoint: https://accounts.spotify.com/api/token
+      scopes: [playlist-read-private]
+      pkce: true
+  operations:
+    - name: listPlaylistTracks
+      goName: ListPlaylistTracks
+      inputType: ListPlaylistTracksInput
+      outputType: PlaylistTrackPage
+      kind: query
+      description: List one bounded page of tracks from a playlist owned by or shared with the authenticated Spotify user.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: One bounded page of playlist tracks was loaded.}
+        - {id: authorizationRevoked, goName: AuthorizationRevoked, description: The Spotify OAuth grant is invalid or revoked., optional: true}
+        - {id: accessDenied, goName: AccessDenied, description: The authenticated user cannot access the playlist items., optional: true}
+        - {id: notFound, goName: NotFound, description: The requested Spotify playlist was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Spotify conclusively rejected the playlist query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Spotify returned an invalid or oversized playlist response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
