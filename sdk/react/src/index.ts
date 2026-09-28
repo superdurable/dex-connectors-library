@@ -20,3 +20,23 @@ export type {
   ConnectorStudioTarget,
   ConnectorStudioTriggerScope,
 } from "./host-api.js";
+export { ConnectorStudioCommandError, collectProviderPages, useConnectorStudioClient } from "./studio-client.js";
+export type { ConnectorStudioClient, ProviderPage } from "./studio-client.js";
+export {
+  applyConnectorStudioTheme,
+  connectorStudioClassNames,
+  connectorStudioStyles,
+  connectorStudioStylesheetMaxLength,
+  connectorStudioThemeTokenNames,
+  isConnectorStudioStylesheet,
+  isConnectorStudioThemeTokenValue,
+  selectConnectorStudioThemeTokens,
+} from "./studio-theme.js";
+export type { ConnectorStudioClassName, ConnectorStudioTheme, ConnectorStudioThemeTokenName } from "./studio-theme.js";
+export { StudioButton, StudioField, StudioHeader, StudioNotice, StudioSurface } from "./studio-components.js";
+export type { StudioButtonProps, StudioFieldProps, StudioHeaderProps, StudioNoticeProps, StudioSurfaceProps } from "./studio-components.js";
+export { ModelPicker, filterModelOptions, savedModel } from "./model-picker.js";
+export type { ModelListing, ModelOption, ModelPickerProps } from "./model-picker.js";
+export { ModelPickerStudioApp, modelPickerUnitID, mountModelPickerBundle } from "./model-picker-bundle.js";
+export type { ModelPickerBundleConfig } from "./model-picker-bundle.js";
+export { executeFirstAcceptedProviderCommand, hasAnyModelIDFragment, openAICompatibleModelOptions, readProviderModelArray } from "./model-listing.js";

@@ -149,8 +149,55 @@ setup bundle. The iframe invokes every entry through the single
 allows only declared path/query parameters, bounds the JSON response, and never
 returns credential material. Provider pagination, response projection, and
 filtering remain connector UI code; Dex Web does not implement any provider's
-resource semantics. Studio commands currently support HTTPS `GET`, bearer
-credentials, fixed query values, and explicit path or query parameters.
+resource semantics. Studio commands support HTTPS `GET`, fixed query values,
+fixed headers, explicit path or query parameters, and two credential schemes:
+
+- `bearer` sends `Authorization: Bearer <secret>`.
+- `header` sends the raw secret in the header that `credential.header` names,
+  such as `x-goog-api-key` for Gemini or `x-api-key` for Anthropic. Only this
+  scheme declares `header`.
+
+`fixedHeaders` maps non-secret header names to values that Dex sends with
+every request, such as a provider API version. Secrets belong only in the
+credential field.
+
+```yaml
+commands:
+  - id: listModels
+    capability: anthropic.models-list
+    request:
+      method: GET
+      url: https://api.anthropic.com/v1/models
+      credential: {field: api_key, scheme: header, header: x-api-key}
+      fixedHeaders: {anthropic-version: "2023-06-01"}
+```
+
+`credential.header` and every `fixedHeaders` name must be an RFC 7230 token.
+Names compare case-insensitively, and `_` matches `-`, because CGI-style
+servers merge the two. Validation rejects these names because the broker, the
+HTTP transport, or intermediaries own them:
+
+- `Authorization`. Use the `bearer` scheme.
+- `Accept`, which Dex sets.
+- `Host`, `Content-Length`, `Transfer-Encoding`, `Connection`, `Keep-Alive`,
+  `TE`, `Trailer`, `Upgrade`, and every `Proxy-*` name.
+- `Cookie`, `Set-Cookie`, `Origin`, `Referer`, `Forwarded`, and every
+  `X-Forwarded-*` name.
+- `X-HTTP-Method`, `X-HTTP-Method-Override`, and `X-Method-Override`, which
+  could turn the `GET` into another method.
+
+`fixedHeaders` names must be unique under the same comparison and cannot
+repeat the credential header. Each value is 1 to 256 printable ASCII characters
+(`0x20`-`0x7E`) without leading or trailing spaces. Dex Web rejects a command
+whose fixed header value contains the credential value before it sends the
+request.
+
+Dex Web `cli-v0.13.8` and earlier ignore `credential.header` and
+`fixedHeaders` when they load release metadata. They reject every scheme other
+than `bearer` before sending a request. They run a command that declares
+`fixedHeaders` without those headers, so the provider may reject it. Connector
+UI must handle either failure like any other command error. `ModelPicker` in
+`@superdurable/dex-connectors-react` then offers manual model ID entry.
 
 `studio.units` is the release-owned catalog of small UI components. It does
 not decide which operations or Triggers display a unit. A Flow composes unit
@@ -164,3 +211,51 @@ The same bundle entrypoint renders either the connection surface or exactly one
 configuration unit, as selected by Connector Studio Host API 0.2. Connection
 authorization stays connector-wide. Unit values are isolated by Flow type and
 Step type for operations, or by Flow type and binding name for Triggers.
+
+A bundle renders markup; Dex Web owns how it looks. Build the UI from
+`StudioSurface`, `StudioHeader`, `StudioField`, `StudioButton`, and
+`StudioNotice` in `@superdurable/dex-connectors-react`, give any other element
+only classes from `connectorStudioClassNames`, and call
+`applyConnectorStudioTheme(ready)` for every host ready message. An LLM
+connector that uses `mountModelPickerBundle` gets both. The package README
+lists the markup each class expects.
+
+The theme call writes the Studio stylesheet the host sends in the ready
+message and then applies the validated `themeTokens`, so a Dex Web restyle
+reaches released bundles without a connector release. The package is inlined
+when the bundle is built, and its compiled copy of the stylesheet is the
+fallback: the bundle keeps it under a host that sends no stylesheet or one
+that does not style every class the bundle knows. A bundle that hard-codes its
+own styles or classes would not follow a Dex Web restyle. With the shared
+classes, only new markup, such as a new component or class, needs a connector
+release.
+
+The UI links `sdk/react` with a `file:` dependency, and that package has its own
+React installed. Set `resolve.dedupe: ["react", "react-dom"]` in the UI's
+`vite.config.ts`. Without it, Vite inlines two copies of React, the shared
+client's hooks run without a renderer, and the frame stays blank.
+
+`script/studio_bundle_theme_check.py` enforces these rules in CI and
+`make check`. It reads the non-test files under `connectors/**/ui/src` and
+fails when one of them:
+
+- creates, renders, or reaches into a `<style>` or `<link>` element, or edits
+  the shared theme's `<style>` element;
+- constructs or edits a stylesheet, or imports or loads a CSS file;
+- sets a JSX `style` prop, writes `element.style` or `cssText`, or sets a
+  `style` attribute;
+- renders a class outside `connectorStudioClassNames` through a JSX
+  `className` attribute or a `className` object property, such as
+  `createElement` props or a JSX spread; computes a `className` instead of
+  writing a string literal; or sets classes through `className`, `classList`,
+  or a `class` attribute in the DOM;
+- writes raw HTML, for example through `innerHTML`; or
+- calls `applyConnectorStudioTheme` anywhere but inside a React effect that
+  passes it the host ready message and lists that message as a dependency.
+
+It also fails when `ui/index.html` declares or links a stylesheet, sets an
+inline style, or uses a class outside the contract, when no non-test source
+file calls `applyConnectorStudioTheme` or `mountModelPickerBundle` imported
+from the package or from a local module that re-exports it, or when the Vite
+config does not dedupe `react` and `react-dom`. A `<style>` mentioned only in a
+comment or in string text does not count on its own.

@@ -173,12 +173,26 @@
               "required": ["field", "scheme"],
               "properties": {
                 "field": { "type": "string", "pattern": "^[a-z][A-Za-z0-9_]*$" },
-                "scheme": { "const": "bearer" }
-              }
+                "scheme": { "enum": ["bearer", "header"] },
+                "header": { "$ref": "#/$defs/studioCommandHeaderName" }
+              },
+              "if": { "properties": { "scheme": { "const": "header" } }, "required": ["scheme"] },
+              "then": { "required": ["header"] },
+              "else": { "not": { "required": ["header"] } }
             },
             "fixedQuery": {
               "type": "object",
               "additionalProperties": { "type": "string" }
+            },
+            "fixedHeaders": {
+              "description": "Non-secret headers sent with every request. Names are unique ignoring case and treating _ as -, and cannot repeat the credential header.",
+              "type": "object",
+              "propertyNames": { "$ref": "#/$defs/studioCommandHeaderName" },
+              "additionalProperties": {
+                "type": "string",
+                "maxLength": 256,
+                "pattern": "^[\\x21-\\x7E](?:[\\x20-\\x7E]*[\\x21-\\x7E])?$"
+              }
             },
             "parameters": {
               "type": "array",
@@ -195,6 +209,14 @@
             }
           }
         }
+      }
+    },
+    "studioCommandHeaderName": {
+      "description": "An RFC 7230 token. Authorization, Accept, hop-by-hop, routing, cookie, method-override, Proxy-*, and X-Forwarded-* names are reserved, ignoring case and treating _ as -.",
+      "type": "string",
+      "pattern": "^[!#$%&'*+.^_`|~0-9A-Za-z-]+$",
+      "not": {
+        "pattern": "^(?:(?:[Aa][Cc][Cc][Ee][Pp][Tt]|[Aa][Uu][Tt][Hh][Oo][Rr][Ii][Zz][Aa][Tt][Ii][Oo][Nn]|[Cc][Oo][Nn][Nn][Ee][Cc][Tt][Ii][Oo][Nn]|[Cc][Oo][Nn][Tt][Ee][Nn][Tt][-_][Ll][Ee][Nn][Gg][Tt][Hh]|[Cc][Oo][Oo][Kk][Ii][Ee]|[Ff][Oo][Rr][Ww][Aa][Rr][Dd][Ee][Dd]|[Hh][Oo][Ss][Tt]|[Kk][Ee][Ee][Pp][-_][Aa][Ll][Ii][Vv][Ee]|[Oo][Rr][Ii][Gg][Ii][Nn]|[Rr][Ee][Ff][Ee][Rr][Ee][Rr]|[Ss][Ee][Tt][-_][Cc][Oo][Oo][Kk][Ii][Ee]|[Tt][Ee]|[Tt][Rr][Aa][Ii][Ll][Ee][Rr]|[Tt][Rr][Aa][Nn][Ss][Ff][Ee][Rr][-_][Ee][Nn][Cc][Oo][Dd][Ii][Nn][Gg]|[Uu][Pp][Gg][Rr][Aa][Dd][Ee]|[Xx][-_][Hh][Tt][Tt][Pp][-_][Mm][Ee][Tt][Hh][Oo][Dd]|[Xx][-_][Hh][Tt][Tt][Pp][-_][Mm][Ee][Tt][Hh][Oo][Dd][-_][Oo][Vv][Ee][Rr][Rr][Ii][Dd][Ee]|[Xx][-_][Mm][Ee][Tt][Hh][Oo][Dd][-_][Oo][Vv][Ee][Rr][Rr][Ii][Dd][Ee])$|[Pp][Rr][Oo][Xx][Yy][-_]|[Xx][-_][Ff][Oo][Rr][Ww][Aa][Rr][Dd][Ee][Dd][-_])"
       }
     },
     "studioUnitPort": {

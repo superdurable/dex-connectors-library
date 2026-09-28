@@ -34,7 +34,7 @@ jobs:
           go test -race ./...
           go vet ./...
       - name: Test repository tooling
-        run: python3 -m unittest script/release/component_release_test.py script/dex_compatibility_test.py script/branch_off_main_policy_test.py script/agent_rules_test.py
+        run: python3 -m unittest script/release/component_release_test.py script/dex_compatibility_test.py script/branch_off_main_policy_test.py script/agent_rules_test.py script/studio_bundle_theme_check_test.py
       - name: Test every standalone Connector module
         run: |
           while IFS= read -r manifest; do
@@ -243,6 +243,9 @@ jobs:
         working-directory: sdk/react
     steps:
       - uses: actions/checkout@v6
+      - name: Check that every Connector Studio UI uses the shared theme
+        working-directory: .
+        run: python3 script/studio_bundle_theme_check.py
       - uses: actions/setup-node@v6
         with:
           node-version: 24

@@ -21,3 +21,10 @@ describe("Slack provider responses", () => {
     ]})).toEqual({users: [{id: "U1", displayName: "Ada", imageUrl: "https://example.com/ada.png"}], nextCursor: ""});
   });
 });
+
+describe("Slack errors", () => {
+  it("reports Slack's error code instead of a boolean", () => {
+    expect(() => parseSlackChannelPage({ok: false, error: "missing_scope"})).toThrow("missing_scope");
+    expect(() => parseSlackChannelPage({ok: false})).toThrow("Slack rejected the request");
+  });
+});

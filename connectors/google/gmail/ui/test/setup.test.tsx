@@ -30,4 +30,12 @@ describe("Gmail setup", () => {
     expect(markup).toContain("Allowed senders");
     expect(markup).toContain("requester@example.com");
   });
+
+  it("renders units on the shared Studio surface with a primary Save", () => {
+    const markup = renderToStaticMarkup(<GmailConfigurationUnit target={{kind: "configurationUnit", scope: {kind: "trigger", triggerName: "messageReceived", bindingName: "start", flowType: "MailFlow"}, instanceId: "query", unitId: "searchQueryInput", label: "Inbox query", required: true, bindings: [{port: "query", jsonPointer: "/query"}], value: {}}} onSave={() => undefined}/>);
+    expect(markup).toContain('class="studio-surface"');
+    expect(markup).toContain('placeholder="label:inbox"');
+    expect(markup).toContain('class="studio-button studio-button-primary" type="button" disabled="">Save');
+    expect(markup).not.toContain("<style");
+  });
 });

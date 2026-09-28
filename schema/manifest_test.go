@@ -239,6 +239,160 @@ spec:
 	require.Equal(t, "channelId", manifest.Spec.Studio.Units[0].Outputs[0].Name)
 }
 
+const studioCommandManifestTemplate = `
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata: {name: model-provider, displayName: Model Provider, description: model listing fixture, company: Example, version: v0.1.0}
+spec:
+  provider: models
+  codegen: {go: {package: modelprovider}}
+  configuration: {fields: []}
+  auth:
+    type: apiKey
+    connectionKind: model-provider-api-key
+    fields:
+      - {name: api_key, goName: APIKey, type: secretString, description: API key., required: true}
+      - {name: region, goName: Region, type: string, description: Region., required: false}
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.2.0 <0.3.0"
+      backendCapabilities: [models.list]
+      mockScenarios: [connected]
+      icon: icon.svg
+    commands:
+      - id: listModels
+        capability: models.list
+        request:
+          method: GET
+          url: https://api.example.com/v1/models
+          credential: STUDIO_COMMAND_CREDENTIAL
+          fixedHeaders: STUDIO_COMMAND_FIXED_HEADERS
+  operations:
+    - name: getThing
+      goName: GetThing
+      inputType: GetThingInput
+      outputType: GetThingOutput
+      kind: query
+      description: get thing
+      idempotency: none
+      branches:
+        - {id: defect, goName: Defect, description: defect}
+      execution: {executeMethodTimeout: 30s, durability: sync, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}}
+`
+
+func decodeStudioCommandManifest(credential string, fixedHeaders string) (schema.Manifest, error) {
+	contents := strings.NewReplacer(
+		"STUDIO_COMMAND_CREDENTIAL", credential,
+		"STUDIO_COMMAND_FIXED_HEADERS", fixedHeaders,
+	).Replace(studioCommandManifestTemplate)
+	return schema.Decode(strings.NewReader(contents))
+}
+
+func TestDecodeStudioCommandHeaderCredentialAndFixedHeaders(t *testing.T) {
+	manifest, err := decodeStudioCommandManifest(`{field: api_key, scheme: header, header: x-api-key}`, `{anthropic-version: "2023-06-01"}`)
+	require.NoError(t, err)
+	request := manifest.Spec.Studio.Commands[0].Request
+	require.Equal(t, schema.StudioCommandCredential{Field: "api_key", Scheme: "header", Header: "x-api-key"}, request.Credential)
+	require.Equal(t, map[string]string{"anthropic-version": "2023-06-01"}, request.FixedHeaders)
+
+	_, err = decodeStudioCommandManifest(`{field: api_key, scheme: header, header: X-Goog-Api-Key}`, `{}`)
+	require.NoError(t, err)
+
+	_, err = decodeStudioCommandManifest(`{field: api_key, scheme: header, header: x_api_key}`, `{x_api_version: "1"}`)
+	require.NoError(t, err)
+
+	manifest, err = decodeStudioCommandManifest(`{field: api_key, scheme: bearer}`, `{X-Api-Version: "`+strings.Repeat("v", 256)+`", x-trace-tag: "a b~!"}`)
+	require.NoError(t, err)
+	require.Empty(t, manifest.Spec.Studio.Commands[0].Request.Credential.Header)
+	require.Len(t, manifest.Spec.Studio.Commands[0].Request.FixedHeaders, 2)
+}
+
+func TestRejectStudioCommandReservedHeaderNames(t *testing.T) {
+	reservedNames := []string{
+		"Host", "Content-Length", "Transfer-Encoding", "Connection", "Keep-Alive",
+		"Proxy-Authorization", "Proxy-Connection", "TE", "Trailer", "Upgrade",
+		"Cookie", "Set-Cookie", "Origin", "Referer", "Forwarded",
+		"X-Forwarded-For", "X-Forwarded-Host", "Accept", "hOST", "x-forwarded-proto",
+		"X_Forwarded_For", "x_forwarded_host", "Proxy_Authorization", "Content_Length",
+		"Transfer_Encoding", "Keep_Alive", "Set_Cookie", "X-HTTP-Method-Override",
+		"x-http-method", "X_Method_Override",
+	}
+	for _, name := range reservedNames {
+		t.Run(name, func(t *testing.T) {
+			_, err := decodeStudioCommandManifest(`{field: api_key, scheme: header, header: `+name+`}`, `{}`)
+			require.ErrorContains(t, err, `credential header "`+name+`" is reserved`)
+
+			_, err = decodeStudioCommandManifest(`{field: api_key, scheme: bearer}`, `{`+name+`: "1"}`)
+			require.ErrorContains(t, err, `fixed header "`+name+`" is reserved`)
+		})
+	}
+
+	_, err := decodeStudioCommandManifest(`{field: api_key, scheme: header, header: Authorization}`, `{}`)
+	require.ErrorContains(t, err, `credential header "Authorization" cannot be Authorization; use the bearer credential scheme`)
+
+	_, err = decodeStudioCommandManifest(`{field: api_key, scheme: bearer}`, `{authorization: "Basic abc"}`)
+	require.ErrorContains(t, err, `fixed header "authorization" cannot be Authorization`)
+}
+
+func TestRejectInvalidStudioCommandCredentialHeader(t *testing.T) {
+	_, err := decodeStudioCommandManifest(`{field: api_key, scheme: header}`, `{}`)
+	require.ErrorContains(t, err, "header credential scheme requires a header name")
+
+	_, err = decodeStudioCommandManifest(`{field: api_key, scheme: bearer, header: x-api-key}`, `{}`)
+	require.ErrorContains(t, err, "credential header is allowed only with the header scheme")
+
+	_, err = decodeStudioCommandManifest(`{field: api_key, scheme: basic}`, `{}`)
+	require.ErrorContains(t, err, "credential must name a secretString auth field with bearer or header scheme")
+
+	_, err = decodeStudioCommandManifest(`{field: region, scheme: header, header: x-api-key}`, `{}`)
+	require.ErrorContains(t, err, "credential must name a secretString auth field with bearer or header scheme")
+
+	for _, name := range []string{`"x api key"`, `"x-api-key:"`, `"x-api-key\r\nX-Injected"`, `"x-ápi-key"`} {
+		_, err = decodeStudioCommandManifest(`{field: api_key, scheme: header, header: `+name+`}`, `{}`)
+		require.ErrorContains(t, err, "must be an RFC 7230 token", name)
+	}
+}
+
+func TestRejectInvalidStudioCommandFixedHeaders(t *testing.T) {
+	_, err := decodeStudioCommandManifest(`{field: api_key, scheme: bearer}`, `{Anthropic-Version: "2023-06-01", anthropic-version: "2023-06-01"}`)
+	require.ErrorContains(t, err, "fixed header names must be unique ignoring case and treating _ as -")
+
+	_, err = decodeStudioCommandManifest(`{field: api_key, scheme: bearer}`, `{anthropic-version: "2023-06-01", anthropic_version: "2023-06-01"}`)
+	require.ErrorContains(t, err, "fixed header names must be unique ignoring case and treating _ as -")
+
+	_, err = decodeStudioCommandManifest(`{field: api_key, scheme: header, header: x-api-key}`, `{X-API-Key: "public"}`)
+	require.ErrorContains(t, err, "fixed headers cannot repeat the credential header")
+
+	_, err = decodeStudioCommandManifest(`{field: api_key, scheme: header, header: x-api-key}`, `{X_API_Key: "public"}`)
+	require.ErrorContains(t, err, "fixed headers cannot repeat the credential header")
+
+	_, err = decodeStudioCommandManifest(`{field: api_key, scheme: bearer}`, `{"x trace": "1"}`)
+	require.ErrorContains(t, err, `fixed header "x trace" must be an RFC 7230 token`)
+
+	_, err = decodeStudioCommandManifest(`{field: api_key, scheme: bearer}`, `{"x-trace\u0000": "1"}`)
+	require.ErrorContains(t, err, `fixed header "x-trace\x00" must be an RFC 7230 token`)
+
+	invalidValues := map[string]string{
+		"empty":             `""`,
+		"spaces only":       `"   "`,
+		"leading space":     `" 2023-06-01"`,
+		"trailing space":    `"2023-06-01 "`,
+		"control character": `"2023\u000106"`,
+		"tab":               `"2023\t06"`,
+		"line break":        `"2023-06-01\r\nX-Injected: 1"`,
+		"delete":            `"2023\u007F06"`,
+		"non-ASCII":         `"2023-06-01é"`,
+		"too long":          `"` + strings.Repeat("v", 257) + `"`,
+	}
+	for description, value := range invalidValues {
+		t.Run(description, func(t *testing.T) {
+			_, err := decodeStudioCommandManifest(`{field: api_key, scheme: bearer}`, `{anthropic-version: `+value+`}`)
+			require.ErrorContains(t, err, `fixed header "anthropic-version" value must be 1-256 printable ASCII characters without surrounding spaces`)
+		})
+	}
+}
+
 func TestRejectProviderIdempotencyAndInvalidProgress(t *testing.T) {
 	_, err := schema.Decode(strings.NewReader(`
 apiVersion: connectors.dex.dev/v1alpha1

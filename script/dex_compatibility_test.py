@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from script.dex_compatibility import create_module_proxy
+from script.dex_compatibility import create_module_proxy, example_consumer_name
 
 
 class ModuleProxyTest(unittest.TestCase):
@@ -25,6 +25,18 @@ class ModuleProxyTest(unittest.TestCase):
 
             self.assertRegex(first, re.compile(r"^v0\.0\.[1-9][0-9]*$"))
             self.assertNotEqual(first, second)
+
+
+class ExampleConsumerNameTest(unittest.TestCase):
+    def test_same_example_name_in_two_connectors_gets_distinct_consumers(self) -> None:
+        meta = example_consumer_name("connectors/meta", Path("connectors/meta/examples/summarize-text/flow"))
+        claude = example_consumer_name("connectors/anthropic", Path("connectors/anthropic/examples/summarize-text/flow"))
+        self.assertEqual("meta-summarize-text", meta)
+        self.assertEqual("anthropic-summarize-text", claude)
+
+    def test_nested_company_directories_are_part_of_the_name(self) -> None:
+        name = example_consumer_name("connectors/google/gemini", Path("x/examples/generate-summary/flow"))
+        self.assertEqual("google-gemini-generate-summary", name)
 
 
 if __name__ == "__main__":

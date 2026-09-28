@@ -14,7 +14,7 @@ import (
 )
 
 func TestMapToGenerateContentRequestAsksForStructuredJSON(t *testing.T) {
-	request := NewFlow(gemini.Connection{}).MapToGenerateContentRequest(SummaryRequest{Title: "Launch", Text: "The connector shipped."})
+	request := NewFlow(gemini.Connection{}, SummaryModelConfiguration{}).MapToGenerateContentRequest(SummaryRequest{Title: "Launch", Text: "The connector shipped."})
 	require.Empty(t, request.Model, "the model chosen for the connection in Dex Web applies")
 	require.NotEmpty(t, request.SystemInstruction)
 	require.Len(t, request.Contents, 1)
@@ -27,10 +27,29 @@ func TestMapToGenerateContentRequestAsksForStructuredJSON(t *testing.T) {
 
 // TestSummaryRequestKeepsGemini3Defaults leaves the options Google recommends keeping at their defaults for Gemini 3 unset.
 func TestSummaryRequestKeepsGemini3Defaults(t *testing.T) {
-	request := NewFlow(gemini.Connection{}).MapToGenerateContentRequest(SummaryRequest{Title: "Launch", Text: "The connector shipped."})
+	request := NewFlow(gemini.Connection{}, SummaryModelConfiguration{}).MapToGenerateContentRequest(SummaryRequest{Title: "Launch", Text: "The connector shipped."})
 	// Google recommends Gemini 3's default temperature, and thinkingBudget is legacy for them, so the example sends neither.
 	require.Nil(t, request.Temperature)
 	require.Nil(t, request.ThinkingBudget)
+}
+
+// TestSummaryStepPickReachesTheRequest sends the Dex Web pick as the request model, and leaves it
+// empty so the connection's model applies when nothing was picked.
+func TestSummaryStepPickReachesTheRequest(t *testing.T) {
+	picked := NewFlow(gemini.Connection{}, SummaryModelConfiguration{Model: " gemini-3.8-flash "})
+	require.Equal(t, "gemini-3.8-flash", picked.MapToGenerateContentRequest(SummaryRequest{Text: "x"}).Model)
+	require.Empty(t, NewFlow(gemini.Connection{}, SummaryModelConfiguration{}).MapToGenerateContentRequest(SummaryRequest{Text: "x"}).Model)
+}
+
+// TestSummaryStepDeclaresTheModelPicker keeps the Dex Web picker tab on the GenerateSummary Step.
+func TestSummaryStepDeclaresTheModelPicker(t *testing.T) {
+	reference := SummaryModelConfigurationRef()
+	require.Equal(t, sdkgo.ConnectorConfigurationRef{
+		ConnectorID: "gemini", ConnectionName: ConnectionName, OperationID: "generateContent",
+		FlowType: "GeminiGenerateSummary", StepType: "GenerateSummary",
+	}, reference)
+	require.Equal(t, "modelPicker", gemini.UIUnitModelPicker)
+	require.Equal(t, "model", gemini.UIModelPickerPortModel)
 }
 
 func TestSummarySchemaDescribesTheDecodedSummary(t *testing.T) {
@@ -55,7 +74,7 @@ func TestSummarySchemaDescribesTheDecodedSummary(t *testing.T) {
 
 // TestStartFlowIdentitiesMatchTheFlowDefinition keeps registered types equal to the dexcli visualize names that Start Flow sends.
 func TestStartFlowIdentitiesMatchTheFlowDefinition(t *testing.T) {
-	require.Equal(t, "GeminiGenerateSummary", dex.GetFinalFlowType(NewFlow(gemini.Connection{})))
+	require.Equal(t, "GeminiGenerateSummary", dex.GetFinalFlowType(NewFlow(gemini.Connection{}, SummaryModelConfiguration{})))
 	require.Equal(t, "RecordSummaryRequest", dex.GetFinalStepType[SummaryRequest](recordSummaryRequest{}))
 	require.Equal(t, "SummaryGenerated", dex.GetFinalStepType[gemini.GenerateContentResult](summaryGenerated{}))
 	require.Equal(t, "SummaryNotGenerated", dex.GetFinalStepType[gemini.GenerateContentResult](summaryNotGenerated{}))
@@ -73,12 +92,12 @@ func TestFlowRegistersWithTheGeminiConnection(t *testing.T) {
 	require.NoError(t, err)
 	connection, err := gemini.NewConnection(client, reference)
 	require.NoError(t, err)
-	_, err = dex.NewRegistry([]dex.Flow{NewFlow(connection)})
+	_, err = dex.NewRegistry([]dex.Flow{NewFlow(connection, SummaryModelConfiguration{})})
 	require.NoError(t, err)
 
 	otherReference := sdkgo.ConnectionRef{Provider: "google", Name: "another-connection"}
 	otherConnection, err := gemini.NewConnection(client, otherReference)
 	require.NoError(t, err)
-	require.Panics(t, func() { _, _ = dex.NewRegistry([]dex.Flow{NewFlow(otherConnection)}) },
+	require.Panics(t, func() { _, _ = dex.NewRegistry([]dex.Flow{NewFlow(otherConnection, SummaryModelConfiguration{})}) },
 		"the static ConnectionName must match the runtime connection")
 }

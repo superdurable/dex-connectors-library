@@ -35,6 +35,23 @@ const (
 	UseConfigurationsSchemaVersion = "connectors.dex.dev/local-use-configurations/v1alpha1"
 )
 
+// ErrConfigurationNotFound reports that the operation-use sidecar has no saved
+// configuration for the requested Connector Step use. LoadOperationConfiguration
+// returns an error that wraps it, so errors.Is(err, ErrConfigurationNotFound)
+// distinguishes "nothing was picked yet" from an invalid saved value. An
+// application may then fall back to its own default, such as the connection's
+// model.
+var ErrConfigurationNotFound = errors.New("connector operation configuration is not found")
+
+// configurationNotFoundError keeps the identity-bearing message while matching ErrConfigurationNotFound.
+type configurationNotFoundError struct{ message string }
+
+// Error returns the message naming the unconfigured Step use.
+func (err *configurationNotFoundError) Error() string { return err.message }
+
+// Unwrap returns ErrConfigurationNotFound for errors.Is.
+func (*configurationNotFoundError) Unwrap() error { return ErrConfigurationNotFound }
+
 // Store retains startup configuration while reloading credentials for every provider call.
 type Store struct {
 	path                   string
@@ -140,6 +157,8 @@ func LoadFile(path string) (*Store, error) {
 
 // LoadOperationConfiguration strictly decodes one Connector Step use's
 // startup configuration snapshot. Dex retries never reload this value.
+// When the sidecar holds no configuration for reference, the returned error
+// wraps ErrConfigurationNotFound; decode failures do not.
 func LoadOperationConfiguration[T any](
 	store *Store,
 	reference sdkgo.ConnectorConfigurationRef,
@@ -153,10 +172,10 @@ func LoadOperationConfiguration[T any](
 	}
 	configuration, ok := store.operationConfiguration[reference]
 	if !ok {
-		return sdkgo.ConnectorLoadedConfiguration[T]{}, fmt.Errorf(
+		return sdkgo.ConnectorLoadedConfiguration[T]{}, &configurationNotFoundError{message: fmt.Sprintf(
 			"connector %q connection %q operation %q Flow %q Step %q is not configured",
 			reference.ConnectorID, reference.ConnectionName, reference.OperationID, reference.FlowType, reference.StepType,
-		)
+		)}
 	}
 	if err := decodeStrict(configuration, &value); err != nil {
 		return sdkgo.ConnectorLoadedConfiguration[T]{}, fmt.Errorf(

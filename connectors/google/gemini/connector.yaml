@@ -5,7 +5,7 @@ metadata:
   displayName: Gemini
   description: Google Gemini API text generation with JSON Schema structured output, thinking budgets, token usage, and explicit safety outcomes.
   company: Google
-  version: v0.1.0
+  version: v0.2.1
 spec:
   provider: google
   codegen:
@@ -40,6 +40,29 @@ spec:
         type: secretString
         description: Gemini API key from Google AI Studio, sent only in the x-goog-api-key header.
         required: true
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.2.0 <0.3.0"
+      backendCapabilities: [use.configuration.write, gemini.models-list]
+      mockScenarios: [not-configured, connected]
+      icon: icon.svg
+    commands:
+      # The OpenAI-compatible list accepts the API key as a bearer token, which
+      # the Dex Web broker injects; the native list needs x-goog-api-key.
+      - id: listModels
+        capability: gemini.models-list
+        request:
+          method: GET
+          url: https://generativelanguage.googleapis.com/v1beta/openai/models
+          credential: {field: api_key, scheme: bearer}
+    units:
+      - id: modelPicker
+        goName: ModelPicker
+        description: Choose one Step's Gemini model from Gemini's live model list.
+        backendCapabilities: [gemini.models-list]
+        outputs:
+          - {name: model, goName: Model, type: string}
   operations:
     - name: generateContent
       goName: GenerateContent

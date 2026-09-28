@@ -205,7 +205,7 @@ func newSummaryIntegrationHarness(t *testing.T, providerURL string) (*Flow, *sum
 	require.NoError(t, err)
 	connection, err := gemini.NewConnection(providerClient, reference)
 	require.NoError(t, err)
-	flow := NewFlow(connection)
+	flow := NewFlow(connection, SummaryModelConfiguration{})
 	registry, err := dex.NewRegistry([]dex.Flow{flow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})

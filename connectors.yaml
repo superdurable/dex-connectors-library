@@ -1,11 +1,14 @@
 apiVersion: connectors.dex.dev/directory-list/v1alpha1
 kind: ConnectorDirectoryList
 directories:
+  - connectors/anthropic
   - connectors/github
   - connectors/google/gemini
   - connectors/google/gmail
   - connectors/google/spreadsheet
   - connectors/linkedin
+  - connectors/meta
   - connectors/openai
   - connectors/slack
   - connectors/stripe
+  - connectors/xai

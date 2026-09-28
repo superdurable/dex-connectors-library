@@ -48,17 +48,26 @@ This example is part of the connector module, so its Flow Definition names the
 local module rather than a published release. Dex needs release metadata built
 from this source, passed as an override; without it the connection shows
 **Unsupported** and cannot be configured, even after the release is
-published. From the repository root, build the metadata and start Dex with the
-generated definition:
+published. From the repository root, build the Studio bundle and the
+metadata, then start Dex with the generated definition:
 
 ```bash
 cd "$(git rev-parse --show-toplevel)"
+npm ci --prefix sdk/react && npm run build --prefix sdk/react
+npm ci --prefix connectors/google/gemini/ui && npm run build --prefix connectors/google/gemini/ui
 mkdir -p /tmp/gemini-release
+go run ./cmd/connectorctl ui-artifact \
+  --manifest connectors/google/gemini/connector.yaml \
+  --ui-root connectors/google/gemini/ui/dist \
+  --output /tmp/gemini-release/connector-ui.tgz \
+  --digest-output /tmp/gemini-release/connector-ui.tgz.sha256
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/google/gemini/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/google/gemini \
-  --version v0.1.0 --tag connectors/google/gemini/v0.1.0 \
+  --version v0.2.1 --tag connectors/google/gemini/v0.2.1 \
   --source-sha "$(git rev-parse HEAD)" \
+  --ui-artifact /tmp/gemini-release/connector-ui.tgz \
+  --ui-digest /tmp/gemini-release/connector-ui.tgz.sha256 \
   --output /tmp/gemini-release/connector-release.json \
   --digest-output /tmp/gemini-release/connector-release.json.sha256
 dexcli dev \
@@ -76,7 +85,11 @@ Open the Dex Web URL that dexcli prints and select **Connections**. Select
 `model`, such as `gemini-3.8-flash`, or leave it blank for
 `gemini-3.5-flash-lite`, which a new Google AI Studio project can use. Enter a
 Gemini API key from Google AI Studio in `api_key`, leave `endpoint` and
-`maxResponseBytes` at their defaults, and save. The status becomes **Ready**. The key is stored only in the
+`maxResponseBytes` at their defaults, and save. The status becomes **Ready**.
+
+Then open the `generateContent · GenerateSummary` tab. Its **Summary model**
+picker lists Gemini's models live. Pick one, keep the connection's model, or
+type a model ID, and select **Save**. The key is stored only in the
 plaintext development file shown on the page; never commit or share it.
 
 In a second terminal, start the Worker from `connectors/google/gemini` with
@@ -88,8 +101,9 @@ export DEX_CONNECTOR_CONFIG_FILE="$HOME/.dex/connectors/connections.json"
 go run ./examples/generate-summary
 ```
 
-The Worker calls the connection's model. It reads connection configuration at
-startup, so restart it after changing the model in Dex Web. The Worker listens
+The Worker calls the Step's pick, or the connection's model when the pick is
+empty. It reads both at startup, so restart it after changing either in Dex
+Web. The Worker listens
 on `127.0.0.1:8815`. Override
 `DEX_FLOW_SERVICE_ADDRESS`, `DEX_WORKER_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR`
 when needed. If the Dex Server is unreachable, the Worker logs `dex server

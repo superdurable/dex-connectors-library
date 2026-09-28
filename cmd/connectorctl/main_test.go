@@ -5,35 +5,40 @@ package main
 
 import (
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 )
 
 func TestCatalogLoadsRepositoryDirectoryRegistry(t *testing.T) {
 	registry := filepath.Join("..", "..", "connectors.yaml")
 	entries, err := loadConnectorDirectoryEntries(registry)
 	require.NoError(t, err)
-	require.Len(t, entries, 8)
-	require.Equal(t, []string{"github", "gemini", "gmail", "google-sheets", "linkedin", "openai", "slack", "stripe"}, []string{
-		entries[0].Manifest.Metadata.Name, entries[1].Manifest.Metadata.Name, entries[2].Manifest.Metadata.Name,
-		entries[3].Manifest.Metadata.Name, entries[4].Manifest.Metadata.Name, entries[5].Manifest.Metadata.Name,
-		entries[6].Manifest.Metadata.Name, entries[7].Manifest.Metadata.Name,
-	})
-	require.Equal(t, []string{"v0.7.0", "v0.1.0", "v0.11.0", "v0.7.0", "v0.6.0", "v0.6.0", "v0.10.0", "v0.1.0"}, []string{
-		entries[0].Manifest.Metadata.Version, entries[1].Manifest.Metadata.Version, entries[2].Manifest.Metadata.Version,
-		entries[3].Manifest.Metadata.Version, entries[4].Manifest.Metadata.Version, entries[5].Manifest.Metadata.Version,
-		entries[6].Manifest.Metadata.Version, entries[7].Manifest.Metadata.Version,
-	})
+	directories := registeredConnectorDirectories(t)
+	require.Len(t, entries, len(directories))
+	names := map[string]bool{}
+	for index, entry := range entries {
+		require.Equal(t, directories[index], entry.Directory)
+		identity := readManifestIdentity(t, entry.Directory)
+		require.Equal(t, identity.Name, entry.Manifest.Metadata.Name, entry.Directory)
+		require.Equal(t, identity.Version, entry.Manifest.Metadata.Version, entry.Directory)
+		require.Falsef(t, names[identity.Name], "duplicate connector ID %s", identity.Name)
+		names[identity.Name] = true
+	}
+	require.True(t, names["github"] && names["slack"], "the registry lists the long-standing connectors")
 }
 
 func TestRegisteredOperationsKeepOnlyHappyPathBranchesRequired(t *testing.T) {
 	happyBranchByOperation := map[string]string{
 		"generateContent":          "generated",
+		"generateText":             "generated",
 		"getAuthenticatedProfile":  "profileLoaded",
 		"listPublicRepositories":   "repositoriesLoaded",
 		"listMergedPullRequests":   "listed",
@@ -78,6 +83,17 @@ func TestRegisteredOperationsKeepOnlyHappyPathBranchesRequired(t *testing.T) {
 				require.Equal(t, "sync", operation.Execution.Durability)
 				require.Equal(t, "300s", operation.Execution.ExecuteMethodTimeout)
 				require.Equal(t, "300s", operation.Execution.HeartbeatTimeout)
+			case "generateText":
+				// Every text-generation connector shares the sdkgo/llm contract: a sync Query whose heartbeat
+				// timeout covers the pipeline's 5-second heartbeat and whose Execute fits under 30 minutes.
+				require.Equalf(t, "sync", operation.Execution.Durability, entry.Directory)
+				heartbeatTimeout, err := time.ParseDuration(operation.Execution.HeartbeatTimeout)
+				require.NoErrorf(t, err, entry.Directory)
+				require.GreaterOrEqualf(t, heartbeatTimeout, 10*time.Second, entry.Directory)
+				executeTimeout, err := time.ParseDuration(operation.Execution.ExecuteMethodTimeout)
+				require.NoErrorf(t, err, entry.Directory)
+				require.Greaterf(t, executeTimeout, heartbeatTimeout, entry.Directory)
+				require.LessOrEqualf(t, executeTimeout, 30*time.Minute, entry.Directory)
 			case "retrieveResponse":
 				require.Equal(t, "async", operation.Execution.Durability)
 				require.Equal(t, "30s", operation.Execution.ExecuteMethodTimeout)
@@ -103,7 +119,7 @@ func TestCatalogCommandWritesDeterministicYAML(t *testing.T) {
 	require.Equal(t, firstContent, secondContent)
 	require.Contains(t, string(firstContent), "apiVersion: connectors.dex.dev/catalog/v1alpha1")
 	require.Contains(t, string(firstContent), "directory: connectors/google/gmail")
-	require.Contains(t, string(firstContent), "version: v0.10.0")
+	require.Contains(t, string(firstContent), "version: v0.10.2")
 }
 
 func TestReleaseArtifactIsDeterministicAndVersioned(t *testing.T) {
@@ -142,10 +158,40 @@ func TestReleaseArtifactIsDeterministicAndVersioned(t *testing.T) {
 }
 
 func TestGeneratedConnectorsAreCurrent(t *testing.T) {
-	for _, manifest := range []string{"github", "google/gmail", "google/spreadsheet", "linkedin", "openai", "slack", "stripe"} {
-		path := filepath.Join("..", "..", "connectors", filepath.FromSlash(manifest), "connector.yaml")
-		require.NoError(t, generate([]string{"--check", path}))
+	for _, directory := range registeredConnectorDirectories(t) {
+		path := filepath.Join("..", "..", filepath.FromSlash(directory), "connector.yaml")
+		require.NoError(t, generate([]string{"--check", path}), directory)
 	}
+}
+
+// registeredConnectorDirectories reads connectors.yaml directly, independent of the loader under test.
+func registeredConnectorDirectories(t *testing.T) []string {
+	t.Helper()
+	contents, err := os.ReadFile(filepath.Join("..", "..", "connectors.yaml"))
+	require.NoError(t, err)
+	var registry connectorDirectoryList
+	require.NoError(t, yaml.Unmarshal(contents, &registry))
+	require.NotEmpty(t, registry.Directories)
+	return registry.Directories
+}
+
+type manifestIdentity struct {
+	Name    string
+	Version string
+}
+
+// readManifestIdentity reads one registered manifest's ID and release version directly from YAML.
+func readManifestIdentity(t *testing.T, directory string) manifestIdentity {
+	t.Helper()
+	contents, err := os.ReadFile(filepath.Join("..", "..", filepath.FromSlash(directory), "connector.yaml"))
+	require.NoError(t, err)
+	var manifest struct {
+		Metadata manifestIdentity `yaml:"metadata"`
+	}
+	require.NoError(t, yaml.Unmarshal(contents, &manifest))
+	require.NotEmpty(t, manifest.Metadata.Name, directory)
+	require.NotEmpty(t, manifest.Metadata.Version, directory)
+	return manifest.Metadata
 }
 
 func TestStudioUIArtifactIsDeterministicAndIncludedInRelease(t *testing.T) {
@@ -160,9 +206,17 @@ func TestStudioUIArtifactIsDeterministicAndIncludedInRelease(t *testing.T) {
     setup:
       entrypoint: index.html
       hostApiRange: ">=0.1.0 <0.2.0"
-      backendCapabilities: [configuration.write]
+      backendCapabilities: [configuration.write, sheets.models-list]
       mockScenarios: [not-configured, ready]
       icon: icon.svg
+    commands:
+      - id: listModels
+        capability: sheets.models-list
+        request:
+          method: GET
+          url: https://models.example.com/v1/models
+          credential: {field: access_token, scheme: header, header: x-goog-api-key}
+          fixedHeaders: {x-api-version: "2023-06-01"}
   operations:
 `, 1))
 	manifest := filepath.Join(directory, "connector.yaml")
@@ -192,6 +246,25 @@ func TestStudioUIArtifactIsDeterministicAndIncludedInRelease(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, string(releaseBytes), `"artifact": "connector-ui.tgz"`)
 	require.Contains(t, string(releaseBytes), `"entrypoint": "index.html"`)
+	var releaseWire struct {
+		Manifest struct {
+			Spec struct {
+				Studio struct {
+					Commands []struct {
+						Request struct {
+							Credential   map[string]string `json:"credential"`
+							FixedHeaders map[string]string `json:"fixedHeaders"`
+						} `json:"request"`
+					} `json:"commands"`
+				} `json:"studio"`
+			} `json:"spec"`
+		} `json:"manifest"`
+	}
+	require.NoError(t, json.Unmarshal(releaseBytes, &releaseWire))
+	require.Len(t, releaseWire.Manifest.Spec.Studio.Commands, 1)
+	commandRequest := releaseWire.Manifest.Spec.Studio.Commands[0].Request
+	require.Equal(t, map[string]string{"field": "access_token", "scheme": "header", "header": "x-goog-api-key"}, commandRequest.Credential)
+	require.Equal(t, map[string]string{"x-api-version": "2023-06-01"}, commandRequest.FixedHeaders)
 }
 
 func TestStudioUIArtifactRejectsActiveSVG(t *testing.T) {

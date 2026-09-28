@@ -199,6 +199,62 @@ the Dex retry for 408, 429, and retryable 5xx responses. The call does not
 stream, so its heartbeat timeout equals its 300-second synchronous Execute
 timeout.
 
+## Meta connector
+
+Meta is a separate module and API-key Connection for Meta Model API. Its
+`generateText` operation is the shared text-generation Query: the connector
+declares only an `openaichat` Profile for `POST https://api.meta.ai/v1/chat/completions`,
+and the `sdkgo/llm` pipeline owns validation, the error table, schema checks,
+streaming, and heartbeats. Every request streams, because Meta ends a long
+non-streaming request with HTTP 504, so the operation uses the streaming
+budget: a 900-second sync Execute, a 60-second heartbeat timeout, and four
+attempts over 30 minutes. The key travels only as a bearer token to the one
+fixed host; tests reach a loopback fake provider through
+`WithBaseURLForTest`.
+
+The Studio bundle's `modelPicker` lists `GET https://api.meta.ai/v1/models`
+through the Dex Web broker and hides models outside Muse Spark behind
+**Show all models**.
+
+## Claude connector
+
+Claude is a separate module and API-key Connection in the `connectors/anthropic`
+company directory, with Go package `claude`. Its `generateText` operation is
+the shared text-generation Query: the connector supplies a native
+`llm.WireFormat` for `POST https://api.anthropic.com/v1/messages`, and the
+`sdkgo/llm` pipeline owns validation, the error table, schema checks,
+streaming, and heartbeats. Every request streams, as Claude recommends for
+long requests, so the operation uses the streaming budget: a 900-second sync
+Execute, a 60-second heartbeat timeout, and four attempts over 30 minutes.
+The key travels only as a bearer token to the one fixed host, beside the
+required `anthropic-version` header and an optional `anthropic-workspace-id`;
+tests reach a loopback fake provider through `WithBaseURLForTest`.
+
+The Studio bundle's `modelPicker` lists `GET https://api.anthropic.com/v1/models`
+through the Dex Web broker with a fixed `anthropic-version` header and pages
+with `after_id`. Dex Web `cli-v0.13.8` and earlier drop fixed headers, so the
+list fails there and the picker offers manual model ID entry.
+
+## xAI Grok connector
+
+Grok is the xAI company's module, in `connectors/xai` with Go package `grok`,
+and an API-key Connection. Its `generateText` operation is the shared
+text-generation Query: the connector declares only an `openaichat` Profile
+for `POST {endpoint}/chat/completions`, and the `sdkgo/llm` pipeline owns
+validation, the error table, schema checks, streaming, and heartbeats. The
+`endpoint` configuration accepts only `https://api.x.ai/v1` and the US
+regional `https://us.api.x.ai/v1`, so the bearer key reaches no other host;
+tests reach a loopback fake provider through `WithBaseURLForTest`. Every
+request streams, so the operation uses the streaming budget: a 900-second
+sync Execute, a 60-second heartbeat timeout, and four attempts over 30
+minutes. Model rules follow xAI's per-model reasoning efforts, and error
+tokens come from xAI's top-level `code` field.
+
+The Studio bundle's `modelPicker` lists `GET https://api.x.ai/v1/language-models`
+through the Dex Web broker, falls back to `GET https://us.api.x.ai/v1/models`,
+and hides multi-agent models, which do not serve Chat Completions, and
+non-text models behind **Show all models**.
+
 ## GitHub connector
 
 GitHub exposes generated Query factories for authenticated profile plus primary

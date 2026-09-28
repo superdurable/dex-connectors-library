@@ -27,7 +27,7 @@ export function parseSlackUserPage(value: Record<string, unknown>): SlackUserPag
 }
 
 function assertSlackOK(value: Record<string, unknown>) {
-  if (value.ok !== true) throw new Error(text(value.error) || "Slack rejected the request");
+  if (value.ok !== true) throw new Error(text(value.error) ? value.error : "Slack rejected the request");
 }
 
 function nextCursor(value: Record<string, unknown>): string {

@@ -57,7 +57,11 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	flow := generatesummary.NewFlow(connection)
+	summaryModel, err := loadSummaryModelConfiguration(store)
+	if err != nil {
+		return err
+	}
+	flow := generatesummary.NewFlow(connection, summaryModel)
 	registry, err := dex.NewRegistry([]dex.Flow{flow})
 	if err != nil {
 		return fmt.Errorf("register Gemini summary Flow: %w", err)
@@ -89,7 +93,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 		}
 		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
 	}
-	logger.Info("gemini summary worker starting", "connection", generatesummary.ConnectionName)
+	logger.Info("gemini summary worker starting", "connection", generatesummary.ConnectionName, "summary_model", describeSummaryModel(summaryModel))
 	workerResult := make(chan error, 1)
 	go func() { workerResult <- worker.Start() }()
 	select {
@@ -126,6 +130,30 @@ func waitForDexServer(ctx context.Context, healthCheck func(context.Context) (de
 		}
 		delay = min(2*delay, 30*time.Second)
 	}
+}
+
+// loadSummaryModelConfiguration reads the GenerateSummary Step's model pick. A
+// Step that was never configured in Dex Web uses the connection's model.
+func loadSummaryModelConfiguration(store *localconfig.Store) (generatesummary.SummaryModelConfiguration, error) {
+	loaded, err := localconfig.LoadOperationConfiguration[generatesummary.SummaryModelConfiguration](
+		store, generatesummary.SummaryModelConfigurationRef(),
+	)
+	if err != nil {
+		// sdkgo v0.9.0 reports a missing Step configuration only in the message.
+		if strings.Contains(err.Error(), "is not configured") {
+			return generatesummary.SummaryModelConfiguration{}, nil
+		}
+		return generatesummary.SummaryModelConfiguration{}, err
+	}
+	return loaded.Value, nil
+}
+
+// describeSummaryModel names the model for the startup log; an empty pick uses the connection's model.
+func describeSummaryModel(summaryModel generatesummary.SummaryModelConfiguration) string {
+	if summaryModel.Model == "" {
+		return "connection model"
+	}
+	return summaryModel.Model
 }
 
 func stopWorker(worker *dex.Worker) error {

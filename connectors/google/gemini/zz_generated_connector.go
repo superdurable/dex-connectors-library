@@ -17,6 +17,11 @@ import (
 
 const ConnectorID = "gemini"
 
+const (
+	UIUnitModelPicker      = "modelPicker"
+	UIModelPickerPortModel = "model"
+)
+
 type Config struct {
 	Model            string `json:"model,omitempty" yaml:"model,omitempty"`
 	Endpoint         string `json:"endpoint,omitempty" yaml:"endpoint,omitempty"`
@@ -169,6 +174,7 @@ type GenerateContentStepConfig[IN any] struct {
 	operationID                    struct{}                                                   `connector:"operationId=generateContent"`
 	StepType                       string                                                     `connector:"stepType"`
 	Annotations                    sdkgo.StepAnnotations                                      `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                             `connector:"configurationUI"`
 	Connection                     Connection                                                 `connector:"connection"`
 	ConnectionName                 string                                                     `connector:"connectionName"`
 	MapToOperationInput            func(IN) GenerateContentRequest                            `connector:"mapToOperationInput"`
@@ -191,7 +197,8 @@ func NewGenerateContentStep[IN any](config GenerateContentStepConfig[IN]) sdkgo.
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GenerateContentRequest, GenerateContentResponse]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.GenerateContent(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.client.GenerateContent(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[GenerateContentResult] {
 			branches := make([]sdkgo.BranchTarget[GenerateContentResult], 0, 6)

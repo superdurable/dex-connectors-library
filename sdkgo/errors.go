@@ -24,6 +24,10 @@ const (
 	FailureConflict FailureKind = "CONFLICT"
 	// FailureRateLimit identifies provider throttling that may succeed after retry.
 	FailureRateLimit FailureKind = "RATE_LIMIT"
+	// FailureQuotaExhausted identifies exhausted provider credit, spend, or billing
+	// quota. Unlike FailureRateLimit, waiting does not restore it; the account
+	// owner must add credit or raise the limit.
+	FailureQuotaExhausted FailureKind = "QUOTA_EXHAUSTED"
 	// FailureAvailability identifies temporary provider unavailability.
 	FailureAvailability FailureKind = "AVAILABILITY"
 	// FailureProviderRejection identifies another conclusive provider refusal.
@@ -53,7 +57,7 @@ type Failure struct {
 func (failure Failure) validate() error {
 	switch failure.Kind {
 	case FailureValidation, FailureAuthentication, FailureAuthorization, FailureNotFound,
-		FailureConflict, FailureRateLimit, FailureAvailability, FailureProviderRejection,
+		FailureConflict, FailureRateLimit, FailureQuotaExhausted, FailureAvailability, FailureProviderRejection,
 		FailureTransport, FailureResponseTooLarge, FailureProtocol, FailureLocalDefect:
 	default:
 		return fmt.Errorf("failure kind is invalid")

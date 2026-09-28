@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -57,16 +58,24 @@ type StudioCommand struct {
 }
 
 type StudioCommandHTTPRequest struct {
-	Method     string                   `yaml:"method" json:"method"`
-	URL        string                   `yaml:"url" json:"url"`
-	Credential StudioCommandCredential  `yaml:"credential" json:"credential"`
-	FixedQuery map[string]string        `yaml:"fixedQuery,omitempty" json:"fixedQuery,omitempty"`
-	Parameters []StudioCommandParameter `yaml:"parameters,omitempty" json:"parameters,omitempty"`
+	Method     string                  `yaml:"method" json:"method"`
+	URL        string                  `yaml:"url" json:"url"`
+	Credential StudioCommandCredential `yaml:"credential" json:"credential"`
+	FixedQuery map[string]string       `yaml:"fixedQuery,omitempty" json:"fixedQuery,omitempty"`
+	// FixedHeaders are non-secret header values, such as an API version, sent
+	// with every request. Names compare case-insensitively, and "_" matches "-".
+	FixedHeaders map[string]string        `yaml:"fixedHeaders,omitempty" json:"fixedHeaders,omitempty"`
+	Parameters   []StudioCommandParameter `yaml:"parameters,omitempty" json:"parameters,omitempty"`
 }
 
 type StudioCommandCredential struct {
-	Field  string `yaml:"field" json:"field"`
+	Field string `yaml:"field" json:"field"`
+	// Scheme is bearer, which sends Authorization: Bearer <secret>, or header,
+	// which sends the raw secret in Header.
 	Scheme string `yaml:"scheme" json:"scheme"`
+	// Header names the request header that carries the raw secret. Only the
+	// header scheme declares it.
+	Header string `yaml:"header,omitempty" json:"header,omitempty"`
 }
 
 type StudioCommandParameter struct {
@@ -202,7 +211,23 @@ var (
 	capabilityPattern   = regexp.MustCompile(`^[a-z][a-z0-9]*(\.[a-z][a-z0-9-]*)+$`)
 	mockScenarioPattern = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
 	versionPattern      = regexp.MustCompile(`^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$`)
+	// httpHeaderTokenPattern is the RFC 7230 token grammar for header field names.
+	httpHeaderTokenPattern = regexp.MustCompile("^[!#$%&'*+.^_`|~0-9A-Za-z-]+$")
+	// studioCommandHeaderValuePattern is printable ASCII without surrounding spaces.
+	studioCommandHeaderValuePattern = regexp.MustCompile(`^[\x21-\x7E](?:[\x20-\x7E]*[\x21-\x7E])?$`)
 )
+
+const maximumStudioCommandFixedHeaderValueLength = 256
+
+// studioCommandReservedHeaders are lowercase names the Dex Web broker, the
+// transport, or routing intermediaries own.
+var studioCommandReservedHeaders = map[string]bool{
+	"accept": true, "connection": true, "content-length": true, "cookie": true,
+	"forwarded": true, "host": true, "keep-alive": true, "origin": true,
+	"referer": true, "set-cookie": true, "te": true, "trailer": true,
+	"transfer-encoding": true, "upgrade": true,
+	"x-http-method": true, "x-http-method-override": true, "x-method-override": true,
+}
 
 func Decode(reader io.Reader) (Manifest, error) {
 	decoder := yaml.NewDecoder(reader)
@@ -526,9 +551,20 @@ func validateStudioCommand(command StudioCommand, authFields map[string]Field) [
 		problems = append(problems, prefix+"request URL must be an absolute HTTPS URL without credentials, query, or fragment")
 	}
 	credential, exists := authFields[request.Credential.Field]
-	if !exists || credential.Type != "secretString" || request.Credential.Scheme != "bearer" {
-		problems = append(problems, prefix+"credential must name a secretString auth field with bearer scheme")
+	if !exists || credential.Type != "secretString" || (request.Credential.Scheme != "bearer" && request.Credential.Scheme != "header") {
+		problems = append(problems, prefix+"credential must name a secretString auth field with bearer or header scheme")
 	}
+	switch {
+	case request.Credential.Scheme == "header" && request.Credential.Header == "":
+		problems = append(problems, prefix+"header credential scheme requires a header name")
+	case request.Credential.Scheme == "header":
+		if reason := describeStudioCommandHeaderNameProblem(request.Credential.Header); reason != "" {
+			problems = append(problems, prefix+"credential header "+strconv.QuoteToASCII(request.Credential.Header)+" "+reason)
+		}
+	case request.Credential.Header != "":
+		problems = append(problems, prefix+"credential header is allowed only with the header scheme")
+	}
+	problems = append(problems, validateStudioCommandFixedHeaders(prefix, request)...)
 	seenParameters := map[string]bool{}
 	seenTargets := map[string]bool{}
 	for _, parameter := range request.Parameters {
@@ -567,6 +603,55 @@ func validateStudioCommand(command StudioCommand, authFields map[string]Field) [
 		}
 	}
 	return problems
+}
+
+func validateStudioCommandFixedHeaders(prefix string, request StudioCommandHTTPRequest) []string {
+	problems := []string{}
+	headerNames := make([]string, 0, len(request.FixedHeaders))
+	for name := range request.FixedHeaders {
+		headerNames = append(headerNames, name)
+	}
+	sort.Strings(headerNames)
+	seenFoldedNames := map[string]bool{}
+	for _, name := range headerNames {
+		foldedName := foldStudioCommandHeaderName(name)
+		if reason := describeStudioCommandHeaderNameProblem(name); reason != "" {
+			problems = append(problems, prefix+"fixed header "+strconv.QuoteToASCII(name)+" "+reason)
+		}
+		if seenFoldedNames[foldedName] {
+			problems = append(problems, prefix+"fixed header names must be unique ignoring case and treating _ as -")
+		}
+		seenFoldedNames[foldedName] = true
+		if request.Credential.Scheme == "header" && foldedName == foldStudioCommandHeaderName(request.Credential.Header) {
+			problems = append(problems, prefix+"fixed headers cannot repeat the credential header")
+		}
+		value := request.FixedHeaders[name]
+		if len(value) > maximumStudioCommandFixedHeaderValueLength || !studioCommandHeaderValuePattern.MatchString(value) {
+			problems = append(problems, fmt.Sprintf("%sfixed header %s value must be 1-%d printable ASCII characters without surrounding spaces", prefix, strconv.QuoteToASCII(name), maximumStudioCommandFixedHeaderValueLength))
+		}
+	}
+	return problems
+}
+
+// describeStudioCommandHeaderNameProblem returns why a manifest cannot declare a
+// header name, or an empty string when the name is allowed.
+func describeStudioCommandHeaderNameProblem(name string) string {
+	foldedName := foldStudioCommandHeaderName(name)
+	switch {
+	case !httpHeaderTokenPattern.MatchString(name):
+		return "must be an RFC 7230 token"
+	case foldedName == "authorization":
+		return "cannot be Authorization; use the bearer credential scheme"
+	case studioCommandReservedHeaders[foldedName], strings.HasPrefix(foldedName, "proxy-"), strings.HasPrefix(foldedName, "x-forwarded-"):
+		return "is reserved for Dex Web, the transport, or intermediaries"
+	}
+	return ""
+}
+
+// foldStudioCommandHeaderName lowercases a name and treats "_" as "-", because
+// CGI-style servers merge them.
+func foldStudioCommandHeaderName(name string) string {
+	return strings.ReplaceAll(strings.ToLower(name), "_", "-")
 }
 
 func isValidJSONPath(value string) bool {

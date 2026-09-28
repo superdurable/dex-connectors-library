@@ -8,6 +8,15 @@ GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
 cd ../..
 
+cd connectors/anthropic
+GOWORK=off go test -race ./...
+GOWORK=off go vet ./...
+cd ui
+npm ci
+npm test
+npm run build
+cd ../../..
+
 cd connectors/github
 GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
@@ -39,10 +48,24 @@ cd ../../../..
 cd connectors/linkedin
 GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
-cd ../openai
+cd ../meta
 GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
-cd ../..
+cd ui
+npm ci
+npm test
+npm run build
+cd ../../openai
+GOWORK=off go test -race ./...
+GOWORK=off go vet ./...
+cd ../xai
+GOWORK=off go test -race ./...
+GOWORK=off go vet ./...
+cd ui
+npm ci
+npm test
+npm run build
+cd ../../..
 
 cd connectors/stripe
 GOWORK=off go test -race ./...
@@ -52,14 +75,17 @@ cd ../..
 make check
 go test -race ./...
 go vet ./...
-go run ./cmd/connectorctl validate connectors/github/connector.yaml connectors/google/gemini/connector.yaml connectors/google/gmail/connector.yaml connectors/google/spreadsheet/connector.yaml connectors/linkedin/connector.yaml connectors/openai/connector.yaml connectors/slack/connector.yaml connectors/stripe/connector.yaml
+go run ./cmd/connectorctl validate connectors/anthropic/connector.yaml connectors/github/connector.yaml connectors/google/gemini/connector.yaml connectors/google/gmail/connector.yaml connectors/google/spreadsheet/connector.yaml connectors/linkedin/connector.yaml connectors/meta/connector.yaml connectors/openai/connector.yaml connectors/slack/connector.yaml connectors/stripe/connector.yaml connectors/xai/connector.yaml
+go run ./cmd/connectorctl generate --check connectors/anthropic/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/github/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/google/gemini/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/google/gmail/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/google/spreadsheet/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/linkedin/connector.yaml
+go run ./cmd/connectorctl generate --check connectors/meta/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/openai/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/stripe/connector.yaml
+go run ./cmd/connectorctl generate --check connectors/xai/connector.yaml
 go run ./cmd/connectorctl catalog --check --registry connectors.yaml
 go run ./cmd/connectorctl release-matrix --registry connectors.yaml
 go run ./cmd/connectorctl catalog --registry connectors.yaml --output /tmp/catalog.yaml
@@ -103,6 +129,23 @@ The suite must prove:
 - Gemini header-only API-key auth, redirect refusal, request mapping, finish
   and block reason branches, response bounds, RetryInfo delays, and local input
   validation tests remain green;
+- Meta passes the shared `llmtest` exchange suite with its streaming
+  Profile, Meta's 400 `content_policy_violation` block, mid-stream retry of
+  Meta's retryable error types and codes, including code-only error objects,
+  per-model `max` reasoning effort, and loopback-only test base URL, and its
+  model picker keeps only Muse Spark models visible;
+- Claude passes the shared `llmtest` exchange suite with its native Messages
+  wire format, the `anthropic-version` and optional `anthropic-workspace-id`
+  headers, per-model effort and temperature rules, the spend-cap 429 and 402
+  as quota, 501 kept a rejection, mid-stream retry of Claude's transient
+  error types, and loopback-only test base URL, and its model picker pages
+  the live model list with `after_id`;
+- xAI Grok passes the shared `llmtest` exchange suite with its streaming
+  Profile and xAI's top-level `code` error envelope, per-model reasoning
+  efforts, the `end_turn` finish, an endpoint limited to the global and US
+  regional hosts, and a loopback-only test base URL, and its model picker
+  shows aliases, hides multi-agent and non-text models, and falls back to the
+  US regional list;
 - GitHub profile/email selection, scope/revocation branches, response bounds,
   public-only pagination, deduplication, sorting, truncation, and rate-limit
   delay tests remain green;
@@ -202,6 +245,15 @@ The integration suite verifies:
   Worker crash.
 - The Gemini generate-summary example completes generated, blocked, and
   truncated routes and fails an unwired rejection without a retry.
+- Meta `generateText` runs the shared `llmtest` real-Dex scenarios, and the
+  Meta summarize-text example completes generated and blocked routes and
+  streams the generated text.
+- Claude `generateText` runs the shared `llmtest` real-Dex scenarios, and the
+  Claude summarize-text example completes generated and refused routes and
+  streams the generated text.
+- xAI Grok `generateText` runs the shared `llmtest` real-Dex scenarios, and
+  the Grok summarize-text example completes generated and blocked routes and
+  streams the generated text.
 - a Trigger inbox consumes an RPC event whose Flow completed or never started,
   and a restarted runner replays past it (Slack thread-approval steps 8 and 9),
   logging each skip once and each replay summary;

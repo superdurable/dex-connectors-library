@@ -1,7 +1,14 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import type { ConnectorStudioConfigurationUnitTarget } from "@superdurable/dex-connectors-react";
+import {
+  StudioButton,
+  StudioField,
+  StudioHeader,
+  StudioNotice,
+  StudioSurface,
+  type ConnectorStudioConfigurationUnitTarget,
+} from "@superdurable/dex-connectors-react";
 import { useState, type ReactNode } from "react";
 
 export interface SlackChannel { id: string; name: string; isPrivate?: boolean; }
@@ -12,9 +19,10 @@ export interface SlackUnitProps {
   channels: SlackChannel[];
   users: SlackUser[];
   busy?: boolean;
+  loadError?: string;
   onLoadChannels(): void;
   onLoadUsers(): void;
-  onSave(value: Record<string, unknown>): void;
+  onSave(value: Record<string, unknown>): Promise<unknown> | void;
 }
 
 export function SlackConfigurationUnit(props: SlackUnitProps) {
@@ -22,44 +30,77 @@ export function SlackConfigurationUnit(props: SlackUnitProps) {
     case "channelPicker": return <ChannelPickerUnit {...props}/>;
     case "memberPicker": return <MemberPickerUnit {...props}/>;
     case "textInput": return <TextInputUnit {...props}/>;
-    default: return <p role="alert">Unsupported Slack configuration unit: {props.target.unitId}</p>;
+    default: return <StudioNotice tone="error">Unsupported Slack configuration unit: {props.target.unitId}</StudioNotice>;
   }
 }
 
-function ChannelPickerUnit({target, channels, busy, onLoadChannels, onSave}: SlackUnitProps) {
+function ChannelPickerUnit({target, channels, busy, loadError, onLoadChannels, onSave}: SlackUnitProps) {
   const [channelId, setChannelId] = useState(stringValue(target.value.channelId));
-  return <UnitFrame target={target}>
-    <button disabled={busy} onClick={onLoadChannels} type="button">Load joined channels</button>
-    <p className="note">Only channels this app has joined are available.</p>
-    <label>Channel<select value={channelId} onChange={(event) => setChannelId(event.target.value)}>
-      <option value="">Select a channel</option>
-      {channels.map((channel) => <option key={channel.id} value={channel.id}>#{channel.name}{channel.isPrivate ? " (private)" : ""} · {channel.id}</option>)}
-    </select></label>
-    <label>Channel ID fallback<input value={channelId} placeholder="C0123456789" onChange={(event) => setChannelId(event.target.value)}/></label>
-    <button disabled={busy || (target.required && channelId.length === 0)} onClick={() => onSave({channelId})} type="button">Save</button>
+  return <UnitFrame loadError={loadError} target={target}>
+    <div className="studio-actions">
+      <StudioButton disabled={busy} onClick={onLoadChannels}>Load joined channels</StudioButton>
+      <span className="studio-muted">Only channels this app has joined are available.</span>
+    </div>
+    <StudioField label="Channel">
+      <select onChange={(event) => setChannelId(event.target.value)} value={channelId}>
+        <option value="">Select a channel</option>
+        {channels.map((channel) => <option key={channel.id} value={channel.id}>#{channel.name}{channel.isPrivate ? " (private)" : ""} · {channel.id}</option>)}
+      </select>
+    </StudioField>
+    <StudioField hint="Use a channel ID when the channel is not listed." label="Channel ID fallback">
+      <input onChange={(event) => setChannelId(event.target.value.trim())} placeholder="C0123456789" type="text" value={channelId}/>
+    </StudioField>
+    <SaveAction disabled={busy || (target.required && channelId.length === 0)} onSave={() => onSave({channelId})}/>
   </UnitFrame>;
 }
 
-function MemberPickerUnit({target, users, busy, onLoadUsers, onSave}: SlackUnitProps) {
+function MemberPickerUnit({target, users, busy, loadError, onLoadUsers, onSave}: SlackUnitProps) {
   const [memberIds, setMemberIds] = useState(stringArray(target.value.memberIds));
-  return <UnitFrame target={target}>
-    <button disabled={busy} onClick={onLoadUsers} type="button">Load members</button>
-    {users.map((user) => <label className="user" key={user.id}>
-      <input type="checkbox" checked={memberIds.includes(user.id)} onChange={(event) => setMemberIds(event.target.checked ? [...memberIds, user.id] : memberIds.filter((id) => id !== user.id))}/>
-      {user.imageUrl && <img src={user.imageUrl} alt=""/>}<span>{user.displayName}<small>{user.id}</small></span>
-    </label>)}
-    <label>Member IDs fallback<input value={memberIds.join(", ")} placeholder="U0123456789" onChange={(event) => setMemberIds(event.target.value.split(",").map((value) => value.trim()).filter(Boolean))}/></label>
-    <button disabled={busy || (target.required && memberIds.length === 0)} onClick={() => onSave({memberIds})} type="button">Save</button>
+  return <UnitFrame loadError={loadError} target={target}>
+    <div className="studio-actions"><StudioButton disabled={busy} onClick={onLoadUsers}>Load members</StudioButton></div>
+    {users.length > 0 && <fieldset aria-label="Members" className="studio-options">
+      {users.map((user) => <label className="studio-option" key={user.id}>
+        <input checked={memberIds.includes(user.id)} onChange={(event) => setMemberIds(event.target.checked ? [...memberIds, user.id] : memberIds.filter((id) => id !== user.id))} type="checkbox"/>
+        <span className="studio-option-label">{user.imageUrl && <img alt="" src={user.imageUrl}/>}{user.displayName}</span>
+        <span className="studio-option-id">{user.id}</span>
+      </label>)}
+    </fieldset>}
+    <StudioField hint="Comma-separated member IDs, for members not listed." label="Member IDs fallback">
+      <input onChange={(event) => setMemberIds(event.target.value.split(",").map((value) => value.trim()).filter(Boolean))} placeholder="U0123456789" type="text" value={memberIds.join(", ")}/>
+    </StudioField>
+    <SaveAction disabled={busy || (target.required && memberIds.length === 0)} onSave={() => onSave({memberIds})}/>
   </UnitFrame>;
 }
 
-function TextInputUnit({target, onSave}: SlackUnitProps) {
+function TextInputUnit({target, busy, onSave}: SlackUnitProps) {
   const [value, setValue] = useState(stringValue(target.value.text));
-  return <UnitFrame target={target}><label>{target.label}<input value={value} onChange={(event) => setValue(event.target.value)}/></label><button disabled={target.required && value.length === 0} onClick={() => onSave({text: value})} type="button">Save</button></UnitFrame>;
+  return <UnitFrame target={target}>
+    <StudioField label={target.label}><input onChange={(event) => setValue(event.target.value)} type="text" value={value}/></StudioField>
+    <SaveAction disabled={busy || (target.required && value.length === 0)} onSave={() => onSave({text: value})}/>
+  </UnitFrame>;
 }
 
-function UnitFrame({target, children}: {target: ConnectorStudioConfigurationUnitTarget; children: ReactNode}) {
-  return <section className="unit"><h2>{target.label}</h2>{target.description && <p>{target.description}</p>}{children}</section>;
+function UnitFrame({target, loadError, children}: {target: ConnectorStudioConfigurationUnitTarget; loadError?: string; children: ReactNode}) {
+  return <StudioSurface label={target.label}>
+    <StudioHeader description={target.description} title={target.label}/>
+    {loadError && <StudioNotice tone="error">{loadError}</StudioNotice>}
+    {children}
+  </StudioSurface>;
+}
+
+function SaveAction({disabled, onSave}: {disabled?: boolean; onSave(): Promise<unknown> | void}) {
+  const [saveState, setSaveState] = useState<{status: "idle" | "saved"} | {status: "failed"; message: string}>({status: "idle"});
+  const save = () => {
+    Promise.resolve(onSave()).then(
+      () => setSaveState({status: "saved"}),
+      (error: unknown) => setSaveState({status: "failed", message: error instanceof Error ? error.message : "Unknown error"}),
+    );
+  };
+  return <>
+    <div className="studio-actions"><StudioButton disabled={disabled} onClick={save} variant="primary">Save</StudioButton></div>
+    {saveState.status === "saved" && <StudioNotice tone="success">Saved. Restart the application to use it.</StudioNotice>}
+    {saveState.status === "failed" && <StudioNotice tone="error">The configuration could not be saved: {saveState.message}</StudioNotice>}
+  </>;
 }
 
 function stringValue(value: unknown): string { return typeof value === "string" ? value : ""; }
