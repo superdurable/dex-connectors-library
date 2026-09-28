@@ -440,7 +440,8 @@ provider's echo, or empty when the provider reports none. A body model is
 1 to 256 bytes of printable ASCII; a path-segment model matches
 `^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$` after one leading `models/` is removed.
 `sdkgo/llm/llmtest/testdata/model_id_cases.json` pins both rules for the
-TypeScript validator.
+TypeScript validator, `validateModelIDForRule` in
+`@superdurable/dex-connectors-react`, whose tests run every case.
 
 Every lab ships the per-Step picker unit `modelPicker` with one string output
 port, `model`. A Flow adds the unit to the Step's `ConfigurationUI` and binds
@@ -471,6 +472,11 @@ The unit lists models through a Studio command:
   provider offers one, and the bundle tries the native `listModels` first with
   `executeFirstAcceptedProviderCommand`.
 - A list failure falls back to manual model entry.
+- The OpenAI, Claude, and Gemini loaders and projections are exported from
+  `@superdurable/dex-connectors-react/provider-model-lists` and take the
+  command IDs and capability from the bundle, so a connector that declares the
+  same provider list request reuses them instead of copying provider
+  semantics.
 
 ### Liveness and budgets
 

@@ -1,7 +1,8 @@
 # `@superdurable/dex-connectors-react`
 
 This package holds the shared pieces of Connector Studio bundles: connection
-state, the Studio Host API client, Dex Web styling, and a live model picker.
+state, the Studio Host API client, Dex Web styling, a live model picker, and
+the OpenAI, Claude, and Gemini model lists that picker bundles share.
 The browser receives a logical provider name, a normalized status, and
 provider responses the host has already checked for credential material;
 secret values and OAuth tokens remain on the server.
@@ -187,7 +188,10 @@ provider's JSON into `ModelOption` values. Because the list is live, a model
 the provider adds appears without a connector release. Models the connector's
 filter judges unsuitable, such as embedding models, stay behind "Show all
 models". The user can also keep the connection's default model, saved as an
-empty `model`, or type any model ID when listing fails.
+empty `model`, or type any model ID when listing fails. When the list fails or
+lacks the saved model, the entry shows the saved model unless the user already
+chose or typed one while the list loaded or before Retry, so Save sends the
+model the picker shows.
 
 ```tsx
 <ModelPicker
@@ -196,4 +200,74 @@ empty `model`, or type any model ID when listing fails.
   loadModels={loadGeminiModels}
   onSave={(value) => client.send("use.configuration.save", "use.configuration.write", {value})}
 />
+```
+
+A loader may return `notices` with its `ModelListing`, such as one
+`attention` notice for each source of a combined list that could not be
+listed. `ModelPicker` shows them in order with `StudioNotice` once the list
+loads.
+
+`validateManualModel` checks a typed model ID, with surrounding whitespace
+trimmed, before it can be saved. It returns a message for an invalid ID, which
+the picker shows below the entry while Save is disabled, or `undefined` to
+accept it. It never checks a model chosen from the list, the connection
+default, or a blank entry, and it runs on every render, so it must be cheap and
+must not throw.
+`manualModelPlaceholder` replaces the entry's `model-id` placeholder.
+`mountModelPickerBundle` passes both options to the picker. Without notices
+and these options, the picker renders exactly as before.
+
+`validateModelIDForRule(rule, value)` applies the Go SDK's
+`llm.ModelIDRule.ValidateModelID` in the browser, so a picker rejects exactly
+the model IDs a connector's `generateText` would reject as `defect`. `rule` is
+`"body"` or `"pathSegment"`, as `llm.ModelIDRule`'s `String` method spells
+it. The result is `{isValid: true, modelId}`, where `modelId` is the canonical
+ID the provider receives, or `{isValid: false, message}`, whose message never
+repeats the value. Both rules first trim the whitespace Go's
+`strings.TrimSpace` trims, which differs from `String.prototype.trim` for
+U+0085 and U+FEFF. `"body"` then requires 1 to 256 printable ASCII characters
+without spaces; `"pathSegment"` removes one leading `models/` and requires
+`^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$`. The package's tests run every case in
+[`sdkgo/llm/llmtest/testdata/model_id_cases.json`](../../sdkgo/llm/llmtest/testdata/model_id_cases.json).
+
+```tsx
+mountModelPickerBundle({
+  connectorId: "gemini", providerName: "Gemini", iconUrl: "./icon.svg", loadModels: loadGeminiModels,
+  validateManualModel: (model) => {
+    const validation = validateModelIDForRule("pathSegment", model);
+    return validation.isValid ? undefined : validation.message;
+  },
+});
+```
+
+## Provider model lists
+
+The `@superdurable/dex-connectors-react/provider-model-lists` subpath exports
+the OpenAI, Claude, and Gemini model list loaders and their pure projections.
+Each loader takes the command IDs and capability from its caller, so every
+connector that declares the same provider list request shares one projection
+instead of copying provider semantics, whatever it names its commands.
+
+| Loader | Manifest command it runs | Projection |
+| --- | --- | --- |
+| `loadOpenAIModelListing(client, {capability, commandId}, now?)` | `GET https://api.openai.com/v1/models` with a bearer key. | `projectOpenAIModelList(value, now)` lists newest first by `created`. It hides non-text families, judged by the base model of an `ft:` ID, and models whose `shutdown_date` is on or before `now`, which defaults to the time the list returns. It notes every announced shutdown date. |
+| `loadClaudeModelListing(client, {capability, commandId})` | `GET https://api.anthropic.com/v1/models` with `fixedHeaders: {anthropic-version: "2023-06-01"}` and an `afterId` query parameter that targets `after_id`. | `projectClaudeModelPage(page)` keeps Claude's order, hides nothing, labels by `display_name`, details the context window and output limit, and badges `capabilities`. `readNextClaudeModelCursor(page)` returns `last_id` while `has_more` is true. The loader drops repeated IDs across pages. |
+| `loadGeminiModelListing(client, {capability, nativeCommandId, openAICompatibleCommandId})` | The native `GET https://generativelanguage.googleapis.com/v1beta/models` with the key in `x-goog-api-key` and a `pageToken` query parameter, then, when the host rejects it, the bearer `GET .../v1beta/openai/models`. | `projectNativeGeminiModels(items)` strips `models/` and hides models without `generateContent` or with a non-text family ID. `projectOpenAICompatibleGeminiModelList(value)` strips `models/` and hides non-text family IDs. |
+
+`ProviderModelListCommand` and `GeminiModelListCommands` type the command
+arguments. The Claude and Gemini loaders follow cursors with
+`collectProviderPages`. A loader rejects with the host's error when a page it
+needs fails, after Gemini's fallback to its OpenAI-compatible command, so
+`ModelPicker` offers manual model entry. A bundle inlines this package when it
+is built, so a released bundle keeps the projection it was built with, and a
+projection change reaches a connector at its next release.
+
+```ts
+import { mountModelPickerBundle } from "@superdurable/dex-connectors-react";
+import { loadClaudeModelListing } from "@superdurable/dex-connectors-react/provider-model-lists";
+
+mountModelPickerBundle({
+  connectorId: "claude", providerName: "Claude", iconUrl: "./icon.svg",
+  loadModels: (client) => loadClaudeModelListing(client, {capability: "claude.models-list", commandId: "listModels"}),
+});
 ```

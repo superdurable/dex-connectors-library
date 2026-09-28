@@ -44,6 +44,7 @@ const modelPickerTarget = (unitId = "modelPicker"): ConnectorStudioConfiguration
 
 const everyModelOptionShape: ModelListing = {
   isTruncated: true,
+  notices: [{tone: "attention", message: "Claude models could not be listed."}, {tone: "info", message: "Listed live."}],
   models: [
     {id: "gemini-3.8-flash", label: "Gemini 3.8 Flash", detail: "1M tokens", badges: ["structured output"]},
     {id: "gemini-3.5-flash-lite"},
@@ -122,7 +123,9 @@ describe("Studio class contract", () => {
     for (const className of classNamesInMarkup(primitives)) rendered.add(className);
 
     const loadedPicker = await renderInDocument(<ModelPicker
-      loadModels={async () => everyModelOptionShape} onSave={async () => ({})} providerName="Gemini" target={modelPickerTarget()}/>);
+      loadModels={async () => everyModelOptionShape} onSave={async () => ({})} providerName="Gemini" target={modelPickerTarget()}
+      validateManualModel={() => "The model ID is invalid."}/>);
+    expect(loadedPicker.textContent).toContain("The model ID is invalid.");
     const showAll = loadedPicker.querySelector<HTMLInputElement>(".studio-checkbox input");
     expect(showAll, "show-all checkbox").not.toBeNull();
     await act(async () => { showAll!.click(); });

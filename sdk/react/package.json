@@ -1,7 +1,7 @@
 {
   "name": "@superdurable/dex-connectors-react",
-  "version": "0.1.0-alpha.3",
-  "description": "Credential-safe connection status, Studio Host API client, Dex Web styling, and live model picker for Dex connector UIs",
+  "version": "0.1.0-alpha.4",
+  "description": "Credential-safe connection status, Studio Host API client, Dex Web styling, live model picker, and shared provider model lists for Dex connector UIs",
   "license": "MIT",
   "type": "module",
   "main": "dist/index.js",
@@ -10,6 +10,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./provider-model-lists": {
+      "types": "./dist/provider-model-lists.d.ts",
+      "import": "./dist/provider-model-lists.js"
     }
   },
   "files": [
