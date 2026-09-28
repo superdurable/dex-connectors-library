@@ -5,7 +5,7 @@ metadata:
   displayName: Hacker News Daily
   description: Read public Hacker News feeds, stories, and discussions for a daily developer digest with direct source links.
   company: Hacker News
-  version: v0.1.1
+  version: v0.2.0
 spec:
   provider: hacker-news
   codegen:

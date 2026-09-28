@@ -5,7 +5,7 @@ metadata:
   displayName: Meta Model API
   description: Meta Model API text generation with Muse Spark models, JSON Schema structured output, reasoning effort, token usage, and streamed text.
   company: Meta
-  version: v0.1.1
+  version: v0.2.0
 spec:
   provider: meta
   codegen:
