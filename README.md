@@ -228,14 +228,28 @@ manifest-first code generation, a connector-local runnable example, complete
 testing, and an upstream pull request. It also discovers or helps create the
 contributor's GitHub fork before checking it out locally.
 
-Invoke it through the `superdurable-dex` plugin:
+Install either the recommended `superdurable-dex` Plugin or the complete
+standalone Skills bundle, but not both. Duplicate installations can shadow one
+another.
 
-- Codex: `$dex-connector-contributor`
-- Claude Code: `/superdurable-dex:dex-connector-contributor`
-- Cursor: `/dex-connector-contributor`
+Use this request template:
 
-See the [Dex Skills installation guide](https://github.com/superdurable/dex-skills#install)
-for plugin setup and the complete contribution workflow.
+```text
+Add <XYZ> to Dex official connector library
+```
+
+The explicit invocation depends on the installation path:
+
+| Host | Plugin | Standalone Skills |
+| --- | --- | --- |
+| Codex | Type `@`, select **Dex**, then enter the request. Plain `@Dex` text is not equivalent. | `$dex-connector-contributor Add <XYZ> to Dex official connector library` |
+| Claude Code | `/superdurable-dex:dex-connector-contributor Add <XYZ> to Dex official connector library` | `/dex-connector-contributor Add <XYZ> to Dex official connector library` |
+| Cursor | `/dex-connector-contributor Add <XYZ> to Dex official connector library` | `/dex-connector-contributor Add <XYZ> to Dex official connector library` |
+
+Cursor uses the same short slash command for both sources. See the
+[Dex Skills installation guide](https://github.com/superdurable/dex-skills#install)
+for the exact Plugin and standalone installation commands, upgrade paths, and
+complete contribution workflow.
 
 ## Contributors
 
