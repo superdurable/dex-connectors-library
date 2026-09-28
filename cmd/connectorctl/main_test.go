@@ -50,6 +50,29 @@ func TestRegisteredOperationsKeepOnlyHappyPathBranchesRequired(t *testing.T) {
 	}
 }
 
+// Google reports an alias grant under its canonical URI, so a literal scope check never matches the alias.
+func TestRegisteredGoogleConnectorsRequestNoAliasOAuthScopes(t *testing.T) {
+	canonicalScopeByGoogleAlias := map[string]string{
+		"email":   "https://www.googleapis.com/auth/userinfo.email",
+		"profile": "https://www.googleapis.com/auth/userinfo.profile",
+	}
+	entries, err := loadConnectorDirectoryEntries(filepath.Join("..", "..", "catalog.yaml"))
+	require.NoError(t, err)
+	checkedDirectories := []string{}
+	for _, entry := range entries {
+		oauth := entry.Manifest.Spec.Auth.OAuth2
+		if entry.Manifest.Spec.Provider != "google" || oauth == nil {
+			continue
+		}
+		checkedDirectories = append(checkedDirectories, entry.Directory)
+		for _, scope := range append(append([]string{}, oauth.Scopes...), oauth.UserScopes...) {
+			canonicalScope, isGoogleAlias := canonicalScopeByGoogleAlias[scope]
+			require.Falsef(t, isGoogleAlias, "%s requests Google alias scope %q; request %q instead", entry.Directory, scope, canonicalScope)
+		}
+	}
+	require.Equal(t, []string{"connectors/google/gmail", "connectors/google/spreadsheet"}, checkedDirectories)
+}
+
 func TestCatalogCommandWritesDeterministicYAML(t *testing.T) {
 	catalog := filepath.Join("..", "..", "catalog.yaml")
 	require.NoError(t, catalogCommand([]string{"--check", "--catalog", catalog}))

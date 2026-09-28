@@ -53,6 +53,18 @@ auth:
       nonceRequired: true
 ```
 
+Do not copy that example's scope names into a Google manifest. A manifest with
+`spec.provider: google` names every scope except `openid` by its canonical URI,
+such as `https://www.googleapis.com/auth/userinfo.email` and
+`https://www.googleapis.com/auth/userinfo.profile`, never the `email` and
+`profile` aliases listed in Google's
+[scope reference](https://developers.google.com/identity/protocols/oauth2/scopes).
+Google's token response reports an alias grant under its canonical URI, and
+Dex Web matches granted scopes literally, so an alias request fails the OAuth
+callback with `CONNECTOR_OAUTH_SCOPE_INSUFFICIENT`. `connectorctl` tests reject
+any registered Google connector that requests an alias in `scopes` or
+`userScopes`.
+
 `connectorctl generate` creates the connector-specific Config, Credentials,
 Connection, branch constants, definitions, output aliases, config structs, and
 factory functions. Applications use those factories directly, such as

@@ -3,8 +3,24 @@
 The Gmail Connector receives root messages and replies, reads one message, and
 sends new messages or replies from the verified primary address.
 
-The OAuth grant requests `openid`, `email`, `gmail.readonly`, and `gmail.send`.
-It does not modify or delete existing messages. The generated
+The OAuth grant requests exactly these scopes:
+
+- `openid`
+- `https://www.googleapis.com/auth/userinfo.email`
+- `https://www.googleapis.com/auth/gmail.readonly`
+- `https://www.googleapis.com/auth/gmail.send`
+
+The manifest names each Google scope by its canonical URI. Google's token
+response reports a granted `email` alias as
+`https://www.googleapis.com/auth/userinfo.email`, and Dex Web compares the
+granted scopes with the manifest literally, so an alias fails every real grant
+with `CONNECTOR_OAUTH_SCOPE_INSUFFICIENT`. Versions v0.11.1 and earlier
+requested the `email` alias, so Dex Web from Dex CLI v0.12.0 rejects their
+Google grants. After upgrading, a host that stored the requested `email` string
+instead of Google's granted scope string reports an existing connection as
+needing more permission; reconnect it once.
+
+The connector does not modify or delete existing messages. The generated
 `Credentials` contains a short-lived access token and the verified primary
 email; refresh tokens remain in the hosting application's OAuth broker.
 

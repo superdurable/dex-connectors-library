@@ -8,7 +8,7 @@ import { GmailConfigurationUnit } from "../src/units.js";
 
 describe("Gmail setup", () => {
   it("shows only the verified primary sender", () => {
-    const markup = renderToStaticMarkup(<GmailSetupView connection={{state: "connected", accountEmail: "owner@example.com", grantedScopes: ["openid", "email"]}} onConnect={() => undefined} onReconnect={() => undefined}/>);
+    const markup = renderToStaticMarkup(<GmailSetupView connection={{state: "connected", accountEmail: "owner@example.com", grantedScopes: ["openid", "https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/gmail.readonly", "https://www.googleapis.com/auth/gmail.send"]}} onConnect={() => undefined} onReconnect={() => undefined}/>);
     expect(markup).toContain("owner@example.com");
     expect(markup).not.toContain("requester@example.com");
     expect(markup).not.toContain("access_token");
