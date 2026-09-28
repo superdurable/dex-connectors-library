@@ -220,17 +220,17 @@ item to configure before starting the example Worker.
 
 ## Contribute a connector
 
-Use the official
-[Dex Connector Contributor skill](https://github.com/superdurable/dex-skills/blob/main/dex-connector-contributor/SKILL.md)
-to add or modify a connector, operation, Trigger, or configuration UI unit.
-The skill guides an agent through provider public APIs or official SDKs,
-manifest-first code generation, a connector-local runnable example, complete
-testing, and an upstream pull request. It also discovers or helps create the
-contributor's GitHub fork before checking it out locally.
-
-Install either the recommended `superdurable-dex` Plugin or the complete
+Follow the [Dex Skills installation guide](https://github.com/superdurable/dex-skills#install)
+to install either the recommended `superdurable-dex` Plugin or the complete
 standalone Skills bundle, but not both. Duplicate installations can shadow one
 another.
+
+Then use Dex Connector Contributor to add or modify a connector, operation,
+Trigger, or configuration UI unit. The skill guides an agent through provider
+public APIs or official SDKs, manifest-first code generation, a connector-local
+runnable example, complete testing, and an upstream pull request. It also
+discovers or helps create the contributor's GitHub fork before checking it out
+locally.
 
 Use this request template:
 
@@ -246,10 +246,10 @@ The explicit invocation depends on the installation path:
 | Claude Code | `/superdurable-dex:dex-connector-contributor Add <XYZ> to Dex official connector library` | `/dex-connector-contributor Add <XYZ> to Dex official connector library` |
 | Cursor | `/dex-connector-contributor Add <XYZ> to Dex official connector library` | `/dex-connector-contributor Add <XYZ> to Dex official connector library` |
 
-Cursor uses the same short slash command for both sources. See the
-[Dex Skills installation guide](https://github.com/superdurable/dex-skills#install)
-for the exact Plugin and standalone installation commands, upgrade paths, and
-complete contribution workflow.
+Cursor uses the same short slash command for both sources. The installation
+guide also covers upgrade paths. The
+[skill source](https://github.com/superdurable/dex-skills/blob/main/dex-connector-contributor/SKILL.md)
+documents the agent workflow.
 
 When a contribution adds a connector or operation with
 `spec.auth.type: oauth2`, attach a screenshot of the real provider application,
