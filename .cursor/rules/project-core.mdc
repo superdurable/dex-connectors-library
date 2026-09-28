@@ -5,6 +5,10 @@ alwaysApply: true
 
 # Dex Connectors Library
 
+- After entering this checkout, `AGENTS.md`, `docs/`, and the owning module
+  README are the sole connector-authoring authority. Dex Connector Contributor
+  may bootstrap the repository but does not own implementation, acceptance,
+  or release rules.
 - Keep `sdkgo` and each connector in separate Go modules.
 - The first connector directory is its company, matches `metadata.company`, and
   contains `logo.svg`.
@@ -15,6 +19,9 @@ alwaysApply: true
 - Default fixed provider values, derive verified provider-owned fields, and ask
   users only for values that cannot be produced safely. See
   `connector-configuration-ux.mdc`.
+- Before changing authorization, operation, Trigger, example, or UI
+  configuration, read `docs/configuration-guidance.md` and audit every field
+  visible in Dex Web Connections for every affected runnable example.
 - Register each connector in sorted `catalog.yaml`; it is the only shared file
   changed when adding a connector.
 - Keep provider operation calls in Step `Execute` and out of RPC handlers.
@@ -23,9 +30,15 @@ alwaysApply: true
   Stream in its consuming Flow schema.
 - Keep secrets out of durable state, results, receipts, Streams, logs, generated
   values, UI artifacts, catalogs, and releases.
-- Load the installed `dex-connector-contributor` skill through the host's native
-  skill mechanism before changing Step, retry, durability, Trigger, or
-  Flow-example semantics.
+- Load the installed `dex-sdk` skill through the host's native skill mechanism
+  before changing Step, retry, durability, Trigger, or Flow-example semantics,
+  and follow its Core and Go guidance.
+- Every new connector or user-visible capability includes a checked-in runnable
+  example; a behavioral fix extends the smallest example that proves the fix.
+  Use that example as the primary end-to-end path on a real Dex stack. Exercise
+  the real provider through the user-controlled Dex Web Connections or OAuth
+  flow when safe authorization exists; otherwise name the exact unverified
+  behavior and do not claim live or end-to-end verification.
 
 ## Code Quality
 

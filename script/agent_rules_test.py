@@ -64,6 +64,89 @@ class AgentRulesTest(unittest.TestCase):
     def test_claude_uses_the_canonical_rules(self) -> None:
         self.assertEqual((ROOT / "CLAUDE.md").read_text(encoding="utf-8").strip(), "@AGENTS.md")
 
+    def test_repository_owns_connector_contribution_rules(self) -> None:
+        paths = (
+            ROOT / "AGENTS.md",
+            ROOT / ".cursor" / "rules" / "project-core.mdc",
+        )
+        required_fragments = (
+            "sole connector-authoring authority",
+            "`dex-sdk` skill",
+            "does not own implementation, acceptance, or release rules",
+        )
+        for path in paths:
+            with self.subTest(path=path):
+                contents = " ".join(path.read_text(encoding="utf-8").split())
+                for fragment in required_fragments:
+                    self.assertIn(fragment, contents)
+
+    def test_checked_in_example_is_the_end_to_end_verification_path(self) -> None:
+        agents = " ".join((ROOT / "AGENTS.md").read_text(encoding="utf-8").split())
+        acceptance = " ".join(
+            (ROOT / "docs" / "acceptance.md").read_text(encoding="utf-8").split()
+        )
+        for fragment in (
+            "checked-in runnable example",
+            "minimal consuming application",
+            "primary end-to-end",
+            "user-controlled Dex Web Connections or OAuth flow",
+            "do not claim live or end-to-end verification",
+        ):
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, agents)
+        for fragment in (
+            "checked-in connector-local example",
+            "`dexcli dev --connector-release-override`",
+            "Do not substitute an ad hoc program",
+            "structurally or Dex-integrated verified, not live or end-to-end verified",
+        ):
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, acceptance)
+
+    def test_pull_request_template_requires_example_and_live_evidence(self) -> None:
+        template = (ROOT / ".github" / "PULL_REQUEST_TEMPLATE.md").read_text(
+            encoding="utf-8"
+        )
+        for fragment in (
+            "Checked-in example path:",
+            "Dex Run evidence:",
+            "Real provider exercised:",
+            "Unverified live behavior:",
+            "Configuration surface evidence:",
+            "Unverified configuration behavior:",
+            "Test commands and results:",
+        ):
+            self.assertIn(fragment, template)
+
+    def test_readme_routes_contributors_to_repository_authority(self) -> None:
+        contents = (ROOT / "README.md").read_text(encoding="utf-8")
+        for fragment in (
+            "The skill is a thin bootstrap",
+            "[AGENTS.md](AGENTS.md)",
+            "[configuration guidance](docs/configuration-guidance.md)",
+            "[acceptance criteria](docs/acceptance.md)",
+            "authoritative contribution workflow",
+        ):
+            self.assertIn(fragment, contents)
+
+    def test_configuration_guidance_owns_the_complete_rendered_surface(self) -> None:
+        contents = " ".join(
+            (ROOT / "docs" / "configuration-guidance.md")
+            .read_text(encoding="utf-8")
+            .split()
+        )
+        for fragment in (
+            "enumerate the authorization form and every visible field",
+            "provider constants and safe operational defaults in `connector.yaml`",
+            "Derive identity fields from verified OAuth or OpenID Connect claims",
+            "declared read-only setup command and a release-owned picker",
+            "`spec.auth.guide.startURL`",
+            "What leaving the field blank means",
+            "every visible authorization, operation, and Trigger field",
+            "name the exact untested page, scope, claim, or picker behavior",
+        ):
+            self.assertIn(fragment, contents)
+
     def test_rules_reject_vague_normalize_and_runtime_names(self) -> None:
         paths = (
             ROOT / "AGENTS.md",

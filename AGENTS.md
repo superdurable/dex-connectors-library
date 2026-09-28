@@ -3,6 +3,11 @@
 Open-source Dex-native connector SDKs, provider connectors, manifests, code
 generation, React primitives, directory UI, and examples.
 
+After a contributor enters this checkout, this file, `docs/`, and the owning
+module README are the sole connector-authoring authority. The installed Dex
+Connector Contributor skill may locate and bootstrap the repository, but it
+does not own implementation, acceptance, or release rules.
+
 ## Plan Mode
 
 Every implementation plan includes Tests, Documentation, and UI/UX. Use
@@ -64,6 +69,26 @@ Every implementation plan includes Tests, Documentation, and UI/UX. Use
   changes do not modify it.
 - Never edit generated connector code. Change the manifest or generator and run
   the generation check.
+- Before changing authorization, operation, Trigger, example, or UI
+  configuration, read [configuration guidance](docs/configuration-guidance.md)
+  and audit every field visible in Dex Web Connections for every affected
+  runnable example.
+
+### Connector-local example and live verification
+
+- Every new connector or user-visible capability includes a checked-in runnable
+  example. A behavioral fix extends the smallest example that proves the fix.
+  Documentation-only, generated-only, or internal refactors may rely on an
+  existing example only when it still covers the unchanged public path and the
+  pull request records why no example change was needed.
+- Treat that example as the minimal consuming application and primary end-to-end
+  verification path. Run it against a real Dex stack, not only a fake provider
+  or headless routing check.
+- When safe provider authorization is available, exercise the same example
+  against the real provider through the user-controlled Dex Web Connections or
+  OAuth flow. Never ask for pasted tokens or browser credentials. Otherwise
+  name the exact unverified live behavior and do not claim live or end-to-end
+  verification.
 
 ### Connector Configuration UX
 
@@ -114,9 +139,9 @@ Every implementation plan includes Tests, Documentation, and UI/UX. Use
 ## Dex Semantics and Skill Routing
 
 - Before changing Connector Step options, branches, retry, durability, Trigger
-  delivery, Flow examples, or other Dex semantics, load the installed
-  `dex-connector-contributor` skill through the host's native skill mechanism.
-  It loads `dex-sdk` for shared Dex application semantics.
+  delivery, Flow examples, or other Dex semantics, load the installed `dex-sdk`
+  skill through the host's native skill mechanism and follow its Core and Go
+  guidance. This repository owns the connector-specific rules.
 - If the skill is unavailable, stop the Dex application-modeling portion and
   follow https://docs.superdurable.io/build-with-ai/dex-developer-skill.
 - Only a happy-path branch is required. Mark every other branch `optional: true`.
