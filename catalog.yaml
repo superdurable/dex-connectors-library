@@ -8,6 +8,7 @@ directories:
   - connectors/google/gemini
   - connectors/google/gmail
   - connectors/google/spreadsheet
+  - connectors/hackernews
   - connectors/linkedin
   - connectors/meta
   - connectors/mistral

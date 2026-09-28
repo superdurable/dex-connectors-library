@@ -197,6 +197,10 @@ func externalValidateAuth(t *testing.T, release connectorRelease) {
 	t.Helper()
 	auth := release.Manifest.Spec.Auth
 	switch auth.Type {
+	case "none":
+		if len(auth.Fields) != 0 || auth.OAuth2 != nil {
+			t.Fatalf("%s public auth must not declare credentials or OAuth metadata", release.ConnectorID)
+		}
 	case "apiKey":
 		if len(auth.Fields) == 0 {
 			t.Fatalf("%s API-key auth has no fields", release.ConnectorID)

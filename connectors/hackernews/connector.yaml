@@ -1,0 +1,67 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: hacker-news-daily
+  displayName: Hacker News Daily
+  description: Read public Hacker News feeds, stories, and discussions for a daily developer digest with direct source links.
+  company: Hacker News
+  version: v0.1.0
+spec:
+  provider: hacker-news
+  codegen:
+    go:
+      package: hackernews
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Hacker News public API base URL.
+        default: https://hacker-news.firebaseio.com/v0
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one HTTP request.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum bytes accepted from one API response.
+        default: 1048576
+  auth:
+    type: none
+    connectionKind: none
+    fields: []
+  operations:
+    - name: listStoryIDs
+      goName: ListStoryIDs
+      inputType: ListStoryIDsInput
+      outputType: StoryIDs
+      kind: query
+      description: Read a bounded snapshot of the top, best, new, Ask HN, or Show HN feed in provider order.
+      idempotency: none
+      authorization: none
+      branches:
+        - {id: listed, goName: Listed, description: The feed snapshot was read.}
+        - {id: providerRejected, goName: ProviderRejected, description: Hacker News rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Hacker News returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection configuration is invalid., optional: true}
+      execution: &queryExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 65m}
+    - name: getItem
+      goName: GetItem
+      inputType: GetItemInput
+      outputType: Item
+      kind: query
+      description: Read one public story or comment, its child IDs, and its direct Hacker News link.
+      idempotency: none
+      authorization: none
+      branches:
+        - {id: found, goName: Found, description: The public item was read.}
+        - {id: notFound, goName: NotFound, description: "The item is missing, deleted, or dead.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Hacker News rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Hacker News returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection configuration is invalid., optional: true}
+      execution: *queryExecution
