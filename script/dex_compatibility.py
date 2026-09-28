@@ -258,7 +258,18 @@ def test_current_examples(root: Path, output: Path, dexcli: Path, temporary_root
     for example in flow_examples(root):
         connector_root = next(path for path in proxies if path in example.parents)
         name, version = proxies[connector_root]
-        run_visualize(example, output / example.parent.name, dexcli, name, version, proxy.as_uri())
+        consumer = output / example_consumer_name(connector_root.relative_to(root).as_posix(), example)
+        run_visualize(example, consumer, dexcli, name, version, proxy.as_uri())
+
+
+def example_consumer_name(connector_directory: str, example: Path) -> str:
+    """Names an example's temporary consumer module after its connector directory.
+
+    Several connectors ship an example with the same folder name, such as
+    summarize-text, so the example name alone collides.
+    """
+    connector = connector_directory.removeprefix("connectors/").strip("/").replace("/", "-")
+    return f"{connector}-{example.parent.name}"
 
 
 def run_visualize(source: Path, consumer: Path, dexcli: Path, connector_module: str, version: str, proxy_url: str | None = None) -> None:
@@ -396,7 +407,7 @@ def test_released_examples(releases: list[dict[str, object]], output: Path, dexc
             if "GetSteps(" in source.read_text():
                 released_examples.append(source.parent)
         for example in released_examples:
-            run_visualize(example, output / f"{Path(prefix).name}-{example.parent.name}", dexcli, connector_module, version)
+            run_visualize(example, output / example_consumer_name(prefix, example), dexcli, connector_module, version)
 
 
 def test_dex_web(dex_release: dict[str, object], root: Path, artifacts: Path, temporary_root: Path) -> None:
