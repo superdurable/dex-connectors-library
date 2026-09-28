@@ -62,21 +62,23 @@ Every implementation plan includes Tests, Documentation, and UI/UX. Use
 - Never edit generated connector code. Change the manifest or generator and run
   the generation check.
 
-### OAuth/OIDC Authorization Evidence
+### Optional OAuth/OIDC Authorization Evidence
 
 - This evidence applies only when adding a connector or operation whose manifest
   sets `spec.auth.type: oauth2`, including OAuth 2.0 and OpenID Connect.
-- Complete the real provider application, API, or scope configuration and attach
-  a screenshot to the pull request description. It need not show operation
-  execution, but must show the provider and relevant enabled APIs or scopes.
+- Open the pull request before requesting live authorization testing or evidence.
+  Evidence is recommended, never a prerequisite for opening or early review.
+- After opening the pull request, remind the author to test the real provider
+  application, API, or scope configuration. They may attach a screenshot to the
+  pull request description showing the provider and enabled APIs or scopes.
 - API keys, manually entered tokens, webhook secrets, and other static
-  credentials do not require this evidence.
+  credentials do not need this recommendation.
 - Redact tokens, client secrets, account details, and unrelated personal data.
   Do not commit authorization screenshots to the repository.
-- An author may skip the screenshot only when the pull request gives a specific
-  reason. Never fabricate authorization evidence or claim unperformed setup.
-- Reviewers confirm exactly one evidence option is selected, the requirement is
-  applied correctly, and the screenshot or skip reason is acceptable.
+- If live authorization testing is incomplete, say so plainly. Never fabricate
+  authorization evidence or claim unperformed setup.
+- Reviewers treat the evidence as advisory and do not block early connector
+  sharing solely because it is absent.
 
 ## Dex Semantics and Skill Routing
 

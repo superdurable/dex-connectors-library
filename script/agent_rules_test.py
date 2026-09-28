@@ -80,7 +80,7 @@ class AgentRulesTest(unittest.TestCase):
                 for fragment in required_fragments:
                     self.assertIn(fragment, contents)
 
-    def test_oauth_authorization_evidence_rules_are_synchronized(self) -> None:
+    def test_oauth_authorization_recommendations_are_synchronized(self) -> None:
         paths = (
             ROOT / "AGENTS.md",
             ROOT / ".cursor" / "rules" / "oauth-authorization-evidence.mdc",
@@ -90,44 +90,55 @@ class AgentRulesTest(unittest.TestCase):
             "`spec.auth.type: oauth2`",
             "including OAuth 2.0 and OpenID Connect",
             "API keys, manually entered tokens, webhook secrets",
-            "attach\n  a screenshot to the pull request description",
+            "Open the pull request before requesting live authorization testing",
+            "Evidence is recommended, never a prerequisite for opening or early review",
+            "After opening the pull request, remind the author to test",
+            "attach a screenshot to the pull request description",
             "Do not commit authorization screenshots to the repository",
-            "skip the screenshot only when the pull request gives a specific\n  reason",
+            "If live authorization testing is incomplete, say so plainly",
             "Never fabricate authorization evidence",
-            "Reviewers confirm exactly one evidence option is selected",
+            "do not block early connector sharing solely because it is absent",
         )
         for path in paths:
             with self.subTest(path=path):
                 contents = path.read_text(encoding="utf-8")
+                normalized_contents = " ".join(contents.split())
                 for fragment in required_fragments:
-                    self.assertIn(fragment, contents)
+                    self.assertIn(fragment, normalized_contents)
+                self.assertNotIn("skip the screenshot only when", normalized_contents)
+                self.assertNotIn("Reviewers confirm exactly one", normalized_contents)
 
-    def test_pull_request_template_requires_evidence_or_a_skip_reason(self) -> None:
+    def test_pull_request_template_keeps_authorization_evidence_optional(self) -> None:
         template = (ROOT / ".github" / "PULL_REQUEST_TEMPLATE.md").read_text(
             encoding="utf-8"
         )
+        normalized_template = " ".join(template.split())
         required_fragments = (
             "`spec.auth.type: oauth2`",
-            "- [ ] Screenshot attached",
-            "- [ ] Screenshot skipped",
-            'Skip reason: <!-- Required when "Screenshot skipped" is selected. -->',
-            "### Reviewer checklist",
-            "Exactly one evidence option is selected",
-            "documented skip reason is specific and acceptable",
-            "Sensitive credentials and unrelated personal information are not exposed",
+            "This section is optional and must not block opening or early review",
+            "authors are encouraged to test the real",
+            "Authorization testing status:",
+            "Screenshot or attachment: <!-- Optional; add it to the PR description. -->",
+            "State plainly when live authorization testing is incomplete",
+            "must not block early connector sharing solely because it is absent",
         )
         for fragment in required_fragments:
-            self.assertIn(fragment, template)
+            self.assertIn(fragment, normalized_template)
+        self.assertNotIn("Screenshot skipped", normalized_template)
+        self.assertNotIn("Skip reason", normalized_template)
+        self.assertNotIn("Reviewer checklist", normalized_template)
 
     def test_readme_documents_oauth_authorization_evidence(self) -> None:
         contents = (ROOT / "README.md").read_text(encoding="utf-8")
+        normalized_contents = " ".join(contents.split())
         for fragment in (
             "`spec.auth.type: oauth2`",
             "This applies to OAuth 2.0 and OpenID Connect, not API",
-            "specific reason",
-            "Reviewers decide whether the screenshot or reason is",
+            "open the pull request early rather than waiting for",
+            "optionally attach a screenshot to the pull request description",
+            "Missing evidence must not block early connector",
         ):
-            self.assertIn(fragment, contents)
+            self.assertIn(fragment, normalized_contents)
 
     def test_cursor_hook_rejects_skipping_git_hooks(self) -> None:
         payload = json.dumps({"command": "git commit --no-verify -m test"})

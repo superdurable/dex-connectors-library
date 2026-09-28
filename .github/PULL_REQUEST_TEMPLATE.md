@@ -6,28 +6,24 @@
 
 <!-- List automated tests and manual checks. -->
 
-## OAuth/OIDC authorization evidence
+## Optional OAuth/OIDC authorization testing
 
-Required only when this pull request adds a connector or operation whose
-manifest sets `spec.auth.type: oauth2`. API keys and other static credentials
-do not require this evidence.
-
-Select exactly one option:
-
-- [ ] Screenshot attached
-- [ ] Screenshot skipped
+This section is optional and must not block opening or early review of a pull
+request. After opening a pull request that adds a connector or operation whose
+manifest sets `spec.auth.type: oauth2`, authors are encouraged to test the real
+provider authorization configuration and share a screenshot. API keys and other
+static credentials do not need this testing recommendation.
 
 Connector/operation:
 
-Screenshot or attachment:
+Authorization testing status:
 
-Skip reason: <!-- Required when "Screenshot skipped" is selected. -->
+Screenshot or attachment: <!-- Optional; add it to the PR description. -->
+
+Notes: <!-- State plainly when live authorization testing is incomplete. -->
 
 Do not commit the screenshot to the repository. Redact tokens, client secrets,
 account details, and unrelated personal information before attaching it.
 
-### Reviewer checklist
-
-- [ ] Exactly one evidence option is selected, and the OAuth/OIDC applicability is correct.
-- [ ] The screenshot is sufficient, or the documented skip reason is specific and acceptable.
-- [ ] Sensitive credentials and unrelated personal information are not exposed.
+Reviewers should treat this evidence as advisory and must not block early
+connector sharing solely because it is absent.
