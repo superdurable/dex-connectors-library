@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 	gemini "github.com/superdurable/dex-connectors-library/connectors/google/gemini"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/llm"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -110,4 +111,64 @@ func TestGenerateContentFactoryFailsClosed(t *testing.T) {
 		gemini.NewGenerateContentStep(gemini.GenerateContentStepConfig[string]{Connection: gemini.Connection{}})
 	}, "a zero Connection is rejected")
 	require.Equal(t, "gemini.Connection{[REDACTED]}", connection.String())
+}
+
+type generatedTextTarget struct {
+	dex.StepDefaultsNoWaitFor[gemini.GenerateTextResult]
+}
+
+func (generatedTextTarget) Execute(dex.Context, gemini.GenerateTextResult) (*dex.StepDecision, error) {
+	return dex.GracefulComplete(nil), nil
+}
+
+func mapTextPrompt(prompt string) gemini.GenerateTextRequest {
+	return userTextRequest(prompt)
+}
+
+func TestGenerateTextDefinitionMatchesTheSharedContract(t *testing.T) {
+	definition := gemini.GenerateTextDefinition
+	require.NoError(t, definition.Validate())
+	require.Equal(t, sdkgo.OperationRef{ConnectorID: "gemini", OperationID: llm.TextGenerationOperationID}, definition.Operation)
+	optional := map[sdkgo.BranchID]bool{}
+	for _, branch := range definition.Branches {
+		optional[branch.ID] = branch.Optional
+	}
+	shared := map[sdkgo.BranchID]bool{}
+	for _, branch := range llm.TextGenerationBranchDefinitions() {
+		shared[branch.ID] = branch.Optional
+	}
+	require.Equal(t, shared, optional)
+}
+
+func TestGenerateTextFactoryAppliesTheGenerationBudget(t *testing.T) {
+	step := gemini.NewGenerateTextStep(gemini.GenerateTextStepConfig[string]{
+		StepType: "GenerateAnswer", ConnectionName: "gemini-factory", Annotations: geminiAnnotations(),
+		Connection: factoryConnection(t, "gemini-factory"), MapToOperationInput: mapTextPrompt, Generated: sdkgo.GoTo(generatedTextTarget{}),
+	})
+	options := step.GetStepOptions()
+	require.Equal(t, dex.StepDurabilitySync, options.ExecuteDurability)
+	require.Equal(t, 900*time.Second, options.ExecuteMethodTimeout)
+	require.Equal(t, 60*time.Second, options.HeartbeatTimeout, "the shared pipeline heartbeats every 5 seconds while Gemini is silent")
+	require.Equal(t, &dex.RetryPolicy{
+		InitialInterval: 2 * time.Second, BackoffCoefficient: 2, MaximumInterval: time.Minute,
+		MaximumAttempts: 4, TotalDuration: 30 * time.Minute,
+	}, options.ExecuteRetry)
+}
+
+func TestGenerateTextFactoryFailsClosed(t *testing.T) {
+	connection := factoryConnection(t, "gemini-factory")
+	require.Panics(t, func() {
+		gemini.NewGenerateTextStep(gemini.GenerateTextStepConfig[string]{
+			StepType: "GenerateAnswer", Annotations: geminiAnnotations(), Connection: connection, MapToOperationInput: mapTextPrompt,
+		})
+	}, "the generated branch is required")
+	require.Panics(t, func() {
+		gemini.NewGenerateTextStep(gemini.GenerateTextStepConfig[string]{
+			StepType: "GenerateAnswer", ConnectionName: "another-connection", Annotations: geminiAnnotations(),
+			Connection: connection, MapToOperationInput: mapTextPrompt, Generated: sdkgo.GoTo(generatedTextTarget{}),
+		})
+	}, "a static connection name must match the runtime connection")
+	require.Panics(t, func() {
+		gemini.NewGenerateTextStep(gemini.GenerateTextStepConfig[string]{Connection: gemini.Connection{}})
+	}, "a zero Connection is rejected")
 }

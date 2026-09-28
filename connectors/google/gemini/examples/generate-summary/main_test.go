@@ -144,7 +144,7 @@ func TestSummaryModelComesFromTheDexWebStepPick(t *testing.T) {
 			"schemaVersion": localconfig.SchemaVersion,
 			"connections": []any{map[string]any{
 				"connectorId": gemini.ConnectorID, "modulePath": "github.com/superdurable/dex-connectors-library/connectors/google/gemini",
-				"moduleVersion": "v0.2.1", "provider": "google", "connectionName": generatesummary.ConnectionName,
+				"moduleVersion": "v0.3.0", "provider": "google", "connectionName": generatesummary.ConnectionName,
 				"configuration": map[string]any{}, "credentials": map[string]any{"api_key": "AIzaSENTINEL-step-pick"},
 			}},
 		})

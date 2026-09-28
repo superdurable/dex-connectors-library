@@ -456,13 +456,20 @@ The unit lists models through a Studio command:
 - The command ID is `listModels`, its capability is `<connector>.models-list`,
   and both the unit and `studio.setup` declare that capability.
 - It is a read-only `GET` pinned to the provider's list URL, with
-  `credential: {field: api_key, scheme: bearer}`, so the Dex Web broker injects
-  the key and the key never reaches the browser frame.
+  `credential: {field: api_key, scheme: bearer}` unless the provider's native
+  list needs the key in a header (see the header-scheme bullet below), so the
+  Dex Web broker injects the key and the key never reaches the browser frame.
 - A lab whose keys work on only one of several fixed hosts declares one
   command per host, `listModels` for the primary host and one more ID for each
   other host, and the bundle tries them in order with
   `executeFirstAcceptedProviderCommand`. Hosts are never templated from iframe
   parameters.
+- A native list that needs the key in a provider header, such as Gemini's
+  `x-goog-api-key`, uses `credential: {field: api_key, scheme: header, header: ...}`.
+  Dex Web through cli-v0.13.8 rejects that scheme before sending, so the lab
+  also declares a bearer command for its OpenAI-compatible list when the
+  provider offers one, and the bundle tries the native `listModels` first with
+  `executeFirstAcceptedProviderCommand`.
 - A list failure falls back to manual model entry.
 
 ### Liveness and budgets
