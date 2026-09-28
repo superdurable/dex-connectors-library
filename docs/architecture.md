@@ -255,6 +255,26 @@ through the Dex Web broker, falls back to `GET https://us.api.x.ai/v1/models`,
 and hides multi-agent models, which do not serve Chat Completions, and
 non-text models behind **Show all models**.
 
+## Mistral connector
+
+Mistral is a separate module and API-key Connection for the Mistral API. Its
+`generateText` operation is the shared text-generation Query: the connector
+declares only an `openaichat` Profile for `POST {endpoint}/chat/completions`,
+and the `sdkgo/llm` pipeline owns validation, the error table, schema checks,
+streaming, and heartbeats. The `endpoint` field accepts only the documented
+global, EU, and US base URLs, so the key travels only as a bearer token to a
+Mistral host; tests reach a loopback fake provider through
+`WithBaseURLForTest`. Mistral's request schema rejects unknown fields, so the
+Profile's allowlist keeps every body to the fields the wire format needs and
+never sends `stream_options`. Every request streams, with the streaming
+budget: a 900-second sync Execute, a 60-second heartbeat timeout, and four
+attempts over 30 minutes.
+
+The Studio bundle's `modelPicker` lists `GET https://api.mistral.ai/v1/models`
+through the Dex Web broker, shows models whose card sets
+`capabilities.completion_chat` and is not archived, and hides the rest behind
+**Show all models**.
+
 ## GitHub connector
 
 GitHub exposes generated Query factories for authenticated profile plus primary

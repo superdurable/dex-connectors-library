@@ -55,6 +55,13 @@ cd ui
 npm ci
 npm test
 npm run build
+cd ../../mistral
+GOWORK=off go test -race ./...
+GOWORK=off go vet ./...
+cd ui
+npm ci
+npm test
+npm run build
 cd ../../openai
 GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
@@ -70,7 +77,7 @@ cd ../../..
 make check
 go test -race ./...
 go vet ./...
-go run ./cmd/connectorctl validate connectors/anthropic/connector.yaml connectors/github/connector.yaml connectors/google/gemini/connector.yaml connectors/google/gmail/connector.yaml connectors/google/spreadsheet/connector.yaml connectors/linkedin/connector.yaml connectors/meta/connector.yaml connectors/openai/connector.yaml connectors/slack/connector.yaml connectors/xai/connector.yaml
+go run ./cmd/connectorctl validate connectors/anthropic/connector.yaml connectors/github/connector.yaml connectors/google/gemini/connector.yaml connectors/google/gmail/connector.yaml connectors/google/spreadsheet/connector.yaml connectors/linkedin/connector.yaml connectors/meta/connector.yaml connectors/mistral/connector.yaml connectors/openai/connector.yaml connectors/slack/connector.yaml connectors/xai/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/anthropic/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/github/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/google/gemini/connector.yaml
@@ -78,6 +85,7 @@ go run ./cmd/connectorctl generate --check connectors/google/gmail/connector.yam
 go run ./cmd/connectorctl generate --check connectors/google/spreadsheet/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/linkedin/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/meta/connector.yaml
+go run ./cmd/connectorctl generate --check connectors/mistral/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/openai/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/xai/connector.yaml
 go run ./cmd/connectorctl catalog --check --registry connectors.yaml
@@ -140,6 +148,12 @@ The suite must prove:
   regional hosts, and a loopback-only test base URL, and its model picker
   shows aliases, hides multi-agent and non-text models, and falls back to the
   US regional list;
+- Mistral passes the shared `llmtest` exchange suite with its streaming
+  Profile, Mistral's top-level error envelope, the request-field allowlist
+  without `stream_options`, `model_length` truncation, `none` and `high`
+  reasoning effort only on adjustable-reasoning models, the three documented
+  endpoints, and loopback-only test base URL, and its model picker shows only
+  chat-capable, unarchived models and badges deprecation;
 - GitHub profile/email selection, scope/revocation branches, response bounds,
   public-only pagination, deduplication, sorting, truncation, and rate-limit
   delay tests remain green;
@@ -245,6 +259,9 @@ The integration suite verifies:
 - xAI Grok `generateText` runs the shared `llmtest` real-Dex scenarios, and
   the Grok summarize-text example completes generated and blocked routes and
   streams the generated text.
+- Mistral `generateText` runs the shared `llmtest` real-Dex scenarios, and the
+  mistral-summarize-text example completes generated, `model_length`
+  truncated, and blocked routes and streams the generated text.
 - a Trigger inbox consumes an RPC event whose Flow completed or never started,
   and a restarted runner replays past it (Slack thread-approval steps 8 and 9),
   logging each skip once and each replay summary;
