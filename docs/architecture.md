@@ -216,6 +216,25 @@ The Studio bundle's `modelPicker` lists `GET https://api.meta.ai/v1/models`
 through the Dex Web broker and hides models outside Muse Spark behind
 **Show all models**.
 
+## Claude connector
+
+Claude is a separate module and API-key Connection in the `connectors/anthropic`
+company directory, with Go package `claude`. Its `generateText` operation is
+the shared text-generation Query: the connector supplies a native
+`llm.WireFormat` for `POST https://api.anthropic.com/v1/messages`, and the
+`sdkgo/llm` pipeline owns validation, the error table, schema checks,
+streaming, and heartbeats. Every request streams, as Claude recommends for
+long requests, so the operation uses the streaming budget: a 900-second sync
+Execute, a 60-second heartbeat timeout, and four attempts over 30 minutes.
+The key travels only as a bearer token to the one fixed host, beside the
+required `anthropic-version` header and an optional `anthropic-workspace-id`;
+tests reach a loopback fake provider through `WithBaseURLForTest`.
+
+The Studio bundle's `modelPicker` lists `GET https://api.anthropic.com/v1/models`
+through the Dex Web broker with a fixed `anthropic-version` header and pages
+with `after_id`. Dex Web `cli-v0.13.8` and earlier drop fixed headers, so the
+list fails there and the picker offers manual model ID entry.
+
 ## GitHub connector
 
 GitHub exposes generated Query factories for authenticated profile plus primary
