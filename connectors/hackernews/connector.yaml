@@ -16,17 +16,17 @@ spec:
       - name: baseUrl
         goName: BaseURL
         type: url
-        description: Hacker News public API base URL.
+        description: Hacker News Firebase API base URL; this is a fixed public endpoint, so leave the field blank unless a loopback test server is being used.
         default: https://hacker-news.firebaseio.com/v0
       - name: timeout
         goName: Timeout
         type: duration
-        description: Maximum duration of one HTTP request.
+        description: Maximum duration for one Hacker News HTTP request, using a positive Go duration such as 15s or 1m; leave blank for the displayed default.
         default: 15s
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: Maximum bytes accepted from one API response.
+        description: Maximum bytes accepted from one Hacker News response; enter a positive integer only to change the safety limit. Oversized responses select invalidResponse.
         default: 1048576
   auth:
     type: none

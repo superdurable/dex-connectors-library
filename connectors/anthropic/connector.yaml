@@ -33,7 +33,7 @@ spec:
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: Maximum total provider response size. A larger response selects invalidResponse.
+        description: Maximum complete provider response in bytes; enter a positive integer only when a proxy needs a different safety limit. Larger responses select invalidResponse.
         required: false
         default: 8388608
   auth:
@@ -43,8 +43,14 @@ spec:
       - name: api_key
         goName: APIKey
         type: secretString
-        description: Claude API key from the Claude Console, sent only in the Authorization bearer header.
+        description: Secret Claude API key from Claude Console > Settings > API keys; copy the key when it is created. It is sent only as an Authorization bearer token.
         required: true
+    guide:
+      startURL: https://platform.claude.com/settings/keys
+      steps:
+        - In Claude Console, select the intended workspace, then open Settings > API keys.
+        - Choose Create key, name it, set an expiration if required, and copy the secret displayed once.
+        - Leave workspaceId blank for a key scoped to one workspace; otherwise copy the wrkspc_ identifier from Settings > Workspaces.
   studio:
     setup:
       entrypoint: index.html

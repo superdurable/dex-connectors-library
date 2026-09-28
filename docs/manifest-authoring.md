@@ -27,6 +27,20 @@ Providers that issue more than one OAuth token declare `userScopes` and map
 token-response JSON paths to credential fields. Fields without a mapping are
 entered through a host-owned secret form and never sent to Connector Studio.
 
+Every credentialed connector also declares `auth.guide`. Dex Web presents its
+starting URL and ordered provider-console steps before any credential fields.
+The steps name the exact page path and creation action; OAuth guides also tell
+the author to register the Redirect URI that Dex Web displays and makes
+copyable.
+
+```yaml
+guide:
+  startURL: https://provider.example/settings/keys
+  steps:
+    - Open Settings > API keys and choose Create key.
+    - Copy the secret shown once and store it in the field below.
+```
+
 ```yaml
 oauth2:
   scopes: [chat:write]
@@ -34,6 +48,20 @@ oauth2:
   credentialMappings:
     - {credential: bot_token, source: access_token}
     - {credential: user_token, source: authed_user.access_token}
+```
+
+When a required credential is available from a read-only provider identity
+endpoint, declare `credentialDerivations` instead of rendering a duplicate
+free-text field. Dex Web calls the HTTPS endpoint with the new access token,
+extracts the named string claim, and, when `verifiedBy` is present, accepts it
+only when that boolean claim is true.
+
+```yaml
+credentialDerivations:
+  - credential: primary_email
+    endpoint: https://openidconnect.googleapis.com/v1/userinfo
+    source: email
+    verifiedBy: email_verified
 ```
 
 ```yaml

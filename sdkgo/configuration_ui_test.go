@@ -13,15 +13,20 @@ import (
 func TestConnectorConfigurationUIValidatesComposition(t *testing.T) {
 	configuration := sdkgo.ConnectorConfigurationUI{Units: []sdkgo.ConnectorUIUnit{
 		{
-			ID: "approvalChannel", UnitID: "channelPicker", Label: "Approval channel", Required: true,
+			ID: "approvalChannel", UnitID: "channelPicker", Label: "Approval channel", Description: "Select the channel that receives approval requests.", Required: true,
 			Bindings: []sdkgo.ConnectorUIBinding{{Port: "channelId", JSONPointer: "/approval/channelId"}},
 		},
 		{
-			ID: "messageTemplate", UnitID: "textInput", Label: "Message",
+			ID: "messageTemplate", UnitID: "textInput", Label: "Message", Description: "Enter the message sent for each approval request.",
 			Bindings: []sdkgo.ConnectorUIBinding{{Port: "text", JSONPointer: "/message~1template"}},
 		},
 	}}
 	require.NoError(t, configuration.Validate())
+
+	missingDescription := configuration
+	missingDescription.Units = append([]sdkgo.ConnectorUIUnit(nil), configuration.Units...)
+	missingDescription.Units[0].Description = ""
+	require.ErrorContains(t, missingDescription.Validate(), "description is required")
 
 	duplicate := configuration
 	duplicate.Units = append(duplicate.Units, configuration.Units[0])
@@ -46,7 +51,7 @@ func TestConnectorConfigurationRefRequiresStableStepIdentity(t *testing.T) {
 
 func TestStepConfigurationUIIsIsolatedFromCallerMutation(t *testing.T) {
 	configuration := sdkgo.ConnectorConfigurationUI{Units: []sdkgo.ConnectorUIUnit{{
-		ID: "channel", UnitID: "channelPicker", Label: "Channel", Required: true,
+		ID: "channel", UnitID: "channelPicker", Label: "Channel", Description: "Select the channel used by this operation.", Required: true,
 		Bindings: []sdkgo.ConnectorUIBinding{{Port: "channelId", JSONPointer: "/channelId"}},
 	}}}
 	step := sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[string, string, string]{

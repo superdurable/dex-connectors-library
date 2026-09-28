@@ -22,7 +22,7 @@ spec:
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: Maximum total provider response size. A larger response selects invalidResponse.
+        description: Maximum complete provider response in bytes; enter a positive integer only when a proxy needs a different safety limit. Larger responses select invalidResponse.
         required: false
         default: 8388608
   auth:
@@ -32,8 +32,14 @@ spec:
       - name: api_key
         goName: APIKey
         type: secretString
-        description: Meta Model API key from the Model API dashboard, sent only in the Authorization bearer header.
+        description: Secret Meta Model API team key from Model API dashboard > API keys; expected format is LLM|<id>|<secret>. It is sent only as an Authorization bearer token.
         required: true
+    guide:
+      startURL: https://dev.meta.ai/
+      steps:
+        - Sign in to the Meta Model API dashboard and open API keys.
+        - Choose Create API key, give the team key a descriptive name, and copy the LLM|<id>|<secret> value shown once.
+        - Store the value here as a secret; leave model and response-limit fields blank to use their displayed defaults.
   studio:
     setup:
       entrypoint: index.html

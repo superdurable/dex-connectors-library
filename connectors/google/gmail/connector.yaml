@@ -16,31 +16,31 @@ spec:
       - name: endpoint
         goName: Endpoint
         type: url
-        description: Gmail API endpoint.
+        description: Gmail API base URL; leave blank for Google's public v1 API. Enter an absolute HTTPS URL only for an explicitly supported compatible gateway.
         required: false
         default: https://gmail.googleapis.com/gmail/v1
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: Maximum provider response size.
+        description: Maximum complete Gmail API response in bytes; enter a positive integer only to change the safety limit. Oversized responses select invalidResponse.
         required: false
         default: 1048576
       - name: maxMessageBytes
         goName: MaxMessageBytes
         type: integer
-        description: Maximum encoded RFC message size.
+        description: Maximum base64url-encoded RFC 5322 message size in bytes accepted for send or reply operations; enter a positive integer only to change the safety limit.
         required: false
         default: 10485760
       - name: pollInterval
         goName: PollInterval
         type: duration
-        description: Interval used by local Gmail polling Triggers.
+        description: Delay between local Gmail Trigger polls, using a positive Go duration such as 10s or 1m; shorter intervals increase Gmail API usage.
         required: false
         default: 10s
       - name: pollPageSize
         goName: PollPageSize
         type: integer
-        description: Maximum recent inbox messages inspected by each polling Trigger.
+        description: Positive count of recent inbox messages inspected per Trigger poll; increase only when matching mail may fall outside the displayed default window.
         required: false
         default: 25
   auth:
@@ -50,17 +50,25 @@ spec:
       - name: access_token
         goName: AccessToken
         type: secretString
-        description: Short-lived Google OAuth access token.
+        description: Secret short-lived Google OAuth access token produced automatically after authorization; do not enter it manually.
         required: true
       - name: primary_email
         goName: PrimaryEmail
         type: string
-        description: Verified primary email from the Google OIDC identity claim.
+        description: Verified primary Google email derived automatically from the read-only OpenID Connect UserInfo response; do not enter it manually.
         required: true
+    guide:
+      startURL: https://console.cloud.google.com/apis/credentials
+      steps:
+        - Select a Google Cloud project, open APIs & Services > Library, and enable Gmail API.
+        - In Google Auth Platform, configure Branding, Audience, and Data Access for the displayed scopes; add test users while the app is in Testing.
+        - Open Clients > Create client > Web application, add the exact Redirect URI shown below, then copy the client ID and one-time client secret.
     oauth2:
       authorizationEndpoint: https://accounts.google.com/o/oauth2/v2/auth
       tokenEndpoint: https://oauth2.googleapis.com/token
       scopes: [openid, https://www.googleapis.com/auth/userinfo.email, https://www.googleapis.com/auth/gmail.readonly, https://www.googleapis.com/auth/gmail.send]
+      credentialDerivations:
+        - {credential: primary_email, endpoint: https://openidconnect.googleapis.com/v1/userinfo, source: email, verifiedBy: email_verified}
       pkce: true
   studio:
     setup:
@@ -72,17 +80,17 @@ spec:
     units:
       - id: searchQueryInput
         goName: SearchQueryInput
-        description: Enter a Gmail search query.
+        description: Enter a Gmail search query using Gmail search operators; leave blank to inspect recent inbox messages without an additional query.
         outputs:
           - {name: query, goName: Query, type: string}
       - id: emailListInput
         goName: EmailListInput
-        description: Enter one or more email addresses.
+        description: Enter one or more complete email addresses used to restrict matching senders.
         outputs:
           - {name: emails, goName: Emails, type: stringList}
       - id: textInput
         goName: TextInput
-        description: Enter email body or matching text.
+        description: Enter the literal email body to send, or plain text that an incoming message must contain, depending on the operation or Trigger label.
         outputs:
           - {name: text, goName: Text, type: string}
   triggers:

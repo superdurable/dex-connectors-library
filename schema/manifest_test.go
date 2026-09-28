@@ -87,6 +87,9 @@ spec:
       - {name: bot_token, goName: BotToken, type: secretString, description: Bot token., required: true}
       - {name: user_token, goName: UserToken, type: secretString, description: User token., required: true}
       - {name: app_token, goName: AppToken, type: secretString, description: App token., required: true}
+    guide:
+      startURL: https://api.slack.com/apps
+      steps: [Create or select an app and copy its credentials.]
     oauth2:
       authorizationEndpoint: https://slack.com/oauth/v2/authorize
       tokenEndpoint: https://slack.com/api/oauth.v2.access
@@ -95,6 +98,8 @@ spec:
       credentialMappings:
         - {credential: bot_token, source: access_token}
         - {credential: user_token, source: authed_user.access_token}
+      credentialDerivations:
+        - {credential: app_token, endpoint: https://slack.com/api/auth.test, source: url, verifiedBy: ok}
       pkce: true
   studio:
     setup:
@@ -128,6 +133,7 @@ spec:
 	require.NoError(t, err)
 	require.Equal(t, []string{"channels:history"}, manifest.Spec.Auth.OAuth2.UserScopes)
 	require.Equal(t, "authed_user.access_token", manifest.Spec.Auth.OAuth2.CredentialMappings[1].Source)
+	require.Equal(t, "https://slack.com/api/auth.test", manifest.Spec.Auth.OAuth2.CredentialDerivations[0].Endpoint)
 	require.Equal(t, "listChannels", manifest.Spec.Studio.Commands[0].ID)
 	require.Equal(t, "bot_token", manifest.Spec.Studio.Commands[0].Request.Credential.Field)
 }
@@ -253,6 +259,9 @@ spec:
     fields:
       - {name: api_key, goName: APIKey, type: secretString, description: API key., required: true}
       - {name: region, goName: Region, type: string, description: Region., required: false}
+    guide:
+      startURL: https://example.com/keys
+      steps: [Create and copy an API key.]
   studio:
     setup:
       entrypoint: index.html

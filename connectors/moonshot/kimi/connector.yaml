@@ -28,7 +28,7 @@ spec:
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: Maximum total provider response size. A larger response selects invalidResponse.
+        description: Maximum complete provider response in bytes; enter a positive integer only when a gateway needs a different safety limit. Larger responses select invalidResponse.
         required: false
         default: 8388608
   auth:
@@ -38,8 +38,14 @@ spec:
       - name: api_key
         goName: APIKey
         type: secretString
-        description: Kimi API key from the Kimi API Platform console, sent only in the Authorization bearer header to the configured endpoint.
+        description: Secret Kimi API key from the selected Kimi Platform > API Keys page; copy the sk- value after creation. It is sent only as an Authorization bearer token to endpoint.
         required: true
+    guide:
+      startURL: https://platform.kimi.ai/
+      steps:
+        - Sign in to Kimi Platform and open Console > API Keys for the account and region that will own usage.
+        - Create a key, name it for this Dex connection, and copy the sk- secret shown after creation.
+        - Use the .ai endpoint for platform.kimi.ai keys or the .cn endpoint for platform.kimi.com keys; leave other fields blank for displayed defaults.
   studio:
     setup:
       entrypoint: index.html

@@ -16,25 +16,25 @@ spec:
       - name: endpoint
         goName: Endpoint
         type: url
-        description: Stripe API endpoint.
+        description: Stripe API base URL; leave blank for Stripe's public v1 API. Enter an absolute HTTPS URL only for an explicitly supported compatible gateway.
         required: false
         default: https://api.stripe.com/v1
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: Maximum provider response size.
+        description: Maximum complete Stripe API response in bytes; enter a positive integer only to change the safety limit. Oversized responses select invalidResponse.
         required: false
         default: 1048576
       - name: webhookMaxBodyBytes
         goName: WebhookMaxBodyBytes
         type: integer
-        description: Maximum signed webhook body size.
+        description: Maximum raw signed webhook request body in bytes; enter a positive integer only to change the safety limit. Larger bodies are rejected before signature verification.
         required: false
         default: 1048576
       - name: webhookSignatureTolerance
         goName: WebhookSignatureTolerance
         type: duration
-        description: Maximum age accepted for a Stripe webhook signature.
+        description: Maximum accepted Stripe-Signature timestamp age, using a positive Go duration such as 5m; reduce only when clocks are synchronized and replay tolerance can be stricter.
         required: false
         default: 5m
   auth:
@@ -44,13 +44,19 @@ spec:
       - name: secret_key
         goName: SecretKey
         type: secretString
-        description: Stripe restricted or secret API key with Checkout Session access.
+        description: Secret Stripe key from Developers > API keys; use an rk_test_/rk_live_ restricted key with Checkout Session access when possible, otherwise an sk_test_/sk_live_ key.
         required: true
       - name: webhook_secret
         goName: WebhookSecret
         type: secretString
-        description: Signing secret for the configured Stripe webhook endpoint.
+        description: Secret whsec_ signing secret from Developers > Webhooks > select the Dex endpoint > Signing secret > Reveal; this is different from an API key.
         required: true
+    guide:
+      startURL: https://dashboard.stripe.com/apikeys
+      steps:
+        - Choose Test mode or Live mode, open Developers > API keys, and create a restricted key with the Checkout Session permissions this connector needs or reveal the matching secret key.
+        - Open Developers > Webhooks, create or select the endpoint that sends Checkout Session events to the application, then reveal and copy its whsec_ signing secret.
+        - Keep the API key and webhook endpoint in the same Stripe mode; paste rk_/sk_ into secret_key and whsec_ into webhook_secret.
   triggers:
     - name: checkoutSessionUpdated
       goName: CheckoutSessionUpdated

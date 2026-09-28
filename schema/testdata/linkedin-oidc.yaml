@@ -27,6 +27,9 @@ spec:
         type: secretString
         description: Signed OIDC identity token.
         required: true
+    guide:
+      startURL: https://www.linkedin.com/developers/apps
+      steps: [Create an app and copy its OAuth credentials.]
     oauth2:
       protocol: oidc
       authorizationEndpoint: https://www.linkedin.com/oauth/v2/authorization

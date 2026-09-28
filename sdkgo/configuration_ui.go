@@ -29,8 +29,8 @@ type ConnectorUIUnit struct {
 	UnitID string `json:"unitId" yaml:"unitId"`
 	// Label is the application-facing unit label.
 	Label string `json:"label" yaml:"label"`
-	// Description optionally explains the unit's purpose.
-	Description string `json:"description,omitempty" yaml:"description,omitempty"`
+	// Description explains how to choose or obtain the configured value.
+	Description string `json:"description" yaml:"description"`
 	// Required reports whether the application must configure this unit.
 	Required bool `json:"required" yaml:"required"`
 	// Bindings map unit ports to application-owned configuration paths.
@@ -90,6 +90,9 @@ func (configuration ConnectorConfigurationUI) Validate() error {
 		}
 		if strings.TrimSpace(unit.Label) == "" {
 			return fmt.Errorf("Connector UI unit %q label is required", unit.ID)
+		}
+		if strings.TrimSpace(unit.Description) == "" {
+			return fmt.Errorf("Connector UI unit %q description is required", unit.ID)
 		}
 		if len(unit.Bindings) == 0 {
 			return fmt.Errorf("Connector UI unit %q requires at least one binding", unit.ID)

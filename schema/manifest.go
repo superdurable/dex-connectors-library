@@ -120,26 +120,40 @@ type Configuration struct {
 }
 
 type Auth struct {
-	Type           string  `yaml:"type" json:"type"`
-	ConnectionKind string  `yaml:"connectionKind" json:"connectionKind"`
-	Fields         []Field `yaml:"fields" json:"fields"`
-	OAuth2         *OAuth2 `yaml:"oauth2,omitempty" json:"oauth2,omitempty"`
+	Type           string              `yaml:"type" json:"type"`
+	ConnectionKind string              `yaml:"connectionKind" json:"connectionKind"`
+	Fields         []Field             `yaml:"fields" json:"fields"`
+	Guide          *AuthorizationGuide `yaml:"guide,omitempty" json:"guide,omitempty"`
+	OAuth2         *OAuth2             `yaml:"oauth2,omitempty" json:"oauth2,omitempty"`
+}
+
+type AuthorizationGuide struct {
+	StartURL string   `yaml:"startURL" json:"startURL"`
+	Steps    []string `yaml:"steps" json:"steps"`
 }
 
 type OAuth2 struct {
-	AuthorizationEndpoint string                   `yaml:"authorizationEndpoint" json:"authorizationEndpoint"`
-	TokenEndpoint         string                   `yaml:"tokenEndpoint" json:"tokenEndpoint"`
-	Scopes                []string                 `yaml:"scopes" json:"scopes"`
-	UserScopes            []string                 `yaml:"userScopes,omitempty" json:"userScopes,omitempty"`
-	CredentialMappings    []OAuthCredentialMapping `yaml:"credentialMappings,omitempty" json:"credentialMappings,omitempty"`
-	PKCE                  bool                     `yaml:"pkce" json:"pkce"`
-	Protocol              string                   `yaml:"protocol,omitempty" json:"protocol,omitempty"`
-	OIDC                  *OIDC                    `yaml:"oidc,omitempty" json:"oidc,omitempty"`
+	AuthorizationEndpoint string                      `yaml:"authorizationEndpoint" json:"authorizationEndpoint"`
+	TokenEndpoint         string                      `yaml:"tokenEndpoint" json:"tokenEndpoint"`
+	Scopes                []string                    `yaml:"scopes" json:"scopes"`
+	UserScopes            []string                    `yaml:"userScopes,omitempty" json:"userScopes,omitempty"`
+	CredentialMappings    []OAuthCredentialMapping    `yaml:"credentialMappings,omitempty" json:"credentialMappings,omitempty"`
+	CredentialDerivations []OAuthCredentialDerivation `yaml:"credentialDerivations,omitempty" json:"credentialDerivations,omitempty"`
+	PKCE                  bool                        `yaml:"pkce" json:"pkce"`
+	Protocol              string                      `yaml:"protocol,omitempty" json:"protocol,omitempty"`
+	OIDC                  *OIDC                       `yaml:"oidc,omitempty" json:"oidc,omitempty"`
 }
 
 type OAuthCredentialMapping struct {
 	Credential string `yaml:"credential" json:"credential"`
 	Source     string `yaml:"source" json:"source"`
+}
+
+type OAuthCredentialDerivation struct {
+	Credential string `yaml:"credential" json:"credential"`
+	Endpoint   string `yaml:"endpoint" json:"endpoint"`
+	Source     string `yaml:"source" json:"source"`
+	VerifiedBy string `yaml:"verifiedBy,omitempty" json:"verifiedBy,omitempty"`
 }
 
 type OIDC struct {
@@ -302,6 +316,20 @@ func (manifest Manifest) Validate() error {
 	if manifest.Spec.Auth.Type != "none" && manifest.Spec.Auth.ConnectionKind == "" {
 		problems = append(problems, "credential auth requires connectionKind")
 	}
+	if manifest.Spec.Auth.Type != "none" {
+		guide := manifest.Spec.Auth.Guide
+		if guide == nil || !isHTTPSURL(guide.StartURL) || len(guide.Steps) == 0 {
+			problems = append(problems, "credential auth requires an HTTPS authorization guide with steps")
+		} else {
+			for _, step := range guide.Steps {
+				if strings.TrimSpace(step) == "" {
+					problems = append(problems, "authorization guide steps must be non-empty")
+				}
+			}
+		}
+	} else if manifest.Spec.Auth.Guide != nil {
+		problems = append(problems, "authorization guide requires credential auth")
+	}
 	if manifest.Spec.Auth.Type == "oauth2" {
 		if manifest.Spec.Auth.OAuth2 == nil {
 			problems = append(problems, "oauth2 auth requires oauth2 metadata")
@@ -338,6 +366,12 @@ func (manifest Manifest) Validate() error {
 					problems = append(problems, "oauth2 credential mappings require unique credential fields and dotted JSON response paths")
 				}
 				seenMappings[mapping.Credential] = true
+			}
+			for _, derivation := range manifest.Spec.Auth.OAuth2.CredentialDerivations {
+				if !credentialFields[derivation.Credential] || seenMappings[derivation.Credential] || !isHTTPSURL(derivation.Endpoint) || !isValidJSONPath(derivation.Source) || (derivation.VerifiedBy != "" && !isValidJSONPath(derivation.VerifiedBy)) {
+					problems = append(problems, "oauth2 credential derivations require unique credential fields, HTTPS endpoints, and dotted JSON response paths")
+				}
+				seenMappings[derivation.Credential] = true
 			}
 		}
 	} else if manifest.Spec.Auth.OAuth2 != nil {

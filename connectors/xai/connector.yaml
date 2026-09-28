@@ -28,7 +28,7 @@ spec:
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: Maximum total provider response size. A larger response selects invalidResponse.
+        description: Maximum complete provider response in bytes; enter a positive integer only when a gateway needs a different safety limit. Larger responses select invalidResponse.
         required: false
         default: 8388608
   auth:
@@ -38,8 +38,14 @@ spec:
       - name: api_key
         goName: APIKey
         type: secretString
-        description: xAI API key from the xAI Console, sent only in the Authorization bearer header.
+        description: Secret team API key from xAI Console > API Keys; copy the xai- value when it is created. It is sent only as an Authorization bearer token.
         required: true
+    guide:
+      startURL: https://console.x.ai/
+      steps:
+        - In xAI Console, select the team that should own billing, load credits if required, and open API Keys.
+        - Choose Create API key, name the key, grant only the models and endpoints this connection needs, and copy the xai- secret shown once.
+        - Use the US endpoint only for models available there; otherwise leave endpoint, model, and limit fields blank for displayed defaults.
   studio:
     setup:
       entrypoint: index.html

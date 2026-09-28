@@ -16,19 +16,19 @@ spec:
       - name: userInfoUrl
         goName: UserInfoURL
         type: url
-        description: LinkedIn OpenID Connect UserInfo endpoint.
+        description: LinkedIn OpenID Connect UserInfo URL; leave blank for the documented v2 endpoint and change only when LinkedIn publishes a compatible replacement.
         required: false
         default: https://api.linkedin.com/v2/userinfo
       - name: timeout
         goName: Timeout
         type: duration
-        description: HTTP client timeout.
+        description: Maximum duration for one LinkedIn HTTP request, using a positive Go duration such as 15s or 1m; leave blank for the displayed default.
         required: false
         default: 15s
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: Maximum bytes accepted from the UserInfo response.
+        description: Maximum bytes accepted from the LinkedIn UserInfo response; enter a positive integer only to change the safety limit. Oversized responses select invalidResponse.
         required: false
         default: 1048576
   auth:
@@ -38,8 +38,14 @@ spec:
       - name: access_token
         goName: AccessToken
         type: secretString
-        description: One-use LinkedIn OpenID Connect access token.
+        description: Secret short-lived LinkedIn OpenID Connect access token produced automatically after authorization; do not enter it manually.
         required: true
+    guide:
+      startURL: https://www.linkedin.com/developers/apps
+      steps:
+        - Create or select a LinkedIn developer app, then open Products and request Sign in with LinkedIn using OpenID Connect.
+        - Open Auth, add the exact Redirect URI shown below under Authorized redirect URLs for your app, and save.
+        - Copy Client ID and Client Secret from the Auth credentials section; the client secret is sensitive.
     oauth2:
       protocol: oidc
       authorizationEndpoint: https://www.linkedin.com/oauth/v2/authorization

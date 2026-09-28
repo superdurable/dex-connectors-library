@@ -61,6 +61,15 @@
               "type": "array",
               "items": { "$ref": "#/$defs/authField" }
             },
+            "guide": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["startURL", "steps"],
+              "properties": {
+                "startURL": { "type": "string", "format": "uri" },
+                "steps": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+              }
+            },
             "oauth2": {
               "type": "object",
               "additionalProperties": false,
@@ -74,6 +83,10 @@
                 "credentialMappings": {
                   "type": "array",
                   "items": { "$ref": "#/$defs/oauthCredentialMapping" }
+                },
+                "credentialDerivations": {
+                  "type": "array",
+                  "items": { "$ref": "#/$defs/oauthCredentialDerivation" }
                 },
                 "pkce": { "type": "boolean" },
                 "oidc": {
@@ -260,6 +273,17 @@
       "properties": {
         "credential": { "type": "string", "pattern": "^[a-z][A-Za-z0-9_]*$" },
         "source": { "type": "string", "pattern": "^[a-z][A-Za-z0-9_]*(\\.[a-z][A-Za-z0-9_]*)*$" }
+      }
+    },
+    "oauthCredentialDerivation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["credential", "endpoint", "source"],
+      "properties": {
+        "credential": { "type": "string", "pattern": "^[a-z][A-Za-z0-9_]*$" },
+        "endpoint": { "type": "string", "format": "uri" },
+        "source": { "type": "string", "pattern": "^[a-z][A-Za-z0-9_]*(\\.[a-z][A-Za-z0-9_]*)*$" },
+        "verifiedBy": { "type": "string", "pattern": "^[a-z][A-Za-z0-9_]*(\\.[a-z][A-Za-z0-9_]*)*$" }
       }
     },
     "trigger": {
