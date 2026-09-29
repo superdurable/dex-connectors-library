@@ -65,6 +65,7 @@ type Client struct {
 	maxCommitMessageCharacters   int
 	httpClient                   *http.Client
 	credentials                  sdkgo.CredentialProvider[Credentials]
+	refreshDriver                sdkgo.CredentialRefreshDriver[Credentials]
 	now                          func() time.Time
 }
 
@@ -281,7 +282,7 @@ func New(config Config, credentials sdkgo.CredentialProvider[Credentials], optio
 		defaultRepositoryLimit: int(config.DefaultRepositoryLimit), maxRepositories: int(config.MaxRepositories),
 		maxPullRequestBodyCharacters: int(config.MaxPullRequestBodyCharacters), maxPatchCharacters: int(config.MaxPatchCharacters),
 		maxCommitMessageCharacters: int(config.MaxCommitMessageCharacters), httpClient: httpClient,
-		credentials: credentials, now: dependencies.now,
+		credentials: credentials, refreshDriver: NewCredentialRefreshDriver(httpClient), now: dependencies.now,
 	}, nil
 }
 
@@ -321,7 +322,7 @@ func (operation GetAuthenticatedProfileOperation) Invoke(call sdkgo.Call, _ GetA
 	if failure != nil {
 		return sdkgo.NewQueryBranch(GetAuthenticatedProfileBranchDefect, AuthenticatedProfile{}, failure, sdkgo.Receipt{})
 	}
-	profileResponse, err := operation.client.get(call, credential, "/user", nil)
+	profileResponse, err := operation.client.get(call, &credential, "/user", nil)
 	if err != nil {
 		if errors.Is(err, errResponseTooLarge) {
 			failure := providerFailure("getAuthenticatedProfile", sdkgo.FailureResponseTooLarge, "GitHub profile response exceeds the configured size limit")
@@ -341,7 +342,7 @@ func (operation GetAuthenticatedProfileOperation) Invoke(call sdkgo.Call, _ GetA
 		failure := providerFailure("getAuthenticatedProfile", sdkgo.FailureProtocol, "GitHub returned an invalid profile response")
 		return sdkgo.NewQueryBranch(GetAuthenticatedProfileBranchInvalidResponse, AuthenticatedProfile{}, &failure, receipt(profileResponse))
 	}
-	emailResponse, err := operation.client.get(call, credential, "/user/emails", url.Values{"per_page": {"100"}})
+	emailResponse, err := operation.client.get(call, &credential, "/user/emails", url.Values{"per_page": {"100"}})
 	if err != nil {
 		if errors.Is(err, errResponseTooLarge) {
 			failure := providerFailure("getAuthenticatedProfile", sdkgo.FailureResponseTooLarge, "GitHub email response exceeds the configured size limit")
@@ -404,7 +405,7 @@ func (operation ListPublicRepositoriesOperation) Invoke(call sdkgo.Call, input L
 	truncated := false
 	lastReceipt := sdkgo.Receipt{}
 	for {
-		response, err := operation.client.get(call, credential, "/users/"+url.PathEscape(login)+"/repos", url.Values{
+		response, err := operation.client.get(call, &credential, "/users/"+url.PathEscape(login)+"/repos", url.Values{
 			"type": {"owner"}, "sort": {"pushed"}, "direction": {"desc"},
 			"per_page": {strconv.Itoa(providerPageSize)}, "page": {strconv.Itoa(page)},
 		})
@@ -474,43 +475,65 @@ func (operation ListPublicRepositoriesOperation) Invoke(call sdkgo.Call, input L
 }
 
 func (client *Client) resolveCredential(call sdkgo.Call, operation string) (Credentials, *sdkgo.Failure) {
-	credential, err := client.credentials.Resolve(call)
-	if err != nil || credential.Validate() != nil {
+	credential, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
+	if err != nil || validateResolvedCredentials(credential) != nil {
 		failure := providerFailure(operation, sdkgo.FailureAuthentication, "GitHub authorization is unavailable or revoked")
 		return Credentials{}, &failure
 	}
 	return credential, nil
 }
 
-func (client *Client) get(call sdkgo.Call, credential Credentials, path string, query url.Values) (providerResponse, error) {
+func (client *Client) get(call sdkgo.Call, credential *Credentials, path string, query url.Values) (providerResponse, error) {
 	target := *client.baseURL
 	target.Path = strings.TrimRight(target.Path, "/") + path
 	target.RawPath = ""
 	target.RawQuery = query.Encode()
-	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, target.String(), nil)
-	if err != nil {
-		return providerResponse{}, err
+	for attempt := 0; attempt < 2; attempt++ {
+		request, err := http.NewRequestWithContext(call.Context, http.MethodGet, target.String(), nil)
+		if err != nil {
+			return providerResponse{}, err
+		}
+		request.Header.Set("Accept", "application/vnd.github+json")
+		request.Header.Set("Authorization", "Bearer "+credential.AccessToken.Reveal())
+		request.Header.Set("User-Agent", userAgent)
+		request.Header.Set("X-GitHub-Api-Version", client.apiVersion)
+		response, err := client.httpClient.Do(request)
+		if err != nil {
+			return providerResponse{}, err
+		}
+		body, readErr := io.ReadAll(io.LimitReader(response.Body, client.maxResponseBytes+1))
+		closeErr := response.Body.Close()
+		if readErr != nil || closeErr != nil {
+			return providerResponse{}, errors.Join(readErr, closeErr)
+		}
+		result := providerResponse{
+			statusCode: response.StatusCode, header: response.Header.Clone(), body: body,
+			requestID: safeRequestID(response.Header),
+		}
+		if int64(len(body)) > client.maxResponseBytes {
+			result.body = nil
+			return result, errResponseTooLarge
+		}
+		if response.StatusCode != http.StatusUnauthorized || attempt != 0 {
+			return result, nil
+		}
+		if _, ok := client.credentials.(sdkgo.RejectedCredentialRefreshingProvider[Credentials]); !ok {
+			return result, nil
+		}
+		replacement, err := sdkgo.ResolveCredentialAfterRejection(call.Context, client.credentials, call, client.refreshDriver)
+		if err != nil || validateResolvedCredentials(replacement) != nil {
+			return result, nil
+		}
+		*credential = replacement
 	}
-	request.Header.Set("Accept", "application/vnd.github+json")
-	request.Header.Set("Authorization", "Bearer "+credential.AccessToken.Reveal())
-	request.Header.Set("User-Agent", userAgent)
-	request.Header.Set("X-GitHub-Api-Version", client.apiVersion)
-	response, err := client.httpClient.Do(request)
-	if err != nil {
-		return providerResponse{}, err
+	return providerResponse{}, errors.New("GitHub authenticated request retry was exhausted")
+}
+
+func validateResolvedCredentials(credentials Credentials) error {
+	if credentials.AccessToken.Reveal() == "" {
+		return errors.New("GitHub access token is required")
 	}
-	defer response.Body.Close()
-	body, err := io.ReadAll(io.LimitReader(response.Body, client.maxResponseBytes+1))
-	if err != nil {
-		return providerResponse{}, err
-	}
-	if int64(len(body)) > client.maxResponseBytes {
-		return providerResponse{statusCode: response.StatusCode, header: response.Header.Clone(), requestID: safeRequestID(response.Header)}, errResponseTooLarge
-	}
-	return providerResponse{
-		statusCode: response.StatusCode, header: response.Header.Clone(), body: body,
-		requestID: safeRequestID(response.Header),
-	}, nil
+	return nil
 }
 
 var errResponseTooLarge = errors.New("GitHub response exceeds the configured size limit")

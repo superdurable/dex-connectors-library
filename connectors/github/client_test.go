@@ -4,6 +4,7 @@
 package githubconnector_test
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -23,6 +24,23 @@ import (
 )
 
 var githubConnection = sdkgo.ConnectionRef{Provider: "github", Name: "signup"}
+
+type rejectionRefreshingCredentialProvider struct {
+	forcedRefreshes int
+}
+
+func (*rejectionRefreshingCredentialProvider) Resolve(sdkgo.Call) (githubconnector.Credentials, error) {
+	return githubconnector.Credentials{AccessToken: sdkgo.NewSecretString("rejected-token")}, nil
+}
+
+func (provider *rejectionRefreshingCredentialProvider) ResolveAfterRejection(
+	context.Context,
+	sdkgo.Call,
+	sdkgo.CredentialRefreshDriver[githubconnector.Credentials],
+) (githubconnector.Credentials, error) {
+	provider.forcedRefreshes++
+	return githubconnector.Credentials{AccessToken: sdkgo.NewSecretString("replacement-token")}, nil
+}
 
 func TestGetAuthenticatedProfileReturnsBoundedProfileAndPrimaryVerifiedEmail(t *testing.T) {
 	var requests atomic.Int32
@@ -157,6 +175,62 @@ func TestGetAuthenticatedProfileClassifiesAuthorizationAndRateLimit(t *testing.T
 			require.Equal(t, test.wantKind, result.Failure.Kind)
 		})
 	}
+}
+
+func TestGetAuthenticatedProfileRefreshesOnceAndReusesReplacement(t *testing.T) {
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		requests++
+		if requests == 1 {
+			require.Equal(t, "Bearer rejected-token", request.Header.Get("Authorization"))
+			response.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		require.Equal(t, "Bearer replacement-token", request.Header.Get("Authorization"))
+		response.Header().Set("X-OAuth-Scopes", "read:user, user:email")
+		switch request.URL.Path {
+		case "/user":
+			writeJSON(t, response, map[string]any{"id": 42, "login": "octocat"})
+		case "/user/emails":
+			writeJSON(t, response, []map[string]any{{"email": "owner@example.com", "primary": true, "verified": true}})
+		default:
+			http.NotFound(response, request)
+		}
+	}))
+	t.Cleanup(server.Close)
+	provider := &rejectionRefreshingCredentialProvider{}
+	client, err := githubconnector.New(githubconnector.Config{BaseURL: server.URL}, provider)
+	require.NoError(t, err)
+
+	result, err := sdkgo.RunQuery(
+		testsupport.NewDexContext("signup-flow", "refresh-after-401"), client.GetAuthenticatedProfile(), githubConnection,
+		githubconnector.GetAuthenticatedProfileInput{},
+	)
+	require.NoError(t, err)
+	require.Equal(t, githubconnector.GetAuthenticatedProfileBranchProfileLoaded, result.Branch)
+	require.Equal(t, 3, requests)
+	require.Equal(t, 1, provider.forcedRefreshes)
+}
+
+func TestGetAuthenticatedProfileDoesNotLoopWhenReplacementIsUnauthorized(t *testing.T) {
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		requests++
+		response.WriteHeader(http.StatusUnauthorized)
+	}))
+	t.Cleanup(server.Close)
+	provider := &rejectionRefreshingCredentialProvider{}
+	client, err := githubconnector.New(githubconnector.Config{BaseURL: server.URL}, provider)
+	require.NoError(t, err)
+
+	result, err := sdkgo.RunQuery(
+		testsupport.NewDexContext("signup-flow", "no-refresh-loop"), client.GetAuthenticatedProfile(), githubConnection,
+		githubconnector.GetAuthenticatedProfileInput{},
+	)
+	require.NoError(t, err)
+	require.Equal(t, githubconnector.GetAuthenticatedProfileBranchAuthorizationRevoked, result.Branch)
+	require.Equal(t, 2, requests)
+	require.Equal(t, 1, provider.forcedRefreshes)
 }
 
 func TestGetAuthenticatedProfileRejectsMissingOAuthScopes(t *testing.T) {
