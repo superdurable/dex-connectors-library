@@ -123,8 +123,10 @@ connection, err := stripe.NewConnection(
 
 The webhook handler requests credentials with the stable
 `checkoutSessionUpdated` identity and a deterministic call ID derived from the
-bounded request body. Broker authorization can therefore grant the Trigger
-without granting unrelated Stripe operations.
+bounded request body. The decoder accepts the operation-scoped `secret_key` or
+`webhook_secret` shape, so broker authorization can grant the Trigger without
+returning the API key and can grant API operations without returning the
+webhook signing secret.
 
 ## Operations
 

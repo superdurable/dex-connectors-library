@@ -234,7 +234,7 @@ func (handler *checkoutSessionWebhookHandler) ServeHTTP(response http.ResponseWr
 	credentials, err := resolveWebhookCredentials(
 		request.Context(), handler.connection.client.credentials, call,
 	)
-	if err != nil || credentials.Validate() != nil {
+	if err != nil || credentials.WebhookSecret.Reveal() == "" {
 		http.Error(response, "webhook temporarily unavailable", http.StatusServiceUnavailable)
 		return
 	}

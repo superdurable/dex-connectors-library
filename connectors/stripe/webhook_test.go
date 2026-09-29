@@ -148,7 +148,6 @@ func TestCheckoutSessionWebhookReturnsRetryableStatusUntilTriggerRuns(t *testing
 func TestCheckoutSessionWebhookResolvesTriggerScopedCredentials(t *testing.T) {
 	now := time.Unix(1_700_000_000, 0)
 	provider := &recordingCredentialProvider{credentials: stripe.Credentials{
-		SecretKey:     sdkgo.NewSecretString("sk_test_example"),
 		WebhookSecret: sdkgo.NewSecretString("whsec_example"),
 	}}
 	client, err := stripe.New(

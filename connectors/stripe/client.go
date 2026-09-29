@@ -406,7 +406,7 @@ func (client *Client) request(call sdkgo.Call, secretKey string, method string, 
 
 func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Credentials, *sdkgo.Failure) {
 	credentials, err := client.credentials.Resolve(call)
-	if err != nil || credentials.Validate() != nil {
+	if err != nil || credentials.SecretKey.Reveal() == "" {
 		return Credentials{}, stripeFailurePointer(operation, sdkgo.FailureAuthentication, "Stripe connection credentials are unavailable")
 	}
 	return credentials, nil
