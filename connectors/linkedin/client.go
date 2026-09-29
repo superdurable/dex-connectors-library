@@ -42,6 +42,7 @@ type Client struct {
 	maxResponseBytes int64
 	httpClient       *http.Client
 	credentials      sdkgo.CredentialProvider[Credentials]
+	refreshDriver    sdkgo.CredentialRefreshDriver[Credentials]
 }
 
 // GetAuthenticatedProfileInput contains the provider request fields for get authenticated profile.
@@ -127,7 +128,7 @@ func New(config Config, credentials sdkgo.CredentialProvider[Credentials], optio
 	httpClient.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
 	return &Client{
 		userInfoURL: userInfoURL, maxResponseBytes: config.MaxResponseBytes,
-		httpClient: httpClient, credentials: credentials,
+		httpClient: httpClient, credentials: credentials, refreshDriver: NewCredentialRefreshDriver(httpClient),
 	}, nil
 }
 
@@ -147,7 +148,7 @@ func (operation GetAuthenticatedProfileOperation) Invoke(call sdkgo.Call, _ GetA
 	if failure != nil {
 		return sdkgo.NewQueryBranch(GetAuthenticatedProfileBranchDefect, AuthenticatedProfile{}, failure, sdkgo.Receipt{})
 	}
-	response, err := operation.client.get(call, credential)
+	response, err := operation.client.get(call, &credential)
 	if err != nil {
 		if errors.Is(err, errResponseTooLarge) {
 			failure := providerFailure(sdkgo.FailureResponseTooLarge, "LinkedIn UserInfo response exceeds the configured size limit")
@@ -182,40 +183,60 @@ func (operation GetAuthenticatedProfileOperation) Invoke(call sdkgo.Call, _ GetA
 }
 
 func (client *Client) resolveCredential(call sdkgo.Call) (Credentials, *sdkgo.Failure) {
-	credential, err := client.credentials.Resolve(call)
-	if err != nil || credential.Validate() != nil {
+	credential, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
+	if err != nil || validateResolvedCredentials(credential) != nil {
 		failure := providerFailure(sdkgo.FailureAuthentication, "LinkedIn authorization is unavailable or revoked")
 		return Credentials{}, &failure
 	}
 	return credential, nil
 }
 
-func (client *Client) get(call sdkgo.Call, credential Credentials) (providerResponse, error) {
-	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, client.userInfoURL.String(), nil)
-	if err != nil {
-		return providerResponse{}, err
+func (client *Client) get(call sdkgo.Call, credential *Credentials) (providerResponse, error) {
+	for attempt := 0; attempt < 2; attempt++ {
+		request, err := http.NewRequestWithContext(call.Context, http.MethodGet, client.userInfoURL.String(), nil)
+		if err != nil {
+			return providerResponse{}, err
+		}
+		request.Header.Set("Accept", "application/json")
+		request.Header.Set("Authorization", "Bearer "+credential.AccessToken.Reveal())
+		request.Header.Set("User-Agent", userAgent)
+		response, err := client.httpClient.Do(request)
+		if err != nil {
+			return providerResponse{}, err
+		}
+		body, readErr := io.ReadAll(io.LimitReader(response.Body, client.maxResponseBytes+1))
+		closeErr := response.Body.Close()
+		if readErr != nil || closeErr != nil {
+			return providerResponse{}, errors.Join(readErr, closeErr)
+		}
+		result := providerResponse{
+			statusCode: response.StatusCode, header: response.Header.Clone(), body: body,
+			requestID: safeRequestID(response.Header),
+		}
+		if int64(len(body)) > client.maxResponseBytes {
+			result.body = nil
+			return result, errResponseTooLarge
+		}
+		if response.StatusCode != http.StatusUnauthorized || attempt != 0 {
+			return result, nil
+		}
+		if _, ok := client.credentials.(sdkgo.RejectedCredentialRefreshingProvider[Credentials]); !ok {
+			return result, nil
+		}
+		replacement, err := sdkgo.ResolveCredentialAfterRejection(call.Context, client.credentials, call, client.refreshDriver)
+		if err != nil || validateResolvedCredentials(replacement) != nil {
+			return result, nil
+		}
+		*credential = replacement
 	}
-	request.Header.Set("Accept", "application/json")
-	request.Header.Set("Authorization", "Bearer "+credential.AccessToken.Reveal())
-	request.Header.Set("User-Agent", userAgent)
-	response, err := client.httpClient.Do(request)
-	if err != nil {
-		return providerResponse{}, err
+	return providerResponse{}, errors.New("LinkedIn authenticated request retry was exhausted")
+}
+
+func validateResolvedCredentials(credentials Credentials) error {
+	if credentials.AccessToken.Reveal() == "" {
+		return errors.New("LinkedIn access token is required")
 	}
-	defer response.Body.Close()
-	body, err := io.ReadAll(io.LimitReader(response.Body, client.maxResponseBytes+1))
-	if err != nil {
-		return providerResponse{}, err
-	}
-	result := providerResponse{
-		statusCode: response.StatusCode, header: response.Header.Clone(), body: body,
-		requestID: safeRequestID(response.Header),
-	}
-	if int64(len(body)) > client.maxResponseBytes {
-		result.body = nil
-		return result, errResponseTooLarge
-	}
-	return result, nil
+	return nil
 }
 
 func classifyResponse(response providerResponse) *sdkgo.QueryAttempt[AuthenticatedProfile] {

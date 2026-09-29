@@ -5,7 +5,7 @@ metadata:
   displayName: LinkedIn
   description: Read the authenticated member's OpenID Connect UserInfo profile and verified email.
   company: LinkedIn
-  version: v0.7.0
+  version: v0.8.0
 spec:
   provider: linkedin
   codegen:
@@ -35,22 +35,43 @@ spec:
     type: oauth2
     connectionKind: linkedin-oidc
     fields:
+      - name: oauth_client_id
+        goName: OAuthClientID
+        type: string
+        description: Non-secret Client ID copied from https://www.linkedin.com/developers/apps after selecting the app > Auth > Application credentials; blank keeps an existing non-renewable access token usable but authorization and programmatic refresh cannot start.
+        required: false
+      - name: oauth_client_secret
+        goName: OAuthClientSecret
+        type: secretString
+        description: Secret copied from https://www.linkedin.com/developers/apps after selecting the app > Auth > Application credentials; store it only in this credential field, and blank keeps an existing token usable but programmatic refresh cannot start.
+        required: false
       - name: access_token
         goName: AccessToken
         type: secretString
-        description: Secret short-lived LinkedIn OpenID Connect access token produced automatically after authorization; do not enter it manually.
+        description: Secret LinkedIn OpenID Connect access token produced automatically after authorization; Dex refreshes it when LinkedIn grants programmatic refresh, otherwise expiry requires reauthorization, and it must not be entered manually.
         required: true
+      - name: refresh_token
+        goName: RefreshToken
+        type: secretString
+        description: Secret programmatic refresh token returned only for LinkedIn-approved products; Dex preserves or replaces it from each response, while blank means this app must use interactive reauthorization when the access token expires.
+        required: false
     guide:
       startURL: https://www.linkedin.com/developers/apps
       steps:
         - Create or select a LinkedIn developer app, then open Products and request Sign in with LinkedIn using OpenID Connect.
         - Open Auth, add the exact Redirect URI shown below under Authorized redirect URLs for your app, and save.
         - Copy Client ID and Client Secret from the Auth credentials section; the client secret is sensitive.
+        - Complete consent for openid, profile, and email; ordinary Sign in with LinkedIn apps may not receive refresh_token, while approved programmatic-refresh products can refresh until LinkedIn's refresh-token expiry.
     oauth2:
       protocol: oidc
       authorizationEndpoint: https://www.linkedin.com/oauth/v2/authorization
       tokenEndpoint: https://www.linkedin.com/oauth/v2/accessToken
+      clientIDCredential: oauth_client_id
+      clientSecretCredential: oauth_client_secret
       scopes: [openid, profile, email]
+      credentialMappings:
+        - {credential: access_token, source: access_token}
+        - {credential: refresh_token, source: refresh_token}
       pkce: true
       oidc:
         issuer: https://www.linkedin.com
