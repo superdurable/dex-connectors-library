@@ -115,9 +115,9 @@ setup UI selects first; mark at most one method `recommended`.
 
 ```yaml
 auth:
-  defaultMethod: googleOAuth
+  defaultMethod: google-oauth
   methods:
-    - id: googleOAuth
+    - id: google-oauth
       displayName: Google OAuth
       description: Authorize an individual Google or Workspace account.
       recommended: true
@@ -139,7 +139,7 @@ auth:
         clientSecretCredential: oauth_client_secret
         scopes: [openid]
         pkce: true
-    - id: workspaceServiceAccount
+    - id: workspace-service-account
       displayName: Workspace service account
       description: Use administrator-managed domain-wide delegation.
       type: serviceAccount
