@@ -19,6 +19,29 @@ import (
 
 var slackConnection = sdkgo.ConnectionRef{Provider: "slack", Name: "workspace"}
 
+type rejectionRefreshingCredentialProvider struct {
+	forcedRefreshes int
+}
+
+func (*rejectionRefreshingCredentialProvider) Resolve(sdkgo.Call) (slack.Credentials, error) {
+	return slack.Credentials{
+		BotToken: sdkgo.NewSecretString("rejected-bot"), UserToken: sdkgo.NewSecretString("rejected-user"),
+		AppToken: sdkgo.NewSecretString("app-token"),
+	}, nil
+}
+
+func (provider *rejectionRefreshingCredentialProvider) ResolveAfterRejection(
+	context.Context,
+	sdkgo.Call,
+	sdkgo.CredentialRefreshDriver[slack.Credentials],
+) (slack.Credentials, error) {
+	provider.forcedRefreshes++
+	return slack.Credentials{
+		BotToken: sdkgo.NewSecretString("replacement-bot"), UserToken: sdkgo.NewSecretString("replacement-user"),
+		AppToken: sdkgo.NewSecretString("app-token"),
+	}, nil
+}
+
 func TestListThreadMessagesUsesUserTokenAndReturnsCursor(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		require.Equal(t, "/conversations.replies", request.URL.Path)
@@ -73,6 +96,53 @@ func TestGetThreadReplyProviderRejectionUsesProviderRejectedBranch(t *testing.T)
 	require.NoError(t, err)
 	require.Equal(t, slack.GetThreadReplyBranchProviderRejected, result.Branch)
 	require.Equal(t, sdkgo.FailureAuthorization, result.Failure.Kind)
+}
+
+func TestListThreadMessagesRefreshesAndRetriesOnceAfterTokenExpiry(t *testing.T) {
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		requests++
+		if requests == 1 {
+			require.Equal(t, "Bearer rejected-user", request.Header.Get("Authorization"))
+			_, _ = response.Write([]byte(`{"ok":false,"error":"token_expired"}`))
+			return
+		}
+		require.Equal(t, "Bearer replacement-user", request.Header.Get("Authorization"))
+		_, _ = response.Write([]byte(`{"ok":true,"messages":[{"ts":"1.0","user":"U1","text":"root"}]}`))
+	}))
+	t.Cleanup(server.Close)
+	provider := &rejectionRefreshingCredentialProvider{}
+	client, err := slack.New(slack.Config{Endpoint: server.URL}, provider)
+	require.NoError(t, err)
+
+	result, err := sdkgo.RunQuery(newSlackDexContext("refresh-after-expiry"), client.ListThreadMessages(), slackConnection, slack.ListThreadMessagesInput{
+		ChannelID: "C123", ThreadTimestamp: "1.0", PageSize: 15,
+	})
+	require.NoError(t, err)
+	require.Equal(t, slack.ListThreadMessagesBranchRead, result.Branch)
+	require.Equal(t, 2, requests)
+	require.Equal(t, 1, provider.forcedRefreshes)
+}
+
+func TestListThreadMessagesDoesNotLoopWhenReplacementIsExpired(t *testing.T) {
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		requests++
+		_, _ = response.Write([]byte(`{"ok":false,"error":"token_expired"}`))
+	}))
+	t.Cleanup(server.Close)
+	provider := &rejectionRefreshingCredentialProvider{}
+	client, err := slack.New(slack.Config{Endpoint: server.URL}, provider)
+	require.NoError(t, err)
+
+	result, err := sdkgo.RunQuery(newSlackDexContext("no-refresh-loop"), client.ListThreadMessages(), slackConnection, slack.ListThreadMessagesInput{
+		ChannelID: "C123", ThreadTimestamp: "1.0", PageSize: 15,
+	})
+	require.NoError(t, err)
+	require.Equal(t, slack.ListThreadMessagesBranchProviderRejected, result.Branch)
+	require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
+	require.Equal(t, 2, requests)
+	require.Equal(t, 1, provider.forcedRefreshes)
 }
 
 func TestListThreadMessagesInvalidResponseUsesInvalidResponseBranch(t *testing.T) {

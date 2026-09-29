@@ -5,7 +5,7 @@ metadata:
   displayName: Slack
   description: Start and update Dex Flows from Slack threads and exchange thread messages.
   company: Slack
-  version: v0.11.0
+  version: v0.12.0
 spec:
   provider: slack
   codegen:
@@ -35,16 +35,36 @@ spec:
     type: oauth2
     connectionKind: slack-socket-mode-oauth
     fields:
+      - name: oauth_client_id
+        goName: OAuthClientID
+        type: string
+        description: Non-secret Client ID copied from https://api.slack.com/apps after selecting the app > Basic Information > App Credentials; blank means OAuth installation and token refresh cannot start.
+        required: false
+      - name: oauth_client_secret
+        goName: OAuthClientSecret
+        type: secretString
+        description: Secret copied from https://api.slack.com/apps after selecting the app > Basic Information > App Credentials > Client Secret; store it only in this credential field and blank means OAuth installation and refresh cannot start.
+        required: false
       - name: bot_token
         goName: BotToken
         type: secretString
-        description: Secret xoxb- Slack bot token produced automatically by OAuth after the app is installed; do not enter it manually.
+        description: Secret xoxb- or rotating xoxe.xoxb- bot token produced automatically by OAuth after installation; Dex refreshes it before expiry and it must not be entered manually.
         required: true
+      - name: bot_refresh_token
+        goName: BotRefreshToken
+        type: secretString
+        description: Secret one-use xoxe- refresh token for the bot token when Slack token rotation is enabled; Dex atomically replaces it after each refresh, while blank means the bot token is non-expiring or reauthorization is required after expiry.
+        required: false
       - name: user_token
         goName: UserToken
         type: secretString
-        description: Secret xoxp- Slack user token produced automatically by OAuth for the displayed user scopes; do not enter it manually.
+        description: Secret xoxp- or rotating xoxe.xoxp- user token produced automatically by OAuth for the displayed user scopes; Dex refreshes it before expiry and it must not be entered manually.
         required: true
+      - name: user_refresh_token
+        goName: UserRefreshToken
+        type: secretString
+        description: Secret one-use xoxe- refresh token for the user token when Slack token rotation is enabled; Dex atomically replaces it after each refresh, while blank means the user token is non-expiring or reauthorization is required after expiry.
+        required: false
       - name: app_token
         goName: AppToken
         type: secretString
@@ -56,14 +76,19 @@ spec:
         - Create or select a Slack app; under OAuth & Permissions add the displayed bot and user token scopes, then add the exact Redirect URI shown below.
         - Under Socket Mode, enable Socket Mode; under Basic Information > App-Level Tokens, generate an xapp- token with connections:write.
         - Copy Client ID and Client Secret from Basic Information > App Credentials and paste them below; also paste the xapp- token in app_token.
+        - Under OAuth & Permissions enable Token Rotation only after this release is deployed; rotating bot and user access tokens expire after 12 hours and each refresh token is one-use.
     oauth2:
       authorizationEndpoint: https://slack.com/oauth/v2/authorize
       tokenEndpoint: https://slack.com/api/oauth.v2.access
+      clientIDCredential: oauth_client_id
+      clientSecretCredential: oauth_client_secret
       scopes: [channels:history, groups:history, channels:read, groups:read, users:read, chat:write]
       userScopes: [channels:history, groups:history]
       credentialMappings:
         - {credential: bot_token, source: access_token}
+        - {credential: bot_refresh_token, source: refresh_token}
         - {credential: user_token, source: authed_user.access_token}
+        - {credential: user_refresh_token, source: authed_user.refresh_token}
       pkce: false
   studio:
     setup:
