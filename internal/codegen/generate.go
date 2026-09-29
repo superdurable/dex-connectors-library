@@ -132,7 +132,7 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 	generation.mustWrite("\t}\n")
 	generation.mustWrite("\treturn credentials, credentials.Validate()\n}\n\n")
 	if supportsCredentialRefresh(manifest.Spec.Auth) {
-		generation.mustWrite("func encodeLocalCredentials(credentials Credentials) ([]byte, error) {\n")
+		generation.mustWrite("func encodeLocalCredentials(credentials Credentials) (json.RawMessage, error) {\n")
 		generation.mustWrite("\tfields := struct {\n")
 		if len(manifest.Spec.Auth.Methods) > 0 {
 			generation.mustWrite("\t\tAuthMethodID string `json:\"auth_method\"`\n")
