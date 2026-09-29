@@ -37,7 +37,7 @@ the paid ticket only after `checkout.session.async_payment_succeeded`, or after
   "connections": [{
     "connectorId": "stripe",
     "modulePath": "github.com/superdurable/dex-connectors-library/connectors/stripe",
-    "moduleVersion": "v0.1.0",
+    "moduleVersion": "v0.2.1",
     "provider": "stripe",
     "connectionName": "stripe-payments",
     "configuration": {},
@@ -95,6 +95,36 @@ return HTTP 400. Unsupported valid Stripe events are acknowledged and ignored.
 Applications must still deduplicate provider event IDs in durable Flow state.
 Stripe and the connector both provide at-least-once delivery, so a process can
 receive the same event again after an acknowledgement race.
+
+## Hosted credentials
+
+In Superverse-hosted deployments, construct the client with the operation-scoped
+broker provider. `DecodeResolvedCredentialsJSON` validates the broker response;
+the application never reads the encrypted credential object or a refresh token:
+
+```go
+provider, err := hostedconfig.NewCredentialProviderFromEnvironment(
+    stripe.ConnectorID,
+    "stripe-payments",
+    stripe.DecodeResolvedCredentialsJSON,
+)
+if err != nil {
+    return err
+}
+client, err := stripe.New(stripe.DefaultConfig(), provider)
+if err != nil {
+    return err
+}
+connection, err := stripe.NewConnection(
+    client,
+    sdkgo.ConnectionRef{Provider: "stripe", Name: "stripe-payments"},
+)
+```
+
+The webhook handler requests credentials with the stable
+`checkoutSessionUpdated` identity and a deterministic call ID derived from the
+bounded request body. Broker authorization can therefore grant the Trigger
+without granting unrelated Stripe operations.
 
 ## Operations
 

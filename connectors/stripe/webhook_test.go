@@ -145,6 +145,37 @@ func TestCheckoutSessionWebhookReturnsRetryableStatusUntilTriggerRuns(t *testing
 	require.Equal(t, http.StatusServiceUnavailable, serveSignedWebhook(handler, body, "whsec_example", now))
 }
 
+func TestCheckoutSessionWebhookResolvesTriggerScopedCredentials(t *testing.T) {
+	now := time.Unix(1_700_000_000, 0)
+	provider := &recordingCredentialProvider{credentials: stripe.Credentials{
+		SecretKey:     sdkgo.NewSecretString("sk_test_example"),
+		WebhookSecret: sdkgo.NewSecretString("whsec_example"),
+	}}
+	client, err := stripe.New(
+		stripe.Config{Endpoint: "http://127.0.0.1:1"},
+		provider,
+		stripe.WithClock(func() time.Time { return now }),
+	)
+	require.NoError(t, err)
+	connection, err := stripe.NewConnection(client, stripeConnection)
+	require.NoError(t, err)
+	handler, err := connection.CheckoutSessionWebhookHandler()
+	require.NoError(t, err)
+	body := `{"id":"evt_123","object":"event","type":"checkout.session.completed","created":1700000000,"data":{"object":{"id":"cs_test_123","object":"checkout.session"}}}`
+
+	require.Equal(t, http.StatusServiceUnavailable, serveSignedWebhook(handler, body, "whsec_example", now))
+	require.Equal(t, http.StatusServiceUnavailable, serveSignedWebhook(handler, body, "whsec_example", now))
+
+	calls, usedContext := provider.snapshot()
+	require.True(t, usedContext)
+	require.Len(t, calls, 2)
+	require.NoError(t, calls[0].ID.Validate())
+	require.Equal(t, calls[0].ID, calls[1].ID)
+	require.Equal(t, stripe.ConnectorID, calls[0].Operation.ConnectorID)
+	require.Equal(t, "checkoutSessionUpdated", calls[0].Operation.OperationID)
+	require.Equal(t, stripeConnection, calls[0].Connection)
+}
+
 func TestCheckoutSessionTriggerConfigurationRejectsUnknownAndDuplicateEvents(t *testing.T) {
 	require.Error(t, (stripe.CheckoutSessionUpdatedTriggerConfiguration{EventTypes: []string{"charge.succeeded"}}).Validate())
 	require.Error(t, (stripe.CheckoutSessionUpdatedTriggerConfiguration{EventTypes: []string{"checkout.session.completed", "checkout.session.completed"}}).Validate())
@@ -163,6 +194,37 @@ type blockingCheckoutTarget struct {
 	release  chan struct{}
 	prepare  sync.Once
 	handle   sync.Once
+}
+
+type recordingCredentialProvider struct {
+	mu          sync.Mutex
+	credentials stripe.Credentials
+	calls       []sdkgo.Call
+	usedContext bool
+}
+
+func (provider *recordingCredentialProvider) Resolve(call sdkgo.Call) (stripe.Credentials, error) {
+	provider.mu.Lock()
+	defer provider.mu.Unlock()
+	provider.calls = append(provider.calls, call)
+	return provider.credentials, nil
+}
+
+func (provider *recordingCredentialProvider) ResolveContext(
+	_ context.Context,
+	call sdkgo.Call,
+) (stripe.Credentials, error) {
+	provider.mu.Lock()
+	defer provider.mu.Unlock()
+	provider.usedContext = true
+	provider.calls = append(provider.calls, call)
+	return provider.credentials, nil
+}
+
+func (provider *recordingCredentialProvider) snapshot() ([]sdkgo.Call, bool) {
+	provider.mu.Lock()
+	defer provider.mu.Unlock()
+	return append([]sdkgo.Call(nil), provider.calls...), provider.usedContext
 }
 
 func newBlockingCheckoutTarget() *blockingCheckoutTarget {

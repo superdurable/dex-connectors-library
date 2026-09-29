@@ -221,11 +221,6 @@ func (handler *checkoutSessionWebhookHandler) ServeHTTP(response http.ResponseWr
 		http.Error(response, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	credentials, err := handler.connection.client.credentials.Resolve(sdkgo.Call{Connection: handler.connection.reference})
-	if err != nil || credentials.Validate() != nil {
-		http.Error(response, "webhook temporarily unavailable", http.StatusServiceUnavailable)
-		return
-	}
 	contents, err := io.ReadAll(io.LimitReader(request.Body, handler.connection.client.webhookMaxBodyBytes+1))
 	if err != nil {
 		http.Error(response, "invalid request body", http.StatusBadRequest)
@@ -233,6 +228,14 @@ func (handler *checkoutSessionWebhookHandler) ServeHTTP(response http.ResponseWr
 	}
 	if int64(len(contents)) > handler.connection.client.webhookMaxBodyBytes {
 		http.Error(response, "request body too large", http.StatusRequestEntityTooLarge)
+		return
+	}
+	call := stripeWebhookCredentialCall(handler.connection.reference, contents)
+	credentials, err := resolveWebhookCredentials(
+		request.Context(), handler.connection.client.credentials, call,
+	)
+	if err != nil || credentials.Validate() != nil {
+		http.Error(response, "webhook temporarily unavailable", http.StatusServiceUnavailable)
 		return
 	}
 	if err := verifyWebhookSignature(
@@ -260,6 +263,41 @@ func (handler *checkoutSessionWebhookHandler) ServeHTTP(response http.ResponseWr
 		return
 	}
 	response.WriteHeader(http.StatusOK)
+}
+
+func stripeWebhookCredentialCall(connection sdkgo.ConnectionRef, contents []byte) sdkgo.Call {
+	digest := sha256.New()
+	_, _ = digest.Write([]byte(ConnectorID))
+	_, _ = digest.Write([]byte{0})
+	_, _ = digest.Write([]byte(connection.Provider))
+	_, _ = digest.Write([]byte{0})
+	_, _ = digest.Write([]byte(connection.Name))
+	_, _ = digest.Write([]byte{0})
+	_, _ = digest.Write(contents)
+	identity := digest.Sum(nil)[:16]
+	identity[6] = (identity[6] & 0x0f) | 0x50
+	identity[8] = (identity[8] & 0x3f) | 0x80
+	encodedIdentity := hex.EncodeToString(identity)
+	return sdkgo.Call{
+		ID: sdkgo.CallID(encodedIdentity[0:8] + "-" + encodedIdentity[8:12] + "-" +
+			encodedIdentity[12:16] + "-" + encodedIdentity[16:20] + "-" + encodedIdentity[20:32]),
+		Connection: connection,
+		Operation: sdkgo.OperationRef{
+			ConnectorID: ConnectorID,
+			OperationID: "checkoutSessionUpdated",
+		},
+	}
+}
+
+func resolveWebhookCredentials(
+	ctx context.Context,
+	provider sdkgo.CredentialProvider[Credentials],
+	call sdkgo.Call,
+) (Credentials, error) {
+	if contextProvider, ok := provider.(sdkgo.ContextCredentialProvider[Credentials]); ok {
+		return contextProvider.ResolveContext(ctx, call)
+	}
+	return provider.Resolve(call)
 }
 
 func verifyWebhookSignature(contents []byte, header string, secret string, now time.Time, tolerance time.Duration) error {
