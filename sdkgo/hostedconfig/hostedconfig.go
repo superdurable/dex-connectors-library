@@ -135,9 +135,21 @@ func NewCredentialProviderFromEnvironment[C any](
 
 // Resolve obtains the minimum credential for call's operation from the trusted broker.
 func (provider *CredentialProvider[C]) Resolve(call sdkgo.Call) (C, error) {
+	requestContext := context.Background()
+	if call.Context != nil {
+		requestContext = call.Context
+	}
+	return provider.ResolveContext(requestContext, call)
+}
+
+// ResolveContext obtains the minimum credential and cancels the broker request with ctx.
+func (provider *CredentialProvider[C]) ResolveContext(ctx context.Context, call sdkgo.Call) (C, error) {
 	var zero C
 	if provider == nil {
 		return zero, fmt.Errorf("hosted Connector credential provider is required")
+	}
+	if ctx == nil {
+		ctx = context.Background()
 	}
 	if err := call.ID.Validate(); err != nil {
 		return zero, err
@@ -162,11 +174,7 @@ func (provider *CredentialProvider[C]) Resolve(call sdkgo.Call) (C, error) {
 	if err != nil {
 		return zero, fmt.Errorf("encode hosted Connector credential request: %w", err)
 	}
-	requestContext := context.Background()
-	if call.Context != nil {
-		requestContext = call.Context
-	}
-	request, err := http.NewRequestWithContext(requestContext, http.MethodPost, provider.resolveURL, bytes.NewReader(contents))
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, provider.resolveURL, bytes.NewReader(contents))
 	if err != nil {
 		return zero, fmt.Errorf("create hosted Connector credential request: %w", err)
 	}

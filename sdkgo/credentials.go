@@ -78,6 +78,14 @@ type CredentialProvider[C any] interface {
 	Resolve(Call) (C, error)
 }
 
+// ContextCredentialProvider resolves credentials with a cancellable non-Dex context.
+// Trigger sources use this extension because their provider work happens outside a Step.
+type ContextCredentialProvider[C any] interface {
+	CredentialProvider[C]
+	// ResolveContext returns credentials for call and stops broker work when ctx is canceled.
+	ResolveContext(context.Context, Call) (C, error)
+}
+
 // CredentialRefreshState describes the current credential material and expiry observed by a provider.
 // ExpiresAt is nil when the host has no expiry metadata. Now is captured once for a refresh decision.
 type CredentialRefreshState[C any] struct {
@@ -136,10 +144,14 @@ func ResolveCredential[C any](
 		ctx = context.Background()
 	}
 	refreshingProvider, ok := provider.(RefreshingCredentialProvider[C])
-	if !ok {
-		return provider.Resolve(call)
+	if ok {
+		return refreshingProvider.ResolveWithRefresh(ctx, call, driver)
 	}
-	return refreshingProvider.ResolveWithRefresh(ctx, call, driver)
+	contextProvider, ok := provider.(ContextCredentialProvider[C])
+	if ok {
+		return contextProvider.ResolveContext(ctx, call)
+	}
+	return provider.Resolve(call)
 }
 
 // StaticCredentialProvider resolves credentials from an in-memory connection map.
