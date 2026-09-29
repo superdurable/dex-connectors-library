@@ -6,6 +6,7 @@ package hostedconfig
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -138,9 +139,6 @@ func (provider *CredentialProvider[C]) Resolve(call sdkgo.Call) (C, error) {
 	if provider == nil {
 		return zero, fmt.Errorf("hosted Connector credential provider is required")
 	}
-	if call.Context == nil {
-		return zero, fmt.Errorf("hosted Connector call context is required")
-	}
 	if err := call.ID.Validate(); err != nil {
 		return zero, err
 	}
@@ -164,7 +162,11 @@ func (provider *CredentialProvider[C]) Resolve(call sdkgo.Call) (C, error) {
 	if err != nil {
 		return zero, fmt.Errorf("encode hosted Connector credential request: %w", err)
 	}
-	request, err := http.NewRequestWithContext(call.Context, http.MethodPost, provider.resolveURL, bytes.NewReader(contents))
+	requestContext := context.Background()
+	if call.Context != nil {
+		requestContext = call.Context
+	}
+	request, err := http.NewRequestWithContext(requestContext, http.MethodPost, provider.resolveURL, bytes.NewReader(contents))
 	if err != nil {
 		return zero, fmt.Errorf("create hosted Connector credential request: %w", err)
 	}
