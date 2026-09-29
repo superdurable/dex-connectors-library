@@ -20,8 +20,8 @@ type testCredentials struct {
 	AccessToken sdkgo.SecretString
 }
 
-func TestCredentialProviderResolvesOperationScopedCredentialAndReloadsToken(t *testing.T) {
-	tokenFile := writePrivateToken(t, "first-workload-token")
+func TestCredentialProviderResolvesOperationScopedCredentialAndReloadsWorkloadCredential(t *testing.T) {
+	credentialFile := writePrivateCredential(t, "first-workload-credential")
 	var observedTokens []string
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		observedTokens = append(observedTokens, request.Header.Get("Authorization"))
@@ -36,7 +36,7 @@ func TestCredentialProviderResolvesOperationScopedCredentialAndReloadsToken(t *t
 	}))
 	t.Cleanup(server.Close)
 	provider, err := NewCredentialProvider(&Config{
-		BrokerURL: server.URL, WorkloadTokenFile: tokenFile,
+		BrokerURL: server.URL, WorkloadCredentialFile: credentialFile,
 		ConnectorID: "gmail", ConnectionName: "event-tickets",
 	}, decodeTestCredentials)
 	require.NoError(t, err)
@@ -45,14 +45,14 @@ func TestCredentialProviderResolvesOperationScopedCredentialAndReloadsToken(t *t
 	credentials, err := provider.Resolve(call)
 	require.NoError(t, err)
 	require.Equal(t, "short-lived", credentials.AccessToken.Reveal())
-	require.NoError(t, os.WriteFile(tokenFile, []byte("second-workload-token\n"), 0o600))
+	require.NoError(t, os.WriteFile(credentialFile, []byte("second-workload-credential\n"), 0o600))
 	_, err = provider.Resolve(call)
 	require.NoError(t, err)
-	require.Equal(t, []string{"Bearer first-workload-token", "Bearer second-workload-token"}, observedTokens)
+	require.Equal(t, []string{"Bearer first-workload-credential", "Bearer second-workload-credential"}, observedTokens)
 }
 
 func TestCredentialProviderClassifiesReauthorizationWithoutReturningProviderText(t *testing.T) {
-	tokenFile := writePrivateToken(t, "valid-workload-token")
+	credentialFile := writePrivateCredential(t, "valid-workload-credential")
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
 		response.WriteHeader(http.StatusConflict)
 		_, err := response.Write([]byte(`{"code":"reauthorization_required","message":"secret provider text"}`))
@@ -60,7 +60,7 @@ func TestCredentialProviderClassifiesReauthorizationWithoutReturningProviderText
 	}))
 	t.Cleanup(server.Close)
 	provider, err := NewCredentialProvider(&Config{
-		BrokerURL: server.URL, WorkloadTokenFile: tokenFile,
+		BrokerURL: server.URL, WorkloadCredentialFile: credentialFile,
 		ConnectorID: "gmail", ConnectionName: "event-tickets",
 	}, decodeTestCredentials)
 	require.NoError(t, err)
@@ -71,10 +71,10 @@ func TestCredentialProviderClassifiesReauthorizationWithoutReturningProviderText
 	require.NotContains(t, err.Error(), "secret provider text")
 }
 
-func TestCredentialProviderRejectsMismatchedOperationAndUnsafeTokenFile(t *testing.T) {
-	tokenFile := writePrivateToken(t, "valid-workload-token")
+func TestCredentialProviderRejectsMismatchedOperationAndUnsafeCredentialFile(t *testing.T) {
+	credentialFile := writePrivateCredential(t, "valid-workload-credential")
 	provider, err := NewCredentialProvider(&Config{
-		BrokerURL: "https://broker.example.test", WorkloadTokenFile: tokenFile,
+		BrokerURL: "https://broker.example.test", WorkloadCredentialFile: credentialFile,
 		ConnectorID: "gmail", ConnectionName: "event-tickets",
 	}, decodeTestCredentials)
 	require.NoError(t, err)
@@ -83,13 +83,13 @@ func TestCredentialProviderRejectsMismatchedOperationAndUnsafeTokenFile(t *testi
 	_, err = provider.Resolve(call)
 	require.ErrorContains(t, err, "does not match")
 
-	require.NoError(t, os.Chmod(tokenFile, 0o644))
+	require.NoError(t, os.Chmod(credentialFile, 0o644))
 	_, err = provider.Resolve(testCall("sendMessage"))
 	require.ErrorContains(t, err, "private regular file")
 }
 
 func TestCredentialProviderRejectsOversizedOrUnknownResponses(t *testing.T) {
-	tokenFile := writePrivateToken(t, "valid-workload-token")
+	credentialFile := writePrivateCredential(t, "valid-workload-credential")
 	responses := []string{`{"credentials":{"access_token":"token"},"unknown":true}`, `{"credentials":"0123456789"}`}
 	for _, responseBody := range responses {
 		server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
@@ -97,7 +97,7 @@ func TestCredentialProviderRejectsOversizedOrUnknownResponses(t *testing.T) {
 			require.NoError(t, err)
 		}))
 		provider, err := NewCredentialProvider(&Config{
-			BrokerURL: server.URL, WorkloadTokenFile: tokenFile, ConnectorID: "gmail",
+			BrokerURL: server.URL, WorkloadCredentialFile: credentialFile, ConnectorID: "gmail",
 			ConnectionName: "event-tickets", MaximumResponseBytes: 32,
 		}, decodeTestCredentials)
 		require.NoError(t, err)
@@ -126,9 +126,9 @@ func testCall(operationID string) sdkgo.Call {
 	}
 }
 
-func writePrivateToken(t *testing.T, token string) string {
+func writePrivateCredential(t *testing.T, credential string) string {
 	t.Helper()
-	path := filepath.Join(t.TempDir(), "workload-token")
-	require.NoError(t, os.WriteFile(path, []byte(token+"\n"), 0o600))
+	path := filepath.Join(t.TempDir(), "workload-credential")
+	require.NoError(t, os.WriteFile(path, []byte(credential+"\n"), 0o600))
 	return path
 }

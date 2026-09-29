@@ -11,7 +11,7 @@ generic `NewQueryStep` and `NewMutationStep` APIs as an advanced escape hatch.
 
 Hosted applications use `hostedconfig.NewCredentialProviderFromEnvironment`
 to resolve short-lived, operation-scoped credentials from the trusted
-Superverse broker. The provider reloads its projected workload token for every
+Superverse broker. The provider reloads its projected workload credential for every
 call and never receives project, environment, refresh-token, or storage
 selectors. Local applications continue to use `localconfig`; both providers
 implement the same `CredentialProvider` contract used by Connector clients.
