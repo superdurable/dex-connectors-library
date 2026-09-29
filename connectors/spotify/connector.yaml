@@ -5,7 +5,7 @@ metadata:
   displayName: Spotify
   description: List bounded pages of tracks from playlists owned by or shared with the authenticated Spotify user.
   company: Spotify
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: spotify
   codegen:
@@ -35,21 +35,42 @@ spec:
     type: oauth2
     connectionKind: spotify-oauth
     fields:
+      - name: oauth_client_id
+        goName: OAuthClientID
+        type: string
+        description: Non-secret Client ID copied from https://developer.spotify.com/dashboard after selecting the app > Settings; blank keeps an existing access token usable but authorization and refresh cannot start.
+        required: false
+      - name: oauth_client_secret
+        goName: OAuthClientSecret
+        type: secretString
+        description: Optional secret revealed at https://developer.spotify.com/dashboard after selecting the app > Settings > View client secret; Dex uses Basic authentication when present and PKCE client_id refresh when blank.
+        required: false
       - name: access_token
         goName: AccessToken
         type: secretString
-        description: Secret short-lived Spotify OAuth access token produced automatically after authorization; do not enter it manually.
+        description: Secret one-hour Spotify OAuth access token produced automatically after authorization; Dex refreshes it before expiry and it must not be entered manually.
         required: true
+      - name: refresh_token
+        goName: RefreshToken
+        type: secretString
+        description: Secret six-month Spotify refresh token produced automatically after authorization; Dex preserves or replaces it after refresh, while blank means reauthorization is required when the access token expires.
+        required: false
     guide:
       startURL: https://developer.spotify.com/dashboard
       steps:
         - In Spotify for Developers Dashboard, choose Create app or open the app used by this Dex connection.
         - Open Settings, add the exact Redirect URI shown below, select Web API, and save the application settings.
-        - Copy Client ID and reveal Client Secret from the app Settings page; the client secret is sensitive.
+        - Copy Client ID from Settings; reveal and copy Client Secret only for a confidential server-side connection because PKCE refresh needs only Client ID.
+        - Complete consent for playlist-read-private; Spotify access tokens last one hour and refresh tokens now expire after six months, when Dex requires reauthorization.
     oauth2:
       authorizationEndpoint: https://accounts.spotify.com/authorize
       tokenEndpoint: https://accounts.spotify.com/api/token
+      clientIDCredential: oauth_client_id
+      clientSecretCredential: oauth_client_secret
       scopes: [playlist-read-private]
+      credentialMappings:
+        - {credential: access_token, source: access_token}
+        - {credential: refresh_token, source: refresh_token}
       pkce: true
   operations:
     - name: listPlaylistTracks
