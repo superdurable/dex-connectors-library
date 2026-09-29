@@ -60,6 +60,7 @@ type Client struct {
 	endpoint         *url.URL
 	httpClient       *http.Client
 	credentials      sdkgo.CredentialProvider[Credentials]
+	refreshDriver    sdkgo.CredentialRefreshDriver[Credentials]
 	maxResponseBytes int64
 	maxMessageBytes  int64
 	pollInterval     time.Duration
@@ -131,6 +132,7 @@ func New(config Config, credentials sdkgo.CredentialProvider[Credentials], optio
 	}
 	return &Client{
 		endpoint: endpoint, httpClient: dependencies.httpClient, credentials: credentials,
+		refreshDriver:    NewCredentialRefreshDriver(dependencies.httpClient),
 		maxResponseBytes: config.MaxResponseBytes, maxMessageBytes: config.MaxMessageBytes,
 		pollInterval: config.PollInterval, pollPageSize: int(config.PollPageSize), now: dependencies.now,
 		logger: dependencies.logger,
@@ -186,6 +188,78 @@ func (client *Client) triggerLogger() *slog.Logger {
 	return slog.Default()
 }
 
+func (client *Client) resolveCredentials(ctx context.Context, call sdkgo.Call) (Credentials, error) {
+	credentials, err := sdkgo.ResolveCredential(ctx, client.credentials, call, client.refreshDriver)
+	if err != nil {
+		return Credentials{}, err
+	}
+	if err := validateResolvedCredentials(credentials); err != nil {
+		return Credentials{}, err
+	}
+	return credentials, nil
+}
+
+func (client *Client) doAuthenticatedRequest(
+	ctx context.Context,
+	call sdkgo.Call,
+	credentials Credentials,
+	method string,
+	target string,
+	payload []byte,
+	contentType string,
+) (*http.Response, Credentials, error) {
+	for attempt := 0; attempt < 2; attempt++ {
+		var body io.Reader
+		if payload != nil {
+			body = bytes.NewReader(payload)
+		}
+		request, err := http.NewRequestWithContext(ctx, method, target, body)
+		if err != nil {
+			return nil, Credentials{}, err
+		}
+		request.Header.Set("Authorization", "Bearer "+credentials.AccessToken.Reveal())
+		if contentType != "" {
+			request.Header.Set("Content-Type", contentType)
+		}
+		response, err := client.httpClient.Do(request)
+		if err != nil {
+			return nil, Credentials{}, err
+		}
+		if response.StatusCode != http.StatusUnauthorized || attempt != 0 {
+			return response, credentials, nil
+		}
+		if _, ok := client.credentials.(sdkgo.RejectedCredentialRefreshingProvider[Credentials]); !ok {
+			return response, credentials, nil
+		}
+		_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, client.maxResponseBytes))
+		_ = response.Body.Close()
+		credentials, err = sdkgo.ResolveCredentialAfterRejection(ctx, client.credentials, call, client.refreshDriver)
+		if err != nil {
+			return nil, Credentials{}, err
+		}
+		if err := validateResolvedCredentials(credentials); err != nil {
+			return nil, Credentials{}, err
+		}
+	}
+	return nil, Credentials{}, fmt.Errorf("Gmail authenticated request retry was exhausted")
+}
+
+func validateResolvedCredentials(credentials Credentials) error {
+	if credentials.AccessToken.Reveal() == "" {
+		return fmt.Errorf("Gmail access token is required")
+	}
+	address, err := mail.ParseAddress(credentials.PrimaryEmail)
+	if err != nil || address.Address != strings.TrimSpace(credentials.PrimaryEmail) {
+		return fmt.Errorf("Gmail primary email is invalid")
+	}
+	switch credentials.AuthMethodID {
+	case "", GoogleOAuthAuthMethodID, WorkspaceDomainDelegationAuthMethodID:
+		return nil
+	default:
+		return fmt.Errorf("Gmail authorization method is invalid")
+	}
+}
+
 // Definition returns the immutable connector operation definition.
 func (SendMessageOperation) Definition() sdkgo.MutationDefinition { return SendMessageDefinition }
 
@@ -196,8 +270,8 @@ func (SendMessageOperation) IdempotencyKey(callID sdkgo.CallID, _ SendMessageInp
 
 // Invoke executes one provider call and classifies its attempt.
 func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageInput) sdkgo.MutationAttempt[SendMessageOutput] {
-	credential, err := operation.client.credentials.Resolve(call)
-	if err != nil || credential.Validate() != nil {
+	credential, err := operation.client.resolveCredentials(call.Context, call)
+	if err != nil {
 		return sdkgo.NewMutationBranch(SendMessageBranchDefect, SendMessageOutput{}, gmailFailurePointer(sdkgo.FailureAuthentication, "connection credentials are unavailable"), sdkgo.Receipt{})
 	}
 	recipients, validationFailure := validateSendInput(input, credential.PrimaryEmail)
@@ -216,13 +290,9 @@ func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageI
 		return sdkgo.NewMutationBranch(SendMessageBranchDefect, SendMessageOutput{}, gmailFailurePointer(sdkgo.FailureLocalDefect, "message request could not be encoded"), sdkgo.Receipt{})
 	}
 	target := strings.TrimRight(operation.client.endpoint.String(), "/") + "/users/me/messages/send"
-	request, err := http.NewRequestWithContext(call.Context, http.MethodPost, target, bytes.NewReader(payload))
-	if err != nil {
-		return sdkgo.NewMutationBranch(SendMessageBranchDefect, SendMessageOutput{}, gmailFailurePointer(sdkgo.FailureLocalDefect, "message request could not be built"), sdkgo.Receipt{})
-	}
-	request.Header.Set("Authorization", "Bearer "+credential.AccessToken.Reveal())
-	request.Header.Set("Content-Type", "application/json")
-	response, err := operation.client.httpClient.Do(request)
+	response, credential, err := operation.client.doAuthenticatedRequest(
+		call.Context, call, credential, http.MethodPost, target, payload, "application/json",
+	)
 	if err != nil {
 		return sdkgo.NewMutationUncertain(SendMessageOutput{}, gmailFailure(sdkgo.FailureTransport, "Gmail send outcome is unknown"), operation.client.receipt(call, "", ""))
 	}
@@ -348,7 +418,13 @@ func convertLineEndingsToCRLF(value string) string {
 	return strings.ReplaceAll(value, "\n", "\r\n")
 }
 
-func (client *Client) readMessage(ctx context.Context, credentials Credentials, messageID string, format string) (gmailMessageResource, gmailHTTPResult, error) {
+func (client *Client) readMessage(
+	ctx context.Context,
+	call sdkgo.Call,
+	credentials Credentials,
+	messageID string,
+	format string,
+) (gmailMessageResource, gmailHTTPResult, Credentials, error) {
 	query := url.Values{"format": {format}}
 	if format == "metadata" {
 		for _, name := range []string{"Message-ID", "In-Reply-To", "References", "From", "Reply-To", "To", "Subject"} {
@@ -356,26 +432,21 @@ func (client *Client) readMessage(ctx context.Context, credentials Credentials, 
 		}
 	}
 	target := strings.TrimRight(client.endpoint.String(), "/") + "/users/me/messages/" + url.PathEscape(messageID) + "?" + query.Encode()
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
+	response, credentials, err := client.doAuthenticatedRequest(ctx, call, credentials, http.MethodGet, target, nil, "")
 	if err != nil {
-		return gmailMessageResource{}, gmailHTTPResult{}, err
-	}
-	request.Header.Set("Authorization", "Bearer "+credentials.AccessToken.Reveal())
-	response, err := client.httpClient.Do(request)
-	if err != nil {
-		return gmailMessageResource{}, gmailHTTPResult{}, err
+		return gmailMessageResource{}, gmailHTTPResult{}, Credentials{}, err
 	}
 	defer response.Body.Close()
 	result := gmailHTTPResult{statusCode: response.StatusCode, header: response.Header.Clone()}
 	result.body, err = io.ReadAll(io.LimitReader(response.Body, client.maxResponseBytes+1))
 	if err != nil || int64(len(result.body)) > client.maxResponseBytes || response.StatusCode < 200 || response.StatusCode >= 300 {
-		return gmailMessageResource{}, result, fmt.Errorf("Gmail message lookup failed")
+		return gmailMessageResource{}, result, credentials, fmt.Errorf("Gmail message lookup failed")
 	}
 	var resource gmailMessageResource
 	if err := json.Unmarshal(result.body, &resource); err != nil {
-		return gmailMessageResource{}, result, err
+		return gmailMessageResource{}, result, credentials, err
 	}
-	return resource, result, nil
+	return resource, result, credentials, nil
 }
 
 func retryAfter(header http.Header) (time.Duration, error) {

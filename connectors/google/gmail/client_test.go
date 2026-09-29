@@ -20,6 +20,23 @@ import (
 
 var gmailConnection = sdkgo.ConnectionRef{Provider: "google", Name: "gmail-send"}
 
+type rejectionRefreshingCredentialProvider struct {
+	forcedRefreshes int
+}
+
+func (*rejectionRefreshingCredentialProvider) Resolve(sdkgo.Call) (gmail.Credentials, error) {
+	return gmail.Credentials{AccessToken: sdkgo.NewSecretString("rejected-token"), PrimaryEmail: "owner@example.com"}, nil
+}
+
+func (provider *rejectionRefreshingCredentialProvider) ResolveAfterRejection(
+	context.Context,
+	sdkgo.Call,
+	sdkgo.CredentialRefreshDriver[gmail.Credentials],
+) (gmail.Credentials, error) {
+	provider.forcedRefreshes++
+	return gmail.Credentials{AccessToken: sdkgo.NewSecretString("replacement-token"), PrimaryEmail: "owner@example.com"}, nil
+}
+
 func TestSendMessageUsesPrimarySenderAndStableMessageID(t *testing.T) {
 	var raw string
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
@@ -43,6 +60,52 @@ func TestSendMessageUsesPrimarySenderAndStableMessageID(t *testing.T) {
 	require.Contains(t, raw, "From: owner@example.com")
 	require.Contains(t, raw, "Message-ID: <"+string(result.Receipt.IdempotencyKey)+"@dex.superdurable.dev>")
 	require.NotContains(t, raw, "gmail-token")
+}
+
+func TestSendMessageRefreshesAndRetriesOnceAfterUnauthorized(t *testing.T) {
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		requests++
+		if requests == 1 {
+			require.Equal(t, "Bearer rejected-token", request.Header.Get("Authorization"))
+			response.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		require.Equal(t, "Bearer replacement-token", request.Header.Get("Authorization"))
+		_, _ = response.Write([]byte(`{"id":"message-1","threadId":"thread-1"}`))
+	}))
+	t.Cleanup(server.Close)
+	provider := &rejectionRefreshingCredentialProvider{}
+	client, err := gmail.New(gmail.Config{Endpoint: server.URL}, provider)
+	require.NoError(t, err)
+
+	result, err := sdkgo.RunMutation(newGmailDexContext("refresh-after-401"), client.SendMessage(), gmailConnection, gmail.SendMessageInput{
+		To: []string{"customer@example.com"}, Subject: "Progress", TextBody: "Update",
+	})
+	require.NoError(t, err)
+	require.Equal(t, gmail.SendMessageBranchSent, result.Branch)
+	require.Equal(t, 2, requests)
+	require.Equal(t, 1, provider.forcedRefreshes)
+}
+
+func TestSendMessageDoesNotLoopWhenReplacementCredentialIsUnauthorized(t *testing.T) {
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		requests++
+		response.WriteHeader(http.StatusUnauthorized)
+	}))
+	t.Cleanup(server.Close)
+	provider := &rejectionRefreshingCredentialProvider{}
+	client, err := gmail.New(gmail.Config{Endpoint: server.URL}, provider)
+	require.NoError(t, err)
+
+	result, err := sdkgo.RunMutation(newGmailDexContext("no-refresh-loop"), client.SendMessage(), gmailConnection, gmail.SendMessageInput{
+		To: []string{"customer@example.com"}, Subject: "Progress", TextBody: "Update",
+	})
+	require.NoError(t, err)
+	require.Equal(t, gmail.SendMessageBranchProviderRejected, result.Branch)
+	require.Equal(t, 2, requests)
+	require.Equal(t, 1, provider.forcedRefreshes)
 }
 
 func TestServerFailureIsUncertainAndNeverAutomaticRetry(t *testing.T) {

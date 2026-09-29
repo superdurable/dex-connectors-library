@@ -35,8 +35,14 @@ type Config struct {
 }
 
 type Credentials struct {
-	AccessToken  sdkgo.SecretString
-	PrimaryEmail string
+	AuthMethodID      string
+	OAuthClientID     string
+	OAuthClientSecret sdkgo.SecretString
+	AccessToken       sdkgo.SecretString
+	RefreshToken      sdkgo.SecretString
+	PrimaryEmail      string
+	ServiceAccountKey sdkgo.SecretString
+	DelegatedUser     string
 }
 
 type Connection struct {
@@ -67,7 +73,7 @@ func NewLocalConnection(store *localconfig.Store, connectionName string, options
 	if err := store.DecodeConfiguration(ConnectorID, connectionName, &config); err != nil {
 		return Connection{}, err
 	}
-	credentials := localconfig.NewCredentialProvider(store, ConnectorID, connectionName, decodeLocalCredentials)
+	credentials := localconfig.NewRefreshingCredentialProvider(store, ConnectorID, connectionName, decodeLocalCredentials, encodeLocalCredentials)
 	client, err := New(config, credentials, options...)
 	if err != nil {
 		return Connection{}, err
@@ -77,17 +83,52 @@ func NewLocalConnection(store *localconfig.Store, connectionName string, options
 
 func decodeLocalCredentials(contents json.RawMessage) (Credentials, error) {
 	var fields struct {
-		AccessToken  string `json:"access_token"`
-		PrimaryEmail string `json:"primary_email"`
+		AuthMethodID      string `json:"auth_method"`
+		OAuthClientID     string `json:"oauth_client_id"`
+		OAuthClientSecret string `json:"oauth_client_secret"`
+		AccessToken       string `json:"access_token"`
+		RefreshToken      string `json:"refresh_token"`
+		PrimaryEmail      string `json:"primary_email"`
+		ServiceAccountKey string `json:"service_account_key"`
+		DelegatedUser     string `json:"delegated_user"`
 	}
 	if err := localconfig.DecodeCredentials(contents, &fields); err != nil {
 		return Credentials{}, err
 	}
 	credentials := Credentials{
-		AccessToken:  sdkgo.NewSecretString(fields.AccessToken),
-		PrimaryEmail: fields.PrimaryEmail,
+		AuthMethodID:      fields.AuthMethodID,
+		OAuthClientID:     fields.OAuthClientID,
+		OAuthClientSecret: sdkgo.NewSecretString(fields.OAuthClientSecret),
+		AccessToken:       sdkgo.NewSecretString(fields.AccessToken),
+		RefreshToken:      sdkgo.NewSecretString(fields.RefreshToken),
+		PrimaryEmail:      fields.PrimaryEmail,
+		ServiceAccountKey: sdkgo.NewSecretString(fields.ServiceAccountKey),
+		DelegatedUser:     fields.DelegatedUser,
 	}
 	return credentials, credentials.Validate()
+}
+
+func encodeLocalCredentials(credentials Credentials) (json.RawMessage, error) {
+	fields := struct {
+		AuthMethodID      string `json:"auth_method"`
+		OAuthClientID     string `json:"oauth_client_id,omitempty"`
+		OAuthClientSecret string `json:"oauth_client_secret,omitempty"`
+		AccessToken       string `json:"access_token,omitempty"`
+		RefreshToken      string `json:"refresh_token,omitempty"`
+		PrimaryEmail      string `json:"primary_email,omitempty"`
+		ServiceAccountKey string `json:"service_account_key,omitempty"`
+		DelegatedUser     string `json:"delegated_user,omitempty"`
+	}{
+		AuthMethodID:      credentials.AuthMethodID,
+		OAuthClientID:     credentials.OAuthClientID,
+		OAuthClientSecret: credentials.OAuthClientSecret.Reveal(),
+		AccessToken:       credentials.AccessToken.Reveal(),
+		RefreshToken:      credentials.RefreshToken.Reveal(),
+		PrimaryEmail:      credentials.PrimaryEmail,
+		ServiceAccountKey: credentials.ServiceAccountKey.Reveal(),
+		DelegatedUser:     credentials.DelegatedUser,
+	}
+	return json.Marshal(fields)
 }
 
 func (connection Connection) validate() error {
@@ -162,11 +203,32 @@ func (config Config) Validate() error {
 }
 
 func (credentials Credentials) Validate() error {
-	if credentials.AccessToken.Reveal() == "" {
-		return fmt.Errorf("credential access_token is required")
-	}
-	if credentials.PrimaryEmail == "" {
-		return fmt.Errorf("credential primary_email is required")
+	switch credentials.AuthMethodID {
+	case "google-oauth":
+		if credentials.OAuthClientID == "" {
+			return fmt.Errorf("credential oauth_client_id is required")
+		}
+		if credentials.OAuthClientSecret.Reveal() == "" {
+			return fmt.Errorf("credential oauth_client_secret is required")
+		}
+		if credentials.AccessToken.Reveal() == "" {
+			return fmt.Errorf("credential access_token is required")
+		}
+		if credentials.RefreshToken.Reveal() == "" {
+			return fmt.Errorf("credential refresh_token is required")
+		}
+		if credentials.PrimaryEmail == "" {
+			return fmt.Errorf("credential primary_email is required")
+		}
+	case "workspace-domain-delegation":
+		if credentials.ServiceAccountKey.Reveal() == "" {
+			return fmt.Errorf("credential service_account_key is required")
+		}
+		if credentials.DelegatedUser == "" {
+			return fmt.Errorf("credential delegated_user is required")
+		}
+	default:
+		return fmt.Errorf("credential auth_method is invalid")
 	}
 	return nil
 }

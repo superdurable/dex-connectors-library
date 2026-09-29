@@ -5,7 +5,7 @@ metadata:
   displayName: Gmail
   description: Start and update Dex Flows from received Gmail messages, read messages, and send or reply to email.
   company: Google
-  version: v0.13.0
+  version: v0.14.0
 spec:
   provider: google
   codegen:
@@ -44,32 +44,93 @@ spec:
         required: false
         default: 25
   auth:
-    type: oauth2
-    connectionKind: gmail-send-oauth
-    fields:
-      - name: access_token
-        goName: AccessToken
-        type: secretString
-        description: Secret short-lived Google OAuth access token produced automatically after authorization; do not enter it manually.
-        required: true
-      - name: primary_email
-        goName: PrimaryEmail
-        type: string
-        description: Verified primary Google email derived automatically from the read-only OpenID Connect UserInfo response; do not enter it manually.
-        required: true
-    guide:
-      startURL: https://console.cloud.google.com/apis/credentials
-      steps:
-        - Select a Google Cloud project, open APIs & Services > Library, and enable Gmail API.
-        - In Google Auth Platform, configure Branding, Audience, and Data Access for the displayed scopes; add test users while the app is in Testing.
-        - Open Clients > Create client > Web application, add the exact Redirect URI shown below, then copy the client ID and one-time client secret.
-    oauth2:
-      authorizationEndpoint: https://accounts.google.com/o/oauth2/v2/auth
-      tokenEndpoint: https://oauth2.googleapis.com/token
-      scopes: [openid, https://www.googleapis.com/auth/userinfo.email, https://www.googleapis.com/auth/gmail.readonly, https://www.googleapis.com/auth/gmail.send]
-      credentialDerivations:
-        - {credential: primary_email, endpoint: https://openidconnect.googleapis.com/v1/userinfo, source: email, verifiedBy: email_verified}
-      pkce: true
+    defaultMethod: google-oauth
+    methods:
+      - id: google-oauth
+        displayName: Google OAuth
+        description: Recommended for personal Gmail and ordinary Google Workspace users; Dex opens Google consent and refreshes short-lived access tokens automatically.
+        recommended: true
+        type: oauth2
+        connectionKind: gmail-google-oauth
+        fields:
+          - name: oauth_client_id
+            goName: OAuthClientID
+            type: string
+            description: Non-secret OAuth client ID copied from https://console.cloud.google.com/apis/credentials after opening APIs & Services > Credentials > OAuth 2.0 Client IDs; the value ends in .apps.googleusercontent.com and blank means authorization cannot start.
+            required: true
+          - name: oauth_client_secret
+            goName: OAuthClientSecret
+            type: secretString
+            description: Secret OAuth client secret copied once from the selected Web application at https://console.cloud.google.com/apis/credentials; store it only in the credential form and blank means authorization cannot start.
+            required: true
+          - name: access_token
+            goName: AccessToken
+            type: secretString
+            description: Secret short-lived access token returned by Google after consent; Dex derives it automatically and refreshes it before expiry, so never enter it manually.
+            required: true
+          - name: refresh_token
+            goName: RefreshToken
+            type: secretString
+            description: Secret long-lived refresh token returned by Google because offline access is requested; Dex stores and rotates it automatically, and blank means reauthorization is required.
+            required: true
+          - name: primary_email
+            goName: PrimaryEmail
+            type: string
+            description: Verified primary Google email derived automatically from https://openidconnect.googleapis.com/v1/userinfo after checking email_verified; this is read-only and never a free-text account selector.
+            required: true
+        guide:
+          startURL: https://console.cloud.google.com/apis/credentials
+          steps:
+            - Select a Google Cloud project, open APIs & Services > Library, search Gmail API, and select Enable.
+            - Open Google Auth Platform > Branding, Audience, and Data Access; add the displayed scopes and add test users while External apps remain in Testing.
+            - Open APIs & Services > Credentials > Create credentials > OAuth client ID > Web application, add the exact Dex Redirect URI, then copy the client ID and client secret into their secret-safe fields.
+            - Complete consent with the Gmail or Workspace account that owns the mailbox; Google Testing refresh tokens can expire after seven days, so publish the app or use an Internal Workspace audience for long-lived use.
+        oauth2:
+          authorizationEndpoint: https://accounts.google.com/o/oauth2/v2/auth
+          tokenEndpoint: https://oauth2.googleapis.com/token
+          authorizationParameters: {access_type: offline, prompt: consent}
+          clientIDCredential: oauth_client_id
+          clientSecretCredential: oauth_client_secret
+          scopes: [openid, https://www.googleapis.com/auth/userinfo.email, https://www.googleapis.com/auth/gmail.readonly, https://www.googleapis.com/auth/gmail.send]
+          credentialMappings:
+            - {credential: access_token, source: access_token}
+            - {credential: refresh_token, source: refresh_token}
+          credentialDerivations:
+            - {credential: primary_email, endpoint: https://openidconnect.googleapis.com/v1/userinfo, source: email, verifiedBy: email_verified}
+          pkce: true
+      - id: workspace-domain-delegation
+        displayName: Workspace domain-wide delegation
+        description: Advanced administrator-only method for a Google Workspace domain; the service account mints delegated user tokens without interactive consent.
+        type: serviceAccount
+        connectionKind: gmail-workspace-domain-delegation
+        fields:
+          - name: service_account_key
+            goName: ServiceAccountKey
+            type: secretString
+            description: Secret service-account JSON key downloaded from https://console.cloud.google.com/iam-admin/serviceaccounts after selecting the account > Keys > Add key > Create new key > JSON; blank means delegated token minting cannot start.
+            required: true
+          - name: delegated_user
+            goName: DelegatedUser
+            type: string
+            description: Complete Workspace mailbox address selected by an administrator after authorizing the service account client ID at https://admin.google.com/ac/owl/domainwidedelegation; the value must be one user@example.com address and blank means no mailbox can be impersonated.
+            required: true
+          - name: access_token
+            goName: AccessToken
+            type: secretString
+            description: Secret short-lived delegated access token minted automatically from the service-account assertion; never paste a token and blank causes Dex to mint one before the next call.
+            required: false
+          - name: primary_email
+            goName: PrimaryEmail
+            type: string
+            description: Read-only mailbox identity copied automatically from delegated_user after the administrator-managed setup is validated; do not enter a different sender.
+            required: false
+        guide:
+          startURL: https://console.cloud.google.com/iam-admin/serviceaccounts
+          steps:
+            - Select the Workspace-owned Google Cloud project, create a service account, open Details > Show advanced settings, and enable Google Workspace domain-wide delegation.
+            - Open the service account > Keys > Add key > Create new key > JSON, download the one-time private key, and paste the complete JSON document into the secret field.
+            - Copy the service account OAuth 2 Client ID, then open https://admin.google.com/ac/owl/domainwidedelegation and add that client ID with the displayed Gmail readonly and send scopes.
+            - Enter one managed Workspace mailbox as delegated_user; personal @gmail.com accounts and Workspace users without administrator-approved delegation cannot use this method.
   studio:
     setup:
       entrypoint: index.html

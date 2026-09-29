@@ -107,7 +107,12 @@ func TestRunWaitsForUnreachableDexServerAndStopsCleanly(t *testing.T) {
 			"connectorId": gmail.ConnectorID, "modulePath": "github.com/superdurable/dex-connectors-library/connectors/google/gmail",
 			"moduleVersion": "v0.9.0", "provider": "google", "connectionName": threadreply.ConnectionName,
 			"configuration": map[string]any{"endpoint": gmailAPI.URL},
-			"credentials":   map[string]any{"access_token": "SENTINEL-ACCESS-TOKEN", "primary_email": "owner@example.com"},
+			"credentials": map[string]any{
+				"auth_method": "google-oauth", "oauth_client_id": "client-id",
+				"oauth_client_secret": "client-secret", "access_token": "SENTINEL-ACCESS-TOKEN",
+				"refresh_token": "refresh-token", "primary_email": "owner@example.com",
+			},
+			"credentialExpiresAt": time.Now().Add(time.Hour).UTC().Format(time.RFC3339),
 		}},
 		"triggerBindings": []any{
 			map[string]any{"connectorId": gmail.ConnectorID, "connectionName": threadreply.ConnectionName,
