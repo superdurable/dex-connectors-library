@@ -13,6 +13,19 @@ import (
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 
+type contextCredentialProvider struct {
+	called bool
+}
+
+func (*contextCredentialProvider) Resolve(sdkgo.Call) (string, error) {
+	return "unexpected", nil
+}
+
+func (provider *contextCredentialProvider) ResolveContext(ctx context.Context, _ sdkgo.Call) (string, error) {
+	provider.called = true
+	return "", ctx.Err()
+}
+
 type unusedRefreshDriver struct{}
 
 func (unusedRefreshDriver) RefreshRequired(sdkgo.CredentialRefreshState[string]) bool { return true }
@@ -32,6 +45,17 @@ func TestResolveCredentialPreservesStaticProviderBehavior(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.Equal(t, "secret", resolved)
+}
+
+func TestResolveCredentialUsesContextProviderOutsideDexStep(t *testing.T) {
+	provider := &contextCredentialProvider{}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	resolved, err := sdkgo.ResolveCredential(ctx, provider, sdkgo.Call{}, unusedRefreshDriver{})
+	require.ErrorIs(t, err, context.Canceled)
+	require.Empty(t, resolved)
+	require.True(t, provider.called)
 }
 
 func TestResolveCredentialRejectsMissingDependencies(t *testing.T) {
