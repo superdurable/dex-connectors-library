@@ -13,7 +13,17 @@ factories for:
 - `ListCommits`: one page of commits within a time window, optionally from one
   ref and path.
 
-The OAuth connection requests only `read:user user:email`. The connector never
+The OAuth connection requests `read:user user:email offline_access`.
+`offline_access` opts GitHub.com into an eight-hour access token and a rotating
+six-month refresh token without expanding repository access. Local Dex reloads
+credentials before every call, refreshes within five minutes of expiry, and
+atomically persists both rotated tokens. Hosted apps receive only the resolved
+access token from the Superverse broker. A `bad_refresh_token` response marks
+the connection as requiring reauthorization. GitHub Enterprise Server may
+ignore `offline_access` and issue a non-expiring access token without refresh
+material; the connector keeps using that token while no expiry is present.
+
+The connector never
 requests `repo`, `public_repo`, organization, or write scopes. Without `repo`,
 GitHub serves only public repository data. Every operation also checks
 GitHub's `X-OAuth-Scopes` response header and selects `insufficientScope` for a
@@ -113,7 +123,7 @@ all three queries in one Flow from Dex Web **Start Flow**.
 Install the published module:
 
 ```bash
-go get github.com/superdurable/dex-connectors-library/connectors/github@v0.7.0
+go get github.com/superdurable/dex-connectors-library/connectors/github@v0.9.0
 ```
 
 Verify it independently:
@@ -146,5 +156,5 @@ connection configuration uses the standard `defect` branch.
 With local Dex Web, call `localconfig.LoadFromEnvironment` and
 `github.NewLocalConnection(store, "reviewer")` during startup. Use the same
 static `ConnectionName: "reviewer"` in each generated GitHub Step config.
-The access token is reloaded before every provider call, so reauthorization
-does not require restarting the application.
+The latest credential state is reloaded before every provider call, so refresh
+and reauthorization do not require restarting the application.

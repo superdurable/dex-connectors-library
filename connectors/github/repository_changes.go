@@ -462,7 +462,7 @@ func fetchChangePage[T any](
 	client *Client, call sdkgo.Call, credential Credentials, operationID string, path string, query url.Values,
 	branches changeBranches,
 ) (providerResponse, *sdkgo.QueryAttempt[T]) {
-	response, err := client.get(call, credential, path, query)
+	response, err := client.get(call, &credential, path, query)
 	if err == nil {
 		return response, nil
 	}

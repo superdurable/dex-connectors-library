@@ -5,7 +5,7 @@ metadata:
   displayName: GitHub
   description: Read an authenticated GitHub profile, verified primary email, bounded public repositories, and bounded public repository changes.
   company: GitHub
-  version: v0.8.0
+  version: v0.9.0
 spec:
   provider: github
   codegen:
@@ -71,22 +71,43 @@ spec:
     type: oauth2
     connectionKind: github-oauth
     fields:
+      - name: oauth_client_id
+        goName: OAuthClientID
+        type: string
+        description: Non-secret OAuth App client ID copied from https://github.com/settings/developers after opening OAuth Apps > the selected app; blank means authorization and refresh cannot start.
+        required: true
+      - name: oauth_client_secret
+        goName: OAuthClientSecret
+        type: secretString
+        description: Secret copied or regenerated under https://github.com/settings/developers > OAuth Apps > the selected app > Client secrets; store it only in this credential field and blank means authorization and refresh cannot start.
+        required: true
       - name: access_token
         goName: AccessToken
         type: secretString
-        description: Secret GitHub OAuth access token produced automatically after authorization; do not copy or enter a personal access token here.
+        description: Secret GitHub OAuth access token produced automatically after authorization and refreshed before expiry when GitHub returns expiration metadata; do not copy or enter a personal access token here.
         required: true
+      - name: refresh_token
+        goName: RefreshToken
+        type: secretString
+        description: Secret rotating refresh token returned when GitHub supports the requested offline_access capability; Dex stores each replacement atomically, and blank means the provider issued a non-expiring token or reauthorization is required after an expiring token fails.
+        required: false
     guide:
       startURL: https://github.com/settings/developers
       steps:
         - Open Settings > Developer settings > OAuth Apps and choose New OAuth App or select the existing app for this Dex connection.
         - Set Authorization callback URL to the exact Redirect URI shown below, then register or update the OAuth app.
         - Copy Client ID, generate a new client secret if needed, and paste both below; the client secret is sensitive.
+        - Dex requests offline_access with read:user and user:email so GitHub.com returns an eight-hour access token and rotating refresh token; GitHub Enterprise Server may instead return a non-expiring token without refresh material.
     oauth2:
       protocol: oauth2
       authorizationEndpoint: https://github.com/login/oauth/authorize
       tokenEndpoint: https://github.com/login/oauth/access_token
-      scopes: [read:user, user:email]
+      clientIDCredential: oauth_client_id
+      clientSecretCredential: oauth_client_secret
+      scopes: [read:user, user:email, offline_access]
+      credentialMappings:
+        - {credential: access_token, source: access_token}
+        - {credential: refresh_token, source: refresh_token}
       pkce: true
   operations:
     - name: getAuthenticatedProfile
