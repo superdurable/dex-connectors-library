@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -158,15 +159,30 @@ func (source *messagePollingTriggerSource) scan(ctx context.Context, target sdkg
 
 // list reads the newest inbox page that matches the source's search query.
 func (source *messagePollingTriggerSource) list(ctx context.Context) (messageListing, error) {
-	credentials, err := source.client.credentials.Resolve(sdkgo.Call{Connection: source.connection})
-	if err != nil || credentials.Validate() != nil {
+	call := source.credentialCall()
+	credentials, err := source.client.resolveCredentials(ctx, call)
+	if err != nil {
 		return messageListing{}, source.pollFailed(ctx, fmt.Errorf("Gmail Trigger credentials are unavailable"))
 	}
-	listed, err := source.listMessages(ctx, credentials)
+	listed, credentials, err := source.listMessages(ctx, call, credentials)
 	if err != nil {
 		return messageListing{}, source.pollFailed(ctx, err)
 	}
 	return messageListing{credentials: credentials, messages: listed}, nil
+}
+
+func (source *messagePollingTriggerSource) credentialCall() sdkgo.Call {
+	identity := strings.Join([]string{
+		"https://superdurable.dev/dex-connectors/trigger-credential/v1",
+		source.connection.Provider,
+		source.connection.Name,
+		source.triggerName,
+	}, "/")
+	return sdkgo.Call{
+		ID:         sdkgo.CallID(uuid.NewSHA1(uuid.NameSpaceURL, []byte(identity)).String()),
+		Connection: source.connection,
+		Operation:  sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: source.triggerName},
+	}
 }
 
 // pollFailed logs a poll that ends early because Gmail or the inbox failed and returns err. The next
@@ -217,10 +233,13 @@ func (source *messagePollingTriggerSource) deliver(ctx context.Context, target s
 			continue
 		}
 		messageAttrs := []slog.Attr{slog.String("thread_id", reference.ThreadID), slog.String("event_id", reference.ID)}
-		resource, _, err := source.client.readMessage(ctx, credentials, reference.ID, "metadata")
+		resource, _, refreshedCredentials, err := source.client.readMessage(
+			ctx, source.credentialCall(), credentials, reference.ID, "metadata",
+		)
 		if err != nil {
 			return source.pollFailed(ctx, err, messageAttrs...)
 		}
+		credentials = refreshedCredentials
 		message, err := decodeGmailMessage(resource)
 		if err != nil {
 			return source.pollFailed(ctx, err, messageAttrs...)
@@ -341,31 +360,30 @@ func (source *messagePollingTriggerSource) log(ctx context.Context, level slog.L
 	_ = logger.Handler().Handle(ctx, record)
 }
 
-func (source *messagePollingTriggerSource) listMessages(ctx context.Context, credentials Credentials) (gmailMessageList, error) {
+func (source *messagePollingTriggerSource) listMessages(
+	ctx context.Context,
+	call sdkgo.Call,
+	credentials Credentials,
+) (gmailMessageList, Credentials, error) {
 	query := url.Values{"labelIds": {"INBOX"}, "maxResults": {fmt.Sprintf("%d", source.client.pollPageSize)}}
 	if strings.TrimSpace(source.searchQuery) != "" {
 		query.Set("q", source.searchQuery)
 	}
 	target := strings.TrimRight(source.client.endpoint.String(), "/") + "/users/me/messages?" + query.Encode()
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
+	response, credentials, err := source.client.doAuthenticatedRequest(ctx, call, credentials, http.MethodGet, target, nil, "")
 	if err != nil {
-		return gmailMessageList{}, err
-	}
-	request.Header.Set("Authorization", "Bearer "+credentials.AccessToken.Reveal())
-	response, err := source.client.httpClient.Do(request)
-	if err != nil {
-		return gmailMessageList{}, err
+		return gmailMessageList{}, Credentials{}, err
 	}
 	defer response.Body.Close()
 	contents, err := io.ReadAll(io.LimitReader(response.Body, source.client.maxResponseBytes+1))
 	if err != nil || int64(len(contents)) > source.client.maxResponseBytes || response.StatusCode < 200 || response.StatusCode >= 300 {
-		return gmailMessageList{}, fmt.Errorf("Gmail message list is unavailable")
+		return gmailMessageList{}, credentials, fmt.Errorf("Gmail message list is unavailable")
 	}
 	var result gmailMessageList
 	if err := json.Unmarshal(contents, &result); err != nil {
-		return gmailMessageList{}, err
+		return gmailMessageList{}, credentials, err
 	}
-	return result, nil
+	return result, credentials, nil
 }
 
 func (matcher MessageMatcher) matches(message Message) bool {

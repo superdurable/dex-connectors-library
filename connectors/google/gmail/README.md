@@ -20,9 +20,24 @@ Google grants. After upgrading, a host that stored the requested `email` string
 instead of Google's granted scope string reports an existing connection as
 needing more permission; reconnect it once.
 
-The connector does not modify or delete existing messages. The generated
-`Credentials` contains a short-lived access token and the verified primary
-email; refresh tokens remain in the hosting application's OAuth broker.
+The connector does not modify or delete existing messages. It supports two
+authorization methods:
+
+- `google-oauth` is recommended for personal Gmail and ordinary Workspace
+  users. Dex requests offline access, derives the verified primary email from
+  Google UserInfo, and refreshes the access token before expiry.
+- `workspace-domain-delegation` is an administrator-only option. It signs a
+  service-account assertion for the configured managed user, mints a delegated
+  access token, and derives the primary email from that delegated user.
+
+The provider-specific refresh driver never owns persistence. Local development
+reloads and atomically replaces the private `0600` connection file. Hosted apps
+receive only an operation-scoped access token and primary email from the
+Superverse broker; OAuth client secrets, refresh tokens, and service-account
+keys remain in the encrypted credential store. If Google rotates a refresh
+token, the broker or local provider replaces it atomically; if Google omits a
+new one, the prior value is retained. `invalid_grant` requires reauthorization.
+A 401 forces one coordinated refresh and one retry, never a refresh loop.
 
 `messageReceived` and `replyReceived` are neutral provider Triggers. Their
 manifest does not decide whether an event starts a Flow or invokes an RPC. The
@@ -132,9 +147,10 @@ sender, err := gmail.NewLocalConnection(store, "sender")
 ```
 
 Set the same `ConnectionName` beside the typed `Connection` in each operation
-or Trigger binding. Dex Web stores only the short-lived access token and
-confirmed primary email. It does not store a refresh token, and deleting the
-local credential does not revoke the Google grant.
+or Trigger binding. Dex Web stores renewable credential material only in the
+selected host's credential store: the private local file for local setup, or
+the encrypted Superverse credential store for hosted setup. Deleting a stored
+credential does not itself revoke the Google grant.
 
 [`examples/thread-reply`](examples/thread-reply) combines a Flow-start target,
 `GetMessage`, a typed reply RPC, and `ReplyToMessage` in one runnable Flow.

@@ -116,11 +116,11 @@ func (operation GetMessageOperation) Invoke(call sdkgo.Call, input GetMessageInp
 	if strings.TrimSpace(input.MessageID) == "" {
 		return sdkgo.NewQueryBranch(GetMessageBranchDefect, Message{}, gmailOperationFailurePointer("getMessage", sdkgo.FailureValidation, "message ID is required"), sdkgo.Receipt{})
 	}
-	credentials, err := operation.client.credentials.Resolve(call)
-	if err != nil || credentials.Validate() != nil {
+	credentials, err := operation.client.resolveCredentials(call.Context, call)
+	if err != nil {
 		return sdkgo.NewQueryBranch(GetMessageBranchDefect, Message{}, gmailOperationFailurePointer("getMessage", sdkgo.FailureAuthentication, "connection credentials are unavailable"), sdkgo.Receipt{})
 	}
-	resource, result, err := operation.client.readMessage(call.Context, credentials, input.MessageID, "full")
+	resource, result, _, err := operation.client.readMessage(call.Context, call, credentials, input.MessageID, "full")
 	if err != nil {
 		return classifyGetMessageFailure(result, err)
 	}
@@ -143,14 +143,14 @@ func (ReplyToMessageOperation) IdempotencyKey(callID sdkgo.CallID, _ ReplyToMess
 
 // Invoke reads the source message and sends one reply in its Gmail thread.
 func (operation ReplyToMessageOperation) Invoke(call sdkgo.Call, input ReplyToMessageInput) sdkgo.MutationAttempt[SendMessageOutput] {
-	credentials, err := operation.client.credentials.Resolve(call)
-	if err != nil || credentials.Validate() != nil {
+	credentials, err := operation.client.resolveCredentials(call.Context, call)
+	if err != nil {
 		return sdkgo.NewMutationBranch(ReplyToMessageBranchDefect, SendMessageOutput{}, gmailOperationFailurePointer("replyToMessage", sdkgo.FailureAuthentication, "connection credentials are unavailable"), sdkgo.Receipt{})
 	}
 	if strings.TrimSpace(input.MessageID) == "" || strings.TrimSpace(input.TextBody) == "" {
 		return sdkgo.NewMutationBranch(ReplyToMessageBranchDefect, SendMessageOutput{}, gmailOperationFailurePointer("replyToMessage", sdkgo.FailureValidation, "message ID and text body are required"), sdkgo.Receipt{})
 	}
-	resource, result, err := operation.client.readMessage(call.Context, credentials, input.MessageID, "metadata")
+	resource, result, credentials, err := operation.client.readMessage(call.Context, call, credentials, input.MessageID, "metadata")
 	if err != nil {
 		if result.statusCode == 0 || result.statusCode == http.StatusTooManyRequests || result.statusCode >= 500 {
 			delay, retryAfterErr := retryAfter(result.header)
@@ -188,13 +188,9 @@ func (operation ReplyToMessageOperation) Invoke(call sdkgo.Call, input ReplyToMe
 
 func (operation ReplyToMessageOperation) sendReply(call sdkgo.Call, credentials Credentials, recipient string, threadID string, payload []byte) sdkgo.MutationAttempt[SendMessageOutput] {
 	target := strings.TrimRight(operation.client.endpoint.String(), "/") + "/users/me/messages/send"
-	request, err := http.NewRequestWithContext(call.Context, http.MethodPost, target, bytes.NewReader(payload))
-	if err != nil {
-		return sdkgo.NewMutationBranch(ReplyToMessageBranchDefect, SendMessageOutput{}, gmailOperationFailurePointer("replyToMessage", sdkgo.FailureLocalDefect, "reply request could not be built"), sdkgo.Receipt{})
-	}
-	request.Header.Set("Authorization", "Bearer "+credentials.AccessToken.Reveal())
-	request.Header.Set("Content-Type", "application/json")
-	response, err := operation.client.httpClient.Do(request)
+	response, credentials, err := operation.client.doAuthenticatedRequest(
+		call.Context, call, credentials, http.MethodPost, target, payload, "application/json",
+	)
 	if err != nil {
 		return sdkgo.NewMutationUncertain(SendMessageOutput{}, gmailOperationFailure("replyToMessage", sdkgo.FailureTransport, "Gmail reply outcome is unknown"), operation.client.receipt(call, "", ""))
 	}
