@@ -172,7 +172,7 @@ func TestDecodeMultiAuthManifestFixture(t *testing.T) {
 	t.Cleanup(func() { require.NoError(t, file.Close()) })
 	manifest, err := schema.Decode(file)
 	require.NoError(t, err)
-	require.Equal(t, "googleOAuth", manifest.Spec.Auth.DefaultMethod)
+	require.Equal(t, "google-oauth", manifest.Spec.Auth.DefaultMethod)
 	require.Len(t, manifest.Spec.Auth.Methods, 2)
 	require.True(t, manifest.Spec.Auth.Methods[0].Recommended)
 	require.Equal(t, "serviceAccount", manifest.Spec.Auth.Methods[1].Type)

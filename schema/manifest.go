@@ -237,6 +237,7 @@ type Retry struct {
 var (
 	namePattern         = regexp.MustCompile(`^[a-z][a-z0-9-]{1,62}$`)
 	operationPattern    = regexp.MustCompile(`^[a-z][A-Za-z0-9]+$`)
+	authMethodIDPattern = regexp.MustCompile(`^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$`)
 	goNamePattern       = regexp.MustCompile(`^[A-Z][A-Za-z0-9]*$`)
 	fieldNamePattern    = regexp.MustCompile(`^[a-z][A-Za-z0-9_]*$`)
 	capabilityPattern   = regexp.MustCompile(`^[a-z][a-z0-9]*(\.[a-z][a-z0-9-]*)+$`)
@@ -373,8 +374,8 @@ func (manifest Manifest) Validate() error {
 		seenCredentialFields := make(map[string]Field)
 		recommendedMethods := 0
 		for _, method := range manifest.Spec.Auth.Methods {
-			if !operationPattern.MatchString(method.ID) || seenMethodIDs[method.ID] {
-				problems = append(problems, "spec.auth method IDs must be unique lower camel case values")
+			if !authMethodIDPattern.MatchString(method.ID) || seenMethodIDs[method.ID] {
+				problems = append(problems, "spec.auth method IDs must be unique lowercase kebab-case values")
 			}
 			seenMethodIDs[method.ID] = true
 			if strings.TrimSpace(method.DisplayName) == "" || strings.TrimSpace(method.Description) == "" {

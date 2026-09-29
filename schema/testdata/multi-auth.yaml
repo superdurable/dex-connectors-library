@@ -11,9 +11,9 @@ spec:
   codegen: {go: {package: multiauthfixture}}
   configuration: {fields: []}
   auth:
-    defaultMethod: googleOAuth
+    defaultMethod: google-oauth
     methods:
-      - id: googleOAuth
+      - id: google-oauth
         displayName: Google OAuth
         description: Authorize an individual Google account.
         recommended: true
@@ -38,7 +38,7 @@ spec:
             - {credential: access_token, source: access_token}
             - {credential: refresh_token, source: refresh_token}
           pkce: true
-      - id: workspaceServiceAccount
+      - id: workspace-service-account
         displayName: Workspace service account
         description: Use domain-wide delegation managed by a Workspace administrator.
         type: serviceAccount
