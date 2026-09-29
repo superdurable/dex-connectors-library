@@ -228,6 +228,12 @@ The host owns refresh serialization and persistence through
 `ResolveCredential` with their driver. Static API-key providers retain the
 ordinary `CredentialProvider.Resolve` path.
 
+If a provider explicitly rejects an otherwise unexpired access credential,
+the connector may call `ResolveCredentialAfterRejection` once and retry that
+provider operation once. Local providers force one locked refresh; hosted
+providers send `forceRefresh: true` to the trusted broker. A second rejection
+is terminal for that operation and must not create a refresh loop.
+
 `localconfig.NewRefreshingCredentialProvider` reloads the connection after
 acquiring a process-local lock, so concurrent calls refresh once. A successful
 refresh must return a future expiry and the complete replacement credential

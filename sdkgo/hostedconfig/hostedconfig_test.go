@@ -4,6 +4,7 @@
 package hostedconfig
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -18,6 +19,19 @@ import (
 
 type testCredentials struct {
 	AccessToken sdkgo.SecretString
+}
+
+type unusedRefreshDriver struct{}
+
+func (unusedRefreshDriver) RefreshRequired(sdkgo.CredentialRefreshState[testCredentials]) bool {
+	return true
+}
+
+func (unusedRefreshDriver) Refresh(
+	context.Context,
+	sdkgo.CredentialRefreshState[testCredentials],
+) (sdkgo.CredentialRefreshResult[testCredentials], error) {
+	return sdkgo.CredentialRefreshResult[testCredentials]{}, nil
 }
 
 func TestCredentialProviderResolvesOperationScopedCredentialAndReloadsWorkloadCredential(t *testing.T) {
@@ -74,6 +88,29 @@ func TestCredentialProviderResolvesTriggerCredentialWithoutDexContext(t *testing
 	credentials, err := provider.Resolve(call)
 	require.NoError(t, err)
 	require.Equal(t, "trigger-token", credentials.AccessToken.Reveal())
+}
+
+func TestCredentialProviderRequestsForcedRefreshAfterProviderRejection(t *testing.T) {
+	credentialFile := writePrivateCredential(t, "valid-workload-credential")
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		var body resolveRequest
+		require.NoError(t, json.NewDecoder(request.Body).Decode(&body))
+		require.True(t, body.ForceRefresh)
+		_, err := response.Write([]byte(`{"credentials":{"access_token":"replacement-token"}}`))
+		require.NoError(t, err)
+	}))
+	t.Cleanup(server.Close)
+	provider, err := NewCredentialProvider(&Config{
+		BrokerURL: server.URL, WorkloadCredentialFile: credentialFile,
+		ConnectorID: "gmail", ConnectionName: "event-tickets",
+	}, decodeTestCredentials)
+	require.NoError(t, err)
+
+	credentials, err := sdkgo.ResolveCredentialAfterRejection(
+		context.Background(), provider, testCall("sendMessage"), unusedRefreshDriver{},
+	)
+	require.NoError(t, err)
+	require.Equal(t, "replacement-token", credentials.AccessToken.Reveal())
 }
 
 func TestCredentialProviderClassifiesReauthorizationWithoutReturningProviderText(t *testing.T) {

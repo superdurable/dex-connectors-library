@@ -68,6 +68,7 @@ type resolveRequest struct {
 	ConnectionName string       `json:"connectionName"`
 	OperationID    string       `json:"operationId"`
 	CallID         sdkgo.CallID `json:"callId"`
+	ForceRefresh   bool         `json:"forceRefresh,omitempty"`
 }
 
 type resolveResponse struct {
@@ -144,6 +145,19 @@ func (provider *CredentialProvider[C]) Resolve(call sdkgo.Call) (C, error) {
 
 // ResolveContext obtains the minimum credential and cancels the broker request with ctx.
 func (provider *CredentialProvider[C]) ResolveContext(ctx context.Context, call sdkgo.Call) (C, error) {
+	return provider.resolveContext(ctx, call, false)
+}
+
+// ResolveAfterRejection asks the trusted broker for one forced refresh after provider rejection.
+func (provider *CredentialProvider[C]) ResolveAfterRejection(
+	ctx context.Context,
+	call sdkgo.Call,
+	_ sdkgo.CredentialRefreshDriver[C],
+) (C, error) {
+	return provider.resolveContext(ctx, call, true)
+}
+
+func (provider *CredentialProvider[C]) resolveContext(ctx context.Context, call sdkgo.Call, forceRefresh bool) (C, error) {
 	var zero C
 	if provider == nil {
 		return zero, fmt.Errorf("hosted Connector credential provider is required")
@@ -169,7 +183,7 @@ func (provider *CredentialProvider[C]) ResolveContext(ctx context.Context, call 
 	}
 	contents, err := json.Marshal(resolveRequest{
 		ConnectorID: provider.connectorID, ConnectionName: provider.connectionName,
-		OperationID: call.Operation.OperationID, CallID: call.ID,
+		OperationID: call.Operation.OperationID, CallID: call.ID, ForceRefresh: forceRefresh,
 	})
 	if err != nil {
 		return zero, fmt.Errorf("encode hosted Connector credential request: %w", err)
