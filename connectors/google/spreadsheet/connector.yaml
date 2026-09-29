@@ -5,7 +5,7 @@ metadata:
   displayName: Google Sheets
   description: Read ranges, find stable keyed rows, and idempotently upsert rows in Google Sheets.
   company: Google
-  version: v0.8.0
+  version: v0.9.0
 spec:
   provider: google
   codegen:
@@ -35,10 +35,25 @@ spec:
     type: oauth2
     connectionKind: google-sheets-oauth
     fields:
+      - name: oauth_client_id
+        goName: OAuthClientID
+        type: string
+        description: Non-secret OAuth client ID copied from https://console.cloud.google.com/apis/credentials after opening APIs & Services > Credentials > OAuth 2.0 Client IDs; the value ends in .apps.googleusercontent.com and blank means authorization or refresh cannot start.
+        required: true
+      - name: oauth_client_secret
+        goName: OAuthClientSecret
+        type: secretString
+        description: Secret OAuth client secret copied from the selected Web application at https://console.cloud.google.com/apis/credentials; store it only in the credential form and blank means authorization or refresh cannot start.
+        required: true
       - name: access_token
         goName: AccessToken
         type: secretString
-        description: Secret short-lived Google OAuth access token produced automatically after authorization; do not enter it manually.
+        description: Secret short-lived Google OAuth access token produced automatically after authorization and refreshed before expiry; do not enter it manually.
+        required: true
+      - name: refresh_token
+        goName: RefreshToken
+        type: secretString
+        description: Secret long-lived refresh token returned by Google because offline access is requested; Dex stores and rotates it automatically, and blank means reauthorization is required.
         required: true
     guide:
       startURL: https://console.cloud.google.com/apis/credentials
@@ -46,10 +61,17 @@ spec:
         - Select a Google Cloud project, open APIs & Services > Library, and enable both Google Sheets API and Google Drive API.
         - In Google Auth Platform, configure Branding, Audience, and Data Access for the drive.file scope; add test users while the app is in Testing.
         - Open Clients > Create client > Web application, add the exact Redirect URI shown below, then copy the client ID and one-time client secret.
+        - Complete consent with the Google account that owns the spreadsheets; Google Testing refresh tokens can expire after seven days, so publish the app or use an Internal Workspace audience for long-lived use.
     oauth2:
       authorizationEndpoint: https://accounts.google.com/o/oauth2/v2/auth
       tokenEndpoint: https://oauth2.googleapis.com/token
+      authorizationParameters: {access_type: offline, prompt: consent}
+      clientIDCredential: oauth_client_id
+      clientSecretCredential: oauth_client_secret
       scopes: [https://www.googleapis.com/auth/drive.file]
+      credentialMappings:
+        - {credential: access_token, source: access_token}
+        - {credential: refresh_token, source: refresh_token}
       pkce: true
   studio:
     setup:
