@@ -122,6 +122,12 @@ func externalTestOAuthMethodStart(t *testing.T, resolver *connectorReleaseResolv
 	credentialValues := make(map[string]any)
 	credentialSecrets := make(map[string]string)
 	mappedCredentials := map[string]bool{"access_token": true}
+	if method.OAuth2.ClientIDCredential != "" {
+		mappedCredentials[method.OAuth2.ClientIDCredential] = true
+	}
+	if method.OAuth2.ClientSecretCredential != "" {
+		mappedCredentials[method.OAuth2.ClientSecretCredential] = true
+	}
 	for _, mapping := range method.OAuth2.CredentialMappings {
 		mappedCredentials[mapping.Credential] = true
 	}
