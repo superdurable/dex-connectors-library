@@ -20,7 +20,11 @@ The host selects a `connection` surface or one `configurationUnit` surface.
 Unit targets contain the Flow-owned instance identity, operation or Trigger
 scope, port bindings, and only that unit's current values. A bundle saves port
 values with `use.configuration.save`; Dex Web applies the declared bindings to
-the isolated use configuration. Bundles call
+the isolated use configuration. A `connection` target with a `unitId` renders
+that unit inline in the connection form for one connection configuration
+field. Its `bindings` bind the unit's output port to the field, its `value`
+holds the field's stored value, and `use.configuration.save` updates that
+field. Bundles call
 `observeConnectorStudioFrameAutoHeight(hostReady)` from their UI lifecycle so a
 `ResizeObserver` sends bounded `connector.frame.resize` messages whenever the
 selected surface changes height. The host can then fit the sandbox iframe
@@ -37,6 +41,11 @@ command. Messages never carry provider credentials.
 returns `send` and `executeProviderCommand`. Results are matched by request ID
 and session nonce, and a rejected command raises
 `ConnectorStudioCommandError` with the host's error code.
+`client.ready.connection` is a `ConnectorStudioConnection`. Beside the
+connection state it carries `authMethodIds`, the auth method IDs the
+connection has added, in add order, and `configuration`, the connection's
+stored non-secret configuration. Hosts that predate them omit both. The client
+then reports `[]` and `{}`, and `isConfigurationReported` is `false`.
 `collectProviderPages` follows provider cursors with a page cap, stops on a
 repeated cursor, and reports `isTruncated`.
 
@@ -236,6 +245,59 @@ mountModelPickerBundle({
   validateManualModel: (model) => {
     const validation = validateModelIDForRule("pathSegment", model);
     return validation.isValid ? undefined : validation.message;
+  },
+});
+```
+
+### Connection context
+
+`mountModelPickerBundle` calls `loadModels(client, connection)` with the ready
+message's `ConnectorStudioConnection`. A loader that combines several
+providers skips each provider whose auth method the connection has not added.
+`shouldListModelsForAuthMethod(connection, authMethodId)` is `true` when
+`authMethodIds` contains the method, and `true` for every method when
+`authMethodIds` is empty, as on hosts that predate it, so the loader lists
+every provider there as before. Existing one-argument loaders work unchanged.
+The picker loads again on Retry and when the session or `authMethodIds`
+change.
+
+On a Step or Trigger unit, the first option saves an empty `model`, which
+inherits the connection's model. The bundle labels it
+`Connection default (<model>)` with the connection's `configuration.model`,
+such as `Connection default (anthropic/claude-sonnet-5)`. When the host reports
+a configuration without a model, the label names `defaultModelDescription`
+instead, such as `Connection default (first added provider's default model)`.
+On hosts that report no configuration, and when neither names the default, the
+option keeps its label "Use the connection's default model".
+
+For a `connection` target whose `unitId` is `modelPicker`, the bundle renders
+`ModelPicker` for the connection's model field. It reads the saved model at the
+binding of the unit's `model` port and saves the pick as
+`use.configuration.save` with `{value: {model}}`. There the empty option means
+the connector's own default, labelled `Connector default (<description>)` with
+`defaultModelDescription`, or "Use the connector's default model" without it.
+A `connection` target without a `unitId` still renders the connection status
+card. A bundle that renders `ModelPicker` itself passes the same labels with
+`defaultModelOptionLabel`.
+
+This example is tested in `test/model-picker-connection-context.test.tsx`:
+
+```ts
+import { mountModelPickerBundle, shouldListModelsForAuthMethod, type ModelListing } from "@superdurable/dex-connectors-react";
+import { loadClaudeModelListing, loadOpenAIModelListing } from "@superdurable/dex-connectors-react/provider-model-lists";
+
+mountModelPickerBundle({
+  connectorId: "llm", providerName: "LLM", iconUrl: "./icon.svg",
+  defaultModelDescription: "first added provider's default model",
+  loadModels: async (client, connection) => {
+    const listings: Promise<ModelListing>[] = [];
+    if (shouldListModelsForAuthMethod(connection, "openai")) {
+      listings.push(loadOpenAIModelListing(client, {capability: "llm.models-list", commandId: "listOpenAIModels"}));
+    }
+    if (shouldListModelsForAuthMethod(connection, "anthropic")) {
+      listings.push(loadClaudeModelListing(client, {capability: "llm.models-list", commandId: "listAnthropicModels"}));
+    }
+    return {models: (await Promise.all(listings)).flatMap((providerListing) => providerListing.models)};
   },
 });
 ```
