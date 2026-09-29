@@ -33,9 +33,13 @@ type Config struct {
 }
 
 type Credentials struct {
-	BotToken  sdkgo.SecretString
-	UserToken sdkgo.SecretString
-	AppToken  sdkgo.SecretString
+	OAuthClientID     string
+	OAuthClientSecret sdkgo.SecretString
+	BotToken          sdkgo.SecretString
+	BotRefreshToken   sdkgo.SecretString
+	UserToken         sdkgo.SecretString
+	UserRefreshToken  sdkgo.SecretString
+	AppToken          sdkgo.SecretString
 }
 
 type Connection struct {
@@ -66,7 +70,7 @@ func NewLocalConnection(store *localconfig.Store, connectionName string, options
 	if err := store.DecodeConfiguration(ConnectorID, connectionName, &config); err != nil {
 		return Connection{}, err
 	}
-	credentials := localconfig.NewCredentialProvider(store, ConnectorID, connectionName, decodeLocalCredentials)
+	credentials := localconfig.NewRefreshingCredentialProvider(store, ConnectorID, connectionName, decodeLocalCredentials, encodeLocalCredentials)
 	client, err := New(config, credentials, options...)
 	if err != nil {
 		return Connection{}, err
@@ -76,19 +80,48 @@ func NewLocalConnection(store *localconfig.Store, connectionName string, options
 
 func decodeLocalCredentials(contents json.RawMessage) (Credentials, error) {
 	var fields struct {
-		BotToken  string `json:"bot_token"`
-		UserToken string `json:"user_token"`
-		AppToken  string `json:"app_token"`
+		OAuthClientID     string `json:"oauth_client_id"`
+		OAuthClientSecret string `json:"oauth_client_secret"`
+		BotToken          string `json:"bot_token"`
+		BotRefreshToken   string `json:"bot_refresh_token"`
+		UserToken         string `json:"user_token"`
+		UserRefreshToken  string `json:"user_refresh_token"`
+		AppToken          string `json:"app_token"`
 	}
 	if err := localconfig.DecodeCredentials(contents, &fields); err != nil {
 		return Credentials{}, err
 	}
 	credentials := Credentials{
-		BotToken:  sdkgo.NewSecretString(fields.BotToken),
-		UserToken: sdkgo.NewSecretString(fields.UserToken),
-		AppToken:  sdkgo.NewSecretString(fields.AppToken),
+		OAuthClientID:     fields.OAuthClientID,
+		OAuthClientSecret: sdkgo.NewSecretString(fields.OAuthClientSecret),
+		BotToken:          sdkgo.NewSecretString(fields.BotToken),
+		BotRefreshToken:   sdkgo.NewSecretString(fields.BotRefreshToken),
+		UserToken:         sdkgo.NewSecretString(fields.UserToken),
+		UserRefreshToken:  sdkgo.NewSecretString(fields.UserRefreshToken),
+		AppToken:          sdkgo.NewSecretString(fields.AppToken),
 	}
 	return credentials, credentials.Validate()
+}
+
+func encodeLocalCredentials(credentials Credentials) (json.RawMessage, error) {
+	fields := struct {
+		OAuthClientID     string `json:"oauth_client_id,omitempty"`
+		OAuthClientSecret string `json:"oauth_client_secret,omitempty"`
+		BotToken          string `json:"bot_token,omitempty"`
+		BotRefreshToken   string `json:"bot_refresh_token,omitempty"`
+		UserToken         string `json:"user_token,omitempty"`
+		UserRefreshToken  string `json:"user_refresh_token,omitempty"`
+		AppToken          string `json:"app_token,omitempty"`
+	}{
+		OAuthClientID:     credentials.OAuthClientID,
+		OAuthClientSecret: credentials.OAuthClientSecret.Reveal(),
+		BotToken:          credentials.BotToken.Reveal(),
+		BotRefreshToken:   credentials.BotRefreshToken.Reveal(),
+		UserToken:         credentials.UserToken.Reveal(),
+		UserRefreshToken:  credentials.UserRefreshToken.Reveal(),
+		AppToken:          credentials.AppToken.Reveal(),
+	}
+	return json.Marshal(fields)
 }
 
 func (connection Connection) validate() error {

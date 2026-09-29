@@ -58,6 +58,7 @@ type Client struct {
 	endpoint             *url.URL
 	httpClient           *http.Client
 	credentials          sdkgo.CredentialProvider[Credentials]
+	refreshDriver        sdkgo.CredentialRefreshDriver[Credentials]
 	maxResponseBytes     int64
 	maxMessageCharacters int
 	now                  func() time.Time
@@ -215,6 +216,7 @@ func New(config Config, credentials sdkgo.CredentialProvider[Credentials], optio
 	}
 	return &Client{
 		endpoint: endpoint, httpClient: dependencies.httpClient, credentials: credentials,
+		refreshDriver:    NewCredentialRefreshDriver(dependencies.httpClient),
 		maxResponseBytes: config.MaxResponseBytes, maxMessageCharacters: int(config.MaxMessageCharacters),
 		now: dependencies.now, socketDialer: dependencies.socketDialer, logger: dependencies.logger,
 	}, nil
@@ -307,7 +309,7 @@ func (operation ListThreadMessagesOperation) Invoke(call sdkgo.Call, input ListT
 	if strings.TrimSpace(input.ChannelID) == "" || strings.TrimSpace(input.ThreadTimestamp) == "" || input.PageSize < 1 || input.PageSize > maximumThreadPageSize {
 		return sdkgo.NewQueryBranch(ListThreadMessagesBranchDefect, ListThreadMessagesOutput{}, slackFailurePointer("listThreadMessages", sdkgo.FailureValidation, "channel, thread timestamp, and page size from 1 through 15 are required"), sdkgo.Receipt{})
 	}
-	credentials, failure := operation.client.resolveCredentials(call, "listThreadMessages")
+	credentials, failure := operation.client.resolveCredentials(call, "listThreadMessages", userCredentialToken)
 	if failure != nil {
 		return sdkgo.NewQueryBranch(ListThreadMessagesBranchDefect, ListThreadMessagesOutput{}, failure, sdkgo.Receipt{})
 	}
@@ -315,7 +317,7 @@ func (operation ListThreadMessagesOperation) Invoke(call sdkgo.Call, input ListT
 	if input.Cursor != "" {
 		values.Set("cursor", input.Cursor)
 	}
-	response, err := operation.client.get(call, credentials.UserToken.Reveal(), "conversations.replies", values)
+	response, err := operation.client.get(call, &credentials, userCredentialToken, "conversations.replies", values)
 	if err != nil {
 		if errors.Is(err, errSlackResponseTooLarge) {
 			return sdkgo.NewQueryBranch(ListThreadMessagesBranchInvalidResponse, ListThreadMessagesOutput{}, slackFailurePointer("listThreadMessages", sdkgo.FailureResponseTooLarge, err.Error()), operation.client.receipt(call, response, ""))
@@ -351,7 +353,7 @@ func (operation GetThreadReplyOperation) Invoke(call sdkgo.Call, input GetThread
 	if strings.TrimSpace(input.ChannelID) == "" || strings.TrimSpace(input.ThreadTimestamp) == "" || strings.TrimSpace(input.ReplyTimestamp) == "" || input.ReplyTimestamp == input.ThreadTimestamp {
 		return sdkgo.NewQueryBranch(GetThreadReplyBranchDefect, GetThreadReplyOutput{}, slackFailurePointer("getThreadReply", sdkgo.FailureValidation, "channel, thread timestamp, and a distinct reply timestamp are required"), sdkgo.Receipt{})
 	}
-	credentials, failure := operation.client.resolveCredentials(call, "getThreadReply")
+	credentials, failure := operation.client.resolveCredentials(call, "getThreadReply", userCredentialToken)
 	if failure != nil {
 		return sdkgo.NewQueryBranch(GetThreadReplyBranchDefect, GetThreadReplyOutput{}, failure, sdkgo.Receipt{})
 	}
@@ -359,7 +361,7 @@ func (operation GetThreadReplyOperation) Invoke(call sdkgo.Call, input GetThread
 		"channel": {input.ChannelID}, "ts": {input.ThreadTimestamp}, "oldest": {input.ReplyTimestamp},
 		"latest": {input.ReplyTimestamp}, "inclusive": {"true"}, "limit": {"1"},
 	}
-	response, err := operation.client.get(call, credentials.UserToken.Reveal(), "conversations.replies", values)
+	response, err := operation.client.get(call, &credentials, userCredentialToken, "conversations.replies", values)
 	if err != nil {
 		if errors.Is(err, errSlackResponseTooLarge) {
 			return sdkgo.NewQueryBranch(GetThreadReplyBranchInvalidResponse, GetThreadReplyOutput{}, slackFailurePointer("getThreadReply", sdkgo.FailureResponseTooLarge, err.Error()), operation.client.receipt(call, response, ""))
@@ -420,7 +422,7 @@ func (client *Client) postMessage(call sdkgo.Call, operationName string, channel
 	if strings.TrimSpace(channelID) == "" || strings.TrimSpace(text) == "" || len([]rune(text)) > client.maxMessageCharacters {
 		return sdkgo.NewMutationBranch(defect, PostMessageOutput{}, slackFailurePointer(operationName, sdkgo.FailureValidation, "channel and bounded non-empty text are required"), sdkgo.Receipt{})
 	}
-	credentials, failure := client.resolveCredentials(call, operationName)
+	credentials, failure := client.resolveCredentials(call, operationName, botCredentialToken)
 	if failure != nil {
 		return sdkgo.NewMutationBranch(defect, PostMessageOutput{}, failure, sdkgo.Receipt{})
 	}
@@ -428,7 +430,7 @@ func (client *Client) postMessage(call sdkgo.Call, operationName string, channel
 	if threadTimestamp != "" {
 		payload["thread_ts"] = threadTimestamp
 	}
-	response, err := client.post(call, credentials.BotToken.Reveal(), "chat.postMessage", payload)
+	response, err := client.post(call, &credentials, botCredentialToken, "chat.postMessage", payload)
 	if err != nil {
 		if errors.Is(err, errSlackRequestInvalid) {
 			return sdkgo.NewMutationBranch(defect, PostMessageOutput{}, slackFailurePointer(operationName, sdkgo.FailureLocalDefect, err.Error()), sdkgo.Receipt{})
@@ -457,38 +459,78 @@ func (client *Client) postMessage(call sdkgo.Call, operationName string, channel
 	return sdkgo.NewMutationBranch(sent, PostMessageOutput{Message: convertMessage(message.Channel, message)}, nil, client.receipt(call, response, message.Timestamp))
 }
 
-func (client *Client) resolveCredentials(call sdkgo.Call, operationName string) (Credentials, *sdkgo.Failure) {
-	credentials, err := client.credentials.Resolve(call)
-	if err != nil || credentials.Validate() != nil {
+func (client *Client) resolveCredentials(call sdkgo.Call, operationName string, tokenKind credentialToken) (Credentials, *sdkgo.Failure) {
+	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
+	if err != nil || validateResolvedCredentialToken(credentials, tokenKind) != nil {
 		return Credentials{}, slackFailurePointer(operationName, sdkgo.FailureAuthentication, "Slack connection credentials are unavailable")
 	}
 	return credentials, nil
 }
 
-func (client *Client) get(call sdkgo.Call, token string, method string, values url.Values) (providerResponse, error) {
+type credentialToken int
+
+const (
+	botCredentialToken credentialToken = iota
+	userCredentialToken
+)
+
+func (client *Client) get(call sdkgo.Call, credentials *Credentials, tokenKind credentialToken, method string, values url.Values) (providerResponse, error) {
 	target := strings.TrimRight(client.endpoint.String(), "/") + "/" + method
 	if encoded := values.Encode(); encoded != "" {
 		target += "?" + encoded
 	}
-	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, target, nil)
-	if err != nil {
-		return providerResponse{}, err
-	}
-	return client.do(request, token)
+	return client.doAuthenticated(call, credentials, tokenKind, func() (*http.Request, error) {
+		return http.NewRequestWithContext(call.Context, http.MethodGet, target, nil)
+	})
 }
 
-func (client *Client) post(call sdkgo.Call, token string, method string, payload any) (providerResponse, error) {
+func (client *Client) post(call sdkgo.Call, credentials *Credentials, tokenKind credentialToken, method string, payload any) (providerResponse, error) {
 	contents, err := json.Marshal(payload)
 	if err != nil {
 		return providerResponse{}, fmt.Errorf("%w: request could not be encoded", errSlackRequestInvalid)
 	}
 	target := strings.TrimRight(client.endpoint.String(), "/") + "/" + method
-	request, err := http.NewRequestWithContext(call.Context, http.MethodPost, target, bytes.NewReader(contents))
-	if err != nil {
-		return providerResponse{}, fmt.Errorf("%w: request could not be built", errSlackRequestInvalid)
+	return client.doAuthenticated(call, credentials, tokenKind, func() (*http.Request, error) {
+		request, requestErr := http.NewRequestWithContext(call.Context, http.MethodPost, target, bytes.NewReader(contents))
+		if requestErr != nil {
+			return nil, fmt.Errorf("%w: request could not be built", errSlackRequestInvalid)
+		}
+		request.Header.Set("Content-Type", "application/json; charset=utf-8")
+		return request, nil
+	})
+}
+
+func (client *Client) doAuthenticated(
+	call sdkgo.Call,
+	credentials *Credentials,
+	tokenKind credentialToken,
+	buildRequest func() (*http.Request, error),
+) (providerResponse, error) {
+	if err := validateResolvedCredentialToken(*credentials, tokenKind); err != nil {
+		return providerResponse{}, err
 	}
-	request.Header.Set("Content-Type", "application/json; charset=utf-8")
-	return client.do(request, token)
+	for attempt := 0; attempt < 2; attempt++ {
+		request, err := buildRequest()
+		if err != nil {
+			return providerResponse{}, err
+		}
+		result, err := client.do(request, resolvedCredentialToken(*credentials, tokenKind))
+		if err != nil {
+			return result, err
+		}
+		if !slackCredentialRejected(result) || attempt != 0 {
+			return result, nil
+		}
+		if _, ok := client.credentials.(sdkgo.RejectedCredentialRefreshingProvider[Credentials]); !ok {
+			return result, nil
+		}
+		replacement, err := sdkgo.ResolveCredentialAfterRejection(call.Context, client.credentials, call, client.refreshDriver)
+		if err != nil || validateResolvedCredentialToken(replacement, tokenKind) != nil {
+			return result, nil
+		}
+		*credentials = replacement
+	}
+	return providerResponse{}, errors.New("Slack authenticated request retry was exhausted")
 }
 
 func (client *Client) do(request *http.Request, token string) (providerResponse, error) {
@@ -515,6 +557,32 @@ func (client *Client) do(request *http.Request, token string) (providerResponse,
 	return result, nil
 }
 
+func resolvedCredentialToken(credentials Credentials, tokenKind credentialToken) string {
+	if tokenKind == userCredentialToken {
+		return credentials.UserToken.Reveal()
+	}
+	return credentials.BotToken.Reveal()
+}
+
+func validateResolvedCredentialToken(credentials Credentials, tokenKind credentialToken) error {
+	if resolvedCredentialToken(credentials, tokenKind) == "" {
+		return errors.New("Slack operation credential is unavailable")
+	}
+	return nil
+}
+
+func slackCredentialRejected(response providerResponse) bool {
+	if response.statusCode == http.StatusUnauthorized {
+		return true
+	}
+	switch response.decoded.Error {
+	case "invalid_auth", "token_expired", "token_revoked":
+		return true
+	default:
+		return false
+	}
+}
+
 func classifyResponse(operationName string, response providerResponse) *sdkgo.Failure {
 	if response.statusCode >= 200 && response.statusCode < 300 && response.decoded.OK {
 		return nil
@@ -529,7 +597,7 @@ func classifyResponse(operationName string, response providerResponse) *sdkgo.Fa
 		kind = sdkgo.FailureNotFound
 	}
 	switch response.decoded.Error {
-	case "invalid_auth", "not_authed", "token_revoked", "account_inactive":
+	case "invalid_auth", "not_authed", "token_expired", "token_revoked", "account_inactive":
 		kind = sdkgo.FailureAuthentication
 	case "missing_scope", "no_permission":
 		kind = sdkgo.FailureAuthorization

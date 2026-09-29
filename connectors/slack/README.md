@@ -15,10 +15,16 @@ direct messages.
 5. Install the app, then create an app-level token with `connections:write`.
 6. Invite the bot to every private channel it must observe or post to.
 
-Dex Web stores the OAuth bot token and user token. Enter the `xapp-` app-level
-token in the host-owned secret field; it is never sent to the Studio iframe.
-Use Slack's standard OAuth flow with the host-owned client secret. Slack's
-localhost PKCE installation mode cannot request bot scopes.
+Dex Web stores the OAuth bot and user tokens. When Token Rotation is enabled,
+it also stores both one-use refresh tokens and refreshes the two 12-hour access
+tokens together before expiry. Each replacement pair is persisted atomically;
+an `invalid_refresh_token` response marks the connection for reauthorization.
+Hosted apps receive only the operation-specific bot, user, or app token from
+the Superverse broker. Dex Web also records the access-token expiry required
+for local refresh; do not hand-author rotating-token metadata. Enter the
+`xapp-` app-level token in the host-owned secret field; it is never sent to the
+Studio iframe. Use Slack's standard OAuth flow with the host-owned client
+secret. Slack's localhost PKCE installation mode cannot request bot scopes.
 
 ## Trigger settings
 
@@ -58,13 +64,16 @@ If a picker cannot load, copy IDs manually:
 
 ## Local configuration
 
+The hand-authored example uses Slack's legacy non-rotating tokens. Use Dex Web
+when Token Rotation is enabled so it saves the expiry and refresh material.
+
 ```json
 {
   "schemaVersion": "connectors.dex.dev/local-connections/v1alpha1",
   "connections": [{
     "connectorId": "slack",
     "modulePath": "github.com/superdurable/dex-connectors-library/connectors/slack",
-    "moduleVersion": "v0.10.0",
+    "moduleVersion": "v0.12.0",
     "provider": "slack",
     "connectionName": "slack-workspace",
     "configuration": {},

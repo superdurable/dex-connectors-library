@@ -258,13 +258,13 @@ func runMessageTriggerConnection(ctx context.Context, routes []messageTriggerRou
 		}
 	}
 	source := routes[0].source
-	credentials, err := source.client.credentials.Resolve(sdkgo.Call{Connection: source.connection})
+	credentials, err := sdkgo.ResolveCredential(ctx, source.client.credentials, sdkgo.Call{Connection: source.connection}, source.client.refreshDriver)
 	if err != nil {
 		// A credential provider's error may quote what it read, so only its absence is reported.
 		return false, fmt.Errorf("Slack Socket Mode credentials are unavailable")
 	}
-	if err := credentials.Validate(); err != nil {
-		return false, fmt.Errorf("Slack Socket Mode credentials are unavailable: %w", err)
+	if credentials.AppToken.Reveal() == "" {
+		return false, fmt.Errorf("Slack Socket Mode credentials are unavailable: credential app_token is required")
 	}
 	socketURL, err := source.client.openSocketModeConnection(ctx, credentials.AppToken.Reveal())
 	if err != nil {
