@@ -255,6 +255,53 @@ transports, clocks, test hooks, and idempotency functions are constructor
 options. Secret and OAuth fields belong in generated Credentials and are
 resolved through `CredentialProvider[C]`.
 
+`Config` holds every `spec.configuration` field and then every auth method's
+configuration field as one flat struct. A method configuration field is always
+optional in Go: `Config.Validate` checks its type, such as an enum value or an
+absolute URL, but never requires it, because `Config` does not know which
+methods the connection selected. Dex Web enforces `required: true` while the
+method is selected, and connector code checks the selection before it reads
+the field.
+
+A manifest with `auth.methods` generates `Credentials` with the union of the
+method credential fields. With the default `selection: single`,
+`AuthMethodID string` names the one selected method, and `Validate` checks
+only that method's fields. With `selection: multiple`, `AuthMethodIDs []string`
+replaces it and lists the selected methods in the order they were added.
+`Validate` requires a non-empty list of unique, declared IDs and checks each
+selected method's credential fields; `HasAuthMethod` reports whether one
+method is selected. The generated code for
+[schema/testdata/multiple-auth-selection.yaml](../schema/testdata/multiple-auth-selection.yaml)
+is checked in at
+[internal/codegen/testdata/multipleauthselection/zz_generated_connector.go](../internal/codegen/testdata/multipleauthselection/zz_generated_connector.go):
+
+```go
+type Config struct {
+	Model                string           `json:"model,omitempty" yaml:"model,omitempty"`
+	OpenAIProjectID      string           `json:"openaiProjectId,omitempty" yaml:"openaiProjectId,omitempty"`
+	AnthropicWorkspaceID string           `json:"anthropicWorkspaceId,omitempty" yaml:"anthropicWorkspaceId,omitempty"`
+	GeminiAPIVersion     GeminiAPIVersion `json:"geminiApiVersion,omitempty" yaml:"geminiApiVersion,omitempty"`
+}
+
+type Credentials struct {
+	AuthMethodIDs   []string
+	OpenAIAPIKey    sdkgo.SecretString
+	AnthropicAPIKey sdkgo.SecretString
+	GeminiAPIKey    sdkgo.SecretString
+}
+```
+
+```go
+func (credentials Credentials) HasAuthMethod(id string) bool {
+	for _, authMethodID := range credentials.AuthMethodIDs {
+		if authMethodID == id {
+			return true
+		}
+	}
+	return false
+}
+```
+
 `SecretString` has private storage, redacted formatting, and rejects JSON,
 YAML, and text serialization. Connector-specific credential types prevent a
 Google Sheets connection from being accidentally passed to Gmail, even when
@@ -279,6 +326,19 @@ before each provider call. This makes credential replacement visible to a
 running app while keeping configuration changes restart-bound. Credential
 wire values are converted to `SecretString` only at this boundary and cannot
 be serialized again.
+
+A record's `configuration` object holds spec and method configuration fields
+side by side, keyed by field name. Its `credentials` object holds the credential
+fields plus the selection, which Dex Web writes: `auth_method` is one method ID
+for `selection: single`, and `auth_methods` is an array of method IDs for
+`selection: multiple`. Strict decoding rejects the other key. This record comes
+from the generated fixture test
+[internal/codegen/testdata/multipleauthselection/connector_test.go](../internal/codegen/testdata/multipleauthselection/connector_test.go):
+
+```json
+"configuration": {"model": "anthropic/claude-sonnet-5", "anthropicWorkspaceId": "wrkspc_test"},
+"credentials": {"auth_methods": ["anthropic"], "anthropic_api_key": "anthropic-test-key"}
+```
 
 Dex Web writes non-secret operation-use values to the sibling
 `use-configurations.json` file. `localconfig.LoadFile` snapshots this sidecar at

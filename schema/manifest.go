@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"gopkg.in/yaml.v3"
 )
@@ -119,26 +120,47 @@ type Configuration struct {
 	Fields []Field `yaml:"fields" json:"fields"`
 }
 
+// Auth method selections. An empty Auth.Selection means AuthSelectionSingle.
+const (
+	// AuthSelectionSingle lets a connection hold exactly one auth method.
+	AuthSelectionSingle = "single"
+	// AuthSelectionMultiple lets a connection hold a non-empty subset of the auth methods.
+	AuthSelectionMultiple = "multiple"
+)
+
+const maximumAuthMethodLabelLength = 32
+
 type Auth struct {
 	Type           string              `yaml:"type,omitempty" json:"type,omitempty"`
 	ConnectionKind string              `yaml:"connectionKind,omitempty" json:"connectionKind,omitempty"`
 	Fields         []Field             `yaml:"fields,omitempty" json:"fields,omitempty"`
 	Guide          *AuthorizationGuide `yaml:"guide,omitempty" json:"guide,omitempty"`
 	OAuth2         *OAuth2             `yaml:"oauth2,omitempty" json:"oauth2,omitempty"`
-	DefaultMethod  string              `yaml:"defaultMethod,omitempty" json:"defaultMethod,omitempty"`
-	Methods        []AuthMethod        `yaml:"methods,omitempty" json:"methods,omitempty"`
+	// Selection is AuthSelectionSingle or AuthSelectionMultiple; empty means single.
+	Selection string `yaml:"selection,omitempty" json:"selection,omitempty"`
+	// MethodLabel is the singular noun, such as Provider, that setup UI uses for a method.
+	MethodLabel   string       `yaml:"methodLabel,omitempty" json:"methodLabel,omitempty"`
+	DefaultMethod string       `yaml:"defaultMethod,omitempty" json:"defaultMethod,omitempty"`
+	Methods       []AuthMethod `yaml:"methods,omitempty" json:"methods,omitempty"`
 }
 
 type AuthMethod struct {
-	ID             string              `yaml:"id" json:"id"`
-	DisplayName    string              `yaml:"displayName" json:"displayName"`
-	Description    string              `yaml:"description" json:"description"`
-	Recommended    bool                `yaml:"recommended,omitempty" json:"recommended,omitempty"`
-	Type           string              `yaml:"type" json:"type"`
-	ConnectionKind string              `yaml:"connectionKind" json:"connectionKind"`
-	Fields         []Field             `yaml:"fields" json:"fields"`
-	Guide          *AuthorizationGuide `yaml:"guide,omitempty" json:"guide,omitempty"`
-	OAuth2         *OAuth2             `yaml:"oauth2,omitempty" json:"oauth2,omitempty"`
+	ID             string  `yaml:"id" json:"id"`
+	DisplayName    string  `yaml:"displayName" json:"displayName"`
+	Description    string  `yaml:"description" json:"description"`
+	Recommended    bool    `yaml:"recommended,omitempty" json:"recommended,omitempty"`
+	Type           string  `yaml:"type" json:"type"`
+	ConnectionKind string  `yaml:"connectionKind" json:"connectionKind"`
+	Fields         []Field `yaml:"fields" json:"fields"`
+	// Configuration holds non-secret fields that apply only while this method is selected.
+	Configuration *Configuration      `yaml:"configuration,omitempty" json:"configuration,omitempty"`
+	Guide         *AuthorizationGuide `yaml:"guide,omitempty" json:"guide,omitempty"`
+	OAuth2        *OAuth2             `yaml:"oauth2,omitempty" json:"oauth2,omitempty"`
+}
+
+// IsMultipleSelection reports whether a connection may hold several of the auth methods.
+func (auth Auth) IsMultipleSelection() bool {
+	return len(auth.Methods) > 0 && auth.Selection == AuthSelectionMultiple
 }
 
 type AuthorizationGuide struct {
@@ -188,6 +210,14 @@ type Field struct {
 	Required    bool     `yaml:"required" json:"required"`
 	Default     any      `yaml:"default,omitempty" json:"default,omitempty"`
 	Enum        []string `yaml:"enum,omitempty" json:"enum,omitempty"`
+	// StudioUnit renders a spec.configuration field with a Studio unit once the connection is saved.
+	StudioUnit *FieldStudioUnit `yaml:"studioUnit,omitempty" json:"studioUnit,omitempty"`
+}
+
+// FieldStudioUnit names a declared Studio unit and the output port that writes the field.
+type FieldStudioUnit struct {
+	Unit string `yaml:"unit" json:"unit"`
+	Port string `yaml:"port" json:"port"`
 }
 
 type Operation struct {
@@ -250,6 +280,11 @@ var (
 )
 
 const maximumStudioCommandFixedHeaderValueLength = 256
+
+// reservedAuthMethodSelectionNames are the credential wire and Go names that carry the selected methods.
+var reservedAuthMethodSelectionNames = map[string]bool{
+	"auth_method": true, "auth_methods": true, "AuthMethodID": true, "AuthMethodIDs": true,
+}
 
 // studioCommandReservedHeaders are lowercase names the Dex Web broker, the
 // transport, or routing intermediaries own.
@@ -366,7 +401,14 @@ func (manifest Manifest) Validate() error {
 			Type: manifest.Spec.Auth.Type, ConnectionKind: manifest.Spec.Auth.ConnectionKind,
 			Fields: manifest.Spec.Auth.Fields, Guide: manifest.Spec.Auth.Guide, OAuth2: manifest.Spec.Auth.OAuth2,
 		})...)
+		if manifest.Spec.Auth.Selection != "" {
+			problems = append(problems, "spec.auth.selection requires spec.auth methods")
+		}
+		if manifest.Spec.Auth.MethodLabel != "" {
+			problems = append(problems, "spec.auth.methodLabel requires spec.auth methods")
+		}
 	} else {
+		problems = append(problems, validateAuthMethodSelection(manifest.Spec.Auth)...)
 		if manifest.Spec.Auth.Type != "" || manifest.Spec.Auth.ConnectionKind != "" || manifest.Spec.Auth.Guide != nil || manifest.Spec.Auth.OAuth2 != nil {
 			problems = append(problems, "spec.auth methods cannot be combined with legacy auth fields")
 		}
@@ -386,8 +428,8 @@ func (manifest Manifest) Validate() error {
 			}
 			problems = append(problems, validateAuthMethod("spec.auth method "+method.ID, method)...)
 			for _, field := range method.Fields {
-				if field.Name == "auth_method" || field.GoName == "AuthMethodID" {
-					problems = append(problems, "auth_method and AuthMethodID are reserved for auth method selection")
+				if reservedAuthMethodSelectionNames[field.Name] || reservedAuthMethodSelectionNames[field.GoName] {
+					problems = append(problems, "auth_method, auth_methods, AuthMethodID, and AuthMethodIDs are reserved for auth method selection")
 				}
 				if existing, found := seenCredentialFields[field.Name]; found && (existing.GoName != field.GoName || existing.Type != field.Type) {
 					problems = append(problems, "credential fields shared by auth methods must use the same goName and type")
@@ -402,6 +444,8 @@ func (manifest Manifest) Validate() error {
 			problems = append(problems, "spec.auth may recommend at most one auth method")
 		}
 	}
+	problems = append(problems, validateConfigurationFieldNames(manifest.Spec)...)
+	problems = append(problems, validateConfigurationFieldStudioUnits(manifest.Spec)...)
 	if manifest.Spec.Studio != nil {
 		setup := manifest.Spec.Studio.Setup
 		if !isSafeStudioAssetPath(setup.Entrypoint, ".html") {
@@ -578,6 +622,102 @@ func (manifest Manifest) Validate() error {
 	return nil
 }
 
+func validateAuthMethodSelection(auth Auth) []string {
+	var problems []string
+	switch auth.Selection {
+	case "", AuthSelectionSingle:
+	case AuthSelectionMultiple:
+		if len(auth.Methods) < 2 {
+			problems = append(problems, "spec.auth selection multiple requires at least two auth methods")
+		}
+		for _, method := range auth.Methods {
+			if method.Type != "apiKey" {
+				problems = append(problems, "spec.auth selection multiple requires every auth method to use apiKey; "+method.ID+" uses "+method.Type)
+			}
+		}
+	default:
+		problems = append(problems, "spec.auth.selection must be single or multiple")
+	}
+	if auth.MethodLabel != "" && (strings.TrimSpace(auth.MethodLabel) != auth.MethodLabel || utf8.RuneCountInString(auth.MethodLabel) > maximumAuthMethodLabelLength) {
+		problems = append(problems, fmt.Sprintf("spec.auth.methodLabel must be 1-%d characters without surrounding whitespace", maximumAuthMethodLabelLength))
+	}
+	return problems
+}
+
+// validateConfigurationFieldNames keeps one flat generated Config, which holds
+// spec.configuration fields and every method's configuration fields.
+func validateConfigurationFieldNames(spec Spec) []string {
+	var problems []string
+	const specConfigurationOwner = "spec.configuration"
+	ownerByName := make(map[string]string)
+	ownerByGoName := make(map[string]string)
+	for _, field := range spec.Configuration.Fields {
+		ownerByName[field.Name] = specConfigurationOwner
+		ownerByGoName[field.GoName] = specConfigurationOwner
+	}
+	credentialFieldNames := make(map[string]bool)
+	for _, method := range spec.Auth.Methods {
+		for _, field := range method.Fields {
+			credentialFieldNames[field.Name] = true
+		}
+	}
+	for _, method := range spec.Auth.Methods {
+		if method.Configuration == nil {
+			continue
+		}
+		owner := "auth method " + method.ID
+		for _, field := range method.Configuration.Fields {
+			if existingOwner, found := ownerByName[field.Name]; found && existingOwner != owner {
+				problems = append(problems, "configuration field "+field.Name+" must be unique across spec.configuration and auth method configuration")
+			}
+			ownerByName[field.Name] = owner
+			if existingOwner, found := ownerByGoName[field.GoName]; found && existingOwner != owner {
+				problems = append(problems, "configuration field goName "+field.GoName+" must be unique across spec.configuration and auth method configuration")
+			}
+			ownerByGoName[field.GoName] = owner
+			if credentialFieldNames[field.Name] {
+				problems = append(problems, owner+" configuration field "+field.Name+" cannot repeat a credential field name")
+			}
+		}
+	}
+	return problems
+}
+
+func validateConfigurationFieldStudioUnits(spec Spec) []string {
+	var problems []string
+	units := map[string]StudioUnit{}
+	if spec.Studio != nil {
+		for _, unit := range spec.Studio.Units {
+			units[unit.ID] = unit
+		}
+	}
+	for _, field := range spec.Configuration.Fields {
+		if field.StudioUnit == nil {
+			continue
+		}
+		prefix := "configuration field " + field.Name + " studioUnit"
+		unit, found := units[field.StudioUnit.Unit]
+		if !found {
+			problems = append(problems, prefix+" must name a declared spec.studio unit")
+			continue
+		}
+		var port *StudioUnitPort
+		for index := range unit.Outputs {
+			if unit.Outputs[index].Name == field.StudioUnit.Port {
+				port = &unit.Outputs[index]
+				break
+			}
+		}
+		switch {
+		case port == nil:
+			problems = append(problems, prefix+" port must name an output port of studio unit "+unit.ID)
+		case port.Type != field.Type:
+			problems = append(problems, prefix+" port "+port.Name+" type "+port.Type+" must equal field type "+field.Type)
+		}
+	}
+	return problems
+}
+
 func validateStudioUnitPorts(unitID string, inputPorts []StudioUnitPort, outputPorts []StudioUnitPort) []string {
 	var problems []string
 	seenNames := map[string]bool{}
@@ -732,6 +872,11 @@ func validateAuthMethod(prefix string, method AuthMethod) []string {
 		problems = append(problems, prefix+" type must be none, apiKey, oauth2, or serviceAccount")
 	}
 	problems = append(problems, validateFields(prefix, method.Fields, true)...)
+	problems = append(problems, rejectFieldStudioUnits(prefix, method.Fields)...)
+	if method.Configuration != nil {
+		problems = append(problems, validateFields(prefix+" configuration", method.Configuration.Fields, false)...)
+		problems = append(problems, rejectFieldStudioUnits(prefix+" configuration", method.Configuration.Fields)...)
+	}
 	if method.Type == "none" && len(method.Fields) != 0 {
 		problems = append(problems, prefix+" none auth cannot declare credential fields")
 	}
@@ -818,6 +963,16 @@ func validateAuthMethod(prefix string, method AuthMethod) []string {
 			problems = append(problems, prefix+" oauth2 credential derivations require unique credential fields, HTTPS endpoints, and dotted JSON response paths")
 		}
 		seenMappings[derivation.Credential] = true
+	}
+	return problems
+}
+
+func rejectFieldStudioUnits(prefix string, fields []Field) []string {
+	var problems []string
+	for _, field := range fields {
+		if field.StudioUnit != nil {
+			problems = append(problems, prefix+" field "+field.Name+": studioUnit is allowed only on spec.configuration fields")
+		}
 	}
 	return problems
 }

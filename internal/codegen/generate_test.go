@@ -5,15 +5,25 @@ package codegen_test
 
 import (
 	"bytes"
+	"flag"
 	"go/parser"
 	"go/token"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/internal/codegen"
 	"github.com/superdurable/dex-connectors-library/schema"
+)
+
+var shouldUpdateGoldenFiles = flag.Bool("update-golden", false, "rewrite code generation golden files")
+
+const (
+	multipleAuthSelectionManifestPath = "../../schema/testdata/multiple-auth-selection.yaml"
+	multipleAuthSelectionFixturePath  = "testdata/multipleauthselection"
 )
 
 func TestGenerateIsDeterministicAndIncludesTypedOAuthCredentials(t *testing.T) {
@@ -93,8 +103,113 @@ func TestGenerateValidatesOnlyTheSelectedAuthMethod(t *testing.T) {
 	require.Contains(t, text, "func encodeLocalCredentials(credentials Credentials) (json.RawMessage, error)")
 	require.Contains(t, text, "credentials.OAuthClientSecret.Reveal()")
 	require.Contains(t, text, "credentials.RefreshToken.Reveal()")
+	require.NotContains(t, text, "AuthMethodIDs")
+	require.NotContains(t, text, "auth_methods")
+	require.NotContains(t, text, "HasAuthMethod")
 	_, err = parser.ParseFile(token.NewFileSet(), "zz_generated_connector.go", strings.NewReader(text), parser.AllErrors)
 	require.NoError(t, err)
+}
+
+func TestGenerateSingleSelectionAddsMethodConfigurationAsOptionalConfig(t *testing.T) {
+	contents, err := os.ReadFile("../../schema/testdata/multi-auth.yaml")
+	require.NoError(t, err)
+	manifest, err := schema.Decode(strings.NewReader(strings.Replace(string(contents), `        guide:
+          startURL: https://console.cloud.google.com/iam-admin/serviceaccounts`, `        configuration:
+          fields:
+            - {name: tokenEndpoint, goName: TokenEndpoint, type: url, description: Service-account token endpoint., required: true}
+        guide:
+          startURL: https://console.cloud.google.com/iam-admin/serviceaccounts`, 1)))
+	require.NoError(t, err)
+
+	generated, err := codegen.Generate(manifest)
+
+	require.NoError(t, err)
+	text := string(generated)
+	require.Contains(t, text, "\"net/url\"")
+	require.Contains(t, text, "TokenEndpoint string `json:\"tokenEndpoint,omitempty\" yaml:\"tokenEndpoint,omitempty\"`")
+	require.Contains(t, text, "configuration tokenEndpoint must be an absolute URL")
+	require.NotContains(t, text, "configuration tokenEndpoint is required")
+	require.Contains(t, text, "switch credentials.AuthMethodID {")
+	require.NotContains(t, text, "AuthMethodIDs")
+}
+
+func TestGenerateMultipleAuthSelectionMatchesGolden(t *testing.T) {
+	generated := generateMultipleAuthSelectionFixture(t)
+	goldenPath := filepath.Join(multipleAuthSelectionFixturePath, codegen.OutputFile)
+	if *shouldUpdateGoldenFiles {
+		require.NoError(t, os.WriteFile(goldenPath, generated, 0o644))
+	}
+	golden, err := os.ReadFile(goldenPath)
+	require.NoError(t, err)
+	require.Equal(t, string(golden), string(generated), "run go test ./internal/codegen -run MatchesGolden -update-golden")
+}
+
+func TestGenerateMultipleAuthSelectionCredentialsAndConfig(t *testing.T) {
+	text := string(generateMultipleAuthSelectionFixture(t))
+
+	require.Contains(t, text, "\tAuthMethodIDs   []string\n")
+	require.Contains(t, text, "AuthMethodIDs   []string `json:\"auth_methods\"`")
+	require.Contains(t, text, "AuthMethodIDs:   fields.AuthMethodIDs,")
+	require.NotContains(t, text, "AuthMethodID ")
+	require.NotContains(t, text, `"auth_method"`)
+	require.Contains(t, text, "func (credentials Credentials) HasAuthMethod(id string) bool {")
+	require.Contains(t, text, "credential auth_methods is required")
+	require.Contains(t, text, "credential auth_methods must be unique")
+	require.Contains(t, text, "credential auth_methods contains an undeclared auth method")
+	require.Contains(t, text, `case "anthropic":`)
+	require.Contains(t, text, "credential anthropic_api_key is required")
+	require.Contains(t, text, "OpenAIProjectID      string           `json:\"openaiProjectId,omitempty\" yaml:\"openaiProjectId,omitempty\"`")
+	require.Contains(t, text, "AnthropicWorkspaceID string           `json:\"anthropicWorkspaceId,omitempty\" yaml:\"anthropicWorkspaceId,omitempty\"`")
+	require.Contains(t, text, `GeminiAPIVersionV1beta GeminiAPIVersion = "v1beta"`)
+	require.Contains(t, text, "configuration geminiApiVersion is invalid")
+	require.NotContains(t, text, "configuration openaiProjectId is required")
+	require.Contains(t, text, "localconfig.NewCredentialProvider")
+	require.NotContains(t, text, "encodeLocalCredentials")
+}
+
+// TestGeneratedMultipleAuthSelectionConnectorBehaves compiles the generated code
+// against the local SDK source and runs the fixture's behavior tests.
+func TestGeneratedMultipleAuthSelectionConnectorBehaves(t *testing.T) {
+	sdkDirectory, err := filepath.Abs("../../sdkgo")
+	require.NoError(t, err)
+	sdkModule, err := os.ReadFile(filepath.Join(sdkDirectory, "go.mod"))
+	require.NoError(t, err)
+	sdkSums, err := os.ReadFile(filepath.Join(sdkDirectory, "go.sum"))
+	require.NoError(t, err)
+	const sdkModulePath = "github.com/superdurable/dex-connectors-library/sdkgo"
+	require.True(t, bytes.HasPrefix(sdkModule, []byte("module "+sdkModulePath+"\n")))
+	fixtureModule := "module example.com/multipleauthselection\n" +
+		strings.TrimPrefix(string(sdkModule), "module "+sdkModulePath+"\n") +
+		"\nrequire " + sdkModulePath + " v0.0.0\n\nreplace " + sdkModulePath + " => " + sdkDirectory + "\n"
+
+	moduleDirectory := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(moduleDirectory, "go.mod"), []byte(fixtureModule), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(moduleDirectory, "go.sum"), sdkSums, 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(moduleDirectory, codegen.OutputFile), generateMultipleAuthSelectionFixture(t), 0o600))
+	for _, name := range []string{"client.go", "connector_test.go"} {
+		contents, readErr := os.ReadFile(filepath.Join(multipleAuthSelectionFixturePath, name))
+		require.NoError(t, readErr)
+		require.NoError(t, os.WriteFile(filepath.Join(moduleDirectory, name), contents, 0o600))
+	}
+
+	command := exec.Command("go", "test", "-count=1", "./...")
+	command.Dir = moduleDirectory
+	command.Env = append(os.Environ(), "GOWORK=off", "GOFLAGS=-mod=mod")
+	output, err := command.CombinedOutput()
+
+	require.NoError(t, err, string(output))
+}
+
+func generateMultipleAuthSelectionFixture(t *testing.T) []byte {
+	t.Helper()
+	file, err := os.Open(multipleAuthSelectionManifestPath)
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, file.Close()) })
+	manifest, err := schema.Decode(file)
+	require.NoError(t, err)
+	generated, err := codegen.Generate(manifest)
+	require.NoError(t, err)
+	return generated
 }
 
 func TestGenerateIncludesTypedProviderTriggers(t *testing.T) {

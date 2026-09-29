@@ -105,6 +105,8 @@ Each manifest supplies:
 - Go package and field names;
 - non-sensitive configuration fields and validation metadata;
 - secret or OAuth fields and connection kind;
+- authentication methods, whether a connection holds one or several, and each
+  method's non-secret configuration fields;
 - OAuth2/OIDC protocol metadata when applicable;
 - operation authorization, branches, resources, and execution defaults;
 - typed operation input and output types;
