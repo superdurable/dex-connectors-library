@@ -51,6 +51,31 @@ func TestCredentialProviderResolvesOperationScopedCredentialAndReloadsWorkloadCr
 	require.Equal(t, []string{"Bearer first-workload-credential", "Bearer second-workload-credential"}, observedTokens)
 }
 
+func TestCredentialProviderResolvesTriggerCredentialWithoutDexContext(t *testing.T) {
+	credentialFile := writePrivateCredential(t, "trigger-workload-credential")
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		require.Equal(t, "Bearer trigger-workload-credential", request.Header.Get("Authorization"))
+		var body resolveRequest
+		require.NoError(t, json.NewDecoder(request.Body).Decode(&body))
+		require.Equal(t, "messageReceived", body.OperationID)
+		response.Header().Set("Content-Type", "application/json")
+		_, err := response.Write([]byte(`{"credentials":{"access_token":"trigger-token"}}`))
+		require.NoError(t, err)
+	}))
+	t.Cleanup(server.Close)
+	provider, err := NewCredentialProvider(&Config{
+		BrokerURL: server.URL, WorkloadCredentialFile: credentialFile,
+		ConnectorID: "gmail", ConnectionName: "event-tickets",
+	}, decodeTestCredentials)
+	require.NoError(t, err)
+	call := testCall("messageReceived")
+	call.Context = nil
+
+	credentials, err := provider.Resolve(call)
+	require.NoError(t, err)
+	require.Equal(t, "trigger-token", credentials.AccessToken.Reveal())
+}
+
 func TestCredentialProviderClassifiesReauthorizationWithoutReturningProviderText(t *testing.T) {
 	credentialFile := writePrivateCredential(t, "valid-workload-credential")
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
