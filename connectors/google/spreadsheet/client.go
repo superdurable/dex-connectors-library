@@ -41,6 +41,7 @@ type Client struct {
 	endpoint         *url.URL
 	httpClient       *http.Client
 	credentials      sdkgo.CredentialProvider[Credentials]
+	refreshDriver    sdkgo.CredentialRefreshDriver[Credentials]
 	maxResponseBytes int64
 	maxRows          int
 	now              func() time.Time
@@ -178,6 +179,7 @@ func New(config Config, credentials sdkgo.CredentialProvider[Credentials], optio
 	}
 	return &Client{
 		endpoint: endpoint, httpClient: dependencies.httpClient, credentials: credentials,
+		refreshDriver:    NewCredentialRefreshDriver(dependencies.httpClient),
 		maxResponseBytes: config.MaxResponseBytes, maxRows: int(config.MaxRows), now: dependencies.now,
 	}, nil
 }
@@ -391,8 +393,8 @@ func (operation UpsertRowOperation) Invoke(call sdkgo.Call, input UpsertRowInput
 }
 
 func (client *Client) resolveCredential(call sdkgo.Call, operation string) (Credentials, *sdkgo.Failure) {
-	credential, err := client.credentials.Resolve(call)
-	if err != nil || credential.Validate() != nil {
+	credential, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
+	if err != nil || validateResolvedCredentials(credential) != nil {
 		return Credentials{}, failurePointer(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable")
 	}
 	return credential, nil
@@ -403,37 +405,62 @@ func (client *Client) getValues(call sdkgo.Call, credential Credentials, spreads
 }
 
 func (client *Client) request(call sdkgo.Call, credential Credentials, method, spreadsheetID, suffix string, query url.Values, payload any) (requestResult, error) {
-	var body io.Reader
+	var encodedPayload []byte
 	if payload != nil {
 		encoded, err := json.Marshal(payload)
 		if err != nil {
 			return requestResult{}, &providerRequestError{kind: sdkgo.FailureLocalDefect, message: "provider request could not be encoded"}
 		}
-		body = bytes.NewReader(encoded)
+		encodedPayload = encoded
 	}
 	target := strings.TrimRight(client.endpoint.String(), "/") + "/spreadsheets/" + url.PathEscape(spreadsheetID) + suffix
-	request, err := http.NewRequestWithContext(call.Context, method, target, body)
-	if err != nil {
-		return requestResult{}, &providerRequestError{kind: sdkgo.FailureLocalDefect, message: "provider request could not be built"}
+	for attempt := 0; attempt < 2; attempt++ {
+		var body io.Reader
+		if encodedPayload != nil {
+			body = bytes.NewReader(encodedPayload)
+		}
+		request, err := http.NewRequestWithContext(call.Context, method, target, body)
+		if err != nil {
+			return requestResult{}, &providerRequestError{kind: sdkgo.FailureLocalDefect, message: "provider request could not be built"}
+		}
+		request.URL.RawQuery = query.Encode()
+		request.Header.Set("Authorization", "Bearer "+credential.AccessToken.Reveal())
+		if payload != nil {
+			request.Header.Set("Content-Type", "application/json")
+		}
+		response, err := client.httpClient.Do(request)
+		if err != nil {
+			return requestResult{}, &providerRequestError{kind: sdkgo.FailureTransport, message: "provider request failed"}
+		}
+		content, readErr := io.ReadAll(io.LimitReader(response.Body, client.maxResponseBytes+1))
+		closeErr := response.Body.Close()
+		if readErr != nil || closeErr != nil {
+			return requestResult{}, &providerRequestError{kind: sdkgo.FailureTransport, message: "provider response could not be read"}
+		}
+		result := requestResult{status: response.StatusCode, header: response.Header, body: content, requestID: googleRequestID(response.Header)}
+		if int64(len(content)) > client.maxResponseBytes {
+			result.body = nil
+			return result, &providerRequestError{kind: sdkgo.FailureResponseTooLarge, message: "provider response exceeds configured limit"}
+		}
+		if response.StatusCode != http.StatusUnauthorized || attempt != 0 {
+			return result, nil
+		}
+		if _, ok := client.credentials.(sdkgo.RejectedCredentialRefreshingProvider[Credentials]); !ok {
+			return result, nil
+		}
+		credential, err = sdkgo.ResolveCredentialAfterRejection(call.Context, client.credentials, call, client.refreshDriver)
+		if err != nil || validateResolvedCredentials(credential) != nil {
+			return result, nil
+		}
 	}
-	request.URL.RawQuery = query.Encode()
-	request.Header.Set("Authorization", "Bearer "+credential.AccessToken.Reveal())
-	if payload != nil {
-		request.Header.Set("Content-Type", "application/json")
+	return requestResult{}, &providerRequestError{kind: sdkgo.FailureLocalDefect, message: "authenticated request retry was exhausted"}
+}
+
+func validateResolvedCredentials(credentials Credentials) error {
+	if credentials.AccessToken.Reveal() == "" {
+		return fmt.Errorf("Google Sheets access token is required")
 	}
-	response, err := client.httpClient.Do(request)
-	if err != nil {
-		return requestResult{}, &providerRequestError{kind: sdkgo.FailureTransport, message: "provider request failed"}
-	}
-	defer response.Body.Close()
-	content, err := io.ReadAll(io.LimitReader(response.Body, client.maxResponseBytes+1))
-	if err != nil {
-		return requestResult{}, &providerRequestError{kind: sdkgo.FailureTransport, message: "provider response could not be read"}
-	}
-	if int64(len(content)) > client.maxResponseBytes {
-		return requestResult{status: response.StatusCode, header: response.Header, requestID: googleRequestID(response.Header)}, &providerRequestError{kind: sdkgo.FailureResponseTooLarge, message: "provider response exceeds configured limit"}
-	}
-	return requestResult{status: response.StatusCode, header: response.Header, body: content, requestID: googleRequestID(response.Header)}, nil
+	return nil
 }
 
 func (client *Client) decodeValues(content []byte, operation string) (valuesResponse, *sdkgo.Failure) {

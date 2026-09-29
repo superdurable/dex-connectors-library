@@ -20,6 +20,23 @@ import (
 
 var sheetsConnection = sdkgo.ConnectionRef{Provider: "google", Name: "customer-sheet"}
 
+type rejectionRefreshingCredentialProvider struct {
+	forcedRefreshes int
+}
+
+func (*rejectionRefreshingCredentialProvider) Resolve(sdkgo.Call) (spreadsheet.Credentials, error) {
+	return spreadsheet.Credentials{AccessToken: sdkgo.NewSecretString("rejected-token")}, nil
+}
+
+func (provider *rejectionRefreshingCredentialProvider) ResolveAfterRejection(
+	context.Context,
+	sdkgo.Call,
+	sdkgo.CredentialRefreshDriver[spreadsheet.Credentials],
+) (spreadsheet.Credentials, error) {
+	provider.forcedRefreshes++
+	return spreadsheet.Credentials{AccessToken: sdkgo.NewSecretString("replacement-token")}, nil
+}
+
 func TestFindRowDistinguishesMissingAndDuplicateKeys(t *testing.T) {
 	rows := [][]string{{"accountId", "name"}, {"a-1", "Ada"}}
 	server := sheetServer(t, &rows, nil)
@@ -74,6 +91,52 @@ func TestGetValuesClassifiesAuthenticationAndRateLimit(t *testing.T) {
 			require.Equal(t, test.wantKind, result.Failure.Kind)
 		})
 	}
+}
+
+func TestGetValuesRefreshesAndRetriesOnceAfterUnauthorized(t *testing.T) {
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		requests++
+		if requests == 1 {
+			require.Equal(t, "Bearer rejected-token", request.Header.Get("Authorization"))
+			response.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		require.Equal(t, "Bearer replacement-token", request.Header.Get("Authorization"))
+		_, _ = response.Write([]byte(`{"range":"Customers!A:B","majorDimension":"ROWS","values":[["accountId","name"]]}`))
+	}))
+	t.Cleanup(server.Close)
+	provider := &rejectionRefreshingCredentialProvider{}
+	client, err := spreadsheet.New(spreadsheet.Config{Endpoint: server.URL}, provider)
+	require.NoError(t, err)
+
+	result, err := sdkgo.RunQuery(newDexContext("refresh-after-401"), client.GetValues(), sheetsConnection, spreadsheet.GetValuesInput{
+		SpreadsheetID: "sheet", Range: "Customers!A:B",
+	})
+	require.NoError(t, err)
+	require.Equal(t, spreadsheet.GetValuesBranchRead, result.Branch)
+	require.Equal(t, 2, requests)
+	require.Equal(t, 1, provider.forcedRefreshes)
+}
+
+func TestGetValuesDoesNotLoopWhenReplacementCredentialIsUnauthorized(t *testing.T) {
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		requests++
+		response.WriteHeader(http.StatusUnauthorized)
+	}))
+	t.Cleanup(server.Close)
+	provider := &rejectionRefreshingCredentialProvider{}
+	client, err := spreadsheet.New(spreadsheet.Config{Endpoint: server.URL}, provider)
+	require.NoError(t, err)
+
+	result, err := sdkgo.RunQuery(newDexContext("no-refresh-loop"), client.GetValues(), sheetsConnection, spreadsheet.GetValuesInput{
+		SpreadsheetID: "sheet", Range: "Customers!A:B",
+	})
+	require.NoError(t, err)
+	require.Equal(t, spreadsheet.GetValuesBranchProviderRejected, result.Branch)
+	require.Equal(t, 2, requests)
+	require.Equal(t, 1, provider.forcedRefreshes)
 }
 
 func TestGetValuesRejectsMalformedRetryAfter(t *testing.T) {
