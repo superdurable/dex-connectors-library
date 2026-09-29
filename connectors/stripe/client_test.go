@@ -144,7 +144,7 @@ func newStripeClient(t *testing.T, endpoint string, config stripe.Config) *strip
 	t.Helper()
 	config.Endpoint = endpoint
 	client, err := stripe.New(config, sdkgo.StaticCredentialProvider[stripe.Credentials]{
-		stripeConnection: {SecretKey: sdkgo.NewSecretString("sk_test_example"), WebhookSecret: sdkgo.NewSecretString("whsec_example")},
+		stripeConnection: {SecretKey: sdkgo.NewSecretString("sk_test_example")},
 	})
 	require.NoError(t, err)
 	return client

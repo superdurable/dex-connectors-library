@@ -5,6 +5,7 @@ package stripe
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
@@ -23,5 +24,8 @@ func DecodeResolvedCredentialsJSON(contents json.RawMessage) (Credentials, error
 		SecretKey:     sdkgo.NewSecretString(fields.SecretKey),
 		WebhookSecret: sdkgo.NewSecretString(fields.WebhookSecret),
 	}
-	return credentials, credentials.Validate()
+	if credentials.SecretKey.Reveal() == "" && credentials.WebhookSecret.Reveal() == "" {
+		return Credentials{}, fmt.Errorf("resolved Stripe credential is empty")
+	}
+	return credentials, nil
 }

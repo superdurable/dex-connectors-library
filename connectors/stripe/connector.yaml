@@ -5,7 +5,7 @@ metadata:
   displayName: Stripe
   description: Create and reconcile hosted ACH Checkout Sessions and receive signed Checkout Session events.
   company: Stripe
-  version: v0.2.1
+  version: v0.2.2
 spec:
   provider: stripe
   codegen:
