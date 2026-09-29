@@ -24,7 +24,10 @@ type Config struct {
 }
 
 type Credentials struct {
-	AccessToken sdkgo.SecretString
+	OAuthClientID     string
+	OAuthClientSecret sdkgo.SecretString
+	AccessToken       sdkgo.SecretString
+	RefreshToken      sdkgo.SecretString
 }
 
 type Connection struct {
@@ -55,7 +58,7 @@ func NewLocalConnection(store *localconfig.Store, connectionName string, options
 	if err := store.DecodeConfiguration(ConnectorID, connectionName, &config); err != nil {
 		return Connection{}, err
 	}
-	credentials := localconfig.NewCredentialProvider(store, ConnectorID, connectionName, decodeLocalCredentials)
+	credentials := localconfig.NewRefreshingCredentialProvider(store, ConnectorID, connectionName, decodeLocalCredentials, encodeLocalCredentials)
 	client, err := New(config, credentials, options...)
 	if err != nil {
 		return Connection{}, err
@@ -65,15 +68,36 @@ func NewLocalConnection(store *localconfig.Store, connectionName string, options
 
 func decodeLocalCredentials(contents json.RawMessage) (Credentials, error) {
 	var fields struct {
-		AccessToken string `json:"access_token"`
+		OAuthClientID     string `json:"oauth_client_id"`
+		OAuthClientSecret string `json:"oauth_client_secret"`
+		AccessToken       string `json:"access_token"`
+		RefreshToken      string `json:"refresh_token"`
 	}
 	if err := localconfig.DecodeCredentials(contents, &fields); err != nil {
 		return Credentials{}, err
 	}
 	credentials := Credentials{
-		AccessToken: sdkgo.NewSecretString(fields.AccessToken),
+		OAuthClientID:     fields.OAuthClientID,
+		OAuthClientSecret: sdkgo.NewSecretString(fields.OAuthClientSecret),
+		AccessToken:       sdkgo.NewSecretString(fields.AccessToken),
+		RefreshToken:      sdkgo.NewSecretString(fields.RefreshToken),
 	}
 	return credentials, credentials.Validate()
+}
+
+func encodeLocalCredentials(credentials Credentials) (json.RawMessage, error) {
+	fields := struct {
+		OAuthClientID     string `json:"oauth_client_id,omitempty"`
+		OAuthClientSecret string `json:"oauth_client_secret,omitempty"`
+		AccessToken       string `json:"access_token,omitempty"`
+		RefreshToken      string `json:"refresh_token,omitempty"`
+	}{
+		OAuthClientID:     credentials.OAuthClientID,
+		OAuthClientSecret: credentials.OAuthClientSecret.Reveal(),
+		AccessToken:       credentials.AccessToken.Reveal(),
+		RefreshToken:      credentials.RefreshToken.Reveal(),
+	}
+	return json.Marshal(fields)
 }
 
 func (connection Connection) validate() error {

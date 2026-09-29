@@ -4,6 +4,7 @@
 package linkedinconnector_test
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -21,6 +22,23 @@ import (
 )
 
 var linkedinConnection = sdkgo.ConnectionRef{Provider: "linkedin", Name: "signup"}
+
+type rejectionRefreshingCredentialProvider struct {
+	forcedRefreshes int
+}
+
+func (*rejectionRefreshingCredentialProvider) Resolve(sdkgo.Call) (linkedinconnector.Credentials, error) {
+	return linkedinconnector.Credentials{AccessToken: sdkgo.NewSecretString("rejected-token")}, nil
+}
+
+func (provider *rejectionRefreshingCredentialProvider) ResolveAfterRejection(
+	context.Context,
+	sdkgo.Call,
+	sdkgo.CredentialRefreshDriver[linkedinconnector.Credentials],
+) (linkedinconnector.Credentials, error) {
+	provider.forcedRefreshes++
+	return linkedinconnector.Credentials{AccessToken: sdkgo.NewSecretString("replacement-token")}, nil
+}
 
 func TestGetAuthenticatedProfileReturnsBoundedUserInfoClaims(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
@@ -109,6 +127,34 @@ func TestGetAuthenticatedProfileClassifiesTerminalProviderResponses(t *testing.T
 			require.NotContains(t, fmt.Sprintf("%#v", result), "sensitive provider response")
 		})
 	}
+}
+
+func TestGetAuthenticatedProfileRefreshesOnceAfterUnauthorized(t *testing.T) {
+	var requests int
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		requests++
+		if requests == 1 {
+			require.Equal(t, "Bearer rejected-token", request.Header.Get("Authorization"))
+			response.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		require.Equal(t, "Bearer replacement-token", request.Header.Get("Authorization"))
+		writeJSON(t, response, map[string]any{
+			"sub": "member", "email": "member@example.com", "email_verified": true,
+		})
+	}))
+	defer server.Close()
+	provider := &rejectionRefreshingCredentialProvider{}
+	client, err := linkedinconnector.New(linkedinconnector.Config{UserInfoURL: server.URL}, provider)
+	require.NoError(t, err)
+	result, err := sdkgo.RunQuery(
+		testsupport.NewDexContext("signup-flow", "refresh-step"), client.GetAuthenticatedProfile(), linkedinConnection,
+		linkedinconnector.GetAuthenticatedProfileInput{},
+	)
+	require.NoError(t, err)
+	require.Equal(t, linkedinconnector.GetAuthenticatedProfileBranchProfileLoaded, result.Branch)
+	require.Equal(t, 2, requests)
+	require.Equal(t, 1, provider.forcedRefreshes)
 }
 
 func TestGetAuthenticatedProfileMissingConnectionUsesDefectBranch(t *testing.T) {
