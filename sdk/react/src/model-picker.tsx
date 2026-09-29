@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactElement } from "react";
 
-import type { ConnectorStudioConfigurationUnitTarget } from "./host-api.js";
+import type { ConnectorStudioConfigurationUnitTarget, ConnectorStudioConnectionTarget } from "./host-api.js";
 import { StudioButton, StudioField, StudioHeader, StudioNotice, StudioSurface } from "./studio-components.js";
 
 /** ModelOption is one model a provider listed, projected by connector UI code. */
@@ -47,8 +47,14 @@ export interface ModelListing {
 
 /** ModelPickerProps configures the shared live model picker unit. */
 export interface ModelPickerProps {
-  /** target is the configuration unit target; its value.model is the saved pick. */
-  target: ConnectorStudioConfigurationUnitTarget;
+  /**
+   * target is a Step or Trigger configurationUnit target, whose value.model is
+   * the saved pick, or a connection target whose unit renders the connection's
+   * model field, bound to the unit's model port. There the pick is the
+   * connection's default model, and an empty model means the connector's own
+   * default.
+   */
+  target: ConnectorStudioConfigurationUnitTarget | ConnectorStudioConnectionTarget;
   /** providerName names the provider in messages, such as "Gemini". */
   providerName: string;
   /** loadModels lists models through the host broker; it runs on mount and on Retry. */
@@ -70,6 +76,12 @@ export interface ModelPickerProps {
   validateManualModel?(model: string): string | undefined;
   /** manualModelPlaceholder is the placeholder of the model ID entry. It defaults to "model-id". */
   manualModelPlaceholder?: string;
+  /**
+   * defaultModelOptionLabel labels the first option, which saves an empty
+   * model. It defaults to "Use the connection's default model" for a unit
+   * target and "Use the connector's default model" for a connection target.
+   */
+  defaultModelOptionLabel?: string;
 }
 
 type ListState =
@@ -86,9 +98,10 @@ type SaveState = {status: "idle"} | {status: "saving"} | {status: "saved"; model
  * is missing from the list.
  */
 export function ModelPicker({
-  target, providerName, loadModels, onSave, validateManualModel, manualModelPlaceholder = "model-id",
+  target, providerName, loadModels, onSave, validateManualModel, manualModelPlaceholder = "model-id", defaultModelOptionLabel,
 }: ModelPickerProps): ReactElement {
   const initialModel = savedModel(target);
+  const surfaceText = describeModelPickerSurface(target, providerName);
   const [listState, setListState] = useState<ListState>({status: "loading"});
   const [saveState, setSaveState] = useState<SaveState>({status: "idle"});
   const [query, setQuery] = useState("");
@@ -136,8 +149,8 @@ export function ModelPicker({
     );
   };
 
-  return <StudioSurface label={target.label}>
-    <StudioHeader title={target.label} description={target.description ?? `Choose the ${providerName} model this Step calls.`}/>
+  return <StudioSurface label={surfaceText.title}>
+    <StudioHeader title={surfaceText.title} description={surfaceText.description}/>
     {listState.status === "loading" && <StudioNotice tone="info">Loading models from {providerName}…</StudioNotice>}
     {listState.status === "failed" && <>
       <StudioNotice tone="error">{providerName} models could not be listed: {listState.message} Enter a model ID below, or retry.</StudioNotice>
@@ -155,7 +168,7 @@ export function ModelPicker({
     <fieldset aria-label="Model" className="studio-options">
       <label className="studio-option">
         <input checked={selectedModel === ""} name="model" onChange={() => chooseListedModel("")} type="radio" value=""/>
-        <span className="studio-option-label">Use the connection's default model</span>
+        <span className="studio-option-label">{defaultModelOptionLabel ?? surfaceText.defaultOptionLabel}</span>
       </label>
       {visibleModels.map((model) => <label className="studio-option" key={model.id}>
         <input checked={selectedModel === model.id} name="model" onChange={() => chooseListedModel(model.id)} type="radio" value={model.id}/>
@@ -175,9 +188,9 @@ export function ModelPicker({
     {manualModelProblem !== undefined && <StudioNotice tone="attention">{manualModelProblem}</StudioNotice>}
     <div className="studio-actions">
       <StudioButton disabled={saveState.status === "saving" || manualModelProblem !== undefined} onClick={save} variant="primary">Save</StudioButton>
-      <span className="studio-muted">{selectedModel === "" ? "Uses the connection's default model" : `Selected: ${selectedModel}`}</span>
+      <span className="studio-muted">{selectedModel === "" ? surfaceText.defaultSelectionText : `Selected: ${selectedModel}`}</span>
     </div>
-    {saveState.status === "saved" && <StudioNotice tone="success">Saved {saveState.model || "the connection default"}. Restart the application to use it.</StudioNotice>}
+    {saveState.status === "saved" && <StudioNotice tone="success">Saved {saveState.model || surfaceText.savedDefaultText}. Restart the application to use it.</StudioNotice>}
     {saveState.status === "failed" && <StudioNotice tone="error">The model could not be saved: {saveState.message}</StudioNotice>}
   </StudioSurface>;
 }
@@ -194,7 +207,63 @@ export function filterModelOptions(models: ModelOption[], query: string, isShowi
     && (needle === "" || model.id.toLowerCase().includes(needle) || (model.label ?? "").toLowerCase().includes(needle)));
 }
 
-/** savedModel returns the unit's saved model ID, or "" when it inherits the connection default. */
-export function savedModel(target: ConnectorStudioConfigurationUnitTarget): string {
-  return typeof target.value.model === "string" ? target.value.model.trim() : "";
+/**
+ * savedModel returns the target's saved model ID, trimmed, or "" when none is
+ * saved. A unit target's "" inherits the connection default. A connection
+ * target's model is read from its model port's binding, and "" uses the
+ * connector default.
+ */
+export function savedModel(target: ConnectorStudioConfigurationUnitTarget | ConnectorStudioConnectionTarget): string {
+  const model = target.kind === "configurationUnit" ? target.value.model : readConnectionTargetModel(target);
+  return typeof model === "string" ? model.trim() : "";
+}
+
+// modelPickerPort is the one output port of every connector's modelPicker unit.
+const modelPickerPort = "model";
+
+interface ModelPickerSurfaceText {
+  title: string;
+  description: string;
+  defaultOptionLabel: string;
+  defaultSelectionText: string;
+  savedDefaultText: string;
+}
+
+function describeModelPickerSurface(
+  target: ConnectorStudioConfigurationUnitTarget | ConnectorStudioConnectionTarget,
+  providerName: string,
+): ModelPickerSurfaceText {
+  if (target.kind === "configurationUnit") {
+    return {
+      title: target.label,
+      description: target.description ?? `Choose the ${providerName} model this Step calls.`,
+      defaultOptionLabel: "Use the connection's default model",
+      defaultSelectionText: "Uses the connection's default model",
+      savedDefaultText: "the connection default",
+    };
+  }
+  return {
+    title: "Default model",
+    description: `Choose the ${providerName} model for Steps that choose none.`,
+    defaultOptionLabel: "Use the connector's default model",
+    defaultSelectionText: "Uses the connector's default model",
+    savedDefaultText: "the connector default",
+  };
+}
+
+// Unit targets key value by port; the connection target contract keys it by field.
+function readConnectionTargetModel(target: ConnectorStudioConnectionTarget): unknown {
+  const binding = target.bindings?.find((candidate) => candidate.port === modelPickerPort);
+  if (binding === undefined || target.value === undefined) return undefined;
+  return target.value[binding.port] ?? readJSONPointer(target.value, binding.jsonPointer);
+}
+
+function readJSONPointer(document: Record<string, unknown>, pointer: string): unknown {
+  if (!pointer.startsWith("/")) return undefined;
+  let current: unknown = document;
+  for (const segment of pointer.slice(1).split("/")) {
+    if (typeof current !== "object" || current === null || Array.isArray(current)) return undefined;
+    current = (current as Record<string, unknown>)[segment.replaceAll("~1", "/").replaceAll("~0", "~")];
+  }
+  return current;
 }

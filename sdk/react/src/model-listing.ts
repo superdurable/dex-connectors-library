@@ -2,7 +2,21 @@
 // SPDX-License-Identifier: MIT
 
 import type { ModelOption } from "./model-picker.js";
-import type { ConnectorStudioClient } from "./studio-client.js";
+import type { ConnectorStudioClient, ConnectorStudioConnection } from "./studio-client.js";
+
+/**
+ * shouldListModelsForAuthMethod reports whether a loader should list the
+ * models of the provider that authMethodId authorizes: true when the
+ * connection has added that method, and true for every method when
+ * authMethodIds is empty, as on hosts that do not report it, so the loader
+ * lists every provider there as before.
+ */
+export function shouldListModelsForAuthMethod(
+  connection: Pick<ConnectorStudioConnection, "authMethodIds">,
+  authMethodId: string,
+): boolean {
+  return connection.authMethodIds.length === 0 || connection.authMethodIds.includes(authMethodId);
+}
 
 /**
  * executeFirstAcceptedProviderCommand runs commandIds in order and returns the

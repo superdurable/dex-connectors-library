@@ -137,7 +137,10 @@ describe("Studio class contract", () => {
     for (const className of classNamesInDocument(failedPicker)) rendered.add(className);
 
     const loadModels = async () => everyModelOptionShape;
-    for (const target of [{kind: "connection"} as const, modelPickerTarget("unknownUnit")]) {
+    const connectionModelTarget: ConnectorStudioHostReady["target"] = {
+      kind: "connection", unitId: "modelPicker", bindings: [{port: "model", jsonPointer: "/model"}], value: {model: "gemini-missing"},
+    };
+    for (const target of [{kind: "connection"} as const, modelPickerTarget("unknownUnit"), connectionModelTarget]) {
       const bundle = await renderInDocument(
         <ModelPickerStudioApp connectorId="gemini" iconUrl="./icon.svg" loadModels={loadModels} providerName="Gemini"/>,
         () => sendHostReady(hostReady(target)));

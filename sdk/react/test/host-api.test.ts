@@ -64,6 +64,51 @@ describe("Connector Studio Host API", () => {
     })).toBe(true);
   });
 
+  it("accepts the connection context and rejects a malformed one", () => {
+    const ready = {
+      type: "connector.host.ready",
+      protocolVersion: connectorStudioHostAPIVersion,
+      sessionNonce: "nonce",
+      connectorId: "llm",
+      capabilities: [],
+      target: {kind: "connection"},
+    };
+    const connection = {state: "connected", grantedScopes: []};
+    expect(isConnectorStudioMessage({...ready, connection})).toBe(true);
+    expect(isConnectorStudioMessage({...ready, connection: {...connection, authMethodIds: [], configuration: {}}})).toBe(true);
+    expect(isConnectorStudioMessage({
+      ...ready, connection: {...connection, authMethodIds: ["anthropic", "gemini"], configuration: {model: "anthropic/claude-sonnet-5"}},
+    })).toBe(true);
+    for (const authMethodIds of ["anthropic", [""], ["anthropic", 7], null]) {
+      expect(isConnectorStudioMessage({...ready, connection: {...connection, authMethodIds}}), JSON.stringify(authMethodIds)).toBe(false);
+    }
+    for (const configuration of [["model"], "model", null]) {
+      expect(isConnectorStudioMessage({...ready, connection: {...connection, configuration}}), JSON.stringify(configuration)).toBe(false);
+    }
+  });
+
+  it("accepts a connection target for one configuration field's unit, whole or not at all", () => {
+    const ready = (target: Record<string, unknown>) => ({
+      type: "connector.host.ready",
+      protocolVersion: connectorStudioHostAPIVersion,
+      sessionNonce: "nonce",
+      connectorId: "llm",
+      capabilities: ["use.configuration.write"],
+      connection: {state: "connected", grantedScopes: [], authMethodIds: ["anthropic"], configuration: {}},
+      target,
+    });
+    const fieldTarget = {kind: "connection", unitId: "modelPicker", bindings: [{port: "model", jsonPointer: "/model"}], value: {model: "anthropic"}};
+    expect(isConnectorStudioMessage(ready(fieldTarget))).toBe(true);
+    expect(isConnectorStudioMessage(ready({...fieldTarget, value: {}}))).toBe(true);
+    expect(isConnectorStudioMessage(ready({kind: "connection"}))).toBe(true);
+    expect(isConnectorStudioMessage(ready({...fieldTarget, unitId: ""}))).toBe(false);
+    expect(isConnectorStudioMessage(ready({...fieldTarget, unitId: undefined}))).toBe(false);
+    expect(isConnectorStudioMessage(ready({...fieldTarget, bindings: undefined}))).toBe(false);
+    expect(isConnectorStudioMessage(ready({...fieldTarget, bindings: [{port: "model"}]}))).toBe(false);
+    expect(isConnectorStudioMessage(ready({...fieldTarget, value: undefined}))).toBe(false);
+    expect(isConnectorStudioMessage(ready({...fieldTarget, value: ["anthropic"]}))).toBe(false);
+  });
+
   it("rejects unknown commands and malformed results", () => {
     const common = { protocolVersion: connectorStudioHostAPIVersion, sessionNonce: "nonce", connectorId: "fixture", requestId: "request" };
     expect(isConnectorStudioMessage({ ...common, type: "connector.command", command: "credential.read" })).toBe(false);

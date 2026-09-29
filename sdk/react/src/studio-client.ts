@@ -6,10 +6,38 @@ import { useEffect, useMemo, useState } from "react";
 import {
   connectorStudioHostAPIVersion,
   isConnectorStudioMessage,
+  type ConnectorConnectionView,
   type ConnectorStudioCommand,
   type ConnectorStudioCommandResult,
   type ConnectorStudioHostReady,
 } from "./host-api.js";
+
+/**
+ * ConnectorStudioConnection is the ready message's connection as
+ * ConnectorStudioClient reports it: authMethodIds and configuration are always
+ * present, and empty when the host omits them, as hosts that predate them do.
+ */
+export interface ConnectorStudioConnection extends ConnectorConnectionView {
+  /**
+   * authMethodIds lists the auth method IDs the connection has added, in add
+   * order, or [] when the host omits it. Model loaders list every provider for
+   * an empty list; see shouldListModelsForAuthMethod.
+   */
+  authMethodIds: string[];
+  /** configuration is the connection's stored non-secret configuration, or {} when the host omits it. */
+  configuration: Record<string, unknown>;
+  /**
+   * isConfigurationReported reports whether the host sent configuration. It is
+   * false on hosts that predate it, where configuration is empty even when the
+   * connection has saved values.
+   */
+  isConfigurationReported: boolean;
+}
+
+/** ConnectorStudioClientReady is the host's ready message with its connection read as ConnectorStudioConnection. */
+export interface ConnectorStudioClientReady extends ConnectorStudioHostReady {
+  connection: ConnectorStudioConnection;
+}
 
 /** ConnectorStudioCommandError is a command the host rejected, with its coded reason. */
 export class ConnectorStudioCommandError extends Error {
@@ -25,8 +53,12 @@ export class ConnectorStudioCommandError extends Error {
 
 /** ConnectorStudioClient is a bundle's connection to the Dex Web host for one session. */
 export interface ConnectorStudioClient {
-  /** ready is the host's ready message, or undefined until the host sends it. */
-  ready: ConnectorStudioHostReady | undefined;
+  /**
+   * ready is the host's latest ready message, or undefined until the host sends
+   * it. Its connection always carries authMethodIds and configuration, empty
+   * when the host omits them.
+   */
+  ready: ConnectorStudioClientReady | undefined;
   /** busy reports whether any command is waiting for a result. */
   busy: boolean;
   /**
@@ -49,7 +81,7 @@ interface PendingCommand {
  * session are ignored. The bundle never receives credential values.
  */
 export function useConnectorStudioClient(connectorId: string): ConnectorStudioClient {
-  const [ready, setReady] = useState<ConnectorStudioHostReady>();
+  const [ready, setReady] = useState<ConnectorStudioClientReady>();
   const [pendingCount, setPendingCount] = useState(0);
   const pending = useMemo(() => new Map<string, PendingCommand>(), []);
 
@@ -57,7 +89,7 @@ export function useConnectorStudioClient(connectorId: string): ConnectorStudioCl
     const receive = (event: MessageEvent<unknown>) => {
       if (event.source !== window.parent || !isConnectorStudioMessage(event.data) || event.data.connectorId !== connectorId) return;
       if (event.data.type === "connector.host.ready") {
-        setReady(event.data);
+        setReady(fillOmittedConnectionContext(event.data));
         return;
       }
       if (event.data.type !== "connector.command.result" || !ready || event.data.sessionNonce !== ready.sessionNonce) return;
@@ -93,6 +125,19 @@ export function useConnectorStudioClient(connectorId: string): ConnectorStudioCl
     send,
     executeProviderCommand: (commandId, capability, parameters = {}) =>
       send("provider.command.execute", capability, {commandId, parameters}),
+  };
+}
+
+function fillOmittedConnectionContext(ready: ConnectorStudioHostReady): ConnectorStudioClientReady {
+  const {connection} = ready;
+  return {
+    ...ready,
+    connection: {
+      ...connection,
+      authMethodIds: connection.authMethodIds ?? [],
+      configuration: connection.configuration ?? {},
+      isConfigurationReported: connection.configuration !== undefined,
+    },
   };
 }
 

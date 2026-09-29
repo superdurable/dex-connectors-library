@@ -19,10 +19,36 @@ export interface ConnectorConnectionView {
   accountEmail?: string;
   grantedScopes: string[];
   detail?: string;
+  /**
+   * authMethodIds lists the manifest auth method IDs the connection has added,
+   * in add order. A single-selection connection reports its one method, or an
+   * empty list before one is chosen. Hosts that predate the field omit it;
+   * ConnectorStudioClient.ready reports an empty list for them.
+   */
+  authMethodIds?: string[];
+  /**
+   * configuration is the connection's stored non-secret configuration, keyed
+   * by field name, such as {model: "anthropic/claude-sonnet-5"}. It never
+   * carries credential fields. Hosts that predate the field omit it;
+   * ConnectorStudioClient.ready reports an empty object for them.
+   */
+  configuration?: Record<string, unknown>;
 }
 
+/**
+ * ConnectorStudioConnectionTarget selects the connection surface. Without
+ * unitId it is the connection setup surface. With unitId, the host renders
+ * that Studio unit inline in the connection form for one connection
+ * configuration field, and bindings and value are present.
+ */
 export interface ConnectorStudioConnectionTarget {
   kind: "connection";
+  /** unitId is the manifest Studio unit that renders the field, such as "modelPicker". */
+  unitId?: string;
+  /** bindings binds the unit's output port to the field, such as [{port: "model", jsonPointer: "/model"}]. */
+  bindings?: {port: string; jsonPointer: string}[];
+  /** value holds the field's stored value, such as {model: "anthropic/claude-sonnet-5"}. */
+  value?: Record<string, unknown>;
 }
 
 export interface ConnectorStudioOperationScope {
@@ -145,7 +171,7 @@ export function isConnectorStudioMessage(value: unknown): value is ConnectorStud
   if (message.type === "connector.host.ready") {
     return Array.isArray(message.capabilities)
       && message.capabilities.every((capability) => typeof capability === "string")
-      && isRecord(message.connection)
+      && isConnectorConnectionView(message.connection)
       && isConnectorStudioTarget(message.target);
   }
   if (message.type === "connector.command") {
@@ -171,9 +197,18 @@ export function isConnectorStudioMessage(value: unknown): value is ConnectorStud
   return false;
 }
 
+function isConnectorConnectionView(value: unknown): value is ConnectorConnectionView {
+  return isRecord(value)
+    && (value.authMethodIds === undefined || (Array.isArray(value.authMethodIds) && value.authMethodIds.every(nonEmptyString)))
+    && (value.configuration === undefined || isRecord(value.configuration));
+}
+
 function isConnectorStudioTarget(value: unknown): value is ConnectorStudioTarget {
   if (!isRecord(value) || typeof value.kind !== "string") return false;
-  if (value.kind === "connection") return true;
+  if (value.kind === "connection") {
+    if (value.unitId === undefined && value.bindings === undefined && value.value === undefined) return true;
+    return nonEmptyString(value.unitId) && isPortBindingList(value.bindings) && isRecord(value.value);
+  }
   if (value.kind !== "configurationUnit" || !isRecord(value.scope)) return false;
   const scope = value.scope;
   const validScope = scope.kind === "operation"
@@ -185,9 +220,13 @@ function isConnectorStudioTarget(value: unknown): value is ConnectorStudioTarget
     && nonEmptyString(value.unitId)
     && nonEmptyString(value.label)
     && typeof value.required === "boolean"
-    && Array.isArray(value.bindings)
-    && value.bindings.every((binding) => isRecord(binding) && nonEmptyString(binding.port) && nonEmptyString(binding.jsonPointer))
+    && isPortBindingList(value.bindings)
     && isRecord(value.value);
+}
+
+function isPortBindingList(value: unknown): value is {port: string; jsonPointer: string}[] {
+  return Array.isArray(value)
+    && value.every((binding) => isRecord(binding) && nonEmptyString(binding.port) && nonEmptyString(binding.jsonPointer));
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

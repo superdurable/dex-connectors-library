@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/dex-connectors-react",
-  "version": "0.1.0-alpha.4",
+  "version": "0.1.0-alpha.5",
   "description": "Credential-safe connection status, Studio Host API client, Dex Web styling, live model picker, and shared provider model lists for Dex connector UIs",
   "license": "MIT",
   "type": "module",

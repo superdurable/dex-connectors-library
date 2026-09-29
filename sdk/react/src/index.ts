@@ -21,7 +21,7 @@ export type {
   ConnectorStudioTriggerScope,
 } from "./host-api.js";
 export { ConnectorStudioCommandError, collectProviderPages, useConnectorStudioClient } from "./studio-client.js";
-export type { ConnectorStudioClient, ProviderPage } from "./studio-client.js";
+export type { ConnectorStudioClient, ConnectorStudioClientReady, ConnectorStudioConnection, ProviderPage } from "./studio-client.js";
 export {
   applyConnectorStudioTheme,
   connectorStudioClassNames,
@@ -41,4 +41,10 @@ export { validateModelIDForRule } from "./model-id-rule.js";
 export type { ModelIDRule, ModelIDValidation } from "./model-id-rule.js";
 export { ModelPickerStudioApp, modelPickerUnitID, mountModelPickerBundle } from "./model-picker-bundle.js";
 export type { ModelPickerBundleConfig } from "./model-picker-bundle.js";
-export { executeFirstAcceptedProviderCommand, hasAnyModelIDFragment, openAICompatibleModelOptions, readProviderModelArray } from "./model-listing.js";
+export {
+  executeFirstAcceptedProviderCommand,
+  hasAnyModelIDFragment,
+  openAICompatibleModelOptions,
+  readProviderModelArray,
+  shouldListModelsForAuthMethod,
+} from "./model-listing.js";
