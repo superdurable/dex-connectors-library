@@ -134,6 +134,32 @@ func TestRefreshingCredentialProviderPersistsRotatedCredentials(t *testing.T) {
 	require.Equal(t, "rotated-refresh-token", reloaded.RefreshToken.Reveal())
 }
 
+func TestRefreshingCredentialProviderForcesRefreshAfterProviderRejection(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "connections.json")
+	writeConnections(t, path, "https://example.test", "rejected-token", time.Now().Add(time.Hour))
+	store, err := localconfig.LoadFile(path)
+	require.NoError(t, err)
+	provider := localconfig.NewRefreshingCredentialProvider(
+		store, "gmail", "sender", decodeTestCredentials, encodeTestCredentials,
+	)
+	calls := &atomic.Int32{}
+	driver := testRefreshDriver{calls: calls, result: sdkgo.CredentialRefreshResult[testCredentials]{
+		Credentials: testCredentials{
+			AccessToken: sdkgo.NewSecretString("replacement-token"), RefreshToken: sdkgo.NewSecretString("refresh-token"),
+		},
+		ExpiresAt: time.Now().Add(time.Hour),
+	}}
+	call := sdkgo.Call{Connection: sdkgo.ConnectionRef{Provider: "google", Name: "sender"}}
+	credentials, err := sdkgo.ResolveCredentialAfterRejection(context.Background(), provider, call, driver)
+	require.NoError(t, err)
+	require.Equal(t, "replacement-token", credentials.AccessToken.Reveal())
+	require.Equal(t, int32(1), calls.Load())
+
+	reloaded, err := provider.Resolve(call)
+	require.NoError(t, err)
+	require.Equal(t, "replacement-token", reloaded.AccessToken.Reveal())
+}
+
 func TestRefreshingCredentialProviderSerializesConcurrentRefresh(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "connections.json")
 	writeConnections(t, path, "https://example.test", "expired-token", time.Now().Add(-time.Minute))

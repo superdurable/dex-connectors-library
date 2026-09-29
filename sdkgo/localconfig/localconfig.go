@@ -608,6 +608,24 @@ func (provider *credentialProvider[C]) ResolveWithRefresh(
 	call sdkgo.Call,
 	driver sdkgo.CredentialRefreshDriver[C],
 ) (C, error) {
+	return provider.resolveWithRefresh(ctx, call, driver, false)
+}
+
+// ResolveAfterRejection forces one refresh after a provider rejects the previously resolved access credential.
+func (provider *credentialProvider[C]) ResolveAfterRejection(
+	ctx context.Context,
+	call sdkgo.Call,
+	driver sdkgo.CredentialRefreshDriver[C],
+) (C, error) {
+	return provider.resolveWithRefresh(ctx, call, driver, true)
+}
+
+func (provider *credentialProvider[C]) resolveWithRefresh(
+	ctx context.Context,
+	call sdkgo.Call,
+	driver sdkgo.CredentialRefreshDriver[C],
+	forceRefresh bool,
+) (C, error) {
 	var zero C
 	if driver == nil {
 		return zero, fmt.Errorf("credential refresh driver is required")
@@ -629,7 +647,7 @@ func (provider *credentialProvider[C]) ResolveWithRefresh(
 		return zero, sdkgo.ErrReauthorizationRequired
 	}
 	state := sdkgo.CredentialRefreshState[C]{Credentials: credentials, ExpiresAt: file.Connections[recordIndex].CredentialExpiresAt, Now: now}
-	if !driver.RefreshRequired(state) {
+	if !forceRefresh && !driver.RefreshRequired(state) {
 		if state.ExpiresAt != nil && !now.Before(*state.ExpiresAt) {
 			return zero, fmt.Errorf("connector %q connection %q credentials are expired", provider.connectorID, provider.connectionName)
 		}

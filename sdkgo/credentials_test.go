@@ -26,6 +26,23 @@ func (provider *contextCredentialProvider) ResolveContext(ctx context.Context, _
 	return "", ctx.Err()
 }
 
+type rejectionRefreshingProvider struct {
+	called bool
+}
+
+func (*rejectionRefreshingProvider) Resolve(sdkgo.Call) (string, error) {
+	return "stale", nil
+}
+
+func (provider *rejectionRefreshingProvider) ResolveAfterRejection(
+	ctx context.Context,
+	_ sdkgo.Call,
+	_ sdkgo.CredentialRefreshDriver[string],
+) (string, error) {
+	provider.called = true
+	return "refreshed", ctx.Err()
+}
+
 type unusedRefreshDriver struct{}
 
 func (unusedRefreshDriver) RefreshRequired(sdkgo.CredentialRefreshState[string]) bool { return true }
@@ -65,6 +82,25 @@ func TestResolveCredentialRejectsMissingDependencies(t *testing.T) {
 	provider := sdkgo.StaticCredentialProvider[string]{reference: "secret"}
 	_, err = sdkgo.ResolveCredential(context.Background(), provider, sdkgo.Call{Connection: reference}, nil)
 	require.ErrorContains(t, err, "credential refresh driver is required")
+}
+
+func TestResolveCredentialAfterRejectionUsesForcedRefreshProvider(t *testing.T) {
+	provider := &rejectionRefreshingProvider{}
+	credentials, err := sdkgo.ResolveCredentialAfterRejection(
+		context.Background(), provider, sdkgo.Call{}, unusedRefreshDriver{},
+	)
+	require.NoError(t, err)
+	require.Equal(t, "refreshed", credentials)
+	require.True(t, provider.called)
+}
+
+func TestResolveCredentialAfterRejectionRejectsUnsupportedProvider(t *testing.T) {
+	reference := sdkgo.ConnectionRef{Provider: "example", Name: "primary"}
+	provider := sdkgo.StaticCredentialProvider[string]{reference: "secret"}
+	_, err := sdkgo.ResolveCredentialAfterRejection(
+		context.Background(), provider, sdkgo.Call{Connection: reference}, unusedRefreshDriver{},
+	)
+	require.ErrorContains(t, err, "does not support refresh after rejection")
 }
 
 func TestReauthorizationRequiredErrorPreservesClassification(t *testing.T) {

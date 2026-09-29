@@ -125,6 +125,13 @@ type RefreshingCredentialProvider[C any] interface {
 	ResolveWithRefresh(context.Context, Call, CredentialRefreshDriver[C]) (C, error)
 }
 
+// RejectedCredentialRefreshingProvider forces one refresh after a provider rejects an access credential.
+// Implementations must coordinate and persist replacement material with the same guarantees as normal refresh.
+type RejectedCredentialRefreshingProvider[C any] interface {
+	// ResolveAfterRejection returns replacement credentials after one explicit provider authentication rejection.
+	ResolveAfterRejection(context.Context, Call, CredentialRefreshDriver[C]) (C, error)
+}
+
 // ResolveCredential resolves one call through refresh support when the provider implements it.
 // A non-refreshing provider retains the CredentialProvider behavior. A nil provider or driver fails.
 func ResolveCredential[C any](
@@ -152,6 +159,31 @@ func ResolveCredential[C any](
 		return contextProvider.ResolveContext(ctx, call)
 	}
 	return provider.Resolve(call)
+}
+
+// ResolveCredentialAfterRejection forces one coordinated refresh after an access credential is rejected.
+// Connectors call it at most once for one provider operation before returning an authentication failure.
+func ResolveCredentialAfterRejection[C any](
+	ctx context.Context,
+	provider CredentialProvider[C],
+	call Call,
+	driver CredentialRefreshDriver[C],
+) (C, error) {
+	var zero C
+	if provider == nil {
+		return zero, errors.New("credential provider is required")
+	}
+	if driver == nil {
+		return zero, errors.New("credential refresh driver is required")
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	rejectedProvider, ok := provider.(RejectedCredentialRefreshingProvider[C])
+	if !ok {
+		return zero, errors.New("credential provider does not support refresh after rejection")
+	}
+	return rejectedProvider.ResolveAfterRejection(ctx, call, driver)
 }
 
 // StaticCredentialProvider resolves credentials from an in-memory connection map.
