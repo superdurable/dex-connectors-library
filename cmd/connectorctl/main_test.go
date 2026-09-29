@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"github.com/superdurable/dex-connectors-library/schema"
 	"gopkg.in/yaml.v3"
 )
 
@@ -60,14 +61,26 @@ func TestRegisteredGoogleConnectorsRequestNoAliasOAuthScopes(t *testing.T) {
 	require.NoError(t, err)
 	checkedDirectories := []string{}
 	for _, entry := range entries {
-		oauth := entry.Manifest.Spec.Auth.OAuth2
-		if entry.Manifest.Spec.Provider != "google" || oauth == nil {
+		if entry.Manifest.Spec.Provider != "google" {
 			continue
 		}
-		checkedDirectories = append(checkedDirectories, entry.Directory)
-		for _, scope := range append(append([]string{}, oauth.Scopes...), oauth.UserScopes...) {
-			canonicalScope, isGoogleAlias := canonicalScopeByGoogleAlias[scope]
-			require.Falsef(t, isGoogleAlias, "%s requests Google alias scope %q; request %q instead", entry.Directory, scope, canonicalScope)
+		oauthConfigurations := []*schema.OAuth2{entry.Manifest.Spec.Auth.OAuth2}
+		for _, method := range entry.Manifest.Spec.Auth.Methods {
+			oauthConfigurations = append(oauthConfigurations, method.OAuth2)
+		}
+		checkedConnector := false
+		for _, oauth := range oauthConfigurations {
+			if oauth == nil {
+				continue
+			}
+			checkedConnector = true
+			for _, scope := range append(append([]string{}, oauth.Scopes...), oauth.UserScopes...) {
+				canonicalScope, isGoogleAlias := canonicalScopeByGoogleAlias[scope]
+				require.Falsef(t, isGoogleAlias, "%s requests Google alias scope %q; request %q instead", entry.Directory, scope, canonicalScope)
+			}
+		}
+		if checkedConnector {
+			checkedDirectories = append(checkedDirectories, entry.Directory)
 		}
 	}
 	require.Equal(t, []string{"connectors/google/gmail", "connectors/google/spreadsheet"}, checkedDirectories)

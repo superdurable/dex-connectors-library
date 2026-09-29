@@ -108,18 +108,27 @@ func TestExternalConnectorCompatibility(t *testing.T) {
 
 func externalTestOAuthStart(t *testing.T, resolver *connectorReleaseResolver, identity connectorDefinitionIdentity, release connectorRelease) {
 	t.Helper()
-	if release.Manifest.Spec.Auth.Type != "oauth2" {
-		return
+	for _, method := range externalAuthMethods(release.Manifest.Spec.Auth) {
+		if method.Type == "oauth2" {
+			externalTestOAuthMethodStart(t, resolver, identity, release, method)
+		}
 	}
+}
+
+func externalTestOAuthMethodStart(t *testing.T, resolver *connectorReleaseResolver, identity connectorDefinitionIdentity, release connectorRelease, method connectorManifestAuthMethod) {
+	t.Helper()
 	setup := connectorTestSetup(t, t.TempDir(), connectorTestDefinitionProvider(t, []connectorDefinitionIdentity{identity}))
 	setup.releases = resolver
 	credentialValues := make(map[string]any)
 	credentialSecrets := make(map[string]string)
 	mappedCredentials := map[string]bool{"access_token": true}
-	for _, mapping := range release.Manifest.Spec.Auth.OAuth2.CredentialMappings {
+	for _, mapping := range method.OAuth2.CredentialMappings {
 		mappedCredentials[mapping.Credential] = true
 	}
-	for _, field := range release.Manifest.Spec.Auth.Fields {
+	for _, derivation := range method.OAuth2.CredentialDerivations {
+		mappedCredentials[derivation.Credential] = true
+	}
+	for _, field := range method.Fields {
 		if !field.Required || mappedCredentials[field.Name] {
 			continue
 		}
@@ -130,6 +139,7 @@ func externalTestOAuthStart(t *testing.T, resolver *connectorReleaseResolver, id
 		}
 	}
 	body, err := json.Marshal(map[string]any{
+		"authMethodId": method.ID,
 		"clientId": "compatibility-client", "clientSecret": "compatibility-client-secret",
 		"configuration": map[string]any{}, "credentialValues": credentialValues, "credentialSecrets": credentialSecrets,
 	})
@@ -158,7 +168,7 @@ func externalTestOAuthStart(t *testing.T, resolver *connectorReleaseResolver, id
 	if err != nil {
 		t.Fatal(err)
 	}
-	oauth := release.Manifest.Spec.Auth.OAuth2
+	oauth := method.OAuth2
 	if authorizationURL.Scheme+"://"+authorizationURL.Host+authorizationURL.Path != oauth.AuthorizationEndpoint ||
 		authorizationURL.Query().Get("scope") != strings.Join(oauth.Scopes, " ") ||
 		authorizationURL.Query().Get("user_scope") != strings.Join(oauth.UserScopes, " ") ||
@@ -196,21 +206,27 @@ func externalFirstOperation(metadata []byte) (string, string) {
 func externalValidateAuth(t *testing.T, release connectorRelease) {
 	t.Helper()
 	auth := release.Manifest.Spec.Auth
-	switch auth.Type {
-	case "none":
-		if len(auth.Fields) != 0 || auth.OAuth2 != nil {
-			t.Fatalf("%s public auth must not declare credentials or OAuth metadata", release.ConnectorID)
+	methods := externalAuthMethods(auth)
+	if len(auth.Methods) > 0 && auth.DefaultMethod == "" {
+		t.Fatalf("%s multi-auth manifest has no default method", release.ConnectorID)
+	}
+	for _, method := range methods {
+		switch method.Type {
+		case "none":
+			if len(method.Fields) != 0 || method.OAuth2 != nil {
+				t.Fatalf("%s public auth must not declare credentials or OAuth metadata", release.ConnectorID)
+			}
+		case "apiKey", "serviceAccount":
+			if len(method.Fields) == 0 {
+				t.Fatalf("%s %s auth has no fields", release.ConnectorID, method.Type)
+			}
+		case "oauth2":
+			if method.OAuth2 == nil || method.OAuth2.AuthorizationEndpoint == "" || method.OAuth2.TokenEndpoint == "" || len(method.OAuth2.Scopes) == 0 {
+				t.Fatalf("%s OAuth metadata is incomplete", release.ConnectorID)
+			}
+		default:
+			t.Fatalf("%s auth method %q has unsupported type %q", release.ConnectorID, method.ID, method.Type)
 		}
-	case "apiKey":
-		if len(auth.Fields) == 0 {
-			t.Fatalf("%s API-key auth has no fields", release.ConnectorID)
-		}
-	case "oauth2":
-		if auth.OAuth2 == nil || auth.OAuth2.AuthorizationEndpoint == "" || auth.OAuth2.TokenEndpoint == "" || len(auth.OAuth2.Scopes) == 0 {
-			t.Fatalf("%s OAuth metadata is incomplete", release.ConnectorID)
-		}
-	default:
-		t.Fatalf("%s auth type %q is unsupported", release.ConnectorID, auth.Type)
 	}
 	encoded, err := json.Marshal(release)
 	if err != nil {
@@ -218,4 +234,14 @@ func externalValidateAuth(t *testing.T, release connectorRelease) {
 	}
 	digest := sha256.Sum256(encoded)
 	t.Logf("connector=%s tag=%s commit=%s metadata=%x", release.ConnectorID, release.Tag, release.SourceSHA, digest)
+}
+
+func externalAuthMethods(auth connectorManifestAuth) []connectorManifestAuthMethod {
+	if len(auth.Methods) > 0 {
+		return auth.Methods
+	}
+	return []connectorManifestAuthMethod{{
+		Type: auth.Type, ConnectionKind: auth.ConnectionKind, Fields: auth.Fields,
+		Guide: auth.Guide, OAuth2: auth.OAuth2,
+	}}
 }
