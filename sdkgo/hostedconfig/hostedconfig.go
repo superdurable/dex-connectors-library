@@ -23,12 +23,12 @@ import (
 const (
 	// BrokerURLEnvironmentVariable names the trusted credential broker base URL.
 	BrokerURLEnvironmentVariable = "SUPERVERSE_CONNECTOR_BROKER_URL"
-	// WorkloadTokenFileEnvironmentVariable names the projected workload-token file.
-	WorkloadTokenFileEnvironmentVariable = "SUPERVERSE_CONNECTOR_WORKLOAD_TOKEN_FILE"
-	defaultMaximumResponseBytes          = int64(1 << 20)
+	// WorkloadCredentialFileEnvironmentVariable names the projected workload-credential file.
+	WorkloadCredentialFileEnvironmentVariable = "SUPERVERSE_CONNECTOR_WORKLOAD_CREDENTIAL_FILE"
+	defaultMaximumResponseBytes               = int64(1 << 20)
 )
 
-var workloadTokenPattern = regexp.MustCompile(`^[A-Za-z0-9._~-]+$`)
+var workloadCredentialPattern = regexp.MustCompile(`^[A-Za-z0-9._~-]+$`)
 
 // CredentialDecoder converts the broker's secret JSON into a Connector credential type.
 // Implementations must validate the complete decoded value before returning it.
@@ -38,8 +38,8 @@ type CredentialDecoder[C any] func(json.RawMessage) (C, error)
 type Config struct {
 	// BrokerURL is the trusted absolute HTTP(S) base URL. Paths are allowed; credentials, queries, and fragments are not.
 	BrokerURL string
-	// WorkloadTokenFile is an absolute regular file readable only by its owner. The provider reloads it for every call.
-	WorkloadTokenFile string
+	// WorkloadCredentialFile is an absolute private file. The provider reloads its bearer credential for every call.
+	WorkloadCredentialFile string
 	// ConnectorID is the manifest Connector identity authorized for this provider.
 	ConnectorID string
 	// ConnectionName is the logical connection authorized for this provider.
@@ -53,13 +53,13 @@ type Config struct {
 // CredentialProvider resolves operation-scoped credentials without exposing tenancy selectors.
 // It is intentionally not a RefreshingCredentialProvider because the trusted broker owns refresh and persistence.
 type CredentialProvider[C any] struct {
-	resolveURL           string
-	workloadTokenFile    string
-	connectorID          string
-	connectionName       string
-	httpClient           *http.Client
-	maximumResponseBytes int64
-	decoder              CredentialDecoder[C]
+	resolveURL             string
+	workloadCredentialFile string
+	connectorID            string
+	connectionName         string
+	httpClient             *http.Client
+	maximumResponseBytes   int64
+	decoder                CredentialDecoder[C]
 }
 
 type resolveRequest struct {
@@ -89,7 +89,7 @@ func NewCredentialProvider[C any](cfg *Config, decoder CredentialDecoder[C]) (*C
 	if err != nil {
 		return nil, err
 	}
-	workloadTokenFile, err := validateWorkloadTokenFilePath(cfg.WorkloadTokenFile)
+	workloadCredentialFile, err := validateWorkloadCredentialFilePath(cfg.WorkloadCredentialFile)
 	if err != nil {
 		return nil, err
 	}
@@ -114,20 +114,20 @@ func NewCredentialProvider[C any](cfg *Config, decoder CredentialDecoder[C]) (*C
 		}}
 	}
 	return &CredentialProvider[C]{
-		resolveURL: resolveURL, workloadTokenFile: workloadTokenFile,
+		resolveURL: resolveURL, workloadCredentialFile: workloadCredentialFile,
 		connectorID: cfg.ConnectorID, connectionName: cfg.ConnectionName,
 		httpClient: httpClient, maximumResponseBytes: maximumResponseBytes, decoder: decoder,
 	}, nil
 }
 
-// NewCredentialProviderFromEnvironment loads the broker URL and workload-token path from their environment variables.
+// NewCredentialProviderFromEnvironment loads the broker URL and workload-credential path from their environment variables.
 func NewCredentialProviderFromEnvironment[C any](
 	connectorID string,
 	connectionName string,
 	decoder CredentialDecoder[C],
 ) (*CredentialProvider[C], error) {
 	return NewCredentialProvider(&Config{
-		BrokerURL: os.Getenv(BrokerURLEnvironmentVariable), WorkloadTokenFile: os.Getenv(WorkloadTokenFileEnvironmentVariable),
+		BrokerURL: os.Getenv(BrokerURLEnvironmentVariable), WorkloadCredentialFile: os.Getenv(WorkloadCredentialFileEnvironmentVariable),
 		ConnectorID: connectorID, ConnectionName: connectionName,
 	}, decoder)
 }
@@ -153,7 +153,7 @@ func (provider *CredentialProvider[C]) Resolve(call sdkgo.Call) (C, error) {
 	if call.Connection.Name != provider.connectionName {
 		return zero, fmt.Errorf("hosted Connector call does not match the configured connection")
 	}
-	workloadToken, err := readWorkloadToken(provider.workloadTokenFile)
+	workloadCredential, err := readWorkloadCredential(provider.workloadCredentialFile)
 	if err != nil {
 		return zero, err
 	}
@@ -168,7 +168,7 @@ func (provider *CredentialProvider[C]) Resolve(call sdkgo.Call) (C, error) {
 	if err != nil {
 		return zero, fmt.Errorf("create hosted Connector credential request: %w", err)
 	}
-	request.Header.Set("Authorization", "Bearer "+workloadToken)
+	request.Header.Set("Authorization", "Bearer "+workloadCredential)
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Accept", "application/json")
 	response, err := provider.httpClient.Do(request)
@@ -218,34 +218,34 @@ func buildResolveURL(value string) (string, error) {
 	return parsed.String(), nil
 }
 
-func validateWorkloadTokenFilePath(value string) (string, error) {
+func validateWorkloadCredentialFilePath(value string) (string, error) {
 	if strings.TrimSpace(value) == "" {
-		return "", fmt.Errorf("hosted Connector workload token file is required")
+		return "", fmt.Errorf("hosted Connector workload credential file is required")
 	}
 	absolutePath, err := filepath.Abs(value)
 	if err != nil {
-		return "", fmt.Errorf("resolve hosted Connector workload token file: %w", err)
+		return "", fmt.Errorf("resolve hosted Connector workload credential file: %w", err)
 	}
 	return absolutePath, nil
 }
 
-func readWorkloadToken(path string) (string, error) {
+func readWorkloadCredential(path string) (string, error) {
 	info, err := os.Stat(path)
 	if err != nil {
-		return "", fmt.Errorf("inspect hosted Connector workload token file: %w", err)
+		return "", fmt.Errorf("inspect hosted Connector workload credential file: %w", err)
 	}
 	if !info.Mode().IsRegular() || info.Mode().Perm()&0o077 != 0 {
-		return "", fmt.Errorf("hosted Connector workload token file must be a private regular file")
+		return "", fmt.Errorf("hosted Connector workload credential file must be a private regular file")
 	}
 	contents, err := os.ReadFile(path)
 	if err != nil {
-		return "", fmt.Errorf("read hosted Connector workload token file: %w", err)
+		return "", fmt.Errorf("read hosted Connector workload credential file: %w", err)
 	}
-	token := strings.TrimSpace(string(contents))
-	if len(token) < 16 || len(token) > 4096 || !workloadTokenPattern.MatchString(token) {
-		return "", fmt.Errorf("hosted Connector workload token is invalid")
+	credential := strings.TrimSpace(string(contents))
+	if len(credential) < 16 || len(credential) > 4096 || !workloadCredentialPattern.MatchString(credential) {
+		return "", fmt.Errorf("hosted Connector workload credential is invalid")
 	}
-	return token, nil
+	return credential, nil
 }
 
 func isReauthorizationRequired(contents []byte) bool {
