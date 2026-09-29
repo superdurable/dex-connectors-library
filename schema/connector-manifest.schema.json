@@ -51,66 +51,70 @@
           }
         },
         "auth": {
+          "description": "Either one authentication model (type, connectionKind, fields, guide, oauth2) or several methods.",
           "type": "object",
           "additionalProperties": false,
-          "required": ["type", "fields"],
           "properties": {
-            "type": { "enum": ["none", "apiKey", "oauth2"] },
+            "type": { "$ref": "#/$defs/authType" },
             "connectionKind": { "type": "string" },
             "fields": {
+              "description": "Credential fields. With methods, connectorctl replaces this list with the union of the method fields, each optional.",
               "type": "array",
               "items": { "$ref": "#/$defs/authField" }
             },
-            "guide": {
-              "type": "object",
-              "additionalProperties": false,
-              "required": ["startURL", "steps"],
-              "properties": {
-                "startURL": { "type": "string", "format": "uri" },
-                "steps": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+            "guide": { "$ref": "#/$defs/authorizationGuide" },
+            "oauth2": { "$ref": "#/$defs/oauth2" },
+            "selection": {
+              "description": "single, the default, lets a connection hold one method; multiple lets it hold a non-empty subset of methods.",
+              "enum": ["single", "multiple"]
+            },
+            "methodLabel": {
+              "description": "Singular noun, such as Provider, that setup UI uses for a method.",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32,
+              "pattern": "^\\S(?:[\\s\\S]*\\S)?$"
+            },
+            "defaultMethod": { "$ref": "#/$defs/authMethodID" },
+            "methods": {
+              "description": "Method IDs are unique, and the credential fields that several methods share use the same goName and type.",
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/authMethod" }
+            }
+          },
+          "oneOf": [
+            {
+              "required": ["type"],
+              "$ref": "#/$defs/credentialAuthRules",
+              "not": {
+                "anyOf": [
+                  { "required": ["methods"] },
+                  { "required": ["defaultMethod"] },
+                  { "required": ["selection"] },
+                  { "required": ["methodLabel"] }
+                ]
               }
             },
-            "oauth2": {
-              "type": "object",
-              "additionalProperties": false,
-              "required": ["authorizationEndpoint", "tokenEndpoint", "scopes", "pkce"],
-              "properties": {
-                "protocol": { "enum": ["oauth2", "oidc"] },
-                "authorizationEndpoint": { "type": "string", "format": "uri" },
-                "tokenEndpoint": { "type": "string", "format": "uri" },
-                "scopes": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
-                "userScopes": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
-                "credentialMappings": {
-                  "type": "array",
-                  "items": { "$ref": "#/$defs/oauthCredentialMapping" }
-                },
-                "credentialDerivations": {
-                  "type": "array",
-                  "items": { "$ref": "#/$defs/oauthCredentialDerivation" }
-                },
-                "pkce": { "type": "boolean" },
-                "oidc": {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "required": ["issuer", "discoveryEndpoint", "userInfoEndpoint", "nonceRequired"],
-                  "properties": {
-                    "issuer": { "type": "string", "format": "uri" },
-                    "discoveryEndpoint": { "type": "string", "format": "uri" },
-                    "userInfoEndpoint": { "type": "string", "format": "uri" },
-                    "nonceRequired": { "const": true }
-                  }
-                }
-              },
-              "allOf": [
-                {
-                  "if": { "properties": { "protocol": { "const": "oidc" } }, "required": ["protocol"] },
-                  "then": { "required": ["oidc"] }
-                },
-                {
-                  "if": { "properties": { "protocol": { "const": "oauth2" } }, "required": ["protocol"] },
-                  "then": { "not": { "required": ["oidc"] } }
-                }
-              ]
+            {
+              "required": ["methods", "defaultMethod"],
+              "not": {
+                "anyOf": [
+                  { "required": ["type"] },
+                  { "required": ["connectionKind"] },
+                  { "required": ["guide"] },
+                  { "required": ["oauth2"] }
+                ]
+              }
+            }
+          ],
+          "if": { "properties": { "selection": { "const": "multiple" } }, "required": ["selection"] },
+          "then": {
+            "properties": {
+              "methods": {
+                "minItems": 2,
+                "items": { "properties": { "type": { "const": "apiKey" } } }
+              }
             }
           }
         },
@@ -298,31 +302,169 @@
         "description": { "type": "string", "minLength": 1 }
       }
     },
-    "fieldBase": {
+    "authType": { "enum": ["none", "apiKey", "oauth2", "serviceAccount"] },
+    "authMethodID": { "type": "string", "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$" },
+    "authorizationGuide": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "goName", "type", "description", "required"],
+      "required": ["startURL", "steps"],
       "properties": {
-        "name": { "type": "string", "minLength": 1 },
+        "startURL": { "type": "string", "format": "uri", "pattern": "^https://" },
+        "steps": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "\\S" } }
+      }
+    },
+    "credentialAuthRules": {
+      "description": "Credential auth declares connectionKind, fields, and a guide; none declares neither; only oauth2 declares oauth2 metadata.",
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "none" } }, "required": ["type"] },
+          "then": {
+            "properties": { "fields": { "maxItems": 0 } },
+            "not": { "required": ["guide"] }
+          },
+          "else": {
+            "required": ["connectionKind", "fields", "guide"],
+            "properties": { "connectionKind": { "minLength": 1 }, "fields": { "minItems": 1 } }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "oauth2" } }, "required": ["type"] },
+          "then": { "required": ["oauth2"] },
+          "else": { "not": { "required": ["oauth2"] } }
+        }
+      ]
+    },
+    "authMethod": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "displayName", "description", "type"],
+      "properties": {
+        "id": { "$ref": "#/$defs/authMethodID" },
+        "displayName": { "type": "string", "pattern": "\\S" },
+        "description": { "type": "string", "pattern": "\\S" },
+        "recommended": { "description": "At most one method is recommended.", "type": "boolean" },
+        "type": { "$ref": "#/$defs/authType" },
+        "connectionKind": { "type": "string" },
+        "fields": {
+          "description": "Names auth_method and auth_methods and Go names AuthMethodID and AuthMethodIDs are reserved.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/authField" }
+        },
+        "configuration": {
+          "description": "Non-secret fields used only while this method is selected. Names are unique across spec.configuration and every method's configuration and differ from every credential field name.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["fields"],
+          "properties": {
+            "fields": { "type": "array", "items": { "$ref": "#/$defs/methodConfigurationField" } }
+          }
+        },
+        "guide": { "$ref": "#/$defs/authorizationGuide" },
+        "oauth2": { "$ref": "#/$defs/oauth2" }
+      },
+      "$ref": "#/$defs/credentialAuthRules"
+    },
+    "oauth2": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authorizationEndpoint", "tokenEndpoint", "scopes", "pkce"],
+      "properties": {
+        "protocol": { "enum": ["oauth2", "oidc"] },
+        "authorizationEndpoint": { "type": "string", "format": "uri", "pattern": "^https://" },
+        "tokenEndpoint": { "type": "string", "format": "uri", "pattern": "^https://" },
+        "authorizationParameters": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "\\S",
+            "not": { "enum": ["client_id", "redirect_uri", "response_type", "scope", "state", "code_challenge", "code_challenge_method"] }
+          },
+          "additionalProperties": { "type": "string", "pattern": "\\S" }
+        },
+        "clientIDCredential": { "description": "A non-secret credential field.", "type": "string", "pattern": "^[a-z][A-Za-z0-9_]*$" },
+        "clientSecretCredential": { "description": "A secretString credential field.", "type": "string", "pattern": "^[a-z][A-Za-z0-9_]*$" },
+        "scopes": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+        "userScopes": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+        "credentialMappings": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/oauthCredentialMapping" }
+        },
+        "credentialDerivations": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/oauthCredentialDerivation" }
+        },
+        "pkce": { "type": "boolean" },
+        "oidc": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["issuer", "discoveryEndpoint", "userInfoEndpoint", "nonceRequired"],
+          "properties": {
+            "issuer": { "type": "string", "format": "uri", "pattern": "^https://" },
+            "discoveryEndpoint": { "type": "string", "format": "uri", "pattern": "^https://" },
+            "userInfoEndpoint": { "type": "string", "format": "uri", "pattern": "^https://" },
+            "nonceRequired": { "const": true }
+          }
+        }
+      },
+      "dependentRequired": {
+        "clientIDCredential": ["clientSecretCredential"],
+        "clientSecretCredential": ["clientIDCredential"]
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "protocol": { "const": "oidc" } }, "required": ["protocol"] },
+          "then": { "required": ["oidc"] }
+        },
+        {
+          "if": { "properties": { "protocol": { "const": "oauth2" } }, "required": ["protocol"] },
+          "then": { "not": { "required": ["oidc"] } }
+        }
+      ]
+    },
+    "fieldBase": {
+      "type": "object",
+      "required": ["name", "goName", "type", "description"],
+      "properties": {
+        "name": { "type": "string", "pattern": "^[a-z][A-Za-z0-9_]*$" },
         "goName": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
         "type": { "type": "string" },
-        "description": { "type": "string", "minLength": 1 },
+        "description": { "type": "string", "pattern": "\\S" },
         "required": { "type": "boolean" },
         "default": {},
         "enum": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string" } }
+      },
+      "if": { "properties": { "type": { "const": "enum" } }, "required": ["type"] },
+      "then": { "required": ["enum"] }
+    },
+    "nonSecretFieldType": {
+      "properties": { "type": { "enum": ["string", "url", "integer", "boolean", "duration", "stringList", "stringMap", "enum"] } }
+    },
+    "fieldStudioUnit": {
+      "description": "Renders the field with a Studio unit once the connection is saved. unit names a spec.studio.units id; port names one of its outputs whose type equals the field type.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["unit", "port"],
+      "properties": {
+        "unit": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]+$" },
+        "port": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]+$" }
       }
     },
     "configField": {
-      "allOf": [
-        { "$ref": "#/$defs/fieldBase" },
-        { "properties": { "type": { "enum": ["string", "url", "integer", "boolean", "duration", "stringList", "stringMap", "enum"] } } }
-      ]
+      "description": "A spec.configuration field. Only these fields may declare studioUnit.",
+      "allOf": [{ "$ref": "#/$defs/fieldBase" }, { "$ref": "#/$defs/nonSecretFieldType" }],
+      "properties": { "studioUnit": { "$ref": "#/$defs/fieldStudioUnit" } },
+      "unevaluatedProperties": false
+    },
+    "methodConfigurationField": {
+      "description": "A non-secret auth method configuration field. required means required while the method is selected; generated Config never requires it.",
+      "allOf": [{ "$ref": "#/$defs/fieldBase" }, { "$ref": "#/$defs/nonSecretFieldType" }],
+      "unevaluatedProperties": false
     },
     "authField": {
       "allOf": [
         { "$ref": "#/$defs/fieldBase" },
         { "properties": { "type": { "enum": ["string", "url", "integer", "boolean", "duration", "stringList", "stringMap", "enum", "secretString"] } } }
-      ]
+      ],
+      "unevaluatedProperties": false
     },
     "branch": {
       "type": "object",

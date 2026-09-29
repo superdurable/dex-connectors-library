@@ -135,6 +135,9 @@ func TestReleaseArtifactIsDeterministicAndVersioned(t *testing.T) {
 	require.Equal(t, firstContent, secondContent)
 	require.Contains(t, string(firstContent), `"version": "v0.1.0"`)
 	require.Contains(t, string(firstContent), `"tag": "connectors/google-fixture/v0.1.0"`)
+	for _, absentKey := range []string{`"selection"`, `"methodLabel"`, `"studioUnit"`} {
+		require.NotContains(t, string(firstContent), absentKey, "manifests without the field publish no key")
+	}
 	digest, err := os.ReadFile(firstDigest)
 	require.NoError(t, err)
 	require.Equal(t, fmt.Sprintf("%x  connector-release.json\n", sha256.Sum256(firstContent)), string(digest))
@@ -251,6 +254,62 @@ func TestStudioUIArtifactIsDeterministicAndIncludedInRelease(t *testing.T) {
 	commandRequest := releaseWire.Manifest.Spec.Studio.Commands[0].Request
 	require.Equal(t, map[string]string{"field": "access_token", "scheme": "header", "header": "x-goog-api-key"}, commandRequest.Credential)
 	require.Equal(t, map[string]string{"x-api-version": "2023-06-01"}, commandRequest.FixedHeaders)
+}
+
+func TestReleaseArtifactPublishesMultipleAuthSelectionManifestFields(t *testing.T) {
+	directory := t.TempDir()
+	uiRoot := filepath.Join(directory, "dist")
+	require.NoError(t, os.MkdirAll(uiRoot, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(uiRoot, "index.html"), []byte("<main>Providers</main>"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(uiRoot, "icon.svg"), []byte("<svg xmlns=\"http://www.w3.org/2000/svg\"/>"), 0o600))
+	manifest := filepath.Join("..", "..", "schema", "testdata", "multiple-auth-selection.yaml")
+	uiTarball := filepath.Join(directory, "connector-ui.tgz")
+	require.NoError(t, uiArtifact([]string{"--manifest", manifest, "--ui-root", uiRoot, "--output", uiTarball, "--digest-output", uiTarball + ".sha256"}))
+	release := filepath.Join(directory, "connector-release.json")
+	require.NoError(t, releaseArtifact([]string{
+		"--manifest", manifest,
+		"--module-path", "github.com/superdurable/dex-connectors-library/connectors/example/providers",
+		"--version", "v0.1.0", "--tag", "connectors/example/providers/v0.1.0",
+		"--source-sha", strings.Repeat("a", 40), "--ui-artifact", uiTarball, "--ui-digest", uiTarball + ".sha256",
+		"--output", release, "--digest-output", release + ".sha256",
+	}))
+	releaseBytes, err := os.ReadFile(release)
+	require.NoError(t, err)
+
+	type wireField struct {
+		Name       string            `json:"name"`
+		Required   bool              `json:"required"`
+		StudioUnit map[string]string `json:"studioUnit"`
+	}
+	var releaseWire struct {
+		Manifest struct {
+			Spec struct {
+				Configuration struct {
+					Fields []wireField `json:"fields"`
+				} `json:"configuration"`
+				Auth struct {
+					Selection     string `json:"selection"`
+					MethodLabel   string `json:"methodLabel"`
+					DefaultMethod string `json:"defaultMethod"`
+					Methods       []struct {
+						ID            string `json:"id"`
+						Configuration *struct {
+							Fields []wireField `json:"fields"`
+						} `json:"configuration"`
+					} `json:"methods"`
+				} `json:"auth"`
+			} `json:"spec"`
+		} `json:"manifest"`
+	}
+	require.NoError(t, json.Unmarshal(releaseBytes, &releaseWire))
+	spec := releaseWire.Manifest.Spec
+	require.Equal(t, "multiple", spec.Auth.Selection)
+	require.Equal(t, "Provider", spec.Auth.MethodLabel)
+	require.Equal(t, "openai", spec.Auth.DefaultMethod)
+	require.Len(t, spec.Auth.Methods, 3)
+	require.Equal(t, []wireField{{Name: "openaiProjectId", Required: true}}, spec.Auth.Methods[0].Configuration.Fields)
+	require.Equal(t, []wireField{{Name: "anthropicWorkspaceId"}}, spec.Auth.Methods[1].Configuration.Fields)
+	require.Equal(t, []wireField{{Name: "model", StudioUnit: map[string]string{"unit": "modelPicker", "port": "model"}}}, spec.Configuration.Fields)
 }
 
 func TestStudioUIArtifactRejectsActiveSVG(t *testing.T) {

@@ -109,9 +109,10 @@ at the provider boundary.
 ### Multiple authentication methods
 
 Use `auth.methods` when one named connection can use more than one provider
-authentication model. Every method has a stable lower-camel ID, its own fields,
-guide, and optional OAuth metadata. `defaultMethod` must identify the method the
-setup UI selects first; mark at most one method `recommended`.
+authentication model. Every method has a stable lowercase kebab-case ID, such
+as `google-oauth`, its own fields, guide, and optional OAuth metadata.
+`defaultMethod` must identify the method the setup UI selects first; mark at
+most one method `recommended`.
 
 ```yaml
 auth:
@@ -156,6 +157,92 @@ Generated credentials include `AuthMethodID` plus the union of method fields.
 Only the selected method's required fields are validated. Local configuration
 stores the selection as `auth_method`; hosted runtimes keep the selection in
 the immutable non-secret revision and resolve secrets through the broker.
+
+The optional `auth.methodLabel` is the singular noun the setup UI uses for a
+method, such as `Provider` for "Providers" and "Add provider". It is 1 to 32
+characters without surrounding whitespace, and only a manifest with `methods`
+declares it.
+
+A method may declare non-secret `configuration.fields`, such as a Claude
+workspace ID that only the Claude method uses. They take the same types as
+`spec.configuration.fields`, never `secretString`. Their names are unique
+across `spec.configuration.fields` and every method's configuration fields,
+and no name repeats a credential field. The setup UI shows them with their
+method, and `required: true` means required while that method is selected.
+Code generation adds each one to `Config` as an optional field: `Config`
+validation checks its type and never requires it.
+
+`auth_method`, `auth_methods`, `AuthMethodID`, and `AuthMethodIDs` are
+reserved; no credential field may use them as its name or `goName`.
+
+#### Several methods on one connection
+
+`auth.selection` is `single` by default, so a connection holds exactly one
+method. With `selection: multiple`, a connection holds any non-empty subset of
+the methods, such as one API key for each model provider it routes to. Use it
+only for at least two methods, and give every method `type: apiKey`; OAuth,
+service-account, and `none` methods need `single`. This excerpt comes from
+[schema/testdata/multiple-auth-selection.yaml](../schema/testdata/multiple-auth-selection.yaml):
+
+```yaml
+  configuration:
+    fields:
+      - name: model
+        goName: Model
+        type: string
+        description: Default model written provider/model. Blank uses the first added provider's default model.
+        required: false
+        studioUnit: {unit: modelPicker, port: model}
+  auth:
+    selection: multiple
+    methodLabel: Provider
+    defaultMethod: openai
+    methods:
+      - id: openai
+        displayName: OpenAI
+        description: Use an OpenAI project API key.
+        type: apiKey
+        connectionKind: example-openai-api-key
+        fields:
+          - {name: openai_api_key, goName: OpenAIAPIKey, type: secretString, description: Secret OpenAI project API key., required: true}
+        configuration:
+          fields:
+            - {name: openaiProjectId, goName: OpenAIProjectID, type: string, description: OpenAI project ID that owns usage., required: true}
+        guide:
+          startURL: https://platform.openai.com/api-keys
+          steps: [Choose Create new secret key and copy the secret shown once.]
+      - id: anthropic
+        displayName: Claude
+        description: Use a Claude Console API key.
+        type: apiKey
+        connectionKind: example-anthropic-api-key
+        fields:
+          - {name: anthropic_api_key, goName: AnthropicAPIKey, type: secretString, description: Secret Claude API key., required: true}
+        configuration:
+          fields:
+            - {name: anthropicWorkspaceId, goName: AnthropicWorkspaceID, type: string, description: Claude workspace ID for a multi-workspace key., required: false}
+        guide:
+          startURL: https://platform.claude.com/settings/keys
+          steps: [Choose Create key and copy the secret shown once.]
+```
+
+Generated credentials then hold `AuthMethodIDs`, the selected method IDs in
+the order they were added, instead of `AuthMethodID`, plus
+`HasAuthMethod(id)`. Validation requires a non-empty list of unique, declared
+IDs and every selected method's required credential fields. Local
+configuration stores the list as the `auth_methods` string array. See
+[Generated Config and Credentials](connector-contract.md#generated-config-and-credentials).
+
+#### Studio unit for a connection field
+
+A `spec.configuration` field may declare `studioUnit: {unit, port}`. Once the
+connection is saved, the connection form renders that Studio unit for the field
+instead of a plain input, and the unit's output port writes the value. In the
+excerpt above, the `model` field uses the `modelPicker` unit's `model` port.
+`unit` names a `spec.studio.units` ID, and `port` names one of that unit's
+outputs whose type equals the field type, such as `string` for a `string`
+field. Credential fields and method configuration fields cannot declare
+`studioUnit`. A host that does not support it shows the plain input.
 
 A Trigger declares a typed provider event and its binding-configuration type.
 The application decides whether an event starts a Flow, invokes an RPC, or uses

@@ -52,7 +52,8 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 		}
 		generation.mustWrite(")\n\n")
 	}
-	for _, field := range append(append([]schema.Field(nil), manifest.Spec.Configuration.Fields...), manifest.Spec.Auth.Fields...) {
+	configFields := generatedConfigFields(manifest)
+	for _, field := range append(append([]schema.Field(nil), configFields...), manifest.Spec.Auth.Fields...) {
 		if field.Type != "enum" {
 			continue
 		}
@@ -72,13 +73,13 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 	}
 
 	generation.mustWrite("type Config struct {\n")
-	for _, field := range manifest.Spec.Configuration.Fields {
+	for _, field := range configFields {
 		generation.mustWrite("\t%s %s `json:\"%s,omitempty\" yaml:\"%s,omitempty\"`\n", field.GoName, goType(field), field.Name, field.Name)
 	}
 	generation.mustWrite("}\n\n")
 	generation.mustWrite("type Credentials struct {\n")
-	if len(manifest.Spec.Auth.Methods) > 0 {
-		generation.mustWrite("\tAuthMethodID string\n")
+	if selection := credentialSelection(manifest.Spec.Auth); selection != nil {
+		generation.mustWrite("\t%s %s\n", selection.goName, selection.goType)
 	}
 	for _, field := range manifest.Spec.Auth.Fields {
 		generation.mustWrite("\t%s %s\n", field.GoName, goType(field))
@@ -106,8 +107,8 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 	generation.mustWrite("\treturn NewConnection(client, reference)\n}\n\n")
 	generation.mustWrite("func decodeLocalCredentials(contents json.RawMessage) (Credentials, error) {\n")
 	generation.mustWrite("\tvar fields struct {\n")
-	if len(manifest.Spec.Auth.Methods) > 0 {
-		generation.mustWrite("\t\tAuthMethodID string `json:\"auth_method\"`\n")
+	if selection := credentialSelection(manifest.Spec.Auth); selection != nil {
+		generation.mustWrite("\t\t%s %s `json:\"%s\"`\n", selection.goName, selection.goType, selection.wireName)
 	}
 	for _, field := range manifest.Spec.Auth.Fields {
 		fieldType := goType(field)
@@ -119,8 +120,8 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 	generation.mustWrite("\t}\n")
 	generation.mustWrite("\tif err := localconfig.DecodeCredentials(contents, &fields); err != nil { return Credentials{}, err }\n")
 	generation.mustWrite("\tcredentials := Credentials{\n")
-	if len(manifest.Spec.Auth.Methods) > 0 {
-		generation.mustWrite("\t\tAuthMethodID: fields.AuthMethodID,\n")
+	if selection := credentialSelection(manifest.Spec.Auth); selection != nil {
+		generation.mustWrite("\t\t%s: fields.%s,\n", selection.goName, selection.goName)
 	}
 	for _, field := range manifest.Spec.Auth.Fields {
 		value := "fields." + field.GoName
@@ -134,8 +135,8 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 	if supportsCredentialRefresh(manifest.Spec.Auth) {
 		generation.mustWrite("func encodeLocalCredentials(credentials Credentials) (json.RawMessage, error) {\n")
 		generation.mustWrite("\tfields := struct {\n")
-		if len(manifest.Spec.Auth.Methods) > 0 {
-			generation.mustWrite("\t\tAuthMethodID string `json:\"auth_method\"`\n")
+		if selection := credentialSelection(manifest.Spec.Auth); selection != nil {
+			generation.mustWrite("\t\t%s %s `json:\"%s\"`\n", selection.goName, selection.goType, selection.wireName)
 		}
 		for _, field := range manifest.Spec.Auth.Fields {
 			fieldType := goType(field)
@@ -145,8 +146,8 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 			generation.mustWrite("\t\t%s %s `json:\"%s,omitempty\"`\n", field.GoName, fieldType, field.Name)
 		}
 		generation.mustWrite("\t}{\n")
-		if len(manifest.Spec.Auth.Methods) > 0 {
-			generation.mustWrite("\t\tAuthMethodID: credentials.AuthMethodID,\n")
+		if selection := credentialSelection(manifest.Spec.Auth); selection != nil {
+			generation.mustWrite("\t\t%s: credentials.%s,\n", selection.goName, selection.goName)
 		}
 		for _, field := range manifest.Spec.Auth.Fields {
 			value := "credentials." + field.GoName
@@ -168,7 +169,7 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 	generation.mustWrite("func (Connection) GoString() string { return %q }\n\n", manifest.Spec.Codegen.Go.Package+".Connection{[REDACTED]}")
 
 	generation.mustWrite("func DefaultConfig() Config {\n\treturn Config{\n")
-	for _, field := range manifest.Spec.Configuration.Fields {
+	for _, field := range configFields {
 		if field.Default != nil {
 			literal, err := defaultLiteral(field)
 			if err != nil {
@@ -179,10 +180,10 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 	}
 	generation.mustWrite("\t}\n}\n\n")
 	generation.mustWrite("func withConfigDefaults(config Config) Config {\n")
-	if hasDefaults(manifest.Spec.Configuration.Fields) {
+	if hasDefaults(configFields) {
 		generation.mustWrite("\tdefaults := DefaultConfig()\n")
 	}
-	for _, field := range manifest.Spec.Configuration.Fields {
+	for _, field := range configFields {
 		if field.Default != nil {
 			generation.mustWrite("\tif %s { config.%s = defaults.%s }\n", zeroExpression("config."+field.GoName, field), field.GoName, field.GoName)
 		}
@@ -190,7 +191,7 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 	generation.mustWrite("\treturn config\n}\n\n")
 
 	generation.mustWrite("func (config Config) Validate() error {\n")
-	for _, field := range manifest.Spec.Configuration.Fields {
+	for _, field := range configFields {
 		writeFieldValidation(generation, "config."+field.GoName, field, "configuration")
 	}
 	generation.mustWrite("\treturn nil\n}\n\n")
@@ -199,6 +200,8 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 		for _, field := range manifest.Spec.Auth.Fields {
 			writeFieldValidation(generation, "credentials."+field.GoName, field, "credential")
 		}
+	} else if manifest.Spec.Auth.IsMultipleSelection() {
+		writeMultipleAuthMethodValidation(generation, manifest.Spec.Auth)
 	} else {
 		generation.mustWrite("\tswitch credentials.AuthMethodID {\n")
 		for _, method := range manifest.Spec.Auth.Methods {
@@ -210,6 +213,12 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 		generation.mustWrite("\tdefault:\n\t\treturn fmt.Errorf(%q)\n\t}\n", "credential auth_method is invalid")
 	}
 	generation.mustWrite("\treturn nil\n}\n\n")
+	if manifest.Spec.Auth.IsMultipleSelection() {
+		generation.mustWrite("func (credentials Credentials) HasAuthMethod(id string) bool {\n")
+		generation.mustWrite("\tfor _, authMethodID := range credentials.AuthMethodIDs {\n")
+		generation.mustWrite("\t\tif authMethodID == id { return true }\n\t}\n")
+		generation.mustWrite("\treturn false\n}\n\n")
+	}
 
 	for _, trigger := range manifest.Spec.Triggers {
 		generation.mustWrite("var %sTriggerDefinition = sdkgo.TriggerDefinition{\n", trigger.GoName)
@@ -261,6 +270,56 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 		return nil, fmt.Errorf("format generated connector: %w\n%s", err, generation.output.String())
 	}
 	return formatted, nil
+}
+
+// generatedConfigFields returns spec configuration fields followed by every
+// method's configuration fields, which generated validation never requires.
+func generatedConfigFields(manifest schema.Manifest) []schema.Field {
+	fields := append([]schema.Field(nil), manifest.Spec.Configuration.Fields...)
+	for _, method := range manifest.Spec.Auth.Methods {
+		if method.Configuration == nil {
+			continue
+		}
+		for _, field := range method.Configuration.Fields {
+			field.Required = false
+			fields = append(fields, field)
+		}
+	}
+	return fields
+}
+
+type credentialSelectionField struct {
+	goName   string
+	goType   string
+	wireName string
+}
+
+// credentialSelection describes the Credentials field that records the selected auth methods, or nil without methods.
+func credentialSelection(auth schema.Auth) *credentialSelectionField {
+	switch {
+	case len(auth.Methods) == 0:
+		return nil
+	case auth.IsMultipleSelection():
+		return &credentialSelectionField{goName: "AuthMethodIDs", goType: "[]string", wireName: "auth_methods"}
+	default:
+		return &credentialSelectionField{goName: "AuthMethodID", goType: "string", wireName: "auth_method"}
+	}
+}
+
+func writeMultipleAuthMethodValidation(generation *generator, auth schema.Auth) {
+	generation.mustWrite("\tif len(credentials.AuthMethodIDs) == 0 { return fmt.Errorf(%q) }\n", "credential auth_methods is required")
+	generation.mustWrite("\tselectedAuthMethodIDs := make(map[string]bool, len(credentials.AuthMethodIDs))\n")
+	generation.mustWrite("\tfor _, authMethodID := range credentials.AuthMethodIDs {\n")
+	generation.mustWrite("\t\tif selectedAuthMethodIDs[authMethodID] { return fmt.Errorf(%q) }\n", "credential auth_methods must be unique")
+	generation.mustWrite("\t\tselectedAuthMethodIDs[authMethodID] = true\n")
+	generation.mustWrite("\t\tswitch authMethodID {\n")
+	for _, method := range auth.Methods {
+		generation.mustWrite("\t\tcase %s:\n", strconv.Quote(method.ID))
+		for _, field := range method.Fields {
+			writeFieldValidation(generation, "credentials."+field.GoName, field, "credential")
+		}
+	}
+	generation.mustWrite("\t\tdefault:\n\t\t\treturn fmt.Errorf(%q)\n\t\t}\n\t}\n", "credential auth_methods contains an undeclared auth method")
 }
 
 type operationDurations struct {
@@ -575,7 +634,7 @@ func contains(values []string, expected string) bool {
 }
 
 func hasFieldType(manifest schema.Manifest, fieldType string) bool {
-	for _, field := range manifest.Spec.Configuration.Fields {
+	for _, field := range generatedConfigFields(manifest) {
 		if field.Type == fieldType {
 			return true
 		}
