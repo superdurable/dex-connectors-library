@@ -19,7 +19,7 @@ import (
 const (
 	// FlowType is the stable Flow identity that Dex Web Start Flow sends from the Flow Definition.
 	FlowType = "LLMSummarizeText"
-	// ConnectionName is the static Dex Web connection that holds the default model and the provider keys.
+	// ConnectionName is the static Dex Web connection that holds the added providers, their keys, and the default model.
 	ConnectionName = "llm"
 
 	summarizeTextStepType = "SummarizeText"
@@ -69,7 +69,8 @@ type SummaryFailure struct {
 
 // SummaryModelConfiguration is the SummarizeText Step's model pick from Dex Web.
 type SummaryModelConfiguration struct {
-	// Model is the picked provider/model, or a provider alone. Empty uses the connection's model.
+	// Model is the picked provider/model, or a provider alone. Empty uses the connection default:
+	// the connection's model, or the first added provider's default model when it has none.
 	Model string `json:"model"`
 }
 
@@ -89,8 +90,8 @@ type Flow struct {
 }
 
 // NewFlow binds the llm Connection and the SummarizeText Step's model pick at
-// registration time. The Step calls the picked model, or the connection's
-// model when the pick is empty.
+// registration time. The Step calls the picked model, or the connection
+// default when the pick is empty.
 func NewFlow(connection llmrouter.Connection, summaryModel SummaryModelConfiguration) *Flow {
 	summaryModel.Model = strings.TrimSpace(summaryModel.Model)
 	return &Flow{connection: connection, summaryModel: summaryModel}
@@ -111,7 +112,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			},
 			ConfigurationUI: sdkgo.ConnectorConfigurationUI{Units: []sdkgo.ConnectorUIUnit{{
 				ID: "summaryModel", UnitID: llmrouter.UIUnitModelPicker, Label: "Summary model",
-				Description: "Choose the provider/model that writes the summary from the OpenAI, Claude, and Gemini lists this connection's keys reach, or keep the connection's default model.",
+				Description: "Choose the provider/model that writes the summary from the live lists of the providers this connection adds, or keep the connection default: the connection's model, or the first added provider's default model when it has none.",
 				Bindings:    []sdkgo.ConnectorUIBinding{{Port: llmrouter.UIModelPickerPortModel, JSONPointer: "/model"}},
 			}}},
 			Connection:          flow.connection,
@@ -202,7 +203,7 @@ func optionalAttribute[T any](ctx dex.Context, attribute dex.Attribute[T]) (T, e
 }
 
 // MapToGenerateTextRequest maps the start input to the generateText request.
-// Model is the Step's pick, empty when the connection's model applies. The
+// Model is the Step's pick, empty when the connection default applies. The
 // request sets no temperature, effort, or output limit, so every model the
 // picker lists accepts it.
 func (flow *Flow) MapToGenerateTextRequest(request SummaryRequest) llmrouter.GenerateTextRequest {

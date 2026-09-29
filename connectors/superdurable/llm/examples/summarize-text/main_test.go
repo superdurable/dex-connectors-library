@@ -24,24 +24,28 @@ func TestSummaryModelComesFromTheDexWebStepPick(t *testing.T) {
 
 	inherited, err := loadSummaryModelConfiguration(writeStore(t, `{"model":""}`))
 	require.NoError(t, err)
-	require.Empty(t, inherited.Model, "an empty pick keeps the connection's model")
+	require.Empty(t, inherited.Model, "an empty pick keeps the connection default")
 
 	neverConfigured, err := loadSummaryModelConfiguration(writeStore(t, ""))
-	require.NoError(t, err, "a Step never configured in Dex Web uses the connection's model")
+	require.NoError(t, err, "a Step never configured in Dex Web uses the connection default")
 	require.Empty(t, neverConfigured.Model)
 
 	_, err = loadSummaryModelConfiguration(writeStore(t, `{"model":"openai","temperature":1}`))
 	require.Error(t, err, "an unknown field is a configuration error, not a missing pick")
 }
 
-// TestLocalConnectionRequiresTheDefaultModel builds the connection the Worker uses from Dex Web's files.
-func TestLocalConnectionRequiresTheDefaultModel(t *testing.T) {
+// TestLocalConnectionTakesAnOptionalDefaultModel builds the connection the Worker uses from Dex Web's files.
+func TestLocalConnectionTakesAnOptionalDefaultModel(t *testing.T) {
 	_, err := llmrouter.NewLocalConnection(writeStoreWithConfiguration(t, map[string]any{"model": "anthropic/claude-sonnet-5"}, ""),
 		summarizetext.ConnectionName)
 	require.NoError(t, err)
 
 	_, err = llmrouter.NewLocalConnection(writeStoreWithConfiguration(t, map[string]any{}, ""), summarizetext.ConnectionName)
-	require.ErrorContains(t, err, "model is required", "a connection saved without the default model fails at startup")
+	require.NoError(t, err, "a connection saved without a default model uses the first added provider's default")
+
+	_, err = llmrouter.NewLocalConnection(writeStoreWithConfiguration(t, map[string]any{"model": "claude-sonnet-5"}, ""),
+		summarizetext.ConnectionName)
+	require.ErrorContains(t, err, "provider/model", "a default model without its provider fails at startup")
 }
 
 // writeStore writes an llm connection and, when stepConfiguration is set, the SummarizeText Step's saved pick.
@@ -57,8 +61,9 @@ func writeStoreWithConfiguration(t *testing.T, configuration map[string]any, ste
 		"schemaVersion": localconfig.SchemaVersion,
 		"connections": []any{map[string]any{
 			"connectorId": llmrouter.ConnectorID, "modulePath": "github.com/superdurable/dex-connectors-library/connectors/superdurable/llm",
-			"moduleVersion": "v0.1.0", "provider": "llm", "connectionName": summarizetext.ConnectionName,
-			"configuration": configuration, "credentials": map[string]any{"openai_api_key": "SENTINEL-llm-step-pick"},
+			"moduleVersion": "v0.2.0", "provider": "llm", "connectionName": summarizetext.ConnectionName,
+			"configuration": configuration,
+			"credentials":   map[string]any{"auth_methods": []string{"openai"}, "openai_api_key": "SENTINEL-llm-step-pick"},
 		}},
 	})
 	require.NoError(t, err)

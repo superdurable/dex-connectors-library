@@ -3,7 +3,10 @@
 
 package llmrouter
 
-import "github.com/superdurable/dex-connectors-library/sdkgo/llm"
+import (
+	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/llm"
+)
 
 // RouteGenerateTextQueryForTest returns the provider connector Query that New built for provider.
 func RouteGenerateTextQueryForTest(client *Client, provider Provider) *llm.TextGenerationQuery {
@@ -12,6 +15,11 @@ func RouteGenerateTextQueryForTest(client *Client, provider Provider) *llm.TextG
 		return nil
 	}
 	return route.generateText
+}
+
+// ConnectionGenerateTextQueryForTest returns the routing Query of a Connection, such as one NewLocalConnection built.
+func ConnectionGenerateTextQueryForTest(connection Connection) sdkgo.Query[GenerateTextRequest, GenerateTextResponse] {
+	return connection.client.GenerateText()
 }
 
 // ValidateRouterDefinitionForTest runs New's check of llm's own generateText definition.

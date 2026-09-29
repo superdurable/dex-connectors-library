@@ -3,9 +3,9 @@ kind: Connector
 metadata:
   name: llm
   displayName: LLM
-  description: "One generateText Step for OpenAI, Claude, and Gemini models chosen as provider/model. Enter the default model and an API key for each provider you use; each key is sent only to its own provider. Every save replaces all keys, the default model, and the workspace ID, so re-enter every value you keep."
+  description: "One generateText Step for OpenAI, Claude, and Gemini models chosen as provider/model. Add each provider you use to the connection with its API key; each key is sent only to its own provider. Steps may pick any model from the added providers."
   company: Super Durable
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: llm
   codegen:
@@ -16,13 +16,9 @@ spec:
       - name: model
         goName: Model
         type: string
-        description: "Required default model for Steps that pick none, written provider/model, such as anthropic/claude-sonnet-5, openai/gpt-6-sol, or gemini/gemini-3.5-flash-lite, or a provider alone (openai, anthropic, or gemini) for that provider connector's default model. Take model IDs from each provider's models page or the Step's model picker. A Step pick or a request model overrides it. Every save replaces it."
-        required: true
-      - name: anthropicWorkspaceId
-        goName: AnthropicWorkspaceID
-        type: string
-        description: "Claude workspace ID from Claude Console > Settings > Workspaces, such as wrkspc_01JwQvzr7rXLA5AGx3HKfFUJ, sent as anthropic-workspace-id on Claude generation requests. A multi-workspace Anthropic key requires it; leave it blank for a key scoped to one workspace. The Step model list does not send it. Every save replaces it."
+        description: "Optional default model for Steps that pick none, written provider/model, such as anthropic/claude-sonnet-5, openai/gpt-6-sol, or gemini/gemini-3.5-flash-lite, or a provider alone (openai, anthropic, or gemini) for that provider connector's default model. Its provider must be one the connection adds. Blank uses the first added provider's default model. Save the connection first to choose it from the live model lists. A Step pick or a request model overrides it."
         required: false
+        studioUnit: {unit: modelPicker, port: model}
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
@@ -30,31 +26,65 @@ spec:
         required: false
         default: 8388608
   auth:
-    type: apiKey
-    connectionKind: llm-api-keys
-    fields:
-      - name: openai_api_key
-        goName: OpenAIAPIKey
-        type: secretString
-        description: "Secret OpenAI project API key from Platform > API keys, starting sk-, sent only to api.openai.com as a bearer token. Needed for openai/ models; leave it blank when no Step uses OpenAI. Every save replaces all three keys; re-enter each key you keep."
-        required: false
-      - name: anthropic_api_key
-        goName: AnthropicAPIKey
-        type: secretString
-        description: "Secret Claude API key from Claude Console > Settings > API keys, starting sk-ant-, sent only to api.anthropic.com as a bearer token. Needed for anthropic/ models; leave it blank when no Step uses Claude. Every save replaces all three keys; re-enter each key you keep."
-        required: false
-      - name: gemini_api_key
-        goName: GeminiAPIKey
-        type: secretString
-        description: "Secret Gemini API key from Google AI Studio > API keys, starting AIza, sent only to generativelanguage.googleapis.com. Needed for gemini/ models; leave it blank when no Step uses Gemini. Every save replaces all three keys; re-enter each key you keep."
-        required: false
-    guide:
-      startURL: https://platform.openai.com/api-keys
-      steps:
-        - "For openai/ models: select the OpenAI project that should own usage, open API keys, choose Create new secret key, and copy the sk- secret shown once into openai_api_key."
-        - "For anthropic/ models: open https://platform.claude.com/settings/keys, select the workspace, choose Create key, and copy the sk-ant- secret shown once into anthropic_api_key; copy the wrkspc_ ID from Settings > Workspaces only for a multi-workspace key."
-        - "For gemini/ models: open https://aistudio.google.com/api-keys, select the Google Cloud project that should own usage, choose Create API key, and copy the AIza key into gemini_api_key."
-        - "Enter the default model as provider/model and leave the key of every provider you do not use blank. Each save replaces every key and value, so re-enter the keys you keep."
+    selection: multiple
+    methodLabel: Provider
+    defaultMethod: openai
+    methods:
+      - id: openai
+        displayName: OpenAI
+        description: "Run openai/ models, such as openai/gpt-6-sol, with an OpenAI project API key."
+        type: apiKey
+        connectionKind: llm-api-keys
+        fields:
+          - name: openai_api_key
+            goName: OpenAIAPIKey
+            type: secretString
+            description: "Secret OpenAI project API key from Platform > API keys, starting sk-, sent only to api.openai.com as a bearer token. Required while OpenAI is added."
+            required: true
+        guide:
+          startURL: https://platform.openai.com/api-keys
+          steps:
+            - "Select the OpenAI project that should own usage, open API keys, and choose Create new secret key."
+            - "Copy the sk- secret shown once into openai_api_key."
+      - id: anthropic
+        displayName: Claude
+        description: "Run anthropic/ models, such as anthropic/claude-sonnet-5, with a Claude Console API key."
+        type: apiKey
+        connectionKind: llm-api-keys
+        fields:
+          - name: anthropic_api_key
+            goName: AnthropicAPIKey
+            type: secretString
+            description: "Secret Claude API key from Claude Console > Settings > API keys, starting sk-ant-, sent only to api.anthropic.com as a bearer token. Required while Claude is added."
+            required: true
+        configuration:
+          fields:
+            - name: anthropicWorkspaceId
+              goName: AnthropicWorkspaceID
+              type: string
+              description: "Claude workspace ID from Claude Console > Settings > Workspaces, such as wrkspc_01JwQvzr7rXLA5AGx3HKfFUJ, sent as anthropic-workspace-id on Claude generation requests. A multi-workspace Anthropic key requires it; leave it blank for a key scoped to one workspace. The model lists do not send it."
+              required: false
+        guide:
+          startURL: https://platform.claude.com/settings/keys
+          steps:
+            - "Select the workspace that should own usage, choose Create key, and copy the sk-ant- secret shown once into anthropic_api_key."
+            - "Only for a key that spans several workspaces, copy the wrkspc_ ID from Settings > Workspaces into anthropicWorkspaceId."
+      - id: gemini
+        displayName: Gemini
+        description: "Run gemini/ models, such as gemini/gemini-3.5-flash-lite, with a Google AI Studio API key."
+        type: apiKey
+        connectionKind: llm-api-keys
+        fields:
+          - name: gemini_api_key
+            goName: GeminiAPIKey
+            type: secretString
+            description: "Secret Gemini API key from Google AI Studio > API keys, starting AIza, sent only to generativelanguage.googleapis.com. Required while Gemini is added."
+            required: true
+        guide:
+          startURL: https://aistudio.google.com/api-keys
+          steps:
+            - "Select the Google Cloud project that should own usage and choose Create API key."
+            - "Copy the AIza key into gemini_api_key."
   studio:
     setup:
       entrypoint: index.html
@@ -103,7 +133,7 @@ spec:
     units:
       - id: modelPicker
         goName: ModelPicker
-        description: Choose one Step's model as provider/model from the live OpenAI, Claude, and Gemini lists this connection's keys can reach, a provider's default model, or a typed provider/model ID. Blank keeps the connection's default model.
+        description: "Choose a model as provider/model from the live lists of the providers this connection adds, a provider's default model, or a typed provider/model ID. On a Step, blank keeps the connection's default model; on the connection, blank uses the first added provider's default model."
         backendCapabilities: [llm.models-list]
         outputs:
           - {name: model, goName: Model, type: string}
@@ -121,7 +151,7 @@ spec:
         - {id: blocked, goName: Blocked, description: "The selected provider stopped the response for a content policy, or the model refused.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "The selected provider conclusively rejected the request, such as an invalid key, an unknown model, or exhausted quota.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "The selected provider returned a malformed, oversized, or unusable response, including structured output that does not match its schema.", optional: true}
-        - {id: defect, goName: Defect, description: "Local input, the model selection, a missing or mismatched provider key, connection configuration, or connector definition is invalid.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, the model selection, a provider the connection has not added, a missing or mismatched provider key, connection configuration, or connector definition is invalid.", optional: true}
       progress: [text]
       execution:
         # Covers every routed provider's generateText budget; New rejects a

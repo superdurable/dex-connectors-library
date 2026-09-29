@@ -26,11 +26,10 @@ type studioManifest struct {
 			Fields []manifestField `yaml:"fields"`
 		} `yaml:"configuration"`
 		Auth struct {
-			Fields []manifestField `yaml:"fields"`
-			Guide  struct {
-				StartURL string   `yaml:"startURL"`
-				Steps    []string `yaml:"steps"`
-			} `yaml:"guide"`
+			Selection     string         `yaml:"selection"`
+			MethodLabel   string         `yaml:"methodLabel"`
+			DefaultMethod string         `yaml:"defaultMethod"`
+			Methods       []manifestAuth `yaml:"methods"`
 		} `yaml:"auth"`
 		Studio struct {
 			Setup struct {
@@ -51,6 +50,27 @@ type manifestField struct {
 	Type        string `yaml:"type"`
 	Required    bool   `yaml:"required"`
 	Description string `yaml:"description"`
+	StudioUnit  *struct {
+		Unit string `yaml:"unit"`
+		Port string `yaml:"port"`
+	} `yaml:"studioUnit"`
+}
+
+// manifestAuth is one auth method, which adds one provider to a connection.
+type manifestAuth struct {
+	ID             string          `yaml:"id"`
+	DisplayName    string          `yaml:"displayName"`
+	Description    string          `yaml:"description"`
+	Type           string          `yaml:"type"`
+	ConnectionKind string          `yaml:"connectionKind"`
+	Fields         []manifestField `yaml:"fields"`
+	Configuration  struct {
+		Fields []manifestField `yaml:"fields"`
+	} `yaml:"configuration"`
+	Guide struct {
+		StartURL string   `yaml:"startURL"`
+		Steps    []string `yaml:"steps"`
+	} `yaml:"guide"`
 }
 
 type studioCommand struct {
@@ -109,29 +129,62 @@ func TestListCommandsMatchThePinnedProviderConnectors(t *testing.T) {
 	}
 }
 
-// TestConnectionFieldsGuideTheUser keeps every visible field documented, and leaves provider endpoints out of the form.
+// TestConnectionFieldsGuideTheUser enumerates every field the Connections form shows, and leaves provider endpoints out of it.
 func TestConnectionFieldsGuideTheUser(t *testing.T) {
 	manifest := readStudioManifest(t, "connector.yaml")
+	var configurationFields []string
 	for _, field := range manifest.Spec.Configuration.Fields {
 		require.NotEqual(t, "url", field.Type, "provider hosts are fixed, so no URL field is shown")
 		require.NotContains(t, strings.ToLower(field.Name), "endpoint")
 		require.NotEmpty(t, field.Description, field.Name)
+		require.False(t, field.Required, "%s is optional", field.Name)
+		configurationFields = append(configurationFields, field.Name)
 	}
-	require.True(t, manifest.Spec.Configuration.Fields[0].Required, "the connection model is required")
-	require.Equal(t, "model", manifest.Spec.Configuration.Fields[0].Name)
-	var keyFields []string
-	for _, field := range manifest.Spec.Auth.Fields {
-		require.Equal(t, "secretString", field.Type, field.Name)
-		require.False(t, field.Required, "each key is optional, because a connection may use one provider")
-		require.Contains(t, field.Description, "Every save replaces all three keys", field.Name)
-		keyFields = append(keyFields, field.Name)
+	require.Equal(t, []string{"model", "maxResponseBytes"}, configurationFields, "Claude's workspace ID moved into the anthropic method")
+	model := manifest.Spec.Configuration.Fields[0]
+	require.NotNil(t, model.StudioUnit, "the connection form renders the model picker for the default model")
+	require.Equal(t, llmrouter.UIUnitModelPicker, model.StudioUnit.Unit)
+	require.Equal(t, llmrouter.UIModelPickerPortModel, model.StudioUnit.Port)
+	require.Contains(t, model.Description, "Blank uses the first added provider's default model")
+
+	auth := manifest.Spec.Auth
+	require.Equal(t, "multiple", auth.Selection, "one connection holds several providers")
+	require.Equal(t, "Provider", auth.MethodLabel)
+	require.Equal(t, "openai", auth.DefaultMethod)
+	expected := []struct {
+		provider                                   llmrouter.Provider
+		displayName, keyField, startURL, keyPrefix string
+	}{
+		{llmrouter.ProviderOpenAI, "OpenAI", "openai_api_key", "https://platform.openai.com/api-keys", "sk-"},
+		{llmrouter.ProviderAnthropic, "Claude", "anthropic_api_key", "https://platform.claude.com/settings/keys", "sk-ant-"},
+		{llmrouter.ProviderGemini, "Gemini", "gemini_api_key", "https://aistudio.google.com/api-keys", "AIza"},
 	}
-	require.Equal(t, []string{"openai_api_key", "anthropic_api_key", "gemini_api_key"}, keyFields)
-	guide := manifest.Spec.Auth.Guide
-	require.Equal(t, "https://platform.openai.com/api-keys", guide.StartURL)
-	require.Len(t, guide.Steps, 4)
-	require.Contains(t, guide.Steps[1], "https://platform.claude.com/settings/keys")
-	require.Contains(t, guide.Steps[2], "https://aistudio.google.com/api-keys")
+	require.Len(t, auth.Methods, len(expected))
+	for index, method := range auth.Methods {
+		require.Equal(t, string(expected[index].provider), method.ID, "each method ID is the prefix of the provider it adds")
+		require.Equal(t, expected[index].displayName, method.DisplayName)
+		require.Contains(t, method.Description, method.ID+"/", "the method names the models it runs")
+		require.Equal(t, "apiKey", method.Type)
+		require.Equal(t, "llm-api-keys", method.ConnectionKind)
+		require.Len(t, method.Fields, 1, method.ID)
+		key := method.Fields[0]
+		require.Equal(t, expected[index].keyField, key.Name)
+		require.Equal(t, "secretString", key.Type)
+		require.True(t, key.Required, "a provider is added only with its key")
+		require.Contains(t, key.Description, "starting "+expected[index].keyPrefix)
+		require.Equal(t, expected[index].startURL, method.Guide.StartURL)
+		require.NotEmpty(t, method.Guide.Steps)
+		require.Contains(t, strings.Join(method.Guide.Steps, " "), key.Name, "the guide says where the key goes")
+	}
+	claudeConfiguration := auth.Methods[1].Configuration.Fields
+	require.Len(t, claudeConfiguration, 1)
+	require.Equal(t, "anthropicWorkspaceId", claudeConfiguration[0].Name)
+	require.False(t, claudeConfiguration[0].Required, "a key scoped to one workspace needs no workspace ID")
+	require.Contains(t, claudeConfiguration[0].Description, "Claude Console > Settings > Workspaces")
+	require.Contains(t, claudeConfiguration[0].Description, "leave it blank")
+	require.Contains(t, strings.Join(auth.Methods[1].Guide.Steps, " "), "anthropicWorkspaceId")
+	require.Empty(t, auth.Methods[0].Configuration.Fields)
+	require.Empty(t, auth.Methods[2].Configuration.Fields)
 	for _, providerDefault := range []int64{
 		openai.DefaultConfig().MaxResponseBytes, claude.DefaultConfig().MaxResponseBytes, gemini.DefaultConfig().MaxResponseBytes,
 	} {

@@ -15,7 +15,7 @@ import (
 
 func TestMapToGenerateTextRequestSendsAPortableRequest(t *testing.T) {
 	request := NewFlow(llmrouter.Connection{}, SummaryModelConfiguration{}).MapToGenerateTextRequest(SummaryRequest{Text: "The connector shipped."})
-	require.Empty(t, request.Model, "the connection's model applies without a pick")
+	require.Empty(t, request.Model, "the connection default applies without a pick")
 	require.NotEmpty(t, request.Instructions)
 	require.Equal(t, []llm.Message{{Role: llm.MessageRoleUser, Text: "The connector shipped."}}, request.Messages)
 	require.Nil(t, request.Temperature, "current Claude models accept only the default temperature")

@@ -72,7 +72,7 @@ func run(ctx context.Context) error {
 }
 
 // loadSummaryModelConfiguration reads the Step's model pick; an unconfigured
-// Step uses the connection's model.
+// Step uses the connection default.
 func loadSummaryModelConfiguration(store *localconfig.Store) (summarizetext.SummaryModelConfiguration, error) {
 	loaded, err := localconfig.LoadOperationConfiguration[summarizetext.SummaryModelConfiguration](
 		store, summarizetext.SummaryModelConfigurationRef(),

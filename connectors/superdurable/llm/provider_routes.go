@@ -16,7 +16,9 @@ import (
 )
 
 // Provider is the prefix of a provider/model selection: the lowercase name
-// before the first "/". It selects which provider connector serves the call.
+// before the first "/". It selects which provider connector serves the call,
+// and it equals the ID of the connection's auth method that adds that
+// provider, as listed in Credentials.AuthMethodIDs.
 type Provider string
 
 const (
@@ -33,6 +35,7 @@ const (
 
 var (
 	errCredentialsUnavailable = errors.New("connection credentials are unavailable")
+	errProviderNotAdded       = errors.New("the connection has not added the provider")
 	errProviderAPIKeyMissing  = errors.New("the provider API key is missing")
 	errProviderAPIKeyForeign  = errors.New("the provider API key has another provider's format")
 )
@@ -80,6 +83,10 @@ type providerRoute struct {
 
 // providerAPIKey selects one provider's key from the llm connection.
 type providerAPIKey struct {
+	// authMethodID is the manifest auth method that adds this provider to a connection.
+	authMethodID string
+	// authMethodDisplayName is that method's manifest displayName, used only in messages.
+	authMethodDisplayName string
 	// credentialField is the manifest field name, used only in messages.
 	credentialField string
 	selectAPIKey    func(Credentials) sdkgo.SecretString
@@ -112,7 +119,7 @@ func newProviderRoutes(config *Config, credentials sdkgo.CredentialProvider[Cred
 
 func newOpenAIRoute(config *Config, credentials sdkgo.CredentialProvider[Credentials], options *clientOptions) (providerRoute, error) {
 	apiKey := providerAPIKey{
-		credentialField: "openai_api_key",
+		authMethodID: string(ProviderOpenAI), authMethodDisplayName: "OpenAI", credentialField: "openai_api_key",
 		selectAPIKey:    func(credentials Credentials) sdkgo.SecretString { return credentials.OpenAIAPIKey },
 		isForeignFormat: func(apiKey string) bool { return isAnthropicAPIKeyFormat(apiKey) || isGoogleAPIKeyFormat(apiKey) },
 	}
@@ -138,7 +145,7 @@ func newOpenAIRoute(config *Config, credentials sdkgo.CredentialProvider[Credent
 
 func newAnthropicRoute(config *Config, credentials sdkgo.CredentialProvider[Credentials], options *clientOptions) (providerRoute, error) {
 	apiKey := providerAPIKey{
-		credentialField: "anthropic_api_key",
+		authMethodID: string(ProviderAnthropic), authMethodDisplayName: "Claude", credentialField: "anthropic_api_key",
 		selectAPIKey:    func(credentials Credentials) sdkgo.SecretString { return credentials.AnthropicAPIKey },
 		isForeignFormat: func(apiKey string) bool { return isOpenAIAPIKeyFormat(apiKey) || isGoogleAPIKeyFormat(apiKey) },
 	}
@@ -167,7 +174,7 @@ func newAnthropicRoute(config *Config, credentials sdkgo.CredentialProvider[Cred
 
 func newGeminiRoute(config *Config, credentials sdkgo.CredentialProvider[Credentials], options *clientOptions) (providerRoute, error) {
 	apiKey := providerAPIKey{
-		credentialField: "gemini_api_key",
+		authMethodID: string(ProviderGemini), authMethodDisplayName: "Gemini", credentialField: "gemini_api_key",
 		selectAPIKey:    func(credentials Credentials) sdkgo.SecretString { return credentials.GeminiAPIKey },
 		isForeignFormat: func(apiKey string) bool { return isOpenAIAPIKeyFormat(apiKey) || isAnthropicAPIKeyFormat(apiKey) },
 	}
@@ -191,23 +198,28 @@ func newGeminiRoute(config *Config, credentials sdkgo.CredentialProvider[Credent
 	}, nil
 }
 
-// Resolve returns this provider's credentials, or an error for a blank or foreign-format key.
+// Resolve returns this provider's credentials, or an error for a provider the
+// connection has not added or a blank or foreign-format key.
 func (provider providerCredentialProvider[C]) Resolve(call sdkgo.Call) (C, error) {
 	var zero C
-	apiKey, err := provider.apiKey.resolveUsableAPIKey(call, provider.credentials)
+	resolved, err := provider.credentials.Resolve(call)
+	if err != nil {
+		return zero, errCredentialsUnavailable
+	}
+	apiKey, err := provider.apiKey.selectUsableAPIKey(resolved)
 	if err != nil {
 		return zero, err
 	}
 	return provider.newProviderCredentials(apiKey), nil
 }
 
-// resolveUsableAPIKey returns this provider's key, rejecting a blank key and one in another provider's format.
-func (apiKey providerAPIKey) resolveUsableAPIKey(call sdkgo.Call, credentials sdkgo.CredentialProvider[Credentials]) (sdkgo.SecretString, error) {
-	resolved, err := credentials.Resolve(call)
-	if err != nil {
-		return sdkgo.SecretString{}, errCredentialsUnavailable
+// selectUsableAPIKey returns this provider's key, rejecting a provider the
+// connection has not added, a blank key, and one in another provider's format.
+func (apiKey providerAPIKey) selectUsableAPIKey(credentials Credentials) (sdkgo.SecretString, error) {
+	if !credentials.HasAuthMethod(apiKey.authMethodID) {
+		return sdkgo.SecretString{}, errProviderNotAdded
 	}
-	selected := apiKey.selectAPIKey(resolved)
+	selected := apiKey.selectAPIKey(credentials)
 	value := strings.TrimSpace(selected.Reveal())
 	if value == "" {
 		return sdkgo.SecretString{}, errProviderAPIKeyMissing

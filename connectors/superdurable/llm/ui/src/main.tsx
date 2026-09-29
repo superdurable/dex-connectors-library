@@ -2,10 +2,6 @@
 // SPDX-License-Identifier: MIT
 
 import { mountModelPickerBundle } from "@superdurable/dex-connectors-react";
-import { loadLLMModels, validateProviderQualifiedModel } from "./model-selection.js";
+import { llmModelPickerBundleConfig } from "./bundle-config.js";
 
-mountModelPickerBundle({
-  connectorId: "llm", providerName: "LLM", iconUrl: "./icon.svg",
-  manualModelPlaceholder: "provider/model-id", validateManualModel: validateProviderQualifiedModel,
-  loadModels: loadLLMModels,
-});
+mountModelPickerBundle(llmModelPickerBundleConfig);

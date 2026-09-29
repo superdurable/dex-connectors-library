@@ -31,10 +31,16 @@ func TestLiveGenerateText(t *testing.T) {
 		AnthropicAPIKey: sdkgo.NewSecretString(keys[llmrouter.ProviderAnthropic]),
 		GeminiAPIKey:    sdkgo.NewSecretString(keys[llmrouter.ProviderGemini]),
 	}
-	client, err := llmrouter.New(llmrouter.Config{Model: "openai"}, staticCredentials(credentials))
+	providers := []llmrouter.Provider{llmrouter.ProviderOpenAI, llmrouter.ProviderAnthropic, llmrouter.ProviderGemini}
+	for _, provider := range providers {
+		if keys[provider] != "" {
+			credentials.AuthMethodIDs = append(credentials.AuthMethodIDs, string(provider))
+		}
+	}
+	client, err := llmrouter.New(llmrouter.Config{}, staticCredentials(credentials))
 	require.NoError(t, err)
 	hasAnyKey := false
-	for _, provider := range []llmrouter.Provider{llmrouter.ProviderOpenAI, llmrouter.ProviderAnthropic, llmrouter.ProviderGemini} {
+	for _, provider := range providers {
 		apiKey := keys[provider]
 		if apiKey == "" {
 			continue

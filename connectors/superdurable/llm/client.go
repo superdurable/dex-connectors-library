@@ -9,8 +9,8 @@
 // released generateText Query of the OpenAI, Claude, or Gemini connector that
 // this module's go.mod pins, with the caller's Call. The provider's Result,
 // Failure, Receipt, and Retry come back unchanged, so a Step sees exactly
-// what a direct call to that connector returns. The connection holds one
-// optional API key per provider, and each key is sent only to its own
+// what a direct call to that connector returns. The connection adds one or
+// more providers, each with its API key, and each key is sent only to its own
 // provider.
 //
 // Applications build a Connection once at startup with NewLocalConnection,
@@ -106,20 +106,23 @@ type Client struct {
 	router *textGenerationRouter
 }
 
-// New validates config and returns a Client. config.Model is required: a
+// New validates config and returns a Client. config.Model is optional: a
 // provider/model or a provider alone, which uses that provider connector's
-// default model. A zero config.MaxResponseBytes uses 8 MiB for every provider,
-// and a non-blank config.AnthropicWorkspaceID must be a wrkspc_ workspace ID.
+// default model. A blank config.Model uses, at each call, the default model of
+// the first provider in Credentials.AuthMethodIDs. A zero
+// config.MaxResponseBytes uses 8 MiB for every provider, and a non-blank
+// config.AnthropicWorkspaceID must be a wrkspc_ workspace ID.
 //
 // New builds one route per provider with that provider connector's New. It
-// returns an error for a nil credential provider, an invalid or unknown
-// connection model, an invalid workspace ID or response limit, a nil option,
-// an HTTP client Timeout of 900 seconds or more, an invalid
-// WithProviderBaseURLForTest provider or URL, or a linked provider connector
-// whose generateText needs a longer Execute timeout or declares other
-// branches than llm's. Credentials are resolved again for every provider
-// call, so a replaced key takes effect without a restart. New makes no
-// provider request, and its errors never repeat configuration values.
+// returns an error for a nil credential provider, a non-blank connection model
+// that is invalid or names an unknown provider, an invalid workspace ID or
+// response limit, a nil option, an HTTP client Timeout of 900 seconds or more,
+// an invalid WithProviderBaseURLForTest provider or URL, or a linked provider
+// connector whose generateText needs a longer Execute timeout or declares
+// other branches than llm's. Credentials, including the added providers, are
+// resolved again for every provider call, so a replaced key or provider list
+// takes effect without a restart. New makes no provider request, and its
+// errors never repeat configuration values.
 func New(config Config, credentials sdkgo.CredentialProvider[Credentials], options ...Option) (*Client, error) {
 	if credentials == nil {
 		return nil, fmt.Errorf("llm credential provider is required")

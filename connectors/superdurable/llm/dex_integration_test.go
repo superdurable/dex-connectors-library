@@ -149,27 +149,81 @@ func TestMissingKeysAndRetriesStayOnTheSelectedProviderWithRealDex(t *testing.T)
 		}, fakes.requestCounts())
 	})
 
-	t.Run("a key added between runs takes effect without a restart", func(t *testing.T) {
+	t.Run("a provider added between runs takes effect without a restart", func(t *testing.T) {
 		fakes := newProviderFakes(t)
 		claudeRoute := routedProviderFor(t, llmrouter.ProviderAnthropic)
 		fakes.providers[llmrouter.ProviderAnthropic].EnqueueReplies(claudeRoute.generatedReply("Claude answered."))
 		connectionsPath := filepath.Join(t.TempDir(), "connections.json")
-		writeRoutingConnectionFile(t, connectionsPath, map[string]any{"openai_api_key": openAITestKey})
+		writeLocalConnectionFile(t, connectionsPath, map[string]any{"model": "anthropic"},
+			map[string]any{"auth_methods": []string{"openai"}, "openai_api_key": openAITestKey})
 		store, err := localconfig.LoadFile(connectionsPath)
 		require.NoError(t, err)
 		connection, err := llmrouter.NewLocalConnection(store, testConnection.Name, fakes.options()...)
 		require.NoError(t, err)
-		flow := &routingFlow{flowType: uniqueName("LLMRoutingKeyAdded")}
-		flow.addGenerateStep(connection, "GenerateWithClaude", "", collectRoutingResult{stepType: "CollectKeyAdded"}, &routingBranches{isDefectWired: true})
+		flow := &routingFlow{flowType: uniqueName("LLMRoutingProviderAdded")}
+		flow.addGenerateStep(connection, "GenerateWithClaude", "", collectRoutingResult{stepType: "CollectProviderAdded"}, &routingBranches{isDefectWired: true})
 		harness := newRoutingHarness(t, flow)
-		before := requireCompletedRoutingResults(t, harness, flow, uniqueName("llm-key-missing"))
+		before := requireCompletedRoutingResults(t, harness, flow, uniqueName("llm-provider-missing"))
 		require.Equal(t, llmrouter.GenerateTextBranchDefect, before[0].Branch)
-		writeRoutingConnectionFile(t, connectionsPath, map[string]any{"openai_api_key": openAITestKey, "anthropic_api_key": anthropicTestKey})
-		after := requireCompletedRoutingResults(t, harness, flow, uniqueName("llm-key-added"))
+		require.Equal(t, "the model selects anthropic, but the connection has not added the Claude provider; add Claude to the connection",
+			before[0].Failure.Message)
+		writeLocalConnectionFile(t, connectionsPath, map[string]any{"model": "anthropic"}, map[string]any{
+			"auth_methods": []string{"openai", "anthropic"}, "openai_api_key": openAITestKey, "anthropic_api_key": anthropicTestKey,
+		})
+		after := requireCompletedRoutingResults(t, harness, flow, uniqueName("llm-provider-added"))
 		require.Equal(t, llmrouter.GenerateTextBranchGenerated, after[0].Branch, "failure: %+v", after[0].Failure)
 		require.Equal(t, "Claude answered.", after[0].Value.Text)
 		require.Len(t, fakes.providers[llmrouter.ProviderAnthropic].Requests(), 1)
 		require.True(t, fakes.providers[llmrouter.ProviderAnthropic].Requests()[0].HasCredentialInSlot)
+	})
+
+	t.Run("a blank model follows the first added provider across removal without a restart", func(t *testing.T) {
+		fakes := newProviderFakes(t)
+		geminiRoute, openAIRoute := routedProviderFor(t, llmrouter.ProviderGemini), routedProviderFor(t, llmrouter.ProviderOpenAI)
+		fakes.providers[llmrouter.ProviderGemini].EnqueueReplies(geminiRoute.generatedReply("Gemini answered."))
+		fakes.providers[llmrouter.ProviderOpenAI].EnqueueReplies(openAIRoute.generatedReply("OpenAI answered."))
+		connectionsPath := filepath.Join(t.TempDir(), "connections.json")
+		writeLocalConnectionFile(t, connectionsPath, map[string]any{}, map[string]any{
+			"auth_methods": []string{"gemini", "openai"}, "gemini_api_key": geminiTestKey, "openai_api_key": openAITestKey,
+		})
+		store, err := localconfig.LoadFile(connectionsPath)
+		require.NoError(t, err)
+		connection, err := llmrouter.NewLocalConnection(store, testConnection.Name, fakes.options()...)
+		require.NoError(t, err)
+		flow := &routingFlow{flowType: uniqueName("LLMRoutingFirstAddedProvider")}
+		flow.addGenerateStep(connection, "GenerateWithFirstProvider", "", collectRoutingResult{stepType: "CollectFirstProvider"}, nil)
+		harness := newRoutingHarness(t, flow)
+		first := requireCompletedRoutingResults(t, harness, flow, uniqueName("llm-first-gemini"))
+		require.Equal(t, "gemini/gemini-3.5-flash-lite", llmrouter.QualifiedModel(first[0]), "failure: %+v", first[0].Failure)
+		// Removing Gemini drops its key, as Dex Web does, and OpenAI becomes the first added provider.
+		writeLocalConnectionFile(t, connectionsPath, map[string]any{},
+			map[string]any{"auth_methods": []string{"openai"}, "openai_api_key": openAITestKey})
+		second := requireCompletedRoutingResults(t, harness, flow, uniqueName("llm-first-openai"))
+		require.Equal(t, "openai/gpt-6-sol", llmrouter.QualifiedModel(second[0]), "failure: %+v", second[0].Failure)
+		require.Equal(t, "OpenAI answered.", second[0].Value.Text)
+		require.Len(t, fakes.providers[llmrouter.ProviderGemini].Requests(), 1)
+		require.Len(t, fakes.providers[llmrouter.ProviderOpenAI].Requests(), 1)
+		require.Empty(t, fakes.providers[llmrouter.ProviderAnthropic].Requests())
+	})
+
+	t.Run("a v0.1.0 record without providers selects defect until it is saved again", func(t *testing.T) {
+		fakes := newProviderFakes(t)
+		connectionsPath := filepath.Join(t.TempDir(), "connections.json")
+		writeLocalConnectionFile(t, connectionsPath, map[string]any{"model": "openai"}, map[string]any{"openai_api_key": openAITestKey})
+		store, err := localconfig.LoadFile(connectionsPath)
+		require.NoError(t, err)
+		connection, err := llmrouter.NewLocalConnection(store, testConnection.Name, fakes.options()...)
+		require.NoError(t, err, "the Worker starts, because credentials are read per call")
+		flow := &routingFlow{flowType: uniqueName("LLMRoutingPreviousRecord")}
+		flow.addGenerateStep(connection, "GenerateWithPreviousRecord", "", collectRoutingResult{stepType: "CollectPreviousRecord"},
+			&routingBranches{isDefectWired: true})
+		results := requireCompletedRoutingResults(t, newRoutingHarness(t, flow), flow, uniqueName("llm-previous-record"))
+		require.Equal(t, llmrouter.GenerateTextBranchDefect, results[0].Branch)
+		require.Equal(t, sdkgo.FailureAuthentication, results[0].Failure.Kind)
+		require.Equal(t, "connection credentials are unavailable", results[0].Failure.Message)
+		require.Equal(t, map[llmrouter.Provider]int{
+			llmrouter.ProviderOpenAI: 0, llmrouter.ProviderAnthropic: 0, llmrouter.ProviderGemini: 0,
+		}, fakes.requestCounts())
 	})
 
 	t.Run("a Claude 429 is retried on Claude", func(t *testing.T) {
@@ -204,23 +258,6 @@ func newRoutingConnection(
 	connection, err := llmrouter.NewConnection(newRoutedClient(t, fakes, config, credentials), testConnection)
 	require.NoError(t, err)
 	return connection
-}
-
-func writeRoutingConnectionFile(t *testing.T, path string, credentials map[string]any) {
-	t.Helper()
-	encoded, err := json.Marshal(map[string]any{
-		"schemaVersion": localconfig.SchemaVersion,
-		"connections": []any{map[string]any{
-			"connectorId": llmrouter.ConnectorID, "connectionName": testConnection.Name, "provider": "llm",
-			"modulePath": "github.com/superdurable/dex-connectors-library/connectors/superdurable/llm", "moduleVersion": "v0.1.0",
-			"configuration": map[string]any{"model": "anthropic"}, "credentials": credentials,
-		}},
-	})
-	require.NoError(t, err)
-	temporary := path + ".tmp"
-	require.NoError(t, os.WriteFile(temporary, encoded, 0o600))
-	// Renaming replaces the file atomically, as Dex Web does, so a concurrent read never sees half of it.
-	require.NoError(t, os.Rename(temporary, path))
 }
 
 // routingInput is the start input of every routing Flow.

@@ -22,9 +22,9 @@ import (
 	"github.com/stretchr/testify/require"
 	llmrouter "github.com/superdurable/dex-connectors-library/connectors/superdurable/llm"
 	"github.com/superdurable/dex-connectors-library/connectors/superdurable/llm/internal/providerdialecttest"
-	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/llm"
 	"github.com/superdurable/dex-connectors-library/sdkgo/llm/llmtest"
+	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -35,9 +35,20 @@ const (
 	integrationGeminiKey    = "AIzaSENTINELLlmIntegrationGemini"
 )
 
+// allSummaryProviders adds OpenAI, Claude, and Gemini, in that order.
+var allSummaryProviders = []string{"openai", "anthropic", "gemini"}
+
 // summaryProviders holds one fake provider per route, each expecting only its own key.
 type summaryProviders struct {
 	openAI, claude, gemini *llmtest.FakeProvider
+}
+
+// summaryConnection is the llm connection record that Dex Web Connections saves.
+type summaryConnection struct {
+	// model is the connection's default model, or "" for the first added provider's default.
+	model string
+	// authMethodIDs lists the added providers in add order; each one's key is stored with it.
+	authMethodIDs []string
 }
 
 // TestSummarizeTextExampleRoutesEachProviderWithRealDex uses the Dex Server at DEX_FLOW_SERVICE_ADDRESS.
@@ -49,11 +60,11 @@ func TestSummarizeTextExampleRoutesEachProviderWithRealDex(t *testing.T) {
 	}
 	usage := llm.Usage{InputTokens: 30, OutputTokens: 12, TotalTokens: 42}
 
-	t.Run("the connection model generates with OpenAI and streams the summary", func(t *testing.T) {
+	t.Run("the connection default generates with the first added provider and streams the summary", func(t *testing.T) {
 		providers.openAI.EnqueueReplies(providerdialecttest.NewOpenAIResponsesDialect().GeneratedReply(llmtest.GeneratedReply{
 			Text: "The connector shipped.", ServedModel: "gpt-6-sol-2026-06-01", ResponseID: "resp_llm_example", Usage: usage,
 		}))
-		flow, client := startSummaryWorker(t, providers, SummaryModelConfiguration{})
+		flow, client := startSummaryWorker(t, providers, summaryConnection{authMethodIDs: allSummaryProviders}, SummaryModelConfiguration{})
 		flowID := fmt.Sprintf("llm-summary-generated-%d", time.Now().UnixNano())
 		outcome := runSummaryFlowToCompletion(t, client, flow, flowID)
 		require.Equal(t, SummaryOutcome{
@@ -77,11 +88,23 @@ func TestSummarizeTextExampleRoutesEachProviderWithRealDex(t *testing.T) {
 		requireNoIntegrationKey(t, string(encodedDisplay))
 	})
 
+	t.Run("the connection model applies to a Step without a pick", func(t *testing.T) {
+		providers.gemini.EnqueueReplies(providerdialecttest.GeminiCandidateReply(llmtest.GeneratedReply{
+			Text: "Gemini summarized it.", ServedModel: "gemini-3.8-flash", ResponseID: "gemini-llm-connection-model", Usage: usage,
+		}, "STOP"))
+		connection := summaryConnection{model: "gemini/gemini-3.8-flash", authMethodIDs: []string{"openai", "gemini"}}
+		flow, client := startSummaryWorker(t, providers, connection, SummaryModelConfiguration{})
+		outcome := runSummaryFlowToCompletion(t, client, flow, fmt.Sprintf("llm-summary-connection-model-%d", time.Now().UnixNano()))
+		require.Equal(t, llmrouter.GenerateTextBranchGenerated, outcome.Branch)
+		require.Equal(t, "gemini/gemini-3.8-flash", outcome.Model)
+	})
+
 	t.Run("a Claude pick completes as blocked without text", func(t *testing.T) {
 		providers.claude.EnqueueReplies(providerdialecttest.ClaudeStreamReply(llmtest.GeneratedReply{
 			ServedModel: "claude-haiku-4-5", ResponseID: "msg_llm_example", Usage: usage,
 		}, "refusal"))
-		flow, client := startSummaryWorker(t, providers, SummaryModelConfiguration{Model: "anthropic/claude-haiku-4-5"})
+		flow, client := startSummaryWorker(t, providers, summaryConnection{authMethodIDs: allSummaryProviders},
+			SummaryModelConfiguration{Model: "anthropic/claude-haiku-4-5"})
 		outcome := runSummaryFlowToCompletion(t, client, flow, fmt.Sprintf("llm-summary-blocked-%d", time.Now().UnixNano()))
 		require.Equal(t, llmrouter.GenerateTextBranchBlocked, outcome.Branch)
 		require.Equal(t, llm.FinishReasonRefusal, outcome.FinishReason)
@@ -93,19 +116,21 @@ func TestSummarizeTextExampleRoutesEachProviderWithRealDex(t *testing.T) {
 		providers.gemini.EnqueueReplies(providerdialecttest.GeminiCandidateReply(llmtest.GeneratedReply{
 			Text: "Gemini summarized it.", ServedModel: "gemini-3.8-flash", ResponseID: "gemini-llm-example", Usage: usage,
 		}, "STOP"))
-		flow, client := startSummaryWorker(t, providers, SummaryModelConfiguration{Model: "gemini/gemini-3.8-flash"})
+		flow, client := startSummaryWorker(t, providers, summaryConnection{model: "openai", authMethodIDs: allSummaryProviders},
+			SummaryModelConfiguration{Model: "gemini/gemini-3.8-flash"})
 		outcome := runSummaryFlowToCompletion(t, client, flow, fmt.Sprintf("llm-summary-gemini-%d", time.Now().UnixNano()))
 		require.Equal(t, llmrouter.GenerateTextBranchGenerated, outcome.Branch)
 		require.Equal(t, "Gemini summarized it.", outcome.Summary)
 		require.Equal(t, "gemini/gemini-3.8-flash", outcome.Model)
 		requests := providers.gemini.Requests()
-		require.Len(t, requests, 1)
-		require.Contains(t, requests[0].Path, "/models/gemini-3.8-flash:generateContent")
+		require.Len(t, requests, 2)
+		require.Contains(t, requests[1].Path, "/models/gemini-3.8-flash:generateContent")
 	})
 
 	t.Run("a rejected key records the failure and fails the Flow", func(t *testing.T) {
 		providers.openAI.EnqueueReplies(providerdialecttest.NewOpenAIResponsesDialect().ErrorReply(http.StatusUnauthorized, "Incorrect API key."))
-		flow, client := startSummaryWorker(t, providers, SummaryModelConfiguration{Model: "openai/gpt-6-luna"})
+		flow, client := startSummaryWorker(t, providers, summaryConnection{authMethodIDs: allSummaryProviders},
+			SummaryModelConfiguration{Model: "openai/gpt-6-luna"})
 		flowID := fmt.Sprintf("llm-summary-rejected-%d", time.Now().UnixNano())
 		result := runSummaryFlow(t, client, flow, flowID)
 		require.Equal(t, dex.FlowFailed, result.Status)
@@ -120,9 +145,24 @@ func TestSummarizeTextExampleRoutesEachProviderWithRealDex(t *testing.T) {
 			string(encodedFailure), "the failure is persisted before the Flow fails")
 	})
 
+	t.Run("a pick from a provider the connection has not added records a defect without a request", func(t *testing.T) {
+		flow, client := startSummaryWorker(t, providers, summaryConnection{authMethodIDs: []string{"openai"}},
+			SummaryModelConfiguration{Model: "anthropic/claude-haiku-4-5"})
+		flowID := fmt.Sprintf("llm-summary-not-added-%d", time.Now().UnixNano())
+		result := runSummaryFlow(t, client, flow, flowID)
+		require.Equal(t, dex.FlowFailed, result.Status)
+		const message = "the model selects anthropic, but the connection has not added the Claude provider; add Claude to the connection"
+		require.Equal(t, "summary generation selected defect: "+message, result.ErrorMessage)
+		var display map[string]any
+		require.NoError(t, client.InvokeRPC(context.Background(), flowID, flow.GetDexDisplay, nil, &display))
+		encodedFailure, err := json.Marshal(display["llm-summary-failure"])
+		require.NoError(t, err)
+		require.JSONEq(t, `{"branch":"defect","provider":"llm","kind":"AUTHENTICATION","message":"`+message+`"}`, string(encodedFailure))
+	})
+
 	require.Len(t, providers.openAI.Requests(), 2)
-	require.Len(t, providers.claude.Requests(), 1)
-	require.Len(t, providers.gemini.Requests(), 1)
+	require.Len(t, providers.claude.Requests(), 1, "a provider the connection has not added receives no request")
+	require.Len(t, providers.gemini.Requests(), 2)
 	for _, provider := range []*llmtest.FakeProvider{providers.openAI, providers.claude, providers.gemini} {
 		for _, request := range provider.Requests() {
 			require.True(t, request.HasCredentialInSlot, "each provider receives only its own key in its own header")
@@ -138,22 +178,18 @@ func requireNoIntegrationKey(t *testing.T, value string) {
 	}
 }
 
-// startSummaryWorker runs the example Flow's Worker on a free local port and returns a Client targeting it.
-func startSummaryWorker(t *testing.T, providers summaryProviders, summaryModel SummaryModelConfiguration) (*Flow, *dex.Client) {
+// startSummaryWorker loads connection from a Dex Web connections file, runs the example Flow's Worker on a free local port, and returns a Client targeting it.
+func startSummaryWorker(
+	t *testing.T, providers summaryProviders, connection summaryConnection, summaryModel SummaryModelConfiguration,
+) (*Flow, *dex.Client) {
 	t.Helper()
-	reference := sdkgo.ConnectionRef{Provider: "llm", Name: ConnectionName}
-	llmClient, err := llmrouter.New(llmrouter.Config{Model: "openai"}, sdkgo.StaticCredentialProvider[llmrouter.Credentials]{
-		reference: {
-			OpenAIAPIKey: sdkgo.NewSecretString(integrationOpenAIKey), AnthropicAPIKey: sdkgo.NewSecretString(integrationAnthropicKey),
-			GeminiAPIKey: sdkgo.NewSecretString(integrationGeminiKey),
-		},
-	}, llmrouter.WithProviderBaseURLForTest(llmrouter.ProviderOpenAI, providers.openAI.BaseURL()),
+	store := writeSummaryConnectionStore(t, connection)
+	llmConnection, err := llmrouter.NewLocalConnection(store, ConnectionName,
+		llmrouter.WithProviderBaseURLForTest(llmrouter.ProviderOpenAI, providers.openAI.BaseURL()),
 		llmrouter.WithProviderBaseURLForTest(llmrouter.ProviderAnthropic, providers.claude.BaseURL()),
 		llmrouter.WithProviderBaseURLForTest(llmrouter.ProviderGemini, providers.gemini.BaseURL()))
 	require.NoError(t, err)
-	connection, err := llmrouter.NewConnection(llmClient, reference)
-	require.NoError(t, err)
-	flow := NewFlow(connection, summaryModel)
+	flow := NewFlow(llmConnection, summaryModel)
 	serverAddress := cmp.Or(os.Getenv(llmtest.DexFlowServiceAddressEnvironmentVariable), llmtest.DefaultDexFlowServiceAddress)
 	registry, err := dex.NewRegistry([]dex.Flow{flow})
 	require.NoError(t, err)
@@ -179,6 +215,34 @@ func startSummaryWorker(t *testing.T, providers summaryProviders, summaryModel S
 		require.NoError(t, errors.Join(worker.Stop(ctx), <-workerResult, client.Close(), cache.Close()))
 	})
 	return flow, client
+}
+
+// writeSummaryConnectionStore writes the connection as Dex Web stores it: auth_methods and only the added providers' keys.
+func writeSummaryConnectionStore(t *testing.T, connection summaryConnection) *localconfig.Store {
+	t.Helper()
+	keys := map[string]string{"openai": integrationOpenAIKey, "anthropic": integrationAnthropicKey, "gemini": integrationGeminiKey}
+	credentials := map[string]any{"auth_methods": connection.authMethodIDs}
+	for _, authMethodID := range connection.authMethodIDs {
+		credentials[authMethodID+"_api_key"] = keys[authMethodID]
+	}
+	configuration := map[string]any{}
+	if connection.model != "" {
+		configuration["model"] = connection.model
+	}
+	encoded, err := json.Marshal(map[string]any{
+		"schemaVersion": localconfig.SchemaVersion,
+		"connections": []any{map[string]any{
+			"connectorId": llmrouter.ConnectorID, "connectionName": ConnectionName, "provider": "llm",
+			"modulePath": "github.com/superdurable/dex-connectors-library/connectors/superdurable/llm", "moduleVersion": "v0.2.0",
+			"configuration": configuration, "credentials": credentials,
+		}},
+	})
+	require.NoError(t, err)
+	path := filepath.Join(t.TempDir(), "connections.json")
+	require.NoError(t, os.WriteFile(path, encoded, 0o600))
+	store, err := localconfig.LoadFile(path)
+	require.NoError(t, err)
+	return store
 }
 
 func runSummaryFlowToCompletion(t *testing.T, client *dex.Client, flow *Flow, flowID string) SummaryOutcome {

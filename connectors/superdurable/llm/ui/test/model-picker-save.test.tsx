@@ -18,6 +18,9 @@ const target = (value: Record<string, unknown> = {}): ConnectorStudioConfigurati
   bindings: [{port: "model", jsonPointer: "/model"}], value,
 });
 
+// These hosts predate the connection context, so they report no auth methods and every provider is listed.
+const oldHostConnection = {authMethodIds: []};
+
 // Only the OpenAI list answers, as on Dex Web cli-v0.13.8 with only an OpenAI key.
 const openAIOnlyClient = {
   ready: undefined, busy: false,
@@ -50,7 +53,7 @@ async function renderPicker(
   unmountCallbacks.push(() => { act(() => root.unmount()); container.remove(); });
   await act(async () => {
     root.render(<ModelPicker
-      loadModels={() => loadLLMModels(client)}
+      loadModels={() => loadLLMModels(client, oldHostConnection)}
       manualModelPlaceholder="provider/model-id"
       onSave={async (pick) => { saved.push(pick); }}
       providerName="LLM"
