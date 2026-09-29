@@ -17,6 +17,13 @@ number of returned tracks.
 The connector requests only `playlist-read-private` through Spotify OAuth with
 PKCE. The access token is resolved immediately before each provider call and
 never enters Flow input, Results, receipts, logs, fixtures, or generated code.
+Dex refreshes Spotify's one-hour access token within five minutes of expiry and
+atomically preserves or replaces the returned refresh token. Hosted apps
+receive only the operation-scoped access token from the Superverse broker.
+Spotify [refresh tokens now expire after six
+months](https://developer.spotify.com/documentation/web-api/tutorials/refreshing-tokens);
+`invalid_grant` marks the connection for reauthorization. A 401 triggers at
+most one coordinated refresh and request retry.
 
 The operation has these branches:
 

@@ -54,6 +54,7 @@ type Client struct {
 	maxResponseBytes int64
 	httpClient       *http.Client
 	credentials      sdkgo.CredentialProvider[Credentials]
+	refreshDriver    sdkgo.CredentialRefreshDriver[Credentials]
 }
 
 // ListPlaylistTracksInput selects one bounded page of Spotify playlist tracks.
@@ -254,7 +255,7 @@ func New(config Config, credentials sdkgo.CredentialProvider[Credentials], optio
 	httpClient.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
 	return &Client{
 		endpoint: endpoint, maxResponseBytes: config.MaxResponseBytes,
-		httpClient: httpClient, credentials: credentials,
+		httpClient: httpClient, credentials: credentials, refreshDriver: NewCredentialRefreshDriver(httpClient),
 	}, nil
 }
 
@@ -278,7 +279,7 @@ func (operation ListPlaylistTracksOperation) Invoke(call sdkgo.Call, input ListP
 	if failure != nil {
 		return sdkgo.NewQueryBranch(ListPlaylistTracksBranchDefect, PlaylistTrackPage{}, failure, sdkgo.Receipt{})
 	}
-	response, err := operation.client.getPlaylistTracks(call, credential, playlistID, market, limit, offset)
+	response, err := operation.client.getPlaylistTracks(call, &credential, playlistID, market, limit, offset)
 	if err != nil {
 		if errors.Is(err, errResponseTooLarge) {
 			failure := spotifyFailure(sdkgo.FailureResponseTooLarge, "Spotify playlist response exceeds the configured size limit")
@@ -298,8 +299,8 @@ func (operation ListPlaylistTracksOperation) Invoke(call sdkgo.Call, input ListP
 }
 
 func (client *Client) resolveCredential(call sdkgo.Call) (Credentials, *sdkgo.Failure) {
-	credential, err := client.credentials.Resolve(call)
-	if err != nil || credential.Validate() != nil {
+	credential, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
+	if err != nil || validateResolvedCredentials(credential) != nil {
 		failure := spotifyFailure(sdkgo.FailureAuthentication, "Spotify authorization is unavailable or revoked")
 		return Credentials{}, &failure
 	}
@@ -308,7 +309,7 @@ func (client *Client) resolveCredential(call sdkgo.Call) (Credentials, *sdkgo.Fa
 
 func (client *Client) getPlaylistTracks(
 	call sdkgo.Call,
-	credential Credentials,
+	credential *Credentials,
 	playlistID string,
 	market string,
 	limit int,
@@ -320,28 +321,48 @@ func (client *Client) getPlaylistTracks(
 		query.Set("market", market)
 	}
 	requestURL += "?" + query.Encode()
-	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, requestURL, nil)
-	if err != nil {
-		return providerResponse{}, err
+	for attempt := 0; attempt < 2; attempt++ {
+		request, err := http.NewRequestWithContext(call.Context, http.MethodGet, requestURL, nil)
+		if err != nil {
+			return providerResponse{}, err
+		}
+		request.Header.Set("Accept", "application/json")
+		request.Header.Set("Authorization", "Bearer "+credential.AccessToken.Reveal())
+		request.Header.Set("User-Agent", userAgent)
+		response, err := client.httpClient.Do(request)
+		if err != nil {
+			return providerResponse{}, err
+		}
+		body, readErr := io.ReadAll(io.LimitReader(response.Body, client.maxResponseBytes+1))
+		closeErr := response.Body.Close()
+		if readErr != nil || closeErr != nil {
+			return providerResponse{}, errors.Join(readErr, closeErr)
+		}
+		result := providerResponse{statusCode: response.StatusCode, header: response.Header.Clone(), body: body}
+		if int64(len(body)) > client.maxResponseBytes {
+			result.body = nil
+			return result, errResponseTooLarge
+		}
+		if response.StatusCode != http.StatusUnauthorized || attempt != 0 {
+			return result, nil
+		}
+		if _, ok := client.credentials.(sdkgo.RejectedCredentialRefreshingProvider[Credentials]); !ok {
+			return result, nil
+		}
+		replacement, err := sdkgo.ResolveCredentialAfterRejection(call.Context, client.credentials, call, client.refreshDriver)
+		if err != nil || validateResolvedCredentials(replacement) != nil {
+			return result, nil
+		}
+		*credential = replacement
 	}
-	request.Header.Set("Accept", "application/json")
-	request.Header.Set("Authorization", "Bearer "+credential.AccessToken.Reveal())
-	request.Header.Set("User-Agent", userAgent)
-	response, err := client.httpClient.Do(request)
-	if err != nil {
-		return providerResponse{}, err
+	return providerResponse{}, errors.New("Spotify authenticated request retry was exhausted")
+}
+
+func validateResolvedCredentials(credentials Credentials) error {
+	if credentials.AccessToken.Reveal() == "" {
+		return errors.New("Spotify access token is required")
 	}
-	defer response.Body.Close()
-	body, err := io.ReadAll(io.LimitReader(response.Body, client.maxResponseBytes+1))
-	if err != nil {
-		return providerResponse{}, err
-	}
-	result := providerResponse{statusCode: response.StatusCode, header: response.Header.Clone(), body: body}
-	if int64(len(body)) > client.maxResponseBytes {
-		result.body = nil
-		return result, errResponseTooLarge
-	}
-	return result, nil
+	return nil
 }
 
 func classifyResponse(response providerResponse) *sdkgo.QueryAttempt[PlaylistTrackPage] {

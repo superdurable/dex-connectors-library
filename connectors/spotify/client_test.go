@@ -4,6 +4,7 @@
 package spotify_test
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -29,6 +30,23 @@ const (
 )
 
 var spotifyConnection = sdkgo.ConnectionRef{Provider: "spotify", Name: "playlist-reader"}
+
+type rejectionRefreshingCredentialProvider struct {
+	forcedRefreshes int
+}
+
+func (*rejectionRefreshingCredentialProvider) Resolve(sdkgo.Call) (spotify.Credentials, error) {
+	return spotify.Credentials{AccessToken: sdkgo.NewSecretString("rejected-token")}, nil
+}
+
+func (provider *rejectionRefreshingCredentialProvider) ResolveAfterRejection(
+	context.Context,
+	sdkgo.Call,
+	sdkgo.CredentialRefreshDriver[spotify.Credentials],
+) (spotify.Credentials, error) {
+	provider.forcedRefreshes++
+	return spotify.Credentials{AccessToken: sdkgo.NewSecretString("replacement-token")}, nil
+}
 
 func TestListPlaylistTracksReturnsBoundedProviderMetadata(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
@@ -100,6 +118,33 @@ func TestListPlaylistTracksUsesSpotifyDefaultPageSize(t *testing.T) {
 	require.Equal(t, spotify.ListPlaylistTracksBranchListed, result.Branch)
 	require.Empty(t, result.Value.Tracks)
 	require.Zero(t, result.Value.NextOffset)
+}
+
+func TestListPlaylistTracksRefreshesRejectedCredentialOnce(t *testing.T) {
+	var providerCalls atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		call := providerCalls.Add(1)
+		if call == 1 {
+			require.Equal(t, "Bearer rejected-token", request.Header.Get("Authorization"))
+			response.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		require.Equal(t, int32(2), call)
+		require.Equal(t, "Bearer replacement-token", request.Header.Get("Authorization"))
+		writeJSON(t, response, map[string]any{
+			"limit": 20, "offset": 0, "total": 0, "next": nil, "items": []any{},
+		})
+	}))
+	defer server.Close()
+
+	provider := &rejectionRefreshingCredentialProvider{}
+	client, err := spotify.New(spotify.Config{Endpoint: server.URL}, provider)
+	require.NoError(t, err)
+	result, err := runList(t, client, spotify.ListPlaylistTracksInput{PlaylistID: testPlaylistID})
+	require.NoError(t, err)
+	require.Equal(t, spotify.ListPlaylistTracksBranchListed, result.Branch)
+	require.Equal(t, 1, provider.forcedRefreshes)
+	require.Equal(t, int32(2), providerCalls.Load())
 }
 
 func TestListPlaylistTracksRejectsInvalidInputBeforeProviderAccess(t *testing.T) {
