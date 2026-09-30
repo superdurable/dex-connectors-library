@@ -250,6 +250,53 @@ credential broker. Applications and Flow state receive only the resolved
 short-lived value; long-lived renewal material remains in the host's encrypted
 credential store.
 
+### OAuth token endpoint exchanges
+
+A driver for a standard OAuth 2.0 token endpoint delegates the exchange to the
+`oauthtoken` subpackage instead of writing its own HTTP pipeline. The driver
+keeps its typed `CredentialRefreshDriver[C]`, decides which credential fields
+hold the tokens, and checks its own required scopes. `oauthtoken` provides:
+
+- `TokenEndpoint.ExchangeRefreshToken` for the refresh-token grant, with the
+  client presented by `ClientSecretPost`, `ClientSecretBasic`, or
+  `PublicClient` for PKCE apps;
+- `TokenEndpoint.ExchangeJWTBearerAssertion`, `SignJWTBearerAssertion`, and
+  `ParseRSAPrivateKeyPEM` for RS256 JWT-bearer grants such as service-account
+  delegation;
+- `TokenResponse.NextRefreshToken`, which returns the prior refresh token when
+  the provider omits a replacement, as the rule above requires;
+- `IsRefreshRequired` with `RefreshSkew` and a `MissingExpiryRule` for
+  providers that do or do not issue non-expiring tokens;
+- `HasAllScopes` and `HasExactScopes` for space- or comma-separated returned
+  scopes.
+
+Each exchange accepts only an absolute HTTPS endpoint, never follows a
+redirect, reads at most 1 MiB, and requires an access token, a positive
+lifetime, and an accepted `token_type` compared without case. Missing refresh
+material and the connector's declared `TerminalErrorCodes` return an error
+wrapped by `NewReauthorizationRequiredError` on any status below 500, because
+providers report grant errors with 200, 400, or 403. A 5xx response is always
+retryable, even with a terminal code, because some providers report
+`invalid_grant` during outages. Errors repeat only a declared terminal code,
+never provider descriptions, secrets, or undeclared codes.
+
+A `TokenEndpoint` also declares the provider differences its connector needs:
+
+- `AcceptsMissingTokenType` and `AcceptedTokenTypes` for providers that omit
+  `token_type` or return a value other than Bearer;
+- `AcceptsMissingExpiresIn` for providers such as Salesforce whose response has
+  no lifetime; `TokenResponse.ExpiresIn` is then zero and the driver chooses
+  the expiry;
+- `RetainedResponseFields` for non-standard fields the driver must persist,
+  such as `instance_url`, returned as raw JSON in `TokenResponse.RetainedFields`.
+  Standard token fields cannot be retained, so secrets stay in `SecretString`;
+- `UsesJSONRequestBody` for providers that document only JSON token requests,
+  and fixed non-secret `AdditionalRequestParameters` that cannot replace a
+  grant, client, or assertion parameter.
+
+Like `providerhttp`, the package contains no provider host, error-code value,
+scope, or credential: each connector passes those in from its own constants.
+
 ## Connector Steps
 
 Connector Steps use `MapToOperationInput` to map application Step input to one
