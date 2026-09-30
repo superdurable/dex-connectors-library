@@ -1,0 +1,118 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: twilio-messaging
+  displayName: Twilio Messaging
+  description: Send SMS, MMS, and WhatsApp messages through Twilio Programmable Messaging and read their delivery status.
+  company: Twilio
+  version: v0.1.0
+spec:
+  provider: twilio
+  codegen:
+    go:
+      package: messaging
+  configuration:
+    fields:
+      - name: accountSid
+        goName: AccountSID
+        type: string
+        description: "Non-secret Account SID from https://console.twilio.com > Account Dashboard > Account Info; it is AC followed by 32 hexadecimal characters and names the account or subaccount that owns the sender and every sent message. Required: both authentication methods send it in the Messages API path."
+        required: true
+      - name: defaultSender
+        goName: DefaultSender
+        type: string
+        description: "Sender used when a send names none. Copy an SMS-capable number from https://console.twilio.com/us1/develop/phone-numbers/manage/incoming (Phone Numbers > Manage > Active numbers) in E.164 form such as +14155550100, a WhatsApp sender from Messaging > Senders > WhatsApp senders written whatsapp:+14155550100, or a Messaging Service SID (MG followed by 32 hexadecimal characters) from Messaging > Services; short codes and alphanumeric sender IDs need a Messaging Service. Not secret. Blank means every send must name its own sender."
+        required: false
+      - name: endpoint
+        goName: Endpoint
+        type: url
+        description: "Twilio REST API base URL including the 2010-04-01 version segment; leave blank for the United States (US1) Region. Enter a regional URL such as https://api.dublin.ie1.twilio.com/2010-04-01 only when the account and its credentials were created in that Twilio Region."
+        required: false
+        default: https://api.twilio.com/2010-04-01
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Maximum complete Twilio API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it. An oversized getMessage response selects invalidResponse, and an oversized response to an accepted send selects uncertain."
+        required: false
+        default: 1048576
+  auth:
+    methodLabel: Credential
+    defaultMethod: auth-token
+    methods:
+      - id: auth-token
+        displayName: Account SID and Auth Token
+        description: Authenticate as the account itself with its primary Auth Token; quickest to set up, but the token grants full account access and rotating it breaks every integration that uses it.
+        type: apiKey
+        connectionKind: twilio-messaging-auth-token
+        fields:
+          - name: auth_token
+            goName: AuthToken
+            type: secretString
+            description: "Secret primary Auth Token from https://console.twilio.com > Account Dashboard > Account Info > Auth Token > Show; 32 hexadecimal characters for the Account SID above. Stored only in this credential field; after a Twilio rotation, paste the new token here."
+            required: true
+        guide:
+          startURL: https://console.twilio.com/
+          steps:
+            - Sign in and switch to the account or subaccount that owns the sender; the Account Info panel on the Account Dashboard shows its Account SID and Auth Token.
+            - Copy the AC Account SID into accountSid, then select Show beside Auth Token and paste the 32-character token into auth_token.
+            - Test credentials under Account > API keys & tokens > Test credentials cannot read messages, so getMessage fails with them; use live credentials.
+            - Rotate a leaked token under Account > API keys & tokens > Auth tokens, then paste the new primary token here.
+      - id: api-key
+        displayName: API key
+        description: Authenticate with a revocable API key that belongs to the account; Twilio recommends API keys for production, and a Restricted key can be limited to Messages.
+        recommended: true
+        type: apiKey
+        connectionKind: twilio-messaging-api-key
+        fields:
+          - name: api_key_sid
+            goName: APIKeySID
+            type: string
+            description: "Non-secret API key SID shown after Create API key at https://console.twilio.com/us1/account/keys-credentials/api-keys (Account > API keys & tokens); SK followed by 32 hexadecimal characters. The key must belong to the Account SID above and to the Twilio Region of the endpoint. It is stored with its secret, so replacing a key replaces both without an application restart."
+            required: true
+          - name: api_key_secret
+            goName: APIKeySecret
+            type: secretString
+            description: "Secret shown once after Create API key at https://console.twilio.com/us1/account/keys-credentials/api-keys; 32 characters. Twilio never shows it again, so create a new key when it is lost. Stored only in this credential field."
+            required: true
+        guide:
+          startURL: https://console.twilio.com/us1/account/keys-credentials/api-keys
+          steps:
+            - In the account or subaccount that owns the sender, open Account > API keys & tokens and select Create API key.
+            - Enter a friendly name, choose the Twilio Region of the endpoint (United States (US1) for the default), and choose Standard, or Restricted with permission to create and read Messages.
+            - Copy the SK SID into api_key_sid and the secret shown once into api_key_secret, then copy the account's AC Account SID from the Account Dashboard into accountSid.
+            - To revoke access, delete the key on the same page; other keys and the Auth Token keep working.
+  operations:
+    - name: sendMessage
+      goName: SendMessage
+      inputType: SendMessageInput
+      outputType: Message
+      kind: mutation
+      description: Send one SMS, MMS, or WhatsApp message from a Twilio number or Messaging Service to one recipient.
+      idempotency: required
+      branches:
+        - {id: accepted, goName: Accepted, description: "Twilio created the message and returned its SID; delivery status arrives later through getMessage."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Twilio conclusively rejected the message, such as an invalid To number, an unverified trial recipient, an unsubscribed recipient, or an unusable sender; nothing was sent.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The request was dispatched but its outcome cannot be confirmed; Twilio has no idempotency key, so the message may exist and must not be resent automatically.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      # Sync: an async fallback attempt re-sends a slow request, and Twilio has no idempotency key.
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+    - name: getMessage
+      goName: GetMessage
+      inputType: GetMessageInput
+      outputType: Message
+      kind: query
+      description: Read one message by SID, including its delivery status and Twilio error code.
+      idempotency: none
+      branches:
+        - {id: found, goName: Found, description: The message exists and its current status was read.}
+        - {id: notFound, goName: NotFound, description: The account has no message with that SID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Twilio conclusively rejected the message query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Twilio returned an invalid or oversized message response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}

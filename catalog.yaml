@@ -21,4 +21,5 @@ directories:
   - connectors/stripe
   - connectors/superdurable/llm
   - connectors/superdurable/webhook
+  - connectors/twilio/messaging
   - connectors/xai
