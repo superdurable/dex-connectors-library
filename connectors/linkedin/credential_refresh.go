@@ -8,38 +8,28 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"io"
 	"net/http"
-	"net/url"
-	"strings"
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/oauthtoken"
 )
 
 const (
 	linkedInOAuthTokenEndpoint = "https://www.linkedin.com/oauth/v2/accessToken"
-	credentialRefreshSkew      = 5 * time.Minute
+	credentialRefreshSkew      = oauthtoken.RefreshSkew
 )
 
 var requiredOAuthScopes = []string{"openid", "profile", "email"}
+
+// linkedInTerminalRefreshErrorCodes are the LinkedIn token endpoint errors that no retry can recover.
+var linkedInTerminalRefreshErrorCodes = []string{"invalid_grant", "invalid_client", "unauthorized_client", "access_denied"}
 
 // CredentialRefreshDriver refreshes LinkedIn credentials when the authorized product supplies a refresh token.
 // It performs provider calls but leaves locking and atomic persistence to the credential provider.
 type CredentialRefreshDriver struct {
 	httpClient *http.Client
 	now        func() time.Time
-}
-
-type linkedInTokenResponse struct {
-	AccessToken           string `json:"access_token"`
-	ExpiresIn             int64  `json:"expires_in"`
-	RefreshToken          string `json:"refresh_token"`
-	RefreshTokenExpiresIn int64  `json:"refresh_token_expires_in"`
-	Scope                 string `json:"scope"`
-	TokenType             string `json:"token_type"`
-	ErrorCode             string `json:"error"`
 }
 
 // NewCredentialRefreshDriver constructs the provider-specific refresh driver.
@@ -54,13 +44,9 @@ func NewCredentialRefreshDriver(httpClient *http.Client) *CredentialRefreshDrive
 // RefreshRequired reports whether an expiring access credential is absent or within five minutes of expiry.
 // A credential without expiry metadata remains usable until LinkedIn rejects it or interactive reauthorization occurs.
 func (*CredentialRefreshDriver) RefreshRequired(state sdkgo.CredentialRefreshState[Credentials]) bool {
-	if state.Credentials.AccessToken.Reveal() == "" {
-		return true
-	}
-	if state.ExpiresAt == nil {
-		return false
-	}
-	return !state.ExpiresAt.After(state.Now.Add(credentialRefreshSkew))
+	return oauthtoken.IsRefreshRequired(
+		state.Credentials.AccessToken.Reveal() != "", state.ExpiresAt, state.Now, oauthtoken.KeepWhenExpiryMissing,
+	)
 }
 
 // Refresh exchanges an approved programmatic refresh token for replacement LinkedIn credentials.
@@ -72,28 +58,33 @@ func (driver *CredentialRefreshDriver) Refresh(
 		return sdkgo.CredentialRefreshResult[Credentials]{}, errors.New("LinkedIn credential refresh driver is not configured")
 	}
 	credentials := state.Credentials
+	// LinkedIn issues refresh tokens only to approved products, so name that cause instead of a generic one.
 	if credentials.OAuthClientID == "" || credentials.OAuthClientSecret.Reveal() == "" || credentials.RefreshToken.Reveal() == "" {
 		return sdkgo.CredentialRefreshResult[Credentials]{}, sdkgo.NewReauthorizationRequiredError(errors.New("LinkedIn programmatic refresh material is unavailable"))
 	}
-	token, err := driver.exchangeToken(ctx, url.Values{
-		"grant_type":    {"refresh_token"},
-		"refresh_token": {credentials.RefreshToken.Reveal()},
-		"client_id":     {credentials.OAuthClientID},
-		"client_secret": {credentials.OAuthClientSecret.Reveal()},
-	})
+	tokenEndpoint := oauthtoken.TokenEndpoint{
+		ProviderName:            "LinkedIn",
+		URL:                     linkedInOAuthTokenEndpoint,
+		HTTPClient:              driver.httpClient,
+		TerminalErrorCodes:      linkedInTerminalRefreshErrorCodes,
+		AcceptsMissingTokenType: true,
+	}
+	token, err := tokenEndpoint.ExchangeRefreshToken(ctx, oauthtoken.ClientCredentials{
+		ID:                   credentials.OAuthClientID,
+		Secret:               credentials.OAuthClientSecret,
+		AuthenticationMethod: oauthtoken.ClientSecretPost,
+	}, credentials.RefreshToken)
 	if err != nil {
 		return sdkgo.CredentialRefreshResult[Credentials]{}, err
 	}
-	if !hasExactOAuthScopes(token.Scope) {
+	if !oauthtoken.HasExactScopes(token.Scope, requiredOAuthScopes) {
 		return sdkgo.CredentialRefreshResult[Credentials]{}, sdkgo.NewReauthorizationRequiredError(errors.New("LinkedIn credential does not match the required OpenID Connect scopes"))
 	}
-	credentials.AccessToken = sdkgo.NewSecretString(token.AccessToken)
-	if token.RefreshToken != "" {
-		credentials.RefreshToken = sdkgo.NewSecretString(token.RefreshToken)
-	}
+	credentials.AccessToken = token.AccessToken
+	credentials.RefreshToken = token.NextRefreshToken(credentials.RefreshToken)
 	return sdkgo.CredentialRefreshResult[Credentials]{
 		Credentials: credentials,
-		ExpiresAt:   driver.now().UTC().Add(time.Duration(token.ExpiresIn) * time.Second),
+		ExpiresAt:   driver.now().UTC().Add(token.ExpiresIn),
 	}, nil
 }
 
@@ -122,70 +113,4 @@ func EncodeCredentialsJSON(credentials Credentials) ([]byte, error) {
 		return nil, err
 	}
 	return encodeLocalCredentials(credentials)
-}
-
-func (driver *CredentialRefreshDriver) exchangeToken(ctx context.Context, form url.Values) (linkedInTokenResponse, error) {
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, linkedInOAuthTokenEndpoint, strings.NewReader(form.Encode()))
-	if err != nil {
-		return linkedInTokenResponse{}, errors.New("LinkedIn token request could not be built")
-	}
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Accept", "application/json")
-	response, err := driver.httpClient.Do(request)
-	if err != nil {
-		return linkedInTokenResponse{}, fmt.Errorf("LinkedIn token endpoint is unavailable: %w", err)
-	}
-	defer response.Body.Close()
-	contents, err := io.ReadAll(io.LimitReader(response.Body, 1<<20))
-	if err != nil {
-		return linkedInTokenResponse{}, errors.New("LinkedIn token response could not be read")
-	}
-	var token linkedInTokenResponse
-	if err := json.Unmarshal(contents, &token); err != nil {
-		return linkedInTokenResponse{}, errors.New("LinkedIn token response is invalid")
-	}
-	if response.StatusCode < 200 || response.StatusCode >= 300 || token.ErrorCode != "" {
-		if isTerminalRefreshError(token.ErrorCode) {
-			return linkedInTokenResponse{}, sdkgo.NewReauthorizationRequiredError(fmt.Errorf("LinkedIn rejected credential refresh with %s", safeOAuthErrorCode(token.ErrorCode)))
-		}
-		return linkedInTokenResponse{}, fmt.Errorf("LinkedIn token endpoint returned HTTP %d", response.StatusCode)
-	}
-	if token.AccessToken == "" || token.ExpiresIn <= 0 || (token.TokenType != "" && !strings.EqualFold(token.TokenType, "Bearer")) {
-		return linkedInTokenResponse{}, errors.New("LinkedIn token response omitted required fields")
-	}
-	return token, nil
-}
-
-func isTerminalRefreshError(errorCode string) bool {
-	switch errorCode {
-	case "invalid_grant", "invalid_client", "unauthorized_client", "access_denied":
-		return true
-	default:
-		return false
-	}
-}
-
-func safeOAuthErrorCode(errorCode string) string {
-	switch errorCode {
-	case "invalid_grant", "invalid_client", "unauthorized_client", "access_denied":
-		return errorCode
-	default:
-		return "unknown"
-	}
-}
-
-func hasExactOAuthScopes(value string) bool {
-	actual := map[string]bool{}
-	for _, scope := range strings.Fields(value) {
-		actual[scope] = true
-	}
-	if len(actual) != len(requiredOAuthScopes) {
-		return false
-	}
-	for _, scope := range requiredOAuthScopes {
-		if !actual[scope] {
-			return false
-		}
-	}
-	return true
 }
