@@ -1,0 +1,200 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: jira
+  displayName: Jira
+  description: Search and read Jira Cloud issues with bounded JQL, create issues and comments without silent duplicates, and move issues through their workflow.
+  company: Atlassian
+  version: v0.1.0
+spec:
+  provider: atlassian
+  codegen:
+    go:
+      package: jira
+  configuration:
+    fields:
+      - name: cloudId
+        goName: CloudID
+        type: string
+        description: "Non-secret Jira Cloud site ID (cloudId), a UUID such as 1324a887-45db-1bf4-1e99-ef0ff456d421, naming the one Jira site every operation of this connection uses. After Connect, choose the site with the Jira site picker; where Dex Web shows a text field instead, sign in to Jira, open https://<your-site>.atlassian.net/_edge/tenant_info in the same browser, and copy its cloudId value. Blank means the connector uses the only Jira site the authorization grants, found through Atlassian's accessible-resources endpoint, and selects defect when the grant covers no Jira site or several. The value is read when the application starts."
+        required: false
+        studioUnit: {unit: sitePicker, port: cloudId}
+      - name: endpoint
+        goName: Endpoint
+        type: url
+        description: "Atlassian API gateway base URL for both the accessible-resources site lookup and the /ex/jira/{cloudId}/rest/api/3 Jira paths; leave blank for Atlassian's public gateway. Enter an absolute HTTPS URL only for an explicitly supported compatible gateway: Atlassian rejects OAuth tokens sent to site URLs such as https://your-site.atlassian.net."
+        required: false
+        default: https://api.atlassian.com
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Maximum complete Jira API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it. An oversized read selects invalidResponse, and an oversized response to an accepted createIssue or addComment selects uncertain."
+        required: false
+        default: 4194304
+  auth:
+    type: oauth2
+    connectionKind: jira-atlassian-oauth
+    fields:
+      - name: oauth_client_id
+        goName: OAuthClientID
+        type: string
+        description: "Non-secret OAuth 2.0 (3LO) client ID copied from https://developer.atlassian.com/console/myapps/ after selecting the app > Settings > Authentication details > Client ID; an alphanumeric value, and blank means authorization and refresh cannot start."
+        required: true
+      - name: oauth_client_secret
+        goName: OAuthClientSecret
+        type: secretString
+        description: "Secret OAuth 2.0 (3LO) client secret copied from https://developer.atlassian.com/console/myapps/ > the app > Settings > Authentication details > Secret; store it only in this credential field, and blank means authorization and refresh cannot start."
+        required: true
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        description: "Secret short-lived access token returned by Atlassian after consent; Dex derives it automatically and refreshes it before its one-hour expiry, so never enter it manually, and blank means Connect has not completed."
+        required: true
+      - name: refresh_token
+        goName: RefreshToken
+        type: secretString
+        description: "Secret rotating refresh token returned because the connection requests offline_access; Atlassian disables each refresh token once it issues the next, so Dex stores every replacement atomically, and blank means reauthorization is required."
+        required: true
+    guide:
+      startURL: https://developer.atlassian.com/console/myapps/
+      steps:
+        - Choose Create > OAuth 2.0 integration, name the app, and accept the developer terms; one app can serve every Dex connection.
+        - Open Permissions, choose Add next to Jira API, then Configure, and add the classic scopes read:jira-work and write:jira-work; Dex also requests offline_access so Atlassian issues a rotating refresh token.
+        - Open Authorization, choose Configure next to OAuth 2.0 (3LO), paste the exact Redirect URI shown below into Callback URL, and choose Save changes.
+        - Open Settings and copy Client ID and Secret into the fields below; the secret is sensitive.
+        - Choose Connect, pick the Jira site the Flows work in on the Atlassian consent screen, and choose Accept. The app stays private to its owner until Distribution > Enable sharing is on, and a refresh token unused for 90 days requires reconnecting.
+    oauth2:
+      protocol: oauth2
+      authorizationEndpoint: https://auth.atlassian.com/authorize
+      tokenEndpoint: https://auth.atlassian.com/oauth/token
+      authorizationParameters: {audience: api.atlassian.com, prompt: consent}
+      clientIDCredential: oauth_client_id
+      clientSecretCredential: oauth_client_secret
+      scopes: [read:jira-work, write:jira-work, offline_access]
+      credentialMappings:
+        - {credential: access_token, source: access_token}
+        - {credential: refresh_token, source: refresh_token}
+      pkce: false
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.2.0 <0.3.0"
+      backendCapabilities: [oauth.connection.manage, use.configuration.write, jira.sites-list, jira.projects-list]
+      mockScenarios: [not-configured, authorization-pending, connected, insufficient-scope, revoked, broker-unavailable, ready]
+      icon: icon.svg
+    commands:
+      - id: listAccessibleSites
+        capability: jira.sites-list
+        request:
+          method: GET
+          url: https://api.atlassian.com/oauth/token/accessible-resources
+          credential: {field: access_token, scheme: bearer}
+      - id: listProjects
+        capability: jira.projects-list
+        request:
+          method: GET
+          url: https://api.atlassian.com/ex/jira/{cloudId}/rest/api/3/project/search
+          credential: {field: access_token, scheme: bearer}
+          fixedQuery: {maxResults: "50", orderBy: "name"}
+          parameters:
+            - {name: cloudId, location: path, target: cloudId}
+            - {name: startAt, location: query, target: startAt}
+            - {name: query, location: query, target: query}
+            - {name: action, location: query, target: action}
+    units:
+      - id: sitePicker
+        goName: SitePicker
+        description: "Choose the Jira Cloud site this connection works in from the sites the authorization grants; the unit stores the site's cloudId, and when the host cannot list sites it offers manual entry of the cloudId shown at https://<your-site>.atlassian.net/_edge/tenant_info."
+        backendCapabilities: [jira.sites-list]
+        outputs:
+          - {name: cloudId, goName: CloudID, type: string}
+      - id: projectPicker
+        goName: ProjectPicker
+        description: "Choose one Jira project on the connection's site; the unit stores the project ID, key, and name, and a Step that creates issues lists only projects the account can create issues in."
+        backendCapabilities: [jira.projects-list]
+        outputs:
+          - {name: projectId, goName: ProjectID, type: string}
+          - {name: projectKey, goName: ProjectKey, type: string}
+          - {name: projectName, goName: ProjectName, type: string}
+  operations:
+    - name: searchIssues
+      goName: SearchIssues
+      inputType: SearchIssuesInput
+      outputType: SearchIssuesOutput
+      kind: query
+      description: Search one bounded page of issues with a typed, connector-escaped filter or a caller-built bounded JQL query, continuing with the enhanced search nextPageToken.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: searched, goName: Searched, description: "One page of matching issues was read; Jira search is eventually consistent, so a just-created issue can be missing."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Jira conclusively rejected the search, such as invalid or unbounded JQL, an expired page token, or missing permission.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Jira returned an invalid or oversized search page., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &jiraReadExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+    - name: getIssue
+      goName: GetIssue
+      inputType: GetIssueInput
+      outputType: Issue
+      kind: query
+      description: Read one issue by key or ID with its standard fields, plain-text description, and any requested additional fields.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: The issue was read.}
+        - {id: notFound, goName: NotFound, description: The issue does not exist or the connection cannot browse it., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Jira conclusively rejected the issue read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Jira returned an invalid or oversized issue., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *jiraReadExecution
+    - name: createIssue
+      goName: CreateIssue
+      inputType: CreateIssueInput
+      outputType: CreateIssueOutput
+      kind: mutation
+      description: Create one issue in a project with a summary, a plain-text description converted to Atlassian Document Format, labels, and an optional assignee.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: created, goName: Created, description: Jira created the issue and returned its key and ID.}
+        - {id: providerRejected, goName: ProviderRejected, description: "Jira conclusively rejected the issue, such as a missing required field, an unknown project or issue type, or missing permission; nothing was created.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The request was dispatched but its outcome cannot be confirmed; Jira has no idempotency key, so the issue may exist and must not be created again automatically.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      # Sync: an async fallback attempt re-sends a slow create, and Jira has no idempotency key.
+      execution: &jiraUnkeyedWriteExecution
+        executeMethodTimeout: 30s
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+    - name: transitionIssue
+      goName: TransitionIssue
+      inputType: TransitionIssueInput
+      outputType: TransitionIssueOutput
+      kind: mutation
+      description: Move one issue through its workflow by transition ID, transition name, or destination status, reading the available transitions first and skipping a transition the issue has already made.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: transitioned, goName: Transitioned, description: "The issue is in the transition's destination status, including when it already was."}
+        - {id: notFound, goName: NotFound, description: The issue does not exist or the connection cannot browse it., optional: true}
+        - {id: transitionUnavailable, goName: TransitionUnavailable, description: "No available transition from the issue's current status matches the request, or several do; the Value lists the current status and the available transitions.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Jira conclusively rejected the transition, such as a required transition screen field or missing permission.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Jira returned an invalid or oversized issue or transition list., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *jiraReadExecution
+    - name: addComment
+      goName: AddComment
+      inputType: AddCommentInput
+      outputType: AddCommentOutput
+      kind: mutation
+      description: Add one plain-text comment, converted to Atlassian Document Format, to an issue.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: added, goName: Added, description: Jira added the comment and returned its ID.}
+        - {id: notFound, goName: NotFound, description: The issue does not exist or the connection cannot browse it; nothing was added., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Jira conclusively rejected the comment, such as missing Add comments permission or the per-issue comment limit; nothing was added.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The request was dispatched but its outcome cannot be confirmed; Jira has no idempotency key, so the comment may exist and must not be added again automatically.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *jiraUnkeyedWriteExecution

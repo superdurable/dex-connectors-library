@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Atlassian">
+  <defs>
+    <linearGradient id="atlassian-blade" x1="27" y1="36" x2="11" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0052CC"/>
+      <stop offset="0.92" stop-color="#2684FF"/>
+    </linearGradient>
+  </defs>
+  <path fill="url(#atlassian-blade)" d="M19.2 31.4a1.5 1.5 0 0 0-2.5.3L5.2 54.6A1.6 1.6 0 0 0 6.6 57h16a1.5 1.5 0 0 0 1.4-.9c3.4-7.1 1.4-17.9-4.8-24.7z"/>
+  <path fill="#2684FF" d="M28.6 8.9c-6.4 10.1-6 21.3.4 34l7.7 15.2a1.6 1.6 0 0 0 1.4.9h16a1.6 1.6 0 0 0 1.4-2.3L31.3 8.9a1.5 1.5 0 0 0-2.7 0z"/>
+</svg>
