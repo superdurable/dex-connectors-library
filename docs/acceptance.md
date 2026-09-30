@@ -103,6 +103,23 @@ through the Connections API, opens a UI session, and runs each command:
 - no Dex Web response contains either key, and neither does any frame
   message the host page builds from those responses.
 
+`TestConnectorConnectionRecordContract` proves that the SDK reads what Dex Web
+writes. Connector tests write `connections.json` themselves, so without it a
+new Dex Web record member breaks every local Worker unnoticed. The test saves
+one connection for each authentication shape through the Connections API: the
+unnamed credential isolation connection, one named method from
+`test/dexcompat/connection-records-single`, and several methods from
+`test/dexcompat/connection-records-multiple`. It also saves one use
+configuration. A Dex Web release that cannot store several methods logs that
+and saves only the other shapes. The gate then runs
+`TestDexWebWrittenConnectionRecords` in `sdkgo/localconfig` with the
+`dexcompat` build tag against exactly those files:
+
+- `localconfig.LoadFile` loads both files;
+- a credential refresh of every connection writes each Dex Web record member,
+  such as `authMethodId`, back unchanged;
+- every written use configuration loads.
+
 Released compatibility downloads the selected public component tags and their
 unmodified release artifacts:
 

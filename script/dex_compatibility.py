@@ -31,9 +31,19 @@ DEX_WEB_SECURITY_TESTS = ("TestConnectorOAuth", "TestSlackOAuth", "TestConnector
 TOP_LEVEL_GO_TEST = re.compile(r"^func (Test\w*)\(\w+ \*testing\.T\)", re.MULTILINE)
 CREDENTIAL_ISOLATION_FIXTURE = DEX_WEB_COMPATIBILITY_TESTS / "credential-isolation"
 # Dex Web accepts a local release override only under the official module path.
-CREDENTIAL_ISOLATION_MODULE_PATH = f"github.com/{REPOSITORY}/connectors/dex-compat-fixtures/credential-isolation"
-CREDENTIAL_ISOLATION_VERSION = "v0.1.0"
+FIXTURE_MODULE_PREFIX = f"github.com/{REPOSITORY}/connectors/dex-compat-fixtures"
+CREDENTIAL_ISOLATION_MODULE_PATH = f"{FIXTURE_MODULE_PREFIX}/credential-isolation"
+FIXTURE_VERSION = "v0.1.0"
 CREDENTIAL_ISOLATION_RELEASE_ENVIRONMENT = "DEX_CONNECTOR_COMPAT_CREDENTIAL_ISOLATION_RELEASE"
+# One fixture per named authentication shape; the credential isolation fixture covers the unnamed shape.
+CONNECTION_RECORD_FIXTURES = (
+    DEX_WEB_COMPATIBILITY_TESTS / "connection-records-single",
+    DEX_WEB_COMPATIBILITY_TESTS / "connection-records-multiple",
+)
+CONNECTION_RECORD_RELEASES_ENVIRONMENT = "DEX_CONNECTOR_COMPAT_CONNECTION_RECORD_RELEASES"
+CONNECTION_RECORD_OUTPUT_ENVIRONMENT = "DEX_CONNECTOR_COMPAT_CONNECTION_RECORDS_OUTPUT"
+SDK_CONNECTION_RECORD_ENVIRONMENT = "DEX_CONNECTOR_COMPAT_CONNECTION_RECORDS"
+SDK_CONNECTION_RECORD_TEST = "TestDexWebWrittenConnectionRecords"
 
 
 def main() -> int:
@@ -72,8 +82,11 @@ def main() -> int:
             releases = connector_releases(root, args.connector_tag, selected_directories)
             download_released_artifacts(releases, artifacts)
             test_released_examples(releases, examples, dexcli)
-        credential_isolation_release = build_credential_isolation_release(root, temporary_root / "credential-isolation-release")
-        test_dex_web(dex_release, root, artifacts, credential_isolation_release, temporary_root)
+        credential_isolation_release = build_fixture_release(root, CREDENTIAL_ISOLATION_FIXTURE, temporary_root / "credential-isolation-release")
+        connection_record_releases = [
+            build_fixture_release(root, fixture, temporary_root / f"{fixture.name}-release") for fixture in CONNECTION_RECORD_FIXTURES
+        ]
+        test_dex_web(dex_release, root, artifacts, credential_isolation_release, connection_record_releases, temporary_root)
     return 0
 
 
@@ -459,22 +472,36 @@ def test_released_examples(releases: list[dict[str, object]], output: Path, dexc
             run_visualize(example, output / example_consumer_name(prefix, example), dexcli, connector_module, version)
 
 
-def build_credential_isolation_release(root: Path, output: Path) -> Path:
-    """Builds the fixture release; it sits outside connectors/, so catalog and example checks skip it."""
-    fixture = root / CREDENTIAL_ISOLATION_FIXTURE
-    manifest = fixture / "connector.yaml"
+def fixture_module_path(fixture: Path) -> str:
+    return f"{FIXTURE_MODULE_PREFIX}/{fixture.name}"
+
+
+def build_fixture_release(root: Path, fixture: Path, output: Path) -> Path:
+    """Builds a fixture release; fixtures sit outside connectors/, so catalog and example checks skip them."""
+    manifest = root / fixture / "connector.yaml"
     output.mkdir(parents=True)
     commit = run(["git", "rev-parse", "HEAD"], root).stdout.strip()
-    tag = CREDENTIAL_ISOLATION_MODULE_PATH.removeprefix(f"github.com/{REPOSITORY}/") + "/" + CREDENTIAL_ISOLATION_VERSION
-    ui_artifact = output / "connector-ui.tgz"
-    ui_digest = output / "connector-ui.tgz.sha256"
-    run(["go", "run", "./cmd/connectorctl", "ui-artifact", "--manifest", str(manifest), "--ui-root", str(fixture / "ui"), "--output", str(ui_artifact), "--digest-output", str(ui_digest)], root)
-    run(["go", "run", "./cmd/connectorctl", "release-artifact", "--manifest", str(manifest), "--module-path", CREDENTIAL_ISOLATION_MODULE_PATH, "--version", CREDENTIAL_ISOLATION_VERSION, "--tag", tag, "--source-sha", commit, "--output", str(output / "connector-release.json"), "--digest-output", str(output / "connector-release.json.sha256"), "--ui-artifact", str(ui_artifact), "--ui-digest", str(ui_digest)], root)
-    print(f"Credential isolation fixture: tag={tag} commit={commit} digest={checksum_entry((output / 'connector-release.json.sha256').read_text(), 'connector-release.json')}", flush=True)
+    module_path = fixture_module_path(fixture)
+    tag = module_path.removeprefix(f"github.com/{REPOSITORY}/") + "/" + FIXTURE_VERSION
+    arguments = ["go", "run", "./cmd/connectorctl", "release-artifact", "--manifest", str(manifest), "--module-path", module_path, "--version", FIXTURE_VERSION, "--tag", tag, "--source-sha", commit, "--output", str(output / "connector-release.json"), "--digest-output", str(output / "connector-release.json.sha256")]
+    if (root / fixture / "ui").is_dir():
+        ui_artifact = output / "connector-ui.tgz"
+        ui_digest = output / "connector-ui.tgz.sha256"
+        run(["go", "run", "./cmd/connectorctl", "ui-artifact", "--manifest", str(manifest), "--ui-root", str(root / fixture / "ui"), "--output", str(ui_artifact), "--digest-output", str(ui_digest)], root)
+        arguments += ["--ui-artifact", str(ui_artifact), "--ui-digest", str(ui_digest)]
+    run(arguments, root)
+    print(f"Fixture {fixture.name}: tag={tag} commit={commit} digest={checksum_entry((output / 'connector-release.json.sha256').read_text(), 'connector-release.json')}", flush=True)
     return output
 
 
-def test_dex_web(dex_release: dict[str, object], root: Path, artifacts: Path, credential_isolation_release: Path, temporary_root: Path) -> None:
+def test_dex_web(
+    dex_release: dict[str, object],
+    root: Path,
+    artifacts: Path,
+    credential_isolation_release: Path,
+    connection_record_releases: list[Path],
+    temporary_root: Path,
+) -> None:
     tag = str(dex_release["tag_name"])
     source_archive = temporary_root / "dex-source.tar.gz"
     download(f"https://github.com/{DEX_REPOSITORY}/archive/refs/tags/{tag}.tar.gz", source_archive)
@@ -494,10 +521,23 @@ def test_dex_web(dex_release: dict[str, object], root: Path, artifacts: Path, cr
     environment["GOTOOLCHAIN"] = "auto"
     environment["DEX_CONNECTOR_COMPAT_ARTIFACT_ROOT"] = str(artifacts)
     environment[CREDENTIAL_ISOLATION_RELEASE_ENVIRONMENT] = str(credential_isolation_release)
+    connection_records = temporary_root / "connection-records"
+    environment[CONNECTION_RECORD_RELEASES_ENVIRONMENT] = os.pathsep.join(str(release) for release in connection_record_releases)
+    environment[CONNECTION_RECORD_OUTPUT_ENVIRONMENT] = str(connection_records)
     compatibility_tests = dex_web_compatibility_test_names(compatibility_sources)
     result = run(["go", "test", ".", "-run", "|".join((*compatibility_tests, *DEX_WEB_SECURITY_TESTS)), "-count=1", "-v"], web, environment)
     require_dex_web_tests_passed(result.stdout, compatibility_tests)
     require_dex_web_security_tests_passed(result.stdout, DEX_WEB_SECURITY_TESTS)
+    test_sdk_reads_dex_web_connection_records(root, connection_records)
+
+
+def test_sdk_reads_dex_web_connection_records(root: Path, connection_records: Path) -> None:
+    """Loads and refreshes the files Dex Web just wrote with this checkout's SDK."""
+    environment = os.environ.copy()
+    environment["GOWORK"] = "off"
+    environment[SDK_CONNECTION_RECORD_ENVIRONMENT] = str(connection_records)
+    result = run(["go", "test", "-tags=dexcompat", "./localconfig", "-run", f"^{SDK_CONNECTION_RECORD_TEST}$", "-count=1", "-v"], root / "sdkgo", environment)
+    require_dex_web_tests_passed(result.stdout, [SDK_CONNECTION_RECORD_TEST])
 
 
 def dex_web_compatibility_sources(root: Path) -> list[Path]:
