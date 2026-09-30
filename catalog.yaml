@@ -25,3 +25,4 @@ directories:
   - connectors/superdurable/webhook
   - connectors/twilio/messaging
   - connectors/xai
+  - connectors/zendesk/support

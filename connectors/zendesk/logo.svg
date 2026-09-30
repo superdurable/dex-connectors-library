@@ -1,0 +1,9 @@
+<!-- Copyright (c) 2026 Super Durable -->
+<!-- SPDX-License-Identifier: MIT -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Zendesk">
+  <rect width="64" height="64" rx="12" fill="#03363D"/>
+  <path fill="#fff" d="M14 30a9 9 0 0 1 18 0z"/>
+  <path fill="#fff" d="M34 17h17L34 34z"/>
+  <path fill="#fff" d="M30 30v17H13z"/>
+  <path fill="#fff" d="M32 34a9 9 0 0 0 18 0z"/>
+</svg>
