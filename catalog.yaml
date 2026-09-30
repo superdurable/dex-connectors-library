@@ -15,6 +15,7 @@ directories:
   - connectors/moonshot/kimi
   - connectors/notion
   - connectors/openai
+  - connectors/postgresql
   - connectors/slack
   - connectors/spotify
   - connectors/stripe
