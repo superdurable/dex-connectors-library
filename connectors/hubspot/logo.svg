@@ -1,0 +1,10 @@
+<!-- Copyright (c) 2026 Super Durable -->
+<!-- SPDX-License-Identifier: MIT -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="HubSpot">
+  <rect width="64" height="64" rx="12" fill="#FF7A59"/>
+  <path fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" d="M37 27V17M28.5 33.5L18 26M31 42l-7 7"/>
+  <circle cx="37" cy="14" r="4" fill="#fff"/>
+  <circle cx="16" cy="24.5" r="3.5" fill="#fff"/>
+  <circle cx="22.5" cy="51" r="3" fill="#fff"/>
+  <circle cx="37" cy="36" r="9" fill="none" stroke="#fff" stroke-width="5"/>
+</svg>
