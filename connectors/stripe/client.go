@@ -14,9 +14,11 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/webhooktrigger"
 )
 
 const (
@@ -47,14 +49,16 @@ func WithClock(now func() time.Time) Option {
 
 // Client executes authenticated Stripe API calls and receives signed Stripe webhooks.
 type Client struct {
-	endpoint              *url.URL
-	httpClient            *http.Client
-	credentials           sdkgo.CredentialProvider[Credentials]
-	maxResponseBytes      int64
-	webhookMaxBodyBytes   int64
-	webhookTolerance      time.Duration
-	now                   func() time.Time
-	checkoutSessionRoutes *checkoutSessionRouteRegistry
+	endpoint            *url.URL
+	httpClient          *http.Client
+	credentials         sdkgo.CredentialProvider[Credentials]
+	maxResponseBytes    int64
+	webhookMaxBodyBytes int64
+	webhookTolerance    time.Duration
+	now                 func() time.Time
+
+	checkoutSessionEndpointsMu sync.Mutex
+	checkoutSessionEndpoints   map[sdkgo.ConnectionRef]*webhooktrigger.Endpoint[Credentials, CheckoutSessionEvent]
 }
 
 // CheckoutSession is the connector-safe subset of a Stripe Checkout Session.
@@ -183,7 +187,7 @@ func New(config Config, credentials sdkgo.CredentialProvider[Credentials], optio
 		endpoint: endpoint, httpClient: &httpClient, credentials: credentials,
 		maxResponseBytes: config.MaxResponseBytes, webhookMaxBodyBytes: config.WebhookMaxBodyBytes,
 		webhookTolerance: config.WebhookSignatureTolerance, now: dependencies.now,
-		checkoutSessionRoutes: newCheckoutSessionRouteRegistry(),
+		checkoutSessionEndpoints: make(map[sdkgo.ConnectionRef]*webhooktrigger.Endpoint[Credentials, CheckoutSessionEvent]),
 	}, nil
 }
 
