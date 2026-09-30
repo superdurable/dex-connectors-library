@@ -96,6 +96,18 @@ func NewConnection(provider *Provider, name string, token sdkgo.SecretString) (C
 	}, nil
 }
 
+// NewConnectionWithCredentialProvider binds the fixture operations to an injected provider for credential-boundary integration tests.
+func NewConnectionWithCredentialProvider(provider *Provider, name string, credentials sdkgo.CredentialProvider[Credentials]) (Connection, error) {
+	if provider == nil || credentials == nil {
+		return Connection{}, fmt.Errorf("fixture provider and credential provider are required")
+	}
+	reference := sdkgo.ConnectionRef{Provider: "fixture", Name: name}
+	if err := reference.Validate(); err != nil {
+		return Connection{}, err
+	}
+	return Connection{provider: provider, reference: reference, credentials: credentials}, nil
+}
+
 func (connection Connection) validate() error {
 	if connection.provider == nil || connection.credentials == nil {
 		return fmt.Errorf("fixture connector connection is required")

@@ -257,6 +257,20 @@ triggers:
     description: Receive a matching top-level channel message.
 ```
 
+A Trigger may additionally publish `configuration: {fields: [...]}` using the
+existing non-secret field contract. Dex Web can then configure its binding from
+the versioned connector manifest before an application build or FDG exists.
+Omission means the generic schema is unavailable; an explicit empty `fields`
+list means the Trigger requires no settings. Secret fields and `studioUnit`
+references are prohibited in this generic binding schema.
+
+For `stringList`, optional `enum` lists the allowed **items**, and
+`uniqueItems: true` rejects repeated items. Descriptions explain where values
+come from, whether they are secret, and what an empty list means. Invalid or
+duplicate defaults fail manifest validation. Generation emits validation against
+the declared typed Trigger configuration; providers retain their transport
+checks. The Stripe checkout-session Trigger is a concrete manifest example.
+
 Code generation creates direct and local-config Trigger factories. The
 provider implements the generated source hook and owns transport acknowledgement,
 reconnection, filtering, and event decoding. The application selects the target

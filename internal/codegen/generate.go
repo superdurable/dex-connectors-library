@@ -362,6 +362,13 @@ func parseOperationDurations(operation schema.Operation) (operationDurations, er
 }
 
 func writeTriggerFactory(generation *generator, manifest schema.Manifest, trigger schema.Trigger) {
+	if trigger.Configuration != nil {
+		generation.mustWrite("func validate%sTriggerConfiguration(configuration %s) error {\n", trigger.GoName, trigger.ConfigurationType)
+		for _, field := range trigger.Configuration.Fields {
+			writeFieldValidation(generation, "configuration."+field.GoName, field, "trigger "+trigger.Name)
+		}
+		generation.mustWrite("\treturn nil\n}\n\n")
+	}
 	generation.mustWrite("type %sTriggerBindingConfig struct {\n", trigger.GoName)
 	generation.mustWrite("\tsdkgo.TriggerBindingFactoryConfigMarker `connector:\"factory=triggerBinding\"`\n")
 	generation.mustWrite("\tconnectorID struct{} `connector:\"connectorId=%s\"`\n", manifest.Metadata.Name)
@@ -391,6 +398,9 @@ func writeTriggerFactory(generation *generator, manifest schema.Manifest, trigge
 	generation.mustWrite("}\n\n")
 	generation.mustWrite("func New%sTrigger(config %sTriggerConfig) sdkgo.TriggerRunner {\n", trigger.GoName, trigger.GoName)
 	generation.mustWrite("\tif err := config.Connection.validate(); err != nil { panic(err) }\n")
+	if trigger.Configuration != nil {
+		generation.mustWrite("\tif err := validate%sTriggerConfiguration(config.Configuration); err != nil { panic(err) }\n", trigger.GoName)
+	}
 	generation.mustWrite("\tif config.ConnectionName != \"\" && config.ConnectionName != config.Connection.reference.Name {\n")
 	generation.mustWrite("\t\tpanic(fmt.Errorf(%q, config.ConnectionName, config.Connection.reference.Name))\n", manifest.Metadata.Name+" connector trigger connection name %q does not match runtime connection %q")
 	generation.mustWrite("\t}\n")
@@ -615,6 +625,27 @@ func writeFieldValidation(generation *generator, name string, field schema.Field
 	if field.Type == "integer" || field.Type == "duration" {
 		generation.mustWrite("\tif %s < 0 { return fmt.Errorf(%q) }\n", name, prefix+" "+field.Name+" cannot be negative")
 	}
+	if field.Type == "stringList" && (field.UniqueItems || len(field.Enum) > 0) {
+		generation.mustWrite("\t{\n")
+		if field.UniqueItems {
+			generation.mustWrite("\tseenValues := map[string]bool{}\n")
+		}
+		generation.mustWrite("\tfor _, value := range %s {\n", name)
+		if field.UniqueItems {
+			generation.mustWrite("\tif seenValues[value] { return fmt.Errorf(%q) }; seenValues[value] = true\n", prefix+" "+field.Name+" contains a duplicate")
+		}
+		if len(field.Enum) > 0 {
+			generation.mustWrite("\tswitch value {\n\tcase ")
+			for index, value := range field.Enum {
+				if index > 0 {
+					generation.mustWrite(", ")
+				}
+				generation.mustWrite("%s", strconv.Quote(value))
+			}
+			generation.mustWrite(":\n\tdefault: return fmt.Errorf(%q)\n\t}\n", prefix+" "+field.Name+" contains an invalid value")
+		}
+		generation.mustWrite("\t}\n\t}\n")
+	}
 	if field.Type == "enum" {
 		generation.mustWrite("\tswitch %s {\n\tcase \"\"", name)
 		for _, value := range field.Enum {
@@ -634,6 +665,15 @@ func contains(values []string, expected string) bool {
 }
 
 func hasFieldType(manifest schema.Manifest, fieldType string) bool {
+	for _, trigger := range manifest.Spec.Triggers {
+		if trigger.Configuration != nil {
+			for _, field := range trigger.Configuration.Fields {
+				if field.Type == fieldType {
+					return true
+				}
+			}
+		}
+	}
 	for _, field := range generatedConfigFields(manifest) {
 		if field.Type == fieldType {
 			return true

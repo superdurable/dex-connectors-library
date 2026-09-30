@@ -159,6 +159,24 @@ var CheckoutSessionUpdatedTriggerDefinition = sdkgo.TriggerDefinition{
 	Description: "Receive a verified Checkout Session completion, delayed-payment, or expiration event.",
 }
 
+func validateCheckoutSessionUpdatedTriggerConfiguration(configuration CheckoutSessionUpdatedTriggerConfiguration) error {
+	{
+		seenValues := map[string]bool{}
+		for _, value := range configuration.EventTypes {
+			if seenValues[value] {
+				return fmt.Errorf("trigger checkoutSessionUpdated eventTypes contains a duplicate")
+			}
+			seenValues[value] = true
+			switch value {
+			case "checkout.session.completed", "checkout.session.async_payment_succeeded", "checkout.session.async_payment_failed", "checkout.session.expired":
+			default:
+				return fmt.Errorf("trigger checkoutSessionUpdated eventTypes contains an invalid value")
+			}
+		}
+	}
+	return nil
+}
+
 type CheckoutSessionUpdatedTriggerBindingConfig struct {
 	sdkgo.TriggerBindingFactoryConfigMarker `connector:"factory=triggerBinding"`
 	connectorID                             struct{} `connector:"connectorId=stripe"`
@@ -186,6 +204,9 @@ type CheckoutSessionUpdatedTriggerConfig struct {
 
 func NewCheckoutSessionUpdatedTrigger(config CheckoutSessionUpdatedTriggerConfig) sdkgo.TriggerRunner {
 	if err := config.Connection.validate(); err != nil {
+		panic(err)
+	}
+	if err := validateCheckoutSessionUpdatedTriggerConfiguration(config.Configuration); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {

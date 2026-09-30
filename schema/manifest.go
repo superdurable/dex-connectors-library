@@ -210,6 +210,8 @@ type Field struct {
 	Required    bool     `yaml:"required" json:"required"`
 	Default     any      `yaml:"default,omitempty" json:"default,omitempty"`
 	Enum        []string `yaml:"enum,omitempty" json:"enum,omitempty"`
+	// UniqueItems rejects duplicate stringList entries; enum constrains each list item when present.
+	UniqueItems bool `yaml:"uniqueItems,omitempty" json:"uniqueItems,omitempty"`
 	// StudioUnit renders a spec.configuration field with a Studio unit once the connection is saved.
 	StudioUnit *FieldStudioUnit `yaml:"studioUnit,omitempty" json:"studioUnit,omitempty"`
 }
@@ -240,6 +242,9 @@ type Trigger struct {
 	EventType         string `yaml:"eventType" json:"eventType"`
 	ConfigurationType string `yaml:"configurationType" json:"configurationType"`
 	Description       string `yaml:"description" json:"description"`
+	// Configuration publishes generic non-secret binding fields before application FDG compilation.
+	// Nil means unavailable; an explicit empty fields list means no settings are required.
+	Configuration *Configuration `yaml:"configuration,omitempty" json:"configuration,omitempty"`
 }
 
 type OperationBranch struct {
@@ -524,6 +529,10 @@ func (manifest Manifest) Validate() error {
 			problems = append(problems, trigger.Name+": goName must be exported and unique")
 		}
 		seenTriggerGoNames[trigger.GoName] = true
+		if trigger.Configuration != nil {
+			problems = append(problems, validateFields("trigger "+trigger.Name+" configuration", trigger.Configuration.Fields, false)...)
+			problems = append(problems, rejectFieldStudioUnits("trigger "+trigger.Name+" configuration", trigger.Configuration.Fields)...)
+		}
 		if !goNamePattern.MatchString(trigger.EventType) || !goNamePattern.MatchString(trigger.ConfigurationType) {
 			problems = append(problems, trigger.Name+": eventType and configurationType must name exported local Go types")
 		}
@@ -994,6 +1003,19 @@ func validateFields(prefix string, fields []Field, allowSecret bool) []string {
 			problems = append(problems, prefix+" fields require goName, supported type, and description")
 		}
 		seenGoNames[field.GoName] = true
+		if field.UniqueItems && field.Type != "stringList" {
+			problems = append(problems, prefix+" uniqueItems requires a stringList field")
+		}
+		if len(field.Enum) > 0 && field.Type != "enum" && field.Type != "stringList" {
+			problems = append(problems, prefix+" enum values require enum or stringList fields")
+		}
+		seenValues := map[string]bool{}
+		for _, value := range field.Enum {
+			if value == "" || seenValues[value] {
+				problems = append(problems, prefix+" enum values must be non-empty and unique")
+			}
+			seenValues[value] = true
+		}
 		if field.Type == "enum" && len(field.Enum) == 0 {
 			problems = append(problems, prefix+" enum fields require values")
 		}
@@ -1041,9 +1063,24 @@ func isValidDefault(field Field) bool {
 		if !ok {
 			return false
 		}
+		seenValues := map[string]bool{}
 		for _, value := range values {
-			if _, ok := value.(string); !ok {
+			text, isString := value.(string)
+			if !isString || (field.UniqueItems && seenValues[text]) {
 				return false
+			}
+			seenValues[text] = true
+			if len(field.Enum) > 0 {
+				isAllowed := false
+				for _, allowed := range field.Enum {
+					if text == allowed {
+						isAllowed = true
+						break
+					}
+				}
+				if !isAllowed {
+					return false
+				}
 			}
 		}
 		return true

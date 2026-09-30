@@ -299,6 +299,11 @@
         "goName": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
         "eventType": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
         "configurationType": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
+        "configuration": {
+          "description": "Generic non-secret binding fields available before FDG compilation. Omission means unavailable; empty fields means no settings.",
+          "type": "object", "additionalProperties": false, "required": ["fields"],
+          "properties": { "fields": { "type": "array", "items": { "$ref": "#/$defs/methodConfigurationField" } } }
+        },
         "description": { "type": "string", "minLength": 1 }
       }
     },
@@ -430,10 +435,14 @@
         "description": { "type": "string", "pattern": "\\S" },
         "required": { "type": "boolean" },
         "default": {},
-        "enum": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string" } }
+        "enum": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+        "uniqueItems": { "type": "boolean" }
       },
-      "if": { "properties": { "type": { "const": "enum" } }, "required": ["type"] },
-      "then": { "required": ["enum"] }
+      "allOf": [
+        { "if": { "properties": { "type": { "const": "enum" } }, "required": ["type"] }, "then": { "required": ["enum"] } },
+        { "if": { "required": ["enum"] }, "then": { "properties": { "type": { "enum": ["enum", "stringList"] } } } },
+        { "if": { "properties": { "uniqueItems": { "const": true } }, "required": ["uniqueItems"] }, "then": { "properties": { "type": { "const": "stringList" } } } }
+      ]
     },
     "nonSecretFieldType": {
       "properties": { "type": { "enum": ["string", "url", "integer", "boolean", "duration", "stringList", "stringMap", "enum"] } }

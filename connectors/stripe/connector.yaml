@@ -63,6 +63,19 @@ spec:
       eventType: CheckoutSessionEvent
       configurationType: CheckoutSessionUpdatedTriggerConfiguration
       description: Receive a verified Checkout Session completion, delayed-payment, or expiration event.
+      configuration:
+        fields:
+          - name: eventTypes
+            goName: EventTypes
+            type: stringList
+            description: "In https://dashboard.stripe.com/webhooks, select the application's webhook endpoint and its listened events. Choose supported Checkout Session events for this binding; these names are not secret. Leave empty to accept every supported event."
+            required: false
+            uniqueItems: true
+            enum:
+              - checkout.session.completed
+              - checkout.session.async_payment_succeeded
+              - checkout.session.async_payment_failed
+              - checkout.session.expired
   operations:
     - name: createACHCheckoutSession
       goName: CreateACHCheckoutSession

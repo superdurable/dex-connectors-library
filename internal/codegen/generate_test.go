@@ -269,3 +269,17 @@ spec:
 	_, err = parser.ParseFile(token.NewFileSet(), "zz_generated_connector.go", strings.NewReader(text), parser.AllErrors)
 	require.NoError(t, err)
 }
+
+func TestGenerateManifestTriggerConstraints(t *testing.T) {
+	contents, err := os.ReadFile("../../connectors/stripe/connector.yaml")
+	require.NoError(t, err)
+	manifest, err := schema.Decode(bytes.NewReader(contents))
+	require.NoError(t, err)
+	generated, err := codegen.Generate(manifest)
+	require.NoError(t, err)
+	text := string(generated)
+	require.Contains(t, text, "func validateCheckoutSessionUpdatedTriggerConfiguration(configuration CheckoutSessionUpdatedTriggerConfiguration) error")
+	require.Contains(t, text, "if seenValues[value]")
+	require.Contains(t, text, "trigger checkoutSessionUpdated eventTypes contains an invalid value")
+	require.Contains(t, text, "if err := validateCheckoutSessionUpdatedTriggerConfiguration(config.Configuration); err != nil")
+}

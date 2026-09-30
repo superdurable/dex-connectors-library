@@ -29,6 +29,20 @@ does not by itself prove that an ACH payment settled. Applications should issue
 the paid ticket only after `checkout.session.async_payment_succeeded`, or after
 `GetCheckoutSession` confirms `paymentStatus == "paid"` during reconciliation.
 
+## Configuration before an application build
+
+The source manifest now publishes the `checkoutSessionUpdated` binding schema:
+`eventTypes` is an optional unique list of the four supported event names above.
+Leaving it empty accepts all supported events. Dex Web can render and validate
+this field using the connector manifest before an application FDG is available.
+The generated factory and provider validate the same accepted values.
+
+This schema addition is not published in the existing `v0.2.2` release. The
+manifest version and consumer pins remain unchanged while the source change is
+reviewed; a future connector release is required before hosted applications can
+consume this metadata from the release directory. No real Stripe account or
+webhook configuration was changed by this work.
+
 ## Local configuration
 
 ```json

@@ -792,3 +792,45 @@ spec:
 `))
 	require.ErrorContains(t, err, "inputType and outputType")
 }
+
+func TestGenericTriggerConfigurationPublishedBeforeFlowDefinition(t *testing.T) {
+	contents, err := os.ReadFile("../connectors/stripe/connector.yaml")
+	require.NoError(t, err)
+	manifest, err := schema.Decode(strings.NewReader(string(contents)))
+	require.NoError(t, err)
+	configuration := manifest.Spec.Triggers[0].Configuration
+	require.NotNil(t, configuration)
+	require.Len(t, configuration.Fields, 1)
+	field := configuration.Fields[0]
+	require.Equal(t, "eventTypes", field.Name)
+	require.Equal(t, "stringList", field.Type)
+	require.True(t, field.UniqueItems)
+	require.ElementsMatch(t, []string{"checkout.session.completed", "checkout.session.async_payment_succeeded", "checkout.session.async_payment_failed", "checkout.session.expired"}, field.Enum)
+	require.Contains(t, field.Description, "https://dashboard.stripe.com/webhooks")
+	require.Contains(t, field.Description, "Leave empty")
+	tests := []struct {
+		name    string
+		mutate  func(*schema.Field)
+		message string
+	}{
+		{"secret", func(field *schema.Field) { field.Type = "secretString" }, "supported type"},
+		{"duplicate enum", func(field *schema.Field) { field.Enum = []string{"first", "first"} }, "non-empty and unique"},
+		{"wrong enum type", func(field *schema.Field) { field.Type = "integer"; field.UniqueItems = false }, "enum values require"},
+		{"wrong unique type", func(field *schema.Field) { field.Type = "string"; field.Enum = nil }, "uniqueItems requires"},
+		{"invalid default", func(field *schema.Field) { field.Default = []any{"unsupported"} }, "invalid default"},
+		{"duplicate default", func(field *schema.Field) { field.Default = []any{field.Enum[0], field.Enum[0]} }, "invalid default"},
+		{"studio unit", func(field *schema.Field) { field.StudioUnit = &schema.FieldStudioUnit{Unit: "select", Port: "value"} }, "studioUnit is allowed only"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			changed := field
+			test.mutate(&changed)
+			manifest.Spec.Triggers[0].Configuration = &schema.Configuration{Fields: []schema.Field{changed}}
+			require.ErrorContains(t, manifest.Validate(), test.message)
+		})
+	}
+	manifest.Spec.Triggers[0].Configuration = &schema.Configuration{Fields: []schema.Field{}}
+	require.NoError(t, manifest.Validate())
+	manifest.Spec.Triggers[0].Configuration = nil
+	require.NoError(t, manifest.Validate())
+}

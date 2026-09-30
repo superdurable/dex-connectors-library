@@ -42,6 +42,15 @@ durable state, locking, and event deduplication. Connector Triggers preserve the
 provider event ID but do not impose a retention policy or create hidden
 Attributes.
 
+## Shared project configuration
+
+Project Dex Web and application replicas can share versioned encrypted S3
+configuration without a credential broker. See
+[projectconfig](projectconfig/README.md) for scope-bound configuration snapshots,
+pre-provider OAuth/refresh admission, crash recovery, the typed SDK adapter, and
+the runnable environment-loader example. The new provider refreshes only during
+actual use of a known-expired credential; existing providers are unchanged.
+
 ## Trigger delivery outcomes
 
 `HandleTrigger` has three outcomes:
@@ -587,3 +596,9 @@ Run it against a real Dex Server:
 ```bash
 GOWORK=off go test -tags=integration ./integrationtest/... -count=1 -v
 ```
+
+### Explicit local source authority
+
+`projectconfig.LoadFromEnvironment` rejects unpublished connector pins unless `DEX_PROJECT_ALLOW_LOCAL_STORAGE=true` and `DEX_PROJECT_LOCAL_CONNECTOR_AUTHORITY` names an absolute image-owned descriptor. Its schema is `connectors.dex.dev/local-artifacts/v1`; each artifact identifies the connector/module, real published baseline version, source commit, source-tree SHA-256, artifact SHA-256 and artifact directory. Dex and the application image use the same descriptor bytes. The directory is used only by Dex's verified artifact loader, not by application code.
+
+A configuration connection may contain the safe `localArtifact` source pin. The SDK compares it exactly with its own startup descriptor and module identity before returning the immutable configuration. Missing, changed or hosted local pins fail closed. Plaintext secrets, credentials and provider endpoints are not part of this authority. This mechanism does not publish a module or claim the baseline tag contains unpublished source.

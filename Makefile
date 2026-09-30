@@ -1,4 +1,4 @@
-.PHONY: check test test-common test-connectors catalog-check test-integration test-sdk-integration test-connector-integration test-dex-compat-current test-dex-compat-released studio-bundle-theme react react-sdk react-connectors workspace githooks
+.PHONY: check test test-common test-connectors catalog-check test-integration test-sdk-integration test-projectconfig-integration test-projectconfig-dex-integration test-connector-integration test-dex-compat-current test-dex-compat-released studio-bundle-theme react react-sdk react-connectors workspace githooks
 
 CONNECTOR_CATALOG ?= catalog.yaml
 CONNECTOR_SCOPE ?= all
@@ -39,6 +39,12 @@ catalog-check:
 	GOWORK=off go run ./cmd/connectorctl catalog --catalog $(CONNECTOR_CATALOG) --output /tmp/dex-connectors-catalog.yaml
 
 test-integration: test-sdk-integration test-connector-integration
+
+test-projectconfig-dex-integration:
+	cd sdkgo && GOWORK=off go test -race -tags=integration ./integrationtest -run TestProjectConfigurationCredentialBoundaryWithRealDexAndS3 -count=1 -v
+
+test-projectconfig-integration:
+	cd sdkgo && GOWORK=off go test -race -tags=integration ./projectconfig -run TestVersionedS3ReplicaAdmissionAndRestartRecovery -count=1 -v
 
 test-sdk-integration:
 	cd sdkgo && GOWORK=off go test -tags=integration ./integrationtest/... -count=1 -v
