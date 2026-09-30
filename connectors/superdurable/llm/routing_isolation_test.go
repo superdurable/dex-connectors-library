@@ -107,7 +107,8 @@ func TestMissingKeySelectsDefectWithoutARequest(t *testing.T) {
 	}
 	t.Run("a provider alone reports the provider connector's default model", func(t *testing.T) {
 		fakes := newProviderFakes(t)
-		client := newRoutedClient(t, fakes, llmrouter.Config{Model: "anthropic"}, staticCredentials(llmrouter.Credentials{}))
+		credentials := routedProviderFor(t, llmrouter.ProviderAnthropic).withAPIKey(llmrouter.Credentials{}, "")
+		client := newRoutedClient(t, fakes, llmrouter.Config{Model: "anthropic"}, staticCredentials(credentials))
 		result, err := runGenerateText(t, client, userRequest("", "Hello"))
 		require.NoError(t, err)
 		require.Equal(t, llmrouter.GenerateTextBranchDefect, result.Branch)
@@ -179,12 +180,18 @@ func TestUnknownKeyFormatsReachTheirProvider(t *testing.T) {
 
 // TestKeyChangedAfterThePreCheckIsCheckedAgainBeforeSending covers a key replaced between the router's read and the pipeline's.
 func TestKeyChangedAfterThePreCheckIsCheckedAgainBeforeSending(t *testing.T) {
-	for name, replacementKey := range map[string]string{"foreign": "sk-proj-llmrouter-replacement-canary", "removed": ""} {
+	claudeRoute := routedProviderFor(t, llmrouter.ProviderAnthropic)
+	providerRemoved := allTestAPIKeys()
+	providerRemoved.AuthMethodIDs = []string{"openai", "gemini"}
+	for name, later := range map[string]llmrouter.Credentials{
+		"foreign": claudeRoute.withAPIKey(allTestAPIKeys(), "sk-proj-llmrouter-replacement-canary"),
+		"removed": claudeRoute.withAPIKey(allTestAPIKeys(), ""),
+		// The key stays behind to prove that the provider list, not the key, gates the request.
+		"provider removed with its key left behind": providerRemoved,
+	} {
 		t.Run(name, func(t *testing.T) {
 			fakes := newProviderFakes(t)
-			credentials := &changingCredentialProvider{
-				first: allTestAPIKeys(), later: routedProviderFor(t, llmrouter.ProviderAnthropic).withAPIKey(allTestAPIKeys(), replacementKey),
-			}
+			credentials := &changingCredentialProvider{first: allTestAPIKeys(), later: later}
 			client := newRoutedClient(t, fakes, llmrouter.Config{Model: "anthropic"}, credentials)
 			result, err := runGenerateText(t, client, userRequest("", "Hello"))
 			require.NoError(t, err)

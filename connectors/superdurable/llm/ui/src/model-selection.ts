@@ -2,8 +2,10 @@
 // SPDX-License-Identifier: MIT
 
 import {
+  shouldListModelsForAuthMethod,
   validateModelIDForRule,
   type ConnectorStudioClient,
+  type ConnectorStudioConnection,
   type ModelIDRule,
   type ModelListing,
   type ModelListingNotice,
@@ -21,13 +23,22 @@ export const llmModelsListCapability = "llm.models-list";
 /** ProviderPrefix is the provider part of a provider/model selection. */
 export type ProviderPrefix = "openai" | "anthropic" | "gemini";
 
+/**
+ * llmDefaultModelDescription names the model the llm connector runs when
+ * neither a Step nor the connection picks one.
+ */
+export const llmDefaultModelDescription = "the first added provider's default model";
+
 /** ProviderModelSource lists one provider's models for the combined picker. */
 export interface ProviderModelSource {
-  /** prefix is prepended to every listed model ID, as in anthropic/claude-sonnet-5. */
+  /**
+   * prefix is prepended to every listed model ID, as in anthropic/claude-sonnet-5.
+   * It is also the ID of the connection auth method that adds the provider.
+   */
   prefix: ProviderPrefix;
   /** label names the provider in the option badge and notices, such as "Claude". */
   label: string;
-  /** keyName is how the notice names the connection's key for this provider, such as "an Anthropic key". */
+  /** keyName is how the notice names the connection's key for this provider, such as "the Claude key". */
   keyName: string;
   /** hostLimitation is an optional sentence about a Dex Web release that cannot list this provider. */
   hostLimitation?: string;
@@ -55,16 +66,16 @@ const providerCommandBanner =
 export function llmModelSources(client: ConnectorStudioClient): ProviderModelSource[] {
   return [
     {
-      prefix: "openai", label: "OpenAI", keyName: "an OpenAI key",
+      prefix: "openai", label: "OpenAI", keyName: "the OpenAI key",
       load: () => loadOpenAIModelListing(client, {capability: llmModelsListCapability, commandId: "listOpenAIModels"}),
     },
     {
-      prefix: "anthropic", label: "Claude", keyName: "an Anthropic key",
+      prefix: "anthropic", label: "Claude", keyName: "the Claude key",
       hostLimitation: "Dex Web releases before cli-v0.13.10 cannot list Claude models.",
       load: () => loadClaudeModelListing(client, {capability: llmModelsListCapability, commandId: "listAnthropicModels"}),
     },
     {
-      prefix: "gemini", label: "Gemini", keyName: "a Gemini key",
+      prefix: "gemini", label: "Gemini", keyName: "the Gemini key",
       load: () => loadGeminiModelListing(client, {
         capability: llmModelsListCapability,
         nativeCommandId: "listGeminiModels", openAICompatibleCommandId: "listGeminiOpenAICompatibleModels",
@@ -73,9 +84,14 @@ export function llmModelSources(client: ConnectorStudioClient): ProviderModelSou
   ];
 }
 
-/** loadLLMModels is the bundle's ModelPicker loader: the combined live lists of every provider. */
-export function loadLLMModels(client: ConnectorStudioClient): Promise<ModelListing> {
-  return combineModelListings(llmModelSources(client));
+/**
+ * loadLLMModels is the bundle's ModelPicker loader: the combined live lists of
+ * the providers the connection adds, with a default-model option for each. A
+ * provider the connection has not added runs no command and offers no option.
+ * A host that reports no auth methods lists every provider.
+ */
+export function loadLLMModels(client: ConnectorStudioClient, connection: Pick<ConnectorStudioConnection, "authMethodIds">): Promise<ModelListing> {
+  return combineModelListings(llmModelSources(client).filter((source) => shouldListModelsForAuthMethod(connection, source.prefix)));
 }
 
 /**
@@ -131,7 +147,7 @@ export function validateProviderQualifiedModel(value: string): string | undefine
 
 function providerListFailureMessage(source: ProviderModelSource): string {
   return [
-    `${source.label} models could not be listed. Add ${source.keyName}, or choose ${source.label} default model, or enter ${source.prefix}/<model-id>.`,
+    `${source.label} models could not be listed. Check ${source.keyName} in the connection, or choose ${source.label} default model, or enter ${source.prefix}/<model-id>.`,
     source.hostLimitation, providerCommandBanner,
   ].filter((sentence) => sentence !== undefined).join(" ");
 }

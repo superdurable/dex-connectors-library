@@ -71,8 +71,11 @@ func (routed routedProvider) dexScenarioDialect() llmtest.ProviderDialect {
 	return dialect
 }
 
-// withAPIKey returns credentials holding apiKey in this provider's field only.
+// withAPIKey returns credentials that add this provider, when absent, and hold apiKey in its field only.
 func (routed routedProvider) withAPIKey(credentials llmrouter.Credentials, apiKey string) llmrouter.Credentials {
+	if !credentials.HasAuthMethod(string(routed.provider)) {
+		credentials.AuthMethodIDs = append(slices.Clone(credentials.AuthMethodIDs), string(routed.provider))
+	}
 	switch routed.provider {
 	case llmrouter.ProviderOpenAI:
 		credentials.OpenAIAPIKey = sdkgo.NewSecretString(apiKey)
@@ -121,9 +124,11 @@ func (fakes *providerFakes) requestCounts() map[llmrouter.Provider]int {
 	return counts
 }
 
+// allTestAPIKeys adds all three providers, in the order openai, anthropic, gemini, each with its key.
 func allTestAPIKeys() llmrouter.Credentials {
 	return llmrouter.Credentials{
-		OpenAIAPIKey: sdkgo.NewSecretString(openAITestKey), AnthropicAPIKey: sdkgo.NewSecretString(anthropicTestKey),
+		AuthMethodIDs: []string{"openai", "anthropic", "gemini"},
+		OpenAIAPIKey:  sdkgo.NewSecretString(openAITestKey), AnthropicAPIKey: sdkgo.NewSecretString(anthropicTestKey),
 		GeminiAPIKey: sdkgo.NewSecretString(geminiTestKey),
 	}
 }
@@ -252,14 +257,13 @@ func TestNewValidatesTheConnection(t *testing.T) {
 	credentials := staticCredentials(allTestAPIKeys())
 	_, err := llmrouter.New(llmrouter.Config{Model: "openai"}, nil)
 	require.ErrorContains(t, err, "credential provider is required")
-	_, err = llmrouter.New(llmrouter.Config{}, credentials)
-	require.ErrorContains(t, err, "configuration model is required")
-	for _, model := range []string{" ", "claude-canary-model", "Anthropic/claude-canary-model", "anthropic/", "mistral/canary-model", "gemini/canary model!"} {
+	for _, model := range []string{"claude-canary-model", "Anthropic/claude-canary-model", "anthropic/", "mistral/canary-model", "gemini/canary model!"} {
 		_, err := llmrouter.New(llmrouter.Config{Model: model}, credentials)
 		require.ErrorContains(t, err, "configuration model", "%q", model)
 		require.NotContains(t, err.Error(), "canary", "the error never repeats the value")
 	}
-	for _, model := range []string{"openai", "anthropic", "gemini", "anthropic/claude-opus-5-5", " gemini/models/gemini-3.8-flash "} {
+	// A blank model defers to the first added provider at each call.
+	for _, model := range []string{"", " \t", "openai", "anthropic", "gemini", "anthropic/claude-opus-5-5", " gemini/models/gemini-3.8-flash "} {
 		_, err := llmrouter.New(llmrouter.Config{Model: model}, credentials)
 		require.NoError(t, err, "%q", model)
 	}
@@ -378,39 +382,57 @@ func TestQualifiedModelRestoresTheSelectionPrefix(t *testing.T) {
 		"a result without a requested model has nothing to qualify")
 }
 
-// TestLocalConnectionDecodesZeroToThreeKeys builds the connection from the files Dex Web Connections writes.
-func TestLocalConnectionDecodesZeroToThreeKeys(t *testing.T) {
+// TestLocalConnectionDecodesOneToThreeProviders builds the connection from the files Dex Web Connections writes.
+func TestLocalConnectionDecodesOneToThreeProviders(t *testing.T) {
 	for _, credentials := range []map[string]any{
-		{}, {"anthropic_api_key": anthropicTestKey},
-		{"openai_api_key": openAITestKey, "anthropic_api_key": anthropicTestKey, "gemini_api_key": geminiTestKey},
+		{"auth_methods": []string{"anthropic"}, "anthropic_api_key": anthropicTestKey},
+		{"auth_methods": []string{"gemini", "openai"}, "gemini_api_key": geminiTestKey, "openai_api_key": openAITestKey},
+		{
+			"auth_methods":   []string{"openai", "anthropic", "gemini"},
+			"openai_api_key": openAITestKey, "anthropic_api_key": anthropicTestKey, "gemini_api_key": geminiTestKey,
+		},
 	} {
-		store := writeLocalConnection(t, map[string]any{"model": "anthropic/claude-sonnet-5"}, credentials)
-		connection, err := llmrouter.NewLocalConnection(store, "llm")
-		require.NoError(t, err)
-		require.Equal(t, "llmrouter.Connection{[REDACTED]}", fmt.Sprintf("%+v", connection))
+		for _, configuration := range []map[string]any{
+			{}, {"model": "anthropic/claude-sonnet-5"},
+			{"model": "anthropic", "anthropicWorkspaceId": "wrkspc_01JwQvzr7rXLA5AGx3HKfFUJ", "maxResponseBytes": 1 << 20},
+		} {
+			connection, err := llmrouter.NewLocalConnection(writeLocalConnection(t, configuration, credentials), testConnection.Name)
+			require.NoError(t, err, "configuration %v", configuration)
+			require.Equal(t, "llmrouter.Connection{[REDACTED]}", fmt.Sprintf("%+v", connection))
+		}
 	}
-	_, err := llmrouter.NewLocalConnection(writeLocalConnection(t, map[string]any{}, map[string]any{"openai_api_key": openAITestKey}), "llm")
-	require.ErrorContains(t, err, "configuration model is required", "the connection model is required")
-	_, err = llmrouter.NewLocalConnection(writeLocalConnection(t, map[string]any{"model": "claude-sonnet-5"}, map[string]any{}), "llm")
+	_, err := llmrouter.NewLocalConnection(writeLocalConnection(t, map[string]any{"model": "claude-sonnet-5"}, map[string]any{}), testConnection.Name)
 	require.ErrorContains(t, err, "provider/model", "a bare model fails at startup")
+	_, err = llmrouter.NewLocalConnection(
+		writeLocalConnection(t, map[string]any{"anthropicWorkspaceId": "workspace-canary"}, map[string]any{}), testConnection.Name)
+	require.ErrorContains(t, err, "workspaceId", "a bad workspace ID fails at startup even without a model")
 }
 
 func writeLocalConnection(t *testing.T, configuration map[string]any, credentials map[string]any) *localconfig.Store {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "connections.json")
+	writeLocalConnectionFile(t, path, configuration, credentials)
+	store, err := localconfig.LoadFile(path)
+	require.NoError(t, err)
+	return store
+}
+
+// writeLocalConnectionFile writes one llm connection record to path, as Dex Web Connections saves it.
+func writeLocalConnectionFile(t *testing.T, path string, configuration map[string]any, credentials map[string]any) {
+	t.Helper()
 	encoded, err := json.Marshal(map[string]any{
 		"schemaVersion": localconfig.SchemaVersion,
 		"connections": []any{map[string]any{
-			"connectorId": llmrouter.ConnectorID, "connectionName": "llm", "provider": "llm",
-			"modulePath": "github.com/superdurable/dex-connectors-library/connectors/superdurable/llm", "moduleVersion": "v0.1.0",
+			"connectorId": llmrouter.ConnectorID, "connectionName": testConnection.Name, "provider": "llm",
+			"modulePath": "github.com/superdurable/dex-connectors-library/connectors/superdurable/llm", "moduleVersion": "v0.2.0",
 			"configuration": configuration, "credentials": credentials,
 		}},
 	})
 	require.NoError(t, err)
-	require.NoError(t, os.WriteFile(path, encoded, 0o600))
-	store, err := localconfig.LoadFile(path)
-	require.NoError(t, err)
-	return store
+	temporary := path + ".tmp"
+	require.NoError(t, os.WriteFile(temporary, encoded, 0o600))
+	// Renaming replaces the file atomically, as Dex Web does, so a concurrent read never sees half of it.
+	require.NoError(t, os.Rename(temporary, path))
 }
 
 func routedProviderFor(t *testing.T, provider llmrouter.Provider) routedProvider {

@@ -23,11 +23,12 @@ const (
 
 type Config struct {
 	Model                string `json:"model,omitempty" yaml:"model,omitempty"`
-	AnthropicWorkspaceID string `json:"anthropicWorkspaceId,omitempty" yaml:"anthropicWorkspaceId,omitempty"`
 	MaxResponseBytes     int64  `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
+	AnthropicWorkspaceID string `json:"anthropicWorkspaceId,omitempty" yaml:"anthropicWorkspaceId,omitempty"`
 }
 
 type Credentials struct {
+	AuthMethodIDs   []string
 	OpenAIAPIKey    sdkgo.SecretString
 	AnthropicAPIKey sdkgo.SecretString
 	GeminiAPIKey    sdkgo.SecretString
@@ -71,14 +72,16 @@ func NewLocalConnection(store *localconfig.Store, connectionName string, options
 
 func decodeLocalCredentials(contents json.RawMessage) (Credentials, error) {
 	var fields struct {
-		OpenAIAPIKey    string `json:"openai_api_key"`
-		AnthropicAPIKey string `json:"anthropic_api_key"`
-		GeminiAPIKey    string `json:"gemini_api_key"`
+		AuthMethodIDs   []string `json:"auth_methods"`
+		OpenAIAPIKey    string   `json:"openai_api_key"`
+		AnthropicAPIKey string   `json:"anthropic_api_key"`
+		GeminiAPIKey    string   `json:"gemini_api_key"`
 	}
 	if err := localconfig.DecodeCredentials(contents, &fields); err != nil {
 		return Credentials{}, err
 	}
 	credentials := Credentials{
+		AuthMethodIDs:   fields.AuthMethodIDs,
 		OpenAIAPIKey:    sdkgo.NewSecretString(fields.OpenAIAPIKey),
 		AnthropicAPIKey: sdkgo.NewSecretString(fields.AnthropicAPIKey),
 		GeminiAPIKey:    sdkgo.NewSecretString(fields.GeminiAPIKey),
@@ -120,9 +123,6 @@ func withConfigDefaults(config Config) Config {
 }
 
 func (config Config) Validate() error {
-	if config.Model == "" {
-		return fmt.Errorf("configuration model is required")
-	}
 	if config.MaxResponseBytes < 0 {
 		return fmt.Errorf("configuration maxResponseBytes cannot be negative")
 	}
@@ -130,7 +130,42 @@ func (config Config) Validate() error {
 }
 
 func (credentials Credentials) Validate() error {
+	if len(credentials.AuthMethodIDs) == 0 {
+		return fmt.Errorf("credential auth_methods is required")
+	}
+	selectedAuthMethodIDs := make(map[string]bool, len(credentials.AuthMethodIDs))
+	for _, authMethodID := range credentials.AuthMethodIDs {
+		if selectedAuthMethodIDs[authMethodID] {
+			return fmt.Errorf("credential auth_methods must be unique")
+		}
+		selectedAuthMethodIDs[authMethodID] = true
+		switch authMethodID {
+		case "openai":
+			if credentials.OpenAIAPIKey.Reveal() == "" {
+				return fmt.Errorf("credential openai_api_key is required")
+			}
+		case "anthropic":
+			if credentials.AnthropicAPIKey.Reveal() == "" {
+				return fmt.Errorf("credential anthropic_api_key is required")
+			}
+		case "gemini":
+			if credentials.GeminiAPIKey.Reveal() == "" {
+				return fmt.Errorf("credential gemini_api_key is required")
+			}
+		default:
+			return fmt.Errorf("credential auth_methods contains an undeclared auth method")
+		}
+	}
 	return nil
+}
+
+func (credentials Credentials) HasAuthMethod(id string) bool {
+	for _, authMethodID := range credentials.AuthMethodIDs {
+		if authMethodID == id {
+			return true
+		}
+	}
+	return false
 }
 
 const GenerateTextBranchGenerated sdkgo.BranchID = "generated"
@@ -148,7 +183,7 @@ var GenerateTextDefinition = sdkgo.QueryDefinition{
 		{ID: GenerateTextBranchBlocked, Description: "The selected provider stopped the response for a content policy, or the model refused.", Optional: true},
 		{ID: GenerateTextBranchProviderRejected, Description: "The selected provider conclusively rejected the request, such as an invalid key, an unknown model, or exhausted quota.", Optional: true},
 		{ID: GenerateTextBranchInvalidResponse, Description: "The selected provider returned a malformed, oversized, or unusable response, including structured output that does not match its schema.", Optional: true},
-		{ID: GenerateTextBranchDefect, Description: "Local input, the model selection, a missing or mismatched provider key, connection configuration, or connector definition is invalid.", Optional: true},
+		{ID: GenerateTextBranchDefect, Description: "Local input, the model selection, a provider the connection has not added, a missing or mismatched provider key, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(900000000000), HeartbeatTimeout: time.Duration(60000000000),

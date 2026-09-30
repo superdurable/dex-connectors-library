@@ -33,8 +33,11 @@ function fakeStudioClient(responses: Record<string, (parameters: Record<string, 
 }
 
 function source(prefix: ProviderModelSource["prefix"], label: string, load: () => Promise<ModelListing>): ProviderModelSource {
-  return {prefix, label, keyName: `a ${label} key`, load};
+  return {prefix, label, keyName: `the ${label} key`, load};
 }
+
+// Hosts that predate the connection context report no auth methods, so every provider is listed.
+const oldHostConnection = {authMethodIds: []};
 
 describe("combineModelListings", () => {
   it("puts one default option per provider first, then prefixed models badged by provider in source order", async () => {
@@ -59,15 +62,15 @@ describe("combineModelListings", () => {
     const listing = await combineModelListings([
       source("openai", "OpenAI", async () => ({models: [{id: "gpt-6-luna"}]})),
       {...source("anthropic", "Claude", async () => { throw new Error("anthropic-version: header is required"); }),
-        keyName: "an Anthropic key", hostLimitation: "Dex Web releases before cli-v0.13.10 cannot list Claude models."},
+        hostLimitation: "Dex Web releases before cli-v0.13.10 cannot list Claude models."},
       source("gemini", "Gemini", async () => { throw new Error("credential is unavailable"); }),
     ]);
     expect(listing.models.map((model) => model.id)).toEqual(["openai", "anthropic", "gemini", "openai/gpt-6-luna"]);
     expect(listing.notices).toEqual([
-      {tone: "attention", message: "Claude models could not be listed. Add an Anthropic key, or choose Claude default model, or enter anthropic/<model-id>. " +
+      {tone: "attention", message: "Claude models could not be listed. Check the Claude key in the connection, or choose Claude default model, or enter anthropic/<model-id>. " +
         "Dex Web releases before cli-v0.13.10 cannot list Claude models. " +
         "Dex Web releases before cli-v0.14.2 also show a 'Connector provider command failed' banner at the top of the page for this list; it does not affect generation."},
-      {tone: "attention", message: "Gemini models could not be listed. Add a Gemini key, or choose Gemini default model, or enter gemini/<model-id>. " +
+      {tone: "attention", message: "Gemini models could not be listed. Check the Gemini key in the connection, or choose Gemini default model, or enter gemini/<model-id>. " +
         "Dex Web releases before cli-v0.14.2 also show a 'Connector provider command failed' banner at the top of the page for this list; it does not affect generation."},
     ]);
     expect(JSON.stringify(listing)).not.toContain("header is required");
@@ -100,7 +103,7 @@ describe("loadLLMModels", () => {
         : {data: [{id: "claude-opus-5-5"}, {id: "claude-sonnet-5"}], has_more: true, last_id: "claude-sonnet-5"},
       listGeminiModels: () => ({models: [{name: "models/gemini-3.8-flash", supportedGenerationMethods: ["generateContent"]}]}),
     });
-    const listing = await loadLLMModels(client);
+    const listing = await loadLLMModels(client, oldHostConnection);
     expect(listing.models.filter((model) => !model.isHiddenByDefault).map((model) => model.id)).toEqual([
       "openai", "anthropic", "gemini",
       "openai/gpt-6-sol", "openai/gpt-6-luna",
@@ -122,10 +125,34 @@ describe("loadLLMModels", () => {
       listOpenAIModels: () => ({data: []}),
       listGeminiOpenAICompatibleModels: () => ({data: [{id: "models/gemini-3.5-flash-lite"}]}),
     });
-    const listing = await loadLLMModels(client);
+    const listing = await loadLLMModels(client, oldHostConnection);
     expect(listing.models.map((model) => model.id)).toEqual(["openai", "anthropic", "gemini", "gemini/gemini-3.5-flash-lite"]);
     expect(calls.map((call) => call.commandId)).toEqual(["listOpenAIModels", "listAnthropicModels", "listGeminiModels", "listGeminiOpenAICompatibleModels"]);
     expect(listing.notices?.map((notice) => notice.message.split(".")[0])).toEqual(["Claude models could not be listed"]);
+  });
+
+  it("lists only the providers the connection adds, in picker order, with a default option for each", async () => {
+    const {client, calls} = fakeStudioClient({
+      listOpenAIModels: () => ({data: [{id: "gpt-6-sol", created: 1}]}),
+      listAnthropicModels: () => ({data: [{id: "claude-sonnet-5"}], has_more: false}),
+      listGeminiModels: () => ({models: [{name: "models/gemini-3.8-flash", supportedGenerationMethods: ["generateContent"]}]}),
+    });
+    const listing = await loadLLMModels(client, {authMethodIds: ["gemini", "anthropic"]});
+    expect(listing.models.map((model) => model.id)).toEqual([
+      "anthropic", "gemini", "anthropic/claude-sonnet-5", "gemini/gemini-3.8-flash",
+    ]);
+    expect(calls.map((call) => call.commandId)).toEqual(["listAnthropicModels", "listGeminiModels"]);
+    expect(listing.notices).toEqual([]);
+  });
+
+  it("keeps an added provider's default option when its only list fails", async () => {
+    const {client, calls} = fakeStudioClient({listOpenAIModels: () => ({data: [{id: "gpt-6-sol", created: 1}]})});
+    const listing = await loadLLMModels(client, {authMethodIds: ["anthropic"]});
+    expect(listing.models.map((model) => model.id)).toEqual(["anthropic"]);
+    expect(calls.map((call) => call.commandId), "a provider the connection has not added runs no list").toEqual(["listAnthropicModels"]);
+    expect(listing.notices?.map((notice) => notice.message.split(".")[0])).toEqual([
+      "No provider's models could be listed", "Claude models could not be listed",
+    ]);
   });
 });
 
