@@ -8,24 +8,25 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"io"
 	"net/http"
-	"net/url"
-	"strings"
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/oauthtoken"
 )
 
 const (
 	slackOAuthTokenEndpoint = "https://slack.com/api/oauth.v2.access"
-	credentialRefreshSkew   = 5 * time.Minute
+	credentialRefreshSkew   = oauthtoken.RefreshSkew
 )
 
 var (
 	requiredBotScopes  = []string{"channels:history", "groups:history", "channels:read", "groups:read", "users:read", "chat:write"}
 	requiredUserScopes = []string{"channels:history", "groups:history"}
+	// slackTerminalRefreshErrorCodes are the Slack oauth.v2.access errors that no retry can recover.
+	slackTerminalRefreshErrorCodes = []string{
+		"invalid_refresh_token", "bad_client_secret", "invalid_client_id", "invalid_auth", "token_revoked", "account_inactive", "access_denied",
+	}
 )
 
 // CredentialRefreshDriver refreshes rotating Slack bot and user OAuth credentials.
@@ -33,16 +34,6 @@ var (
 type CredentialRefreshDriver struct {
 	httpClient *http.Client
 	now        func() time.Time
-}
-
-type slackTokenResponse struct {
-	OK           bool   `json:"ok"`
-	ErrorCode    string `json:"error"`
-	AccessToken  string `json:"access_token"`
-	ExpiresIn    int64  `json:"expires_in"`
-	RefreshToken string `json:"refresh_token"`
-	Scope        string `json:"scope"`
-	TokenType    string `json:"token_type"`
 }
 
 // NewCredentialRefreshDriver constructs the provider-specific refresh driver.
@@ -57,13 +48,8 @@ func NewCredentialRefreshDriver(httpClient *http.Client) *CredentialRefreshDrive
 // RefreshRequired reports whether rotating access credentials are absent or within five minutes of expiry.
 // Credentials without expiry metadata retain Slack's supported non-expiring token behavior.
 func (*CredentialRefreshDriver) RefreshRequired(state sdkgo.CredentialRefreshState[Credentials]) bool {
-	if state.Credentials.BotToken.Reveal() == "" || state.Credentials.UserToken.Reveal() == "" {
-		return true
-	}
-	if state.ExpiresAt == nil {
-		return false
-	}
-	return !state.ExpiresAt.After(state.Now.Add(credentialRefreshSkew))
+	hasAccessTokens := state.Credentials.BotToken.Reveal() != "" && state.Credentials.UserToken.Reveal() != ""
+	return oauthtoken.IsRefreshRequired(hasAccessTokens, state.ExpiresAt, state.Now, oauthtoken.KeepWhenExpiryMissing)
 }
 
 // Refresh rotates every configured Slack bot and user refresh token and returns one complete credential value.
@@ -84,26 +70,22 @@ func (driver *CredentialRefreshDriver) Refresh(
 	now := driver.now().UTC()
 	expiresAt := time.Time{}
 	if credentials.BotRefreshToken.Reveal() != "" {
-		botToken, err := driver.exchangeToken(ctx, credentials, credentials.BotRefreshToken.Reveal(), "bot", requiredBotScopes)
+		botToken, err := driver.exchangeRefreshToken(ctx, credentials, credentials.BotRefreshToken, "bot", requiredBotScopes)
 		if err != nil {
 			return sdkgo.CredentialRefreshResult[Credentials]{}, err
 		}
-		credentials.BotToken = sdkgo.NewSecretString(botToken.AccessToken)
-		if botToken.RefreshToken != "" {
-			credentials.BotRefreshToken = sdkgo.NewSecretString(botToken.RefreshToken)
-		}
-		expiresAt = now.Add(time.Duration(botToken.ExpiresIn) * time.Second)
+		credentials.BotToken = botToken.AccessToken
+		credentials.BotRefreshToken = botToken.NextRefreshToken(credentials.BotRefreshToken)
+		expiresAt = now.Add(botToken.ExpiresIn)
 	}
 	if credentials.UserRefreshToken.Reveal() != "" {
-		userToken, err := driver.exchangeToken(ctx, credentials, credentials.UserRefreshToken.Reveal(), "user", requiredUserScopes)
+		userToken, err := driver.exchangeRefreshToken(ctx, credentials, credentials.UserRefreshToken, "user", requiredUserScopes)
 		if err != nil {
 			return sdkgo.CredentialRefreshResult[Credentials]{}, err
 		}
-		credentials.UserToken = sdkgo.NewSecretString(userToken.AccessToken)
-		if userToken.RefreshToken != "" {
-			credentials.UserRefreshToken = sdkgo.NewSecretString(userToken.RefreshToken)
-		}
-		userExpiresAt := now.Add(time.Duration(userToken.ExpiresIn) * time.Second)
+		credentials.UserToken = userToken.AccessToken
+		credentials.UserRefreshToken = userToken.NextRefreshToken(credentials.UserRefreshToken)
+		userExpiresAt := now.Add(userToken.ExpiresIn)
 		if expiresAt.IsZero() || userExpiresAt.Before(expiresAt) {
 			expiresAt = userExpiresAt
 		}
@@ -146,72 +128,32 @@ func EncodeCredentialsJSON(credentials Credentials) ([]byte, error) {
 	return encodeLocalCredentials(credentials)
 }
 
-func (driver *CredentialRefreshDriver) exchangeToken(
+// exchangeRefreshToken rotates one Slack refresh token. Slack reports failures as ok:false with an error
+// code, which the token endpoint treats as a failure like any other error code.
+func (driver *CredentialRefreshDriver) exchangeRefreshToken(
 	ctx context.Context,
 	credentials Credentials,
-	refreshToken string,
+	refreshToken sdkgo.SecretString,
 	expectedTokenType string,
 	requiredScopes []string,
-) (slackTokenResponse, error) {
-	form := url.Values{"grant_type": {"refresh_token"}, "refresh_token": {refreshToken}}
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, slackOAuthTokenEndpoint, strings.NewReader(form.Encode()))
+) (oauthtoken.TokenResponse, error) {
+	tokenEndpoint := oauthtoken.TokenEndpoint{
+		ProviderName:       "Slack",
+		URL:                slackOAuthTokenEndpoint,
+		HTTPClient:         driver.httpClient,
+		TerminalErrorCodes: slackTerminalRefreshErrorCodes,
+		AcceptedTokenTypes: []string{expectedTokenType},
+	}
+	token, err := tokenEndpoint.ExchangeRefreshToken(ctx, oauthtoken.ClientCredentials{
+		ID:                   credentials.OAuthClientID,
+		Secret:               credentials.OAuthClientSecret,
+		AuthenticationMethod: oauthtoken.ClientSecretBasic,
+	}, refreshToken)
 	if err != nil {
-		return slackTokenResponse{}, errors.New("Slack token request could not be built")
+		return oauthtoken.TokenResponse{}, err
 	}
-	request.SetBasicAuth(credentials.OAuthClientID, credentials.OAuthClientSecret.Reveal())
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Accept", "application/json")
-	response, err := driver.httpClient.Do(request)
-	if err != nil {
-		return slackTokenResponse{}, fmt.Errorf("Slack token endpoint is unavailable: %w", err)
-	}
-	defer response.Body.Close()
-	contents, err := io.ReadAll(io.LimitReader(response.Body, 1<<20))
-	if err != nil {
-		return slackTokenResponse{}, errors.New("Slack token response could not be read")
-	}
-	var token slackTokenResponse
-	if err := json.Unmarshal(contents, &token); err != nil {
-		return slackTokenResponse{}, errors.New("Slack token response is invalid")
-	}
-	if response.StatusCode < 200 || response.StatusCode >= 300 || !token.OK {
-		if isTerminalSlackRefreshError(token.ErrorCode) {
-			return slackTokenResponse{}, sdkgo.NewReauthorizationRequiredError(fmt.Errorf("Slack rejected credential refresh with %s", slackCode(token.ErrorCode)))
-		}
-		return slackTokenResponse{}, fmt.Errorf("Slack token endpoint returned HTTP %d with %s", response.StatusCode, slackCode(token.ErrorCode))
-	}
-	if token.AccessToken == "" || token.ExpiresIn <= 0 || token.TokenType != expectedTokenType {
-		return slackTokenResponse{}, errors.New("Slack token response omitted required fields")
-	}
-	if !hasExactSlackScopes(token.Scope, requiredScopes) {
-		return slackTokenResponse{}, sdkgo.NewReauthorizationRequiredError(errors.New("Slack credential does not match required scopes"))
+	if !oauthtoken.HasExactScopes(token.Scope, requiredScopes) {
+		return oauthtoken.TokenResponse{}, sdkgo.NewReauthorizationRequiredError(errors.New("Slack credential does not match required scopes"))
 	}
 	return token, nil
-}
-
-func isTerminalSlackRefreshError(errorCode string) bool {
-	switch errorCode {
-	case "invalid_refresh_token", "bad_client_secret", "invalid_client_id", "invalid_auth", "token_revoked", "account_inactive", "access_denied":
-		return true
-	default:
-		return false
-	}
-}
-
-func hasExactSlackScopes(value string, required []string) bool {
-	actual := map[string]bool{}
-	for _, scope := range strings.Split(value, ",") {
-		if scope = strings.TrimSpace(scope); scope != "" {
-			actual[scope] = true
-		}
-	}
-	if len(actual) != len(required) {
-		return false
-	}
-	for _, scope := range required {
-		if !actual[scope] {
-			return false
-		}
-	}
-	return true
 }
