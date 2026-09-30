@@ -1,0 +1,53 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: connection-records-single
+  displayName: Connection records fixture (single method)
+  description: Dex compatibility fixture whose connection selects one of two named API-key authentication methods.
+  company: Super Durable
+  version: v0.1.0
+spec:
+  provider: connection-records-single
+  codegen:
+    go:
+      package: connectionrecordssingle
+  configuration:
+    fields: []
+  auth:
+    defaultMethod: alpha
+    methods:
+      - id: alpha
+        displayName: Alpha key
+        description: Use a synthetic alpha provider API key.
+        type: apiKey
+        connectionKind: connection-records-alpha-api-key
+        fields:
+          - {name: alpha_api_key, goName: AlphaAPIKey, type: secretString, description: Synthetic alpha provider key used only by the compatibility gate., required: true}
+        guide:
+          startURL: https://alpha-provider.example/settings/api-keys
+          steps: [Create the synthetic alpha provider key on Settings > API keys and copy the secret value.]
+      - id: beta
+        displayName: Beta key
+        description: Use a synthetic beta provider API key.
+        type: apiKey
+        connectionKind: connection-records-beta-api-key
+        fields:
+          - {name: beta_api_key, goName: BetaAPIKey, type: secretString, description: Synthetic beta provider key used only by the compatibility gate., required: true}
+        guide:
+          startURL: https://beta-provider.example/settings/api-keys
+          steps: [Create the synthetic beta provider key on Settings > API keys and copy the secret value.]
+  operations:
+    - name: describeModel
+      goName: DescribeModel
+      inputType: DescribeModelRequest
+      outputType: DescribeModelResponse
+      kind: query
+      description: Describe one model. The compatibility gate never runs this operation.
+      idempotency: none
+      branches:
+        - {id: described, goName: Described, description: The provider described the model.}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 3, totalDuration: 2m}

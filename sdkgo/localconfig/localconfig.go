@@ -14,8 +14,11 @@ import (
 	"io"
 	"io/fs"
 	"log/slog"
+	"maps"
 	"os"
 	"path/filepath"
+	"reflect"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -80,7 +83,13 @@ type localConnectionsFile struct {
 	TriggerBindings []triggerBindingRecord `json:"triggerBindings,omitempty"`
 }
 
+// Records keep unmodeled Dex Web members, such as authMethodId, so a refresh rewrite preserves them.
 type triggerBindingRecord struct {
+	triggerBindingRecordMembers
+	additionalMembers additionalRecordMembers
+}
+
+type triggerBindingRecordMembers struct {
 	ConnectorID    string          `json:"connectorId"`
 	ConnectionName string          `json:"connectionName"`
 	TriggerName    string          `json:"triggerName"`
@@ -89,6 +98,11 @@ type triggerBindingRecord struct {
 }
 
 type connectionRecord struct {
+	connectionRecordMembers
+	additionalMembers additionalRecordMembers
+}
+
+type connectionRecordMembers struct {
 	ConnectorID         string          `json:"connectorId"`
 	ModulePath          string          `json:"modulePath"`
 	ModuleVersion       string          `json:"moduleVersion"`
@@ -106,12 +120,124 @@ type localUseConfigurationsFile struct {
 }
 
 type operationConfigurationRecord struct {
+	operationConfigurationRecordMembers
+	additionalMembers additionalRecordMembers
+}
+
+type operationConfigurationRecordMembers struct {
 	ConnectorID    string          `json:"connectorId"`
 	ConnectionName string          `json:"connectionName"`
 	OperationID    string          `json:"operationId"`
 	FlowType       string          `json:"flowType"`
 	StepType       string          `json:"stepType"`
 	Configuration  json.RawMessage `json:"configuration"`
+}
+
+var (
+	triggerBindingRecordMemberNames         = jsonMemberNames(triggerBindingRecordMembers{})
+	connectionRecordMemberNames             = jsonMemberNames(connectionRecordMembers{})
+	operationConfigurationRecordMemberNames = jsonMemberNames(operationConfigurationRecordMembers{})
+)
+
+// UnmarshalJSON decodes a trigger binding record and keeps its unmodeled members.
+func (record *triggerBindingRecord) UnmarshalJSON(contents []byte) error {
+	additionalMembers, err := decodeRecordMembers(contents, &record.triggerBindingRecordMembers, triggerBindingRecordMemberNames)
+	record.additionalMembers = additionalMembers
+	return err
+}
+
+// MarshalJSON encodes a trigger binding record with its unmodeled members.
+func (record triggerBindingRecord) MarshalJSON() ([]byte, error) {
+	return encodeRecordMembers(record.triggerBindingRecordMembers, record.additionalMembers)
+}
+
+// UnmarshalJSON decodes a connection record and keeps its unmodeled members.
+func (record *connectionRecord) UnmarshalJSON(contents []byte) error {
+	additionalMembers, err := decodeRecordMembers(contents, &record.connectionRecordMembers, connectionRecordMemberNames)
+	record.additionalMembers = additionalMembers
+	return err
+}
+
+// MarshalJSON encodes a connection record with its unmodeled members.
+func (record connectionRecord) MarshalJSON() ([]byte, error) {
+	return encodeRecordMembers(record.connectionRecordMembers, record.additionalMembers)
+}
+
+// UnmarshalJSON decodes an operation configuration record and keeps its unmodeled members.
+func (record *operationConfigurationRecord) UnmarshalJSON(contents []byte) error {
+	additionalMembers, err := decodeRecordMembers(
+		contents, &record.operationConfigurationRecordMembers, operationConfigurationRecordMemberNames,
+	)
+	record.additionalMembers = additionalMembers
+	return err
+}
+
+// MarshalJSON encodes an operation configuration record with its unmodeled members.
+func (record operationConfigurationRecord) MarshalJSON() ([]byte, error) {
+	return encodeRecordMembers(record.operationConfigurationRecordMembers, record.additionalMembers)
+}
+
+// additionalRecordMembers holds a record's unmodeled top-level members as their original JSON values.
+type additionalRecordMembers map[string]json.RawMessage
+
+// decodeRecordMembers rejects case variants of modeled names, which encoding/json would also match.
+func decodeRecordMembers(contents []byte, modeledMembers any, modeledMemberNames []string) (additionalRecordMembers, error) {
+	var members map[string]json.RawMessage
+	if err := json.Unmarshal(contents, &members); err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(contents, modeledMembers); err != nil {
+		return nil, err
+	}
+	var additionalMembers additionalRecordMembers
+	for name, value := range members {
+		if slices.Contains(modeledMemberNames, name) {
+			continue
+		}
+		for _, modeledName := range modeledMemberNames {
+			if strings.EqualFold(name, modeledName) {
+				return nil, fmt.Errorf("record member %q differs from %q only in case", name, modeledName)
+			}
+		}
+		if additionalMembers == nil {
+			additionalMembers = additionalRecordMembers{}
+		}
+		additionalMembers[name] = value
+	}
+	return additionalMembers, nil
+}
+
+// encodeRecordMembers writes modeled members in declaration order, then unmodeled members by name.
+func encodeRecordMembers(modeledMembers any, additionalMembers additionalRecordMembers) ([]byte, error) {
+	encoded, err := json.Marshal(modeledMembers)
+	if err != nil || len(additionalMembers) == 0 {
+		return encoded, err
+	}
+	var buffer bytes.Buffer
+	buffer.Write(bytes.TrimSuffix(encoded, []byte("}")))
+	for _, name := range slices.Sorted(maps.Keys(additionalMembers)) {
+		encodedName, err := json.Marshal(name)
+		if err != nil {
+			return nil, err
+		}
+		buffer.WriteByte(',')
+		buffer.Write(encodedName)
+		buffer.WriteByte(':')
+		buffer.Write(additionalMembers[name])
+	}
+	buffer.WriteByte('}')
+	return buffer.Bytes(), nil
+}
+
+// jsonMemberNames returns the JSON member names of a struct's fields.
+func jsonMemberNames(value any) []string {
+	valueType := reflect.TypeOf(value)
+	names := make([]string, 0, valueType.NumField())
+	for index := range valueType.NumField() {
+		name, _, _ := strings.Cut(valueType.Field(index).Tag.Get("json"), ",")
+		names = append(names, name)
+	}
+	return names
 }
 
 // LoadFile validates path and snapshots each connection's non-secret configuration.

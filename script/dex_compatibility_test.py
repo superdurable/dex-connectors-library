@@ -8,11 +8,15 @@ from pathlib import Path
 from unittest.mock import patch
 
 from script.dex_compatibility import (
+    CONNECTION_RECORD_FIXTURES,
+    CREDENTIAL_ISOLATION_FIXTURE,
+    CREDENTIAL_ISOLATION_MODULE_PATH,
     connector_releases,
     create_module_proxy,
     dex_web_compatibility_sources,
     dex_web_compatibility_test_names,
     example_consumer_name,
+    fixture_module_path,
     flow_examples,
     manifests,
     parse_connector_directories,
@@ -112,6 +116,7 @@ class DexWebCompatibilityTestSelectionTest(unittest.TestCase):
         names = dex_web_compatibility_test_names(dex_web_compatibility_sources(ROOT))
         self.assertIn("TestExternalConnectorCompatibility", names)
         self.assertIn("TestStudioCommandCredentialIsolation", names)
+        self.assertIn("TestConnectorConnectionRecordContract", names)
 
     def test_only_top_level_test_functions_are_selected(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -161,6 +166,20 @@ class DexWebCompatibilityTestSelectionTest(unittest.TestCase):
         output = "--- PASS: TestConnectorOAuthUsesPKCE (0.02s)\n    --- PASS: TestSlackOAuthRenamed/phase (0.01s)\n"
         with self.assertRaisesRegex(RuntimeError, "TestSlackOAuth"):
             require_dex_web_security_tests_passed(output, ("TestConnectorOAuth", "TestSlackOAuth"))
+
+
+class DexWebFixtureTest(unittest.TestCase):
+    def test_credential_isolation_keeps_its_module_path(self) -> None:
+        self.assertEqual(CREDENTIAL_ISOLATION_MODULE_PATH, fixture_module_path(CREDENTIAL_ISOLATION_FIXTURE))
+
+    def test_connection_record_fixtures_cover_single_and_multiple_named_methods(self) -> None:
+        selections = []
+        for fixture in CONNECTION_RECORD_FIXTURES:
+            manifest = (ROOT / fixture / "connector.yaml").read_text()
+            self.assertIn("    methods:\n", manifest, fixture)
+            selections.append("multiple" if "    selection: multiple\n" in manifest else "single")
+        self.assertEqual(["single", "multiple"], selections)
+        self.assertEqual(len(CONNECTION_RECORD_FIXTURES), len({fixture_module_path(fixture) for fixture in CONNECTION_RECORD_FIXTURES}))
 
 
 if __name__ == "__main__":

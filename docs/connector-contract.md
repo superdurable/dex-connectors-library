@@ -340,6 +340,14 @@ from the generated fixture test
 "credentials": {"auth_methods": ["anthropic"], "anthropic_api_key": "anthropic-test-key"}
 ```
 
+Dex Web also writes the selection beside the record's other members as
+`authMethodId` or `authMethodIds`. `localconfig` accepts record members it does
+not model, such as these, and a credential refresh writes them back unchanged.
+The file's own members and `schemaVersion` stay strict, and connectors still
+decode `configuration` and `credentials` strictly. The Dex compatibility gate
+proves this against the files released Dex Web writes; see
+[Acceptance](acceptance.md).
+
 Dex Web writes non-secret operation-use values to the sibling
 `use-configurations.json` file. `localconfig.LoadFile` snapshots this sidecar at
 application startup. Applications load one value with

@@ -237,7 +237,9 @@ is terminal for that operation and must not create a refresh loop.
 `localconfig.NewRefreshingCredentialProvider` reloads the connection after
 acquiring a process-local lock, so concurrent calls refresh once. A successful
 refresh must return a future expiry and the complete replacement credential
-value. The local provider writes that value through an atomic `0600` file
+value. The rewrite keeps every record member the SDK does not model, such as
+Dex Web's `authMethodId`, so a newer Dex Web's records survive a refresh. The
+local provider writes that value through an atomic `0600` file
 replacement before returning it. A retryable failed refresh leaves the existing
 file unchanged. A driver wraps terminal provider responses such as
 `invalid_grant` with `NewReauthorizationRequiredError`; the local provider then
