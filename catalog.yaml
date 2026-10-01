@@ -18,4 +18,5 @@ directories:
   - connectors/spotify
   - connectors/stripe
   - connectors/superdurable/llm
+  - connectors/superdurable/webhook
   - connectors/xai
