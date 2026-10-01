@@ -9,6 +9,7 @@ directories:
   - connectors/deepseek
   - connectors/freshworks/freshdesk
   - connectors/github
+  - connectors/google/drive
   - connectors/google/gemini
   - connectors/google/gmail
   - connectors/google/spreadsheet

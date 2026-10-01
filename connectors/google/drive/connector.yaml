@@ -1,0 +1,216 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: google-drive
+  displayName: Google Drive
+  description: Find Google Drive files by name, read metadata and bounded text, and upload files without creating duplicates on retry.
+  company: Google
+  version: v0.1.0
+spec:
+  provider: google
+  codegen:
+    go:
+      package: drive
+  configuration:
+    fields:
+      - name: endpoint
+        goName: Endpoint
+        type: url
+        description: Google API root URL to which the connector appends /drive/v3 and /upload/drive/v3; leave blank for Google's public API. Enter an absolute HTTPS URL only for an explicitly supported compatible gateway.
+        required: false
+        default: https://www.googleapis.com
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete Google Drive search or metadata response in bytes; enter a positive integer only to change the safety limit. Oversized responses select invalidResponse.
+        required: false
+        default: 1048576
+      - name: maxTextBytes
+        goName: MaxTextBytes
+        type: integer
+        description: Maximum UTF-8 text in bytes that readFileText returns from one download or Google Workspace export; enter a positive integer only to read larger files. Larger files select tooLarge, and Google also caps every export at 10 MB.
+        required: false
+        default: 1048576
+      - name: maxUploadBytes
+        goName: MaxUploadBytes
+        type: integer
+        description: Maximum file content in bytes that uploadFile sends in one multipart request; enter a positive integer no larger than Google's 5 MiB multipart limit only to lower the safety limit. Larger content selects defect before any request.
+        required: false
+        default: 5242880
+      - name: searchPageSize
+        goName: SearchPageSize
+        type: integer
+        description: Number of files searchFiles requests per page when the Step input leaves pageSize at zero; enter a whole number from 1 to 100 only to change the trade-off that smaller pages return sooner and larger pages need fewer requests.
+        required: false
+        default: 25
+  auth:
+    defaultMethod: google-oauth
+    methods:
+      - id: google-oauth
+        displayName: Google OAuth
+        description: Recommended for personal Google accounts and ordinary Google Workspace users; Dex opens Google consent and refreshes short-lived access tokens automatically.
+        recommended: true
+        type: oauth2
+        connectionKind: google-drive-oauth
+        fields:
+          - name: oauth_client_id
+            goName: OAuthClientID
+            type: string
+            description: Non-secret OAuth client ID copied from https://console.cloud.google.com/apis/credentials after opening APIs & Services > Credentials > OAuth 2.0 Client IDs; the value ends in .apps.googleusercontent.com and blank means authorization or refresh cannot start.
+            required: true
+          - name: oauth_client_secret
+            goName: OAuthClientSecret
+            type: secretString
+            description: Secret OAuth client secret copied once from the selected Web application at https://console.cloud.google.com/apis/credentials; store it only in the credential form and blank means authorization or refresh cannot start.
+            required: true
+          - name: access_token
+            goName: AccessToken
+            type: secretString
+            description: Secret short-lived Google OAuth access token produced automatically after consent and refreshed before expiry; never enter it manually.
+            required: true
+          - name: refresh_token
+            goName: RefreshToken
+            type: secretString
+            description: Secret long-lived refresh token returned by Google because offline access is requested; Dex stores and rotates it automatically, and blank means reauthorization is required.
+            required: true
+        guide:
+          startURL: https://console.cloud.google.com/apis/credentials
+          steps:
+            - Select a Google Cloud project, open APIs & Services > Library, search Google Drive API, and select Enable.
+            - Open Google Auth Platform > Branding, Audience, and Data Access, then add the displayed drive.readonly and drive.file scopes; drive.readonly is a restricted scope, so keep an External app in Testing with listed test users, use an Internal Workspace audience, or complete Google's restricted-scope verification before publishing.
+            - Open Clients > Create client > Web application, add the exact Redirect URI shown by Dex Web, then copy the client ID and one-time client secret into their fields.
+            - Complete consent with the Google account whose Drive the Flows read and write; Google Testing refresh tokens can expire after seven days, so use an Internal Workspace audience or a verified published app for long-lived use.
+        oauth2:
+          authorizationEndpoint: https://accounts.google.com/o/oauth2/v2/auth
+          tokenEndpoint: https://oauth2.googleapis.com/token
+          authorizationParameters: {access_type: offline, prompt: consent}
+          clientIDCredential: oauth_client_id
+          clientSecretCredential: oauth_client_secret
+          scopes: [https://www.googleapis.com/auth/drive.readonly, https://www.googleapis.com/auth/drive.file]
+          credentialMappings:
+            - {credential: access_token, source: access_token}
+            - {credential: refresh_token, source: refresh_token}
+          pkce: true
+      - id: workspace-domain-delegation
+        displayName: Workspace domain-wide delegation
+        description: Advanced administrator-only method for a Google Workspace domain; the service account mints delegated user tokens without interactive consent.
+        type: serviceAccount
+        connectionKind: google-drive-workspace-domain-delegation
+        fields:
+          - name: service_account_key
+            goName: ServiceAccountKey
+            type: secretString
+            description: Secret service-account JSON key downloaded from https://console.cloud.google.com/iam-admin/serviceaccounts after selecting the account > Keys > Add key > Create new key > JSON; blank means delegated token minting cannot start.
+            required: true
+          - name: delegated_user
+            goName: DelegatedUser
+            type: string
+            description: Complete Workspace user address whose Drive the Flows read and write, chosen by an administrator after authorizing the service account client ID at https://admin.google.com/ac/owl/domainwidedelegation; the value must be one user@example.com address and blank means no user can be impersonated.
+            required: true
+          - name: access_token
+            goName: AccessToken
+            type: secretString
+            description: Secret short-lived delegated access token minted automatically from the service-account assertion; never paste a token, and blank causes Dex to mint one before the next call.
+            required: false
+        guide:
+          startURL: https://console.cloud.google.com/iam-admin/serviceaccounts
+          steps:
+            - Select the Workspace-owned Google Cloud project, open APIs & Services > Library, and enable Google Drive API.
+            - Create a service account, open Details > Show advanced settings, and enable Google Workspace domain-wide delegation.
+            - Open the service account > Keys > Add key > Create new key > JSON, download the one-time private key, and paste the complete JSON document into the secret field.
+            - Copy the service account OAuth 2 Client ID, then open https://admin.google.com/ac/owl/domainwidedelegation and add that client ID with the displayed drive.readonly and drive.file scopes.
+            - Enter one managed Workspace user as delegated_user; personal @gmail.com accounts and users outside the administrator's domain cannot use this method.
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.2.0 <0.3.0"
+      backendCapabilities: [oauth.connection.manage, use.configuration.write, google.drive.folders-list]
+      mockScenarios: [not-configured, authorization-pending, connected, insufficient-scope, revoked, broker-unavailable, ready]
+      icon: icon.svg
+    commands:
+      - id: listFolders
+        capability: google.drive.folders-list
+        request:
+          method: GET
+          url: https://www.googleapis.com/drive/v3/files
+          credential: {field: access_token, scheme: bearer}
+          fixedQuery:
+            q: "mimeType = 'application/vnd.google-apps.folder' and trashed = false"
+            fields: "nextPageToken,files(id,name)"
+            orderBy: "name"
+            pageSize: "100"
+            corpora: "allDrives"
+            supportsAllDrives: "true"
+            includeItemsFromAllDrives: "true"
+          parameters:
+            - {name: pageToken, location: query, target: pageToken}
+    units:
+      - id: folderPicker
+        goName: FolderPicker
+        description: Select a folder listed from the authorized Google Drive account, or paste a folder ID or its drive.google.com/drive/folders link; the unit stores the provider folder ID plus the display name of a listed folder, and blank leaves the operation without a folder.
+        backendCapabilities: [google.drive.folders-list]
+        outputs:
+          - {name: folderId, goName: FolderID, type: string}
+          - {name: folderName, goName: FolderName, type: string}
+  operations:
+    - name: searchFiles
+      goName: SearchFiles
+      inputType: SearchFilesInput
+      outputType: SearchFilesOutput
+      kind: query
+      description: Find non-trashed files by exact or prefix name, MIME type, and parent folder, newest first, one bounded page at a time.
+      idempotency: none
+      branches:
+        - {id: found, goName: Found, description: Google Drive returned matching files or reported that more pages remain.}
+        - {id: notFound, goName: NotFound, description: No file matched and Google Drive reported no further pages., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Google conclusively rejected the search, such as a revoked grant or an expired page token.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized search response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &driveExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+    - name: getFile
+      goName: GetFile
+      inputType: GetFileInput
+      outputType: File
+      kind: query
+      description: Read the full metadata of one file by its Drive file ID.
+      idempotency: none
+      branches:
+        - {id: found, goName: Found, description: Google Drive returned the file metadata.}
+        - {id: notFound, goName: NotFound, description: The file does not exist or the connection cannot see it., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Google conclusively rejected the metadata read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized metadata response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *driveExecution
+    - name: readFileText
+      goName: ReadFileText
+      inputType: ReadFileTextInput
+      outputType: ReadFileTextOutput
+      kind: query
+      description: Read bounded UTF-8 text by exporting a Google Doc, Sheet, or Slides file or downloading a small text file.
+      idempotency: none
+      branches:
+        - {id: read, goName: Read, description: The file text was read within the configured limit.}
+        - {id: notFound, goName: NotFound, description: The file does not exist or the connection cannot see it., optional: true}
+        - {id: unsupportedContent, goName: UnsupportedContent, description: "The file is binary, a folder or shortcut, a Google Workspace type without a text export, or not valid UTF-8 text.", optional: true}
+        - {id: tooLarge, goName: TooLarge, description: The file text exceeds the configured limit or Google's export limit., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Google conclusively rejected the metadata read or content download., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized metadata response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *driveExecution
+    - name: uploadFile
+      goName: UploadFile
+      inputType: UploadFileInput
+      outputType: UploadFileOutput
+      kind: mutation
+      description: Create one file from text or bytes in an optional parent folder, reusing the file an earlier attempt of the same Step execution created.
+      idempotency: required
+      branches:
+        - {id: uploaded, goName: Uploaded, description: Google Drive created the file or returned the file an earlier attempt created.}
+        - {id: providerRejected, goName: ProviderRejected, description: "Google conclusively rejected the upload or duplicate lookup, such as a missing or read-only parent folder.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized duplicate-lookup response before any upload was sent., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The dispatched upload outcome cannot be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *driveExecution
