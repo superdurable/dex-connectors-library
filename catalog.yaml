@@ -4,6 +4,7 @@ directories:
   - connectors/alibaba/qwen
   - connectors/anthropic
   - connectors/asana
+  - connectors/atlassian/jira
   - connectors/deepseek
   - connectors/freshworks/freshdesk
   - connectors/github
