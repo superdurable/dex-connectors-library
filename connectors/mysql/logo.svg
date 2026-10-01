@@ -1,0 +1,9 @@
+<!-- Copyright (c) 2026 Super Durable -->
+<!-- SPDX-License-Identifier: MIT -->
+<!-- A generic database glyph in MySQL's brand colors; it does not reproduce Oracle's trademarked dolphin logo. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="MySQL">
+  <rect width="64" height="64" rx="14" fill="#00758F"/>
+  <path fill="#fff" d="M14 18c0-4 8-7 18-7s18 3 18 7v28c0 4-8 7-18 7s-18-3-18-7z"/>
+  <ellipse cx="32" cy="18" rx="18" ry="7" fill="#F29111"/>
+  <path fill="none" stroke="#00758F" stroke-width="3" d="M14 28c0 4 8 7 18 7s18-3 18-7M14 38c0 4 8 7 18 7s18-3 18-7"/>
+</svg>

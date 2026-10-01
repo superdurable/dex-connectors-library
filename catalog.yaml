@@ -26,6 +26,7 @@ directories:
   - connectors/mistral
   - connectors/monday
   - connectors/moonshot/kimi
+  - connectors/mysql
   - connectors/notion
   - connectors/openai
   - connectors/postgresql
