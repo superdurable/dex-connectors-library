@@ -1,0 +1,205 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: google-calendar
+  displayName: Google Calendar
+  description: List and read events in a bounded window, create and update events idempotently, and query free/busy intervals in Google Calendar.
+  company: Google
+  version: v0.1.0
+spec:
+  provider: google
+  codegen:
+    go:
+      package: calendar
+  configuration:
+    fields:
+      - name: endpoint
+        goName: Endpoint
+        type: url
+        description: Google Calendar API base URL; leave blank for Google's public v3 API. Enter an absolute HTTPS URL only for an explicitly supported compatible gateway.
+        required: false
+        default: https://www.googleapis.com/calendar/v3
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete Google Calendar API response in bytes; enter a positive integer only to change the safety limit. Oversized responses select invalidResponse.
+        required: false
+        default: 4194304
+  auth:
+    defaultMethod: google-oauth
+    methods:
+      - id: google-oauth
+        displayName: Google OAuth
+        description: Recommended for personal Google accounts and ordinary Google Workspace users; Dex opens Google consent and refreshes short-lived access tokens automatically.
+        recommended: true
+        type: oauth2
+        connectionKind: google-calendar-google-oauth
+        fields:
+          - name: oauth_client_id
+            goName: OAuthClientID
+            type: string
+            description: Non-secret OAuth client ID copied from https://console.cloud.google.com/apis/credentials after opening APIs & Services > Credentials > OAuth 2.0 Client IDs; the value ends in .apps.googleusercontent.com and blank means authorization or refresh cannot start.
+            required: true
+          - name: oauth_client_secret
+            goName: OAuthClientSecret
+            type: secretString
+            description: Secret OAuth client secret copied once from the selected Web application at https://console.cloud.google.com/apis/credentials; store it only in the credential form and blank means authorization or refresh cannot start.
+            required: true
+          - name: access_token
+            goName: AccessToken
+            type: secretString
+            description: Secret short-lived access token returned by Google after consent; Dex derives it automatically and refreshes it before expiry, so never enter it manually.
+            required: true
+          - name: refresh_token
+            goName: RefreshToken
+            type: secretString
+            description: Secret long-lived refresh token returned by Google because offline access is requested; Dex stores and rotates it automatically, and blank means reauthorization is required.
+            required: true
+        guide:
+          startURL: https://console.cloud.google.com/apis/credentials
+          steps:
+            - Select a Google Cloud project, open APIs & Services > Library, search Google Calendar API, and select Enable.
+            - Open Google Auth Platform > Branding, Audience, and Data Access; add the three displayed Calendar scopes (calendar.events, calendar.events.freebusy, and calendar.calendarlist.readonly) and add test users while an External app remains in Testing.
+            - Open APIs & Services > Credentials > Create credentials > OAuth client ID > Web application, add the exact Dex Redirect URI, then copy the client ID and client secret into their secret-safe fields.
+            - Complete consent with the Google account whose calendars the Flows read and edit, and keep every requested scope checked; Google Testing refresh tokens can expire after seven days, so publish the app or use an Internal Workspace audience for long-lived use.
+        oauth2:
+          authorizationEndpoint: https://accounts.google.com/o/oauth2/v2/auth
+          tokenEndpoint: https://oauth2.googleapis.com/token
+          authorizationParameters: {access_type: offline, prompt: consent}
+          clientIDCredential: oauth_client_id
+          clientSecretCredential: oauth_client_secret
+          scopes: [https://www.googleapis.com/auth/calendar.events, https://www.googleapis.com/auth/calendar.events.freebusy, https://www.googleapis.com/auth/calendar.calendarlist.readonly]
+          credentialMappings:
+            - {credential: access_token, source: access_token}
+            - {credential: refresh_token, source: refresh_token}
+          pkce: true
+      - id: workspace-domain-delegation
+        displayName: Workspace domain-wide delegation
+        description: Advanced administrator-only method for a Google Workspace domain; the service account mints delegated user tokens without interactive consent.
+        type: serviceAccount
+        connectionKind: google-calendar-workspace-domain-delegation
+        fields:
+          - name: service_account_key
+            goName: ServiceAccountKey
+            type: secretString
+            description: Secret service-account JSON key downloaded from https://console.cloud.google.com/iam-admin/serviceaccounts after selecting the account > Keys > Add key > Create new key > JSON; blank means delegated token minting cannot start.
+            required: true
+          - name: delegated_user
+            goName: DelegatedUser
+            type: string
+            description: Complete Workspace user address whose calendars the connector acts on, authorized for the service account client ID at https://admin.google.com/ac/owl/domainwidedelegation; the value must be one user@example.com address, the calendar ID primary then means this user's primary calendar, and blank means no user can be impersonated.
+            required: true
+          - name: access_token
+            goName: AccessToken
+            type: secretString
+            description: Secret short-lived delegated access token minted automatically from the service-account assertion; never paste a token and blank causes Dex to mint one before the next call.
+            required: false
+        guide:
+          startURL: https://console.cloud.google.com/iam-admin/serviceaccounts
+          steps:
+            - Select the Workspace-owned Google Cloud project, enable Google Calendar API under APIs & Services > Library, create a service account, open Details > Show advanced settings, and enable Google Workspace domain-wide delegation.
+            - Open the service account > Keys > Add key > Create new key > JSON, download the one-time private key, and paste the complete JSON document into the secret field.
+            - Copy the service account OAuth 2 Client ID, then open https://admin.google.com/ac/owl/domainwidedelegation and add that client ID with the three displayed Calendar scopes (calendar.events, calendar.events.freebusy, and calendar.calendarlist.readonly).
+            - Enter one managed Workspace user as delegated_user; personal @gmail.com accounts and users outside the administrator's domain cannot use this method.
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.2.0 <0.3.0"
+      backendCapabilities: [oauth.connection.manage, use.configuration.write, google.calendar.calendars-list]
+      mockScenarios: [not-configured, authorization-pending, connected, insufficient-scope, revoked, broker-unavailable, ready]
+      icon: icon.svg
+    commands:
+      - id: listCalendars
+        capability: google.calendar.calendars-list
+        request:
+          method: GET
+          url: https://www.googleapis.com/calendar/v3/users/me/calendarList
+          credential: {field: access_token, scheme: bearer}
+          fixedQuery:
+            fields: "nextPageToken,items(id,summary,summaryOverride,primary,accessRole,timeZone)"
+            maxResults: "250"
+          parameters:
+            - {name: pageToken, location: query, target: pageToken}
+            - {name: minAccessRole, location: query, target: minAccessRole}
+    units:
+      - id: calendarPicker
+        goName: CalendarPicker
+        description: Select a calendar from the authorized account's Google Calendar list; the unit stores the provider calendar ID and display name, and an operation that writes events lists only calendars the account can edit.
+        backendCapabilities: [google.calendar.calendars-list]
+        outputs:
+          - {name: calendarId, goName: CalendarID, type: string}
+          - {name: calendarName, goName: CalendarName, type: string}
+  operations:
+    - name: listEvents
+      goName: ListEvents
+      inputType: ListEventsInput
+      outputType: ListEventsOutput
+      kind: query
+      description: List one page of events on one calendar that overlap a bounded time window, with recurring events expanded and ordered by start.
+      idempotency: none
+      branches:
+        - {id: listed, goName: Listed, description: One page of events in the window was listed.}
+        - {id: notFound, goName: NotFound, description: The calendar does not exist or is not visible to the connection., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Google conclusively rejected the event listing., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized event page., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &googleCalendarExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+    - name: getEvent
+      goName: GetEvent
+      inputType: GetEventInput
+      outputType: Event
+      kind: query
+      description: Read one event by calendar and event ID.
+      idempotency: none
+      branches:
+        - {id: found, goName: Found, description: The event was read.}
+        - {id: notFound, goName: NotFound, description: The calendar or event does not exist or is not visible to the connection., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Google conclusively rejected the event read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized event., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *googleCalendarExecution
+    - name: createEvent
+      goName: CreateEvent
+      inputType: CreateEventInput
+      outputType: CreateEventOutput
+      kind: mutation
+      description: Create one timed or all-day event under a stable client-supplied event ID, so a retried Step returns the existing event instead of a duplicate.
+      idempotency: required
+      branches:
+        - {id: created, goName: Created, description: The event exists under the stable event ID.}
+        - {id: conflict, goName: Conflict, description: The stable event ID belongs to a deleted event or to one the connection cannot read., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Google conclusively rejected the event., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized event response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *googleCalendarExecution
+    - name: updateEvent
+      goName: UpdateEvent
+      inputType: UpdateEventInput
+      outputType: UpdateEventOutput
+      kind: mutation
+      description: Patch the summary, description, start and end, or attendees of one existing event, guarded by its ETag.
+      idempotency: required
+      branches:
+        - {id: updated, goName: Updated, description: The event holds the requested values.}
+        - {id: notFound, goName: NotFound, description: The calendar or event does not exist or is not visible to the connection., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Google conclusively rejected the event change., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized event response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *googleCalendarExecution
+    - name: queryFreeBusy
+      goName: QueryFreeBusy
+      inputType: QueryFreeBusyInput
+      outputType: QueryFreeBusyOutput
+      kind: query
+      description: Return the busy intervals of one or more calendars in a bounded time window.
+      idempotency: none
+      branches:
+        - {id: queried, goName: Queried, description: Google returned busy intervals for every requested calendar.}
+        - {id: incomplete, goName: Incomplete, description: "Google reported an error for at least one requested calendar, so its availability is unknown.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Google conclusively rejected the free/busy query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized free/busy response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *googleCalendarExecution
