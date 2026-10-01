@@ -1,0 +1,221 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: google-workspace-admin
+  displayName: Google Workspace Admin
+  description: Read and list Google Workspace user accounts, create, suspend, and restore them, and add or remove group members through the Admin SDK Directory API, converging instead of duplicating when a Step repeats.
+  company: Google
+  version: v0.1.0
+spec:
+  provider: google
+  codegen:
+    go:
+      package: workspaceadmin
+  configuration:
+    fields:
+      - name: endpoint
+        goName: Endpoint
+        type: url
+        description: Google API root URL to which the connector appends /admin/directory/v1; leave blank for Google's public Admin SDK host. Enter an absolute HTTPS URL only for an explicitly supported compatible gateway.
+        required: false
+        default: https://admin.googleapis.com
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete Admin SDK Directory API response in bytes; enter a positive integer only to change the safety limit, for example when listUsers pages of up to 500 accounts are larger. Blank keeps the limit, and an oversized response selects invalidResponse.
+        required: false
+        default: 4194304
+      - name: listUsersPageSize
+        goName: ListUsersPageSize
+        type: integer
+        description: Number of accounts listUsers requests per page when the Step input leaves pageSize at zero; enter a whole number from 1 to 500, Google's maximum, only to trade smaller, faster pages for fewer requests. Blank uses the displayed default.
+        required: false
+        default: 100
+  auth:
+    defaultMethod: workspace-domain-delegation
+    methods:
+      - id: workspace-domain-delegation
+        displayName: Workspace domain-wide delegation
+        description: Recommended for unattended provisioning; a super administrator authorizes a service account for the two Directory scopes, and the connector mints short-lived tokens as the delegated administrator without interactive consent.
+        recommended: true
+        type: serviceAccount
+        connectionKind: google-workspace-admin-domain-delegation
+        fields:
+          - name: service_account_key
+            goName: ServiceAccountKey
+            type: secretString
+            description: Secret service-account JSON key downloaded from https://console.cloud.google.com/iam-admin/serviceaccounts after selecting the account > Keys > Add key > Create new key > JSON; paste the complete document, which Dex keeps only in the credential store, and blank means delegated token minting cannot start.
+            required: true
+          - name: delegated_user
+            goName: DelegatedUser
+            type: string
+            description: Non-secret address of the Workspace administrator the service account acts as, such as provisioning-admin@example.com, holding the User Management Admin and Groups Admin roles assigned at https://admin.google.com under Account > Admin roles; it must be one bare address in your domain, and blank means no administrator can be impersonated.
+            required: true
+          - name: access_token
+            goName: AccessToken
+            type: secretString
+            description: Secret short-lived delegated access token minted automatically from the service-account assertion and replaced before it expires; never paste a token, and blank causes Dex to mint one before the next call.
+            required: false
+        guide:
+          startURL: https://console.cloud.google.com/iam-admin/serviceaccounts
+          steps:
+            - Select the Google Cloud project your Workspace organization owns, open APIs & Services > Library, search Admin SDK API, and select Enable.
+            - Open IAM & Admin > Service Accounts > Create service account; it needs no Cloud IAM role. Open the account, choose Show advanced settings, and copy the Client ID shown under Domain-wide delegation.
+            - Open the service account > Keys > Add key > Create new key > JSON, download the one-time private key, and paste the complete JSON document into the secret field.
+            - As a super administrator, open https://admin.google.com/ac/owl/domainwidedelegation (Security > Access and data control > API controls > Manage Domain Wide Delegation), choose Add new, paste the client ID, enter the displayed admin.directory.user and admin.directory.group.member scopes, and choose Authorize; Google says the change can take up to 24 hours.
+            - Enter as delegated_user an administrator with the User Management Admin and Groups Admin roles; a User Management Admin cannot change administrator accounts, so use a super administrator only when Flows must manage administrators.
+      - id: google-oauth
+        displayName: Google OAuth as an administrator
+        description: Interactive consent by one Workspace administrator; Dex refreshes the short-lived access token, and every operation runs with that administrator's privileges.
+        type: oauth2
+        connectionKind: google-workspace-admin-google-oauth
+        fields:
+          - name: oauth_client_id
+            goName: OAuthClientID
+            type: string
+            description: Non-secret OAuth client ID copied from https://console.cloud.google.com/apis/credentials after opening APIs & Services > Credentials > OAuth 2.0 Client IDs; the value ends in .apps.googleusercontent.com and blank means authorization or refresh cannot start.
+            required: true
+          - name: oauth_client_secret
+            goName: OAuthClientSecret
+            type: secretString
+            description: Secret OAuth client secret copied once from the selected Web application at https://console.cloud.google.com/apis/credentials; store it only in the credential form, and blank means authorization or refresh cannot start.
+            required: true
+          - name: access_token
+            goName: AccessToken
+            type: secretString
+            description: Secret short-lived Google OAuth access token produced automatically after the administrator's consent and refreshed before expiry; never enter it manually.
+            required: true
+          - name: refresh_token
+            goName: RefreshToken
+            type: secretString
+            description: Secret long-lived refresh token returned by Google because offline access is requested; Dex stores and rotates it automatically, so never enter it manually, and blank means reauthorization is required.
+            required: true
+        guide:
+          startURL: https://console.cloud.google.com/apis/credentials
+          steps:
+            - Select the Google Cloud project your Workspace organization owns, open APIs & Services > Library, search Admin SDK API, and select Enable.
+            - Open Google Auth Platform > Branding, Audience, and Data Access; choose the Internal audience so only accounts in your organization can authorize, and add the displayed admin.directory.user and admin.directory.group.member scopes.
+            - Open Clients > Create client > Web application, add the exact Redirect URI shown by Dex Web, then copy the client ID and one-time client secret into their fields.
+            - Complete consent as an administrator with the User Management Admin and Groups Admin roles, or as a super administrator, and keep both scopes checked; an External app in Testing needs listed test users and its refresh tokens can expire after seven days.
+        oauth2:
+          authorizationEndpoint: https://accounts.google.com/o/oauth2/v2/auth
+          tokenEndpoint: https://oauth2.googleapis.com/token
+          authorizationParameters: {access_type: offline, prompt: consent}
+          clientIDCredential: oauth_client_id
+          clientSecretCredential: oauth_client_secret
+          scopes: [https://www.googleapis.com/auth/admin.directory.user, https://www.googleapis.com/auth/admin.directory.group.member]
+          credentialMappings:
+            - {credential: access_token, source: access_token}
+            - {credential: refresh_token, source: refresh_token}
+          pkce: true
+  operations:
+    - name: getUser
+      goName: GetUser
+      inputType: GetUserInput
+      outputType: User
+      kind: query
+      description: Read one user account by primary email address, alias, or unique user ID.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Google returned the account.}
+        - {id: notFound, goName: NotFound, description: No account has this address or ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Google conclusively rejected the read, such as an administrator without user read privileges.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized account., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &directoryExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+    - name: listUsers
+      goName: ListUsers
+      inputType: ListUsersInput
+      outputType: ListUsersOutput
+      kind: query
+      description: List one bounded page of accounts in the administrator's customer account or one domain, optionally filtered with Google's user search syntax.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "Google returned one page of accounts, which may be empty."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Google conclusively rejected the listing, such as an unknown domain, an invalid query, or an expired page token.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized page., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *directoryExecution
+    - name: createUser
+      goName: CreateUser
+      inputType: CreateUserInput
+      outputType: CreateUserOutput
+      kind: mutation
+      description: Create one account with a generated password nobody receives, tagged with a stable key, so a repeated Step returns the account it created instead of a duplicate.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: created, goName: Created, description: The account exists and carries this Step's creation key.}
+        - {id: alreadyExists, goName: AlreadyExists, description: "The address belongs to another account, alias, or group that this Step did not create.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Google conclusively rejected the account, such as an unknown organizational unit or an unverified domain.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized account while reading back an existing address., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &directoryPropagationExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 8, totalDuration: 5m}
+    - name: suspendUser
+      goName: SuspendUser
+      inputType: SuspendUserInput
+      outputType: User
+      kind: mutation
+      description: Suspend one account so it cannot sign in, keeping its data; suspending a suspended account changes nothing.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: suspended, goName: Suspended, description: Google reports the account as suspended.}
+        - {id: notFound, goName: NotFound, description: No account has this address or ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Google conclusively rejected the change, such as a User Management Admin suspending an administrator.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized account., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *directoryExecution
+    - name: unsuspendUser
+      goName: UnsuspendUser
+      inputType: UnsuspendUserInput
+      outputType: User
+      kind: mutation
+      description: Restore sign-in for one suspended account; restoring an active account changes nothing.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: unsuspended, goName: Unsuspended, description: Google reports the account as not suspended.}
+        - {id: notFound, goName: NotFound, description: No account has this address or ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Google conclusively rejected the change or kept the account suspended, such as one Google suspended for abuse.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized account., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *directoryExecution
+    - name: addUserToGroup
+      goName: AddUserToGroup
+      inputType: AddUserToGroupInput
+      outputType: AddUserToGroupOutput
+      kind: mutation
+      description: Add one account to a group with a role; an existing membership is read back and returned instead of failing.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: added, goName: Added, description: The account is a direct member of the group.}
+        - {id: notFound, goName: NotFound, description: The group or the account does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Google conclusively rejected the membership, such as a disabled MANAGER role or missing group privileges.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized membership., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *directoryPropagationExecution
+    - name: removeUserFromGroup
+      goName: RemoveUserFromGroup
+      inputType: RemoveUserFromGroupInput
+      outputType: RemoveUserFromGroupOutput
+      kind: mutation
+      description: Remove one account's direct membership from a group; a membership that is already gone is reported as removed.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: removed, goName: Removed, description: The account is not a direct member of the group.}
+        - {id: notFound, goName: NotFound, description: The group does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Google conclusively rejected the removal or the group check., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized group check., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *directoryExecution
