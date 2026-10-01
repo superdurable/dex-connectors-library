@@ -16,6 +16,7 @@ directories:
   - connectors/google/spreadsheet
   - connectors/hackernews
   - connectors/hubspot
+  - connectors/intercom
   - connectors/linkedin
   - connectors/meta
   - connectors/mistral
