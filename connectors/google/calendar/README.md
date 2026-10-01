@@ -1,5 +1,9 @@
 # Google Calendar Connector
 
+> **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Google Calendar; no live Google account was used. See
+> [verification status](../../../docs/verification-status.md) for what is and
+> is not verified.
+
 The Google Calendar Connector supplies time as a Flow input. It exposes these
 operation-specific Dex Step factories:
 

@@ -1,5 +1,9 @@
 # BambooHR Connector
 
+> **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for BambooHR; no live BambooHR account was used. See
+> [verification status](../../docs/verification-status.md) for what is and
+> is not verified.
+
 The BambooHR Connector reads and writes the BambooHR person record from Dex
 Flows through BambooHR API v1. It exposes these operation-specific Dex Step
 factories:

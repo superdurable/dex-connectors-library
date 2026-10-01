@@ -1,5 +1,9 @@
 # Calendly Connector
 
+> **Verification status: partial live.** Only picker commands with a placeholder token reached Calendly; everything else ran on a real Dex stack against a local stand-in. No live Calendly account was used. See
+> [verification status](../../docs/verification-status.md) for what is and
+> is not verified.
+
 The Calendly connector connects a Dex application to the
 [Calendly API v2](https://developer.calendly.com/api-docs):
 

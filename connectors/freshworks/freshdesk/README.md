@@ -1,5 +1,9 @@
 # Freshdesk Connector
 
+> **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Freshdesk; no live Freshdesk account was used. See
+> [verification status](../../../docs/verification-status.md) for what is and
+> is not verified.
+
 The Freshdesk Connector reads and writes Freshdesk tickets from Dex Flows
 through Freshdesk API v2. It exposes these operation-specific Dex Step
 factories:

@@ -1,5 +1,9 @@
 # Notion Connector
 
+> **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Notion; no live Notion workspace was used. See
+> [verification status](../../docs/verification-status.md) for what is and
+> is not verified.
+
 The Notion connector runs Notion's public REST API as Dex Steps. It can search
 the pages and data sources shared with a connection by title, query a
 database's rows with typed filters, read a page's properties and plain-text

@@ -1,5 +1,9 @@
 # Google Workspace Admin Connector
 
+> **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for the Google Admin SDK; no real Google Workspace tenant was used. See
+> [verification status](../../../docs/verification-status.md) for what is and
+> is not verified.
+
 The Google Workspace Admin Connector provisions and deprovisions Google
 Workspace user accounts and group memberships through the Admin SDK Directory
 API. It exposes these operation-specific Dex Step factories:

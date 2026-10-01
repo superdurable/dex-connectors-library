@@ -1,5 +1,9 @@
 # Airtable Connector
 
+> **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Airtable; no live Airtable base was used. See
+> [verification status](../../docs/verification-status.md) for what is and
+> is not verified.
+
 The Airtable Connector reads and writes records in Airtable bases through the
 [Airtable Web API](https://airtable.com/developers/web/api/introduction). It
 exposes four operation-specific Dex Step factories:

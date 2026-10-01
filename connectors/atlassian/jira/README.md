@@ -1,5 +1,9 @@
 # Jira Cloud Connector
 
+> **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Jira; no live Atlassian site was used. See
+> [verification status](../../../docs/verification-status.md) for what is and
+> is not verified.
+
 This module searches, reads, creates, transitions, and comments on Jira Cloud
 issues through Atlassian's OAuth 2.0 (3LO) gateway,
 `https://api.atlassian.com/ex/jira/{cloudId}/rest/api/3`:

@@ -1,5 +1,9 @@
 # Zoom Connector
 
+> **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Zoom; no live Zoom account was used. See
+> [verification status](../../docs/verification-status.md) for what is and
+> is not verified.
+
 This module schedules and follows the authorized user's Zoom meetings through
 the Zoom Meetings API with user-level OAuth:
 
