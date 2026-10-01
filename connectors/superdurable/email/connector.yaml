@@ -1,0 +1,182 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: email
+  displayName: Email (IMAP and SMTP)
+  description: Search, read, flag, and move messages in any IMAP mailbox and send new messages or threaded replies over SMTP, for mail providers other than Gmail and Microsoft 365.
+  company: Super Durable
+  version: v0.1.0
+spec:
+  provider: email
+  codegen:
+    go:
+      package: email
+  configuration:
+    fields:
+      - name: imapHost
+        goName: IMAPHost
+        type: string
+        description: "Non-secret IMAP server host name without a scheme or port, such as imap.example.com, copied from your mail provider's IMAP settings page: Fastmail lists imap.fastmail.com at https://www.fastmail.help/hc/en-us/articles/1500000278342, iCloud Mail lists imap.mail.me.com at https://support.apple.com/en-us/102525, and Yahoo Mail lists imap.mail.yahoo.com at https://help.yahoo.com/kb/SLN4075.html; for a self-hosted server such as Dovecot, ask its administrator. Gmail and Microsoft 365 do not belong here: use the Gmail connector, and Microsoft 365 needs OAuth. Blank is invalid."
+        required: true
+      - name: imapPort
+        goName: IMAPPort
+        type: integer
+        description: "Non-secret IMAP TCP port from the same settings page, an integer from 1 through 65535. Fastmail, iCloud Mail, and Yahoo Mail all use the displayed default with implicit TLS; a server that offers only STARTTLS usually listens on 143 and needs imapSecurity set to startTLS. Blank uses the displayed default."
+        required: false
+        default: 993
+      - name: imapSecurity
+        goName: IMAPSecurity
+        type: enum
+        enum: [implicitTLS, startTLS]
+        description: "How the IMAP connection is encrypted. implicitTLS starts TLS as soon as the connection opens, which settings pages call SSL/TLS. startTLS connects and then upgrades with the STARTTLS command before any credential is sent. The connector never logs in without TLS, refuses a server that does not offer STARTTLS, and verifies the server certificate against the Worker's system trust store. Blank uses the displayed default."
+        required: false
+        default: implicitTLS
+      - name: smtpHost
+        goName: SMTPHost
+        type: string
+        description: "Non-secret SMTP submission host name without a scheme or port, such as smtp.example.com, from the same settings page: smtp.fastmail.com for Fastmail, smtp.mail.me.com for iCloud Mail, smtp.mail.yahoo.com for Yahoo Mail, or the host of a separate SMTP relay account that sends for this mailbox. Blank is invalid."
+        required: true
+      - name: smtpPort
+        goName: SMTPPort
+        type: integer
+        description: "Non-secret SMTP submission TCP port, an integer from 1 through 65535. Fastmail and Yahoo Mail accept the displayed default with implicit TLS; iCloud Mail and most relays use 587 with smtpSecurity set to startTLS. Port 25 is for server-to-server relay and is usually blocked for clients. Blank uses the displayed default."
+        required: false
+        default: 465
+      - name: smtpSecurity
+        goName: SMTPSecurity
+        type: enum
+        enum: [implicitTLS, startTLS]
+        description: "How the SMTP connection is encrypted. implicitTLS starts TLS as soon as the connection opens, which settings pages call SSL/TLS, usually on port 465. startTLS connects and upgrades with STARTTLS before authenticating, usually on port 587. The connector never authenticates or sends mail without TLS and verifies the server certificate against the Worker's system trust store. Blank uses the displayed default."
+        required: false
+        default: implicitTLS
+      - name: fromAddress
+        goName: FromAddress
+        type: string
+        description: "Non-secret sender address for the From header and the SMTP envelope, one bare address such as support@example.com. It must be the mailbox itself or an alias the provider lets this login send from, such as a Fastmail sending identity; providers reject other senders. The connector also builds each Message-ID from this address's domain. Blank uses username when it is a complete address and is invalid otherwise."
+        required: false
+      - name: fromName
+        goName: FromName
+        type: string
+        description: "Non-secret display name shown beside fromAddress, such as Acme Support, at most 128 characters without line breaks; non-ASCII names are encoded for mail headers. Blank sends the bare address."
+        required: false
+  auth:
+    type: apiKey
+    connectionKind: email-password
+    fields:
+      - name: username
+        goName: Username
+        type: string
+        description: "Non-secret IMAP login, usually the complete mailbox address such as support@example.com, as the provider's settings page states: Fastmail and Yahoo Mail use the complete address, and iCloud Mail's IMAP login can be the name before the @. It is also the SMTP login unless smtp_username is set. Blank is invalid."
+        required: true
+      - name: password
+        goName: Password
+        type: secretString
+        description: "Secret app password for username, created at the provider instead of the account password: Fastmail at https://app.fastmail.com/settings/security > Manage app passwords and access > New app password; iCloud Mail at https://account.apple.com > Sign-In and Security > App-Specific Passwords, which requires two-factor authentication; Yahoo Mail at https://login.yahoo.com/account/security > Create app password. It is also the SMTP password unless smtp_password is set. Dex keeps it out of Flow state, Results, and logs. Blank is invalid."
+        required: true
+      - name: smtp_username
+        goName: SMTPUsername
+        type: string
+        description: "Non-secret SMTP login when it differs from username, such as the complete address iCloud Mail requires for smtp.mail.me.com (https://support.apple.com/en-us/102525) or the user name of a separate SMTP relay account. Blank uses username."
+        required: false
+      - name: smtp_password
+        goName: SMTPPassword
+        type: secretString
+        description: "Secret SMTP password when it differs from password, such as the SMTP credential of a separate relay account created in that relay's console. Dex keeps it out of Flow state, Results, and logs. Blank uses password, which is right for Fastmail, iCloud Mail, and Yahoo Mail."
+        required: false
+    guide:
+      startURL: https://www.fastmail.help/hc/en-us/articles/1500000278342
+      steps:
+        - "Open your mail provider's IMAP and SMTP settings page and copy the host names, ports, and encryption into the fields below: Fastmail https://www.fastmail.help/hc/en-us/articles/1500000278342 (imap.fastmail.com 993 and smtp.fastmail.com 465, SSL/TLS), iCloud Mail https://support.apple.com/en-us/102525 (imap.mail.me.com 993 SSL/TLS, smtp.mail.me.com 587 STARTTLS), or Yahoo Mail https://help.yahoo.com/kb/SLN4075.html (imap.mail.yahoo.com 993, smtp.mail.yahoo.com 465). For a self-hosted server, ask its administrator."
+        - "Create an app password instead of using the account password: Fastmail https://app.fastmail.com/settings/security > Connected apps & API tokens > Manage app passwords and access > New app password with Mail, Contacts & Calendars access; iCloud https://account.apple.com > Sign-In and Security > App-Specific Passwords after turning on two-factor authentication; Yahoo https://login.yahoo.com/account/security > External connections > Create app password. Copy the password shown once into password."
+        - "Enter the IMAP login as username, usually the complete address. iCloud Mail's SMTP login is always the complete address, so set smtp_username when username is only the name before the @. Set smtp_username and smtp_password only for a separate SMTP relay account."
+        - "Set fromAddress when the sender differs from username. To revoke access, delete the app password at the same provider page; every operation then selects providerRejected until a new password is saved here."
+        - "Gmail and Microsoft 365 are not supported by this connection: use the Gmail connector for Gmail, and Microsoft 365 turned off password sign-in for IMAP and requires OAuth, which this release does not offer."
+  operations:
+    - name: searchMessages
+      goName: SearchMessages
+      inputType: SearchMessagesInput
+      outputType: SearchMessagesOutput
+      kind: query
+      description: Search one mailbox with IMAP SEARCH by sender, recipient, subject, date, and unseen state, returning a bounded newest-first list of message summaries with UIDs and Message-IDs.
+      idempotency: none
+      branches:
+        - {id: searched, goName: Searched, description: "The search ran; the Result holds up to limit matching summaries, newest first, and may be empty."}
+        - {id: providerRejected, goName: ProviderRejected, description: "The IMAP server conclusively refused the login, TLS, mailbox, or search, such as a wrong app password, a certificate that fails verification, or a mailbox that does not exist.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The IMAP server returned a response the connector cannot parse., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &emailIMAPExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+    - name: getMessage
+      goName: GetMessage
+      inputType: GetMessageInput
+      outputType: Message
+      kind: query
+      description: Read one message by mailbox, UIDVALIDITY, and UID without marking it seen, returning its headers, a bounded plain-text body, and attachment names and sizes without their content.
+      idempotency: none
+      branches:
+        - {id: found, goName: Found, description: The message was read.}
+        - {id: notFound, goName: NotFound, description: "The mailbox does not exist, its UIDVALIDITY changed, or no message has the UID.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "The IMAP server conclusively refused the login, TLS, or read.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The IMAP server returned a response or message the connector cannot parse., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *emailIMAPExecution
+    - name: sendMessage
+      goName: SendMessage
+      inputType: SendMessageInput
+      outputType: SentMessage
+      kind: mutation
+      description: Send one plain-text message over SMTP with a Message-ID derived from the Step's idempotency key. SMTP has no idempotency, so the Step runs with sync durability and submits at most once per Step execution.
+      idempotency: required
+      branches:
+        - {id: sent, goName: Sent, description: The SMTP server accepted the message for delivery.}
+        - {id: providerRejected, goName: ProviderRejected, description: "The SMTP server conclusively refused the login, TLS, sender, a recipient, or the message, so nothing was sent.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The message was submitted but the server's answer was lost, so it may have been sent; the connector never submits it again.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &emailSMTPExecution
+        executeMethodTimeout: 150s
+        heartbeatTimeout: 150s
+        durability: sync
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 10m}
+    - name: replyToMessage
+      goName: ReplyToMessage
+      inputType: ReplyToMessageInput
+      outputType: SentMessage
+      kind: mutation
+      description: Reply to one IMAP message over SMTP with In-Reply-To, References, and a Re subject so mail clients thread it, submitting at most once per Step execution like sendMessage.
+      idempotency: required
+      branches:
+        - {id: sent, goName: Sent, description: The SMTP server accepted the reply for delivery.}
+        - {id: notFound, goName: NotFound, description: "The source mailbox does not exist, its UIDVALIDITY changed, or no message has the UID, so nothing was sent.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "The IMAP or SMTP server conclusively refused the login, TLS, read, sender, a recipient, or the reply, so nothing was sent.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "The source message has no usable reply address or could not be parsed, so nothing was sent.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The reply was submitted but the server's answer was lost, so it may have been sent; the connector never submits it again.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *emailSMTPExecution
+    - name: moveMessage
+      goName: MoveMessage
+      inputType: MoveMessageInput
+      outputType: MovedMessage
+      kind: mutation
+      description: Move one message to another mailbox with IMAP MOVE; a repeated attempt that finds the message already moved reports it moved instead of failing.
+      idempotency: required
+      branches:
+        - {id: moved, goName: Moved, description: "The message is in the destination mailbox, moved now or by an earlier attempt."}
+        - {id: notFound, goName: NotFound, description: "The source mailbox does not exist, its UIDVALIDITY changed, or no message has the UID and none with the expected Message-ID is in the destination.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "The IMAP server conclusively refused the login, TLS, or move, such as a destination mailbox that does not exist or a server without MOVE or UIDPLUS.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *emailIMAPExecution
+    - name: setFlags
+      goName: SetFlags
+      inputType: SetFlagsInput
+      outputType: MessageFlags
+      kind: mutation
+      description: Set or clear the seen, flagged, and answered flags of one message to absolute values, so a repeated attempt changes nothing twice.
+      idempotency: required
+      branches:
+        - {id: updated, goName: Updated, description: "The message holds the requested flags, set now or by an earlier attempt."}
+        - {id: notFound, goName: NotFound, description: "The mailbox does not exist, its UIDVALIDITY changed, or no message has the UID.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "The IMAP server conclusively refused the login, TLS, or flag change, such as a read-only mailbox.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *emailIMAPExecution

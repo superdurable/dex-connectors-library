@@ -40,6 +40,7 @@ directories:
   - connectors/slack
   - connectors/spotify
   - connectors/stripe
+  - connectors/superdurable/email
   - connectors/superdurable/llm
   - connectors/superdurable/webhook
   - connectors/twilio/messaging
