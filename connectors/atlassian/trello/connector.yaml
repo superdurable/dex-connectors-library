@@ -1,0 +1,131 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: trello
+  displayName: Trello
+  description: List and read Trello cards on a board or list with open, closed, and due-date filters, create cards and comments without silent duplicates, and move, archive, reopen, reschedule, or relabel cards.
+  company: Atlassian
+  version: v0.1.0
+spec:
+  provider: trello
+  codegen:
+    go:
+      package: trello
+  configuration:
+    fields:
+      - name: endpoint
+        goName: Endpoint
+        type: url
+        description: "Trello REST API base URL that every board, list, and card path is appended to; leave blank for Trello's public API. Enter an absolute HTTPS URL only for an explicitly supported compatible gateway, or a loopback HTTP URL for a local test server; the API key and token are sent to whatever host this names."
+        required: false
+        default: https://api.trello.com/1
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Maximum complete Trello API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it. An oversized read selects invalidResponse, and an oversized response to an accepted createCard or addComment selects uncertain."
+        required: false
+        default: 4194304
+  auth:
+    type: apiKey
+    connectionKind: trello-api-key-token
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        description: "Secret Trello API key of your Trello app: open https://trello.com/apps/admin, open the app, select the Trello Auth tab, and choose Generate a new API Key. Trello documents no key format, so paste it exactly as shown. Trello allows a key to be public, but Dex Web stores it as a secret beside the token and sends both only to Trello in the Authorization header; blank means no Trello call can authenticate."
+        required: true
+      - name: token
+        goName: Token
+        type: secretString
+        description: "Secret Trello user token that lets the app act as your Trello member: open https://trello.com/1/authorize?expiration=never&scope=read,write&response_type=token&key= followed by the API key above, choose Allow, and copy the token from the page that opens. It grants access to everything the member can reach, so Dex Web stores it as a secret; blank means no Trello call can authenticate. Revoke it under Applications at https://trello.com/u/your-username/account."
+        required: true
+    guide:
+      startURL: https://trello.com/apps/admin
+      steps:
+        - Sign in to Trello as the member whose access the Flows should use; cards and comments are created as that member on every board the member can open, so a dedicated member narrows what a leaked token can reach.
+        - In the app admin portal, choose New, accept the Joint Development Agreement if Trello asks, name the app, and choose Create. An app that only calls the REST API does not need Power-Up capabilities.
+        - Open the app, select the Trello Auth tab, choose Generate a new API Key, and paste the API key into api_key. This connection does not use the secret shown on the same tab.
+        - "Open https://trello.com/1/authorize?expiration=never&scope=read,write&response_type=token&key= with your API key appended, check that it asks for read and write access, choose Allow, and paste the token from the page that follows into token. Use expiration=30days instead of never to force a monthly rotation."
+        - To revoke the token, open https://trello.com/u/your-username/account, find the app under Applications, and choose Revoke; then authorize again and paste the new token here. Trello answers a revoked or expired token with HTTP 401.
+  operations:
+    - name: listCards
+      goName: ListCards
+      inputType: ListCardsInput
+      outputType: ListCardsOutput
+      kind: query
+      description: List one bounded page of a board's or a list's open, closed, or all cards, newest first, optionally only cards due in a time range or with a given due-complete state, continuing with the oldest card ID on the page.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "One page of the board's or list's cards was read and filtered."}
+        - {id: notFound, goName: NotFound, description: The board or list does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Trello conclusively rejected the list, such as an invalid key or token, or a board the token's member cannot open.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Trello returned an invalid or oversized card page., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &trelloRepeatableExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+    - name: getCard
+      goName: GetCard
+      inputType: GetCardInput
+      outputType: Card
+      kind: query
+      description: Read one card by ID with its list, archive state, due and start dates, labels, members, position, and plain-text description.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: The card was read.}
+        - {id: notFound, goName: NotFound, description: The card does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Trello conclusively rejected the card read, such as an invalid key or token, or a card the token's member cannot open.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Trello returned an invalid or oversized card., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *trelloRepeatableExecution
+    - name: createCard
+      goName: CreateCard
+      inputType: CreateCardInput
+      outputType: CreateCardOutput
+      kind: mutation
+      description: Create one card in a list with a name, a plain-text description, a due date, labels, members, and a position. Trello has no idempotency key, so the Step runs with sync durability and sends the request at most once per Step execution.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: created, goName: Created, description: Trello created the card and returned its ID.}
+        - {id: providerRejected, goName: ProviderRejected, description: "Trello conclusively rejected the card, such as an unknown list, label, or member, or missing permission; nothing was created.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The request was sent but its outcome cannot be confirmed; Trello has no idempotency key, so the card may exist and must not be created again automatically.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      # Sync: an async fallback attempt re-sends a slow create, and Trello has no idempotency key.
+      execution: &trelloSingleDispatchExecution
+        executeMethodTimeout: 30s
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+    - name: updateCard
+      goName: UpdateCard
+      inputType: UpdateCardInput
+      outputType: UpdateCardOutput
+      kind: mutation
+      description: Move a card to a list, archive or reopen it, set or clear its due date and due-complete state, and set, add, or remove labels or set members; every change is an absolute value, so a repeated update leaves the same card.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: updated, goName: Updated, description: "Trello applied every requested change, including when the card already had those values, and the Value holds the card Trello returned."}
+        - {id: notFound, goName: NotFound, description: The card does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Trello conclusively rejected a change, such as an unknown list, label, or member, or missing permission.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Trello returned an invalid or oversized card, or a card that does not show a requested change.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *trelloRepeatableExecution
+    - name: addComment
+      goName: AddComment
+      inputType: AddCommentInput
+      outputType: AddCommentOutput
+      kind: mutation
+      description: Add one plain-text comment, authored by the token's member, to a card. Trello has no idempotency key, so the Step runs with sync durability and sends the request at most once per Step execution.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: added, goName: Added, description: Trello added the comment and returned its action ID.}
+        - {id: notFound, goName: NotFound, description: The card does not exist; nothing was added., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Trello conclusively rejected the comment, such as missing permission or invalid text; nothing was added.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The request was sent but its outcome cannot be confirmed; Trello has no idempotency key, so the comment may exist and must not be added again automatically.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *trelloSingleDispatchExecution
