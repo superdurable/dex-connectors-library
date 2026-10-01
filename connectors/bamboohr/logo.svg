@@ -1,0 +1,6 @@
+<!-- Copyright (c) 2026 Super Durable -->
+<!-- SPDX-License-Identifier: MIT -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="BambooHR">
+  <rect width="64" height="64" rx="12" fill="#73C41D"/>
+  <path fill="#fff" d="M21 12h8v15.5a12 12 0 1 1-8 11.3zm11.8 19a7 7 0 1 0 .4 14 7 7 0 0 0-.4-14z"/>
+</svg>
