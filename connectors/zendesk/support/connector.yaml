@@ -1,0 +1,107 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: zendesk-support
+  displayName: Zendesk Support
+  description: Search, read, create, and update Zendesk Support tickets, with duplicate-safe ticket creation and follow-up comments.
+  company: Zendesk
+  version: v0.1.0
+spec:
+  provider: zendesk
+  codegen:
+    go:
+      package: support
+  configuration:
+    fields:
+      - name: subdomain
+        goName: Subdomain
+        type: string
+        description: "Non-secret Zendesk account subdomain: the acme in https://acme.zendesk.com. Sign in at https://www.zendesk.com/login/ and copy the part before .zendesk.com from the Agent Workspace address bar, or from Admin Center > Account > Brand management > Brands for the default brand. Enter lowercase letters, digits, and hyphens only, without https:// or .zendesk.com; a host-mapped domain such as support.example.com does not work. Required: every API request is sent to this account."
+        required: true
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Maximum complete Zendesk API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when ticket descriptions are unusually large. An oversized response selects invalidResponse."
+        required: false
+        default: 4194304
+  auth:
+    type: apiKey
+    connectionKind: zendesk-support-api-token
+    fields:
+      - name: email
+        goName: Email
+        type: string
+        description: "Non-secret email address of the Zendesk agent or administrator the connector acts as, listed at https://{subdomain}.zendesk.com/admin under People > Team > Team members; enter one bare address such as agent@example.com. Tickets and comments the connector writes are authored by this user, and it can only read and change tickets that user can. It is stored with the API token, so replacing both takes effect without an application restart."
+        required: true
+      - name: api_token
+        goName: APIToken
+        type: secretString
+        description: "Secret Zendesk API token created at https://{subdomain}.zendesk.com/admin under Apps and integrations > APIs > API tokens > Add API token; Zendesk shows the full token only once, when you select Save. It is an opaque string of letters and digits. Stored only in this credential field; after deactivating or replacing a token in Admin Center, paste the new token here."
+        required: true
+    guide:
+      startURL: https://www.zendesk.com/login/
+      steps:
+        - Sign in to the Zendesk account as an administrator and open Admin Center at https://{subdomain}.zendesk.com/admin, where {subdomain} is the value entered in the subdomain field.
+        - Open Apps and integrations > APIs > API configuration, check Allow API token access, and select Save; token access is off by default.
+        - Open Apps and integrations > APIs > API tokens, select Add API token, enter a description such as Dex, select Save, and copy the token shown once into api_token.
+        - Enter the email address of the agent the connector acts as; Zendesk authenticates it as {email}/token with the token, and that agent's role limits which tickets the connector can read and change.
+        - Zendesk deletes tokens unused for 30 days and plans to stop accepting API tokens on April 30, 2027; to revoke access, open the token's options menu and choose Deactivate.
+  operations:
+    - name: searchTickets
+      goName: SearchTickets
+      inputType: SearchTicketsInput
+      outputType: SearchTicketsOutput
+      kind: query
+      description: Search tickets by status, requester email, tag, update time, and keywords, returning one bounded page and a cursor for the next.
+      idempotency: none
+      branches:
+        - {id: searched, goName: Searched, description: "One page of matching tickets was returned; it may be empty."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Zendesk conclusively rejected the search, such as invalid credentials, a missing permission, or an expired cursor.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Zendesk returned an invalid or oversized search page., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &zendeskExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
+    - name: getTicket
+      goName: GetTicket
+      inputType: GetTicketInput
+      outputType: TicketDetails
+      kind: query
+      description: Read one ticket by ID with its requester and a bounded list of its latest comments.
+      idempotency: none
+      branches:
+        - {id: found, goName: Found, description: The ticket and its latest comments were read.}
+        - {id: notFound, goName: NotFound, description: The ticket does not exist or is not visible to the connection's agent., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Zendesk conclusively rejected the ticket read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Zendesk returned an invalid or oversized ticket or comment page., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *zendeskExecution
+    - name: createTicket
+      goName: CreateTicket
+      inputType: CreateTicketInput
+      outputType: CreateTicketOutput
+      kind: mutation
+      description: Create one ticket with its first comment under a Zendesk Idempotency-Key derived from the Step, so a retried or re-dispatched Step returns the same ticket.
+      idempotency: required
+      branches:
+        - {id: created, goName: Created, description: "The ticket exists; a repeated attempt returns the ticket the first attempt created."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Zendesk conclusively rejected the ticket, such as an invalid requester, group, or assignee; no ticket was created.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Zendesk accepted the request but returned an invalid or oversized ticket, so the ticket may exist.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *zendeskExecution
+    - name: updateTicket
+      goName: UpdateTicket
+      inputType: UpdateTicketInput
+      outputType: UpdateTicketOutput
+      kind: mutation
+      description: Change the status, priority, assignee, group, or tags of one ticket and optionally add one public reply or internal note, applied at most once per Step.
+      idempotency: required
+      branches:
+        - {id: updated, goName: Updated, description: "The ticket holds the requested change; a repeated attempt finds its own earlier change instead of adding a second comment."}
+        - {id: notFound, goName: NotFound, description: The ticket does not exist or is not visible to the connection's agent., optional: true}
+        - {id: conflict, goName: Conflict, description: "The ticket changed after expectedUpdatedAt, so nothing was written.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Zendesk conclusively rejected the change, such as updating a closed ticket or assigning an unknown agent.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Zendesk returned an invalid or oversized ticket or audit response, so the change may have been applied.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *zendeskExecution
