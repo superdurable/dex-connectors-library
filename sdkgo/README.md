@@ -239,7 +239,10 @@ recording fails, and when a source's queue is full. It answers `400` for a
 request that fails verification or decoding, `405` for another method, and `413`
 for an oversized body. Responses never carry verifier or decoder error text.
 `RunningSourceCount` lets an application's readiness check wait for its
-bindings.
+bindings. A connector whose signing secret lives beside OAuth tokens sets
+`CredentialRefresh`, so each request resolves credentials through
+`sdkgo.ResolveCredential` and an expired access token is refreshed instead of
+answering `503`.
 
 A connector keeps one `Endpoint` per connection on its client, returns it as the
 `http.Handler` that applications mount, and returns `endpoint.NewSource(accept)`
@@ -296,6 +299,9 @@ hold the tokens, and checks its own required scopes. `oauthtoken` provides:
 - `TokenEndpoint.ExchangeRefreshToken` for the refresh-token grant, with the
   client presented by `ClientSecretPost`, `ClientSecretBasic`, or
   `PublicClient` for PKCE apps;
+- `TokenEndpoint.ExchangeClientCredentials` for the client credentials grant,
+  for own-account integrations that authenticate with a client ID and secret
+  instead of a user's consent (the driver repeats it when the token expires);
 - `TokenEndpoint.ExchangeJWTBearerAssertion`, `SignJWTBearerAssertion`, and
   `ParseRSAPrivateKeyPEM` for RS256 JWT-bearer grants such as service-account
   delegation;

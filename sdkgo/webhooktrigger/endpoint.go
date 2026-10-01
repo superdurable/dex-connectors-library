@@ -78,6 +78,10 @@ type EndpointConfig[C any, T any] struct {
 	Connection sdkgo.ConnectionRef
 	// Credentials resolves the connection's credentials for each request.
 	Credentials sdkgo.CredentialProvider[C]
+	// CredentialRefresh, when set, refreshes expiring credentials before VerifyRequest through
+	// sdkgo.ResolveCredential, so a Trigger on an OAuth connection keeps verifying after its access token
+	// expires. Nil resolves without refresh, which suits static signing secrets.
+	CredentialRefresh sdkgo.CredentialRefreshDriver[C]
 	// MaxBodyBytes is the largest accepted body in bytes. It must be positive.
 	MaxBodyBytes int64
 	// VerifyRequest authenticates a request. Wrap ErrVerificationUnavailable for a retryable failure.
@@ -284,6 +288,9 @@ func (endpoint *Endpoint[C, T]) recordAndQueue(ctx context.Context, event sdkgo.
 
 func (endpoint *Endpoint[C, T]) resolveCredentials(ctx context.Context, contents []byte) (C, error) {
 	call := endpoint.credentialCall(contents)
+	if endpoint.config.CredentialRefresh != nil {
+		return sdkgo.ResolveCredential(ctx, endpoint.config.Credentials, call, endpoint.config.CredentialRefresh)
+	}
 	if contextProvider, isContextProvider := endpoint.config.Credentials.(sdkgo.ContextCredentialProvider[C]); isContextProvider {
 		return contextProvider.ResolveContext(ctx, call)
 	}

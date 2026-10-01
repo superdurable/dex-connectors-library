@@ -377,3 +377,61 @@ func (writer lockedWriter) Write(contents []byte) (int, error) {
 	defer writer.mu.Unlock()
 	return writer.builder.Write(contents)
 }
+
+// refreshingCredentialProvider refreshes through the driver, as a local or hosted provider does.
+type refreshingCredentialProvider struct {
+	stored testCredentials
+}
+
+func (provider *refreshingCredentialProvider) Resolve(sdkgo.Call) (testCredentials, error) {
+	return provider.stored, nil
+}
+
+func (provider *refreshingCredentialProvider) ResolveWithRefresh(
+	ctx context.Context, _ sdkgo.Call, driver sdkgo.CredentialRefreshDriver[testCredentials],
+) (testCredentials, error) {
+	state := sdkgo.CredentialRefreshState[testCredentials]{Credentials: provider.stored, Now: time.Now()}
+	if !driver.RefreshRequired(state) {
+		return provider.stored, nil
+	}
+	result, err := driver.Refresh(ctx, state)
+	if err != nil {
+		return testCredentials{}, err
+	}
+	provider.stored = result.Credentials
+	return provider.stored, nil
+}
+
+type secretRestoringDriver struct{}
+
+func (secretRestoringDriver) RefreshRequired(state sdkgo.CredentialRefreshState[testCredentials]) bool {
+	return state.Credentials.secret == ""
+}
+
+func (secretRestoringDriver) Refresh(
+	_ context.Context, _ sdkgo.CredentialRefreshState[testCredentials],
+) (sdkgo.CredentialRefreshResult[testCredentials], error) {
+	return sdkgo.CredentialRefreshResult[testCredentials]{
+		Credentials: testCredentials{secret: "signing-secret"}, ExpiresAt: time.Now().Add(time.Hour),
+	}, nil
+}
+
+func TestEndpointRefreshesCredentialsBeforeVerifyingWhenConfigured(t *testing.T) {
+	for _, test := range []struct {
+		name         string
+		refresh      sdkgo.CredentialRefreshDriver[testCredentials]
+		expectedCode int
+	}{
+		{name: "refreshes expired credentials", refresh: secretRestoringDriver{}, expectedCode: http.StatusOK},
+		{name: "resolves without refresh by default", expectedCode: http.StatusServiceUnavailable},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			endpoint := newTestEndpoint(t, func(config *webhooktrigger.EndpointConfig[testCredentials, orderEvent]) {
+				config.Credentials = &refreshingCredentialProvider{}
+				config.CredentialRefresh = test.refresh
+			})
+			runSource(t, endpoint, endpoint.NewSource(nil), newRecordingTarget())
+			require.Equal(t, test.expectedCode, postWebhook(endpoint, "evt_refresh:paid", "signing-secret").Code)
+		})
+	}
+}
