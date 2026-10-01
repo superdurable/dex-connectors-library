@@ -9,17 +9,15 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/webhooktrigger"
 )
 
 const stripeSignatureHeader = "Stripe-Signature"
@@ -56,24 +54,6 @@ type stripeWebhookEvent struct {
 	} `json:"data"`
 }
 
-type checkoutSessionTriggerSource struct {
-	client        *Client
-	connection    sdkgo.ConnectionRef
-	configuration CheckoutSessionUpdatedTriggerConfiguration
-	deliveries    chan sdkgo.TriggerEvent[CheckoutSessionEvent]
-	active        bool
-	mu            sync.Mutex
-}
-
-type checkoutSessionRouteRegistry struct {
-	mu     sync.RWMutex
-	routes map[*checkoutSessionTriggerSource]sdkgo.TriggerTarget[CheckoutSessionEvent]
-}
-
-func newCheckoutSessionRouteRegistry() *checkoutSessionRouteRegistry {
-	return &checkoutSessionRouteRegistry{routes: make(map[*checkoutSessionTriggerSource]sdkgo.TriggerTarget[CheckoutSessionEvent])}
-}
-
 // Validate checks that every configured Stripe event type is supported and unique.
 func (configuration CheckoutSessionUpdatedTriggerConfiguration) Validate() error {
 	seen := make(map[string]bool, len(configuration.EventTypes))
@@ -108,97 +88,46 @@ func (client *Client) checkoutSessionUpdatedTriggerSource(
 	if err := configuration.Validate(); err != nil {
 		panic(err)
 	}
-	return &checkoutSessionTriggerSource{
-		client: client, connection: connection, configuration: configuration,
-		deliveries: make(chan sdkgo.TriggerEvent[CheckoutSessionEvent], 64),
+	endpoint, err := client.checkoutSessionWebhookEndpoint(connection)
+	if err != nil {
+		panic(err)
 	}
+	return endpoint.NewSource(func(event sdkgo.TriggerEvent[CheckoutSessionEvent]) bool {
+		return configuration.accepts(event.Payload.Type)
+	})
 }
 
-// Run makes this binding available to the client's webhook handler until cancellation.
-func (source *checkoutSessionTriggerSource) Run(ctx context.Context, target sdkgo.TriggerTarget[CheckoutSessionEvent]) error {
-	if target == nil {
-		return fmt.Errorf("Stripe Checkout Session trigger target is required")
+// checkoutSessionWebhookEndpoint returns the connection's shared endpoint, creating it on first use.
+func (client *Client) checkoutSessionWebhookEndpoint(
+	connection sdkgo.ConnectionRef,
+) (*webhooktrigger.Endpoint[Credentials, CheckoutSessionEvent], error) {
+	client.checkoutSessionEndpointsMu.Lock()
+	defer client.checkoutSessionEndpointsMu.Unlock()
+	if endpoint, found := client.checkoutSessionEndpoints[connection]; found {
+		return endpoint, nil
 	}
-	source.mu.Lock()
-	if source.active {
-		source.mu.Unlock()
-		return fmt.Errorf("Stripe Checkout Session trigger source is already running")
-	}
-	source.active = true
-	source.mu.Unlock()
-	source.client.checkoutSessionRoutes.activate(source, target)
-	defer func() {
-		source.client.checkoutSessionRoutes.deactivate(source)
-		source.mu.Lock()
-		source.active = false
-		source.mu.Unlock()
-	}()
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case event := <-source.deliveries:
-			if err := sdkgo.DeliverTrigger(ctx, target, event); err != nil {
-				return err
+	endpoint, err := webhooktrigger.NewEndpoint(webhooktrigger.EndpointConfig[Credentials, CheckoutSessionEvent]{
+		ConnectorID: ConnectorID, TriggerName: CheckoutSessionUpdatedTriggerDefinition.Trigger.TriggerName,
+		Connection: connection, Credentials: client.credentials, MaxBodyBytes: client.webhookMaxBodyBytes,
+		VerifyRequest: func(request webhooktrigger.Request, credentials Credentials) error {
+			if credentials.WebhookSecret.Reveal() == "" {
+				return webhooktrigger.ErrVerificationUnavailable
 			}
-		}
+			return verifyWebhookSignature(
+				request.Body, request.Header.Get(stripeSignatureHeader), credentials.WebhookSecret.Reveal(),
+				request.ReceivedAt, client.webhookTolerance,
+			)
+		},
+		DecodeEvent: func(request webhooktrigger.Request) (sdkgo.TriggerEvent[CheckoutSessionEvent], bool, error) {
+			return decodeWebhookEvent(request.Body)
+		},
+		Now: client.now,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("Stripe webhook endpoint: %w", err)
 	}
-}
-
-func (registry *checkoutSessionRouteRegistry) activate(
-	source *checkoutSessionTriggerSource,
-	target sdkgo.TriggerTarget[CheckoutSessionEvent],
-) {
-	registry.mu.Lock()
-	defer registry.mu.Unlock()
-	registry.routes[source] = target
-}
-
-func (registry *checkoutSessionRouteRegistry) deactivate(source *checkoutSessionTriggerSource) {
-	registry.mu.Lock()
-	defer registry.mu.Unlock()
-	delete(registry.routes, source)
-}
-
-func (registry *checkoutSessionRouteRegistry) dispatch(
-	ctx context.Context,
-	event sdkgo.TriggerEvent[CheckoutSessionEvent],
-) (bool, bool, error) {
-	registry.mu.RLock()
-	type route struct {
-		source *checkoutSessionTriggerSource
-		target sdkgo.TriggerTarget[CheckoutSessionEvent]
-	}
-	routes := make([]route, 0, len(registry.routes))
-	for source, target := range registry.routes {
-		routes = append(routes, route{source: source, target: target})
-	}
-	registry.mu.RUnlock()
-	if len(routes) == 0 {
-		return false, false, nil
-	}
-	matched := false
-	deliveries := make([]route, 0, len(routes))
-	for _, route := range routes {
-		if !route.source.configuration.accepts(event.Payload.Type) {
-			continue
-		}
-		matched = true
-		if err := sdkgo.PrepareTriggerDelivery(ctx, route.target, event); err != nil {
-			return true, true, err
-		}
-		deliveries = append(deliveries, route)
-	}
-	for _, delivery := range deliveries {
-		select {
-		case <-ctx.Done():
-			return true, matched, ctx.Err()
-		case delivery.source.deliveries <- event:
-		default:
-			return true, matched, fmt.Errorf("Stripe Checkout Session trigger delivery queue is full")
-		}
-	}
-	return true, matched, nil
+	client.checkoutSessionEndpoints[connection] = endpoint
+	return endpoint, nil
 }
 
 // CheckoutSessionWebhookHandler returns an HTTP handler for the configured Stripe webhook endpoint.
@@ -207,97 +136,7 @@ func (connection Connection) CheckoutSessionWebhookHandler() (http.Handler, erro
 	if err := connection.validate(); err != nil {
 		return nil, err
 	}
-	return &checkoutSessionWebhookHandler{connection: connection}, nil
-}
-
-type checkoutSessionWebhookHandler struct {
-	connection Connection
-}
-
-// ServeHTTP verifies and dispatches one Stripe webhook request.
-func (handler *checkoutSessionWebhookHandler) ServeHTTP(response http.ResponseWriter, request *http.Request) {
-	if request.Method != http.MethodPost {
-		response.Header().Set("Allow", http.MethodPost)
-		http.Error(response, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	contents, err := io.ReadAll(io.LimitReader(request.Body, handler.connection.client.webhookMaxBodyBytes+1))
-	if err != nil {
-		http.Error(response, "invalid request body", http.StatusBadRequest)
-		return
-	}
-	if int64(len(contents)) > handler.connection.client.webhookMaxBodyBytes {
-		http.Error(response, "request body too large", http.StatusRequestEntityTooLarge)
-		return
-	}
-	call := stripeWebhookCredentialCall(handler.connection.reference, contents)
-	credentials, err := resolveWebhookCredentials(
-		request.Context(), handler.connection.client.credentials, call,
-	)
-	if err != nil || credentials.WebhookSecret.Reveal() == "" {
-		http.Error(response, "webhook temporarily unavailable", http.StatusServiceUnavailable)
-		return
-	}
-	if err := verifyWebhookSignature(
-		contents,
-		request.Header.Get(stripeSignatureHeader),
-		credentials.WebhookSecret.Reveal(),
-		handler.connection.client.now(),
-		handler.connection.client.webhookTolerance,
-	); err != nil {
-		http.Error(response, "invalid webhook signature", http.StatusBadRequest)
-		return
-	}
-	event, relevant, err := decodeWebhookEvent(contents)
-	if err != nil {
-		http.Error(response, "invalid webhook event", http.StatusBadRequest)
-		return
-	}
-	if !relevant {
-		response.WriteHeader(http.StatusOK)
-		return
-	}
-	hadActiveRoutes, _, err := handler.connection.client.checkoutSessionRoutes.dispatch(request.Context(), event)
-	if !hadActiveRoutes || err != nil {
-		http.Error(response, "webhook delivery temporarily unavailable", http.StatusServiceUnavailable)
-		return
-	}
-	response.WriteHeader(http.StatusOK)
-}
-
-func stripeWebhookCredentialCall(connection sdkgo.ConnectionRef, contents []byte) sdkgo.Call {
-	digest := sha256.New()
-	_, _ = digest.Write([]byte(ConnectorID))
-	_, _ = digest.Write([]byte{0})
-	_, _ = digest.Write([]byte(connection.Provider))
-	_, _ = digest.Write([]byte{0})
-	_, _ = digest.Write([]byte(connection.Name))
-	_, _ = digest.Write([]byte{0})
-	_, _ = digest.Write(contents)
-	identity := digest.Sum(nil)[:16]
-	identity[6] = (identity[6] & 0x0f) | 0x50
-	identity[8] = (identity[8] & 0x3f) | 0x80
-	encodedIdentity := hex.EncodeToString(identity)
-	return sdkgo.Call{
-		ID: sdkgo.CallID(encodedIdentity[0:8] + "-" + encodedIdentity[8:12] + "-" +
-			encodedIdentity[12:16] + "-" + encodedIdentity[16:20] + "-" + encodedIdentity[20:32]),
-		Connection: connection,
-		Operation: sdkgo.OperationRef{
-			ConnectorID: ConnectorID,
-			OperationID: "checkoutSessionUpdated",
-		},
-	}
-}
-
-func resolveWebhookCredentials(
-	ctx context.Context,
-	provider sdkgo.CredentialProvider[Credentials],
-	call sdkgo.Call,
-) (Credentials, error) {
-	if contextProvider, ok := provider.(sdkgo.ContextCredentialProvider[Credentials]); ok {
-		return contextProvider.ResolveContext(ctx, call)
-	}
-	return provider.Resolve(call)
+	return connection.client.checkoutSessionWebhookEndpoint(connection.reference)
 }
 
 func verifyWebhookSignature(contents []byte, header string, secret string, now time.Time, tolerance time.Duration) error {
@@ -372,8 +211,7 @@ type LocalCheckoutSessionUpdatedTriggerRoute struct {
 
 // CheckoutSessionWebhookRuntime runs one or more bindings and serves their shared Stripe webhook endpoint.
 type CheckoutSessionWebhookRuntime struct {
-	handler http.Handler
-	runners []sdkgo.TriggerRunner
+	endpointRunner *webhooktrigger.EndpointRunner
 }
 
 // NewLocalCheckoutSessionWebhookRuntime loads local connection and binding configuration and creates a
@@ -398,7 +236,7 @@ func NewLocalCheckoutSessionWebhookRuntime(
 	if err != nil {
 		return nil, err
 	}
-	runtime := &CheckoutSessionWebhookRuntime{handler: handler}
+	runners := make([]sdkgo.TriggerRunner, 0, len(routes))
 	bindings := make(map[string]bool, len(routes))
 	for _, route := range routes {
 		bindingName := strings.TrimSpace(route.BindingName)
@@ -419,40 +257,27 @@ func NewLocalCheckoutSessionWebhookRuntime(
 		if err != nil {
 			return nil, err
 		}
-		runtime.runners = append(runtime.runners, NewCheckoutSessionUpdatedTrigger(CheckoutSessionUpdatedTriggerConfig{
+		runners = append(runners, NewCheckoutSessionUpdatedTrigger(CheckoutSessionUpdatedTriggerConfig{
 			Connection: connection, ConnectionName: connectionName, BindingName: bindingName,
 			Configuration: configuration, Target: durableTarget,
 		}))
 	}
-	return runtime, nil
+	endpointRunner, err := webhooktrigger.NewEndpointRunner(handler, runners...)
+	if err != nil {
+		return nil, err
+	}
+	return &CheckoutSessionWebhookRuntime{endpointRunner: endpointRunner}, nil
 }
 
 // ServeHTTP receives the shared signed Stripe webhook endpoint.
 func (runtime *CheckoutSessionWebhookRuntime) ServeHTTP(response http.ResponseWriter, request *http.Request) {
-	runtime.handler.ServeHTTP(response, request)
+	runtime.endpointRunner.ServeHTTP(response, request)
 }
 
 // Run activates every configured trigger route until cancellation or a runner failure.
 func (runtime *CheckoutSessionWebhookRuntime) Run(ctx context.Context) error {
-	if runtime == nil || len(runtime.runners) == 0 {
+	if runtime == nil || runtime.endpointRunner == nil {
 		return fmt.Errorf("Stripe Checkout Session webhook runtime is not configured")
 	}
-	runContext, cancel := context.WithCancel(ctx)
-	defer cancel()
-	results := make(chan error, len(runtime.runners))
-	for _, runner := range runtime.runners {
-		go func(active sdkgo.TriggerRunner) { results <- active.Run(runContext) }(runner)
-	}
-	first := <-results
-	cancel()
-	for range len(runtime.runners) - 1 {
-		<-results
-	}
-	if ctx.Err() != nil {
-		return ctx.Err()
-	}
-	if errors.Is(first, context.Canceled) {
-		return nil
-	}
-	return first
+	return runtime.endpointRunner.Run(ctx)
 }

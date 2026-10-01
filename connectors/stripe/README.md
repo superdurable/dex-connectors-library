@@ -66,7 +66,9 @@ the paid ticket only after `checkout.session.async_payment_succeeded`, or after
 Load the file with `localconfig.LoadFromEnvironment`. Use
 `NewLocalCheckoutSessionWebhookRuntime` when several bindings share the same
 Stripe endpoint. The runtime gives every binding its own durable local inbox,
-activates every Trigger, and exposes an `http.Handler`:
+activates every Trigger, and exposes an `http.Handler`. Each connection has its
+own endpoint, built on `sdkgo/webhooktrigger`, so a request verified with one
+connection's signing secret reaches only that connection's bindings:
 
 ```go
 runtime, err := stripe.NewLocalCheckoutSessionWebhookRuntime(
