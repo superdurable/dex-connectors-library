@@ -1,0 +1,172 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: monday
+  displayName: monday.com
+  description: List a monday.com board's items with a typed column filter, read one item, create items and set typed column values under monday.com idempotency keys, and add updates to items.
+  company: monday
+  version: v0.1.0
+spec:
+  provider: monday
+  codegen:
+    go:
+      package: monday
+  configuration:
+    fields:
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Maximum complete monday.com API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when a board has many long-text columns. An oversized read selects invalidResponse, and an oversized response to an accepted createItem or addUpdate selects uncertain."
+        required: false
+        default: 4194304
+  auth:
+    defaultMethod: personal-api-token
+    methods:
+      - id: personal-api-token
+        displayName: Personal API token
+        description: Recommended for one monday.com account; paste the personal API token of the user the Flows act as. Its permissions mirror that user's boards, and it does not expire until regenerated.
+        recommended: true
+        type: apiKey
+        connectionKind: monday-personal-api-token
+        fields:
+          - name: api_token
+            goName: APIToken
+            type: secretString
+            description: "Secret personal API token copied from https://monday.com after signing in: select your profile picture at the top right, choose Developers to open the Developer Center, then API token > Show, and copy the value; account admins can also use Administration > Connections > Personal API token. It is an opaque printable string with no documented prefix or length. Dex Web stores it only in this credential field; after choosing Regenerate in monday.com, paste the new token here, because monday.com rejects the old one at once. Blank means no monday.com call can authenticate."
+            required: true
+        guide:
+          startURL: https://monday.com/
+          steps:
+            - Sign in to the monday.com account as the user the Flows should act as; items and updates the connector writes are authored by that user, and the user's board, column, and item permissions limit what it can read and change.
+            - Select your profile picture at the top right and choose Developers, which opens the Developer Center in another tab; account admins can instead choose Administration > Connections > Personal API token.
+            - Choose API token > Show, copy the token into the secret field below, and keep it private; personal tokens carry every permission scope of the user.
+            - To revoke access, choose API token > Regenerate; the old token stops working immediately, so paste the replacement here.
+      - id: monday-oauth
+        displayName: monday.com OAuth 2.1
+        description: For a monday.com app installed through OAuth consent with the New OAuth Flow enabled; Dex requests the board and update scopes below and refreshes the expiring access token automatically.
+        type: oauth2
+        connectionKind: monday-oauth
+        fields:
+          - name: oauth_client_id
+            goName: OAuthClientID
+            type: string
+            description: "Non-secret Client ID copied from https://monday.com after selecting your profile picture > Developers > the app > Basic Information > App credentials; an opaque string, and blank means authorization and refresh cannot start."
+            required: true
+          - name: oauth_client_secret
+            goName: OAuthClientSecret
+            type: secretString
+            description: "Secret Client secret copied from the same Basic Information > App credentials page; Dex Web stores it only in this credential field and sends it only to monday.com's token endpoint, and blank means authorization and refresh cannot start."
+            required: true
+          - name: access_token
+            goName: AccessToken
+            type: secretString
+            description: "Secret short-lived access token, a JWT, returned by monday.com after consent; Dex derives it automatically and refreshes it before the expiry inside the token, so never enter it manually, and blank means Connect has not completed."
+            required: true
+          - name: refresh_token
+            goName: RefreshToken
+            type: secretString
+            description: "Secret rotating refresh token returned by monday.com's OAuth 2.1 flow; every refresh returns a replacement that Dex stores atomically, so never enter it manually, and a blank or rejected token means you must authorize again."
+            required: true
+        guide:
+          startURL: https://monday.com/
+          steps:
+            - Sign in to monday.com, select your profile picture > Developers to open the Developer Center, and choose Create app, or open an existing app; admins and members can create apps.
+            - Open OAuth & Permissions, add the scopes boards:read, boards:write, and updates:write, and add the exact Redirect URI shown below to the redirect URLs.
+            - On the same tab, create a draft app version, enable the New OAuth Flow toggle for it, and promote it to live, or set it Active for me while testing; the toggle makes monday.com issue expiring tokens with a refresh token and requires PKCE, which Dex sends.
+            - Open Basic Information > App credentials and copy the Client ID and Client secret into the fields below; the secret is sensitive.
+            - Choose Connect, pick the monday.com account if asked, and approve the requested scopes; the app may first need to be installed in that account by an admin.
+        oauth2:
+          protocol: oauth2
+          authorizationEndpoint: https://auth.monday.com/oauth2/authorize
+          tokenEndpoint: https://auth.monday.com/oauth_ms/oauth/token
+          clientIDCredential: oauth_client_id
+          clientSecretCredential: oauth_client_secret
+          scopes: [boards:read, boards:write, updates:write]
+          credentialMappings:
+            - {credential: access_token, source: access_token}
+            - {credential: refresh_token, source: refresh_token}
+          pkce: true
+  operations:
+    - name: listItems
+      goName: ListItems
+      inputType: ListItemsInput
+      outputType: ListItemsOutput
+      kind: query
+      description: List one bounded page of a board's active items that match a typed column-value filter, continuing with monday.com's items_page cursor.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "One page of the board's active items that match the filter was read; it can be empty."}
+        - {id: notFound, goName: NotFound, description: The board does not exist or the connection cannot see it., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "monday.com conclusively rejected the read, such as a filter on a missing column, an expired cursor, missing permission, or an exhausted daily call limit.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: monday.com returned an invalid or oversized page of items., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &mondayExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
+    - name: getItem
+      goName: GetItem
+      inputType: GetItemInput
+      outputType: Item
+      kind: query
+      description: Read one item by ID with its group, timestamps, and the text and JSON value of every requested column.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: The item was read.}
+        - {id: notFound, goName: NotFound, description: "The item does not exist, the connection cannot see it, or it is archived or deleted and inactive items were not requested.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: monday.com conclusively rejected the item read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: monday.com returned an invalid or oversized item., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *mondayExecution
+    - name: createItem
+      goName: CreateItem
+      inputType: CreateItemInput
+      outputType: CreateItemOutput
+      kind: mutation
+      description: Create one item on a board, optionally in a group, with typed column values; every attempt of the Step sends the same monday.com Idempotency-Key, so a repeated dispatch returns the first item instead of creating another.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: created, goName: Created, description: "monday.com created the item, or replayed the item this Step already created, and returned it."}
+        - {id: notFound, goName: NotFound, description: "The board or group does not exist or the connection cannot see it; nothing was created.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "monday.com conclusively rejected the item, such as an invalid column value, a missing status label, the board's item limit, or missing permission; nothing was created.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "monday.com accepted the mutation but returned an unusable item, so the item may exist and must not be created again automatically.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      # Async: every attempt carries the Step's Idempotency-Key, and the five-minute window stays inside monday.com's 30-minute replay cache.
+      # Ten attempts let a re-dispatched attempt wait out IDEMPOTENCY_CONFLICT answers while a slow first attempt finishes.
+      execution: &mondayKeyedWriteExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 10, totalDuration: 5m}
+    - name: updateItemColumnValues
+      goName: UpdateItemColumnValues
+      inputType: UpdateItemColumnValuesInput
+      outputType: UpdateItemColumnValuesOutput
+      kind: mutation
+      description: Set typed absolute values on columns of one item, so a repeated or duplicated update leaves the item unchanged; every attempt also sends the Step's Idempotency-Key.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: updated, goName: Updated, description: monday.com set the column values and returned the item.}
+        - {id: notFound, goName: NotFound, description: "The board or item does not exist or the connection cannot see it; nothing was changed.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "monday.com conclusively rejected the change, such as an invalid column value, a missing status label, or missing permission.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "monday.com returned an invalid or oversized item, so the values may have been set; repeating the Step is safe.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *mondayKeyedWriteExecution
+    - name: addUpdate
+      goName: AddUpdate
+      inputType: AddUpdateInput
+      outputType: AddUpdateOutput
+      kind: mutation
+      description: Add one plain-text update, monday.com's item comment, to an item; every attempt of the Step sends the same Idempotency-Key, so a repeated dispatch returns the first update instead of posting another.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: added, goName: Added, description: "monday.com added the update, or replayed the update this Step already added, and returned it."}
+        - {id: notFound, goName: NotFound, description: "The item does not exist or the connection cannot see it; nothing was added.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "monday.com conclusively rejected the update, such as missing permission; nothing was added.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "monday.com accepted the mutation but returned an unusable update, so the update may exist and must not be added again automatically.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *mondayKeyedWriteExecution
