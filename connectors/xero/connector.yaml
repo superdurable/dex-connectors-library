@@ -1,0 +1,207 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: xero
+  displayName: Xero
+  description: "Find Xero contacts by email, list and read invoices, raise invoices with exact decimal amounts in any enabled currency, and record payments against them, with every write sent under a Xero Idempotency-Key derived from the Step."
+  company: Xero
+  version: v0.1.0
+spec:
+  provider: xero
+  codegen:
+    go:
+      package: xero
+  configuration:
+    fields:
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Largest complete Xero API response, in bytes, that one call reads. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when invoices carry hundreds of line items. An oversized read selects invalidResponse, and an oversized answer to an accepted createInvoice or recordPayment selects uncertain."
+        required: false
+        default: 4194304
+  auth:
+    defaultMethod: custom-connection
+    methods:
+      - id: custom-connection
+        displayName: Custom Connection
+        description: "Recommended for one Xero organisation in Australia, New Zealand, the UK, or the US: a Xero Custom Connection authenticates as itself with a client ID and secret, and Dex requests its 30-minute access tokens automatically. The organisation needs a Custom Connection subscription; the Xero Demo Company is free for development."
+        recommended: true
+        type: apiKey
+        connectionKind: xero-custom-connection
+        fields:
+          - name: client_id
+            goName: ClientID
+            type: string
+            description: "Non-secret Client ID of the Custom Connection, copied from https://developer.xero.com/app/manage > the Custom Connection > Configuration after the authorising user has connected it to the organisation; it is a 32-character hexadecimal string, and blank means no access token can be requested."
+            required: true
+          - name: client_secret
+            goName: ClientSecret
+            type: secretString
+            description: "Secret client secret generated on the same Configuration page at https://developer.xero.com/app/manage with Generate a secret; Xero shows it once. Dex Web stores it only in this credential field and sends it only to https://identity.xero.com/connect/token, and blank means no access token can be requested."
+            required: true
+          - name: access_token
+            goName: AccessToken
+            type: secretString
+            description: "Secret 30-minute access token that Dex requests automatically from the client ID and secret with the client credentials grant and replaces five minutes before it expires, so never enter it manually; blank makes Dex request one before the next Xero call."
+            required: false
+        guide:
+          startURL: https://developer.xero.com/app/manage
+          steps:
+            - "Sign in to https://developer.xero.com/app/manage, choose New app, enter a name, select Custom connection as the integration type, and create the app."
+            - "Select the scopes accounting.invoices, accounting.payments, and accounting.contacts.read, which createInvoice, recordPayment, and the contact and invoice reads need, and enter the Xero user who will authorise the connection; Dex requests exactly these scopes, so a missing one makes Xero reject the token request."
+            - "The authorising user receives an email, chooses Connect, and selects the organisation. Only organisations with a Custom Connection subscription can be selected; the Xero Demo Company is free for development."
+            - "After Xero emails that the connection is authorised, open the app's Configuration page, copy the Client ID, choose Generate a secret, and copy both into the fields below. A Custom Connection reaches exactly one organisation, so there is nothing else to choose."
+            - "To revoke access, generate a new secret or disconnect the app from the organisation's Connected Apps page at https://apps.xero.com/connected."
+      - id: xero-oauth
+        displayName: Xero OAuth 2.0 web app
+        description: "For a Xero web app that a Xero user authorises through OAuth consent; Dex requests the accounting scopes below with offline_access and refreshes the 30-minute access tokens with Xero's rotating refresh tokens. One connection uses one of the organisations the user connects."
+        type: oauth2
+        connectionKind: xero-oauth
+        fields:
+          - name: client_id
+            goName: ClientID
+            type: string
+            description: "Non-secret Client ID of the Xero web app, copied from https://developer.xero.com/app/manage > the app > Configuration; it is a 32-character hexadecimal string, and blank means authorization and refresh cannot start."
+            required: true
+          - name: client_secret
+            goName: ClientSecret
+            type: secretString
+            description: "Secret client secret generated on the same Configuration page at https://developer.xero.com/app/manage with Generate a secret; Xero shows it once. Dex Web stores it only in this credential field and sends it only to https://identity.xero.com/connect/token, and blank means authorization and refresh cannot start."
+            required: true
+          - name: access_token
+            goName: AccessToken
+            type: secretString
+            description: "Secret 30-minute access token, a JWT, returned by Xero after consent; Dex derives it automatically and refreshes it five minutes before it expires, so never enter it manually, and blank means Connect has not completed."
+            required: true
+          - name: refresh_token
+            goName: RefreshToken
+            type: secretString
+            description: "Secret refresh token returned by Xero because offline_access is requested; Xero replaces it on every refresh and Dex stores the new one atomically, so never enter it manually. A blank token, or one unused for 60 days, means you must authorize again."
+            required: true
+        configuration:
+          fields:
+            - name: organisation
+              goName: Organisation
+              type: string
+              description: "Non-secret Xero organisation the connection uses: its name exactly as shown at the top left of Xero after signing in at https://go.xero.com, such as Demo Company (US), or its tenant ID, a UUID. Xero lets a user connect several organisations in one consent, and the connector reads them from https://api.xero.com/connections. Blank uses the only organisation the user connected and fails when there are several."
+              required: false
+        guide:
+          startURL: https://developer.xero.com/app/manage
+          steps:
+            - "Sign in to https://developer.xero.com/app/manage, choose New app, enter a name and your company or application URL, and select Web app as the integration type."
+            - "Open Dex Web at http://localhost with its port rather than http://127.0.0.1, because Xero accepts http://localhost redirect URIs for testing but never http://127.0.0.1; any other host must use https. On the app's Configuration page, add the exact Redirect URI shown below to Redirect URIs and save."
+            - "On the same Configuration page, copy the Client ID, choose Generate a secret, and copy both into the fields below; Xero shows the secret once."
+            - "Choose Authorize and sign in as a Xero user who can connect apps to the organisation. Dex requests offline_access, so Xero issues a refresh token, plus accounting.invoices, accounting.payments, and accounting.contacts.read. On the consent screen select the organisation, then enter its name in the organisation field if you connect more than one."
+            - "Xero refresh tokens expire after 60 days without use. To revoke access, disconnect the app from the organisation's Connected Apps page at https://apps.xero.com/connected."
+        oauth2:
+          protocol: oauth2
+          authorizationEndpoint: https://login.xero.com/identity/connect/authorize
+          tokenEndpoint: https://identity.xero.com/connect/token
+          clientIDCredential: client_id
+          clientSecretCredential: client_secret
+          scopes: [offline_access, accounting.invoices, accounting.payments, accounting.contacts.read]
+          credentialMappings:
+            - {credential: access_token, source: access_token}
+            - {credential: refresh_token, source: refresh_token}
+          pkce: false
+  operations:
+    - name: listContacts
+      goName: ListContacts
+      inputType: ListContactsInput
+      outputType: ContactPage
+      kind: query
+      description: "List one bounded page of contacts, at most 100, filtered by a case-insensitive search term, contact IDs, and modification time, with Xero's page count."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "One page of matching contacts was read; it can be empty."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Xero conclusively rejected the read, such as a revoked connection, a missing accounting.contacts.read scope, or a query over Xero's volume threshold.", optional: true}
+        - {id: dailyLimitReached, goName: DailyLimitReached, description: "Xero's daily API limit for the organisation is exhausted; the Receipt carries retryAfterSeconds until it resets.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Xero returned an invalid or oversized page of contacts., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &xeroReadExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
+    - name: findContactByEmail
+      goName: FindContactByEmail
+      inputType: FindContactByEmailInput
+      outputType: FindContactByEmailOutput
+      kind: query
+      description: "Resolve one contact by its exact email address with Xero's optimised EmailAddress filter, distinguishing one match, none, and several."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Exactly one contact has the email address.}
+        - {id: notFound, goName: NotFound, description: "No active contact has the email address.", optional: true}
+        - {id: ambiguous, goName: Ambiguous, description: "Several contacts have the email address; the output lists them so the application can choose.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Xero conclusively rejected the lookup, such as a revoked connection or a missing accounting.contacts.read scope.", optional: true}
+        - {id: dailyLimitReached, goName: DailyLimitReached, description: "Xero's daily API limit for the organisation is exhausted; the Receipt carries retryAfterSeconds until it resets.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Xero returned an invalid or oversized contact list., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *xeroReadExecution
+    - name: getInvoice
+      goName: GetInvoice
+      inputType: GetInvoiceInput
+      outputType: Invoice
+      kind: query
+      description: "Read one sales invoice or bill by InvoiceID or invoice number, with its line items, exact decimal totals, amounts due and paid, and applied payments."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: The invoice was read.}
+        - {id: notFound, goName: NotFound, description: The invoice does not exist in the organisation., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Xero conclusively rejected the read, such as a revoked connection or a missing accounting.invoices scope.", optional: true}
+        - {id: dailyLimitReached, goName: DailyLimitReached, description: "Xero's daily API limit for the organisation is exhausted; the Receipt carries retryAfterSeconds until it resets.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Xero returned an invalid or oversized invoice., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *xeroReadExecution
+    - name: listInvoices
+      goName: ListInvoices
+      inputType: ListInvoicesInput
+      outputType: InvoicePage
+      kind: query
+      description: "List one bounded page of invoices, at most 100 with line items, filtered by Xero status, contact, type, exact reference, and If-Modified-Since time, with Xero's page count."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "One page of matching invoices was read; it can be empty."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Xero conclusively rejected the read, such as a revoked connection, a missing accounting.invoices scope, or a query over Xero's volume threshold.", optional: true}
+        - {id: dailyLimitReached, goName: DailyLimitReached, description: "Xero's daily API limit for the organisation is exhausted; the Receipt carries retryAfterSeconds until it resets.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Xero returned an invalid or oversized page of invoices., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *xeroReadExecution
+    - name: createInvoice
+      goName: CreateInvoice
+      inputType: CreateInvoiceInput
+      outputType: CreateInvoiceOutput
+      kind: mutation
+      description: "Create one sales invoice or bill for a contact with exact decimal line amounts, a currency, a reference, and an optional invoice number; every attempt of the Step sends the same Xero Idempotency-Key, so a repeated dispatch returns the first invoice instead of creating another."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: created, goName: Created, description: "Xero created the invoice, or returned the invoice this Step already created, with its number and totals."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Xero conclusively rejected the invoice, such as an unknown contact or account code, a locked period, a plan's invoice limit, or a missing scope; nothing was created.", optional: true}
+        - {id: dailyLimitReached, goName: DailyLimitReached, description: "Xero's daily API limit for the organisation is exhausted before the request ran, so nothing was created; the Receipt carries retryAfterSeconds.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "Xero may have created the invoice but answered with an internal error, which it caches under the key, or with an unusable invoice; read it back by reference before creating again.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      # Async: every attempt carries the Step's Idempotency-Key, and four minutes keeps every retry inside Xero's six-minute key lifetime.
+      execution: &xeroKeyedWriteExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 4m}
+    - name: recordPayment
+      goName: RecordPayment
+      inputType: RecordPaymentInput
+      outputType: RecordPaymentOutput
+      kind: mutation
+      description: "Record one payment of an exact decimal amount against an approved invoice from a bank or payment-enabled account; every attempt of the Step sends the same Xero Idempotency-Key, so a repeated dispatch returns the first payment instead of paying twice."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: recorded, goName: Recorded, description: "Xero recorded the payment, or returned the payment this Step already recorded, with the invoice's remaining amount due."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Xero conclusively rejected the payment, such as an amount above the amount due, an invoice that is not approved, an account that cannot take payments, or a locked period; nothing was recorded.", optional: true}
+        - {id: dailyLimitReached, goName: DailyLimitReached, description: "Xero's daily API limit for the organisation is exhausted before the request ran, so nothing was recorded; the Receipt carries retryAfterSeconds.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "Xero may have recorded the payment but answered with an internal error, which it caches under the key, or with an unusable payment; read the invoice back before paying again.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *xeroKeyedWriteExecution
