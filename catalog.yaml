@@ -34,6 +34,7 @@ directories:
   - connectors/superdurable/llm
   - connectors/superdurable/webhook
   - connectors/twilio/messaging
+  - connectors/typeform
   - connectors/xai
   - connectors/zendesk/support
   - connectors/zoom

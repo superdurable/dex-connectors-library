@@ -1,0 +1,160 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: typeform
+  displayName: Typeform
+  description: "Receive signed Typeform form_response webhooks as typed, field-keyed answers, list and read forms, list responses, and create or update a form's webhook."
+  company: Typeform
+  version: v0.1.0
+spec:
+  provider: typeform
+  codegen:
+    go:
+      package: typeform
+  configuration:
+    fields:
+      - name: dataCenter
+        goName: DataCenter
+        type: enum
+        enum: [us, eu, newEu]
+        description: "Typeform Responses Data Center that stores this account's responses; it picks the API host of every operation. us is https://api.typeform.com, eu is https://api.eu.typeform.com, and newEu is https://api.typeform.eu. Only Enterprise accounts with the EU Responses Data Center choose eu or newEu, and their Typeform Customer Success Manager confirms which; listing responses in the wrong data center returns none instead of an error. Blank uses the default."
+        required: false
+        default: us
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Largest Typeform API response body, in bytes, that one call reads; a larger response selects invalidResponse. A listResponses page of many long answers is the usual reason to raise it, and a smaller pageSize avoids it too. Enter a positive integer only to change this safety limit. Blank uses the default."
+        required: false
+        default: 1048576
+      - name: webhookMaxBodyBytes
+        goName: WebhookMaxBodyBytes
+        type: integer
+        description: "Largest Typeform webhook request body, in bytes, that the responseSubmitted endpoint accepts; a larger body is answered 413 before its signature is checked. Each delivery carries the form definition and every answer, so raise it only for forms with very many questions or long text answers. Blank uses the default."
+        required: false
+        default: 1048576
+  auth:
+    methodLabel: Sign-in method
+    defaultMethod: personal-access-token
+    methods:
+      - id: personal-access-token
+        displayName: Personal access token
+        description: "Paste a token generated on the Typeform account's Personal tokens page; it reads that account's forms and responses and manages their webhooks."
+        recommended: true
+        type: apiKey
+        connectionKind: typeform-personal-access-token
+        fields:
+          - name: access_token
+            goName: AccessToken
+            type: secretString
+            description: "Secret Typeform personal access token copied once from https://admin.typeform.com/user/tokens after choosing Generate a new token with the scopes forms:read, responses:read, and webhooks:write. It looks like tfp_ followed by letters and digits and is sent only as a bearer token to the dataCenter API host. Required: no operation can run without it."
+            required: true
+          - name: webhook_secret
+            goName: WebhookSecret
+            type: secretString
+            description: "Secret you generate yourself, such as the output of openssl rand -hex 32, as https://www.typeform.com/developers/webhooks/secure-your-webhooks/ describes. upsertWebhook registers it as the webhook's secret, and the responseSubmitted endpoint checks every Typeform-Signature header with it. After changing it, run upsertWebhook again. Blank is fine for operations only; the endpoint then answers 503 and upsertWebhook selects defect."
+            required: false
+        guide:
+          startURL: https://admin.typeform.com/user/tokens
+          steps:
+            - "Sign in to Typeform as the account that owns the forms, open the menu next to your name, choose Account, then Personal tokens, and choose Generate a new token."
+            - "Name the token, select the scopes forms:read, responses:read, and webhooks:write, choose Generate token, and copy it; Typeform shows the tfp_ token only once."
+            - "Paste the token into access_token. To receive submissions, also paste a random secret such as the output of openssl rand -hex 32 into webhook_secret; upsertWebhook registers that same secret with Typeform."
+            - "Leave dataCenter blank unless the account is an Enterprise account in the EU Responses Data Center; then choose eu or newEu as its Typeform Customer Success Manager confirms, and generate the token in that region's Typeform admin."
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.2.0 <0.3.0"
+      backendCapabilities: [use.configuration.write, typeform.forms-list]
+      mockScenarios: [not-configured, connected]
+      icon: icon.svg
+    commands:
+      - id: listForms
+        capability: typeform.forms-list
+        request:
+          method: GET
+          url: https://api.typeform.com/forms
+          credential: {field: access_token, scheme: bearer}
+          fixedQuery: {page_size: "200"}
+          parameters:
+            - {name: page, location: query, target: page}
+      - id: listFormsNewEu
+        capability: typeform.forms-list
+        request:
+          method: GET
+          url: https://api.typeform.eu/forms
+          credential: {field: access_token, scheme: bearer}
+          fixedQuery: {page_size: "200"}
+          parameters:
+            - {name: page, location: query, target: page}
+    units:
+      - id: formPicker
+        goName: FormPicker
+        description: "Select one of the connected account's Typeform forms, listed live from Typeform, or paste a form ID; the unit stores the form ID, such as u6nXL7 from the form link https://form.typeform.com/to/u6nXL7."
+        backendCapabilities: [typeform.forms-list]
+        outputs:
+          - {name: formId, goName: FormID, type: string}
+  triggers:
+    - name: responseSubmitted
+      goName: ResponseSubmitted
+      eventType: FormResponseEvent
+      configurationType: ResponseSubmittedTriggerConfiguration
+      description: "Receive a signed Typeform form_response webhook for one submitted response, with its answers keyed by field ref and its hidden fields; the event ID is the form ID and response token."
+  operations:
+    - name: listForms
+      goName: ListForms
+      inputType: ListFormsInput
+      outputType: FormPage
+      kind: query
+      description: "List one page, 1 to 200 forms, of the account's forms, optionally filtered by a search string or workspace."
+      idempotency: none
+      branches:
+        - {id: listed, goName: Listed, description: "Typeform returned one page of forms and the page count."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Typeform conclusively rejected the request, such as an invalid token, a missing forms:read scope, or an unknown workspace.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Typeform returned a malformed or oversized response.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &typeformExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
+    - name: getForm
+      goName: GetForm
+      inputType: GetFormInput
+      outputType: Form
+      kind: query
+      description: "Read one form's fields, with each field's ref, type, title, and choices, and its hidden field names."
+      idempotency: none
+      branches:
+        - {id: found, goName: Found, description: "Typeform returned the form."}
+        - {id: notFound, goName: NotFound, description: "The form does not exist or the token's account does not own it.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Typeform conclusively rejected the request, such as an invalid token or a missing forms:read scope.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Typeform returned a malformed or oversized response.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *typeformExecution
+    - name: listResponses
+      goName: ListResponses
+      inputType: ListResponsesInput
+      outputType: ResponsePage
+      kind: query
+      description: "List one bounded page, 1 to 1000, of a form's completed responses, newest first, filtered by since and until and paged with the before or after response token."
+      idempotency: none
+      branches:
+        - {id: listed, goName: Listed, description: "Typeform returned one page of responses and the total count."}
+        - {id: notFound, goName: NotFound, description: "The form does not exist or the token's account does not own it.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Typeform conclusively rejected the request, such as an invalid token, a missing responses:read scope, or an invalid filter.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Typeform returned a malformed or oversized response.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *typeformExecution
+    - name: upsertWebhook
+      goName: UpsertWebhook
+      inputType: UpsertWebhookInput
+      outputType: Webhook
+      kind: mutation
+      description: "Create or replace a form's webhook with the given tag, URL, and enabled state, signed with the connection's webhook_secret. The PUT is idempotent by tag, so a repeated call leaves one webhook."
+      idempotency: required
+      branches:
+        - {id: upserted, goName: Upserted, description: "Typeform stored the webhook for this form and tag with the requested URL and enabled state."}
+        - {id: notFound, goName: NotFound, description: "The form does not exist or the token's account does not own it.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Typeform conclusively rejected the webhook, such as a URL that is not HTTPS, a plan without webhooks, or a token without the webhooks:write scope.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Typeform answered 2xx with a malformed or oversized body, so it may have stored the webhook without this Result describing it.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration such as a blank webhook_secret, or connector definition is invalid.", optional: true}
+      execution: *typeformExecution
