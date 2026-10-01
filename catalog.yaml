@@ -21,6 +21,7 @@ directories:
   - connectors/helpscout
   - connectors/hubspot
   - connectors/intercom
+  - connectors/intuit/mailchimp
   - connectors/linkedin
   - connectors/meta
   - connectors/mistral
