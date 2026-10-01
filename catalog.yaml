@@ -16,6 +16,7 @@ directories:
   - connectors/notion
   - connectors/openai
   - connectors/postgresql
+  - connectors/salesforce
   - connectors/slack
   - connectors/spotify
   - connectors/stripe

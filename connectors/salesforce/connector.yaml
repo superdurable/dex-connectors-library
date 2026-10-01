@@ -1,0 +1,261 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: salesforce
+  displayName: Salesforce
+  description: Query Salesforce CRM records with typed SOQL bind values, read one record, create or update a record by external ID without duplicates on retry, and update a record by ID.
+  company: Salesforce
+  version: v0.1.0
+spec:
+  provider: salesforce
+  codegen:
+    go:
+      package: salesforce
+  configuration:
+    fields:
+      - name: apiVersion
+        goName: APIVersion
+        type: string
+        description: Salesforce REST API version in vNN.0 form that every /services/data request path uses; leave blank for the connector-tested version, and enter a newer version only after running your Flows against a sandbox on that version. Versions before v46.0 are rejected because their upsert responses do not report whether a record was created.
+        required: false
+        default: v62.0
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum bytes accepted from one Salesforce query page or record response; enter a positive integer only to change the safety limit, after lowering the batch size or selecting fewer fields. Oversized responses select invalidResponse.
+        required: false
+        default: 1048576
+      - name: queryBatchSize
+        goName: QueryBatchSize
+        type: integer
+        description: Records requested per queryRecords page, sent as the Sforce-Query-Options batchSize header when a Step input leaves batchSize at zero; the default is Salesforce's minimum, so enter a larger whole number, up to Salesforce's maximum of 2,000, only to trade larger Results for fewer requests. Salesforce treats the value as a hint and can return a different page size.
+        required: false
+        default: 200
+  auth:
+    defaultMethod: salesforce-oauth
+    methods:
+      - id: salesforce-oauth
+        displayName: Production or Developer Edition org
+        description: Recommended for production and Developer Edition orgs; Dex signs in through login.salesforce.com with the OAuth web server flow and refreshes the session automatically.
+        recommended: true
+        type: oauth2
+        connectionKind: salesforce-oauth
+        fields:
+          - name: oauth_client_id
+            goName: OAuthClientID
+            type: string
+            description: Non-secret consumer key of the Salesforce External Client App, copied after signing in at https://login.salesforce.com and opening Setup > Apps > External Client Apps > External Client App Manager > the app > Settings > OAuth Settings > Consumer Key and Secret; it is a long alphanumeric string, and blank means authorization and refresh cannot start.
+            required: true
+          - name: oauth_client_secret
+            goName: OAuthClientSecret
+            type: secretString
+            description: Secret consumer secret revealed beside the consumer key at https://login.salesforce.com under Setup > Apps > External Client Apps > External Client App Manager > the app > Settings > OAuth Settings > Consumer Key and Secret; Dex stores it only in the credential store, and blank means authorization and refresh cannot start.
+            required: true
+          - name: access_token
+            goName: AccessToken
+            type: secretString
+            description: Secret Salesforce session token produced automatically by authorization and replaced by every refresh; never enter it manually.
+            required: true
+          - name: refresh_token
+            goName: RefreshToken
+            type: secretString
+            description: Secret refresh token returned automatically because Dex requests the refresh_token scope; never enter it manually, Dex stores each rotated value, and blank means reauthorization is required.
+            required: true
+          - name: instance_url
+            goName: InstanceURL
+            type: string
+            description: Non-secret org API base URL, such as https://example.my.salesforce.com, returned automatically by authorization and by every refresh; never enter it manually, and blank makes Dex refresh once to obtain it.
+            required: false
+        guide:
+          startURL: https://login.salesforce.com
+          steps:
+            - Sign in as a Salesforce administrator, open Setup > Apps > External Client Apps > External Client App Manager, and choose New External Client App, or open the existing app for this connection.
+            - Enable OAuth, add the exact Redirect URI shown by Dex Web as the Callback URL, and select the OAuth scopes Manage user data via APIs (api) and Perform requests at any time (refresh_token, offline_access); Dex requests only these two scopes.
+            - Keep Require Proof Key for Code Exchange (PKCE), Require secret for Web Server Flow, and Require secret for Refresh Token Flow enabled, then save; a new app can take several minutes before authorization succeeds.
+            - Under the app's Policies, keep Permitted Users on All users may self-authorize or pre-authorize the integration user, and choose a refresh token policy that outlives your Flows, such as valid until revoked.
+            - Open Settings > OAuth Settings > Consumer Key and Secret, verify your identity, copy both values into the fields below, and authorize with the Salesforce user whose object, field, and sharing access every Flow should use.
+        oauth2:
+          authorizationEndpoint: https://login.salesforce.com/services/oauth2/authorize
+          tokenEndpoint: https://login.salesforce.com/services/oauth2/token
+          clientIDCredential: oauth_client_id
+          clientSecretCredential: oauth_client_secret
+          scopes: [api, refresh_token]
+          credentialMappings:
+            - {credential: access_token, source: access_token}
+            - {credential: refresh_token, source: refresh_token}
+            - {credential: instance_url, source: instance_url}
+          pkce: true
+      - id: salesforce-sandbox-oauth
+        displayName: Sandbox org
+        description: For sandbox orgs; Dex signs in through test.salesforce.com with the OAuth web server flow and refreshes the session automatically.
+        type: oauth2
+        connectionKind: salesforce-sandbox-oauth
+        fields:
+          - name: oauth_client_id
+            goName: OAuthClientID
+            type: string
+            description: Non-secret consumer key of the sandbox's External Client App, copied after signing in at https://test.salesforce.com and opening Setup > Apps > External Client Apps > External Client App Manager > the app > Settings > OAuth Settings > Consumer Key and Secret; a sandbox refresh creates new keys, and blank means authorization and refresh cannot start.
+            required: true
+          - name: oauth_client_secret
+            goName: OAuthClientSecret
+            type: secretString
+            description: Secret consumer secret revealed beside the consumer key at https://test.salesforce.com under Setup > Apps > External Client Apps > External Client App Manager > the app > Settings > OAuth Settings > Consumer Key and Secret; Dex stores it only in the credential store, and blank means authorization and refresh cannot start.
+            required: true
+          - name: access_token
+            goName: AccessToken
+            type: secretString
+            description: Secret Salesforce session token produced automatically by authorization and replaced by every refresh; never enter it manually.
+            required: true
+          - name: refresh_token
+            goName: RefreshToken
+            type: secretString
+            description: Secret refresh token returned automatically because Dex requests the refresh_token scope; never enter it manually, Dex stores each rotated value, and blank means reauthorization is required.
+            required: true
+          - name: instance_url
+            goName: InstanceURL
+            type: string
+            description: Non-secret sandbox API base URL, such as https://example--dev.sandbox.my.salesforce.com, returned automatically by authorization and by every refresh; never enter it manually, and blank makes Dex refresh once to obtain it.
+            required: false
+        guide:
+          startURL: https://test.salesforce.com
+          steps:
+            - Sign in to the sandbox as an administrator, open Setup > Apps > External Client Apps > External Client App Manager, and choose New External Client App; apps copied from production by a sandbox refresh get new consumer keys.
+            - Enable OAuth, add the exact Redirect URI shown by Dex Web as the Callback URL, and select the OAuth scopes Manage user data via APIs (api) and Perform requests at any time (refresh_token, offline_access); Dex requests only these two scopes.
+            - Keep Require Proof Key for Code Exchange (PKCE), Require secret for Web Server Flow, and Require secret for Refresh Token Flow enabled, then save; a new app can take several minutes before authorization succeeds.
+            - Under the app's Policies, keep Permitted Users on All users may self-authorize or pre-authorize the integration user, and choose a refresh token policy that outlives your Flows.
+            - Open Settings > OAuth Settings > Consumer Key and Secret, verify your identity, copy both values into the fields below, and authorize with the sandbox user whose object, field, and sharing access every Flow should use.
+        oauth2:
+          authorizationEndpoint: https://test.salesforce.com/services/oauth2/authorize
+          tokenEndpoint: https://test.salesforce.com/services/oauth2/token
+          clientIDCredential: oauth_client_id
+          clientSecretCredential: oauth_client_secret
+          scopes: [api, refresh_token]
+          credentialMappings:
+            - {credential: access_token, source: access_token}
+            - {credential: refresh_token, source: refresh_token}
+            - {credential: instance_url, source: instance_url}
+          pkce: true
+      - id: salesforce-jwt-bearer
+        displayName: Server-to-server JWT bearer
+        description: Advanced method for an integration user without interactive consent; the connector signs a short-lived RS256 assertion with the app's private key and mints each session itself.
+        type: serviceAccount
+        connectionKind: salesforce-jwt-bearer
+        fields:
+          - name: oauth_client_id
+            goName: OAuthClientID
+            type: string
+            description: Non-secret consumer key of the External Client App that has JWT Bearer Flow enabled, copied after signing in at https://login.salesforce.com, or https://test.salesforce.com for a sandbox, under Setup > Apps > External Client Apps > External Client App Manager > the app > Settings > OAuth Settings > Consumer Key and Secret; it becomes the assertion issuer, and blank means no session can be minted.
+            required: true
+          - name: jwt_username
+            goName: JWTUsername
+            type: string
+            description: Non-secret Salesforce username of the pre-authorized integration user, copied after signing in at https://login.salesforce.com, or https://test.salesforce.com for a sandbox, from Setup > Users > Users > the user > Username; it has an email-like form such as integration@example.com.prod, becomes the assertion subject, and blank means no session can be minted.
+            required: true
+          - name: jwt_private_key
+            goName: JWTPrivateKey
+            type: secretString
+            description: Secret PEM-encoded RSA private key, starting with -----BEGIN PRIVATE KEY----- or -----BEGIN RSA PRIVATE KEY-----, whose X.509 certificate is uploaded at https://login.salesforce.com, or https://test.salesforce.com for a sandbox, under Setup > Apps > External Client Apps > External Client App Manager > the app > JWT Bearer Flow; paste the complete PEM text, Dex stores it only in the credential store, and blank means no session can be minted.
+            required: true
+          - name: jwt_login_environment
+            goName: JWTLoginEnvironment
+            type: enum
+            enum: [production, sandbox]
+            description: Salesforce login server that receives the assertion; choose sandbox for an org you sign in to at https://test.salesforce.com, and leave blank for a production or Developer Edition org that uses https://login.salesforce.com.
+            required: false
+          - name: access_token
+            goName: AccessToken
+            type: secretString
+            description: Secret Salesforce session token minted automatically from the signed assertion; never paste a token, and blank makes Dex mint one before the next call.
+            required: false
+          - name: instance_url
+            goName: InstanceURL
+            type: string
+            description: Non-secret org API base URL, such as https://example.my.salesforce.com, returned automatically with every minted session; never enter it manually, and blank makes Dex mint a session to obtain it.
+            required: false
+        guide:
+          startURL: https://login.salesforce.com
+          steps:
+            - Create an RSA private key and a self-signed X.509 certificate, for example with openssl req -x509 -newkey rsa:2048 -nodes -keyout salesforce-jwt.key -out salesforce-jwt.crt -days 365; keep the key file secret.
+            - Sign in at https://login.salesforce.com, or https://test.salesforce.com for a sandbox, open Setup > Apps > External Client Apps > External Client App Manager, and create or open the app for this connection.
+            - Enable OAuth with the scope Manage user data via APIs (api), enable JWT Bearer Flow, upload the certificate file, and save.
+            - Under the app's Policies, set Permitted Users to Admin approved users are pre-authorized and add the integration user's profile or permission set; the JWT bearer flow never asks the user for consent.
+            - Copy the consumer key from Settings > OAuth Settings > Consumer Key and Secret, enter the integration user's username, paste the complete PEM private key, and choose the login environment below.
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.2.0 <0.3.0"
+      backendCapabilities: [oauth.connection.manage, use.configuration.write]
+      mockScenarios: [not-configured, authorization-pending, connected, revoked, broker-unavailable, ready]
+      icon: icon.svg
+    units:
+      - id: sObjectPicker
+        goName: SObjectPicker
+        description: Choose a standard Salesforce CRM object from the list, or enter the API name of a custom object such as Invoice__c from Setup > Object Manager > the object > API Name; the unit stores the object API name, and blank leaves the object to the Flow.
+        outputs:
+          - {name: sObjectType, goName: SObjectType, type: string}
+      - id: fieldNameInput
+        goName: FieldNameInput
+        description: Enter the API name of one field, such as Email or ERP_Id__c, from Setup > Object Manager > the object > Fields & Relationships > Field Name column; the unit validates and stores the API name, and blank leaves the field to the Flow.
+        outputs:
+          - {name: fieldName, goName: FieldName, type: string}
+  operations:
+    - name: queryRecords
+      goName: QueryRecords
+      inputType: QueryRecordsInput
+      outputType: QueryRecordsOutput
+      kind: query
+      description: Run one SOQL statement whose values are typed, escaped bind values, returning one bounded page of records and the nextRecordsUrl cursor for the next page.
+      idempotency: none
+      branches:
+        - {id: found, goName: Found, description: Salesforce returned matching records or reported that more pages remain.}
+        - {id: notFound, goName: NotFound, description: No record matched and Salesforce reported no further pages., optional: true}
+        - {id: queryRejected, goName: QueryRejected, description: "Salesforce rejected the SOQL statement or page cursor, such as MALFORMED_QUERY, INVALID_FIELD, INVALID_TYPE, or an expired INVALID_QUERY_LOCATOR.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Salesforce conclusively refused the request, such as a revoked session or a user without API or object access.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Salesforce returned an invalid or oversized query page., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &salesforceExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+    - name: getRecord
+      goName: GetRecord
+      inputType: GetRecordInput
+      outputType: Record
+      kind: query
+      description: Read the chosen fields of one record by sObject type and record ID.
+      idempotency: none
+      branches:
+        - {id: found, goName: Found, description: Salesforce returned the record.}
+        - {id: notFound, goName: NotFound, description: "The record does not exist, was deleted, or the sObject type is unknown to the connection's user.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Salesforce conclusively refused the read, such as an unknown field name or a user without object or field access.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Salesforce returned an invalid or oversized record., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *salesforceExecution
+    - name: upsertRecordByExternalId
+      goName: UpsertRecordByExternalID
+      inputType: UpsertRecordByExternalIDInput
+      outputType: UpsertRecordByExternalIDOutput
+      kind: mutation
+      description: Create or update one record keyed by an External ID field value, so a retried Step updates the record an earlier attempt created instead of creating a duplicate.
+      idempotency: required
+      branches:
+        - {id: upserted, goName: Upserted, description: Salesforce created the record or updated the one record that carries the external ID value.}
+        - {id: multipleMatches, goName: MultipleMatches, description: "More than one record carries the external ID value, so Salesforce changed nothing.", optional: true}
+        - {id: recordRejected, goName: RecordRejected, description: "Salesforce rejected the record values, such as REQUIRED_FIELD_MISSING, INVALID_FIELD, FIELD_CUSTOM_VALIDATION_EXCEPTION, or DUPLICATES_DETECTED.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Salesforce conclusively refused the request, such as a revoked session, an unknown sObject or external ID field, or a user without create or edit access.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *salesforceExecution
+    - name: updateRecord
+      goName: UpdateRecord
+      inputType: UpdateRecordInput
+      outputType: UpdateRecordOutput
+      kind: mutation
+      description: Update the named fields of one record by sObject type and record ID, leaving every other field unchanged.
+      idempotency: required
+      branches:
+        - {id: updated, goName: Updated, description: Salesforce applied the field values to the record.}
+        - {id: notFound, goName: NotFound, description: "The record does not exist, was deleted, or the sObject type is unknown to the connection's user.", optional: true}
+        - {id: recordRejected, goName: RecordRejected, description: "Salesforce rejected the field values, such as INVALID_FIELD, FIELD_CUSTOM_VALIDATION_EXCEPTION, DUPLICATE_VALUE, or ENTITY_IS_LOCKED.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Salesforce conclusively refused the request, such as a revoked session or a user without edit access.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *salesforceExecution
