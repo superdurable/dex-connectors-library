@@ -1,0 +1,123 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: mailchimp
+  displayName: Mailchimp
+  description: Read, upsert, tag, and list Mailchimp audience contacts without resubscribing anyone who unsubscribed, and send an existing campaign at most once after reading its status.
+  company: Intuit
+  version: v0.1.0
+spec:
+  provider: mailchimp
+  codegen:
+    go:
+      package: mailchimp
+  configuration:
+    fields:
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Maximum complete Mailchimp Marketing API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when listMembers reads pages of up to 1000 contacts with many merge fields. An oversized read selects invalidResponse, and an oversized campaign read before a send selects invalidResponse without sending."
+        required: false
+        default: 4194304
+  auth:
+    type: apiKey
+    connectionKind: mailchimp-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        description: "Secret Mailchimp Marketing API key of the Mailchimp user the connector acts as. Sign in at https://login.mailchimp.com/, select your profile icon, choose Profile, open the Extras drop-down, choose API keys, then Create A Key, name it, choose Generate Key, and Copy Key to Clipboard; Mailchimp shows the full key only once. It is letters and digits, then a hyphen and your data center, such as -us6 at the end. Paste the whole key including the suffix: the connector derives the API host https://us6.api.mailchimp.com/3.0 from it, so there is no separate server field, and sends the key as a Bearer token only to that host. Stored only in this credential field; keys created on or after June 22, 2026 expire one year after creation, so paste the replacement key here before then."
+        required: true
+    guide:
+      startURL: https://us1.admin.mailchimp.com/account/api/
+      steps:
+        - Sign in to Mailchimp as the user the connector should act as. The API key carries that user's role, and Mailchimp answers 403 to anything the role does not allow, so Mailchimp recommends an admin user; sending a campaign needs a role that can send campaigns.
+        - Select your profile icon and choose Profile, then open the Extras drop-down and choose API keys. The link above opens the same API keys page.
+        - In Your API Keys choose Create A Key, give it a name that identifies this Dex connection, choose Generate Key, then Copy Key to Clipboard and paste the whole key, including the -us6 style data-center suffix, into api_key. Mailchimp shows the full key only once.
+        - Keys created on or after June 22, 2026 expire one year after creation; generate a new key before then and paste it here. Dex rereads the key before every call, so no restart is needed.
+        - To revoke access, return to Profile > Extras > API keys, choose Revoke beside the key, and type REVOKE to confirm. A revoked key cannot be reactivated, and removing the user from the account removes every key that user generated.
+  operations:
+    - name: getMember
+      goName: GetMember
+      inputType: GetMemberInput
+      outputType: Member
+      kind: query
+      description: Read one audience contact by email address, addressed by the MD5 hash of the lowercased address, with its status, merge fields, and up to 50 tags.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: "The contact exists in the audience, in any status including unsubscribed, cleaned, or archived."}
+        - {id: notFound, goName: NotFound, description: "The audience has no contact with that address, or the audience does not exist.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Mailchimp conclusively rejected the read, such as an invalid or revoked API key or a role without access.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Mailchimp returned an invalid or oversized contact., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &mailchimpRepeatableExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 6, totalDuration: 5m}
+    - name: listMembers
+      goName: ListMembers
+      inputType: ListMembersInput
+      outputType: ListMembersOutput
+      kind: query
+      description: List one bounded page of an audience's contacts, oldest change first, optionally only one status or contacts changed or opted in since a time, continuing at the returned offset.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: One page of the audience's contacts was read; it may be empty.}
+        - {id: notFound, goName: NotFound, description: The audience does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Mailchimp conclusively rejected the list, such as an invalid API key or a role without access.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Mailchimp returned an invalid or oversized page of contacts., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *mailchimpRepeatableExecution
+    - name: upsertMember
+      goName: UpsertMember
+      inputType: UpsertMemberInput
+      outputType: UpsertMemberOutput
+      kind: mutation
+      description: "Add a contact or update an existing one with PUT, which Mailchimp keys by the contact's address, so a repeated attempt writes the same values. statusIfNew applies only to a new contact; changing an existing contact to subscribed or pending requires isResubscribeAllowed."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: upserted, goName: Upserted, description: "Mailchimp holds the contact with the requested values, written now or by an earlier attempt, and returned it."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Mailchimp conclusively rejected the contact, such as an invalid merge field, a permanently deleted address, or a contact in a compliance state; nothing was written.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Mailchimp returned an invalid or oversized contact, so the change may have been applied.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *mailchimpRepeatableExecution
+    - name: updateMemberTags
+      goName: UpdateMemberTags
+      inputType: UpdateMemberTagsInput
+      outputType: UpdateMemberTagsOutput
+      kind: mutation
+      description: Add and remove tags on one audience contact by declaring each tag active or inactive, so a repeated attempt leaves the same tags.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: updated, goName: Updated, description: "Mailchimp accepted the tag changes, including tags the contact already had or already lacked."}
+        - {id: notFound, goName: NotFound, description: "The audience has no contact with that address, or the audience does not exist; nothing was changed.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Mailchimp conclusively rejected the tag changes, such as an invalid API key or a role without access.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Mailchimp accepted the request but returned an oversized or credential-reflecting body, so the tags may have changed.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *mailchimpRepeatableExecution
+    - name: sendCampaign
+      goName: SendCampaign
+      inputType: SendCampaignInput
+      outputType: SendCampaignOutput
+      kind: mutation
+      description: Send one existing draft campaign now. The connector reads the campaign first and sends only a draft; a send is irreversible and Mailchimp has no idempotency key, so the Step runs with sync durability and sends at most once per Step execution.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: sent, goName: Sent, description: Mailchimp accepted the send of the draft campaign this Step read.}
+        - {id: alreadySent, goName: AlreadySent, description: "Mailchimp reports the campaign as sending or sent, so this attempt sent nothing.", optional: true}
+        - {id: notSendable, goName: NotSendable, description: "The campaign is not a draft that can be sent now, such as a scheduled, paused, canceled, or RSS campaign, or it targets another audience than expectedListId; nothing was sent.", optional: true}
+        - {id: notFound, goName: NotFound, description: The campaign does not exist; nothing was sent., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Mailchimp conclusively rejected the send, such as a campaign that fails its send checklist or a role that cannot send; nothing was sent.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Mailchimp returned an invalid or oversized campaign before the send; nothing was sent., optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The send request was sent but its outcome cannot be confirmed, so the campaign may be sending; the connector never sends it again.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      # Sync: an async fallback attempt would dispatch a slow send again, and Mailchimp has no idempotency key.
+      execution:
+        executeMethodTimeout: 60s
+        durability: sync
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 5m}
