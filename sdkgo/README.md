@@ -216,6 +216,40 @@ message text, credentials, and tokens out of the errors it returns.
 Records report the SDK function that wrote them as their source, so a handler
 with `AddSource` points at the delivery code rather than a logging helper.
 
+## Webhook Trigger sources
+
+A connector whose provider pushes events over HTTPS builds its Trigger sources
+on the `webhooktrigger` subpackage instead of its own request pipeline. The
+connector supplies what differs per provider: `VerifyRequest`, which
+authenticates a request with the connection's resolved credentials, and
+`DecodeEvent`, which returns a typed event with a stable provider ID or reports
+a valid event that no binding handles. `webhooktrigger.Endpoint` owns the rest:
+
+- it accepts only `POST` and reads at most `MaxBodyBytes`;
+- it calls `sdkgo.PrepareTriggerDelivery` for every running source that accepts
+  the event, so each binding's durable inbox records it, and answers `200` only
+  after all of them did;
+- it then delivers the event to each source in arrival order with
+  `sdkgo.DeliverTrigger`.
+
+The provider retries whatever this process could not record: the endpoint
+answers `503` while no source runs, while credentials are unavailable or
+`VerifyRequest` returns `webhooktrigger.ErrVerificationUnavailable`, when
+recording fails, and when a source's queue is full. It answers `400` for a
+request that fails verification or decoding, `405` for another method, and `413`
+for an oversized body. Responses never carry verifier or decoder error text.
+`RunningSourceCount` lets an application's readiness check wait for its
+bindings.
+
+A connector keeps one `Endpoint` per connection on its client, returns it as the
+`http.Handler` that applications mount, and returns `endpoint.NewSource(accept)`
+from each Trigger's generated source hook. `webhooktrigger.NewEndpointRunner`
+combines the handler with the bindings' Trigger runners so an application
+mounts one handler and runs one value. The Stripe connector's
+`NewLocalCheckoutSessionWebhookRuntime` is built this way. Like `providerhttp`,
+the package contains no provider host, signature format, event type, or
+credential.
+
 ## Renewable credentials
 
 Connectors that use renewable access credentials implement
