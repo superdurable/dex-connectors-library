@@ -1,0 +1,155 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: amazon-s3
+  displayName: Amazon S3
+  description: List, inspect, and read bounded text from objects in Amazon S3 or an S3-compatible store such as Cloudflare R2 or MinIO, and store objects with retry-safe overwrite or create-only writes.
+  company: Amazon
+  version: v0.1.0
+spec:
+  provider: amazon-s3
+  codegen:
+    go:
+      package: s3
+  configuration:
+    fields:
+      - name: region
+        goName: Region
+        type: string
+        description: "Signing Region of the bucket, written as a Region code such as eu-west-1. Amazon S3: open https://console.aws.amazon.com/s3/buckets and read the AWS Region column beside the bucket. Cloudflare R2 uses auto. MinIO uses its configured server Region, which a default server does not change. Not secret. A wrong Region selects providerRejected, and an Amazon S3 rejection names the bucket's Region when S3 reports it. Blank uses the displayed default."
+        required: false
+        default: us-east-1
+      - name: endpoint
+        goName: Endpoint
+        type: url
+        description: "Base URL of an S3-compatible API, for a store other than Amazon S3. Cloudflare R2: https://<ACCOUNT_ID>.r2.cloudflarestorage.com with the Account ID shown under https://dash.cloudflare.com > R2 object storage > Account Details. MinIO: the server API address, such as https://minio.example.com or http://127.0.0.1:9000 for a server on the Worker's own host. Use HTTPS except for a loopback host; a path is kept as a prefix. The access key is used to sign requests to whatever host this names. Blank uses the Amazon S3 Regional endpoint for region."
+        required: false
+      - name: addressingStyle
+        goName: AddressingStyle
+        type: enum
+        enum: [auto, virtualHosted, path]
+        description: "How a request names its bucket. virtualHosted puts the bucket in the host name, as https://bucket.s3.eu-west-1.amazonaws.com; path puts it first in the path, as https://minio.example.com/bucket. auto uses virtualHosted for Amazon S3 and path for a custom endpoint, and uses path for a bucket name that contains a dot, because the Amazon S3 wildcard certificate cannot match it. Choose virtualHosted for a custom endpoint only when its documentation requires bucket host names. Blank uses the displayed default."
+        required: false
+        default: auto
+      - name: defaultBucket
+        goName: DefaultBucket
+        type: string
+        description: "Bucket an operation uses when its input leaves bucket blank, written as the plain name, such as acme-reports, without s3:// or a path. Amazon S3: copy the name from https://console.aws.amazon.com/s3/buckets. Cloudflare R2: https://dash.cloudflare.com > R2 object storage. MinIO: the server console's Buckets page. Not secret. Blank means every operation input must name its bucket."
+        required: false
+      - name: listPageSize
+        goName: ListPageSize
+        type: integer
+        description: "Number of keys and common prefixes listObjects requests per page when its input leaves maxKeys at zero, as a whole number from 1 up to the Amazon S3 page limit of 1,000. Smaller pages keep each Result small; larger pages need fewer Steps. Blank uses the displayed default."
+        required: false
+        default: 100
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Maximum complete listObjects response in bytes, as a positive integer. A larger page selects invalidResponse; lower maxKeys before raising this, because a page is stored in Dex Flow state. Blank uses the displayed default."
+        required: false
+        default: 4194304
+      - name: maxTextBytes
+        goName: MaxTextBytes
+        type: integer
+        description: "Maximum object size in bytes that getObjectText returns as text, as a positive integer. A larger object selects tooLarge without reading its content. Text is stored in Dex Flow state, so raise it cautiously. Blank uses the displayed default."
+        required: false
+        default: 1048576
+      - name: maxUploadBytes
+        goName: MaxUploadBytes
+        type: integer
+        description: "Maximum object content in bytes that putObject sends in one request, as a positive integer no larger than 5242880. Larger content selects defect before any request. The content travels through Dex Flow state, so the connector caps it well below the Amazon S3 single-request limit. Blank uses the displayed default."
+        required: false
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: amazon-s3-access-key
+    fields:
+      - name: access_key_id
+        goName: AccessKeyID
+        type: secretString
+        description: "Secret-stored access key ID that names the key pair. Amazon S3: https://console.aws.amazon.com/iam > Users > the user > Security credentials > Access keys > Create access key; long-term IDs start with AKIA and temporary IDs with ASIA. Cloudflare R2: the Access Key ID shown once after https://dash.cloudflare.com > R2 object storage > Account Details > API Tokens > Manage > Create Account API token. MinIO: the access key of a user or service account. Dex Web stores it as a secret because it identifies the account; blank means no request can be signed."
+        required: true
+      - name: secret_access_key
+        goName: SecretAccessKey
+        type: secretString
+        description: "Secret access key paired with access_key_id, shown only once when the key is created: Amazon S3 shows it on the Retrieve access keys page (choose Show or Download .csv file), and Cloudflare R2 shows the Secret Access Key on the token's confirmation page. It signs every request and never leaves the Worker; Dex keeps it out of Flow state, logs, and Results. Blank means no request can be signed."
+        required: true
+      - name: session_token
+        goName: SessionToken
+        type: secretString
+        description: "Secret session token, only for temporary AWS credentials whose access key ID starts with ASIA, such as the output of aws sts get-session-token or aws sts assume-role (https://docs.aws.amazon.com/STS/latest/APIReference/API_GetSessionToken.html). Temporary credentials expire, usually within hours, and this connector cannot renew them: replace all three values before they expire, or an expired token selects providerRejected. Blank means long-term credentials, which Amazon S3 IAM user keys, Cloudflare R2, and MinIO use."
+        required: false
+    guide:
+      startURL: https://console.aws.amazon.com/iam
+      steps:
+        - "Amazon S3: open IAM > Users > Create user and create a user only for Dex; do not use the account's root user. On Permissions, attach an inline policy that allows s3:ListBucket on arn:aws:s3:::your-bucket and s3:GetObject and s3:PutObject on arn:aws:s3:::your-bucket/*, so the key reaches nothing else. putObject's create-only mode also needs s3:GetObject to recognize its own earlier attempt, and headObject reads a missing key as notFound only with s3:ListBucket."
+        - "Open the user > Security credentials > Access keys > Create access key, choose Other > Next, then Create access key. On the Retrieve access keys page choose Show, paste the Access key into access_key_id and the Secret access key into secret_access_key; AWS never shows the secret again. Leave session_token blank for these long-term keys."
+        - "Set region to the bucket's AWS Region from https://console.aws.amazon.com/s3/buckets and leave endpoint blank. Optionally set defaultBucket so operations can leave bucket blank."
+        - "Cloudflare R2: open https://dash.cloudflare.com > R2 object storage > Account Details > API Tokens > Manage, choose Create Account API token with Object Read & Write scoped to the bucket, and copy the Access Key ID and Secret Access Key shown once. Set endpoint to https://<ACCOUNT_ID>.r2.cloudflarestorage.com and region to auto."
+        - "MinIO: create a user or service account with a policy limited to the bucket, then set endpoint to the server's API address, keep addressingStyle at auto so requests use path addressing, and set region to the server's Region, which a default server leaves at us-east-1."
+        - "To rotate, create a second access key, save it here, run a Flow, then open Actions > Deactivate and Actions > Delete on the old key. This release does not use IAM roles, instance profiles, or SSO; temporary credentials pasted with session_token stop working when they expire."
+  operations:
+    - name: listObjects
+      goName: ListObjects
+      inputType: ListObjectsInput
+      outputType: ListObjectsOutput
+      kind: query
+      description: List one bounded page of a bucket's object keys and common prefixes under an optional prefix and delimiter, in key order, continuing with an opaque continuation token.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: "The page holds objects or common prefixes, or more pages remain."}
+        - {id: notFound, goName: NotFound, description: No object matched the prefix and no further page remains., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "The store conclusively rejected the list, such as a missing bucket, a wrong Region, invalid credentials, or missing s3:ListBucket permission.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The store returned an invalid or oversized list page., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &s3Execution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+    - name: headObject
+      goName: HeadObject
+      inputType: HeadObjectInput
+      outputType: ObjectMetadata
+      kind: query
+      description: Read one object's size, ETag, content type, modification time, version, storage class, and user-defined metadata without reading its content.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: The store returned the object's metadata.}
+        - {id: notFound, goName: NotFound, description: "The object, or its bucket, does not exist; a HEAD response cannot say which.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "The store conclusively rejected the read, such as a wrong Region, invalid credentials, or missing s3:GetObject permission.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The store returned metadata without a valid size or modification time., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *s3Execution
+    - name: getObjectText
+      goName: GetObjectText
+      inputType: GetObjectTextInput
+      outputType: ObjectText
+      kind: query
+      description: Read one small text object as bounded UTF-8 text, refusing binary, compressed, and oversized objects without returning their content.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: read, goName: Read, description: The object's complete text was read within maxTextBytes.}
+        - {id: notFound, goName: NotFound, description: The object does not exist., optional: true}
+        - {id: unsupportedContent, goName: UnsupportedContent, description: "The object's content type is not text, its content is encoded such as gzip, or its bytes are not valid UTF-8 text.", optional: true}
+        - {id: tooLarge, goName: TooLarge, description: The object is larger than maxTextBytes., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "The store conclusively rejected the read, such as a missing bucket, a wrong Region, invalid credentials, or missing s3:GetObject permission.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The store returned a response without a valid size or with content that contains the connection's credentials., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *s3Execution
+    - name: putObject
+      goName: PutObject
+      inputType: PutObjectInput
+      outputType: StoredObject
+      kind: mutation
+      description: Store one object from bounded text or bytes with its content type and user-defined metadata, either replacing any object at the key or, in create-only mode, only when the key is free; a repeated attempt of the same Step converges on the same object.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: stored, goName: Stored, description: The store holds the object this Step execution wrote.}
+        - {id: alreadyExists, goName: AlreadyExists, description: "Create-only mode found an object at the key that this Step execution did not write; nothing was written.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "The store conclusively rejected the write, such as a missing bucket, a wrong Region, invalid credentials, missing s3:PutObject permission, or a store that does not support create-only writes.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *s3Execution
