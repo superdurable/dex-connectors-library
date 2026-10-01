@@ -13,6 +13,7 @@ directories:
   - connectors/meta
   - connectors/mistral
   - connectors/moonshot/kimi
+  - connectors/notion
   - connectors/openai
   - connectors/slack
   - connectors/spotify

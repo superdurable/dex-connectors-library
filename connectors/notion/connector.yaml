@@ -1,0 +1,133 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: notion
+  displayName: Notion
+  description: Search Notion pages and data sources by title, query database rows with typed filters, read a page's properties and plain-text content, and create or update database rows without silent duplicates.
+  company: Notion
+  version: v0.1.0
+spec:
+  provider: notion
+  codegen:
+    go:
+      package: notion
+  configuration:
+    fields:
+      - name: endpoint
+        goName: Endpoint
+        type: url
+        description: "Notion REST API base URL, without /v1; leave blank for Notion's public API host, which serves every workspace. Enter an absolute HTTPS URL only for an explicitly supported compatible gateway, or a loopback HTTP URL for a local test server."
+        required: false
+        default: https://api.notion.com
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Maximum complete Notion API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it. An oversized read selects invalidResponse, and an oversized response to an accepted createPage selects uncertain."
+        required: false
+        default: 4194304
+  auth:
+    type: apiKey
+    connectionKind: notion-internal-connection
+    fields:
+      - name: api_token
+        goName: APIToken
+        type: secretString
+        description: "Secret API token of a Notion internal connection, copied from https://app.notion.com/developers/connections > Build > Internal connections > the connection > Configuration > API token; new tokens start with ntn_ and older ones with secret_. A Notion personal access token also works and acts as its creator. Dex Web stores the value as a secret, and blank means no Notion call can authenticate."
+        required: true
+    guide:
+      startURL: https://app.notion.com/developers/connections
+      steps:
+        - Sign in as a Workspace Owner of the Notion workspace the Flows use, then in the Developer portal's Build section select Internal connections and choose Create a new connection, name it, and pick that workspace.
+        - On the connection's Configuration tab, enable the Read content, Update content, and Insert content capabilities; the connector needs no user information or comment capability.
+        - Copy the API token from the Configuration tab into the secret field below; choose Refresh there to rotate it, then paste the replacement, because Notion rejects the old token.
+        - Share every database and page the Flows use with the connection, either on the connection's Content access tab with Edit access, or in Notion from the page's ••• menu > Connections > + Add connection. Sharing a page also shares its child pages; an unshared page reads as not found.
+  operations:
+    - name: search
+      goName: Search
+      inputType: SearchInput
+      outputType: SearchOutput
+      kind: query
+      description: Search one bounded page of the pages and data sources shared with the connection by title, continuing with Notion's cursor.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: searched, goName: Searched, description: "One page of title matches was read; Notion search matches titles only, is not guaranteed to be exhaustive, and indexes new pages with a delay."}
+        - {id: noMatch, goName: NoMatch, description: "The first page of results is empty: no shared page or data source title contains the query, or the object was never shared with the connection.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Notion conclusively rejected the search, such as an invalid token, a stale cursor, or a blocked connection.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Notion returned an invalid or oversized search page., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &notionReadExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
+    - name: queryDatabase
+      goName: QueryDatabase
+      inputType: QueryDatabaseInput
+      outputType: QueryDatabaseOutput
+      kind: query
+      description: Query one bounded page of a database's rows through its data source with a typed filter and sorts, continuing with Notion's cursor.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: queried, goName: Queried, description: "One page of matching rows was read; it can be empty."}
+        - {id: notFound, goName: NotFound, description: The database or data source does not exist or is not shared with the connection., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Notion conclusively rejected the query, such as a filter on a missing property or a type mismatch.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Notion returned an invalid or oversized query page., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid, including a database ID whose database holds several data sources.", optional: true}
+      execution: *notionReadExecution
+    - name: getPage
+      goName: GetPage
+      inputType: GetPageInput
+      outputType: GetPageOutput
+      kind: query
+      description: Read one page's properties and a bounded plain-text rendering of its top-level blocks.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: The page and its bounded content were read.}
+        - {id: notFound, goName: NotFound, description: The page does not exist or is not shared with the connection., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Notion conclusively rejected the page read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Notion returned an invalid or oversized page or block list., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *notionReadExecution
+    - name: createPage
+      goName: CreatePage
+      inputType: CreatePageInput
+      outputType: CreatePageOutput
+      kind: mutation
+      description: Create one database row with typed property values and optional plain-text body paragraphs.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: created, goName: Created, description: Notion created the page and returned or confirmed its ID.}
+        - {id: notFound, goName: NotFound, description: "The database or data source does not exist or is not shared with the connection; nothing was created.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Notion conclusively rejected the page, such as a missing property, a value of the wrong type, missing Insert content capability, or a workspace limit; nothing was created.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The request was dispatched but its outcome cannot be confirmed; Notion has no idempotency key, so the page may exist and must not be created again automatically.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Notion returned an invalid or oversized database while the connector resolved its data source; nothing was created.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid, including a database ID whose database holds several data sources.", optional: true}
+      # Sync: an async fallback attempt re-sends a slow create, and Notion has no idempotency key.
+      # Notion can take about 55 seconds before a 503 that names the saved page, so the request may wait 60 seconds.
+      execution:
+        executeMethodTimeout: 90s
+        heartbeatTimeout: 90s
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
+    - name: updatePageProperties
+      goName: UpdatePageProperties
+      inputType: UpdatePagePropertiesInput
+      outputType: UpdatePagePropertiesOutput
+      kind: mutation
+      description: Set typed property values on one page with absolute values, so a repeated or duplicated update leaves the page unchanged.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: updated, goName: Updated, description: Notion applied the property values and returned the page.}
+        - {id: notFound, goName: NotFound, description: "The page does not exist or is not shared with the connection; nothing was changed.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Notion conclusively rejected the update, such as a missing property, a value of the wrong type, a locked or archived page, or missing Update content capability.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Notion applied the update but returned an invalid or oversized page., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 90s
+        heartbeatTimeout: 90s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
