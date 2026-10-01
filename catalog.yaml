@@ -17,6 +17,7 @@ directories:
   - connectors/google/calendar
   - connectors/google/docs
   - connectors/google/drive
+  - connectors/google/forms
   - connectors/google/gemini
   - connectors/google/gmail
   - connectors/google/spreadsheet
