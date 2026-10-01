@@ -1,0 +1,116 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: mysql
+  displayName: MySQL
+  description: Run one parameterized read-only query, or one transactional write statement, against a MySQL or MariaDB database.
+  company: MySQL
+  version: v0.1.0
+spec:
+  provider: mysql
+  codegen:
+    go:
+      package: mysql
+  configuration:
+    fields:
+      - name: host
+        goName: Host
+        type: string
+        description: "Server DNS name or IP address without a scheme or port, such as db.example.com. Amazon RDS or Aurora: https://console.aws.amazon.com/rds/ > Databases > select the instance > Connectivity & security > Endpoint. Google Cloud SQL: https://console.cloud.google.com/sql/instances > select the instance > Overview > Connect to this instance > Public IP address. Azure Database for MySQL: https://portal.azure.com > select the flexible server > Overview > Server name. Self-hosted MySQL or MariaDB: ask your database administrator. Not secret; blank is invalid. An absolute Unix-socket path such as /tmp/mysql.sock connects locally."
+        required: true
+      - name: port
+        goName: Port
+        type: integer
+        description: "TCP port shown beside the host, as a positive integer from 1 through 65535: https://console.aws.amazon.com/rds/ > Databases > select the instance > Connectivity & security > Port. Cloud SQL and Azure use the MySQL standard port. Override it only for a non-standard server, a proxy such as ProxySQL, or a tunnel. Not secret; blank uses the displayed default."
+        required: false
+        default: 3306
+      - name: database
+        goName: Database
+        type: string
+        description: "Default database (schema) that unqualified table names resolve to, such as app. Amazon RDS: https://console.aws.amazon.com/rds/ > Databases > select the instance > Configuration > DB name. Google Cloud SQL: https://console.cloud.google.com/sql/instances > select the instance > Databases. Azure: https://portal.azure.com > the flexible server > Settings > Databases. Self-hosted: list names with SHOW DATABASES. Not secret; blank is invalid."
+        required: true
+      - name: user
+        goName: User
+        type: string
+        description: "Account user name without the @host part, such as dex_app. Create a dedicated least-privilege account with CREATE USER as the authorization guide describes (https://dev.mysql.com/doc/refman/8.4/en/create-user.html); Cloud SQL also lists accounts at https://console.cloud.google.com/sql/instances > select the instance > Users. Not secret; blank is invalid."
+        required: true
+      - name: sslMode
+        goName: SSLMode
+        type: enum
+        enum: [required, verify-ca, verify-identity, disabled]
+        description: "TLS policy using the mysql client's --ssl-mode names. required encrypts but does not verify the server certificate, so on an untrusted network an impostor server can receive the password that caching_sha2_password sends inside TLS; verify-ca also checks the certificate chain; verify-identity also checks that the certificate names the host; disabled sends traffic unencrypted and is accepted only for localhost, 127.0.0.1, ::1, or a Unix-socket path, which must use it. verify-ca and verify-identity trust the Worker's system certificate store, or the PEM bundle named by the Worker's MYSQL_SSL_CA environment variable, such as Amazon RDS's bundle from https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem. preferred is not offered because it silently falls back to plaintext. Blank uses the displayed default."
+        required: false
+        default: required
+      - name: connectTimeout
+        goName: ConnectTimeout
+        type: duration
+        description: "Maximum time to open the TCP connection, finish TLS, and authenticate, as a positive Go duration such as 3s. Raise it only for a distant or cold-starting server, such as a stopped Aurora Serverless instance. Blank uses the displayed default."
+        required: false
+        default: 5s
+      - name: statementTimeout
+        goName: StatementTimeout
+        type: duration
+        description: "Server-side time limit for every statement, as a positive Go duration such as 2s. MySQL applies it as max_execution_time, which bounds SELECT statements, and as innodb_lock_wait_timeout and lock_wait_timeout, rounded up to whole seconds, which bound lock waits for every statement; MariaDB applies it as max_statement_time to every statement. A statement the server stops for exceeding it selects providerRejected, and a lock wait that exceeds it is retried. Keep connectTimeout plus statementTimeout under the Step's Execute timeout. An async Step whose statement runs longer than about seven seconds is dispatched again, so writes must be idempotent. Blank uses the displayed default."
+        required: false
+        default: 5s
+      - name: maxRows
+        goName: MaxRows
+        type: integer
+        description: "Maximum rows returned by one query, or by a MariaDB RETURNING clause of one execute, as a positive integer. Beyond it query selects truncated and execute rolls back and selects limitExceeded. Prefer a LIMIT in the statement; raise this only for a deliberately large read. Blank uses the displayed default."
+        required: false
+        default: 1000
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Maximum JSON-encoded size of the returned rows in bytes, as a positive integer, with the same truncated and limitExceeded behavior as maxRows. Rows are stored in Dex Flow state, so raise it cautiously. Blank uses the displayed default."
+        required: false
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: mysql-password
+    fields:
+      - name: password
+        goName: Password
+        type: secretString
+        description: "Secret password of the account named in user. Amazon RDS: the master password or a Secrets Manager value; Google Cloud SQL: https://console.cloud.google.com/sql/instances > select the instance > Users > Change password; Azure: https://portal.azure.com > the flexible server > Overview > Reset password; self-hosted: ALTER USER 'dex_app'@'%' IDENTIFIED BY '...'. Dex keeps it out of Flow state, logs, and Results. Blank is invalid."
+        required: true
+    guide:
+      startURL: https://dev.mysql.com/doc/refman/8.4/en/create-user.html
+      steps:
+        - "Open your database's connection page to find the host, port, database, and user: Amazon RDS Databases > select the instance > Connectivity & security; Google Cloud SQL instance Overview; Azure flexible server Overview; or ask the administrator of a self-hosted MySQL or MariaDB server."
+        - "Create a dedicated account for Dex instead of using root or the master user, for example CREATE USER 'dex_app'@'%' IDENTIFIED BY 'a-new-password' REQUIRE SSL. MariaDB 10.4 and later accept the same statements."
+        - "Grant only what your Flows need: SELECT on the tables that query reads, and INSERT, UPDATE, or DELETE only on the tables that execute writes, for example GRANT SELECT, INSERT ON app.refund_ledger TO 'dex_app'@'%'. The connector's read-only transaction is a guard, not a permission boundary."
+        - "Enter the non-secret connection fields, then paste the account's password into the password field. Rotate it with ALTER USER 'dex_app'@'%' IDENTIFIED BY 'another-password' and save the new value here; revoke access with ALTER USER 'dex_app'@'%' ACCOUNT LOCK."
+  operations:
+    - name: query
+      goName: QueryRows
+      inputType: QueryRowsInput
+      outputType: RowSet
+      kind: query
+      description: Run one parameterized read statement in a read-only transaction and return its bounded rows.
+      idempotency: none
+      branches:
+        - {id: completed, goName: Completed, description: "The server ran the read-only statement and returned every row, possibly none, within maxRows and maxResponseBytes."}
+        - {id: truncated, goName: Truncated, description: "The statement produced more rows or bytes than maxRows or maxResponseBytes allow; the Result holds only the rows that fit.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "The server conclusively refused the connection or statement, such as bad credentials, a syntax error, a missing table, a permission error, a write inside the read-only transaction, or statementTimeout.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "The server returned a value the connector cannot decode under its documented type mapping.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &mysqlExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+    - name: execute
+      goName: ExecuteStatement
+      inputType: ExecuteStatementInput
+      outputType: StatementExecution
+      kind: mutation
+      description: Run one parameterized write statement in its own transaction and return its rows affected, last insert ID, and any bounded MariaDB RETURNING rows.
+      idempotency: required
+      branches:
+        - {id: completed, goName: Completed, description: "The server committed the statement's transaction; the Result holds the rows affected, the last insert ID, the warning count, and any RETURNING rows."}
+        - {id: limitExceeded, goName: LimitExceeded, description: "The statement affected more rows than maxRowsAffected, or its RETURNING rows exceeded maxRows or maxResponseBytes, so the connector rolled back and nothing was written.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "The server conclusively refused the connection, statement, or commit, such as a duplicate key, a syntax error, or a permission error; nothing was written.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The connection failed after COMMIT was sent, so whether the server committed the write is unknown.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "The server returned a value the connector cannot decode under its documented type mapping; the connector rolled back and nothing was written.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *mysqlExecution
