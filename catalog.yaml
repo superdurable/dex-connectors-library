@@ -9,6 +9,7 @@ directories:
   - connectors/google/gmail
   - connectors/google/spreadsheet
   - connectors/hackernews
+  - connectors/hubspot
   - connectors/linkedin
   - connectors/meta
   - connectors/mistral

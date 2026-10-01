@@ -1,0 +1,194 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: hubspot
+  displayName: HubSpot
+  description: Search, read, upsert, and update HubSpot CRM contacts, companies, and deals.
+  company: HubSpot
+  version: v0.1.0
+spec:
+  provider: hubspot
+  codegen:
+    go:
+      package: hubspot
+  configuration:
+    fields:
+      - name: endpoint
+        goName: Endpoint
+        type: url
+        description: HubSpot API base URL; leave blank for HubSpot's public API host, which serves every data center. Enter an absolute HTTPS URL only for an explicitly supported compatible gateway, or a loopback HTTP URL for a local test server.
+        required: false
+        default: https://api.hubapi.com
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete HubSpot API response in bytes; enter a positive integer only to change the safety limit. Oversized responses select invalidResponse.
+        required: false
+        default: 1048576
+  auth:
+    defaultMethod: private-app-token
+    methods:
+      - id: private-app-token
+        displayName: Private app access token
+        description: Recommended for one HubSpot account; paste the access token of a legacy private app or a static-auth app installed in that account. The token does not expire until you rotate it.
+        recommended: true
+        type: apiKey
+        connectionKind: hubspot-private-app-token
+        fields:
+          - name: access_token
+            goName: AccessToken
+            type: secretString
+            description: Secret access token copied from https://app.hubspot.com under Development > Legacy apps > the private app > Auth > Show token, or from a static-auth app's Auth settings; it starts with pat-na1- or pat-eu1-, Dex Web stores it as a secret, and blank means no HubSpot call can authenticate.
+            required: true
+        guide:
+          startURL: https://app.hubspot.com/
+          steps:
+            - Sign in as a super admin of the HubSpot account this connection will use, open Development, and select Legacy apps in the left sidebar.
+            - Choose Create legacy app > Private, name the app, and on the Scopes tab add crm.objects.contacts.read, crm.objects.contacts.write, crm.objects.companies.read, crm.objects.companies.write, crm.objects.deals.read, crm.objects.deals.write, and crm.objects.owners.read.
+            - Choose Create app, open the app's Auth tab, choose Show token, and copy the pat-na1- or pat-eu1- access token into the secret field below.
+            - A static-auth app built on the HubSpot developer platform also works; copy its access token from the app's Auth settings. After rotating a token in the Auth tab, paste the replacement here, because HubSpot rejects the old one.
+      - id: hubspot-oauth
+        displayName: HubSpot OAuth
+        description: For an app installed into HubSpot accounts through OAuth consent; Dex requests the CRM scopes below and refreshes HubSpot's 30-minute access token automatically.
+        type: oauth2
+        connectionKind: hubspot-oauth
+        fields:
+          - name: oauth_client_id
+            goName: OAuthClientID
+            type: string
+            description: Non-secret OAuth client ID copied from https://app.hubspot.com under Development > Legacy apps > the public app > Auth, or from a project app's Auth settings; it has the UUID shape aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee, and blank means authorization and refresh cannot start.
+            required: true
+          - name: oauth_client_secret
+            goName: OAuthClientSecret
+            type: secretString
+            description: Secret OAuth client secret copied from the same Auth page; Dex Web stores it as a secret and sends it only to HubSpot's token endpoint, and blank means authorization and refresh cannot start.
+            required: true
+          - name: access_token
+            goName: AccessToken
+            type: secretString
+            description: Secret 30-minute access token produced automatically by HubSpot OAuth and refreshed before it expires; never paste a token here.
+            required: true
+          - name: refresh_token
+            goName: RefreshToken
+            type: secretString
+            description: Secret long-lived refresh token produced by HubSpot OAuth; Dex stores any replacement HubSpot returns, and a blank or rejected token means you must authorize again.
+            required: true
+        guide:
+          startURL: https://app.hubspot.com/
+          steps:
+            - Sign in to the HubSpot account that owns the app, open Development > Legacy apps, and choose Create legacy app > Public, or open an existing project app configured with auth type oauth.
+            - On the app's Auth tab, add the exact Redirect URI shown by Dex Web, and add the scopes oauth, crm.objects.contacts.read, crm.objects.contacts.write, crm.objects.companies.read, crm.objects.companies.write, crm.objects.deals.read, crm.objects.deals.write, and crm.objects.owners.read so they match the scopes Dex requests.
+            - Copy the Client ID and Client secret from the Auth tab into the fields below; the client secret is sensitive.
+            - Choose Authorize, select the HubSpot account to install the app into, and approve the requested scopes; installing requires a super admin or a user with App Marketplace access.
+        oauth2:
+          authorizationEndpoint: https://app.hubspot.com/oauth/authorize
+          tokenEndpoint: https://api.hubapi.com/oauth/2026-09/token
+          clientIDCredential: oauth_client_id
+          clientSecretCredential: oauth_client_secret
+          scopes: [oauth, crm.objects.contacts.read, crm.objects.contacts.write, crm.objects.companies.read, crm.objects.companies.write, crm.objects.deals.read, crm.objects.deals.write, crm.objects.owners.read]
+          credentialMappings:
+            - {credential: access_token, source: access_token}
+            - {credential: refresh_token, source: refresh_token}
+          pkce: true
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.2.0 <0.3.0"
+      backendCapabilities: [oauth.connection.manage, use.configuration.write, hubspot.owners-list, hubspot.pipelines-list]
+      mockScenarios: [not-configured, authorization-pending, connected, insufficient-scope, revoked, broker-unavailable, ready]
+      icon: icon.svg
+    commands:
+      - id: listOwners
+        capability: hubspot.owners-list
+        request:
+          method: GET
+          url: https://api.hubapi.com/crm/owners/2026-09
+          credential: {field: access_token, scheme: bearer}
+          fixedQuery: {archived: "false", limit: "100"}
+          parameters:
+            - {name: after, location: query, target: after}
+      - id: listDealPipelines
+        capability: hubspot.pipelines-list
+        request:
+          method: GET
+          url: https://api.hubapi.com/crm/pipelines/2026-09/deals
+          credential: {field: access_token, scheme: bearer}
+    units:
+      - id: objectTypePicker
+        goName: ObjectTypePicker
+        description: Select the HubSpot CRM object type, contacts, companies, or deals, that the operation reads or writes; the unit stores the object type name.
+        outputs:
+          - {name: objectType, goName: ObjectType, type: string}
+      - id: ownerPicker
+        goName: OwnerPicker
+        description: Select one active HubSpot owner loaded from the connected account; the unit stores the owner's numeric ID for the hubspot_owner_id property.
+        backendCapabilities: [hubspot.owners-list]
+        outputs:
+          - {name: ownerId, goName: OwnerID, type: string}
+      - id: dealStagePicker
+        goName: DealStagePicker
+        description: Select one deal pipeline and one of its stages loaded from the connected account; the unit stores the stable pipeline ID and stage ID.
+        backendCapabilities: [hubspot.pipelines-list]
+        outputs:
+          - {name: pipelineId, goName: PipelineID, type: string}
+          - {name: stageId, goName: StageID, type: string}
+  operations:
+    - name: searchObjects
+      goName: SearchObjects
+      inputType: SearchObjectsInput
+      outputType: ObjectPage
+      kind: query
+      description: Search one bounded page of HubSpot contacts, companies, or deals with typed property filters, one sort, and an after cursor.
+      idempotency: none
+      branches:
+        - {id: searched, goName: Searched, description: HubSpot returned one bounded page of matching records; the page may be empty.}
+        - {id: providerRejected, goName: ProviderRejected, description: "HubSpot conclusively rejected the search, such as an unknown property, a missing scope, a rejected token, or an exhausted daily limit.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: HubSpot returned an invalid or oversized search response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &hubspotExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+    - name: getObject
+      goName: GetObject
+      inputType: GetObjectInput
+      outputType: CRMObject
+      kind: query
+      description: Read one HubSpot contact, company, or deal by record ID with the requested properties.
+      idempotency: none
+      branches:
+        - {id: found, goName: Found, description: The record exists and was returned.}
+        - {id: notFound, goName: NotFound, description: No unarchived record of that object type has the record ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "HubSpot conclusively rejected the read, such as an unknown property, a missing scope, a rejected token, or an exhausted daily limit.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: HubSpot returned an invalid or oversized record response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *hubspotExecution
+    - name: upsertObject
+      goName: UpsertObject
+      inputType: UpsertObjectInput
+      outputType: UpsertedObject
+      kind: mutation
+      description: Create or update one HubSpot contact, company, or deal identified by a unique property, such as email for contacts.
+      idempotency: required
+      branches:
+        - {id: upserted, goName: Upserted, description: HubSpot created the record or updated the record that owns the unique value.}
+        - {id: conflict, goName: Conflict, description: "The properties conflict with another record, such as an email that another contact already owns.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "HubSpot conclusively rejected the upsert, such as an invalid property value, a property that is not unique, a missing scope, a rejected token, or an exhausted daily limit.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: HubSpot applied or rejected the upsert but returned an invalid or oversized response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *hubspotExecution
+    - name: updateObject
+      goName: UpdateObject
+      inputType: UpdateObjectInput
+      outputType: CRMObject
+      kind: mutation
+      description: Update properties of one HubSpot contact, company, or deal by record ID.
+      idempotency: required
+      branches:
+        - {id: updated, goName: Updated, description: HubSpot updated the record and returned it.}
+        - {id: notFound, goName: NotFound, description: No unarchived record of that object type has the record ID., optional: true}
+        - {id: conflict, goName: Conflict, description: "The properties conflict with another record, such as an email that another contact already owns.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "HubSpot conclusively rejected the update, such as an invalid property value, a missing scope, a rejected token, or an exhausted daily limit.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: HubSpot applied or rejected the update but returned an invalid or oversized response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *hubspotExecution
