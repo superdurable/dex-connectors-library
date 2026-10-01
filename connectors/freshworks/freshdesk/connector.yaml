@@ -1,0 +1,118 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: freshdesk
+  displayName: Freshdesk
+  description: Search, read, create, and update Freshdesk tickets and add private notes or public replies, keeping Freshdesk's own integer statuses and priorities.
+  company: Freshworks
+  version: v0.1.0
+spec:
+  provider: freshdesk
+  codegen:
+    go:
+      package: freshdesk
+  configuration:
+    fields:
+      - name: domain
+        goName: Domain
+        type: string
+        description: "Non-secret Freshdesk helpdesk domain: the acme in https://acme.freshdesk.com. Sign in at https://login.freshworks.com/email-login/, open your helpdesk, and copy the part before .freshdesk.com from the browser address bar. Enter lowercase letters, digits, and hyphens only, without https:// or .freshdesk.com; a custom support domain such as support.example.com does not work, because Freshdesk serves its API only on freshdesk.com domains. Required: every API request is sent to this helpdesk."
+        required: true
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Maximum complete Freshdesk API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when ticket descriptions or notes are unusually large. An oversized response selects invalidResponse, or uncertain for a write."
+        required: false
+        default: 4194304
+  auth:
+    type: apiKey
+    connectionKind: freshdesk-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        description: "Secret Freshdesk API key of the agent the connector acts as. Sign in at https://{domain}.freshdesk.com, select your profile picture at the top right, choose Profile Settings, then View API key, and complete the captcha, as https://support.freshdesk.com/support/solutions/articles/215517 describes. It is an opaque string of letters and digits; Freshdesk's API documentation uses abcdefghij1234567890 as an example. The connector sends it over HTTP Basic as the user name with X as the password. Stored only in this credential field; after resetting the key in Freshdesk, paste the new key here."
+        required: true
+    guide:
+      startURL: https://login.freshworks.com/email-login/
+      steps:
+        - Sign in to your Freshdesk helpdesk at https://{domain}.freshdesk.com as the agent the connector should act as; tickets, notes, and replies it writes are authored by that agent, and the agent's role limits which tickets it can read and change.
+        - Select your profile picture at the top right and choose Profile Settings.
+        - In the right pane choose View API key, complete the captcha, and copy the key into api_key; Freshdesk shows the key only to a verified agent, and the Sprout and Free plans have no API access.
+        - Enter the domain field as the acme in https://acme.freshdesk.com; Freshdesk serves its API only on freshdesk.com domains, not on a custom support domain.
+        - To revoke access, reset the API key in Freshdesk; resetting disconnects every app that uses that key, so paste the new key here.
+  operations:
+    - name: searchTickets
+      goName: SearchTickets
+      inputType: SearchTicketsInput
+      outputType: SearchTicketsOutput
+      kind: query
+      description: Filter tickets by Freshdesk status, priority, tag, update date, and requester email with Freshdesk's filter query, returning one page of at most 30 tickets.
+      idempotency: none
+      branches:
+        - {id: searched, goName: Searched, description: "One page of matching tickets was returned; it may be empty."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Freshdesk conclusively rejected the search, such as invalid credentials, a missing permission, or an unknown status.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Freshdesk returned an invalid or oversized contact list or search page., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &freshdeskReadExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
+    - name: getTicket
+      goName: GetTicket
+      inputType: GetTicketInput
+      outputType: TicketDetails
+      kind: query
+      description: Read one ticket by ID with its requester and a bounded list of its first conversations.
+      idempotency: none
+      branches:
+        - {id: found, goName: Found, description: The ticket and its first conversations were read.}
+        - {id: notFound, goName: NotFound, description: The ticket does not exist or is not visible to the connection's agent., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Freshdesk conclusively rejected the ticket read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Freshdesk returned an invalid or oversized ticket or conversation page., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *freshdeskReadExecution
+    - name: createTicket
+      goName: CreateTicket
+      inputType: CreateTicketInput
+      outputType: CreateTicketOutput
+      kind: mutation
+      description: Create one ticket for a requester email. Freshdesk has no idempotency key, so the Step runs with sync durability and sends the request at most once per Step execution.
+      idempotency: required
+      branches:
+        - {id: created, goName: Created, description: Freshdesk created the ticket and returned it.}
+        - {id: providerRejected, goName: ProviderRejected, description: "Freshdesk conclusively rejected the ticket, such as an unknown status, group, or agent; no ticket was created.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The request was sent but its outcome cannot be confirmed, so the ticket may exist; the connector never resends it.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &freshdeskSingleDispatchExecution
+        executeMethodTimeout: 30s
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m}
+    - name: updateTicket
+      goName: UpdateTicket
+      inputType: UpdateTicketInput
+      outputType: UpdateTicketOutput
+      kind: mutation
+      description: Set the status, priority, group, or agent of one ticket and add or remove tags; a repeated attempt finds the change already applied and writes nothing.
+      idempotency: required
+      branches:
+        - {id: updated, goName: Updated, description: "The ticket holds the requested values, written now or by an earlier attempt."}
+        - {id: notFound, goName: NotFound, description: The ticket does not exist or is not visible to the connection's agent., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Freshdesk conclusively rejected the change, such as an unknown status, a missing required field, or a spam or deleted ticket.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Freshdesk returned an invalid or oversized ticket, so the change may have been applied.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *freshdeskReadExecution
+    - name: addNote
+      goName: AddNote
+      inputType: AddNoteInput
+      outputType: AddNoteOutput
+      kind: mutation
+      description: Add one private note or one public reply to a ticket. Freshdesk has no idempotency key, so the Step runs with sync durability and sends the request at most once per Step execution.
+      idempotency: required
+      branches:
+        - {id: added, goName: Added, description: Freshdesk added the note or reply and returned it.}
+        - {id: notFound, goName: NotFound, description: "The ticket does not exist or is not visible to the connection's agent; nothing was added.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Freshdesk conclusively rejected the note or reply; nothing was added.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The request was sent but its outcome cannot be confirmed, so the note or reply may exist; the connector never resends it.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *freshdeskSingleDispatchExecution
