@@ -1,0 +1,238 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: google-docs
+  displayName: Google Docs
+  description: Read Google Docs as bounded Markdown or plain text with their revision, create documents in a Drive folder without duplicates on retry, and replace or append text only at the revision a Flow read.
+  company: Google
+  version: v0.1.0
+spec:
+  provider: google
+  codegen:
+    go:
+      package: docs
+  configuration:
+    fields:
+      - name: docsEndpoint
+        goName: DocsEndpoint
+        type: url
+        description: Google Docs API root URL to which the connector appends /v1/documents; leave blank for Google's public API. Enter an absolute HTTPS URL only for an explicitly supported compatible gateway.
+        required: false
+        default: https://docs.googleapis.com
+      - name: driveEndpoint
+        goName: DriveEndpoint
+        type: url
+        description: Google Drive API root URL to which createDocument appends /drive/v3 and /upload/drive/v3; leave blank for Google's public API. Enter an absolute HTTPS URL only for an explicitly supported compatible gateway.
+        required: false
+        default: https://www.googleapis.com
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete Google Docs document or Drive response in bytes; a document's JSON is several times larger than its text, so enter a positive integer only to read larger documents. A larger document read by getDocumentText selects tooLarge, and any other oversized response selects invalidResponse.
+        required: false
+        default: 8388608
+      - name: maxTextBytes
+        goName: MaxTextBytes
+        type: integer
+        description: Maximum UTF-8 text in bytes that getDocumentText returns and that createDocument, replaceDocumentText, and appendText accept in one call; enter a positive integer no larger than 4 MiB only to change the safety limit. Longer rendered text selects tooLarge, and longer input selects defect before any request.
+        required: false
+        default: 1048576
+  auth:
+    defaultMethod: google-oauth
+    methods:
+      - id: google-oauth
+        displayName: Google OAuth
+        description: Recommended for personal Google accounts and ordinary Google Workspace users; Dex opens Google consent and refreshes short-lived access tokens automatically.
+        recommended: true
+        type: oauth2
+        connectionKind: google-docs-oauth
+        fields:
+          - name: oauth_client_id
+            goName: OAuthClientID
+            type: string
+            description: Non-secret OAuth client ID copied from https://console.cloud.google.com/apis/credentials after opening APIs & Services > Credentials > OAuth 2.0 Client IDs; the value ends in .apps.googleusercontent.com and blank means authorization or refresh cannot start.
+            required: true
+          - name: oauth_client_secret
+            goName: OAuthClientSecret
+            type: secretString
+            description: Secret OAuth client secret copied once from the selected Web application at https://console.cloud.google.com/apis/credentials; store it only in the credential form and blank means authorization or refresh cannot start.
+            required: true
+          - name: access_token
+            goName: AccessToken
+            type: secretString
+            description: Secret short-lived Google OAuth access token produced automatically after consent and refreshed before expiry; never enter it manually.
+            required: true
+          - name: refresh_token
+            goName: RefreshToken
+            type: secretString
+            description: Secret long-lived refresh token returned by Google because offline access is requested; Dex stores and rotates it automatically, and blank means reauthorization is required.
+            required: true
+        guide:
+          startURL: https://console.cloud.google.com/apis/credentials
+          steps:
+            - Select a Google Cloud project, open APIs & Services > Library, and enable both Google Docs API and Google Drive API; createDocument and the pickers call Drive.
+            - Open Google Auth Platform > Branding, Audience, and Data Access, then add the displayed documents, drive.file, and drive.metadata.readonly scopes; drive.metadata.readonly is a restricted scope, so keep an External app in Testing with listed test users, use an Internal Workspace audience, or complete Google's restricted-scope verification before publishing.
+            - Open Clients > Create client > Web application, add the exact Redirect URI shown by Dex Web, then copy the client ID and one-time client secret into their fields.
+            - Complete consent with the Google account whose documents the Flows read and edit, and keep every requested scope checked; Google Testing refresh tokens can expire after seven days, so use an Internal Workspace audience or a verified published app for long-lived use.
+        oauth2:
+          authorizationEndpoint: https://accounts.google.com/o/oauth2/v2/auth
+          tokenEndpoint: https://oauth2.googleapis.com/token
+          authorizationParameters: {access_type: offline, prompt: consent}
+          clientIDCredential: oauth_client_id
+          clientSecretCredential: oauth_client_secret
+          scopes: [https://www.googleapis.com/auth/documents, https://www.googleapis.com/auth/drive.file, https://www.googleapis.com/auth/drive.metadata.readonly]
+          credentialMappings:
+            - {credential: access_token, source: access_token}
+            - {credential: refresh_token, source: refresh_token}
+          pkce: true
+      - id: workspace-domain-delegation
+        displayName: Workspace domain-wide delegation
+        description: Advanced administrator-only method for a Google Workspace domain; the service account mints delegated user tokens without interactive consent.
+        type: serviceAccount
+        connectionKind: google-docs-workspace-domain-delegation
+        fields:
+          - name: service_account_key
+            goName: ServiceAccountKey
+            type: secretString
+            description: Secret service-account JSON key downloaded from https://console.cloud.google.com/iam-admin/serviceaccounts after selecting the account > Keys > Add key > Create new key > JSON; blank means delegated token minting cannot start.
+            required: true
+          - name: delegated_user
+            goName: DelegatedUser
+            type: string
+            description: Complete Workspace user address whose documents the Flows read and edit, chosen by an administrator after authorizing the service account client ID at https://admin.google.com/ac/owl/domainwidedelegation; the value must be one user@example.com address and blank means no user can be impersonated.
+            required: true
+          - name: access_token
+            goName: AccessToken
+            type: secretString
+            description: Secret short-lived delegated access token minted automatically from the service-account assertion; never paste a token, and blank causes Dex to mint one before the next call.
+            required: false
+        guide:
+          startURL: https://console.cloud.google.com/iam-admin/serviceaccounts
+          steps:
+            - Select the Workspace-owned Google Cloud project, open APIs & Services > Library, and enable both Google Docs API and Google Drive API.
+            - Create a service account, open Details > Show advanced settings, and enable Google Workspace domain-wide delegation.
+            - Open the service account > Keys > Add key > Create new key > JSON, download the one-time private key, and paste the complete JSON document into the secret field.
+            - Copy the service account OAuth 2 Client ID, then open https://admin.google.com/ac/owl/domainwidedelegation and add that client ID with the displayed documents, drive.file, and drive.metadata.readonly scopes.
+            - Enter one managed Workspace user as delegated_user; personal @gmail.com accounts and users outside the administrator's domain cannot use this method.
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.2.0 <0.3.0"
+      backendCapabilities: [oauth.connection.manage, use.configuration.write, google.docs.documents-list, google.docs.folders-list]
+      mockScenarios: [not-configured, authorization-pending, connected, insufficient-scope, revoked, broker-unavailable, ready]
+      icon: icon.svg
+    commands:
+      - id: listDocuments
+        capability: google.docs.documents-list
+        request:
+          method: GET
+          url: https://www.googleapis.com/drive/v3/files
+          credential: {field: access_token, scheme: bearer}
+          fixedQuery:
+            q: "mimeType = 'application/vnd.google-apps.document' and trashed = false"
+            fields: "nextPageToken,files(id,name,modifiedTime)"
+            orderBy: "modifiedTime desc"
+            pageSize: "100"
+            corpora: "allDrives"
+            supportsAllDrives: "true"
+            includeItemsFromAllDrives: "true"
+          parameters:
+            - {name: pageToken, location: query, target: pageToken}
+      - id: listFolders
+        capability: google.docs.folders-list
+        request:
+          method: GET
+          url: https://www.googleapis.com/drive/v3/files
+          credential: {field: access_token, scheme: bearer}
+          fixedQuery:
+            q: "mimeType = 'application/vnd.google-apps.folder' and trashed = false"
+            fields: "nextPageToken,files(id,name)"
+            orderBy: "name"
+            pageSize: "100"
+            corpora: "allDrives"
+            supportsAllDrives: "true"
+            includeItemsFromAllDrives: "true"
+          parameters:
+            - {name: pageToken, location: query, target: pageToken}
+    units:
+      - id: documentPicker
+        goName: DocumentPicker
+        description: Select a Google Doc listed from the authorized account, most recently modified first, or paste a document ID or its docs.google.com/document link; the unit stores the provider document ID plus the title of a listed document, and blank leaves the operation without a document.
+        backendCapabilities: [google.docs.documents-list]
+        outputs:
+          - {name: documentId, goName: DocumentID, type: string}
+          - {name: documentTitle, goName: DocumentTitle, type: string}
+      - id: folderPicker
+        goName: FolderPicker
+        description: Select a folder listed from the authorized Google Drive account, or paste a folder ID or its drive.google.com/drive/folders link; the unit stores the provider folder ID plus the display name of a listed folder, and blank leaves the operation without a folder.
+        backendCapabilities: [google.docs.folders-list]
+        outputs:
+          - {name: folderId, goName: FolderID, type: string}
+          - {name: folderName, goName: FolderName, type: string}
+  operations:
+    - name: getDocumentText
+      goName: GetDocumentText
+      inputType: GetDocumentTextInput
+      outputType: GetDocumentTextOutput
+      kind: query
+      description: Read the first tab of one document, without pending suggestions, as bounded Markdown or plain text with its title and revision ID.
+      idempotency: none
+      branches:
+        - {id: read, goName: Read, description: The document text was rendered within the configured limit.}
+        - {id: notFound, goName: NotFound, description: The document does not exist or the connection cannot see it., optional: true}
+        - {id: tooLarge, goName: TooLarge, description: The document response or its rendered text exceeds the configured limit., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Google conclusively rejected the read, such as a revoked grant or a missing permission.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid document response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &docsExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+    - name: createDocument
+      goName: CreateDocument
+      inputType: CreateDocumentInput
+      outputType: CreateDocumentOutput
+      kind: mutation
+      description: Create one Google Doc from a title and optional plain-text or Markdown text in an optional Drive folder. Google offers no idempotency key for this, so the Step runs with sync durability, looks for the document an earlier attempt created, and sends the request at most once per Step execution.
+      idempotency: required
+      branches:
+        - {id: created, goName: Created, description: Google created the document or returned the one an earlier attempt of the same Step execution created.}
+        - {id: providerRejected, goName: ProviderRejected, description: "Google conclusively rejected the creation or the duplicate lookup, such as a missing parent folder; no document was created.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized duplicate-lookup response before the creation was sent., optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The creation was sent but its outcome cannot be confirmed, so the document may exist; the connector never sends it again.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m}
+    - name: replaceDocumentText
+      goName: ReplaceDocumentText
+      inputType: ReplaceDocumentTextInput
+      outputType: ReplaceDocumentTextOutput
+      kind: mutation
+      description: Replace the whole body text or named text placeholders in the first tab of one document in one batch that Google applies only at the required revision, so a repeated dispatch cannot apply it twice.
+      idempotency: required
+      branches:
+        - {id: replaced, goName: Replaced, description: "The document holds the requested text, written by this attempt or an earlier attempt of the same Step execution."}
+        - {id: placeholderNotFound, goName: PlaceholderNotFound, description: A requested placeholder does not occur in the body at the required revision; nothing was written., optional: true}
+        - {id: revisionChanged, goName: RevisionChanged, description: The document changed after the required revision and does not hold the requested text; nothing was written., optional: true}
+        - {id: notFound, goName: NotFound, description: The document does not exist or the connection cannot see it., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Google conclusively rejected the change, such as a connection without edit access.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized document response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *docsExecution
+    - name: appendText
+      goName: AppendText
+      inputType: AppendTextInput
+      outputType: AppendTextOutput
+      kind: mutation
+      description: Append plain-text paragraphs to the end of the first tab's body of one document in one batch that Google applies only at the required revision, so a repeated dispatch cannot append twice.
+      idempotency: required
+      branches:
+        - {id: appended, goName: Appended, description: "The document ends with the requested text, appended by this attempt or an earlier attempt of the same Step execution."}
+        - {id: revisionChanged, goName: RevisionChanged, description: The document changed after the required revision and does not end with the requested text; nothing was written., optional: true}
+        - {id: notFound, goName: NotFound, description: The document does not exist or the connection cannot see it., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Google conclusively rejected the change, such as a connection without edit access.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized document response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *docsExecution
