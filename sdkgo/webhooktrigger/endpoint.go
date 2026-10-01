@@ -39,6 +39,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -90,6 +91,9 @@ type EndpointConfig[C any, T any] struct {
 	// SourceQueueCapacity bounds each source's recorded events awaiting delivery; zero uses 64. A full
 	// queue answers 503 so the provider retries.
 	SourceQueueCapacity int
+	// Logger receives each source's delivery retry and skip records; nil uses slog.Default() per record,
+	// as sdkgo.DeliverTrigger does.
+	Logger *slog.Logger
 }
 
 // Endpoint serves one connection's webhook URL and fans each event out to its running sources.
@@ -226,7 +230,7 @@ func (source *source[C, T]) Run(ctx context.Context, target sdkgo.TriggerTarget[
 		case <-ctx.Done():
 			return ctx.Err()
 		case event := <-source.deliveries:
-			if err := sdkgo.DeliverTrigger(ctx, target, event); err != nil {
+			if err := sdkgo.DeliverTrigger(ctx, target, event, sdkgo.WithTriggerLogger(source.endpoint.config.Logger)); err != nil {
 				return err
 			}
 		}

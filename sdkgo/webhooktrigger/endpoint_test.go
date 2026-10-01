@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -325,4 +326,54 @@ func TestNewEndpointRejectsIncompleteConfiguration(t *testing.T) {
 			require.Error(t, err)
 		})
 	}
+}
+
+// retryOnceTarget fails its first delivery so DeliverTrigger logs a retry record.
+type retryOnceTarget struct {
+	mu        sync.Mutex
+	failures  int
+	delivered chan string
+}
+
+func (target *retryOnceTarget) HandleTrigger(_ context.Context, event sdkgo.TriggerEvent[orderEvent]) error {
+	target.mu.Lock()
+	defer target.mu.Unlock()
+	if target.failures == 0 {
+		target.failures++
+		return errors.New("transient target failure")
+	}
+	target.delivered <- event.ID
+	return nil
+}
+
+func TestEndpointSendsDeliveryRecordsToTheConfiguredLogger(t *testing.T) {
+	var records strings.Builder
+	var recordsMu sync.Mutex
+	logger := slog.New(slog.NewTextHandler(lockedWriter{builder: &records, mu: &recordsMu}, nil))
+	endpoint := newTestEndpoint(t, func(config *webhooktrigger.EndpointConfig[testCredentials, orderEvent]) {
+		config.Logger = logger
+	})
+	target := &retryOnceTarget{delivered: make(chan string, 1)}
+	runSource(t, endpoint, endpoint.NewSource(nil), target)
+	require.Equal(t, http.StatusOK, postWebhook(endpoint, "evt_retry:paid", "signing-secret").Code)
+	select {
+	case id := <-target.delivered:
+		require.Equal(t, "evt_retry", id)
+	case <-time.After(10 * time.Second):
+		t.Fatal("event was not delivered after its retry")
+	}
+	recordsMu.Lock()
+	defer recordsMu.Unlock()
+	require.Contains(t, records.String(), "event_id=evt_retry")
+}
+
+type lockedWriter struct {
+	builder *strings.Builder
+	mu      *sync.Mutex
+}
+
+func (writer lockedWriter) Write(contents []byte) (int, error) {
+	writer.mu.Lock()
+	defer writer.mu.Unlock()
+	return writer.builder.Write(contents)
 }
