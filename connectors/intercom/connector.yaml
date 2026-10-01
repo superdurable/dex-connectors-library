@@ -1,0 +1,183 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: intercom
+  displayName: Intercom
+  description: "Search, read, answer, close, reopen, and snooze Intercom conversations, find contacts by email, and receive signed conversation webhooks, with Intercom's own open, closed, and snoozed states."
+  company: Intercom
+  version: v0.1.0
+spec:
+  provider: intercom
+  codegen:
+    go:
+      package: intercom
+  configuration:
+    fields:
+      - name: region
+        goName: Region
+        type: enum
+        enum: [us, eu, au]
+        description: "Non-secret data hosting region of the Intercom workspace, which selects the API host every request uses: us sends to https://api.intercom.io, eu to https://api.eu.intercom.io, and au to https://api.au.intercom.io. Sign in at https://app.intercom.com/ and read the browser address bar: a workspace that opens on app.eu.intercom.com is eu, one on app.au.intercom.com is au, and one on app.intercom.com is us. An access token works only on its own region's host, so a wrong region makes every request fail with HTTP 401. Blank uses the displayed region."
+        required: false
+        default: us
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Largest complete Intercom API response, in bytes. getConversation reads a conversation with up to 500 of its most recent parts in one response, so raise it only when conversations with very long messages select invalidResponse; enter a positive integer. Blank keeps the displayed safety limit."
+        required: false
+        default: 4194304
+      - name: webhookMaxBodyBytes
+        goName: WebhookMaxBodyBytes
+        type: integer
+        description: "Largest Intercom webhook notification body, in bytes, that the conversationEvent endpoint accepts; a larger request is answered 413 before its signature is checked. A conversation notification carries the conversation with its recent parts, so raise it only when the endpoint answers 413 to real notifications; enter a positive integer. Blank keeps the displayed limit."
+        required: false
+        default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: intercom-access-token
+    fields:
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        description: "Secret access token of an Intercom app installed in this workspace. Open the Developer Hub at https://app.intercom.com/a/apps/_/developer-hub (app.eu.intercom.com or app.au.intercom.com for an EU or AU workspace), select the app, and copy the Access Token from Configure > Authentication; Test & Publish > Your Workspaces lists the same token for each workspace. It is an opaque string, sent only as an Authorization bearer token and stored only in this credential field. Required. After Regenerate token on Test & Publish > Your Workspaces, paste the new token here; it takes effect without a restart."
+        required: true
+      - name: client_secret
+        goName: ClientSecret
+        type: secretString
+        description: "Secret client secret of the same Intercom app, copied from Configure > Basic Information in the Developer Hub at https://app.intercom.com/a/apps/_/developer-hub. Intercom signs every webhook notification with it in the X-Hub-Signature header, and the conversationEvent Trigger rejects a notification whose HMAC-SHA1 signature does not match. It is an opaque string, stored only in this credential field and never sent to Intercom. Leave it blank when no Flow uses the conversationEvent Trigger; while it is blank, the webhook endpoint answers 503 so Intercom retries."
+        required: false
+    guide:
+      startURL: https://app.intercom.com/a/apps/_/developer-hub
+      steps:
+        - "Sign in as a teammate who can manage apps and open the Developer Hub; for an EU or AU workspace, sign in at app.eu.intercom.com or app.au.intercom.com instead, and choose that region in the region field."
+        - "Create a new app for your own workspace, named for example Dex; Intercom development workspaces are US-only, so an EU or AU workspace creates the app in its paid workspace."
+        - "Open the app's API Version menu and select 2.16, the version the connector sends with every request and expects in webhook notifications."
+        - "Open Configure > Authentication and copy the Access Token into access_token. A private app's token reads and writes this workspace's conversations, contacts, and admins."
+        - "For the conversationEvent Trigger, copy the Client secret from Configure > Basic Information into client_secret, then open Configure > Webhooks, enter the public HTTPS URL where the application mounts the webhook handler (Intercom validates it with a HEAD request), select topics such as conversation.user.created, and choose Save."
+        - "To revoke access, open Test & Publish > Your Workspaces and choose Regenerate token or Uninstall app."
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.2.0 <0.3.0"
+      backendCapabilities: [use.configuration.write, intercom.admins-list]
+      mockScenarios: [not-configured, connected]
+      icon: icon.svg
+    commands:
+      # An access token works only on its region's host, and Studio commands cannot
+      # template a host, so the admin picker tries each regional host in order.
+      - id: listAdmins
+        capability: intercom.admins-list
+        request:
+          method: GET
+          url: https://api.intercom.io/admins
+          credential: {field: access_token, scheme: bearer}
+          fixedHeaders: {Intercom-Version: "2.16"}
+      - id: listAdminsEU
+        capability: intercom.admins-list
+        request:
+          method: GET
+          url: https://api.eu.intercom.io/admins
+          credential: {field: access_token, scheme: bearer}
+          fixedHeaders: {Intercom-Version: "2.16"}
+      - id: listAdminsAU
+        capability: intercom.admins-list
+        request:
+          method: GET
+          url: https://api.au.intercom.io/admins
+          credential: {field: access_token, scheme: bearer}
+          fixedHeaders: {Intercom-Version: "2.16"}
+    units:
+      - id: adminPicker
+        goName: AdminPicker
+        description: "Select the Intercom teammate (admin) that replies to, closes, reopens, or snoozes conversations; the unit lists the workspace's admins from Intercom and stores the chosen admin's numeric ID."
+        backendCapabilities: [intercom.admins-list]
+        outputs:
+          - {name: adminId, goName: AdminID, type: string}
+      - id: conversationTopicPicker
+        goName: ConversationTopicPicker
+        description: "Select the Intercom conversation webhook topics a conversationEvent binding accepts, such as conversation.user.created; the unit stores the topic names, and selecting none accepts every supported conversation topic."
+        outputs:
+          - {name: topics, goName: Topics, type: stringList}
+  triggers:
+    - name: conversationEvent
+      goName: ConversationEvent
+      eventType: ConversationEvent
+      configurationType: ConversationEventTriggerConfiguration
+      description: "Receive one Intercom conversation webhook notification, verified with its X-Hub-Signature, such as a new inbound conversation or a customer reply, filtered by topic."
+  operations:
+    - name: searchConversations
+      goName: SearchConversations
+      inputType: SearchConversationsInput
+      outputType: SearchConversationsOutput
+      kind: query
+      description: "Search conversations by state, contact email, contact ID, tag, and update time, returning one bounded page and a cursor for the next."
+      idempotency: none
+      branches:
+        - {id: searched, goName: Searched, description: "One page of matching conversations was returned; it may be empty."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Intercom conclusively rejected the search, such as an invalid token, a missing permission, or an invalid cursor.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Intercom returned an invalid or oversized search page., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &intercomExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
+    - name: getConversation
+      goName: GetConversation
+      inputType: GetConversationInput
+      outputType: ConversationDetails
+      kind: query
+      description: Read one conversation by ID with its first message and a bounded list of its latest parts as plain text.
+      idempotency: none
+      branches:
+        - {id: found, goName: Found, description: The conversation and its latest parts were read.}
+        - {id: notFound, goName: NotFound, description: The conversation does not exist or is not visible to the connection's token., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Intercom conclusively rejected the conversation read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Intercom returned an invalid or oversized conversation., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *intercomExecution
+    - name: replyToConversation
+      goName: ReplyToConversation
+      inputType: ReplyToConversationInput
+      outputType: ReplyToConversationOutput
+      kind: mutation
+      description: "Add one admin reply or internal note to a conversation. Intercom has no idempotency key, so the Step runs with sync durability, sends the reply at most once per Step execution, and reconciles an unconfirmed attempt by reading the conversation back."
+      idempotency: required
+      branches:
+        - {id: replied, goName: Replied, description: "The reply or note is in the conversation; a retried attempt that found its own earlier reply reports it instead of sending again."}
+        - {id: notFound, goName: NotFound, description: "The conversation does not exist or is not visible to the connection's token; nothing was added.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Intercom conclusively rejected the reply, such as an unknown admin or a closed channel; nothing was added.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "An earlier attempt sent the reply but its outcome cannot be confirmed and the conversation shows no matching part, so the reply may exist; the connector never resends it.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Intercom accepted the reply but returned an invalid or oversized conversation, so the reply exists.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m}
+    - name: updateConversationState
+      goName: UpdateConversationState
+      inputType: UpdateConversationStateInput
+      outputType: UpdateConversationStateOutput
+      kind: mutation
+      description: "Close, reopen, or snooze one conversation as an admin. Every attempt reads the conversation first and writes only when its state differs, so a repeated Step is safe."
+      idempotency: required
+      branches:
+        - {id: updated, goName: Updated, description: "The conversation is in the requested state; a repeated attempt that finds it there writes nothing."}
+        - {id: notFound, goName: NotFound, description: The conversation does not exist or is not visible to the connection's token., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Intercom conclusively rejected the change, such as an unknown admin, and the conversation is not in the requested state.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Intercom returned an invalid or oversized conversation, so the change may have been applied.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *intercomExecution
+    - name: findContactByEmail
+      goName: FindContactByEmail
+      inputType: FindContactByEmailInput
+      outputType: FindContactByEmailOutput
+      kind: query
+      description: "Find the users and leads whose email equals one address, returning a bounded list; Intercom can hold several contacts with one email."
+      idempotency: none
+      branches:
+        - {id: found, goName: Found, description: At least one contact has the email address.}
+        - {id: notFound, goName: NotFound, description: No contact has the email address yet; Intercom can take a few minutes to index a new contact., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Intercom conclusively rejected the contact search., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Intercom returned an invalid or oversized contact page., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *intercomExecution
