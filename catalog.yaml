@@ -3,6 +3,7 @@ kind: ConnectorCatalogSource
 directories:
   - connectors/airtable
   - connectors/alibaba/qwen
+  - connectors/amazon/s3
   - connectors/anthropic
   - connectors/asana
   - connectors/atlassian/confluence
