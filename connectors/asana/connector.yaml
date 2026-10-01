@@ -1,0 +1,179 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: asana
+  displayName: Asana
+  description: List and read Asana tasks by project or section, create tasks and comments without silent duplicates, and complete, assign, reschedule, or move tasks between sections.
+  company: Asana
+  version: v0.1.0
+spec:
+  provider: asana
+  codegen:
+    go:
+      package: asana
+  configuration:
+    fields:
+      - name: endpoint
+        goName: Endpoint
+        type: url
+        description: "Asana REST API base URL that every task, section, and story path is appended to; leave blank for Asana's public API. Enter an absolute HTTPS URL only for an explicitly supported compatible gateway, or a loopback HTTP URL for a local test server; Asana tokens are sent to whatever host this names."
+        required: false
+        default: https://app.asana.com/api/1.0
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Maximum complete Asana API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it. An oversized read selects invalidResponse, and an oversized response to an accepted createTask or addComment selects uncertain."
+        required: false
+        default: 4194304
+  auth:
+    type: apiKey
+    connectionKind: asana-personal-access-token
+    fields:
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        description: "Secret Asana personal access token created at https://app.asana.com/0/my-apps under Personal access tokens > Create new token; Asana treats the value as opaque, so paste it exactly as shown once. Dex Web stores it as a secret and sends it only to Asana as a bearer token, and blank means no Asana call can authenticate."
+        required: true
+    guide:
+      startURL: https://app.asana.com/0/my-apps
+      steps:
+        - Sign in to Asana as the user whose access the Flows should use; tasks, assignments, and comments are created as that user, in every workspace the user belongs to, so a dedicated Asana user narrows what a leaked token can reach.
+        - In the Asana developer console, find Personal access tokens, choose Create new token, give it a name that identifies this Dex connection, and accept the API terms.
+        - Copy the token Asana shows once into the secret field below. It does not expire; to revoke it, delete the token in the same developer console, then paste a replacement here.
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.2.0 <0.3.0"
+      backendCapabilities: [use.configuration.write, asana.workspaces-list, asana.projects-list, asana.sections-list]
+      mockScenarios: [not-configured, connected]
+      icon: icon.svg
+    commands:
+      - id: listWorkspaces
+        capability: asana.workspaces-list
+        request:
+          method: GET
+          url: https://app.asana.com/api/1.0/workspaces
+          credential: {field: access_token, scheme: bearer}
+          fixedQuery: {limit: "100", opt_fields: "name"}
+          parameters:
+            - {name: offset, location: query, target: offset}
+      - id: listProjects
+        capability: asana.projects-list
+        request:
+          method: GET
+          url: https://app.asana.com/api/1.0/projects
+          credential: {field: access_token, scheme: bearer}
+          fixedQuery: {limit: "100", archived: "false", opt_fields: "name"}
+          parameters:
+            - {name: workspace, location: query, target: workspace}
+            - {name: offset, location: query, target: offset}
+      - id: listSections
+        capability: asana.sections-list
+        request:
+          method: GET
+          url: https://app.asana.com/api/1.0/projects/{projectId}/sections
+          credential: {field: access_token, scheme: bearer}
+          fixedQuery: {limit: "100", opt_fields: "name"}
+          parameters:
+            - {name: projectId, location: path, target: projectId}
+            - {name: offset, location: query, target: offset}
+    units:
+      - id: workspacePicker
+        goName: WorkspacePicker
+        description: "Choose one Asana workspace or organization the connection's user belongs to; the unit stores the workspace ID and name, for a createTask Step that adds tasks to a workspace without a project, and offers manual entry when the list cannot load."
+        backendCapabilities: [asana.workspaces-list]
+        outputs:
+          - {name: workspaceId, goName: WorkspaceID, type: string}
+          - {name: workspaceName, goName: WorkspaceName, type: string}
+      - id: projectPicker
+        goName: ProjectPicker
+        description: "Choose a workspace, then one of its unarchived Asana projects and optionally one of that project's sections; the unit stores the workspace, project, and section IDs and names, and offers manual entry of each ID when a list cannot load."
+        backendCapabilities: [asana.workspaces-list, asana.projects-list, asana.sections-list]
+        outputs:
+          - {name: workspaceId, goName: WorkspaceID, type: string}
+          - {name: projectId, goName: ProjectID, type: string}
+          - {name: projectName, goName: ProjectName, type: string}
+          - {name: sectionId, goName: SectionID, type: string}
+          - {name: sectionName, goName: SectionName, type: string}
+  operations:
+    - name: listTasks
+      goName: ListTasks
+      inputType: ListTasksInput
+      outputType: ListTasksOutput
+      kind: query
+      description: List one bounded page of a project's or a section's tasks, optionally only incomplete tasks or tasks changed since a time, continuing with Asana's offset token.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: One page of the project's or section's tasks was read.}
+        - {id: notFound, goName: NotFound, description: The project or section does not exist or the connection cannot see it., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Asana conclusively rejected the list, such as an expired offset token, missing permission, or a result set too large to page.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Asana returned an invalid or oversized task page., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &asanaRepeatableExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+    - name: getTask
+      goName: GetTask
+      inputType: GetTaskInput
+      outputType: Task
+      kind: query
+      description: Read one task by ID with its completion, assignee, dates, project and section memberships, plain-text notes, and custom field values.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: The task was read.}
+        - {id: notFound, goName: NotFound, description: The task does not exist or the connection cannot see it., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Asana conclusively rejected the task read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Asana returned an invalid or oversized task., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *asanaRepeatableExecution
+    - name: createTask
+      goName: CreateTask
+      inputType: CreateTaskInput
+      outputType: CreateTaskOutput
+      kind: mutation
+      description: Create one task in a project, optionally in a section, or in a workspace, with a name, plain-text notes, an assignee, a due date, and text, number, or enum custom field values.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: created, goName: Created, description: Asana created the task and returned its ID.}
+        - {id: providerRejected, goName: ProviderRejected, description: "Asana conclusively rejected the task, such as an unknown project, section, assignee, or custom field value, or missing permission; nothing was created.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The request was dispatched but its outcome cannot be confirmed; Asana has no idempotency key, so the task may exist and must not be created again automatically.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      # Sync: an async fallback attempt re-sends a slow create, and Asana has no idempotency key.
+      execution: &asanaUnkeyedWriteExecution
+        executeMethodTimeout: 30s
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+    - name: updateTask
+      goName: UpdateTask
+      inputType: UpdateTaskInput
+      outputType: UpdateTaskOutput
+      kind: mutation
+      description: Complete or reopen, assign or unassign, reschedule, or set custom field values on one task, and move it to a section; every change is an absolute value, so a repeated update leaves the same task.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: updated, goName: Updated, description: "Asana applied every requested change, including when the task already had those values, and the Value holds the task read back."}
+        - {id: notFound, goName: NotFound, description: The task or section does not exist or the connection cannot see it., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Asana conclusively rejected a change, such as an unknown assignee, a section of a project the task is not in, or missing permission.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Asana returned an invalid or oversized task after the update., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *asanaRepeatableExecution
+    - name: addComment
+      goName: AddComment
+      inputType: AddCommentInput
+      outputType: AddCommentOutput
+      kind: mutation
+      description: Add one plain-text comment, a comment story authored by the connection's user, to a task.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: added, goName: Added, description: Asana added the comment and returned its story ID.}
+        - {id: notFound, goName: NotFound, description: The task does not exist or the connection cannot see it; nothing was added., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Asana conclusively rejected the comment, such as missing permission or invalid text; nothing was added.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The request was dispatched but its outcome cannot be confirmed; Asana has no idempotency key, so the comment may exist and must not be added again automatically.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *asanaUnkeyedWriteExecution
