@@ -1,0 +1,188 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: google-forms
+  displayName: Google Forms
+  description: Read a Google Form's questions and its responses, listed one bounded page at a time after a submission time or read one by ID.
+  company: Google
+  version: v0.1.0
+spec:
+  provider: google
+  codegen:
+    go:
+      package: forms
+  configuration:
+    fields:
+      - name: endpoint
+        goName: Endpoint
+        type: url
+        description: Google Forms API root URL to which the connector appends /v1; leave blank for Google's public API. Enter an absolute HTTPS URL only for an explicitly supported compatible gateway.
+        required: false
+        default: https://forms.googleapis.com
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete Google Forms response in bytes for one form or one page of responses; enter a positive integer only to change the safety limit, for example for forms with many long answers. Oversized responses select invalidResponse.
+        required: false
+        default: 1048576
+      - name: responsePageSize
+        goName: ResponsePageSize
+        type: integer
+        description: Number of responses listResponses requests per page when the Step input leaves pageSize at zero; enter a whole number from 1 to 1000 only to change the trade-off that smaller pages return sooner and stay under maxResponseBytes, while larger pages use fewer of Google's per-minute responses.list requests.
+        required: false
+        default: 50
+  auth:
+    defaultMethod: google-oauth
+    methods:
+      - id: google-oauth
+        displayName: Google OAuth
+        description: Recommended for personal Google accounts and ordinary Google Workspace users; Dex opens Google consent and refreshes short-lived access tokens automatically.
+        recommended: true
+        type: oauth2
+        connectionKind: google-forms-oauth
+        fields:
+          - name: oauth_client_id
+            goName: OAuthClientID
+            type: string
+            description: Non-secret OAuth client ID copied from https://console.cloud.google.com/apis/credentials after opening APIs & Services > Credentials > OAuth 2.0 Client IDs; the value ends in .apps.googleusercontent.com and blank means authorization or refresh cannot start.
+            required: true
+          - name: oauth_client_secret
+            goName: OAuthClientSecret
+            type: secretString
+            description: Secret OAuth client secret copied once from the selected Web application at https://console.cloud.google.com/apis/credentials; store it only in the credential form and blank means authorization or refresh cannot start.
+            required: true
+          - name: access_token
+            goName: AccessToken
+            type: secretString
+            description: Secret short-lived Google OAuth access token produced automatically after consent and refreshed before expiry; never enter it manually.
+            required: true
+          - name: refresh_token
+            goName: RefreshToken
+            type: secretString
+            description: Secret long-lived refresh token returned by Google because offline access is requested; Dex stores and rotates it automatically, and blank means reauthorization is required.
+            required: true
+        guide:
+          startURL: https://console.cloud.google.com/apis/credentials
+          steps:
+            - Select a Google Cloud project, open APIs & Services > Library, and enable both Google Forms API and Google Drive API; the form picker lists forms through Google Drive.
+            - Open Google Auth Platform > Branding, Audience, and Data Access, then add the displayed forms.body.readonly, forms.responses.readonly, and drive.metadata.readonly scopes; drive.metadata.readonly is a restricted scope, so keep an External app in Testing with listed test users, use an Internal Workspace audience, or complete Google's restricted-scope verification before publishing.
+            - Open Clients > Create client > Web application, add the exact Redirect URI shown by Dex Web, then copy the client ID and one-time client secret into their fields.
+            - Complete consent with a Google account that can edit the forms whose responses the Flows read, and keep every scope checked; Google Testing refresh tokens can expire after seven days, so use an Internal Workspace audience or a verified published app for long-lived use.
+        oauth2:
+          authorizationEndpoint: https://accounts.google.com/o/oauth2/v2/auth
+          tokenEndpoint: https://oauth2.googleapis.com/token
+          authorizationParameters: {access_type: offline, prompt: consent}
+          clientIDCredential: oauth_client_id
+          clientSecretCredential: oauth_client_secret
+          scopes: [https://www.googleapis.com/auth/forms.body.readonly, https://www.googleapis.com/auth/forms.responses.readonly, https://www.googleapis.com/auth/drive.metadata.readonly]
+          credentialMappings:
+            - {credential: access_token, source: access_token}
+            - {credential: refresh_token, source: refresh_token}
+          pkce: true
+      - id: workspace-domain-delegation
+        displayName: Workspace domain-wide delegation
+        description: Advanced administrator-only method for a Google Workspace domain; the service account mints delegated user tokens without interactive consent.
+        type: serviceAccount
+        connectionKind: google-forms-workspace-domain-delegation
+        fields:
+          - name: service_account_key
+            goName: ServiceAccountKey
+            type: secretString
+            description: Secret service-account JSON key downloaded from https://console.cloud.google.com/iam-admin/serviceaccounts after selecting the account > Keys > Add key > Create new key > JSON; blank means delegated token minting cannot start.
+            required: true
+          - name: delegated_user
+            goName: DelegatedUser
+            type: string
+            description: Complete Workspace user address that can edit the forms the Flows read, chosen by an administrator after authorizing the service account client ID at https://admin.google.com/ac/owl/domainwidedelegation; the value must be one user@example.com address and blank means no user can be impersonated.
+            required: true
+          - name: access_token
+            goName: AccessToken
+            type: secretString
+            description: Secret short-lived delegated access token minted automatically from the service-account assertion; never paste a token, and blank causes Dex to mint one before the next call.
+            required: false
+        guide:
+          startURL: https://console.cloud.google.com/iam-admin/serviceaccounts
+          steps:
+            - Select the Workspace-owned Google Cloud project, open APIs & Services > Library, and enable both Google Forms API and Google Drive API.
+            - Create a service account, open Details > Show advanced settings, and enable Google Workspace domain-wide delegation.
+            - Open the service account > Keys > Add key > Create new key > JSON, download the one-time private key, and paste the complete JSON document into the secret field.
+            - Copy the service account OAuth 2 Client ID, then open https://admin.google.com/ac/owl/domainwidedelegation and add that client ID with the displayed forms.body.readonly, forms.responses.readonly, and drive.metadata.readonly scopes.
+            - Enter one managed Workspace user as delegated_user; personal @gmail.com accounts and users outside the administrator's domain cannot use this method.
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.2.0 <0.3.0"
+      backendCapabilities: [oauth.connection.manage, use.configuration.write, google.forms.forms-list]
+      mockScenarios: [not-configured, authorization-pending, connected, insufficient-scope, revoked, broker-unavailable, ready]
+      icon: icon.svg
+    commands:
+      - id: listForms
+        capability: google.forms.forms-list
+        request:
+          method: GET
+          url: https://www.googleapis.com/drive/v3/files
+          credential: {field: access_token, scheme: bearer}
+          fixedQuery:
+            q: "mimeType = 'application/vnd.google-apps.form' and trashed = false"
+            fields: "nextPageToken,files(id,name)"
+            orderBy: "modifiedTime desc"
+            pageSize: "100"
+            corpora: "allDrives"
+            supportsAllDrives: "true"
+            includeItemsFromAllDrives: "true"
+          parameters:
+            - {name: pageToken, location: query, target: pageToken}
+    units:
+      - id: formPicker
+        goName: FormPicker
+        description: Select a form listed from the authorized account's Google Drive, most recently changed first, or paste a form ID or its docs.google.com/forms/d/FORM_ID/edit link; the unit stores the form ID plus the title of a listed form, and blank leaves the Step without a form.
+        backendCapabilities: [google.forms.forms-list]
+        outputs:
+          - {name: formId, goName: FormID, type: string}
+          - {name: formTitle, goName: FormTitle, type: string}
+  operations:
+    - name: getForm
+      goName: GetForm
+      inputType: GetFormInput
+      outputType: Form
+      kind: query
+      description: Read one form's items in form order, with each question's ID, title, type, and choices.
+      idempotency: none
+      branches:
+        - {id: found, goName: Found, description: Google Forms returned the form.}
+        - {id: notFound, goName: NotFound, description: The form does not exist or the connection cannot see it., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Google conclusively rejected the read, such as a revoked grant or an account that cannot open the form.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized form., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &formsExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
+    - name: listResponses
+      goName: ListResponses
+      inputType: ListResponsesInput
+      outputType: ResponsePage
+      kind: query
+      description: List one bounded page, 1 to 1000, of a form's responses, optionally only those submitted after a time, continued with Google's page token.
+      idempotency: none
+      branches:
+        - {id: listed, goName: Listed, description: "Google Forms returned one page of responses, which can be empty."}
+        - {id: notFound, goName: NotFound, description: The form does not exist or the connection cannot see it., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Google conclusively rejected the listing, such as an account that cannot read the form's responses or an expired page token.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized page of responses., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *formsExecution
+    - name: getResponse
+      goName: GetResponse
+      inputType: GetResponseInput
+      outputType: FormResponse
+      kind: query
+      description: Read one form response by its response ID, with every answer keyed by question ID.
+      idempotency: none
+      branches:
+        - {id: found, goName: Found, description: Google Forms returned the response.}
+        - {id: notFound, goName: NotFound, description: The form or the response does not exist or the connection cannot see it., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Google conclusively rejected the read, such as an account that cannot read the form's responses.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized response record., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *formsExecution
