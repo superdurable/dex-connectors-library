@@ -1,0 +1,117 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: webhook
+  displayName: Webhook
+  description: "Receive verified webhook requests from any sender, such as a form service, and start or resume Flows with a stable event ID. Send signed Standard Webhooks events to a configured HTTPS receiver."
+  company: Super Durable
+  version: v0.1.0
+spec:
+  provider: webhook
+  codegen:
+    go:
+      package: webhook
+  configuration:
+    fields:
+      - name: verification
+        goName: VerificationScheme
+        type: enum
+        enum: [hmacSha256, standardWebhooks, sharedToken]
+        description: "How each incoming request is authenticated; pick the scheme the sender's webhook documentation names. hmacSha256 checks an HMAC-SHA256 signature of the raw body, as GitHub, Shopify, and Typeform send. standardWebhooks checks the webhook-id, webhook-timestamp, and webhook-signature headers defined at https://www.standardwebhooks.com. sharedToken compares a static token header, only for senders that cannot sign. Unauthenticated requests are never accepted. Blank uses the default."
+        required: false
+        default: hmacSha256
+      - name: signatureHeader
+        goName: SignatureHeader
+        type: string
+        description: "hmacSha256 only: the request header that carries the signature, as the sender's webhook documentation names it, such as X-Hub-Signature-256 for GitHub, X-Shopify-Hmac-Sha256 for Shopify, or Typeform-Signature for Typeform. Names are case-insensitive. Blank uses the default."
+        required: false
+        default: X-Signature-256
+      - name: signaturePrefix
+        goName: SignaturePrefix
+        type: string
+        description: "hmacSha256 only: literal text the sender writes before the encoded signature, including any = sign, such as sha256= for GitHub and Typeform. Blank means the header holds only the encoded signature, as Shopify sends."
+        required: false
+      - name: signatureEncoding
+        goName: SignatureEncoding
+        type: enum
+        enum: [hex, base64]
+        description: "hmacSha256 only: how the sender encodes the 32-byte signature. hex is 64 characters, as GitHub sends; base64 is 44 characters ending in =, as Shopify and Typeform send. Blank uses the default."
+        required: false
+        default: hex
+      - name: timestampToleranceSeconds
+        goName: TimestampToleranceSeconds
+        type: integer
+        description: "standardWebhooks only: the largest difference, in whole seconds, between the webhook-timestamp header and this server's clock. Older or future-dated requests are rejected, which stops replayed deliveries. Raise it only when a clock drifts; it must be positive. Blank uses the default."
+        required: false
+        default: 300
+      - name: tokenHeader
+        goName: TokenHeader
+        type: string
+        description: "sharedToken only: the request header whose value must equal signing_secret, entered as the header name in the sender's custom-header setting, such as X-Form-Token. Names are case-insensitive. Blank uses the default."
+        required: false
+        default: X-Webhook-Token
+      - name: eventIdHeader
+        goName: EventIDHeader
+        type: string
+        description: "hmacSha256 and sharedToken: a header that carries the sender's delivery ID, such as X-GitHub-Delivery or X-Shopify-Webhook-Id. Redeliveries reuse that ID, so they start one Flow. standardWebhooks always uses webhook-id. Blank, or a request without the header, falls back to eventIdPointer and then to the SHA-256 of the body."
+        required: false
+      - name: eventIdPointer
+        goName: EventIDPointer
+        type: string
+        description: "hmacSha256 and sharedToken: an RFC 6901 JSON Pointer to the event ID inside the body, such as /id or /event_id; in a form body, /field/0 names the first value of field. The value must be a non-empty string or number, or the request is answered 400. Blank uses the hex SHA-256 of the body, so only byte-identical redeliveries start one Flow."
+        required: false
+      - name: maxBodyBytes
+        goName: MaxBodyBytes
+        type: integer
+        description: "Largest request body, in bytes, that this connection accepts or that sendEvent sends. Larger incoming requests are answered 413 before verification. Raise it only for a sender whose documented payloads are larger; it must be positive. Blank uses the default."
+        required: false
+        default: 1048576
+      - name: forwardedHeaders
+        goName: ForwardedHeaders
+        type: stringList
+        description: "Request header names to copy into each event, one per entry, such as X-GitHub-Event or User-Agent. Authorization, Cookie, webhook-signature, and the signatureHeader and tokenHeader values cannot be forwarded. Blank forwards no headers."
+        required: false
+      - name: deliveryUrl
+        goName: DeliveryURL
+        type: url
+        description: "HTTPS URL that sendEvent POSTs to, copied from the receiving service's webhook or endpoint settings, such as https://hooks.example.com/dex. It is stored as non-secret configuration, so keep tokens out of it; every request is signed with signing_secret instead. Blank makes sendEvent select defect; receiving requests does not need it."
+        required: false
+  auth:
+    type: apiKey
+    connectionKind: webhook-signing-secret
+    fields:
+      - name: signing_secret
+        goName: SigningSecret
+        type: secretString
+        description: "Secret shared with the sender and stored only in the local connection file. For hmacSha256, the exact key the sender signs with, such as the secret typed into GitHub or Typeform; for standardWebhooks, the whole whsec_ value; for sharedToken, the token the sender puts in tokenHeader. sendEvent signs outgoing requests with the same value. Required."
+        required: true
+    guide:
+      startURL: https://github.com/superdurable/dex-connectors-library/tree/main/connectors/superdurable/webhook#sender-setup
+      steps:
+        - "Open the webhook settings of the sending service, such as GitHub repository Settings > Webhooks > Add webhook, Shopify admin Settings > Notifications > Webhooks, Typeform form Connect > Webhooks, or the endpoint page of a Standard Webhooks sender."
+        - "Enter the public HTTPS URL where the application mounts this connection's webhook handler; during local development that is an HTTPS tunnel URL."
+        - "Set or copy the signing secret there. GitHub and Typeform accept a secret you choose, such as the output of openssl rand -hex 32; Shopify shows the key its webhooks are signed with; Standard Webhooks senders show a whsec_ secret. Paste the same value into signing_secret."
+        - "Choose the verification scheme the sender documents and, for hmacSha256, its signature header, prefix, and encoding. Name its delivery ID with eventIdHeader or eventIdPointer so redeliveries start one Flow."
+  triggers:
+    - name: requestReceived
+      goName: RequestReceived
+      eventType: WebhookRequestEvent
+      configurationType: RequestReceivedTriggerConfiguration
+      description: Receive one verified JSON or form-encoded webhook request, such as a form submission, with a stable event ID.
+  operations:
+    - name: sendEvent
+      goName: SendEvent
+      inputType: SendEventInput
+      outputType: SendEventOutput
+      kind: mutation
+      description: POST one JSON event to the connection's HTTPS delivery URL, signed with the Standard Webhooks scheme and a webhook-id stable across retries.
+      idempotency: required
+      branches:
+        - {id: delivered, goName: Delivered, description: The receiver answered 2xx and accepted the event.}
+        - {id: rejected, goName: Rejected, description: "The receiver answered a redirect or a 4xx other than 408 and 429, so it refused the event; the Result carries the status code.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The event was sent, but the receiver answered 5xx, timed out, or closed the connection, so it may have accepted the event.", optional: true}
+        - {id: defect, goName: Defect, description: "The connection has no valid deliveryUrl or signing secret, or the payload is not one JSON value within maxBodyBytes.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
