@@ -1,0 +1,116 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: postgresql
+  displayName: PostgreSQL
+  description: Run one parameterized read-only query, or one transactional write statement, against a PostgreSQL database.
+  company: PostgreSQL
+  version: v0.1.0
+spec:
+  provider: postgresql
+  codegen:
+    go:
+      package: postgresql
+  configuration:
+    fields:
+      - name: host
+        goName: Host
+        type: string
+        description: "Server DNS name or IP address without a scheme or port, such as db.example.com. Amazon RDS: https://console.aws.amazon.com/rds/ > Databases > select the instance > Connectivity & security > Endpoint. Supabase: https://supabase.com/dashboard > select the project > Connect > host. Neon: https://console.neon.tech > select the project > Dashboard > Connect > host. Self-hosted: ask your database administrator. Not secret; blank is invalid. An absolute Unix-socket directory such as /var/run/postgresql connects locally."
+        required: true
+      - name: port
+        goName: Port
+        type: integer
+        description: "TCP port shown beside the host, as a positive integer from 1 through 65535: https://console.aws.amazon.com/rds/ > Databases > select the instance > Connectivity & security > Port, or the port in the Supabase or Neon Connect dialog. Override it only for a non-standard server or a connection pooler such as PgBouncer or Supabase's transaction pooler. Not secret; blank uses the displayed default."
+        required: false
+        default: 5432
+      - name: database
+        goName: Database
+        type: string
+        description: "Database name to connect to, such as app. Amazon RDS: https://console.aws.amazon.com/rds/ > Databases > select the instance > Configuration > DB name. Supabase (https://supabase.com/dashboard) and Neon (https://console.neon.tech): the database name in the project's Connect dialog. Self-hosted: list names with psql's \\l command. Not secret; blank is invalid."
+        required: true
+      - name: user
+        goName: User
+        type: string
+        description: "Login role name, such as dex_app. Create a dedicated least-privilege role with CREATE ROLE as the authorization guide describes (https://www.postgresql.org/docs/current/sql-createrole.html); Supabase and Neon also list roles in the project's Connect dialog. Not secret; blank is invalid."
+        required: true
+      - name: sslMode
+        goName: SSLMode
+        type: enum
+        enum: [require, verify-ca, verify-full, disable]
+        description: "TLS policy using libpq sslmode names. require encrypts but does not verify the server certificate; verify-ca also checks the certificate chain; verify-full also checks that the certificate names the host; disable sends traffic unencrypted and is accepted only for localhost, 127.0.0.1, ::1, or a Unix-socket directory. verify-ca and verify-full trust the Worker's system certificate store, or the PEM bundle named by the Worker's PGSSLROOTCERT environment variable, such as Amazon RDS's bundle from https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem. prefer and allow are not offered because they silently fall back to plaintext. Blank uses the displayed default."
+        required: false
+        default: require
+      - name: connectTimeout
+        goName: ConnectTimeout
+        type: duration
+        description: "Maximum time to open the TCP connection, finish TLS, and authenticate, as a positive Go duration such as 3s. Raise it only for a distant or cold-starting server, such as a suspended Neon compute. Blank uses the displayed default."
+        required: false
+        default: 5s
+      - name: statementTimeout
+        goName: StatementTimeout
+        type: duration
+        description: "PostgreSQL statement_timeout applied to every statement the connector sends, as a positive Go duration such as 2s; PostgreSQL cancels a slower statement and the operation selects providerRejected. Keep connectTimeout plus statementTimeout under the Step's Execute timeout. An async Step whose statement runs longer than about seven seconds is dispatched again, so writes must be idempotent; override the Step to sync durability only when most of its statements are that slow. Blank uses the displayed default."
+        required: false
+        default: 5s
+      - name: maxRows
+        goName: MaxRows
+        type: integer
+        description: "Maximum rows returned by one query, or by the RETURNING clause of one execute, as a positive integer. Beyond it query selects truncated and execute rolls back and selects limitExceeded. Prefer a LIMIT in the statement; raise this only for a deliberately large read. Blank uses the displayed default."
+        required: false
+        default: 1000
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Maximum JSON-encoded size of the returned rows in bytes, as a positive integer, with the same truncated and limitExceeded behavior as maxRows. Rows are stored in Dex Flow state, so raise it cautiously. Blank uses the displayed default."
+        required: false
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: postgresql-password
+    fields:
+      - name: password
+        goName: Password
+        type: secretString
+        description: "Secret password of the login role named in user. Amazon RDS: the master password or a Secrets Manager value; Supabase: https://supabase.com/dashboard > Project Settings > Database > Reset database password; Neon: https://console.neon.tech > Roles > Reset password; self-hosted: ALTER ROLE <user> PASSWORD. Dex keeps it out of Flow state, logs, and Results. Blank is invalid."
+        required: true
+    guide:
+      startURL: https://www.postgresql.org/docs/current/sql-createrole.html
+      steps:
+        - "Open your database's connection page to find the host, port, database, and user: Amazon RDS Databases > select the instance > Connectivity & security; Supabase project > Connect; Neon project Dashboard > Connect; or ask the administrator of a self-hosted server."
+        - "Create a dedicated login role for Dex instead of using an owner or superuser, for example CREATE ROLE dex_app LOGIN PASSWORD 'a-new-password', then GRANT CONNECT ON DATABASE app TO dex_app."
+        - "Grant only what your Flows need: SELECT on the tables that query reads, and INSERT, UPDATE, or DELETE only on the tables that execute writes. The connector's read-only transaction is a guard, not a permission boundary."
+        - "Enter the non-secret connection fields, then paste the role's password into the password field. Rotate it with ALTER ROLE dex_app PASSWORD 'another-password' and save the new value here; revoke access with ALTER ROLE dex_app NOLOGIN."
+  operations:
+    - name: query
+      goName: QueryRows
+      inputType: QueryRowsInput
+      outputType: RowSet
+      kind: query
+      description: Run one parameterized statement in a read-only transaction and return its bounded rows.
+      idempotency: none
+      branches:
+        - {id: completed, goName: Completed, description: "PostgreSQL ran the read-only statement and returned every row, possibly none, within maxRows and maxResponseBytes."}
+        - {id: truncated, goName: Truncated, description: "The statement produced more rows or bytes than maxRows or maxResponseBytes allow; the Result holds only the rows that fit.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "PostgreSQL conclusively refused the connection or statement, such as bad credentials, a syntax error, a missing table, a permission error, a write inside the read-only transaction, or statementTimeout.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "PostgreSQL returned a value the connector cannot decode under its documented type mapping.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &postgresqlExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+    - name: execute
+      goName: ExecuteStatement
+      inputType: ExecuteStatementInput
+      outputType: StatementExecution
+      kind: mutation
+      description: Run one parameterized write statement in its own transaction and return its rows affected and bounded RETURNING rows.
+      idempotency: required
+      branches:
+        - {id: completed, goName: Completed, description: "PostgreSQL committed the statement's transaction; the Result holds the command, rows affected, and any RETURNING rows."}
+        - {id: limitExceeded, goName: LimitExceeded, description: "The statement affected more rows than maxRowsAffected, or its RETURNING rows exceeded maxRows or maxResponseBytes, so the connector rolled back and nothing was written.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "PostgreSQL conclusively refused the connection, statement, or commit, such as a constraint violation, a syntax error, or a permission error; nothing was written.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The connection failed after COMMIT was sent, so whether PostgreSQL committed the write is unknown.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "PostgreSQL returned a value the connector cannot decode under its documented type mapping; the connector rolled back and nothing was written.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *postgresqlExecution
