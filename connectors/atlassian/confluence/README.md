@@ -1,5 +1,9 @@
 # Confluence Cloud Connector
 
+> **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Confluence; no live Atlassian site was used. See
+> [verification status](../../../docs/verification-status.md) for what is and
+> is not verified.
+
 This module searches, reads, publishes, updates, and comments on Confluence
 Cloud pages through Atlassian's OAuth 2.0 (3LO) gateway,
 `https://api.atlassian.com/ex/confluence/{cloudId}/wiki`. Pages, spaces, and

@@ -1,5 +1,9 @@
 # Google Docs Connector
 
+> **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Google Docs; no live Google account was used. See
+> [verification status](../../../docs/verification-status.md) for what is and
+> is not verified.
+
 The Google Docs Connector reads a document as bounded Markdown or plain text
 together with its revision ID, creates documents in a Drive folder without a
 duplicate when a Step retries, and writes text only at the revision a Flow

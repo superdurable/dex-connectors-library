@@ -1,5 +1,9 @@
 # Webhook Connector
 
+> **Verification status: Dex-integrated, not live.** Ran on a real Dex stack with sender requests simulated locally; no real GitHub, Shopify, or Typeform sender was used. See
+> [verification status](../../../docs/verification-status.md) for what is and
+> is not verified.
+
 The generic Webhook connector connects a Dex application to any service that
 sends or receives webhooks:
 

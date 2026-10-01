@@ -1,5 +1,9 @@
 # MySQL Connector
 
+> **Verification status: live.** Verified against local MySQL 8.4.11 and MariaDB 13.0.2 on a real Dex stack; managed services such as RDS, Cloud SQL, and Azure are not verified. See
+> [verification status](../../docs/verification-status.md) for what is and
+> is not verified.
+
 This module runs parameterized SQL against a MySQL or MariaDB database from
 Dex Steps. It has two operations:
 

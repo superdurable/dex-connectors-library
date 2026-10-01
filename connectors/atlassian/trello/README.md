@@ -1,5 +1,9 @@
 # Trello Connector
 
+> **Verification status: partial live.** Only a dummy-credential request reached Trello, which rejected it; everything else ran on a real Dex stack against a local stand-in. No live Trello account was used. See
+> [verification status](../../../docs/verification-status.md) for what is and
+> is not verified.
+
 This module lists, reads, creates, and updates Trello cards and comments on them
 through the Trello REST API, `https://api.trello.com/1`:
 

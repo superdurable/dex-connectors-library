@@ -313,3 +313,4 @@ an ignored local `go.work`; CI and release verification always use
 - [Manifest authoring](docs/manifest-authoring.md)
 - [Versioning and releases](docs/versioning-and-releases.md)
 - [Acceptance](docs/acceptance.md)
+- [Verification status](docs/verification-status.md)

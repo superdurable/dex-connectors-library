@@ -1,5 +1,9 @@
 # Amazon S3 Connector
 
+> **Verification status: partial live.** Verified against MinIO RELEASE.2025-10-15 on a real Dex stack; Amazon S3 itself and Cloudflare R2 are not verified. See
+> [verification status](../../../docs/verification-status.md) for what is and
+> is not verified.
+
 The Amazon S3 Connector lists, inspects, reads, and stores objects in Amazon S3
 and in S3-compatible stores, such as Cloudflare R2 and MinIO, through the S3 REST
 API. It exposes operation-specific Dex Step factories:

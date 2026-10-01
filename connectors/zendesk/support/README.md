@@ -1,5 +1,9 @@
 # Zendesk Support Connector
 
+> **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Zendesk; no live Zendesk account was used. See
+> [verification status](../../../docs/verification-status.md) for what is and
+> is not verified.
+
 The Zendesk Support Connector reads and writes Zendesk Support tickets from Dex
 Flows. It exposes these operation-specific Dex Step factories:
 

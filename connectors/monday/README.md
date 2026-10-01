@@ -1,5 +1,9 @@
 # monday.com Connector
 
+> **Verification status: partial live.** Only an unknown-client probe reached the monday.com OAuth token endpoint; everything else ran on a real Dex stack against a local stand-in. No live monday.com account was used. See
+> [verification status](../../docs/verification-status.md) for what is and
+> is not verified.
+
 The monday.com Connector reads and writes items on monday.com work management
 boards from Dex Flows through the monday.com platform API, a GraphQL API at
 `https://api.monday.com/v2`. It exposes these operation-specific Dex Step

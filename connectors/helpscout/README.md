@@ -1,5 +1,9 @@
 # Help Scout Connector
 
+> **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Help Scout; no live Help Scout account was used. See
+> [verification status](../../docs/verification-status.md) for what is and
+> is not verified.
+
 The Help Scout connector connects a Dex application to the
 [Help Scout Inbox API 2.0](https://developer.helpscout.com/mailbox-api/):
 

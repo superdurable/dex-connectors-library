@@ -1,5 +1,9 @@
 # Zoho Desk Connector
 
+> **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Zoho Desk; no live Zoho Desk account was used. See
+> [verification status](../../../docs/verification-status.md) for what is and
+> is not verified.
+
 The Zoho Desk Connector reads and writes Zoho Desk tickets from Dex Flows
 through the Zoho Desk API v1, in the Zoho data center where the account lives.
 It exposes these operation-specific Dex Step factories:

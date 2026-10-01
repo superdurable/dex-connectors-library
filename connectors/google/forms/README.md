@@ -1,5 +1,9 @@
 # Google Forms Connector
 
+> **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Google Forms; no live Google account was used. See
+> [verification status](../../../docs/verification-status.md) for what is and
+> is not verified.
+
 The Google Forms Connector reads a form's questions and its responses through
 the [Google Forms API](https://developers.google.com/workspace/forms/api/reference/rest).
 It is read-only and exposes operation-specific Dex Step factories:

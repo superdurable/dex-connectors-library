@@ -1,5 +1,9 @@
 # Salesforce Connector
 
+> **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Salesforce; no live Salesforce org was used. See
+> [verification status](../../docs/verification-status.md) for what is and
+> is not verified.
+
 The Salesforce Connector reads and writes Salesforce CRM records through the
 REST API. It is the system of record in most processes, so it favors lookup
 fidelity and writes that are safe to retry. It exposes operation-specific Dex

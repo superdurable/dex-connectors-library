@@ -1,5 +1,9 @@
 # Intercom Connector
 
+> **Verification status: partial live.** Only placeholder-token requests reached Intercom, and all returned 401; everything else ran on a real Dex stack against a local stand-in. No live Intercom workspace was used. See
+> [verification status](../../docs/verification-status.md) for what is and
+> is not verified.
+
 The Intercom Connector reads and answers Intercom conversations from Dex Flows
 and starts Flows from signed Intercom conversation webhooks. It exposes these
 operation-specific Dex Step factories:

@@ -1,5 +1,9 @@
 # Twilio Messaging Connector
 
+> **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Twilio; no live Twilio account was used. See
+> [verification status](../../../docs/verification-status.md) for what is and
+> is not verified.
+
 This module sends SMS, MMS, and WhatsApp messages through Twilio Programmable
 Messaging and reads their delivery status:
 

@@ -1,5 +1,9 @@
 # Xero Connector
 
+> **Verification status: partial live.** Only invalid-credential probes reached Xero, confirming its 400 and 401 error shapes; everything else ran on a real Dex stack against a local stand-in. No live Xero organisation was used. See
+> [verification status](../../docs/verification-status.md) for what is and
+> is not verified.
+
 The Xero Connector reads and writes the Xero Accounting API
 (`https://api.xero.com/api.xro/2.0`) from Dex Flows. It exposes these
 operation-specific Dex Step factories:

@@ -1,5 +1,9 @@
 # Typeform Connector
 
+> **Verification status: partial live.** Only a dummy-token request reached Typeform, which returned 403; everything else ran on a real Dex stack against a local stand-in. No live Typeform account was used. See
+> [verification status](../../docs/verification-status.md) for what is and
+> is not verified.
+
 The Typeform connector connects a Dex application to the Typeform
 [Create, Responses, and Webhooks APIs](https://www.typeform.com/developers/get-started/):
 

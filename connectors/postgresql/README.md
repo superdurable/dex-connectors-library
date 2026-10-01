@@ -1,5 +1,9 @@
 # PostgreSQL Connector
 
+> **Verification status: live.** Verified against local PostgreSQL 17.11 with TLS on a real Dex stack; managed services such as RDS, Supabase, and Neon are not verified. See
+> [verification status](../../docs/verification-status.md) for what is and
+> is not verified.
+
 This module runs parameterized SQL against a PostgreSQL database from Dex
 Steps. It has two operations:
 

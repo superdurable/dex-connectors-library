@@ -1,5 +1,9 @@
 # HubSpot Connector
 
+> **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for HubSpot; no live HubSpot account was used. See
+> [verification status](../../docs/verification-status.md) for what is and
+> is not verified.
+
 This module searches, reads, upserts, and updates HubSpot CRM contacts,
 companies, and deals through HubSpot's 2026-09 CRM object API. It is the
 system-of-record write path for a Flow: identify a person by email, find the

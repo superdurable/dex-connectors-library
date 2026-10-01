@@ -1,5 +1,9 @@
 # Google Drive Connector
 
+> **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Google Drive; no live Google account was used. See
+> [verification status](../../../docs/verification-status.md) for what is and
+> is not verified.
+
 The Google Drive Connector resolves Drive files by name, reads their metadata
 and bounded text, and uploads new files without creating a duplicate when a
 Step retries. It exposes operation-specific Dex Step factories:

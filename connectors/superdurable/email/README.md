@@ -1,5 +1,9 @@
 # Email (IMAP and SMTP) Connector
 
+> **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against in-process IMAP and SMTP servers; no real mail provider was used. See
+> [verification status](../../../docs/verification-status.md) for what is and
+> is not verified.
+
 The Email Connector reads and organizes messages in any IMAP mailbox and sends
 plain-text messages and threaded replies over SMTP, for mail providers other
 than Gmail and Microsoft 365. It exposes these operation-specific Dex Step

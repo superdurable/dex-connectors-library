@@ -1,5 +1,9 @@
 # Asana Connector
 
+> **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Asana; no live Asana account was used. See
+> [verification status](../../docs/verification-status.md) for what is and
+> is not verified.
+
 This module lists, reads, creates, and updates Asana tasks and comments on them
 through the Asana REST API, `https://app.asana.com/api/1.0`:
 
