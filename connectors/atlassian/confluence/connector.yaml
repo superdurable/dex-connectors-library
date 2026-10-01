@@ -1,0 +1,198 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: confluence
+  displayName: Confluence
+  description: Search Confluence Cloud pages with bounded CQL, read a page as Markdown or plain text, publish and update pages without duplicates, and add footer comments.
+  company: Atlassian
+  version: v0.1.0
+spec:
+  provider: atlassian
+  codegen:
+    go:
+      package: confluence
+  configuration:
+    fields:
+      - name: cloudId
+        goName: CloudID
+        type: string
+        description: "Non-secret Confluence Cloud site ID (cloudId), a UUID such as 1324a887-45db-1bf4-1e99-ef0ff456d421, naming the one site every operation of this connection uses. After Connect, choose the site with the Confluence site picker; where Dex Web shows a text field instead, sign in to Confluence, open https://<your-site>.atlassian.net/_edge/tenant_info in the same browser, and copy its cloudId value. Blank means the connector uses the only Confluence site the authorization grants, found through Atlassian's accessible-resources endpoint, and selects defect when the grant covers no Confluence site or several. The value is read when the application starts."
+        required: false
+        studioUnit: {unit: sitePicker, port: cloudId}
+      - name: endpoint
+        goName: Endpoint
+        type: url
+        description: "Atlassian API gateway base URL for both the accessible-resources site lookup and the /ex/confluence/{cloudId}/wiki Confluence paths; leave blank for Atlassian's public gateway. Enter an absolute HTTPS URL only for an explicitly supported compatible gateway: Atlassian rejects OAuth tokens sent to site URLs such as https://your-site.atlassian.net/wiki."
+        required: false
+        default: https://api.atlassian.com
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Maximum complete Confluence API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to read longer pages. An oversized read selects invalidResponse, and a write whose response is oversized is confirmed by reading the page or comment back."
+        required: false
+        default: 8388608
+  auth:
+    type: oauth2
+    connectionKind: confluence-atlassian-oauth
+    fields:
+      - name: oauth_client_id
+        goName: OAuthClientID
+        type: string
+        description: "Non-secret OAuth 2.0 (3LO) client ID copied from https://developer.atlassian.com/console/myapps/ after selecting the app > Settings > Authentication details > Client ID; an alphanumeric value, and blank means authorization and refresh cannot start."
+        required: true
+      - name: oauth_client_secret
+        goName: OAuthClientSecret
+        type: secretString
+        description: "Secret OAuth 2.0 (3LO) client secret copied from https://developer.atlassian.com/console/myapps/ > the app > Settings > Authentication details > Secret; store it only in this credential field, and blank means authorization and refresh cannot start."
+        required: true
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        description: "Secret short-lived access token returned by Atlassian after consent; Dex derives it automatically and refreshes it before it expires, so never enter it manually, and blank means Connect has not completed."
+        required: true
+      - name: refresh_token
+        goName: RefreshToken
+        type: secretString
+        description: "Secret rotating refresh token returned because the connection requests offline_access; Atlassian disables each refresh token once it issues the next, so Dex stores every replacement atomically, and blank means reauthorization is required."
+        required: true
+    guide:
+      startURL: https://developer.atlassian.com/console/myapps/
+      steps:
+        - Choose Create > OAuth 2.0 integration, name the app, and accept the developer terms; one app can serve every Dex connection.
+        - Open Permissions, choose Add next to Confluence API, then Configure. Under Classic scopes add search:confluence for CQL search. Under Granular scopes add read:page:confluence and write:page:confluence for reading, creating, and updating pages, read:space:confluence for the space picker and space keys, and read:comment:confluence and write:comment:confluence for footer comments. Dex also requests offline_access so Atlassian issues a rotating refresh token.
+        - Open Authorization, choose Configure next to OAuth 2.0 (3LO), paste the exact Redirect URI shown below into Callback URL, and choose Save changes.
+        - Open Settings and copy Client ID and Secret into the fields below; the secret is sensitive.
+        - Choose Connect, pick the Confluence site the Flows work in on the Atlassian consent screen, and choose Accept. The app stays private to its owner until Distribution > Enable sharing is on, and a refresh token unused for 90 days requires reconnecting.
+    oauth2:
+      protocol: oauth2
+      authorizationEndpoint: https://auth.atlassian.com/authorize
+      tokenEndpoint: https://auth.atlassian.com/oauth/token
+      authorizationParameters: {audience: api.atlassian.com, prompt: consent}
+      clientIDCredential: oauth_client_id
+      clientSecretCredential: oauth_client_secret
+      scopes: [search:confluence, read:page:confluence, write:page:confluence, read:space:confluence, read:comment:confluence, write:comment:confluence, offline_access]
+      credentialMappings:
+        - {credential: access_token, source: access_token}
+        - {credential: refresh_token, source: refresh_token}
+      pkce: false
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.2.0 <0.3.0"
+      backendCapabilities: [oauth.connection.manage, use.configuration.write, confluence.sites-list, confluence.spaces-list]
+      mockScenarios: [not-configured, authorization-pending, connected, insufficient-scope, revoked, broker-unavailable, ready]
+      icon: icon.svg
+    commands:
+      - id: listAccessibleSites
+        capability: confluence.sites-list
+        request:
+          method: GET
+          url: https://api.atlassian.com/oauth/token/accessible-resources
+          credential: {field: access_token, scheme: bearer}
+      - id: listSpaces
+        capability: confluence.spaces-list
+        request:
+          method: GET
+          url: https://api.atlassian.com/ex/confluence/{cloudId}/wiki/api/v2/spaces
+          credential: {field: access_token, scheme: bearer}
+          fixedQuery: {limit: "100", sort: "name", status: "current"}
+          parameters:
+            - {name: cloudId, location: path, target: cloudId}
+            - {name: cursor, location: query, target: cursor}
+    units:
+      - id: sitePicker
+        goName: SitePicker
+        description: "Choose the Confluence Cloud site this connection works in from the sites the authorization grants; the unit stores the site's cloudId, and when the host cannot list sites it offers manual entry of the cloudId shown at https://<your-site>.atlassian.net/_edge/tenant_info."
+        backendCapabilities: [confluence.sites-list]
+        outputs:
+          - {name: cloudId, goName: CloudID, type: string}
+      - id: spacePicker
+        goName: SpacePicker
+        description: "Choose one Confluence space on the connection's site from the current spaces the account can view; the unit stores the space ID, key, and name, and when the host cannot list spaces it accepts a typed space key."
+        backendCapabilities: [confluence.spaces-list]
+        outputs:
+          - {name: spaceId, goName: SpaceID, type: string}
+          - {name: spaceKey, goName: SpaceKey, type: string}
+          - {name: spaceName, goName: SpaceName, type: string}
+  operations:
+    - name: searchPages
+      goName: SearchPages
+      inputType: SearchPagesInput
+      outputType: SearchPagesOutput
+      kind: query
+      description: Search one bounded page of Confluence pages with a typed, connector-escaped CQL filter for space, title, label, and modification time plus an optional bounded CQL clause, continuing with the search cursor.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: searched, goName: Searched, description: "One page of matching pages was read; Confluence search is eventually consistent, so a page created or changed seconds ago can be missing."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Confluence conclusively rejected the search, such as unparsable CQL, an expired cursor, or missing permission.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Confluence returned an invalid or oversized search page., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &confluenceReadExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+    - name: getPage
+      goName: GetPage
+      inputType: GetPageInput
+      outputType: Page
+      kind: query
+      description: Read one page by ID with its current version number and its storage or Atlassian Document Format body converted to bounded Markdown or plain text.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: The page was read.}
+        - {id: notFound, goName: NotFound, description: The page does not exist or the connection cannot view it., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Confluence conclusively rejected the page read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Confluence returned an invalid or oversized page., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *confluenceReadExecution
+    - name: createPage
+      goName: CreatePage
+      inputType: CreatePageInput
+      outputType: CreatePageOutput
+      kind: mutation
+      description: Publish one page in a space, optionally below a parent page, with a Markdown or plain-text body converted to storage format; Confluence allows one page per title in a space, so a repeated create finds the page instead of adding another.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: created, goName: Created, description: "The page exists with the requested title, created by this Step execution, including a create an earlier attempt sent."}
+        - {id: titleConflict, goName: TitleConflict, description: "Another page in the space already has this title, so nothing was created; the Value names that page and its current version.", optional: true}
+        - {id: notFound, goName: NotFound, description: "The space or parent page does not exist or the connection cannot view it; nothing was created.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Confluence conclusively rejected the page, such as an invalid body or missing Add page permission; nothing was created.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      # Sync: an async fallback attempt would send a second create while the first is in flight.
+      execution: &confluenceSingleDispatchExecution
+        executeMethodTimeout: 30s
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+    - name: updatePage
+      goName: UpdatePage
+      inputType: UpdatePageInput
+      outputType: UpdatePageOutput
+      kind: mutation
+      description: Replace one page's title and body as the next version, which the caller names; a repeated update finds its own version instead of failing, and a version another editor made is reported as a conflict.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: updated, goName: Updated, description: "The page is at the requested version with this Step execution's change, including one an earlier attempt sent."}
+        - {id: versionConflict, goName: VersionConflict, description: "The page is no longer at the version before the requested one, because another edit was saved first; nothing was changed and the Value names the current version.", optional: true}
+        - {id: notFound, goName: NotFound, description: The page does not exist or the connection cannot view it; nothing was changed., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Confluence conclusively rejected the update, such as an invalid body, missing Edit permission, or a space that requires approval before publishing; nothing was changed.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *confluenceReadExecution
+    - name: addComment
+      goName: AddComment
+      inputType: AddCommentInput
+      outputType: AddCommentOutput
+      kind: mutation
+      description: Add one footer comment with a Markdown or plain-text body to a page, sending it at most once per Step execution and confirming an unconfirmed attempt by reading the page's comments.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: added, goName: Added, description: "The comment is on the page, including one an earlier attempt of this Step execution sent."}
+        - {id: notFound, goName: NotFound, description: The page does not exist or the connection cannot view it; nothing was added., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Confluence conclusively rejected the comment, such as an invalid body or missing Add comments permission; nothing was added.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "An earlier attempt sent the comment and the page's comments do not confirm it; Confluence has no idempotency key, so it is never sent again automatically.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *confluenceSingleDispatchExecution

@@ -5,6 +5,7 @@ directories:
   - connectors/alibaba/qwen
   - connectors/anthropic
   - connectors/asana
+  - connectors/atlassian/confluence
   - connectors/atlassian/jira
   - connectors/atlassian/trello
   - connectors/calendly
