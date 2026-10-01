@@ -1,0 +1,149 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: airtable
+  displayName: Airtable
+  description: List, read, idempotently upsert, and update typed Airtable records, with base and table pickers.
+  company: Airtable
+  version: v0.1.0
+spec:
+  provider: airtable
+  codegen:
+    go:
+      package: airtable
+  configuration:
+    fields:
+      - name: endpoint
+        goName: Endpoint
+        type: url
+        description: Airtable Web API base URL; leave blank for Airtable's public API host. Enter an absolute HTTPS URL only for an explicitly supported compatible gateway, or a loopback HTTP URL for a local test server. The base and table pickers always call Airtable's public API host.
+        required: false
+        default: https://api.airtable.com
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete Airtable API response in bytes; leave blank to keep the safety limit, or enter a larger positive integer only when one page of records carries very long text or many attachments. Oversized responses select invalidResponse.
+        required: false
+        default: 4194304
+  auth:
+    type: apiKey
+    connectionKind: airtable-personal-access-token
+    fields:
+      - name: personal_access_token
+        goName: PersonalAccessToken
+        type: secretString
+        description: Secret Airtable personal access token copied once from https://airtable.com/create/tokens after choosing Create new token; it starts with pat and is otherwise an opaque string, Dex Web stores it as a secret, and blank means no Airtable call can authenticate.
+        required: true
+    guide:
+      startURL: https://airtable.com/create/tokens
+      steps:
+        - Sign in as an Airtable user with editor access to every base the Flows use, open the personal access tokens page at https://airtable.com/create/tokens, and choose Create new token.
+        - Name the token after this Dex application; Airtable shows the name in record revision history.
+        - Under Scopes, add data.records:read and data.records:write for the record operations and schema.bases:read for the base and table pickers.
+        - Under Access, choose Add a base and add each base the Flows use, or the workspace that holds them; the token reaches only the bases and workspaces listed there.
+        - Choose Create token and copy the token Airtable shows once into the secret field below. Regenerating or deleting it on the same page rejects the old value, so paste any replacement here.
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.2.0 <0.3.0"
+      backendCapabilities: [use.configuration.write, airtable.bases-list, airtable.tables-list]
+      mockScenarios: [not-configured, connected]
+      icon: icon.svg
+    commands:
+      - id: listBases
+        capability: airtable.bases-list
+        request:
+          method: GET
+          url: https://api.airtable.com/v0/meta/bases
+          credential: {field: personal_access_token, scheme: bearer}
+          parameters:
+            - {name: offset, location: query, target: offset}
+      - id: listTables
+        capability: airtable.tables-list
+        request:
+          method: GET
+          url: https://api.airtable.com/v0/meta/bases/{baseId}/tables
+          credential: {field: personal_access_token, scheme: bearer}
+          parameters:
+            - {name: baseId, location: path, target: baseId}
+    units:
+      - id: basePicker
+        goName: BasePicker
+        description: Select a base the personal access token can reach, loaded from Airtable's base list; the unit stores the stable base ID, such as app followed by 14 letters and digits, and the base name.
+        backendCapabilities: [airtable.bases-list]
+        outputs:
+          - {name: baseId, goName: BaseID, type: string}
+          - {name: baseName, goName: BaseName, type: string}
+      - id: tablePicker
+        goName: TablePicker
+        description: Select a table loaded from the chosen base's schema; save the base first. The unit stores the stable table ID, such as tbl followed by 14 letters and digits, which keeps working after a rename, and the table name.
+        backendCapabilities: [airtable.tables-list]
+        inputs:
+          - {name: baseId, goName: BaseID, type: string}
+        outputs:
+          - {name: tableId, goName: TableID, type: string}
+          - {name: tableName, goName: TableName, type: string}
+  operations:
+    - name: listRecords
+      goName: ListRecords
+      inputType: ListRecordsInput
+      outputType: RecordPage
+      kind: query
+      description: List one bounded page of a table's records, filtered by typed field equality and an optional formula, with a field subset, sort, view, and offset cursor.
+      idempotency: none
+      branches:
+        - {id: listed, goName: Listed, description: Airtable returned one bounded page of matching records; the page may be empty.}
+        - {id: offsetExpired, goName: OffsetExpired, description: "Airtable no longer recognizes the offset cursor, so the listing must restart from the first page.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Airtable conclusively rejected the list, such as an unknown base, table, view, or field, an invalid formula, a missing scope, or a rejected token.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Airtable returned an invalid or oversized list response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &airtableAsyncExecution
+        executeMethodTimeout: 30s
+        durability: async
+        # Airtable asks a rate-limited client to wait 30 seconds, so the window fits several such waits.
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 3m}
+    - name: getRecord
+      goName: GetRecord
+      inputType: GetRecordInput
+      outputType: Record
+      kind: query
+      description: Read one record by record ID.
+      idempotency: none
+      branches:
+        - {id: found, goName: Found, description: The record exists and was returned.}
+        - {id: notFound, goName: NotFound, description: No record in the base has the record ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Airtable conclusively rejected the read, such as an unknown base or table, a missing scope, or a rejected token.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Airtable returned an invalid or oversized record response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *airtableAsyncExecution
+    - name: upsertRecords
+      goName: UpsertRecords
+      inputType: UpsertRecordsInput
+      outputType: UpsertedRecords
+      kind: mutation
+      description: Create or update up to 10 records matched by one to three merge fields, such as a case ID, so a repeated write updates the record it created.
+      idempotency: required
+      branches:
+        - {id: upserted, goName: Upserted, description: Airtable created each record without a match and updated each record that matched.}
+        - {id: providerRejected, goName: ProviderRejected, description: "Airtable conclusively rejected the upsert, such as several existing records matching one merge key, an invalid cell value, a computed merge field, a missing scope, or a rejected token.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Airtable applied or rejected the upsert but returned an invalid or oversized response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        # Without a unique merge key, concurrent duplicate upserts could both create; sync never overlaps attempts.
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 3m}
+    - name: updateRecords
+      goName: UpdateRecords
+      inputType: UpdateRecordsInput
+      outputType: UpdatedRecords
+      kind: mutation
+      description: Set the named fields of up to 10 records by record ID, leaving every other field unchanged.
+      idempotency: required
+      branches:
+        - {id: updated, goName: Updated, description: Airtable updated every record and returned it.}
+        - {id: notFound, goName: NotFound, description: A record ID does not exist in the table., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Airtable conclusively rejected the update, such as an invalid cell value, a computed field, a missing scope, or a rejected token.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Airtable applied or rejected the update but returned an invalid or oversized response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *airtableAsyncExecution
