@@ -43,6 +43,7 @@ directories:
   - connectors/twilio/messaging
   - connectors/typeform
   - connectors/xai
+  - connectors/xero
   - connectors/zendesk/support
   - connectors/zoho/desk
   - connectors/zoom
