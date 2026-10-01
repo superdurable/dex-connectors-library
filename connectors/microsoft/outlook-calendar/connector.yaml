@@ -1,0 +1,219 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: outlook-calendar
+  displayName: Microsoft Outlook Calendar
+  description: List and read Outlook calendar events in a bounded window, create and update events idempotently, and query free/busy schedules through Microsoft Graph, with delegated Microsoft OAuth or an app-only connection to one mailbox.
+  company: Microsoft
+  version: v0.1.0
+spec:
+  provider: microsoft
+  codegen:
+    go:
+      package: outlookcalendar
+  configuration:
+    fields:
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Largest complete Microsoft Graph response, in bytes, that one call reads; a larger response selects invalidResponse. Enter a positive integer only to change this safety limit, for example when events carry very long bodies or attendee lists. Blank uses the default."
+        required: false
+        default: 4194304
+  auth:
+    defaultMethod: microsoft-oauth
+    methods:
+      - id: microsoft-oauth
+        displayName: Microsoft OAuth (delegated)
+        description: "Recommended for one Microsoft 365 work or school user: Dex opens Microsoft sign-in, the Flows act on that user's own calendars through /me, and Dex refreshes the one-hour access tokens with Microsoft's rotating refresh tokens. Personal Microsoft accounts are not supported."
+        recommended: true
+        type: oauth2
+        connectionKind: outlook-calendar-microsoft-oauth
+        fields:
+          - name: client_id
+            goName: ClientID
+            type: string
+            description: "Non-secret Application (client) ID, a GUID such as 00000000-0000-0000-0000-000000000000, copied from https://entra.microsoft.com > Entra ID > App registrations > your multi-tenant app > Overview; blank means authorization and refresh cannot start."
+            required: true
+          - name: client_secret
+            goName: ClientSecret
+            type: secretString
+            description: "Secret client secret Value, not its Secret ID, created at https://entra.microsoft.com > Entra ID > App registrations > your app > Certificates & secrets > Client secrets > New client secret; Microsoft shows it once, Dex Web stores it only in this credential field and sends it only to https://login.microsoftonline.com, and blank means authorization and refresh cannot start."
+            required: true
+          - name: access_token
+            goName: AccessToken
+            type: secretString
+            description: "Secret one-hour access token returned by Microsoft after sign-in; Dex derives it automatically and refreshes it five minutes before it expires, so never enter it manually, and blank means Connect has not completed."
+            required: true
+          - name: refresh_token
+            goName: RefreshToken
+            type: secretString
+            description: "Secret refresh token returned by Microsoft because offline_access is requested; Microsoft replaces it on every refresh and Dex stores the new one atomically, so never enter it manually. A blank token, or one Microsoft revoked, means you must authorize again."
+            required: true
+        guide:
+          startURL: https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade
+          steps:
+            - "Open Entra ID > App registrations > New registration, enter a name, and under Supported account types choose Accounts in any organizational directory (multitenant). Dex signs in through Microsoft's organizations endpoint, so a single-tenant registration fails with AADSTS50194; personal Microsoft accounts are not supported."
+            - "Under Redirect URI choose the Web platform and enter the exact Redirect URI shown below, then select Register. Open http://localhost rather than http://127.0.0.1 for local Dex Web, because Microsoft accepts http only for localhost."
+            - "Open API permissions > Add a permission > Microsoft Graph > Delegated permissions and add Calendars.ReadWrite, which every operation and the calendar picker use; offline_access, also requested, makes Microsoft issue a refresh token. Neither needs administrator consent, but your tenant may require an administrator to approve user consent."
+            - "Open Certificates & secrets > Client secrets > New client secret, copy its Value once, and copy the Application (client) ID from Overview into the fields below."
+            - "Choose Connect and sign in as the work or school user whose calendars the Flows read and edit, and accept the requested permissions. To revoke access, remove the app at https://myapps.microsoft.com or delete the client secret."
+        oauth2:
+          authorizationEndpoint: https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize
+          tokenEndpoint: https://login.microsoftonline.com/organizations/oauth2/v2.0/token
+          clientIDCredential: client_id
+          clientSecretCredential: client_secret
+          scopes: [offline_access, Calendars.ReadWrite]
+          credentialMappings:
+            - {credential: access_token, source: access_token}
+            - {credential: refresh_token, source: refresh_token}
+          pkce: true
+      - id: app-only
+        displayName: App-only (one mailbox)
+        description: "For an unattended scheduling mailbox, such as scheduling@contoso.com: an Entra application authenticates as itself with a client secret, and Dex requests its one-hour tokens with the client credentials grant. Every call addresses the one configured mailbox; an Exchange administrator should scope the app to that mailbox."
+        type: apiKey
+        connectionKind: outlook-calendar-app-only
+        fields:
+          - name: client_id
+            goName: ClientID
+            type: string
+            description: "Non-secret Application (client) ID, a GUID, copied from https://entra.microsoft.com > Entra ID > App registrations > your app > Overview; blank means no access token can be requested."
+            required: true
+          - name: client_secret
+            goName: ClientSecret
+            type: secretString
+            description: "Secret client secret Value, not its Secret ID, created at https://entra.microsoft.com > Entra ID > App registrations > your app > Certificates & secrets > New client secret; Microsoft shows it once, it is stored only in this credential field and sent only to https://login.microsoftonline.com, and blank means no access token can be requested."
+            required: true
+          - name: access_token
+            goName: AccessToken
+            type: secretString
+            description: "Secret one-hour access token that the application requests from the client ID and secret with the client credentials grant and stores here, renewing it five minutes before it expires or after Microsoft Graph answers 401. It is an output, so never enter it manually; leave it blank."
+            required: false
+        configuration:
+          fields:
+            - name: tenantId
+              goName: TenantID
+              type: string
+              description: "Non-secret Directory (tenant) ID, a GUID, copied from https://entra.microsoft.com > Entra ID > App registrations > your app > Overview, or a verified domain such as contoso.onmicrosoft.com; tokens are requested from https://login.microsoftonline.com/{tenantId}/oauth2/v2.0/token. Required for this method: blank means no token can be requested, and common, organizations, and consumers are rejected."
+              required: true
+            - name: mailbox
+              goName: Mailbox
+              type: string
+              description: "Non-secret Exchange Online mailbox every call addresses as /users/{mailbox}: its primary SMTP address or user principal name, such as scheduling@contoso.com, from https://admin.microsoft.com > Users > Active users, or the user's object ID GUID. Required for this method: blank makes every operation select defect. The calendar picker lists this mailbox's calendars."
+              required: true
+        guide:
+          startURL: https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade
+          steps:
+            - "Open Entra ID > App registrations > New registration, enter a name, keep Accounts in this organizational directory only, and select Register; no redirect URI is needed. Copy the Application (client) ID and Directory (tenant) ID from Overview."
+            - "Open Certificates & secrets > Client secrets > New client secret and copy its Value once into client_secret below."
+            - "Least privilege: in Exchange Online PowerShell run New-ServicePrincipal -AppId <client ID> -ObjectId <enterprise application object ID> -DisplayName <name>, New-ManagementScope -Name <scope> -RecipientRestrictionFilter \"PrimarySmtpAddress -eq 'scheduling@contoso.com'\", and New-ManagementRoleAssignment -App <client ID> -Role \"Application Calendars.ReadWrite\" -CustomResourceScope <scope>, then check it with Test-ServicePrincipalAuthorization. Do not also grant the Entra application permission, because grants combine; Exchange can take 30 minutes to 2 hours to apply the assignment."
+            - "Without Exchange application RBAC, open API permissions > Add a permission > Microsoft Graph > Application permissions, add Calendars.ReadWrite, and choose Grant admin consent; that reaches every mailbox in the tenant, so prefer the scoped assignment. Application access policies are being replaced by RBAC and should not be created."
+            - "Enter the tenant ID and the mailbox, and leave access_token blank: the application requests a token on its first Microsoft Graph call, and the calendar picker works once it has. To revoke access, delete the client secret or the role assignment."
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.2.0 <0.3.0"
+      backendCapabilities: [oauth.connection.manage, use.configuration.write, microsoft.outlook-calendar.calendars-list]
+      mockScenarios: [not-configured, authorization-pending, connected, insufficient-scope, revoked, broker-unavailable, ready]
+      icon: icon.svg
+    commands:
+      - id: listCalendars
+        capability: microsoft.outlook-calendar.calendars-list
+        request:
+          method: GET
+          url: https://graph.microsoft.com/v1.0/me/calendars
+          credential: {field: access_token, scheme: bearer}
+          fixedQuery:
+            $select: "id,name,canEdit,isDefaultCalendar,owner"
+            $top: "100"
+      - id: listMailboxCalendars
+        capability: microsoft.outlook-calendar.calendars-list
+        request:
+          method: GET
+          url: https://graph.microsoft.com/v1.0/users/{mailbox}/calendars
+          credential: {field: access_token, scheme: bearer}
+          fixedQuery:
+            $select: "id,name,canEdit,isDefaultCalendar,owner"
+            $top: "100"
+          parameters:
+            - {name: mailbox, location: path, target: mailbox}
+    units:
+      - id: calendarPicker
+        goName: CalendarPicker
+        description: "Select a calendar of the connection's mailbox, listed from Microsoft Graph's read-only calendars list; the unit stores the stable calendar ID and display name, and an operation that writes events lists only calendars the connection can edit. Blank uses the mailbox's default calendar."
+        backendCapabilities: [microsoft.outlook-calendar.calendars-list]
+        outputs:
+          - {name: calendarId, goName: CalendarID, type: string}
+          - {name: calendarName, goName: CalendarName, type: string}
+  operations:
+    - name: listEvents
+      goName: ListEvents
+      inputType: ListEventsInput
+      outputType: ListEventsOutput
+      kind: query
+      description: List one page of a calendar view, the events and expanded recurring occurrences that overlap a bounded window, with every time returned at an explicit offset.
+      idempotency: none
+      branches:
+        - {id: listed, goName: Listed, description: One page of events in the window was listed.}
+        - {id: notFound, goName: NotFound, description: The calendar does not exist or is not visible to the connection., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Microsoft Graph conclusively rejected the calendar view., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Graph returned an invalid or oversized event page., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &outlookCalendarExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+    - name: getEvent
+      goName: GetEvent
+      inputType: GetEventInput
+      outputType: Event
+      kind: query
+      description: Read one event by its Graph event ID.
+      idempotency: none
+      branches:
+        - {id: found, goName: Found, description: The event was read.}
+        - {id: notFound, goName: NotFound, description: The event does not exist or is not visible to the connection., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Microsoft Graph conclusively rejected the event read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Graph returned an invalid or oversized event., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *outlookCalendarExecution
+    - name: createEvent
+      goName: CreateEvent
+      inputType: CreateEventInput
+      outputType: CreateEventOutput
+      kind: mutation
+      description: Create one timed or all-day event under the Step's idempotency key, sent as Graph's transactionId and stamped as an extended property, so a retried or re-dispatched Step returns the existing event instead of a duplicate.
+      idempotency: required
+      branches:
+        - {id: created, goName: Created, description: The event that carries the Step's idempotency key exists.}
+        - {id: providerRejected, goName: ProviderRejected, description: Microsoft Graph conclusively rejected the event., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Graph returned an invalid or oversized event response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *outlookCalendarExecution
+    - name: updateEvent
+      goName: UpdateEvent
+      inputType: UpdateEventInput
+      outputType: UpdateEventOutput
+      kind: mutation
+      description: Patch the subject, body, location, start and end, or attendees of one existing event after reading it, skipping a change it already holds and sending If-Match with its ETag.
+      idempotency: required
+      branches:
+        - {id: updated, goName: Updated, description: The event holds the requested values.}
+        - {id: notFound, goName: NotFound, description: "The event does not exist, is cancelled, or is not visible to the connection.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Microsoft Graph conclusively rejected the event change., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Graph returned an invalid or oversized event response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *outlookCalendarExecution
+    - name: queryFreeBusy
+      goName: QueryFreeBusy
+      inputType: QueryFreeBusyInput
+      outputType: QueryFreeBusyOutput
+      kind: query
+      description: Return the free/busy schedule items and availability view of 1 to 20 users, groups, or rooms in a bounded window through Microsoft Graph getSchedule.
+      idempotency: none
+      branches:
+        - {id: queried, goName: Queried, description: Microsoft Graph reported known availability for every requested schedule.}
+        - {id: incomplete, goName: Incomplete, description: "Microsoft Graph reported an error, an unknown status, or no data for at least one schedule, so its availability is unknown.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Microsoft Graph conclusively rejected the schedule query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Graph returned an invalid or oversized schedule response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *outlookCalendarExecution
