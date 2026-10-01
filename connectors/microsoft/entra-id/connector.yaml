@@ -1,0 +1,242 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: microsoft-entra-id
+  displayName: Microsoft Entra ID
+  description: Read and list Microsoft Entra ID user accounts, create, disable, and enable them, revoke their sign-in sessions, and add or remove group members through Microsoft Graph, converging instead of duplicating when a Step repeats.
+  company: Microsoft
+  version: v0.1.0
+spec:
+  provider: microsoft
+  codegen:
+    go:
+      package: entraid
+  configuration:
+    fields:
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete Microsoft Graph response in bytes; enter a positive integer only to change the safety limit, for example when listUsers pages of up to 999 accounts are larger. Blank keeps the limit, and an oversized response selects invalidResponse.
+        required: false
+        default: 4194304
+      - name: listUsersPageSize
+        goName: ListUsersPageSize
+        type: integer
+        description: Number of accounts listUsers requests per page when the Step input leaves pageSize at zero; enter a whole number from 1 to 999, the Microsoft Graph maximum, only to trade smaller, faster pages for fewer requests. Blank uses the displayed default.
+        required: false
+        default: 100
+      - name: creationKeyAttribute
+        goName: CreationKeyAttribute
+        type: enum
+        enum: [extensionAttribute1, extensionAttribute2, extensionAttribute3, extensionAttribute4, extensionAttribute5, extensionAttribute6, extensionAttribute7, extensionAttribute8, extensionAttribute9, extensionAttribute10, extensionAttribute11, extensionAttribute12, extensionAttribute13, extensionAttribute14, extensionAttribute15]
+        description: Non-secret name of the extension attribute (Exchange custom attribute) in which createUser records its creation key on each account it creates, so a repeated Step recognizes its own account. Change it only when your tenant already uses this attribute for something else; check under https://entra.microsoft.com > Entra ID > Users > a user > Properties > On-premises extension attributes. Blank uses the displayed attribute.
+        required: false
+        default: extensionAttribute15
+  auth:
+    defaultMethod: entra-app-only
+    methods:
+      - id: entra-app-only
+        displayName: App-only access (client credentials)
+        description: Recommended for unattended provisioning; an app registration in your tenant authenticates as itself with a client secret, an administrator grants its Microsoft Graph application permissions once, and Dex requests one-hour access tokens automatically without a signed-in user.
+        recommended: true
+        type: apiKey
+        connectionKind: microsoft-entra-id-app-only
+        fields:
+          - name: tenant_id
+            goName: TenantID
+            type: string
+            description: Non-secret Directory (tenant) ID copied from https://entra.microsoft.com > Entra ID > App registrations > your app > Overview; it is a GUID such as 00000000-0000-0000-0000-000000000000, or a verified domain such as contoso.onmicrosoft.com, and blank means no access token can be requested.
+            required: true
+          - name: client_id
+            goName: ClientID
+            type: string
+            description: Non-secret Application (client) ID copied from https://entra.microsoft.com > Entra ID > App registrations > your app > Overview; it is a GUID, and blank means no access token can be requested.
+            required: true
+          - name: client_secret
+            goName: ClientSecret
+            type: secretString
+            description: Secret client secret Value created at https://entra.microsoft.com > Entra ID > App registrations > your app > Certificates & secrets > Client secrets > New client secret; Microsoft shows the Value once (copy it, not the Secret ID), Dex keeps it only in the credential store, and blank means no access token can be requested.
+            required: true
+          - name: access_token
+            goName: AccessToken
+            type: secretString
+            description: Secret one-hour Microsoft Graph access token that Dex requests automatically from the tenant ID, client ID, and client secret with the client credentials grant and replaces five minutes before it expires; never enter it manually, and blank makes Dex request one before the next call.
+            required: false
+        guide:
+          startURL: https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade
+          steps:
+            - Sign in to https://entra.microsoft.com as at least a Cloud Application Administrator, open Entra ID > App registrations > New registration, enter a name, keep Accounts in this organizational directory only, leave Redirect URI empty, and choose Register.
+            - On the app's Overview page, copy the Directory (tenant) ID and the Application (client) ID into the fields below.
+            - Open API permissions > Add a permission > Microsoft Graph > Application permissions and add User.Read.All, User.Create, User.EnableDisableAccount.All, User.RevokeSessions.All, and GroupMember.ReadWrite.All. Every one requires admin consent, so a Privileged Role Administrator or Global Administrator chooses Grant admin consent for your tenant. Leave out permissions for operations your Flows never use; the connector README lists which operation needs which.
+            - Open Certificates & secrets > Client secrets > New client secret, choose an expiry, and copy the Value shown once into client_secret. Renew it before it expires; to revoke access, delete the secret or the app registration.
+            - To disable, enable, or revoke sessions for accounts that hold administrator roles, also assign the app the Privileged Authentication Administrator role under Entra ID > Roles & admins; without it Microsoft Graph answers 403 for those accounts.
+      - id: microsoft-oauth
+        displayName: Microsoft OAuth as an administrator
+        description: Interactive consent by one Microsoft Entra administrator; Dex refreshes the one-hour access token with Microsoft's rotating refresh token, and every operation runs with that administrator's directory roles.
+        type: oauth2
+        connectionKind: microsoft-entra-id-oauth
+        fields:
+          - name: client_id
+            goName: ClientID
+            type: string
+            description: Non-secret Application (client) ID of a multitenant app registration, copied from https://entra.microsoft.com > Entra ID > App registrations > your app > Overview; it is a GUID, and blank means authorization or refresh cannot start.
+            required: true
+          - name: client_secret
+            goName: ClientSecret
+            type: secretString
+            description: Secret client secret Value created at https://entra.microsoft.com > Entra ID > App registrations > your app > Certificates & secrets > New client secret; Microsoft shows it once, Dex keeps it only in the credential store, and blank means authorization or refresh cannot start.
+            required: true
+          - name: access_token
+            goName: AccessToken
+            type: secretString
+            description: Secret one-hour Microsoft Graph access token produced automatically after the administrator's consent and refreshed before it expires; never enter it manually.
+            required: true
+          - name: refresh_token
+            goName: RefreshToken
+            type: secretString
+            description: Secret refresh token returned by Microsoft because offline_access is requested; Microsoft can replace it on every refresh and Dex stores the new one automatically, so never enter it manually, and blank means you must authorize again.
+            required: true
+        guide:
+          startURL: https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade
+          steps:
+            - Open https://entra.microsoft.com > Entra ID > App registrations > New registration and choose Accounts in any organizational directory (multitenant). Dex signs in through Microsoft's organizations endpoint, which rejects a single-tenant app with AADSTS50194.
+            - Under Redirect URI select Web and paste the exact Redirect URI shown by Dex Web, then choose Register and copy the Application (client) ID into client_id. Personal Microsoft accounts cannot authorize this connector.
+            - Open Certificates & secrets > Client secrets > New client secret and copy the Value shown once into client_secret.
+            - Open API permissions > Add a permission > Microsoft Graph > Delegated permissions and add User.Read.All, User.Create, User.EnableDisableAccount.All, User.RevokeSessions.All, GroupMember.ReadWrite.All, and offline_access. Every permission except offline_access requires admin consent, so choose Grant admin consent or consent for the organization when you authorize.
+            - Choose Authorize and sign in as an administrator with the User Administrator role, which can create, disable, enable, and revoke sessions for accounts without administrator roles and change their group memberships. Accounts with administrator roles need a Privileged Authentication Administrator, and role-assignable groups need a Privileged Role Administrator.
+        oauth2:
+          authorizationEndpoint: https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize
+          tokenEndpoint: https://login.microsoftonline.com/organizations/oauth2/v2.0/token
+          clientIDCredential: client_id
+          clientSecretCredential: client_secret
+          scopes: [offline_access, User.Read.All, User.Create, User.EnableDisableAccount.All, User.RevokeSessions.All, GroupMember.ReadWrite.All]
+          credentialMappings:
+            - {credential: access_token, source: access_token}
+            - {credential: refresh_token, source: refresh_token}
+          pkce: true
+  operations:
+    - name: getUser
+      goName: GetUser
+      inputType: GetUserInput
+      outputType: User
+      kind: query
+      description: Read one user account by object ID or user principal name.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Microsoft Graph returned the account.}
+        - {id: notFound, goName: NotFound, description: No account has this object ID or user principal name., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively rejected the read, such as a token without User.Read.All.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Graph returned an invalid or oversized account., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &directoryExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+    - name: listUsers
+      goName: ListUsers
+      inputType: ListUsersInput
+      outputType: ListUsersOutput
+      kind: query
+      description: List one bounded page of accounts in the tenant, optionally filtered with an OData filter or a search expression.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "Microsoft Graph returned one page of accounts, which may be empty."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively rejected the listing, such as an unsupported filter.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Graph returned an invalid or oversized page., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *directoryExecution
+    - name: createUser
+      goName: CreateUser
+      inputType: CreateUserInput
+      outputType: CreateUserOutput
+      kind: mutation
+      description: Create one enabled account with a generated password nobody receives that must be changed at the next sign-in, tagged with a stable key, so a repeated Step returns the account it created instead of a duplicate.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: created, goName: Created, description: The account exists and carries this Step's creation key.}
+        - {id: alreadyExists, goName: AlreadyExists, description: "The user principal name belongs to another account, or to a deleted one, that this Step did not create.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively rejected the account, such as an unverified or federated domain or a token without User.Create.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Graph returned an invalid or oversized account while reading back an existing user principal name., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &directoryPropagationExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 8, totalDuration: 5m}
+    - name: disableUser
+      goName: DisableUser
+      inputType: DisableUserInput
+      outputType: User
+      kind: mutation
+      description: Block sign-in for one account by setting accountEnabled to false, keeping its data; disabling a disabled account changes nothing.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: disabled, goName: Disabled, description: Microsoft Graph reports the account as disabled.}
+        - {id: notFound, goName: NotFound, description: No account has this object ID or user principal name., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively rejected the change, such as an account synchronized from on-premises Active Directory or one with an administrator role the caller cannot manage.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Graph returned an invalid or oversized account., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *directoryPropagationExecution
+    - name: enableUser
+      goName: EnableUser
+      inputType: EnableUserInput
+      outputType: User
+      kind: mutation
+      description: Restore sign-in for one account by setting accountEnabled to true; enabling an enabled account changes nothing.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: enabled, goName: Enabled, description: Microsoft Graph reports the account as enabled.}
+        - {id: notFound, goName: NotFound, description: No account has this object ID or user principal name., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively rejected the change, such as an account synchronized from on-premises Active Directory or one with an administrator role the caller cannot manage.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Graph returned an invalid or oversized account., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *directoryPropagationExecution
+    - name: revokeSignInSessions
+      goName: RevokeSignInSessions
+      inputType: RevokeSignInSessionsInput
+      outputType: RevokeSignInSessionsOutput
+      kind: mutation
+      description: Invalidate every refresh token and browser session cookie issued to one account so it must sign in again everywhere; repeating it only moves the cutoff time forward.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: revoked, goName: Revoked, description: Microsoft Graph accepted the revocation; Microsoft documents that tokens can keep working for a few minutes.}
+        - {id: notFound, goName: NotFound, description: No account has this object ID or user principal name., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively rejected the revocation, such as a token without User.RevokeSessions.All.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Graph returned an invalid or oversized revocation response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *directoryExecution
+    - name: addUserToGroup
+      goName: AddUserToGroup
+      inputType: AddUserToGroupInput
+      outputType: AddUserToGroupOutput
+      kind: mutation
+      description: Add one account as a direct member of a security or Microsoft 365 group; an existing membership is confirmed and reported instead of failing.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: added, goName: Added, description: The account is a direct member of the group.}
+        - {id: notFound, goName: NotFound, description: The group or the account does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively rejected the membership, such as a dynamic, distribution, mail-enabled security, or role-assignable group.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Graph returned an invalid or oversized membership check., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *directoryPropagationExecution
+    - name: removeUserFromGroup
+      goName: RemoveUserFromGroup
+      inputType: RemoveUserFromGroupInput
+      outputType: RemoveUserFromGroupOutput
+      kind: mutation
+      description: Remove one account's direct membership from a group; a membership that is already gone is reported as removed.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: removed, goName: Removed, description: The account is not a direct member of the group.}
+        - {id: notFound, goName: NotFound, description: The group does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively rejected the removal, such as a group with dynamic membership.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Graph returned an invalid or oversized group check., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *directoryExecution
