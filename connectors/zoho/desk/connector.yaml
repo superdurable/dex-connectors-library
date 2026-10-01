@@ -1,0 +1,392 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: zoho-desk
+  displayName: Zoho Desk
+  description: Search, read, create, and update Zoho Desk tickets and add public or private comments in the connection's Zoho data center, keeping Zoho Desk's own status and priority names.
+  company: Zoho
+  version: v0.1.0
+spec:
+  provider: zoho
+  codegen:
+    go:
+      package: desk
+  configuration:
+    fields:
+      - name: orgId
+        goName: OrgID
+        type: string
+        description: "Non-secret Zoho Desk organization ID (orgId), a number such as 2389290, that every request sends in Zoho Desk's orgId header. After Connect, once the connection is Ready, choose the organization with the Zoho Desk organization picker, which lists the organizations of the authorized user in the connection's data center; pick the organization you chose on the Zoho consent screen, because Zoho binds the token to it and rejects any other with OAUTH_ORG_MISMATCH. Where Dex Web shows a text field instead, sign in to Zoho Desk in your data center, such as https://desk.zoho.com, open Setup > Developer Space > API, and copy the organization ID. Blank is accepted only until the picker runs: the application refuses to start while orgId is blank. The value is read when the application starts."
+        required: false
+        studioUnit: {unit: organizationPicker, port: orgId}
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Maximum complete Zoho Desk API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when ticket descriptions or comments are unusually large. An oversized read selects invalidResponse, and an oversized response to createTicket or addComment selects uncertain."
+        required: false
+        default: 4194304
+  auth:
+    methodLabel: Data center
+    defaultMethod: zoho-us-oauth
+    methods:
+      - id: zoho-us-oauth
+        displayName: United States (zoho.com)
+        description: For Zoho Desk accounts at https://desk.zoho.com; Dex signs in through https://accounts.zoho.com and refreshes the hourly access token automatically.
+        recommended: true
+        type: oauth2
+        connectionKind: zoho-desk-us-oauth
+        fields: &zohoOAuthFields
+          - name: oauth_client_id
+            goName: OAuthClientID
+            type: string
+            description: "Non-secret Client ID of the Zoho API console server-based client, such as 1000.GMB0YULZHJK411248S8I5GZ4CHUEX0, copied from the client's Client Secret tab in the Zoho API console of this data center; one client ID serves every data center its Settings tab enables, and blank means authorization and refresh cannot start."
+            required: true
+          - name: oauth_client_secret
+            goName: OAuthClientSecret
+            type: secretString
+            description: "Secret Client Secret for this data center, revealed beside the Client ID on the client's Client Secret tab in the Zoho API console; a client with multi-DC support enabled can have a different secret per data center, so copy the one shown for this data center. Dex stores it only in the credential store, and blank means authorization and refresh cannot start."
+            required: true
+          - name: access_token
+            goName: AccessToken
+            type: secretString
+            description: "Secret Zoho access token produced automatically by authorization and replaced by every refresh before its one-hour expiry; never enter it manually, and blank means Connect has not completed."
+            required: true
+          - name: refresh_token
+            goName: RefreshToken
+            type: secretString
+            description: "Secret Zoho refresh token returned automatically because Dex requests access_type=offline; Zoho keeps it until it is revoked and does not rotate it, so never enter it manually, and blank means reauthorization is required."
+            required: true
+        guide:
+          startURL: https://api-console.zoho.com
+          steps:
+            - Sign in to https://api-console.zoho.com with the Zoho account that owns the integration, choose GET STARTED or ADD CLIENT, and create a Server-based Applications client with a Client Name and Homepage URL.
+            - Add the exact Redirect URI shown by Dex Web under Authorized Redirect URIs, then choose CREATE; a client registered in another data center instead needs this data center turned on in its Settings tab.
+            - Open the Client Secret tab and copy the Client ID and the Client Secret into the fields below.
+            - Choose Connect and sign in at https://accounts.zoho.com as the Zoho Desk agent the connector acts as; tickets and comments it writes are authored by that agent, and the agent's profile limits what it can read and change.
+            - On the Zoho consent screen, accept the scopes Desk.tickets.READ, Desk.tickets.CREATE, and Desk.tickets.UPDATE for tickets and comments, Desk.search.READ for searchTickets, and Desk.basic.READ for the organization picker; if the account belongs to several Zoho Desk organizations, pick the one this connection uses, because Zoho binds the token to it.
+            - When the connection is Ready, choose the same organization in orgId; to revoke access, remove the connected app under Zoho Accounts > Sessions > Connected Apps or delete the client in the API console.
+        oauth2:
+          authorizationEndpoint: https://accounts.zoho.com/oauth/v2/auth
+          tokenEndpoint: https://accounts.zoho.com/oauth/v2/token
+          authorizationParameters: &zohoAuthorizationParameters {access_type: offline, prompt: consent}
+          clientIDCredential: oauth_client_id
+          clientSecretCredential: oauth_client_secret
+          scopes: &zohoDeskScopes [Desk.tickets.READ, Desk.tickets.CREATE, Desk.tickets.UPDATE, Desk.search.READ, Desk.basic.READ]
+          credentialMappings: &zohoCredentialMappings
+            - {credential: access_token, source: access_token}
+            - {credential: refresh_token, source: refresh_token}
+          pkce: false
+      - id: zoho-eu-oauth
+        displayName: European Union (zoho.eu)
+        description: For Zoho Desk accounts at https://desk.zoho.eu; Dex signs in through https://accounts.zoho.eu and refreshes the hourly access token automatically.
+        type: oauth2
+        connectionKind: zoho-desk-eu-oauth
+        fields: *zohoOAuthFields
+        guide:
+          startURL: https://api-console.zoho.eu
+          steps:
+            - Sign in to https://api-console.zoho.eu with the Zoho account that owns the integration, choose GET STARTED or ADD CLIENT, and create a Server-based Applications client with a Client Name and Homepage URL.
+            - Add the exact Redirect URI shown by Dex Web under Authorized Redirect URIs, then choose CREATE; a client registered in another data center instead needs the European Union data center turned on in its Settings tab.
+            - Open the Client Secret tab and copy the Client ID and the Client Secret for this data center into the fields below.
+            - Choose Connect and sign in at https://accounts.zoho.eu as the Zoho Desk agent the connector acts as; tickets and comments it writes are authored by that agent, and the agent's profile limits what it can read and change.
+            - On the Zoho consent screen, accept the scopes Desk.tickets.READ, Desk.tickets.CREATE, and Desk.tickets.UPDATE for tickets and comments, Desk.search.READ for searchTickets, and Desk.basic.READ for the organization picker; if the account belongs to several Zoho Desk organizations, pick the one this connection uses, because Zoho binds the token to it.
+            - When the connection is Ready, choose the same organization in orgId; to revoke access, remove the connected app under Zoho Accounts > Sessions > Connected Apps or delete the client in the API console.
+        oauth2:
+          authorizationEndpoint: https://accounts.zoho.eu/oauth/v2/auth
+          tokenEndpoint: https://accounts.zoho.eu/oauth/v2/token
+          authorizationParameters: *zohoAuthorizationParameters
+          clientIDCredential: oauth_client_id
+          clientSecretCredential: oauth_client_secret
+          scopes: *zohoDeskScopes
+          credentialMappings: *zohoCredentialMappings
+          pkce: false
+      - id: zoho-in-oauth
+        displayName: India (zoho.in)
+        description: For Zoho Desk accounts at https://desk.zoho.in; Dex signs in through https://accounts.zoho.in and refreshes the hourly access token automatically.
+        type: oauth2
+        connectionKind: zoho-desk-in-oauth
+        fields: *zohoOAuthFields
+        guide:
+          startURL: https://api-console.zoho.in
+          steps:
+            - Sign in to https://api-console.zoho.in with the Zoho account that owns the integration, choose GET STARTED or ADD CLIENT, and create a Server-based Applications client with a Client Name and Homepage URL.
+            - Add the exact Redirect URI shown by Dex Web under Authorized Redirect URIs, then choose CREATE; a client registered in another data center instead needs the India data center turned on in its Settings tab.
+            - Open the Client Secret tab and copy the Client ID and the Client Secret for this data center into the fields below.
+            - Choose Connect and sign in at https://accounts.zoho.in as the Zoho Desk agent the connector acts as; tickets and comments it writes are authored by that agent, and the agent's profile limits what it can read and change.
+            - On the Zoho consent screen, accept the scopes Desk.tickets.READ, Desk.tickets.CREATE, and Desk.tickets.UPDATE for tickets and comments, Desk.search.READ for searchTickets, and Desk.basic.READ for the organization picker; if the account belongs to several Zoho Desk organizations, pick the one this connection uses, because Zoho binds the token to it.
+            - When the connection is Ready, choose the same organization in orgId; to revoke access, remove the connected app under Zoho Accounts > Sessions > Connected Apps or delete the client in the API console.
+        oauth2:
+          authorizationEndpoint: https://accounts.zoho.in/oauth/v2/auth
+          tokenEndpoint: https://accounts.zoho.in/oauth/v2/token
+          authorizationParameters: *zohoAuthorizationParameters
+          clientIDCredential: oauth_client_id
+          clientSecretCredential: oauth_client_secret
+          scopes: *zohoDeskScopes
+          credentialMappings: *zohoCredentialMappings
+          pkce: false
+      - id: zoho-au-oauth
+        displayName: Australia (zoho.com.au)
+        description: For Zoho Desk accounts at https://desk.zoho.com.au; Dex signs in through https://accounts.zoho.com.au and refreshes the hourly access token automatically.
+        type: oauth2
+        connectionKind: zoho-desk-au-oauth
+        fields: *zohoOAuthFields
+        guide:
+          startURL: https://api-console.zoho.com.au
+          steps:
+            - Sign in to https://api-console.zoho.com.au with the Zoho account that owns the integration, choose GET STARTED or ADD CLIENT, and create a Server-based Applications client with a Client Name and Homepage URL.
+            - Add the exact Redirect URI shown by Dex Web under Authorized Redirect URIs, then choose CREATE; a client registered in another data center instead needs the Australia data center turned on in its Settings tab.
+            - Open the Client Secret tab and copy the Client ID and the Client Secret for this data center into the fields below.
+            - Choose Connect and sign in at https://accounts.zoho.com.au as the Zoho Desk agent the connector acts as; tickets and comments it writes are authored by that agent, and the agent's profile limits what it can read and change.
+            - On the Zoho consent screen, accept the scopes Desk.tickets.READ, Desk.tickets.CREATE, and Desk.tickets.UPDATE for tickets and comments, Desk.search.READ for searchTickets, and Desk.basic.READ for the organization picker; if the account belongs to several Zoho Desk organizations, pick the one this connection uses, because Zoho binds the token to it.
+            - When the connection is Ready, choose the same organization in orgId; to revoke access, remove the connected app under Zoho Accounts > Sessions > Connected Apps or delete the client in the API console.
+        oauth2:
+          authorizationEndpoint: https://accounts.zoho.com.au/oauth/v2/auth
+          tokenEndpoint: https://accounts.zoho.com.au/oauth/v2/token
+          authorizationParameters: *zohoAuthorizationParameters
+          clientIDCredential: oauth_client_id
+          clientSecretCredential: oauth_client_secret
+          scopes: *zohoDeskScopes
+          credentialMappings: *zohoCredentialMappings
+          pkce: false
+      - id: zoho-jp-oauth
+        displayName: Japan (zoho.jp)
+        description: For Zoho Desk accounts at https://desk.zoho.jp; Dex signs in through https://accounts.zoho.jp and refreshes the hourly access token automatically.
+        type: oauth2
+        connectionKind: zoho-desk-jp-oauth
+        fields: *zohoOAuthFields
+        guide:
+          startURL: https://api-console.zoho.jp
+          steps:
+            - Sign in to https://api-console.zoho.jp with the Zoho account that owns the integration, choose GET STARTED or ADD CLIENT, and create a Server-based Applications client with a Client Name and Homepage URL.
+            - Add the exact Redirect URI shown by Dex Web under Authorized Redirect URIs, then choose CREATE; a client registered in another data center instead needs the Japan data center turned on in its Settings tab.
+            - Open the Client Secret tab and copy the Client ID and the Client Secret for this data center into the fields below.
+            - Choose Connect and sign in at https://accounts.zoho.jp as the Zoho Desk agent the connector acts as; tickets and comments it writes are authored by that agent, and the agent's profile limits what it can read and change.
+            - On the Zoho consent screen, accept the scopes Desk.tickets.READ, Desk.tickets.CREATE, and Desk.tickets.UPDATE for tickets and comments, Desk.search.READ for searchTickets, and Desk.basic.READ for the organization picker; if the account belongs to several Zoho Desk organizations, pick the one this connection uses, because Zoho binds the token to it.
+            - When the connection is Ready, choose the same organization in orgId; to revoke access, remove the connected app under Zoho Accounts > Sessions > Connected Apps or delete the client in the API console.
+        oauth2:
+          authorizationEndpoint: https://accounts.zoho.jp/oauth/v2/auth
+          tokenEndpoint: https://accounts.zoho.jp/oauth/v2/token
+          authorizationParameters: *zohoAuthorizationParameters
+          clientIDCredential: oauth_client_id
+          clientSecretCredential: oauth_client_secret
+          scopes: *zohoDeskScopes
+          credentialMappings: *zohoCredentialMappings
+          pkce: false
+      - id: zoho-ca-oauth
+        displayName: Canada (zohocloud.ca)
+        description: For Zoho Desk accounts at https://desk.zohocloud.ca; Dex signs in through https://accounts.zohocloud.ca and refreshes the hourly access token automatically.
+        type: oauth2
+        connectionKind: zoho-desk-ca-oauth
+        fields: *zohoOAuthFields
+        guide:
+          startURL: https://api-console.zohocloud.ca
+          steps:
+            - Sign in to https://api-console.zohocloud.ca with the Zoho account that owns the integration, choose GET STARTED or ADD CLIENT, and create a Server-based Applications client with a Client Name and Homepage URL.
+            - Add the exact Redirect URI shown by Dex Web under Authorized Redirect URIs, then choose CREATE; a client registered in another data center instead needs the Canada data center turned on in its Settings tab.
+            - Open the Client Secret tab and copy the Client ID and the Client Secret for this data center into the fields below.
+            - Choose Connect and sign in at https://accounts.zohocloud.ca as the Zoho Desk agent the connector acts as; tickets and comments it writes are authored by that agent, and the agent's profile limits what it can read and change.
+            - On the Zoho consent screen, accept the scopes Desk.tickets.READ, Desk.tickets.CREATE, and Desk.tickets.UPDATE for tickets and comments, Desk.search.READ for searchTickets, and Desk.basic.READ for the organization picker; if the account belongs to several Zoho Desk organizations, pick the one this connection uses, because Zoho binds the token to it.
+            - When the connection is Ready, choose the same organization in orgId; to revoke access, remove the connected app under Zoho Accounts > Sessions > Connected Apps or delete the client in the API console.
+        oauth2:
+          authorizationEndpoint: https://accounts.zohocloud.ca/oauth/v2/auth
+          tokenEndpoint: https://accounts.zohocloud.ca/oauth/v2/token
+          authorizationParameters: *zohoAuthorizationParameters
+          clientIDCredential: oauth_client_id
+          clientSecretCredential: oauth_client_secret
+          scopes: *zohoDeskScopes
+          credentialMappings: *zohoCredentialMappings
+          pkce: false
+      - id: zoho-sa-oauth
+        displayName: Saudi Arabia (zoho.sa)
+        description: For Zoho Desk accounts at https://desk.zoho.sa; Dex signs in through https://accounts.zoho.sa and refreshes the hourly access token automatically.
+        type: oauth2
+        connectionKind: zoho-desk-sa-oauth
+        fields: *zohoOAuthFields
+        guide:
+          startURL: https://api-console.zoho.sa
+          steps:
+            - Sign in to https://api-console.zoho.sa with the Zoho account that owns the integration, choose GET STARTED or ADD CLIENT, and create a Server-based Applications client with a Client Name and Homepage URL.
+            - Add the exact Redirect URI shown by Dex Web under Authorized Redirect URIs, then choose CREATE; a client registered in another data center instead needs the Saudi Arabia data center turned on in its Settings tab.
+            - Open the Client Secret tab and copy the Client ID and the Client Secret for this data center into the fields below.
+            - Choose Connect and sign in at https://accounts.zoho.sa as the Zoho Desk agent the connector acts as; tickets and comments it writes are authored by that agent, and the agent's profile limits what it can read and change.
+            - On the Zoho consent screen, accept the scopes Desk.tickets.READ, Desk.tickets.CREATE, and Desk.tickets.UPDATE for tickets and comments, Desk.search.READ for searchTickets, and Desk.basic.READ for the organization picker; if the account belongs to several Zoho Desk organizations, pick the one this connection uses, because Zoho binds the token to it.
+            - When the connection is Ready, choose the same organization in orgId; to revoke access, remove the connected app under Zoho Accounts > Sessions > Connected Apps or delete the client in the API console.
+        oauth2:
+          authorizationEndpoint: https://accounts.zoho.sa/oauth/v2/auth
+          tokenEndpoint: https://accounts.zoho.sa/oauth/v2/token
+          authorizationParameters: *zohoAuthorizationParameters
+          clientIDCredential: oauth_client_id
+          clientSecretCredential: oauth_client_secret
+          scopes: *zohoDeskScopes
+          credentialMappings: *zohoCredentialMappings
+          pkce: false
+      - id: zoho-sg-oauth
+        displayName: Singapore (zoho.sg)
+        description: For Zoho Desk accounts at https://desk.zoho.sg; Dex signs in through https://accounts.zoho.sg and refreshes the hourly access token automatically.
+        type: oauth2
+        connectionKind: zoho-desk-sg-oauth
+        fields: *zohoOAuthFields
+        guide:
+          startURL: https://api-console.zoho.sg
+          steps:
+            - Sign in to https://api-console.zoho.sg with the Zoho account that owns the integration, choose GET STARTED or ADD CLIENT, and create a Server-based Applications client with a Client Name and Homepage URL.
+            - Add the exact Redirect URI shown by Dex Web under Authorized Redirect URIs, then choose CREATE; a client registered in another data center instead needs the Singapore data center turned on in its Settings tab.
+            - Open the Client Secret tab and copy the Client ID and the Client Secret for this data center into the fields below.
+            - Choose Connect and sign in at https://accounts.zoho.sg as the Zoho Desk agent the connector acts as; tickets and comments it writes are authored by that agent, and the agent's profile limits what it can read and change.
+            - On the Zoho consent screen, accept the scopes Desk.tickets.READ, Desk.tickets.CREATE, and Desk.tickets.UPDATE for tickets and comments, Desk.search.READ for searchTickets, and Desk.basic.READ for the organization picker; if the account belongs to several Zoho Desk organizations, pick the one this connection uses, because Zoho binds the token to it.
+            - When the connection is Ready, choose the same organization in orgId; to revoke access, remove the connected app under Zoho Accounts > Sessions > Connected Apps or delete the client in the API console.
+        oauth2:
+          authorizationEndpoint: https://accounts.zoho.sg/oauth/v2/auth
+          tokenEndpoint: https://accounts.zoho.sg/oauth/v2/token
+          authorizationParameters: *zohoAuthorizationParameters
+          clientIDCredential: oauth_client_id
+          clientSecretCredential: oauth_client_secret
+          scopes: *zohoDeskScopes
+          credentialMappings: *zohoCredentialMappings
+          pkce: false
+      - id: zoho-ae-oauth
+        displayName: United Arab Emirates (zoho.ae)
+        description: For Zoho Desk accounts at https://desk.zoho.ae; Dex signs in through https://accounts.zoho.ae and refreshes the hourly access token automatically.
+        type: oauth2
+        connectionKind: zoho-desk-ae-oauth
+        fields: *zohoOAuthFields
+        guide:
+          startURL: https://api-console.zoho.ae
+          steps:
+            - Sign in to https://api-console.zoho.ae with the Zoho account that owns the integration, choose GET STARTED or ADD CLIENT, and create a Server-based Applications client with a Client Name and Homepage URL.
+            - Add the exact Redirect URI shown by Dex Web under Authorized Redirect URIs, then choose CREATE; a client registered in another data center instead needs the United Arab Emirates data center turned on in its Settings tab.
+            - Open the Client Secret tab and copy the Client ID and the Client Secret for this data center into the fields below.
+            - Choose Connect and sign in at https://accounts.zoho.ae as the Zoho Desk agent the connector acts as; tickets and comments it writes are authored by that agent, and the agent's profile limits what it can read and change.
+            - On the Zoho consent screen, accept the scopes Desk.tickets.READ, Desk.tickets.CREATE, and Desk.tickets.UPDATE for tickets and comments, Desk.search.READ for searchTickets, and Desk.basic.READ for the organization picker; if the account belongs to several Zoho Desk organizations, pick the one this connection uses, because Zoho binds the token to it.
+            - When the connection is Ready, choose the same organization in orgId; to revoke access, remove the connected app under Zoho Accounts > Sessions > Connected Apps or delete the client in the API console.
+        oauth2:
+          authorizationEndpoint: https://accounts.zoho.ae/oauth/v2/auth
+          tokenEndpoint: https://accounts.zoho.ae/oauth/v2/token
+          authorizationParameters: *zohoAuthorizationParameters
+          clientIDCredential: oauth_client_id
+          clientSecretCredential: oauth_client_secret
+          scopes: *zohoDeskScopes
+          credentialMappings: *zohoCredentialMappings
+          pkce: false
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.2.0 <0.3.0"
+      backendCapabilities: [oauth.connection.manage, use.configuration.write, zohodesk.organizations-list]
+      mockScenarios: [not-configured, authorization-pending, connected, insufficient-scope, revoked, broker-unavailable, ready]
+      icon: icon.svg
+    commands:
+      - id: listOrganizationsUS
+        capability: zohodesk.organizations-list
+        request: {method: GET, url: "https://desk.zoho.com/api/v1/organizations", credential: {field: access_token, scheme: bearer}}
+      - id: listOrganizationsEU
+        capability: zohodesk.organizations-list
+        request: {method: GET, url: "https://desk.zoho.eu/api/v1/organizations", credential: {field: access_token, scheme: bearer}}
+      - id: listOrganizationsIN
+        capability: zohodesk.organizations-list
+        request: {method: GET, url: "https://desk.zoho.in/api/v1/organizations", credential: {field: access_token, scheme: bearer}}
+      - id: listOrganizationsAU
+        capability: zohodesk.organizations-list
+        request: {method: GET, url: "https://desk.zoho.com.au/api/v1/organizations", credential: {field: access_token, scheme: bearer}}
+      - id: listOrganizationsJP
+        capability: zohodesk.organizations-list
+        request: {method: GET, url: "https://desk.zoho.jp/api/v1/organizations", credential: {field: access_token, scheme: bearer}}
+      - id: listOrganizationsCA
+        capability: zohodesk.organizations-list
+        request: {method: GET, url: "https://desk.zohocloud.ca/api/v1/organizations", credential: {field: access_token, scheme: bearer}}
+      - id: listOrganizationsSA
+        capability: zohodesk.organizations-list
+        request: {method: GET, url: "https://desk.zoho.sa/api/v1/organizations", credential: {field: access_token, scheme: bearer}}
+      - id: listOrganizationsSG
+        capability: zohodesk.organizations-list
+        request: {method: GET, url: "https://desk.zoho.sg/api/v1/organizations", credential: {field: access_token, scheme: bearer}}
+      - id: listOrganizationsAE
+        capability: zohodesk.organizations-list
+        request: {method: GET, url: "https://desk.zoho.ae/api/v1/organizations", credential: {field: access_token, scheme: bearer}}
+    units:
+      - id: organizationPicker
+        goName: OrganizationPicker
+        description: "Choose the Zoho Desk organization this connection works in from the organizations of the authorized user, listed in the connection's own data center only; the unit stores the organization's numeric orgId. Pick the organization chosen on the Zoho consent screen, and when the list cannot load, enter the orgId shown in Zoho Desk under Setup > Developer Space > API."
+        backendCapabilities: [zohodesk.organizations-list]
+        outputs:
+          - {name: orgId, goName: OrgID, type: string}
+  operations:
+    - name: searchTickets
+      goName: SearchTickets
+      inputType: SearchTicketsInput
+      outputType: SearchTicketsOutput
+      kind: query
+      description: Search one page of Zoho Desk tickets by status, status type, priority, contact email, department, and modified time, with from and limit paging of at most 100 tickets.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: searched, goName: Searched, description: "One page of matching tickets was returned; it may be empty."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Zoho Desk conclusively rejected the search, such as a revoked authorization, a missing scope, another organization, or an invalid filter value.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Zoho Desk returned an invalid or oversized search page., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &zohoDeskReadExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
+    - name: getTicket
+      goName: GetTicket
+      inputType: GetTicketInput
+      outputType: TicketDetails
+      kind: query
+      description: Read one ticket by ID with its contact and bounded lists of its newest threads and newest comments.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: "The ticket, its contact, and its newest threads and comments were read."}
+        - {id: notFound, goName: NotFound, description: The ticket does not exist or is not visible to the connection's agent., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Zoho Desk conclusively rejected the ticket read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Zoho Desk returned an invalid or oversized ticket, thread list, or comment list.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *zohoDeskReadExecution
+    - name: createTicket
+      goName: CreateTicket
+      inputType: CreateTicketInput
+      outputType: CreateTicketOutput
+      kind: mutation
+      description: Create one ticket in a department for a contact. Zoho Desk has no idempotency key, so the Step runs with sync durability and sends the request at most once per Step execution.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: created, goName: Created, description: Zoho Desk created the ticket and returned it.}
+        - {id: providerRejected, goName: ProviderRejected, description: "Zoho Desk conclusively rejected the ticket, such as an unknown department, status, or assignee; no ticket was created.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The request was sent but its outcome cannot be confirmed, so the ticket may exist; the connector never resends it.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &zohoDeskSingleDispatchExecution
+        executeMethodTimeout: 30s
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m}
+    - name: updateTicket
+      goName: UpdateTicket
+      inputType: UpdateTicketInput
+      outputType: UpdateTicketOutput
+      kind: mutation
+      description: Set the status, priority, assignee, or department of one ticket; a repeated attempt finds the change already applied and writes nothing.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: updated, goName: Updated, description: "Zoho Desk accepted the requested values now or already held them; the returned ticket shows any change its automations made."}
+        - {id: notFound, goName: NotFound, description: The ticket does not exist or is not visible to the connection's agent., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Zoho Desk conclusively rejected the change, such as an unknown status, an assignee outside the department, or a blueprint that forbids the transition.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Zoho Desk returned an invalid or oversized ticket, so the change may have been applied.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *zohoDeskReadExecution
+    - name: addComment
+      goName: AddComment
+      inputType: AddCommentInput
+      outputType: AddCommentOutput
+      kind: mutation
+      description: Add one public or private plain-text comment to a ticket. Zoho Desk has no idempotency key, so the Step runs with sync durability and sends the request at most once per Step execution.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: added, goName: Added, description: Zoho Desk added the comment and returned it.}
+        - {id: notFound, goName: NotFound, description: "The ticket does not exist or is not visible to the connection's agent; nothing was added.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Zoho Desk conclusively rejected the comment; nothing was added.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The request was sent but its outcome cannot be confirmed, so the comment may exist; the connector never resends it.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *zohoDeskSingleDispatchExecution

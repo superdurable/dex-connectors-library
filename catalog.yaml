@@ -38,4 +38,5 @@ directories:
   - connectors/typeform
   - connectors/xai
   - connectors/zendesk/support
+  - connectors/zoho/desk
   - connectors/zoom
