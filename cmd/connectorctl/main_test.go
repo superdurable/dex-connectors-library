@@ -83,7 +83,7 @@ func TestRegisteredGoogleConnectorsRequestNoAliasOAuthScopes(t *testing.T) {
 			checkedDirectories = append(checkedDirectories, entry.Directory)
 		}
 	}
-	require.Equal(t, []string{"connectors/google/calendar", "connectors/google/docs", "connectors/google/drive", "connectors/google/forms", "connectors/google/gmail", "connectors/google/spreadsheet"}, checkedDirectories)
+	require.Equal(t, []string{"connectors/google/calendar", "connectors/google/docs", "connectors/google/drive", "connectors/google/forms", "connectors/google/gmail", "connectors/google/spreadsheet", "connectors/google/workspace-admin"}, checkedDirectories)
 }
 
 func TestCatalogCommandWritesDeterministicYAML(t *testing.T) {
