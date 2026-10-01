@@ -1,0 +1,164 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: helpscout
+  displayName: Help Scout
+  description: "Search, read, reply to, and update Help Scout Inbox conversations, find customers by email, and receive signed conversation webhooks, keeping Help Scout's own active, pending, closed, and spam statuses."
+  company: Help Scout
+  version: v0.1.0
+spec:
+  provider: helpscout
+  codegen:
+    go:
+      package: helpscout
+  configuration:
+    fields:
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Largest Help Scout API response body, in bytes, that one call reads; a larger response selects invalidResponse, or uncertain for replyToConversation. Enter a positive integer only to raise or lower this safety limit, for example for conversations whose threads hold very long HTML. Blank uses the default."
+        required: false
+        default: 4194304
+      - name: webhookMaxBodyBytes
+        goName: WebhookMaxBodyBytes
+        type: integer
+        description: "Largest Help Scout webhook request body, in bytes, that the conversationEvent endpoint accepts; a larger body is answered 413 before its X-HelpScout-Signature is checked, and Help Scout retries it. Enter a positive integer only when conversation webhooks carry unusually long content. Blank uses the default."
+        required: false
+        default: 4194304
+  auth:
+    type: apiKey
+    connectionKind: helpscout-client-credentials
+    fields:
+      - name: app_id
+        goName: AppID
+        type: string
+        description: "Non-secret App ID of your Help Scout app, copied from https://secure.helpscout.net/ > your avatar at the top right > Your Profile > My Apps after choosing Create My App or opening the app; it is a long string of letters and digits. Required: the connector sends it as client_id to obtain every access token."
+        required: true
+      - name: app_secret
+        goName: AppSecret
+        type: secretString
+        description: "Secret App Secret shown beside the App ID under Your Profile > My Apps at https://secure.helpscout.net/; it is stored only in the local connection file and sent only, as client_secret, to https://api.helpscout.net/v2/oauth2/token. Required: without it no access token can be obtained."
+        required: true
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        description: "Secret two-day Help Scout access token that the connector obtains from the App ID and App Secret with the client credentials grant and stores here, renewing it five minutes before expiry or after Help Scout answers 401. It is an output, so never enter it manually; leave it blank."
+        required: false
+      - name: webhook_secret
+        goName: WebhookSecret
+        type: secretString
+        description: "Secret key of your Help Scout webhook: a random string of at most 40 characters that you choose, such as the output of openssl rand -hex 20, and enter as Secret Key in https://secure.helpscout.net/ > Settings > Workspace > Apps > Webhooks, or send as secret to POST https://api.helpscout.net/v2/webhooks. The conversationEvent endpoint verifies every X-HelpScout-Signature with it. Blank is fine for operations only; the endpoint then answers 503 so Help Scout retries."
+        required: false
+    guide:
+      startURL: https://secure.helpscout.net/
+      steps:
+        - "Sign in at https://secure.helpscout.net/ as the Help Scout user the connector acts for, open your avatar at the top right > Your Profile > My Apps, and choose Create My App; the app acts with that user's permissions, so pick a user who can access every inbox the Flows use."
+        - "Name the app and enter any HTTPS placeholder, such as https://www.example.com, as its Redirection URL; Help Scout requires one, but the client credentials flow this connector uses never redirects."
+        - "Save the app and copy its App ID and App Secret into the fields below; the App Secret is sensitive. Help Scout apps have no scopes, and the Free plan has no API access."
+        - "Leave access_token blank: the application obtains a two-day token from https://api.helpscout.net/v2/oauth2/token on its first Help Scout call and renews it before expiry. To revoke access, delete the app under My Apps."
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.2.0 <0.3.0"
+      backendCapabilities: [use.configuration.write, helpscout.mailboxes-list]
+      mockScenarios: [not-configured, connected]
+      icon: icon.svg
+    commands:
+      - id: listMailboxes
+        capability: helpscout.mailboxes-list
+        request:
+          method: GET
+          url: https://api.helpscout.net/v2/mailboxes
+          credential: {field: access_token, scheme: bearer}
+          parameters:
+            - {name: page, location: query, target: page}
+    units:
+      - id: mailboxPicker
+        goName: MailboxPicker
+        description: "Select one Help Scout inbox, listed live from GET https://api.helpscout.net/v2/mailboxes with the access token the application stored, or enter its numeric ID; the unit stores the stable inbox ID, such as 12345."
+        backendCapabilities: [helpscout.mailboxes-list]
+        outputs:
+          - {name: mailboxId, goName: MailboxID, type: integer}
+  triggers:
+    - name: conversationEvent
+      goName: ConversationEvent
+      eventType: ConversationEvent
+      configurationType: ConversationEventTriggerConfiguration
+      description: "Receive a signed Help Scout conversation webhook, such as convo.created or convo.customer.reply.created, filtered by event and inbox."
+  operations:
+    - name: searchConversations
+      goName: SearchConversations
+      inputType: SearchConversationsInput
+      outputType: SearchConversationsOutput
+      kind: query
+      description: "List one page of up to 25 conversations filtered by inbox, Help Scout status, tag, customer email, and modification time, with the next page number."
+      idempotency: none
+      branches:
+        - {id: searched, goName: Searched, description: "Help Scout returned one page of matching conversations; it may be empty."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Help Scout conclusively rejected the search, such as an invalid token, a filter it does not accept, or an account without API access.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Help Scout returned a malformed or oversized page.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &helpScoutReadExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
+    - name: getConversation
+      goName: GetConversation
+      inputType: GetConversationInput
+      outputType: ConversationDetails
+      kind: query
+      description: "Read one conversation by ID with a bounded list of its newest threads."
+      idempotency: none
+      branches:
+        - {id: found, goName: Found, description: "Help Scout returned the conversation and its newest threads."}
+        - {id: merged, goName: Merged, description: "The conversation was merged into another; mergedIntoConversationId names the conversation to read instead.", optional: true}
+        - {id: notFound, goName: NotFound, description: "The conversation does not exist, was deleted, or is not visible to the app's Help Scout user.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Help Scout conclusively rejected the read, such as an invalid token or an account without API access.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Help Scout returned a malformed or oversized conversation or thread page.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *helpScoutReadExecution
+    - name: replyToConversation
+      goName: ReplyToConversation
+      inputType: ReplyToConversationInput
+      outputType: ConversationReply
+      kind: mutation
+      description: "Add one customer reply, which Help Scout emails, or one internal note to a conversation. Help Scout has no idempotency key, so the Step runs with sync durability and sends the thread at most once per Step execution."
+      idempotency: required
+      branches:
+        - {id: replied, goName: Replied, description: "Help Scout created the reply or note and returned its thread ID."}
+        - {id: notFound, goName: NotFound, description: "The conversation does not exist, was merged, or is not visible to the app's Help Scout user; nothing was added.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Help Scout conclusively rejected the thread, such as a locked conversation with 100 threads or an unknown customer; nothing was added.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The thread was sent but Help Scout's answer was lost, a server error, or unreadable, so it may exist; the connector never sends it again.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m}
+    - name: updateConversation
+      goName: UpdateConversation
+      inputType: UpdateConversationInput
+      outputType: UpdateConversationOutput
+      kind: mutation
+      description: "Set the Help Scout status or assignee of one conversation and add or remove tags; a repeated attempt finds the values already applied and writes nothing."
+      idempotency: required
+      branches:
+        - {id: updated, goName: Updated, description: "The conversation holds the requested status, assignee, and tags, written now or by an earlier attempt."}
+        - {id: notFound, goName: NotFound, description: "The conversation does not exist, was merged, or is not visible to the app's Help Scout user.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Help Scout conclusively rejected the change, such as an assignee who is not a user or team of the account.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Help Scout returned a malformed or oversized conversation, so part of the change may have been applied.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *helpScoutReadExecution
+    - name: findCustomerByEmail
+      goName: FindCustomerByEmail
+      inputType: FindCustomerByEmailInput
+      outputType: CustomerMatches
+      kind: query
+      description: "Find the Help Scout customer profiles whose email matches one address, returning every match so the Flow decides between duplicates."
+      idempotency: none
+      branches:
+        - {id: found, goName: Found, description: "Help Scout returned one or more customer profiles for the email address."}
+        - {id: notFound, goName: NotFound, description: "No customer profile has the email address.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Help Scout conclusively rejected the lookup, such as an invalid token or an account without API access.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Help Scout returned a malformed or oversized customer page.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *helpScoutReadExecution
