@@ -1,0 +1,235 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: calendly
+  displayName: Calendly
+  description: "Read Calendly scheduled events and invitees, cancel events, create single-use scheduling links, register webhook subscriptions, and receive signed invitee.created and invitee.canceled webhooks."
+  company: Calendly
+  version: v0.1.0
+spec:
+  provider: calendly
+  codegen:
+    go:
+      package: calendly
+  configuration:
+    fields:
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Largest Calendly API response body, in bytes, that one call reads; a larger response selects invalidResponse. Enter a positive integer only to raise or lower this safety limit, for example when an organization has very large invitee answers. Blank uses the default."
+        required: false
+        default: 1048576
+      - name: webhookMaxBodyBytes
+        goName: WebhookMaxBodyBytes
+        type: integer
+        description: "Largest Calendly webhook request body, in bytes, that the inviteeEventReceived endpoint accepts; a larger body is answered 413 before its signature is checked. Enter a positive integer only when booking forms carry unusually long answers. Blank uses the default."
+        required: false
+        default: 1048576
+      - name: webhookSignatureTolerance
+        goName: WebhookSignatureTolerance
+        type: duration
+        description: "Largest difference between the t= timestamp of the Calendly-Webhook-Signature header and this server's clock, as a positive Go duration such as 90s or 5m. Older or future-dated deliveries are answered 400, which stops replayed requests; Calendly's documentation uses three minutes. Raise it only when this server's clock drifts. Blank uses the default."
+        required: false
+        default: 3m
+  auth:
+    methodLabel: Sign-in method
+    defaultMethod: personal-access-token
+    methods:
+      - id: personal-access-token
+        displayName: Personal access token
+        description: "Recommended for one Calendly account or organization used by your own application: paste a token generated in Calendly's Integrations > API & Webhooks page."
+        recommended: true
+        type: apiKey
+        connectionKind: calendly-personal-access-token
+        fields:
+          - name: access_token
+            goName: AccessToken
+            type: secretString
+            description: "Secret Calendly personal access token copied once from https://calendly.com/integrations/api_webhooks after choosing Generate new token; it is a long opaque string sent only as a bearer token to api.calendly.com, and blank means no operation can run."
+            required: true
+          - name: webhook_signing_key
+            goName: WebhookSigningKey
+            type: secretString
+            description: "Secret webhook signing key you generate yourself, such as the output of openssl rand -hex 32, and register as the signing_key of POST https://api.calendly.com/webhook_subscriptions; createWebhookSubscription sends it for you. The inviteeEventReceived endpoint verifies every Calendly-Webhook-Signature with it. Blank is fine for operations only; the endpoint then answers 503 and createWebhookSubscription selects defect."
+            required: false
+        guide:
+          startURL: https://calendly.com/integrations/api_webhooks
+          steps:
+            - "Sign in to the Calendly account the application acts for, open Integrations > API & Webhooks, and under Personal Access Tokens choose Get a token now or Generate new token."
+            - "Name the token, grant the scopes users:read, event_types:read, scheduled_events:write, scheduling_links:write, and webhooks:write, then choose Create Token and Copy token; Calendly never shows it again."
+            - "Paste the token into access_token. Organization-wide reads and webhooks need a token from a Calendly organization owner or admin; any member can read and subscribe to their own events."
+            - "To receive webhooks, paste a random secret such as the output of openssl rand -hex 32 into webhook_signing_key, then run createWebhookSubscription or the curl command in the connector README with that same key."
+      - id: calendly-oauth
+        displayName: Calendly OAuth
+        description: "For an application that other Calendly users authorize: Dex opens Calendly consent with your OAuth app and refreshes the two-hour access token automatically."
+        type: oauth2
+        connectionKind: calendly-oauth
+        fields:
+          - name: oauth_client_id
+            goName: OAuthClientID
+            type: string
+            description: "Non-secret Client ID of your Calendly OAuth app, copied from its credentials step at https://developer.calendly.com/console/apps after creating or opening the app; it is a long opaque string, and blank means authorization and refresh cannot start."
+            required: true
+          - name: oauth_client_secret
+            goName: OAuthClientSecret
+            type: secretString
+            description: "Secret Client Secret that Calendly shows once when the OAuth app is created at https://developer.calendly.com/console/apps; it is stored only in the local connection file and blank means authorization and refresh cannot start."
+            required: true
+          - name: access_token
+            goName: AccessToken
+            type: secretString
+            description: "Secret Calendly OAuth access token produced automatically by the authorization; Dex refreshes it before its two-hour expiry, so never enter it manually."
+            required: true
+          - name: refresh_token
+            goName: RefreshToken
+            type: secretString
+            description: "Secret single-use Calendly refresh token produced automatically by the authorization; every refresh replaces it, so never enter it manually, and blank or rejected means the connection must be authorized again."
+            required: true
+          - name: webhook_signing_key
+            goName: WebhookSigningKey
+            type: secretString
+            description: "Secret Webhook signing key that Calendly shows once beside the Client Secret when the OAuth app is created at https://developer.calendly.com/console/apps; Calendly signs every webhook of the app with it and the inviteeEventReceived endpoint verifies each delivery. Blank is fine for operations only; the endpoint then answers 503."
+            required: false
+        guide:
+          startURL: https://developer.calendly.com/console/apps
+          steps:
+            - "Sign in with GitHub or Google to the Calendly developer account, which is separate from the Calendly user account, and create a new OAuth application; use the Sandbox environment while testing and a separate Production application for live accounts."
+            - "Choose the Web kind, enter the exact Redirect URI that Dex Web displays below, and select the scopes users:read, event_types:read, scheduled_events:write, scheduling_links:write, and webhooks:write. Sandbox accepts an http://localhost Redirect URI, so open Dex Web through localhost; Production requires HTTPS."
+            - "Continue to the credentials step and copy the Client ID, the Client Secret, and the Webhook signing key into the fields below; Calendly shows the secret and the signing key only once, and support+developer@calendly.com reissues a lost signing key."
+            - "Choose Connect and approve the consent screen with the Calendly account the application acts for; organization-wide reads and webhooks need a Calendly organization owner or admin."
+        oauth2:
+          authorizationEndpoint: https://auth.calendly.com/oauth/authorize
+          tokenEndpoint: https://auth.calendly.com/oauth/token
+          clientIDCredential: oauth_client_id
+          clientSecretCredential: oauth_client_secret
+          scopes: [users:read, event_types:read, scheduled_events:write, scheduling_links:write, webhooks:write]
+          credentialMappings:
+            - {credential: access_token, source: access_token}
+            - {credential: refresh_token, source: refresh_token}
+          pkce: true
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.2.0 <0.3.0"
+      backendCapabilities: [oauth.connection.manage, use.configuration.write, calendly.current-user-read, calendly.event-types-list]
+      mockScenarios: [not-configured, authorization-pending, connected, insufficient-scope, revoked, broker-unavailable, ready]
+      icon: icon.svg
+    commands:
+      - id: getCurrentUser
+        capability: calendly.current-user-read
+        request:
+          method: GET
+          url: https://api.calendly.com/users/me
+          credential: {field: access_token, scheme: bearer}
+      - id: listEventTypes
+        capability: calendly.event-types-list
+        request:
+          method: GET
+          url: https://api.calendly.com/event_types
+          credential: {field: access_token, scheme: bearer}
+          fixedQuery: {count: "100", sort: "name:asc"}
+          parameters:
+            - {name: user, location: query, target: user}
+            - {name: pageToken, location: query, target: page_token}
+    units:
+      - id: eventTypePicker
+        goName: EventTypePicker
+        description: "Select one of the connected Calendly user's event types, listed live from Calendly, or paste an event type URI; the unit stores the stable event type URI, such as https://api.calendly.com/event_types/AAAAAAAAAAAAAAAA."
+        backendCapabilities: [calendly.current-user-read, calendly.event-types-list]
+        outputs:
+          - {name: eventTypeUri, goName: EventTypeURI, type: string}
+  triggers:
+    - name: inviteeEventReceived
+      goName: InviteeEventReceived
+      eventType: InviteeEvent
+      configurationType: InviteeEventReceivedTriggerConfiguration
+      description: "Receive a signed Calendly invitee.created or invitee.canceled webhook, with the invitee's stable URI as its event ID."
+  operations:
+    - name: listScheduledEvents
+      goName: ListScheduledEvents
+      inputType: ListScheduledEventsInput
+      outputType: ScheduledEventPage
+      kind: query
+      description: "List one page of scheduled events that start inside a required time window, for a user, an organization, or the connected user."
+      idempotency: none
+      branches:
+        - {id: listed, goName: Listed, description: "Calendly returned one page of scheduled events and the token for the next page, if any."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Calendly conclusively rejected the request, such as an invalid token, a missing scope, or an organization the token cannot read.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Calendly returned a malformed or oversized response.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &calendlyExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
+    - name: getScheduledEvent
+      goName: GetScheduledEvent
+      inputType: GetScheduledEventInput
+      outputType: ScheduledEvent
+      kind: query
+      description: "Read one scheduled event by its Calendly URI."
+      idempotency: none
+      branches:
+        - {id: found, goName: Found, description: "Calendly returned the scheduled event."}
+        - {id: notFound, goName: NotFound, description: "The scheduled event does not exist or is not visible to the token.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Calendly conclusively rejected the request, such as an invalid token or a missing scope.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Calendly returned a malformed or oversized response.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *calendlyExecution
+    - name: listEventInvitees
+      goName: ListEventInvitees
+      inputType: ListEventInviteesInput
+      outputType: EventInviteePage
+      kind: query
+      description: "List one bounded page of a scheduled event's invitees."
+      idempotency: none
+      branches:
+        - {id: listed, goName: Listed, description: "Calendly returned one page of invitees and the token for the next page, if any."}
+        - {id: notFound, goName: NotFound, description: "The scheduled event does not exist or is not visible to the token.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Calendly conclusively rejected the request, such as an invalid token or a missing scope.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Calendly returned a malformed or oversized response.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *calendlyExecution
+    - name: cancelScheduledEvent
+      goName: CancelScheduledEvent
+      inputType: CancelScheduledEventInput
+      outputType: ScheduledEventCancellation
+      kind: mutation
+      description: "Cancel one scheduled event; an event that is already canceled also selects canceled, so a repeated call is safe."
+      idempotency: required
+      branches:
+        - {id: canceled, goName: Canceled, description: "The scheduled event is canceled, by this call or earlier; alreadyCanceled tells which."}
+        - {id: notFound, goName: NotFound, description: "The scheduled event does not exist or is not visible to the token.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Calendly refused to cancel an active event, such as one that already started or one the token may not cancel.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Calendly returned a malformed or oversized response.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *calendlyExecution
+    - name: createSchedulingLink
+      goName: CreateSchedulingLink
+      inputType: CreateSchedulingLinkInput
+      outputType: SchedulingLink
+      kind: mutation
+      description: "Create one single-use scheduling link for an event type. Calendly has no idempotency key, so the call runs with sync durability and an unknown outcome selects uncertain."
+      idempotency: required
+      branches:
+        - {id: created, goName: Created, description: "Calendly created the single-use scheduling link."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Calendly conclusively rejected the request, such as an event type the token cannot use.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The request was sent but Calendly's answer was lost, a server error, or unreadable, so a link may exist that this Result does not name.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
+    - name: createWebhookSubscription
+      goName: CreateWebhookSubscription
+      inputType: CreateWebhookSubscriptionInput
+      outputType: WebhookSubscription
+      kind: mutation
+      description: "Subscribe a callback URL to invitee webhooks. The connector lists the scope's subscriptions first and reuses one with the same URL, so a repeated call creates at most one subscription."
+      idempotency: required
+      branches:
+        - {id: subscribed, goName: Subscribed, description: "An active subscription with this callback URL covers the requested events; wasCreated tells whether this attempt created it."}
+        - {id: conflictingSubscription, goName: ConflictingSubscription, description: "A subscription with this callback URL already exists but is disabled, lacks a requested event, or belongs to another scope or user; delete it in Calendly and run again.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Calendly conclusively rejected the request, such as a plan without webhooks or a token that is not an organization admin.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Calendly returned a malformed or oversized response.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *calendlyExecution

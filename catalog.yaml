@@ -5,6 +5,7 @@ directories:
   - connectors/anthropic
   - connectors/asana
   - connectors/atlassian/jira
+  - connectors/calendly
   - connectors/deepseek
   - connectors/freshworks/freshdesk
   - connectors/github
