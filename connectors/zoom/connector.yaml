@@ -1,0 +1,150 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: zoom
+  displayName: Zoom
+  description: List, read, schedule, and reschedule the authorized user's Zoom meetings, and list who joined a past meeting.
+  company: Zoom
+  version: v0.1.0
+spec:
+  provider: zoom
+  codegen:
+    go:
+      package: zoom
+  configuration:
+    fields:
+      - name: endpoint
+        goName: Endpoint
+        type: url
+        description: Zoom REST API base URL including /v2; leave blank for Zoom's global API, which serves accounts in every region. Enter an absolute HTTPS URL only for a test double or a gateway that serves the same API.
+        required: false
+        default: https://api.zoom.us/v2
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete Zoom API response in bytes; enter a positive integer only to change the safety limit. A larger meeting or listing selects invalidResponse.
+        required: false
+        default: 2097152
+  auth:
+    type: oauth2
+    connectionKind: zoom-user-oauth
+    fields:
+      - name: oauth_client_id
+        goName: OAuthClientID
+        type: string
+        description: Non-secret Client ID copied from https://marketplace.zoom.us/ > Developer > Created apps > the General app > Basic Information > App Credentials; use the development Client ID while the app is unpublished, and blank means authorization and refresh cannot start.
+        required: true
+      - name: oauth_client_secret
+        goName: OAuthClientSecret
+        type: secretString
+        description: Secret Client Secret copied from the same App Credentials section at https://marketplace.zoom.us/; store it only in this credential field, and blank means authorization and refresh cannot start.
+        required: true
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        description: Secret one-hour access token returned by Zoom after consent; Dex derives it automatically and refreshes it before expiry, so never enter it manually.
+        required: true
+      - name: refresh_token
+        goName: RefreshToken
+        type: secretString
+        description: Secret refresh token returned by Zoom after consent; Dex stores it automatically and replaces it with the new one Zoom issues on every refresh, so never enter it manually, and a blank or 90-day-old token means reauthorization is required.
+        required: true
+    guide:
+      startURL: https://marketplace.zoom.us/
+      steps:
+        - Sign in with a Zoom account that has developer permissions, choose Developer in the lower-left navigation, then choose Develop > Build an app > General app > Create.
+        - On Basic Information, choose User-managed under Select how the app is managed, so the app reaches only the meetings of the Zoom user who authorizes it.
+        - Open Dex Web at http://127.0.0.1 rather than localhost, because Zoom rejects localhost redirects; under Basic Information > OAuth Information, set OAuth redirect URL to the exact Redirect URI shown below and add the same URI to OAuth allow lists.
+        - On Scopes, choose Add Scopes > Meeting and select meeting:read:list_meetings, meeting:read:meeting, meeting:write:meeting, meeting:update:meeting, and meeting:read:list_past_participants, give each a Scope Description, then choose Done; Dex rejects a grant that lacks any of these granular scopes.
+        - Copy the development Client ID and Client Secret from Basic Information > App Credentials into the fields below, choose Authorize, and allow access as the Zoom user who hosts the meetings; until the app is published, only members of the developer's Zoom account can authorize it.
+    oauth2:
+      protocol: oauth2
+      authorizationEndpoint: https://zoom.us/oauth/authorize
+      tokenEndpoint: https://zoom.us/oauth/token
+      clientIDCredential: oauth_client_id
+      clientSecretCredential: oauth_client_secret
+      scopes: [meeting:read:list_meetings, meeting:read:meeting, meeting:write:meeting, meeting:update:meeting, meeting:read:list_past_participants]
+      credentialMappings:
+        - {credential: access_token, source: access_token}
+        - {credential: refresh_token, source: refresh_token}
+      pkce: true
+  operations:
+    - name: listMeetings
+      goName: ListMeetings
+      inputType: ListMeetingsInput
+      outputType: MeetingPage
+      kind: query
+      description: List one page of the authorized user's scheduled, upcoming, live, or previous meetings, at most 300 per page.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: One page of the user's meetings was listed.}
+        - {id: providerRejected, goName: ProviderRejected, description: "Zoom conclusively rejected the listing, such as a user without meeting hosting capability.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Zoom returned an invalid or oversized meeting page., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &zoomAsyncExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+    - name: getMeeting
+      goName: GetMeeting
+      inputType: GetMeetingInput
+      outputType: Meeting
+      kind: query
+      description: Read one meeting by its numeric meeting ID, including its start instant, time zone, join URL, and settings.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: The meeting was read.}
+        - {id: notFound, goName: NotFound, description: The meeting does not exist or was deleted., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Zoom conclusively rejected the meeting read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Zoom returned an invalid or oversized meeting., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *zoomAsyncExecution
+    - name: createMeeting
+      goName: CreateMeeting
+      inputType: CreateMeetingInput
+      outputType: Meeting
+      kind: mutation
+      description: Schedule one meeting for the authorized user at an explicit start instant and IANA time zone; Zoom has no idempotency key, so an unknown outcome is reported instead of retried.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: created, goName: Created, description: Zoom created the meeting and returned its ID and join URL.}
+        - {id: providerRejected, goName: ProviderRejected, description: "Zoom conclusively rejected the meeting, such as a user who cannot host or an exhausted daily create limit; nothing was created.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The request was dispatched but its outcome cannot be confirmed; the meeting may exist and must not be created again automatically.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      # Sync: an async fallback attempt would send a slow create again, and Zoom has no idempotency key.
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+    - name: updateMeeting
+      goName: UpdateMeeting
+      inputType: UpdateMeetingInput
+      outputType: UpdatedMeeting
+      kind: mutation
+      description: Patch the topic, agenda, start instant and time zone, duration, or settings of one meeting; the patch sets absolute values, so repeating it is safe.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: updated, goName: Updated, description: Zoom accepted the patch.}
+        - {id: notFound, goName: NotFound, description: The meeting does not exist or was deleted., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Zoom conclusively rejected the patch, such as an exhausted daily update limit.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *zoomAsyncExecution
+    - name: listPastMeetingParticipants
+      goName: ListPastMeetingParticipants
+      inputType: ListPastMeetingParticipantsInput
+      outputType: ParticipantPage
+      kind: query
+      description: List one page of the people who joined the latest ended instance of a meeting, at most 300 per page.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: One page of participants was listed.}
+        - {id: notFound, goName: NotFound, description: Zoom has no ended instance of the meeting., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Zoom conclusively rejected the listing, such as a free account or a meeting older than Zoom keeps.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Zoom returned an invalid or oversized participant page., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *zoomAsyncExecution

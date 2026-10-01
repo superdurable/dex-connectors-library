@@ -27,3 +27,4 @@ directories:
   - connectors/twilio/messaging
   - connectors/xai
   - connectors/zendesk/support
+  - connectors/zoom
