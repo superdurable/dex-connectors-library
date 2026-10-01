@@ -18,6 +18,7 @@ directories:
   - connectors/google/gmail
   - connectors/google/spreadsheet
   - connectors/hackernews
+  - connectors/helpscout
   - connectors/hubspot
   - connectors/intercom
   - connectors/linkedin
