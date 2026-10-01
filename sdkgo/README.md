@@ -42,6 +42,15 @@ durable state, locking, and event deduplication. Connector Triggers preserve the
 provider event ID but do not impose a retention policy or create hidden
 Attributes.
 
+## Shared project configuration
+
+Project Dex Web and application replicas can share versioned encrypted S3
+configuration without a credential broker. See
+[projectconfig](projectconfig/README.md) for scope-bound configuration snapshots,
+conditional credential admission, restart recovery, the typed SDK adapter, and
+the runnable environment-loader example. Existing providers are unchanged;
+applications explicitly choose this provider.
+
 ## Trigger delivery outcomes
 
 `HandleTrigger` has three outcomes:
