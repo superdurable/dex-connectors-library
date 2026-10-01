@@ -1,0 +1,132 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: bamboohr
+  displayName: BambooHR
+  description: Read BambooHR employee records, find an employee by email, poll employee changes, list time off requests, update employee fields, and add employees, keeping BambooHR's own field names and status values.
+  company: BambooHR
+  version: v0.1.0
+spec:
+  provider: bamboohr
+  codegen:
+    go:
+      package: bamboohr
+  configuration:
+    fields:
+      - name: companyDomain
+        goName: CompanyDomain
+        type: string
+        description: "Non-secret BambooHR company domain: the mycompany in https://mycompany.bamboohr.com. Sign in at https://app.bamboohr.com/login/ and copy the part before .bamboohr.com from the browser address bar. Enter lowercase letters, digits, and hyphens only, without https:// or .bamboohr.com. Required: every API request is sent to https://{companyDomain}.bamboohr.com/api/v1."
+        required: true
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Maximum complete BambooHR API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to raise it, for example when listEmployeeChanges covers a long period in a large company. An oversized response selects invalidResponse."
+        required: false
+        default: 4194304
+  auth:
+    type: apiKey
+    connectionKind: bamboohr-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        description: "Secret BambooHR API key of the user the connector acts as. Sign in at https://{companyDomain}.bamboohr.com, select your name in the lower left-hand corner of any page, and choose API Keys, as https://documentation.bamboohr.com/docs/getting-started describes; the option appears only when your access level allows API keys. BambooHR documents a key as a 160-bit number in hexadecimal form, 40 hexadecimal characters. The connector sends it over HTTP Basic as the user name with x as the password. Stored only in this credential field; BambooHR shows a new key only once, so paste a replacement key here."
+        required: true
+    guide:
+      startURL: https://app.bamboohr.com/login/
+      steps:
+        - Sign in to https://{companyDomain}.bamboohr.com as the BambooHR user the connector should act as; every request is permissioned as that user, so the user's access level decides which employees, fields, and time off requests the connector can read and change, and fields it cannot see are silently omitted.
+        - Select your name in the lower left-hand corner of any page to open the user context menu and choose API Keys; the option appears only when your access level allows API keys.
+        - Add a key, give it a name such as Dex, and copy it into api_key now; BambooHR shows the key only once.
+        - Enter companyDomain as the mycompany in https://mycompany.bamboohr.com.
+        - To revoke access, remove the key on the same API Keys page. BambooHR answers 403 to every request for a period after repeated requests with an unknown key, so replace a removed key here promptly.
+  operations:
+    - name: getEmployee
+      goName: GetEmployee
+      inputType: GetEmployeeInput
+      outputType: EmployeeRecord
+      kind: query
+      description: Read one employee by internal ID with an explicit list of up to 400 fields, reporting the requested fields BambooHR omitted because they are unknown or not visible to the connection.
+      idempotency: none
+      branches:
+        - {id: found, goName: Found, description: The employee was read; fields the connection cannot see are listed as omitted.}
+        - {id: notFound, goName: NotFound, description: No employee has this internal ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "BambooHR conclusively rejected the read, such as invalid credentials or a user who cannot view this employee.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: BambooHR returned an invalid or oversized employee record., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &bamboohrReadExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
+    - name: findEmployeeByEmail
+      goName: FindEmployeeByEmail
+      inputType: FindEmployeeByEmailInput
+      outputType: FindEmployeeByEmailOutput
+      kind: query
+      description: Find the one employee whose work or home email equals an address, reading at most 100 candidates from BambooHR's List Employees filter.
+      idempotency: none
+      branches:
+        - {id: found, goName: Found, description: Exactly one employee visible to the connection has this email.}
+        - {id: notFound, goName: NotFound, description: "No employee visible to the connection has this email; BambooHR drops employees whose email the connection cannot read.", optional: true}
+        - {id: ambiguous, goName: Ambiguous, description: "More than one employee has this email, or more than 100 employee emails contain it, so the connector cannot pick one.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "BambooHR conclusively rejected the search, such as invalid credentials or an unsupported field.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: BambooHR returned an invalid or oversized employee list., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *bamboohrReadExecution
+    - name: listEmployeeChanges
+      goName: ListEmployeeChanges
+      inputType: ListEmployeeChangesInput
+      outputType: ListEmployeeChangesOutput
+      kind: query
+      description: List employees inserted, updated, or deleted since a cursor, oldest first and at most 1000 per call, with the cursor for the next poll.
+      idempotency: none
+      branches:
+        - {id: listed, goName: Listed, description: "The changes after the cursor were listed; the list may be empty."}
+        - {id: providerRejected, goName: ProviderRejected, description: "BambooHR conclusively rejected the request, such as invalid credentials.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: BambooHR returned an invalid or oversized change list., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *bamboohrReadExecution
+    - name: listTimeOffRequests
+      goName: ListTimeOffRequests
+      inputType: ListTimeOffRequestsInput
+      outputType: ListTimeOffRequestsOutput
+      kind: query
+      description: List one page of time off requests overlapping a date window, optionally for one employee and BambooHR statuses, at most 200 per page.
+      idempotency: none
+      branches:
+        - {id: listed, goName: Listed, description: "One page of overlapping time off requests was returned; it may be empty."}
+        - {id: providerRejected, goName: ProviderRejected, description: "BambooHR conclusively rejected the request, such as invalid credentials or an invalid filter.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: BambooHR returned an invalid or oversized time off page., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *bamboohrReadExecution
+    - name: updateEmployee
+      goName: UpdateEmployee
+      inputType: UpdateEmployeeInput
+      outputType: UpdateEmployeeOutput
+      kind: mutation
+      description: Set selected fields of one employee that BambooHR stores as plain values; a repeated attempt finds the values applied and writes nothing.
+      idempotency: required
+      branches:
+        - {id: updated, goName: Updated, description: "The employee holds the requested values, written now or by an earlier attempt, as read back from BambooHR."}
+        - {id: notFound, goName: NotFound, description: No employee has this internal ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "BambooHR conclusively rejected the change, such as a duplicate email, an invalid list value, or a field the connection cannot edit.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "BambooHR returned an invalid or oversized employee record, so the change may have been applied.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *bamboohrReadExecution
+    - name: addEmployee
+      goName: AddEmployee
+      inputType: AddEmployeeInput
+      outputType: AddEmployeeOutput
+      kind: mutation
+      description: Add one employee. BambooHR has no idempotency key, so the Step runs with sync durability and sends the request at most once per Step execution.
+      idempotency: required
+      branches:
+        - {id: created, goName: Created, description: BambooHR added the employee and returned its internal ID.}
+        - {id: providerRejected, goName: ProviderRejected, description: "BambooHR conclusively rejected the employee, such as a duplicate email, an invalid value, or an account at its employee limit; no employee was added.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The request was sent but its outcome cannot be confirmed, so the employee may exist; the connector never resends it.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m}

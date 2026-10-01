@@ -8,6 +8,7 @@ directories:
   - connectors/atlassian/confluence
   - connectors/atlassian/jira
   - connectors/atlassian/trello
+  - connectors/bamboohr
   - connectors/calendly
   - connectors/deepseek
   - connectors/freshworks/freshdesk
