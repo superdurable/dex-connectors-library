@@ -468,3 +468,67 @@ func TestExchangeRefusesAdditionalParametersThatReplaceGrantParameters(t *testin
 		})
 	}
 }
+
+func TestExchangeClientCredentialsPresentsTheClient(t *testing.T) {
+	for _, test := range []struct {
+		name             string
+		method           ClientAuthenticationMethod
+		expectsBasicAuth bool
+	}{
+		{name: "client secret post", method: ClientSecretPost},
+		{name: "client secret basic", method: ClientSecretBasic, expectsBasicAuth: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			endpoint := testTokenEndpoint(func(request *http.Request) (*http.Response, error) {
+				require.NoError(t, request.ParseForm())
+				require.Equal(t, "client_credentials", request.PostForm.Get("grant_type"))
+				require.Equal(t, "mailbox.read mailbox.write", request.PostForm.Get("scope"))
+				require.Empty(t, request.PostForm.Get("refresh_token"))
+				username, password, hasBasicAuth := request.BasicAuth()
+				require.Equal(t, test.expectsBasicAuth, hasBasicAuth)
+				if test.expectsBasicAuth {
+					require.Equal(t, "app-id", username)
+					require.Equal(t, "app-secret", password)
+					require.Empty(t, request.PostForm.Get("client_secret"))
+				} else {
+					require.Equal(t, "app-id", request.PostForm.Get("client_id"))
+					require.Equal(t, "app-secret", request.PostForm.Get("client_secret"))
+				}
+				return tokenHTTPResponse(t, http.StatusOK, successfulTokenBody()), nil
+			})
+			token, err := endpoint.ExchangeClientCredentials(context.Background(), ClientCredentials{
+				ID: "app-id", Secret: sdkgo.NewSecretString("app-secret"), AuthenticationMethod: test.method,
+			}, "mailbox.read", "mailbox.write")
+			require.NoError(t, err)
+			require.Equal(t, "new-access", token.AccessToken.Reveal())
+			require.Empty(t, token.RefreshToken.Reveal())
+		})
+	}
+}
+
+func TestExchangeClientCredentialsRejectsIncompleteOrPublicClients(t *testing.T) {
+	endpoint := testTokenEndpoint(func(*http.Request) (*http.Response, error) {
+		t.Fatal("an unusable client must not call the provider")
+		return nil, nil
+	})
+	_, err := endpoint.ExchangeClientCredentials(context.Background(), ClientCredentials{ID: "app-id", AuthenticationMethod: ClientSecretPost})
+	require.True(t, sdkgo.IsReauthorizationRequired(err))
+	_, err = endpoint.ExchangeClientCredentials(context.Background(), ClientCredentials{
+		ID: "app-id", Secret: sdkgo.NewSecretString("app-secret"), AuthenticationMethod: PublicClient,
+	})
+	require.Error(t, err)
+	require.False(t, sdkgo.IsReauthorizationRequired(err))
+}
+
+func TestExchangeClientCredentialsOmitsScopeWhenNoneAreGiven(t *testing.T) {
+	endpoint := testTokenEndpoint(func(request *http.Request) (*http.Response, error) {
+		require.NoError(t, request.ParseForm())
+		_, hasScope := request.PostForm["scope"]
+		require.False(t, hasScope)
+		return tokenHTTPResponse(t, http.StatusOK, successfulTokenBody()), nil
+	})
+	_, err := endpoint.ExchangeClientCredentials(context.Background(), ClientCredentials{
+		ID: "app-id", Secret: sdkgo.NewSecretString("app-secret"), AuthenticationMethod: ClientSecretPost,
+	})
+	require.NoError(t, err)
+}

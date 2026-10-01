@@ -49,6 +49,7 @@ import (
 
 const (
 	refreshTokenGrantType       = "refresh_token"
+	clientCredentialsGrantType  = "client_credentials"
 	jwtBearerAssertionGrantType = "urn:ietf:params:oauth:grant-type:jwt-bearer"
 	bearerTokenType             = "Bearer"
 	maxTokenResponseBytes       = 1 << 20
@@ -192,6 +193,38 @@ func (endpoint TokenEndpoint) ExchangeRefreshToken(
 		form.Set("client_id", client.ID)
 	default:
 		return TokenResponse{}, fmt.Errorf("%s OAuth client authentication method is not supported", endpoint.ProviderName)
+	}
+	return endpoint.exchange(ctx, form, basicAuthenticationClient)
+}
+
+// ExchangeClientCredentials obtains an access token with the client credentials grant (RFC 6749
+// section 4.4), for providers whose own-account integrations authenticate with a client ID and secret
+// instead of a user's consent. scopes, when given, are sent space-separated. The client must use
+// ClientSecretPost or ClientSecretBasic; a missing ID or secret returns an error wrapped by
+// sdkgo.NewReauthorizationRequiredError without calling the provider. The response usually carries no
+// refresh token: the driver obtains a new access token the same way when the old one expires.
+func (endpoint TokenEndpoint) ExchangeClientCredentials(
+	ctx context.Context,
+	client ClientCredentials,
+	scopes ...string,
+) (TokenResponse, error) {
+	if client.ID == "" || client.Secret.Reveal() == "" {
+		return TokenResponse{}, sdkgo.NewReauthorizationRequiredError(
+			fmt.Errorf("%s OAuth client credentials are incomplete", endpoint.ProviderName))
+	}
+	form := url.Values{"grant_type": {clientCredentialsGrantType}}
+	if len(scopes) > 0 {
+		form.Set("scope", strings.Join(scopes, " "))
+	}
+	var basicAuthenticationClient *ClientCredentials
+	switch client.AuthenticationMethod {
+	case ClientSecretPost:
+		form.Set("client_id", client.ID)
+		form.Set("client_secret", client.Secret.Reveal())
+	case ClientSecretBasic:
+		basicAuthenticationClient = &client
+	default:
+		return TokenResponse{}, fmt.Errorf("%s client credentials grant needs ClientSecretPost or ClientSecretBasic", endpoint.ProviderName)
 	}
 	return endpoint.exchange(ctx, form, basicAuthenticationClient)
 }
