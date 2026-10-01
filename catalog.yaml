@@ -29,6 +29,7 @@ directories:
   - connectors/intuit/mailchimp
   - connectors/linkedin
   - connectors/meta
+  - connectors/microsoft/entra-id
   - connectors/microsoft/outlook-calendar
   - connectors/mistral
   - connectors/monday
