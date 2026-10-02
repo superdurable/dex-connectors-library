@@ -1,0 +1,295 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: microsoft-onedrive
+  displayName: Microsoft OneDrive and SharePoint
+  description: Find, read, and write files in OneDrive and SharePoint document libraries through Microsoft Graph, with uploads and folders that stay single under retries.
+  company: Microsoft
+  version: v0.1.0
+spec:
+  provider: microsoft
+  codegen:
+    go:
+      package: onedrive
+  configuration:
+    fields:
+      - name: endpoint
+        goName: Endpoint
+        type: url
+        description: Microsoft Graph root URL to which the connector appends /v1.0; leave blank for the global Microsoft Graph service. Enter an absolute HTTPS URL only for an explicitly supported compatible gateway, because national-cloud Graph hosts need sign-in endpoints this connector does not declare.
+        required: false
+        default: https://graph.microsoft.com
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete Microsoft Graph search, folder-listing, or item-metadata response in bytes; enter a positive integer only to change the safety limit. Oversized responses select invalidResponse.
+        required: false
+        default: 1048576
+      - name: maxTextBytes
+        goName: MaxTextBytes
+        type: integer
+        description: Maximum file size in bytes that readFileText downloads as UTF-8 text; enter a positive integer only to read larger text files. Larger files select tooLarge without downloading their content.
+        required: false
+        default: 1048576
+      - name: maxUploadBytes
+        goName: MaxUploadBytes
+        type: integer
+        description: Maximum file content in bytes that uploadFile sends in one request; enter a positive integer no larger than 5 MiB only to lower the safety limit, which exists because the content travels through Flow state. Larger content selects defect before any request.
+        required: false
+        default: 5242880
+      - name: searchPageSize
+        goName: SearchPageSize
+        type: integer
+        description: Number of items searchFiles requests per page when the Step input leaves pageSize at zero; enter a whole number from 1 to 200 only to change the trade-off that smaller pages return sooner and larger pages need fewer requests.
+        required: false
+        default: 50
+  auth:
+    defaultMethod: microsoft-oauth
+    methods:
+      - id: microsoft-oauth
+        displayName: Microsoft work or school account
+        description: Recommended. A Microsoft Entra work or school user consents once; the Flows act with that user's own OneDrive and SharePoint access, and Dex refreshes the short-lived access token automatically.
+        recommended: true
+        type: oauth2
+        connectionKind: microsoft-onedrive-oauth
+        fields:
+          - name: oauth_client_id
+            goName: OAuthClientID
+            type: string
+            description: Non-secret Application (client) ID copied from https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade after opening the app registration's Overview page; the value is a GUID such as 00000000-0000-0000-0000-000000000000, and blank means authorization or refresh cannot start.
+            required: true
+          - name: oauth_client_secret
+            goName: OAuthClientSecret
+            type: secretString
+            description: Secret client secret Value copied once from the app registration's Certificates & secrets > Client secrets page at https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade (copy the Value column, not the Secret ID); store it only in this credential form, and blank means authorization or refresh cannot start.
+            required: true
+          - name: access_token
+            goName: AccessToken
+            type: secretString
+            description: Secret short-lived Microsoft Graph access token produced automatically after consent and refreshed before expiry; never enter it manually.
+            required: true
+          - name: refresh_token
+            goName: RefreshToken
+            type: secretString
+            description: Secret refresh token returned automatically by Microsoft because offline_access is requested; Microsoft rotates it on every refresh and Dex stores the replacement, and blank means reauthorization is required.
+            required: true
+        guide:
+          startURL: https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade
+          steps:
+            - Sign in to the Microsoft Entra admin center at https://entra.microsoft.com, open Identity > Applications > App registrations, and choose New registration.
+            - Under Supported account types choose Accounts in any organizational directory (multitenant). The connector signs in through the shared organizations endpoint, which rejects a single-tenant registration with AADSTS50194; personal Microsoft accounts are not supported.
+            - Under Redirect URI choose the Web platform and paste the exact Redirect URI that Dex Web shows for this connection, then select Register; to add it later open Authentication > Add a platform > Web.
+            - Open API permissions > Add a permission > Microsoft Graph > Delegated permissions and add the displayed Files.ReadWrite.All (read and write every file the user can open, in OneDrive and SharePoint), Sites.Read.All (find SharePoint sites and libraries for the pickers), and offline_access (keep a refresh token). None needs administrator consent, but if your tenant blocks user consent an administrator must choose Grant admin consent.
+            - Open Certificates & secrets > Client secrets > New client secret, choose an expiry, and copy the Value shown once into the client secret field; copy the Application (client) ID from Overview into the client ID field.
+            - Choose Connect and sign in with the work or school account whose files the Flows read and write; Flows can reach only what that user can reach.
+        oauth2:
+          authorizationEndpoint: https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize
+          tokenEndpoint: https://login.microsoftonline.com/organizations/oauth2/v2.0/token
+          clientIDCredential: oauth_client_id
+          clientSecretCredential: oauth_client_secret
+          scopes: [Files.ReadWrite.All, Sites.Read.All, offline_access]
+          credentialMappings:
+            - {credential: access_token, source: access_token}
+            - {credential: refresh_token, source: refresh_token}
+          pkce: true
+      - id: microsoft-app-only
+        displayName: App-only (client credentials)
+        description: Advanced administrator option for unattended Flows. The app registration authenticates as itself with a client secret, so it needs application permissions with administrator consent and an explicit drive ID in every Step.
+        type: apiKey
+        connectionKind: microsoft-onedrive-app-only
+        fields:
+          - name: tenant_id
+            goName: TenantID
+            type: string
+            description: Non-secret Directory (tenant) ID copied from the app registration's Overview page at https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade; enter the GUID or a verified domain such as contoso.onmicrosoft.com, never common or organizations, and blank means no access token can be requested.
+            required: true
+          - name: app_client_id
+            goName: AppClientID
+            type: string
+            description: Non-secret Application (client) ID of the same registration, copied from its Overview page at https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade; the value is a GUID, and blank means no access token can be requested.
+            required: true
+          - name: app_client_secret
+            goName: AppClientSecret
+            type: secretString
+            description: Secret client secret Value copied once from Certificates & secrets > Client secrets of the registration at https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade (the Value column, not the Secret ID); it is stored only in this credential form and sent only to login.microsoftonline.com, and blank means no access token can be requested.
+            required: true
+          - name: access_token
+            goName: AccessToken
+            type: secretString
+            description: Secret one-hour Microsoft Graph app-only access token that the connector requests automatically from the tenant ID, client ID, and client secret and renews before expiry; it is an output, so leave it blank and never paste a token.
+            required: false
+        guide:
+          startURL: https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade
+          steps:
+            - In the Microsoft Entra admin center open Identity > Applications > App registrations and select New registration; a single-tenant registration works for this method. No Redirect URI is needed.
+            - Open API permissions > Add a permission > Microsoft Graph > Application permissions. For least privilege add Sites.Selected, which grants nothing until a site is granted to the app; add Files.ReadWrite.All only if the Flows must reach every OneDrive and SharePoint library in the tenant. Then choose Grant admin consent for your tenant.
+            - With Sites.Selected, a SharePoint administrator grants the app the write role on each site it uses by calling POST https://graph.microsoft.com/v1.0/sites/{site-id}/permissions with roles ["write"] and the app's client ID under grantedToIdentities, for example from Graph Explorer with Sites.FullControl.All. Microsoft Graph file search does not support Sites.Selected, so scope searchFiles to a folder.
+            - Open Certificates & secrets > Client secrets > New client secret and copy the Value shown once; copy the Directory (tenant) ID and Application (client) ID from Overview.
+            - Enter the three values below and leave access_token blank; the application requests a token from https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token on its first Graph call. App-only connections have no signed-in user, so every Step must name a drive ID, which the drive picker or Graph Explorer provides.
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.2.0 <0.3.0"
+      backendCapabilities: [oauth.connection.manage, use.configuration.write, microsoft.sharepoint.sites-search, microsoft.onedrive.drives-list, microsoft.onedrive.folders-list]
+      mockScenarios: [not-configured, authorization-pending, connected, insufficient-scope, revoked, broker-unavailable, ready]
+      icon: icon.svg
+    commands:
+      - id: searchSites
+        capability: microsoft.sharepoint.sites-search
+        request:
+          method: GET
+          url: https://graph.microsoft.com/v1.0/sites
+          credential: {field: access_token, scheme: bearer}
+          fixedQuery:
+            $select: "id,displayName,name,webUrl"
+          parameters:
+            - {name: search, location: query, target: search}
+            - {name: skipToken, location: query, target: $skiptoken}
+      - id: getMyDrive
+        capability: microsoft.onedrive.drives-list
+        request:
+          method: GET
+          url: https://graph.microsoft.com/v1.0/me/drive
+          credential: {field: access_token, scheme: bearer}
+          fixedQuery:
+            $select: "id,name,driveType,webUrl"
+      - id: listSiteDrives
+        capability: microsoft.onedrive.drives-list
+        request:
+          method: GET
+          url: https://graph.microsoft.com/v1.0/sites/{siteHostname},{siteCollectionId},{siteWebId}/drives
+          credential: {field: access_token, scheme: bearer}
+          fixedQuery:
+            $select: "id,name,driveType,webUrl"
+          parameters:
+            - {name: siteHostname, location: path, target: siteHostname}
+            - {name: siteCollectionId, location: path, target: siteCollectionId}
+            - {name: siteWebId, location: path, target: siteWebId}
+            - {name: skipToken, location: query, target: $skiptoken}
+      - id: listRootFolders
+        capability: microsoft.onedrive.folders-list
+        request:
+          method: GET
+          url: https://graph.microsoft.com/v1.0/drives/b!{driveKey}/root/children
+          credential: {field: access_token, scheme: bearer}
+          fixedQuery:
+            $select: "id,name,folder"
+            $top: "200"
+          parameters:
+            - {name: driveKey, location: path, target: driveKey}
+            - {name: skipToken, location: query, target: $skiptoken}
+      - id: listFolderChildren
+        capability: microsoft.onedrive.folders-list
+        request:
+          method: GET
+          url: https://graph.microsoft.com/v1.0/drives/b!{driveKey}/items/{itemId}/children
+          credential: {field: access_token, scheme: bearer}
+          fixedQuery:
+            $select: "id,name,folder"
+            $top: "200"
+          parameters:
+            - {name: driveKey, location: path, target: driveKey}
+            - {name: itemId, location: path, target: itemId}
+            - {name: skipToken, location: query, target: $skiptoken}
+    units:
+      - id: sitePicker
+        goName: SitePicker
+        description: Search the SharePoint sites the authorized user can reach by keyword, or paste a site ID of the form hostname,site-collection-GUID,web-GUID; the unit stores the Graph site ID and display name so a drivePicker in the same Step can list that site's document libraries, and blank means the user's own OneDrive.
+        backendCapabilities: [microsoft.sharepoint.sites-search]
+        outputs:
+          - {name: siteId, goName: SiteID, type: string}
+          - {name: siteName, goName: SiteName, type: string}
+      - id: drivePicker
+        goName: DrivePicker
+        description: Select the signed-in user's OneDrive or one document library of the site chosen by a sitePicker in the same Step, or paste a drive ID such as b!Abc123; the unit stores the Graph drive ID and display name, and blank means the signed-in user's OneDrive (app-only connections need a drive ID).
+        backendCapabilities: [microsoft.onedrive.drives-list]
+        inputs:
+          - {name: siteId, goName: SiteID, type: string}
+        outputs:
+          - {name: driveId, goName: DriveID, type: string}
+          - {name: driveName, goName: DriveName, type: string}
+      - id: folderPicker
+        goName: FolderPicker
+        description: Browse the folders of the drive chosen by a drivePicker in the same Step, opening subfolders one level at a time, or paste a folder item ID; the unit stores the Graph item ID and display name of the folder, and blank means the drive's root folder.
+        backendCapabilities: [microsoft.onedrive.folders-list]
+        inputs:
+          - {name: driveId, goName: DriveID, type: string}
+        outputs:
+          - {name: folderId, goName: FolderID, type: string}
+          - {name: folderName, goName: FolderName, type: string}
+  operations:
+    - name: searchFiles
+      goName: SearchFiles
+      inputType: SearchFilesInput
+      outputType: SearchFilesOutput
+      kind: query
+      description: Find files and folders by exact or partial name in one folder or across one drive, one bounded page at a time.
+      idempotency: none
+      branches:
+        - {id: found, goName: Found, description: Microsoft Graph returned matching items or reported that more pages remain.}
+        - {id: notFound, goName: NotFound, description: No item matched and Microsoft Graph reported no further pages., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively rejected the search, such as a revoked grant, a missing folder, or search under Sites.Selected.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Graph returned an invalid or oversized search or listing response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &graphExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+    - name: getFile
+      goName: GetFile
+      inputType: GetFileInput
+      outputType: DriveItem
+      kind: query
+      description: Read the metadata of one file or folder by its drive item ID.
+      idempotency: none
+      branches:
+        - {id: found, goName: Found, description: Microsoft Graph returned the item metadata.}
+        - {id: notFound, goName: NotFound, description: The item does not exist or the connection cannot see it., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Microsoft Graph conclusively rejected the metadata read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Graph returned an invalid or oversized metadata response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *graphExecution
+    - name: readFileText
+      goName: ReadFileText
+      inputType: ReadFileTextInput
+      outputType: ReadFileTextOutput
+      kind: query
+      description: Download one small text file as bounded UTF-8 text without exposing its pre-authenticated download URL.
+      idempotency: none
+      branches:
+        - {id: read, goName: Read, description: The file text was read within the configured limit.}
+        - {id: notFound, goName: NotFound, description: The file does not exist or the connection cannot see it., optional: true}
+        - {id: unsupportedContent, goName: UnsupportedContent, description: "The item is a folder, a package such as a OneNote notebook, a binary or Office file, or not valid UTF-8 text.", optional: true}
+        - {id: tooLarge, goName: TooLarge, description: The file is larger than the configured text limit., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Microsoft Graph conclusively rejected the metadata read or content download., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Graph returned an invalid or oversized metadata response or an unusable download redirect., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *graphExecution
+    - name: uploadFile
+      goName: UploadFile
+      inputType: UploadFileInput
+      outputType: UploadFileOutput
+      kind: mutation
+      description: Write one file from text or bytes by parent folder and name with an explicit fail or replace conflict behavior, converging on one file when a Step is dispatched twice.
+      idempotency: required
+      branches:
+        - {id: uploaded, goName: Uploaded, description: "Microsoft Graph stored the file, or the file at that path already has exactly this content, such as from an earlier attempt of the Step."}
+        - {id: alreadyExists, goName: AlreadyExists, description: "With the fail conflict behavior, a different file or a folder already has the name, so nothing was written.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively rejected the upload, such as a missing or read-only parent folder, a blocked file type, or a full quota.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Graph returned an invalid or oversized response while reading back a conflicting item., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *graphExecution
+    - name: createFolder
+      goName: CreateFolder
+      inputType: CreateFolderInput
+      outputType: CreateFolderOutput
+      kind: mutation
+      description: Ensure one folder with a name exists in a parent folder, returning the folder an earlier attempt or another writer already created.
+      idempotency: required
+      branches:
+        - {id: created, goName: Created, description: Microsoft Graph created the folder or a folder with that name already existed.}
+        - {id: nameConflict, goName: NameConflict, description: "A file, not a folder, already has the name in the parent folder, so nothing was created.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively rejected the folder creation, such as a missing or read-only parent folder.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Graph returned an invalid or oversized response to the creation or its read-back., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *graphExecution
