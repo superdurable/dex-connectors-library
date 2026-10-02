@@ -3,9 +3,9 @@ kind: Connector
 metadata:
   name: github
   displayName: GitHub
-  description: Read an authenticated GitHub profile, verified primary email, bounded public repositories, and bounded public repository changes.
+  description: Read an authenticated GitHub profile, verified primary email, bounded public repositories, releases, and repository changes.
   company: GitHub
-  version: v0.9.1
+  version: v0.10.0
 spec:
   provider: github
   codegen:
@@ -183,6 +183,23 @@ spec:
         - {id: notFound, goName: NotFound, description: The repository or pull request was not found., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: GitHub conclusively rejected the changed-file query., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: GitHub returned an invalid or oversized changed-file response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *githubChangeQueryExecution
+    - name: listReleases
+      goName: ListReleases
+      inputType: ListReleasesInput
+      outputType: ReleasePage
+      kind: query
+      description: List one bounded page of repository releases with publication dates, notes, draft and prerelease flags, and a next-page cursor. GitHub does not support a publication-date filter; callers filter PublishedAt and follow pagination without assuming publication order.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "One bounded page of releases was loaded, possibly empty."}
+        - {id: insufficientScope, goName: InsufficientScope, description: The OAuth grant does not match the required scopes., optional: true}
+        - {id: authorizationRevoked, goName: AuthorizationRevoked, description: The OAuth grant is invalid or revoked., optional: true}
+        - {id: notFound, goName: NotFound, description: The repository was not found or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: GitHub conclusively rejected the releases query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: GitHub returned an invalid or oversized releases response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution: *githubChangeQueryExecution
     - name: listCommits

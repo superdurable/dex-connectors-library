@@ -10,6 +10,8 @@ factories for:
 - `ListMergedPullRequests`: one page of pull requests merged into a repository
   within a time window;
 - `ListPullRequestFiles`: one page of files changed by a pull request;
+- `ListReleases`: one page of release IDs, tags, publication dates, bounded notes,
+  draft/prerelease flags and a next-page number;
 - `ListCommits`: one page of commits within a time window, optionally from one
   ref and path.
 
@@ -47,6 +49,25 @@ at most 100 items. Results report truncation and retain only bounded profile and
 repository metadata.
 
 ## Repository change queries
+
+`listReleases` calls GitHub's [List releases API](https://docs.github.com/en/rest/releases/releases#list-releases).
+It accepts `Owner`, `Repository`, `PageSize` (default 30, maximum 100), `Page`
+(default 1), and `MaxBodyCharacters` (default 4000, maximum 16384). The result
+contains `Releases` and `NextPage`; zero means no next page. Notes truncated by
+the character bound are marked `BodyTruncated`. Overall response bytes remain
+bounded by the connection's existing `maxResponseBytes`.
+
+There is no provider-side publication-date filter. Use `PublishedAt`, not
+`CreatedAt`, for publication windows, and explicitly select drafts/prereleases
+as required by the application. Provider order is not guaranteed to be
+publication order: an old item is not evidence that later pages can be omitted.
+An application that imposes a page budget must report incomplete coverage.
+Regular Git tags with no GitHub release are not included. Authentication,
+scope checks, query retries and optional failure branches match the existing
+repository queries; credentials never enter the returned result.
+
+The [release page example](examples/repository-releases/README.md)
+uses the generated `NewListReleasesStep` factory and retains a typed result.
 
 Each change query makes one GitHub request for one page. Its happy-path branch
 is `listed`. `NextPage` comes from GitHub's `Link` header `rel="next"` and is
