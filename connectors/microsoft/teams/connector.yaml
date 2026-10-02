@@ -1,0 +1,195 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: microsoft-teams
+  displayName: Microsoft Teams
+  description: Post Microsoft Teams channel messages, thread replies, and chat messages as the signed-in user, each at most once per Step execution, and read a channel message's replies so a Flow can wait for a person's answer.
+  company: Microsoft
+  version: v0.1.0
+spec:
+  provider: microsoft
+  codegen:
+    go:
+      package: teams
+  configuration:
+    fields:
+      - name: endpoint
+        goName: Endpoint
+        type: url
+        description: "Microsoft Graph v1.0 base URL for every Teams call; leave blank for the global Microsoft Graph service. Enter an absolute HTTPS URL only for an explicitly supported compatible gateway: sign-in always uses login.microsoftonline.com, so national clouds such as Microsoft Graph for US Government are not supported, and a reply page link is followed only when it points at this same host."
+        required: false
+        default: https://graph.microsoft.com/v1.0
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Maximum complete Microsoft Graph response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to read pages of up to 50 long replies. An oversized reply page selects invalidResponse, and an oversized response to a post is confirmed by reading the thread back instead of posting again."
+        required: false
+        default: 4194304
+      - name: maxMessageBytes
+        goName: MaxMessageBytes
+        type: integer
+        description: "Maximum UTF-8 size in bytes of one posted message's content and subject together, checked before anything is sent. Leave blank to keep the displayed limit, which follows Microsoft's advice to keep a Teams message within 80 KB of its approximate 100 KB post limit; a longer message selects defect without a request."
+        required: false
+        default: 81920
+  auth:
+    type: oauth2
+    connectionKind: microsoft-teams-oauth
+    fields:
+      - name: oauth_client_id
+        goName: OAuthClientID
+        type: string
+        description: "Non-secret Application (client) ID, a GUID such as 00001111-aaaa-2222-bbbb-3333cccc4444, copied from https://entra.microsoft.com > Entra ID > App registrations > the app > Overview; blank means authorization and token refresh cannot start."
+        required: true
+      - name: oauth_client_secret
+        goName: OAuthClientSecret
+        type: secretString
+        description: "Secret client secret Value, about 40 characters, created at https://entra.microsoft.com > Entra ID > App registrations > the app > Certificates & secrets > Client secrets > New client secret; copy the Value column, not the Secret ID, because Microsoft shows it only once. Store it only in this credential field; blank means authorization and refresh cannot start, and an expired secret requires a new one here."
+        required: true
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        description: "Secret short-lived Microsoft Graph access token returned after consent; Dex derives it automatically and refreshes it before it expires, so never enter it manually, and blank means Connect has not completed."
+        required: true
+      - name: refresh_token
+        goName: RefreshToken
+        type: secretString
+        description: "Secret refresh token Microsoft returns because the connection requests offline_access; Microsoft may issue a replacement with every refresh, which Dex stores atomically, and blank means the connection must be authorized again."
+        required: true
+    guide:
+      startURL: https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade
+      steps:
+        - "In the Microsoft Entra admin center open Entra ID > App registrations and choose New registration. Under Supported account types choose Accounts in any organizational directory (multitenant): Dex signs in through the organizations endpoint, which rejects a single-tenant app with AADSTS50194. Under Redirect URI choose Web, paste the exact Redirect URI shown below, and choose Register."
+        - "Copy Application (client) ID from Overview into oauth_client_id. Open Certificates & secrets > Client secrets > New client secret, choose an expiry, and copy the Value shown once into oauth_client_secret; add a new secret here before it expires."
+        - "Open API permissions > Add a permission > Microsoft Graph > Delegated permissions and add Team.ReadBasic.All and Channel.ReadBasic.All for the team and channel pickers, ChannelMessage.Send for channel posts and thread replies, ChannelMessage.Read.All for reading replies and confirming an unconfirmed post, ChatMessage.Send and Chat.ReadBasic for chat messages and the chat picker, and offline_access for the refresh token. Dex requests exactly these, so leave out openid, profile, and email."
+        - "ChannelMessage.Read.All requires administrator consent; the others allow user consent unless the tenant turned user consent off. A Privileged Role Administrator, Cloud Application Administrator, or Application Administrator chooses Grant admin consent on the API permissions page, or authorizes once and checks Consent on behalf of your organization; without it Microsoft shows Need admin approval and the connection cannot complete."
+        - "Choose Connect and sign in with the work or school account the Flows post as; Teams shows that user as the sender of every message, so prefer a dedicated account. The account must be a member of every team, channel, and chat a Flow uses. Personal Microsoft accounts are not supported."
+    oauth2:
+      protocol: oauth2
+      authorizationEndpoint: https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize
+      tokenEndpoint: https://login.microsoftonline.com/organizations/oauth2/v2.0/token
+      clientIDCredential: oauth_client_id
+      clientSecretCredential: oauth_client_secret
+      scopes: [Team.ReadBasic.All, Channel.ReadBasic.All, ChannelMessage.Send, ChannelMessage.Read.All, ChatMessage.Send, Chat.ReadBasic, offline_access]
+      credentialMappings:
+        - {credential: access_token, source: access_token}
+        - {credential: refresh_token, source: refresh_token}
+      pkce: true
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.2.0 <0.3.0"
+      backendCapabilities: [oauth.connection.manage, use.configuration.write, teams.joined-teams-list, teams.channels-list, teams.chats-list]
+      mockScenarios: [not-configured, authorization-pending, connected, insufficient-scope, revoked, broker-unavailable, ready]
+      icon: icon.svg
+    commands:
+      - id: listJoinedTeams
+        capability: teams.joined-teams-list
+        request:
+          method: GET
+          url: https://graph.microsoft.com/v1.0/me/joinedTeams
+          credential: {field: access_token, scheme: bearer}
+      - id: listChannels
+        capability: teams.channels-list
+        request:
+          method: GET
+          url: https://graph.microsoft.com/v1.0/teams/{teamId}/channels
+          credential: {field: access_token, scheme: bearer}
+          fixedQuery: {$select: "id,displayName,membershipType"}
+          parameters:
+            - {name: teamId, location: path, target: teamId}
+            - {name: skipToken, location: query, target: $skiptoken}
+      - id: listChats
+        capability: teams.chats-list
+        request:
+          method: GET
+          url: https://graph.microsoft.com/v1.0/me/chats
+          credential: {field: access_token, scheme: bearer}
+          fixedQuery: {$expand: members, $top: "50"}
+          parameters:
+            - {name: skipToken, location: query, target: $skiptoken}
+    units:
+      - id: teamPicker
+        goName: TeamPicker
+        description: "Select one team the connected account is a direct member of, loaded from Microsoft Teams; the unit stores the team's stable ID, a GUID such as fbe2bf47-16c8-47cf-b4a5-4b9b187c508b, and its name. Teams that host a shared channel the account joined without joining the team are not listed."
+        backendCapabilities: [teams.joined-teams-list]
+        outputs:
+          - {name: teamId, goName: TeamID, type: string}
+          - {name: teamName, goName: TeamName, type: string}
+      - id: channelPicker
+        goName: ChannelPicker
+        description: "Select one channel of the chosen team, loaded from Microsoft Teams; choose the team first. The list holds standard channels and the private or shared channels the account belongs to, and the unit stores the stable channel ID, such as 19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2, and its name."
+        backendCapabilities: [teams.channels-list]
+        inputs:
+          - {name: teamId, goName: TeamID, type: string}
+        outputs:
+          - {name: channelId, goName: ChannelID, type: string}
+          - {name: channelName, goName: ChannelName, type: string}
+      - id: chatPicker
+        goName: ChatPicker
+        description: "Select one one-on-one, group, or meeting chat the connected account belongs to, loaded from Microsoft Teams and labeled by its topic or members; the unit stores the stable chat ID, such as 19:meeting_MjdhNjM4YzUtYzExZi00@thread.v2, and the label."
+        backendCapabilities: [teams.chats-list]
+        outputs:
+          - {name: chatId, goName: ChatID, type: string}
+          - {name: chatName, goName: ChatName, type: string}
+  operations:
+    - name: listThreadReplies
+      goName: ListThreadReplies
+      inputType: ListThreadRepliesInput
+      outputType: ListThreadRepliesOutput
+      kind: query
+      description: "Read one bounded page of the replies to a channel message, with each reply's sender, time, and text converted from HTML, continuing with the returned cursor. Needs ChannelMessage.Read.All, which requires administrator consent."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: read, goName: Read, description: "One page of replies was read; it may be empty."}
+        - {id: notFound, goName: NotFound, description: "The team, channel, or message does not exist or the connected account cannot see it.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively rejected the read, such as a missing ChannelMessage.Read.All administrator consent or an expired authorization.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Microsoft Graph returned an invalid or oversized reply page, or a next-page link to another host.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        # Teams allows about one read per second per channel, so the window fits several Retry-After waits.
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 3m}
+    - name: postChannelMessage
+      goName: PostChannelMessage
+      inputType: PostChannelMessageInput
+      outputType: PostMessageOutput
+      kind: mutation
+      description: "Post one top-level message, with an optional subject, to a channel as the signed-in user. Graph has no idempotency key, so the message is sent at most once per Step execution and an unconfirmed send is confirmed by reading the channel back."
+      idempotency: required
+      authorization: required
+      branches: &channelPostBranches
+        - {id: sent, goName: Sent, description: "Teams stored the message, including one an earlier attempt of this Step execution sent and the read-back found."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively rejected the message, such as an unknown or archived channel, a non-member account, or invalid HTML; nothing was posted.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "An attempt sent the message and neither its response nor a read-back confirms it; it is never sent again automatically.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      # Sync: Graph has no idempotency key and an async backup attempt cannot see the dispatch checkpoint.
+      execution: &singleDispatchExecution
+        executeMethodTimeout: 30s
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+    - name: postThreadReply
+      goName: PostThreadReply
+      inputType: PostThreadReplyInput
+      outputType: PostMessageOutput
+      kind: mutation
+      description: "Reply once to an existing channel message's thread as the signed-in user. Graph has no idempotency key, so the reply is sent at most once per Step execution and an unconfirmed send is confirmed by reading the thread back."
+      idempotency: required
+      authorization: required
+      branches: *channelPostBranches
+      execution: *singleDispatchExecution
+    - name: postChatMessage
+      goName: PostChatMessage
+      inputType: PostChatMessageInput
+      outputType: PostMessageOutput
+      kind: mutation
+      description: "Send one message to an existing one-on-one, group, or meeting chat as the signed-in user, at most once per Step execution. The connection cannot read chat messages, so an unconfirmed send selects uncertain."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: sent, goName: Sent, description: Teams stored the message in the chat.}
+        - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively rejected the message, such as an unknown chat, an account that left it, or invalid HTML; nothing was sent.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "An attempt sent the message and its response does not confirm it; the connection cannot read chats, so it is never sent again automatically.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *singleDispatchExecution
