@@ -21,15 +21,15 @@ behavior in full; the last column below gives only the main gaps.
 No connector has had its OAuth token refresh exercised against a real token
 endpoint. This includes the `sdkgo/oauthtoken` migrations (#127 to #132).
 
-Last reviewed against `main` at `6a0dfc1` (2026-10-01).
+Last reviewed against `main` at `f5c9edf` (2026-10-01).
 
 ## Summary
 
 | Level | Count | Connectors |
 |---|---|---|
 | Live | 7 | github, google/gemini, hackernews, mysql, postgresql, slack, spotify |
-| Partial live | 8 | amazon/s3, atlassian/trello, calendly, google/gmail, intercom, monday, typeform, xero |
-| Dex-integrated | 31 | every other connector except the three below |
+| Partial live | 11 | amazon/s3, atlassian/trello, calendly, google/gmail, intercom, microsoft/excel, microsoft/onedrive, microsoft/outlook-calendar, monday, typeform, xero |
+| Dex-integrated | 35 | every other connector except the three below |
 | Structural | 3 | google/spreadsheet, linkedin, stripe |
 
 ## Connectors
@@ -64,6 +64,13 @@ Last reviewed against `main` at `6a0dfc1` (2026-10-01).
 | intuit/mailchimp | Dex-integrated | Dex Web run made exactly one send against a fake | Bearer on every endpoint, campaign send state, tag automations | #164 |
 | linkedin | Structural | unit tests; the earlier real-Dex example was replaced and no integration test remains | OIDC consent, UserInfo, refresh | #10, #119, #130 |
 | meta | Dex-integrated | real-Dex tests against a fake | any real api.meta.ai call, model picker | #73 |
+| microsoft/entra-id | Dex-integrated | two Dex Web Start Flow runs (`onboarded`, `offboarded`) and 8 real-Dex scenarios against a stand-in; app-only connection saved Ready | extension attribute on create, 400 shapes for conflicts, delegated `scope` format, admin-role requirements | #175 |
+| microsoft/excel | Partial live | placeholder-credential probes reached the token endpoint (400) and Graph (401); Dex Web Start Flow run and 13 real-Dex tests against a fake | real workbook responses, OAuth exchange and refresh, workbook search and shared links | #176 |
+| microsoft/onedrive | Partial live | a placeholder-token probe reached Graph (401); Dex Web runs and 4 real-Dex scenarios against a stand-in | OAuth consent and refresh, `conflictBehavior` on uploads, hash availability, `Sites.Selected` | #177 |
+| microsoft/outlook-calendar | Partial live | placeholder-credential probes reached Graph (401) and the token endpoint (400); Dex Web Start Flow run and 7 real-Dex scenarios against a fake | consent and refresh, Graph's handling of a repeated `transactionId`, `If-Match` conflicts, `getSchedule` errors | #174 |
+| microsoft/outlook-mail | Dex-integrated | Dex Web Start Flow run and 12 real-Dex scenarios against a stand-in; app-only connection saved Ready | OAuth consent and refresh, draft marker lookup after send, Sent Items timing, Exchange RBAC | #179 |
+| microsoft/sql-server | Dex-integrated | two Dex Web runs (`recorded`, `alreadyRecorded`) and real-Dex tests against a scripted TDS server | every real SQL Server and Azure SQL call, TLS and TDS 8.0, real error numbers | #180 |
+| microsoft/teams | Dex-integrated | Dex Web Start Flow run against a fake Graph; Dex Web built the authorize URL and refused pickers without a connection | OAuth consent and admin consent, Graph error shapes, reply order, picker paging | #178 |
 | mistral | Dex-integrated | real-Dex tests against a fake | any real call, model picker, EU and US endpoints | #78 |
 | monday | Partial live | an unknown-client probe of the real OAuth token endpoint returned `invalid_client`; Dex Web runs against a stand-in | OAuth code exchange, error shapes, daily limit | #157 |
 | moonshot/kimi | Dex-integrated | real-Dex tests against a fake | any real call, both endpoints, model pickers | #80 |
