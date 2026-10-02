@@ -1,0 +1,223 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: microsoft-excel
+  displayName: Microsoft Excel
+  description: Read Excel tables as rows keyed by column name, read and write bounded ranges, and append table rows without duplicates in workbooks stored in OneDrive for work or school and SharePoint, through Microsoft Graph.
+  company: Microsoft
+  version: v0.1.0
+spec:
+  provider: microsoft
+  codegen:
+    go:
+      package: excel
+  configuration:
+    fields:
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete Microsoft Graph response in bytes; enter a positive integer only to read larger tables or ranges. A larger table or range read selects tooLarge, and any other oversized response selects invalidResponse.
+        required: false
+        default: 4194304
+      - name: maxCells
+        goName: MaxCells
+        type: integer
+        description: Maximum cells one operation reads or writes, counted as rows times columns; enter a positive integer no larger than 100,000 only to change the safety limit. getValues and updateValues reject a larger address before any request, getTableRows selects tooLarge for a larger table, and appendTableRows rejects more cells as defect.
+        required: false
+        default: 10000
+  auth:
+    defaultMethod: microsoft-oauth
+    methods:
+      - id: microsoft-oauth
+        displayName: Microsoft work or school account
+        description: Recommended. A person signs in with a Microsoft Entra work or school account through Microsoft consent; Dex refreshes the one-hour access tokens with Microsoft's rotating refresh tokens, and every request acts with that person's access to OneDrive and SharePoint.
+        recommended: true
+        type: oauth2
+        connectionKind: microsoft-excel-oauth
+        fields:
+          - name: oauth_client_id
+            goName: OAuthClientID
+            type: string
+            description: Non-secret Application (client) ID copied from the app's Overview page at https://entra.microsoft.com after opening Entra ID > App registrations and selecting the app; it is a GUID such as 00001111-aaaa-2222-bbbb-3333cccc4444, and blank means authorization or refresh cannot start.
+            required: true
+          - name: oauth_client_secret
+            goName: OAuthClientSecret
+            type: secretString
+            description: Secret client secret Value created at https://entra.microsoft.com under the app's Certificates & secrets > Client secrets > New client secret; Microsoft shows the Value once, so copy it rather than the Secret ID. Dex Web stores it only in this credential field, and blank means authorization or refresh cannot start.
+            required: true
+          - name: access_token
+            goName: AccessToken
+            type: secretString
+            description: Secret one-hour Microsoft Graph access token produced automatically after consent and refreshed before expiry; never enter it manually.
+            required: true
+          - name: refresh_token
+            goName: RefreshToken
+            type: secretString
+            description: Secret refresh token returned by Microsoft because offline_access is requested; Microsoft may replace it on every refresh and Dex stores the new one automatically, and blank means reauthorization is required.
+            required: true
+        guide:
+          startURL: https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade
+          steps:
+            - Sign in to the Microsoft Entra admin center as at least an Application Developer, open Entra ID > App registrations, and choose New registration.
+            - Under Supported account types choose Multiple Entra ID tenants, because Dex signs in through the shared https://login.microsoftonline.com/organizations endpoint; a single-tenant app fails there with AADSTS50194, and personal Microsoft accounts are not supported because Excel's Graph API does not serve consumer OneDrive.
+            - Open Authentication > Add Redirect URI, choose Web, and add the exact Redirect URI shown below. Entra accepts http only for localhost, so open Dex Web at http://localhost with its port rather than http://127.0.0.1.
+            - Open API permissions > Add a permission > Microsoft Graph > Delegated permissions and add Files.ReadWrite.All, which lets the connection read and write the workbooks the signed-in person can open in OneDrive and SharePoint, and offline_access, which makes Microsoft return a refresh token. Neither needs administrator consent by default, but a tenant that blocks user consent needs an administrator to choose Grant admin consent.
+            - Open Certificates & secrets > Client secrets > New client secret, copy the Value shown once, and copy the Application (client) ID from Overview into the fields below.
+            - Choose Authorize and sign in with the work or school account whose workbooks the Flows use. Secrets expire on the date chosen when they were created, so create a new one and update this connection before then.
+        oauth2:
+          protocol: oauth2
+          authorizationEndpoint: https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize
+          tokenEndpoint: https://login.microsoftonline.com/organizations/oauth2/v2.0/token
+          clientIDCredential: oauth_client_id
+          clientSecretCredential: oauth_client_secret
+          scopes: [offline_access, Files.ReadWrite.All]
+          credentialMappings:
+            - {credential: access_token, source: access_token}
+            - {credential: refresh_token, source: refresh_token}
+          pkce: true
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.2.0 <0.3.0"
+      backendCapabilities: [oauth.connection.manage, use.configuration.write, microsoft.excel.workbooks-search, microsoft.excel.shared-workbook-resolve, microsoft.excel.worksheets-list, microsoft.excel.tables-list]
+      mockScenarios: [not-configured, authorization-pending, connected, insufficient-scope, revoked, broker-unavailable, ready]
+      icon: icon.svg
+    commands:
+      - id: searchWorkbooks
+        capability: microsoft.excel.workbooks-search
+        request:
+          method: GET
+          url: https://graph.microsoft.com/v1.0/me/drive/search(q='.xlsx')
+          credential: {field: access_token, scheme: bearer}
+          fixedQuery:
+            $select: "id,name,file,parentReference,remoteItem,webUrl,lastModifiedDateTime"
+            $top: "100"
+          parameters:
+            - {name: skipToken, location: query, target: $skiptoken}
+      - id: resolveSharedWorkbook
+        capability: microsoft.excel.shared-workbook-resolve
+        request:
+          method: GET
+          url: https://graph.microsoft.com/v1.0/shares/u!{encodedSharingUrl}/driveItem
+          credential: {field: access_token, scheme: bearer}
+          fixedQuery:
+            $select: "id,name,file,parentReference,webUrl"
+          parameters:
+            - {name: encodedSharingUrl, location: path, target: encodedSharingUrl}
+      - id: listWorksheets
+        capability: microsoft.excel.worksheets-list
+        request:
+          method: GET
+          url: https://graph.microsoft.com/v1.0/drives/b!{driveKey}/items/{workbookId}/workbook/worksheets
+          credential: {field: access_token, scheme: bearer}
+          fixedQuery:
+            $select: "id,name,position,visibility"
+          parameters:
+            - {name: driveKey, location: path, target: driveKey}
+            - {name: workbookId, location: path, target: workbookId}
+      - id: listTables
+        capability: microsoft.excel.tables-list
+        request:
+          method: GET
+          url: https://graph.microsoft.com/v1.0/drives/b!{driveKey}/items/{workbookId}/workbook/tables
+          credential: {field: access_token, scheme: bearer}
+          fixedQuery:
+            $select: "id,name,showHeaders,showTotals"
+          parameters:
+            - {name: driveKey, location: path, target: driveKey}
+            - {name: workbookId, location: path, target: workbookId}
+    units:
+      - id: workbookPicker
+        goName: WorkbookPicker
+        description: Select an .xlsx workbook found by searching the signed-in person's OneDrive and the files shared with them, or paste a OneDrive or SharePoint sharing link to the workbook; the unit stores the workbook's drive ID, its drive item ID, and its file name.
+        backendCapabilities: [microsoft.excel.workbooks-search, microsoft.excel.shared-workbook-resolve]
+        outputs:
+          - {name: driveId, goName: DriveID, type: string}
+          - {name: workbookId, goName: WorkbookID, type: string}
+          - {name: workbookName, goName: WorkbookName, type: string}
+      - id: worksheetPicker
+        goName: WorksheetPicker
+        description: Select a worksheet listed from the chosen workbook, or type a worksheet name; choose the workbook first. The unit stores the worksheet's stable ID when it is picked from the list, which keeps working after a rename, or the typed name, plus the display name.
+        backendCapabilities: [microsoft.excel.worksheets-list]
+        inputs:
+          - {name: driveId, goName: DriveID, type: string}
+          - {name: workbookId, goName: WorkbookID, type: string}
+        outputs:
+          - {name: worksheet, goName: Worksheet, type: string}
+          - {name: worksheetName, goName: WorksheetName, type: string}
+      - id: tablePicker
+        goName: TablePicker
+        description: Select an Excel table listed from the chosen workbook, or type a table name; choose the workbook first. The unit stores the table's stable ID when it is picked from the list, which keeps working after a rename, or the typed name, plus the display name.
+        backendCapabilities: [microsoft.excel.tables-list]
+        inputs:
+          - {name: driveId, goName: DriveID, type: string}
+          - {name: workbookId, goName: WorkbookID, type: string}
+        outputs:
+          - {name: table, goName: Table, type: string}
+          - {name: tableName, goName: TableName, type: string}
+  operations:
+    - name: getTableRows
+      goName: GetTableRows
+      inputType: GetTableRowsInput
+      outputType: GetTableRowsOutput
+      kind: query
+      description: Read every data row of one Excel table, without its header and total rows, as rows keyed by the table's column names, with the column names in table order.
+      idempotency: none
+      branches:
+        - {id: read, goName: Read, description: The table's columns and data rows were read within the configured limits.}
+        - {id: notFound, goName: NotFound, description: "The workbook, or the table in it, does not exist or the connection cannot see it.", optional: true}
+        - {id: tooLarge, goName: TooLarge, description: The table holds more cells than the configured limit or its response exceeds the response limit., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Microsoft conclusively rejected the read, such as a revoked grant, a missing permission, or a workbook Excel cannot open.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Microsoft returned an invalid table response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &excelReadExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+    - name: getValues
+      goName: GetValues
+      inputType: GetValuesInput
+      outputType: GetValuesOutput
+      kind: query
+      description: Read one bounded A1 range of one worksheet, such as A1:C10, as raw cell values and their displayed text.
+      idempotency: none
+      branches:
+        - {id: read, goName: Read, description: The range was read.}
+        - {id: notFound, goName: NotFound, description: "The workbook, or the worksheet in it, does not exist or the connection cannot see it.", optional: true}
+        - {id: tooLarge, goName: TooLarge, description: The range response exceeds the configured response limit., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Microsoft conclusively rejected the read, such as a revoked grant, a missing permission, or an address Excel rejects.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Microsoft returned an invalid range response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *excelReadExecution
+    - name: updateValues
+      goName: UpdateValues
+      inputType: UpdateValuesInput
+      outputType: UpdateValuesOutput
+      kind: mutation
+      description: Write literal values to one bounded A1 range of one worksheet whose size matches the values exactly. Text is stored as text, never as a formula or a parsed number or date, and the values are absolute, so a repeated dispatch writes the same values again and leaves the same range.
+      idempotency: required
+      branches:
+        - {id: updated, goName: Updated, description: "The range holds the requested values, written by this attempt or an earlier attempt of the same Step execution."}
+        - {id: notFound, goName: NotFound, description: "The workbook, or the worksheet in it, does not exist or the connection cannot see it.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Microsoft conclusively rejected the write, such as a protected worksheet, merged cells, or a missing permission.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *excelReadExecution
+    - name: appendTableRows
+      goName: AppendTableRows
+      inputType: AppendTableRowsInput
+      outputType: AppendTableRowsOutput
+      kind: mutation
+      description: Append rows to the end of one Excel table in one request, skipping every row whose key column value the table already holds. Microsoft Graph offers no idempotency key, so the Step runs with sync durability, records a Dex heartbeat checkpoint before it sends the append, and sends it at most once per Step execution.
+      idempotency: required
+      branches:
+        - {id: appended, goName: Appended, description: "The table holds every requested key: this attempt appended the missing rows, or an earlier attempt or Flow already had."}
+        - {id: notFound, goName: NotFound, description: "The workbook, or the table in it, does not exist or the connection cannot see it; nothing was written.", optional: true}
+        - {id: columnsMismatch, goName: ColumnsMismatch, description: The table has no column with the key column's name or with a name a row uses; nothing was written., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Microsoft conclusively rejected the append or the key lookup, such as a protected worksheet or a missing permission; nothing was written.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Microsoft returned an invalid or oversized response before the append was sent., optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The append was sent but its outcome cannot be confirmed and the table does not show its rows yet; the connector never sends it again.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m}

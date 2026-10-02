@@ -30,6 +30,7 @@ directories:
   - connectors/linkedin
   - connectors/meta
   - connectors/microsoft/entra-id
+  - connectors/microsoft/excel
   - connectors/microsoft/outlook-calendar
   - connectors/mistral
   - connectors/monday
