@@ -577,6 +577,95 @@ func NewListPullRequestFilesStep[IN any](config ListPullRequestFilesStepConfig[I
 	})
 }
 
+const ListReleasesBranchListed sdkgo.BranchID = "listed"
+const ListReleasesBranchInsufficientScope sdkgo.BranchID = "insufficientScope"
+const ListReleasesBranchAuthorizationRevoked sdkgo.BranchID = "authorizationRevoked"
+const ListReleasesBranchNotFound sdkgo.BranchID = "notFound"
+const ListReleasesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListReleasesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListReleasesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListReleasesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listReleases"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListReleasesBranchListed, Description: "One bounded page of releases was loaded, possibly empty."},
+		{ID: ListReleasesBranchInsufficientScope, Description: "The OAuth grant does not match the required scopes.", Optional: true},
+		{ID: ListReleasesBranchAuthorizationRevoked, Description: "The OAuth grant is invalid or revoked.", Optional: true},
+		{ID: ListReleasesBranchNotFound, Description: "The repository was not found or is inaccessible.", Optional: true},
+		{ID: ListReleasesBranchProviderRejected, Description: "GitHub conclusively rejected the releases query.", Optional: true},
+		{ID: ListReleasesBranchInvalidResponse, Description: "GitHub returned an invalid or oversized releases response.", Optional: true},
+		{ID: ListReleasesBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(3900000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListReleasesResult = sdkgo.QueryResult[ReleasePage]
+
+type ListReleasesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                       `connector:"connectorId=github"`
+	operationID                    struct{}                                       `connector:"operationId=listReleases"`
+	StepType                       string                                         `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                     Connection                                     `connector:"connection"`
+	ConnectionName                 string                                         `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListReleasesInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListReleasesResult]               `connector:"branch=listed"`
+	InsufficientScope              sdkgo.Target[ListReleasesResult]               `connector:"branch=insufficientScope,optional"`
+	AuthorizationRevoked           sdkgo.Target[ListReleasesResult]               `connector:"branch=authorizationRevoked,optional"`
+	NotFound                       sdkgo.Target[ListReleasesResult]               `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListReleasesResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListReleasesResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListReleasesResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ReleasePage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewListReleasesStep[IN any](config ListReleasesStepConfig[IN]) sdkgo.QueryStep[IN, ListReleasesInput, ReleasePage] {
+	if err := config.Connection.validate(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("github connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListReleasesInput, ReleasePage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.client.ListReleases(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListReleasesResult] {
+			branches := make([]sdkgo.BranchTarget[ListReleasesResult], 0, 7)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListReleasesBranchListed))
+			}
+			if config.InsufficientScope.HasStep() {
+				branches = append(branches, config.InsufficientScope.BranchTarget(ListReleasesBranchInsufficientScope))
+			}
+			if config.AuthorizationRevoked.HasStep() {
+				branches = append(branches, config.AuthorizationRevoked.BranchTarget(ListReleasesBranchAuthorizationRevoked))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListReleasesBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListReleasesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListReleasesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListReleasesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
 const ListCommitsBranchListed sdkgo.BranchID = "listed"
 const ListCommitsBranchInsufficientScope sdkgo.BranchID = "insufficientScope"
 const ListCommitsBranchAuthorizationRevoked sdkgo.BranchID = "authorizationRevoked"

@@ -311,6 +311,11 @@ func (client *Client) ListCommits() ListCommitsOperation {
 	return ListCommitsOperation{client: client}
 }
 
+// ListReleases returns the bounded repository releases query operation.
+func (client *Client) ListReleases() ListReleasesOperation {
+	return ListReleasesOperation{client: client}
+}
+
 // Definition returns the immutable connector operation definition.
 func (GetAuthenticatedProfileOperation) Definition() sdkgo.QueryDefinition {
 	return GetAuthenticatedProfileDefinition
