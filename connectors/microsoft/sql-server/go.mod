@@ -1,0 +1,31 @@
+module github.com/superdurable/dex-connectors-library/connectors/microsoft/sql-server
+
+go 1.24.0
+
+require (
+	github.com/microsoft/go-mssqldb v1.9.7
+	github.com/stretchr/testify v1.11.1
+	github.com/superdurable/dex-connectors-library/sdkgo v0.18.0
+	github.com/superdurable/dex/blob-cache-go v0.1.0
+	github.com/superdurable/dex/sdk-go v0.11.3
+	gopkg.in/yaml.v3 v3.0.1
+)
+
+require (
+	github.com/cespare/xxhash/v2 v2.3.0 // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/dgraph-io/ristretto/v2 v2.4.2 // indirect
+	github.com/dustin/go-humanize v1.0.1 // indirect
+	github.com/golang-sql/civil v0.0.0-20220223132316-b832511892a9 // indirect
+	github.com/golang-sql/sqlexp v0.1.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/shopspring/decimal v1.4.0 // indirect
+	golang.org/x/crypto v0.47.0 // indirect
+	golang.org/x/net v0.49.0 // indirect
+	golang.org/x/sys v0.40.0 // indirect
+	golang.org/x/text v0.33.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20251202230838-ff82c1b0f217 // indirect
+	google.golang.org/grpc v1.79.3 // indirect
+	google.golang.org/protobuf v1.36.11 // indirect
+)

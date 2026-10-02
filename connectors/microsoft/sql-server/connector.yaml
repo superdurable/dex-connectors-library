@@ -1,0 +1,117 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: microsoft-sql-server
+  displayName: Microsoft SQL Server
+  description: Run one parameterized read query, or one transactional write statement, against Microsoft SQL Server, Azure SQL Database, or Azure SQL Managed Instance.
+  company: Microsoft
+  version: v0.1.0
+spec:
+  provider: microsoft-sql-server
+  codegen:
+    go:
+      package: sqlserver
+  configuration:
+    fields:
+      - name: host
+        goName: Host
+        type: string
+        description: "Server DNS name or IP address without a scheme, port, or instance name, such as myserver.database.windows.net. Azure SQL Database: https://portal.azure.com > SQL databases > select the database > Overview > Server name. Azure SQL Managed Instance: https://portal.azure.com > SQL managed instances > select the instance > Overview > Host. Amazon RDS for SQL Server: https://console.aws.amazon.com/rds/ > Databases > select the instance > Connectivity & security > Endpoint. SQL Server on a virtual machine or on premises: ask your database administrator. A named instance (host\\instance) is not accepted; enter the instance's TCP port in the port field instead. Not secret; blank is invalid."
+        required: true
+      - name: port
+        goName: Port
+        type: integer
+        description: "TCP port of the server, as a positive integer from 1 through 65535. Azure SQL Database and Amazon RDS (https://console.aws.amazon.com/rds/ > Databases > select the instance > Connectivity & security > Port) use the SQL Server standard port. An Azure SQL Managed Instance public endpoint (https://portal.azure.com > SQL managed instances > select the instance > Networking) listens on 3342. A named instance on a self-hosted server: SQL Server Configuration Manager > SQL Server Network Configuration > Protocols for the instance > TCP/IP > IP Addresses > IPAll > TCP Port. Not secret; blank uses the displayed default."
+        required: false
+        default: 1433
+      - name: database
+        goName: Database
+        type: string
+        description: "Database to connect to, such as app. Azure SQL Database: the database name at https://portal.azure.com > SQL databases; the connector never falls back to master. Azure SQL Managed Instance, Amazon RDS, or a self-hosted server: list names with SELECT name FROM sys.databases, or see the Databases folder in SQL Server Management Studio (https://learn.microsoft.com/en-us/ssms/). Not secret; blank is invalid."
+        required: true
+      - name: user
+        goName: User
+        type: string
+        description: "SQL authentication user name, such as dex_app: a contained database user on Azure SQL Database, or a SQL Server login, as the authorization guide describes (https://learn.microsoft.com/en-us/sql/t-sql/statements/create-user-transact-sql). Windows accounts (DOMAIN\\user) and Microsoft Entra accounts are not supported, and the Azure user@server form is not needed. Not secret; blank is invalid."
+        required: true
+      - name: encrypt
+        goName: Encrypt
+        type: enum
+        enum: [mandatory, strict, trust-server-certificate, disable]
+        description: "TLS policy using Microsoft's Encrypt names. mandatory negotiates TLS 1.2 in TDS 7.4 and verifies that the server certificate chains to a trusted root and names the host, like Encrypt=Mandatory with TrustServerCertificate=false; it works with every supported SQL Server and Azure SQL. strict uses TDS 8.0, which starts TLS before any TDS byte and also verifies the certificate; it needs SQL Server 2022 or later, Azure SQL Database, or Azure SQL Managed Instance. trust-server-certificate encrypts like mandatory but skips certificate verification, Microsoft's TrustServerCertificate=true: choose it only for a server with a self-signed certificate on a network you control, because an impostor server could then receive the password. disable sends traffic unencrypted and is accepted only for localhost, 127.0.0.1, or ::1. mandatory and strict trust the Worker's system certificate store, or the PEM bundle named by the Worker's SQLSERVER_SSL_CA environment variable. Microsoft's optional mode, which can leave the session unencrypted, is not offered. Blank uses the displayed default."
+        required: false
+        default: mandatory
+      - name: connectTimeout
+        goName: ConnectTimeout
+        type: duration
+        description: "Maximum time to open the TCP connection, finish TLS, and log in, including an Azure SQL redirect to another gateway, as a positive Go duration such as 3s. Raise it only for a distant or resuming server, such as a paused Azure SQL Database serverless database. Blank uses the displayed default."
+        required: false
+        default: 10s
+      - name: statementTimeout
+        goName: StatementTimeout
+        type: duration
+        description: "Time limit for every statement, as a positive Go duration such as 2s. When it passes, the connector cancels the statement with a TDS attention and the operation selects providerRejected; the connector also sets LOCK_TIMEOUT to it, so a lock wait that exceeds it fails with error 1222 and is retried. Keep connectTimeout plus statementTimeout under the Step's Execute timeout. An async Step whose statement runs longer than about seven seconds is dispatched again, so writes must be idempotent. Blank uses the displayed default."
+        required: false
+        default: 5s
+      - name: maxRows
+        goName: MaxRows
+        type: integer
+        description: "Maximum rows returned by one query, or by the OUTPUT clause of one execute, as a positive integer. Beyond it query selects truncated and execute rolls back and selects limitExceeded. Prefer TOP or OFFSET ... FETCH in the statement; raise this only for a deliberately large read. Blank uses the displayed default."
+        required: false
+        default: 1000
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Maximum JSON-encoded size of the returned rows in bytes, as a positive integer, with the same truncated and limitExceeded behavior as maxRows. Rows are stored in Dex Flow state, so raise it cautiously. Blank uses the displayed default."
+        required: false
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: microsoft-sql-server-password
+    fields:
+      - name: password
+        goName: Password
+        type: secretString
+        description: "Secret password of the user named in user. Azure SQL Database contained user: set it with ALTER USER dex_app WITH PASSWORD = '...'. SQL Server login, including Amazon RDS and Azure SQL Managed Instance: ALTER LOGIN dex_app WITH PASSWORD = '...' (https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-login-transact-sql). Dex keeps it out of Flow state, logs, and Results. Blank is invalid."
+        required: true
+    guide:
+      startURL: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-user-transact-sql
+      steps:
+        - "Find the host, port, and database: Azure SQL Database at https://portal.azure.com > SQL databases > select the database > Overview; Azure SQL Managed Instance under SQL managed instances > Overview; Amazon RDS under Databases > Connectivity & security; or ask the administrator of a self-hosted SQL Server."
+        - "On Azure SQL, make sure SQL authentication is allowed: the logical server's Settings > Microsoft Entra ID page must not have Support only Microsoft Entra authentication selected. Under Security > Networking, add a firewall rule or private endpoint that admits the Worker's address."
+        - "Create a dedicated user for Dex instead of the server administrator. Azure SQL Database: connect to the application database and run CREATE USER dex_app WITH PASSWORD = 'a-new-password'. SQL Server, Amazon RDS, or Managed Instance: run CREATE LOGIN dex_app WITH PASSWORD = 'a-new-password', CHECK_POLICY = ON in master, then CREATE USER dex_app FOR LOGIN dex_app in the application database."
+        - "Grant only what your Flows need: SELECT on the tables that query reads, and INSERT, UPDATE, or DELETE only on the tables that execute writes, for example GRANT SELECT, INSERT ON dbo.refund_ledger TO dex_app. The connector's rolled-back query transaction is a guard, not a permission boundary."
+        - "Enter the non-secret fields, then paste the password into the password field. Rotate it with ALTER USER dex_app WITH PASSWORD = 'another-password' (contained user) or ALTER LOGIN dex_app WITH PASSWORD = 'another-password' (login) and save the new value here; revoke access with DROP USER dex_app or ALTER LOGIN dex_app DISABLE."
+  operations:
+    - name: query
+      goName: QueryRows
+      inputType: QueryRowsInput
+      outputType: RowSet
+      kind: query
+      description: Run one parameterized SELECT in a transaction that is always rolled back and return its bounded rows.
+      idempotency: none
+      branches:
+        - {id: completed, goName: Completed, description: "The server ran the statement and returned every row, possibly none, within maxRows and maxResponseBytes."}
+        - {id: truncated, goName: Truncated, description: "The statement produced more rows or bytes than maxRows or maxResponseBytes allow; the Result holds only the rows that fit.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "The server conclusively refused the connection or statement, such as bad credentials, a firewall rule, a syntax error, a missing table, a permission error, or statementTimeout.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "The server returned a value the connector cannot decode under its documented type mapping.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &sqlServerExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+    - name: execute
+      goName: ExecuteStatement
+      inputType: ExecuteStatementInput
+      outputType: StatementExecution
+      kind: mutation
+      description: Run one parameterized INSERT, UPDATE, DELETE, or MERGE in its own transaction and return its rows affected and any bounded OUTPUT rows.
+      idempotency: required
+      branches:
+        - {id: completed, goName: Completed, description: "The server committed the statement's transaction; the Result holds the rows affected and any OUTPUT rows."}
+        - {id: limitExceeded, goName: LimitExceeded, description: "The statement affected more rows than maxRowsAffected, or its OUTPUT rows exceeded maxRows or maxResponseBytes, so the connector rolled back and nothing was written.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "The server conclusively refused the connection, statement, or commit, such as a duplicate key, a syntax error, or a permission error; nothing was written.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The connection failed after COMMIT was sent, so whether the server committed the write is unknown.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "The server returned a value the connector cannot decode under its documented type mapping; the connector rolled back and nothing was written.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *sqlServerExecution
