@@ -1,0 +1,264 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: outlook-mail
+  displayName: Microsoft Outlook Mail
+  description: "Search, read, flag, categorize, and move messages in a Microsoft 365 (Exchange Online) mailbox through Microsoft Graph, and send new messages or threaded replies through drafts marked with the Step's idempotency key, so a retried Step never sends twice."
+  company: Microsoft
+  version: v0.1.0
+spec:
+  provider: microsoft
+  codegen:
+    go:
+      package: outlookmail
+  configuration:
+    fields:
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Largest Microsoft Graph response body, in bytes, that one call reads. Leave it blank to keep the displayed safety limit; enter a positive integer only to change it, for example when replies quote very long HTML threads. An oversized read selects invalidResponse, and an oversized answer while preparing a reply selects providerRejected before anything is sent."
+        required: false
+        default: 4194304
+  auth:
+    defaultMethod: microsoft-oauth
+    methods:
+      - id: microsoft-oauth
+        displayName: Microsoft 365 account (OAuth)
+        description: "Recommended: a Microsoft 365 work or school user signs in through Microsoft consent, and the connection reads and sends as that user's own mailbox. Dex refreshes the short-lived access token with Microsoft's rotating refresh token. Personal Outlook.com accounts are not supported."
+        recommended: true
+        type: oauth2
+        connectionKind: outlook-mail-microsoft-oauth
+        fields:
+          - name: client_id
+            goName: ClientID
+            type: string
+            description: "Non-secret Application (client) ID of your app registration, copied from https://entra.microsoft.com > Entra ID > App registrations > your app > Overview; it is a GUID of 32 hexadecimal digits in five hyphen-separated groups. Blank means authorization and refresh cannot start."
+            required: true
+          - name: client_secret
+            goName: ClientSecret
+            type: secretString
+            description: "Secret client secret created at https://entra.microsoft.com > App registrations > your app > Certificates & secrets > Client secrets > New client secret. Copy the Value column, about 40 characters, not the Secret ID; Entra shows it only once and it expires after the lifetime you chose. Dex Web stores it only in this credential field and sends it only to https://login.microsoftonline.com. Blank means authorization and refresh cannot start."
+            required: true
+          - name: access_token
+            goName: AccessToken
+            type: secretString
+            description: "Secret access token returned by Microsoft after consent, valid for about an hour. Dex derives it automatically and refreshes it five minutes before it expires, so never enter it manually; blank means Authorize has not completed."
+            required: true
+          - name: refresh_token
+            goName: RefreshToken
+            type: secretString
+            description: "Secret refresh token returned by Microsoft because offline_access is requested. Microsoft issues a new one on every refresh and Dex stores it atomically, so never enter it manually. A blank token, or one Microsoft revoked after a password reset, an administrator's revocation, or long inactivity, means you must authorize again."
+            required: true
+        guide:
+          startURL: https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade
+          steps:
+            - "Sign in to https://entra.microsoft.com as a user who may register applications, open Entra ID > App registrations, and choose New registration. Under Supported account types choose Accounts in any organizational directory (Any Microsoft Entra ID tenant - Multitenant): Dex signs in through Microsoft's shared https://login.microsoftonline.com/organizations endpoint, which rejects a single-tenant registration with error AADSTS50194. Personal Microsoft accounts are not supported."
+            - "Under Redirect URI choose the Web platform and enter the exact Redirect URI that Dex Web shows below, or add it later at Authentication > Add a platform > Web. Register the app."
+            - "Open API permissions > Add a permission > Microsoft Graph > Delegated permissions and add Mail.ReadWrite, which searches, reads, drafts, moves, flags, and categorizes messages, Mail.Send, which sends the drafts, and offline_access, which lets Dex refresh tokens. Dex requests exactly these three. Users can consent to them unless your tenant's user consent settings require an administrator; then an administrator chooses Grant admin consent on the same page."
+            - "Open Certificates & secrets > Client secrets > New client secret, choose a lifetime, and copy the Value into client_secret below; copy the Application (client) ID from Overview into client_id. Create a new secret before the old one expires."
+            - "Choose Authorize and sign in with the Microsoft 365 work or school account whose mailbox the Flows use; every operation then works on that user's own mailbox. To revoke access, remove the app at https://myapps.microsoft.com, or have an administrator delete its permissions under Entra ID > Enterprise applications; every operation then selects providerRejected until you authorize again."
+        oauth2:
+          protocol: oauth2
+          authorizationEndpoint: https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize
+          tokenEndpoint: https://login.microsoftonline.com/organizations/oauth2/v2.0/token
+          clientIDCredential: client_id
+          clientSecretCredential: client_secret
+          scopes: [offline_access, Mail.ReadWrite, Mail.Send]
+          credentialMappings:
+            - {credential: access_token, source: access_token}
+            - {credential: refresh_token, source: refresh_token}
+          pkce: true
+      - id: app-only
+        displayName: App-only access to one mailbox
+        description: "For a service mailbox, such as a shared support mailbox, without a signed-in user: an Entra app authenticates with its own client ID and secret, and the connection works on the one mailbox named below. Dex requests its one-hour access tokens automatically. Limit the app to that mailbox with Exchange Online RBAC for Applications, as the guide explains."
+        type: apiKey
+        connectionKind: outlook-mail-app-only
+        fields:
+          - name: tenant_id
+            goName: TenantID
+            type: string
+            description: "Non-secret Directory (tenant) ID of the Microsoft Entra tenant that owns the mailbox, copied from https://entra.microsoft.com > Entra ID > Overview > Tenant ID or from the app registration's Overview: a GUID, or a verified domain of the tenant such as contoso.onmicrosoft.com. common, organizations, and consumers are rejected, because an app-only token belongs to one tenant. Blank means no access token can be requested."
+            required: true
+          - name: client_id
+            goName: ClientID
+            type: string
+            description: "Non-secret Application (client) ID of the app registration, copied from https://entra.microsoft.com > Entra ID > App registrations > your app > Overview; it is a GUID. Blank means no access token can be requested."
+            required: true
+          - name: client_secret
+            goName: ClientSecret
+            type: secretString
+            description: "Secret client secret created at https://entra.microsoft.com > App registrations > your app > Certificates & secrets > Client secrets > New client secret. Copy the Value column, about 40 characters, not the Secret ID; Entra shows it only once. It is stored only in this credential field and sent only to https://login.microsoftonline.com/<tenant_id>/oauth2/v2.0/token. Blank means no access token can be requested."
+            required: true
+          - name: access_token
+            goName: AccessToken
+            type: secretString
+            description: "Secret one-hour access token that the application requests from the tenant ID, client ID, and secret with the client credentials grant and stores here, renewing it five minutes before it expires or after Microsoft Graph answers 401. It is an output, so never enter it manually; leave it blank."
+            required: false
+        configuration:
+          fields:
+            - name: mailbox
+              goName: Mailbox
+              type: string
+              description: "Non-secret mailbox the connection reads and sends as: its primary SMTP address or user principal name, such as support@contoso.com, or its Entra object ID, a GUID. Find it at https://admin.exchange.microsoft.com > Recipients > Mailboxes, where user and shared mailboxes are both listed. Every operation calls https://graph.microsoft.com/v1.0/users/<mailbox>, and the guide limits the app to this mailbox. Blank is invalid."
+              required: true
+        guide:
+          startURL: https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade
+          steps:
+            - "Sign in to https://entra.microsoft.com, open Entra ID > App registrations > New registration, and register an app; Accounts in this organizational directory only is enough and no Redirect URI is needed. Copy the Application (client) ID and the Directory (tenant) ID from its Overview into client_id and tenant_id below."
+            - "Open Certificates & secrets > Client secrets > New client secret and copy the Value into client_secret below; Entra shows it only once."
+            - "Least privilege (recommended): grant the app this one mailbox with Exchange Online RBAC for Applications, described at https://learn.microsoft.com/en-us/exchange/permissions-exo/application-rbac. In Exchange Online PowerShell run New-ServicePrincipal -AppId <client_id> -ObjectId <object ID from Entra ID > Enterprise applications > the app>, New-ManagementScope -Name OutlookMailDex -RecipientRestrictionFilter \"PrimarySmtpAddress -eq 'support@contoso.com'\", then New-ManagementRoleAssignment -App <client_id> -Role \"Application Mail.ReadWrite\" -CustomResourceScope OutlookMailDex and the same with -Role \"Application Mail.Send\". Check the result with Test-ServicePrincipalAuthorization."
+            - "Do not also add Microsoft Graph application permissions Mail.ReadWrite or Mail.Send under API permissions: Entra grants them for every mailbox in the tenant, and Exchange adds them to the scoped roles. If your tenant cannot use RBAC for Applications, those two application permissions with Grant admin consent also work, but they reach every mailbox; Microsoft replaced the older application access policies with RBAC for Applications."
+            - "Enter mailbox and leave access_token blank: on its first Outlook call the application requests a token from https://login.microsoftonline.com/<tenant_id>/oauth2/v2.0/token with the scope https://graph.microsoft.com/.default and renews it before it expires. To revoke access, delete the client secret or remove the role assignments with Remove-ManagementRoleAssignment."
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.2.0 <0.3.0"
+      backendCapabilities: [oauth.connection.manage, use.configuration.write, outlookmail.mail-folders-list]
+      mockScenarios: [not-configured, authorization-pending, connected, insufficient-scope, revoked, broker-unavailable, ready]
+      icon: icon.svg
+    commands:
+      - id: listMailFolders
+        capability: outlookmail.mail-folders-list
+        request:
+          method: GET
+          url: https://graph.microsoft.com/v1.0/me/mailFolders
+          credential: {field: access_token, scheme: bearer}
+          fixedQuery: {$select: "id,displayName,childFolderCount", $top: "100"}
+          parameters:
+            - {name: skip, location: query, target: $skip}
+      - id: listChildMailFolders
+        capability: outlookmail.mail-folders-list
+        request:
+          method: GET
+          url: https://graph.microsoft.com/v1.0/me/mailFolders/{folderId}/childFolders
+          credential: {field: access_token, scheme: bearer}
+          fixedQuery: {$select: "id,displayName,childFolderCount", $top: "100"}
+          parameters:
+            - {name: folderId, location: path, target: folderId}
+            - {name: skip, location: query, target: $skip}
+      - id: listMailboxMailFolders
+        capability: outlookmail.mail-folders-list
+        request:
+          method: GET
+          url: https://graph.microsoft.com/v1.0/users/{mailbox}/mailFolders
+          credential: {field: access_token, scheme: bearer}
+          fixedQuery: {$select: "id,displayName,childFolderCount", $top: "100"}
+          parameters:
+            - {name: mailbox, location: path, target: mailbox}
+            - {name: skip, location: query, target: $skip}
+      - id: listMailboxChildMailFolders
+        capability: outlookmail.mail-folders-list
+        request:
+          method: GET
+          url: https://graph.microsoft.com/v1.0/users/{mailbox}/mailFolders/{folderId}/childFolders
+          credential: {field: access_token, scheme: bearer}
+          fixedQuery: {$select: "id,displayName,childFolderCount", $top: "100"}
+          parameters:
+            - {name: mailbox, location: path, target: mailbox}
+            - {name: folderId, location: path, target: folderId}
+            - {name: skip, location: query, target: $skip}
+    units:
+      - id: mailFolderPicker
+        goName: MailFolderPicker
+        description: "Select one mail folder of the connection's mailbox, listed live from Microsoft Graph's mailFolders and childFolders with the connection's access token, or enter a folder ID; the unit stores the stable folder ID and its display name."
+        backendCapabilities: [outlookmail.mail-folders-list]
+        outputs:
+          - {name: folderId, goName: FolderID, type: string}
+          - {name: folderName, goName: FolderName, type: string}
+  operations:
+    - name: searchMessages
+      goName: SearchMessages
+      inputType: SearchMessagesInput
+      outputType: SearchMessagesOutput
+      kind: query
+      description: "List one bounded page of message summaries in one mail folder, newest first, filtered by exact sender address, subject text, received time range, and unread state, with an opaque cursor for the next page."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: searched, goName: Searched, description: "Microsoft Graph returned one page of matching summaries, newest first; it may be empty."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively rejected the search, such as a revoked authorization, a folder that does not exist, a mailbox the app may not read, or a filter it does not accept.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Microsoft Graph returned a malformed or oversized page, or a next-page link outside graph.microsoft.com.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &outlookReadExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
+    - name: getMessage
+      goName: GetMessage
+      inputType: GetMessageInput
+      outputType: Message
+      kind: query
+      description: "Read one message by ID without marking it read, returning its header fields, a bounded plain-text body that Microsoft Graph converts from HTML when needed, and attachment names and sizes without their content."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: The message was read.}
+        - {id: notFound, goName: NotFound, description: "No message with the ID exists in the mailbox, for example because it was deleted or moved to an archive mailbox.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively rejected the read, such as a revoked authorization or a mailbox the app may not read.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Graph returned a malformed or oversized message or attachment list., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *outlookReadExecution
+    - name: sendMessage
+      goName: SendMessage
+      inputType: SendMessageInput
+      outputType: SentMessage
+      kind: mutation
+      description: "Send one plain-text message by creating a draft marked with the Step's idempotency key and sending that draft. Graph has no idempotency key, so the Step runs with sync durability, finds its own draft again on every retry, sends it at most once, and confirms a lost answer from the Sent Items copy."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: sent, goName: Sent, description: "Microsoft Graph accepted the draft for sending, now or in an earlier attempt of this Step execution that this attempt confirmed."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively refused the draft or the send, such as a revoked authorization, a mailbox without send permission, or an invalid recipient, so nothing was sent.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The send was dispatched but its answer was lost and the draft has not appeared as sent, so the message may have been sent; the connector never sends it again, and the Result names the draft to inspect.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &outlookSendExecution
+        executeMethodTimeout: 90s
+        heartbeatTimeout: 90s
+        durability: sync
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 8, totalDuration: 10m}
+    - name: replyToMessage
+      goName: ReplyToMessage
+      inputType: ReplyToMessageInput
+      outputType: SentMessage
+      kind: mutation
+      description: "Reply to one message, or reply to all, by creating Outlook's threaded reply draft, which quotes the original, marking it with the Step's idempotency key, and sending it at most once per Step execution like sendMessage."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: sent, goName: Sent, description: "Microsoft Graph accepted the reply draft for sending, now or in an earlier attempt of this Step execution that this attempt confirmed."}
+        - {id: notFound, goName: NotFound, description: "No message with the ID exists in the mailbox, so no reply was drafted or sent.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively refused the reply draft or the send, such as a revoked authorization, a mailbox without send permission, or an original without a usable reply address, so nothing was sent.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The send was dispatched but its answer was lost and the draft has not appeared as sent, so the reply may have been sent; the connector never sends it again, and the Result names the draft to inspect.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *outlookSendExecution
+    - name: moveMessage
+      goName: MoveMessage
+      inputType: MoveMessageInput
+      outputType: MovedMessage
+      kind: mutation
+      description: "Move one message to another mail folder by folder ID or well-known name. Message IDs are immutable, so a repeated attempt that finds the message already in the folder reports it moved without moving it again."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: moved, goName: Moved, description: "The message is in the destination folder, moved now or by an earlier attempt."}
+        - {id: notFound, goName: NotFound, description: "No message with the ID exists in the mailbox.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively refused the move, such as a destination folder that does not exist, a revoked authorization, or a read-only mailbox.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &outlookUpdateExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
+    - name: setMessageFlags
+      goName: SetMessageFlags
+      inputType: SetMessageFlagsInput
+      outputType: MessageFlags
+      kind: mutation
+      description: "Set one message's read state, follow-up flag, and categories to absolute values; it reads them first and writes only the differences, so a repeated attempt changes nothing twice."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: updated, goName: Updated, description: "The message holds the requested values, set now or by an earlier attempt."}
+        - {id: notFound, goName: NotFound, description: "No message with the ID exists in the mailbox.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively refused the change, such as a revoked authorization or a read-only mailbox.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *outlookUpdateExecution

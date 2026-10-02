@@ -33,6 +33,7 @@ directories:
   - connectors/microsoft/excel
   - connectors/microsoft/onedrive
   - connectors/microsoft/outlook-calendar
+  - connectors/microsoft/outlook-mail
   - connectors/microsoft/teams
   - connectors/mistral
   - connectors/monday
