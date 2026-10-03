@@ -282,12 +282,13 @@ go run ./cmd/connectorctl catalog --catalog catalog.yaml --output dist/pages/cat
 ```
 
 CI rejects unregistered, missing, unsafe, or symlinked connector paths.
-Connector `go.mod` files
-must pin an already-published SDK version and cannot contain `replace`,
-pseudo-version, branch, or commit dependencies. A required connector module
-must be pinned at a released, complete tag, and no other module from this
-repository may be required; see
+Connector `go.mod` files must require an already-published SDK release and
+cannot contain `replace`, pseudo-version, branch, or commit dependencies. A
+required connector module must use a released, complete tag, and no other
+module from this repository may be required; see
 [Connector dependencies](versioning-and-releases.md#connector-dependencies).
+The Dex Go SDK requirement is a minimum; see
+[Dex versions](versioning-and-releases.md#dex-versions).
 
 ## Studio setup bundle
 
