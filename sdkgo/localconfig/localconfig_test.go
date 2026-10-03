@@ -478,7 +478,7 @@ func TestDurableTriggerTargetConsumesUndeliverableEventAndKeepsRetryable(t *test
 	logs := testsupport.NewLogRecorder()
 	target := newLoggingDurableTestTarget(t, store, logs.Logger(), func(_ context.Context, event durableTestEvent) error {
 		if event.ID == "Ev-closed-thread" {
-			return sdkgo.MarkTriggerUndeliverable(&dex.FlowNotActiveError{ServiceError: &dex.ServiceError{
+			return sdkgo.MarkTriggerUndeliverable(&dex.FlowNotActiveOrNotFoundError{ServiceError: &dex.ServiceError{
 				Op: "InvokeRPC", FlowID: "flow-1", Code: codes.NotFound, Detail: "workflow execution already completed",
 			}})
 		}

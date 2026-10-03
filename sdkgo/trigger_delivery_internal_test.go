@@ -33,8 +33,8 @@ func TestClassifyDexTriggerError(t *testing.T) {
 		name string
 		err  error
 	}{
-		{"completed Flow", &dex.FlowNotActiveError{ServiceError: serviceError(codes.NotFound, "workflow execution already completed")}},
-		{"never started Flow", &dex.FlowNotActiveError{ServiceError: serviceError(codes.NotFound, "workflow not found for ID: x")}},
+		{"completed Flow", &dex.FlowNotActiveOrNotFoundError{ServiceError: serviceError(codes.NotFound, "workflow execution already completed")}},
+		{"never started Flow", &dex.FlowNotActiveOrNotFoundError{ServiceError: serviceError(codes.NotFound, "workflow not found for ID: x")}},
 		{"missing Flow", &dex.FlowNotFoundError{ServiceError: serviceError(codes.NotFound, "workflow not found")}},
 		{"handler marker", workerError(codes.FailedPrecondition, "Trigger event is undeliverable: approver is not allowed")},
 		{"handler marker without reason", workerError(codes.FailedPrecondition, "Trigger event is undeliverable")},
@@ -65,7 +65,7 @@ func TestClassifyDexTriggerError(t *testing.T) {
 		{"Worker error without details", &dex.WorkerInvocationError{ServiceError: serviceError(codes.FailedPrecondition, "worker failed")}},
 		{"lock conflict", &dex.RPCLockConflictError{ServiceError: serviceError(codes.Aborted, "lock conflict")}},
 		{"long poll timeout", &dex.LongPollTimeoutError{ServiceError: serviceError(codes.DeadlineExceeded, "long poll timed out")}},
-		{"wait handler timeout", &dex.WaitHandlerTimeoutError{ServiceError: serviceError(codes.DeadlineExceeded, "wait timed out")}},
+		{"request timeout", &dex.RequestTimeoutError{ServiceError: serviceError(codes.DeadlineExceeded, "wait timed out")}},
 		{"Channel message consumed concurrently", &dex.ChannelMessageNotFoundError{ServiceError: serviceError(codes.NotFound, "message not found")}},
 		{"undecodable output", &dex.ValueMappingError{Operation: "decode", Err: errors.New("json: cannot unmarshal")}},
 		{"unregistered Flow", &dex.FlowDefinitionError{FlowType: "approval", Err: errors.New("not registered")}},

@@ -647,7 +647,19 @@ reports the event undeliverable.
 ## Release and tests
 
 The module is released independently with directory-prefixed tags such as
-`sdkgo/v0.1.0`. Connector modules must pin an already-published SDK release.
+`sdkgo/v0.1.0`. Connector modules must require an already-published SDK
+release.
+
+The module requires the Dex Go SDK, `github.com/superdurable/dex/sdk-go`,
+v1.4.0 or later. That is a minimum: an application may require any newer
+stable Dex Go SDK release, and Dex Server stays compatible with earlier SDK
+releases. Dex Go SDK v1.2.1 renamed `dex.FlowNotActiveError` to
+`dex.FlowNotActiveOrNotFoundError`, and v0.12.1 replaced
+`dex.WaitHandlerTimeoutError` with `dex.RequestTimeoutError`. Connector SDK
+releases through `sdkgo/v0.18.0` use `dex.FlowNotActiveError`, so they do not
+build with Dex Go SDK v1.2.1 or later. An application that uses a newer Dex Go
+SDK requires a later Connector SDK release directly; Go then selects it for
+every connector the application uses.
 
 Run its supported checks without the repository workspace:
 
