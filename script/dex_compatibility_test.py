@@ -9,8 +9,10 @@ from unittest.mock import patch
 
 from script.dex_compatibility import (
     CONNECTION_RECORD_FIXTURES,
+    CONNECTOR_SDK_DIRECTORY,
     CREDENTIAL_ISOLATION_FIXTURE,
     CREDENTIAL_ISOLATION_MODULE_PATH,
+    GO_VET_BUILD_TAG_SETS,
     connector_releases,
     create_module_proxy,
     dex_web_compatibility_sources,
@@ -180,6 +182,20 @@ class DexWebFixtureTest(unittest.TestCase):
             selections.append("multiple" if "    selection: multiple\n" in manifest else "single")
         self.assertEqual(["single", "multiple"], selections)
         self.assertEqual(len(CONNECTION_RECORD_FIXTURES), len({fixture_module_path(fixture) for fixture in CONNECTION_RECORD_FIXTURES}))
+
+
+class LatestDexGoSdkTest(unittest.TestCase):
+    def test_vet_tag_sets_cover_every_build_constraint_in_the_sdk_and_connectors(self) -> None:
+        constraint_tags: set[str] = set()
+        for directory in (ROOT / CONNECTOR_SDK_DIRECTORY, ROOT / "connectors"):
+            for source in directory.rglob("*.go"):
+                if "node_modules" in source.parts:
+                    continue
+                for line in source.read_text(encoding="utf-8").splitlines():
+                    if line.startswith("//go:build "):
+                        constraint_tags.update(re.findall(r"[A-Za-z_][A-Za-z0-9_.]*", line.removeprefix("//go:build ")))
+        self.assertTrue(constraint_tags)
+        self.assertLessEqual(constraint_tags, set(GO_VET_BUILD_TAG_SETS) - {""})
 
 
 if __name__ == "__main__":

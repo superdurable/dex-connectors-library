@@ -128,7 +128,7 @@ jobs:
             echo "source_sha=${source_sha}"
             echo "tag=${release_tag}"
           } >> "${GITHUB_OUTPUT}"
-      - name: Verify current Connector with pinned Dex CLI and Web
+      - name: Verify current Connector with the latest stable Dex CLI and Web
         if: steps.state.outputs.release_required == 'true' && steps.state.outputs.source_sha == github.sha
         env:
           GH_TOKEN: ${{ github.token }}
@@ -256,7 +256,7 @@ jobs:
             fi
             sleep 2
           done
-      - name: Verify the published Connector with pinned Dex CLI and Web
+      - name: Verify the published Connector with the latest stable Dex CLI and Web
         if: steps.state.outputs.release_required == 'true'
         env:
           GH_TOKEN: ${{ github.token }}

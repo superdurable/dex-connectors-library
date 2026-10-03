@@ -1,4 +1,4 @@
-.PHONY: check test test-common test-connectors catalog-check test-integration test-sdk-integration test-projectconfig-s3-integration test-connector-integration test-dex-compat-current test-dex-compat-released studio-bundle-theme react react-sdk react-connectors workspace githooks
+.PHONY: check test test-common test-connectors catalog-check test-integration test-sdk-integration test-projectconfig-s3-integration test-connector-integration test-dex-compat-current test-dex-compat-released test-dex-compat-latest-go-sdk studio-bundle-theme react react-sdk react-connectors workspace githooks
 
 CONNECTOR_CATALOG ?= catalog.yaml
 CONNECTOR_SCOPE ?= all
@@ -59,6 +59,10 @@ test-dex-compat-current:
 test-dex-compat-released:
 	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS) | paste -sd, -)"; \
 	python3 script/dex_compatibility.py released --connector-directories "$$directories"
+
+test-dex-compat-latest-go-sdk:
+	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS) | paste -sd, -)"; \
+	python3 script/dex_compatibility.py latest-go-sdk --connector-directories "$$directories"
 
 studio-bundle-theme:
 	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))"; \
