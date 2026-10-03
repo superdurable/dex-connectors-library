@@ -40,8 +40,8 @@ latest decision. The three can live in one workbook or several.
 
 ## Generate the Flow Definition
 
-Generate strict FDG 2.0 from `connectors/microsoft/excel` with the dexcli
-release pinned in the repository's `.dex-compat-version` file:
+Generate strict FDG 2.0 from `connectors/microsoft/excel` with the latest stable
+dexcli release:
 
 ```bash
 dexcli visualize ./examples/approval-decision/flow/workflow.go \
@@ -125,7 +125,7 @@ GOWORK=off go test -race ./examples/approval-decision/...
 GOWORK=off go test -tags=integration ./examples/approval-decision/... -count=1 -v
 ```
 
-With the pinned Dex development server running, the integration tests drive
+With the latest Dex development server running, the integration tests drive
 the Flow on a real Worker against `internal/fakeexcel`, which checks the
 bearer token and stores typed input as Excel does. They prove that:
 

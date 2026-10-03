@@ -298,7 +298,7 @@ authorizes at `https://{companyDomain}.bamboohr.com/authorize.php` and
 exchanges codes at `https://{companyDomain}.bamboohr.com/token.php`, both per
 company, and documents a JSON token request body. Manifest OAuth endpoints are
 static URLs, so the connector cannot declare them, and Dex Web's code exchange
-through the pinned `cli-v1.2.0` is form-encoded. BambooHR's older OpenID
+through `cli-v1.2.0` is form-encoded. BambooHR's older OpenID
 Connect login, which exchanged an `id_token` for an API key, is closed to new
 applications since April 2025. The connector therefore offers API keys only,
 which suit a customer connecting their own company.
@@ -350,7 +350,7 @@ GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
 ```
 
-With the pinned Dex development server running, the examples own their real
+With the latest Dex development server running, the examples own their real
 Worker, retry, persistence, duplicate-dispatch, and transition coverage:
 
 ```bash

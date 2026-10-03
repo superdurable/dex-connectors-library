@@ -38,8 +38,7 @@ because Dex Web Start Flow invokes `WaitFor` on the start Step.
 ## Release baseline
 
 - Notion Connector `v0.1.0`
-- dexcli `v1.1.0`, the version pinned in the repository's
-  `.dex-compat-version` file
+- dexcli `v1.1.0` or a later stable release
 
 ## 1. Prepare the Notion database
 

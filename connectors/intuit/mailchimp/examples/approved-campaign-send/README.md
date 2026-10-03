@@ -67,8 +67,8 @@ created through the API.
 
 ## Run
 
-Generate strict FDG 2.0 from `connectors/intuit/mailchimp` with the dexcli
-release pinned in the repository's `.dex-compat-version` file:
+Generate strict FDG 2.0 from `connectors/intuit/mailchimp` with the latest
+stable dexcli release:
 
 ```bash
 mkdir -p build
@@ -141,7 +141,7 @@ campaign as read before the send.
 GOWORK=off go test -race ./examples/approved-campaign-send/...
 ```
 
-With the pinned Dex development server running, the integration tests drive
+With the latest Dex development server running, the integration tests drive
 the Flow on a real Worker against a stateful fake Mailchimp that, like
 Mailchimp, has no idempotency key:
 

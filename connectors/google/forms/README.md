@@ -265,7 +265,7 @@ npm test --prefix ui
 npm run build --prefix ui
 ```
 
-With the pinned Dex development server running, the example owns its real
+With the latest Dex development server running, the example owns its real
 Worker, retry, re-dispatch, persistence, and transition coverage:
 
 ```bash

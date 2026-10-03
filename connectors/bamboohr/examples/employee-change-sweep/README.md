@@ -26,8 +26,7 @@ includes terminations, which BambooHR records as updates.
 
 ## Generate the Flow Definition
 
-From `connectors/bamboohr`, with the dexcli release pinned in the repository's
-`.dex-compat-version` file:
+From `connectors/bamboohr`, with the latest stable dexcli release:
 
 ```bash
 mkdir -p build
@@ -80,7 +79,7 @@ when the page limit stopped the sweep.
 GOWORK=off go test -race ./examples/employee-change-sweep/...
 ```
 
-With the pinned Dex development server running, the integration tests drive
+With the latest Dex development server running, the integration tests drive
 the Flow on a real Worker against a fake change history that treats `since`
 as exclusive:
 

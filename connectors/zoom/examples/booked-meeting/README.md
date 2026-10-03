@@ -37,8 +37,8 @@ branches, such as `defect`, fail the Flow.
 
 ## Run
 
-Generate strict FDG 2.0 from `connectors/zoom` with the dexcli release pinned
-in the repository's `.dex-compat-version` file:
+Generate strict FDG 2.0 from `connectors/zoom` with the latest stable dexcli
+release:
 
 ```bash
 mkdir -p build

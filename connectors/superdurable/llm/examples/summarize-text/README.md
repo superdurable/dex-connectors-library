@@ -29,8 +29,8 @@ immediately, because Dex Web Start Flow invokes the start Step's `WaitFor`.
 
 ## Validate the Flow Definition
 
-From `connectors/superdurable/llm`, generate strict FDG 2.0 with the dexcli
-release pinned in the repository's `.dex-compat-version` file:
+From `connectors/superdurable/llm`, generate strict FDG 2.0 with the latest
+stable dexcli release:
 
 ```bash
 mkdir -p build

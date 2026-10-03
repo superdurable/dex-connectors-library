@@ -44,8 +44,8 @@ picks once at startup, so restart it after saving them.
 
 ## Run
 
-Generate strict FDG 2.0 from `connectors/microsoft/onedrive` with the dexcli
-release pinned in the repository's `.dex-compat-version` file:
+Generate strict FDG 2.0 from `connectors/microsoft/onedrive` with the latest
+stable dexcli release:
 
 ```bash
 mkdir -p build

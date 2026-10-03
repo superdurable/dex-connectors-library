@@ -23,8 +23,8 @@ This example receives signed Calendly webhooks and starts one
 
 ## 1. Generate the Flow Definition
 
-From `connectors/calendly`, generate strict FDG 2.0 with the dexcli release
-pinned in the repository's `.dex-compat-version` file
+From `connectors/calendly`, generate strict FDG 2.0 with the latest stable
+dexcli release
 (`python3 script/dex_compatibility.py install-dexcli --output <path>` installs
 it):
 
@@ -87,13 +87,13 @@ token** and follow the guide shown above the form:
   subscription and sends test deliveries;
 - leave the configuration fields at their defaults, and save.
 
-Dex Web `cli-v1.1.0`, the release in `.dex-compat-version`, cannot save the
-personal access token method of a connector with several sign-in methods
-(superdurable/dex#570, fixed in `cli-v1.2.0`). With that release, either run
-`dexcli` `cli-v1.2.0` or later, or add the connection to the `connections`
-array of `$HOME/.dex/connectors/connections.json` yourself, with
-`"authMethodId": "personal-access-token"` beside the record's other members
-and these credentials:
+Dex Web releases before `cli-v1.2.0` cannot save the personal access token
+method of a connector with several sign-in methods (superdurable/dex#570, fixed
+in `cli-v1.2.0`). With such a release, either run `dexcli` `cli-v1.2.0` or
+later, or add the connection to the `connections` array of
+`$HOME/.dex/connectors/connections.json` yourself, with
+`"authMethodId": "personal-access-token"` beside the record's other members and
+these credentials:
 
 ```json
 {"auth_method": "personal-access-token", "access_token": "<personal access token>", "webhook_signing_key": "<openssl rand -hex 32>"}

@@ -34,8 +34,8 @@ startup and the credentials before every call.
 
 ## Run
 
-Generate strict FDG 2.0 from `connectors/zendesk/support` with the dexcli
-release pinned in the repository's `.dex-compat-version` file:
+Generate strict FDG 2.0 from `connectors/zendesk/support` with the latest stable
+dexcli release:
 
 ```bash
 mkdir -p build
@@ -81,7 +81,7 @@ Omit `groupId` to leave routing to Zendesk. The Flow result and the
 GOWORK=off go test -race ./examples/customer-issue/...
 ```
 
-With the pinned Dex development server running, the integration tests drive
+With the latest Dex development server running, the integration tests drive
 the Flow on a real Worker against a stateful fake Zendesk that honors the
 documented Idempotency-Key replay, safe updates, and audit metadata:
 

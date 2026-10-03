@@ -43,8 +43,8 @@ restart it after saving.
 
 ## Run
 
-Generate strict FDG 2.0 from `connectors/google/calendar` with the dexcli
-release pinned in the repository's `.dex-compat-version` file:
+Generate strict FDG 2.0 from `connectors/google/calendar` with the latest stable
+dexcli release:
 
 ```bash
 mkdir -p build
@@ -86,7 +86,7 @@ status, the event, and any busy intervals or conflicting event IDs.
 GOWORK=off go test -race ./examples/schedule-meeting/...
 ```
 
-With the pinned Dex development server running, the integration test drives
+With the latest Dex development server running, the integration test drives
 the Flow on a real Worker against a stateful fake Google Calendar: a scheduled
 meeting whose first insert response is lost and whose retried Step finds its
 own hold, a busy calendar, a double booking, an unwired `incomplete` free/busy

@@ -37,8 +37,8 @@ authorization, a rejected recipient, a missing message, or a local defect.
 
 ## Generate the Flow Definition
 
-Generate strict FDG 2.0 from `connectors/microsoft/outlook-mail` with the
-dexcli release pinned in the repository's `.dex-compat-version` file:
+Generate strict FDG 2.0 from `connectors/microsoft/outlook-mail` with the latest
+stable dexcli release:
 
 ```bash
 mkdir -p /tmp/outlook-mail-reply/graphs /tmp/outlook-mail-reply/release
@@ -150,7 +150,7 @@ run sends real mail from the mailbox; use a test customer address.
 GOWORK=off go test -race ./examples/support-reply/...
 ```
 
-With the pinned Dex development server running, the integration tests drive
+With the latest Dex development server running, the integration tests drive
 the Flow on a real Worker against `internal/graphtest`, which, like Graph, has
 no send idempotency key:
 

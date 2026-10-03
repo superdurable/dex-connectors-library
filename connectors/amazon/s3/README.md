@@ -272,7 +272,7 @@ GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
 ```
 
-With the pinned Dex development server running, the example's real-Dex tests
+With the latest Dex development server running, the example's real-Dex tests
 cover every business outcome and both duplicate-dispatch modes against the
 SigV4-verifying fake in `internal/s3fake` (each duplicate test takes about nine
 seconds):

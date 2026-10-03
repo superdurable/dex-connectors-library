@@ -275,7 +275,7 @@ GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
 ```
 
-With the pinned Dex development server running, the example owns its real
+With the latest Dex development server running, the example owns its real
 Worker, retry, persistence, and transition coverage:
 
 ```bash

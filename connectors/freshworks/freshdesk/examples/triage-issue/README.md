@@ -33,8 +33,8 @@ ticket, a missing ticket, an invalid response, or a local defect.
 
 ## Generate the Flow Definition
 
-Generate strict FDG 2.0 from `connectors/freshworks/freshdesk` with the dexcli
-release pinned in the repository's `.dex-compat-version` file:
+Generate strict FDG 2.0 from `connectors/freshworks/freshdesk` with the latest
+stable dexcli release:
 
 ```bash
 mkdir -p build
@@ -120,7 +120,7 @@ state.
 GOWORK=off go test -race ./examples/triage-issue/...
 ```
 
-With the pinned Dex development server running, the integration tests drive
+With the latest Dex development server running, the integration tests drive
 the Flow on a real Worker against a stateful fake Freshdesk that, like
 Freshdesk, has no idempotency key and omits tags from search results:
 

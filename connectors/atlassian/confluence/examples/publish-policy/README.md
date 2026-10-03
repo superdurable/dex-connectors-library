@@ -47,8 +47,8 @@ after saving.
 
 ## Run
 
-Generate strict FDG 2.0 from `connectors/atlassian/confluence` with the dexcli
-release pinned in the repository's `.dex-compat-version` file:
+Generate strict FDG 2.0 from `connectors/atlassian/confluence` with the latest
+stable dexcli release:
 
 ```bash
 mkdir -p build
@@ -90,7 +90,7 @@ text, and the comment ID.
 GOWORK=off go test -race ./examples/publish-policy/...
 ```
 
-With the pinned Dex development server running, the integration test drives
+With the latest Dex development server running, the integration test drives
 the Flow on a real Worker against a stateful fake Confluence that keeps one
 page per title and accepts each version number once: a new policy published,
 read back, and commented once; an existing title updated to its next version;

@@ -56,8 +56,8 @@ cannot be refreshed.
 ### Asana OAuth is not in this release
 
 Asana OAuth was verified against Asana's documentation and live OAuth metadata,
-then deferred, because neither half of a two-method connection completes in the
-pinned Dex Web `cli-v1.1.0`:
+then deferred, because neither half of a two-method connection completes in
+Dex Web `cli-v1.1.0`:
 
 - Asana's token response (`POST https://app.asana.com/-/oauth_token`,
   form-encoded, `client_secret_post` or `client_secret_basic`, `token_type`
@@ -250,7 +250,7 @@ GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
 ```
 
-With the pinned Dex development server running, the example owns its real
+With the latest Dex development server running, the example owns its real
 Worker, retry, RPC, persistence, and transition coverage:
 
 ```bash

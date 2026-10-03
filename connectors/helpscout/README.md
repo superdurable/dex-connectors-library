@@ -66,14 +66,13 @@ select `defect`; any other token failure returns Retry.
 key of the Help Scout webhook, at most 40 characters, which you choose.
 
 Help Scout's authorization-code flow, for apps that other Help Scout accounts
-authorize, is not offered. Dex Web `cli-v1.2.0`, the release in
-`.dex-compat-version`, requires every manifest scope in the token response's
-`scope` string, and Help Scout defines no scopes and returns none.
+authorize, is not offered. Dex Web releases before `cli-v1.4.0` require every
+manifest scope in the token response's `scope` string, and Help Scout defines
+no scopes and returns none.
 [superdurable/dex#581](https://github.com/superdurable/dex/pull/581) and
 [#582](https://github.com/superdurable/dex/pull/582) let Dex Web accept such
-providers; they first ship in `cli-v1.4.0`, newer than this repository's
-compatibility baseline. An authorization-code method can return once the
-baseline includes them.
+providers from `cli-v1.4.0`, so a later connector release can add an
+authorization-code method that requires it.
 
 ### Local connections
 

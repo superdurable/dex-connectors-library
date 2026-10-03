@@ -40,8 +40,8 @@ rejected request, an invalid response, and a local defect fail the Flow.
 
 ## 1. Generate the Flow Definition
 
-From `connectors/intercom`, generate strict FDG 2.0 with the dexcli release
-pinned in the repository's `.dex-compat-version` file
+From `connectors/intercom`, generate strict FDG 2.0 with the latest stable
+dexcli release
 (`python3 script/dex_compatibility.py install-dexcli --output <path>` installs
 it):
 
@@ -198,7 +198,7 @@ go test -race ./examples/answer-duplicate-conversation/...
 The unit tests cover the Flow's identities, admission rule, skip and choice
 rules, mappers, the configuration loading, and the README samples.
 
-With the pinned Dex development server running, the real-Dex tests drive the
+With the latest Dex development server running, the real-Dex tests drive the
 Flow on a real Worker against a stateful fake Intercom that requires the
 bearer token and `Intercom-Version: 2.16`:
 

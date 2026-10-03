@@ -54,8 +54,8 @@ and create access to the object.
 
 ## Run
 
-Generate strict FDG 2.0 from `connectors/salesforce` with the dexcli release
-pinned in the repository's `.dex-compat-version` file:
+Generate strict FDG 2.0 from `connectors/salesforce` with the latest stable
+dexcli release:
 
 ```bash
 mkdir -p build

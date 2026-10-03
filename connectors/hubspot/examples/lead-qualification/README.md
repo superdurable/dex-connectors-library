@@ -46,8 +46,7 @@ change.
 ## Release baseline
 
 - HubSpot Connector `v0.1.0`
-- dexcli `cli-v1.1.0`, the version pinned in the repository's
-  `.dex-compat-version` file
+- dexcli `cli-v1.1.0` or a later stable release
 
 ## 1. Prepare a clean local test project
 

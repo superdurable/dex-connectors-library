@@ -33,8 +33,8 @@ This example receives signed Help Scout webhooks and starts one
 
 ## 1. Generate the Flow Definition
 
-From `connectors/helpscout`, generate strict FDG 2.0 with the dexcli release
-pinned in the repository's `.dex-compat-version` file
+From `connectors/helpscout`, generate strict FDG 2.0 with the latest stable
+dexcli release
 (`python3 script/dex_compatibility.py install-dexcli --output <path>` installs
 it):
 

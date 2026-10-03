@@ -59,8 +59,8 @@ their 24-character IDs.
 
 ## Run
 
-Generate strict FDG 2.0 from `connectors/atlassian/trello` with the dexcli
-release pinned in the repository's `.dex-compat-version` file:
+Generate strict FDG 2.0 from `connectors/atlassian/trello` with the latest
+stable dexcli release:
 
 ```bash
 mkdir -p build
@@ -108,7 +108,7 @@ URL, the card read back after a move, and the comment's action ID.
 GOWORK=off go test -race ./examples/approved-request-card/...
 ```
 
-With the pinned Dex development server running, the integration test drives the
+With the latest Dex development server running, the integration test drives the
 Flow on a real Worker against a stateful fake Trello that requires the `OAuth`
 header: a new card created once after a second page beside a near-duplicate, a
 mention, and an archived card, then commented; an open card with the request ID

@@ -50,8 +50,8 @@ Worker reads the saved value once at startup, so restart it after saving.
 
 ## Run
 
-Generate strict FDG 2.0 from `connectors/atlassian/jira` with the dexcli
-release pinned in the repository's `.dex-compat-version` file:
+Generate strict FDG 2.0 from `connectors/atlassian/jira` with the latest stable
+dexcli release:
 
 ```bash
 mkdir -p build
@@ -93,7 +93,7 @@ read-back issue, the comment ID, and the final status.
 GOWORK=off go test -race ./examples/triage-issue/...
 ```
 
-With the pinned Dex development server running, the integration test drives
+With the latest Dex development server running, the integration test drives
 the Flow on a real Worker against a stateful fake Jira: a new issue created
 once beside a near-duplicate and read back, commented, and moved; an open
 issue with the same summary reused; a rejected create; a rate-limited create
