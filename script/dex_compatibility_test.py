@@ -1,9 +1,11 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
 
+import io
 import re
 import tempfile
 import unittest
+import urllib.error
 from pathlib import Path
 from unittest.mock import patch
 
@@ -13,10 +15,12 @@ from script.dex_compatibility import (
     CREDENTIAL_ISOLATION_FIXTURE,
     CREDENTIAL_ISOLATION_MODULE_PATH,
     GO_VET_BUILD_TAG_SETS,
+    GITHUB_REQUEST_ATTEMPTS,
     connector_releases,
     create_module_proxy,
     dex_web_compatibility_sources,
     dex_web_compatibility_test_names,
+    download,
     example_consumer_name,
     fixture_module_path,
     flow_examples,
@@ -196,6 +200,43 @@ class LatestDexGoSdkTest(unittest.TestCase):
                         constraint_tags.update(re.findall(r"[A-Za-z_][A-Za-z0-9_.]*", line.removeprefix("//go:build ")))
         self.assertTrue(constraint_tags)
         self.assertLessEqual(constraint_tags, set(GO_VET_BUILD_TAG_SETS) - {""})
+
+
+
+class TransientGitHubRetryTest(unittest.TestCase):
+    URL = "https://github.com/superdurable/dex/releases/download/cli-v1.5.0/checksums.txt"
+
+    def http_error(self, status: int) -> urllib.error.HTTPError:
+        return urllib.error.HTTPError(self.URL, status, "error", {}, None)
+
+    def test_download_retries_server_errors_until_the_asset_arrives(self) -> None:
+        responses = [self.http_error(503), self.http_error(502), io.BytesIO(b"checksums")]
+        with tempfile.TemporaryDirectory() as directory, \
+                patch("script.dex_compatibility.urllib.request.urlopen", side_effect=responses) as urlopen, \
+                patch("script.dex_compatibility.time.sleep") as sleep:
+            output = Path(directory) / "checksums.txt"
+            download(self.URL, output)
+            self.assertEqual(output.read_bytes(), b"checksums")
+        self.assertEqual(urlopen.call_count, 3)
+        self.assertEqual([call.args[0] for call in sleep.call_args_list], [2, 4])
+
+    def test_download_fails_once_retries_are_exhausted(self) -> None:
+        responses = [self.http_error(503)] * GITHUB_REQUEST_ATTEMPTS
+        with tempfile.TemporaryDirectory() as directory, \
+                patch("script.dex_compatibility.urllib.request.urlopen", side_effect=responses) as urlopen, \
+                patch("script.dex_compatibility.time.sleep"):
+            with self.assertRaisesRegex(RuntimeError, "download failed: .*503"):
+                download(self.URL, Path(directory) / "checksums.txt")
+        self.assertEqual(urlopen.call_count, GITHUB_REQUEST_ATTEMPTS)
+
+    def test_download_does_not_retry_a_missing_asset(self) -> None:
+        with tempfile.TemporaryDirectory() as directory, \
+                patch("script.dex_compatibility.urllib.request.urlopen", side_effect=[self.http_error(404)]) as urlopen, \
+                patch("script.dex_compatibility.time.sleep") as sleep:
+            with self.assertRaisesRegex(RuntimeError, "download failed: .*404"):
+                download(self.URL, Path(directory) / "checksums.txt")
+        self.assertEqual(urlopen.call_count, 1)
+        sleep.assert_not_called()
 
 
 if __name__ == "__main__":
