@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import http.client
 import json
 import os
 import platform
@@ -20,6 +21,8 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import time
+import urllib.error
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -52,6 +55,8 @@ CONNECTOR_SDK_DIRECTORY = Path("sdkgo")
 CONNECTOR_SDK_MODULE = f"github.com/{REPOSITORY}/sdkgo"
 # Vetted one at a time because integration-only and live-only files may declare the same helpers.
 GO_VET_BUILD_TAG_SETS = ("", "integration", "live", "dexcompat")
+GITHUB_REQUEST_ATTEMPTS = 5
+TRANSIENT_HTTP_STATUSES = frozenset({429, 500, 502, 503, 504})
 GO_MODULE_COPY_IGNORED_NAMES = ("node_modules", "dist", ".git")
 
 
@@ -172,8 +177,12 @@ def github_json(url: str) -> object:
     token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
     if token:
         request.add_header("Authorization", f"Bearer {token}")
-    with urllib.request.urlopen(request, timeout=60) as response:
-        return json.load(response)
+
+    def read() -> object:
+        with urllib.request.urlopen(request, timeout=60) as response:
+            return json.load(response)
+
+    return with_transient_retries(read)
 
 
 def download(url: str, output: Path) -> None:
@@ -182,11 +191,34 @@ def download(url: str, output: Path) -> None:
     if token and "api.github.com" in url:
         request.add_header("Authorization", f"Bearer {token}")
         request.add_header("Accept", "application/octet-stream")
-    try:
+
+    def fetch() -> None:
         with urllib.request.urlopen(request, timeout=120) as response, output.open("wb") as destination:
             shutil.copyfileobj(response, destination)
+
+    try:
+        with_transient_retries(fetch)
     except Exception as error:
         raise RuntimeError(f"download failed: {url}: {error}") from error
+
+
+def with_transient_retries(operation):
+    """Runs one GitHub request, retrying rate limits, server errors and dropped connections.
+
+    A release must not fail because GitHub briefly answered 503. Other HTTP
+    errors, such as a missing asset, fail on the first attempt.
+    """
+    for attempt in range(1, GITHUB_REQUEST_ATTEMPTS + 1):
+        try:
+            return operation()
+        except urllib.error.HTTPError as error:
+            if error.code not in TRANSIENT_HTTP_STATUSES or attempt == GITHUB_REQUEST_ATTEMPTS:
+                raise
+        except (urllib.error.URLError, http.client.IncompleteRead, ConnectionError, TimeoutError):
+            if attempt == GITHUB_REQUEST_ATTEMPTS:
+                raise
+        time.sleep(2 ** attempt)
+    raise AssertionError("retry loop always returns or raises")
 
 
 def github_releases(repository: str) -> list[dict[str, object]]:
