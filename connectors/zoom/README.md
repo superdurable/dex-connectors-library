@@ -246,7 +246,7 @@ GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
 ```
 
-With the pinned Dex development server running, the example's real Dex
+With the latest Dex development server running, the example's real Dex
 integration tests cover Worker, retry, RPC, Channel, Timer, persistence, and
 recovery behavior:
 

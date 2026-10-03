@@ -31,8 +31,8 @@ invoice or payment instead of writing again.
 
 ## Generate the Flow Definition
 
-Generate strict FDG 2.0 from `connectors/xero` with the dexcli release pinned
-in the repository's `.dex-compat-version` file:
+Generate strict FDG 2.0 from `connectors/xero` with the latest stable dexcli
+release:
 
 ```bash
 dexcli visualize ./examples/approved-order/flow/workflow.go \
@@ -125,7 +125,7 @@ the real organisation; void the test invoice in Xero afterwards.
 GOWORK=off go test -race ./examples/approved-order/...
 ```
 
-With the pinned Dex development server running, the integration tests drive
+With the latest Dex development server running, the integration tests drive
 the Flow on a real Worker against a stateful fake Xero that issues Custom
 Connection tokens, lists connections, and, like Xero, caches each
 Idempotency-Key's response, makes a concurrent repeat wait for the first

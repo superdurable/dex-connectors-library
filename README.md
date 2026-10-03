@@ -304,6 +304,13 @@ The manifest `metadata.version` is the release version. The root `catalog.yaml`
 is the sorted membership allowlist used to generate the public catalog. Adding
 a connector changes no other shared inventory.
 
+Modules record the minimum Dex Go SDK they need, and Dex Server is backward
+compatible with earlier SDK releases. An application may move the Dex Go SDK,
+the Connector SDK, a connector, or the Dex CLI to a newer stable release after
+reading that release's Breaking Changes section. CI checks the connectors
+against the latest stable Dex CLI and Dex Go SDK; see
+[Dex versions](docs/versioning-and-releases.md#dex-versions).
+
 The repository does not track a Go workspace. Run `make workspace` to generate
 an ignored local `go.work`; CI and release verification always use
 `GOWORK=off` for standalone modules.

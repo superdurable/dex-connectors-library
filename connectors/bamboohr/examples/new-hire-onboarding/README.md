@@ -57,8 +57,8 @@ employees, and view the hire's time off.
 
 ## Generate the Flow Definition
 
-Generate strict FDG 2.0 from `connectors/bamboohr` with the dexcli release
-pinned in the repository's `.dex-compat-version` file:
+Generate strict FDG 2.0 from `connectors/bamboohr` with the latest stable dexcli
+release:
 
 ```bash
 mkdir -p build
@@ -144,7 +144,7 @@ email; use a sandbox company or remove the test employee afterwards.
 GOWORK=off go test -race ./examples/new-hire-onboarding/...
 ```
 
-With the pinned Dex development server running, the integration tests drive
+With the latest Dex development server running, the integration tests drive
 the Flow on a real Worker against a stateful fake BambooHR that, like
 BambooHR, has no idempotency key and matches emails by substring:
 

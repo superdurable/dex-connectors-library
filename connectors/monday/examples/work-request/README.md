@@ -32,8 +32,8 @@ a missing board, an invalid response, or a local defect.
 
 ## Generate the Flow Definition
 
-Generate strict FDG 2.0 from `connectors/monday` with the dexcli release pinned
-in the repository's `.dex-compat-version` file:
+Generate strict FDG 2.0 from `connectors/monday` with the latest stable dexcli
+release:
 
 ```bash
 dexcli visualize ./examples/work-request/flow/workflow.go \
@@ -120,7 +120,7 @@ monday.com afterwards.
 GOWORK=off go test -race ./examples/work-request/...
 ```
 
-With the pinned Dex development server running, the integration tests drive
+With the latest Dex development server running, the integration tests drive
 the Flow on a real Worker against a stateful fake monday.com. Like monday.com,
 the fake caches each `Idempotency-Key`'s response, answers a concurrent
 duplicate with `409 IDEMPOTENCY_CONFLICT`, and replays a finished one with

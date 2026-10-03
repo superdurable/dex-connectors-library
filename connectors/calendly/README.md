@@ -55,10 +55,11 @@ Trigger. With a personal access token it is a secret you generate, such as
 `openssl rand -hex 32`, that `createWebhookSubscription` registers. An OAuth
 app's key is the one Calendly showed when the app was created.
 
-Dex Web `cli-v1.1.0`, the pinned compatibility release, cannot save the
-personal access token method of a connector with several sign-in methods
+Dex Web releases before `cli-v1.2.0` cannot save the personal access token
+method of a connector with several sign-in methods
 ([superdurable/dex#570](https://github.com/superdurable/dex/pull/570), fixed
-in `cli-v1.2.0`); the [example README](examples/invitee-recorder/README.md#3-configure-the-connection)
+in `cli-v1.2.0`); for those releases, the
+[example README](examples/invitee-recorder/README.md#3-configure-the-connection)
 shows the connection record to write by hand.
 
 When an operation names no user or organization, the connector reads

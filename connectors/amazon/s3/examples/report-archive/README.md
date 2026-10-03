@@ -34,8 +34,8 @@ input. The example's Steps have no configuration units.
 
 ## Run
 
-Generate strict FDG 2.0 from `connectors/amazon/s3` with the dexcli release
-pinned in the repository's `.dex-compat-version` file:
+Generate strict FDG 2.0 from `connectors/amazon/s3` with the latest stable
+dexcli release:
 
 ```bash
 mkdir -p build

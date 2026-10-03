@@ -58,8 +58,7 @@ names where its value comes from.
 A user signs in through Microsoft consent and every operation works on that
 user's own mailbox (`/me`). **This method needs Dex CLI and Dex Web
 `cli-v1.4.1` or later.** Microsoft does not echo `offline_access` in a token
-response's `scope`, so `cli-v1.4.0` and earlier, including the
-`.dex-compat-version` baseline, reject the consent with
+response's `scope`, so `cli-v1.4.0` and earlier reject the consent with
 `CONNECTOR_OAUTH_SCOPE_INSUFFICIENT`; `cli-v1.4.1` (dex#584) accepts the
 returned `refresh_token` as proof of `offline_access`.
 
@@ -379,7 +378,7 @@ GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
 ```
 
-With the pinned Dex development server running, the module owns its real
+With the latest Dex development server running, the module owns its real
 Worker, retry, persistence, duplicate-dispatch, and transition coverage:
 
 ```bash

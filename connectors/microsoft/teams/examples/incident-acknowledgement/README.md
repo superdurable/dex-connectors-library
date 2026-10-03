@@ -46,8 +46,8 @@ acknowledgement, and Teams shows it as the sender of every message.
 
 ## Run
 
-Generate strict FDG 2.0 from `connectors/microsoft/teams` with the dexcli
-release pinned in the repository's `.dex-compat-version` file:
+Generate strict FDG 2.0 from `connectors/microsoft/teams` with the latest stable
+dexcli release:
 
 ```bash
 mkdir -p build
@@ -91,7 +91,7 @@ number of reply checks, the acknowledging person, and any escalation.
 GOWORK=off go test -race ./examples/incident-acknowledgement/...
 ```
 
-With the pinned Dex development server running, the integration tests drive
+With the latest Dex development server running, the integration tests drive
 the Flow on a real Worker against a stateful fake Microsoft Graph: an incident
 posted, replied to, and acknowledged by a person after a non-acknowledging
 reply and the poster's own `ack`; a channel post and a reply that each take nine

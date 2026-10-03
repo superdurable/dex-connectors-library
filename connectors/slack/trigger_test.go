@@ -1080,10 +1080,12 @@ func receiveEventIDWithin(t *testing.T, eventIDs <-chan string, timeout time.Dur
 	}
 }
 
+// flowNotActiveError returns the ServiceError that Dex Go SDK releases wrap in their closed-Flow error type.
 func flowNotActiveError() error {
-	return &dex.FlowNotActiveError{ServiceError: &dex.ServiceError{
-		Op: "InvokeRPC", FlowID: "slack-thread", Detail: "workflow execution already completed",
-	}}
+	return &dex.ServiceError{
+		Op: "InvokeRPC", FlowID: "slack-thread", SubStatus: dex.ErrorSubStatusFlowNotFound,
+		Detail: "workflow execution already completed",
+	}
 }
 
 func newFakeSocketModeConnection(t *testing.T, dialer socketDialer, options ...Option) Connection {

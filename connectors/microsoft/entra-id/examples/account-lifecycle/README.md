@@ -36,8 +36,8 @@ responses, and local defects fail the Flow.
 
 ## Generate the Flow Definition
 
-Generate strict FDG 2.0 from `connectors/microsoft/entra-id` with the dexcli
-release pinned in the repository's `.dex-compat-version` file:
+Generate strict FDG 2.0 from `connectors/microsoft/entra-id` with the latest
+stable dexcli release:
 
 ```bash
 dexcli visualize ./examples/account-lifecycle/flow/workflow.go \
@@ -123,7 +123,7 @@ offboard it afterwards.
 GOWORK=off go test -race ./examples/account-lifecycle/...
 ```
 
-With the pinned Dex development server running, the integration tests drive
+With the latest Dex development server running, the integration tests drive
 the Flow on a real Worker against `internal/graphfake`: a create and a
 membership add that each answer after nine seconds, so Dex dispatches a backup
 attempt, with exactly one account and one membership; a lost create response

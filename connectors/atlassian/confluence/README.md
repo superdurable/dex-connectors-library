@@ -77,7 +77,7 @@ selects `defect` when the grant covers no Confluence site or several. The
 resolved site is cached until the application restarts.
 
 Two Dex Web gaps, which the Jira connector documents for `cli-v1.1.0` and
-which were not re-checked with the pinned release, affect the picker, so the
+which were not re-checked with later releases, affect the picker, so the
 unit always offers manual entry of the `cloudId` found at
 `https://<your-site>.atlassian.net/_edge/tenant_info`:
 
@@ -343,7 +343,7 @@ GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
 ```
 
-With the pinned Dex development server running, the example owns its real
+With the latest Dex development server running, the example owns its real
 Worker, retry, RPC, persistence, and transition coverage:
 
 ```bash

@@ -311,8 +311,10 @@ func (harness *incidentHarness) startIncident(t *testing.T, ctx context.Context,
 		stopCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		err := harness.client.StopFlow(stopCtx, flowID, dex.StopOptions{Type: dex.CancelFlow, Reason: "integration test finished"})
-		var notActive *dex.FlowNotActiveError
-		if !errors.As(err, &notActive) {
+		// Dex Go SDK releases name the closed-Flow error type differently; each embeds this sub-status.
+		var serviceError *dex.ServiceError
+		isClosedFlow := errors.As(err, &serviceError) && serviceError.SubStatus == dex.ErrorSubStatusFlowNotFound
+		if !isClosedFlow {
 			require.NoError(t, err, "a Flow still waiting for an acknowledgement is cancelled")
 		}
 	})

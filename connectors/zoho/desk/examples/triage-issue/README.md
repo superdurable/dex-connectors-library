@@ -30,8 +30,8 @@ ticket, a missing ticket, an invalid response, or a local defect.
 
 ## Generate the Flow Definition
 
-Generate strict FDG 2.0 from `connectors/zoho/desk` with the dexcli release
-pinned in the repository's `.dex-compat-version` file:
+Generate strict FDG 2.0 from `connectors/zoho/desk` with the latest stable
+dexcli release:
 
 ```bash
 mkdir -p /tmp/zoho-desk-render
@@ -128,7 +128,7 @@ and the review state.
 GOWORK=off go test -race ./examples/triage-issue/...
 ```
 
-With the pinned Dex development server running, the integration tests drive
+With the latest Dex development server running, the integration tests drive
 the Flow on a real Worker against a stateful fake Zoho Desk that, like Zoho
 Desk, has no idempotency key, sends IDs and counts as strings, answers an
 empty search with 204, and matches look-alike addresses in its email filter:

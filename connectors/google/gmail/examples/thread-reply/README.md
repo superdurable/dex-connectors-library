@@ -79,8 +79,7 @@ durable Gmail history checkpoints are outside this local example.
 
 ## Run
 
-Before starting Dex, verify the example with the dexcli release pinned in the
-repository's `.dex-compat-version` file:
+Before starting Dex, verify the example with the latest stable dexcli release:
 
 ```bash
 mkdir -p build

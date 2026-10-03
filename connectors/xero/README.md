@@ -105,11 +105,11 @@ exchange, and the manifest schema cannot yet declare Dex Web `cli-v1.4.0`'s
 `client_secret_basic` and `client_secret_post`, so the form body is
 accepted. Xero's guide does not list `scope` among the code exchange's
 response fields, although it lists it for the client credentials response.
-Dex Web `cli-v1.4.0`, the release in `.dex-compat-version`, accepts a token
-response without `scope` and checks the scopes only when Xero returns them;
-`cli-v1.2.0` and earlier reject such a grant with
-`CONNECTOR_OAUTH_SCOPE_INSUFFICIENT`, and the Custom Connection is then the
-working method. The exchange was not verified against a live Xero app.
+Dex Web `cli-v1.4.0` and later accept a token response without `scope` and
+check the scopes only when Xero returns them; `cli-v1.2.0` and earlier reject
+such a grant with `CONNECTOR_OAUTH_SCOPE_INSUFFICIENT`, and the Custom
+Connection is then the working method. The exchange was not verified against
+a live Xero app.
 
 PKCE apps (Xero's "Mobile or desktop app" type) have no client secret and are
 not supported by this release.
@@ -333,7 +333,7 @@ GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
 ```
 
-With the pinned Dex development server running, the example owns its real
+With the latest Dex development server running, the example owns its real
 Worker, retry, persistence, and duplicate-dispatch coverage:
 
 ```bash

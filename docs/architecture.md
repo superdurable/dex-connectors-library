@@ -119,8 +119,9 @@ contains transport and classification logic; constructor options carry code
 dependencies such as HTTP clients and idempotency derivation functions.
 
 The SDK and connectors use independent Go modules and directory-prefixed tags.
-An SDK contract change is released first; connectors pin that exact release in
-later PRs. Git tags, not the source catalog, define published versions.
+An SDK contract change is released first; connectors require that exact
+release in later PRs. Git tags, not the source catalog, define published
+versions.
 
 ## CI and release topology
 
@@ -143,6 +144,10 @@ one component, and verifies released compatibility. The generated Pages
 catalog and directory site are published only after all requested releases
 succeed or when none are pending.
 
+Compatibility jobs resolve the latest stable Dex CLI release and the latest
+stable Dex Go SDK on every run, so no checked-in file pins a Dex version. See
+[Dex versions](versioning-and-releases.md#dex-versions).
+
 ## Studio UI distribution
 
 A manifest may declare a setup entrypoint, Host API range, backend capability
@@ -158,9 +163,12 @@ credentials.
 
 ## Static visualization boundary
 
-Factory execution and visualization use Dex Server, CLI, and Go SDK v0.11.3.
-Dex CLI recognizes the canonical static factory form documented in runnable
-examples. Dynamic Step types, branch collections, or targets cannot be
+Each module declares the minimum Dex Go SDK it needs. Dex Server is backward
+compatible with every earlier SDK release, so an application may select any
+newer stable SDK. CI checks factory execution and visualization with the
+latest stable Dex CLI and builds the current source with the latest stable Dex
+Go SDK. Dex CLI recognizes the canonical static factory form documented in
+runnable examples. Dynamic Step types, branch collections, or targets cannot be
 represented reliably by static analysis.
 
 ## UI/UX

@@ -1,8 +1,12 @@
 # Dex-native Connector contract v1alpha1
 
-The Go types in `sdkgo` are the executable form of this contract. G2a uses
-Dex Server 0.11.3 and `sdk-go v0.11.3`; it does not change Dex Server or its
-database.
+The Go types in `sdkgo` are the executable form of this contract. Connector
+modules declare the minimum Dex Go SDK, `github.com/superdurable/dex/sdk-go`,
+that they need. Dex Server is backward compatible with every earlier SDK
+release, so an application may select any newer stable SDK, and CI checks the
+contract with the latest stable Dex CLI and Dex Go SDK. The contract does not
+change Dex Server or its database. See
+[Dex versions](versioning-and-releases.md#dex-versions).
 
 ## Operation and Step factory boundary
 
@@ -245,8 +249,8 @@ Step defaults, and identity constants. CI runs `connectorctl generate --check`
 to reject drift.
 
 The provider-neutral SDK and every connector are independently released Go
-modules. Connector modules pin an already-published SDK version, and any
-connector module they require at a released, complete tag. Directory-
+modules. Connector modules require an already-published SDK release and,
+for any connector module they depend on, a released, complete tag. Directory-
 prefixed Git tags record published versions. Each manifest declares its next
 release version, while generated application APIs remain version-independent.
 

@@ -96,8 +96,8 @@ The command must finish without blocking diagnostics and create
 `build/slack-thread-approval.json`.
 
 The required compatibility gate repeats this visualization twice in a clean
-consumer module using the dexcli release pinned in `.dex-compat-version`. The
-scheduled canary separately tests the latest stable dexcli. The output must be
+consumer module using the latest stable dexcli release, and the scheduled
+canary repeats it for the latest published Slack release. The output must be
 deterministic and retain both connector Steps, both Trigger bindings, all
 branch targets, and the Result Attribute.
 

@@ -2,7 +2,10 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
 
-"""Exercise current or published Connectors against a pinned or latest Dex release."""
+"""Exercise current or published Connectors against the latest stable Dex release.
+
+DEX_CLI_VERSION or --dex-version selects an exact Dex CLI release only to reproduce a failure.
+"""
 
 from __future__ import annotations
 
@@ -44,12 +47,22 @@ CONNECTION_RECORD_RELEASES_ENVIRONMENT = "DEX_CONNECTOR_COMPAT_CONNECTION_RECORD
 CONNECTION_RECORD_OUTPUT_ENVIRONMENT = "DEX_CONNECTOR_COMPAT_CONNECTION_RECORDS_OUTPUT"
 SDK_CONNECTION_RECORD_ENVIRONMENT = "DEX_CONNECTOR_COMPAT_CONNECTION_RECORDS"
 SDK_CONNECTION_RECORD_TEST = "TestDexWebWrittenConnectionRecords"
+DEX_GO_SDK_MODULE = "github.com/superdurable/dex/sdk-go"
+CONNECTOR_SDK_DIRECTORY = Path("sdkgo")
+CONNECTOR_SDK_MODULE = f"github.com/{REPOSITORY}/sdkgo"
+# Vetted one at a time because integration-only and live-only files may declare the same helpers.
+GO_VET_BUILD_TAG_SETS = ("", "integration", "live", "dexcompat")
+GO_MODULE_COPY_IGNORED_NAMES = ("node_modules", "dist", ".git")
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("mode", choices=("current", "released", "install-dexcli"))
-    parser.add_argument("--dex-version", default=os.environ.get("DEX_CLI_VERSION"))
+    parser.add_argument("mode", choices=("current", "released", "install-dexcli", "latest-go-sdk"))
+    parser.add_argument(
+        "--dex-version",
+        default=os.environ.get("DEX_CLI_VERSION") or "latest",
+        help="Dex CLI release tag such as cli-v1.4.2 for failure reproduction; defaults to the latest stable release",
+    )
     parser.add_argument("--output")
     parser.add_argument("--connector-tag", default=os.environ.get("CONNECTOR_RELEASE_TAG"))
     parser.add_argument(
@@ -60,8 +73,11 @@ def main() -> int:
 
     root = Path(__file__).resolve().parents[1]
     selected_directories = parse_connector_directories(root, args.connector_directories)
-    configured_version = args.dex_version or (root / ".dex-compat-version").read_text().strip()
-    dex_release = resolve_dex_release(configured_version)
+    if args.mode == "latest-go-sdk":
+        with tempfile.TemporaryDirectory(prefix="dex-go-sdk-") as temporary:
+            verify_latest_dex_go_sdk(root, Path(temporary), selected_directories)
+        return 0
+    dex_release = resolve_dex_release(args.dex_version)
     with tempfile.TemporaryDirectory(prefix="dex-compat-") as temporary:
         temporary_root = Path(temporary)
         dexcli = download_dexcli(dex_release, temporary_root)
@@ -88,6 +104,64 @@ def main() -> int:
         ]
         test_dex_web(dex_release, root, artifacts, credential_isolation_release, connection_record_releases, temporary_root)
     return 0
+
+
+def verify_latest_dex_go_sdk(root: Path, temporary_root: Path, connector_directories: list[str] | None) -> None:
+    """Builds and vets the Connector SDK and the selected connectors with the latest stable Dex Go SDK.
+
+    Each module is a temporary copy. A connector replaces its released Connector SDK with this checkout's
+    source, as an application does when it moves every library to its newest release.
+    """
+    connector_sdk = copy_go_module(root / CONNECTOR_SDK_DIRECTORY, temporary_root / CONNECTOR_SDK_DIRECTORY)
+    version = latest_stable_go_module_version(DEX_GO_SDK_MODULE, connector_sdk)
+    print(f"Latest Dex Go SDK: module={DEX_GO_SDK_MODULE} version={version}", flush=True)
+    build_and_vet_with_dex_go_sdk(connector_sdk, version)
+    failures: list[str] = []
+    for manifest in manifests(root, connector_directories):
+        connector_directory = manifest.parent.relative_to(root)
+        connector = copy_go_module(manifest.parent, temporary_root / connector_directory)
+        try:
+            run(
+                ["go", "mod", "edit", f"-replace={CONNECTOR_SDK_MODULE}={connector_sdk}"],
+                connector,
+                standalone_go_environment(),
+            )
+            build_and_vet_with_dex_go_sdk(connector, version)
+        except RuntimeError as error:
+            failures.append(f"{connector_directory.as_posix()}: {error}")
+    if failures:
+        raise RuntimeError(f"connectors failed with {DEX_GO_SDK_MODULE}@{version}:\n" + "\n".join(failures))
+
+
+def copy_go_module(source: Path, destination: Path) -> Path:
+    shutil.copytree(source, destination, ignore=shutil.ignore_patterns(*GO_MODULE_COPY_IGNORED_NAMES))
+    return destination
+
+
+def latest_stable_go_module_version(module: str, directory: Path) -> str:
+    result = run(["go", "list", "-m", "-json", f"{module}@latest"], directory, standalone_go_environment())
+    version = str(json.loads(result.stdout).get("Version", ""))
+    if not STABLE_VERSION.fullmatch(version):
+        raise RuntimeError(f"latest {module} version is not a stable release: {version or 'none'}")
+    return version
+
+
+def build_and_vet_with_dex_go_sdk(module_root: Path, version: str) -> None:
+    """Requires the Dex Go SDK version, then builds every package and vets each build-tag file set."""
+    environment = standalone_go_environment()
+    run(["go", "get", f"{DEX_GO_SDK_MODULE}@{version}"], module_root, environment)
+    run(["go", "mod", "tidy"], module_root, environment)
+    selected = run(["go", "list", "-m", "-f", "{{.Version}}", DEX_GO_SDK_MODULE], module_root, environment)
+    if selected.stdout.strip() != version:
+        raise RuntimeError(f"{module_root} selected {DEX_GO_SDK_MODULE}@{selected.stdout.strip()}, not {version}")
+    run(["go", "build", "./..."], module_root, environment)
+    for tags in GO_VET_BUILD_TAG_SETS:
+        run(["go", "vet", f"-tags={tags}", "./..."], module_root, environment)
+    print(f"Latest Dex Go SDK: module={module_path(module_root)} version={version} build=ok vet=ok", flush=True)
+
+
+def standalone_go_environment() -> dict[str, str]:
+    return {**os.environ, "GOWORK": "off"}
 
 
 def github_json(url: str) -> object:
@@ -134,7 +208,8 @@ def stable_key(version: str) -> tuple[int, int, int]:
     return tuple(int(value) for value in match.groups())
 
 
-def resolve_dex_release(version_override: str | None) -> dict[str, object]:
+def resolve_dex_release(requested_version: str) -> dict[str, object]:
+    """Returns the highest stable cli-vX.Y.Z release, or the exact stable release requested for reproduction."""
     releases = github_releases(DEX_REPOSITORY)
     candidates = [
         release for release in releases
@@ -142,12 +217,11 @@ def resolve_dex_release(version_override: str | None) -> dict[str, object]:
         and str(release.get("tag_name", "")).startswith("cli-v")
         and STABLE_VERSION.fullmatch(str(release["tag_name"])[4:])
     ]
-    requested = version_override
-    if requested and requested != "latest":
-        requested = requested if requested.startswith("cli-") else f"cli-{requested}"
-        candidates = [release for release in candidates if release["tag_name"] == requested]
+    if requested_version != "latest":
+        requested_tag = requested_version if requested_version.startswith("cli-") else f"cli-{requested_version}"
+        candidates = [release for release in candidates if release["tag_name"] == requested_tag]
     if not candidates:
-        raise RuntimeError(f"no stable Dex CLI release found for {version_override or 'latest'}")
+        raise RuntimeError(f"no stable Dex CLI release found for {requested_version}")
     release = max(candidates, key=lambda value: stable_key(str(value["tag_name"])[4:]))
     reference = github_json(f"https://api.github.com/repos/{DEX_REPOSITORY}/git/ref/tags/{release['tag_name']}")
     git_object = reference["object"]
@@ -266,7 +340,7 @@ def create_module_proxy(module_root: Path, proxy: Path) -> tuple[str, str]:
     name = module_path(module_root)
     files = [
         path for path in sorted(module_root.rglob("*"))
-        if path.is_file() and not any(part in {"node_modules", "dist", ".git"} for part in path.parts)
+        if path.is_file() and not any(part in GO_MODULE_COPY_IGNORED_NAMES for part in path.parts)
     ]
     digest = hashlib.sha256()
     for file in files:

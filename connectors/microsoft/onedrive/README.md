@@ -318,7 +318,7 @@ npm run build --prefix ui
 ```
 
 The UI links `sdk/react`, so build it first (`make react-sdk` from the
-repository root). With the pinned Dex development server running, the example
+repository root). With the latest Dex development server running, the example
 owns its real Worker, retry, persistence, and duplicate-dispatch coverage
 against the stateful fake in `internal/graphfake` (each duplicate test takes
 about nine seconds):

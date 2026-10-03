@@ -166,6 +166,14 @@ Every implementation plan includes Tests, Documentation, and UI/UX. Use
 - Core SDK tags use `sdkgo/vX.Y.Z`. Connector tags use the module directory,
   such as `connectors/openai/vX.Y.Z`.
 - Connector modules require an exact published Connector Go SDK release.
+- Dex Server is backward compatible with every earlier Dex SDK release. Pin no
+  Dex Server, Dex Go SDK, or Dex CLI version; record minimums instead. A
+  module's `go.mod` records a minimum `github.com/superdurable/dex/sdk-go`
+  release. Raise it only when the module needs a newer release, then to the
+  newest stable release, after reading that release's Breaking Changes section.
+- Use only released Dex versions: no prerelease, pseudo-version, or `replace`.
+- CI resolves the latest stable Dex CLI and Dex Go SDK on every run. Set
+  `DEX_CLI_VERSION` only to reproduce a failure.
 - A connector may require another connector module only at an exact released
   tag that is reachable from `main` and whose GitHub release has
   `connector-release.complete`. Release the dependency first and pin it in a

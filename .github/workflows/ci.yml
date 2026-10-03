@@ -265,7 +265,6 @@ jobs:
       matrix: ${{ fromJSON(needs.connector-plan.outputs.matrix) }}
     env:
       GH_TOKEN: ${{ github.token }}
-      DEX_CLI_VERSION: latest
       CONNECTOR_SCOPE: all
       CONNECTOR_SHARD_INDEX: ${{ matrix.shard_index }}
       CONNECTOR_SHARD_COUNT: ${{ matrix.shard_count }}
@@ -279,9 +278,38 @@ jobs:
           node-version: 24
       - run: make test-dex-compat-released
 
+  dex-compat-latest-go-sdk:
+    needs: connector-plan
+    if: needs.connector-plan.outputs.count != '0'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 32
+      matrix: ${{ fromJSON(needs.connector-plan.outputs.matrix) }}
+    env:
+      CONNECTOR_SCOPE: ${{ (github.event_name == 'pull_request' || github.event_name == 'push') && 'changed' || 'all' }}
+      CONNECTOR_BASE: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+      CONNECTOR_HEAD: ${{ github.sha }}
+      CONNECTOR_SHARD_INDEX: ${{ matrix.shard_index }}
+      CONNECTOR_SHARD_COUNT: ${{ matrix.shard_count }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+          cache-dependency-path: |
+            go.sum
+            sdkgo/go.sum
+            connectors/**/go.sum
+      - name: Build and vet the Connector SDK and affected connectors with the latest stable Dex Go SDK
+        run: make test-dex-compat-latest-go-sdk
+
   dex-compat-canary-issue:
     if: ${{ always() && github.event_name == 'schedule' }}
-    needs: dex-compat-released
+    needs: [dex-compat-released, dex-compat-latest-go-sdk]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -290,7 +318,8 @@ jobs:
       - name: Update latest Dex compatibility issue
         uses: actions/github-script@v8
         env:
-          CANARY_RESULT: ${{ needs.dex-compat-released.result }}
+          RELEASED_CANARY_RESULT: ${{ needs.dex-compat-released.result }}
+          LATEST_GO_SDK_CANARY_RESULT: ${{ needs.dex-compat-latest-go-sdk.result }}
         with:
           script: |
             const marker = "<!-- dex-compat-latest-canary -->";
@@ -306,7 +335,11 @@ jobs:
               candidate.title === issueTitle &&
               candidate.body?.includes(marker)
             );
-            if (process.env.CANARY_RESULT === "success") {
+            const canaryResults = [
+              ["Released connectors with the latest stable Dex CLI and Web", process.env.RELEASED_CANARY_RESULT],
+              ["Connector SDK and connector source with the latest stable Dex Go SDK", process.env.LATEST_GO_SDK_CANARY_RESULT],
+            ];
+            if (canaryResults.every(([, result]) => result === "success")) {
               if (issue?.state === "open") {
                 await github.rest.issues.createComment({
                   ...context.repo,
@@ -331,18 +364,18 @@ jobs:
                 ...context.repo,
                 name: label,
                 color: "B60205",
-                description: "Dex CLI and Web compatibility failures",
+                description: "Dex CLI, Web, and Go SDK compatibility failures",
               });
             }
             const body = [
               marker,
-              "The scheduled compatibility canary against the latest stable Dex CLI and Web failed.",
+              "The scheduled compatibility canary against the latest stable Dex CLI, Web, or Go SDK failed.",
               "",
               `- Latest failed run: [${context.runId}](${runURL})`,
               `- Connector commit: ${context.sha}`,
-              `- Result: ${process.env.CANARY_RESULT}`,
+              ...canaryResults.map(([check, result]) => `- ${check}: ${result}`),
               "",
-              "Inspect the failed shard for the resolved Dex tag, connector tag, source commit, and artifact digest. Fix current source, publish a new connector release when required, then rerun the canary. This issue closes automatically after a successful scheduled run.",
+              "Inspect the failed shard for the resolved Dex tag or Dex Go SDK version, connector tag, source commit, and artifact digest. Fix current source, publish a new SDK or connector release when required, then rerun the canary. This issue closes automatically after a successful scheduled run.",
             ].join("\n");
             if (issue) {
               await github.rest.issues.addLabels({ ...context.repo, issue_number: issue.number, labels: [label] });

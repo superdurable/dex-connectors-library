@@ -64,7 +64,7 @@ CI behavior is accepted when:
 
 ## Dex CLI and Web compatibility
 
-Current compatibility uses the Dex release pinned in `.dex-compat-version` and
+Current compatibility uses the latest stable Dex CLI and Web release and
 accepts an explicit connector-directory set:
 
 ```bash
@@ -78,7 +78,7 @@ metadata and optional Studio UI artifacts, then runs Dex Web's catalog,
 checksum, caching, sandbox, OAuth, and API-key security suites.
 
 The gate injects every `test/dexcompat/*_test.go.txt` into the Web package of
-the pinned Dex release and fails unless each top-level test passes. Each
+the selected Dex release and fails unless each top-level test passes. Each
 injected file must declare a top-level test, and each Dex Web security suite
 the gate selects must still have a passing test.
 
@@ -127,13 +127,30 @@ unmodified release artifacts:
 make test-dex-compat-released
 ```
 
-The scheduled canary uses `DEX_CLI_VERSION=latest` and the complete catalog.
-Logs identify the selected Dex tag, connector tag, source commit, and artifact
-digest. Exact tags can be supplied for failure reproduction.
+The scheduled canary uses the latest stable Dex release and the complete
+catalog. Logs identify the selected Dex tag, connector tag, source commit, and
+artifact digest. Exact tags, such as `DEX_CLI_VERSION=cli-v1.4.2`, can be
+supplied for failure reproduction.
+
+## Dex Go SDK compatibility
+
+The latest Dex Go SDK check requires the latest stable
+`github.com/superdurable/dex/sdk-go` in temporary copies of `sdkgo` and the
+selected connectors. Each connector copy uses the copied `sdkgo` source:
+
+```bash
+make test-dex-compat-latest-go-sdk
+```
+
+It is accepted when every selected module selects that version, builds, and
+vets with no build tags and with the `integration`, `live`, and `dexcompat`
+tags. Logs name the resolved version and each module that passed. CI runs it
+for affected connectors on pull requests and `main`, and for the complete
+catalog on the daily schedule.
 
 ## Real Dex integration
 
-With the pinned Dex CLI development server running, execute:
+With the latest stable Dex CLI development server running, execute:
 
 ```bash
 dexcli dev

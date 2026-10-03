@@ -34,8 +34,7 @@ invokes `WaitFor` on the start Step and an execute-only Step rejects it.
 ## Release baseline
 
 - GitHub Connector `v0.7.0`
-- dexcli `v0.13.8`, the version pinned in the repository's
-  `.dex-compat-version` file
+- dexcli `v0.13.8` or a later stable release
 
 ## 1. Prepare a clean local test project
 

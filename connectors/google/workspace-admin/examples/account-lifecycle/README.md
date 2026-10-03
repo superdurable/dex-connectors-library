@@ -44,8 +44,8 @@ Start Flow request.
 
 ## Run
 
-Generate strict FDG 2.0 from `connectors/google/workspace-admin` with the
-dexcli release pinned in the repository's `.dex-compat-version` file:
+Generate strict FDG 2.0 from `connectors/google/workspace-admin` with the latest
+stable dexcli release:
 
 ```bash
 mkdir -p build
@@ -101,7 +101,7 @@ a test domain or an address you intend to keep.
 GOWORK=off go test -race ./examples/account-lifecycle/...
 ```
 
-With the pinned Dex development server running, the integration test drives the
+With the latest Dex development server running, the integration test drives the
 Flow on a real Worker against a stateful fake Directory API: an account insert
 and a membership insert that each answer after nine seconds, so Dex dispatches
 a backup attempt, with exactly one account and one membership created; a lost

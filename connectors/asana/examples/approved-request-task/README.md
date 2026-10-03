@@ -55,8 +55,8 @@ once at startup, so restart it after saving.
 
 ## Run
 
-Generate strict FDG 2.0 from `connectors/asana` with the dexcli release pinned in
-the repository's `.dex-compat-version` file:
+Generate strict FDG 2.0 from `connectors/asana` with the latest stable dexcli
+release:
 
 ```bash
 mkdir -p build
@@ -102,7 +102,7 @@ the task read back after assignment, and the comment's story gid.
 GOWORK=off go test -race ./examples/approved-request-task/...
 ```
 
-With the pinned Dex development server running, the integration test drives the
+With the latest Dex development server running, the integration test drives the
 Flow on a real Worker against a stateful fake Asana: a new task created once on
 the second page beside a near-duplicate, a mention, and a completed task, then
 assigned, moved, and commented; an open task with the request ID reused and

@@ -56,10 +56,10 @@ saving. A Worker started without a pick fails each run at its first Step.
 
 ## Run
 
-Generate strict FDG 2.0 from `connectors/google/forms` with the dexcli release
-pinned in the repository's `.dex-compat-version` file
-(`python3 script/dex_compatibility.py install-dexcli --output <path>`
-installs it):
+Generate strict FDG 2.0 from `connectors/google/forms` with the latest stable
+dexcli release
+(`python3 script/dex_compatibility.py install-dexcli --output <path>` installs
+it):
 
 ```bash
 mkdir -p build

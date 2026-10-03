@@ -36,8 +36,8 @@ a missing message, or a local defect.
 
 ## Generate the Flow Definition
 
-Generate strict FDG 2.0 from `connectors/superdurable/email` with the dexcli
-release pinned in the repository's `.dex-compat-version` file:
+Generate strict FDG 2.0 from `connectors/superdurable/email` with the latest
+stable dexcli release:
 
 ```bash
 mkdir -p /tmp/email-reply/graphs /tmp/email-reply/release
@@ -118,7 +118,7 @@ Message-ID, the flags, the archive location, and the review state.
 GOWORK=off go test -race ./examples/customer-reply/...
 ```
 
-With the pinned Dex development server running, the integration tests drive
+With the latest Dex development server running, the integration tests drive
 the Flow on a real Worker against the in-process IMAP and SMTP servers in
 `internal/mailtest`, which, like real servers, have no idempotency key:
 

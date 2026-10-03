@@ -28,8 +28,8 @@ same way.
 
 ## 1. Generate the Flow Definition
 
-From `connectors/superdurable/webhook`, generate strict FDG 2.0 with the dexcli
-release pinned in the repository's `.dex-compat-version` file
+From `connectors/superdurable/webhook`, generate strict FDG 2.0 with the latest
+stable dexcli release
 (`python3 script/dex_compatibility.py install-dexcli --output <path>` installs
 it):
 

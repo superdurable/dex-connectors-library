@@ -49,7 +49,7 @@ startup, so restart it after saving.
 ## Run
 
 Generate strict FDG 2.0 from `connectors/microsoft/outlook-calendar` with the
-dexcli release pinned in the repository's `.dex-compat-version` file:
+latest stable dexcli release:
 
 ```bash
 mkdir -p build
@@ -123,7 +123,7 @@ status, the event, and any busy attendees or conflicting event IDs. A
 GOWORK=off go test -race ./examples/book-meeting/...
 ```
 
-With the pinned Dex development server running, the integration test drives
+With the latest Dex development server running, the integration test drives
 the Flow on a real Worker against a stateful fake Graph: a scheduled meeting
 whose first create response is lost and whose retried Step finds its own hold;
 a create that Graph stores at once but answers after nine seconds, so Dex

@@ -357,7 +357,7 @@ GOWORK=off go vet ./...
 (cd ui && npm ci && npm test && npm run build)
 ```
 
-With the pinned Dex development server running, the example owns its real
+With the latest Dex development server running, the example owns its real
 Worker, retry, persistence, Trigger, and transition coverage:
 
 ```bash
