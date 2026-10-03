@@ -29,15 +29,15 @@ func TestMarkTriggerUndeliverablePreservesCauseAndGRPCStatus(t *testing.T) {
 	require.NoError(t, sdkgo.MarkTriggerUndeliverable(nil))
 	require.False(t, sdkgo.IsTriggerUndeliverable(nil))
 
-	cause := &dex.FlowNotActiveError{ServiceError: &dex.ServiceError{
+	cause := &dex.FlowNotActiveOrNotFoundError{ServiceError: &dex.ServiceError{
 		Op: "InvokeRPC", FlowID: "flow-1", Code: codes.NotFound, Detail: "workflow execution already completed",
 	}}
 	marked := sdkgo.MarkTriggerUndeliverable(cause)
 	require.True(t, sdkgo.IsTriggerUndeliverable(marked))
 	require.ErrorIs(t, marked, cause)
-	var notActive *dex.FlowNotActiveError
-	require.ErrorAs(t, marked, &notActive)
-	require.Same(t, cause, notActive)
+	var notActiveOrNotFound *dex.FlowNotActiveOrNotFoundError
+	require.ErrorAs(t, marked, &notActiveOrNotFound)
+	require.Same(t, cause, notActiveOrNotFound)
 	var undeliverable *sdkgo.UndeliverableTriggerError
 	require.ErrorAs(t, marked, &undeliverable)
 	require.Same(t, cause, undeliverable.Err)

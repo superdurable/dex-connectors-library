@@ -207,9 +207,9 @@ func classifyDexTriggerError(err error) error {
 	if err == nil || IsTriggerUndeliverable(err) {
 		return err
 	}
-	var notActive *dex.FlowNotActiveError
+	var notActiveOrNotFound *dex.FlowNotActiveOrNotFoundError
 	var notFound *dex.FlowNotFoundError
-	if errors.As(err, &notActive) || errors.As(err, &notFound) {
+	if errors.As(err, &notActiveOrNotFound) || errors.As(err, &notFound) {
 		return MarkTriggerUndeliverable(err)
 	}
 	var workerFailure *dex.WorkerInvocationError
