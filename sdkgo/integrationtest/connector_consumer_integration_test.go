@@ -67,8 +67,8 @@ func (flow connectorConsumerFlow) GetSteps() []dex.StepDef {
 		},
 		Found:  sdkgo.GoTo(widgetAlreadyExistsStep{}),
 		Absent: sdkgo.GoTo(prepareWidgetCreationStep{}),
-		Failed: sdkgo.GoTo(connectorConsumerFailedStep[lookupResult]{}),
-		Defect: sdkgo.GoTo(connectorConsumerFailedStep[lookupResult]{}),
+		Failed: sdkgo.GoTo(widgetLookupFailedStep{}),
+		Defect: sdkgo.GoTo(widgetLookupFailedStep{}),
 	})
 	create := fixtureconnector.NewCreateWidgetStep(fixtureconnector.CreateWidgetStepConfig[flowInput]{
 		StepType: createWidgetStepType,
@@ -80,9 +80,9 @@ func (flow connectorConsumerFlow) GetSteps() []dex.StepDef {
 			return fixtureconnector.CreateInput{Name: input.Name}
 		},
 		Completed:       sdkgo.GoTo(widgetCreatedStep{}),
-		Rejected:        sdkgo.GoTo(connectorConsumerFailedStep[createResult]{}),
-		Uncertain:       sdkgo.GoTo(connectorConsumerFailedStep[createResult]{}),
-		Defect:          sdkgo.GoTo(connectorConsumerFailedStep[createResult]{}),
+		Rejected:        sdkgo.GoTo(widgetCreationFailedStep{}),
+		Uncertain:       sdkgo.GoTo(widgetCreationFailedStep{}),
+		Defect:          sdkgo.GoTo(widgetCreationFailedStep{}),
 		ResultAttribute: &createWidgetResult,
 		ProgressStream:  &createWidgetProgress,
 	})
@@ -93,8 +93,8 @@ func (flow connectorConsumerFlow) GetSteps() []dex.StepDef {
 		dex.DefineStep(prepareWidgetCreationStep{}),
 		dex.DefineStep(widgetAlreadyExistsStep{}),
 		dex.DefineStep(widgetCreatedStep{}),
-		dex.DefineStep(connectorConsumerFailedStep[lookupResult]{}),
-		dex.DefineStep(connectorConsumerFailedStep[createResult]{}),
+		dex.DefineStep(widgetLookupFailedStep{}),
+		dex.DefineStep(widgetCreationFailedStep{}),
 	}
 }
 
@@ -154,11 +154,25 @@ func (widgetCreatedStep) Execute(ctx dex.Context, result createResult) (*dex.Ste
 	}), nil
 }
 
-type connectorConsumerFailedStep[IN any] struct {
-	dex.StepDefaultsNoWaitFor[IN]
+// Each failure branch has its own concrete Step type: a generic Step type has no
+// default registered name.
+type widgetLookupFailedStep struct {
+	dex.StepDefaultsNoWaitFor[lookupResult]
 }
 
-func (connectorConsumerFailedStep[IN]) Execute(dex.Context, IN) (*dex.StepDecision, error) {
+func (widgetLookupFailedStep) Execute(dex.Context, lookupResult) (*dex.StepDecision, error) {
+	return failureBranchDecision()
+}
+
+type widgetCreationFailedStep struct {
+	dex.StepDefaultsNoWaitFor[createResult]
+}
+
+func (widgetCreationFailedStep) Execute(dex.Context, createResult) (*dex.StepDecision, error) {
+	return failureBranchDecision()
+}
+
+func failureBranchDecision() (*dex.StepDecision, error) {
 	return dex.ForceFail("fixture connector selected a failure branch"), nil
 }
 
