@@ -9,12 +9,15 @@ Applications normally depend on a connector module such as OpenAI rather than
 constructing the generic factories directly. Connector authors may use the
 generic `NewQueryStep` and `NewMutationStep` APIs as an advanced escape hatch.
 
-Hosted applications use `hostedconfig.NewCredentialProviderFromEnvironment`
-to resolve short-lived, operation-scoped credentials from the trusted
-Superverse broker. The provider reloads its projected workload credential for every
-call and never receives project, environment, refresh-token, or storage
-selectors. Local applications continue to use `localconfig`; both providers
-implement the same `CredentialProvider` contract used by Connector clients.
+An application loads its project configuration once with
+`projectconfig.LoadFromEnvironment` and opens every declared connection with the
+connector's generated `NewProjectConnection(project, connectionName)`.
+Credentials stay in project storage and are resolved during each call. The
+generated code chooses `provider.NewCredentialProvider` or
+`provider.NewRefreshingCredentialProvider` from the manifest's
+`auth.refreshable`, so an application never wires credentials, codecs, or
+refresh. Local development uses the same project configuration on a local
+S3-compatible store.
 
 Connector Trigger sources run outside Dex Steps and deliver typed, stable-ID
 events through `TriggerRunner`. Generated Trigger factories accept any typed
@@ -153,11 +156,11 @@ emits the record:
 - `sdkgo.DeliverTrigger(ctx, target, event, sdkgo.WithTriggerLogger(logger))`;
 - `sdkgo.NewDexFlowTriggerTarget(..., sdkgo.WithTriggerLogger(logger))` and
   `sdkgo.NewDexRPCTriggerTarget(..., sdkgo.WithTriggerLogger(logger))`;
-- `localconfig.NewDurableTriggerTarget(..., localconfig.WithTriggerLogger(logger))`;
+- `provider.NewDurableTriggerTarget(..., provider.WithTriggerLogger(logger))`;
 - the `Logger` field of `sdkgo.TriggerConfig` for runners built by `NewTrigger`.
 
 A connector runner that builds durable inboxes should accept a logger in its
-own options and pass it on with `localconfig.WithTriggerLogger`; see each
+own options and pass it on with `provider.WithTriggerLogger`; see each
 connector's README. When you build a Dex target by hand, attach the binding's
 identity with `logger.With("connector", ..., "connection", ..., "trigger", ...,
 "binding", ...)`, so its filtered and delivered records carry the same four keys
@@ -276,20 +279,18 @@ ordinary `CredentialProvider.Resolve` path.
 
 If a provider explicitly rejects an otherwise unexpired access credential,
 the connector may call `ResolveCredentialAfterRejection` once and retry that
-provider operation once. Local providers force one locked refresh; hosted
-providers send `forceRefresh: true` to the trusted broker. A second rejection
-is terminal for that operation and must not create a refresh loop.
+provider operation once. The project provider refreshes only when the stored
+expiry has passed. A second rejection is terminal for that operation and must
+not create a refresh loop.
 
-`localconfig.NewRefreshingCredentialProvider` reloads the connection after
-acquiring a process-local lock, so concurrent calls refresh once. A successful
-refresh must return a future expiry and the complete replacement credential
-value. The rewrite keeps every record member the SDK does not model, such as
-Dex Web's `authMethodId`, so a newer Dex Web's records survive a refresh. The
-local provider writes that value through an atomic `0600` file
-replacement before returning it. A retryable failed refresh leaves the existing
-file unchanged. A driver wraps terminal provider responses such as
-`invalid_grant` with `NewReauthorizationRequiredError`; the local provider then
-persists only the `reauthorization_required` status and stops automatic retries.
+The project provider admits one refresh per expired credential across every
+application replica through a conditional write, so concurrent calls refresh
+once. A successful refresh must return a future expiry and the complete
+replacement credential value, which is stored before it is returned. A driver
+wraps terminal provider responses such as `invalid_grant` with
+`NewReauthorizationRequiredError`; the connection then requires reauthorization.
+Any other failed refresh keeps the existing credential authorized, returns
+`projectconfig.ErrRefreshFailed`, and the next call refreshes again.
 When an OAuth provider omits a new refresh token, the driver must copy the prior
 refresh token into its result.
 
@@ -369,10 +370,10 @@ their ports to JSON Pointers in its own configuration shape. Dex CLI extracts
 only static literals into the Flow Definition; dynamic UI composition is
 rejected. UI metadata never contains selected values.
 
-For local operation configuration, load selected values once during startup:
+Load selected operation configuration once during startup:
 
 ```go
-loaded, err := localconfig.LoadOperationConfiguration[ReplyConfiguration](store,
+loaded, err := provider.LoadOperationConfiguration[ReplyConfiguration](project.Configuration,
     sdkgo.ConnectorConfigurationRef{
         ConnectorID: "slack", ConnectionName: "workspace", OperationID: "postThreadReply",
         FlowType: "ApprovalFlow", StepType: "PostCompletion",
@@ -384,11 +385,10 @@ Flow constructor and explicitly use `loaded.Value` inside
 `MapToOperationInput`. The identity includes Flow and Step types, so two uses of
 the same operation never share configuration implicitly.
 
-When the sidecar holds nothing for that identity, for example because nobody
-has saved the Step's configuration in Dex Web yet, the error wraps
-`localconfig.ErrConfigurationNotFound`. Test for it with `errors.Is` to fall
-back to a default; every other error means the saved value is invalid. The
-message text is unchanged from v0.9.
+When the configuration holds nothing for that identity, for example because
+nobody has saved the Step's configuration yet, the error is
+`projectconfig.ErrObjectNotFound`. Test for it with `errors.Is` to fall back to
+a default; every other error means the saved value is invalid.
 
 Every operation declares the standard `defect` branch. Mutations declare the
 standard `uncertain` branch only when a dispatched provider call can have an
@@ -556,9 +556,9 @@ segment after stripping one `models/`. The shared cases in
 pin both rules for the TypeScript picker.
 
 An application reads a Step's model pick once at startup with
-`localconfig.LoadOperationConfiguration`. An error that matches
-`errors.Is(err, localconfig.ErrConfigurationNotFound)` means no pick was
-saved, so the Step inherits the connection's model. The Step's
+`provider.LoadOperationConfiguration`. An error that matches
+`errors.Is(err, projectconfig.ErrObjectNotFound)` means no pick was saved, so
+the Step inherits the connection's model. The Step's
 `MapToOperationInput` then sets the loaded pick as the request's `Model`, and
 an empty pick also inherits the connection's model.
 
@@ -632,17 +632,18 @@ The caller's test file carries `//go:build integration`, as
 [`integrationtest/llm_scenarios_integration_test.go`](integrationtest/llm_scenarios_integration_test.go)
 does.
 
-## Local development
+## Trigger bindings
 
-Local development configuration stores named connections and named Trigger
-bindings separately. `localconfig.Store.DecodeTriggerConfiguration` selects a
-binding by connector ID, connection name, trigger name, and binding name. This
-allows several Flows to reuse one provider connection without sharing their
-event filters. Generated local Trigger factories also wrap the target in a
-binding-specific disk inbox. A source persists a matched event before provider
-acknowledgement and replays pending events after a process restart. The inbox
-removes an event when the target consumes it: the target returns nil, or it
-reports the event undeliverable.
+Project configuration stores named connections and named Trigger bindings
+separately. `Configuration.DecodeTriggerConfiguration` selects a binding by
+connector ID, connection name, trigger name, and binding name. This allows
+several Flows to reuse one provider connection without sharing their event
+filters. Generated project Trigger factories also wrap the target in the
+binding's durable inbox in project storage (`provider.NewDurableTriggerTarget`).
+A source persists a matched event before provider acknowledgement and replays
+pending events after a restart, on any replica. The inbox removes an event when
+the target consumes it: the target returns nil, or it reports the event
+undeliverable.
 
 ## Release and tests
 
@@ -677,7 +678,7 @@ The `integrationtest` package behaves like an independently authored
 connector. It defines typed Connection and Credentials, Query and Mutation
 operations, operation-specific Step factories, branch targets, an Attribute,
 and a progress Stream using only this module's public API. It also drives
-Trigger delivery through the local inbox:
+Trigger delivery through the durable project inbox:
 
 - an approval after completion, and an approval in a thread without a Flow;
 - a handler rejection, and a handler that returns another Flow's Dex error;

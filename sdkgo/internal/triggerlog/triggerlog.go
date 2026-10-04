@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package triggerlog holds the Trigger delivery logging helpers that sdkgo and sdkgo/localconfig share.
+// Package triggerlog holds the Trigger delivery logging helpers that sdkgo and its durable project Trigger inbox share.
 package triggerlog
 
 import (

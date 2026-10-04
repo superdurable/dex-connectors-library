@@ -18,6 +18,8 @@ import (
 
 // LoadedProject contains an immutable ordinary configuration snapshot and independently resolved current credentials.
 type LoadedProject struct {
+	objects        ObjectStore
+	scope          Scope
 	configurations *ConfigurationStore
 	// Connections resolves private credential material through the fixed project boundary.
 	Connections *ConnectionStore
@@ -77,7 +79,12 @@ func LoadFromEnvironment(ctx context.Context) (*LoadedProject, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &LoadedProject{configurations: configurations, Connections: connections, Configuration: configuration, Snapshot: reference}, nil
+	return &LoadedProject{objects: objects, scope: scope, configurations: configurations, Connections: connections, Configuration: configuration, Snapshot: reference}, nil
+}
+
+// TriggerInbox binds one Trigger binding's durable inbox in the loaded project scope.
+func (project *LoadedProject) TriggerInbox(key TriggerInboxKey) (*TriggerInbox, error) {
+	return NewTriggerInbox(project.objects, project.scope, key)
 }
 
 // ResolveApplicationEnvironment loads exact pinned app secrets without provider refresh or mutable configuration reads.

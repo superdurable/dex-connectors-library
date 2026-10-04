@@ -7,21 +7,22 @@ package integrationtest_test
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
-	"os"
-	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/internal/testsupport"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -155,7 +156,7 @@ type triggerApprovalRoutes struct {
 // application filter rejects events whose ID starts with "ignored-".
 func newTriggerApprovalRoutes(
 	t *testing.T,
-	store *localconfig.Store,
+	store *triggerInboxes,
 	client *dex.Client,
 	flow *triggerApprovalFlow,
 	logger *slog.Logger,
@@ -172,11 +173,11 @@ func newTriggerApprovalRoutes(
 		func(event sdkgo.TriggerEvent[triggerApprovalEvent]) triggerApprovalInput {
 			return triggerApprovalInput{EventID: event.ID}
 		}, sdkgo.WithTriggerLogger(logger.With("binding", "approval-reply")))
-	durableStart, err := localconfig.NewDurableTriggerTarget(store, "fixture", "local", "threadCreated", "approval-start", startTarget,
-		localconfig.WithTriggerLogger(logger))
+	durableStart, err := newDurableTriggerTarget(store, "threadCreated", "approval-start", startTarget,
+		provider.WithTriggerLogger(logger))
 	require.NoError(t, err)
-	durableReply, err := localconfig.NewDurableTriggerTarget(store, "fixture", "local", "threadReplied", "approval-reply", replyTarget,
-		localconfig.WithTriggerLogger(logger))
+	durableReply, err := newDurableTriggerTarget(store, "threadReplied", "approval-reply", replyTarget,
+		provider.WithTriggerLogger(logger))
 	require.NoError(t, err)
 	return triggerApprovalRoutes{start: durableStart, reply: durableReply}
 }
@@ -256,34 +257,49 @@ func (source ranTriggerSource) Run(context.Context, sdkgo.TriggerTarget[triggerA
 	return nil
 }
 
-func newTriggerInboxStore(t *testing.T) (*localconfig.Store, string) {
-	t.Helper()
-	directory := t.TempDir()
-	path := filepath.Join(directory, "connections.json")
-	contents := fmt.Sprintf(`{"schemaVersion":%q,"connections":[]}`, localconfig.SchemaVersion)
-	require.NoError(t, os.WriteFile(path, []byte(contents), 0o600))
-	store, err := localconfig.LoadFile(path)
-	require.NoError(t, err)
-	return store, directory
+// triggerInboxes is one project scope's Trigger inbox storage for a test, kept across simulated restarts.
+type triggerInboxes struct {
+	objects *testsupport.ObjectStore
+	mutex   sync.Mutex
+	keys    []projectconfig.TriggerInboxKey
 }
 
-// pendingTriggerEventIDs lists the event IDs persisted in every Trigger inbox in directory.
-func pendingTriggerEventIDs(t *testing.T, directory string) []string {
+var triggerInboxScope = projectconfig.Scope{ProjectID: "trigger-tests", Kind: "live"}
+
+func newTriggerInboxStore(t *testing.T) *triggerInboxes {
 	t.Helper()
-	paths, err := filepath.Glob(filepath.Join(directory, ".trigger-inbox-*.json"))
-	require.NoError(t, err)
+	return &triggerInboxes{objects: testsupport.NewObjectStore()}
+}
+
+// newDurableTriggerTarget wraps target in the fixture connection's project Trigger inbox for one binding.
+func newDurableTriggerTarget[T any](store *triggerInboxes, triggerName, bindingName string, target sdkgo.TriggerTarget[T], options ...provider.DurableTriggerOption) (sdkgo.TriggerTarget[T], error) {
+	key := projectconfig.TriggerInboxKey{ConnectorID: "fixture", ConnectionName: "local", TriggerName: triggerName, BindingName: bindingName}
+	inbox, err := projectconfig.NewTriggerInbox(store.objects, triggerInboxScope, key)
+	if err != nil {
+		return nil, err
+	}
+	store.mutex.Lock()
+	if !slices.Contains(store.keys, key) {
+		store.keys = append(store.keys, key)
+	}
+	store.mutex.Unlock()
+	return provider.NewDurableTriggerTarget(inbox, key, target, options...)
+}
+
+// pendingTriggerEventIDs lists the event IDs pending in every Trigger inbox of store.
+func pendingTriggerEventIDs(t *testing.T, store *triggerInboxes) []string {
+	t.Helper()
+	store.mutex.Lock()
+	keys := slices.Clone(store.keys)
+	store.mutex.Unlock()
 	eventIDs := []string{}
-	for _, path := range paths {
-		contents, err := os.ReadFile(path)
+	for _, key := range keys {
+		inbox, err := projectconfig.NewTriggerInbox(store.objects, triggerInboxScope, key)
 		require.NoError(t, err)
-		var inbox struct {
-			Events []struct {
-				EventID string `json:"eventId"`
-			} `json:"events"`
-		}
-		require.NoError(t, json.Unmarshal(contents, &inbox))
-		for _, event := range inbox.Events {
-			eventIDs = append(eventIDs, event.EventID)
+		pending, err := inbox.Pending(context.Background())
+		require.NoError(t, err)
+		for _, event := range pending {
+			eventIDs = append(eventIDs, event.ID)
 		}
 	}
 	return eventIDs
@@ -297,7 +313,7 @@ func TestDurableTriggerInboxSurvivesApprovalAfterCompletionAndRestartWithRealDex
 	harness.startWorker(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	store, directory := newTriggerInboxStore(t)
+	store := newTriggerInboxStore(t)
 	logs := newLogRecorder(t)
 	routes := newTriggerApprovalRoutes(t, store, harness.client, flow, logs.logger())
 	testRunID := strconv.FormatInt(time.Now().UnixNano(), 10)
@@ -314,7 +330,7 @@ func TestDurableTriggerInboxSurvivesApprovalAfterCompletionAndRestartWithRealDex
 	require.Equal(t, triggerApprovalRecord{
 		StartEventID: rootA.ID, Status: triggerApprovalApproved, ApprovalEventID: firstApproval.ID, ApprovalCount: 1,
 	}, completedA)
-	require.Empty(t, pendingTriggerEventIDs(t, directory))
+	require.Empty(t, pendingTriggerEventIDs(t, store))
 	started := logs.find("trigger event delivered", map[string]string{"event_id": rootA.ID})
 	require.Len(t, started, 1)
 	require.Equal(t, slog.LevelDebug, started[0].level)
@@ -330,7 +346,7 @@ func TestDurableTriggerInboxSurvivesApprovalAfterCompletionAndRestartWithRealDex
 	t.Run("step 8 approval after completion is consumed", func(t *testing.T) {
 		lateApproval := triggerApprovalEventFor("approve-a-late-"+testRunID, threadA)
 		require.NoError(t, deliverAcknowledgedTrigger(ctx, routes.reply, lateApproval))
-		require.Empty(t, pendingTriggerEventIDs(t, directory))
+		require.Empty(t, pendingTriggerEventIDs(t, store))
 		require.Equal(t, completedA, waitForTriggerApprovalOutput(ctx, t, harness.client, flowA))
 		skipped := logs.find("trigger event skipped: undeliverable", map[string]string{"event_id": lateApproval.ID})
 		require.Len(t, skipped, 1)
@@ -345,7 +361,7 @@ func TestDurableTriggerInboxSurvivesApprovalAfterCompletionAndRestartWithRealDex
 	t.Run("an approval the application filter rejects is consumed", func(t *testing.T) {
 		ignored := triggerApprovalEventFor("ignored-approve-a-"+testRunID, threadA)
 		require.NoError(t, deliverAcknowledgedTrigger(ctx, routes.reply, ignored))
-		require.Empty(t, pendingTriggerEventIDs(t, directory))
+		require.Empty(t, pendingTriggerEventIDs(t, store))
 		filtered := logs.find("trigger event skipped: filtered", nil)
 		require.Len(t, filtered, 1)
 		require.Equal(t, slog.LevelInfo, filtered[0].level)
@@ -370,7 +386,7 @@ func TestDurableTriggerInboxSurvivesApprovalAfterCompletionAndRestartWithRealDex
 		} {
 			require.NoError(t, sdkgo.PrepareTriggerDelivery(ctx, pending.target, pending.event))
 		}
-		require.Subset(t, pendingTriggerEventIDs(t, directory), []string{
+		require.Subset(t, pendingTriggerEventIDs(t, store), []string{
 			firstApproval.ID, "approve-a-after-restart-" + testRunID, rootB.ID, approvalB.ID,
 		})
 
@@ -385,7 +401,7 @@ func TestDurableTriggerInboxSurvivesApprovalAfterCompletionAndRestartWithRealDex
 			StartEventID: rootB.ID, Status: triggerApprovalApproved, ApprovalEventID: approvalB.ID, ApprovalCount: 1,
 		}, waitForTriggerApprovalOutput(ctx, t, harness.client, flowB))
 		require.Equal(t, completedA, waitForTriggerApprovalOutput(ctx, t, harness.client, flowA))
-		require.Empty(t, pendingTriggerEventIDs(t, directory))
+		require.Empty(t, pendingTriggerEventIDs(t, store))
 
 		for _, replay := range []struct {
 			binding                   string
@@ -419,14 +435,14 @@ func TestDurableRPCTriggerConsumesReplyWithoutFlowWithRealDex(t *testing.T) {
 	harness.startWorker(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	store, directory := newTriggerInboxStore(t)
+	store := newTriggerInboxStore(t)
 	logs := newLogRecorder(t)
 	routes := newTriggerApprovalRoutes(t, store, harness.client, flow, logs.logger())
 	testRunID := strconv.FormatInt(time.Now().UnixNano(), 10)
 
 	orphanApproval := triggerApprovalEventFor("approve-orphan-"+testRunID, "thread-orphan-"+testRunID)
 	require.NoError(t, deliverAcknowledgedTrigger(ctx, routes.reply, orphanApproval))
-	require.Empty(t, pendingTriggerEventIDs(t, directory))
+	require.Empty(t, pendingTriggerEventIDs(t, store))
 	orphanSkip := logs.find("trigger event skipped: undeliverable", map[string]string{"event_id": orphanApproval.ID})
 	require.Len(t, orphanSkip, 1)
 	require.Equal(t, slog.LevelWarn, orphanSkip[0].level)
@@ -448,7 +464,7 @@ func TestDurableRPCTriggerConsumesReplyWithoutFlowWithRealDex(t *testing.T) {
 	require.Equal(t, triggerApprovalRecord{
 		StartEventID: rootE.ID, Status: triggerApprovalApproved, ApprovalEventID: approvalE.ID, ApprovalCount: 1,
 	}, waitForTriggerApprovalOutput(ctx, t, harness.client, resolveTriggerApprovalFlowID(rootE)))
-	require.Empty(t, pendingTriggerEventIDs(t, directory))
+	require.Empty(t, pendingTriggerEventIDs(t, store))
 	require.NotContains(t, logs.text(), sentinelText)
 }
 
@@ -459,7 +475,7 @@ func TestDurableTriggerReplayWaitsForUnavailableWorkerWithRealDex(t *testing.T) 
 	harness.startWorker(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer cancel()
-	store, directory := newTriggerInboxStore(t)
+	store := newTriggerInboxStore(t)
 	logs := newLogRecorder(t)
 	routes := newTriggerApprovalRoutes(t, store, harness.client, flow, logs.logger())
 	testRunID := strconv.FormatInt(time.Now().UnixNano(), 10)
@@ -490,7 +506,7 @@ func TestDurableTriggerReplayWaitsForUnavailableWorkerWithRealDex(t *testing.T) 
 			return false
 		}
 	}, 3*time.Second, 100*time.Millisecond, "replay must wait for the Worker instead of returning")
-	require.Equal(t, []string{approvalD.ID}, pendingTriggerEventIDs(t, directory))
+	require.Equal(t, []string{approvalD.ID}, pendingTriggerEventIDs(t, store))
 
 	harness.startWorker(t)
 	select {
@@ -502,7 +518,7 @@ func TestDurableTriggerReplayWaitsForUnavailableWorkerWithRealDex(t *testing.T) 
 	require.Equal(t, triggerApprovalRecord{
 		StartEventID: rootD.ID, Status: triggerApprovalApproved, ApprovalEventID: approvalD.ID, ApprovalCount: 1,
 	}, waitForTriggerApprovalOutput(ctx, t, harness.client, flowD))
-	require.Empty(t, pendingTriggerEventIDs(t, directory))
+	require.Empty(t, pendingTriggerEventIDs(t, store))
 
 	// The replay logs every backoff with its attempt and the scheduled delay, then the recovery.
 	replayIdentity := map[string]string{"binding": "approval-reply", "event_id": approvalD.ID}

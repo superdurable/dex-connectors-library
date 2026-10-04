@@ -20,7 +20,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/llm"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -108,9 +109,9 @@ type TextGenerationDexScenarioSuite struct {
 //   - a generated result completes the Flow and its text reaches the text Stream in order;
 //   - a 429 with Retry-After: 1 is retried after at least one second and then completes;
 //   - selecting the unwired optional truncated branch fails the Flow;
-//   - a Step's model pick loaded with localconfig.LoadOperationConfiguration
+//   - a Step's model pick loaded with provider.LoadOperationConfiguration
 //     overrides the connection model, and a Step without a pick, reported by
-//     localconfig.ErrConfigurationNotFound, inherits it;
+//     projectconfig.ErrObjectNotFound, inherits it;
 //   - a provider that stays silent for 20 seconds under Dex's minimum
 //     10-second heartbeat timeout completes in one attempt, because the
 //     pipeline heartbeats;
@@ -216,10 +217,10 @@ func (run dexScenarioRun) testModelPrecedence(t *testing.T) {
 	provider, connection := run.newProvider(t)
 	provider.EnqueueReplies(run.generatedReply(0), run.generatedReply(0))
 	flowType := run.flowType("ModelPrecedence")
-	store := run.writeLocalConfiguration(t, connection, flowType)
-	pickedModel, err := loadStepModelPick(store, run.configurationReference(connection, flowType, pickedModelStepType))
+	configuration := run.projectConfiguration(t, connection, flowType)
+	pickedModel, err := loadStepModelPick(configuration, run.configurationReference(connection, flowType, pickedModelStepType))
 	require.NoError(t, err)
-	inheritedModel, err := loadStepModelPick(store, run.configurationReference(connection, flowType, inheritedModelStepType))
+	inheritedModel, err := loadStepModelPick(configuration, run.configurationReference(connection, flowType, inheritedModelStepType))
 	require.NoError(t, err)
 	require.Equal(t, run.suite.Dialect.AlternateModel, pickedModel)
 	require.Empty(t, inheritedModel, "a Step without a saved pick inherits the connection model")
@@ -359,32 +360,16 @@ func (run dexScenarioRun) configurationReference(connection FakeConnection, flow
 	}
 }
 
-// writeLocalConfiguration saves a model pick for the picked-model Step only, as Dex Web's model picker would.
-func (run dexScenarioRun) writeLocalConfiguration(t *testing.T, connection FakeConnection, flowType string) *localconfig.Store {
+// projectConfiguration holds a model pick for the picked-model Step only, as Studio's model picker saves it.
+func (run dexScenarioRun) projectConfiguration(t *testing.T, connection FakeConnection, flowType string) projectconfig.Configuration {
 	t.Helper()
-	directory := t.TempDir()
-	connectionsPath := filepath.Join(directory, "connections.json")
-	writeJSONFile(t, connectionsPath, map[string]any{
-		"schemaVersion": localconfig.SchemaVersion,
-		"connections": []any{map[string]any{
-			"connectorId": run.suite.ConnectorID, "connectionName": connection.Reference.Name,
-			"modulePath": "example.test/llmtest/" + run.suite.ConnectorID, "moduleVersion": "v0.0.0",
-			"provider": connection.Reference.Provider, "configuration": map[string]any{"model": connection.Model},
-			"credentials": map[string]any{},
-		}},
-	})
 	picked := run.configurationReference(connection, flowType, pickedModelStepType)
-	writeJSONFile(t, filepath.Join(directory, localconfig.UseConfigurationsFileName), map[string]any{
-		"schemaVersion": localconfig.UseConfigurationsSchemaVersion,
-		"operationConfigurations": []any{map[string]any{
-			"connectorId": picked.ConnectorID, "connectionName": picked.ConnectionName, "operationId": picked.OperationID,
-			"flowType": picked.FlowType, "stepType": picked.StepType,
-			"configuration": map[string]any{"model": run.suite.Dialect.AlternateModel},
-		}},
-	})
-	store, err := localconfig.LoadFile(connectionsPath)
+	pick, err := json.Marshal(stepModelPick{Model: run.suite.Dialect.AlternateModel})
 	require.NoError(t, err)
-	return store
+	return projectconfig.Configuration{OperationConfigurations: []projectconfig.OperationConfiguration{{
+		ConnectorID: picked.ConnectorID, ConnectionName: picked.ConnectionName, OperationID: picked.OperationID,
+		FlowType: picked.FlowType, StepType: picked.StepType, Configuration: pick,
+	}}}
 }
 
 func (run dexScenarioRun) requestModel(t *testing.T, request RecordedRequest) string {
@@ -400,9 +385,9 @@ type stepModelPick struct {
 }
 
 // loadStepModelPick loads a Step's pick as an application does; no saved pick inherits the connection model.
-func loadStepModelPick(store *localconfig.Store, reference sdkgo.ConnectorConfigurationRef) (string, error) {
-	loaded, err := localconfig.LoadOperationConfiguration[stepModelPick](store, reference)
-	if errors.Is(err, localconfig.ErrConfigurationNotFound) {
+func loadStepModelPick(configuration projectconfig.Configuration, reference sdkgo.ConnectorConfigurationRef) (string, error) {
+	loaded, err := provider.LoadOperationConfiguration[stepModelPick](configuration, reference)
+	if errors.Is(err, projectconfig.ErrObjectNotFound) {
 		return "", nil
 	}
 	if err != nil {
