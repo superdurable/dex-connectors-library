@@ -21,6 +21,7 @@ directories:
   - connectors/google/gmail
   - connectors/google/spreadsheet
   - connectors/google/workspace-admin
+  - connectors/gorgias
   - connectors/hackernews
   - connectors/helpscout
   - connectors/hubspot
