@@ -69,24 +69,32 @@ without dispatch permission when its identity, base revision and deadline match.
 publishes its exact version. `RecoverCredentialExchange` can complete that
 handoff after process replacement. It recognizes an already published result by
 its active immutable envelope's attempt/fence; a later replacement or revocation
-cannot be mistaken for that result. An abandoned attempt without a result is
-fenced to `REAUTHORIZATION_REQUIRED` after its deadline. Expiry never grants a
-second provider dispatch. Late results cannot overwrite a new fence.
+cannot be mistaken for that result. After its deadline, an abandoned
+authorization without a result is fenced to `REAUTHORIZATION_REQUIRED`, and an
+abandoned refresh restores the prior credential as `READY`. Expiry never grants
+a second dispatch for one admission. Late results cannot overwrite a new fence.
 
-`projectconfig/provider.NewCredentialProvider` implements the Connector SDK's
-credential interfaces. Decode/encode callbacks must validate and preserve the
-complete credential, including a prior refresh token omitted by a provider.
+`projectconfig/provider` implements the Connector SDK's credential interfaces
+for generated connector code; applications never call it. A connector whose
+manifest declares `auth.refreshable: true` uses
+`NewRefreshingCredentialProvider(store, key, decode, encode)`, and every other
+connector uses `NewCredentialProvider(store, key, decode)`. The generated codecs
+validate and preserve the complete credential, including a prior refresh token
+omitted by a provider.
+
 The provider only refreshes when the authoritative access expiry is known and
 has elapsed. Unknown expiry, a driver's early-refresh skew, and an unclassified
-HTTP 401 do not trigger rotation. A failed or ambiguous provider request requires
-reauthorization unless an immutable result already supports recovery. Provider
-callbacks must honor context cancellation; the default request timeout is 30
-seconds, at most two minutes. Concurrent callers join via bounded reads of the
-admitted result; no background task survives a caller.
+HTTP 401 do not trigger rotation. A refresh driver's reauthorization-required
+error fences the connection. Any other failure, and an ambiguous or canceled
+request, keeps the prior credential `READY` and returns `ErrRefreshFailed`; the
+next call refreshes again. Provider callbacks must honor context cancellation;
+one request is bounded by 30 seconds. Concurrent callers join via bounded reads
+of the admitted result; no background task survives a caller.
 
 A provider may rotate successfully immediately before a process dies without
 persisting its result. The package intentionally cannot reconstruct that token:
-it requires reauthorization rather than replaying an uncertain rotation.
+the prior credential stays current, and the provider's next refusal of the old
+refresh token requires reauthorization.
 
 ## Declared application environment
 
@@ -135,15 +143,12 @@ and versions, alongside their accepted configuration and permitted connection
 state. They do not need application-secret write permissions. The private values
 must never enter a Flow, API response, log, or generated artifact.
 
-## Application loading and runnable example
+## Application loading
 
-[`examples/projectconfiguration/main.go`](../examples/projectconfiguration/main.go)
-is a checked-in executable using the same loader and typed credential adapter.
-From `sdkgo`, run `go run ./examples/projectconfiguration` with a Dex Web-created
-snapshot to validate it and apply its declared environment before creating the optional provider. Add `-connector example -connection primary` only when
-the fixture connection has the example's `{token: ...}` credential shape. The
-example prints safe snapshot identity, never credential bytes. Real connectors
-use their generated decoder/encoder instead of the fixture codec.
+An application calls `LoadFromEnvironment` once at startup, applies the
+resolved application environment, and opens every declared connection with the
+connector's generated `NewProjectConnection(project, connectionName)`. Each
+connector's `examples/` tree is a runnable application that does exactly this.
 
 `LoadFromEnvironment` uses AWS's default rotating credential chain and requires:
 

@@ -1,49 +1,51 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package provider adapts shared project configuration storage to typed Connector SDK interfaces.
-// Dex Web imports only projectconfig, avoiding the Dex Worker SDK's generated protocol registry.
+// Package provider adapts shared project configuration storage to typed Connector SDK credential interfaces.
+// Generated connector code is its only caller: applications open a connection with the connector's
+// NewProjectConnection. Dex Web imports only projectconfig, avoiding the Dex Worker SDK's protocol registry.
 package provider
 
 import (
 	"context"
 	"errors"
-	"time"
+	"fmt"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
-// Config binds typed credentials to one trusted project connection and complete codecs.
-type Config[C any] struct {
-	// Store is the durable shared credential authority.
-	Store *projectconfig.ConnectionStore
-	// Key identifies the connector and named connection allowed for this provider.
-	Key projectconfig.ConnectionKey
-	// Decode validates complete private JSON into connector-specific credentials.
-	Decode projectconfig.CredentialDecoder[C]
-	// Encode returns complete replacement material, preserving omitted renewal tokens.
-	Encode projectconfig.CredentialEncoder[C]
-	// RefreshTimeout bounds one provider request; zero uses 30 seconds and the maximum is two minutes.
-	RefreshTimeout time.Duration
-}
-
-// CredentialProvider supports typed SDK resolution with expiry-only refresh coordinated across replicas.
+// CredentialProvider resolves credentials that a connector never refreshes, such as API keys.
 type CredentialProvider[C any] struct {
 	resolver *projectconfig.CredentialResolver[C]
 	key      projectconfig.ConnectionKey
 }
 
-// NewCredentialProvider validates the immutable connector boundary and shared storage configuration without provider calls.
-func NewCredentialProvider[C any](config *Config[C]) (*CredentialProvider[C], error) {
-	if config == nil {
-		return nil, errors.New("project credential provider configuration is required")
-	}
-	resolver, err := projectconfig.NewCredentialResolver(&projectconfig.CredentialResolverConfig[C]{Store: config.Store, Key: config.Key, Decode: config.Decode, Encode: config.Encode, RefreshTimeout: config.RefreshTimeout})
+// RefreshingCredentialProvider also refreshes expired credentials and persists the replacement once across replicas.
+type RefreshingCredentialProvider[C any] struct {
+	CredentialProvider[C]
+}
+
+// NewCredentialProvider binds credentials that are never refreshed to one project connection.
+func NewCredentialProvider[C any](store *projectconfig.ConnectionStore, key projectconfig.ConnectionKey, decode projectconfig.CredentialDecoder[C]) (*CredentialProvider[C], error) {
+	resolver, err := projectconfig.NewCredentialResolver(store, key, decode, nil)
 	if err != nil {
 		return nil, err
 	}
-	return &CredentialProvider[C]{resolver: resolver, key: config.Key}, nil
+	return &CredentialProvider[C]{resolver: resolver, key: key}, nil
+}
+
+// NewRefreshingCredentialProvider binds renewable credentials to one project connection.
+// encode returns the complete replacement material, including renewal tokens a provider omitted.
+func NewRefreshingCredentialProvider[C any](store *projectconfig.ConnectionStore, key projectconfig.ConnectionKey, decode projectconfig.CredentialDecoder[C], encode projectconfig.CredentialEncoder[C]) (*RefreshingCredentialProvider[C], error) {
+	if encode == nil {
+		return nil, errors.New("project credential encoder is required")
+	}
+	resolver, err := projectconfig.NewCredentialResolver(store, key, decode, encode)
+	if err != nil {
+		return nil, err
+	}
+	return &RefreshingCredentialProvider[C]{CredentialProvider: CredentialProvider[C]{resolver: resolver, key: key}}, nil
 }
 
 // Resolve uses the active Dex Step context without refreshing credentials.
@@ -65,9 +67,8 @@ func (provider *CredentialProvider[C]) ResolveContext(ctx context.Context, call 
 	return value, classifyError(err)
 }
 
-// ResolveWithRefresh performs provider refresh only after known expiry and winning durable admission.
-// The legacy driver's RefreshRequired skew does not override this package's on-use policy.
-func (provider *CredentialProvider[C]) ResolveWithRefresh(ctx context.Context, call sdkgo.Call, driver sdkgo.CredentialRefreshDriver[C]) (C, error) {
+// ResolveWithRefresh refreshes only after known expiry and winning durable admission.
+func (provider *RefreshingCredentialProvider[C]) ResolveWithRefresh(ctx context.Context, call sdkgo.Call, driver sdkgo.CredentialRefreshDriver[C]) (C, error) {
 	var zero C
 	if err := provider.validateCall(call); err != nil {
 		return zero, err
@@ -75,13 +76,12 @@ func (provider *CredentialProvider[C]) ResolveWithRefresh(ctx context.Context, c
 	if driver == nil {
 		return zero, errors.New("credential refresh driver is required")
 	}
-	adapter := refreshAdapter[C]{driver: driver}
-	value, err := provider.resolver.ResolveWithRefresh(ctx, adapter.refresh)
+	value, err := provider.resolver.ResolveWithRefresh(ctx, refreshAdapter[C]{driver: driver}.refresh)
 	return value, classifyError(err)
 }
 
 // ResolveAfterRejection refreshes only if authoritative expiry has elapsed; an unclassified HTTP 401 cannot force rotation.
-func (provider *CredentialProvider[C]) ResolveAfterRejection(ctx context.Context, call sdkgo.Call, driver sdkgo.CredentialRefreshDriver[C]) (C, error) {
+func (provider *RefreshingCredentialProvider[C]) ResolveAfterRejection(ctx context.Context, call sdkgo.Call, driver sdkgo.CredentialRefreshDriver[C]) (C, error) {
 	var zero C
 	if err := provider.validateCall(call); err != nil {
 		return zero, err
@@ -89,8 +89,7 @@ func (provider *CredentialProvider[C]) ResolveAfterRejection(ctx context.Context
 	if driver == nil {
 		return zero, errors.New("credential refresh driver is required")
 	}
-	adapter := refreshAdapter[C]{driver: driver}
-	value, err := provider.resolver.ResolveAfterRejection(ctx, adapter.refresh)
+	value, err := provider.resolver.ResolveAfterRejection(ctx, refreshAdapter[C]{driver: driver}.refresh)
 	return value, classifyError(err)
 }
 
@@ -108,10 +107,15 @@ type refreshAdapter[C any] struct {
 	driver sdkgo.CredentialRefreshDriver[C]
 }
 
+// refresh marks a driver's reauthorization-required failure for projectconfig, which cannot import sdkgo.
 func (adapter refreshAdapter[C]) refresh(ctx context.Context, state projectconfig.RefreshState[C]) (projectconfig.RefreshResult[C], error) {
 	result, err := adapter.driver.Refresh(ctx, sdkgo.CredentialRefreshState[C]{Credentials: state.Credentials, ExpiresAt: state.ExpiresAt, Now: state.Now})
+	if sdkgo.IsReauthorizationRequired(err) {
+		err = fmt.Errorf("%w: %w", projectconfig.ErrReauthorizationRequired, err)
+	}
 	return projectconfig.RefreshResult[C]{Credentials: result.Credentials, ExpiresAt: result.ExpiresAt}, err
 }
+
 func classifyError(err error) error {
 	if errors.Is(err, projectconfig.ErrReauthorizationRequired) {
 		return sdkgo.ErrReauthorizationRequired
