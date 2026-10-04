@@ -9,12 +9,19 @@ Applications normally depend on a connector module such as OpenAI rather than
 constructing the generic factories directly. Connector authors may use the
 generic `NewQueryStep` and `NewMutationStep` APIs as an advanced escape hatch.
 
-Hosted applications use `hostedconfig.NewCredentialProviderFromEnvironment`
-to resolve short-lived, operation-scoped credentials from the trusted
-Superverse broker. The provider reloads its projected workload credential for every
-call and never receives project, environment, refresh-token, or storage
-selectors. Local applications continue to use `localconfig`; both providers
-implement the same `CredentialProvider` contract used by Connector clients.
+An application loads its project configuration once with
+`projectconfig.LoadFromEnvironment` and opens every declared connection with the
+connector's generated `NewProjectConnection(project, connectionName)`.
+Credentials stay in project storage and are resolved during each call. The
+generated code chooses `provider.NewCredentialProvider` or
+`provider.NewRefreshingCredentialProvider` from the manifest's
+`auth.refreshable`, so an application never wires credentials, codecs, or
+refresh. Local development uses the same project configuration on a local
+S3-compatible store.
+
+`localconfig`, `hostedconfig` and `llm` remain in this release only while
+connectors migrate; they are deprecated and are removed in the next SDK
+release. Use `projectconfig` with generated connections and `textgen` instead.
 
 Connector Trigger sources run outside Dex Steps and deliver typed, stable-ID
 events through `TriggerRunner`. Generated Trigger factories accept any typed
@@ -153,11 +160,11 @@ emits the record:
 - `sdkgo.DeliverTrigger(ctx, target, event, sdkgo.WithTriggerLogger(logger))`;
 - `sdkgo.NewDexFlowTriggerTarget(..., sdkgo.WithTriggerLogger(logger))` and
   `sdkgo.NewDexRPCTriggerTarget(..., sdkgo.WithTriggerLogger(logger))`;
-- `localconfig.NewDurableTriggerTarget(..., localconfig.WithTriggerLogger(logger))`;
+- `provider.NewDurableTriggerTarget(..., provider.WithTriggerLogger(logger))`;
 - the `Logger` field of `sdkgo.TriggerConfig` for runners built by `NewTrigger`.
 
 A connector runner that builds durable inboxes should accept a logger in its
-own options and pass it on with `localconfig.WithTriggerLogger`; see each
+own options and pass it on with `provider.WithTriggerLogger`; see each
 connector's README. When you build a Dex target by hand, attach the binding's
 identity with `logger.With("connector", ..., "connection", ..., "trigger", ...,
 "binding", ...)`, so its filtered and delivered records carry the same four keys
@@ -276,20 +283,18 @@ ordinary `CredentialProvider.Resolve` path.
 
 If a provider explicitly rejects an otherwise unexpired access credential,
 the connector may call `ResolveCredentialAfterRejection` once and retry that
-provider operation once. Local providers force one locked refresh; hosted
-providers send `forceRefresh: true` to the trusted broker. A second rejection
-is terminal for that operation and must not create a refresh loop.
+provider operation once. The project provider refreshes only when the stored
+expiry has passed. A second rejection is terminal for that operation and must
+not create a refresh loop.
 
-`localconfig.NewRefreshingCredentialProvider` reloads the connection after
-acquiring a process-local lock, so concurrent calls refresh once. A successful
-refresh must return a future expiry and the complete replacement credential
-value. The rewrite keeps every record member the SDK does not model, such as
-Dex Web's `authMethodId`, so a newer Dex Web's records survive a refresh. The
-local provider writes that value through an atomic `0600` file
-replacement before returning it. A retryable failed refresh leaves the existing
-file unchanged. A driver wraps terminal provider responses such as
-`invalid_grant` with `NewReauthorizationRequiredError`; the local provider then
-persists only the `reauthorization_required` status and stops automatic retries.
+The project provider admits one refresh per expired credential across every
+application replica through a conditional write, so concurrent calls refresh
+once. A successful refresh must return a future expiry and the complete
+replacement credential value, which is stored before it is returned. A driver
+wraps terminal provider responses such as `invalid_grant` with
+`NewReauthorizationRequiredError`; the connection then requires reauthorization.
+Any other failed refresh keeps the existing credential authorized, returns
+`projectconfig.ErrRefreshFailed`, and the next call refreshes again.
 When an OAuth provider omits a new refresh token, the driver must copy the prior
 refresh token into its result.
 
@@ -369,10 +374,10 @@ their ports to JSON Pointers in its own configuration shape. Dex CLI extracts
 only static literals into the Flow Definition; dynamic UI composition is
 rejected. UI metadata never contains selected values.
 
-For local operation configuration, load selected values once during startup:
+Load selected operation configuration once during startup:
 
 ```go
-loaded, err := localconfig.LoadOperationConfiguration[ReplyConfiguration](store,
+loaded, err := provider.LoadOperationConfiguration[ReplyConfiguration](project.Configuration,
     sdkgo.ConnectorConfigurationRef{
         ConnectorID: "slack", ConnectionName: "workspace", OperationID: "postThreadReply",
         FlowType: "ApprovalFlow", StepType: "PostCompletion",
@@ -384,11 +389,10 @@ Flow constructor and explicitly use `loaded.Value` inside
 `MapToOperationInput`. The identity includes Flow and Step types, so two uses of
 the same operation never share configuration implicitly.
 
-When the sidecar holds nothing for that identity, for example because nobody
-has saved the Step's configuration in Dex Web yet, the error wraps
-`localconfig.ErrConfigurationNotFound`. Test for it with `errors.Is` to fall
-back to a default; every other error means the saved value is invalid. The
-message text is unchanged from v0.9.
+When the configuration holds nothing for that identity, for example because
+nobody has saved the Step's configuration yet, the error is
+`projectconfig.ErrObjectNotFound`. Test for it with `errors.Is` to fall back to
+a default; every other error means the saved value is invalid.
 
 Every operation declares the standard `defect` branch. Mutations declare the
 standard `uncertain` branch only when a dispatched provider call can have an
@@ -403,13 +407,13 @@ framework in three subpackages instead of its own request pipeline:
   never follows redirects, base-URL and header-safe credential checks, bounded
   body reads, `Retry-After` parsing capped at one hour, error-token extraction
   that never returns message text, and a bounded server-sent event reader.
-- `llm` holds the contract types (`TextGenerationRequest`,
+- `textgen` holds the contract types (`TextGenerationRequest`,
   `TextGenerationResponse`, `Usage`, finish reasons, reasoning effort), the six
   branch IDs, the model-ID rules and precedence, the `ErrorRule` table, the
   portable structured-output subset with its transforms and post-validation,
   and `TextGenerationQuery`, the pipeline that implements
   `sdkgo.Query[TextGenerationRequest, TextGenerationResponse]`.
-- `llm/openaichat` is the OpenAI-compatible Chat Completions wire format,
+- `textgen/openaichat` is the OpenAI-compatible Chat Completions wire format,
   configured by a declarative `Profile`.
 
 The root package stays provider-neutral. A subpackage holds a wire format only
@@ -431,19 +435,19 @@ var chatProfile = openaichat.Profile{
 	ChatCompletionsPath:        "/v1/chat/completions",
 	InstructionsRole:           openaichat.InstructionsRoleDeveloper,
 	MaxTokensField:             openaichat.MaxTokensFieldMaxCompletionTokens,
-	Temperature:                llm.TemperatureRange(0, 1.5),
-	StructuredOutput:           llm.StructuredOutputRules{Mode: llm.StructuredOutputModeJSONSchema},
+	Temperature:                textgen.TemperatureRange(0, 1.5),
+	StructuredOutput:           textgen.StructuredOutputRules{Mode: textgen.StructuredOutputModeJSONSchema},
 	ShouldSendStrictJSONSchema: true,
 	Streaming:                  openaichat.StreamingPolicyAlways,
 	ShouldRequestStreamUsage:   true,
-	ErrorRules: []llm.ErrorRule{
-		{StatusCode: http.StatusTooManyRequests, ErrorToken: "fixture_quota_exhausted", Outcome: llm.QuotaExhaustedOutcome()},
-		{StatusCode: http.StatusBadRequest, ErrorToken: "fixture_content_filter", Outcome: llm.BlockedOutcome()},
+	ErrorRules: []textgen.ErrorRule{
+		{StatusCode: http.StatusTooManyRequests, ErrorToken: "fixture_quota_exhausted", Outcome: textgen.QuotaExhaustedOutcome()},
+		{StatusCode: http.StatusBadRequest, ErrorToken: "fixture_content_filter", Outcome: textgen.BlockedOutcome()},
 	},
 	RateLimitHeaders: []string{"x-ratelimit-remaining-requests"},
 	ModelRules: []openaichat.ModelRule{{
 		ModelIDPrefix: "fixture-reasoner", Temperature: &temperatureNotAccepted,
-		ReasoningEfforts: map[llm.ReasoningEffort]string{llm.ReasoningEffortLow: "low", llm.ReasoningEffortHigh: "high"},
+		ReasoningEfforts: map[textgen.ReasoningEffort]string{textgen.ReasoningEffortLow: "low", textgen.ReasoningEffortHigh: "high"},
 	}},
 }
 ```
@@ -456,7 +460,7 @@ wireFormat, err := openaichat.NewWireFormat(&chatProfile)
 if err != nil {
 	return nil, err
 }
-generateText, err := llm.NewTextGenerationQuery(&llm.TextGenerationQueryConfig{
+generateText, err := textgen.NewTextGenerationQuery(&textgen.TextGenerationQueryConfig{
 	Definition: GenerateTextDefinition, WireFormat: wireFormat,
 	BaseURL: config.Endpoint, ConnectionModel: config.Model,
 	HTTPClient: resolved.httpClient, RequestTimeout: requestTimeout,
@@ -474,21 +478,21 @@ return &Client{generateText: generateText}, nil
 ```
 
 ```go
-func (client *Client) GenerateText() *llm.TextGenerationQuery {
+func (client *Client) GenerateText() *textgen.TextGenerationQuery {
 	return client.generateText
 }
 ```
 
 `NewTextGenerationQuery` requires the operation ID `generateText`, exactly
-the branches of `llm.TextGenerationBranchDefinitions()`, and Step defaults
+the branches of `textgen.TextGenerationBranchDefinitions()`, and Step defaults
 with sync Execute durability, a heartbeat timeout of zero or at least 10
 seconds, and an Execute timeout longer than the request timeout. It trims the
 connection model, so a blank one means every request must name a model. The
 wire format carries the model-ID rule, because it follows from where the
 model travels: `openaichat` sends it in the body and uses
-`llm.ModelIDRuleBody`. The constructor copies the wire format's map and
+`textgen.ModelIDRuleBody`. The constructor copies the wire format's map and
 slices; its functions and any state they capture stay shared. A native API,
-such as Claude Messages, supplies an `llm.WireFormat` struct of functions from
+such as Claude Messages, supplies an `textgen.WireFormat` struct of functions from
 its own module instead of a Profile; the pipeline, error table, schema checks,
 and event reader stay shared.
 
@@ -506,7 +510,7 @@ older connector never silently ignores a newer field.
 | --- | --- | --- |
 | Normal finish with text | `generated` | none |
 | Output token limit | `truncated`, with any partial text | `RESPONSE_TOO_LARGE` |
-| Content policy or refusal, or an error that a rule maps with `llm.BlockedOutcome()`, such as a 400 `content_filter` | `blocked`, without text | `PROVIDER_REJECTION` |
+| Content policy or refusal, or an error that a rule maps with `textgen.BlockedOutcome()`, such as a 400 `content_filter` | `blocked`, without text | `PROVIDER_REJECTION` |
 | 401, 403, 404, 409, 501, and other 4xx | `providerRejected` | authentication, authorization, not found, conflict, or rejection |
 | 402, or a quota rule such as a billing 429 | `providerRejected` | `QUOTA_EXHAUSTED`; never retried |
 | 408, 429, 5xx except 501, a dropped connection, an interrupted event stream, a stall | Retry, after the provider's delay when it sends one | availability, rate limit, or transport |
@@ -549,22 +553,22 @@ The Result's `Text` is the only authoritative text.
 
 The request's `Model`, trimmed, wins; a blank one uses the connection's model.
 `RequestedModel` is set on every branch once the model is valid, and
-`ServedModel` is the provider's echo. `llm.ModelIDRuleBody` accepts 1 to 256
-bytes of printable ASCII, and `llm.ModelIDRulePathSegment` accepts a URL path
+`ServedModel` is the provider's echo. `textgen.ModelIDRuleBody` accepts 1 to 256
+bytes of printable ASCII, and `textgen.ModelIDRulePathSegment` accepts a URL path
 segment after stripping one `models/`. The shared cases in
-[`llm/llmtest/testdata/model_id_cases.json`](llm/llmtest/testdata/model_id_cases.json)
+[`textgen/textgentest/testdata/model_id_cases.json`](textgen/textgentest/testdata/model_id_cases.json)
 pin both rules for the TypeScript picker.
 
 An application reads a Step's model pick once at startup with
-`localconfig.LoadOperationConfiguration`. An error that matches
-`errors.Is(err, localconfig.ErrConfigurationNotFound)` means no pick was
-saved, so the Step inherits the connection's model. The Step's
+`provider.LoadOperationConfiguration`. An error that matches
+`errors.Is(err, projectconfig.ErrObjectNotFound)` means no pick was saved, so
+the Step inherits the connection's model. The Step's
 `MapToOperationInput` then sets the loaded pick as the request's `Model`, and
 an empty pick also inherits the connection's model.
 
 ### Prove a connector
 
-`llm/llmtest` holds the conformance kit. `RunTextGenerationExchangeSuite` runs
+`textgen/textgentest` holds the conformance kit. `RunTextGenerationExchangeSuite` runs
 the provider-exchange cases against a credential-safe fake provider without
 Dex, and `RunTextGenerationDexScenarios` runs one-Step Flows through a real
 Worker. Both take closures, because each connector generates its own
@@ -583,30 +587,30 @@ var fixtureDialect = openaichattest.NewProviderDialect(&openaichattest.ProviderD
 ```go
 func TestGenerateTextFollowsTheExchangeContract(t *testing.T) {
 	temperatureAboveRange, temperature := 1.6, 0.2
-	llmtest.RunTextGenerationExchangeSuite(t, &llmtest.TextGenerationExchangeSuite{
+	textgentest.RunTextGenerationExchangeSuite(t, &textgentest.TextGenerationExchangeSuite{
 		Dialect:  fixtureDialect,
 		NewQuery: newFixtureQuery,
-		LocallyRejectedRequests: []llmtest.NamedTextGenerationRequest{
-			{Name: "temperature above the model range", Request: llm.TextGenerationRequest{Temperature: &temperatureAboveRange}},
-			{Name: "temperature on a reasoning model", Request: llm.TextGenerationRequest{
+		LocallyRejectedRequests: []textgentest.NamedTextGenerationRequest{
+			{Name: "temperature above the model range", Request: textgen.TextGenerationRequest{Temperature: &temperatureAboveRange}},
+			{Name: "temperature on a reasoning model", Request: textgen.TextGenerationRequest{
 				Model: "fixture-reasoner-b", Temperature: &temperature,
 			}},
-			{Name: "reasoning effort on a model without effort", Request: llm.TextGenerationRequest{
-				ReasoningEffort: llm.ReasoningEffortHigh,
+			{Name: "reasoning effort on a model without effort", Request: textgen.TextGenerationRequest{
+				ReasoningEffort: textgen.ReasoningEffortHigh,
 			}},
-			{Name: "unmapped reasoning effort", Request: llm.TextGenerationRequest{
-				Model: "fixture-reasoner-b", ReasoningEffort: llm.ReasoningEffortMax,
+			{Name: "unmapped reasoning effort", Request: textgen.TextGenerationRequest{
+				Model: "fixture-reasoner-b", ReasoningEffort: textgen.ReasoningEffortMax,
 			}},
 		},
 	})
 }
 
-func newFixtureQuery(t testing.TB, connection llmtest.FakeConnection) *llm.TextGenerationQuery {
+func newFixtureQuery(t testing.TB, connection textgentest.FakeConnection) *textgen.TextGenerationQuery {
 	client := newFixtureClient(t, connection)
 	return client.GenerateText()
 }
 
-func newFixtureClient(t testing.TB, connection llmtest.FakeConnection) *fixturellm.Client {
+func newFixtureClient(t testing.TB, connection textgentest.FakeConnection) *fixturellm.Client {
 	t.Helper()
 	client, err := fixturellm.New(fixturellm.Config{
 		Model: connection.Model, Endpoint: connection.BaseURL, MaxResponseBytes: connection.MaxResponseBytes,
@@ -632,17 +636,18 @@ The caller's test file carries `//go:build integration`, as
 [`integrationtest/llm_scenarios_integration_test.go`](integrationtest/llm_scenarios_integration_test.go)
 does.
 
-## Local development
+## Trigger bindings
 
-Local development configuration stores named connections and named Trigger
-bindings separately. `localconfig.Store.DecodeTriggerConfiguration` selects a
-binding by connector ID, connection name, trigger name, and binding name. This
-allows several Flows to reuse one provider connection without sharing their
-event filters. Generated local Trigger factories also wrap the target in a
-binding-specific disk inbox. A source persists a matched event before provider
-acknowledgement and replays pending events after a process restart. The inbox
-removes an event when the target consumes it: the target returns nil, or it
-reports the event undeliverable.
+Project configuration stores named connections and named Trigger bindings
+separately. `Configuration.DecodeTriggerConfiguration` selects a binding by
+connector ID, connection name, trigger name, and binding name. This allows
+several Flows to reuse one provider connection without sharing their event
+filters. Generated project Trigger factories also wrap the target in the
+binding's durable inbox in project storage (`provider.NewDurableTriggerTarget`).
+A source persists a matched event before provider acknowledgement and replays
+pending events after a restart, on any replica. The inbox removes an event when
+the target consumes it: the target returns nil, or it reports the event
+undeliverable.
 
 ## Release and tests
 
@@ -677,7 +682,7 @@ The `integrationtest` package behaves like an independently authored
 connector. It defines typed Connection and Credentials, Query and Mutation
 operations, operation-specific Step factories, branch targets, an Attribute,
 and a progress Stream using only this module's public API. It also drives
-Trigger delivery through the local inbox:
+Trigger delivery through the durable project inbox:
 
 - an approval after completion, and an approval in a thread without a Flow;
 - a handler rejection, and a handler that returns another Flow's Dex error;

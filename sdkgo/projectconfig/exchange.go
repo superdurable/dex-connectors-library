@@ -55,7 +55,7 @@ func (store *ConnectionStore) CommitCredentialExchange(ctx context.Context, admi
 	if err = validateMaterial(material); err != nil {
 		return record.Connection, err
 	}
-	envelope := credentialEnvelope{SchemaVersion: connectionSchema, Scope: store.scope, Key: record.Key, Fence: record.Fence, AttemptID: admission.AttemptID, Credentials: material.Credentials, ExpiresAt: material.ExpiresAt, ModuleVersion: material.ModuleVersion, AuthMethod: material.AuthMethod}
+	envelope := credentialEnvelope{SchemaVersion: connectionSchema, Scope: store.scope, Key: record.Key, Fence: record.Fence, AttemptID: admission.AttemptID, Credentials: material.Credentials, ExpiresAt: material.ExpiresAt, AuthMethod: material.AuthMethod}
 	contents, err := json.Marshal(envelope)
 	if err != nil {
 		return record.Connection, errors.New("credential result encoding failed")
@@ -68,7 +68,8 @@ func (store *ConnectionStore) CommitCredentialExchange(ctx context.Context, admi
 }
 
 // RecoverCredentialExchange reconciles a persisted result without ever calling the provider.
-// Before Deadline it returns ErrExchangePending. Afterward, absence of a result fences the connection for reauthorization.
+// Before Deadline it returns ErrExchangePending. Afterward, an abandoned refresh restores the prior credential,
+// and an abandoned authorization fences the connection for reauthorization.
 func (store *ConnectionStore) RecoverCredentialExchange(ctx context.Context, admission ExchangeAdmission) (Connection, error) {
 	record, object, err := store.readAdmitted(ctx, admission)
 	if errors.Is(err, ErrConflict) {
@@ -86,6 +87,9 @@ func (store *ConnectionStore) RecoverCredentialExchange(ctx context.Context, adm
 		if store.now().Before(record.Mutation.Deadline) {
 			return record.Connection, ErrExchangePending
 		}
+		if record.Mutation.Kind == string(CredentialRefreshing) && record.Credential != nil {
+			return store.restoreRefresh(ctx, record, object.ETag)
+		}
 		connection, failureErr := store.failExchange(ctx, record, object.ETag)
 		if failureErr != nil {
 			return connection, failureErr
@@ -99,7 +103,7 @@ func (store *ConnectionStore) RecoverCredentialExchange(ctx context.Context, adm
 	if strictJSON(result.Contents, &envelope) != nil || result.Version == "" || result.Version == "null" || envelope.SchemaVersion != connectionSchema || envelope.Scope != store.scope || envelope.Key != record.Key || envelope.Fence != record.Fence || envelope.AttemptID != admission.AttemptID {
 		return record.Connection, errors.New("credential exchange result identity is invalid")
 	}
-	if err = validateMaterial(CredentialMaterial{Credentials: envelope.Credentials, ExpiresAt: envelope.ExpiresAt, ModuleVersion: envelope.ModuleVersion, AuthMethod: envelope.AuthMethod}); err != nil {
+	if err = validateMaterial(CredentialMaterial{Credentials: envelope.Credentials, ExpiresAt: envelope.ExpiresAt, AuthMethod: envelope.AuthMethod}); err != nil {
 		return record.Connection, err
 	}
 	reference := objectReference{Key: result.Key, Version: result.Version, Digest: digestBytes(result.Contents)}
@@ -115,6 +119,30 @@ func (store *ConnectionStore) FailCredentialExchange(ctx context.Context, admiss
 	}
 	_, err = store.failExchange(ctx, record, object.ETag)
 	return err
+}
+
+// abortRefresh ends an admitted refresh whose provider request failed without proving the credential invalid.
+func (store *ConnectionStore) abortRefresh(ctx context.Context, admission ExchangeAdmission) error {
+	record, object, err := store.readAdmitted(ctx, admission)
+	if err != nil {
+		return err
+	}
+	if record.Mutation.Kind != string(CredentialRefreshing) || record.Credential == nil {
+		return ErrConflict
+	}
+	_, err = store.restoreRefresh(ctx, record, object.ETag)
+	return err
+}
+
+// restoreRefresh keeps the prior credential READY. The fence still advances, so a late result of the
+// abandoned attempt can never publish.
+func (store *ConnectionStore) restoreRefresh(ctx context.Context, record connectionRecord, etag string) (Connection, error) {
+	record.Revision++
+	record.Fence++
+	record.Status = CredentialReady
+	record.Mutation = nil
+	_, err := store.writeRecord(ctx, record, etag)
+	return record.Connection, err
 }
 
 func (store *ConnectionStore) beginExchange(ctx context.Context, key ConnectionKey, expectedRevision uint64, attemptID string, deadline time.Time, status CredentialStatus) (ExchangeAdmission, error) {
@@ -186,7 +214,7 @@ func (store *ConnectionStore) publishExchange(ctx context.Context, record connec
 	record.Revision++
 	record.Status = CredentialReady
 	record.Credential, record.Mutation = &reference, nil
-	record.ExpiresAt, record.ModuleVersion, record.AuthMethod = envelope.ExpiresAt, envelope.ModuleVersion, envelope.AuthMethod
+	record.ExpiresAt, record.AuthMethod = envelope.ExpiresAt, envelope.AuthMethod
 	_, err := store.writeRecord(ctx, record, etag)
 	return record.Connection, err
 }

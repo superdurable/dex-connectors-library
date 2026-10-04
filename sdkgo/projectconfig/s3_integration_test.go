@@ -119,7 +119,7 @@ func TestAWSProjectConfigurationSnapshotsAndConcurrentAdmission(t *testing.T) {
 	require.Equal(t, 1, dispatchPermissions)
 	_, err = connectionStores[7].RecoverCredentialExchange(ctx, winner)
 	require.ErrorIs(t, err, projectconfig.ErrExchangePending)
-	material := projectconfig.CredentialMaterial{Credentials: json.RawMessage(`{"storageProbe":"non-provider-test-data"}`), ModuleVersion: "v0.1.0", AuthMethod: "api-key"}
+	material := projectconfig.CredentialMaterial{Credentials: json.RawMessage(`{"storageProbe":"non-provider-test-data"}`), AuthMethod: "api-key"}
 	committed, err := connectionStores[0].CommitCredentialExchange(ctx, winner, material)
 	require.NoError(t, err)
 	require.Equal(t, projectconfig.CredentialReady, committed.Status)

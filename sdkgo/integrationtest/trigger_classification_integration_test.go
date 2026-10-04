@@ -16,7 +16,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 	"google.golang.org/grpc/codes"
 )
@@ -147,17 +146,17 @@ func TestRPCHandlerMarksTriggerUndeliverableWithRealDex(t *testing.T) {
 	require.Equal(t, codes.FailedPrecondition, workerFailure.Worker.Code)
 	require.Equal(t, triggerRejectionRecord{Status: triggerApprovalWaiting}, readState())
 
-	store, directory := newTriggerInboxStore(t)
-	durableTarget, err := localconfig.NewDurableTriggerTarget(store, "fixture", "local", "threadReplied", "rejection-reply", rawTarget)
+	store := newTriggerInboxStore(t)
+	durableTarget, err := newDurableTriggerTarget(store, "threadReplied", "rejection-reply", rawTarget)
 	require.NoError(t, err)
 	blockedAgain := blocked
 	blockedAgain.ID = "approve-blocked-again-" + testRunID
 	require.NoError(t, sdkgo.PrepareTriggerDelivery(ctx, durableTarget, blockedAgain))
-	require.Equal(t, []string{blockedAgain.ID}, pendingTriggerEventIDs(t, directory))
+	require.Equal(t, []string{blockedAgain.ID}, pendingTriggerEventIDs(t, store))
 	require.Eventually(t, func() bool {
 		return durableTarget.HandleTrigger(ctx, blockedAgain) == nil
 	}, 20*time.Second, 100*time.Millisecond)
-	require.Empty(t, pendingTriggerEventIDs(t, directory))
+	require.Empty(t, pendingTriggerEventIDs(t, store))
 	require.Equal(t, triggerRejectionRecord{Status: triggerApprovalWaiting}, readState())
 }
 
@@ -195,12 +194,12 @@ func (heartbeatStartStep) Execute(_ dex.Context, input heartbeatStartInput) (*de
 func TestDexRejectedFlowStartKeepsEventUntilFlowIsFixedWithRealDex(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
-	store, directory := newTriggerInboxStore(t)
+	store := newTriggerInboxStore(t)
 	testRunID := strconv.FormatInt(time.Now().UnixNano(), 10)
 	flowID := "trigger-heartbeat-" + testRunID
 	newStartTarget := func(client *dex.Client, flow *heartbeatFlow) sdkgo.TriggerTarget[triggerApprovalEvent] {
 		t.Helper()
-		target, err := localconfig.NewDurableTriggerTarget(store, "fixture", "local", "threadCreated", "heartbeat-start",
+		target, err := newDurableTriggerTarget(store, "threadCreated", "heartbeat-start",
 			sdkgo.NewDexFlowTriggerTarget(client, flow,
 				func(sdkgo.TriggerEvent[triggerApprovalEvent]) bool { return true },
 				func(sdkgo.TriggerEvent[triggerApprovalEvent]) string { return flowID },
@@ -222,7 +221,7 @@ func TestDexRejectedFlowStartKeepsEventUntilFlowIsFixedWithRealDex(t *testing.T)
 	require.ErrorAs(t, err, &serviceError)
 	require.Equal(t, codes.InvalidArgument, serviceError.Code)
 	require.ErrorContains(t, err, "heartbeat")
-	require.Equal(t, []string{root.ID}, pendingTriggerEventIDs(t, directory))
+	require.Equal(t, []string{root.ID}, pendingTriggerEventIDs(t, store))
 	brokenHarness.stopWorker(t)
 
 	fixed := &heartbeatFlow{}
@@ -231,7 +230,7 @@ func TestDexRejectedFlowStartKeepsEventUntilFlowIsFixedWithRealDex(t *testing.T)
 	replayer, ok := newStartTarget(fixedHarness.client, fixed).(sdkgo.TriggerDeliveryReplayer)
 	require.True(t, ok)
 	require.NoError(t, replayer.ReplayTriggerDeliveries(ctx))
-	require.Empty(t, pendingTriggerEventIDs(t, directory))
+	require.Empty(t, pendingTriggerEventIDs(t, store))
 	result, err := fixedHarness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
 	require.NoError(t, err)
 	require.Equal(t, dex.FlowCompleted, result.Status)
@@ -317,8 +316,8 @@ func TestNestedWorkerFailureStaysRetryableWithRealDex(t *testing.T) {
 		_, err := harness.client.StartFlow(ctx, flow, flowID, nil, dex.StartFlowOptions{})
 		require.NoError(t, err)
 	}
-	store, directory := newTriggerInboxStore(t)
-	target, err := localconfig.NewDurableTriggerTarget(store, "fixture", "local", "threadReplied", "relay-reply",
+	store := newTriggerInboxStore(t)
+	target, err := newDurableTriggerTarget(store, "threadReplied", "relay-reply",
 		sdkgo.NewDexRPCTriggerTarget(harness.client, relay.Relay,
 			func(sdkgo.TriggerEvent[triggerApprovalEvent]) bool { return true },
 			func(sdkgo.TriggerEvent[triggerApprovalEvent]) string { return relayID },
@@ -338,11 +337,11 @@ func TestNestedWorkerFailureStaysRetryableWithRealDex(t *testing.T) {
 	require.Equal(t, codes.FailedPrecondition, workerFailure.Worker.Code)
 	require.ErrorContains(t, handleErr, "downstream is temporarily unavailable")
 	require.False(t, sdkgo.IsTriggerUndeliverable(handleErr), "a nested Dex error must stay retryable: %v", handleErr)
-	require.Equal(t, []string{reply.ID}, pendingTriggerEventIDs(t, directory))
+	require.Equal(t, []string{reply.ID}, pendingTriggerEventIDs(t, store))
 
 	downstream.available.Store(true)
 	require.NoError(t, sdkgo.DeliverTrigger(ctx, target, reply))
-	require.Empty(t, pendingTriggerEventIDs(t, directory))
+	require.Empty(t, pendingTriggerEventIDs(t, store))
 }
 
 var undecodableRPCState = dex.DefineAttribute[int]("trigger-undecodable-rpc-count")
@@ -443,8 +442,8 @@ func TestRPCTriggerConsumesUndecodableResponseWithRealDex(t *testing.T) {
 	require.Equal(t, "decode", mappingFailure.Operation)
 	require.Equal(t, 1, readCount())
 
-	store, directory := newTriggerInboxStore(t)
-	target, err := localconfig.NewDurableTriggerTarget(store, "fixture", "local", "threadReplied", "undecodable-reply",
+	store := newTriggerInboxStore(t)
+	target, err := newDurableTriggerTarget(store, "threadReplied", "undecodable-reply",
 		sdkgo.NewDexRPCTriggerTarget(harness.client, flow.Record,
 			func(sdkgo.TriggerEvent[triggerApprovalEvent]) bool { return true },
 			func(sdkgo.TriggerEvent[triggerApprovalEvent]) string { return flowID },
@@ -452,6 +451,6 @@ func TestRPCTriggerConsumesUndecodableResponseWithRealDex(t *testing.T) {
 	require.NoError(t, err)
 	reply := triggerApprovalEventFor("reply-undecodable-"+testRunID, testRunID)
 	require.NoError(t, deliverAcknowledgedTrigger(ctx, target, reply))
-	require.Empty(t, pendingTriggerEventIDs(t, directory))
+	require.Empty(t, pendingTriggerEventIDs(t, store))
 	require.Equal(t, 2, readCount())
 }

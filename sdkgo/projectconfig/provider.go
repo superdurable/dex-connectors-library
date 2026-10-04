@@ -7,8 +7,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 )
+
+// ErrRefreshFailed reports a credential refresh that failed without proving the credential invalid.
+// The prior credential stays authorized, and a later call refreshes again.
+var ErrRefreshFailed = errors.New("project credential refresh failed; the current authorization is kept")
 
 // RefreshState carries private current credentials only at the provider boundary.
 type RefreshState[C any] struct {
@@ -37,47 +42,28 @@ type CredentialDecoder[C any] func(json.RawMessage) (C, error)
 // CredentialEncoder returns complete replacement JSON, retaining renewal material omitted by a provider response.
 type CredentialEncoder[C any] func(C) (json.RawMessage, error)
 
-// CredentialResolverConfig binds a typed provider to one project connection.
-type CredentialResolverConfig[C any] struct {
-	// Store is the shared durable authority used by Dex Web and every application replica.
-	Store *ConnectionStore
-	// Key identifies the connector and logical named connection accepted by this provider.
-	Key ConnectionKey
-	// Decode validates stored credentials without exposing them in error messages.
-	Decode CredentialDecoder[C]
-	// Encode writes complete replacement material without exposing it in error messages.
-	Encode CredentialEncoder[C]
-	// RefreshTimeout bounds one provider request; zero uses 30 seconds, and the maximum is two minutes.
-	RefreshTimeout time.Duration
-}
+// refreshTimeout bounds one provider refresh request.
+const refreshTimeout = 30 * time.Second
 
 // CredentialResolver resolves credentials per call and refreshes only known-expired credentials during actual use.
 // It coordinates through conditional object writes, not process-local locks, timers, or a broker.
-// Existing RefreshRequired skew policies and generic authentication rejections do not trigger early refresh.
 type CredentialResolver[C any] struct {
-	store          *ConnectionStore
-	key            ConnectionKey
-	decode         CredentialDecoder[C]
-	encode         CredentialEncoder[C]
-	refreshTimeout time.Duration
+	store  *ConnectionStore
+	key    ConnectionKey
+	decode CredentialDecoder[C]
+	encode CredentialEncoder[C]
 }
 
-// NewCredentialResolver validates the fixed connector boundary without reading credentials or contacting a provider.
-func NewCredentialResolver[C any](config *CredentialResolverConfig[C]) (*CredentialResolver[C], error) {
-	if config == nil || config.Store == nil || config.Decode == nil || config.Encode == nil {
-		return nil, errors.New("project credential store, decoder, and encoder are required")
+// NewCredentialResolver binds one project connection without reading credentials or contacting a provider.
+// A nil encode resolves credentials that are never refreshed; ResolveWithRefresh then fails.
+func NewCredentialResolver[C any](store *ConnectionStore, key ConnectionKey, decode CredentialDecoder[C], encode CredentialEncoder[C]) (*CredentialResolver[C], error) {
+	if store == nil || decode == nil {
+		return nil, errors.New("project credential store and decoder are required")
 	}
-	if _, err := config.Store.connectionPath(config.Key); err != nil {
+	if _, err := store.connectionPath(key); err != nil {
 		return nil, err
 	}
-	timeout := config.RefreshTimeout
-	if timeout == 0 {
-		timeout = 30 * time.Second
-	}
-	if timeout <= 0 || timeout > 2*time.Minute {
-		return nil, errors.New("credential refresh timeout must be positive and at most two minutes")
-	}
-	return &CredentialResolver[C]{store: config.Store, key: config.Key, decode: config.Decode, encode: config.Encode, refreshTimeout: timeout}, nil
+	return &CredentialResolver[C]{store: store, key: key, decode: decode, encode: encode}, nil
 }
 
 // Resolve reads exact current material without refreshing; known-expired credentials require ResolveWithRefresh.
@@ -103,6 +89,9 @@ func (provider *CredentialResolver[C]) ResolveWithRefresh(ctx context.Context, d
 	var zero C
 	if ctx == nil || driver == nil {
 		return zero, errors.New("credential context and refresh driver are required")
+	}
+	if provider.encode == nil {
+		return zero, errors.New("project credential refresh requires an encoder")
 	}
 	for {
 		if err := ctx.Err(); err != nil {
@@ -155,7 +144,7 @@ func (provider *CredentialResolver[C]) ResolveWithRefresh(ctx context.Context, d
 			if err != nil {
 				return zero, err
 			}
-			admission, err := provider.store.beginExchange(ctx, provider.key, record.Revision, attemptID, now.Add(provider.refreshTimeout+10*time.Second), CredentialRefreshing)
+			admission, err := provider.store.beginExchange(ctx, provider.key, record.Revision, attemptID, now.Add(refreshTimeout+10*time.Second), CredentialRefreshing)
 			if errors.Is(err, ErrConflict) {
 				continue
 			}
@@ -188,22 +177,25 @@ func (provider *CredentialResolver[C]) ResolveAfterRejection(ctx context.Context
 
 func (provider *CredentialResolver[C]) refreshAdmitted(ctx context.Context, admission ExchangeAdmission, prior CredentialMaterial, credentials C, driver RefreshFunc[C]) (C, error) {
 	var zero C
-	requestContext, cancel := context.WithTimeout(ctx, provider.refreshTimeout)
+	requestContext, cancel := context.WithTimeout(ctx, refreshTimeout)
 	result, err := driver(requestContext, RefreshState[C]{Credentials: credentials, ExpiresAt: prior.ExpiresAt, Now: provider.store.now()})
 	cancel()
-	if err != nil {
+	if errors.Is(err, ErrReauthorizationRequired) {
 		return zero, provider.failRefresh(ctx, admission)
 	}
+	if err != nil {
+		return zero, provider.abortRefresh(ctx, admission, err)
+	}
 	if !result.ExpiresAt.After(provider.store.now()) {
-		return zero, provider.failRefresh(ctx, admission)
+		return zero, provider.abortRefresh(ctx, admission, errors.New("refreshed credential has no future expiry"))
 	}
 	encoded, err := provider.encode(result.Credentials)
 	if err != nil {
-		return zero, provider.failRefresh(ctx, admission)
+		return zero, provider.abortRefresh(ctx, admission, errors.New("refreshed credential encoding failed"))
 	}
-	material := CredentialMaterial{Credentials: encoded, ExpiresAt: &result.ExpiresAt, ModuleVersion: prior.ModuleVersion, AuthMethod: prior.AuthMethod}
+	material := CredentialMaterial{Credentials: encoded, ExpiresAt: &result.ExpiresAt, AuthMethod: prior.AuthMethod}
 	if err = validateMaterial(material); err != nil {
-		return zero, provider.failRefresh(ctx, admission)
+		return zero, provider.abortRefresh(ctx, admission, err)
 	}
 	if _, err = provider.store.CommitCredentialExchange(ctx, admission, material); err != nil {
 		return zero, err
@@ -211,6 +203,18 @@ func (provider *CredentialResolver[C]) refreshAdmitted(ctx context.Context, admi
 	return result.Credentials, nil
 }
 
+// abortRefresh keeps the prior credential usable after a refresh that a later call may retry.
+// The write uses a short detached deadline so a canceled Step still releases its admission.
+func (provider *CredentialResolver[C]) abortRefresh(ctx context.Context, admission ExchangeAdmission, cause error) error {
+	restoreContext, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+	defer cancel()
+	if err := provider.store.abortRefresh(restoreContext, admission); err != nil {
+		return errors.Join(fmt.Errorf("%w: %w", ErrRefreshFailed, cause), err)
+	}
+	return fmt.Errorf("%w: %w", ErrRefreshFailed, cause)
+}
+
+// failRefresh fences the connection after a provider proved the credential can no longer be renewed.
 func (provider *CredentialResolver[C]) failRefresh(ctx context.Context, admission ExchangeAdmission) error {
 	// Canceled callers leave durable admission for later reconciliation without starting a detached worker.
 	if err := provider.store.FailCredentialExchange(ctx, admission); err != nil {

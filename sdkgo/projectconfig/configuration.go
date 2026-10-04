@@ -12,7 +12,7 @@ import (
 )
 
 // ConfigurationSchemaVersion identifies the secret-free project configuration document shared with Dex Web.
-const ConfigurationSchemaVersion = "connectors.dex.dev/project-configuration/v1alpha1"
+const ConfigurationSchemaVersion = "connectors.dex.dev/project-configuration/v1alpha2"
 
 // ConnectionConfiguration pins ordinary settings and a logical credential identity, never secret values or credential versions.
 type ConnectionConfiguration struct {
@@ -20,18 +20,12 @@ type ConnectionConfiguration struct {
 	ConnectorID string `json:"connectorId"`
 	// ConnectionName is the application-declared connection.
 	ConnectionName string `json:"connectionName"`
-	// ModulePath identifies the released connector module.
+	// ModulePath identifies the released connector module. Settings stay valid across its releases.
 	ModulePath string `json:"modulePath"`
-	// ModuleVersion pins the connector release used to validate configuration.
-	ModuleVersion string `json:"moduleVersion"`
-	// LocalArtifact pins explicit unpublished source in local-only images; absent for official releases.
-	LocalArtifact *LocalConnectorArtifact `json:"localArtifact,omitempty"`
 	// Provider identifies the provider within the connector contract.
 	Provider string `json:"provider"`
-	// AuthMethodID is the selected single authorization method when applicable.
+	// AuthMethodID is the selected authorization method, or empty when the connector declares one.
 	AuthMethodID string `json:"authMethodId,omitempty"`
-	// AuthMethodIDs preserves explicitly selected multi-method authorization declarations.
-	AuthMethodIDs []string `json:"authMethodIds,omitempty"`
 	// Configuration contains manifest-validated ordinary values; secret fields must be excluded by Dex Web.
 	Configuration json.RawMessage `json:"configuration"`
 }
@@ -250,11 +244,8 @@ func validateConfiguration(configuration Configuration) error {
 	connections := make(map[ConnectionKey]bool)
 	for _, connection := range configuration.Connections {
 		key := ConnectionKey{ConnectorID: connection.ConnectorID, ConnectionName: connection.ConnectionName}
-		if !regexpConnectorID(key.ConnectorID) || key.ConnectionName == "" || connection.ModulePath == "" || connection.ModuleVersion == "" || connection.Provider == "" || !isJSONObject(connection.Configuration) || connections[key] {
+		if !regexpConnectorID(key.ConnectorID) || key.ConnectionName == "" || connection.ModulePath == "" || connection.Provider == "" || !isJSONObject(connection.Configuration) || connections[key] {
 			return errors.New("configuration connection is invalid or duplicated")
-		}
-		if connection.LocalArtifact != nil && (!connection.LocalArtifact.Valid() || connection.LocalArtifact.BaselineVersion != connection.ModuleVersion) {
-			return errors.New("configuration local connector pin is invalid")
 		}
 		connections[key] = true
 	}

@@ -2,6 +2,10 @@
 // SPDX-License-Identifier: MIT
 
 // Package localconfig loads local-development connector configuration written by Dex Web.
+//
+// Deprecated: applications load projectconfig and open connections with each connector's generated
+// NewProjectConnection. This package remains only until every connector migrates and is removed in the
+// next SDK release.
 package localconfig
 
 import (

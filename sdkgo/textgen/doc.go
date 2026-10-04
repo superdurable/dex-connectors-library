@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package llm is the provider-neutral text-generation contract that every lab
+// Package textgen is the provider-neutral text-generation contract that every lab
 // connector's generateText Query implements, and the shared pipeline that
 // runs it.
 //
@@ -9,8 +9,8 @@
 // TextGenerationResult and one application Step can handle the Result of
 // every lab's generateText:
 //
-//	type GenerateTextRequest = llm.TextGenerationRequest
-//	type GenerateTextResponse = llm.TextGenerationResponse
+//	type GenerateTextRequest = textgen.TextGenerationRequest
+//	type GenerateTextResponse = textgen.TextGenerationResponse
 //
 // The connector writes no request pipeline. It describes its provider API as
 // a WireFormat, either from a family package such as openaichat or as a
@@ -26,7 +26,7 @@
 //	if err != nil {
 //		return nil, err
 //	}
-//	generateText, err := llm.NewTextGenerationQuery(&llm.TextGenerationQueryConfig{
+//	generateText, err := textgen.NewTextGenerationQuery(&textgen.TextGenerationQueryConfig{
 //		Definition: GenerateTextDefinition, WireFormat: wireFormat,
 //		BaseURL: config.Endpoint, ConnectionModel: config.Model,
 //		HTTPClient: resolved.httpClient, RequestTimeout: requestTimeout,
@@ -57,7 +57,4 @@
 // such field set, so under minimal version selection it keeps rejecting the
 // new request field even when it links a newer sdkgo. Exported constructors
 // and fields are never removed or retyped in v0.
-//
-// Deprecated: use sdkgo/textgen, which has the same API. This package remains only until every
-// connector migrates and is removed in the next SDK release.
-package llm
+package textgen

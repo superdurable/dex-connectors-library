@@ -17,7 +17,7 @@ import (
 	"time"
 )
 
-const connectionSchema = "connectors.dex.dev/project-connection/v1alpha1"
+const connectionSchema = "connectors.dex.dev/project-connection/v1alpha2"
 
 // CredentialStatus identifies the authoritative connection admission state.
 type CredentialStatus string
@@ -57,8 +57,6 @@ type Connection struct {
 	Status CredentialStatus `json:"status"`
 	// ExpiresAt is absent when the provider did not report expiry; absence never triggers speculative refresh.
 	ExpiresAt *time.Time `json:"expiresAt,omitempty"`
-	// ModuleVersion is the exact connector release defining the stored material.
-	ModuleVersion string `json:"moduleVersion"`
 	// AuthMethod is the manifest authorization method used to produce the credentials.
 	AuthMethod string `json:"authMethod"`
 }
@@ -69,8 +67,6 @@ type CredentialMaterial struct {
 	Credentials json.RawMessage
 	// ExpiresAt is the access credential's exact expiry, or nil when unknown.
 	ExpiresAt *time.Time
-	// ModuleVersion is the exact manifest release used by the credential decoder.
-	ModuleVersion string
 	// AuthMethod is the verified selected authorization method.
 	AuthMethod string
 }
@@ -130,7 +126,6 @@ type credentialEnvelope struct {
 	AttemptID     string          `json:"attemptId,omitempty"`
 	Credentials   json.RawMessage `json:"credentials"`
 	ExpiresAt     *time.Time      `json:"expiresAt,omitempty"`
-	ModuleVersion string          `json:"moduleVersion"`
 	AuthMethod    string          `json:"authMethod"`
 }
 
@@ -185,7 +180,7 @@ func (store *ConnectionStore) ReplaceCredential(ctx context.Context, key Connect
 	if record.Revision != expectedRevision {
 		return record.Connection, ErrConflict
 	}
-	envelope := credentialEnvelope{SchemaVersion: connectionSchema, Scope: store.scope, Key: key, Fence: record.Fence + 1, Credentials: material.Credentials, ExpiresAt: material.ExpiresAt, ModuleVersion: material.ModuleVersion, AuthMethod: material.AuthMethod}
+	envelope := credentialEnvelope{SchemaVersion: connectionSchema, Scope: store.scope, Key: key, Fence: record.Fence + 1, Credentials: material.Credentials, ExpiresAt: material.ExpiresAt, AuthMethod: material.AuthMethod}
 	contents, err := json.Marshal(envelope)
 	if err != nil {
 		return Connection{}, errors.New("credential encoding failed")
@@ -198,7 +193,7 @@ func (store *ConnectionStore) ReplaceCredential(ctx context.Context, key Connect
 	record.Revision++
 	record.Fence++
 	record.Status = CredentialReady
-	record.ExpiresAt, record.ModuleVersion, record.AuthMethod = material.ExpiresAt, material.ModuleVersion, material.AuthMethod
+	record.ExpiresAt, record.AuthMethod = material.ExpiresAt, material.AuthMethod
 	_, err = store.writeRecord(ctx, record, object.ETag)
 	return record.Connection, err
 }
@@ -292,10 +287,10 @@ func (store *ConnectionStore) readMaterial(ctx context.Context, record connectio
 		return CredentialMaterial{}, err
 	}
 	var envelope credentialEnvelope
-	if digestBytes(object.Contents) != record.Credential.Digest || strictJSON(object.Contents, &envelope) != nil || envelope.SchemaVersion != connectionSchema || envelope.Scope != store.scope || envelope.Key != record.Key || envelope.ModuleVersion != record.ModuleVersion || envelope.AuthMethod != record.AuthMethod || !sameExpiry(envelope.ExpiresAt, record.ExpiresAt) {
+	if digestBytes(object.Contents) != record.Credential.Digest || strictJSON(object.Contents, &envelope) != nil || envelope.SchemaVersion != connectionSchema || envelope.Scope != store.scope || envelope.Key != record.Key || envelope.AuthMethod != record.AuthMethod || !sameExpiry(envelope.ExpiresAt, record.ExpiresAt) {
 		return CredentialMaterial{}, errors.New("project credential identity or integrity differs")
 	}
-	material := CredentialMaterial{Credentials: envelope.Credentials, ExpiresAt: envelope.ExpiresAt, ModuleVersion: envelope.ModuleVersion, AuthMethod: envelope.AuthMethod}
+	material := CredentialMaterial{Credentials: envelope.Credentials, ExpiresAt: envelope.ExpiresAt, AuthMethod: envelope.AuthMethod}
 	if err = validateMaterial(material); err != nil {
 		return CredentialMaterial{}, err
 	}
@@ -334,11 +329,23 @@ func regexpConnectorID(value string) bool {
 }
 func validateMaterial(material CredentialMaterial) error {
 	var object map[string]json.RawMessage
-	if len(material.Credentials) == 0 || len(material.Credentials) > 64<<10 || strictJSON(material.Credentials, &object) != nil || object == nil || material.ModuleVersion == "" || len(material.ModuleVersion) > 128 || material.AuthMethod == "" || len(material.AuthMethod) > 128 {
+	if len(material.Credentials) == 0 || len(material.Credentials) > 64<<10 || strictJSON(material.Credentials, &object) != nil || object == nil || material.AuthMethod == "" || len(material.AuthMethod) > 128 {
 		return errors.New("invalid private credential material")
 	}
 	return nil
 }
+// DecodeCredentials strictly decodes one stored credential object into a connector's credential fields.
+// Unknown members and trailing values are rejected. Generated connector code is its caller.
+func DecodeCredentials(contents json.RawMessage, destination any) error {
+	if destination == nil {
+		return errors.New("credential destination is required")
+	}
+	if err := strictJSON(contents, destination); err != nil {
+		return errors.New("stored credential does not match the connector's credential fields")
+	}
+	return nil
+}
+
 func strictJSON(contents []byte, destination any) error {
 	decoder := json.NewDecoder(bytes.NewReader(contents))
 	decoder.DisallowUnknownFields()

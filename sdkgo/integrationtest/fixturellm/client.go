@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/llm"
-	"github.com/superdurable/dex-connectors-library/sdkgo/llm/openaichat"
+	"github.com/superdurable/dex-connectors-library/sdkgo/textgen"
+	"github.com/superdurable/dex-connectors-library/sdkgo/textgen/openaichat"
 )
 
 const (
@@ -22,7 +22,7 @@ const (
 )
 
 // temperatureNotAccepted is the reasoning models' fixed-sampling rule.
-var temperatureNotAccepted = llm.TemperatureNotAccepted()
+var temperatureNotAccepted = textgen.TemperatureNotAccepted()
 
 // chatProfile declares the fixture provider's Chat Completions dialect.
 var chatProfile = openaichat.Profile{
@@ -30,19 +30,19 @@ var chatProfile = openaichat.Profile{
 	ChatCompletionsPath:        "/v1/chat/completions",
 	InstructionsRole:           openaichat.InstructionsRoleDeveloper,
 	MaxTokensField:             openaichat.MaxTokensFieldMaxCompletionTokens,
-	Temperature:                llm.TemperatureRange(0, 1.5),
-	StructuredOutput:           llm.StructuredOutputRules{Mode: llm.StructuredOutputModeJSONSchema},
+	Temperature:                textgen.TemperatureRange(0, 1.5),
+	StructuredOutput:           textgen.StructuredOutputRules{Mode: textgen.StructuredOutputModeJSONSchema},
 	ShouldSendStrictJSONSchema: true,
 	Streaming:                  openaichat.StreamingPolicyAlways,
 	ShouldRequestStreamUsage:   true,
-	ErrorRules: []llm.ErrorRule{
-		{StatusCode: http.StatusTooManyRequests, ErrorToken: "fixture_quota_exhausted", Outcome: llm.QuotaExhaustedOutcome()},
-		{StatusCode: http.StatusBadRequest, ErrorToken: "fixture_content_filter", Outcome: llm.BlockedOutcome()},
+	ErrorRules: []textgen.ErrorRule{
+		{StatusCode: http.StatusTooManyRequests, ErrorToken: "fixture_quota_exhausted", Outcome: textgen.QuotaExhaustedOutcome()},
+		{StatusCode: http.StatusBadRequest, ErrorToken: "fixture_content_filter", Outcome: textgen.BlockedOutcome()},
 	},
 	RateLimitHeaders: []string{"x-ratelimit-remaining-requests"},
 	ModelRules: []openaichat.ModelRule{{
 		ModelIDPrefix: "fixture-reasoner", Temperature: &temperatureNotAccepted,
-		ReasoningEfforts: map[llm.ReasoningEffort]string{llm.ReasoningEffortLow: "low", llm.ReasoningEffortHigh: "high"},
+		ReasoningEfforts: map[textgen.ReasoningEffort]string{textgen.ReasoningEffortLow: "low", textgen.ReasoningEffortHigh: "high"},
 	}},
 }
 
@@ -68,7 +68,7 @@ func WithHTTPClient(client *http.Client) Option { return httpClientOption{httpCl
 // Client calls the fixture provider. It is safe for concurrent use when the
 // credential provider is.
 type Client struct {
-	generateText *llm.TextGenerationQuery
+	generateText *textgen.TextGenerationQuery
 }
 
 // New validates config and returns a Client. Credentials are resolved again
@@ -88,7 +88,7 @@ func New(config Config, credentials sdkgo.CredentialProvider[Credentials], optio
 	if err != nil {
 		return nil, err
 	}
-	generateText, err := llm.NewTextGenerationQuery(&llm.TextGenerationQueryConfig{
+	generateText, err := textgen.NewTextGenerationQuery(&textgen.TextGenerationQueryConfig{
 		Definition: GenerateTextDefinition, WireFormat: wireFormat,
 		BaseURL: config.Endpoint, ConnectionModel: config.Model,
 		HTTPClient: resolved.httpClient, RequestTimeout: requestTimeout,
@@ -107,6 +107,6 @@ func New(config Config, credentials sdkgo.CredentialProvider[Credentials], optio
 
 // GenerateText returns the generateText Query, which the generated Step
 // factory and the llmtest suites run.
-func (client *Client) GenerateText() *llm.TextGenerationQuery {
+func (client *Client) GenerateText() *textgen.TextGenerationQuery {
 	return client.generateText
 }

@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/llm"
+	"github.com/superdurable/dex-connectors-library/sdkgo/textgen"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -20,10 +20,10 @@ import (
 const ConnectorID = "fixture-llm"
 
 // GenerateTextRequest is the provider-neutral generateText input.
-type GenerateTextRequest = llm.TextGenerationRequest
+type GenerateTextRequest = textgen.TextGenerationRequest
 
 // GenerateTextResponse is the provider-neutral generateText output.
-type GenerateTextResponse = llm.TextGenerationResponse
+type GenerateTextResponse = textgen.TextGenerationResponse
 
 // GenerateTextResult is the Result every generateText branch target receives.
 type GenerateTextResult = sdkgo.QueryResult[GenerateTextResponse]
@@ -32,8 +32,8 @@ type GenerateTextResult = sdkgo.QueryResult[GenerateTextResponse]
 // branches and the streaming generateText budget: a 900-second attempt, a
 // 60-second heartbeat timeout, and four attempts over at most 30 minutes.
 var GenerateTextDefinition = sdkgo.QueryDefinition{
-	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: llm.TextGenerationOperationID},
-	Branches:  llm.TextGenerationBranchDefinitions(),
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: textgen.TextGenerationOperationID},
+	Branches:  textgen.TextGenerationBranchDefinitions(),
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: 900 * time.Second, HeartbeatTimeout: 60 * time.Second,
 		ExecuteRetry: &dex.RetryPolicy{
@@ -138,9 +138,9 @@ func generateTextBranches[IN any](config GenerateTextStepConfig[IN]) []sdkgo.Bra
 		branch sdkgo.BranchID
 		target sdkgo.Target[GenerateTextResult]
 	}{
-		{llm.GeneratedBranchID, config.Generated}, {llm.TruncatedBranchID, config.Truncated},
-		{llm.BlockedBranchID, config.Blocked}, {llm.ProviderRejectedBranchID, config.ProviderRejected},
-		{llm.InvalidResponseBranchID, config.InvalidResponse}, {llm.DefectBranchID, config.Defect},
+		{textgen.GeneratedBranchID, config.Generated}, {textgen.TruncatedBranchID, config.Truncated},
+		{textgen.BlockedBranchID, config.Blocked}, {textgen.ProviderRejectedBranchID, config.ProviderRejected},
+		{textgen.InvalidResponseBranchID, config.InvalidResponse}, {textgen.DefectBranchID, config.Defect},
 	}
 	branches := make([]sdkgo.BranchTarget[GenerateTextResult], 0, len(targets))
 	for _, candidate := range targets {

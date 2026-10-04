@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: MIT
 
 // Package hostedconfig resolves Connector credentials through a trusted Superverse broker.
+//
+// Deprecated: the hosted broker lane is retired; applications load projectconfig and open connections
+// with each connector's generated NewProjectConnection. This package is removed in the next SDK release.
 package hostedconfig
 
 import (

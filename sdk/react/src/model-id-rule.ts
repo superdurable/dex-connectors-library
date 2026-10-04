@@ -33,7 +33,7 @@ const pathSegmentModelIDMessage = 'The model ID must start with a letter or digi
  * "models/" and requires `^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$`, and the
  * remainder is the model ID. Any other rule is invalid.
  *
- * sdkgo/llm/llmtest/testdata/model_id_cases.json pins both rules; this
+ * sdkgo/textgen/textgentest/testdata/model_id_cases.json pins both rules; this
  * package's tests run every case.
  */
 export function validateModelIDForRule(rule: ModelIDRule, value: string): ModelIDValidation {
