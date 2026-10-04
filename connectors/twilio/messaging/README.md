@@ -54,54 +54,34 @@ field rather than a picker built from the account's IncomingPhoneNumbers and
 Messaging Services. Twilio's REST API accepts only HTTP Basic authentication,
 while Studio setup commands support only a `bearer` credential or a raw secret
 in a named header, and `Authorization` is a reserved header. A picker therefore
-cannot authenticate until the manifest schema and the Dex Web broker gain a
-Basic credential scheme that pairs a non-secret username with a secret field.
+cannot authenticate until the manifest schema and Dex Web gain a Basic
+credential scheme that pairs a non-secret username with a secret field.
 
 Dex Web `cli-v1.1.0` also omits auth-method `configuration.fields` from the
 setup form, so the API key SID is a non-secret credential field of the
 `api-key` method instead of method configuration.
 
-## Local configuration
+## Project configuration
 
-Dex Web writes this file for the connection name the application uses:
-
-```json
-{
-  "schemaVersion": "connectors.dex.dev/local-connections/v1alpha1",
-  "connections": [{
-    "connectorId": "twilio-messaging",
-    "modulePath": "github.com/superdurable/dex-connectors-library/connectors/twilio/messaging",
-    "moduleVersion": "v0.1.0",
-    "provider": "twilio",
-    "connectionName": "twilio-messaging",
-    "configuration": {"accountSid": "AC...", "defaultSender": "+14155550100"},
-    "credentials": {"auth_method": "api-key", "api_key_sid": "SK...", "api_key_secret": "..."}
-  }]
-}
-```
-
-The `auth-token` method stores `{"auth_method": "auth-token", "auth_token":
-"..."}` instead. Load the file with `localconfig.LoadFromEnvironment` and
-`messaging.NewLocalConnection(store, "twilio-messaging")`.
-
-## Hosted credentials
-
-In Superverse-hosted deployments, construct the client with the
-operation-scoped broker provider. `DecodeResolvedCredentialsJSON` accepts
-`auth_method` with `auth_token`, or with `api_key_sid` and `api_key_secret`;
-when `auth_method` is absent, the one secret present selects the method:
+Dex Web or Superverse Studio writes the connection to the project
+configuration. Load it with `projectconfig.LoadFromEnvironment` and open the
+connection by the name the application uses with
+`messaging.NewProjectConnection`, as
+[`examples/text-message-delivery/main.go`](examples/text-message-delivery/main.go)
+does:
 
 ```go
-provider, err := hostedconfig.NewCredentialProviderFromEnvironment(
-    messaging.ConnectorID,
-    "twilio-messaging",
-    messaging.DecodeResolvedCredentialsJSON,
-)
+project, err := projectconfig.LoadFromEnvironment(ctx)
 if err != nil {
-    return err
+	return err
 }
-client, err := messaging.New(messaging.Config{AccountSID: accountSID}, provider)
+connection, err := messaging.NewProjectConnection(project, textmessagedelivery.ConnectionName)
 ```
+
+`LoadFromEnvironment` reads the `DEX_PROJECT_*` environment described in
+[project configuration loading](../../../sdkgo/projectconfig/README.md#application-loading).
+The stored credential holds the selected `auth_method` with `auth_token`, or
+with `api_key_sid` and `api_key_secret`.
 
 ## Operations
 

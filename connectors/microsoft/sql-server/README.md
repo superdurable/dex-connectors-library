@@ -85,22 +85,24 @@ against the routed host. The driver reads no connection string: host, port, user
 encryption are set as typed fields, so no value can inject a connection-string keyword, and the
 driver's `MSSQL_USE_EPA` environment variable is ignored.
 
-A local connection file looks like this:
+Dex Web **Connections** saves `host`, `database`, `user`, and the other settings as ordinary
+connection configuration and `password` as the private credential. Load the project configuration
+once at application startup and open the connection by the name its operations use, as
+[`examples/record-refund/main.go`](examples/record-refund/main.go) does:
 
-```json
-{
-  "schemaVersion": "connectors.dex.dev/local-connections/v1alpha1",
-  "connections": [{
-    "connectorId": "microsoft-sql-server",
-    "modulePath": "github.com/superdurable/dex-connectors-library/connectors/microsoft/sql-server",
-    "moduleVersion": "v0.1.0",
-    "provider": "microsoft-sql-server",
-    "connectionName": "sql-server-ledger",
-    "configuration": {"host": "myserver.database.windows.net", "database": "app", "user": "dex_app"},
-    "credentials": {"password": "..."}
-  }]
+```go
+project, err := projectconfig.LoadFromEnvironment(ctx)
+if err != nil {
+	return err
 }
+connection, err := sqlserver.NewProjectConnection(project, recordrefund.ConnectionName)
 ```
+
+`projectconfig.LoadFromEnvironment` reads the `DEX_PROJECT_*` configuration that Dex Web or
+Superverse Studio writes; see
+[`sdkgo/projectconfig`](../../../sdkgo/projectconfig/README.md#application-loading). Set the same
+`ConnectionName` beside the typed `Connection` in each operation: a Step whose `ConnectionName` is
+empty or differs from its connection's name panics at construction.
 
 ## Statements and parameters
 

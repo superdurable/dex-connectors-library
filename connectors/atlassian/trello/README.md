@@ -82,34 +82,29 @@ token, and the Dex Web exchange, scope-string check, and refresh rotation are
 unverified for it. It can be added later as a second method with
 `sdkgo/oauthtoken`.
 
-## Local configuration
+## Project configuration
 
-Dex Web writes this record for the connection name the application uses:
+Dex Web or Superverse Studio saves the connection's settings and credentials in
+the project configuration. The application loads that configuration once and
+opens the connection by the name it declares, as
+[`examples/approved-request-card/main.go`](examples/approved-request-card/main.go)
+does:
 
-```json
-{
-  "schemaVersion": "connectors.dex.dev/local-connections/v1alpha1",
-  "connections": [{
-    "connectorId": "trello",
-    "modulePath": "github.com/superdurable/dex-connectors-library/connectors/atlassian/trello",
-    "moduleVersion": "v0.1.0",
-    "provider": "trello",
-    "connectionName": "trello-requests",
-    "configuration": {},
-    "credentials": {"api_key": "...", "token": "..."}
-  }]
+```go
+project, err := projectconfig.LoadFromEnvironment(ctx)
+if err != nil {
+	return err
+}
+connection, err := trello.NewProjectConnection(project, approvedrequestcard.ConnectionName)
+if err != nil {
+	return err
 }
 ```
 
-Load it with `localconfig.LoadFromEnvironment` and
-`trello.NewLocalConnection(store, "trello-requests")`, as
-[`examples/approved-request-card/main.go`](examples/approved-request-card/main.go)
-does. `endpoint` and `maxResponseBytes` are startup configuration.
-
-Hosted applications resolve operation-scoped credentials with
-`hostedconfig.NewCredentialProviderFromEnvironment(trello.ConnectorID, name,
-trello.DecodeResolvedCredentialsJSON)`, which accepts exactly `api_key` and
-`token`.
+`LoadFromEnvironment` reads the `DEX_PROJECT_*` environment described in
+[project configuration](../../../sdkgo/projectconfig/README.md). The API key and
+token stay in project storage and are read for every provider call; `endpoint`
+and `maxResponseBytes` are startup configuration.
 
 ## Operations
 

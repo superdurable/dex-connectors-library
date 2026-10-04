@@ -17,7 +17,7 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/connectors/zendesk/support"
 	customerissue "github.com/superdurable/dex-connectors-library/connectors/zendesk/support/examples/customer-issue/flow"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -35,11 +35,11 @@ func main() {
 }
 
 func run(ctx context.Context) error {
-	store, err := localconfig.LoadFromEnvironment()
+	project, err := projectconfig.LoadFromEnvironment(ctx)
 	if err != nil {
 		return err
 	}
-	connection, err := support.NewLocalConnection(store, customerissue.ConnectionName, connectionOptions()...)
+	connection, err := support.NewProjectConnection(project, customerissue.ConnectionName, connectionOptions()...)
 	if err != nil {
 		return err
 	}

@@ -88,18 +88,3 @@ func TestRefreshRequiresReauthorizationForTerminalErrorsAndMissingPermissions(t 
 	require.Error(t, err)
 	require.False(t, sdkgo.IsReauthorizationRequired(err), "an outage is retryable")
 }
-
-func TestResolvedCredentialsAcceptOnlyTheMethodAndAccessToken(t *testing.T) {
-	credentials, err := excel.DecodeResolvedCredentialsJSON([]byte(`{"auth_method":"microsoft-oauth","access_token":"token"}`))
-	require.NoError(t, err)
-	require.Equal(t, "token", credentials.AccessToken.Reveal())
-	for _, contents := range []string{
-		`{"auth_method":"microsoft-oauth","access_token":"token","refresh_token":"SENTINEL"}`,
-		`{"auth_method":"app-only","access_token":"token"}`,
-		`{"auth_method":"microsoft-oauth","access_token":"has space"}`,
-	} {
-		_, err := excel.DecodeResolvedCredentialsJSON([]byte(contents))
-		require.Error(t, err)
-		require.NotContains(t, err.Error(), "SENTINEL")
-	}
-}

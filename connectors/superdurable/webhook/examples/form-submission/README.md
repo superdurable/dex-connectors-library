@@ -3,9 +3,10 @@
 This example receives signed form submissions and starts one
 `WebhookFormSubmission` Flow per submission:
 
-1. the Worker mounts `NewLocalRequestReceivedEndpointRunner` at
+1. the Worker mounts `NewProjectRequestReceivedEndpointRunner` at
    `/webhooks/form-submission` and starts it at once, so a submission is
-   recorded in the binding's durable inbox even while Dex is unreachable;
+   recorded in the binding's durable project inbox even while Dex is
+   unreachable;
 2. the `form-submission-received` binding accepts only bodies whose
    `/event_type` is `form_response`; `AcceptSubmission` also requires a JSON
    object or form fields;
@@ -60,13 +61,12 @@ mkdir -p /tmp/webhook-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/superdurable/webhook/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/superdurable/webhook \
-  --version v0.1.0 --tag connectors/superdurable/webhook/v0.1.0 \
+  --version v0.21.0 --tag connectors/superdurable/webhook/v0.21.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/webhook-release/connector-release.json \
   --digest-output /tmp/webhook-release/connector-release.json.sha256
 dexcli dev \
   --flow-rendering-dir "$PWD/connectors/superdurable/webhook/build" \
-  --connector-config-dir "$HOME/.dex/connectors" \
   --connector-release-override webhook=/tmp/webhook-release
 ```
 
@@ -88,9 +88,9 @@ Open the Dex Web URL that dexcli prints, select **Connectors**, and select
 - leave the other fields at their defaults, and save.
 
 Dex Web lists the `requestReceived` binding `form-submission-received` but has
-no form for its filter, because the connector declares no Studio units. Add
-the binding, or replace its saved `{}` configuration, in the `triggerBindings`
-array of `$HOME/.dex/connectors/connections.json`, beside the saved connection:
+no form for its filter, because the connector declares no Studio units. The
+binding's record in the `triggerBindings` array of the project configuration,
+beside the saved connection, carries the filter:
 
 ```json
 {
@@ -104,11 +104,15 @@ array of `$HOME/.dex/connectors/connections.json`, beside the saved connection:
 
 ## 4. Run the Worker and send a submission
 
-In a second terminal, from `connectors/superdurable/webhook`:
+Dex Web or Superverse Studio writes the connection and the binding to the
+project configuration. In a second terminal, from
+`connectors/superdurable/webhook`, run the Worker with the `DEX_PROJECT_*`
+environment that names that configuration, as
+[project configuration loading](../../../../../sdkgo/projectconfig/README.md#application-loading)
+describes:
 
 ```bash
 cd "$(git rev-parse --show-toplevel)/connectors/superdurable/webhook"
-export DEX_CONNECTOR_CONFIG_FILE="$HOME/.dex/connectors/connections.json"
 go run ./examples/form-submission
 ```
 
@@ -156,10 +160,9 @@ Until the binding replays its inbox and starts receiving, the endpoint answers
 ## 7. Restart recovery
 
 Stop Dex, send a submission, and stop the Worker. The endpoint answered `200`
-because the submission was on disk; it stays in the binding's inbox, a
-`.trigger-inbox-*.json` file beside the connection file. Start Dex and the
-Worker again: the runner replays it, logs `replaying pending trigger events`,
-and the Flow starts and completes.
+because the submission was stored; it stays in the binding's durable inbox in
+project storage. Start Dex and the Worker again: the runner replays it, logs
+`replaying pending trigger events`, and the Flow starts and completes.
 
 ## Test
 
@@ -169,18 +172,20 @@ From `connectors/superdurable/webhook`:
 go test -race ./examples/form-submission/...
 ```
 
-The unit tests cover the Flow's mapping and admission rules, and run the
-Worker against an unreachable Dex Server: a signed submission is answered
-`200` only after it is in the inbox, a forged one `400`, and a filtered one
-`200` without a record.
+The unit tests cover the Flow's mapping and admission rules, and serve the
+example's Flow target on the connection's endpoint against an unreachable Dex
+Server: a signed submission is answered `200` and retried toward Dex, a forged
+one `400`, and a filtered one `200` without reaching the target.
 
-The real Dex tests run the example's `run` function and its endpoint runner
-against `dexcli dev` and a TLS receiver that verifies each forwarded
-signature: a signed submission starts exactly one Flow; a redelivery starts no
-second Flow and forwards nothing again; a forged submission answers `400` and
-starts nothing; a submission before the runner runs answers `503` and the
-sender's retry starts the Flow; and a submission acknowledged while Dex was
-unreachable is replayed after a restart:
+Opening a connection from a loaded project needs project storage, so the tests
+build the README's connection with a static credential and run the binding
+without its durable project inbox; the Connector SDK's own tests cover the
+inbox, including replay after a restart. The real Dex tests serve the
+example's Flow target against `dexcli dev` and a TLS receiver that verifies
+each forwarded signature: a signed submission starts exactly one Flow; a
+redelivery starts no second Flow and forwards nothing again; a forged
+submission answers `400` and starts nothing; and a submission before the
+binding runs answers `503` and the sender's retry starts the Flow:
 
 ```bash
 DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 go test -tags=integration ./examples/form-submission/... -count=1 -v

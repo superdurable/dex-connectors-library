@@ -176,38 +176,6 @@ func TestCredentialRefreshDriverRequiresReauthorizationForAnUnknownMethod(t *tes
 	}
 }
 
-func TestDecodeResolvedCredentialsRejectsRenewalMaterial(t *testing.T) {
-	contents, err := json.Marshal(map[string]string{"auth_method": WorkspaceDomainDelegationAuthMethodID, "access_token": "short-lived"})
-	require.NoError(t, err)
-	credentials, err := DecodeResolvedCredentialsJSON(contents)
-	require.NoError(t, err)
-	require.Equal(t, "short-lived", credentials.AccessToken.Reveal())
-	for _, forbidden := range []string{"refresh_token", "oauth_client_secret", "service_account_key"} {
-		contents, err = json.Marshal(map[string]string{"access_token": "short-lived", forbidden: "must-not-cross-broker"})
-		require.NoError(t, err)
-		_, err = DecodeResolvedCredentialsJSON(contents)
-		require.Error(t, err, forbidden)
-		require.NotContains(t, err.Error(), "must-not-cross-broker")
-	}
-	_, err = DecodeResolvedCredentialsJSON(json.RawMessage(`{"auth_method":"other","access_token":"short-lived"}`))
-	require.Error(t, err)
-}
-
-func TestEncodeCredentialsJSONRoundTripsCompleteCredentials(t *testing.T) {
-	encoded, err := EncodeCredentialsJSON(oauthCredentials("refresh"))
-	require.NoError(t, err)
-	decoded, err := DecodeCredentialsJSON(encoded)
-	require.NoError(t, err)
-	require.Equal(t, "refresh", decoded.RefreshToken.Reveal())
-	_, err = EncodeCredentialsJSON(Credentials{AuthMethodID: GoogleOAuthAuthMethodID})
-	require.Error(t, err)
-	delegation, err := EncodeCredentialsJSON(Credentials{
-		AuthMethodID: WorkspaceDomainDelegationAuthMethodID, ServiceAccountKey: sdkgo.NewSecretString("{}"), DelegatedUser: "admin@example.com",
-	})
-	require.NoError(t, err, "a delegated access token is minted, so it is not required")
-	require.NotContains(t, string(delegation), "access_token")
-}
-
 func oauthCredentials(refreshToken string) Credentials {
 	return Credentials{
 		AuthMethodID: GoogleOAuthAuthMethodID, OAuthClientID: "client-id", OAuthClientSecret: sdkgo.NewSecretString("client-secret"),

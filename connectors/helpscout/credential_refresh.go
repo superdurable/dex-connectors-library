@@ -5,15 +5,12 @@ package helpscout
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/oauthtoken"
-	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
 const helpScoutOAuthTokenEndpoint = "https://api.helpscout.net/v2/oauth2/token"
@@ -79,18 +76,4 @@ func (driver *CredentialRefreshDriver) Refresh(
 		Credentials: credentials,
 		ExpiresAt:   driver.now().UTC().Add(token.ExpiresIn),
 	}, nil
-}
-
-// DecodeResolvedCredentialsJSON decodes the operation-scoped credential that a trusted hosted broker
-// returns, for use as a hostedconfig.CredentialDecoder. The JSON object holds exactly access_token; the
-// App ID and App Secret stay in the broker. Unknown fields or a token that cannot travel in an HTTP header
-// are rejected, and the error never repeats the value.
-func DecodeResolvedCredentialsJSON(contents json.RawMessage) (Credentials, error) {
-	var fields struct {
-		AccessToken string `json:"access_token"`
-	}
-	if err := localconfig.DecodeCredentials(contents, &fields); err != nil || !providerhttp.IsHeaderSafeCredential(fields.AccessToken) {
-		return Credentials{}, errors.New("Help Scout resolved credential is invalid")
-	}
-	return Credentials{AccessToken: sdkgo.NewSecretString(fields.AccessToken)}, nil
 }

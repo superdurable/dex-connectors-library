@@ -4,13 +4,12 @@
 package main
 
 import (
-	"os"
-	"path/filepath"
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	approvedrequesttask "github.com/superdurable/dex-connectors-library/connectors/asana/examples/approved-request-task/flow"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
 func TestEnvironmentOr(t *testing.T) {
@@ -19,13 +18,21 @@ func TestEnvironmentOr(t *testing.T) {
 	require.Equal(t, "fallback", environmentOr("ASANA_EXAMPLE_MISSING", "fallback"))
 }
 
-func TestProjectSelectionIsOptionalAndLoadedFromTheSidecar(t *testing.T) {
-	directory := t.TempDir()
-	connectionsPath := filepath.Join(directory, "connections.json")
-	require.NoError(t, os.WriteFile(connectionsPath, []byte(`{"schemaVersion":"connectors.dex.dev/local-connections/v1alpha1","connections":[]}`), 0o600))
-	store, err := localconfig.LoadFile(connectionsPath)
-	require.NoError(t, err)
-	selection, err := loadProjectSelection(store)
+func TestProjectSelectionIsOptionalAndLoadedFromTheProjectConfiguration(t *testing.T) {
+	selection, err := loadProjectSelection(projectconfig.Configuration{})
 	require.NoError(t, err)
 	require.Equal(t, approvedrequesttask.ProjectSelection{}, selection)
+
+	reference := approvedrequesttask.ProjectSelectionConfigurationRef()
+	configuration := projectconfig.Configuration{OperationConfigurations: []projectconfig.OperationConfiguration{{
+		ConnectorID: reference.ConnectorID, ConnectionName: reference.ConnectionName, OperationID: reference.OperationID,
+		FlowType: reference.FlowType, StepType: reference.StepType,
+		Configuration: json.RawMessage(`{"workspaceId":"1100000000000001","projectId":"1201000000000001","projectName":"Facilities","sectionId":"1201000000000101","sectionName":"Approved"}`),
+	}}}
+	selection, err = loadProjectSelection(configuration)
+	require.NoError(t, err)
+	require.Equal(t, approvedrequesttask.ProjectSelection{
+		WorkspaceID: "1100000000000001", ProjectID: "1201000000000001", ProjectName: "Facilities",
+		SectionID: "1201000000000101", SectionName: "Approved",
+	}, selection)
 }

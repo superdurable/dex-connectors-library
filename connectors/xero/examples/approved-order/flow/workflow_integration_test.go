@@ -29,8 +29,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/xero"
+	"github.com/superdurable/dex-connectors-library/connectors/xero/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -116,9 +116,9 @@ func TestApprovedOrderRaisesOneInvoiceAndRecordsOnePaymentWithRealDex(t *testing
 	token := provider.lastRequest("token")
 	require.Equal(t, "Basic "+base64.StdEncoding.EncodeToString([]byte(integrationClientID+":"+integrationClientSecret)), token.header.Get("Authorization"))
 	require.Equal(t, "grant_type=client_credentials&scope=accounting.invoices+accounting.payments+accounting.contacts.read", token.body)
-	persisted := harness.readPersistedCredentials(t)
-	require.NotEmpty(t, persisted.AccessToken, "localconfig stored the minted access token")
-	require.True(t, persisted.ExpiresAt.After(time.Now().Add(20*time.Minute)))
+	stored := harness.readStoredCredentials(t)
+	require.NotEmpty(t, stored.AccessToken, "the credential source stored the minted access token")
+	require.True(t, stored.ExpiresAt.After(time.Now().Add(20*time.Minute)))
 }
 
 // TestSlowInvoiceCreateIsDispatchedAgainAndRaisesOneInvoiceWithRealDex is a duplicate-dispatch test: Xero
@@ -910,7 +910,7 @@ func contains(values []string, value string) bool {
 type connectionMethod int
 
 const (
-	// customConnection loads a Dex Web-shaped Custom Connection record without an access token.
+	// customConnection starts from the Custom Connection credentials Dex Web saves, without an access token.
 	customConnection connectionMethod = iota + 1
 	// oauthConnection uses an unexpired OAuth access token and a named organisation.
 	oauthConnection
@@ -918,18 +918,18 @@ const (
 
 // orderHarness owns a real Worker and Client against the Dex Server at DEX_FLOW_SERVICE_ADDRESS.
 type orderHarness struct {
-	flow            *Flow
-	registry        *dex.Registry
-	cache           *blobcache.Cache
-	serverAddress   string
-	workerAddress   string
-	worker          *dex.Worker
-	workerResult    chan error
-	client          *dex.Client
-	connectionsFile string
+	flow          *Flow
+	registry      *dex.Registry
+	cache         *blobcache.Cache
+	serverAddress string
+	workerAddress string
+	worker        *dex.Worker
+	workerResult  chan error
+	client        *dex.Client
+	credentials   *testsupport.RefreshingCredentialSource[xero.Credentials]
 }
 
-type persistedCredentials struct {
+type storedCredentials struct {
 	AccessToken string
 	ExpiresAt   time.Time
 }
@@ -942,11 +942,13 @@ func newOrderHarness(t *testing.T, provider *fakeXero, method connectionMethod, 
 	var err error
 	switch method {
 	case customConnection:
-		harness.connectionsFile = filepath.Join(t.TempDir(), "connections.json")
-		writeCustomConnectionRecord(t, harness.connectionsFile)
-		store, loadErr := localconfig.LoadFile(harness.connectionsFile)
-		require.NoError(t, loadErr)
-		connection, err = xero.NewLocalConnection(store, ConnectionName, options...)
+		harness.credentials = testsupport.NewRefreshingCredentialSource(xero.Credentials{
+			AuthMethodID: xero.CustomConnectionAuthMethodID, ClientID: integrationClientID,
+			ClientSecret: sdkgo.NewSecretString(integrationClientSecret),
+		}, nil)
+		client, newErr := xero.New(xero.Config{}, harness.credentials, options...)
+		require.NoError(t, newErr)
+		connection, err = xero.NewConnection(client, sdkgo.ConnectionRef{Provider: "xero", Name: ConnectionName})
 	default:
 		reference := sdkgo.ConnectionRef{Provider: "xero", Name: ConnectionName}
 		client, newErr := xero.New(xero.Config{Organisation: integrationOrganisation}, sdkgo.StaticCredentialProvider[xero.Credentials]{reference: {
@@ -975,42 +977,12 @@ func newOrderHarness(t *testing.T, provider *fakeXero, method connectionMethod, 
 	return harness
 }
 
-// writeCustomConnectionRecord writes what Dex Web saves for the Custom Connection method, including its record-level authMethodId.
-func writeCustomConnectionRecord(t *testing.T, path string) {
+func (harness *orderHarness) readStoredCredentials(t *testing.T) storedCredentials {
 	t.Helper()
-	file := map[string]any{
-		"schemaVersion": localconfig.SchemaVersion,
-		"connections": []map[string]any{{
-			"connectorId": xero.ConnectorID, "modulePath": "github.com/superdurable/dex-connectors-library/connectors/xero",
-			"moduleVersion": "v0.1.0", "provider": "xero", "connectionName": ConnectionName, "authMethodId": xero.CustomConnectionAuthMethodID,
-			"configuration": map[string]any{},
-			"credentials": map[string]any{
-				"auth_method": xero.CustomConnectionAuthMethodID, "client_id": integrationClientID, "client_secret": integrationClientSecret,
-			},
-		}},
-	}
-	encoded, err := json.Marshal(file)
-	require.NoError(t, err)
-	require.NoError(t, os.WriteFile(path, encoded, 0o600))
-}
-
-func (harness *orderHarness) readPersistedCredentials(t *testing.T) persistedCredentials {
-	t.Helper()
-	contents, err := os.ReadFile(harness.connectionsFile)
-	require.NoError(t, err)
-	var file struct {
-		Connections []struct {
-			AuthMethodID string `json:"authMethodId"`
-			Credentials  struct {
-				AccessToken string `json:"access_token"`
-			} `json:"credentials"`
-			CredentialExpiresAt time.Time `json:"credentialExpiresAt"`
-		} `json:"connections"`
-	}
-	require.NoError(t, json.Unmarshal(contents, &file))
-	require.Len(t, file.Connections, 1)
-	require.Equal(t, xero.CustomConnectionAuthMethodID, file.Connections[0].AuthMethodID, "the refresh kept Dex Web's record member")
-	return persistedCredentials{AccessToken: file.Connections[0].Credentials.AccessToken, ExpiresAt: file.Connections[0].CredentialExpiresAt}
+	credentials, expiresAt := harness.credentials.Current()
+	require.NotNil(t, expiresAt)
+	require.Equal(t, xero.CustomConnectionAuthMethodID, credentials.AuthMethodID, "the refresh kept the authorization method")
+	return storedCredentials{AccessToken: credentials.AccessToken.Reveal(), ExpiresAt: *expiresAt}
 }
 
 func (harness *orderHarness) startWorker(t *testing.T) {

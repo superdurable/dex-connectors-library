@@ -5,7 +5,7 @@ metadata:
   displayName: Salesforce
   description: Query Salesforce CRM records with typed SOQL bind values, read one record, create or update a record by external ID without duplicates on retry, and update a record by ID.
   company: Salesforce
-  version: v0.1.0
+  version: v0.21.0
 spec:
   provider: salesforce
   codegen:
@@ -32,6 +32,7 @@ spec:
         required: false
         default: 200
   auth:
+    refreshable: true
     defaultMethod: salesforce-oauth
     methods:
       - id: salesforce-oauth

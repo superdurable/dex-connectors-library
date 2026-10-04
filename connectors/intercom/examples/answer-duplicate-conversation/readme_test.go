@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/intercom"
 	answerduplicate "github.com/superdurable/dex-connectors-library/connectors/intercom/examples/answer-duplicate-conversation/flow"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
 // TestREADMESamplesMatchTheExample decodes every JSON sample strictly against the example's types.
@@ -70,26 +71,15 @@ func TestConnectorREADMESamplesAreTheExampleCode(t *testing.T) {
 
 	records := fencedBlocks(readme, "json")
 	require.Len(t, records, 1)
-	var record struct {
-		ConnectorID    string `json:"connectorId"`
-		ModulePath     string `json:"modulePath"`
-		ModuleVersion  string `json:"moduleVersion"`
-		Provider       string `json:"provider"`
-		ConnectionName string `json:"connectionName"`
-		Configuration  struct {
-			Region intercom.Region `json:"region"`
-		} `json:"configuration"`
-		Credentials struct {
-			AccessToken  string `json:"access_token"`
-			ClientSecret string `json:"client_secret"`
-		} `json:"credentials"`
-	}
+	var record projectconfig.ConnectionConfiguration
 	requireStrictJSON(t, records[0], &record)
 	require.Equal(t, intercom.ConnectorID, record.ConnectorID)
 	require.Equal(t, answerduplicate.ConnectionName, record.ConnectionName)
-	require.Equal(t, intercom.RegionUs, record.Configuration.Region)
-	manifest := readFile(t, filepath.Join("..", "..", "connector.yaml"))
-	require.Contains(t, manifest, "version: "+record.ModuleVersion)
+	require.Equal(t, "github.com/superdurable/dex-connectors-library/connectors/intercom", record.ModulePath)
+	require.Equal(t, "intercom", record.Provider)
+	var configuration intercom.Config
+	requireStrictJSON(t, string(record.Configuration), &configuration)
+	require.Equal(t, intercom.RegionUs, configuration.Region)
 }
 
 func readFile(t *testing.T, path string) string {

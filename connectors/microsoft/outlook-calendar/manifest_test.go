@@ -198,7 +198,7 @@ func TestCreateEventFactoryRequiresOnlyTheHappyPath(t *testing.T) {
 	})
 	require.Panics(t, func() {
 		outlookcalendar.NewCreateEventStep(outlookcalendar.CreateEventStepConfig[string]{
-			StepType: "Create", Annotations: annotations, Connection: connection,
+			StepType: "Create", Annotations: annotations, Connection: connection, ConnectionName: calendarConnection.Name,
 			MapToOperationInput: mapToInput, ProviderRejected: sdkgo.GoTo(createdEventTarget{}),
 		})
 	})

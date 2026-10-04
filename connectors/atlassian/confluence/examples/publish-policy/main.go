@@ -17,7 +17,8 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/connectors/atlassian/confluence"
 	publishpolicy "github.com/superdurable/dex-connectors-library/connectors/atlassian/confluence/examples/publish-policy/flow"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -32,15 +33,15 @@ func main() {
 }
 
 func run(ctx context.Context) error {
-	store, err := localconfig.LoadFromEnvironment()
+	project, err := projectconfig.LoadFromEnvironment(ctx)
 	if err != nil {
 		return err
 	}
-	connection, err := confluence.NewLocalConnection(store, publishpolicy.ConnectionName)
+	connection, err := confluence.NewProjectConnection(project, publishpolicy.ConnectionName)
 	if err != nil {
 		return err
 	}
-	selection, err := loadSpaceSelection(store)
+	selection, err := loadSpaceSelection(project.Configuration)
 	if err != nil {
 		return err
 	}
@@ -71,9 +72,9 @@ func run(ctx context.Context) error {
 }
 
 // loadSpaceSelection reads the picked space once at startup; an unsaved picker uses each input's spaceKey.
-func loadSpaceSelection(store *localconfig.Store) (publishpolicy.SpaceSelection, error) {
-	loaded, err := localconfig.LoadOperationConfiguration[publishpolicy.SpaceSelection](store, publishpolicy.SpaceSelectionConfigurationRef())
-	if errors.Is(err, localconfig.ErrConfigurationNotFound) {
+func loadSpaceSelection(configuration projectconfig.Configuration) (publishpolicy.SpaceSelection, error) {
+	loaded, err := provider.LoadOperationConfiguration[publishpolicy.SpaceSelection](configuration, publishpolicy.SpaceSelectionConfigurationRef())
+	if errors.Is(err, projectconfig.ErrObjectNotFound) {
 		return publishpolicy.SpaceSelection{}, nil
 	}
 	if err != nil {

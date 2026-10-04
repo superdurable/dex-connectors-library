@@ -45,7 +45,7 @@ change.
 
 ## Release baseline
 
-- HubSpot Connector `v0.1.0`
+- HubSpot Connector `v0.21.0`
 - dexcli `cli-v1.1.0` or a later stable release
 
 ## 1. Prepare a clean local test project
@@ -60,12 +60,12 @@ cd hubspot-lead-qualification-e2e
 mkdir -p flow build
 
 curl -fsSL \
-  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/hubspot/v0.1.0/connectors/hubspot/examples/lead-qualification/flow/workflow.go \
+  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/hubspot/v0.21.0/connectors/hubspot/examples/lead-qualification/flow/workflow.go \
   -o flow/workflow.go
 
 go mod init example.com/hubspot-lead-qualification-e2e
 go mod edit -go=1.24.0
-go get github.com/superdurable/dex-connectors-library/connectors/hubspot@v0.1.0
+go get github.com/superdurable/dex-connectors-library/connectors/hubspot@v0.21.0
 go mod tidy
 ```
 
@@ -90,8 +90,7 @@ and requires identical output.
 
 ```bash
 dexcli dev \
-  --flow-rendering-dir "$PWD/build" \
-  --connector-config-dir "$HOME/.dex/connectors"
+  --flow-rendering-dir "$PWD/build"
 ```
 
 Record the Dex Web URL and Dex Server address that dexcli prints. With the
@@ -117,8 +116,8 @@ Open **Connections** and select `hubspot / hubspot-crm`. It lists the
 `upsertObject` and `updateObject` Step uses that have configuration.
 
 1. In **Authorize**, keep **Private app access token**, paste the token into
-   `access_token`, leave the optional settings blank, and choose **Save local
-   credentials**. The connection status becomes **Ready**.
+   `access_token`, leave the optional settings blank, and save the
+   credentials. The connection status becomes **Ready**.
 2. In **upsertObject**, choose **Load owners**, pick the lead owner or leave
    the owner blank, and choose **Save**.
 3. In **updateObject**, choose **Load deal pipelines**, pick the pipeline and
@@ -128,17 +127,18 @@ When a list cannot load, each picker accepts the ID directly: owner IDs are in
 HubSpot **Settings** > **Users & Teams**, and pipeline and stage IDs are in
 **Settings** > **Objects** > **Deals** > **Pipelines**.
 
-The connection file is a plaintext local-development secret store. Never commit
-or share it. The Worker reads it exactly as Dex Web writes it.
-
 ## 5. Run the Worker
 
+The Worker reads the `DEX_PROJECT_*` project configuration environment
+described in [project configuration](../../../../sdkgo/projectconfig/README.md);
+Dex Web or Superverse Studio writes that configuration when you save the
+connection.
+
 ```bash
-export DEX_CONNECTOR_CONFIG_FILE="$HOME/.dex/connectors/connections.json"
 export DEX_FLOW_SERVICE_ADDRESS="127.0.0.1:8801"
 
 GOWORK=off go run \
-  github.com/superdurable/dex-connectors-library/connectors/hubspot/examples/lead-qualification@v0.1.0
+  github.com/superdurable/dex-connectors-library/connectors/hubspot/examples/lead-qualification@v0.21.0
 ```
 
 The Worker listens on `127.0.0.1:8841` by default. Set
@@ -184,14 +184,14 @@ and another pipeline's deal stay untouched, a duplicate start with the same
 request ID, a new lead without an open deal, a rate-limited upsert that Dex
 retries after `Retry-After`, a rejected upsert that completes with a
 secret-safe failure, a Flow failure for the unwired `notFound` branch, an
-expired OAuth connection that refreshes through `NewLocalConnection` before
-the first call, and slow writes. For the slow writes, HubSpot answers the
+expired OAuth connection that refreshes before the first call, and slow
+writes. For the slow writes, HubSpot answers the
 upsert and the update after nine seconds, Dex's asynchronous fallback
 dispatches each one again, and the test proves one contact and the configured
 stage remain. That test takes about 35 seconds.
 
-Before `v0.1.0` is published, build a local release artifact with
+Before `v0.21.0` is published, build a local release artifact with
 `go run ./cmd/connectorctl release-artifact` from the repository root and pass
 its directory to `dexcli dev --connector-release-override hubspot=DIRECTORY`.
-The test project must still resolve `connectors/hubspot@v0.1.0` without a
+The test project must still resolve `connectors/hubspot@v0.21.0` without a
 `replace`, as the compatibility gate does with a local module proxy.

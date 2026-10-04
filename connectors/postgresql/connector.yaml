@@ -5,7 +5,7 @@ metadata:
   displayName: PostgreSQL
   description: Run one parameterized read-only query, or one transactional write statement, against a PostgreSQL database.
   company: PostgreSQL
-  version: v0.1.0
+  version: v0.21.0
 spec:
   provider: postgresql
   codegen:

@@ -90,7 +90,7 @@ func WithClock(now func() time.Time) Option {
 type Client struct {
 	baseURL          string
 	httpClient       *http.Client
-	credentials      sdkgo.CredentialProvider[Credentials]
+	credentials      CredentialSource
 	refreshDriver    *CredentialRefreshDriver
 	maxResponseBytes int64
 	now              func() time.Time
@@ -151,7 +151,7 @@ type hubspotErrorBody struct {
 // A blank Endpoint uses https://api.hubapi.com, and a zero MaxResponseBytes uses
 // one MiB. The credential provider is consulted before every provider call, so
 // token rotation and OAuth refresh take effect without a restart.
-func New(config Config, credentials sdkgo.CredentialProvider[Credentials], options ...Option) (*Client, error) {
+func New(config Config, credentials CredentialSource, options ...Option) (*Client, error) {
 	config = withConfigDefaults(config)
 	if err := config.Validate(); err != nil {
 		return nil, err

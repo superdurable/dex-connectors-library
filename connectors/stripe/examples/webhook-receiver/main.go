@@ -15,7 +15,7 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/connectors/stripe"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
 const (
@@ -33,14 +33,14 @@ func main() {
 }
 
 func run(ctx context.Context) error {
-	store, err := localconfig.LoadFromEnvironment()
+	project, err := projectconfig.LoadFromEnvironment(ctx)
 	if err != nil {
 		return err
 	}
-	runtime, err := stripe.NewLocalCheckoutSessionWebhookRuntime(
-		store,
+	runtime, err := stripe.NewProjectCheckoutSessionWebhookRuntime(
+		project,
 		connectionName,
-		[]stripe.LocalCheckoutSessionUpdatedTriggerRoute{{BindingName: bindingName, Target: checkoutEventLogger{}}},
+		[]stripe.ProjectCheckoutSessionUpdatedTriggerRoute{{BindingName: bindingName, Target: checkoutEventLogger{}}},
 	)
 	if err != nil {
 		return err

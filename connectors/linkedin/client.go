@@ -1,8 +1,8 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package linkedinconnector provides a bounded LinkedIn OpenID Connect UserInfo query.
-package linkedinconnector
+// Package linkedin provides a bounded LinkedIn OpenID Connect UserInfo query.
+package linkedin
 
 import (
 	"bytes"
@@ -36,12 +36,12 @@ func WithHTTPClient(client *http.Client) Option {
 	return func(options *clientOptions) { options.httpClient = client }
 }
 
-// Client executes authenticated linkedinconnector requests for connector operations.
+// Client executes authenticated LinkedIn requests for connector operations.
 type Client struct {
 	userInfoURL      *url.URL
 	maxResponseBytes int64
 	httpClient       *http.Client
-	credentials      sdkgo.CredentialProvider[Credentials]
+	credentials      CredentialSource
 	refreshDriver    sdkgo.CredentialRefreshDriver[Credentials]
 }
 
@@ -89,8 +89,8 @@ type providerResponse struct {
 
 var errResponseTooLarge = errors.New("LinkedIn response exceeds the configured size limit")
 
-// New validates configuration and constructs an authenticated linkedinconnector client.
-func New(config Config, credentials sdkgo.CredentialProvider[Credentials], options ...Option) (*Client, error) {
+// New validates configuration and constructs an authenticated LinkedIn client.
+func New(config Config, credentials CredentialSource, options ...Option) (*Client, error) {
 	config = withConfigDefaults(config)
 	if err := config.Validate(); err != nil {
 		return nil, err

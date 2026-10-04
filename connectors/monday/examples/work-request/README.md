@@ -57,13 +57,12 @@ mkdir -p /tmp/monday-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/monday/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/monday \
-  --version v0.1.0 --tag connectors/monday/v0.1.0 \
+  --version v0.21.0 --tag connectors/monday/v0.21.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/monday-release/connector-release.json \
   --digest-output /tmp/monday-release/connector-release.json.sha256
 dexcli dev \
   --flow-rendering-dir /tmp \
-  --connector-config-dir "$HOME/.dex/connectors" \
   --connector-release-override monday=/tmp/monday-release
 ```
 
@@ -72,13 +71,13 @@ Follow the [monday.com setup](../../README.md#mondaycom-setup), then open
 five monday.com Steps of `MondayWorkRequest` use. Choose **Personal API
 token** and paste the token, or **monday.com OAuth 2.1** and authorize, and
 save; the status becomes **Ready**. The example has no Step configuration.
-The token is stored only in the plaintext development file shown on the page;
-never commit or share it.
 
-In a second terminal, start the Worker from `connectors/monday` with that file:
+In a second terminal, start the Worker from `connectors/monday`. It reads the
+`DEX_PROJECT_*` project configuration environment described in
+[project configuration](../../../../sdkgo/projectconfig/README.md); Dex Web or
+Superverse Studio writes that configuration when you save the connection.
 
 ```bash
-export DEX_CONNECTOR_CONFIG_FILE="$HOME/.dex/connectors/connections.json"
 go run ./examples/work-request
 ```
 

@@ -4,9 +4,7 @@
 package onedrive
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"regexp"
@@ -100,35 +98,6 @@ func (driver *CredentialRefreshDriver) Refresh(
 	default:
 		return sdkgo.CredentialRefreshResult[Credentials]{}, sdkgo.NewReauthorizationRequiredError(errors.New("Microsoft OneDrive authorization method is not supported"))
 	}
-}
-
-// DecodeCredentialsJSON decodes trusted broker credential material using connector validation.
-func DecodeCredentialsJSON(contents json.RawMessage) (Credentials, error) {
-	return decodeLocalCredentials(contents)
-}
-
-// DecodeResolvedCredentialsJSON decodes an operation-scoped credential returned by the hosted broker.
-// It accepts only the selected method and access token and rejects renewal material.
-func DecodeResolvedCredentialsJSON(contents json.RawMessage) (Credentials, error) {
-	var fields struct {
-		AuthMethodID string `json:"auth_method"`
-		AccessToken  string `json:"access_token"`
-	}
-	decoder := json.NewDecoder(bytes.NewReader(contents))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&fields); err != nil {
-		return Credentials{}, errors.New("Microsoft OneDrive resolved credential is invalid")
-	}
-	credentials := Credentials{AuthMethodID: fields.AuthMethodID, AccessToken: sdkgo.NewSecretString(fields.AccessToken)}
-	return credentials, validateResolvedCredentials(credentials)
-}
-
-// EncodeCredentialsJSON encodes complete credential material for trusted atomic persistence.
-func EncodeCredentialsJSON(credentials Credentials) ([]byte, error) {
-	if err := credentials.Validate(); err != nil {
-		return nil, err
-	}
-	return encodeLocalCredentials(credentials)
 }
 
 func (driver *CredentialRefreshDriver) refreshDelegatedToken(

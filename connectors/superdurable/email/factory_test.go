@@ -21,6 +21,9 @@ func (completeTarget[IN]) Execute(dex.Context, IN) (*dex.StepDecision, error) {
 	return dex.GracefulComplete(struct{}{}), nil
 }
 
+// GetStepType names the target: Dex gives a generic Step type no default name.
+func (completeTarget[IN]) GetStepType() string { return "Complete" }
+
 func newUnitTestConnection(t *testing.T) email.Connection {
 	t.Helper()
 	client, err := email.New(validConfig(), sdkgo.StaticCredentialProvider[email.Credentials]{})
@@ -40,19 +43,19 @@ func TestFactoriesRequireOnlyTheHappyPathBranch(t *testing.T) {
 			Searched:            sdkgo.GoTo(completeTarget[email.SearchMessagesResult]{}),
 		})
 		email.NewGetMessageStep(email.GetMessageStepConfig[email.MessageReference]{
-			StepType: "Read", Annotations: annotations, Connection: connection,
+			StepType: "Read", Annotations: annotations, Connection: connection, ConnectionName: emailConnection.Name,
 			MapToOperationInput: func(reference email.MessageReference) email.GetMessageInput {
 				return email.GetMessageInput{Message: reference}
 			},
 			Found: sdkgo.GoTo(completeTarget[email.GetMessageResult]{}),
 		})
 		email.NewSendMessageStep(email.SendMessageStepConfig[string]{
-			StepType: "Send", Annotations: annotations, Connection: connection,
+			StepType: "Send", Annotations: annotations, Connection: connection, ConnectionName: emailConnection.Name,
 			MapToOperationInput: func(string) email.SendMessageInput { return validSendMessageInput() },
 			Sent:                sdkgo.GoTo(completeTarget[email.SendMessageResult]{}),
 		})
 		email.NewReplyToMessageStep(email.ReplyToMessageStepConfig[email.MessageReference]{
-			StepType: "Reply", Annotations: annotations, Connection: connection,
+			StepType: "Reply", Annotations: annotations, Connection: connection, ConnectionName: emailConnection.Name,
 			MapToOperationInput: func(reference email.MessageReference) email.ReplyToMessageInput {
 				return email.ReplyToMessageInput{Message: reference, Text: "Thanks."}
 			},
@@ -60,14 +63,14 @@ func TestFactoriesRequireOnlyTheHappyPathBranch(t *testing.T) {
 			Uncertain: sdkgo.GoTo(completeTarget[email.ReplyToMessageResult]{}),
 		})
 		email.NewMoveMessageStep(email.MoveMessageStepConfig[email.MessageReference]{
-			StepType: "Archive", Annotations: annotations, Connection: connection,
+			StepType: "Archive", Annotations: annotations, Connection: connection, ConnectionName: emailConnection.Name,
 			MapToOperationInput: func(reference email.MessageReference) email.MoveMessageInput {
 				return email.MoveMessageInput{Message: reference, DestinationMailbox: "Archive"}
 			},
 			Moved: sdkgo.GoTo(completeTarget[email.MoveMessageResult]{}),
 		})
 		email.NewSetFlagsStep(email.SetFlagsStepConfig[email.MessageReference]{
-			StepType: "MarkRead", Annotations: annotations, Connection: connection,
+			StepType: "MarkRead", Annotations: annotations, Connection: connection, ConnectionName: emailConnection.Name,
 			MapToOperationInput: func(reference email.MessageReference) email.SetFlagsInput {
 				isSeen := true
 				return email.SetFlagsInput{Message: reference, IsSeen: &isSeen}
@@ -77,7 +80,7 @@ func TestFactoriesRequireOnlyTheHappyPathBranch(t *testing.T) {
 	})
 	require.Panics(t, func() {
 		email.NewSendMessageStep(email.SendMessageStepConfig[string]{
-			StepType: "Send", Connection: connection,
+			StepType: "Send", Annotations: annotations, Connection: connection, ConnectionName: emailConnection.Name,
 			MapToOperationInput: func(string) email.SendMessageInput { return validSendMessageInput() },
 			Uncertain:           sdkgo.GoTo(completeTarget[email.SendMessageResult]{}),
 		})

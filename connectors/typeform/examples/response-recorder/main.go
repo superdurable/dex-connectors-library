@@ -24,7 +24,7 @@ import (
 	"github.com/superdurable/dex-connectors-library/connectors/typeform"
 	responserecorder "github.com/superdurable/dex-connectors-library/connectors/typeform/examples/response-recorder/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -60,11 +60,11 @@ func newLogger(output io.Writer, levelName string) *slog.Logger {
 
 // run serves the webhook endpoint at once, so submissions are recorded even while Dex is unreachable.
 func run(ctx context.Context, logger *slog.Logger, connectionOptions ...typeform.Option) error {
-	store, err := localconfig.LoadFromEnvironment()
+	project, err := projectconfig.LoadFromEnvironment(ctx)
 	if err != nil {
 		return err
 	}
-	connection, err := typeform.NewLocalConnection(store, responserecorder.ConnectionName, connectionOptions...)
+	connection, err := typeform.NewProjectConnection(project, responserecorder.ConnectionName, connectionOptions...)
 	if err != nil {
 		return err
 	}
@@ -92,7 +92,7 @@ func run(ctx context.Context, logger *slog.Logger, connectionOptions ...typeform
 	if err != nil {
 		return errors.Join(err, stopWorker(worker), cache.Close())
 	}
-	endpointRunner, err := newSubmissionEndpointRunner(store, client, flow, logger, connectionOptions)
+	endpointRunner, err := newSubmissionEndpointRunner(project, client, flow, logger, connectionOptions)
 	if err != nil {
 		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
 	}
@@ -106,17 +106,22 @@ func run(ctx context.Context, logger *slog.Logger, connectionOptions ...typeform
 	return errors.Join(runErr, client.Close(), cache.Close())
 }
 
-// newSubmissionEndpointRunner starts one Flow per submission, with the Trigger event ID as request ID.
+// newSubmissionEndpointRunner delivers the submission binding to its target through the binding's durable
+// project inbox.
 func newSubmissionEndpointRunner(
-	store *localconfig.Store, client *dex.Client, flow *responserecorder.Flow, logger *slog.Logger, connectionOptions []typeform.Option,
+	project *projectconfig.LoadedProject, client *dex.Client, flow *responserecorder.Flow, logger *slog.Logger, connectionOptions []typeform.Option,
 ) (*typeform.ResponseSubmittedEndpointRunner, error) {
+	return typeform.NewProjectResponseSubmittedEndpointRunner(project, responserecorder.ConnectionName, []typeform.ProjectResponseSubmittedTriggerRoute{{
+		BindingName: responserecorder.ResponseSubmittedTriggerBinding, Target: newSubmissionTarget(client, flow, logger),
+	}}, append(slices.Clone(connectionOptions), typeform.WithLogger(logger))...)
+}
+
+// newSubmissionTarget starts one Flow per submission, with the Trigger event ID as request ID.
+func newSubmissionTarget(client *dex.Client, flow *responserecorder.Flow, logger *slog.Logger) sdkgo.TriggerTarget[typeform.FormResponseEvent] {
 	bindingLogger := logger.With("connector", typeform.ConnectorID, "connection", responserecorder.ConnectionName,
 		"trigger", typeform.ResponseSubmittedTriggerDefinition.Trigger.TriggerName, "binding", responserecorder.ResponseSubmittedTriggerBinding)
-	return typeform.NewLocalResponseSubmittedEndpointRunner(store, responserecorder.ConnectionName, []typeform.LocalResponseSubmittedTriggerRoute{{
-		BindingName: responserecorder.ResponseSubmittedTriggerBinding,
-		Target: sdkgo.NewDexFlowTriggerTarget(client, flow, responserecorder.AcceptSubmission, responserecorder.ResolveFlowID,
-			responserecorder.MapToFlowInput, sdkgo.WithTriggerLogger(bindingLogger)),
-	}}, append(slices.Clone(connectionOptions), typeform.WithLogger(logger))...)
+	return sdkgo.NewDexFlowTriggerTarget(client, flow, responserecorder.AcceptSubmission, responserecorder.ResolveFlowID,
+		responserecorder.MapToFlowInput, sdkgo.WithTriggerLogger(bindingLogger))
 }
 
 // newWebhookMux mounts the endpoint and a readiness check that passes once the binding receives submissions.

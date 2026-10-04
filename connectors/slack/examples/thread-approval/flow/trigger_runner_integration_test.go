@@ -12,8 +12,6 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"strconv"
 	"sync"
 	"testing"
@@ -23,8 +21,10 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/slack"
 	"github.com/superdurable/dex-connectors-library/connectors/slack/internal/testlog"
+	"github.com/superdurable/dex-connectors-library/connectors/slack/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -258,45 +258,29 @@ func requireSlackFlowCompleted(t *testing.T, ctx context.Context, setup *threadA
 }
 
 type threadApprovalRunnerSetup struct {
-	directory string
-	store     *localconfig.Store
-	flow      *Flow
-	harness   *slackIntegrationHarness
-	slack     *socketModeSlack
-	logs      *testlog.LogRecorder
+	configuration projectconfig.Configuration
+	objects       *testsupport.ObjectStore
+	flow          *Flow
+	harness       *slackIntegrationHarness
+	slack         *socketModeSlack
+	logs          *testlog.LogRecorder
 }
+
+// threadApprovalScope is the project scope of the bindings' durable inboxes, which the test keeps in memory.
+var threadApprovalScope = projectconfig.Scope{ProjectID: "slack-thread-approval-tests", Kind: "live"}
 
 func newThreadApprovalRunnerSetup(t *testing.T, fake *socketModeSlack) *threadApprovalRunnerSetup {
 	t.Helper()
-	directory := t.TempDir()
-	path := filepath.Join(directory, "connections.json")
-	contents, err := json.Marshal(map[string]any{
-		"schemaVersion": localconfig.SchemaVersion,
-		"connections": []any{map[string]any{
-			"connectorId": slack.ConnectorID, "modulePath": "github.com/superdurable/dex-connectors-library/connectors/slack",
-			"moduleVersion": "v0.7.0", "provider": "slack", "connectionName": ConnectionName,
-			"configuration": map[string]any{"endpoint": fake.URL},
-			"credentials":   map[string]any{"bot_token": sentinelBotToken, "user_token": sentinelUserToken, "app_token": sentinelAppToken},
-		}},
-		"triggerBindings": []any{
-			map[string]any{
-				"connectorId": slack.ConnectorID, "connectionName": ConnectionName, "triggerName": "channelThreadCreated",
-				"bindingName": StartTriggerBinding, "configuration": map[string]any{
-					"channelId": "C1", "threadTriggerMatcher": map[string]any{"messageContains": "request approval"},
-				},
-			},
-			map[string]any{
-				"connectorId": slack.ConnectorID, "connectionName": ConnectionName, "triggerName": "threadReplyCreated",
-				"bindingName": ReplyTriggerBinding, "configuration": map[string]any{
-					"channelId": "C1", "threadReplyMatcher": map[string]any{"messageContains": "approve", "posterUserIds": []string{"U2"}},
-				},
-			},
+	configuration := projectconfig.Configuration{TriggerBindings: []projectconfig.TriggerConfiguration{
+		{
+			ConnectorID: slack.ConnectorID, ConnectionName: ConnectionName, TriggerName: "channelThreadCreated", BindingName: StartTriggerBinding,
+			Configuration: json.RawMessage(`{"channelId":"C1","threadTriggerMatcher":{"messageContains":"request approval"}}`),
 		},
-	})
-	require.NoError(t, err)
-	require.NoError(t, os.WriteFile(path, contents, 0o600))
-	store, err := localconfig.LoadFile(path)
-	require.NoError(t, err)
+		{
+			ConnectorID: slack.ConnectorID, ConnectionName: ConnectionName, TriggerName: "threadReplyCreated", BindingName: ReplyTriggerBinding,
+			Configuration: json.RawMessage(`{"channelId":"C1","threadReplyMatcher":{"messageContains":"approve","posterUserIds":["U2"]}}`),
+		},
+	}}
 	flow, harness := newSlackIntegrationHarness(t, fake.URL)
 	harness.startWorker(t)
 	logs := testlog.NewLogRecorder()
@@ -305,43 +289,76 @@ func newThreadApprovalRunnerSetup(t *testing.T, fake *socketModeSlack) *threadAp
 			t.Logf("captured Trigger logs:\n%s", logs.TextHandlerOutput())
 		}
 	})
-	return &threadApprovalRunnerSetup{directory: directory, store: store, flow: flow, harness: harness, slack: fake, logs: logs}
+	return &threadApprovalRunnerSetup{
+		configuration: configuration, objects: testsupport.NewObjectStore(), flow: flow, harness: harness, slack: fake, logs: logs,
+	}
 }
 
-// newRunner wires the shared runner exactly as main.go does, with the test's logger.
+// newRunner wires the shared runner as main.go and NewProjectMessageTriggerRunner do, with the test's logger and
+// the bindings' durable inboxes in memory.
 func (setup *threadApprovalRunnerSetup) newRunner(t *testing.T) *slack.MessageTriggerRunner {
 	t.Helper()
 	var startConfiguration slack.ChannelThreadCreatedTriggerConfiguration
-	require.NoError(t, setup.store.DecodeTriggerConfiguration(
+	require.NoError(t, setup.configuration.DecodeTriggerConfiguration(
 		slack.ConnectorID, ConnectionName, slack.ChannelThreadCreatedTriggerDefinition.Trigger.TriggerName, StartTriggerBinding, &startConfiguration,
 	))
 	startFilter, err := NewStartTriggerFilter(startConfiguration)
 	require.NoError(t, err)
 	var replyConfiguration slack.ThreadReplyCreatedTriggerConfiguration
-	require.NoError(t, setup.store.DecodeTriggerConfiguration(
+	require.NoError(t, setup.configuration.DecodeTriggerConfiguration(
 		slack.ConnectorID, ConnectionName, slack.ThreadReplyCreatedTriggerDefinition.Trigger.TriggerName, ReplyTriggerBinding, &replyConfiguration,
 	))
 	replyFilter, err := NewReplyTriggerFilter(replyConfiguration)
 	require.NoError(t, err)
 	logger := setup.logs.Logger()
-	runner, err := slack.NewLocalMessageTriggerRunner(setup.store, ConnectionName, slack.LocalMessageTriggerRunnerConfig{
-		ChannelThreadCreatedRoutes: []slack.LocalChannelThreadCreatedTriggerRoute{{
-			BindingName: StartTriggerBinding,
-			Target: sdkgo.NewDexFlowTriggerTarget(setup.harness.client, setup.flow, startFilter, ResolveFlowID, MapToFlowInput,
-				sdkgo.WithTriggerLogger(logger.With("connector", slack.ConnectorID, "connection", ConnectionName,
-					"trigger", slack.ChannelThreadCreatedTriggerDefinition.Trigger.TriggerName, "binding", StartTriggerBinding))),
+	reference := sdkgo.ConnectionRef{Provider: "slack", Name: ConnectionName}
+	client, err := slack.New(slack.Config{Endpoint: setup.slack.URL}, sdkgo.StaticCredentialProvider[slack.Credentials]{reference: {
+		BotToken: sdkgo.NewSecretString(sentinelBotToken), UserToken: sdkgo.NewSecretString(sentinelUserToken),
+		AppToken: sdkgo.NewSecretString(sentinelAppToken),
+	}}, slack.WithLogger(logger))
+	require.NoError(t, err)
+	connection, err := slack.NewConnection(client, reference)
+	require.NoError(t, err)
+	startTarget := setup.durableTarget(t, slack.ChannelThreadCreatedTriggerDefinition.Trigger.TriggerName, StartTriggerBinding,
+		sdkgo.NewDexFlowTriggerTarget(setup.harness.client, setup.flow, startFilter, ResolveFlowID, MapToFlowInput,
+			sdkgo.WithTriggerLogger(logger.With("connector", slack.ConnectorID, "connection", ConnectionName,
+				"trigger", slack.ChannelThreadCreatedTriggerDefinition.Trigger.TriggerName, "binding", StartTriggerBinding))))
+	replyTarget := setup.durableTarget(t, slack.ThreadReplyCreatedTriggerDefinition.Trigger.TriggerName, ReplyTriggerBinding,
+		sdkgo.NewDexRPCTriggerTarget(
+			setup.harness.client, setup.flow.ReceiveThreadReply, replyFilter, ResolveFlowID, MapToReceiveThreadReplyInput,
+			sdkgo.WithTriggerLogger(logger.With("connector", slack.ConnectorID, "connection", ConnectionName,
+				"trigger", slack.ThreadReplyCreatedTriggerDefinition.Trigger.TriggerName, "binding", ReplyTriggerBinding)),
+		))
+	runner, err := slack.NewMessageTriggerRunner(slack.MessageTriggerRunnerConfig{
+		Connection: connection,
+		ChannelThreadCreatedRoutes: []slack.ChannelThreadCreatedTriggerRoute{{
+			BindingName: StartTriggerBinding, Configuration: startConfiguration, Target: startTarget,
 		}},
-		ThreadReplyCreatedRoutes: []slack.LocalThreadReplyCreatedTriggerRoute{{
-			BindingName: ReplyTriggerBinding,
-			Target: sdkgo.NewDexRPCTriggerTarget(
-				setup.harness.client, setup.flow.ReceiveThreadReply, replyFilter, ResolveFlowID, MapToReceiveThreadReplyInput,
-				sdkgo.WithTriggerLogger(logger.With("connector", slack.ConnectorID, "connection", ConnectionName,
-					"trigger", slack.ThreadReplyCreatedTriggerDefinition.Trigger.TriggerName, "binding", ReplyTriggerBinding)),
-			),
+		ThreadReplyCreatedRoutes: []slack.ThreadReplyCreatedTriggerRoute{{
+			BindingName: ReplyTriggerBinding, Configuration: replyConfiguration, Target: replyTarget,
 		}},
-	}, slack.WithLogger(logger))
+	})
 	require.NoError(t, err)
 	return runner
+}
+
+// durableTarget wraps target in the binding's durable inbox, which logs through the test's logger.
+func (setup *threadApprovalRunnerSetup) durableTarget(
+	t *testing.T, triggerName string, bindingName string, target sdkgo.TriggerTarget[slack.MessageEvent],
+) sdkgo.TriggerTarget[slack.MessageEvent] {
+	t.Helper()
+	key, inbox := setup.inbox(t, triggerName, bindingName)
+	durableTarget, err := provider.NewDurableTriggerTarget(inbox, key, target, provider.WithTriggerLogger(setup.logs.Logger()))
+	require.NoError(t, err)
+	return durableTarget
+}
+
+func (setup *threadApprovalRunnerSetup) inbox(t *testing.T, triggerName string, bindingName string) (projectconfig.TriggerInboxKey, *projectconfig.TriggerInbox) {
+	t.Helper()
+	key := projectconfig.TriggerInboxKey{ConnectorID: slack.ConnectorID, ConnectionName: ConnectionName, TriggerName: triggerName, BindingName: bindingName}
+	inbox, err := projectconfig.NewTriggerInbox(setup.objects, threadApprovalScope, key)
+	require.NoError(t, err)
+	return key, inbox
 }
 
 func (setup *threadApprovalRunnerSetup) startRunner(t *testing.T, parent context.Context) *runningTriggerRunner {
@@ -370,8 +387,8 @@ func (setup *threadApprovalRunnerSetup) persist(
 	t *testing.T, ctx context.Context, triggerName string, bindingName string, eventID string, event slack.MessageEvent,
 ) {
 	t.Helper()
-	inbox, err := localconfig.NewDurableTriggerTarget(
-		setup.store, slack.ConnectorID, ConnectionName, triggerName, bindingName,
+	key, inboxStore := setup.inbox(t, triggerName, bindingName)
+	inbox, err := provider.NewDurableTriggerTarget(inboxStore, key,
 		sdkgo.TriggerTargetFunc[slack.MessageEvent](func(context.Context, sdkgo.TriggerEvent[slack.MessageEvent]) error { return nil }),
 	)
 	require.NoError(t, err)
@@ -380,22 +397,19 @@ func (setup *threadApprovalRunnerSetup) persist(
 	}))
 }
 
+// pendingEventIDs lists the event IDs waiting in both bindings' durable inboxes.
 func (setup *threadApprovalRunnerSetup) pendingEventIDs(t *testing.T) []string {
 	t.Helper()
-	paths, err := filepath.Glob(filepath.Join(setup.directory, ".trigger-inbox-*.json"))
-	require.NoError(t, err)
 	eventIDs := []string{}
-	for _, path := range paths {
-		contents, err := os.ReadFile(path)
+	for _, binding := range []struct{ triggerName, bindingName string }{
+		{slack.ChannelThreadCreatedTriggerDefinition.Trigger.TriggerName, StartTriggerBinding},
+		{slack.ThreadReplyCreatedTriggerDefinition.Trigger.TriggerName, ReplyTriggerBinding},
+	} {
+		_, inbox := setup.inbox(t, binding.triggerName, binding.bindingName)
+		pending, err := inbox.Pending(context.Background())
 		require.NoError(t, err)
-		var inbox struct {
-			Events []struct {
-				EventID string `json:"eventId"`
-			} `json:"events"`
-		}
-		require.NoError(t, json.Unmarshal(contents, &inbox))
-		for _, event := range inbox.Events {
-			eventIDs = append(eventIDs, event.EventID)
+		for _, event := range pending {
+			eventIDs = append(eventIDs, event.ID)
 		}
 	}
 	return eventIDs

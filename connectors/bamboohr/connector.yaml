@@ -5,7 +5,7 @@ metadata:
   displayName: BambooHR
   description: Read BambooHR employee records, find an employee by email, poll employee changes, list time off requests, update employee fields, and add employees, keeping BambooHR's own field names and status values.
   company: BambooHR
-  version: v0.1.0
+  version: v0.21.0
 spec:
   provider: bamboohr
   codegen:

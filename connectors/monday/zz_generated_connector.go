@@ -10,7 +10,8 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -29,11 +30,16 @@ type Credentials struct {
 	RefreshToken      sdkgo.SecretString
 }
 
+// CredentialSource is the credential provider New requires: this connector refreshes its credentials.
+type CredentialSource = sdkgo.RefreshingCredentialProvider[Credentials]
+
 type Connection struct {
 	client    *Client
 	reference sdkgo.ConnectionRef
 }
 
+// NewConnection wraps a client built with New, such as a test client with a static credential provider.
+// Applications open declared connections with NewProjectConnection instead.
 func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, error) {
 	if client == nil {
 		return Connection{}, fmt.Errorf("monday connector client is required")
@@ -44,20 +50,25 @@ func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, e
 	return Connection{client: client, reference: reference}, nil
 }
 
-// NewLocalConnection loads startup configuration and reloads credentials before every provider call.
-func NewLocalConnection(store *localconfig.Store, connectionName string, options ...Option) (Connection, error) {
-	if store == nil {
-		return Connection{}, fmt.Errorf("local connector configuration store is required")
+// NewProjectConnection opens the connection that dex-app.yaml declares as connectionName from the
+// loaded project configuration. It reads ordinary settings now and resolves credentials during each call.
+func NewProjectConnection(project *projectconfig.LoadedProject, connectionName string, options ...Option) (Connection, error) {
+	if project == nil {
+		return Connection{}, fmt.Errorf("monday connection requires the loaded project configuration")
 	}
 	reference := sdkgo.ConnectionRef{Provider: "monday", Name: connectionName}
 	if err := reference.Validate(); err != nil {
-		return Connection{}, fmt.Errorf("monday local connection: %w", err)
+		return Connection{}, fmt.Errorf("monday connection: %w", err)
 	}
+	key := projectconfig.ConnectionKey{ConnectorID: ConnectorID, ConnectionName: connectionName}
 	var config Config
-	if err := store.DecodeConfiguration(ConnectorID, connectionName, &config); err != nil {
+	if err := project.Configuration.DecodeConnectionConfiguration(key, &config); err != nil {
+		return Connection{}, fmt.Errorf("monday connection %q settings: %w", connectionName, err)
+	}
+	credentials, err := provider.NewRefreshingCredentialProvider(project.Connections, key, decodeCredentials, encodeCredentials)
+	if err != nil {
 		return Connection{}, err
 	}
-	credentials := localconfig.NewRefreshingCredentialProvider(store, ConnectorID, connectionName, decodeLocalCredentials, encodeLocalCredentials)
 	client, err := New(config, credentials, options...)
 	if err != nil {
 		return Connection{}, err
@@ -65,7 +76,7 @@ func NewLocalConnection(store *localconfig.Store, connectionName string, options
 	return NewConnection(client, reference)
 }
 
-func decodeLocalCredentials(contents json.RawMessage) (Credentials, error) {
+func decodeCredentials(contents json.RawMessage) (Credentials, error) {
 	var fields struct {
 		AuthMethodID      string `json:"auth_method"`
 		APIToken          string `json:"api_token"`
@@ -74,7 +85,7 @@ func decodeLocalCredentials(contents json.RawMessage) (Credentials, error) {
 		AccessToken       string `json:"access_token"`
 		RefreshToken      string `json:"refresh_token"`
 	}
-	if err := localconfig.DecodeCredentials(contents, &fields); err != nil {
+	if err := projectconfig.DecodeCredentials(contents, &fields); err != nil {
 		return Credentials{}, err
 	}
 	credentials := Credentials{
@@ -88,7 +99,7 @@ func decodeLocalCredentials(contents json.RawMessage) (Credentials, error) {
 	return credentials, credentials.Validate()
 }
 
-func encodeLocalCredentials(credentials Credentials) (json.RawMessage, error) {
+func encodeCredentials(credentials Credentials) (json.RawMessage, error) {
 	fields := struct {
 		AuthMethodID      string `json:"auth_method"`
 		APIToken          string `json:"api_token,omitempty"`
@@ -218,8 +229,8 @@ func NewListItemsStep[IN any](config ListItemsStepConfig[IN]) sdkgo.QueryStep[IN
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
-	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
-		panic(fmt.Errorf("monday connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("monday connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListItemsInput, ListItemsOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
@@ -295,8 +306,8 @@ func NewGetItemStep[IN any](config GetItemStepConfig[IN]) sdkgo.QueryStep[IN, Ge
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
-	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
-		panic(fmt.Errorf("monday connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("monday connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetItemInput, Item]{
 		StepType: config.StepType, Annotations: config.Annotations,
@@ -372,8 +383,8 @@ func NewCreateItemStep[IN any](config CreateItemStepConfig[IN]) sdkgo.MutationSt
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
-	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
-		panic(fmt.Errorf("monday connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("monday connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateItemInput, CreateItemOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
@@ -449,8 +460,8 @@ func NewUpdateItemColumnValuesStep[IN any](config UpdateItemColumnValuesStepConf
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
-	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
-		panic(fmt.Errorf("monday connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("monday connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateItemColumnValuesInput, UpdateItemColumnValuesOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
@@ -526,8 +537,8 @@ func NewAddUpdateStep[IN any](config AddUpdateStepConfig[IN]) sdkgo.MutationStep
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
-	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
-		panic(fmt.Errorf("monday connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("monday connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, AddUpdateInput, AddUpdateOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,

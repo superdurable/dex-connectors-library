@@ -25,8 +25,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/zoho/desk"
+	"github.com/superdurable/dex-connectors-library/connectors/zoho/desk/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -266,18 +266,23 @@ func TestLostCommentResponseSelectsUncertainAndIsNeverResentWithRealDex(t *testi
 	require.Len(t, provider.ticket(outcome.Ticket.ID).comments, 1)
 }
 
-// TestRevokedAccessTokenIsRefreshedOnceAndTheCreateIsSentOnceWithRealDex runs the local refreshing
-// credential provider: Zoho Desk rejects the stored token at the create, the EU Accounts server
-// issues a new one, and the rejected create, which Zoho Desk never applied, is sent again with it.
+// TestRevokedAccessTokenIsRefreshedOnceAndTheCreateIsSentOnceWithRealDex runs a refreshing credential
+// source: Zoho Desk rejects the stored token at the create, the EU Accounts server issues a new one, and
+// the rejected create, which Zoho Desk never applied, is sent again with it.
 func TestRevokedAccessTokenIsRefreshedOnceAndTheCreateIsSentOnceWithRealDex(t *testing.T) {
 	const storedAccessToken = "1000.zohoDeskIntegrationStored0123456789"
 	provider := newFakeZohoDesk(t)
 	provider.acceptedAccessToken, provider.revokesStoredTokenAtFirstCreate = storedAccessToken, true
-	connectionsPath := writeLocalConnection(t, storedAccessToken, time.Now().Add(30*time.Minute))
-	store, err := localconfig.LoadFile(connectionsPath)
-	require.NoError(t, err)
-	connection, err := desk.NewLocalConnection(store, ConnectionName,
+	expiresAt := time.Now().Add(30 * time.Minute)
+	credentials := testsupport.NewRefreshingCredentialSource(desk.Credentials{
+		AuthMethodID: desk.EUDataCenterAuthMethodID, OAuthClientID: "1000.ZOHODESKINTEGRATIONCLIENT",
+		OAuthClientSecret: sdkgo.NewSecretString("zoho-integration-secret"), AccessToken: sdkgo.NewSecretString(storedAccessToken),
+		RefreshToken: sdkgo.NewSecretString(integrationRefreshToken),
+	}, &expiresAt)
+	client, err := desk.New(desk.Config{OrgID: integrationOrganizationID}, credentials,
 		desk.WithAPIBaseURL(provider.URL+"/api/v1"), desk.WithHTTPClient(provider.accountsRoutingClient(t, defaultRequestTimeout)))
+	require.NoError(t, err)
+	connection, err := desk.NewConnection(client, sdkgo.ConnectionRef{Provider: "zoho", Name: ConnectionName})
 	require.NoError(t, err)
 	harness := newTriageHarnessForConnection(t, connection)
 
@@ -291,18 +296,10 @@ func TestRevokedAccessTokenIsRefreshedOnceAndTheCreateIsSentOnceWithRealDex(t *t
 		"client_id": {"1000.ZOHODESKINTEGRATIONCLIENT"}, "client_secret": {"zoho-integration-secret"},
 	}, provider.lastRequest("token").form)
 
-	contents, err := os.ReadFile(connectionsPath)
-	require.NoError(t, err)
-	var file struct {
-		Connections []struct {
-			AuthMethodID string            `json:"authMethodId"`
-			Credentials  map[string]string `json:"credentials"`
-		} `json:"connections"`
-	}
-	require.NoError(t, json.Unmarshal(contents, &file))
-	require.Equal(t, desk.EUDataCenterAuthMethodID, file.Connections[0].AuthMethodID, "Dex Web's record member survives the refresh")
-	require.Equal(t, integrationRefreshedToken, file.Connections[0].Credentials["access_token"])
-	require.Equal(t, integrationRefreshToken, file.Connections[0].Credentials["refresh_token"], "Zoho does not rotate refresh tokens")
+	stored, _ := credentials.Current()
+	require.Equal(t, desk.EUDataCenterAuthMethodID, stored.AuthMethodID, "the refresh keeps the data center")
+	require.Equal(t, integrationRefreshedToken, stored.AccessToken.Reveal())
+	require.Equal(t, integrationRefreshToken, stored.RefreshToken.Reveal(), "Zoho does not rotate refresh tokens")
 }
 
 func TestRejectedTicketFailsTheFlowWithoutZohoDeskTextWithRealDex(t *testing.T) {
@@ -344,29 +341,6 @@ func twoDigits(value int) string {
 		return "0" + strconv.Itoa(value)
 	}
 	return strconv.Itoa(value)
-}
-
-// writeLocalConnection writes the record Dex Web saves for an EU data center connection.
-func writeLocalConnection(t *testing.T, accessToken string, expiresAt time.Time) string {
-	t.Helper()
-	record := map[string]any{
-		"schemaVersion": "connectors.dex.dev/local-connections/v1alpha1",
-		"connections": []any{map[string]any{
-			"connectorId": desk.ConnectorID, "modulePath": "github.com/superdurable/dex-connectors-library/connectors/zoho/desk",
-			"moduleVersion": "v0.1.0", "provider": "zoho", "connectionName": ConnectionName, "authMethodId": desk.EUDataCenterAuthMethodID,
-			"configuration": map[string]any{"orgId": integrationOrganizationID},
-			"credentials": map[string]any{
-				"auth_method": desk.EUDataCenterAuthMethodID, "oauth_client_id": "1000.ZOHODESKINTEGRATIONCLIENT",
-				"oauth_client_secret": "zoho-integration-secret", "access_token": accessToken, "refresh_token": integrationRefreshToken,
-			},
-			"credentialExpiresAt": expiresAt.UTC().Format(time.RFC3339),
-		}},
-	}
-	encoded, err := json.Marshal(record)
-	require.NoError(t, err)
-	path := filepath.Join(t.TempDir(), "connections.json")
-	require.NoError(t, os.WriteFile(path, encoded, 0o600))
-	return path
 }
 
 // fakeZohoDesk is a stateful Zoho Desk API fake without idempotency keys, whose search index can lag.

@@ -5,9 +5,9 @@ customer's earlier open conversation, then closes the new one. The
 `conversationEvent` Trigger starts one `IntercomAnswerDuplicateConversation`
 Flow per new conversation, and the Flow uses every Intercom operation:
 
-1. the Worker mounts `NewLocalConversationEventEndpointRunner` at
+1. the Worker mounts `NewProjectConversationEventEndpointRunner` at
    `/webhooks/intercom` and starts it at once, so a notification is recorded in
-   the binding's durable inbox even while Dex is unreachable;
+   the binding's durable project inbox even while Dex is unreachable;
 2. the `inbound-conversation` binding accepts the topics its
    `conversationTopicPicker` saved, and `AcceptInboundConversation` admits only
    `conversation.user.created`;
@@ -75,14 +75,13 @@ go run ./cmd/connectorctl ui-artifact --manifest connectors/intercom/connector.y
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/intercom/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/intercom \
-  --version v0.1.0 --tag connectors/intercom/v0.1.0 \
+  --version v0.21.0 --tag connectors/intercom/v0.21.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/intercom-release/connector-ui.tgz --ui-digest /tmp/intercom-release/connector-ui.tgz.sha256 \
   --output /tmp/intercom-release/connector-release.json \
   --digest-output /tmp/intercom-release/connector-release.json.sha256
 dexcli dev \
   --flow-rendering-dir "$PWD/connectors/intercom/build" \
-  --connector-config-dir "$HOME/.dex/connectors" \
   --connector-release-override intercom=/tmp/intercom-release
 ```
 
@@ -100,7 +99,8 @@ Save the connection. Dex Web then shows this Flow's two configuration units:
 
 - **Replying admin** on the `ReplyToDuplicate` Step: choose **Load admins**,
   select the teammate whose name the customer sees, and save. The same admin
-  closes the duplicate. Dex Web saves the choice beside the connection file:
+  closes the duplicate. Dex Web saves the choice in the project configuration
+  beside the connection:
 
 ```json
 {
@@ -129,11 +129,15 @@ Save the connection. Dex Web then shows this Flow's two configuration units:
 
 ## 4. Run the Worker and receive a new conversation
 
-In a second terminal, from `connectors/intercom`:
+Dex Web or Superverse Studio writes the connection, the admin, and the binding
+to the project configuration. In a second terminal, from `connectors/intercom`,
+run the Worker with the `DEX_PROJECT_*` environment that names that
+configuration, as
+[project configuration loading](../../../../sdkgo/projectconfig/README.md#application-loading)
+describes:
 
 ```bash
 cd "$(git rev-parse --show-toplevel)/connectors/intercom"
-export DEX_CONNECTOR_CONFIG_FILE="$HOME/.dex/connectors/connections.json"
 go run ./examples/answer-duplicate-conversation
 ```
 
@@ -182,10 +186,10 @@ also be started from Dex Web **Start Flow** with
 ## 6. Restart recovery
 
 Stop Dex, let Intercom deliver a notification, and stop the Worker. The
-endpoint answered `200` because the notification was on disk; it stays in the
-binding's inbox, a `.trigger-inbox-*.json` file beside the connection file.
-Start Dex and the Worker again: the runner replays it, logs `replaying pending
-trigger events`, and the Flow starts and completes.
+endpoint answered `200` because the notification was stored; it stays in the
+binding's durable inbox in project storage. Start Dex and the Worker again: the
+runner replays it, logs `replaying pending trigger events`, and the Flow starts
+and completes.
 
 ## Test
 
@@ -221,10 +225,14 @@ bearer token and `Intercom-Version: 2.16`:
 - a rate-limited search waits for `X-RateLimit-Reset`;
 - a rejected reply fails the Flow without Intercom's message text;
 - an unconfigured admin fails the Flow before any Intercom request;
-- the example's `run` function answers HEAD, starts one Flow per signed new
-  conversation, deduplicates a redelivery, rejects a forgery, ignores a ping
-  and another topic, and replays a notification acknowledged while Dex was
-  down.
+- the example's inbound target, served on the connection's endpoint, answers
+  HEAD, starts one Flow per signed new conversation, deduplicates a
+  redelivery, rejects a forgery, and ignores a ping and another topic.
+
+Opening a connection from a loaded project needs project storage, so these
+tests build the connection with a static credential and run the binding
+without its durable project inbox; the Connector SDK's own tests cover the
+inbox, including replay after a restart.
 
 ```bash
 DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 go test -tags=integration ./examples/answer-duplicate-conversation/... -count=1 -v

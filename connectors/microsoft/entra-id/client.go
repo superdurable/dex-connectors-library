@@ -9,7 +9,7 @@
 //
 // Applications use the generated operation-specific Step factories, such as
 // NewCreateUserStep and NewAddUserToGroupStep, with a Connection built by
-// NewLocalConnection or NewConnection. The app-only method acts with the
+// NewProjectConnection or NewConnection. The app-only method acts with the
 // Microsoft Graph application permissions an administrator granted to the
 // app registration; the Microsoft OAuth method acts with the directory roles
 // of the administrator who consented. The runnable example in
@@ -85,7 +85,7 @@ func WithLocalProviderURL(baseURL string) Option {
 // A Client is immutable after New and safe for concurrent use by Dex Workers.
 type Client struct {
 	httpClient           *http.Client
-	credentials          sdkgo.CredentialProvider[Credentials]
+	credentials          CredentialSource
 	refreshDriver        sdkgo.CredentialRefreshDriver[Credentials]
 	maxResponseBytes     int64
 	listUsersPageSize    int
@@ -165,7 +165,7 @@ func (branches failureBranches) branchFor(outcome exchangeOutcome) sdkgo.BranchI
 // New validates configuration and constructs an authenticated Microsoft Graph client.
 // It fails when a limit is outside its documented range, the creation key
 // attribute is unknown, a local provider URL is not loopback, or credentials is nil.
-func New(config Config, credentials sdkgo.CredentialProvider[Credentials], options ...Option) (*Client, error) {
+func New(config Config, credentials CredentialSource, options ...Option) (*Client, error) {
 	config = withConfigDefaults(config)
 	if err := config.Validate(); err != nil {
 		return nil, err

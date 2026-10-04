@@ -27,8 +27,8 @@ heartbeat timeout, and five attempts within ten minutes; see
 
 Use the [Gmail connector](../../google/gmail) for Gmail. Microsoft 365
 (Exchange Online) turned off password sign-in for IMAP and requires OAuth 2.0,
-which this release does not offer: XOAUTH2 and OAUTHBEARER are out of scope for
-v0.1.0. This release has no Triggers and no Studio pickers; see
+which this release does not offer: XOAUTH2 and OAUTHBEARER are out of scope.
+This release has no Triggers and no Studio pickers; see
 [Not in this release](#not-in-this-release).
 
 ## Connection setup
@@ -80,27 +80,15 @@ then selects `providerRejected` until a new one is saved. Credentials are
 reread before every operation, so a replaced password takes effect without a
 restart. Hosts, ports, TLS modes, and the sender are startup configuration.
 
-## Local configuration
+## Project configuration
 
-Dex Web writes this record for the connection name the application uses:
-
-```json
-{
-  "connectorId": "email",
-  "modulePath": "github.com/superdurable/dex-connectors-library/connectors/superdurable/email",
-  "moduleVersion": "v0.1.0",
-  "provider": "email",
-  "connectionName": "email-mailbox",
-  "configuration": {"imapHost": "imap.fastmail.com", "smtpHost": "smtp.fastmail.com", "fromName": "Acme Support"},
-  "credentials": {"username": "support@example.com", "password": "..."}
-}
-```
-
-Load it with `localconfig.LoadFromEnvironment` and `email.NewLocalConnection`,
+Dex Web or Superverse Studio writes the connection to the project
+configuration. Load it with `projectconfig.LoadFromEnvironment` and open the
+connection by the name the application uses with `email.NewProjectConnection`,
 as [`examples/customer-reply/main.go`](examples/customer-reply/main.go) does:
 
 ```go
-store, err := localconfig.LoadFromEnvironment()
+project, err := projectconfig.LoadFromEnvironment(ctx)
 if err != nil {
 	return err
 }
@@ -108,13 +96,13 @@ options, err := connectionOptions()
 if err != nil {
 	return err
 }
-connection, err := email.NewLocalConnection(store, customerreply.ConnectionName, options...)
+connection, err := email.NewProjectConnection(project, customerreply.ConnectionName, options...)
 ```
 
-In Superverse-hosted deployments, construct the client with the
-operation-scoped broker provider. `DecodeResolvedCredentialsJSON` accepts
-exactly `username`, `password`, `smtp_username`, and `smtp_password` and
-rejects anything else without repeating a value.
+`LoadFromEnvironment` reads the `DEX_PROJECT_*` environment described in
+[project configuration loading](../../../sdkgo/projectconfig/README.md#application-loading).
+The stored credential holds exactly `username`, `password`, and the optional
+`smtp_username` and `smtp_password`.
 
 ## Libraries
 
@@ -308,16 +296,15 @@ name the command and the reply and enhanced status codes, such as
 A poll Trigger for new mail needs a durable per-binding cursor of the
 mailbox's UIDVALIDITY and last delivered UID that survives a restart and moves
 only after `sdkgo.PrepareTriggerDelivery` recorded the event. The SDK has no
-such store: `TriggerSource` and `localconfig`'s durable Trigger inbox persist
-only events awaiting delivery and remove them once consumed, and
-`hostedconfig` offers nothing for Trigger state. Gmail's poll Trigger keeps
-its delivered set in memory and rescans the newest page after a restart,
-relying on Flow-start request IDs to drop duplicates; for IMAP that would
-redeliver up to a page of old mail after every restart and silently skip mail
-that arrived while more than a page behind. The Trigger is deferred until the
-SDK offers a durable source cursor in `localconfig` and `hostedconfig`. Until
-then, run `searchMessages` with `isUnseen` and `sinceDate` from a Flow on a
-Timer and mark handled messages with `setFlags`.
+such store: `TriggerSource` and `projectconfig`'s durable Trigger inbox
+persist only events awaiting delivery and remove them once consumed. Gmail's
+poll Trigger keeps its delivered set in memory and rescans the newest page
+after a restart, relying on Flow-start request IDs to drop duplicates; for IMAP
+that would redeliver up to a page of old mail after every restart and silently
+skip mail that arrived while more than a page behind. The Trigger is deferred
+until the SDK offers a durable source cursor in `projectconfig`. Until then,
+run `searchMessages` with `isUnseen` and `sinceDate` from a Flow on a Timer and
+mark handled messages with `setFlags`.
 
 ### Studio pickers
 

@@ -126,14 +126,6 @@ func TestCredentialRefreshDriverUsesExpirySkew(t *testing.T) {
 	require.False(t, driver.RefreshRequired(sdkgo.CredentialRefreshState[Credentials]{Credentials: credential, ExpiresAt: &beyondSkew, Now: now}))
 }
 
-func TestDecodeResolvedCredentialsRejectsRenewalMaterial(t *testing.T) {
-	credentials, err := DecodeResolvedCredentialsJSON(json.RawMessage(`{"access_token":"short-lived"}`))
-	require.NoError(t, err)
-	require.Equal(t, "short-lived", credentials.AccessToken.Reveal())
-	_, err = DecodeResolvedCredentialsJSON(json.RawMessage(`{"access_token":"short-lived","refresh_token":"must-not-cross-broker"}`))
-	require.Error(t, err)
-}
-
 func spotifyTokenResponseForTest(t *testing.T, status int, body any) *http.Response {
 	t.Helper()
 	contents, err := json.Marshal(body)

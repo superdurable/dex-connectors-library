@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-package linkedinconnector_test
+package linkedin_test
 
 import (
 	"encoding/json"
@@ -9,33 +9,34 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	linkedinconnector "github.com/superdurable/dex-connectors-library/connectors/linkedin"
+	"github.com/superdurable/dex-connectors-library/connectors/linkedin"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
 type profileTarget struct {
-	dex.StepDefaultsNoWaitFor[linkedinconnector.GetAuthenticatedProfileResult]
+	dex.StepDefaultsNoWaitFor[linkedin.GetAuthenticatedProfileResult]
 }
 
-func (profileTarget) Execute(dex.Context, linkedinconnector.GetAuthenticatedProfileResult) (*dex.StepDecision, error) {
+func (profileTarget) Execute(dex.Context, linkedin.GetAuthenticatedProfileResult) (*dex.StepDecision, error) {
 	return dex.GracefulComplete(nil), nil
 }
 
 func TestGeneratedFactoryExposesEveryTypedBranch(t *testing.T) {
-	client, err := linkedinconnector.New(linkedinconnector.Config{}, sdkgo.StaticCredentialProvider[linkedinconnector.Credentials]{
+	client, err := linkedin.New(linkedin.Config{}, sdkgo.StaticCredentialProvider[linkedin.Credentials]{
 		linkedinConnection: {AccessToken: sdkgo.NewSecretString("token")},
 	})
 	require.NoError(t, err)
-	connection, err := linkedinconnector.NewConnection(client, linkedinConnection)
+	connection, err := linkedin.NewConnection(client, linkedinConnection)
 	require.NoError(t, err)
-	result := dex.DefineAttribute[sdkgo.QueryResult[linkedinconnector.AuthenticatedProfile]]("linkedin-profile-result")
-	step := linkedinconnector.NewGetAuthenticatedProfileStep(linkedinconnector.GetAuthenticatedProfileStepConfig[string]{
-		StepType:    "ReadLinkedInProfile",
-		Annotations: sdkgo.StepAnnotations{GroupID: "linkedin", GroupLabel: "LinkedIn", Explanation: "Read bounded signup identity claims."},
-		Connection:  connection,
-		MapToOperationInput: func(string) linkedinconnector.GetAuthenticatedProfileInput {
-			return linkedinconnector.GetAuthenticatedProfileInput{}
+	result := dex.DefineAttribute[sdkgo.QueryResult[linkedin.AuthenticatedProfile]]("linkedin-profile-result")
+	step := linkedin.NewGetAuthenticatedProfileStep(linkedin.GetAuthenticatedProfileStepConfig[string]{
+		StepType:       "ReadLinkedInProfile",
+		Annotations:    sdkgo.StepAnnotations{GroupID: "linkedin", GroupLabel: "LinkedIn", Explanation: "Read bounded signup identity claims."},
+		Connection:     connection,
+		ConnectionName: linkedinConnection.Name,
+		MapToOperationInput: func(string) linkedin.GetAuthenticatedProfileInput {
+			return linkedin.GetAuthenticatedProfileInput{}
 		},
 		ProfileLoaded: sdkgo.GoTo(profileTarget{}), VerifiedEmailRequired: sdkgo.GoTo(profileTarget{}),
 		InsufficientScope: sdkgo.GoTo(profileTarget{}), AuthorizationRevoked: sdkgo.GoTo(profileTarget{}),
@@ -47,10 +48,10 @@ func TestGeneratedFactoryExposesEveryTypedBranch(t *testing.T) {
 }
 
 func TestTypedConnectionAndCredentialsCannotSerializeOrLeak(t *testing.T) {
-	encoded, err := json.Marshal(linkedinconnector.Connection{})
+	encoded, err := json.Marshal(linkedin.Connection{})
 	require.ErrorContains(t, err, "cannot be serialized")
 	require.Nil(t, encoded)
-	credentials := linkedinconnector.Credentials{AccessToken: sdkgo.NewSecretString("secret-token")}
+	credentials := linkedin.Credentials{AccessToken: sdkgo.NewSecretString("secret-token")}
 	encoded, err = json.Marshal(credentials)
 	require.Error(t, err)
 	require.Nil(t, encoded)

@@ -44,7 +44,7 @@ func TestOperationSpecificFactoriesUseTypedConnectionAndResources(t *testing.T) 
 	text := dex.DefineStream[string]("openai-factory-text", 100)
 
 	create := openai.NewCreateResponseStep(openai.CreateResponseStepConfig[string]{
-		StepType: "CreateResponse", Annotations: openAIAnnotations(), Connection: connection,
+		StepType: "CreateResponse", ConnectionName: reference.Name, Annotations: openAIAnnotations(), Connection: connection,
 		MapToOperationInput: func(string) openai.CreateRequest { return openai.CreateRequest{Model: "gpt-test"} },
 		Completed:           sdkgo.GoTo(createTarget{}), Failed: sdkgo.GoTo(createTarget{}),
 		ProviderRejected: sdkgo.GoTo(createTarget{}),
@@ -57,7 +57,7 @@ func TestOperationSpecificFactoriesUseTypedConnectionAndResources(t *testing.T) 
 	require.Equal(t, 150*time.Second, createOptions.ExecuteMethodTimeout)
 
 	retrieve := openai.NewRetrieveResponseStep(openai.RetrieveResponseStepConfig[string]{
-		StepType: "RetrieveResponse", Annotations: openAIAnnotations(), Connection: connection,
+		StepType: "RetrieveResponse", ConnectionName: reference.Name, Annotations: openAIAnnotations(), Connection: connection,
 		MapToOperationInput: func(string) openai.RetrieveRequest { return openai.RetrieveRequest{ResponseID: "resp_1"} },
 		Found:               sdkgo.GoTo(retrieveTarget{}), NotFound: sdkgo.GoTo(retrieveTarget{}),
 		ProviderRejected: sdkgo.GoTo(retrieveTarget{}), InvalidResponse: sdkgo.GoTo(retrieveTarget{}),
@@ -97,57 +97,30 @@ func TestTypedConnectionCannotSerializeAndRequiredBranchFailsClosed(t *testing.T
 	})
 }
 
-type generatedTarget struct {
-	dex.StepDefaultsNoWaitFor[openai.GenerateTextResult]
-}
-
-func (generatedTarget) Execute(dex.Context, openai.GenerateTextResult) (*dex.StepDecision, error) {
-	return dex.GracefulComplete(nil), nil
-}
-
-func TestGenerateTextFactoryAppliesTheStreamingGenerationBudget(t *testing.T) {
-	step := openai.NewGenerateTextStep(openai.GenerateTextStepConfig[string]{
-		StepType: "GenerateAnswer", ConnectionName: generateTextConnection.Name, Annotations: openAIAnnotations(),
-		Connection: generateTextFactoryConnection(t), MapToOperationInput: generateTextUserRequest, Generated: sdkgo.GoTo(generatedTarget{}),
-	})
-	options := step.GetStepOptions()
-	require.Equal(t, dex.StepDurabilitySync, options.ExecuteDurability)
-	require.Equal(t, 900*time.Second, options.ExecuteMethodTimeout)
-	require.Equal(t, 60*time.Second, options.HeartbeatTimeout)
-	require.Equal(t, &dex.RetryPolicy{
-		InitialInterval: 2 * time.Second, BackoffCoefficient: 2, MaximumInterval: time.Minute,
-		MaximumAttempts: 4, TotalDuration: 30 * time.Minute,
-	}, options.ExecuteRetry)
-}
-
-func TestGenerateTextFactoryFailsClosed(t *testing.T) {
-	connection := generateTextFactoryConnection(t)
+// TestCreateResponseFactoryFailsClosed rejects a Step whose static ConnectionName differs from its Connection.
+func TestCreateResponseFactoryFailsClosed(t *testing.T) {
+	reference := sdkgo.ConnectionRef{Provider: "openai", Name: "factory-test"}
+	client, err := openai.New(openai.Config{}, sdkgo.StaticCredentialProvider[openai.Credentials]{})
+	require.NoError(t, err)
+	connection, err := openai.NewConnection(client, reference)
+	require.NoError(t, err)
 	require.Panics(t, func() {
-		openai.NewGenerateTextStep(openai.GenerateTextStepConfig[string]{
-			StepType: "GenerateAnswer", Annotations: openAIAnnotations(), Connection: connection, MapToOperationInput: generateTextUserRequest,
+		openai.NewCreateResponseStep(openai.CreateResponseStepConfig[string]{
+			StepType: "CreateResponse", Annotations: openAIAnnotations(), Connection: connection,
+			MapToOperationInput: func(string) openai.CreateRequest { return openai.CreateRequest{Input: "x"} },
+			Completed:           sdkgo.GoTo(createTarget{}),
 		})
-	}, "the generated branch is required")
+	}, "a Step without its static ConnectionName is rejected")
 	require.Panics(t, func() {
-		openai.NewGenerateTextStep(openai.GenerateTextStepConfig[string]{
-			StepType: "GenerateAnswer", ConnectionName: "another-connection", Annotations: openAIAnnotations(),
-			Connection: connection, MapToOperationInput: generateTextUserRequest, Generated: sdkgo.GoTo(generatedTarget{}),
+		openai.NewCreateResponseStep(openai.CreateResponseStepConfig[string]{
+			StepType: "CreateResponse", ConnectionName: "another-connection", Annotations: openAIAnnotations(), Connection: connection,
+			MapToOperationInput: func(string) openai.CreateRequest { return openai.CreateRequest{Input: "x"} },
+			Completed:           sdkgo.GoTo(createTarget{}),
 		})
 	}, "a static connection name must match the runtime connection")
-	require.Panics(t, func() {
-		openai.NewGenerateTextStep(openai.GenerateTextStepConfig[string]{Connection: openai.Connection{}})
-	}, "a zero Connection is rejected")
 	for _, rendering := range []string{connection.String(), fmt.Sprintf("%#v", connection), fmt.Sprintf("%+v", connection)} {
 		require.Equal(t, "openai.Connection{[REDACTED]}", rendering)
 	}
-}
-
-func generateTextFactoryConnection(t *testing.T) openai.Connection {
-	t.Helper()
-	client, err := openai.New(openai.Config{}, generateTextCredentials())
-	require.NoError(t, err)
-	connection, err := openai.NewConnection(client, generateTextConnection)
-	require.NoError(t, err)
-	return connection
 }
 
 func openAIAnnotations() sdkgo.StepAnnotations {

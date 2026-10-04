@@ -30,14 +30,17 @@ authorization methods:
   service-account assertion for the configured managed user, mints a delegated
   access token, and derives the primary email from that delegated user.
 
-The provider-specific refresh driver never owns persistence. Local development
-reloads and atomically replaces the private `0600` connection file. Hosted apps
-receive only an operation-scoped access token and primary email from the
-Superverse broker; OAuth client secrets, refresh tokens, and service-account
-keys remain in the encrypted credential store. If Google rotates a refresh
-token, the broker or local provider replaces it atomically; if Google omits a
-new one, the prior value is retained. `invalid_grant` requires reauthorization.
-A 401 forces one coordinated refresh and one retry, never a refresh loop.
+The provider-specific refresh driver never owns persistence. The project
+connection that `NewProjectConnection` opens admits one refresh per credential
+generation across application replicas and stores the complete replacement
+before the call uses it; OAuth client secrets, refresh tokens, and
+service-account keys stay in encrypted project storage and never enter a Flow.
+A refresh token that Google rotates is stored with the new access token; when
+Google omits a new one, the prior value is retained. `invalid_grant` requires
+reauthorization. After a 401 the connector asks once for a refresh, which the
+project connection performs only when the stored expiry has passed, and then
+retries once; otherwise the 401 is an authentication failure, never an
+uncertain send. There is never a refresh loop.
 
 `messageReceived` and `replyReceived` are neutral provider Triggers. Their
 manifest does not decide whether an event starts a Flow or invokes an RPC. The
@@ -62,9 +65,9 @@ start request IDs and application-owned RPC state perform final deduplication.
 The application chooses the durable key, retention policy, locks, and duplicate
 response.
 
-Use one `NewLocalMessageTriggerRunner` for every Gmail message Trigger route on
-a connection. It persists each matched event in a binding-specific inbox before
-delivering it, and then:
+Use one `NewProjectMessageTriggerRunner` for every Gmail message Trigger route
+on a connection. It persists each matched event in its binding's project Trigger
+inbox before delivering it, and then:
 
 - lists every reply route before any root route in each poll, then delivers
   every root before any reply. A reply's root reaches Gmail first, so the root
@@ -86,8 +89,8 @@ switch to the shared runner whenever one Trigger starts a Flow and another
 continues it.
 
 The runner logs through `log/slog`, to `slog.Default()` unless you pass
-`gmail.WithLogger(logger)` to `NewLocalMessageTriggerRunner` or `New`; the
-logger also reaches the durable inboxes that `NewLocalMessageTriggerRunner`
+`gmail.WithLogger(logger)` to `NewProjectMessageTriggerRunner` or `New`; the
+logger also reaches the durable inboxes that `NewProjectMessageTriggerRunner`
 creates. A failed poll or delivery is retried on the next poll, so its `delay`
 is the poll interval:
 
@@ -96,7 +99,7 @@ is the poll interval:
 | WARN | `gmail poll failed; retrying` | the poller, when a list, a message read, or the inbox write fails | `attempt`, `delay`, `error`, and `thread_id` and `event_id` when one message failed |
 | WARN | `trigger delivery failed; retrying` | the poller, when the target fails | `thread_id`, `event_id`, `attempt`, `delay`, `flow_id` for a Dex error, `error` |
 | INFO | `trigger delivered after retry` | the poller, when a later poll delivers that event | `thread_id`, `event_id`, `attempts` |
-| WARN | `trigger event skipped: undeliverable` | the durable inbox with `NewLocalMessageTriggerRunner`; the poller without an inbox | `thread_id`, `event_id`, `flow_id` for a Dex error, `error` |
+| WARN | `trigger event skipped: undeliverable` | the durable inbox with `NewProjectMessageTriggerRunner`; the poller without an inbox | `thread_id`, `event_id`, `flow_id` for a Dex error, `error` |
 | DEBUG | `trigger event ignored` | the poller | `thread_id`, `event_id`, and `reason`: `not_a_reply`, `not_a_root`, or `matcher_mismatch` |
 
 Every record carries `connector`, `connection`, `trigger`, and `binding`.
@@ -114,7 +117,7 @@ and I/O records described in the SDK README.
 The generated per-Trigger factories pass `WithLogger` only to their poller,
 and their poller records carry no `binding`. Their durable inbox and runner
 records go to `slog.Default()`, so call `slog.SetDefault` when you use them,
-or use `NewLocalMessageTriggerRunner`.
+or use `NewProjectMessageTriggerRunner`.
 
 `GetMessage` returns decoded headers, text, HTML, snippet, labels, and received
 time. `ReplyToMessage` reads the source metadata and sends with Gmail thread
@@ -135,22 +138,28 @@ retry instead of producing a branch.
 The `ui/` package builds the credential-safe Studio setup bundle published as
 `connector-ui.tgz` with the Connector release.
 
-For local Dex Web setup, name the factory connection and load the same name at
-application startup:
+Load the project configuration once at application startup and open the
+connection by the name its operations and Trigger bindings use, as
+[`examples/thread-reply/main.go`](examples/thread-reply/main.go) does:
 
 ```go
-store, err := localconfig.LoadFromEnvironment()
+project, err := projectconfig.LoadFromEnvironment(ctx)
 if err != nil {
 	return err
 }
-sender, err := gmail.NewLocalConnection(store, "sender")
+connection, err := gmail.NewProjectConnection(project, threadreply.ConnectionName)
 ```
 
-Set the same `ConnectionName` beside the typed `Connection` in each operation
-or Trigger binding. Dex Web stores renewable credential material only in the
-selected host's credential store: the private local file for local setup, or
-the encrypted Superverse credential store for hosted setup. Deleting a stored
-credential does not itself revoke the Google grant.
+`projectconfig.LoadFromEnvironment` reads the `DEX_PROJECT_*` configuration
+that Dex Web or Superverse Studio writes; see
+[`sdkgo/projectconfig`](../../../sdkgo/projectconfig/README.md#application-loading).
+The example passes the same `project` and connection name to
+`NewProjectMessageTriggerRunner`, which reads both Trigger bindings' saved
+configuration. Set the same `ConnectionName` beside the typed `Connection` in
+each operation or Trigger binding: a Step or Trigger whose `ConnectionName` is
+empty or differs from its connection's name panics at construction. Dex Web
+stores renewable credential material only in encrypted project storage.
+Deleting a stored credential does not itself revoke the Google grant.
 
 [`examples/thread-reply`](examples/thread-reply) combines a Flow-start target,
 `GetMessage`, a typed reply RPC, and `ReplyToMessage` in one runnable Flow.

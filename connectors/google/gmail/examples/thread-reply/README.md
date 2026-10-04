@@ -39,7 +39,7 @@ as its durable identity.
 
 The alpha local Trigger transport polls the newest inbox messages. It derives
 each event ID from the immutable Gmail message ID. The example runs both
-bindings through one `NewLocalMessageTriggerRunner`. Each poll lists replies
+bindings through one `NewProjectMessageTriggerRunner`. Each poll lists replies
 before roots and then delivers every root before any reply, so a root always
 starts its Flow before its reply arrives. A process restart may rescan the
 current page, but deterministic Flow starts and the application RPC's bounded
@@ -93,10 +93,12 @@ The compatibility gate runs this command twice from a clean consumer module.
 The schema must be valid, deterministic, and include both Gmail connector
 Steps, both Trigger bindings, branch targets, and Result Attributes.
 
-Start Dex, then run the example with the connection file shown by Dex Web:
+Start Dex, then run the example. It reads the `DEX_PROJECT_*` project
+configuration environment documented in
+[`sdkgo/projectconfig`](../../../../../sdkgo/projectconfig/README.md#application-loading);
+Dex Web or Superverse Studio writes that configuration:
 
 ```bash
-export DEX_CONNECTOR_CONFIG_FILE="$HOME/.dex/connectors/connections.json"
 go run ./examples/thread-reply
 ```
 

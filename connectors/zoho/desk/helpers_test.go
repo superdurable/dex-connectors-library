@@ -189,6 +189,15 @@ func (*rejectionRefreshingCredentialProvider) Resolve(sdkgo.Call) (desk.Credenti
 	return credentials, nil
 }
 
+// ResolveWithRefresh returns the token Resolve returns, which has not expired before Zoho Desk rejects it.
+func (provider *rejectionRefreshingCredentialProvider) ResolveWithRefresh(
+	_ context.Context,
+	call sdkgo.Call,
+	_ sdkgo.CredentialRefreshDriver[desk.Credentials],
+) (desk.Credentials, error) {
+	return provider.Resolve(call)
+}
+
 func (provider *rejectionRefreshingCredentialProvider) ResolveAfterRejection(
 	context.Context,
 	sdkgo.Call,

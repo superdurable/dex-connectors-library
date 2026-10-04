@@ -18,7 +18,8 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/connectors/hubspot"
 	leadqualification "github.com/superdurable/dex-connectors-library/connectors/hubspot/examples/lead-qualification/flow"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -50,15 +51,15 @@ func newLogger(output io.Writer, levelName string) *slog.Logger {
 }
 
 func run(ctx context.Context, logger *slog.Logger) error {
-	store, err := localconfig.LoadFromEnvironment()
+	project, err := projectconfig.LoadFromEnvironment(ctx)
 	if err != nil {
 		return err
 	}
-	settings, err := loadSettings(store)
+	settings, err := loadSettings(project.Configuration)
 	if err != nil {
 		return err
 	}
-	connection, err := hubspot.NewLocalConnection(store, leadqualification.ConnectionName)
+	connection, err := hubspot.NewProjectConnection(project, leadqualification.ConnectionName)
 	if err != nil {
 		return err
 	}
@@ -110,20 +111,20 @@ func run(ctx context.Context, logger *slog.Logger) error {
 }
 
 // loadSettings reads the Steps' picks once; an unsaved owner is blank, and the deal stage is required.
-func loadSettings(store *localconfig.Store) (leadqualification.Settings, error) {
+func loadSettings(configuration projectconfig.Configuration) (leadqualification.Settings, error) {
 	var settings leadqualification.Settings
-	leadOwner, err := localconfig.LoadOperationConfiguration[leadqualification.LeadOwnerConfiguration](
-		store, leadqualification.LeadOwnerConfigurationRef(),
+	leadOwner, err := provider.LoadOperationConfiguration[leadqualification.LeadOwnerConfiguration](
+		configuration, leadqualification.LeadOwnerConfigurationRef(),
 	)
 	switch {
-	case errors.Is(err, localconfig.ErrConfigurationNotFound):
+	case errors.Is(err, projectconfig.ErrObjectNotFound):
 	case err != nil:
 		return leadqualification.Settings{}, fmt.Errorf("load the lead owner saved in Dex Web: %w", err)
 	default:
 		settings.LeadOwner = leadOwner.Value
 	}
-	qualifiedDealStage, err := localconfig.LoadOperationConfiguration[leadqualification.QualifiedDealStageConfiguration](
-		store, leadqualification.QualifiedDealStageConfigurationRef(),
+	qualifiedDealStage, err := provider.LoadOperationConfiguration[leadqualification.QualifiedDealStageConfiguration](
+		configuration, leadqualification.QualifiedDealStageConfigurationRef(),
 	)
 	if err != nil {
 		return leadqualification.Settings{}, fmt.Errorf("load the qualified deal stage saved in Dex Web: %w", err)

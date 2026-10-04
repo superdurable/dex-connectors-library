@@ -24,7 +24,8 @@ import (
 	"github.com/superdurable/dex-connectors-library/connectors/intercom"
 	answerduplicate "github.com/superdurable/dex-connectors-library/connectors/intercom/examples/answer-duplicate-conversation/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -63,16 +64,16 @@ func newLogger(output io.Writer, levelName string) *slog.Logger {
 
 // run serves the webhook endpoint at once, so notifications are recorded even while Dex is unreachable.
 func run(ctx context.Context, logger *slog.Logger, connectionOptions ...intercom.Option) error {
-	store, err := localconfig.LoadFromEnvironment()
+	project, err := projectconfig.LoadFromEnvironment(ctx)
 	if err != nil {
 		return err
 	}
 	options := append(append(slices.Clone(connectionOptions), localAPIOptions(logger)...), intercom.WithLogger(logger))
-	connection, err := intercom.NewLocalConnection(store, answerduplicate.ConnectionName, options...)
+	connection, err := intercom.NewProjectConnection(project, answerduplicate.ConnectionName, options...)
 	if err != nil {
 		return err
 	}
-	replyConfiguration, err := loadReplyConfiguration(store, logger)
+	replyConfiguration, err := loadReplyConfiguration(project.Configuration, logger)
 	if err != nil {
 		return err
 	}
@@ -100,7 +101,7 @@ func run(ctx context.Context, logger *slog.Logger, connectionOptions ...intercom
 	if err != nil {
 		return errors.Join(err, stopWorker(worker), cache.Close())
 	}
-	endpointRunner, err := newInboundEndpointRunner(store, client, flow, logger, options)
+	endpointRunner, err := newInboundEndpointRunner(project, client, flow, logger, options)
 	if err != nil {
 		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
 	}
@@ -115,27 +116,31 @@ func run(ctx context.Context, logger *slog.Logger, connectionOptions ...intercom
 }
 
 // loadReplyConfiguration treats an unsaved adminPicker as an empty admin, which fails each Flow with guidance.
-func loadReplyConfiguration(store *localconfig.Store, logger *slog.Logger) (sdkgo.ConnectorLoadedConfiguration[answerduplicate.ReplyConfiguration], error) {
+func loadReplyConfiguration(configuration projectconfig.Configuration, logger *slog.Logger) (sdkgo.ConnectorLoadedConfiguration[answerduplicate.ReplyConfiguration], error) {
 	reference := answerduplicate.ReplyConfigurationRef()
-	loaded, err := localconfig.LoadOperationConfiguration[answerduplicate.ReplyConfiguration](store, reference)
-	if errors.Is(err, localconfig.ErrConfigurationNotFound) {
+	loaded, err := provider.LoadOperationConfiguration[answerduplicate.ReplyConfiguration](configuration, reference)
+	if errors.Is(err, projectconfig.ErrObjectNotFound) {
 		logger.Warn("the replying admin is not configured; choose it in Dex Web and restart", "step", reference.StepType)
 		return sdkgo.ConnectorLoadedConfiguration[answerduplicate.ReplyConfiguration]{Reference: reference}, nil
 	}
 	return loaded, err
 }
 
-// newInboundEndpointRunner starts one Flow per new conversation, with the notification ID as request ID.
+// newInboundEndpointRunner delivers the inbound binding to its target through the binding's durable project inbox.
 func newInboundEndpointRunner(
-	store *localconfig.Store, client *dex.Client, flow *answerduplicate.Flow, logger *slog.Logger, connectionOptions []intercom.Option,
+	project *projectconfig.LoadedProject, client *dex.Client, flow *answerduplicate.Flow, logger *slog.Logger, connectionOptions []intercom.Option,
 ) (*intercom.ConversationEventEndpointRunner, error) {
+	return intercom.NewProjectConversationEventEndpointRunner(project, answerduplicate.ConnectionName, []intercom.ProjectConversationEventTriggerRoute{{
+		BindingName: answerduplicate.InboundTriggerBinding, Target: newInboundTarget(client, flow, logger),
+	}}, connectionOptions...)
+}
+
+// newInboundTarget starts one Flow per new conversation, with the notification ID as request ID.
+func newInboundTarget(client *dex.Client, flow *answerduplicate.Flow, logger *slog.Logger) sdkgo.TriggerTarget[intercom.ConversationEvent] {
 	bindingLogger := logger.With("connector", intercom.ConnectorID, "connection", answerduplicate.ConnectionName,
 		"trigger", intercom.ConversationEventTriggerDefinition.Trigger.TriggerName, "binding", answerduplicate.InboundTriggerBinding)
-	return intercom.NewLocalConversationEventEndpointRunner(store, answerduplicate.ConnectionName, []intercom.LocalConversationEventTriggerRoute{{
-		BindingName: answerduplicate.InboundTriggerBinding,
-		Target: sdkgo.NewDexFlowTriggerTarget(client, flow, answerduplicate.AcceptInboundConversation, answerduplicate.ResolveFlowID,
-			answerduplicate.MapToFlowInput, sdkgo.WithTriggerLogger(bindingLogger)),
-	}}, connectionOptions...)
+	return sdkgo.NewDexFlowTriggerTarget(client, flow, answerduplicate.AcceptInboundConversation, answerduplicate.ResolveFlowID,
+		answerduplicate.MapToFlowInput, sdkgo.WithTriggerLogger(bindingLogger))
 }
 
 // localAPIOptions redirects API calls only when the local-verification variable is set.

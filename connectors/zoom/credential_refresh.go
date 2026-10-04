@@ -4,9 +4,7 @@
 package zoom
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"time"
@@ -95,22 +93,6 @@ func (driver *CredentialRefreshDriver) Refresh(
 		Credentials: credentials,
 		ExpiresAt:   driver.now().UTC().Add(token.ExpiresIn),
 	}, nil
-}
-
-// DecodeResolvedCredentialsJSON decodes the operation-scoped access token a
-// hosted credential broker returns, as {"access_token":"..."}. Renewal
-// material is rejected, because it must stay in the broker.
-func DecodeResolvedCredentialsJSON(contents json.RawMessage) (Credentials, error) {
-	var fields struct {
-		AccessToken string `json:"access_token"`
-	}
-	decoder := json.NewDecoder(bytes.NewReader(contents))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&fields); err != nil {
-		return Credentials{}, errors.New("Zoom resolved credential is invalid")
-	}
-	credentials := Credentials{AccessToken: sdkgo.NewSecretString(fields.AccessToken)}
-	return credentials, validateResolvedCredentials(credentials)
 }
 
 // validateResolvedCredentials requires an access token that can travel in a bearer header.

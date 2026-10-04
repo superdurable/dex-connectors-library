@@ -52,22 +52,23 @@ Until the connector is released, build a local release override from the reposit
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/microsoft/sql-server/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/microsoft/sql-server \
-  --version v0.1.0 --tag connectors/microsoft/sql-server/v0.1.0 \
+  --version v0.21.0 --tag connectors/microsoft/sql-server/v0.21.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/sql-server-refund/release/connector-release.json \
   --digest-output /tmp/sql-server-refund/release/connector-release.json.sha256
 dexcli dev --open=false --flow-rendering-dir /tmp/sql-server-refund/graphs \
-  --connector-config-dir /tmp/sql-server-refund/connections \
   --connector-release-override microsoft-sql-server=/tmp/sql-server-refund/release
 ```
 
 Open Dex Web at `http://127.0.0.1:8802`. In **Connections**, save
 `microsoft-sql-server / sql-server-ledger` with the host, database, user, and password of the user
 that received the grant. Keep the defaults unless your server needs another port, `strict`, or
-longer timeouts. The connection must show **Ready**. In another terminal, start the Worker:
+longer timeouts. The connection must show **Ready**. In another terminal, start the Worker. It reads
+the `DEX_PROJECT_*` project configuration environment documented in
+[`sdkgo/projectconfig`](../../../../../sdkgo/projectconfig/README.md#application-loading); Dex Web
+or Superverse Studio writes that configuration:
 
 ```bash
-DEX_CONNECTOR_CONFIG_FILE=/tmp/sql-server-refund/connections/connections.json \
 DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 \
 go run ./examples/record-refund
 ```

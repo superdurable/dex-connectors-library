@@ -5,7 +5,7 @@ metadata:
   displayName: Zoho Desk
   description: Search, read, create, and update Zoho Desk tickets and add public or private comments in the connection's Zoho data center, keeping Zoho Desk's own status and priority names.
   company: Zoho
-  version: v0.1.0
+  version: v0.21.0
 spec:
   provider: zoho
   codegen:
@@ -26,6 +26,7 @@ spec:
         required: false
         default: 4194304
   auth:
+    refreshable: true
     methodLabel: Data center
     defaultMethod: zoho-us-oauth
     methods:

@@ -8,15 +8,13 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"os"
-	"path/filepath"
 	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/salesforce"
+	"github.com/superdurable/dex-connectors-library/connectors/salesforce/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
 )
 
 // tokenEndpointTransport answers login.salesforce.com token requests and forwards every other request.
@@ -38,55 +36,24 @@ func (transport *tokenEndpointTransport) RoundTrip(request *http.Request) (*http
 	return &http.Response{StatusCode: status, Header: http.Header{"Content-Type": {"application/json"}}, Body: io.NopCloser(bytes.NewReader(contents))}, nil
 }
 
-type localSalesforceConnection struct {
-	path      string
-	client    *salesforce.Client
-	transport *tokenEndpointTransport
+type refreshingSalesforceConnection struct {
+	credentials *testsupport.RefreshingCredentialSource[salesforce.Credentials]
+	client      *salesforce.Client
+	transport   *tokenEndpointTransport
 }
 
-func newLocalSalesforceConnection(t *testing.T, instanceURL string, accessToken string, respond func() (int, map[string]any)) *localSalesforceConnection {
+func newRefreshingSalesforceConnection(t *testing.T, instanceURL string, accessToken string, respond func() (int, map[string]any)) *refreshingSalesforceConnection {
 	t.Helper()
-	path := filepath.Join(t.TempDir(), "connections.json")
-	contents, err := json.Marshal(map[string]any{
-		"schemaVersion": localconfig.SchemaVersion,
-		"connections": []map[string]any{{
-			"connectorId": salesforce.ConnectorID, "connectionName": salesforceConnection.Name, "provider": "salesforce",
-			"modulePath": "github.com/superdurable/dex-connectors-library/connectors/salesforce", "moduleVersion": "v0.1.0",
-			"configuration": map[string]any{},
-			"credentials": map[string]any{
-				"auth_method": salesforce.ProductionOAuthAuthMethodID, "oauth_client_id": "consumer-key",
-				"oauth_client_secret": "consumer-secret", "access_token": accessToken, "refresh_token": "refresh-token",
-				"instance_url": instanceURL,
-			},
-		}},
-	})
-	require.NoError(t, err)
-	require.NoError(t, os.WriteFile(path, contents, 0o600))
-	store, err := localconfig.LoadFile(path)
-	require.NoError(t, err)
 	transport := &tokenEndpointTransport{respond: respond}
-	connection := &localSalesforceConnection{path: path, transport: transport}
-	credentials := localconfig.NewRefreshingCredentialProvider(store, salesforce.ConnectorID, salesforceConnection.Name,
-		salesforce.DecodeCredentialsJSON, encodeCredentialsRawJSON)
-	connection.client, err = salesforce.New(salesforce.Config{}, credentials, salesforce.WithHTTPClient(&http.Client{Transport: transport}))
+	connection := &refreshingSalesforceConnection{transport: transport, credentials: testsupport.NewRefreshingCredentialSource(salesforce.Credentials{
+		AuthMethodID: salesforce.ProductionOAuthAuthMethodID, OAuthClientID: "consumer-key",
+		OAuthClientSecret: sdkgo.NewSecretString("consumer-secret"), AccessToken: sdkgo.NewSecretString(accessToken),
+		RefreshToken: sdkgo.NewSecretString("refresh-token"), InstanceURL: instanceURL,
+	}, nil)}
+	var err error
+	connection.client, err = salesforce.New(salesforce.Config{}, connection.credentials, salesforce.WithHTTPClient(&http.Client{Transport: transport}))
 	require.NoError(t, err)
 	return connection
-}
-
-func encodeCredentialsRawJSON(credentials salesforce.Credentials) (json.RawMessage, error) {
-	return salesforce.EncodeCredentialsJSON(credentials)
-}
-
-func (connection *localSalesforceConnection) storedRecord(t *testing.T) map[string]any {
-	t.Helper()
-	contents, err := os.ReadFile(connection.path)
-	require.NoError(t, err)
-	var file struct {
-		Connections []map[string]any `json:"connections"`
-	}
-	require.NoError(t, json.Unmarshal(contents, &file))
-	require.Len(t, file.Connections, 1)
-	return file.Connections[0]
 }
 
 func freshSessionResponse(instanceURL string) func() (int, map[string]any) {
@@ -107,22 +74,22 @@ func sessionCheckingSalesforce(t *testing.T, validToken string) *fakeSalesforce 
 
 func TestRejectedSessionRefreshesOnceAndResendsOnce(t *testing.T) {
 	fake := sessionCheckingSalesforce(t, "fresh-session")
-	connection := newLocalSalesforceConnection(t, fake.URL, "expired-session", freshSessionResponse(fake.URL))
+	connection := newRefreshingSalesforceConnection(t, fake.URL, "expired-session", freshSessionResponse(fake.URL))
 
 	result, err := runQueryRecords(t, connection.client, salesforce.QueryRecordsInput{SOQL: "SELECT Id FROM Account"})
 	require.NoError(t, err)
 	require.Equal(t, salesforce.QueryRecordsBranchFound, result.Branch)
 	require.Equal(t, int32(1), connection.transport.tokenRequests.Load())
 	require.Len(t, fake.recorded(), 2)
-	stored := connection.storedRecord(t)
-	require.Equal(t, "fresh-session", stored["credentials"].(map[string]any)["access_token"])
-	require.Equal(t, "refresh-token", stored["credentials"].(map[string]any)["refresh_token"])
-	require.NotEmpty(t, stored["credentialExpiresAt"])
+	stored, expiresAt := connection.credentials.Current()
+	require.Equal(t, "fresh-session", stored.AccessToken.Reveal())
+	require.Equal(t, "refresh-token", stored.RefreshToken.Reveal())
+	require.NotNil(t, expiresAt)
 }
 
 func TestSecondSessionRejectionIsTerminalWithoutARefreshLoop(t *testing.T) {
 	fake := sessionCheckingSalesforce(t, "never-valid")
-	connection := newLocalSalesforceConnection(t, fake.URL, "expired-session", freshSessionResponse(fake.URL))
+	connection := newRefreshingSalesforceConnection(t, fake.URL, "expired-session", freshSessionResponse(fake.URL))
 
 	result, err := runQueryRecords(t, connection.client, salesforce.QueryRecordsInput{SOQL: "SELECT Id FROM Account"})
 	require.NoError(t, err)
@@ -134,14 +101,14 @@ func TestSecondSessionRejectionIsTerminalWithoutARefreshLoop(t *testing.T) {
 
 func TestRevokedRefreshTokenRequiresReauthorization(t *testing.T) {
 	fake := sessionCheckingSalesforce(t, "fresh-session")
-	connection := newLocalSalesforceConnection(t, fake.URL, "expired-session", func() (int, map[string]any) {
+	connection := newRefreshingSalesforceConnection(t, fake.URL, "expired-session", func() (int, map[string]any) {
 		return http.StatusBadRequest, map[string]any{"error": "invalid_grant", "error_description": "expired access/refresh token"}
 	})
 
 	rejected, err := runQueryRecords(t, connection.client, salesforce.QueryRecordsInput{SOQL: "SELECT Id FROM Account"})
 	require.NoError(t, err)
 	require.Equal(t, salesforce.QueryRecordsBranchProviderRejected, rejected.Branch)
-	require.Equal(t, "reauthorization_required", connection.storedRecord(t)["credentialStatus"])
+	require.True(t, connection.credentials.IsReauthorizationRequired())
 
 	stopped, err := runQueryRecords(t, connection.client, salesforce.QueryRecordsInput{SOQL: "SELECT Id FROM Account"})
 	require.NoError(t, err)
@@ -153,11 +120,12 @@ func TestRevokedRefreshTokenRequiresReauthorization(t *testing.T) {
 
 func TestMissingInstanceURLRefreshesBeforeTheFirstRequest(t *testing.T) {
 	fake := sessionCheckingSalesforce(t, "fresh-session")
-	connection := newLocalSalesforceConnection(t, "", "authorized-session", freshSessionResponse(fake.URL))
+	connection := newRefreshingSalesforceConnection(t, "", "authorized-session", freshSessionResponse(fake.URL))
 
 	result, err := runQueryRecords(t, connection.client, salesforce.QueryRecordsInput{SOQL: "SELECT Id FROM Account"})
 	require.NoError(t, err)
 	require.Equal(t, salesforce.QueryRecordsBranchFound, result.Branch)
 	require.Len(t, fake.recorded(), 1)
-	require.Equal(t, fake.URL, connection.storedRecord(t)["credentials"].(map[string]any)["instance_url"])
+	stored, _ := connection.credentials.Current()
+	require.Equal(t, fake.URL, stored.InstanceURL)
 }

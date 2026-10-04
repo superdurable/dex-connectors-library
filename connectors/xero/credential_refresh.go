@@ -4,9 +4,7 @@
 package xero
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -115,42 +113,7 @@ func (driver *CredentialRefreshDriver) Refresh(
 	}, nil
 }
 
-// DecodeCredentialsJSON decodes trusted broker credential material using connector validation,
-// including the selected auth_method.
-func DecodeCredentialsJSON(contents json.RawMessage) (Credentials, error) {
-	return decodeLocalCredentials(contents)
-}
-
-// DecodeResolvedCredentialsJSON decodes the operation-scoped credential a trusted hosted broker
-// returns, for use as a hostedconfig.CredentialDecoder: auth_method with access_token, such as
-// {"auth_method":"custom-connection","access_token":"..."}. Client secrets, refresh tokens, and
-// unknown fields are rejected, and the error never repeats a value.
-func DecodeResolvedCredentialsJSON(contents json.RawMessage) (Credentials, error) {
-	var fields struct {
-		AuthMethodID string `json:"auth_method"`
-		AccessToken  string `json:"access_token"`
-	}
-	decoder := json.NewDecoder(bytes.NewReader(contents))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&fields); err != nil {
-		return Credentials{}, errors.New("Xero resolved credential is invalid")
-	}
-	credentials := Credentials{AuthMethodID: fields.AuthMethodID, AccessToken: sdkgo.NewSecretString(fields.AccessToken)}
-	if validateResolvedCredentials(credentials) != nil {
-		return Credentials{}, errors.New("Xero resolved credential is invalid")
-	}
-	return credentials, nil
-}
-
-// EncodeCredentialsJSON encodes complete credential material for trusted atomic persistence.
-func EncodeCredentialsJSON(credentials Credentials) ([]byte, error) {
-	if err := credentials.Validate(); err != nil {
-		return nil, err
-	}
-	return encodeLocalCredentials(credentials)
-}
-
-// validateResolvedCredentials checks only what a request needs, so hosted broker output without renewal material passes.
+// validateResolvedCredentials checks only what a request needs, so credentials without renewal material pass.
 func validateResolvedCredentials(credentials Credentials) error {
 	switch credentials.AuthMethodID {
 	case CustomConnectionAuthMethodID, OAuthAuthMethodID:

@@ -29,62 +29,67 @@ does not by itself prove that an ACH payment settled. Applications should issue
 the paid ticket only after `checkout.session.async_payment_succeeded`, or after
 `GetCheckoutSession` confirms `paymentStatus == "paid"` during reconciliation.
 
-## Local configuration
+## Project configuration
+
+Dex Web or Superverse Studio writes the connection and its Trigger binding to
+the project configuration. The connection record and the binding record look
+like this:
 
 ```json
 {
-  "schemaVersion": "connectors.dex.dev/local-connections/v1alpha1",
-  "connections": [{
-    "connectorId": "stripe",
-    "modulePath": "github.com/superdurable/dex-connectors-library/connectors/stripe",
-    "moduleVersion": "v0.2.1",
-    "provider": "stripe",
-    "connectionName": "stripe-payments",
-    "configuration": {},
-    "credentials": {
-      "secret_key": "sk_test_...",
-      "webhook_secret": "whsec_..."
-    }
-  }],
-  "triggerBindings": [{
-    "connectorId": "stripe",
-    "connectionName": "stripe-payments",
-    "triggerName": "checkoutSessionUpdated",
-    "bindingName": "registration-payments",
-    "configuration": {
-      "eventTypes": [
-        "checkout.session.completed",
-        "checkout.session.async_payment_succeeded",
-        "checkout.session.async_payment_failed",
-        "checkout.session.expired"
-      ]
-    }
-  }]
+  "connectorId": "stripe",
+  "connectionName": "stripe-payments",
+  "modulePath": "github.com/superdurable/dex-connectors-library/connectors/stripe",
+  "provider": "stripe",
+  "configuration": {}
 }
 ```
 
-Load the file with `localconfig.LoadFromEnvironment`. Use
-`NewLocalCheckoutSessionWebhookRuntime` when several bindings share the same
-Stripe endpoint. The runtime gives every binding its own durable local inbox,
+```json
+{
+  "connectorId": "stripe",
+  "connectionName": "stripe-payments",
+  "triggerName": "checkoutSessionUpdated",
+  "bindingName": "registration-payments",
+  "configuration": {
+    "eventTypes": [
+      "checkout.session.completed",
+      "checkout.session.async_payment_succeeded",
+      "checkout.session.async_payment_failed",
+      "checkout.session.expired"
+    ]
+  }
+}
+```
+
+The connection's credential, `secret_key` and `webhook_secret`, stays in the
+private project storage and is resolved for every call. The application reads
+the configuration through the `DEX_PROJECT_*` environment described in
+[project configuration loading](../../sdkgo/projectconfig/README.md#application-loading)
+and opens the connection with `stripe.NewProjectConnection`. Use
+`NewProjectCheckoutSessionWebhookRuntime` when several bindings share the same
+Stripe endpoint. The runtime gives every binding its own durable project inbox,
 activates every Trigger, and exposes an `http.Handler`. Each connection has its
 own endpoint, built on `sdkgo/webhooktrigger`, so a request verified with one
-connection's signing secret reaches only that connection's bindings:
+connection's signing secret reaches only that connection's bindings. The
+[webhook receiver example](examples/webhook-receiver/main.go) wires it like
+this:
 
 ```go
-runtime, err := stripe.NewLocalCheckoutSessionWebhookRuntime(
-    store,
-    "stripe-payments",
-    []stripe.LocalCheckoutSessionUpdatedTriggerRoute{{
-        BindingName: "registration-payments",
-        Target: paymentTarget,
-    }},
+project, err := projectconfig.LoadFromEnvironment(ctx)
+if err != nil {
+	return err
+}
+runtime, err := stripe.NewProjectCheckoutSessionWebhookRuntime(
+	project,
+	connectionName,
+	[]stripe.ProjectCheckoutSessionUpdatedTriggerRoute{{BindingName: bindingName, Target: checkoutEventLogger{}}},
 )
 if err != nil {
-    return err
+	return err
 }
-
+mux := http.NewServeMux()
 mux.Handle("/webhooks/stripe", runtime)
-go runtime.Run(ctx)
 ```
 
 The HTTP handler verifies the signature against the exact bounded request body.
@@ -97,38 +102,6 @@ return HTTP 400. Unsupported valid Stripe events are acknowledged and ignored.
 Applications must still deduplicate provider event IDs in durable Flow state.
 Stripe and the connector both provide at-least-once delivery, so a process can
 receive the same event again after an acknowledgement race.
-
-## Hosted credentials
-
-In Superverse-hosted deployments, construct the client with the operation-scoped
-broker provider. `DecodeResolvedCredentialsJSON` validates the broker response;
-the application never reads the encrypted credential object or a refresh token:
-
-```go
-provider, err := hostedconfig.NewCredentialProviderFromEnvironment(
-    stripe.ConnectorID,
-    "stripe-payments",
-    stripe.DecodeResolvedCredentialsJSON,
-)
-if err != nil {
-    return err
-}
-client, err := stripe.New(stripe.DefaultConfig(), provider)
-if err != nil {
-    return err
-}
-connection, err := stripe.NewConnection(
-    client,
-    sdkgo.ConnectionRef{Provider: "stripe", Name: "stripe-payments"},
-)
-```
-
-The webhook handler requests credentials with the stable
-`checkoutSessionUpdated` identity and a deterministic call ID derived from the
-bounded request body. The decoder accepts the operation-scoped `secret_key` or
-`webhook_secret` shape, so broker authorization can grant the Trigger without
-returning the API key and can grant API operations without returning the
-webhook signing secret.
 
 ## Operations
 
@@ -163,8 +136,8 @@ retry under the generated Dex policy.
 runnable Start Flow for creating one hosted ACH Checkout Session.
 
 [`examples/webhook-receiver`](examples/webhook-receiver) is a runnable local
-receiver that loads the connection file, starts the durable Trigger runtime,
-and exposes `/webhooks/stripe` without logging event payloads.
+receiver that loads the project configuration, starts the durable Trigger
+runtime, and exposes `/webhooks/stripe` without logging event payloads.
 
 No live Stripe credentials are required by the deterministic test suite. The
 suite uses a fake provider and signed webhook fixtures; a live Stripe account

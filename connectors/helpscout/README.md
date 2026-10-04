@@ -56,9 +56,11 @@ who created it, and Help Scout apps have no scopes.
 `grant_type=client_credentials` with the App ID and App Secret in the form body
 to `https://api.helpscout.net/v2/oauth2/token`, as Help Scout documents, and
 records the expiry from `expires_in` (two days). The driver obtains a new token
-when the stored one is absent or within five minutes of expiry; a token without
-a recorded expiry is kept until Help Scout answers `401`. After a `401`, the
-connector obtains a new token and repeats the request once. `invalid_client`
+when the stored one is absent, as before the first call, or within five minutes
+of expiry; a token without a recorded expiry is kept. After a `401` the
+connector asks once for a new token, which project storage obtains only when
+the recorded expiry has passed, and then repeats the request once; otherwise
+the `401` selects `providerRejected`. `invalid_client`
 and `unauthorized_client` mean the App ID or App Secret must be replaced and
 select `defect`; any other token failure returns Retry.
 
@@ -74,21 +76,19 @@ no scopes and returns none.
 providers from `cli-v1.4.0`, so a later connector release can add an
 authorization-code method that requires it.
 
-### Local connections
+### Project connections
 
-Build every local connection with `helpscout.NewLocalRenewingConnection`, as
+Applications open the connection with the generated
+`helpscout.NewProjectConnection` after `projectconfig.LoadFromEnvironment`, as
 [`examples/conversation-triage/main.go`](examples/conversation-triage/main.go)
-does. It uses `localconfig.NewRefreshingCredentialProvider`, which stores the
-obtained token and its expiry in the connection file Dex Web writes, under a
-process-local lock, so restarts reuse it until it nears expiry.
-`NewLocalConversationEventEndpointRunner` uses it too.
-
-Code generation emits a refreshing provider only for OAuth manifests that map a
-`refresh_token`. For this connector the generated `NewLocalConnection`, and
-`NewLocalConversationEventTrigger` built on it, use
-`localconfig.NewCredentialProvider`, which cannot store a token, so their Help
-Scout calls return Retry, naming `NewLocalRenewingConnection`, until the Step
-fails.
+does; the loader reads the `DEX_PROJECT_*` environment described in
+[project configuration](../../sdkgo/projectconfig/README.md). The manifest
+declares `refreshable: true`, so the connection resolves credentials through a
+refreshing project provider, which stores each obtained token and its expiry
+atomically in project storage for every replica of the application.
+`NewProjectConversationEventEndpointRunner` opens the same connection. A
+connection saved without a token obtains its first one on its first Help Scout
+call.
 
 ## Operations
 
@@ -188,8 +188,8 @@ profiles for one person, so every match is returned and the Flow decides.
 
 The `conversationEvent` Trigger serves one `webhooktrigger.Endpoint` per
 connection. `Connection.ConversationEventWebhookHandler` returns it, and
-`NewLocalConversationEventEndpointRunner` wraps every binding in a durable
-inbox. For each delivery the endpoint:
+`NewProjectConversationEventEndpointRunner` wraps every binding in a durable
+project inbox. For each delivery the endpoint:
 
 1. accepts only `POST` up to `webhookMaxBodyBytes`, answering `405` or `413`;
 2. verifies `X-HelpScout-Signature` as the base64
@@ -199,16 +199,16 @@ inbox. For each delivery the endpoint:
    body. A failure answers `400`; a connection without a webhook secret
    answers `503`, so Help Scout retries. Verification needs only the secret:
    the endpoint's `EndpointConfig.CredentialRefresh` driver obtains a new
-   token only for a record whose stored expiry has passed, which the local
-   connection file otherwise refuses to return, so an absent or expiring token
-   never delays a delivery. A record past its expiry while the token endpoint
+   token only for a record whose stored expiry has passed, which project
+   storage otherwise refuses to return, so an absent or expiring token never
+   delays a delivery. A record past its expiry while the token endpoint
    fails, or one whose App ID or App Secret Help Scout rejected, answers
    `503`;
 3. decodes the 10 conversation events whose body is a v2 Conversation object,
    `helpscout.ConversationWebhookEvents()`, and acknowledges any other event,
    such as `customer.created` or `convo.deleted`, with `200`;
 4. records the event for every binding whose `events` and `mailboxId` accept
-   it, and answers `200` only after every record is on disk.
+   it, and answers `200` only after every record is in its inbox.
 
 Help Scout sends no delivery ID, timestamp, or event time. The event ID is the
 event, the conversation ID, and the first 32 hex digits of the body's
@@ -229,15 +229,19 @@ The checked-in example wires the endpoint like this, from
 
 ```go
 func newConversationEndpointRunner(
-	store *localconfig.Store, client *dex.Client, flow *conversationtriage.Flow, logger *slog.Logger, connectionOptions []helpscout.Option,
+	project *projectconfig.LoadedProject, client *dex.Client, flow *conversationtriage.Flow, logger *slog.Logger, connectionOptions []helpscout.Option,
 ) (*helpscout.ConversationEventEndpointRunner, error) {
+	return helpscout.NewProjectConversationEventEndpointRunner(project, conversationtriage.ConnectionName, []helpscout.ProjectConversationEventTriggerRoute{{
+		BindingName: conversationtriage.NewConversationTriggerBinding, Target: newConversationTarget(client, flow, logger),
+	}}, append(slices.Clone(connectionOptions), helpscout.WithLogger(logger))...)
+}
+
+// newConversationTarget starts one Flow per new conversation, with the Trigger event ID as request ID.
+func newConversationTarget(client *dex.Client, flow *conversationtriage.Flow, logger *slog.Logger) sdkgo.TriggerTarget[helpscout.ConversationEvent] {
 	bindingLogger := logger.With("connector", helpscout.ConnectorID, "connection", conversationtriage.ConnectionName,
 		"trigger", helpscout.ConversationEventTriggerDefinition.Trigger.TriggerName, "binding", conversationtriage.NewConversationTriggerBinding)
-	return helpscout.NewLocalConversationEventEndpointRunner(store, conversationtriage.ConnectionName, []helpscout.LocalConversationEventTriggerRoute{{
-		BindingName: conversationtriage.NewConversationTriggerBinding,
-		Target: sdkgo.NewDexFlowTriggerTarget(client, flow, conversationtriage.AcceptNewConversation, conversationtriage.ResolveFlowID,
-			conversationtriage.MapToFlowInput, sdkgo.WithTriggerLogger(bindingLogger)),
-	}}, append(slices.Clone(connectionOptions), helpscout.WithLogger(logger))...)
+	return sdkgo.NewDexFlowTriggerTarget(client, flow, conversationtriage.AcceptNewConversation, conversationtriage.ResolveFlowID,
+		conversationtriage.MapToFlowInput, sdkgo.WithTriggerLogger(bindingLogger))
 }
 ```
 
@@ -272,7 +276,7 @@ and the Receipt carries Help Scout's `logRef` for support.
 | Answer | Result |
 | --- | --- |
 | 400, 413, 415, 422 | `providerRejected`, `VALIDATION` |
-| 401 with a newly obtained token | `providerRejected`, `AUTHENTICATION` |
+| 401, after one new token and resend only when the stored token has expired | `providerRejected`, `AUTHENTICATION` |
 | 403 | `providerRejected`, `AUTHORIZATION`, such as an account without API access or payment |
 | 404, 410 | `notFound` where declared, otherwise `providerRejected` |
 | 409 | `providerRejected`, `CONFLICT` |
@@ -303,7 +307,8 @@ These rely on Help Scout's documentation fetched on 2026-09-30 and
   `unauthorized_client` as final), and whether deleting the app revokes its
   tokens;
 - whether a token obtained earlier stays valid after a new one is obtained,
-  which matters when two processes renew at once;
+  which matters for a call still using the earlier token while another replica
+  obtains a new one;
 - whether `GET /v2/mailboxes` accepts a client credentials token, as every
   other endpoint is documented to;
 - whether the reply `text` is stored as given or escaped, and how line breaks

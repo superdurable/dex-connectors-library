@@ -206,37 +206,42 @@ Failure.
 | 413, `payloadTooLargeUncategorized`, `rangeExceedsLimit`, or a response above `maxResponseBytes` | `tooLarge` | `providerRejected` |
 | 500 `internalServerErrorUncategorized`, `generalException`, `unsupportedWorkbook`, other 4xx and 501 | `providerRejected` | `providerRejected` |
 
-A 401 forces one coordinated token refresh and one resend. Microsoft documents
+After a 401 the connector asks once for a token refresh, which the project
+connection performs only when the stored expiry has passed, and then resends
+once; otherwise the 401 selects `providerRejected`. Microsoft documents
 Excel throttling limits of 5,000 requests per 10 seconds per app and 1,500 per
 app per tenant, and recommends sending one request at a time per workbook.
 Dex's retry policy and `Retry-After` handle throttling; a Flow that writes one
 workbook from parallel Steps should serialize those Steps.
 
-## Local configuration
+## Project connection
 
-Dex Web writes one record per connection. Its credentials hold
-`auth_method: microsoft-oauth`, the client ID and secret, and the
-`access_token` and `refresh_token` from consent; `localconfig` adds
-`credentialExpiresAt` after the first refresh. Load it with
-`localconfig.LoadFromEnvironment` and `excel.NewLocalConnection`, as
+Dex Web saves one connection per name in encrypted project storage. Its private
+credential holds `auth_method: microsoft-oauth`, the client ID and secret, and
+the `access_token` and `refresh_token` from consent. Load the project
+configuration once at application startup and open the connection by the name
+its operations use, as
 [`examples/approval-decision/main.go`](examples/approval-decision/main.go) does:
 
 ```go
-store, err := localconfig.LoadFromEnvironment()
+project, err := projectconfig.LoadFromEnvironment(ctx)
 if err != nil {
 	return err
 }
-connection, err := excel.NewLocalConnection(store, approvaldecision.ConnectionName, connectionOptions()...)
+connection, err := excel.NewProjectConnection(project, approvaldecision.ConnectionName, connectionOptions()...)
 ```
+
+`projectconfig.LoadFromEnvironment` reads the `DEX_PROJECT_*` configuration
+that Dex Web or Superverse Studio writes; see
+[`sdkgo/projectconfig`](../../../sdkgo/projectconfig/README.md#application-loading).
+Set the same `ConnectionName` beside the typed `Connection` in each operation:
+a Step whose `ConnectionName` is empty or differs from its connection's name
+panics at construction.
 
 Credentials are reread before every provider call, so reauthorization needs no
 restart. The cell and response limits are startup configuration:
 `maxResponseBytes` bounds one Graph response, and `maxCells`, at most 100,000,
 bounds the cells one operation reads or writes.
-
-In Superverse-hosted deployments, `DecodeResolvedCredentialsJSON` accepts
-exactly `auth_method` and `access_token` from the broker and rejects client
-secrets, refresh tokens, and anything else without repeating a value.
 
 ## Example
 

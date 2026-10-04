@@ -61,22 +61,23 @@ Worker host. The connector sets host, port, database, user, password,
 `PGPASSWORD`, `PGSSLMODE`, `PGOPTIONS`, `PGTZ`, and `PGTARGETSESSIONATTRS`
 cannot redirect or weaken a connection.
 
-A local connection file looks like this:
+Name the factory connection and open the same name from the project
+configuration at application startup, as
+[`examples/record-refund/main.go`](examples/record-refund/main.go) does:
 
-```json
-{
-  "schemaVersion": "connectors.dex.dev/local-connections/v1alpha1",
-  "connections": [{
-    "connectorId": "postgresql",
-    "modulePath": "github.com/superdurable/dex-connectors-library/connectors/postgresql",
-    "moduleVersion": "v0.1.0",
-    "provider": "postgresql",
-    "connectionName": "postgresql-ledger",
-    "configuration": {"host": "db.example.com", "database": "app", "user": "dex_app"},
-    "credentials": {"password": "..."}
-  }]
+```go
+project, err := projectconfig.LoadFromEnvironment(ctx)
+if err != nil {
+	return err
 }
+connection, err := postgresql.NewProjectConnection(project, recordrefund.ConnectionName)
 ```
+
+Dex Web or Superverse Studio writes that configuration, and the application
+reads it through the `DEX_PROJECT_*` environment described in
+[project configuration loading](../../sdkgo/projectconfig/README.md#application-loading).
+The stored credential holds exactly `password`; the connector resolves it for
+every call.
 
 ## Statements and parameters
 

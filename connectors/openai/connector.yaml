@@ -3,9 +3,9 @@ kind: Connector
 metadata:
   name: openai
   displayName: OpenAI
-  description: OpenAI Responses API text generation and stored responses with JSON Schema structured output, reasoning effort, token usage, streamed text, and recovery metadata.
+  description: "OpenAI Responses API stored responses: create a model response with JSON Schema structured output, streamed text and progress, token usage, and explicit uncertainty, and retrieve it by ID for recovery. Text generation Steps use the llm connector."
   company: OpenAI
-  version: v0.8.0
+  version: v0.21.0
 spec:
   provider: openai
   codegen:
@@ -16,7 +16,7 @@ spec:
       - name: model
         goName: Model
         type: string
-        description: "OpenAI model for generateText on this connection, such as gpt-6-sol or gpt-6-luna. Blank uses gpt-6-sol. A request that names a model overrides it. createResponse always sends its request's model."
+        description: "OpenAI model that createResponse sends when its request names none, such as gpt-6-luna or a fine-tuned ft: model ID from Platform > Fine-tuning; a request's model overrides it. Blank uses the displayed default. Use the llm connector's generateText for text generation Steps."
         required: false
         default: gpt-6-sol
       - name: endpoint
@@ -28,7 +28,7 @@ spec:
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: "Positive maximum total response size in bytes, counting every byte of a stream. Each streamed text delta carries about 260 bytes of event framing, so the displayed default holds roughly 30,000 streamed generateText output tokens; raise it only for longer outputs. Larger responses select invalidResponse."
+        description: "Positive maximum total response size in bytes, counting every byte of a stream. Each streamed text delta carries about 260 bytes of event framing, so the displayed default holds roughly 30,000 streamed output tokens; raise it only for longer outputs. A larger createResponse response selects uncertain, and a larger retrieveResponse response selects invalidResponse."
         required: false
         default: 8388608
       - name: maxSseEventBytes
@@ -110,24 +110,3 @@ spec:
         executeMethodTimeout: 30s
         durability: async
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
-    - name: generateText
-      goName: GenerateText
-      inputType: GenerateTextRequest
-      outputType: GenerateTextResponse
-      kind: query
-      description: Generate text or JSON Schema structured output with an OpenAI model through the Responses API without storing the response.
-      idempotency: none
-      branches:
-        - {id: generated, goName: Generated, description: The model finished normally and returned text.}
-        - {id: truncated, goName: Truncated, description: The model stopped at the output token limit and returned any partial text., optional: true}
-        - {id: blocked, goName: Blocked, description: "OpenAI stopped the response for a content or safety policy, or the model refused.", optional: true}
-        - {id: providerRejected, goName: ProviderRejected, description: "OpenAI conclusively rejected the request, such as invalid credentials, an unknown model, or exhausted credits or spend limits.", optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: "OpenAI returned a malformed, oversized, or unusable response, including structured output that does not match its schema.", optional: true}
-        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      progress: [text]
-      execution:
-        # Requests stream, so the shared streaming generateText budget applies.
-        executeMethodTimeout: 900s
-        heartbeatTimeout: 60s
-        durability: sync
-        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 4, totalDuration: 30m}

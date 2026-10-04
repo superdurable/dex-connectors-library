@@ -10,16 +10,14 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"strconv"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"github.com/superdurable/dex-connectors-library/connectors/xero/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
 )
 
 const (
@@ -156,9 +154,9 @@ func TestRefreshIsRequiredForMissingOrExpiringTokens(t *testing.T) {
 	require.False(t, driver.RefreshRequired(sdkgo.CredentialRefreshState[Credentials]{Credentials: credentials, ExpiresAt: &beyondSkew, Now: now}))
 }
 
-// TestLocalCustomConnectionMintsPersistsAndReplacesARejectedToken uses the record Dex Web saves for the
-// Custom Connection method, which has no access token, and a provider that later rejects the token.
-func TestLocalCustomConnectionMintsPersistsAndReplacesARejectedToken(t *testing.T) {
+// TestCustomConnectionMintsStoresAndReplacesARejectedToken starts from the Custom Connection credentials
+// Dex Web saves, which have no access token, and a provider that later rejects the token.
+func TestCustomConnectionMintsStoresAndReplacesARejectedToken(t *testing.T) {
 	var mutex sync.Mutex
 	issued, apiCalls := 0, 0
 	provider := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
@@ -185,11 +183,10 @@ func TestLocalCustomConnectionMintsPersistsAndReplacesARejectedToken(t *testing.
 		}}})
 	}))
 	t.Cleanup(provider.Close)
-	path := filepath.Join(t.TempDir(), "connections.json")
-	writeLocalConnectionsFile(t, path)
-	store, err := localconfig.LoadFile(path)
+	credentials := testsupport.NewRefreshingCredentialSource(customConnectionCredentials(), nil)
+	client, err := New(Config{}, credentials, WithLocalProviderURL(provider.URL))
 	require.NoError(t, err)
-	connection, err := NewLocalConnection(store, "xero-books", WithLocalProviderURL(provider.URL))
+	connection, err := NewConnection(client, sdkgo.ConnectionRef{Provider: "xero", Name: "xero-books"})
 	require.NoError(t, err)
 
 	result, err := sdkgo.RunQuery(newInternalDexContext(), connection.client.GetInvoice(), connection.reference, GetInvoiceInput{InvoiceID: testDecodedInvoice})
@@ -199,49 +196,12 @@ func TestLocalCustomConnectionMintsPersistsAndReplacesARejectedToken(t *testing.
 	require.Equal(t, 2, issued)
 	require.Equal(t, 2, apiCalls)
 
-	contents, err := os.ReadFile(path)
-	require.NoError(t, err)
-	var persisted struct {
-		Connections []struct {
-			AuthMethodID string `json:"authMethodId"`
-			Credentials  struct {
-				AuthMethod   string `json:"auth_method"`
-				ClientSecret string `json:"client_secret"`
-				AccessToken  string `json:"access_token"`
-			} `json:"credentials"`
-			CredentialExpiresAt time.Time `json:"credentialExpiresAt"`
-		} `json:"connections"`
-	}
-	require.NoError(t, json.Unmarshal(contents, &persisted))
-	require.Len(t, persisted.Connections, 1)
-	record := persisted.Connections[0]
-	require.Equal(t, "minted-2", record.Credentials.AccessToken)
-	require.Equal(t, CustomConnectionAuthMethodID, record.Credentials.AuthMethod)
-	require.Equal(t, testClientSecret, record.Credentials.ClientSecret)
-	require.Equal(t, CustomConnectionAuthMethodID, record.AuthMethodID, "Dex Web's record member survives the rewrite")
-	require.True(t, record.CredentialExpiresAt.After(time.Now().Add(25*time.Minute)))
-}
-
-func TestDecodeResolvedCredentialsRejectsRenewalMaterial(t *testing.T) {
-	credentials, err := DecodeResolvedCredentialsJSON(json.RawMessage(`{"auth_method":"custom-connection","access_token":"short-lived"}`))
-	require.NoError(t, err)
-	require.Equal(t, "short-lived", credentials.AccessToken.Reveal())
-	for _, contents := range []string{
-		`{"auth_method":"xero-oauth","access_token":"short-lived","refresh_token":"must-stay-in-the-broker"}`,
-		`{"auth_method":"custom-connection","access_token":"short-lived","client_secret":"must-stay-in-the-broker"}`,
-		`{"auth_method":"xero-oauth","access_token":""}`,
-		`{"auth_method":"api-key","access_token":"short-lived"}`,
-		`{"auth_method":"xero-oauth","access_token":"has space"}`,
-	} {
-		_, err := DecodeResolvedCredentialsJSON(json.RawMessage(contents))
-		require.Error(t, err, contents)
-		require.NotContains(t, err.Error(), "must-stay-in-the-broker")
-	}
-	encoded, err := EncodeCredentialsJSON(oauthCredentials())
-	require.NoError(t, err)
-	decoded, err := DecodeCredentialsJSON(encoded)
-	require.NoError(t, err)
-	require.Equal(t, "existing-refresh", decoded.RefreshToken.Reveal())
+	stored, expiresAt := credentials.Current()
+	require.Equal(t, "minted-2", stored.AccessToken.Reveal())
+	require.Equal(t, CustomConnectionAuthMethodID, stored.AuthMethodID)
+	require.Equal(t, testClientSecret, stored.ClientSecret.Reveal())
+	require.NotNil(t, expiresAt)
+	require.True(t, expiresAt.After(time.Now().Add(25*time.Minute)))
 }
 
 func customConnectionCredentials() Credentials {
@@ -271,22 +231,4 @@ func writeTestJSON(t *testing.T, response http.ResponseWriter, status int, body 
 	t.Helper()
 	response.WriteHeader(status)
 	require.NoError(t, json.NewEncoder(response).Encode(body))
-}
-
-func writeLocalConnectionsFile(t *testing.T, path string) {
-	t.Helper()
-	file := map[string]any{
-		"schemaVersion": localconfig.SchemaVersion,
-		"connections": []map[string]any{{
-			"connectorId": ConnectorID, "modulePath": "github.com/superdurable/dex-connectors-library/connectors/xero",
-			"moduleVersion": "v0.1.0", "provider": "xero", "connectionName": "xero-books", "authMethodId": CustomConnectionAuthMethodID,
-			"configuration": map[string]any{},
-			"credentials": map[string]any{
-				"auth_method": CustomConnectionAuthMethodID, "client_id": testClientID, "client_secret": testClientSecret,
-			},
-		}},
-	}
-	encoded, err := json.Marshal(file)
-	require.NoError(t, err)
-	require.NoError(t, os.WriteFile(path, encoded, 0o600))
 }

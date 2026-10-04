@@ -4,9 +4,7 @@
 package teams
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"time"
@@ -78,34 +76,6 @@ func (driver *CredentialRefreshDriver) Refresh(
 		Credentials: credentials,
 		ExpiresAt:   driver.now().UTC().Add(token.ExpiresIn),
 	}, nil
-}
-
-// DecodeCredentialsJSON decodes trusted broker credential material using connector validation.
-func DecodeCredentialsJSON(contents json.RawMessage) (Credentials, error) {
-	return decodeLocalCredentials(contents)
-}
-
-// DecodeResolvedCredentialsJSON decodes an operation-scoped broker credential. Renewal material is
-// intentionally absent from this short-lived representation and is rejected.
-func DecodeResolvedCredentialsJSON(contents json.RawMessage) (Credentials, error) {
-	var fields struct {
-		AccessToken string `json:"access_token"`
-	}
-	decoder := json.NewDecoder(bytes.NewReader(contents))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&fields); err != nil {
-		return Credentials{}, errors.New("Microsoft Teams resolved credential is invalid")
-	}
-	credentials := Credentials{AccessToken: sdkgo.NewSecretString(fields.AccessToken)}
-	return credentials, validateResolvedCredentials(credentials)
-}
-
-// EncodeCredentialsJSON encodes complete credential material for trusted atomic persistence.
-func EncodeCredentialsJSON(credentials Credentials) ([]byte, error) {
-	if err := credentials.Validate(); err != nil {
-		return nil, err
-	}
-	return encodeLocalCredentials(credentials)
 }
 
 // validateResolvedCredentials accepts any credential that can authorize one request.

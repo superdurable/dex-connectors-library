@@ -17,7 +17,7 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/connectors/hackernews"
 	dailydigest "github.com/superdurable/dex-connectors-library/connectors/hackernews/examples/daily-digest/flow"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -32,11 +32,11 @@ func main() {
 }
 
 func run(ctx context.Context) error {
-	store, err := localconfig.LoadFromEnvironment()
+	project, err := projectconfig.LoadFromEnvironment(ctx)
 	if err != nil {
 		return err
 	}
-	connection, err := hackernews.NewLocalConnection(store, dailydigest.ConnectionName)
+	connection, err := hackernews.NewProjectConnection(project, dailydigest.ConnectionName)
 	if err != nil {
 		return err
 	}

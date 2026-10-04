@@ -96,6 +96,15 @@ func (*rejectionRefreshingCredentialProvider) Resolve(sdkgo.Call) (forms.Credent
 	return forms.Credentials{AccessToken: sdkgo.NewSecretString("rejected-token")}, nil
 }
 
+// ResolveWithRefresh returns the stored credential unchanged: its expiry has not passed.
+func (provider *rejectionRefreshingCredentialProvider) ResolveWithRefresh(
+	_ context.Context,
+	call sdkgo.Call,
+	_ sdkgo.CredentialRefreshDriver[forms.Credentials],
+) (forms.Credentials, error) {
+	return provider.Resolve(call)
+}
+
 func (provider *rejectionRefreshingCredentialProvider) ResolveAfterRejection(
 	context.Context,
 	sdkgo.Call,

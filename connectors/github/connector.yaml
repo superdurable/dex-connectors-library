@@ -5,12 +5,12 @@ metadata:
   displayName: GitHub
   description: Read an authenticated GitHub profile, verified primary email, bounded public repositories, releases, and repository changes.
   company: GitHub
-  version: v0.10.0
+  version: v0.21.0
 spec:
   provider: github
   codegen:
     go:
-      package: githubconnector
+      package: github
   configuration:
     fields:
       - name: baseUrl
@@ -68,6 +68,7 @@ spec:
         required: false
         default: 4000
   auth:
+    refreshable: true
     type: oauth2
     connectionKind: github-oauth
     fields:

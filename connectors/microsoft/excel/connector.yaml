@@ -5,7 +5,7 @@ metadata:
   displayName: Microsoft Excel
   description: Read Excel tables as rows keyed by column name, read and write bounded ranges, and append table rows without duplicates in workbooks stored in OneDrive for work or school and SharePoint, through Microsoft Graph.
   company: Microsoft
-  version: v0.1.0
+  version: v0.21.0
 spec:
   provider: microsoft
   codegen:
@@ -26,6 +26,7 @@ spec:
         required: false
         default: 10000
   auth:
+    refreshable: true
     defaultMethod: microsoft-oauth
     methods:
       - id: microsoft-oauth

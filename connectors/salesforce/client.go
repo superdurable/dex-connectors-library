@@ -7,7 +7,7 @@
 //
 // Applications use the generated operation-specific Step factories, such as
 // NewQueryRecordsStep and NewUpsertRecordByExternalIDStep, with a Connection
-// built by NewLocalConnection or NewConnection. The runnable example in
+// built by NewProjectConnection or NewConnection. The runnable example in
 // examples/record-sync uses every operation in one Flow.
 //
 // Every request goes to the org's instance URL, which Salesforce returns with
@@ -93,7 +93,7 @@ func WithHTTPClient(client *http.Client) Option {
 type Client struct {
 	apiVersion       string
 	httpClient       *http.Client
-	credentials      sdkgo.CredentialProvider[Credentials]
+	credentials      CredentialSource
 	refreshDriver    sdkgo.CredentialRefreshDriver[Credentials]
 	maxResponseBytes int64
 	queryBatchSize   int
@@ -172,7 +172,7 @@ type operationBranches struct {
 // New validates configuration and constructs an authenticated Salesforce client.
 // It fails when apiVersion is not a vNN.0 version from v46.0, a limit is outside
 // its documented range, or credentials is nil.
-func New(config Config, credentials sdkgo.CredentialProvider[Credentials], options ...Option) (*Client, error) {
+func New(config Config, credentials CredentialSource, options ...Option) (*Client, error) {
 	config = withConfigDefaults(config)
 	if err := config.Validate(); err != nil {
 		return nil, err

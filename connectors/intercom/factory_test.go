@@ -23,6 +23,9 @@ func (completeTarget[IN]) Execute(dex.Context, IN) (*dex.StepDecision, error) {
 	return dex.GracefulComplete(struct{}{}), nil
 }
 
+// GetStepType names the target: Dex gives a generic Step type no default name.
+func (completeTarget[IN]) GetStepType() string { return "Complete" }
+
 func TestFactoriesRequireOnlyTheHappyPathBranch(t *testing.T) {
 	connection := newTestConnection(t)
 	annotations := sdkgo.StepAnnotations{GroupID: "intercom", GroupLabel: "Intercom", Explanation: "Call Intercom."}
@@ -35,27 +38,27 @@ func TestFactoriesRequireOnlyTheHappyPathBranch(t *testing.T) {
 			Searched: sdkgo.GoTo(completeTarget[intercom.SearchConversationsResult]{}),
 		})
 		intercom.NewGetConversationStep(intercom.GetConversationStepConfig[string]{
-			StepType: "ReadConversation", Annotations: annotations, Connection: connection,
+			StepType: "ReadConversation", Annotations: annotations, Connection: connection, ConnectionName: intercomConnection.Name,
 			MapToOperationInput: func(id string) intercom.GetConversationInput {
 				return intercom.GetConversationInput{ConversationID: id}
 			},
 			Found: sdkgo.GoTo(completeTarget[intercom.GetConversationResult]{}),
 		})
 		intercom.NewReplyToConversationStep(intercom.ReplyToConversationStepConfig[string]{
-			StepType: "Reply", Annotations: annotations, Connection: connection,
+			StepType: "Reply", Annotations: annotations, Connection: connection, ConnectionName: intercomConnection.Name,
 			MapToOperationInput: func(string) intercom.ReplyToConversationInput { return validReplyInput() },
 			Replied:             sdkgo.GoTo(completeTarget[intercom.ReplyToConversationResult]{}),
 			Uncertain:           sdkgo.GoTo(completeTarget[intercom.ReplyToConversationResult]{}),
 		})
 		intercom.NewUpdateConversationStateStep(intercom.UpdateConversationStateStepConfig[string]{
-			StepType: "Close", Annotations: annotations, Connection: connection,
+			StepType: "Close", Annotations: annotations, Connection: connection, ConnectionName: intercomConnection.Name,
 			MapToOperationInput: func(id string) intercom.UpdateConversationStateInput {
 				return intercom.UpdateConversationStateInput{ConversationID: id, AdminID: testAdminID, State: intercom.ConversationStateClosed}
 			},
 			Updated: sdkgo.GoTo(completeTarget[intercom.UpdateConversationStateResult]{}),
 		})
 		intercom.NewFindContactByEmailStep(intercom.FindContactByEmailStepConfig[string]{
-			StepType: "FindContact", Annotations: annotations, Connection: connection,
+			StepType: "FindContact", Annotations: annotations, Connection: connection, ConnectionName: intercomConnection.Name,
 			MapToOperationInput: func(email string) intercom.FindContactByEmailInput {
 				return intercom.FindContactByEmailInput{Email: email}
 			},
@@ -64,7 +67,7 @@ func TestFactoriesRequireOnlyTheHappyPathBranch(t *testing.T) {
 	})
 	require.Panics(t, func() {
 		intercom.NewReplyToConversationStep(intercom.ReplyToConversationStepConfig[string]{
-			StepType: "Reply", Connection: connection,
+			StepType: "Reply", Annotations: annotations, Connection: connection, ConnectionName: intercomConnection.Name,
 			MapToOperationInput: func(string) intercom.ReplyToConversationInput { return validReplyInput() },
 			Uncertain:           sdkgo.GoTo(completeTarget[intercom.ReplyToConversationResult]{}),
 		})

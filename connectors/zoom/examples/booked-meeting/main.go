@@ -17,7 +17,7 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/connectors/zoom"
 	bookedmeeting "github.com/superdurable/dex-connectors-library/connectors/zoom/examples/booked-meeting/flow"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -32,11 +32,11 @@ func main() {
 }
 
 func run(ctx context.Context) error {
-	store, err := localconfig.LoadFromEnvironment()
+	project, err := projectconfig.LoadFromEnvironment(ctx)
 	if err != nil {
 		return err
 	}
-	connection, err := zoom.NewLocalConnection(store, bookedmeeting.ConnectionName)
+	connection, err := zoom.NewProjectConnection(project, bookedmeeting.ConnectionName)
 	if err != nil {
 		return err
 	}

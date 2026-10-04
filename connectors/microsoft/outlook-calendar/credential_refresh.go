@@ -4,9 +4,7 @@
 package outlookcalendar
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"regexp"
@@ -92,23 +90,6 @@ func (driver *CredentialRefreshDriver) Refresh(
 	default:
 		return sdkgo.CredentialRefreshResult[Credentials]{}, errors.New("Outlook Calendar authorization method is not supported")
 	}
-}
-
-// DecodeResolvedCredentialsJSON decodes an operation-scoped credential returned by the hosted broker.
-// The object holds exactly auth_method and access_token; client secrets and refresh tokens stay in
-// the broker and are rejected here. The error never repeats a value.
-func DecodeResolvedCredentialsJSON(contents json.RawMessage) (Credentials, error) {
-	var fields struct {
-		AuthMethodID string `json:"auth_method"`
-		AccessToken  string `json:"access_token"`
-	}
-	decoder := json.NewDecoder(bytes.NewReader(contents))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&fields); err != nil {
-		return Credentials{}, errors.New("Outlook Calendar resolved credential is invalid")
-	}
-	credentials := Credentials{AuthMethodID: fields.AuthMethodID, AccessToken: sdkgo.NewSecretString(fields.AccessToken)}
-	return credentials, validateResolvedCredentials(credentials)
 }
 
 func (driver *CredentialRefreshDriver) refreshDelegatedToken(

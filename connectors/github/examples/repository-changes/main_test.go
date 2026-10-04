@@ -6,7 +6,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -20,9 +19,9 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	githubconnector "github.com/superdurable/dex-connectors-library/connectors/github"
+	"github.com/superdurable/dex-connectors-library/connectors/github"
 	repositorychanges "github.com/superdurable/dex-connectors-library/connectors/github/examples/repository-changes/flow"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -63,23 +62,16 @@ func TestWaitForDexServerRetriesUntilTheServerAnswers(t *testing.T) {
 	require.Contains(t, logs, `level=INFO msg="dex server available after retry" attempts=3`)
 }
 
-// TestRunWaitsForUnreachableDexServerAndStopsCleanly loads the Dex Web connection file and starts the
-// example while no Dex Server is listening.
-func TestRunWaitsForUnreachableDexServerAndStopsCleanly(t *testing.T) {
+// TestServeWaitsForUnreachableDexServerAndStopsCleanly starts the example's Worker while no Dex Server is
+// listening.
+func TestServeWaitsForUnreachableDexServerAndStopsCleanly(t *testing.T) {
 	directory := t.TempDir()
-	configPath := filepath.Join(directory, "connections.json")
-	contents, err := json.Marshal(map[string]any{
-		"schemaVersion": localconfig.SchemaVersion,
-		"connections": []any{map[string]any{
-			"connectorId": githubconnector.ConnectorID, "modulePath": "github.com/superdurable/dex-connectors-library/connectors/github",
-			"moduleVersion": "v0.7.0", "provider": "github", "connectionName": repositorychanges.ConnectionName,
-			"configuration": map[string]any{"baseUrl": "http://127.0.0.1:1", "maxPatchCharacters": 2000},
-			"credentials":   map[string]any{"access_token": "SENTINEL-ACCESS-TOKEN"},
-		}},
-	})
+	reference := sdkgo.ConnectionRef{Provider: "github", Name: repositorychanges.ConnectionName}
+	client, err := github.New(github.Config{BaseURL: "http://127.0.0.1:1", MaxPatchCharacters: 2000},
+		sdkgo.StaticCredentialProvider[github.Credentials]{reference: {AccessToken: sdkgo.NewSecretString("SENTINEL-ACCESS-TOKEN")}})
 	require.NoError(t, err)
-	require.NoError(t, os.WriteFile(configPath, contents, 0o600))
-	t.Setenv(localconfig.EnvironmentVariable, configPath)
+	connection, err := github.NewConnection(client, reference)
+	require.NoError(t, err)
 	// A Unix socket that nothing listens on makes the Dex Server unreachable without binding a TCP port.
 	t.Setenv("DEX_FLOW_SERVICE_ADDRESS", "unix://"+filepath.Join(os.TempDir(), fmt.Sprintf("dex-missing-%d.sock", time.Now().UnixNano())))
 	t.Setenv("DEX_WORKER_BIND_ADDRESS", "127.0.0.1:"+unusedPort(t))
@@ -89,7 +81,7 @@ func TestRunWaitsForUnreachableDexServerAndStopsCleanly(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	result := make(chan error, 1)
-	go func() { result <- run(ctx, newLogger(output, "info")) }()
+	go func() { result <- serve(ctx, connection, newLogger(output, "info")) }()
 	require.Eventually(t, func() bool {
 		return strings.Contains(output.String(), `msg="dex server unavailable; retrying" attempt=1 delay=250ms`)
 	}, 10*time.Second, 50*time.Millisecond, "the example must wait for the Dex Server instead of exiting")
@@ -102,17 +94,6 @@ func TestRunWaitsForUnreachableDexServerAndStopsCleanly(t *testing.T) {
 		t.Fatal("the example did not stop after cancellation")
 	}
 	require.NotContains(t, output.String(), "SENTINEL")
-}
-
-func TestRunRejectsAMissingConnection(t *testing.T) {
-	configPath := filepath.Join(t.TempDir(), "connections.json")
-	contents, err := json.Marshal(map[string]any{"schemaVersion": localconfig.SchemaVersion, "connections": []any{}})
-	require.NoError(t, err)
-	require.NoError(t, os.WriteFile(configPath, contents, 0o600))
-	t.Setenv(localconfig.EnvironmentVariable, configPath)
-	err = run(context.Background(), newLogger(&lockedBuffer{}, "info"))
-	require.Error(t, err)
-	require.Contains(t, err.Error(), repositorychanges.ConnectionName)
 }
 
 // lockedBuffer collects log output written by the example's goroutine while the test reads it.

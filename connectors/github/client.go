@@ -1,8 +1,8 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package githubconnector provides bounded, authenticated GitHub profile and public repository queries.
-package githubconnector
+// Package github provides bounded, authenticated GitHub profile and public repository queries.
+package github
 
 import (
 	"bytes"
@@ -64,7 +64,7 @@ type Client struct {
 	maxPatchCharacters           int
 	maxCommitMessageCharacters   int
 	httpClient                   *http.Client
-	credentials                  sdkgo.CredentialProvider[Credentials]
+	credentials                  CredentialSource
 	refreshDriver                sdkgo.CredentialRefreshDriver[Credentials]
 	now                          func() time.Time
 }
@@ -229,7 +229,7 @@ type terminalResponse struct {
 }
 
 // New validates configuration and constructs an authenticated GitHub client.
-func New(config Config, credentials sdkgo.CredentialProvider[Credentials], options ...Option) (*Client, error) {
+func New(config Config, credentials CredentialSource, options ...Option) (*Client, error) {
 	config = withConfigDefaults(config)
 	if err := config.Validate(); err != nil {
 		return nil, err

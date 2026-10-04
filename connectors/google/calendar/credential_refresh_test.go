@@ -173,31 +173,6 @@ func TestCredentialRefreshDriverRefreshesMissingOrExpiringTokens(t *testing.T) {
 	require.False(t, driver.RefreshRequired(sdkgo.CredentialRefreshState[Credentials]{Credentials: credential, ExpiresAt: &beyondSkew, Now: now}))
 }
 
-func TestDecodeResolvedCredentialsRejectsRenewalMaterial(t *testing.T) {
-	credentials, err := DecodeResolvedCredentialsJSON(json.RawMessage(`{"auth_method":"workspace-domain-delegation","access_token":"short-lived"}`))
-	require.NoError(t, err)
-	require.Equal(t, "short-lived", credentials.AccessToken.Reveal())
-	require.Equal(t, WorkspaceDomainDelegationAuthMethodID, credentials.AuthMethodID)
-	_, err = DecodeResolvedCredentialsJSON(json.RawMessage(`{"access_token":"short-lived","refresh_token":"must-not-cross-broker"}`))
-	require.Error(t, err)
-	_, err = DecodeResolvedCredentialsJSON(json.RawMessage(`{"access_token":""}`))
-	require.Error(t, err)
-}
-
-func TestLocalCredentialsRoundTripOnlyTheSelectedMethod(t *testing.T) {
-	encoded, err := EncodeCredentialsJSON(Credentials{
-		AuthMethodID: GoogleOAuthAuthMethodID, OAuthClientID: "client-id",
-		OAuthClientSecret: sdkgo.NewSecretString("client-secret"), AccessToken: sdkgo.NewSecretString("access"),
-		RefreshToken: sdkgo.NewSecretString("refresh"),
-	})
-	require.NoError(t, err)
-	decoded, err := DecodeCredentialsJSON(encoded)
-	require.NoError(t, err)
-	require.Equal(t, "refresh", decoded.RefreshToken.Reveal())
-	_, err = EncodeCredentialsJSON(Credentials{AuthMethodID: GoogleOAuthAuthMethodID})
-	require.Error(t, err)
-}
-
 func TestRefreshScopesMatchTheManifestScopes(t *testing.T) {
 	contents, err := os.ReadFile("connector.yaml")
 	require.NoError(t, err)

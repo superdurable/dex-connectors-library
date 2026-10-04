@@ -87,7 +87,7 @@ go run ./cmd/connectorctl ui-artifact \
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/google/forms/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/google/forms \
-  --version v0.1.0 --tag connectors/google/forms/v0.1.0 \
+  --version v0.21.0 --tag connectors/google/forms/v0.21.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/google-forms-release/connector-ui.tgz \
   --ui-digest /tmp/google-forms-release/connector-ui.tgz.sha256 \
@@ -98,11 +98,13 @@ dexcli dev \
   --connector-release-override google-forms=/tmp/google-forms-release
 ```
 
-Then run the Worker with the connection path shown by Dex Web:
+Then run the Worker. It reads the `DEX_PROJECT_*` project configuration
+environment documented in
+[`sdkgo/projectconfig`](../../../../../sdkgo/projectconfig/README.md#application-loading);
+Dex Web or Superverse Studio writes that configuration:
 
 ```bash
 cd connectors/google/forms
-export DEX_CONNECTOR_CONFIG_FILE="$HOME/.dex/connectors/connections.json"
 go run ./examples/response-recorder
 ```
 

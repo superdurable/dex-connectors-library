@@ -10,15 +10,16 @@ import (
 	"strings"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex-connectors-library/sdkgo/webhooktrigger"
 )
 
-// LocalResponseSubmittedTriggerRoute binds one stored responseSubmitted binding to its application target.
-type LocalResponseSubmittedTriggerRoute struct {
+// ProjectResponseSubmittedTriggerRoute binds one stored responseSubmitted binding to its application target.
+type ProjectResponseSubmittedTriggerRoute struct {
 	// BindingName names the stored Trigger binding whose configuration filters the submissions.
 	BindingName string
-	// Target receives the binding's events through its durable local inbox, such as a
+	// Target receives the binding's events through its durable project inbox, such as a
 	// sdkgo.NewDexFlowTriggerTarget that starts one Flow per event ID.
 	Target sdkgo.TriggerTarget[FormResponseEvent]
 }
@@ -31,30 +32,51 @@ type ResponseSubmittedEndpointRunner struct {
 	endpoint       *webhooktrigger.Endpoint[Credentials, FormResponseEvent]
 }
 
-// NewLocalResponseSubmittedEndpointRunner loads the connection and every route's stored binding from
-// store and wraps each target in a durable inbox, so a submission is on disk before Typeform receives
-// 200. A route whose binding is not stored or is invalid returns an error. WithLogger also applies to
-// the inboxes.
-func NewLocalResponseSubmittedEndpointRunner(
-	store *localconfig.Store,
+// durableResponseSubmittedTarget wraps one binding's target so that each event is stored before its acknowledgement.
+type durableResponseSubmittedTarget func(
+	key projectconfig.TriggerInboxKey, target sdkgo.TriggerTarget[FormResponseEvent],
+) (sdkgo.TriggerTarget[FormResponseEvent], error)
+
+// NewProjectResponseSubmittedEndpointRunner loads the connection and every route's stored binding from
+// project and wraps each target in a durable inbox, so a submission is in project storage before Typeform
+// receives 200. A route whose binding is not stored or is invalid returns an error. WithLogger also applies
+// to the inboxes.
+func NewProjectResponseSubmittedEndpointRunner(
+	project *projectconfig.LoadedProject,
 	connectionName string,
-	routes []LocalResponseSubmittedTriggerRoute,
+	routes []ProjectResponseSubmittedTriggerRoute,
 	options ...Option,
 ) (*ResponseSubmittedEndpointRunner, error) {
-	if store == nil {
-		return nil, fmt.Errorf("local connector configuration store is required")
-	}
-	if len(routes) == 0 {
-		return nil, fmt.Errorf("Typeform responseSubmitted routes are required")
-	}
-	connection, err := NewLocalConnection(store, connectionName, options...)
+	connection, err := NewProjectConnection(project, connectionName, options...)
 	if err != nil {
 		return nil, err
+	}
+	return newResponseSubmittedEndpointRunner(connection, project.Configuration, routes, func(
+		key projectconfig.TriggerInboxKey, target sdkgo.TriggerTarget[FormResponseEvent],
+	) (sdkgo.TriggerTarget[FormResponseEvent], error) {
+		inbox, err := project.TriggerInbox(key)
+		if err != nil {
+			return nil, err
+		}
+		return provider.NewDurableTriggerTarget(inbox, key, target, provider.WithTriggerLogger(connection.client.logger))
+	})
+}
+
+// newResponseSubmittedEndpointRunner runs routes on connection with the bindings that configuration stores.
+func newResponseSubmittedEndpointRunner(
+	connection Connection,
+	configuration projectconfig.Configuration,
+	routes []ProjectResponseSubmittedTriggerRoute,
+	makeDurable durableResponseSubmittedTarget,
+) (*ResponseSubmittedEndpointRunner, error) {
+	if len(routes) == 0 {
+		return nil, fmt.Errorf("Typeform responseSubmitted routes are required")
 	}
 	endpoint, err := connection.client.responseSubmittedWebhookEndpoint(connection.reference)
 	if err != nil {
 		return nil, err
 	}
+	connectionName := connection.reference.Name
 	triggerName := ResponseSubmittedTriggerDefinition.Trigger.TriggerName
 	runners := make([]sdkgo.TriggerRunner, 0, len(routes))
 	bindingNames := make(map[string]bool, len(routes))
@@ -67,21 +89,21 @@ func NewLocalResponseSubmittedEndpointRunner(
 			return nil, fmt.Errorf("Typeform responseSubmitted binding name %q is duplicated", bindingName)
 		}
 		bindingNames[bindingName] = true
-		var configuration ResponseSubmittedTriggerConfiguration
-		if err := store.DecodeTriggerConfiguration(ConnectorID, connectionName, triggerName, bindingName, &configuration); err != nil {
-			return nil, err
+		var bindingConfiguration ResponseSubmittedTriggerConfiguration
+		if err := configuration.DecodeTriggerConfiguration(ConnectorID, connectionName, triggerName, bindingName, &bindingConfiguration); err != nil {
+			return nil, fmt.Errorf("Typeform responseSubmitted binding %q configuration: %w", bindingName, err)
 		}
-		if err := configuration.Validate(); err != nil {
+		if err := bindingConfiguration.Validate(); err != nil {
 			return nil, fmt.Errorf("binding %q: %w", bindingName, err)
 		}
-		durableTarget, err := localconfig.NewDurableTriggerTarget(store, ConnectorID, connectionName, triggerName, bindingName,
-			route.Target, localconfig.WithTriggerLogger(connection.client.logger))
+		key := projectconfig.TriggerInboxKey{ConnectorID: ConnectorID, ConnectionName: connectionName, TriggerName: triggerName, BindingName: bindingName}
+		durableTarget, err := makeDurable(key, route.Target)
 		if err != nil {
 			return nil, err
 		}
 		runners = append(runners, NewResponseSubmittedTrigger(ResponseSubmittedTriggerConfig{
 			Connection: connection, ConnectionName: connectionName, BindingName: bindingName,
-			Configuration: configuration, Target: durableTarget,
+			Configuration: bindingConfiguration, Target: durableTarget,
 		}))
 	}
 	endpointRunner, err := webhooktrigger.NewEndpointRunner(endpoint, runners...)

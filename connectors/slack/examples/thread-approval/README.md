@@ -23,7 +23,7 @@ intentionally duplicates the durable target input; applications should omit the
 Attribute when no external reader needs the raw result.
 
 The example runs both message Trigger bindings through one
-`NewLocalMessageTriggerRunner`. Slack distributes events among Socket Mode
+`NewProjectMessageTriggerRunner`. Slack distributes events among Socket Mode
 connections, so one shared connection ensures the root and reply routes both
 observe their matching events. Do not run two copies of this example against
 the same Slack app during the test.
@@ -38,7 +38,7 @@ calling Dex. The pure filter has no error result.
 
 This walkthrough uses these published releases:
 
-- [Slack Connector v0.10.0](https://github.com/superdurable/dex-connectors-library/releases/tag/connectors%2Fslack%2Fv0.10.0)
+- [Slack Connector v0.21.0](https://github.com/superdurable/dex-connectors-library/releases/tag/connectors%2Fslack%2Fv0.21.0)
 - [dexcli v0.13.7](https://github.com/superdurable/dex/releases/tag/cli-v0.13.7)
 
 Install Go 1.24 or newer and curl. You also need permission to create and
@@ -66,7 +66,7 @@ macOS installation, download the matching archive from the
 ## 1. Prepare a clean local test project
 
 Create a separate directory that consumes the released Connector. The Flow
-source is copied from the immutable v0.10.0 tag so dexcli can analyze it as an
+source is copied from the immutable v0.21.0 tag so dexcli can analyze it as an
 application dependency rather than as part of the Connector module itself.
 
 ```bash
@@ -75,11 +75,11 @@ cd slack-thread-approval-e2e
 mkdir -p flow build
 
 curl -fsSL \
-  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/slack/v0.10.0/connectors/slack/examples/thread-approval/flow/workflow.go \
+  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/slack/v0.21.0/connectors/slack/examples/thread-approval/flow/workflow.go \
   -o flow/workflow.go
 
 go mod init example.com/slack-thread-approval-e2e
-go get github.com/superdurable/dex-connectors-library/connectors/slack@v0.10.0
+go get github.com/superdurable/dex-connectors-library/connectors/slack@v0.21.0
 go mod tidy
 ```
 
@@ -103,13 +103,11 @@ branch targets, and the Result Attribute.
 
 ## 2. Start Dex and record its addresses
 
-From the test project, start Dex with the generated Flow definition and the
-default local Connector store:
+From the test project, start Dex with the generated Flow definition:
 
 ```bash
 dexcli dev \
-  --flow-rendering-dir "$PWD/build" \
-  --connector-config-dir "$HOME/.dex/connectors"
+  --flow-rendering-dir "$PWD/build"
 ```
 
 Keep this terminal running. Record the exact Dex Web URL and Dex Server address
@@ -273,15 +271,6 @@ OAuth, the browser returns to the same Dex Web origin and the connection status
 should be **Ready**. Dex stores the OAuth `xoxb-...` bot token and `xoxp-...`
 user token automatically. Do not copy those tokens into Trigger settings.
 
-The connection file is a plaintext local-development secret store. Its path is
-shown at the top of the Connections page, normally:
-
-```text
-$HOME/.dex/connectors/connections.json
-```
-
-Never commit or share that file.
-
 ## 6. Configure the Flow uses
 
 After the connection becomes **Ready**, Dex Web expands **Flow configuration**.
@@ -303,15 +292,9 @@ For `slack-thread-approval-reply`:
 
 For the `PostSlackCompletion` Step, set **Completion reply** to the message the
 Flow should post, for example `Processing complete.`. Choose **Save** in each
-unit after editing it. Trigger configuration remains in
-`connections.json`; Step-operation configuration is written beside it in:
-
-```text
-$HOME/.dex/connectors/use-configurations.json
-```
-
-Both files are startup snapshots for this example Worker. Restart the Worker
-after changing a unit.
+unit after editing it. Dex Web saves the Trigger and Step-operation
+configuration in the project configuration, which this example Worker reads
+once at startup. Restart the Worker after changing a unit.
 
 The pickers display names for convenience but save stable IDs. If a picker is
 unavailable, enter the copied channel ID and comma-separated member IDs in its
@@ -323,15 +306,17 @@ when exact matching is required.
 
 ## 7. Start the released example Worker
 
-Open a second terminal. Use the connection file and Dex Server address printed
-by the current dexcli process:
+Open a second terminal. The Worker reads the `DEX_PROJECT_*` project
+configuration environment described in
+[project configuration](../../../../sdkgo/projectconfig/README.md); Dex Web or
+Superverse Studio writes that configuration when you save the connection. Use
+the Dex Server address printed by the current dexcli process:
 
 ```bash
-export DEX_CONNECTOR_CONFIG_FILE="$HOME/.dex/connectors/connections.json"
 export DEX_FLOW_SERVICE_ADDRESS="127.0.0.1:8801"
 
 GOWORK=off go run \
-  github.com/superdurable/dex-connectors-library/connectors/slack/examples/thread-approval@v0.10.0
+  github.com/superdurable/dex-connectors-library/connectors/slack/examples/thread-approval@v0.21.0
 ```
 
 Replace `127.0.0.1:8801` when dexcli printed another Dex Server address. The
@@ -347,7 +332,7 @@ Socket Mode envelopes among active WebSocket connections rather than
 broadcasting every event to every connection.
 
 Startup fails with a scoped connector/connection/operation/Flow/Step error if
-`use-configurations.json` does not contain the `PostSlackCompletion`
+the project configuration does not contain the `PostSlackCompletion`
 configuration. Return to Dex Web, save **Completion reply**, and restart the
 Worker.
 
@@ -488,8 +473,8 @@ Other records to look for:
   `matcher_mismatch`. Every message appears once per route, so a root message
   also shows `not_a_reply` for the reply binding.
 - `trigger inbox write failed` or another `trigger inbox ... failed` record
-  (ERROR) means the Trigger inbox beside the connection file cannot be
-  written; check the directory permissions and free disk space.
+  (ERROR) means the binding's Trigger inbox in project storage cannot be read
+  or written; check that the Worker can reach project storage.
 
 ### Connections does not show `slack-workspace`
 
@@ -548,7 +533,7 @@ record at all means Slack did not deliver the event to this Worker.
 
 Make sure the message is a reply in the original thread, the sender's `U...`
 member ID is allowed, and the text matches the approval filter. Run only one
-copy of the released example Worker. Connector v0.10.0 uses one shared Socket
+copy of the released example Worker. The connector uses one shared Socket
 Mode connection for both root and reply routes; separate competing connections
 can consume each other's events.
 
@@ -577,14 +562,14 @@ the reply.
 
 ### Configuration changes do not affect the running Worker
 
-Restart the example Worker. Local connection and Trigger configuration is
-snapshotted during application startup. Refreshed OAuth credentials are loaded
+Restart the example Worker. Connection and Trigger configuration is read from
+the project configuration during application startup. Refreshed OAuth credentials are loaded
 before provider calls, but structural configuration requires a restart.
 
 ## Stop and clean up
 
-Stop the Worker and dexcli with Control-C. Deleting local credentials in Dex Web
-does not revoke the Slack grant. To revoke access, uninstall the test app from
+Stop the Worker and dexcli with Control-C. Deleting the connection's credentials
+in Dex Web does not revoke the Slack grant. To revoke access, uninstall the test app from
 the workspace or revoke it from Slack's app management page. Remove the local
 test project only after retaining any Flow IDs and non-sensitive results needed
 for the test report.

@@ -117,7 +117,7 @@ func (function roundTripFunc) RoundTrip(request *http.Request) (*http.Response, 
 	return function(request)
 }
 
-func newTestClient(t *testing.T, httpClient *http.Client, credentials sdkgo.CredentialProvider[helpscout.Credentials], config helpscout.Config) *helpscout.Client {
+func newTestClient(t *testing.T, httpClient *http.Client, credentials helpscout.CredentialSource, config helpscout.Config) *helpscout.Client {
 	t.Helper()
 	client, err := helpscout.New(config, credentials, helpscout.WithHTTPClient(httpClient), helpscout.WithClock(func() time.Time { return fixedNow }))
 	require.NoError(t, err)

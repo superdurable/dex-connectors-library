@@ -3,88 +3,62 @@ kind: Connector
 metadata:
   name: llm
   displayName: LLM
-  description: "One generateText Step for OpenAI, Claude, and Gemini models chosen as provider/model. Add each provider you use to the connection with its API key; each key is sent only to its own provider. Steps may pick any model from the added providers."
+  description: "The text generation connector for applications: one generateText Step runs a model of the provider that the connection names, OpenAI, Claude, Gemini, Qwen, DeepSeek, Meta, Mistral, Kimi, or xAI Grok, with that provider's API key and its own model IDs."
   company: Super Durable
-  version: v0.2.0
+  version: v0.21.0
 spec:
   provider: llm
   codegen:
     go:
-      package: llmrouter
+      package: llm
   configuration:
     fields:
+      - name: provider
+        goName: Provider
+        type: enum
+        enum: [openai, anthropic, gemini, qwen, deepseek, meta, mistral, kimi, xai]
+        description: "Model provider whose API serves every generateText Step of this connection and whose key api_key holds: openai (OpenAI Platform), anthropic (Claude Console), gemini (Google AI Studio), qwen (Alibaba Cloud Model Studio), deepseek (DeepSeek Platform), meta (Meta Model API), mistral (Mistral AI Studio), kimi (Moonshot AI Kimi Platform), or xai (xAI Console). The authorization guide links each provider's API key page. Required; use one connection per provider, and replace api_key and model when you change it."
+        required: true
       - name: model
         goName: Model
         type: string
-        description: "Optional default model for Steps that pick none, written provider/model, such as anthropic/claude-sonnet-5, openai/gpt-6-sol, or gemini/gemini-3.5-flash-lite, or a provider alone (openai, anthropic, or gemini) for that provider connector's default model. Its provider must be one the connection adds. Blank uses the first added provider's default model. Save the connection first to choose it from the live model lists. A Step pick or a request model overrides it."
+        description: "Model ID for Steps that pick none, written exactly as the provider names it and never prefixed with the provider, such as gpt-6-sol or claude-opus-5-5. Blank uses the provider's default model: gpt-6-sol for openai, claude-sonnet-5 for anthropic, gemini-3.5-flash-lite for gemini, qwen3.7-plus for qwen, deepseek-flash for deepseek, muse-spark-1.3 for meta, mistral-large-2512 for mistral, kimi-k2.6 for kimi, and grok-4.3 for xai. Save the connection first to choose it from the provider's live model list. A Step pick or a request model overrides it."
         required: false
         studioUnit: {unit: modelPicker, port: model}
+      - name: region
+        goName: Region
+        type: enum
+        enum: [global, us, eu, china, hong-kong]
+        description: "Regional API platform of the key, chosen where the key was created. global is each provider's public API; for qwen it is Model Studio Singapore. Only four providers serve another region: qwen keys created in China (Hong Kong) need hong-kong and keys created in China (Beijing) need china; kimi keys from platform.kimi.com need china; mistral offers eu and us regional inference; xai offers us regional inference, which currently serves only grok-4.7 and grok-4.6. Any other provider and region pair stops the application at startup."
+        required: false
+        default: global
+      - name: anthropicWorkspaceId
+        goName: AnthropicWorkspaceID
+        type: string
+        description: "Claude workspace ID from Claude Console (https://platform.claude.com) > Settings > Workspaces, such as wrkspc_01JwQvzr7rXLA5AGx3HKfFUJ, sent as anthropic-workspace-id on every Claude generation request. Only provider anthropic with a key that spans several workspaces requires it; leave it blank for a key scoped to one workspace and for every other provider, where a value stops the application at startup. It is not secret, and the model list does not send it."
+        required: false
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: "Maximum complete provider response in bytes for every provider, counting every byte of a stream; enter a positive integer. OpenAI adds about 260 bytes of event framing per streamed text delta, so the default holds roughly 30,000 openai/ output tokens; raise it for longer outputs. Larger responses select invalidResponse."
+        description: "Maximum complete provider response in bytes, counting every byte of a stream; enter a positive integer. Blank uses 64 MiB for deepseek, whose streams carry keep-alive comments and reasoning chunks, and 8 MiB for every other provider. OpenAI adds about 260 bytes of event framing per streamed text delta, so 8 MiB holds roughly 30,000 openai output tokens; raise it for longer outputs. Larger responses select invalidResponse."
         required: false
-        default: 8388608
   auth:
-    selection: multiple
-    methodLabel: Provider
-    defaultMethod: openai
-    methods:
-      - id: openai
-        displayName: OpenAI
-        description: "Run openai/ models, such as openai/gpt-6-sol, with an OpenAI project API key."
-        type: apiKey
-        connectionKind: llm-api-keys
-        fields:
-          - name: openai_api_key
-            goName: OpenAIAPIKey
-            type: secretString
-            description: "Secret OpenAI project API key from Platform > API keys, starting sk-, sent only to api.openai.com as a bearer token. Required while OpenAI is added."
-            required: true
-        guide:
-          startURL: https://platform.openai.com/api-keys
-          steps:
-            - "Select the OpenAI project that should own usage, open API keys, and choose Create new secret key."
-            - "Copy the sk- secret shown once into openai_api_key."
-      - id: anthropic
-        displayName: Claude
-        description: "Run anthropic/ models, such as anthropic/claude-sonnet-5, with a Claude Console API key."
-        type: apiKey
-        connectionKind: llm-api-keys
-        fields:
-          - name: anthropic_api_key
-            goName: AnthropicAPIKey
-            type: secretString
-            description: "Secret Claude API key from Claude Console > Settings > API keys, starting sk-ant-, sent only to api.anthropic.com as a bearer token. Required while Claude is added."
-            required: true
-        configuration:
-          fields:
-            - name: anthropicWorkspaceId
-              goName: AnthropicWorkspaceID
-              type: string
-              description: "Claude workspace ID from Claude Console > Settings > Workspaces, such as wrkspc_01JwQvzr7rXLA5AGx3HKfFUJ, sent as anthropic-workspace-id on Claude generation requests. A multi-workspace Anthropic key requires it; leave it blank for a key scoped to one workspace. The model lists do not send it."
-              required: false
-        guide:
-          startURL: https://platform.claude.com/settings/keys
-          steps:
-            - "Select the workspace that should own usage, choose Create key, and copy the sk-ant- secret shown once into anthropic_api_key."
-            - "Only for a key that spans several workspaces, copy the wrkspc_ ID from Settings > Workspaces into anthropicWorkspaceId."
-      - id: gemini
-        displayName: Gemini
-        description: "Run gemini/ models, such as gemini/gemini-3.5-flash-lite, with a Google AI Studio API key."
-        type: apiKey
-        connectionKind: llm-api-keys
-        fields:
-          - name: gemini_api_key
-            goName: GeminiAPIKey
-            type: secretString
-            description: "Secret Gemini API key from Google AI Studio > API keys, starting AIza, sent only to generativelanguage.googleapis.com. Required while Gemini is added."
-            required: true
-        guide:
-          startURL: https://aistudio.google.com/api-keys
-          steps:
-            - "Select the Google Cloud project that should own usage and choose Create API key."
-            - "Copy the AIza key into gemini_api_key."
+    type: apiKey
+    connectionKind: llm-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        description: "Secret API key of the provider chosen in provider, created on that provider's API key page that the guide lists: an sk- key for OpenAI, Qwen, DeepSeek, or Kimi, sk-ant- for Claude, AIza for Gemini, LLM|<id>|<secret> for Meta, an opaque key for Mistral, or xai- for xAI. It is stored only as this connection's secret and sent only to the chosen provider's API host, in x-goog-api-key for Gemini and as an Authorization bearer token for every other provider. Required."
+        required: true
+    guide:
+      startURL: https://github.com/superdurable/dex-connectors-library/blob/main/connectors/superdurable/llm/README.md#connection
+      steps:
+        - "Choose the provider, then open its API key page: OpenAI https://platform.openai.com/api-keys, Claude https://platform.claude.com/settings/keys, Gemini https://aistudio.google.com/api-keys, Qwen https://bailian.console.aliyun.com/ (Model Studio > API Key), DeepSeek https://platform.deepseek.com/api_keys, Meta https://dev.meta.ai/ (API keys), Mistral https://console.mistral.ai/api-keys, Kimi https://platform.kimi.ai/ (Console > API Keys), or xAI https://console.x.ai/ (API Keys)."
+        - "Select the project, workspace, or team that should own usage and billing, choose the page's create-key action, limit the key to text generation where the page allows it, and copy the secret shown once into api_key."
+        - "Set region only for a Qwen or Kimi key created in a China region, or for Mistral or xAI regional inference; for a Claude key that spans several workspaces, copy its wrkspc_ ID from Claude Console > Settings > Workspaces into anthropicWorkspaceId."
+        - "Leave model blank for the provider's default model, or save the connection and pick a model from the provider's live list."
+        - "To revoke access, delete the key on the same provider page; a replacement key saved here takes effect without restarting the application."
   studio:
     setup:
       entrypoint: index.html
@@ -93,22 +67,22 @@ spec:
       mockScenarios: [not-configured, connected]
       icon: icon.svg
     commands:
-      # Each command equals the pinned provider's released list command except
-      # its ID, capability, and credential field; manifest_test.go checks this.
+      # Every command sends api_key, so the bundle runs only the commands of the
+      # connection's own provider and region, never another provider's.
       - id: listOpenAIModels
         capability: llm.models-list
         request:
           method: GET
           url: https://api.openai.com/v1/models
-          credential: {field: openai_api_key, scheme: bearer}
+          credential: {field: api_key, scheme: bearer}
       # Dex Web releases before cli-v0.13.10 drop fixedHeaders, so Claude
-      # rejects this list there and the picker offers the default and manual entry.
+      # rejects this list there and the picker offers manual entry.
       - id: listAnthropicModels
         capability: llm.models-list
         request:
           method: GET
           url: https://api.anthropic.com/v1/models
-          credential: {field: anthropic_api_key, scheme: bearer}
+          credential: {field: api_key, scheme: bearer}
           fixedHeaders: {anthropic-version: "2023-06-01"}
           fixedQuery: {limit: "1000"}
           parameters:
@@ -120,7 +94,7 @@ spec:
         request:
           method: GET
           url: https://generativelanguage.googleapis.com/v1beta/models
-          credential: {field: gemini_api_key, scheme: header, header: x-goog-api-key}
+          credential: {field: api_key, scheme: header, header: x-goog-api-key}
           fixedQuery: {pageSize: "1000"}
           parameters:
             - {name: pageToken, location: query, target: pageToken}
@@ -129,11 +103,95 @@ spec:
         request:
           method: GET
           url: https://generativelanguage.googleapis.com/v1beta/openai/models
-          credential: {field: gemini_api_key, scheme: bearer}
+          credential: {field: api_key, scheme: bearer}
+      # Thinking-only Qwen models may lack TG, and fixedQuery cannot repeat
+      # capabilities, so each Model Studio region has two lists.
+      - id: listQwenModels
+        capability: llm.models-list
+        request:
+          method: GET
+          url: https://dashscope-intl.aliyuncs.com/api/v1/models
+          credential: {field: api_key, scheme: bearer}
+          fixedQuery: {capabilities: TG, language: en-US, page_size: "100"}
+          parameters:
+            - {name: pageNumber, location: query, target: page_no}
+      - id: listQwenReasoningModels
+        capability: llm.models-list
+        request:
+          method: GET
+          url: https://dashscope-intl.aliyuncs.com/api/v1/models
+          credential: {field: api_key, scheme: bearer}
+          fixedQuery: {capabilities: Reasoning, language: en-US, page_size: "100"}
+          parameters:
+            - {name: pageNumber, location: query, target: page_no}
+      - id: listQwenModelsHongKong
+        capability: llm.models-list
+        request:
+          method: GET
+          url: https://cn-hongkong.dashscope.aliyuncs.com/api/v1/models
+          credential: {field: api_key, scheme: bearer}
+          fixedQuery: {capabilities: TG, language: en-US, page_size: "100"}
+          parameters:
+            - {name: pageNumber, location: query, target: page_no}
+      - id: listQwenReasoningModelsHongKong
+        capability: llm.models-list
+        request:
+          method: GET
+          url: https://cn-hongkong.dashscope.aliyuncs.com/api/v1/models
+          credential: {field: api_key, scheme: bearer}
+          fixedQuery: {capabilities: Reasoning, language: en-US, page_size: "100"}
+          parameters:
+            - {name: pageNumber, location: query, target: page_no}
+      - id: listDeepSeekModels
+        capability: llm.models-list
+        request:
+          method: GET
+          url: https://api.deepseek.com/models
+          credential: {field: api_key, scheme: bearer}
+      - id: listMetaModels
+        capability: llm.models-list
+        request:
+          method: GET
+          url: https://api.meta.ai/v1/models
+          credential: {field: api_key, scheme: bearer}
+      # The global catalog also lists the models of the eu and us regions,
+      # which each serve only their regional subset of it.
+      - id: listMistralModels
+        capability: llm.models-list
+        request:
+          method: GET
+          url: https://api.mistral.ai/v1/models
+          credential: {field: api_key, scheme: bearer}
+      - id: listKimiModels
+        capability: llm.models-list
+        request:
+          method: GET
+          url: https://api.moonshot.ai/v1/models
+          credential: {field: api_key, scheme: bearer}
+      - id: listKimiModelsChina
+        capability: llm.models-list
+        request:
+          method: GET
+          url: https://api.moonshot.cn/v1/models
+          credential: {field: api_key, scheme: bearer}
+      # The language-models list carries modalities, aliases, and reasoning
+      # efforts; the US regional list carries only model IDs.
+      - id: listXAIModels
+        capability: llm.models-list
+        request:
+          method: GET
+          url: https://api.x.ai/v1/language-models
+          credential: {field: api_key, scheme: bearer}
+      - id: listXAIModelsUS
+        capability: llm.models-list
+        request:
+          method: GET
+          url: https://us.api.x.ai/v1/models
+          credential: {field: api_key, scheme: bearer}
     units:
       - id: modelPicker
         goName: ModelPicker
-        description: "Choose a model as provider/model from the live lists of the providers this connection adds, a provider's default model, or a typed provider/model ID. On a Step, blank keeps the connection's default model; on the connection, blank uses the first added provider's default model."
+        description: "Choose a model ID from the live model list of the connection's provider and region, or type one the provider serves. On a Step, blank keeps the connection's model; on the connection, blank uses the provider's default model."
         backendCapabilities: [llm.models-list]
         outputs:
           - {name: model, goName: Model, type: string}
@@ -143,20 +201,20 @@ spec:
       inputType: GenerateTextRequest
       outputType: GenerateTextResponse
       kind: query
-      description: Generate text or JSON Schema structured output with the OpenAI, Claude, or Gemini model that provider/model selects, through that provider connector's stateless generateText Query.
+      description: Generate text or JSON Schema structured output with a model of the connection's provider through that provider's stateless text generation API.
       idempotency: none
       branches:
         - {id: generated, goName: Generated, description: The model finished normally and returned text.}
-        - {id: truncated, goName: Truncated, description: The model stopped at the output token limit and returned any partial text., optional: true}
-        - {id: blocked, goName: Blocked, description: "The selected provider stopped the response for a content policy, or the model refused.", optional: true}
-        - {id: providerRejected, goName: ProviderRejected, description: "The selected provider conclusively rejected the request, such as an invalid key, an unknown model, or exhausted quota.", optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: "The selected provider returned a malformed, oversized, or unusable response, including structured output that does not match its schema.", optional: true}
-        - {id: defect, goName: Defect, description: "Local input, the model selection, a provider the connection has not added, a missing or mismatched provider key, connection configuration, or connector definition is invalid.", optional: true}
+        - {id: truncated, goName: Truncated, description: "The model stopped at the output token limit or the context window and returned any partial text.", optional: true}
+        - {id: blocked, goName: Blocked, description: "The provider stopped the request or response for a content policy, or the model refused.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "The provider conclusively rejected the request, such as an invalid key, an unknown model, or exhausted quota or balance.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "The provider returned a malformed, oversized, or unusable response, including structured output that does not match its schema.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, a request field the model does not accept, connection configuration, or connector definition is invalid.", optional: true}
       progress: [text]
       execution:
-        # Covers every routed provider's generateText budget; New rejects a
-        # linked provider that needs a longer Execute timeout.
-        executeMethodTimeout: 900s
+        # DeepSeek queues requests up to 10 minutes with keep-alives, so its
+        # queued streaming budget covers every provider.
+        executeMethodTimeout: 1200s
         heartbeatTimeout: 60s
         durability: sync
         retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 4, totalDuration: 30m}

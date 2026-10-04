@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-package llmrouter
+package llm
 
 import (
 	"encoding/json"
@@ -10,7 +10,8 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -21,24 +22,52 @@ const (
 	UIModelPickerPortModel = "model"
 )
 
+type Provider string
+
+const (
+	ProviderOpenai    Provider = "openai"
+	ProviderAnthropic Provider = "anthropic"
+	ProviderGemini    Provider = "gemini"
+	ProviderQwen      Provider = "qwen"
+	ProviderDeepseek  Provider = "deepseek"
+	ProviderMeta      Provider = "meta"
+	ProviderMistral   Provider = "mistral"
+	ProviderKimi      Provider = "kimi"
+	ProviderXai       Provider = "xai"
+)
+
+type Region string
+
+const (
+	RegionGlobal   Region = "global"
+	RegionUs       Region = "us"
+	RegionEu       Region = "eu"
+	RegionChina    Region = "china"
+	RegionHongKong Region = "hong-kong"
+)
+
 type Config struct {
-	Model                string `json:"model,omitempty" yaml:"model,omitempty"`
-	MaxResponseBytes     int64  `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
-	AnthropicWorkspaceID string `json:"anthropicWorkspaceId,omitempty" yaml:"anthropicWorkspaceId,omitempty"`
+	Provider             Provider `json:"provider,omitempty" yaml:"provider,omitempty"`
+	Model                string   `json:"model,omitempty" yaml:"model,omitempty"`
+	Region               Region   `json:"region,omitempty" yaml:"region,omitempty"`
+	AnthropicWorkspaceID string   `json:"anthropicWorkspaceId,omitempty" yaml:"anthropicWorkspaceId,omitempty"`
+	MaxResponseBytes     int64    `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
 }
 
 type Credentials struct {
-	AuthMethodIDs   []string
-	OpenAIAPIKey    sdkgo.SecretString
-	AnthropicAPIKey sdkgo.SecretString
-	GeminiAPIKey    sdkgo.SecretString
+	APIKey sdkgo.SecretString
 }
+
+// CredentialSource is the credential provider New requires: this connector never refreshes its credentials.
+type CredentialSource = sdkgo.CredentialProvider[Credentials]
 
 type Connection struct {
 	client    *Client
 	reference sdkgo.ConnectionRef
 }
 
+// NewConnection wraps a client built with New, such as a test client with a static credential provider.
+// Applications open declared connections with NewProjectConnection instead.
 func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, error) {
 	if client == nil {
 		return Connection{}, fmt.Errorf("llm connector client is required")
@@ -49,20 +78,25 @@ func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, e
 	return Connection{client: client, reference: reference}, nil
 }
 
-// NewLocalConnection loads startup configuration and reloads credentials before every provider call.
-func NewLocalConnection(store *localconfig.Store, connectionName string, options ...Option) (Connection, error) {
-	if store == nil {
-		return Connection{}, fmt.Errorf("local connector configuration store is required")
+// NewProjectConnection opens the connection that dex-app.yaml declares as connectionName from the
+// loaded project configuration. It reads ordinary settings now and resolves credentials during each call.
+func NewProjectConnection(project *projectconfig.LoadedProject, connectionName string, options ...Option) (Connection, error) {
+	if project == nil {
+		return Connection{}, fmt.Errorf("llm connection requires the loaded project configuration")
 	}
 	reference := sdkgo.ConnectionRef{Provider: "llm", Name: connectionName}
 	if err := reference.Validate(); err != nil {
-		return Connection{}, fmt.Errorf("llm local connection: %w", err)
+		return Connection{}, fmt.Errorf("llm connection: %w", err)
 	}
+	key := projectconfig.ConnectionKey{ConnectorID: ConnectorID, ConnectionName: connectionName}
 	var config Config
-	if err := store.DecodeConfiguration(ConnectorID, connectionName, &config); err != nil {
+	if err := project.Configuration.DecodeConnectionConfiguration(key, &config); err != nil {
+		return Connection{}, fmt.Errorf("llm connection %q settings: %w", connectionName, err)
+	}
+	credentials, err := provider.NewCredentialProvider(project.Connections, key, decodeCredentials)
+	if err != nil {
 		return Connection{}, err
 	}
-	credentials := localconfig.NewCredentialProvider(store, ConnectorID, connectionName, decodeLocalCredentials)
 	client, err := New(config, credentials, options...)
 	if err != nil {
 		return Connection{}, err
@@ -70,21 +104,15 @@ func NewLocalConnection(store *localconfig.Store, connectionName string, options
 	return NewConnection(client, reference)
 }
 
-func decodeLocalCredentials(contents json.RawMessage) (Credentials, error) {
+func decodeCredentials(contents json.RawMessage) (Credentials, error) {
 	var fields struct {
-		AuthMethodIDs   []string `json:"auth_methods"`
-		OpenAIAPIKey    string   `json:"openai_api_key"`
-		AnthropicAPIKey string   `json:"anthropic_api_key"`
-		GeminiAPIKey    string   `json:"gemini_api_key"`
+		APIKey string `json:"api_key"`
 	}
-	if err := localconfig.DecodeCredentials(contents, &fields); err != nil {
+	if err := projectconfig.DecodeCredentials(contents, &fields); err != nil {
 		return Credentials{}, err
 	}
 	credentials := Credentials{
-		AuthMethodIDs:   fields.AuthMethodIDs,
-		OpenAIAPIKey:    sdkgo.NewSecretString(fields.OpenAIAPIKey),
-		AnthropicAPIKey: sdkgo.NewSecretString(fields.AnthropicAPIKey),
-		GeminiAPIKey:    sdkgo.NewSecretString(fields.GeminiAPIKey),
+		APIKey: sdkgo.NewSecretString(fields.APIKey),
 	}
 	return credentials, credentials.Validate()
 }
@@ -105,24 +133,37 @@ func (Connection) MarshalText() ([]byte, error) {
 func (Connection) MarshalYAML() (any, error) {
 	return nil, fmt.Errorf("llm connector connections cannot be serialized")
 }
-func (Connection) String() string   { return "llmrouter.Connection{[REDACTED]}" }
-func (Connection) GoString() string { return "llmrouter.Connection{[REDACTED]}" }
+func (Connection) String() string   { return "llm.Connection{[REDACTED]}" }
+func (Connection) GoString() string { return "llm.Connection{[REDACTED]}" }
 
 func DefaultConfig() Config {
 	return Config{
-		MaxResponseBytes: 8388608,
+		Region: Region("global"),
 	}
 }
 
 func withConfigDefaults(config Config) Config {
 	defaults := DefaultConfig()
-	if config.MaxResponseBytes == 0 {
-		config.MaxResponseBytes = defaults.MaxResponseBytes
+	if config.Region == "" {
+		config.Region = defaults.Region
 	}
 	return config
 }
 
 func (config Config) Validate() error {
+	if config.Provider == "" {
+		return fmt.Errorf("configuration provider is required")
+	}
+	switch config.Provider {
+	case "", "openai", "anthropic", "gemini", "qwen", "deepseek", "meta", "mistral", "kimi", "xai":
+	default:
+		return fmt.Errorf("configuration provider is invalid")
+	}
+	switch config.Region {
+	case "", "global", "us", "eu", "china", "hong-kong":
+	default:
+		return fmt.Errorf("configuration region is invalid")
+	}
 	if config.MaxResponseBytes < 0 {
 		return fmt.Errorf("configuration maxResponseBytes cannot be negative")
 	}
@@ -130,42 +171,10 @@ func (config Config) Validate() error {
 }
 
 func (credentials Credentials) Validate() error {
-	if len(credentials.AuthMethodIDs) == 0 {
-		return fmt.Errorf("credential auth_methods is required")
-	}
-	selectedAuthMethodIDs := make(map[string]bool, len(credentials.AuthMethodIDs))
-	for _, authMethodID := range credentials.AuthMethodIDs {
-		if selectedAuthMethodIDs[authMethodID] {
-			return fmt.Errorf("credential auth_methods must be unique")
-		}
-		selectedAuthMethodIDs[authMethodID] = true
-		switch authMethodID {
-		case "openai":
-			if credentials.OpenAIAPIKey.Reveal() == "" {
-				return fmt.Errorf("credential openai_api_key is required")
-			}
-		case "anthropic":
-			if credentials.AnthropicAPIKey.Reveal() == "" {
-				return fmt.Errorf("credential anthropic_api_key is required")
-			}
-		case "gemini":
-			if credentials.GeminiAPIKey.Reveal() == "" {
-				return fmt.Errorf("credential gemini_api_key is required")
-			}
-		default:
-			return fmt.Errorf("credential auth_methods contains an undeclared auth method")
-		}
+	if credentials.APIKey.Reveal() == "" {
+		return fmt.Errorf("credential api_key is required")
 	}
 	return nil
-}
-
-func (credentials Credentials) HasAuthMethod(id string) bool {
-	for _, authMethodID := range credentials.AuthMethodIDs {
-		if authMethodID == id {
-			return true
-		}
-	}
-	return false
 }
 
 const GenerateTextBranchGenerated sdkgo.BranchID = "generated"
@@ -179,14 +188,14 @@ var GenerateTextDefinition = sdkgo.QueryDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "generateText"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: GenerateTextBranchGenerated, Description: "The model finished normally and returned text."},
-		{ID: GenerateTextBranchTruncated, Description: "The model stopped at the output token limit and returned any partial text.", Optional: true},
-		{ID: GenerateTextBranchBlocked, Description: "The selected provider stopped the response for a content policy, or the model refused.", Optional: true},
-		{ID: GenerateTextBranchProviderRejected, Description: "The selected provider conclusively rejected the request, such as an invalid key, an unknown model, or exhausted quota.", Optional: true},
-		{ID: GenerateTextBranchInvalidResponse, Description: "The selected provider returned a malformed, oversized, or unusable response, including structured output that does not match its schema.", Optional: true},
-		{ID: GenerateTextBranchDefect, Description: "Local input, the model selection, a provider the connection has not added, a missing or mismatched provider key, connection configuration, or connector definition is invalid.", Optional: true},
+		{ID: GenerateTextBranchTruncated, Description: "The model stopped at the output token limit or the context window and returned any partial text.", Optional: true},
+		{ID: GenerateTextBranchBlocked, Description: "The provider stopped the request or response for a content policy, or the model refused.", Optional: true},
+		{ID: GenerateTextBranchProviderRejected, Description: "The provider conclusively rejected the request, such as an invalid key, an unknown model, or exhausted quota or balance.", Optional: true},
+		{ID: GenerateTextBranchInvalidResponse, Description: "The provider returned a malformed, oversized, or unusable response, including structured output that does not match its schema.", Optional: true},
+		{ID: GenerateTextBranchDefect, Description: "Local input, a request field the model does not accept, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
-		ExecuteMethodTimeout: time.Duration(900000000000), HeartbeatTimeout: time.Duration(60000000000),
+		ExecuteMethodTimeout: time.Duration(1200000000000), HeartbeatTimeout: time.Duration(60000000000),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(2000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 4, TotalDuration: time.Duration(1800000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
@@ -220,8 +229,8 @@ func NewGenerateTextStep[IN any](config GenerateTextStepConfig[IN]) sdkgo.QueryS
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
-	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
-		panic(fmt.Errorf("llm connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("llm connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GenerateTextRequest, GenerateTextResponse]{
 		StepType: config.StepType, Annotations: config.Annotations,

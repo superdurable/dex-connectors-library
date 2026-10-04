@@ -19,7 +19,8 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/connectors/airtable"
 	refunddecision "github.com/superdurable/dex-connectors-library/connectors/airtable/examples/refund-decision/flow"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -51,15 +52,15 @@ func newLogger(output io.Writer, levelName string) *slog.Logger {
 }
 
 func run(ctx context.Context, logger *slog.Logger) error {
-	store, err := localconfig.LoadFromEnvironment()
+	project, err := projectconfig.LoadFromEnvironment(ctx)
 	if err != nil {
 		return err
 	}
-	settings, err := loadSettings(store)
+	settings, err := loadSettings(project.Configuration)
 	if err != nil {
 		return err
 	}
-	connection, err := airtable.NewLocalConnection(store, refunddecision.ConnectionName)
+	connection, err := airtable.NewProjectConnection(project, refunddecision.ConnectionName)
 	if err != nil {
 		return err
 	}
@@ -111,12 +112,12 @@ func run(ctx context.Context, logger *slog.Logger) error {
 }
 
 // loadSettings reads the policy and decision log table picks saved in Dex Web; both are required.
-func loadSettings(store *localconfig.Store) (refunddecision.Settings, error) {
-	policyTable, err := localconfig.LoadOperationConfiguration[refunddecision.TableSelection](store, refunddecision.PolicyTableConfigurationRef())
+func loadSettings(configuration projectconfig.Configuration) (refunddecision.Settings, error) {
+	policyTable, err := provider.LoadOperationConfiguration[refunddecision.TableSelection](configuration, refunddecision.PolicyTableConfigurationRef())
 	if err != nil {
 		return refunddecision.Settings{}, fmt.Errorf("load the policy table saved in Dex Web: %w", err)
 	}
-	logTable, err := localconfig.LoadOperationConfiguration[refunddecision.TableSelection](store, refunddecision.LogTableConfigurationRef())
+	logTable, err := provider.LoadOperationConfiguration[refunddecision.TableSelection](configuration, refunddecision.LogTableConfigurationRef())
 	if err != nil {
 		return refunddecision.Settings{}, fmt.Errorf("load the decision log table saved in Dex Web: %w", err)
 	}

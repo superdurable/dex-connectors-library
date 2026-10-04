@@ -58,7 +58,7 @@ func (flow *durabilityProbeFlow) GetSteps() []dex.StepDef {
 	return []dex.StepDef{
 		dex.DefineStartStep(startDurabilityProbe{}),
 		dex.DefineStep(email.NewSendMessageStep(email.SendMessageStepConfig[email.SendMessageInput]{
-			StepType: "SendProbeMessage", Connection: flow.connection,
+			StepType: "SendProbeMessage", Connection: flow.connection, ConnectionName: emailConnection.Name,
 			Annotations:         sdkgo.StepAnnotations{GroupID: "email", GroupLabel: "Email", Explanation: "Send one probe message."},
 			MapToOperationInput: func(input email.SendMessageInput) email.SendMessageInput { return input },
 			Sent:                sdkgo.GoTo(completeDurabilityProbe{}),

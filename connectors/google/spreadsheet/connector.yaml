@@ -5,7 +5,7 @@ metadata:
   displayName: Google Sheets
   description: Read ranges, find stable keyed rows, and idempotently upsert rows in Google Sheets.
   company: Google
-  version: v0.9.1
+  version: v0.21.0
 spec:
   provider: google
   codegen:
@@ -32,6 +32,7 @@ spec:
         required: false
         default: 10000
   auth:
+    refreshable: true
     type: oauth2
     connectionKind: google-sheets-oauth
     fields:

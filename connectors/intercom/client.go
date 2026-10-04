@@ -95,7 +95,7 @@ func WithClock(now func() time.Time) Option {
 }
 
 // WithLogger sends the webhook endpoint's delivery records, and those of the durable inboxes that
-// NewLocalConversationEventEndpointRunner creates, to logger. Without it, those records go to
+// NewProjectConversationEventEndpointRunner creates, to logger. Without it, those records go to
 // slog.Default(). Records carry notification IDs, never message text or secrets.
 func WithLogger(logger *slog.Logger) Option {
 	return func(options *clientOptions) { options.logger = logger }

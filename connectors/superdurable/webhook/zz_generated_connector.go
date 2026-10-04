@@ -11,7 +11,8 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -50,11 +51,16 @@ type Credentials struct {
 	SigningSecret sdkgo.SecretString
 }
 
+// CredentialSource is the credential provider New requires: this connector never refreshes its credentials.
+type CredentialSource = sdkgo.CredentialProvider[Credentials]
+
 type Connection struct {
 	client    *Client
 	reference sdkgo.ConnectionRef
 }
 
+// NewConnection wraps a client built with New, such as a test client with a static credential provider.
+// Applications open declared connections with NewProjectConnection instead.
 func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, error) {
 	if client == nil {
 		return Connection{}, fmt.Errorf("webhook connector client is required")
@@ -65,20 +71,25 @@ func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, e
 	return Connection{client: client, reference: reference}, nil
 }
 
-// NewLocalConnection loads startup configuration and reloads credentials before every provider call.
-func NewLocalConnection(store *localconfig.Store, connectionName string, options ...Option) (Connection, error) {
-	if store == nil {
-		return Connection{}, fmt.Errorf("local connector configuration store is required")
+// NewProjectConnection opens the connection that dex-app.yaml declares as connectionName from the
+// loaded project configuration. It reads ordinary settings now and resolves credentials during each call.
+func NewProjectConnection(project *projectconfig.LoadedProject, connectionName string, options ...Option) (Connection, error) {
+	if project == nil {
+		return Connection{}, fmt.Errorf("webhook connection requires the loaded project configuration")
 	}
 	reference := sdkgo.ConnectionRef{Provider: "webhook", Name: connectionName}
 	if err := reference.Validate(); err != nil {
-		return Connection{}, fmt.Errorf("webhook local connection: %w", err)
+		return Connection{}, fmt.Errorf("webhook connection: %w", err)
 	}
+	key := projectconfig.ConnectionKey{ConnectorID: ConnectorID, ConnectionName: connectionName}
 	var config Config
-	if err := store.DecodeConfiguration(ConnectorID, connectionName, &config); err != nil {
+	if err := project.Configuration.DecodeConnectionConfiguration(key, &config); err != nil {
+		return Connection{}, fmt.Errorf("webhook connection %q settings: %w", connectionName, err)
+	}
+	credentials, err := provider.NewCredentialProvider(project.Connections, key, decodeCredentials)
+	if err != nil {
 		return Connection{}, err
 	}
-	credentials := localconfig.NewCredentialProvider(store, ConnectorID, connectionName, decodeLocalCredentials)
 	client, err := New(config, credentials, options...)
 	if err != nil {
 		return Connection{}, err
@@ -86,11 +97,11 @@ func NewLocalConnection(store *localconfig.Store, connectionName string, options
 	return NewConnection(client, reference)
 }
 
-func decodeLocalCredentials(contents json.RawMessage) (Credentials, error) {
+func decodeCredentials(contents json.RawMessage) (Credentials, error) {
 	var fields struct {
 		SigningSecret string `json:"signing_secret"`
 	}
-	if err := localconfig.DecodeCredentials(contents, &fields); err != nil {
+	if err := projectconfig.DecodeCredentials(contents, &fields); err != nil {
 		return Credentials{}, err
 	}
 	credentials := Credentials{
@@ -219,32 +230,14 @@ func NewRequestReceivedTrigger(config RequestReceivedTriggerConfig) sdkgo.Trigge
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
-	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
-		panic(fmt.Errorf("webhook connector trigger connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("webhook connector trigger ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
 	}
 	binding := sdkgo.TriggerBindingRef{Connection: config.Connection.reference, Trigger: RequestReceivedTriggerDefinition.Trigger, Name: config.BindingName}
 	return sdkgo.MustNewTrigger(sdkgo.TriggerConfig[WebhookRequestEvent]{
 		Definition: RequestReceivedTriggerDefinition, Binding: binding,
 		Source: config.Connection.client.requestReceivedTriggerSource(config.Connection.reference, config.Configuration), Target: config.Target,
 	})
-}
-
-func NewLocalRequestReceivedTrigger(store *localconfig.Store, connectionName string, bindingName string, target sdkgo.TriggerTarget[WebhookRequestEvent], options ...Option) (sdkgo.TriggerRunner, error) {
-	connection, err := NewLocalConnection(store, connectionName, options...)
-	if err != nil {
-		return nil, err
-	}
-	var configuration RequestReceivedTriggerConfiguration
-	if err := store.DecodeTriggerConfiguration(ConnectorID, connectionName, "requestReceived", bindingName, &configuration); err != nil {
-		return nil, err
-	}
-	durableTarget, err := localconfig.NewDurableTriggerTarget(store, ConnectorID, connectionName, "requestReceived", bindingName, target)
-	if err != nil {
-		return nil, err
-	}
-	return NewRequestReceivedTrigger(RequestReceivedTriggerConfig{
-		Connection: connection, ConnectionName: connectionName, BindingName: bindingName, Configuration: configuration, Target: durableTarget,
-	}), nil
 }
 
 const SendEventBranchDelivered sdkgo.BranchID = "delivered"
@@ -290,8 +283,8 @@ func NewSendEventStep[IN any](config SendEventStepConfig[IN]) sdkgo.MutationStep
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
-	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
-		panic(fmt.Errorf("webhook connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("webhook connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SendEventInput, SendEventOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,

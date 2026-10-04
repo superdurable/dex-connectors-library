@@ -119,7 +119,8 @@ func TestREADMEJSONSamplesMatchTheFlowTypes(t *testing.T) {
 	require.NotEmpty(t, request.Text)
 	var outcome summarizetext.SummaryOutcome
 	requireStrictJSON(t, samples[1], &outcome)
-	require.Equal(t, "anthropic/claude-sonnet-5", outcome.Model)
+	require.Equal(t, "anthropic", outcome.Provider)
+	require.Equal(t, "claude-sonnet-5", outcome.Model, "a model ID is never prefixed with its provider")
 }
 
 func requireStrictJSON(t *testing.T, sample string, value any) {

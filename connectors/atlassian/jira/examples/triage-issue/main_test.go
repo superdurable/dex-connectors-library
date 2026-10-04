@@ -4,13 +4,11 @@
 package main
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	triageissue "github.com/superdurable/dex-connectors-library/connectors/atlassian/jira/examples/triage-issue/flow"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
 func TestEnvironmentOr(t *testing.T) {
@@ -19,13 +17,8 @@ func TestEnvironmentOr(t *testing.T) {
 	require.Equal(t, "fallback", environmentOr("JIRA_EXAMPLE_MISSING", "fallback"))
 }
 
-func TestProjectSelectionIsOptionalAndLoadedFromTheSidecar(t *testing.T) {
-	directory := t.TempDir()
-	connectionsPath := filepath.Join(directory, "connections.json")
-	require.NoError(t, os.WriteFile(connectionsPath, []byte(`{"schemaVersion":"connectors.dex.dev/local-connections/v1alpha1","connections":[]}`), 0o600))
-	store, err := localconfig.LoadFile(connectionsPath)
-	require.NoError(t, err)
-	selection, err := loadProjectSelection(store)
+func TestProjectSelectionIsOptionalAndLoadedFromTheProjectConfiguration(t *testing.T) {
+	selection, err := loadProjectSelection(projectconfig.Configuration{})
 	require.NoError(t, err)
 	require.Equal(t, triageissue.ProjectSelection{}, selection)
 }

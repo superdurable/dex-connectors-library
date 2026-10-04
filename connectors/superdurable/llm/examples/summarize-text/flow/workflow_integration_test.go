@@ -20,56 +20,48 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	llmrouter "github.com/superdurable/dex-connectors-library/connectors/superdurable/llm"
-	"github.com/superdurable/dex-connectors-library/connectors/superdurable/llm/internal/providerdialecttest"
-	"github.com/superdurable/dex-connectors-library/sdkgo/llm"
-	"github.com/superdurable/dex-connectors-library/sdkgo/llm/llmtest"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/connectors/superdurable/llm"
+	"github.com/superdurable/dex-connectors-library/connectors/superdurable/llm/internal/messagestest"
+	"github.com/superdurable/dex-connectors-library/connectors/superdurable/llm/internal/testsupport"
+	"github.com/superdurable/dex-connectors-library/sdkgo/textgen"
+	"github.com/superdurable/dex-connectors-library/sdkgo/textgen/openaichat/openaichattest"
+	"github.com/superdurable/dex-connectors-library/sdkgo/textgen/textgentest"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
-const (
-	integrationOpenAIKey    = "sk-proj-SENTINEL-llm-integration-openai"
-	integrationAnthropicKey = "sk-ant-SENTINEL-llm-integration-claude"
-	integrationGeminiKey    = "AIzaSENTINELLlmIntegrationGemini"
+const integrationAPIKey = "sk-SENTINEL-llm-summary-integration"
+
+// Each dialect answers like its provider's API, as the connector's own wire-format tests pin.
+var (
+	deepSeekIntegrationDialect = openaichattest.NewProviderDialect(&openaichattest.ProviderDialectConfig{
+		ConnectionModel: "deepseek-flash", AlternateModel: "deepseek-v4-pro", IsStreaming: true, RequestIDHeader: "x-ds-trace-id",
+	})
+	mistralIntegrationDialect = openaichattest.NewProviderDialect(&openaichattest.ProviderDialectConfig{
+		ConnectionModel: "mistral-large-2512", AlternateModel: "mistral-small-2603", IsStreaming: true,
+		RequestIDHeader: "mistral-correlation-id", ErrorTokenPointers: []string{"/type", "/code"},
+	})
+	kimiIntegrationDialect = openaichattest.NewProviderDialect(&openaichattest.ProviderDialectConfig{
+		ConnectionModel: "kimi-k2.6", AlternateModel: "kimi-k3", IsStreaming: true,
+	})
+	claudeIntegrationDialect = messagestest.NewProviderDialect("claude-sonnet-5", "claude-haiku-4-5")
 )
 
-// allSummaryProviders adds OpenAI, Claude, and Gemini, in that order.
-var allSummaryProviders = []string{"openai", "anthropic", "gemini"}
+// TestSummarizeTextExampleRunsOnTheConnectionsProviderWithRealDex uses the Dex Server at DEX_FLOW_SERVICE_ADDRESS.
+func TestSummarizeTextExampleRunsOnTheConnectionsProviderWithRealDex(t *testing.T) {
+	usage := textgen.Usage{InputTokens: 30, OutputTokens: 12, TotalTokens: 42}
 
-// summaryProviders holds one fake provider per route, each expecting only its own key.
-type summaryProviders struct {
-	openAI, claude, gemini *llmtest.FakeProvider
-}
-
-// summaryConnection is the llm connection record that Dex Web Connections saves.
-type summaryConnection struct {
-	// model is the connection's default model, or "" for the first added provider's default.
-	model string
-	// authMethodIDs lists the added providers in add order; each one's key is stored with it.
-	authMethodIDs []string
-}
-
-// TestSummarizeTextExampleRoutesEachProviderWithRealDex uses the Dex Server at DEX_FLOW_SERVICE_ADDRESS.
-func TestSummarizeTextExampleRoutesEachProviderWithRealDex(t *testing.T) {
-	providers := summaryProviders{
-		openAI: llmtest.NewFakeProvider(t, providerdialecttest.OpenAICredentialHeader, integrationOpenAIKey),
-		claude: llmtest.NewFakeProvider(t, providerdialecttest.ClaudeCredentialHeader, integrationAnthropicKey),
-		gemini: llmtest.NewFakeProvider(t, providerdialecttest.GeminiCredentialHeader, integrationGeminiKey),
-	}
-	usage := llm.Usage{InputTokens: 30, OutputTokens: 12, TotalTokens: 42}
-
-	t.Run("the connection default generates with the first added provider and streams the summary", func(t *testing.T) {
-		providers.openAI.EnqueueReplies(providerdialecttest.NewOpenAIResponsesDialect().GeneratedReply(llmtest.GeneratedReply{
-			Text: "The connector shipped.", ServedModel: "gpt-6-sol-2026-06-01", ResponseID: "resp_llm_example", Usage: usage,
+	t.Run("the provider's default model generates and streams the summary", func(t *testing.T) {
+		provider := textgentest.NewFakeProvider(t, deepSeekIntegrationDialect.CredentialHeader, integrationAPIKey)
+		provider.EnqueueReplies(deepSeekIntegrationDialect.GeneratedReply(textgentest.GeneratedReply{
+			Text: "The connector shipped.", ServedModel: "deepseek-flash", ResponseID: "chatcmpl-llm-example", Usage: usage,
 		}))
-		flow, client := startSummaryWorker(t, providers, summaryConnection{authMethodIDs: allSummaryProviders}, SummaryModelConfiguration{})
+		flow, client := startSummaryWorker(t, provider, map[string]any{"provider": "deepseek"}, SummaryModelConfiguration{})
 		flowID := fmt.Sprintf("llm-summary-generated-%d", time.Now().UnixNano())
 		outcome := runSummaryFlowToCompletion(t, client, flow, flowID)
 		require.Equal(t, SummaryOutcome{
-			Branch: llmrouter.GenerateTextBranchGenerated, Summary: "The connector shipped.", Model: "openai/gpt-6-sol",
-			ServedModel: "gpt-6-sol-2026-06-01", FinishReason: llm.FinishReasonStop, Usage: usage,
+			Branch: llm.GenerateTextBranchGenerated, Summary: "The connector shipped.", Provider: "deepseek", Model: "deepseek-flash",
+			ServedModel: "deepseek-flash", FinishReason: textgen.FinishReasonStop, Usage: usage,
 		}, outcome)
 		require.Eventually(t, func() bool {
 			var page dex.StreamMessagesPage[string]
@@ -84,53 +76,45 @@ func TestSummarizeTextExampleRoutesEachProviderWithRealDex(t *testing.T) {
 		require.NoError(t, client.InvokeRPC(context.Background(), flowID, flow.GetDexDisplay, nil, &display))
 		encodedDisplay, err := json.Marshal(display)
 		require.NoError(t, err)
-		require.Contains(t, string(encodedDisplay), "openai/gpt-6-sol")
+		require.Contains(t, string(encodedDisplay), `"model":"deepseek-flash"`)
 		requireNoIntegrationKey(t, string(encodedDisplay))
+		requireOnlyKeyInItsSlot(t, provider)
 	})
 
 	t.Run("the connection model applies to a Step without a pick", func(t *testing.T) {
-		providers.gemini.EnqueueReplies(providerdialecttest.GeminiCandidateReply(llmtest.GeneratedReply{
-			Text: "Gemini summarized it.", ServedModel: "gemini-3.8-flash", ResponseID: "gemini-llm-connection-model", Usage: usage,
-		}, "STOP"))
-		connection := summaryConnection{model: "gemini/gemini-3.8-flash", authMethodIDs: []string{"openai", "gemini"}}
-		flow, client := startSummaryWorker(t, providers, connection, SummaryModelConfiguration{})
+		provider := textgentest.NewFakeProvider(t, mistralIntegrationDialect.CredentialHeader, integrationAPIKey)
+		provider.EnqueueReplies(mistralIntegrationDialect.GeneratedReply(textgentest.GeneratedReply{
+			Text: "Mistral summarized it.", ServedModel: "mistral-small-2603", ResponseID: "cmpl-llm-connection-model", Usage: usage,
+		}))
+		flow, client := startSummaryWorker(t, provider, map[string]any{"provider": "mistral", "model": "mistral-small-2603"},
+			SummaryModelConfiguration{})
 		outcome := runSummaryFlowToCompletion(t, client, flow, fmt.Sprintf("llm-summary-connection-model-%d", time.Now().UnixNano()))
-		require.Equal(t, llmrouter.GenerateTextBranchGenerated, outcome.Branch)
-		require.Equal(t, "gemini/gemini-3.8-flash", outcome.Model)
+		require.Equal(t, llm.GenerateTextBranchGenerated, outcome.Branch)
+		require.Equal(t, "mistral", outcome.Provider)
+		require.Equal(t, "mistral-small-2603", outcome.Model)
+		requireOnlyKeyInItsSlot(t, provider)
 	})
 
-	t.Run("a Claude pick completes as blocked without text", func(t *testing.T) {
-		providers.claude.EnqueueReplies(providerdialecttest.ClaudeStreamReply(llmtest.GeneratedReply{
+	t.Run("a Claude Step pick completes as blocked without text", func(t *testing.T) {
+		provider := textgentest.NewFakeProvider(t, claudeIntegrationDialect.CredentialHeader, integrationAPIKey)
+		provider.EnqueueReplies(messagestest.StreamReply(textgentest.GeneratedReply{
 			ServedModel: "claude-haiku-4-5", ResponseID: "msg_llm_example", Usage: usage,
 		}, "refusal"))
-		flow, client := startSummaryWorker(t, providers, summaryConnection{authMethodIDs: allSummaryProviders},
-			SummaryModelConfiguration{Model: "anthropic/claude-haiku-4-5"})
+		flow, client := startSummaryWorker(t, provider, map[string]any{"provider": "anthropic"},
+			SummaryModelConfiguration{Model: "claude-haiku-4-5"})
 		outcome := runSummaryFlowToCompletion(t, client, flow, fmt.Sprintf("llm-summary-blocked-%d", time.Now().UnixNano()))
-		require.Equal(t, llmrouter.GenerateTextBranchBlocked, outcome.Branch)
-		require.Equal(t, llm.FinishReasonRefusal, outcome.FinishReason)
-		require.Equal(t, "anthropic/claude-haiku-4-5", outcome.Model)
+		require.Equal(t, llm.GenerateTextBranchBlocked, outcome.Branch)
+		require.Equal(t, textgen.FinishReasonRefusal, outcome.FinishReason)
+		require.Equal(t, "anthropic", outcome.Provider)
+		require.Equal(t, "claude-haiku-4-5", outcome.Model)
 		require.Empty(t, outcome.Summary)
-	})
-
-	t.Run("a Gemini pick generates with the picked model", func(t *testing.T) {
-		providers.gemini.EnqueueReplies(providerdialecttest.GeminiCandidateReply(llmtest.GeneratedReply{
-			Text: "Gemini summarized it.", ServedModel: "gemini-3.8-flash", ResponseID: "gemini-llm-example", Usage: usage,
-		}, "STOP"))
-		flow, client := startSummaryWorker(t, providers, summaryConnection{model: "openai", authMethodIDs: allSummaryProviders},
-			SummaryModelConfiguration{Model: "gemini/gemini-3.8-flash"})
-		outcome := runSummaryFlowToCompletion(t, client, flow, fmt.Sprintf("llm-summary-gemini-%d", time.Now().UnixNano()))
-		require.Equal(t, llmrouter.GenerateTextBranchGenerated, outcome.Branch)
-		require.Equal(t, "Gemini summarized it.", outcome.Summary)
-		require.Equal(t, "gemini/gemini-3.8-flash", outcome.Model)
-		requests := providers.gemini.Requests()
-		require.Len(t, requests, 2)
-		require.Contains(t, requests[1].Path, "/models/gemini-3.8-flash:generateContent")
+		requireOnlyKeyInItsSlot(t, provider)
 	})
 
 	t.Run("a rejected key records the failure and fails the Flow", func(t *testing.T) {
-		providers.openAI.EnqueueReplies(providerdialecttest.NewOpenAIResponsesDialect().ErrorReply(http.StatusUnauthorized, "Incorrect API key."))
-		flow, client := startSummaryWorker(t, providers, summaryConnection{authMethodIDs: allSummaryProviders},
-			SummaryModelConfiguration{Model: "openai/gpt-6-luna"})
+		provider := textgentest.NewFakeProvider(t, kimiIntegrationDialect.CredentialHeader, integrationAPIKey)
+		provider.EnqueueReplies(kimiIntegrationDialect.ErrorReply(http.StatusUnauthorized, "Incorrect API key."))
+		flow, client := startSummaryWorker(t, provider, map[string]any{"provider": "kimi"}, SummaryModelConfiguration{Model: "kimi-k3"})
 		flowID := fmt.Sprintf("llm-summary-rejected-%d", time.Now().UnixNano())
 		result := runSummaryFlow(t, client, flow, flowID)
 		require.Equal(t, dex.FlowFailed, result.Status)
@@ -141,56 +125,58 @@ func TestSummarizeTextExampleRoutesEachProviderWithRealDex(t *testing.T) {
 		require.NoError(t, client.InvokeRPC(context.Background(), flowID, flow.GetDexDisplay, nil, &display))
 		encodedFailure, err := json.Marshal(display["llm-summary-failure"])
 		require.NoError(t, err)
-		require.JSONEq(t, `{"branch":"providerRejected","provider":"openai","kind":"AUTHENTICATION","message":"`+result.ErrorMessage[len("summary generation selected providerRejected: "):]+`"}`,
+		require.JSONEq(t, `{"branch":"providerRejected","provider":"kimi","kind":"AUTHENTICATION","message":"`+
+			result.ErrorMessage[len("summary generation selected providerRejected: "):]+`"}`,
 			string(encodedFailure), "the failure is persisted before the Flow fails")
+		requireOnlyKeyInItsSlot(t, provider)
 	})
 
-	t.Run("a pick from a provider the connection has not added records a defect without a request", func(t *testing.T) {
-		flow, client := startSummaryWorker(t, providers, summaryConnection{authMethodIDs: []string{"openai"}},
-			SummaryModelConfiguration{Model: "anthropic/claude-haiku-4-5"})
-		flowID := fmt.Sprintf("llm-summary-not-added-%d", time.Now().UnixNano())
+	t.Run("a Step pick the provider's model rule rejects records a defect without a request", func(t *testing.T) {
+		provider := textgentest.NewFakeProvider(t, claudeIntegrationDialect.CredentialHeader, integrationAPIKey)
+		flow, client := startSummaryWorker(t, provider, map[string]any{"provider": "anthropic"},
+			SummaryModelConfiguration{Model: "claude sonnet 5"})
+		flowID := fmt.Sprintf("llm-summary-defect-%d", time.Now().UnixNano())
 		result := runSummaryFlow(t, client, flow, flowID)
 		require.Equal(t, dex.FlowFailed, result.Status)
-		const message = "the model selects anthropic, but the connection has not added the Claude provider; add Claude to the connection"
-		require.Equal(t, "summary generation selected defect: "+message, result.ErrorMessage)
+		require.Contains(t, result.ErrorMessage, "summary generation selected defect")
+		require.NotContains(t, result.ErrorMessage, "claude sonnet 5", "a Failure never repeats the model value")
 		var display map[string]any
 		require.NoError(t, client.InvokeRPC(context.Background(), flowID, flow.GetDexDisplay, nil, &display))
 		encodedFailure, err := json.Marshal(display["llm-summary-failure"])
 		require.NoError(t, err)
-		require.JSONEq(t, `{"branch":"defect","provider":"llm","kind":"AUTHENTICATION","message":"`+message+`"}`, string(encodedFailure))
+		require.Contains(t, string(encodedFailure), `"provider":"anthropic"`)
+		require.Contains(t, string(encodedFailure), `"branch":"defect"`)
+		require.Empty(t, provider.Requests(), "a defect selected before dispatch sends nothing")
 	})
-
-	require.Len(t, providers.openAI.Requests(), 2)
-	require.Len(t, providers.claude.Requests(), 1, "a provider the connection has not added receives no request")
-	require.Len(t, providers.gemini.Requests(), 2)
-	for _, provider := range []*llmtest.FakeProvider{providers.openAI, providers.claude, providers.gemini} {
-		for _, request := range provider.Requests() {
-			require.True(t, request.HasCredentialInSlot, "each provider receives only its own key in its own header")
-			require.False(t, request.HasCredentialOutsideSlot)
-		}
-	}
 }
 
 func requireNoIntegrationKey(t *testing.T, value string) {
 	t.Helper()
-	for _, apiKey := range []string{integrationOpenAIKey, integrationAnthropicKey, integrationGeminiKey} {
-		require.False(t, strings.Contains(value, apiKey), "an API key reached Flow state")
+	require.False(t, strings.Contains(value, integrationAPIKey), "an API key reached Flow state")
+}
+
+func requireOnlyKeyInItsSlot(t *testing.T, provider *textgentest.FakeProvider) {
+	t.Helper()
+	require.NotEmpty(t, provider.Requests())
+	for _, request := range provider.Requests() {
+		require.True(t, request.HasCredentialInSlot, "the provider receives the key in its credential header")
+		require.False(t, request.HasCredentialOutsideSlot)
 	}
 }
 
-// startSummaryWorker loads connection from a Dex Web connections file, runs the example Flow's Worker on a free local port, and returns a Client targeting it.
+// startSummaryWorker opens the connection from project storage the way the Worker does, points it at
+// provider, runs the example Flow's Worker on a free local port, and returns a Client targeting it.
 func startSummaryWorker(
-	t *testing.T, providers summaryProviders, connection summaryConnection, summaryModel SummaryModelConfiguration,
+	t *testing.T, provider *textgentest.FakeProvider, configuration map[string]any, summaryModel SummaryModelConfiguration,
 ) (*Flow, *dex.Client) {
 	t.Helper()
-	store := writeSummaryConnectionStore(t, connection)
-	llmConnection, err := llmrouter.NewLocalConnection(store, ConnectionName,
-		llmrouter.WithProviderBaseURLForTest(llmrouter.ProviderOpenAI, providers.openAI.BaseURL()),
-		llmrouter.WithProviderBaseURLForTest(llmrouter.ProviderAnthropic, providers.claude.BaseURL()),
-		llmrouter.WithProviderBaseURLForTest(llmrouter.ProviderGemini, providers.gemini.BaseURL()))
+	project := testsupport.NewLoadedProject(t, llm.ConnectorID, []testsupport.ProjectConnection{{
+		Name: ConnectionName, Configuration: configuration, Credentials: map[string]any{"api_key": integrationAPIKey},
+	}}, nil)
+	llmConnection, err := llm.NewProjectConnection(project, ConnectionName, llm.WithBaseURLForTest(provider.BaseURL()))
 	require.NoError(t, err)
 	flow := NewFlow(llmConnection, summaryModel)
-	serverAddress := cmp.Or(os.Getenv(llmtest.DexFlowServiceAddressEnvironmentVariable), llmtest.DefaultDexFlowServiceAddress)
+	serverAddress := cmp.Or(os.Getenv(textgentest.DexFlowServiceAddressEnvironmentVariable), textgentest.DefaultDexFlowServiceAddress)
 	registry, err := dex.NewRegistry([]dex.Flow{flow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
@@ -215,34 +201,6 @@ func startSummaryWorker(
 		require.NoError(t, errors.Join(worker.Stop(ctx), <-workerResult, client.Close(), cache.Close()))
 	})
 	return flow, client
-}
-
-// writeSummaryConnectionStore writes the connection as Dex Web stores it: auth_methods and only the added providers' keys.
-func writeSummaryConnectionStore(t *testing.T, connection summaryConnection) *localconfig.Store {
-	t.Helper()
-	keys := map[string]string{"openai": integrationOpenAIKey, "anthropic": integrationAnthropicKey, "gemini": integrationGeminiKey}
-	credentials := map[string]any{"auth_methods": connection.authMethodIDs}
-	for _, authMethodID := range connection.authMethodIDs {
-		credentials[authMethodID+"_api_key"] = keys[authMethodID]
-	}
-	configuration := map[string]any{}
-	if connection.model != "" {
-		configuration["model"] = connection.model
-	}
-	encoded, err := json.Marshal(map[string]any{
-		"schemaVersion": localconfig.SchemaVersion,
-		"connections": []any{map[string]any{
-			"connectorId": llmrouter.ConnectorID, "connectionName": ConnectionName, "provider": "llm",
-			"modulePath": "github.com/superdurable/dex-connectors-library/connectors/superdurable/llm", "moduleVersion": "v0.2.0",
-			"configuration": configuration, "credentials": credentials,
-		}},
-	})
-	require.NoError(t, err)
-	path := filepath.Join(t.TempDir(), "connections.json")
-	require.NoError(t, os.WriteFile(path, encoded, 0o600))
-	store, err := localconfig.LoadFile(path)
-	require.NoError(t, err)
-	return store
 }
 
 func runSummaryFlowToCompletion(t *testing.T, client *dex.Client, flow *Flow, flowID string) SummaryOutcome {

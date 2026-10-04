@@ -190,27 +190,6 @@ func TestCredentialRefreshDriverRejectsIncompleteJWTBearerMaterial(t *testing.T)
 	}
 }
 
-func TestResolvedCredentialsCarryOnlyTheSessionAndInstanceURL(t *testing.T) {
-	credentials, err := DecodeResolvedCredentialsJSON(json.RawMessage(`{"auth_method":"salesforce-oauth","access_token":"session","instance_url":"https://example.my.salesforce.com"}`))
-	require.NoError(t, err)
-	require.Equal(t, "https://example.my.salesforce.com", credentials.InstanceURL)
-	for _, contents := range []string{
-		`{"auth_method":"salesforce-oauth","access_token":"session","instance_url":"https://example.my.salesforce.com","refresh_token":"refresh"}`,
-		`{"auth_method":"salesforce-oauth","access_token":"session"}`,
-		`{"auth_method":"salesforce-oauth","access_token":"session","instance_url":"https://example.my.salesforce.com/services/data"}`,
-		`{"auth_method":"salesforce-oauth","access_token":"session","instance_url":"http://example.my.salesforce.com"}`,
-	} {
-		_, err := DecodeResolvedCredentialsJSON(json.RawMessage(contents))
-		require.Error(t, err, contents)
-	}
-	encoded, err := EncodeCredentialsJSON(oauthCredentials(SandboxOAuthAuthMethodID))
-	require.NoError(t, err)
-	decoded, err := DecodeCredentialsJSON(encoded)
-	require.NoError(t, err)
-	require.Equal(t, "existing-refresh", decoded.RefreshToken.Reveal())
-	require.Equal(t, "https://old.my.salesforce.com", decoded.InstanceURL)
-}
-
 func tokenResponse(t *testing.T, status int, body map[string]any) *http.Response {
 	t.Helper()
 	contents, err := json.Marshal(body)

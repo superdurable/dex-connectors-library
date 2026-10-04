@@ -17,7 +17,7 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/connectors/monday"
 	workrequest "github.com/superdurable/dex-connectors-library/connectors/monday/examples/work-request/flow"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -35,11 +35,11 @@ func main() {
 }
 
 func run(ctx context.Context) error {
-	store, err := localconfig.LoadFromEnvironment()
+	project, err := projectconfig.LoadFromEnvironment(ctx)
 	if err != nil {
 		return err
 	}
-	connection, err := monday.NewLocalConnection(store, workrequest.ConnectionName, connectionOptions()...)
+	connection, err := monday.NewProjectConnection(project, workrequest.ConnectionName, connectionOptions()...)
 	if err != nil {
 		return err
 	}

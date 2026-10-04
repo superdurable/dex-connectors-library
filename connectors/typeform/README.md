@@ -97,8 +97,10 @@ at once and answers after nine seconds, observed two `PUT`s and one webhook.
 
 The `responseSubmitted` Trigger serves one `webhooktrigger.Endpoint` per
 connection. `Connection.ResponseSubmittedWebhookHandler` returns it, and
-`NewLocalResponseSubmittedEndpointRunner` wraps every binding in a durable
-inbox. For each delivery the endpoint:
+`NewProjectResponseSubmittedEndpointRunner` opens the connection and its
+bindings from the project configuration that `projectconfig.LoadFromEnvironment`
+loads and wraps every binding in a durable project inbox. For each delivery
+the endpoint:
 
 1. accepts only `POST` up to `webhookMaxBodyBytes`, answering `405` or `413`;
 2. verifies `Typeform-Signature: sha256=<base64>` as the
@@ -108,7 +110,7 @@ inbox. For each delivery the endpoint:
 3. decodes `form_response`, acknowledging `form_response_partial` and any other
    event type with `200`;
 4. records the submission for every binding whose `formId` accepts it, and
-   answers `200` only after every record is on disk.
+   answers `200` only after every record is stored.
 
 The event ID is the form ID and the response token, such as
 `lT4Z3j:a3a12ec67a1365927098a606107fac15`. Typeform documents the token as the
@@ -126,15 +128,19 @@ The checked-in example wires the endpoint like this, from
 
 ```go
 func newSubmissionEndpointRunner(
-	store *localconfig.Store, client *dex.Client, flow *responserecorder.Flow, logger *slog.Logger, connectionOptions []typeform.Option,
+	project *projectconfig.LoadedProject, client *dex.Client, flow *responserecorder.Flow, logger *slog.Logger, connectionOptions []typeform.Option,
 ) (*typeform.ResponseSubmittedEndpointRunner, error) {
+	return typeform.NewProjectResponseSubmittedEndpointRunner(project, responserecorder.ConnectionName, []typeform.ProjectResponseSubmittedTriggerRoute{{
+		BindingName: responserecorder.ResponseSubmittedTriggerBinding, Target: newSubmissionTarget(client, flow, logger),
+	}}, append(slices.Clone(connectionOptions), typeform.WithLogger(logger))...)
+}
+
+// newSubmissionTarget starts one Flow per submission, with the Trigger event ID as request ID.
+func newSubmissionTarget(client *dex.Client, flow *responserecorder.Flow, logger *slog.Logger) sdkgo.TriggerTarget[typeform.FormResponseEvent] {
 	bindingLogger := logger.With("connector", typeform.ConnectorID, "connection", responserecorder.ConnectionName,
 		"trigger", typeform.ResponseSubmittedTriggerDefinition.Trigger.TriggerName, "binding", responserecorder.ResponseSubmittedTriggerBinding)
-	return typeform.NewLocalResponseSubmittedEndpointRunner(store, responserecorder.ConnectionName, []typeform.LocalResponseSubmittedTriggerRoute{{
-		BindingName: responserecorder.ResponseSubmittedTriggerBinding,
-		Target: sdkgo.NewDexFlowTriggerTarget(client, flow, responserecorder.AcceptSubmission, responserecorder.ResolveFlowID,
-			responserecorder.MapToFlowInput, sdkgo.WithTriggerLogger(bindingLogger)),
-	}}, append(slices.Clone(connectionOptions), typeform.WithLogger(logger))...)
+	return sdkgo.NewDexFlowTriggerTarget(client, flow, responserecorder.AcceptSubmission, responserecorder.ResolveFlowID,
+		responserecorder.MapToFlowInput, sdkgo.WithTriggerLogger(bindingLogger))
 }
 ```
 
@@ -161,8 +167,8 @@ token and secret stay in Dex Web's host form and never reach the frame.
   redirect, and reads at most `maxResponseBytes`.
 - Failure messages are written by the connector. The only Typeform text it
   reads is the documented error `code` `webhook_url_https_required`.
-- Answers are application data: they are stored in the binding's inbox file
-  and in Flow input, so keep the connection file directory private.
+- Answers are application data: they are stored in the binding's durable
+  inbox in the private project storage and in Flow input.
 
 ## Unverified live behavior
 

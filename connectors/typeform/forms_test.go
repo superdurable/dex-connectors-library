@@ -213,6 +213,6 @@ func TestOperationsSelectDefectForAnUnusableToken(t *testing.T) {
 	unknownConnection := newTestClient(t, fake.redirectingClient(), sdkgo.StaticCredentialProvider[typeform.Credentials]{}, typeform.Config{})
 	_, err = sdkgo.RunQuery(newStepContext("get-missing"), unknownConnection.GetForm(), testConnection, typeform.GetFormInput{FormID: testFormID})
 	var retry *sdkgo.RetryError
-	require.ErrorAs(t, err, &retry, "a connection file that is not readable yet retries")
+	require.ErrorAs(t, err, &retry, "a connection credential that is not readable yet retries")
 	require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
 }

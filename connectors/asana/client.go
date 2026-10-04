@@ -465,3 +465,15 @@ func (observation *dispatchObservation) recordConnectionFailure() {
 	defer observation.mutex.Unlock()
 	observation.hasFailedToConnect = true
 }
+
+// validateResolvedCredentials accepts a token that can authorize one request without breaking its header.
+func validateResolvedCredentials(credentials Credentials) error {
+	accessToken := credentials.AccessToken.Reveal()
+	if accessToken == "" {
+		return errors.New("Asana personal access token is required")
+	}
+	if !providerhttp.IsHeaderSafeCredential(accessToken) {
+		return errors.New("Asana personal access token is not a valid header value")
+	}
+	return nil
+}

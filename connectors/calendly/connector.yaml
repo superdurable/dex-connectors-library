@@ -5,7 +5,7 @@ metadata:
   displayName: Calendly
   description: "Read Calendly scheduled events and invitees, cancel events, create single-use scheduling links, register webhook subscriptions, and receive signed invitee.created and invitee.canceled webhooks."
   company: Calendly
-  version: v0.1.0
+  version: v0.21.0
 spec:
   provider: calendly
   codegen:
@@ -32,6 +32,7 @@ spec:
         required: false
         default: 3m
   auth:
+    refreshable: true
     methodLabel: Sign-in method
     defaultMethod: personal-access-token
     methods:
@@ -73,7 +74,7 @@ spec:
           - name: oauth_client_secret
             goName: OAuthClientSecret
             type: secretString
-            description: "Secret Client Secret that Calendly shows once when the OAuth app is created at https://developer.calendly.com/console/apps; it is stored only in the local connection file and blank means authorization and refresh cannot start."
+            description: "Secret Client Secret that Calendly shows once when the OAuth app is created at https://developer.calendly.com/console/apps; it is stored only in this credential field and blank means authorization and refresh cannot start."
             required: true
           - name: access_token
             goName: AccessToken

@@ -5,7 +5,7 @@ metadata:
   displayName: Microsoft Outlook Calendar
   description: List and read Outlook calendar events in a bounded window, create and update events idempotently, and query free/busy schedules through Microsoft Graph, with delegated Microsoft OAuth or an app-only connection to one mailbox.
   company: Microsoft
-  version: v0.1.0
+  version: v0.21.0
 spec:
   provider: microsoft
   codegen:
@@ -20,6 +20,7 @@ spec:
         required: false
         default: 4194304
   auth:
+    refreshable: true
     defaultMethod: microsoft-oauth
     methods:
       - id: microsoft-oauth
@@ -86,7 +87,7 @@ spec:
           - name: access_token
             goName: AccessToken
             type: secretString
-            description: "Secret one-hour access token that the application requests from the client ID and secret with the client credentials grant and stores here, renewing it five minutes before it expires or after Microsoft Graph answers 401. It is an output, so never enter it manually; leave it blank."
+            description: "Secret one-hour access token that the application requests from the client ID and secret with the client credentials grant and stores here, renewing it five minutes before it expires. It is an output, so never enter it manually; leave it blank."
             required: false
         configuration:
           fields:

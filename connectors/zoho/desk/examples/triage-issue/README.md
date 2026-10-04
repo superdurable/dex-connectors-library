@@ -62,7 +62,7 @@ go run ./cmd/connectorctl ui-artifact \
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/zoho/desk/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/zoho/desk \
-  --version v0.1.0 --tag connectors/zoho/desk/v0.1.0 \
+  --version v0.21.0 --tag connectors/zoho/desk/v0.21.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/zoho-desk-release/connector-ui.tgz \
   --ui-digest /tmp/zoho-desk-release/connector-ui.tgz.sha256 \
@@ -70,7 +70,6 @@ go run ./cmd/connectorctl release-artifact \
   --digest-output /tmp/zoho-desk-release/connector-release.json.sha256
 dexcli dev \
   --flow-rendering-dir /tmp/zoho-desk-render \
-  --connector-config-dir "$HOME/.dex/connectors" \
   --connector-release-override zoho-desk=/tmp/zoho-desk-release
 ```
 
@@ -80,14 +79,14 @@ all five Zoho Desk Steps of `ZohoDeskTriageIssue` use. Choose the
 **Data center** of your Zoho Desk account, enter the client ID and secret, and
 choose **Authorize**. When the status is **Ready**, choose the organization in
 `orgId` with the organization picker and save. The example has no Step
-configuration. The tokens are stored only in the plaintext development file
-shown on the page; never commit or share it.
+configuration.
 
-In a second terminal, start the Worker from `connectors/zoho/desk` with that
-file:
+In a second terminal, start the Worker from `connectors/zoho/desk`. It reads
+the `DEX_PROJECT_*` project configuration environment described in
+[project configuration](../../../../../sdkgo/projectconfig/README.md); Dex Web
+or Superverse Studio writes that configuration when you save the connection.
 
 ```bash
-export DEX_CONNECTOR_CONFIG_FILE="$HOME/.dex/connectors/connections.json"
 go run ./examples/triage-issue
 ```
 
@@ -151,10 +150,10 @@ empty search with 204, and matches look-alike addresses in its email filter:
 - a rate-limited create waits for `Retry-After` and creates one ticket;
 - a Worker lost while Zoho Desk holds the create is replaced, and the new
   attempt finds the dispatch checkpoint and sends nothing;
-- a token Zoho Desk rejects at the create is refreshed once through the local
-  refreshing credential provider at the EU Zoho Accounts server, the create is
-  sent once more, and the rewritten connection file keeps Dex Web's
-  `authMethodId` and the unrotated refresh token;
+- a token Zoho Desk rejects at the create is refreshed once through a
+  refreshing credential source at the EU Zoho Accounts server, the create is
+  sent once more, and the stored credentials keep the data center and the
+  unrotated refresh token;
 - a rejected ticket fails the Flow through the unwired `providerRejected`
   branch without Zoho Desk's message text;
 - an invalid department fails the Flow before any Zoho Desk request.

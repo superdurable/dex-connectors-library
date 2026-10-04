@@ -25,7 +25,6 @@ import (
 	"github.com/stretchr/testify/require"
 	outlookcalendar "github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-calendar"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -127,7 +126,7 @@ func TestBookMeetingCompletesBusyWithoutWritingThroughAnAppOnlyConnectionWithRea
 	provider := newFakeGraph(t, "/v1.0/users/"+integrationMailbox)
 	provider.expectedAccessToken = "app-only-token"
 	provider.busyAttendees = map[string]bool{"alice@example.com": true}
-	flow, harness := newBookMeetingHarness(t, newLocalAppOnlyConnection(t, provider.URL), CalendarSelection{})
+	flow, harness := newBookMeetingHarness(t, newAppOnlyConnection(t, provider.URL, provider.expectedAccessToken), CalendarSelection{})
 	ctx := integrationContext(t)
 
 	flowID := startBookMeeting(t, ctx, harness.client, flow, "busy", integrationMeetingInput())
@@ -135,7 +134,6 @@ func TestBookMeetingCompletesBusyWithoutWritingThroughAnAppOnlyConnectionWithRea
 
 	require.Equal(t, MeetingBusy, outcome.Status)
 	require.Equal(t, []string{"alice@example.com"}, outcome.BusyAttendees)
-	require.Equal(t, 1, provider.count("token"), "the client credentials grant ran once at the configured tenant")
 	require.Equal(t, 1, provider.count("schedule"))
 	require.Zero(t, provider.count("create"))
 }
@@ -519,22 +517,17 @@ func newStaticConnection(t *testing.T, providerURL string) outlookcalendar.Conne
 	return connection
 }
 
-// newLocalAppOnlyConnection loads the record Dex Web writes for an app-only connection, as main does.
-func newLocalAppOnlyConnection(t *testing.T, providerURL string) outlookcalendar.Connection {
+// newAppOnlyConnection connects to the configured mailbox with the app-only access token its credential holds.
+func newAppOnlyConnection(t *testing.T, providerURL string, accessToken string) outlookcalendar.Connection {
 	t.Helper()
-	record := map[string]any{
-		"connectorId": outlookcalendar.ConnectorID, "modulePath": "github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-calendar",
-		"moduleVersion": "v0.1.0", "provider": "microsoft", "connectionName": ConnectionName, "authMethodId": outlookcalendar.AppOnlyAuthMethodID,
-		"configuration": map[string]any{"tenantId": integrationTenantID, "mailbox": integrationMailbox},
-		"credentials":   map[string]any{"auth_method": outlookcalendar.AppOnlyAuthMethodID, "client_id": "client-id", "client_secret": "fake-client" + "-secret"},
-	}
-	contents, err := json.Marshal(map[string]any{"schemaVersion": localconfig.SchemaVersion, "connections": []any{record}})
+	reference := sdkgo.ConnectionRef{Provider: "microsoft", Name: ConnectionName}
+	client, err := outlookcalendar.New(outlookcalendar.Config{TenantID: integrationTenantID, Mailbox: integrationMailbox},
+		sdkgo.StaticCredentialProvider[outlookcalendar.Credentials]{reference: {
+			AuthMethodID: outlookcalendar.AppOnlyAuthMethodID, ClientID: "client-id",
+			ClientSecret: sdkgo.NewSecretString("fake-client" + "-secret"), AccessToken: sdkgo.NewSecretString(accessToken),
+		}}, outlookcalendar.WithLocalProviderURL(providerURL))
 	require.NoError(t, err)
-	path := filepath.Join(t.TempDir(), "connections.json")
-	require.NoError(t, os.WriteFile(path, contents, 0o600))
-	store, err := localconfig.LoadFile(path)
-	require.NoError(t, err)
-	connection, err := outlookcalendar.NewLocalConnection(store, ConnectionName, outlookcalendar.WithLocalProviderURL(providerURL))
+	connection, err := outlookcalendar.NewConnection(client, reference)
 	require.NoError(t, err)
 	return connection
 }

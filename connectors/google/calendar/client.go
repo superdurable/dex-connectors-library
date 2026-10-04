@@ -44,7 +44,7 @@ func WithHTTPClient(client *http.Client) Option {
 type Client struct {
 	endpoint         *url.URL
 	httpClient       *http.Client
-	credentials      sdkgo.CredentialProvider[Credentials]
+	credentials      CredentialSource
 	refreshDriver    sdkgo.CredentialRefreshDriver[Credentials]
 	maxResponseBytes int64
 	now              func() time.Time
@@ -122,7 +122,7 @@ var reportableGoogleErrorReasons = map[string]bool{
 }
 
 // New validates configuration and constructs an authenticated Google Calendar client.
-func New(config Config, credentials sdkgo.CredentialProvider[Credentials], options ...Option) (*Client, error) {
+func New(config Config, credentials CredentialSource, options ...Option) (*Client, error) {
 	config = withConfigDefaults(config)
 	if err := config.Validate(); err != nil {
 		return nil, err

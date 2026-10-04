@@ -17,7 +17,8 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/connectors/microsoft/teams"
 	incidentacknowledgement "github.com/superdurable/dex-connectors-library/connectors/microsoft/teams/examples/incident-acknowledgement/flow"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -32,19 +33,19 @@ func main() {
 }
 
 func run(ctx context.Context) error {
-	store, err := localconfig.LoadFromEnvironment()
+	project, err := projectconfig.LoadFromEnvironment(ctx)
 	if err != nil {
 		return err
 	}
-	connection, err := teams.NewLocalConnection(store, incidentacknowledgement.ConnectionName)
+	connection, err := teams.NewProjectConnection(project, incidentacknowledgement.ConnectionName)
 	if err != nil {
 		return err
 	}
-	channel, err := loadChannelSelection(store)
+	channel, err := loadChannelSelection(project.Configuration)
 	if err != nil {
 		return err
 	}
-	escalation, err := loadEscalationChatSelection(store)
+	escalation, err := loadEscalationChatSelection(project.Configuration)
 	if err != nil {
 		return err
 	}
@@ -77,9 +78,9 @@ func run(ctx context.Context) error {
 }
 
 // loadChannelSelection reads the picked team and channel once at startup; the Worker needs both.
-func loadChannelSelection(store *localconfig.Store) (incidentacknowledgement.ChannelSelection, error) {
-	loaded, err := localconfig.LoadOperationConfiguration[incidentacknowledgement.ChannelSelection](store, incidentacknowledgement.ChannelSelectionConfigurationRef())
-	if errors.Is(err, localconfig.ErrConfigurationNotFound) {
+func loadChannelSelection(configuration projectconfig.Configuration) (incidentacknowledgement.ChannelSelection, error) {
+	loaded, err := provider.LoadOperationConfiguration[incidentacknowledgement.ChannelSelection](configuration, incidentacknowledgement.ChannelSelectionConfigurationRef())
+	if errors.Is(err, projectconfig.ErrObjectNotFound) {
 		return incidentacknowledgement.ChannelSelection{}, errors.New("save the Incident team and Incident channel pickers on the PostIncidentUpdate Step in Dex Web, then start the Worker")
 	}
 	if err != nil {
@@ -92,9 +93,9 @@ func loadChannelSelection(store *localconfig.Store) (incidentacknowledgement.Cha
 }
 
 // loadEscalationChatSelection reads the optional escalation chat; an unsaved picker skips escalation.
-func loadEscalationChatSelection(store *localconfig.Store) (incidentacknowledgement.EscalationChatSelection, error) {
-	loaded, err := localconfig.LoadOperationConfiguration[incidentacknowledgement.EscalationChatSelection](store, incidentacknowledgement.EscalationChatSelectionConfigurationRef())
-	if errors.Is(err, localconfig.ErrConfigurationNotFound) {
+func loadEscalationChatSelection(configuration projectconfig.Configuration) (incidentacknowledgement.EscalationChatSelection, error) {
+	loaded, err := provider.LoadOperationConfiguration[incidentacknowledgement.EscalationChatSelection](configuration, incidentacknowledgement.EscalationChatSelectionConfigurationRef())
+	if errors.Is(err, projectconfig.ErrObjectNotFound) {
 		return incidentacknowledgement.EscalationChatSelection{}, nil
 	}
 	if err != nil {

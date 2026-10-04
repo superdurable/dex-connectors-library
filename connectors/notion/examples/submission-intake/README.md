@@ -37,7 +37,7 @@ because Dex Web Start Flow invokes `WaitFor` on the start Step.
 
 ## Release baseline
 
-- Notion Connector `v0.1.0`
+- Notion Connector `v0.21.0`
 - dexcli `v1.1.0` or a later stable release
 
 ## 1. Prepare the Notion database
@@ -69,12 +69,12 @@ cd notion-submission-intake-e2e
 mkdir -p flow build
 
 curl -fsSL \
-  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/notion/v0.1.0/connectors/notion/examples/submission-intake/flow/workflow.go \
+  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/notion/v0.21.0/connectors/notion/examples/submission-intake/flow/workflow.go \
   -o flow/workflow.go
 
 go mod init example.com/notion-submission-intake-e2e
 go mod edit -go=1.24.0
-go get github.com/superdurable/dex-connectors-library/connectors/notion@v0.1.0
+go get github.com/superdurable/dex-connectors-library/connectors/notion@v0.21.0
 go mod tidy
 ```
 
@@ -99,8 +99,7 @@ and requires identical output.
 
 ```bash
 dexcli dev \
-  --flow-rendering-dir "$PWD/build" \
-  --connector-config-dir "$HOME/.dex/connectors"
+  --flow-rendering-dir "$PWD/build"
 ```
 
 Record the Dex Web URL and Dex Server address that dexcli prints. With the
@@ -115,17 +114,18 @@ token into **api_token**, leave the configuration defaults, and save. The
 connection status should be **Ready**. No operation has Step configuration;
 the database is chosen by title in the Start Flow input.
 
-The connection file is a plaintext local-development secret store. Never commit
-or share it.
-
 ## 5. Run the Worker
 
+Dex Web or Superverse Studio writes the connection to the project
+configuration. Run the Worker with the `DEX_PROJECT_*` environment that names
+it, as [project configuration loading](../../../../sdkgo/projectconfig/README.md#application-loading)
+describes:
+
 ```bash
-export DEX_CONNECTOR_CONFIG_FILE="$HOME/.dex/connectors/connections.json"
 export DEX_FLOW_SERVICE_ADDRESS="127.0.0.1:8801"
 
 GOWORK=off go run \
-  github.com/superdurable/dex-connectors-library/connectors/notion/examples/submission-intake@v0.1.0
+  github.com/superdurable/dex-connectors-library/connectors/notion/examples/submission-intake@v0.21.0
 ```
 
 The Worker listens on `127.0.0.1:8851` by default. Set
@@ -183,8 +183,8 @@ They verify:
 - an unwired optional branch;
 - invalid Start Flow input.
 
-Before `v0.1.0` is published, build a local release artifact with
+Before `v0.21.0` is published, build a local release artifact with
 `go run ./cmd/connectorctl release-artifact` from the repository root and pass
 its directory to `dexcli dev --connector-release-override notion=DIRECTORY`.
-The test project must still resolve `connectors/notion@v0.1.0` without a
+The test project must still resolve `connectors/notion@v0.21.0` without a
 `replace`, as the compatibility gate does with a local module proxy.

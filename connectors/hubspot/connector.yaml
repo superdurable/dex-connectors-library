@@ -5,7 +5,7 @@ metadata:
   displayName: HubSpot
   description: Search, read, upsert, and update HubSpot CRM contacts, companies, and deals.
   company: HubSpot
-  version: v0.1.0
+  version: v0.21.0
 spec:
   provider: hubspot
   codegen:
@@ -26,6 +26,7 @@ spec:
         required: false
         default: 1048576
   auth:
+    refreshable: true
     defaultMethod: private-app-token
     methods:
       - id: private-app-token

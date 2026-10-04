@@ -4,9 +4,7 @@
 package slack
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"time"
@@ -91,41 +89,6 @@ func (driver *CredentialRefreshDriver) Refresh(
 		}
 	}
 	return sdkgo.CredentialRefreshResult[Credentials]{Credentials: credentials, ExpiresAt: expiresAt}, nil
-}
-
-// DecodeCredentialsJSON decodes trusted broker credential material using connector validation.
-func DecodeCredentialsJSON(contents json.RawMessage) (Credentials, error) {
-	return decodeLocalCredentials(contents)
-}
-
-// DecodeResolvedCredentialsJSON decodes operation-scoped broker credentials without renewal material.
-func DecodeResolvedCredentialsJSON(contents json.RawMessage) (Credentials, error) {
-	var fields struct {
-		BotToken  string `json:"bot_token"`
-		UserToken string `json:"user_token"`
-		AppToken  string `json:"app_token"`
-	}
-	decoder := json.NewDecoder(bytes.NewReader(contents))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&fields); err != nil {
-		return Credentials{}, errors.New("Slack resolved credential is invalid")
-	}
-	credentials := Credentials{
-		BotToken: sdkgo.NewSecretString(fields.BotToken), UserToken: sdkgo.NewSecretString(fields.UserToken),
-		AppToken: sdkgo.NewSecretString(fields.AppToken),
-	}
-	if fields.BotToken == "" && fields.UserToken == "" && fields.AppToken == "" {
-		return Credentials{}, errors.New("Slack resolved credential is empty")
-	}
-	return credentials, nil
-}
-
-// EncodeCredentialsJSON encodes complete credential material for trusted atomic persistence.
-func EncodeCredentialsJSON(credentials Credentials) ([]byte, error) {
-	if err := credentials.Validate(); err != nil {
-		return nil, err
-	}
-	return encodeLocalCredentials(credentials)
 }
 
 // exchangeRefreshToken rotates one Slack refresh token. Slack reports failures as ok:false with an error

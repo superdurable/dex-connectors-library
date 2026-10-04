@@ -16,9 +16,9 @@ import (
 	"syscall"
 	"time"
 
-	githubconnector "github.com/superdurable/dex-connectors-library/connectors/github"
+	"github.com/superdurable/dex-connectors-library/connectors/github"
 	repositoryreleases "github.com/superdurable/dex-connectors-library/connectors/github/examples/repository-releases/flow"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -50,11 +50,11 @@ func newLogger(output io.Writer, levelName string) *slog.Logger {
 }
 
 func run(ctx context.Context, logger *slog.Logger) error {
-	store, err := localconfig.LoadFromEnvironment()
+	project, err := projectconfig.LoadFromEnvironment(ctx)
 	if err != nil {
 		return err
 	}
-	connection, err := githubconnector.NewLocalConnection(store, repositoryreleases.ConnectionName)
+	connection, err := github.NewProjectConnection(project, repositoryreleases.ConnectionName)
 	if err != nil {
 		return err
 	}

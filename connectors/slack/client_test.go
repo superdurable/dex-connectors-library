@@ -30,6 +30,15 @@ func (*rejectionRefreshingCredentialProvider) Resolve(sdkgo.Call) (slack.Credent
 	}, nil
 }
 
+// ResolveWithRefresh returns the tokens Resolve returns, which have not expired before Slack rejects them.
+func (provider *rejectionRefreshingCredentialProvider) ResolveWithRefresh(
+	_ context.Context,
+	call sdkgo.Call,
+	_ sdkgo.CredentialRefreshDriver[slack.Credentials],
+) (slack.Credentials, error) {
+	return provider.Resolve(call)
+}
+
 func (provider *rejectionRefreshingCredentialProvider) ResolveAfterRejection(
 	context.Context,
 	sdkgo.Call,

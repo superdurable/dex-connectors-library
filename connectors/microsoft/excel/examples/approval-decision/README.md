@@ -69,7 +69,7 @@ go run ./cmd/connectorctl ui-artifact --manifest connectors/microsoft/excel/conn
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/microsoft/excel/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/microsoft/excel \
-  --version v0.1.0 --tag connectors/microsoft/excel/v0.1.0 \
+  --version v0.21.0 --tag connectors/microsoft/excel/v0.21.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/microsoft-excel-release/connector-ui.tgz \
   --ui-digest /tmp/microsoft-excel-release/connector-ui.tgz.sha256 \
@@ -77,7 +77,6 @@ go run ./cmd/connectorctl release-artifact \
   --digest-output /tmp/microsoft-excel-release/connector-release.json.sha256
 dexcli dev \
   --flow-rendering-dir /tmp \
-  --connector-config-dir "$HOME/.dex/connectors" \
   --connector-release-override microsoft-excel=/tmp/microsoft-excel-release
 ```
 
@@ -94,10 +93,12 @@ and authorize. The example exposes three Step configurations:
   `UpdateExcelDecisionSummary`; the read-back reuses them.
 
 Every pick is required. In a second terminal, start the Worker from
-`connectors/microsoft/excel` with the connection file Dex Web shows:
+`connectors/microsoft/excel`. It reads the `DEX_PROJECT_*` project
+configuration environment documented in
+[`sdkgo/projectconfig`](../../../../../sdkgo/projectconfig/README.md#application-loading);
+Dex Web or Superverse Studio writes that configuration:
 
 ```bash
-export DEX_CONNECTOR_CONFIG_FILE="$HOME/.dex/connectors/connections.json"
 go run ./examples/approval-decision
 ```
 

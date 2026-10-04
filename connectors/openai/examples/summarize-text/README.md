@@ -4,18 +4,21 @@ This example runs one operation-only Flow from Dex Web **Start Flow**:
 
 1. `RecordSummaryRequest` validates the typed start input and persists it in
    the `openai-summary-request` Attribute;
-2. `SummarizeText` calls `openai.NewGenerateTextStep`, which streams the
-   summary to the `openai-summary-text` Stream as the model writes it;
-3. `RecordSummaryOutcome` persists the `generated`, `truncated`, or `blocked`
-   outcome in the `openai-summary-outcome` Attribute and completes the Flow.
+2. `SummarizeText` calls `openai.NewCreateResponseStep`, which stores one
+   OpenAI Response and streams the summary to the `openai-summary-text`
+   Stream as the model writes it;
+3. `RecordSummaryOutcome` persists the `completed` or `failed` Response, with
+   its ID, status, and usage, in the `openai-summary-outcome` Attribute and
+   completes the Flow.
 
 The summary and display RPCs show the request and the outcome in Dex Web.
-The example leaves `providerRejected`, `invalidResponse`, and `defect`
-unwired, so those outcomes fail the Flow. For example, a project without
-credits gets HTTP 429 `insufficient_quota`, which selects `providerRejected`
-and fails the run without a retry. The request sets no reasoning effort,
-because the picker also lists models that accept none; each model uses its
-own default.
+The example leaves `providerRejected`, `uncertain`, and `defect` unwired, so
+those outcomes fail the Flow. For example, a project without credits gets
+HTTP 429, which `createResponse` retries until its retry policy ends. An
+`uncertain` outcome means OpenAI may have stored the Response; reconcile it
+with `retrieveResponse` when the Response ID is known. Generation Steps that
+need no stored Response use the
+[llm connector](../../../superdurable/llm/README.md) instead.
 
 The Flow and every application Step declare stable types with `GetFlowType`
 and `GetStepType`, because Dex Web Start Flow sends the type names from the
@@ -59,7 +62,7 @@ go run ./cmd/connectorctl ui-artifact \
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/openai/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/openai \
-  --version v0.7.0 --tag connectors/openai/v0.7.0 \
+  --version v0.21.0 --tag connectors/openai/v0.21.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/openai-release/connector-ui.tgz \
   --ui-digest /tmp/openai-release/connector-ui.tgz.sha256 \
@@ -67,7 +70,6 @@ go run ./cmd/connectorctl release-artifact \
   --digest-output /tmp/openai-release/connector-release.json.sha256
 dexcli dev \
   --flow-rendering-dir "$PWD/connectors/openai/build" \
-  --connector-config-dir "$HOME/.dex/connectors" \
   --connector-release-override openai=/tmp/openai-release
 ```
 
@@ -76,26 +78,27 @@ Open the Dex Web URL that dexcli prints and select **Connections**. Select
 `OpenAISummarizeText` uses. In the host-owned form, enter an OpenAI API key
 in `api_key`, leave `model` blank for `gpt-6-sol` or enter another model,
 leave `endpoint`, `maxResponseBytes`, and `maxSseEventBytes` at their
-defaults, and save. The status becomes **Ready**. A connection saved for
-`v0.6.0` shows **Conflict** until its `moduleVersion` is changed to `v0.7.0`
-or it is saved again.
+defaults, and save. The status becomes **Ready**.
 
-Then open the `generateText · SummarizeText` tab. Its **Summary model** picker
-lists OpenAI's models live, newest first. Pick one, keep the connection's
-model, or type a model ID, and select **Save**. The key is stored only in the
-plaintext development file shown on the page; never commit or share it.
+Then open the `createResponse · SummarizeText` tab. Its **Summary model**
+picker lists OpenAI's models live, newest first. Pick one, keep the
+connection's model, or type a model ID, and select **Save**.
 
-In a second terminal, start the Worker from `connectors/openai` with that
-file:
+Dex Web saves the settings, the Step pick, and the key in the project
+configuration. In a second terminal, start the Worker from `connectors/openai`
+with that project's `DEX_PROJECT_*` environment, which
+[`sdkgo/projectconfig`](../../../../sdkgo/projectconfig/README.md#application-loading)
+documents, including `DEX_PROJECT_ALLOW_LOCAL_STORAGE=true` and
+`DEX_PROJECT_STORAGE_ENDPOINT` for a local S3-compatible store:
 
 ```bash
 cd "$(git rev-parse --show-toplevel)/connectors/openai"
-export DEX_CONNECTOR_CONFIG_FILE="$HOME/.dex/connectors/connections.json"
 go run ./examples/summarize-text
 ```
 
-The Worker reads the connection and the Step's pick at startup, so restart
-it after changing either in Dex Web. It listens on `127.0.0.1:8821`; override
+The Worker reads the connection's settings and the Step's pick at startup,
+so restart it after changing either in Dex Web; a replaced key applies
+without a restart. It listens on `127.0.0.1:8821`; override
 `DEX_FLOW_SERVICE_ADDRESS`, `DEX_WORKER_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR`
 when needed. It logs the connection name, never the key.
 
@@ -103,7 +106,7 @@ In the Run workspace, choose **Start Flow**, select `OpenAISummarizeText`,
 choose the Worker at `127.0.0.1:8821`, enter a Flow ID, and submit:
 
 ```json
-{"text": "The Dex OpenAI connector calls the Responses API without storing the response, streams the text, and returns typed branches."}
+{"text": "The Dex OpenAI connector stores a Response through the Responses API, streams the text, and returns typed branches."}
 ```
 
 The run completes with a `SummaryOutcome` like this, and the run detail
@@ -111,11 +114,12 @@ shows the same value under `openai-summary-outcome`:
 
 ```json
 {
-  "branch": "generated",
-  "summary": "The Dex OpenAI connector calls the Responses API without storing responses and streams the text.",
-  "servedModel": "gpt-6-sol",
-  "finishReason": "stop",
-  "usage": {"inputTokens": 45, "outputTokens": 160, "reasoningTokens": 130, "totalTokens": 205}
+  "branch": "completed",
+  "summary": "The Dex OpenAI connector stores a Response through the Responses API and streams the text.",
+  "responseId": "resp_68f0c3a1b2c4d5e6",
+  "model": "gpt-6-sol",
+  "status": "completed",
+  "usage": {"inputTokens": 45, "cachedInputTokens": 0, "outputTokens": 160, "reasoningOutputTokens": 130, "totalTokens": 205}
 }
 ```
 
@@ -129,9 +133,12 @@ From `connectors/openai`:
 GOWORK=off go test -race ./examples/summarize-text/...
 ```
 
-The real Dex test starts the Flow through the Dex Client against a local
-fake Responses API. It covers the generated route with its streamed text and
-the blocked route, and checks that the request sends `store: false`:
+The real Dex test opens the connection from project configuration and
+in-memory project storage, as the Worker does, and starts the Flow through
+the Dex Client against a local fake Responses API. It covers a completed
+Response with its streamed text and the connection's model, and an
+incomplete Response for the Step's pick that completes as `failed`, and
+checks the idempotency key on every request:
 
 ```bash
 DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./examples/summarize-text/... -count=1

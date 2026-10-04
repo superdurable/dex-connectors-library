@@ -16,10 +16,12 @@ dexcli visualize ./examples/upsert-contact/flow/workflow.go \
 
 Run `dexcli dev` with that build directory, configure
 `google-sheets / google-sheets-contacts` under **Connections**, then run the
-Worker with the connection path shown by Dex Web:
+Worker. It reads the `DEX_PROJECT_*` project configuration environment
+documented in
+[`sdkgo/projectconfig`](../../../../../sdkgo/projectconfig/README.md#application-loading);
+Dex Web or Superverse Studio writes that configuration:
 
 ```bash
-export DEX_CONNECTOR_CONFIG_FILE="$HOME/.dex/connectors/connections.json"
 go run ./examples/upsert-contact
 ```
 

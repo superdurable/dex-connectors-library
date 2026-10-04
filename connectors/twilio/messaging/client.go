@@ -35,6 +35,15 @@ import (
 )
 
 const (
+	// AuthTokenAuthMethodID selects Account SID and Auth Token authentication.
+	// The Basic username is the connection's accountSid and the password is auth_token.
+	AuthTokenAuthMethodID = "auth-token"
+	// APIKeyAuthMethodID selects API key authentication.
+	// The Basic username is api_key_sid and the password is api_key_secret.
+	APIKeyAuthMethodID = "api-key"
+)
+
+const (
 	providerName = "twilio"
 
 	// requestTimeout expires before the 30-second Execute timeout, so a hung send selects uncertain.

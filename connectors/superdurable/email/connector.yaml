@@ -5,7 +5,7 @@ metadata:
   displayName: Email (IMAP and SMTP)
   description: Search, read, flag, and move messages in any IMAP mailbox and send new messages or threaded replies over SMTP, for mail providers other than Gmail and Microsoft 365.
   company: Super Durable
-  version: v0.1.0
+  version: v0.21.0
 spec:
   provider: email
   codegen:

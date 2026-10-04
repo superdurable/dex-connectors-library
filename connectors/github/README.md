@@ -17,11 +17,11 @@ factories for:
 
 The OAuth connection requests `read:user user:email offline_access`.
 `offline_access` opts GitHub.com into an eight-hour access token and a rotating
-six-month refresh token without expanding repository access. Local Dex reloads
-credentials before every call, refreshes within five minutes of expiry, and
-atomically persists both rotated tokens. Hosted apps receive only the resolved
-access token from the Superverse broker. A `bad_refresh_token` response marks
-the connection as requiring reauthorization. GitHub Enterprise Server may
+six-month refresh token without expanding repository access. Credentials stay in
+project storage and are read before every call. Within five minutes of the
+recorded expiry, the connector refreshes them and project storage atomically
+persists both rotated tokens. A `bad_refresh_token` response marks the
+connection as requiring reauthorization. GitHub Enterprise Server may
 ignore `offline_access` and issue a non-expiring access token without refresh
 material; the connector keeps using that token while no expiry is present.
 
@@ -144,7 +144,7 @@ all three queries in one Flow from Dex Web **Start Flow**.
 Install the published module:
 
 ```bash
-go get github.com/superdurable/dex-connectors-library/connectors/github@v0.9.0
+go get github.com/superdurable/dex-connectors-library/connectors/github@v0.21.0
 ```
 
 Verify it independently:
@@ -174,8 +174,24 @@ branches. Other conclusive GitHub API refusals use `providerRejected`, while
 malformed or oversized responses use `invalidResponse`. Invalid local input or
 connection configuration uses the standard `defect` branch.
 
-With local Dex Web, call `localconfig.LoadFromEnvironment` and
-`github.NewLocalConnection(store, "reviewer")` during startup. Use the same
-static `ConnectionName: "reviewer"` in each generated GitHub Step config.
-The latest credential state is reloaded before every provider call, so refresh
-and reauthorization do not require restarting the application.
+During startup, load the project configuration that Dex Web or Superverse
+Studio writes and open the connection by name, as
+[`examples/repository-changes/main.go`](examples/repository-changes/main.go)
+does:
+
+```go
+project, err := projectconfig.LoadFromEnvironment(ctx)
+if err != nil {
+	return err
+}
+connection, err := github.NewProjectConnection(project, repositorychanges.ConnectionName)
+if err != nil {
+	return err
+}
+```
+
+`LoadFromEnvironment` reads the `DEX_PROJECT_*` environment described in
+[project configuration](../../sdkgo/projectconfig/README.md). Use the same
+static connection name as `ConnectionName` in each generated GitHub Step
+config. The latest credential state is read before every provider call, so
+refresh and reauthorization do not require restarting the application.

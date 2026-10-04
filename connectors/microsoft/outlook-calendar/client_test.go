@@ -237,6 +237,15 @@ func (*rejectionRefreshingCredentialProvider) Resolve(sdkgo.Call) (outlookcalend
 	return outlookcalendar.Credentials{AuthMethodID: outlookcalendar.MicrosoftOAuthAuthMethodID, AccessToken: sdkgo.NewSecretString("rejected-token")}, nil
 }
 
+// ResolveWithRefresh returns the stored credential unchanged: its expiry has not passed.
+func (provider *rejectionRefreshingCredentialProvider) ResolveWithRefresh(
+	_ context.Context,
+	call sdkgo.Call,
+	_ sdkgo.CredentialRefreshDriver[outlookcalendar.Credentials],
+) (outlookcalendar.Credentials, error) {
+	return provider.Resolve(call)
+}
+
 func (provider *rejectionRefreshingCredentialProvider) ResolveAfterRejection(
 	context.Context,
 	sdkgo.Call,

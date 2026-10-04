@@ -100,11 +100,12 @@ An Entra app authenticates as itself with the client credentials grant, for a
 service or shared mailbox without a signed-in user. Every operation calls
 `https://graph.microsoft.com/v1.0/users/<mailbox>`. The application requests
 a token from `https://login.microsoftonline.com/<tenant_id>/oauth2/v2.0/token`
-with the scope `https://graph.microsoft.com/.default` on its first Outlook
-call, stores it in the connection file, and renews it five minutes before it
-expires or after a 401. `tenant_id` must name one tenant: `common`,
-`organizations`, and `consumers` are rejected before any request. A
-single-tenant app registration works for this method.
+with the scope `https://graph.microsoft.com/.default`. The project connection
+keeps the token with its expiry. A call requests a new token when none is
+stored, as on the first call, or when the stored one expires within five
+minutes. `tenant_id` must name one tenant: `common`, `organizations`,
+and `consumers` are rejected before any request. A single-tenant app
+registration works for this method.
 
 Grant the app access to only that mailbox. Microsoft's least-privilege option
 is [Exchange Online RBAC for Applications](https://learn.microsoft.com/en-us/exchange/permissions-exo/application-rbac),
@@ -130,31 +131,37 @@ admin consent** also work, but they are tenant-wide. A request for another
 mailbox, or one the role does not cover, selects `providerRejected` with
 `AUTHORIZATION`.
 
-## Local configuration
+## Project connection
 
-Dex Web writes one record per connection. A delegated record's credentials
-hold `auth_method: microsoft-oauth`, `client_id`, `client_secret`, and the
-`access_token` and `refresh_token` from consent; an app-only record holds
-`auth_method: app-only`, `tenant_id`, `client_id`, and `client_secret`, the
-configuration holds `mailbox`, and the connector adds `access_token`.
-`localconfig` adds `credentialExpiresAt` and keeps Dex Web's `authMethodId`.
+Dex Web saves one connection per name in encrypted project storage. A
+delegated connection's private credential holds `auth_method: microsoft-oauth`,
+`client_id`, `client_secret`, and the `access_token` and `refresh_token`
+from consent; an app-only credential holds `auth_method: app-only`,
+`tenant_id`, `client_id`, `client_secret`, and the current `access_token`,
+and the configuration holds `mailbox`.
 
-Load it with `localconfig.LoadFromEnvironment` and
-`outlookmail.NewLocalConnection`, as
+Load the project configuration once at application startup and open the
+connection by the name its operations use, as
 [`examples/support-reply/main.go`](examples/support-reply/main.go) does:
 
 ```go
-store, err := localconfig.LoadFromEnvironment()
+project, err := projectconfig.LoadFromEnvironment(ctx)
 if err != nil {
 	return err
 }
-connection, err := outlookmail.NewLocalConnection(store, supportreply.ConnectionName, connectionOptions()...)
+connection, err := outlookmail.NewProjectConnection(project, supportreply.ConnectionName, connectionOptions()...)
 ```
+
+`projectconfig.LoadFromEnvironment` reads the `DEX_PROJECT_*` configuration
+that Dex Web or Superverse Studio writes; see
+[`sdkgo/projectconfig`](../../../sdkgo/projectconfig/README.md#application-loading).
+Set the same `ConnectionName` beside the typed `Connection` in each operation:
+a Step whose `ConnectionName` is empty or differs from its connection's name
+panics at construction.
 
 Credentials are reread before every operation, so a replaced secret takes
 effect without a restart; the mailbox and the response limit are startup
-configuration. In Superverse-hosted deployments, `DecodeResolvedCredentialsJSON`
-accepts exactly `auth_method` and `access_token` and rejects renewal material.
+configuration.
 
 ## Operations
 
@@ -305,7 +312,7 @@ carries Graph's `request-id`.
 | 408, 409, 423 | Retry | Retry | Retry |
 | 500, 502, 503, 504, dropped connection after dispatch | Retry after `Retry-After` | Retry | Retry before the send; after it, confirm from the draft, then `uncertain` |
 | Connection refused | Retry | Retry | Retry |
-| 401 | refresh once, resend once, then `providerRejected` | same | same |
+| 401 | `providerRejected`, `AUTHENTICATION`, after one refresh and resend only when the stored token has expired | same | same |
 | 403 | `providerRejected`, `AUTHORIZATION` (`QUOTA_EXHAUSTED` for a quota code) | same | same; nothing sent |
 | 404 `ErrorItemNotFound`, 400 `ErrorInvalidIdMalformed` | `notFound` | `notFound` | `notFound` for the reply original |
 | other 404, such as an unknown mailbox | `providerRejected`, `NOT_FOUND` | same | same |
@@ -330,8 +337,8 @@ a reply four, so run at most a few send Steps at once per mailbox.
 `mailFolders` and a chosen folder's subfolders with `childFolders`, both read
 with the connection's `access_token` through Dex Web's broker. A delegated
 connection lists `/me`; an app-only connection lists `/users/{mailbox}` from
-its saved `mailbox` field and needs the token the application stores on its
-first call. The unit stores `folderId` and `folderName` and always offers a
+its saved `mailbox` field and needs the access token stored in the project
+connection. The unit stores `folderId` and `folderName` and always offers a
 folder ID or well-known name as manual entry, which is also the fallback when
 the list cannot load. Studio commands are `GET` requests to the fixed
 `graph.microsoft.com` host with path parameters only, so the host cannot be

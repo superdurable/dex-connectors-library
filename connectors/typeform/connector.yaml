@@ -5,7 +5,7 @@ metadata:
   displayName: Typeform
   description: "Receive signed Typeform form_response webhooks as typed, field-keyed answers, list and read forms, list responses, and create or update a form's webhook."
   company: Typeform
-  version: v0.1.0
+  version: v0.21.0
 spec:
   provider: typeform
   codegen:

@@ -8,7 +8,6 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
@@ -16,8 +15,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -27,7 +24,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/calendly"
 	inviteerecorder "github.com/superdurable/dex-connectors-library/connectors/calendly/examples/invitee-recorder/flow"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/webhooktrigger"
 )
 
 const (
@@ -40,89 +38,63 @@ const (
 	otherEventTypeURI  = "https://api.calendly.com/event_types/TYPE0002"
 )
 
-// exampleSetup is one connection file plus the addresses that run reads from the environment.
-type exampleSetup struct {
-	directory      string
-	configPath     string
-	webhookAddress string
-	logs           *recordedLogs
-}
+// bookingBinding is the eventTypePicker binding Dex Web saves: only the booked event type starts a Flow.
+var bookingBinding = calendly.InviteeEventReceivedTriggerConfiguration{EventTypeURI: bookedEventTypeURI}
 
-// newExampleSetup writes the token connection and eventTypePicker binding that Dex Web saves.
-func newExampleSetup(t *testing.T, dexAddress string) *exampleSetup {
+// newExampleConnection builds the token connection Dex Web saves; a static credential replaces project storage.
+func newExampleConnection(t *testing.T, options ...calendly.Option) calendly.Connection {
 	t.Helper()
-	directory := t.TempDir()
-	contents, err := json.Marshal(map[string]any{
-		"schemaVersion": localconfig.SchemaVersion,
-		"connections": []any{map[string]any{
-			"connectorId": calendly.ConnectorID, "modulePath": "github.com/superdurable/dex-connectors-library/connectors/calendly",
-			"moduleVersion": "v0.1.0", "provider": "calendly", "connectionName": inviteerecorder.ConnectionName,
-			"authMethodId": calendly.PersonalAccessTokenAuthMethodID, "configuration": map[string]any{},
-			"credentials": map[string]any{
-				"auth_method": calendly.PersonalAccessTokenAuthMethodID, "access_token": sentinelToken, "webhook_signing_key": sentinelSigningKey,
-			},
-		}},
-		"triggerBindings": []any{map[string]any{
-			"connectorId": calendly.ConnectorID, "connectionName": inviteerecorder.ConnectionName, "triggerName": "inviteeEventReceived",
-			"bindingName": inviteerecorder.InviteeCreatedTriggerBinding, "configuration": map[string]any{"eventTypeUri": bookedEventTypeURI},
-		}},
-	})
+	reference := sdkgo.ConnectionRef{Provider: "calendly", Name: inviteerecorder.ConnectionName}
+	client, err := calendly.New(calendly.Config{}, sdkgo.StaticCredentialProvider[calendly.Credentials]{reference: {
+		AuthMethodID: calendly.PersonalAccessTokenAuthMethodID, AccessToken: sdkgo.NewSecretString(sentinelToken),
+		WebhookSigningKey: sdkgo.NewSecretString(sentinelSigningKey),
+	}}, options...)
 	require.NoError(t, err)
-	setup := &exampleSetup{
-		directory: directory, configPath: filepath.Join(directory, "connections.json"),
-		webhookAddress: "127.0.0.1:" + unusedPort(t), logs: newRecordedLogs(),
-	}
-	require.NoError(t, os.WriteFile(setup.configPath, contents, 0o600))
-	t.Setenv(localconfig.EnvironmentVariable, setup.configPath)
-	t.Setenv("DEX_FLOW_SERVICE_ADDRESS", dexAddress)
-	t.Setenv("WEBHOOK_BIND_ADDRESS", setup.webhookAddress)
-	t.Cleanup(func() {
-		if t.Failed() || testing.Verbose() {
-			t.Logf("captured logs:\n%s", setup.logs.text())
-		}
+	connection, err := calendly.NewConnection(client, reference)
+	require.NoError(t, err)
+	return connection
+}
+
+// inviteeEndpoint serves the example's target like newInviteeEndpointRunner, without the durable project inbox.
+type inviteeEndpoint struct {
+	server         *httptest.Server
+	endpointRunner *webhooktrigger.EndpointRunner
+	readiness      interface{ RunningSourceCount() int }
+}
+
+func newInviteeEndpoint(t *testing.T, connection calendly.Connection, target sdkgo.TriggerTarget[calendly.InviteeEvent]) *inviteeEndpoint {
+	t.Helper()
+	handler, err := connection.InviteeEventReceivedWebhookHandler()
+	require.NoError(t, err)
+	trigger := calendly.NewInviteeEventReceivedTrigger(calendly.InviteeEventReceivedTriggerConfig{
+		Connection: connection, ConnectionName: inviteerecorder.ConnectionName,
+		BindingName: inviteerecorder.InviteeCreatedTriggerBinding, Configuration: bookingBinding, Target: target,
 	})
-	return setup
+	endpointRunner, err := webhooktrigger.NewEndpointRunner(handler, trigger)
+	require.NoError(t, err)
+	mux := http.NewServeMux()
+	mux.Handle(webhookPath, endpointRunner)
+	server := httptest.NewServer(mux)
+	t.Cleanup(server.Close)
+	return &inviteeEndpoint{server: server, endpointRunner: endpointRunner, readiness: handler.(interface{ RunningSourceCount() int })}
 }
 
-// runningExample is one run of the example's run function.
-type runningExample struct {
-	cancel context.CancelFunc
-	result chan error
-}
-
-// startExample calls run with a fresh Worker port and blob cache, then waits for the readiness check.
-func (setup *exampleSetup) startExample(t *testing.T, connectionOptions ...calendly.Option) *runningExample {
+// start runs the binding until the test ends and waits until it receives deliveries.
+func (endpoint *inviteeEndpoint) start(t *testing.T) {
 	t.Helper()
-	t.Setenv("DEX_WORKER_BIND_ADDRESS", "127.0.0.1:"+unusedPort(t))
-	t.Setenv("DEX_BLOB_CACHE_DIR", filepath.Join(setup.directory, "blobs-"+strconv.FormatInt(time.Now().UnixNano(), 10)))
 	ctx, cancel := context.WithCancel(context.Background())
-	running := &runningExample{cancel: cancel, result: make(chan error, 1)}
-	go func() { running.result <- run(ctx, setup.logs.logger(), connectionOptions...) }()
-	t.Cleanup(cancel)
-	require.Eventually(t, func() bool {
-		response, err := http.Get("http://" + setup.webhookAddress + readinessPath)
-		if err != nil {
-			return false
-		}
-		_ = response.Body.Close() // Only the status matters.
-		return response.StatusCode == http.StatusOK
-	}, 20*time.Second, 25*time.Millisecond, "the Calendly binding must start receiving")
-	return running
-}
-
-func (running *runningExample) stop(t *testing.T) {
-	t.Helper()
-	running.cancel()
-	select {
-	case err := <-running.result:
-		require.NoError(t, err)
-	case <-time.After(20 * time.Second):
-		t.Fatal("the example did not stop after cancellation")
-	}
+	runFinished := make(chan error, 1)
+	go func() { runFinished <- endpoint.endpointRunner.Run(ctx) }()
+	t.Cleanup(func() {
+		cancel()
+		require.ErrorIs(t, <-runFinished, context.Canceled)
+	})
+	require.Eventually(t, func() bool { return endpoint.readiness.RunningSourceCount() == 1 }, 10*time.Second, 10*time.Millisecond,
+		"the Calendly binding must start receiving")
 }
 
 // deliverWebhook posts body as Calendly does, signed now with signingKey; tamper changes it after signing.
-func (setup *exampleSetup) deliverWebhook(t *testing.T, body string, signingKey string, isTampered bool) int {
+func (endpoint *inviteeEndpoint) deliverWebhook(t *testing.T, body string, signingKey string, isTampered bool) int {
 	t.Helper()
 	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
 	mac := hmac.New(sha256.New, []byte(signingKey))
@@ -130,38 +102,17 @@ func (setup *exampleSetup) deliverWebhook(t *testing.T, body string, signingKey 
 	if isTampered {
 		body = strings.Replace(body, "ada@", "eve@", 1)
 	}
-	request, err := http.NewRequest(http.MethodPost, "http://"+setup.webhookAddress+webhookPath, strings.NewReader(body))
+	request, err := http.NewRequest(http.MethodPost, endpoint.server.URL+webhookPath, strings.NewReader(body))
 	require.NoError(t, err)
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Calendly-Webhook-Signature", "t="+timestamp+",v1="+hex.EncodeToString(mac.Sum(nil)))
-	response, err := http.DefaultClient.Do(request)
+	response, err := endpoint.server.Client().Do(request)
 	require.NoError(t, err)
 	responseBody, err := io.ReadAll(response.Body)
 	require.NoError(t, err)
 	require.NoError(t, response.Body.Close())
 	require.NotContains(t, string(responseBody), sentinelSigningKey)
 	return response.StatusCode
-}
-
-func (setup *exampleSetup) pendingEventIDs(t *testing.T) []string {
-	t.Helper()
-	paths, err := filepath.Glob(filepath.Join(setup.directory, ".trigger-inbox-*.json"))
-	require.NoError(t, err)
-	eventIDs := []string{}
-	for _, path := range paths {
-		contents, err := os.ReadFile(path)
-		require.NoError(t, err)
-		var inbox struct {
-			Events []struct {
-				EventID string `json:"eventId"`
-			} `json:"events"`
-		}
-		require.NoError(t, json.Unmarshal(contents, &inbox))
-		for _, event := range inbox.Events {
-			eventIDs = append(eventIDs, event.EventID)
-		}
-	}
-	return eventIDs
 }
 
 // inviteeWebhookBody is a Calendly invitee webhook for scheduled event eventID and invitee inviteeID.
@@ -255,7 +206,16 @@ type recordedLog struct {
 	attrs   map[string]string
 }
 
-func newRecordedLogs() *recordedLogs { return &recordedLogs{} }
+func newRecordedLogs(t *testing.T) *recordedLogs {
+	t.Helper()
+	logs := &recordedLogs{}
+	t.Cleanup(func() {
+		if t.Failed() || testing.Verbose() {
+			t.Logf("captured logs:\n%s", logs.text())
+		}
+	})
+	return logs
+}
 
 func (logs *recordedLogs) logger() *slog.Logger {
 	return slog.New(recordedLogHandler{logs: logs})

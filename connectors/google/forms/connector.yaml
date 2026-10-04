@@ -5,7 +5,7 @@ metadata:
   displayName: Google Forms
   description: Read a Google Form's questions and its responses, listed one bounded page at a time after a submission time or read one by ID.
   company: Google
-  version: v0.1.0
+  version: v0.21.0
 spec:
   provider: google
   codegen:
@@ -32,6 +32,7 @@ spec:
         required: false
         default: 50
   auth:
+    refreshable: true
     defaultMethod: google-oauth
     methods:
       - id: google-oauth

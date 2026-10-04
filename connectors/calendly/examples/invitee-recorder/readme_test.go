@@ -21,14 +21,7 @@ import (
 func TestREADMESamplesMatchTheExample(t *testing.T) {
 	readme := readFile(t, "README.md")
 	samples := fencedBlocks(readme, "json")
-	require.Len(t, samples, 3)
-	var credentials struct {
-		AuthMethod        string `json:"auth_method"`
-		AccessToken       string `json:"access_token"`
-		WebhookSigningKey string `json:"webhook_signing_key"`
-	}
-	requireStrictJSON(t, samples[0], &credentials)
-	require.Equal(t, calendly.PersonalAccessTokenAuthMethodID, credentials.AuthMethod)
+	require.Len(t, samples, 2)
 	var binding struct {
 		ConnectorID    string                                            `json:"connectorId"`
 		ConnectionName string                                            `json:"connectionName"`
@@ -36,14 +29,14 @@ func TestREADMESamplesMatchTheExample(t *testing.T) {
 		BindingName    string                                            `json:"bindingName"`
 		Configuration  calendly.InviteeEventReceivedTriggerConfiguration `json:"configuration"`
 	}
-	requireStrictJSON(t, samples[1], &binding)
+	requireStrictJSON(t, samples[0], &binding)
 	require.Equal(t, calendly.ConnectorID, binding.ConnectorID)
 	require.Equal(t, inviteerecorder.ConnectionName, binding.ConnectionName)
 	require.Equal(t, calendly.InviteeEventReceivedTriggerDefinition.Trigger.TriggerName, binding.TriggerName)
 	require.Equal(t, inviteerecorder.InviteeCreatedTriggerBinding, binding.BindingName)
 	require.NoError(t, binding.Configuration.Validate())
 	var recorded inviteerecorder.RecordedScheduledEvent
-	requireStrictJSON(t, samples[2], &recorded)
+	requireStrictJSON(t, samples[1], &recorded)
 	require.Equal(t, calendly.GetScheduledEventBranchFound, recorded.Branch)
 
 	curlBody := regexp.MustCompile(`(?m)^body='(.+)'$`).FindStringSubmatch(readme)

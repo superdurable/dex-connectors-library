@@ -4,7 +4,6 @@
 package monday
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -149,47 +148,4 @@ func readAccessTokenExpiry(accessToken sdkgo.SecretString) (time.Time, bool) {
 		return time.Time{}, false
 	}
 	return time.Unix(int64(*claims.ExpiresAt), 0).UTC(), true
-}
-
-// DecodeCredentialsJSON decodes trusted broker credential material using connector validation,
-// including the selected auth_method.
-func DecodeCredentialsJSON(contents json.RawMessage) (Credentials, error) {
-	return decodeLocalCredentials(contents)
-}
-
-// DecodeResolvedCredentialsJSON decodes the operation-scoped credential a trusted hosted broker
-// returns, for use as a hostedconfig.CredentialDecoder: auth_method with api_token for a personal
-// API token, or with access_token for OAuth. Renewal material and unknown fields are rejected,
-// and the error never repeats a value. A blank auth_method means a personal API token.
-func DecodeResolvedCredentialsJSON(contents json.RawMessage) (Credentials, error) {
-	var fields struct {
-		AuthMethodID string `json:"auth_method"`
-		APIToken     string `json:"api_token"`
-		AccessToken  string `json:"access_token"`
-	}
-	decoder := json.NewDecoder(bytes.NewReader(contents))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&fields); err != nil {
-		return Credentials{}, errors.New("monday.com resolved credential is invalid")
-	}
-	credentials := Credentials{AuthMethodID: fields.AuthMethodID, APIToken: sdkgo.NewSecretString(fields.APIToken), AccessToken: sdkgo.NewSecretString(fields.AccessToken)}
-	if credentials.AuthMethodID == "" {
-		credentials.AuthMethodID = PersonalAPITokenAuthMethodID
-	}
-	switch {
-	case credentials.AuthMethodID == PersonalAPITokenAuthMethodID && fields.AccessToken != "",
-		credentials.AuthMethodID == OAuthAuthMethodID && fields.APIToken != "":
-		return Credentials{}, errors.New("monday.com resolved credential carries the other method's token")
-	case validateResolvedCredentials(credentials) != nil:
-		return Credentials{}, errors.New("monday.com resolved credential is invalid")
-	}
-	return credentials, nil
-}
-
-// EncodeCredentialsJSON encodes complete credential material for trusted atomic persistence.
-func EncodeCredentialsJSON(credentials Credentials) ([]byte, error) {
-	if err := credentials.Validate(); err != nil {
-		return nil, err
-	}
-	return encodeLocalCredentials(credentials)
 }

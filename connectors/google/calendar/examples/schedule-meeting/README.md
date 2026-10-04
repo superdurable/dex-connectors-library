@@ -52,11 +52,12 @@ dexcli visualize ./examples/schedule-meeting/flow/workflow.go \
   --schema-version 2.0 --json --out ./build/schedule-meeting
 ```
 
-Run `dexcli dev` with that build directory, then run the Worker with the
-connection path shown by Dex Web:
+Run `dexcli dev` with that build directory, then run the Worker. It reads the
+`DEX_PROJECT_*` project configuration environment documented in
+[`sdkgo/projectconfig`](../../../../../sdkgo/projectconfig/README.md#application-loading);
+Dex Web or Superverse Studio writes that configuration:
 
 ```bash
-export DEX_CONNECTOR_CONFIG_FILE="$HOME/.dex/connectors/connections.json"
 go run ./examples/schedule-meeting
 ```
 

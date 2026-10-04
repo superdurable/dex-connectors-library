@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-package githubconnector_test
+package github_test
 
 import (
 	"context"
@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	githubconnector "github.com/superdurable/dex-connectors-library/connectors/github"
+	"github.com/superdurable/dex-connectors-library/connectors/github"
 	"github.com/superdurable/dex-connectors-library/connectors/github/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
@@ -29,17 +29,26 @@ type rejectionRefreshingCredentialProvider struct {
 	forcedRefreshes int
 }
 
-func (*rejectionRefreshingCredentialProvider) Resolve(sdkgo.Call) (githubconnector.Credentials, error) {
-	return githubconnector.Credentials{AccessToken: sdkgo.NewSecretString("rejected-token")}, nil
+func (*rejectionRefreshingCredentialProvider) Resolve(sdkgo.Call) (github.Credentials, error) {
+	return github.Credentials{AccessToken: sdkgo.NewSecretString("rejected-token")}, nil
+}
+
+// ResolveWithRefresh returns the token Resolve returns, which has not expired before GitHub rejects it.
+func (provider *rejectionRefreshingCredentialProvider) ResolveWithRefresh(
+	_ context.Context,
+	call sdkgo.Call,
+	_ sdkgo.CredentialRefreshDriver[github.Credentials],
+) (github.Credentials, error) {
+	return provider.Resolve(call)
 }
 
 func (provider *rejectionRefreshingCredentialProvider) ResolveAfterRejection(
 	context.Context,
 	sdkgo.Call,
-	sdkgo.CredentialRefreshDriver[githubconnector.Credentials],
-) (githubconnector.Credentials, error) {
+	sdkgo.CredentialRefreshDriver[github.Credentials],
+) (github.Credentials, error) {
 	provider.forcedRefreshes++
-	return githubconnector.Credentials{AccessToken: sdkgo.NewSecretString("replacement-token")}, nil
+	return github.Credentials{AccessToken: sdkgo.NewSecretString("replacement-token")}, nil
 }
 
 func TestGetAuthenticatedProfileReturnsBoundedProfileAndPrimaryVerifiedEmail(t *testing.T) {
@@ -71,13 +80,13 @@ func TestGetAuthenticatedProfileReturnsBoundedProfileAndPrimaryVerifiedEmail(t *
 	}))
 	defer server.Close()
 
-	client := newClient(t, server.URL, githubconnector.Config{})
+	client := newClient(t, server.URL, github.Config{})
 	result, err := sdkgo.RunQuery(
 		testsupport.NewDexContext("signup-flow", "profile-step"), client.GetAuthenticatedProfile(), githubConnection,
-		githubconnector.GetAuthenticatedProfileInput{},
+		github.GetAuthenticatedProfileInput{},
 	)
 	require.NoError(t, err)
-	require.Equal(t, githubconnector.GetAuthenticatedProfileBranchProfileLoaded, result.Branch)
+	require.Equal(t, github.GetAuthenticatedProfileBranchProfileLoaded, result.Branch)
 	require.Equal(t, "42", result.Value.Subject)
 	require.Equal(t, "octocat", result.Value.Login)
 	require.Equal(t, "primary@example.com", result.Value.VerifiedEmail)
@@ -106,13 +115,13 @@ func TestGetAuthenticatedProfileRequiresPrimaryVerifiedEmail(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := newClient(t, server.URL, githubconnector.Config{})
+	client := newClient(t, server.URL, github.Config{})
 	result, err := sdkgo.RunQuery(
 		testsupport.NewDexContext("signup-flow", "email-step"), client.GetAuthenticatedProfile(), githubConnection,
-		githubconnector.GetAuthenticatedProfileInput{},
+		github.GetAuthenticatedProfileInput{},
 	)
 	require.NoError(t, err)
-	require.Equal(t, githubconnector.GetAuthenticatedProfileBranchVerifiedEmailRequired, result.Branch)
+	require.Equal(t, github.GetAuthenticatedProfileBranchVerifiedEmailRequired, result.Branch)
 	require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
 	require.Empty(t, result.Value.VerifiedEmail)
 }
@@ -127,14 +136,14 @@ func TestGetAuthenticatedProfileClassifiesAuthorizationAndRateLimit(t *testing.T
 		wantKind   sdkgo.FailureKind
 		wantRetry  time.Duration
 	}{
-		{name: "revoked", status: http.StatusUnauthorized, wantBranch: githubconnector.GetAuthenticatedProfileBranchAuthorizationRevoked, wantKind: sdkgo.FailureAuthentication},
-		{name: "forbidden", status: http.StatusForbidden, wantBranch: githubconnector.GetAuthenticatedProfileBranchInsufficientScope, wantKind: sdkgo.FailureAuthorization},
+		{name: "revoked", status: http.StatusUnauthorized, wantBranch: github.GetAuthenticatedProfileBranchAuthorizationRevoked, wantKind: sdkgo.FailureAuthentication},
+		{name: "forbidden", status: http.StatusForbidden, wantBranch: github.GetAuthenticatedProfileBranchInsufficientScope, wantKind: sdkgo.FailureAuthorization},
 		{
 			name: "forbidden with remaining quota", status: http.StatusForbidden, headers: map[string]string{"X-RateLimit-Remaining": "4987"},
-			body: `{"message":"Resource not accessible by integration"}`, wantBranch: githubconnector.GetAuthenticatedProfileBranchInsufficientScope, wantKind: sdkgo.FailureAuthorization,
+			body: `{"message":"Resource not accessible by integration"}`, wantBranch: github.GetAuthenticatedProfileBranchInsufficientScope, wantKind: sdkgo.FailureAuthorization,
 		},
-		{name: "not found", status: http.StatusNotFound, wantBranch: githubconnector.GetAuthenticatedProfileBranchNotFound, wantKind: sdkgo.FailureNotFound},
-		{name: "provider rejected", status: http.StatusBadRequest, wantBranch: githubconnector.GetAuthenticatedProfileBranchProviderRejected, wantKind: sdkgo.FailureProviderRejection},
+		{name: "not found", status: http.StatusNotFound, wantBranch: github.GetAuthenticatedProfileBranchNotFound, wantKind: sdkgo.FailureNotFound},
+		{name: "provider rejected", status: http.StatusBadRequest, wantBranch: github.GetAuthenticatedProfileBranchProviderRejected, wantKind: sdkgo.FailureProviderRejection},
 		{name: "primary rate limit", status: http.StatusForbidden, headers: map[string]string{"X-RateLimit-Remaining": "0", "X-RateLimit-Reset": "1767225635"}, wantKind: sdkgo.FailureRateLimit, wantRetry: 30 * time.Second},
 		{name: "secondary rate limit", status: http.StatusTooManyRequests, headers: map[string]string{"Retry-After": "7"}, wantKind: sdkgo.FailureRateLimit, wantRetry: 7 * time.Second},
 		{
@@ -154,12 +163,12 @@ func TestGetAuthenticatedProfileClassifiesAuthorizationAndRateLimit(t *testing.T
 				_, _ = response.Write([]byte(test.body))
 			}))
 			defer server.Close()
-			client := newClient(t, server.URL, githubconnector.Config{}, githubconnector.WithClock(func() time.Time {
+			client := newClient(t, server.URL, github.Config{}, github.WithClock(func() time.Time {
 				return time.Unix(1767225605, 0)
 			}))
 			result, err := sdkgo.RunQuery(
 				testsupport.NewDexContext("signup-flow", "classification-step"), client.GetAuthenticatedProfile(), githubConnection,
-				githubconnector.GetAuthenticatedProfileInput{},
+				github.GetAuthenticatedProfileInput{},
 			)
 			if test.wantRetry > 0 {
 				var retry *sdkgo.RetryError
@@ -199,15 +208,15 @@ func TestGetAuthenticatedProfileRefreshesOnceAndReusesReplacement(t *testing.T) 
 	}))
 	t.Cleanup(server.Close)
 	provider := &rejectionRefreshingCredentialProvider{}
-	client, err := githubconnector.New(githubconnector.Config{BaseURL: server.URL}, provider)
+	client, err := github.New(github.Config{BaseURL: server.URL}, provider)
 	require.NoError(t, err)
 
 	result, err := sdkgo.RunQuery(
 		testsupport.NewDexContext("signup-flow", "refresh-after-401"), client.GetAuthenticatedProfile(), githubConnection,
-		githubconnector.GetAuthenticatedProfileInput{},
+		github.GetAuthenticatedProfileInput{},
 	)
 	require.NoError(t, err)
-	require.Equal(t, githubconnector.GetAuthenticatedProfileBranchProfileLoaded, result.Branch)
+	require.Equal(t, github.GetAuthenticatedProfileBranchProfileLoaded, result.Branch)
 	require.Equal(t, 3, requests)
 	require.Equal(t, 1, provider.forcedRefreshes)
 }
@@ -220,15 +229,15 @@ func TestGetAuthenticatedProfileDoesNotLoopWhenReplacementIsUnauthorized(t *test
 	}))
 	t.Cleanup(server.Close)
 	provider := &rejectionRefreshingCredentialProvider{}
-	client, err := githubconnector.New(githubconnector.Config{BaseURL: server.URL}, provider)
+	client, err := github.New(github.Config{BaseURL: server.URL}, provider)
 	require.NoError(t, err)
 
 	result, err := sdkgo.RunQuery(
 		testsupport.NewDexContext("signup-flow", "no-refresh-loop"), client.GetAuthenticatedProfile(), githubConnection,
-		githubconnector.GetAuthenticatedProfileInput{},
+		github.GetAuthenticatedProfileInput{},
 	)
 	require.NoError(t, err)
-	require.Equal(t, githubconnector.GetAuthenticatedProfileBranchAuthorizationRevoked, result.Branch)
+	require.Equal(t, github.GetAuthenticatedProfileBranchAuthorizationRevoked, result.Branch)
 	require.Equal(t, 2, requests)
 	require.Equal(t, 1, provider.forcedRefreshes)
 }
@@ -244,13 +253,13 @@ func TestGetAuthenticatedProfileRejectsMissingOAuthScopes(t *testing.T) {
 			}))
 			defer server.Close()
 
-			client := newClient(t, server.URL, githubconnector.Config{})
+			client := newClient(t, server.URL, github.Config{})
 			result, err := sdkgo.RunQuery(
 				testsupport.NewDexContext("signup-flow", "scope-step"), client.GetAuthenticatedProfile(), githubConnection,
-				githubconnector.GetAuthenticatedProfileInput{},
+				github.GetAuthenticatedProfileInput{},
 			)
 			require.NoError(t, err)
-			require.Equal(t, githubconnector.GetAuthenticatedProfileBranchInsufficientScope, result.Branch)
+			require.Equal(t, github.GetAuthenticatedProfileBranchInsufficientScope, result.Branch)
 			require.Equal(t, int32(1), requests.Load())
 		})
 	}
@@ -284,13 +293,13 @@ func TestListPublicRepositoriesPaginatesDeduplicatesSortsAndTruncates(t *testing
 	}))
 	defer server.Close()
 
-	client := newClient(t, server.URL, githubconnector.Config{DefaultRepositoryLimit: 3, MaxRepositories: 5})
+	client := newClient(t, server.URL, github.Config{DefaultRepositoryLimit: 3, MaxRepositories: 5})
 	result, err := sdkgo.RunQuery(
 		testsupport.NewDexContext("signup-flow", "repositories-step"), client.ListPublicRepositories(), githubConnection,
-		githubconnector.ListPublicRepositoriesInput{Login: "octocat", Limit: 3},
+		github.ListPublicRepositoriesInput{Login: "octocat", Limit: 3},
 	)
 	require.NoError(t, err)
-	require.Equal(t, githubconnector.ListPublicRepositoriesBranchRepositoriesLoaded, result.Branch)
+	require.Equal(t, github.ListPublicRepositoriesBranchRepositoriesLoaded, result.Branch)
 	require.True(t, result.Value.Truncated)
 	require.Equal(t, []int64{4, 2, 3}, []int64{
 		result.Value.Repositories[0].ID, result.Value.Repositories[1].ID, result.Value.Repositories[2].ID,
@@ -306,14 +315,14 @@ func TestListPublicRepositoriesValidatesInputBeforeProviderAccess(t *testing.T) 
 	var requests atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { requests.Add(1) }))
 	defer server.Close()
-	client := newClient(t, server.URL, githubconnector.Config{DefaultRepositoryLimit: 5, MaxRepositories: 5})
+	client := newClient(t, server.URL, github.Config{DefaultRepositoryLimit: 5, MaxRepositories: 5})
 
-	for _, input := range []githubconnector.ListPublicRepositoriesInput{{Login: ""}, {Login: "bad/login"}, {Login: "octocat", Limit: 6}} {
+	for _, input := range []github.ListPublicRepositoriesInput{{Login: ""}, {Login: "bad/login"}, {Login: "octocat", Limit: 6}} {
 		result, err := sdkgo.RunQuery(
 			testsupport.NewDexContext("signup-flow", "invalid-repositories-step"), client.ListPublicRepositories(), githubConnection, input,
 		)
 		require.NoError(t, err)
-		require.Equal(t, githubconnector.ListPublicRepositoriesBranchDefect, result.Branch)
+		require.Equal(t, github.ListPublicRepositoriesBranchDefect, result.Branch)
 		require.Equal(t, sdkgo.FailureValidation, result.Failure.Kind)
 	}
 	require.Zero(t, requests.Load())
@@ -325,13 +334,13 @@ func TestResponseSizeFailureIsTerminalAndSecretSafe(t *testing.T) {
 		_, _ = response.Write([]byte(strings.Repeat("x", 100)))
 	}))
 	defer server.Close()
-	client := newClient(t, server.URL, githubconnector.Config{MaxResponseBytes: 16})
+	client := newClient(t, server.URL, github.Config{MaxResponseBytes: 16})
 	result, err := sdkgo.RunQuery(
 		testsupport.NewDexContext("signup-flow", "large-response-step"), client.GetAuthenticatedProfile(), githubConnection,
-		githubconnector.GetAuthenticatedProfileInput{},
+		github.GetAuthenticatedProfileInput{},
 	)
 	require.NoError(t, err)
-	require.Equal(t, githubconnector.GetAuthenticatedProfileBranchInvalidResponse, result.Branch)
+	require.Equal(t, github.GetAuthenticatedProfileBranchInvalidResponse, result.Branch)
 	require.Equal(t, sdkgo.FailureResponseTooLarge, result.Failure.Kind)
 	require.NotContains(t, fmt.Sprintf("%#v", result), "one-use-token")
 }
@@ -341,10 +350,10 @@ func TestTransportAndAvailabilityFailuresAreSafeRetries(t *testing.T) {
 		require.Equal(t, "Bearer one-use-token", request.Header.Get("Authorization"))
 		return nil, errors.New("transport failed with one-use-token")
 	})}
-	client := newClient(t, "https://api.github.test", githubconnector.Config{}, githubconnector.WithHTTPClient(transportClient))
+	client := newClient(t, "https://api.github.test", github.Config{}, github.WithHTTPClient(transportClient))
 	_, err := sdkgo.RunQuery(
 		testsupport.NewDexContext("signup-flow", "transport-step"), client.GetAuthenticatedProfile(), githubConnection,
-		githubconnector.GetAuthenticatedProfileInput{},
+		github.GetAuthenticatedProfileInput{},
 	)
 	var retry *sdkgo.RetryError
 	require.ErrorAs(t, err, &retry)
@@ -355,36 +364,36 @@ func TestTransportAndAvailabilityFailuresAreSafeRetries(t *testing.T) {
 		response.WriteHeader(http.StatusServiceUnavailable)
 	}))
 	defer server.Close()
-	client = newClient(t, server.URL, githubconnector.Config{})
+	client = newClient(t, server.URL, github.Config{})
 	_, err = sdkgo.RunQuery(
 		testsupport.NewDexContext("signup-flow", "availability-step"), client.GetAuthenticatedProfile(), githubConnection,
-		githubconnector.GetAuthenticatedProfileInput{},
+		github.GetAuthenticatedProfileInput{},
 	)
 	require.ErrorAs(t, err, &retry)
 	require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
 }
 
 func TestConfigRejectsUnsafeEndpointAndRepositoryLimits(t *testing.T) {
-	credentials := sdkgo.StaticCredentialProvider[githubconnector.Credentials]{githubConnection: {
+	credentials := sdkgo.StaticCredentialProvider[github.Credentials]{githubConnection: {
 		AccessToken: sdkgo.NewSecretString("one-use-token"),
 	}}
-	_, err := githubconnector.New(githubconnector.Config{BaseURL: "http://github.example"}, credentials)
+	_, err := github.New(github.Config{BaseURL: "http://github.example"}, credentials)
 	require.ErrorContains(t, err, "must use HTTPS")
-	_, err = githubconnector.New(githubconnector.Config{BaseURL: "https://token@api.github.com"}, credentials)
+	_, err = github.New(github.Config{BaseURL: "https://token@api.github.com"}, credentials)
 	require.ErrorContains(t, err, "cannot contain user info")
-	_, err = githubconnector.New(githubconnector.Config{MaxRepositories: 501}, credentials)
+	_, err = github.New(github.Config{MaxRepositories: 501}, credentials)
 	require.ErrorContains(t, err, "cannot exceed 500")
-	_, err = githubconnector.New(githubconnector.Config{APIVersion: "latest"}, credentials)
+	_, err = github.New(github.Config{APIVersion: "latest"}, credentials)
 	require.ErrorContains(t, err, "YYYY-MM-DD")
 }
 
-func newClient(t *testing.T, baseURL string, config githubconnector.Config, options ...githubconnector.Option) *githubconnector.Client {
+func newClient(t *testing.T, baseURL string, config github.Config, options ...github.Option) *github.Client {
 	t.Helper()
 	config.BaseURL = baseURL
-	credentials := sdkgo.StaticCredentialProvider[githubconnector.Credentials]{githubConnection: {
+	credentials := sdkgo.StaticCredentialProvider[github.Credentials]{githubConnection: {
 		AccessToken: sdkgo.NewSecretString("one-use-token"),
 	}}
-	client, err := githubconnector.New(config, credentials, options...)
+	client, err := github.New(config, credentials, options...)
 	require.NoError(t, err)
 	return client
 }

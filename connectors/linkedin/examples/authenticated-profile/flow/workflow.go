@@ -9,7 +9,7 @@ import (
 	"errors"
 	"strings"
 
-	linkedinconnector "github.com/superdurable/dex-connectors-library/connectors/linkedin"
+	"github.com/superdurable/dex-connectors-library/connectors/linkedin"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -27,7 +27,7 @@ const (
 
 var (
 	profileRequestAttribute = dex.DefineAttribute[Input]("linkedin-profile-request")
-	profileAttribute        = dex.DefineAttribute[linkedinconnector.AuthenticatedProfile]("linkedin-authenticated-profile")
+	profileAttribute        = dex.DefineAttribute[linkedin.AuthenticatedProfile]("linkedin-authenticated-profile")
 )
 
 // Input identifies one profile lookup in Dex Web.
@@ -39,11 +39,11 @@ type Input struct {
 // Flow loads the authenticated LinkedIn member's verified profile.
 type Flow struct {
 	dex.FlowDefaults
-	connection linkedinconnector.Connection
+	connection linkedin.Connection
 }
 
 // NewFlow binds the LinkedIn Connection at registration time.
-func NewFlow(connection linkedinconnector.Connection) *Flow {
+func NewFlow(connection linkedin.Connection) *Flow {
 	return &Flow{connection: connection}
 }
 
@@ -54,7 +54,7 @@ func (*Flow) GetFlowType() string { return FlowType }
 func (flow *Flow) GetSteps() []dex.StepDef {
 	return []dex.StepDef{
 		dex.DefineStartStep(recordProfileRequest{}),
-		dex.DefineStep(linkedinconnector.NewGetAuthenticatedProfileStep(linkedinconnector.GetAuthenticatedProfileStepConfig[Input]{
+		dex.DefineStep(linkedin.NewGetAuthenticatedProfileStep(linkedin.GetAuthenticatedProfileStepConfig[Input]{
 			StepType: loadProfileStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
 				GroupID: "linkedin", GroupLabel: "LinkedIn",
@@ -111,18 +111,18 @@ func (*Flow) GetDexDisplay(ctx dex.Context, _ dex.None) (*dex.RPCResult[map[stri
 }
 
 // MapToGetAuthenticatedProfileInput returns the provider Query input.
-func (*Flow) MapToGetAuthenticatedProfileInput(Input) linkedinconnector.GetAuthenticatedProfileInput {
-	return linkedinconnector.GetAuthenticatedProfileInput{}
+func (*Flow) MapToGetAuthenticatedProfileInput(Input) linkedin.GetAuthenticatedProfileInput {
+	return linkedin.GetAuthenticatedProfileInput{}
 }
 
-func profileInspection(ctx dex.Context) (Input, linkedinconnector.AuthenticatedProfile, error) {
+func profileInspection(ctx dex.Context) (Input, linkedin.AuthenticatedProfile, error) {
 	request, err := optionalAttribute(ctx, profileRequestAttribute)
 	if err != nil {
-		return Input{}, linkedinconnector.AuthenticatedProfile{}, err
+		return Input{}, linkedin.AuthenticatedProfile{}, err
 	}
 	profile, err := optionalAttribute(ctx, profileAttribute)
 	if err != nil {
-		return Input{}, linkedinconnector.AuthenticatedProfile{}, err
+		return Input{}, linkedin.AuthenticatedProfile{}, err
 	}
 	return request, profile, nil
 }
@@ -164,12 +164,12 @@ func (recordProfileRequest) Execute(ctx dex.Context, input Input) (*dex.StepDeci
 // dex:group group-id:linkedin group-label:"LinkedIn"
 // dex:explanation text:"Persist the verified LinkedIn profile and complete the Flow."
 type completeProfile struct {
-	dex.StepDefaultsNoWaitFor[linkedinconnector.GetAuthenticatedProfileResult]
+	dex.StepDefaultsNoWaitFor[linkedin.GetAuthenticatedProfileResult]
 }
 
 func (completeProfile) GetStepType() string { return completeProfileStepType }
 
-func (completeProfile) Execute(ctx dex.Context, result linkedinconnector.GetAuthenticatedProfileResult) (*dex.StepDecision, error) {
+func (completeProfile) Execute(ctx dex.Context, result linkedin.GetAuthenticatedProfileResult) (*dex.StepDecision, error) {
 	if err := profileAttribute.Set(ctx, result.Value); err != nil {
 		return nil, err
 	}

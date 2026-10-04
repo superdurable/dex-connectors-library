@@ -4,6 +4,7 @@
 package desk_test
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net/http"
@@ -236,7 +237,7 @@ func TestResponsesThatReflectTheTokenOrExceedTheLimitAreNeverReturned(t *testing
 func TestCredentialFailuresSendNothing(t *testing.T) {
 	provider := newRecordingDesk(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
 	for name, test := range map[string]struct {
-		credentials sdkgo.CredentialProvider[desk.Credentials]
+		credentials desk.CredentialSource
 		branch      sdkgo.BranchID
 		isRetry     bool
 	}{
@@ -269,5 +270,13 @@ type failingCredentialProvider struct {
 }
 
 func (provider failingCredentialProvider) Resolve(sdkgo.Call) (desk.Credentials, error) {
+	return desk.Credentials{}, provider.err
+}
+
+func (provider failingCredentialProvider) ResolveWithRefresh(
+	context.Context,
+	sdkgo.Call,
+	sdkgo.CredentialRefreshDriver[desk.Credentials],
+) (desk.Credentials, error) {
 	return desk.Credentials{}, provider.err
 }

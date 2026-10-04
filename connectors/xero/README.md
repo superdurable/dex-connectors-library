@@ -53,10 +53,10 @@ The client ID is a 32-character hexadecimal string; the secret is shown once.
 The connector exchanges them at `https://identity.xero.com/connect/token`
 with `grant_type=client_credentials` and exactly those three scopes, sending
 the client as HTTP Basic credentials as Xero documents. Xero returns a
-30-minute access token, which the connector requests again five minutes
-before it expires. Locally, `localconfig` writes the token and its expiry
-back to the connection file atomically, so one token serves every Step until
-it nears expiry. A Custom Connection sends no `Xero-Tenant-Id` header,
+30-minute access token. Project storage keeps the token and its expiry and
+replaces them atomically: the first call obtains a token, and it serves every
+Step until it is within five minutes of expiry, when the connector requests a
+new one. A Custom Connection sends no `Xero-Tenant-Id` header,
 because Xero's Custom Connection guide calls the API with the token alone.
 
 This method works in Dex Web today: the form saves a client ID and secret,
@@ -114,36 +114,33 @@ a live Xero app.
 PKCE apps (Xero's "Mobile or desktop app" type) have no client secret and are
 not supported by this release.
 
-## Local configuration
+## Project configuration
 
-Dex Web writes one record per connection. For a Custom Connection, the
-credentials hold `auth_method: custom-connection`, `client_id`, and
-`client_secret`; the connector adds `access_token`, and `localconfig` adds
-`credentialExpiresAt`. For OAuth they hold `auth_method: xero-oauth`, the
-client ID and secret, and the `access_token` and `refresh_token` from
-consent, and the configuration may hold `organisation`.
+Dex Web or Superverse Studio saves one connection record in the project
+configuration. For a Custom Connection, the credentials hold
+`auth_method: custom-connection`, `client_id`, and `client_secret`; the
+connector adds `access_token`, and project storage records its expiry. For
+OAuth they hold `auth_method: xero-oauth`, the client ID and secret, and the
+`access_token` and `refresh_token` from consent, and the configuration may
+hold `organisation`.
 
-Load it with `localconfig.LoadFromEnvironment` and `xero.NewLocalConnection`,
-as [`examples/approved-order/main.go`](examples/approved-order/main.go) does:
+Load the project configuration and open the connection by the name the
+application declares, as
+[`examples/approved-order/main.go`](examples/approved-order/main.go) does:
 
 ```go
-store, err := localconfig.LoadFromEnvironment()
+project, err := projectconfig.LoadFromEnvironment(ctx)
 if err != nil {
 	return err
 }
-connection, err := xero.NewLocalConnection(store, approvedorder.ConnectionName, connectionOptions()...)
+connection, err := xero.NewProjectConnection(project, approvedorder.ConnectionName, connectionOptions()...)
 ```
 
-Credentials are reread before every provider call, so a replaced secret takes
-effect without a restart. The organisation and response limit are startup
-configuration.
-
-## Hosted credentials
-
-In Superverse-hosted deployments, construct the client with the
-operation-scoped broker provider. `DecodeResolvedCredentialsJSON` accepts
-exactly `auth_method` and `access_token` and rejects client secrets, refresh
-tokens, and anything else without repeating a value.
+`LoadFromEnvironment` reads the `DEX_PROJECT_*` environment described in
+[project configuration](../../sdkgo/projectconfig/README.md). Credentials are
+read from project storage before every provider call, so a replaced secret
+takes effect without a restart. The organisation and response limit are
+startup configuration.
 
 ## Amounts, currencies, and Xero values
 
@@ -282,7 +279,7 @@ errors, such as
 | Response | Result |
 | --- | --- |
 | 400 | `providerRejected`, `VALIDATION` |
-| 401 | one token refresh and resend, then `providerRejected`, `AUTHENTICATION` |
+| 401 | `providerRejected`, `AUTHENTICATION`, after one token refresh and resend only when the stored token has expired |
 | 403 | `providerRejected`, `AUTHORIZATION`; an OAuth tenant is read again next time |
 | 404 | `notFound` where declared, otherwise `providerRejected` |
 | 3xx | `providerRejected`, `PROTOCOL`; redirects are never followed |

@@ -9,16 +9,11 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"os"
-	"path/filepath"
-	"strconv"
-	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
 )
 
 const grantedZoomScopes = "meeting:read:list_meetings meeting:read:meeting meeting:write:meeting meeting:update:meeting meeting:read:list_past_participants user:read:user"
@@ -120,67 +115,6 @@ func TestCredentialRefreshIsRequiredForMissingOrExpiringTokens(t *testing.T) {
 	require.False(t, driver.RefreshRequired(sdkgo.CredentialRefreshState[Credentials]{Credentials: credentials, ExpiresAt: &beyondSkew, Now: now}))
 }
 
-func TestLocalConnectionPersistsEveryRotatedRefreshToken(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "connections.json")
-	expired := time.Now().UTC().Add(-time.Minute)
-	writeLocalConnectionsFile(t, path, "expired-access", "first-refresh", expired)
-	store, err := localconfig.LoadFile(path)
-	require.NoError(t, err)
-	var mutex sync.Mutex
-	var presentedRefreshTokens []string
-	httpClient := &http.Client{Transport: tokenRoundTripFunc(func(request *http.Request) (*http.Response, error) {
-		require.NoError(t, request.ParseForm())
-		mutex.Lock()
-		presentedRefreshTokens = append(presentedRefreshTokens, request.PostForm.Get("refresh_token"))
-		exchange := len(presentedRefreshTokens)
-		mutex.Unlock()
-		return tokenResponseForTest(t, http.StatusOK, map[string]any{
-			"access_token": "access-" + strconv.Itoa(exchange), "token_type": "bearer", "expires_in": 3599,
-			"refresh_token": "refresh-" + strconv.Itoa(exchange), "scope": grantedZoomScopes,
-		}), nil
-	})}
-	provider := localconfig.NewRefreshingCredentialProvider(store, ConnectorID, "zoom-host", decodeLocalCredentials, encodeLocalCredentials)
-	driver := NewCredentialRefreshDriver(httpClient)
-	call := sdkgo.Call{Connection: sdkgo.ConnectionRef{Provider: "zoom", Name: "zoom-host"}}
-
-	credentials, err := sdkgo.ResolveCredential(context.Background(), provider, call, driver)
-	require.NoError(t, err)
-	require.Equal(t, "access-1", credentials.AccessToken.Reveal())
-	require.Equal(t, "refresh-1", credentials.RefreshToken.Reveal())
-	_, err = sdkgo.ResolveCredential(context.Background(), provider, call, driver)
-	require.NoError(t, err)
-	require.Equal(t, []string{"first-refresh"}, presentedRefreshTokens, "an unexpired token is not refreshed again")
-
-	credentials, err = sdkgo.ResolveCredentialAfterRejection(context.Background(), provider, call, driver)
-	require.NoError(t, err)
-	require.Equal(t, "access-2", credentials.AccessToken.Reveal())
-	require.Equal(t, []string{"first-refresh", "refresh-1"}, presentedRefreshTokens, "each refresh presents the latest rotated token")
-	contents, err := os.ReadFile(path)
-	require.NoError(t, err)
-	var persisted struct {
-		Connections []struct {
-			Credentials struct {
-				RefreshToken string `json:"refresh_token"`
-			} `json:"credentials"`
-			CredentialExpiresAt time.Time `json:"credentialExpiresAt"`
-		} `json:"connections"`
-	}
-	require.NoError(t, json.Unmarshal(contents, &persisted))
-	require.Len(t, persisted.Connections, 1)
-	require.Equal(t, "refresh-2", persisted.Connections[0].Credentials.RefreshToken)
-	require.True(t, persisted.Connections[0].CredentialExpiresAt.After(time.Now()))
-}
-
-func TestDecodeResolvedCredentialsRejectsRenewalMaterial(t *testing.T) {
-	credentials, err := DecodeResolvedCredentialsJSON(json.RawMessage(`{"access_token":"short-lived"}`))
-	require.NoError(t, err)
-	require.Equal(t, "short-lived", credentials.AccessToken.Reveal())
-	_, err = DecodeResolvedCredentialsJSON(json.RawMessage(`{"access_token":"short-lived","refresh_token":"must-stay-in-the-broker"}`))
-	require.Error(t, err)
-	_, err = DecodeResolvedCredentialsJSON(json.RawMessage(`{"access_token":""}`))
-	require.Error(t, err)
-}
-
 func refreshableCredentials() Credentials {
 	return Credentials{
 		OAuthClientID: "client-id", OAuthClientSecret: sdkgo.NewSecretString("client-secret"),
@@ -196,24 +130,4 @@ func tokenResponseForTest(t *testing.T, status int, body map[string]any) *http.R
 		StatusCode: status, Header: http.Header{"Content-Type": {"application/json"}},
 		Body: io.NopCloser(bytes.NewReader(encoded)),
 	}
-}
-
-func writeLocalConnectionsFile(t *testing.T, path string, accessToken string, refreshToken string, expiresAt time.Time) {
-	t.Helper()
-	file := map[string]any{
-		"schemaVersion": localconfig.SchemaVersion,
-		"connections": []map[string]any{{
-			"connectorId": ConnectorID, "modulePath": "github.com/superdurable/dex-connectors-library/connectors/zoom",
-			"moduleVersion": "v0.1.0", "provider": "zoom", "connectionName": "zoom-host",
-			"configuration": map[string]any{},
-			"credentials": map[string]any{
-				"oauth_client_id": "client-id", "oauth_client_secret": "client-secret",
-				"access_token": accessToken, "refresh_token": refreshToken,
-			},
-			"credentialExpiresAt": expiresAt.Format(time.RFC3339),
-		}},
-	}
-	encoded, err := json.Marshal(file)
-	require.NoError(t, err)
-	require.NoError(t, os.WriteFile(path, encoded, 0o600))
 }

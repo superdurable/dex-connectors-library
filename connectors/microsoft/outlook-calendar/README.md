@@ -62,8 +62,10 @@ returned, the prior one is kept. `invalid_grant`, `invalid_client`,
 reauthorization, and so does a refreshed grant whose `scope` lacks
 `Calendars.ReadWrite` (compared without case, in short or
 `https://graph.microsoft.com/` form). The check never requires
-`offline_access`. A 401 from Graph forces one coordinated refresh and one
-retry, never a refresh loop.
+`offline_access`. After a 401 from Graph the connector asks once for a refresh,
+which the project connection performs only when the stored expiry has passed,
+and then retries once; otherwise the 401 selects `providerRejected`. There is
+never a refresh loop.
 
 ### App-only for one mailbox (`app-only`)
 
@@ -96,12 +98,11 @@ Grant the least privilege an Exchange administrator can scope:
 
 ### Credential storage
 
-The driver never owns persistence. Local development reloads and atomically
-replaces the private `0600` connection file, keeping Dex Web's own record
-members such as `authMethodId`. Hosted applications receive only an
-operation-scoped access token from the Superverse broker, decoded with
-`DecodeResolvedCredentialsJSON`, which rejects renewal material; client
-secrets and refresh tokens stay in the encrypted credential store.
+The driver never owns persistence. The project connection that
+`NewProjectConnection` opens admits one refresh per credential generation
+across application replicas and stores the complete replacement before the call
+uses it. Client secrets and refresh tokens stay in encrypted project storage and
+never enter a Flow.
 
 ## Time
 
@@ -249,20 +250,26 @@ This release has no Triggers. A change-notification Trigger would need:
 
 Until then, poll with `listEvents` from a Timer.
 
-## Local connection
+## Project connection
 
-Name the factory connection and load the same name at application startup, as
+Load the project configuration once at application startup and open the
+connection by the name its operations use, as
 [`examples/book-meeting/main.go`](examples/book-meeting/main.go) does:
 
 ```go
-store, err := localconfig.LoadFromEnvironment()
+project, err := projectconfig.LoadFromEnvironment(ctx)
 if err != nil {
 	return err
 }
-connection, err := outlookcalendar.NewLocalConnection(store, bookmeeting.ConnectionName, connectionOptions()...)
+connection, err := outlookcalendar.NewProjectConnection(project, bookmeeting.ConnectionName, connectionOptions()...)
 ```
 
-Set the same `ConnectionName` beside the typed `Connection` in each operation.
+`projectconfig.LoadFromEnvironment` reads the `DEX_PROJECT_*` configuration
+that Dex Web or Superverse Studio writes; see
+[`sdkgo/projectconfig`](../../../sdkgo/projectconfig/README.md#application-loading).
+Set the same `ConnectionName` beside the typed `Connection` in each operation:
+a Step whose `ConnectionName` is empty or differs from its connection's name
+panics at construction.
 `WithLocalProviderURL` sends Graph and token requests to a loopback fake for
 local verification only; production Workers leave it unset.
 

@@ -4,7 +4,6 @@
 package hubspot_test
 
 import (
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -14,8 +13,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/hubspot"
+	"github.com/superdurable/dex-connectors-library/connectors/hubspot/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -482,8 +481,7 @@ func TestExpiredOAuthTokenIsRefreshedBeforeTheCallAndPersisted(t *testing.T) {
 			"hub_id":1234567,"scopes":["oauth","crm.objects.contacts.read","crm.objects.contacts.write","crm.objects.companies.read",
 			"crm.objects.companies.write","crm.objects.deals.read","crm.objects.deals.write","crm.objects.owners.read"]}`)
 	}}}
-	path := writeOAuthConnectionsFile(t, provider.URL, "expired-access-token", time.Now().Add(-time.Minute))
-	client := newLocalOAuthClient(t, path, httpClient)
+	client, credentials := newOAuthClient(t, provider.URL, "expired-access-token", time.Now().Add(-time.Minute), httpClient)
 	result, err := sdkgo.RunQuery(newStepDexContext("get-with-refresh"), client.GetObject(), hubspotConnection, hubspot.GetObjectInput{
 		ObjectType: hubspot.ObjectTypeContacts, ObjectID: "501",
 	})
@@ -495,10 +493,10 @@ func TestExpiredOAuthTokenIsRefreshedBeforeTheCallAndPersisted(t *testing.T) {
 		"grant_type": {"refresh_token"}, "refresh_token": {"stored-refresh-token"},
 		"client_id": {"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"}, "client_secret": {"oauth-client-secret"},
 	}, tokenForms[0])
-	stored := readStoredCredentials(t, path)
-	require.Equal(t, "refreshed-access-token", stored["access_token"])
-	require.Equal(t, "stored-refresh-token", stored["refresh_token"], "HubSpot omitted a replacement, so the prior refresh token is kept")
-	require.Equal(t, hubspot.OAuthAuthMethodID, stored["auth_method"])
+	stored, _ := credentials.Current()
+	require.Equal(t, "refreshed-access-token", stored.AccessToken.Reveal())
+	require.Equal(t, "stored-refresh-token", stored.RefreshToken.Reveal(), "HubSpot omitted a replacement, so the prior refresh token is kept")
+	require.Equal(t, hubspot.OAuthAuthMethodID, stored.AuthMethodID)
 }
 
 func TestRejectedOAuthTokenIsRefreshedOnceAndResent(t *testing.T) {
@@ -514,8 +512,7 @@ func TestRejectedOAuthTokenIsRefreshedOnceAndResent(t *testing.T) {
 		tokenRequests++
 		writeJSON(t, response, http.StatusOK, `{"token_type":"bearer","access_token":"rotated-access-token","refresh_token":"rotated-refresh-token","expires_in":1800}`)
 	}}}
-	path := writeOAuthConnectionsFile(t, provider.URL, "revoked-but-unexpired-token", time.Now().Add(time.Hour))
-	client := newLocalOAuthClient(t, path, httpClient)
+	client, credentials := newOAuthClient(t, provider.URL, "revoked-but-unexpired-token", time.Now().Add(time.Hour), httpClient)
 	result, err := sdkgo.RunMutation(newStepDexContext("update-after-rejection"), client.UpdateObject(), hubspotConnection, hubspot.UpdateObjectInput{
 		ObjectType: hubspot.ObjectTypeDeals, ObjectID: "9001", Properties: map[string]string{"dealstage": "qualifiedtobuy"},
 	})
@@ -523,7 +520,8 @@ func TestRejectedOAuthTokenIsRefreshedOnceAndResent(t *testing.T) {
 	require.Equal(t, hubspot.UpdateObjectBranchUpdated, result.Branch)
 	require.Equal(t, 1, tokenRequests)
 	require.Len(t, provider.recordedRequests(), 2, "the rejected update is resent once with the replacement token")
-	require.Equal(t, "rotated-refresh-token", readStoredCredentials(t, path)["refresh_token"])
+	stored, _ := credentials.Current()
+	require.Equal(t, "rotated-refresh-token", stored.RefreshToken.Reveal())
 }
 
 func TestRevokedOAuthGrantSelectsProviderRejectedAndStopsRefreshing(t *testing.T) {
@@ -535,8 +533,7 @@ func TestRevokedOAuthGrantSelectsProviderRejectedAndStopsRefreshing(t *testing.T
 		tokenRequests++
 		writeJSON(t, response, http.StatusBadRequest, `{"error":"invalid_grant","status":"BAD_REFRESH_TOKEN","message":"`+providerMessageSentinel+`"}`)
 	}}}
-	path := writeOAuthConnectionsFile(t, provider.URL, "expired-access-token", time.Now().Add(-time.Minute))
-	client := newLocalOAuthClient(t, path, httpClient)
+	client, _ := newOAuthClient(t, provider.URL, "expired-access-token", time.Now().Add(-time.Minute), httpClient)
 	for attempt := 0; attempt < 2; attempt++ {
 		result, err := sdkgo.RunQuery(newStepDexContext("get-revoked"), client.GetObject(), hubspotConnection, hubspot.GetObjectInput{
 			ObjectType: hubspot.ObjectTypeContacts, ObjectID: "501",
@@ -557,29 +554,29 @@ func TestTransientOAuthRefreshFailureIsRetried(t *testing.T) {
 	httpClient := &http.Client{Transport: tokenEndpointTransport{tokenHandler: func(response http.ResponseWriter, _ *http.Request) {
 		writeJSON(t, response, http.StatusBadGateway, `{"error":"invalid_grant"}`)
 	}}}
-	path := writeOAuthConnectionsFile(t, provider.URL, "expired-access-token", time.Now().Add(-time.Minute))
-	client := newLocalOAuthClient(t, path, httpClient)
+	client, credentials := newOAuthClient(t, provider.URL, "expired-access-token", time.Now().Add(-time.Minute), httpClient)
 	_, err := sdkgo.RunQuery(newStepDexContext("get-refresh-outage"), client.GetObject(), hubspotConnection, hubspot.GetObjectInput{
 		ObjectType: hubspot.ObjectTypeContacts, ObjectID: "501",
 	})
 	var retry *sdkgo.RetryError
 	require.ErrorAs(t, err, &retry)
 	require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
-	require.Equal(t, "expired-access-token", readStoredCredentials(t, path)["access_token"], "a failed refresh leaves the file unchanged")
+	stored, _ := credentials.Current()
+	require.Equal(t, "expired-access-token", stored.AccessToken.Reveal(), "a failed refresh leaves the credentials unchanged")
 	require.Empty(t, provider.recordedRequests())
 }
 
-func newLocalOAuthClient(t *testing.T, path string, httpClient *http.Client) *hubspot.Client {
+// newOAuthClient builds a client for one OAuth connection whose access token expires at expiresAt.
+func newOAuthClient(
+	t *testing.T, endpoint string, accessToken string, expiresAt time.Time, httpClient *http.Client,
+) (*hubspot.Client, *testsupport.RefreshingCredentialSource[hubspot.Credentials]) {
 	t.Helper()
-	store, err := localconfig.LoadFile(path)
+	credentials := testsupport.NewRefreshingCredentialSource(hubspot.Credentials{
+		AuthMethodID: hubspot.OAuthAuthMethodID, OAuthClientID: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+		OAuthClientSecret: sdkgo.NewSecretString("oauth-client-secret"), AccessToken: sdkgo.NewSecretString(accessToken),
+		RefreshToken: sdkgo.NewSecretString("stored-refresh-token"),
+	}, &expiresAt)
+	client, err := hubspot.New(hubspot.Config{Endpoint: endpoint}, credentials, hubspot.WithHTTPClient(httpClient))
 	require.NoError(t, err)
-	var config hubspot.Config
-	require.NoError(t, store.DecodeConfiguration(hubspot.ConnectorID, hubspotConnection.Name, &config))
-	credentials := localconfig.NewRefreshingCredentialProvider(store, hubspot.ConnectorID, hubspotConnection.Name,
-		hubspot.DecodeCredentialsJSON, func(credentials hubspot.Credentials) (json.RawMessage, error) {
-			return hubspot.EncodeCredentialsJSON(credentials)
-		})
-	client, err := hubspot.New(config, credentials, hubspot.WithHTTPClient(httpClient))
-	require.NoError(t, err)
-	return client
+	return client, credentials
 }

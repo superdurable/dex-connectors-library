@@ -54,40 +54,26 @@ Credentials are reread before every provider call, so replacing a key in Dex
 Web takes effect without a restart. The company domain and response limit are
 startup configuration.
 
-## Local configuration
+## Project configuration
 
-Dex Web writes this record for the connection name the examples use:
-
-```json
-{
-  "connectorId": "bamboohr",
-  "modulePath": "github.com/superdurable/dex-connectors-library/connectors/bamboohr",
-  "moduleVersion": "v0.1.0",
-  "provider": "bamboohr",
-  "connectionName": "bamboohr-company",
-  "configuration": {"companyDomain": "mycompany"},
-  "credentials": {"api_key": "..."}
-}
-```
-
-Load it with `localconfig.LoadFromEnvironment` and
-`bamboohr.NewLocalConnection`, as
+Name the factory connection and open the same name from the project
+configuration at application startup, as
 [`examples/new-hire-onboarding/main.go`](examples/new-hire-onboarding/main.go)
 does:
 
 ```go
-store, err := localconfig.LoadFromEnvironment()
+project, err := projectconfig.LoadFromEnvironment(ctx)
 if err != nil {
 	return err
 }
-connection, err := bamboohr.NewLocalConnection(store, newhireonboarding.ConnectionName, connectionOptions()...)
+connection, err := bamboohr.NewProjectConnection(project, newhireonboarding.ConnectionName, connectionOptions()...)
 ```
 
-## Hosted credentials
-
-In Superverse-hosted deployments, construct the client with the
-operation-scoped broker provider. `DecodeResolvedCredentialsJSON` accepts
-exactly `api_key` and rejects anything else without repeating the value.
+Dex Web or Superverse Studio writes that configuration, and the application
+reads it through the `DEX_PROJECT_*` environment described in
+[project configuration loading](../../sdkgo/projectconfig/README.md#application-loading).
+The stored credential holds exactly `api_key`; the connector resolves it for
+every call and rejects anything else without repeating the value.
 
 ## BambooHR's own vocabulary
 

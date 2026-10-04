@@ -41,14 +41,14 @@ func TestFactoriesRequireOnlyTheHappyPathBranch(t *testing.T) {
 			Uploaded:            sdkgo.GoTo(uploadTarget{}),
 		})
 		drive.NewSearchFilesStep(drive.SearchFilesStepConfig[string]{
-			StepType: "Search", Annotations: testAnnotations, Connection: connection,
+			StepType: "Search", Annotations: testAnnotations, Connection: connection, ConnectionName: "drive-files",
 			MapToOperationInput: func(string) drive.SearchFilesInput { return drive.SearchFilesInput{} },
 			Found:               sdkgo.GoTo(searchTarget{}), NotFound: sdkgo.GoTo(searchTarget{}),
 		})
 	})
 	require.Panics(t, func() {
 		drive.NewUploadFileStep(drive.UploadFileStepConfig[string]{
-			StepType: "Upload", Annotations: testAnnotations, Connection: connection,
+			StepType: "Upload", Annotations: testAnnotations, Connection: connection, ConnectionName: "drive-files",
 			MapToOperationInput: func(string) drive.UploadFileInput { return drive.UploadFileInput{} },
 			Uncertain:           sdkgo.GoTo(uploadTarget{}),
 		})

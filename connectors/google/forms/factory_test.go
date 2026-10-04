@@ -41,14 +41,14 @@ func TestFactoriesRequireOnlyTheHappyPathBranch(t *testing.T) {
 			Listed:              sdkgo.GoTo(listTarget{}),
 		})
 		forms.NewGetFormStep(forms.GetFormStepConfig[string]{
-			StepType: "Read", Annotations: testAnnotations, Connection: connection,
+			StepType: "Read", Annotations: testAnnotations, Connection: connection, ConnectionName: formsConnection.Name,
 			MapToOperationInput: func(string) forms.GetFormInput { return forms.GetFormInput{} },
 			Found:               sdkgo.GoTo(formTarget{}), NotFound: sdkgo.GoTo(formTarget{}),
 		})
 	})
 	require.Panics(t, func() {
 		forms.NewGetFormStep(forms.GetFormStepConfig[string]{
-			StepType: "Read", Annotations: testAnnotations, Connection: connection,
+			StepType: "Read", Annotations: testAnnotations, Connection: connection, ConnectionName: formsConnection.Name,
 			MapToOperationInput: func(string) forms.GetFormInput { return forms.GetFormInput{} },
 			NotFound:            sdkgo.GoTo(formTarget{}),
 		})

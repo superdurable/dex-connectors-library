@@ -8,8 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -17,7 +15,6 @@ import (
 	outlookmail "github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-mail"
 	"github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-mail/internal/graphtest"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -45,74 +42,34 @@ func newGraphFake(t *testing.T) *graphtest.Server {
 	})
 }
 
-// delegatedClient connects as Dex Web leaves a delegated connection after consent: tokens in the local file.
-func delegatedClient(t *testing.T, fake *graphtest.Server, options ...outlookmail.Option) (*outlookmail.Client, string) {
+// testCredentialHost holds a test connection's credentials the way an application credential store does.
+type testCredentialHost = graphtest.CredentialHost[outlookmail.Credentials]
+
+// delegatedClient connects as Dex Web leaves a delegated connection after consent: tokens valid for an hour.
+func delegatedClient(t *testing.T, fake *graphtest.Server, options ...outlookmail.Option) (*outlookmail.Client, *testCredentialHost) {
 	t.Helper()
+	consented := delegatedCredentials()
+	consented.AccessToken = sdkgo.NewSecretString(fake.IssueDelegatedAccessToken())
 	expiresAt := time.Now().Add(time.Hour)
-	path := writeConnectionFile(t, map[string]any{}, map[string]any{
-		"auth_method": outlookmail.MicrosoftOAuthAuthMethodID, "client_id": testClientID(), "client_secret": testClientSecret,
-		"access_token": fake.IssueDelegatedAccessToken(), "refresh_token": testRefreshToken,
-	}, &expiresAt)
-	return clientFromConnectionFile(t, fake, path, outlookmail.Config{}, options...), path
+	credentials := graphtest.NewCredentialHost(consented, &expiresAt)
+	return newHostedClient(t, fake, outlookmail.Config{}, credentials, options...), credentials
 }
 
 // appOnlyClient connects with client credentials and no stored token, as Dex Web saves the app-only form.
-func appOnlyClient(t *testing.T, fake *graphtest.Server, mailbox string) (*outlookmail.Client, string) {
+func appOnlyClient(t *testing.T, fake *graphtest.Server, mailbox string) (*outlookmail.Client, *testCredentialHost) {
 	t.Helper()
-	path := writeConnectionFile(t, map[string]any{"mailbox": mailbox}, map[string]any{
-		"auth_method": outlookmail.AppOnlyAuthMethodID, "tenant_id": testTenantID, "client_id": testClientID(),
-		"client_secret": testClientSecret,
+	credentials := graphtest.NewCredentialHost(outlookmail.Credentials{
+		AuthMethodID: outlookmail.AppOnlyAuthMethodID, TenantID: testTenantID, ClientID: testClientID(),
+		ClientSecret: sdkgo.NewSecretString(testClientSecret),
 	}, nil)
-	return clientFromConnectionFile(t, fake, path, outlookmail.Config{Mailbox: mailbox}), path
+	return newHostedClient(t, fake, outlookmail.Config{Mailbox: mailbox}, credentials), credentials
 }
 
-func clientFromConnectionFile(t *testing.T, fake *graphtest.Server, path string, config outlookmail.Config, options ...outlookmail.Option) *outlookmail.Client {
+func newHostedClient(t *testing.T, fake *graphtest.Server, config outlookmail.Config, credentials *testCredentialHost, options ...outlookmail.Option) *outlookmail.Client {
 	t.Helper()
-	store, err := localconfig.LoadFile(path)
-	require.NoError(t, err)
-	credentials := localconfig.NewRefreshingCredentialProvider(store, outlookmail.ConnectorID, outlookConnection.Name,
-		outlookmail.DecodeCredentialsJSON, func(credentials outlookmail.Credentials) (json.RawMessage, error) {
-			return outlookmail.EncodeCredentialsJSON(credentials)
-		})
 	client, err := outlookmail.New(config, credentials, append([]outlookmail.Option{outlookmail.WithLocalProviderURL(fake.URL)}, options...)...)
 	require.NoError(t, err)
 	return client
-}
-
-// writeConnectionFile writes the record Dex Web saves for this connector's connection.
-func writeConnectionFile(t *testing.T, configuration map[string]any, credentials map[string]any, expiresAt *time.Time) string {
-	t.Helper()
-	record := map[string]any{
-		"connectorId": outlookmail.ConnectorID, "modulePath": "github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-mail",
-		"moduleVersion": "v0.1.0", "provider": "microsoft", "connectionName": outlookConnection.Name,
-		"configuration": configuration, "credentials": credentials, "authMethodId": credentials["auth_method"],
-	}
-	if expiresAt != nil {
-		record["credentialExpiresAt"] = expiresAt.UTC().Format(time.RFC3339Nano)
-	}
-	contents, err := json.Marshal(map[string]any{"schemaVersion": localconfig.SchemaVersion, "connections": []any{record}})
-	require.NoError(t, err)
-	path := filepath.Join(t.TempDir(), "connections.json")
-	require.NoError(t, os.WriteFile(path, contents, 0o600))
-	return path
-}
-
-// readStoredCredentials returns the credential object and status of the connection file's only record.
-func readStoredCredentials(t *testing.T, path string) (map[string]any, string) {
-	t.Helper()
-	contents, err := os.ReadFile(path)
-	require.NoError(t, err)
-	var file struct {
-		Connections []struct {
-			Credentials      map[string]any `json:"credentials"`
-			CredentialStatus string         `json:"credentialStatus"`
-			AuthMethodID     string         `json:"authMethodId"`
-		} `json:"connections"`
-	}
-	require.NoError(t, json.Unmarshal(contents, &file))
-	require.Len(t, file.Connections, 1)
-	require.Equal(t, file.Connections[0].Credentials["auth_method"], file.Connections[0].AuthMethodID, "a refresh keeps Dex Web's record members")
-	return file.Connections[0].Credentials, file.Connections[0].CredentialStatus
 }
 
 func seedCustomerMessage(fake *graphtest.Server, subject string, receivedAt time.Time) string {

@@ -8,7 +8,7 @@
 //
 // Applications use the generated operation-specific Step factories, such as
 // NewGetDocumentTextStep and NewReplaceDocumentTextStep, with a Connection
-// built by NewLocalConnection or NewConnection. The runnable example in
+// built by NewProjectConnection or NewConnection. The runnable example in
 // examples/policy-publish uses every operation in one Flow.
 package docs
 
@@ -72,7 +72,7 @@ type Client struct {
 	driveBaseURL       string
 	driveUploadBaseURL string
 	httpClient         *http.Client
-	credentials        sdkgo.CredentialProvider[Credentials]
+	credentials        CredentialSource
 	refreshDriver      sdkgo.CredentialRefreshDriver[Credentials]
 	maxResponseBytes   int64
 	maxTextBytes       int64
@@ -124,7 +124,7 @@ type readOutcome struct {
 // New validates configuration and constructs an authenticated Google Docs client.
 // It fails when an endpoint is not HTTPS (loopback HTTP is accepted for tests),
 // a limit is outside its documented range, or credentials is nil.
-func New(config Config, credentials sdkgo.CredentialProvider[Credentials], options ...Option) (*Client, error) {
+func New(config Config, credentials CredentialSource, options ...Option) (*Client, error) {
 	config = withConfigDefaults(config)
 	if err := config.Validate(); err != nil {
 		return nil, err

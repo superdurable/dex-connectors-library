@@ -5,7 +5,7 @@ metadata:
   displayName: Amazon S3
   description: List, inspect, and read bounded text from objects in Amazon S3 or an S3-compatible store such as Cloudflare R2 or MinIO, and store objects with retry-safe overwrite or create-only writes.
   company: Amazon
-  version: v0.1.0
+  version: v0.21.0
 spec:
   provider: amazon-s3
   codegen:

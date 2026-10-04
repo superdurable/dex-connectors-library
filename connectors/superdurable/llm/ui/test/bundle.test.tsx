@@ -18,20 +18,20 @@ import { llmModelPickerBundleConfig } from "../src/bundle-config.js";
 
 (globalThis as {IS_REACT_ACT_ENVIRONMENT?: boolean}).IS_REACT_ACT_ENVIRONMENT = true;
 
-const summaryModelTarget: ConnectorStudioTarget = {
+const summaryModelTarget = (value: Record<string, unknown> = {}): ConnectorStudioTarget => ({
   kind: "configurationUnit",
   scope: {kind: "operation", operationId: "generateText", flowType: "LLMSummarizeText", stepType: "SummarizeText"},
   instanceId: "summaryModel", unitId: "modelPicker", label: "Summary model", required: false,
-  bindings: [{port: "model", jsonPointer: "/model"}], value: {},
-};
+  bindings: [{port: "model", jsonPointer: "/model"}], value,
+});
 
 // The host renders the modelPicker unit for the connection's model field, as the manifest's studioUnit declares.
 const connectionModelTarget = (value: Record<string, unknown> = {}): ConnectorStudioTarget => ({
   kind: "connection", unitId: "modelPicker", bindings: [{port: "model", jsonPointer: "/model"}], value,
 });
 
-const connection = (authMethodIds: string[], configuration: Record<string, unknown>): ConnectorConnectionView => ({
-  state: "connected", grantedScopes: [], authMethodIds, configuration,
+const connection = (configuration: Record<string, unknown>): ConnectorConnectionView => ({
+  state: "connected", grantedScopes: [], authMethodIds: [], configuration,
 });
 
 const hostReady = (connectionView: ConnectorConnectionView, target: ConnectorStudioTarget): ConnectorStudioHostReady => ({
@@ -40,9 +40,8 @@ const hostReady = (connectionView: ConnectorConnectionView, target: ConnectorStu
 });
 
 const providerLists: Record<string, Record<string, unknown>> = {
-  listOpenAIModels: {data: [{id: "gpt-6-sol", created: 1}]},
-  listAnthropicModels: {data: [{id: "claude-sonnet-5", display_name: "Claude Sonnet 5"}], has_more: false},
-  listGeminiModels: {models: [{name: "models/gemini-3.8-flash", supportedGenerationMethods: ["generateContent"]}]},
+  listAnthropicModels: {data: [{id: "claude-sonnet-5", display_name: "Claude Sonnet 5"}, {id: "claude-opus-5-5"}], has_more: false},
+  listDeepSeekModels: {data: [{id: "deepseek-flash", name: "DeepSeek-V4.1-Flash"}, {id: "deepseek-v4-pro"}]},
 };
 
 const unmountCallbacks: Array<() => void> = [];
@@ -106,65 +105,95 @@ function saveButton(container: HTMLElement): HTMLButtonElement {
   return button;
 }
 
+async function typeModel(container: HTMLElement, model: string): Promise<void> {
+  const input = container.querySelector<HTMLInputElement>('input[type="text"]');
+  if (!input) throw new Error("model ID entry is missing");
+  await act(async () => {
+    const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+    setValue?.call(input, model);
+    input.dispatchEvent(new Event("input", {bubbles: true}));
+  });
+}
+
 function providerCommandIDs(commands: ConnectorStudioCommand[]): string[] {
   return commands.filter((command) => command.command === "provider.command.execute").map((command) => String(command.input?.commandId));
 }
 
 describe("the llm Studio bundle on a Step", () => {
-  it("lists only the added providers and names the connection's model in the first option", async () => {
+  it("lists the connection provider's models and names the connection's model in the first option", async () => {
     const commands = answerHostCommands();
-    const container = await renderBundle(hostReady(connection(["gemini", "anthropic"], {model: "anthropic/claude-sonnet-5"}), summaryModelTarget));
-    await waitForOptions(container, ["", "anthropic", "gemini", "anthropic/claude-sonnet-5", "gemini/gemini-3.8-flash"]);
-    expect(firstOptionLabel(container)).toBe("Connection default (anthropic/claude-sonnet-5)");
-    expect(providerCommandIDs(commands)).toEqual(["listAnthropicModels", "listGeminiModels"]);
-    expect(container.textContent).not.toContain("OpenAI default model");
-    expect(JSON.stringify(commands), "the bundle never names a key field").not.toContain("_api_key");
+    const container = await renderBundle(hostReady(connection({provider: "anthropic", model: "claude-opus-5-5"}), summaryModelTarget()));
+    await waitForOptions(container, ["", "claude-sonnet-5", "claude-opus-5-5"]);
+    expect(firstOptionLabel(container)).toBe("Connection default (claude-opus-5-5)");
+    expect(providerCommandIDs(commands)).toEqual(["listAnthropicModels"]);
+    expect(JSON.stringify(commands), "the bundle never names the key field").not.toContain("api_key");
   });
 
-  it("names the first added provider's default model when the connection has no model", async () => {
-    answerHostCommands();
-    const container = await renderBundle(hostReady(connection(["openai"], {}), summaryModelTarget));
-    await waitForOptions(container, ["", "openai", "openai/gpt-6-sol"]);
-    expect(firstOptionLabel(container)).toBe("Connection default (the first added provider's default model)");
+  it("names the provider's default model when the connection has no model, and saves a bare model ID", async () => {
+    const commands = answerHostCommands();
+    const container = await renderBundle(hostReady(connection({provider: "deepseek"}), summaryModelTarget()));
+    await waitForOptions(container, ["", "deepseek-flash", "deepseek-v4-pro"]);
+    expect(firstOptionLabel(container)).toBe("Connection default (the provider's default model)");
+    expect(providerCommandIDs(commands)).toEqual(["listDeepSeekModels"]);
+
+    await act(async () => { container.querySelector<HTMLInputElement>('input[type="radio"][value="deepseek-v4-pro"]')?.click(); });
+    await act(async () => { saveButton(container).click(); });
+    const saves = commands.filter((command) => command.command === "use.configuration.save");
+    expect(saves.map((command) => command.input)).toEqual([{value: {model: "deepseek-v4-pro"}}]);
   });
 
-  it("lists every provider on a host that reports no auth methods", async () => {
+  it("offers model ID entry when the provider's list fails, and blocks an ID with spaces", async () => {
     const commands = answerHostCommands();
-    const container = await renderBundle(hostReady({state: "connected", grantedScopes: []}, summaryModelTarget));
-    await waitForOptions(container, [
-      "", "openai", "anthropic", "gemini", "openai/gpt-6-sol", "anthropic/claude-sonnet-5", "gemini/gemini-3.8-flash",
-    ]);
-    expect(firstOptionLabel(container)).toBe("Use the connection's default model");
-    expect(providerCommandIDs(commands)).toEqual(["listOpenAIModels", "listAnthropicModels", "listGeminiModels"]);
+    const container = await renderBundle(hostReady(connection({provider: "kimi", region: "china"}), summaryModelTarget()));
+    await vi.waitFor(async () => {
+      await act(async () => {});
+      expect(container.textContent).toContain("The Kimi model list failed");
+    });
+    expect(providerCommandIDs(commands)).toEqual(["listKimiModelsChina"]);
+    await typeModel(container, "kimi k3");
+    expect(saveButton(container).disabled).toBe(true);
+    await typeModel(container, " kimi-k3 ");
+    expect(saveButton(container).disabled).toBe(false);
+    await act(async () => { saveButton(container).click(); });
+    const saves = commands.filter((command) => command.command === "use.configuration.save");
+    expect(saves.map((command) => command.input)).toEqual([{value: {model: "kimi-k3"}}]);
+  });
+
+  it("runs no provider command before the connection saves a provider", async () => {
+    const commands = answerHostCommands();
+    const container = await renderBundle(hostReady(connection({}), summaryModelTarget({model: "gpt-6-luna"})));
+    await waitForOptions(container, [""]);
+    expect(container.textContent).toContain("Save the connection with its provider and api_key first");
+    expect(providerCommandIDs(commands)).toEqual([]);
+    expect(container.querySelector<HTMLInputElement>('input[type="text"]')?.value, "a saved pick stays editable").toBe("gpt-6-luna");
   });
 });
 
 describe("the llm Studio bundle on the connection's model field", () => {
-  it("offers the added providers' models and saves the default model with use.configuration.save", async () => {
+  it("offers the provider's models and saves the default model with use.configuration.save", async () => {
     const commands = answerHostCommands();
-    const container = await renderBundle(hostReady(connection(["gemini", "openai"], {}), connectionModelTarget()));
-    await waitForOptions(container, ["", "openai", "gemini", "openai/gpt-6-sol", "gemini/gemini-3.8-flash"]);
-    expect(firstOptionLabel(container)).toBe("Connector default (the first added provider's default model)");
+    const container = await renderBundle(hostReady(connection({provider: "anthropic"}), connectionModelTarget()));
+    await waitForOptions(container, ["", "claude-sonnet-5", "claude-opus-5-5"]);
+    expect(firstOptionLabel(container)).toBe("Connector default (the provider's default model)");
     expect(container.querySelector<HTMLInputElement>('input[type="radio"][value=""]')?.checked).toBe(true);
-    expect(providerCommandIDs(commands)).toEqual(["listOpenAIModels", "listGeminiModels"]);
 
-    await act(async () => { container.querySelector<HTMLInputElement>('input[type="radio"][value="gemini/gemini-3.8-flash"]')?.click(); });
+    await act(async () => { container.querySelector<HTMLInputElement>('input[type="radio"][value="claude-opus-5-5"]')?.click(); });
     await act(async () => { saveButton(container).click(); });
     const saves = commands.filter((command) => command.command === "use.configuration.save");
-    expect(saves.map((command) => command.input)).toEqual([{value: {model: "gemini/gemini-3.8-flash"}}]);
+    expect(saves.map((command) => command.input)).toEqual([{value: {model: "claude-opus-5-5"}}]);
   });
 
   it("shows the saved connection model as selected", async () => {
     answerHostCommands();
-    const container = await renderBundle(hostReady(connection(["anthropic"], {model: "anthropic/claude-sonnet-5"}),
-      connectionModelTarget({model: "anthropic/claude-sonnet-5"})));
-    await waitForOptions(container, ["", "anthropic", "anthropic/claude-sonnet-5"]);
-    expect(container.querySelector<HTMLInputElement>('input[type="radio"][value="anthropic/claude-sonnet-5"]')?.checked).toBe(true);
+    const container = await renderBundle(hostReady(connection({provider: "anthropic", model: "claude-sonnet-5"}),
+      connectionModelTarget({model: "claude-sonnet-5"})));
+    await waitForOptions(container, ["", "claude-sonnet-5", "claude-opus-5-5"]);
+    expect(container.querySelector<HTMLInputElement>('input[type="radio"][value="claude-sonnet-5"]')?.checked).toBe(true);
   });
 
   it("keeps the connection setup surface a status card that lists no models", async () => {
     const commands = answerHostCommands();
-    const container = await renderBundle(hostReady(connection(["openai"], {}), {kind: "connection"}));
+    const container = await renderBundle(hostReady(connection({provider: "openai"}), {kind: "connection"}));
     expect(container.textContent).toContain("Connected.");
     expect(container.querySelector('input[type="radio"]')).toBeNull();
     expect(commands).toEqual([]);

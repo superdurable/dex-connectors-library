@@ -6,7 +6,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -23,7 +22,8 @@ import (
 	"github.com/superdurable/dex-connectors-library/connectors/slack"
 	threadapproval "github.com/superdurable/dex-connectors-library/connectors/slack/examples/thread-approval/flow"
 	"github.com/superdurable/dex-connectors-library/connectors/slack/internal/testlog"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -95,57 +95,50 @@ func TestWaitForDexServerStopsWhenContextEnds(t *testing.T) {
 	require.Empty(t, logs.Records(), "a check that failed because the context ended is not a retry")
 }
 
-// TestRunWaitsForUnreachableDexServerAndStopsCleanly starts the example while no Dex Server is listening.
-func TestRunWaitsForUnreachableDexServerAndStopsCleanly(t *testing.T) {
+// TestRunUntilStoppedWaitsForUnreachableDexServerAndStopsCleanly runs the example's Worker and Trigger runner,
+// wired as run wires them, while no Dex Server is listening.
+func TestRunUntilStoppedWaitsForUnreachableDexServerAndStopsCleanly(t *testing.T) {
 	logs := testlog.NewLogRecorder()
 	slackAPI := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
 		_, _ = response.Write([]byte(`{"ok":false,"error":"not_authed"}`))
 	}))
 	t.Cleanup(slackAPI.Close)
-	directory := t.TempDir()
-	configPath := filepath.Join(directory, "connections.json")
-	contents, err := json.Marshal(map[string]any{
-		"schemaVersion": localconfig.SchemaVersion,
-		"connections": []any{map[string]any{
-			"connectorId": slack.ConnectorID, "modulePath": "github.com/superdurable/dex-connectors-library/connectors/slack",
-			"moduleVersion": "v0.8.0", "provider": "slack", "connectionName": threadapproval.ConnectionName,
-			"configuration": map[string]any{"endpoint": slackAPI.URL},
-			"credentials": map[string]any{
-				"bot_token": "SENTINEL-BOT-TOKEN", "user_token": "SENTINEL-USER-TOKEN", "app_token": "SENTINEL-APP-TOKEN",
-			},
-		}},
-		"triggerBindings": []any{
-			map[string]any{"connectorId": slack.ConnectorID, "connectionName": threadapproval.ConnectionName,
-				"triggerName": "channelThreadCreated", "bindingName": threadapproval.StartTriggerBinding,
-				"configuration": map[string]any{"channelId": "C1", "threadTriggerMatcher": map[string]any{"messageContains": "request approval"}}},
-			map[string]any{"connectorId": slack.ConnectorID, "connectionName": threadapproval.ConnectionName,
-				"triggerName": "threadReplyCreated", "bindingName": threadapproval.ReplyTriggerBinding,
-				"configuration": map[string]any{"channelId": "C1", "threadReplyMatcher": map[string]any{"messageContains": "approve", "posterUserIds": []string{"U2"}}}},
-		},
-	})
+	reference := sdkgo.ConnectionRef{Provider: "slack", Name: threadapproval.ConnectionName}
+	slackClient, err := slack.New(slack.Config{Endpoint: slackAPI.URL}, sdkgo.StaticCredentialProvider[slack.Credentials]{reference: {
+		BotToken: sdkgo.NewSecretString("SENTINEL-BOT-TOKEN"), UserToken: sdkgo.NewSecretString("SENTINEL-USER-TOKEN"),
+		AppToken: sdkgo.NewSecretString("SENTINEL-APP-TOKEN"),
+	}}, slack.WithLogger(logs.Logger()))
 	require.NoError(t, err)
-	require.NoError(t, os.WriteFile(configPath, contents, 0o600))
-	// The example requires the completion reply that Dex Web saves beside the connection file.
-	reference := threadapproval.PostCompletionConfigurationRef()
-	useConfigurations, err := json.Marshal(map[string]any{
-		"schemaVersion": localconfig.UseConfigurationsSchemaVersion,
-		"operationConfigurations": []any{map[string]any{
-			"connectorId": reference.ConnectorID, "connectionName": reference.ConnectionName, "operationId": reference.OperationID,
-			"flowType": reference.FlowType, "stepType": reference.StepType, "configuration": map[string]any{"text": "Processing complete."},
-		}},
-	})
+	connection, err := slack.NewConnection(slackClient, reference)
 	require.NoError(t, err)
-	require.NoError(t, os.WriteFile(filepath.Join(directory, localconfig.UseConfigurationsFileName), useConfigurations, 0o600))
-	t.Setenv(localconfig.EnvironmentVariable, configPath)
+	registry, err := dex.NewRegistry([]dex.Flow{threadapproval.NewFlow(connection)})
+	require.NoError(t, err)
+	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 1 << 20})
+	require.NoError(t, err)
 	// A Unix socket that nothing listens on makes the Dex Server unreachable without binding a TCP port.
-	t.Setenv("DEX_FLOW_SERVICE_ADDRESS", "unix://"+filepath.Join(os.TempDir(), fmt.Sprintf("dex-missing-%d.sock", time.Now().UnixNano())))
-	t.Setenv("DEX_WORKER_BIND_ADDRESS", "127.0.0.1:"+unusedPort(t))
-	t.Setenv("DEX_BLOB_CACHE_DIR", filepath.Join(directory, "blobs"))
+	unreachableDex := "unix://" + filepath.Join(os.TempDir(), fmt.Sprintf("dex-missing-%d.sock", time.Now().UnixNano()))
+	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{BindAddress: "127.0.0.1:" + unusedPort(t), FlowServiceAddress: unreachableDex})
+	require.NoError(t, err)
+	client, err := dex.NewClient(registry, cache, dex.ClientOptions{FlowServiceAddress: unreachableDex, WorkerTarget: worker.WorkerTarget()})
+	require.NoError(t, err)
+	triggerRunner, err := slack.NewMessageTriggerRunner(slack.MessageTriggerRunnerConfig{
+		Connection: connection,
+		ChannelThreadCreatedRoutes: []slack.ChannelThreadCreatedTriggerRoute{{
+			BindingName: threadapproval.StartTriggerBinding,
+			Configuration: slack.ChannelThreadCreatedTriggerConfiguration{
+				ChannelID: "C1", ThreadTriggerMatcher: slack.MessageMatcher{MessageContains: "request approval"},
+			},
+			Target: sdkgo.TriggerTargetFunc[slack.MessageEvent](func(context.Context, sdkgo.TriggerEvent[slack.MessageEvent]) error {
+				return errors.New("the Trigger runner must not start before the Dex Server answers")
+			}),
+		}},
+	})
+	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	result := make(chan error, 1)
-	go func() { result <- run(ctx, logs.Logger()) }()
+	go func() { result <- runUntilStopped(ctx, worker, triggerRunner, client.HealthCheck, logs.Logger()) }()
 	require.Never(t, func() bool { return len(result) > 0 }, 2*time.Second, 50*time.Millisecond,
 		"the example must wait for the Dex Server instead of exiting")
 	waits := logs.Find("dex server unavailable; retrying", nil)
@@ -153,6 +146,7 @@ func TestRunWaitsForUnreachableDexServerAndStopsCleanly(t *testing.T) {
 	require.Equal(t, slog.LevelWarn, waits[0].Level)
 	require.Equal(t, "1", waits[0].Attrs["attempt"])
 	require.Equal(t, "250ms", waits[0].Attrs["delay"])
+	require.Empty(t, logs.Find("slack socket mode connected", nil), "the Trigger runner waits for the Dex Server")
 	require.NotContains(t, logs.Text(), "SENTINEL")
 	cancel()
 	select {
@@ -161,6 +155,7 @@ func TestRunWaitsForUnreachableDexServerAndStopsCleanly(t *testing.T) {
 	case <-time.After(15 * time.Second):
 		t.Fatal("the example did not stop after cancellation")
 	}
+	require.NoError(t, errors.Join(client.Close(), stopWorker(worker), cache.Close()))
 }
 
 // unusedPort returns a free local port for a Worker bind address that the test never starts.

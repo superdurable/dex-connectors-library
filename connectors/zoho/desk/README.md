@@ -115,37 +115,26 @@ organization is chosen. Studio commands send the stored access token, which
 Dex Web does not refresh, so run the picker soon after **Connect** or
 **Reconnect**.
 
-## Local configuration
+## Project configuration
 
-Dex Web writes this record for the connection name the application uses:
-
-```json
-{
-  "connectorId": "zoho-desk",
-  "modulePath": "github.com/superdurable/dex-connectors-library/connectors/zoho/desk",
-  "moduleVersion": "v0.1.0",
-  "provider": "zoho",
-  "connectionName": "zoho-desk-helpdesk",
-  "authMethodId": "zoho-eu-oauth",
-  "configuration": {"orgId": "2389290"},
-  "credentials": {"auth_method": "zoho-eu-oauth", "oauth_client_id": "...", "oauth_client_secret": "...", "access_token": "...", "refresh_token": "..."},
-  "credentialExpiresAt": "2026-09-30T10:00:00Z"
-}
-```
-
-Load it with `localconfig.LoadFromEnvironment` and `desk.NewLocalConnection`,
-as [`examples/triage-issue/main.go`](examples/triage-issue/main.go) does:
+Dex Web or Superverse Studio saves the connection's `orgId`, data center, and
+credentials in the project configuration. The application loads that
+configuration once and opens the connection by the name it declares, as
+[`examples/triage-issue/main.go`](examples/triage-issue/main.go) does:
 
 ```go
-store, err := localconfig.LoadFromEnvironment()
+project, err := projectconfig.LoadFromEnvironment(ctx)
 if err != nil {
 	return err
 }
-connection, err := desk.NewLocalConnection(store, triageissue.ConnectionName, connectionOptions()...)
+connection, err := desk.NewProjectConnection(project, triageissue.ConnectionName, connectionOptions()...)
 ```
 
-Credentials are reread, and refreshed when due, before every provider call;
-`orgId` and `maxResponseBytes` are startup configuration.
+`LoadFromEnvironment` reads the `DEX_PROJECT_*` environment described in
+[project configuration](../../../sdkgo/projectconfig/README.md). Credentials
+are read from project storage during every provider call and refreshed first
+when the access token is missing, has no recorded expiry, or expires within
+five minutes; `orgId` and `maxResponseBytes` are startup configuration.
 
 ## Token refresh
 
@@ -162,16 +151,11 @@ throttle of ten tokens per ten minutes, is retried. Zoho's documented token
 responses carry no `scope`, so the driver checks none, and a lost scope
 surfaces as `SCOPE_MISMATCH` on the next request.
 
-When Zoho Desk answers 401, the connector forces one coordinated refresh and
-sends the request once more, because Zoho Desk rejects an expired or revoked
-token before acting on it. A second 401 selects `providerRejected`.
-
-## Hosted credentials
-
-In Superverse-hosted deployments, construct the client with the
-operation-scoped broker provider and `DecodeResolvedCredentialsJSON`, which
-accepts exactly `auth_method`, which selects the data center, and
-`access_token`, and rejects refresh tokens and client secrets.
+When Zoho Desk answers 401, the connector asks once for a refresh. Project
+storage refreshes only when the recorded expiry has passed, and the connector
+then sends the request once more, because Zoho Desk rejects an expired or
+revoked token before acting on it. Otherwise, or after a second 401, the 401
+selects `providerRejected`.
 
 ## Statuses, status types, and priorities
 
@@ -298,7 +282,8 @@ positions:
   a 429, which Zoho Desk returns instead of processing; a DNS, connect, or TLS
   failure before any connection was obtained, traced with `httptrace`; the
   operation deadline passing before the request started; and a 401 followed
-  by one refresh. The checkpoint is cleared first.
+  by one refresh, which happens only when the recorded expiry has passed. The
+  checkpoint is cleared first.
 - A 5xx, a 408, a lost or unreadable response, and an invalid, oversized, or
   credential-reflecting 2xx select `uncertain`: the ticket or comment may
   exist, and the connector never resends it. The application decides, for
@@ -322,7 +307,7 @@ A body that contains the access token is dropped.
 | Response | Reads and updateTicket | createTicket and addComment |
 | --- | --- | --- |
 | 400, 422 (`INVALID_DATA`, `UNPROCESSABLE_ENTITY`) | `providerRejected`, `VALIDATION` | same |
-| 401 (`INVALID_OAUTH`) after one refresh | `providerRejected`, `AUTHENTICATION` | same |
+| 401 (`INVALID_OAUTH`), after one refresh and resend only when the stored token has expired | `providerRejected`, `AUTHENTICATION` | same |
 | 403 (`OAUTH_ORG_MISMATCH`, `SCOPE_MISMATCH`, `FORBIDDEN`, `LICENSE_ACCESS_LIMITED`) | `providerRejected`, `AUTHORIZATION` | same |
 | 404 (`URL_NOT_FOUND`) | `notFound` where declared, otherwise `providerRejected` | same |
 | 405, 409, 413, 415, other 4xx | `providerRejected` | `providerRejected` |

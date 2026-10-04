@@ -70,19 +70,15 @@ connector cannot offer a picker. It accepts the values users can copy, and
 The title property's ID is always `title`, whatever the column is named, so
 `notion.TitlePropertyID` writes or filters the title without knowing its name.
 
-## Local configuration
+## Project configuration
 
-Dex Web writes the connection to `connections.json`. The record holds the
-token in `credentials` and the optional configuration fields beside it:
-
-```json
-{
-  "connectorId": "notion",
-  "connectionName": "notion-workspace",
-  "configuration": {},
-  "credentials": {"api_token": "ntn_…"}
-}
-```
+Dex Web or Superverse Studio writes the connection to the project
+configuration: the token as the connection's credential and the optional
+configuration fields as its settings. The application reads it through the
+`DEX_PROJECT_*` environment described in
+[project configuration loading](../../sdkgo/projectconfig/README.md#application-loading)
+and opens the connection with `NewProjectConnection`, as the
+[example](#example) does.
 
 | Field | Default | Meaning |
 | --- | --- | --- |
@@ -257,14 +253,16 @@ finds such a duplicate on the next run.
 [examples/submission-intake](examples/submission-intake) records a form
 submission as a database row and reads it back. It finds the database by
 title, updates the row that already holds the Submission ID or creates one,
-and reconciles an uncertain create by querying again.
+and reconciles an uncertain create by querying again. The Worker loads the
+project configuration once with `projectconfig.LoadFromEnvironment` and opens
+the connection from it:
 
 ```go
-store, err := localconfig.LoadFromEnvironment()
+project, err := projectconfig.LoadFromEnvironment(ctx)
 if err != nil {
 	return err
 }
-connection, err := notion.NewLocalConnection(store, submissionintake.ConnectionName)
+connection, err := notion.NewProjectConnection(project, submissionintake.ConnectionName)
 if err != nil {
 	return err
 }

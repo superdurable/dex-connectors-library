@@ -16,12 +16,12 @@ direct messages.
 6. Invite the bot to every private channel it must observe or post to.
 
 Dex Web stores the OAuth bot and user tokens. When Token Rotation is enabled,
-it also stores both one-use refresh tokens and refreshes the two 12-hour access
-tokens together before expiry. Each replacement pair is persisted atomically;
-an `invalid_refresh_token` response marks the connection for reauthorization.
-Hosted apps receive only the operation-specific bot, user, or app token from
-the Superverse broker. Dex Web also records the access-token expiry required
-for local refresh; do not hand-author rotating-token metadata. Enter the
+it also stores both one-use refresh tokens, and the connector refreshes the two
+12-hour access tokens together within five minutes of their recorded expiry.
+Each replacement pair is persisted atomically in project storage; an
+`invalid_refresh_token` response marks the connection for reauthorization. Dex
+Web also records the access-token expiry that refresh requires; do not
+hand-author rotating-token metadata. Enter the
 `xapp-` app-level token in the host-owned secret field; it is never sent to the
 Studio iframe. Use Slack's standard OAuth flow with the host-owned client
 secret. Slack's localhost PKCE installation mode cannot request bot scopes.
@@ -62,56 +62,33 @@ If a picker cannot load, copy IDs manually:
 - Open channel details in Slack and choose **Copy channel ID**.
 - Open a member profile, open its menu, and choose **Copy member ID**.
 
-## Local configuration
+## Project configuration
 
-The hand-authored example uses Slack's legacy non-rotating tokens. Use Dex Web
-when Token Rotation is enabled so it saves the expiry and refresh material.
+Dex Web or Superverse Studio saves the connection, its credentials, and both
+Trigger bindings in the project configuration. The application loads that
+configuration once and opens the connection by name, as
+[`examples/thread-approval/main.go`](examples/thread-approval/main.go) does:
 
-```json
-{
-  "schemaVersion": "connectors.dex.dev/local-connections/v1alpha1",
-  "connections": [{
-    "connectorId": "slack",
-    "modulePath": "github.com/superdurable/dex-connectors-library/connectors/slack",
-    "moduleVersion": "v0.12.0",
-    "provider": "slack",
-    "connectionName": "slack-workspace",
-    "configuration": {},
-    "credentials": {
-      "bot_token": "xoxb-...",
-      "user_token": "xoxp-...",
-      "app_token": "xapp-..."
-    }
-  }],
-  "triggerBindings": [{
-    "connectorId": "slack",
-    "connectionName": "slack-workspace",
-    "triggerName": "channelThreadCreated",
-    "bindingName": "slack-thread-approval-start",
-    "configuration": {
-      "channelId": "C0123456789",
-      "threadTriggerMatcher": {"messageContains": "request approval", "posterUserIds": []}
-    }
-  }, {
-    "connectorId": "slack",
-    "connectionName": "slack-workspace",
-    "triggerName": "threadReplyCreated",
-    "bindingName": "slack-thread-approval-reply",
-    "configuration": {
-      "channelId": "C0123456789",
-      "threadReplyMatcher": {"messageContains": "approve", "posterUserIds": ["U0123456789"]}
-    }
-  }]
+```go
+project, err := projectconfig.LoadFromEnvironment(ctx)
+if err != nil {
+	return err
+}
+connection, err := slack.NewProjectConnection(project, threadapproval.ConnectionName)
+if err != nil {
+	return err
 }
 ```
 
-Load the file with `localconfig.LoadFromEnvironment`, then create one
-`NewLocalMessageTriggerRunner` containing every Slack message Trigger route for
-the connection. Slack distributes Socket Mode events among active WebSocket
+`LoadFromEnvironment` reads the `DEX_PROJECT_*` environment described in
+[project configuration](../../sdkgo/projectconfig/README.md). Then create one
+`NewProjectMessageTriggerRunner` containing every Slack message Trigger route
+for the connection. Slack distributes Socket Mode events among active WebSocket
 connections, so separate root and reply runners must not compete for the same
-workspace events. The shared runner keeps a separate configuration, target,
-and durable inbox for each binding while receiving every message through one
-socket.
+workspace events. The shared runner reads each route's binding from the project
+configuration and keeps a separate configuration, target, and durable inbox for
+each binding while receiving every message through one socket. The inboxes are
+kept in project storage.
 
 Socket Mode envelopes are persisted in every matching binding-specific inbox
 and acknowledged before their targets run. Delivery then stays inline on the
@@ -148,8 +125,8 @@ runner's context closes the socket at once.
 ## Logging
 
 The runner logs through `log/slog`, to `slog.Default()` unless you pass
-`slack.WithLogger(logger)` to `NewLocalMessageTriggerRunner` or `New`. The
-logger also reaches the durable inboxes that `NewLocalMessageTriggerRunner`
+`slack.WithLogger(logger)` to `NewProjectMessageTriggerRunner` or `New`. The
+logger also reaches the durable inboxes that `NewProjectMessageTriggerRunner`
 creates.
 
 | Level | Message | Attributes |
@@ -188,11 +165,10 @@ thread. Events that the inbox replays after a restart or reconnect carry only
 their `event_id`. Records never contain message text, tokens, or the Socket
 Mode URL, whose connection ticket is removed from dial errors.
 
-The generated per-Trigger factories, such as
-`NewLocalThreadReplyCreatedTrigger`, pass `WithLogger` only to the Socket Mode
-source, and their source records carry no `binding`. Their durable inbox and
-runner records go to `slog.Default()`, so call `slog.SetDefault` when you use
-them, or use `NewLocalMessageTriggerRunner`.
+The generated per-Trigger factories, such as `NewThreadReplyCreatedTrigger`,
+pass `WithLogger` only to the Socket Mode source, and their source records carry
+no `binding`. Their runner records go to `slog.Default()`, so call
+`slog.SetDefault` when you use them, or use `NewProjectMessageTriggerRunner`.
 
 ## Operations
 

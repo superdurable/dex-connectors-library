@@ -3,15 +3,15 @@
 
 import type { ModelPickerBundleConfig } from "@superdurable/dex-connectors-react";
 
-import { llmDefaultModelDescription, loadLLMModels, validateProviderQualifiedModel } from "./model-selection.js";
+import { llmDefaultModelDescription, loadLLMModels, validateLLMModelID } from "./model-selection.js";
 
 /**
  * llmModelPickerBundleConfig is the llm Studio bundle: the modelPicker unit on
- * each Step and on the connection's model field, listing only the providers the
- * connection adds.
+ * each Step and on the connection's model field, listing the live models of
+ * the connection's provider.
  */
 export const llmModelPickerBundleConfig: ModelPickerBundleConfig = {
   connectorId: "llm", providerName: "LLM", iconUrl: "./icon.svg",
-  manualModelPlaceholder: "provider/model-id", validateManualModel: validateProviderQualifiedModel,
+  manualModelPlaceholder: "model-id", validateManualModel: validateLLMModelID,
   loadModels: loadLLMModels, defaultModelDescription: llmDefaultModelDescription,
 };

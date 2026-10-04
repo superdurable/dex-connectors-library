@@ -86,7 +86,7 @@ func WithClock(now func() time.Time) Option {
 	return func(options *clientOptions) { options.now = now }
 }
 
-// WithLogger sends the records of the durable inboxes that NewLocalInviteeEventReceivedEndpointRunner
+// WithLogger sends the records of the durable inboxes that NewProjectInviteeEventReceivedEndpointRunner
 // creates to logger. Without it, those records go to slog.Default(). Records carry event IDs only.
 func WithLogger(logger *slog.Logger) Option {
 	return func(options *clientOptions) { options.logger = logger }
@@ -95,7 +95,7 @@ func WithLogger(logger *slog.Logger) Option {
 // Client executes authenticated Calendly API v2 calls and receives signed Calendly webhooks for one
 // connection configuration. It is safe for concurrent use.
 type Client struct {
-	credentials               sdkgo.CredentialProvider[Credentials]
+	credentials               CredentialSource
 	refreshDriver             *CredentialRefreshDriver
 	httpClient                *http.Client
 	now                       func() time.Time
@@ -128,7 +128,7 @@ type calendlyCurrentUser struct {
 }
 
 // New validates config and constructs a Client. Blank configuration fields take their manifest defaults.
-func New(config Config, credentials sdkgo.CredentialProvider[Credentials], options ...Option) (*Client, error) {
+func New(config Config, credentials CredentialSource, options ...Option) (*Client, error) {
 	config = withConfigDefaults(config)
 	if err := config.Validate(); err != nil {
 		return nil, err
@@ -202,7 +202,7 @@ func (client *Client) resolveCredentials(call sdkgo.Call) (Credentials, error) {
 	return credentials, nil
 }
 
-// webhookCredentialProvider refreshes an expired OAuth token, which the local provider otherwise refuses to
+// webhookCredentialProvider refreshes an expired OAuth token, which the credential provider otherwise refuses to
 // return, so the endpoint can still read the signing key.
 type webhookCredentialProvider struct{ client *Client }
 

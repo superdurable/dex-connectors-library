@@ -23,6 +23,9 @@ func (completeTarget[IN]) Execute(dex.Context, IN) (*dex.StepDecision, error) {
 	return dex.GracefulComplete(struct{}{}), nil
 }
 
+// GetStepType names the target: Dex gives a generic Step type no default name.
+func (completeTarget[IN]) GetStepType() string { return "Complete" }
+
 func TestFactoriesRequireOnlyTheHappyPathBranch(t *testing.T) {
 	connection := newTestConnection(t)
 	annotations := sdkgo.StepAnnotations{GroupID: "freshdesk", GroupLabel: "Freshdesk", Explanation: "Call Freshdesk."}
@@ -35,32 +38,32 @@ func TestFactoriesRequireOnlyTheHappyPathBranch(t *testing.T) {
 			Searched: sdkgo.GoTo(completeTarget[freshdesk.SearchTicketsResult]{}),
 		})
 		freshdesk.NewGetTicketStep(freshdesk.GetTicketStepConfig[int64]{
-			StepType: "ReadTicket", Annotations: annotations, Connection: connection,
+			StepType: "ReadTicket", Annotations: annotations, Connection: connection, ConnectionName: freshdeskConnection.Name,
 			MapToOperationInput: func(id int64) freshdesk.GetTicketInput { return freshdesk.GetTicketInput{TicketID: id} },
 			Found:               sdkgo.GoTo(completeTarget[freshdesk.GetTicketResult]{}),
 		})
 		freshdesk.NewCreateTicketStep(freshdesk.CreateTicketStepConfig[string]{
-			StepType: "OpenTicket", Annotations: annotations, Connection: connection,
+			StepType: "OpenTicket", Annotations: annotations, Connection: connection, ConnectionName: freshdeskConnection.Name,
 			MapToOperationInput: func(string) freshdesk.CreateTicketInput { return validCreateTicketInput() },
 			Created:             sdkgo.GoTo(completeTarget[freshdesk.CreateTicketResult]{}),
 			Uncertain:           sdkgo.GoTo(completeTarget[freshdesk.CreateTicketResult]{}),
 		})
 		freshdesk.NewUpdateTicketStep(freshdesk.UpdateTicketStepConfig[int64]{
-			StepType: "Prioritize", Annotations: annotations, Connection: connection,
+			StepType: "Prioritize", Annotations: annotations, Connection: connection, ConnectionName: freshdeskConnection.Name,
 			MapToOperationInput: func(id int64) freshdesk.UpdateTicketInput {
 				return freshdesk.UpdateTicketInput{TicketID: id, Priority: freshdesk.TicketPriorityHigh}
 			},
 			Updated: sdkgo.GoTo(completeTarget[freshdesk.UpdateTicketResult]{}),
 		})
 		freshdesk.NewAddNoteStep(freshdesk.AddNoteStepConfig[int64]{
-			StepType: "AddNote", Annotations: annotations, Connection: connection,
+			StepType: "AddNote", Annotations: annotations, Connection: connection, ConnectionName: freshdeskConnection.Name,
 			MapToOperationInput: func(id int64) freshdesk.AddNoteInput { return freshdesk.AddNoteInput{TicketID: id, Body: "Triaged."} },
 			Added:               sdkgo.GoTo(completeTarget[freshdesk.AddNoteResult]{}),
 		})
 	})
 	require.Panics(t, func() {
 		freshdesk.NewAddNoteStep(freshdesk.AddNoteStepConfig[int64]{
-			StepType: "AddNote", Connection: connection,
+			StepType: "AddNote", Annotations: annotations, Connection: connection, ConnectionName: freshdeskConnection.Name,
 			MapToOperationInput: func(id int64) freshdesk.AddNoteInput { return freshdesk.AddNoteInput{TicketID: id, Body: "Triaged."} },
 			Uncertain:           sdkgo.GoTo(completeTarget[freshdesk.AddNoteResult]{}),
 		})

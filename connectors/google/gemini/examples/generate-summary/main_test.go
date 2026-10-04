@@ -22,7 +22,8 @@ import (
 	"github.com/stretchr/testify/require"
 	gemini "github.com/superdurable/dex-connectors-library/connectors/google/gemini"
 	generatesummary "github.com/superdurable/dex-connectors-library/connectors/google/gemini/examples/generate-summary/flow"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/connectors/google/gemini/internal/testsupport"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -84,19 +85,7 @@ func TestWaitForDexServerRetriesUntilTheServerAnswers(t *testing.T) {
 // TestRunWaitsForUnreachableDexServerAndStopsCleanly starts the example while no Dex Server is listening.
 func TestRunWaitsForUnreachableDexServerAndStopsCleanly(t *testing.T) {
 	directory := t.TempDir()
-	configPath := filepath.Join(directory, "connections.json")
-	contents, err := json.Marshal(map[string]any{
-		"schemaVersion": localconfig.SchemaVersion,
-		"connections": []any{map[string]any{
-			"connectorId": gemini.ConnectorID, "modulePath": "github.com/superdurable/dex-connectors-library/connectors/google/gemini",
-			"moduleVersion": "v0.1.0", "provider": "google", "connectionName": generatesummary.ConnectionName,
-			"configuration": map[string]any{},
-			"credentials":   map[string]any{"api_key": "AIzaSENTINEL-example-key"},
-		}},
-	})
-	require.NoError(t, err)
-	require.NoError(t, os.WriteFile(configPath, contents, 0o600))
-	t.Setenv(localconfig.EnvironmentVariable, configPath)
+	project := summaryProject(t, "", "AIzaSENTINEL-example-key")
 	// A Unix socket that nothing listens on makes the Dex Server unreachable without binding a TCP port.
 	t.Setenv("DEX_FLOW_SERVICE_ADDRESS", "unix://"+filepath.Join(os.TempDir(), fmt.Sprintf("dex-missing-%d.sock", time.Now().UnixNano())))
 	t.Setenv("DEX_WORKER_BIND_ADDRESS", "127.0.0.1:"+unusedPort(t))
@@ -106,7 +95,7 @@ func TestRunWaitsForUnreachableDexServerAndStopsCleanly(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	result := make(chan error, 1)
-	go func() { result <- run(ctx, slog.New(slog.NewTextHandler(output, nil))) }()
+	go func() { result <- runWorker(ctx, slog.New(slog.NewTextHandler(output, nil)), project) }()
 	require.Never(t, func() bool { return len(result) > 0 }, 2*time.Second, 50*time.Millisecond,
 		"the example must wait for the Dex Server instead of exiting")
 	require.Contains(t, output.String(), `msg="dex server unavailable; retrying" attempt=1 delay=250ms`)
@@ -120,9 +109,15 @@ func TestRunWaitsForUnreachableDexServerAndStopsCleanly(t *testing.T) {
 	}
 }
 
-func TestRunRequiresTheLocalConnectionFile(t *testing.T) {
-	t.Setenv(localconfig.EnvironmentVariable, filepath.Join(t.TempDir(), "missing.json"))
+func TestRunRequiresTheProjectEnvironment(t *testing.T) {
+	t.Setenv("DEX_PROJECT_ID", "")
 	require.Error(t, run(context.Background(), slog.New(slog.NewTextHandler(&lockedBuffer{}, nil))))
+}
+
+func TestRunWorkerRequiresTheDeclaredConnection(t *testing.T) {
+	project := testsupport.NewLoadedProject(t, gemini.ConnectorID, nil, nil)
+	err := runWorker(context.Background(), slog.New(slog.NewTextHandler(&lockedBuffer{}, nil)), project)
+	require.ErrorIs(t, err, projectconfig.ErrObjectNotFound)
 }
 
 // unusedPort returns a free local port for a Worker bind address that the test never starts.
@@ -135,50 +130,36 @@ func unusedPort(t *testing.T) string {
 }
 
 // TestSummaryModelComesFromTheDexWebStepPick reads the GenerateSummary Step's
-// pick from the use-configuration file that Dex Web Connections writes.
+// pick from the project configuration that Dex Web saves.
 func TestSummaryModelComesFromTheDexWebStepPick(t *testing.T) {
-	writeStore := func(t *testing.T, stepConfiguration string) *localconfig.Store {
-		t.Helper()
-		directory := t.TempDir()
-		connections, err := json.Marshal(map[string]any{
-			"schemaVersion": localconfig.SchemaVersion,
-			"connections": []any{map[string]any{
-				"connectorId": gemini.ConnectorID, "modulePath": "github.com/superdurable/dex-connectors-library/connectors/google/gemini",
-				"moduleVersion": "v0.3.0", "provider": "google", "connectionName": generatesummary.ConnectionName,
-				"configuration": map[string]any{}, "credentials": map[string]any{"api_key": "AIzaSENTINEL-step-pick"},
-			}},
-		})
-		require.NoError(t, err)
-		require.NoError(t, os.WriteFile(filepath.Join(directory, "connections.json"), connections, 0o600))
-		if stepConfiguration != "" {
-			reference := generatesummary.SummaryModelConfigurationRef()
-			useConfigurations, err := json.Marshal(map[string]any{
-				"schemaVersion": localconfig.UseConfigurationsSchemaVersion,
-				"operationConfigurations": []any{map[string]any{
-					"connectorId": reference.ConnectorID, "connectionName": reference.ConnectionName, "operationId": reference.OperationID,
-					"flowType": reference.FlowType, "stepType": reference.StepType, "configuration": json.RawMessage(stepConfiguration),
-				}},
-			})
-			require.NoError(t, err)
-			require.NoError(t, os.WriteFile(filepath.Join(directory, localconfig.UseConfigurationsFileName), useConfigurations, 0o600))
-		}
-		store, err := localconfig.LoadFile(filepath.Join(directory, "connections.json"))
-		require.NoError(t, err)
-		return store
-	}
-
-	picked, err := loadSummaryModelConfiguration(writeStore(t, `{"model":"gemini-3.8-flash"}`))
+	picked, err := loadSummaryModelConfiguration(summaryProject(t, `{"model":"gemini-3.8-flash"}`, "AIzaSENTINEL-step-pick").Configuration)
 	require.NoError(t, err)
 	require.Equal(t, "gemini-3.8-flash", picked.Model)
 
-	inherited, err := loadSummaryModelConfiguration(writeStore(t, `{"model":""}`))
+	inherited, err := loadSummaryModelConfiguration(summaryProject(t, `{"model":""}`, "AIzaSENTINEL-step-pick").Configuration)
 	require.NoError(t, err)
 	require.Empty(t, inherited.Model, "an empty pick keeps the connection's model")
 
-	neverConfigured, err := loadSummaryModelConfiguration(writeStore(t, ""))
+	neverConfigured, err := loadSummaryModelConfiguration(summaryProject(t, "", "AIzaSENTINEL-step-pick").Configuration)
 	require.NoError(t, err, "a Step never configured in Dex Web uses the connection's model")
 	require.Empty(t, neverConfigured.Model)
 
-	_, err = loadSummaryModelConfiguration(writeStore(t, `{"model":"gemini-3.8-flash","temperature":1}`))
+	_, err = loadSummaryModelConfiguration(summaryProject(t, `{"model":"gemini-3.8-flash","temperature":1}`, "AIzaSENTINEL-step-pick").Configuration)
 	require.Error(t, err, "an unknown field is a configuration error, not a missing pick")
+}
+
+// summaryProject saves a Gemini connection and, when stepConfiguration is set, the GenerateSummary Step's pick.
+func summaryProject(t *testing.T, stepConfiguration string, apiKey string) *projectconfig.LoadedProject {
+	t.Helper()
+	var operations []projectconfig.OperationConfiguration
+	if stepConfiguration != "" {
+		reference := generatesummary.SummaryModelConfigurationRef()
+		operations = append(operations, projectconfig.OperationConfiguration{
+			ConnectorID: reference.ConnectorID, ConnectionName: reference.ConnectionName, OperationID: reference.OperationID,
+			FlowType: reference.FlowType, StepType: reference.StepType, Configuration: json.RawMessage(stepConfiguration),
+		})
+	}
+	return testsupport.NewLoadedProject(t, gemini.ConnectorID, []testsupport.ProjectConnection{{
+		Name: generatesummary.ConnectionName, Configuration: map[string]any{}, Credentials: map[string]any{"api_key": apiKey},
+	}}, operations)
 }

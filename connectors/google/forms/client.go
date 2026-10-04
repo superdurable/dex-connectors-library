@@ -7,7 +7,7 @@
 //
 // Applications use the generated operation-specific Step factories,
 // NewGetFormStep, NewListResponsesStep, and NewGetResponseStep, with a
-// Connection built by NewLocalConnection or NewConnection. The runnable
+// Connection built by NewProjectConnection or NewConnection. The runnable
 // example in examples/response-recorder shows every operation in one Flow.
 package forms
 
@@ -62,7 +62,7 @@ func WithHTTPClient(client *http.Client) Option {
 type Client struct {
 	apiBaseURL       string
 	httpClient       *http.Client
-	credentials      sdkgo.CredentialProvider[Credentials]
+	credentials      CredentialSource
 	refreshDriver    sdkgo.CredentialRefreshDriver[Credentials]
 	maxResponseBytes int64
 	responsePageSize int
@@ -104,7 +104,7 @@ func (failure *formsRequestError) Error() string { return failure.message }
 // New validates configuration and constructs an authenticated Google Forms
 // client. It fails when the endpoint is not HTTPS (loopback HTTP is accepted
 // for tests), a limit is outside its documented range, or credentials is nil.
-func New(config Config, credentials sdkgo.CredentialProvider[Credentials], options ...Option) (*Client, error) {
+func New(config Config, credentials CredentialSource, options ...Option) (*Client, error) {
 	config = withConfigDefaults(config)
 	if err := config.Validate(); err != nil {
 		return nil, err

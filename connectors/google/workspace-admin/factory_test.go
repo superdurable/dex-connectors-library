@@ -23,6 +23,9 @@ func (completeTarget[IN]) Execute(dex.Context, IN) (*dex.StepDecision, error) {
 	return dex.GracefulComplete(struct{}{}), nil
 }
 
+// GetStepType names the target: Dex gives a generic Step type no default name.
+func (completeTarget[IN]) GetStepType() string { return "Complete" }
+
 func TestFactoriesRequireOnlyTheHappyPathBranch(t *testing.T) {
 	connection := newTestConnection(t)
 	annotations := sdkgo.StepAnnotations{GroupID: "workspace", GroupLabel: "Google Workspace", Explanation: "Call the Directory API."}
@@ -33,38 +36,38 @@ func TestFactoriesRequireOnlyTheHappyPathBranch(t *testing.T) {
 			Found:               sdkgo.GoTo(completeTarget[workspaceadmin.GetUserResult]{}),
 		})
 		workspaceadmin.NewListUsersStep(workspaceadmin.ListUsersStepConfig[string]{
-			StepType: "ListUsers", Annotations: annotations, Connection: connection,
+			StepType: "ListUsers", Annotations: annotations, Connection: connection, ConnectionName: testConnection.Name,
 			MapToOperationInput: func(query string) workspaceadmin.ListUsersInput { return workspaceadmin.ListUsersInput{Query: query} },
 			Listed:              sdkgo.GoTo(completeTarget[workspaceadmin.ListUsersResult]{}),
 		})
 		workspaceadmin.NewCreateUserStep(workspaceadmin.CreateUserStepConfig[string]{
-			StepType: "CreateUser", Annotations: annotations, Connection: connection,
+			StepType: "CreateUser", Annotations: annotations, Connection: connection, ConnectionName: testConnection.Name,
 			MapToOperationInput: func(string) workspaceadmin.CreateUserInput { return validCreateUserInput() },
 			Created:             sdkgo.GoTo(completeTarget[workspaceadmin.CreateUserResult]{}),
 		})
 		workspaceadmin.NewSuspendUserStep(workspaceadmin.SuspendUserStepConfig[string]{
-			StepType: "SuspendUser", Annotations: annotations, Connection: connection,
+			StepType: "SuspendUser", Annotations: annotations, Connection: connection, ConnectionName: testConnection.Name,
 			MapToOperationInput: func(userKey string) workspaceadmin.SuspendUserInput {
 				return workspaceadmin.SuspendUserInput{UserKey: userKey}
 			},
 			Suspended: sdkgo.GoTo(completeTarget[workspaceadmin.SuspendUserResult]{}),
 		})
 		workspaceadmin.NewUnsuspendUserStep(workspaceadmin.UnsuspendUserStepConfig[string]{
-			StepType: "UnsuspendUser", Annotations: annotations, Connection: connection,
+			StepType: "UnsuspendUser", Annotations: annotations, Connection: connection, ConnectionName: testConnection.Name,
 			MapToOperationInput: func(userKey string) workspaceadmin.UnsuspendUserInput {
 				return workspaceadmin.UnsuspendUserInput{UserKey: userKey}
 			},
 			Unsuspended: sdkgo.GoTo(completeTarget[workspaceadmin.UnsuspendUserResult]{}),
 		})
 		workspaceadmin.NewAddUserToGroupStep(workspaceadmin.AddUserToGroupStepConfig[string]{
-			StepType: "AddUserToGroup", Annotations: annotations, Connection: connection,
+			StepType: "AddUserToGroup", Annotations: annotations, Connection: connection, ConnectionName: testConnection.Name,
 			MapToOperationInput: func(email string) workspaceadmin.AddUserToGroupInput {
 				return workspaceadmin.AddUserToGroupInput{GroupKey: "staff@example.com", MemberEmail: email}
 			},
 			Added: sdkgo.GoTo(completeTarget[workspaceadmin.AddUserToGroupResult]{}),
 		})
 		workspaceadmin.NewRemoveUserFromGroupStep(workspaceadmin.RemoveUserFromGroupStepConfig[string]{
-			StepType: "RemoveUserFromGroup", Annotations: annotations, Connection: connection,
+			StepType: "RemoveUserFromGroup", Annotations: annotations, Connection: connection, ConnectionName: testConnection.Name,
 			MapToOperationInput: func(email string) workspaceadmin.RemoveUserFromGroupInput {
 				return workspaceadmin.RemoveUserFromGroupInput{GroupKey: "staff@example.com", MemberKey: email}
 			},
@@ -73,7 +76,7 @@ func TestFactoriesRequireOnlyTheHappyPathBranch(t *testing.T) {
 	})
 	require.Panics(t, func() {
 		workspaceadmin.NewCreateUserStep(workspaceadmin.CreateUserStepConfig[string]{
-			StepType: "CreateUser", Connection: connection,
+			StepType: "CreateUser", Connection: connection, ConnectionName: testConnection.Name,
 			MapToOperationInput: func(string) workspaceadmin.CreateUserInput { return validCreateUserInput() },
 			AlreadyExists:       sdkgo.GoTo(completeTarget[workspaceadmin.CreateUserResult]{}),
 		})

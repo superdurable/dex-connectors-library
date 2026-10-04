@@ -5,7 +5,7 @@ metadata:
   displayName: Jira
   description: Search and read Jira Cloud issues with bounded JQL, create issues and comments without silent duplicates, and move issues through their workflow.
   company: Atlassian
-  version: v0.1.0
+  version: v0.21.0
 spec:
   provider: atlassian
   codegen:
@@ -32,6 +32,7 @@ spec:
         required: false
         default: 4194304
   auth:
+    refreshable: true
     type: oauth2
     connectionKind: jira-atlassian-oauth
     fields:

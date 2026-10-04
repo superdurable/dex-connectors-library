@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-package githubconnector_test
+package github_test
 
 import (
 	"encoding/json"
@@ -10,64 +10,64 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	githubconnector "github.com/superdurable/dex-connectors-library/connectors/github"
+	"github.com/superdurable/dex-connectors-library/connectors/github"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
 type profileTarget struct {
-	dex.StepDefaultsNoWaitFor[githubconnector.GetAuthenticatedProfileResult]
+	dex.StepDefaultsNoWaitFor[github.GetAuthenticatedProfileResult]
 }
 
-func (profileTarget) Execute(dex.Context, githubconnector.GetAuthenticatedProfileResult) (*dex.StepDecision, error) {
+func (profileTarget) Execute(dex.Context, github.GetAuthenticatedProfileResult) (*dex.StepDecision, error) {
 	return dex.GracefulComplete(nil), nil
 }
 
 type repositoriesTarget struct {
-	dex.StepDefaultsNoWaitFor[githubconnector.ListPublicRepositoriesResult]
+	dex.StepDefaultsNoWaitFor[github.ListPublicRepositoriesResult]
 }
 
-func (repositoriesTarget) Execute(dex.Context, githubconnector.ListPublicRepositoriesResult) (*dex.StepDecision, error) {
+func (repositoriesTarget) Execute(dex.Context, github.ListPublicRepositoriesResult) (*dex.StepDecision, error) {
 	return dex.GracefulComplete(nil), nil
 }
 
 type mergedPullRequestsTarget struct {
-	dex.StepDefaultsNoWaitFor[githubconnector.ListMergedPullRequestsResult]
+	dex.StepDefaultsNoWaitFor[github.ListMergedPullRequestsResult]
 }
 
-func (mergedPullRequestsTarget) Execute(dex.Context, githubconnector.ListMergedPullRequestsResult) (*dex.StepDecision, error) {
+func (mergedPullRequestsTarget) Execute(dex.Context, github.ListMergedPullRequestsResult) (*dex.StepDecision, error) {
 	return dex.GracefulComplete(nil), nil
 }
 
 type pullRequestFilesTarget struct {
-	dex.StepDefaultsNoWaitFor[githubconnector.ListPullRequestFilesResult]
+	dex.StepDefaultsNoWaitFor[github.ListPullRequestFilesResult]
 }
 
-func (pullRequestFilesTarget) Execute(dex.Context, githubconnector.ListPullRequestFilesResult) (*dex.StepDecision, error) {
+func (pullRequestFilesTarget) Execute(dex.Context, github.ListPullRequestFilesResult) (*dex.StepDecision, error) {
 	return dex.GracefulComplete(nil), nil
 }
 
 type commitsTarget struct {
-	dex.StepDefaultsNoWaitFor[githubconnector.ListCommitsResult]
+	dex.StepDefaultsNoWaitFor[github.ListCommitsResult]
 }
 
-func (commitsTarget) Execute(dex.Context, githubconnector.ListCommitsResult) (*dex.StepDecision, error) {
+func (commitsTarget) Execute(dex.Context, github.ListCommitsResult) (*dex.StepDecision, error) {
 	return dex.GracefulComplete(nil), nil
 }
 
 func TestGeneratedRepositoryChangeFactoriesExposeEveryTypedBranch(t *testing.T) {
-	client, err := githubconnector.New(githubconnector.Config{}, sdkgo.StaticCredentialProvider[githubconnector.Credentials]{
+	client, err := github.New(github.Config{}, sdkgo.StaticCredentialProvider[github.Credentials]{
 		githubConnection: {AccessToken: sdkgo.NewSecretString("token")},
 	})
 	require.NoError(t, err)
-	connection, err := githubconnector.NewConnection(client, githubConnection)
+	connection, err := github.NewConnection(client, githubConnection)
 	require.NoError(t, err)
 
-	mergedResult := dex.DefineAttribute[githubconnector.ListMergedPullRequestsResult]("github-merged-pull-requests-result")
-	merged := githubconnector.NewListMergedPullRequestsStep(githubconnector.ListMergedPullRequestsStepConfig[string]{
+	mergedResult := dex.DefineAttribute[github.ListMergedPullRequestsResult]("github-merged-pull-requests-result")
+	merged := github.NewListMergedPullRequestsStep(github.ListMergedPullRequestsStepConfig[string]{
 		StepType: "ListMergedPullRequests", Annotations: factoryAnnotations(), Connection: connection, ConnectionName: "signup",
-		MapToOperationInput: func(repository string) githubconnector.ListMergedPullRequestsInput {
-			return githubconnector.ListMergedPullRequestsInput{Owner: "octocat", Repository: repository}
+		MapToOperationInput: func(repository string) github.ListMergedPullRequestsInput {
+			return github.ListMergedPullRequestsInput{Owner: "octocat", Repository: repository}
 		},
 		Listed: sdkgo.GoTo(mergedPullRequestsTarget{}), InsufficientScope: sdkgo.GoTo(mergedPullRequestsTarget{}),
 		AuthorizationRevoked: sdkgo.GoTo(mergedPullRequestsTarget{}), NotFound: sdkgo.GoTo(mergedPullRequestsTarget{}),
@@ -77,11 +77,11 @@ func TestGeneratedRepositoryChangeFactoriesExposeEveryTypedBranch(t *testing.T) 
 	require.Equal(t, "ListMergedPullRequests", merged.GetStepType())
 	requireAsyncQueryDefaults(t, merged.GetStepOptions())
 
-	filesResult := dex.DefineAttribute[githubconnector.ListPullRequestFilesResult]("github-pull-request-files-result")
-	files := githubconnector.NewListPullRequestFilesStep(githubconnector.ListPullRequestFilesStepConfig[int]{
+	filesResult := dex.DefineAttribute[github.ListPullRequestFilesResult]("github-pull-request-files-result")
+	files := github.NewListPullRequestFilesStep(github.ListPullRequestFilesStepConfig[int]{
 		StepType: "ListPullRequestFiles", Annotations: factoryAnnotations(), Connection: connection, ConnectionName: "signup",
-		MapToOperationInput: func(number int) githubconnector.ListPullRequestFilesInput {
-			return githubconnector.ListPullRequestFilesInput{Owner: "octocat", Repository: "hello-world", Number: number}
+		MapToOperationInput: func(number int) github.ListPullRequestFilesInput {
+			return github.ListPullRequestFilesInput{Owner: "octocat", Repository: "hello-world", Number: number}
 		},
 		Listed: sdkgo.GoTo(pullRequestFilesTarget{}), InsufficientScope: sdkgo.GoTo(pullRequestFilesTarget{}),
 		AuthorizationRevoked: sdkgo.GoTo(pullRequestFilesTarget{}), NotFound: sdkgo.GoTo(pullRequestFilesTarget{}),
@@ -91,11 +91,11 @@ func TestGeneratedRepositoryChangeFactoriesExposeEveryTypedBranch(t *testing.T) 
 	require.Equal(t, "ListPullRequestFiles", files.GetStepType())
 	requireAsyncQueryDefaults(t, files.GetStepOptions())
 
-	commitsResult := dex.DefineAttribute[githubconnector.ListCommitsResult]("github-commits-result")
-	commits := githubconnector.NewListCommitsStep(githubconnector.ListCommitsStepConfig[string]{
+	commitsResult := dex.DefineAttribute[github.ListCommitsResult]("github-commits-result")
+	commits := github.NewListCommitsStep(github.ListCommitsStepConfig[string]{
 		StepType: "ListCommits", Annotations: factoryAnnotations(), Connection: connection, ConnectionName: "signup",
-		MapToOperationInput: func(repository string) githubconnector.ListCommitsInput {
-			return githubconnector.ListCommitsInput{Owner: "octocat", Repository: repository}
+		MapToOperationInput: func(repository string) github.ListCommitsInput {
+			return github.ListCommitsInput{Owner: "octocat", Repository: repository}
 		},
 		Listed: sdkgo.GoTo(commitsTarget{}), InsufficientScope: sdkgo.GoTo(commitsTarget{}),
 		AuthorizationRevoked: sdkgo.GoTo(commitsTarget{}), NotFound: sdkgo.GoTo(commitsTarget{}),
@@ -106,9 +106,10 @@ func TestGeneratedRepositoryChangeFactoriesExposeEveryTypedBranch(t *testing.T) 
 	requireAsyncQueryDefaults(t, commits.GetStepOptions())
 
 	require.Panics(t, func() {
-		githubconnector.NewListCommitsStep(githubconnector.ListCommitsStepConfig[string]{
+		github.NewListCommitsStep(github.ListCommitsStepConfig[string]{
 			StepType: "ListCommitsWithoutHappyPath", Annotations: factoryAnnotations(), Connection: connection,
-			MapToOperationInput: func(string) githubconnector.ListCommitsInput { return githubconnector.ListCommitsInput{} },
+			ConnectionName:      githubConnection.Name,
+			MapToOperationInput: func(string) github.ListCommitsInput { return github.ListCommitsInput{} },
 		})
 	}, "the listed branch is required")
 }
@@ -125,18 +126,18 @@ func requireAsyncQueryDefaults(t *testing.T, options *dex.StepOptions) {
 }
 
 func TestGeneratedFactoriesExposeEveryTypedBranch(t *testing.T) {
-	client, err := githubconnector.New(githubconnector.Config{}, sdkgo.StaticCredentialProvider[githubconnector.Credentials]{
+	client, err := github.New(github.Config{}, sdkgo.StaticCredentialProvider[github.Credentials]{
 		githubConnection: {AccessToken: sdkgo.NewSecretString("token")},
 	})
 	require.NoError(t, err)
-	connection, err := githubconnector.NewConnection(client, githubConnection)
+	connection, err := github.NewConnection(client, githubConnection)
 	require.NoError(t, err)
 
-	profileResult := dex.DefineAttribute[sdkgo.QueryResult[githubconnector.AuthenticatedProfile]]("github-profile-result")
-	profile := githubconnector.NewGetAuthenticatedProfileStep(githubconnector.GetAuthenticatedProfileStepConfig[string]{
+	profileResult := dex.DefineAttribute[sdkgo.QueryResult[github.AuthenticatedProfile]]("github-profile-result")
+	profile := github.NewGetAuthenticatedProfileStep(github.GetAuthenticatedProfileStepConfig[string]{
 		StepType: "ReadGitHubProfile", Annotations: factoryAnnotations(), Connection: connection, ConnectionName: "signup",
-		MapToOperationInput: func(string) githubconnector.GetAuthenticatedProfileInput {
-			return githubconnector.GetAuthenticatedProfileInput{}
+		MapToOperationInput: func(string) github.GetAuthenticatedProfileInput {
+			return github.GetAuthenticatedProfileInput{}
 		},
 		ProfileLoaded: sdkgo.GoTo(profileTarget{}), VerifiedEmailRequired: sdkgo.GoTo(profileTarget{}),
 		InsufficientScope: sdkgo.GoTo(profileTarget{}), AuthorizationRevoked: sdkgo.GoTo(profileTarget{}),
@@ -146,11 +147,11 @@ func TestGeneratedFactoriesExposeEveryTypedBranch(t *testing.T) {
 	})
 	require.Equal(t, "ReadGitHubProfile", profile.GetStepType())
 
-	repositoriesResult := dex.DefineAttribute[sdkgo.QueryResult[githubconnector.PublicRepositories]]("github-repositories-result")
-	repositories := githubconnector.NewListPublicRepositoriesStep(githubconnector.ListPublicRepositoriesStepConfig[string]{
+	repositoriesResult := dex.DefineAttribute[sdkgo.QueryResult[github.PublicRepositories]]("github-repositories-result")
+	repositories := github.NewListPublicRepositoriesStep(github.ListPublicRepositoriesStepConfig[string]{
 		StepType: "ReadGitHubRepositories", Annotations: factoryAnnotations(), Connection: connection, ConnectionName: "signup",
-		MapToOperationInput: func(login string) githubconnector.ListPublicRepositoriesInput {
-			return githubconnector.ListPublicRepositoriesInput{Login: login}
+		MapToOperationInput: func(login string) github.ListPublicRepositoriesInput {
+			return github.ListPublicRepositoriesInput{Login: login}
 		},
 		RepositoriesLoaded: sdkgo.GoTo(repositoriesTarget{}), InsufficientScope: sdkgo.GoTo(repositoriesTarget{}),
 		AuthorizationRevoked: sdkgo.GoTo(repositoriesTarget{}), NotFound: sdkgo.GoTo(repositoriesTarget{}),
@@ -165,10 +166,10 @@ func TestGeneratedFactoriesExposeEveryTypedBranch(t *testing.T) {
 }
 
 func TestTypedConnectionAndCredentialsCannotSerializeOrLeak(t *testing.T) {
-	encoded, err := json.Marshal(githubconnector.Connection{})
+	encoded, err := json.Marshal(github.Connection{})
 	require.ErrorContains(t, err, "cannot be serialized")
 	require.Nil(t, encoded)
-	credentials := githubconnector.Credentials{AccessToken: sdkgo.NewSecretString("secret-token")}
+	credentials := github.Credentials{AccessToken: sdkgo.NewSecretString("secret-token")}
 	encoded, err = json.Marshal(credentials)
 	require.Error(t, err)
 	require.Nil(t, encoded)

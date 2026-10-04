@@ -19,7 +19,8 @@ import (
 	"github.com/superdurable/dex-connectors-library/connectors/slack"
 	threadapproval "github.com/superdurable/dex-connectors-library/connectors/slack/examples/thread-approval/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -52,16 +53,16 @@ func newLogger(output io.Writer, levelName string) *slog.Logger {
 }
 
 func run(ctx context.Context, logger *slog.Logger) error {
-	store, err := localconfig.LoadFromEnvironment()
+	project, err := projectconfig.LoadFromEnvironment(ctx)
 	if err != nil {
 		return err
 	}
-	connection, err := slack.NewLocalConnection(store, threadapproval.ConnectionName)
+	connection, err := slack.NewProjectConnection(project, threadapproval.ConnectionName)
 	if err != nil {
 		return err
 	}
-	postCompletionConfiguration, err := localconfig.LoadOperationConfiguration[threadapproval.PostCompletionConfiguration](
-		store, threadapproval.PostCompletionConfigurationRef(),
+	postCompletionConfiguration, err := provider.LoadOperationConfiguration[threadapproval.PostCompletionConfiguration](
+		project.Configuration, threadapproval.PostCompletionConfigurationRef(),
 	)
 	if err != nil {
 		return err
@@ -91,7 +92,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 		return errors.Join(err, stopWorker(worker), cache.Close())
 	}
 	var startTriggerConfiguration slack.ChannelThreadCreatedTriggerConfiguration
-	if err := store.DecodeTriggerConfiguration(
+	if err := project.Configuration.DecodeTriggerConfiguration(
 		slack.ConnectorID, threadapproval.ConnectionName, slack.ChannelThreadCreatedTriggerDefinition.Trigger.TriggerName,
 		threadapproval.StartTriggerBinding, &startTriggerConfiguration,
 	); err != nil {
@@ -102,7 +103,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
 	}
 	var replyTriggerConfiguration slack.ThreadReplyCreatedTriggerConfiguration
-	if err := store.DecodeTriggerConfiguration(
+	if err := project.Configuration.DecodeTriggerConfiguration(
 		slack.ConnectorID, threadapproval.ConnectionName, slack.ThreadReplyCreatedTriggerDefinition.Trigger.TriggerName,
 		threadapproval.ReplyTriggerBinding, &replyTriggerConfiguration,
 	); err != nil {
@@ -114,8 +115,8 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	}
 	// The runner, its durable inboxes, and the Dex targets log every skipped event and every retry with its
 	// backoff delay, so the example needs no wrapper of its own.
-	triggerRunner, err := slack.NewLocalMessageTriggerRunner(store, threadapproval.ConnectionName, slack.LocalMessageTriggerRunnerConfig{
-		ChannelThreadCreatedRoutes: []slack.LocalChannelThreadCreatedTriggerRoute{{
+	triggerRunner, err := slack.NewProjectMessageTriggerRunner(project, threadapproval.ConnectionName, slack.ProjectMessageTriggerRunnerConfig{
+		ChannelThreadCreatedRoutes: []slack.ProjectChannelThreadCreatedTriggerRoute{{
 			BindingName: threadapproval.StartTriggerBinding,
 			Target: sdkgo.NewDexFlowTriggerTarget(
 				client, flow, startTriggerFilter, threadapproval.ResolveFlowID, threadapproval.MapToFlowInput,
@@ -124,7 +125,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 				)),
 			),
 		}},
-		ThreadReplyCreatedRoutes: []slack.LocalThreadReplyCreatedTriggerRoute{{
+		ThreadReplyCreatedRoutes: []slack.ProjectThreadReplyCreatedTriggerRoute{{
 			BindingName: threadapproval.ReplyTriggerBinding,
 			Target: sdkgo.NewDexRPCTriggerTarget(
 				client, flow.ReceiveThreadReply, replyTriggerFilter, threadapproval.ResolveFlowID,
@@ -138,19 +139,30 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
 	}
+	err = runUntilStopped(ctx, worker, triggerRunner, client.HealthCheck, logger)
+	return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
+}
+
+// runUntilStopped waits for the Dex Server, then runs the Worker and the Trigger runner until ctx ends or
+// either one fails. The caller stops the Worker.
+func runUntilStopped(
+	ctx context.Context, worker *dex.Worker, triggerRunner *slack.MessageTriggerRunner,
+	healthCheck func(context.Context) (dex.HealthInfo, error), logger *slog.Logger,
+) error {
 	// Worker.Start fails at once when the Dex Server is unreachable, so wait for it first.
-	if err := waitForDexServer(ctx, client.HealthCheck, logger); err != nil {
+	if err := waitForDexServer(ctx, healthCheck, logger); err != nil {
 		if ctx.Err() != nil {
 			// Control-C while waiting is a clean shutdown, not a failure.
 			err = nil
 		}
-		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
+		return err
 	}
 	runCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	runResults := make(chan error, 2)
 	go func() { runResults <- worker.Start() }()
 	go func() { runResults <- triggerRunner.Run(runCtx) }()
+	var err error
 	select {
 	case <-ctx.Done():
 	case err = <-runResults:
@@ -160,7 +172,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 		// Control-C during a long startup replay is a clean shutdown, not a failure.
 		err = nil
 	}
-	return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
+	return err
 }
 
 // bindingLogger labels a Dex target's records, such as a filtered event, with the same connector,

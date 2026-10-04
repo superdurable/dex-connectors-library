@@ -3,5 +3,6 @@
 
 package helpscout
 
-// ClientOfConnection gives the external tests the client a local connection constructor built.
-func ClientOfConnection(connection Connection) *Client { return connection.client }
+// NewConversationEventEndpointRunnerForTest builds the project runner from in-memory configuration; its last
+// argument replaces the durable project inboxes.
+var NewConversationEventEndpointRunnerForTest = newConversationEventEndpointRunner

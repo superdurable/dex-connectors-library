@@ -6,7 +6,7 @@
 //
 // Applications use the generated operation-specific Step factories, such as
 // NewSearchFilesStep and NewUploadFileStep, with a Connection built by
-// NewLocalConnection or NewConnection. The runnable example in
+// NewProjectConnection or NewConnection. The runnable example in
 // examples/text-copy shows every operation in one Flow.
 package drive
 
@@ -73,7 +73,7 @@ type Client struct {
 	apiBaseURL       string
 	uploadBaseURL    string
 	httpClient       *http.Client
-	credentials      sdkgo.CredentialProvider[Credentials]
+	credentials      CredentialSource
 	refreshDriver    sdkgo.CredentialRefreshDriver[Credentials]
 	maxResponseBytes int64
 	maxTextBytes     int64
@@ -225,7 +225,7 @@ type readOutcome struct {
 // New validates configuration and constructs an authenticated Google Drive client.
 // It fails when the endpoint is not HTTPS (loopback HTTP is accepted for tests),
 // a limit is outside its documented range, or credentials is nil.
-func New(config Config, credentials sdkgo.CredentialProvider[Credentials], options ...Option) (*Client, error) {
+func New(config Config, credentials CredentialSource, options ...Option) (*Client, error) {
 	config = withConfigDefaults(config)
 	if err := config.Validate(); err != nil {
 		return nil, err

@@ -64,7 +64,7 @@ go run ./cmd/connectorctl ui-artifact \
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/google/gemini/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/google/gemini \
-  --version v0.3.0 --tag connectors/google/gemini/v0.3.0 \
+  --version v0.21.0 --tag connectors/google/gemini/v0.21.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/gemini-release/connector-ui.tgz \
   --ui-digest /tmp/gemini-release/connector-ui.tgz.sha256 \
@@ -72,7 +72,6 @@ go run ./cmd/connectorctl release-artifact \
   --digest-output /tmp/gemini-release/connector-release.json.sha256
 dexcli dev \
   --flow-rendering-dir "$PWD/connectors/google/gemini/build" \
-  --connector-config-dir "$HOME/.dex/connectors" \
   --connector-release-override gemini=/tmp/gemini-release
 ```
 
@@ -89,21 +88,23 @@ Gemini API key from Google AI Studio in `api_key`, leave `endpoint` and
 
 Then open the `generateContent · GenerateSummary` tab. Its **Summary model**
 picker lists Gemini's models live. Pick one, keep the connection's model, or
-type a model ID, and select **Save**. The key is stored only in the
-plaintext development file shown on the page; never commit or share it.
+type a model ID, and select **Save**.
 
-In a second terminal, start the Worker from `connectors/google/gemini` with
-that file:
+Dex Web saves the settings, the Step pick, and the key in the project
+configuration. In a second terminal, start the Worker from
+`connectors/google/gemini` with that project's `DEX_PROJECT_*` environment,
+which [`sdkgo/projectconfig`](../../../../../sdkgo/projectconfig/README.md#application-loading)
+documents, including `DEX_PROJECT_ALLOW_LOCAL_STORAGE=true` and
+`DEX_PROJECT_STORAGE_ENDPOINT` for a local S3-compatible store:
 
 ```bash
 cd "$(git rev-parse --show-toplevel)/connectors/google/gemini"
-export DEX_CONNECTOR_CONFIG_FILE="$HOME/.dex/connectors/connections.json"
 go run ./examples/generate-summary
 ```
 
 The Worker calls the Step's pick, or the connection's model when the pick is
 empty. It reads both at startup, so restart it after changing either in Dex
-Web. The Worker listens
+Web; a replaced key applies without a restart. The Worker listens
 on `127.0.0.1:8815`. Override
 `DEX_FLOW_SERVICE_ADDRESS`, `DEX_WORKER_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR`
 when needed. If the Dex Server is unreachable, the Worker logs `dex server

@@ -17,7 +17,7 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/connectors/bamboohr"
 	newhireonboarding "github.com/superdurable/dex-connectors-library/connectors/bamboohr/examples/new-hire-onboarding/flow"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -35,11 +35,11 @@ func main() {
 }
 
 func run(ctx context.Context) error {
-	store, err := localconfig.LoadFromEnvironment()
+	project, err := projectconfig.LoadFromEnvironment(ctx)
 	if err != nil {
 		return err
 	}
-	connection, err := bamboohr.NewLocalConnection(store, newhireonboarding.ConnectionName, connectionOptions()...)
+	connection, err := bamboohr.NewProjectConnection(project, newhireonboarding.ConnectionName, connectionOptions()...)
 	if err != nil {
 		return err
 	}

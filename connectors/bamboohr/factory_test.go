@@ -23,6 +23,9 @@ func (completeTarget[IN]) Execute(dex.Context, IN) (*dex.StepDecision, error) {
 	return dex.GracefulComplete(struct{}{}), nil
 }
 
+// GetStepType names the target: Dex gives a generic Step type no default name.
+func (completeTarget[IN]) GetStepType() string { return "Complete" }
+
 func TestFactoriesRequireOnlyTheHappyPathBranch(t *testing.T) {
 	connection := newTestConnection(t)
 	annotations := sdkgo.StepAnnotations{GroupID: "bamboohr", GroupLabel: "BambooHR", Explanation: "Call BambooHR."}
@@ -35,35 +38,35 @@ func TestFactoriesRequireOnlyTheHappyPathBranch(t *testing.T) {
 			Found: sdkgo.GoTo(completeTarget[bamboohr.GetEmployeeResult]{}),
 		})
 		bamboohr.NewFindEmployeeByEmailStep(bamboohr.FindEmployeeByEmailStepConfig[string]{
-			StepType: "FindEmployee", Annotations: annotations, Connection: connection,
+			StepType: "FindEmployee", Annotations: annotations, Connection: connection, ConnectionName: bambooHRConnection.Name,
 			MapToOperationInput: func(email string) bamboohr.FindEmployeeByEmailInput {
 				return bamboohr.FindEmployeeByEmailInput{Email: email}
 			},
 			Found: sdkgo.GoTo(completeTarget[bamboohr.FindEmployeeByEmailResult]{}),
 		})
 		bamboohr.NewListEmployeeChangesStep(bamboohr.ListEmployeeChangesStepConfig[time.Time]{
-			StepType: "ListChanges", Annotations: annotations, Connection: connection,
+			StepType: "ListChanges", Annotations: annotations, Connection: connection, ConnectionName: bambooHRConnection.Name,
 			MapToOperationInput: func(since time.Time) bamboohr.ListEmployeeChangesInput {
 				return bamboohr.ListEmployeeChangesInput{Since: since}
 			},
 			Listed: sdkgo.GoTo(completeTarget[bamboohr.ListEmployeeChangesResult]{}),
 		})
 		bamboohr.NewListTimeOffRequestsStep(bamboohr.ListTimeOffRequestsStepConfig[string]{
-			StepType: "ListTimeOff", Annotations: annotations, Connection: connection,
+			StepType: "ListTimeOff", Annotations: annotations, Connection: connection, ConnectionName: bambooHRConnection.Name,
 			MapToOperationInput: func(day string) bamboohr.ListTimeOffRequestsInput {
 				return bamboohr.ListTimeOffRequestsInput{StartDate: day, EndDate: day}
 			},
 			Listed: sdkgo.GoTo(completeTarget[bamboohr.ListTimeOffRequestsResult]{}),
 		})
 		bamboohr.NewUpdateEmployeeStep(bamboohr.UpdateEmployeeStepConfig[string]{
-			StepType: "UpdateEmployee", Annotations: annotations, Connection: connection,
+			StepType: "UpdateEmployee", Annotations: annotations, Connection: connection, ConnectionName: bambooHRConnection.Name,
 			MapToOperationInput: func(id string) bamboohr.UpdateEmployeeInput {
 				return bamboohr.UpdateEmployeeInput{EmployeeID: id, Fields: map[string]string{"customITProvisioning": "Requested"}}
 			},
 			Updated: sdkgo.GoTo(completeTarget[bamboohr.UpdateEmployeeResult]{}),
 		})
 		bamboohr.NewAddEmployeeStep(bamboohr.AddEmployeeStepConfig[string]{
-			StepType: "AddEmployee", Annotations: annotations, Connection: connection,
+			StepType: "AddEmployee", Annotations: annotations, Connection: connection, ConnectionName: bambooHRConnection.Name,
 			MapToOperationInput: func(string) bamboohr.AddEmployeeInput { return validAddEmployeeInput() },
 			Created:             sdkgo.GoTo(completeTarget[bamboohr.AddEmployeeResult]{}),
 			Uncertain:           sdkgo.GoTo(completeTarget[bamboohr.AddEmployeeResult]{}),
@@ -71,7 +74,7 @@ func TestFactoriesRequireOnlyTheHappyPathBranch(t *testing.T) {
 	})
 	require.Panics(t, func() {
 		bamboohr.NewAddEmployeeStep(bamboohr.AddEmployeeStepConfig[string]{
-			StepType: "AddEmployee", Connection: connection,
+			StepType: "AddEmployee", Annotations: annotations, Connection: connection, ConnectionName: bambooHRConnection.Name,
 			MapToOperationInput: func(string) bamboohr.AddEmployeeInput { return validAddEmployeeInput() },
 			Uncertain:           sdkgo.GoTo(completeTarget[bamboohr.AddEmployeeResult]{}),
 		})

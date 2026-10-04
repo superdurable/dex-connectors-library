@@ -18,7 +18,8 @@ import (
 	"github.com/superdurable/dex-connectors-library/connectors/google/docs"
 	policypublish "github.com/superdurable/dex-connectors-library/connectors/google/docs/examples/policy-publish/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -33,19 +34,19 @@ func main() {
 }
 
 func run(ctx context.Context) error {
-	store, err := localconfig.LoadFromEnvironment()
+	project, err := projectconfig.LoadFromEnvironment(ctx)
 	if err != nil {
 		return err
 	}
-	connection, err := docs.NewLocalConnection(store, policypublish.ConnectionName)
+	connection, err := docs.NewProjectConnection(project, policypublish.ConnectionName)
 	if err != nil {
 		return err
 	}
-	template, err := loadOperationConfiguration[policypublish.TemplateConfiguration](store, policypublish.TemplateConfigurationRef())
+	template, err := loadOperationConfiguration[policypublish.TemplateConfiguration](project.Configuration, policypublish.TemplateConfigurationRef())
 	if err != nil {
 		return err
 	}
-	destinationFolder, err := loadOperationConfiguration[policypublish.FolderConfiguration](store, policypublish.DestinationFolderConfigurationRef())
+	destinationFolder, err := loadOperationConfiguration[policypublish.FolderConfiguration](project.Configuration, policypublish.DestinationFolderConfigurationRef())
 	if err != nil {
 		return err
 	}
@@ -79,11 +80,11 @@ func run(ctx context.Context) error {
 // loadOperationConfiguration reads a Step's saved pick once at startup. A Step
 // without a saved pick uses a blank value, which the Flow documents.
 func loadOperationConfiguration[T any](
-	store *localconfig.Store,
+	configuration projectconfig.Configuration,
 	reference sdkgo.ConnectorConfigurationRef,
 ) (sdkgo.ConnectorLoadedConfiguration[T], error) {
-	loaded, err := localconfig.LoadOperationConfiguration[T](store, reference)
-	if errors.Is(err, localconfig.ErrConfigurationNotFound) {
+	loaded, err := provider.LoadOperationConfiguration[T](configuration, reference)
+	if errors.Is(err, projectconfig.ErrObjectNotFound) {
 		return sdkgo.ConnectorLoadedConfiguration[T]{Reference: reference}, nil
 	}
 	return loaded, err

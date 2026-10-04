@@ -8,8 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -17,7 +15,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/notion"
 	submissionintake "github.com/superdurable/dex-connectors-library/connectors/notion/examples/submission-intake/flow"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -35,24 +34,23 @@ func TestNewLoggerFallsBackToInfoForAnInvalidLevel(t *testing.T) {
 	require.NotContains(t, output.String(), "hidden")
 }
 
-// TestTheDexWebConnectionRecordLoadsTheExampleConnection proves the record Dex Web writes for the
-// example's static connection name opens a Notion connection without exposing the token.
-func TestTheDexWebConnectionRecordLoadsTheExampleConnection(t *testing.T) {
-	directory := t.TempDir()
-	path := filepath.Join(directory, "connections.json")
-	contents, err := json.Marshal(map[string]any{
-		"schemaVersion": localconfig.SchemaVersion,
-		"connections": []map[string]any{{
-			"connectorId": notion.ConnectorID, "modulePath": "github.com/superdurable/dex-connectors-library/connectors/notion",
-			"moduleVersion": "v0.1.0", "provider": "notion", "connectionName": submissionintake.ConnectionName,
-			"configuration": map[string]any{}, "credentials": map[string]any{"api_token": "ntn_example_token"},
-		}},
+// TestTheDexWebConnectionSettingsLoadTheExampleConnection proves the settings Dex Web saves for the
+// example's static connection name open a Notion connection without exposing the token.
+func TestTheDexWebConnectionSettingsLoadTheExampleConnection(t *testing.T) {
+	configuration := projectconfig.Configuration{Connections: []projectconfig.ConnectionConfiguration{{
+		ConnectorID: notion.ConnectorID, ConnectionName: submissionintake.ConnectionName,
+		ModulePath: "github.com/superdurable/dex-connectors-library/connectors/notion", Provider: "notion",
+		Configuration: json.RawMessage(`{}`),
+	}}}
+	var config notion.Config
+	require.NoError(t, configuration.DecodeConnectionConfiguration(
+		projectconfig.ConnectionKey{ConnectorID: notion.ConnectorID, ConnectionName: submissionintake.ConnectionName}, &config))
+	reference := sdkgo.ConnectionRef{Provider: "notion", Name: submissionintake.ConnectionName}
+	client, err := notion.New(config, sdkgo.StaticCredentialProvider[notion.Credentials]{
+		reference: {APIToken: sdkgo.NewSecretString("ntn_example_token")},
 	})
 	require.NoError(t, err)
-	require.NoError(t, os.WriteFile(path, contents, 0o600))
-	store, err := localconfig.LoadFile(path)
-	require.NoError(t, err)
-	connection, err := notion.NewLocalConnection(store, submissionintake.ConnectionName)
+	connection, err := notion.NewConnection(client, reference)
 	require.NoError(t, err)
 	require.NotContains(t, connection.String(), "ntn_example_token")
 }

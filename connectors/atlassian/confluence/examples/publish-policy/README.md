@@ -56,11 +56,12 @@ dexcli visualize ./examples/publish-policy/flow/workflow.go \
   --schema-version 2.0 --json --out ./build/publish-policy
 ```
 
-Run `dexcli dev` with that build directory, then run the Worker with the
-connection path shown by Dex Web:
+Run `dexcli dev` with that build directory, then run the Worker. It reads the
+`DEX_PROJECT_*` project configuration environment described in
+[project configuration](../../../../../sdkgo/projectconfig/README.md); Dex Web or
+Superverse Studio writes that configuration when you save the connection.
 
 ```bash
-export DEX_CONNECTOR_CONFIG_FILE="$HOME/.dex/connectors/connections.json"
 go run ./examples/publish-policy
 ```
 

@@ -5,7 +5,7 @@ metadata:
   displayName: Help Scout
   description: "Search, read, reply to, and update Help Scout Inbox conversations, find customers by email, and receive signed conversation webhooks, keeping Help Scout's own active, pending, closed, and spam statuses."
   company: Help Scout
-  version: v0.1.0
+  version: v0.21.0
 spec:
   provider: helpscout
   codegen:
@@ -26,6 +26,7 @@ spec:
         required: false
         default: 4194304
   auth:
+    refreshable: true
     type: apiKey
     connectionKind: helpscout-client-credentials
     fields:
@@ -37,12 +38,12 @@ spec:
       - name: app_secret
         goName: AppSecret
         type: secretString
-        description: "Secret App Secret shown beside the App ID under Your Profile > My Apps at https://secure.helpscout.net/; it is stored only in the local connection file and sent only, as client_secret, to https://api.helpscout.net/v2/oauth2/token. Required: without it no access token can be obtained."
+        description: "Secret App Secret shown beside the App ID under Your Profile > My Apps at https://secure.helpscout.net/; it is stored only in this credential field and sent only, as client_secret, to https://api.helpscout.net/v2/oauth2/token. Required: without it no access token can be obtained."
         required: true
       - name: access_token
         goName: AccessToken
         type: secretString
-        description: "Secret two-day Help Scout access token that the connector obtains from the App ID and App Secret with the client credentials grant and stores here, renewing it five minutes before expiry or after Help Scout answers 401. It is an output, so never enter it manually; leave it blank."
+        description: "Secret two-day Help Scout access token that the connector obtains from the App ID and App Secret with the client credentials grant and stores here, renewing it five minutes before expiry. It is an output, so never enter it manually; leave it blank."
         required: false
       - name: webhook_secret
         goName: WebhookSecret

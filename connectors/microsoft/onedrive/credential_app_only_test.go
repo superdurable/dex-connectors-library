@@ -5,7 +5,6 @@ package onedrive
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"testing"
 	"time"
@@ -66,32 +65,4 @@ func TestAppOnlyRefreshTreatsARejectedClientAsTerminal(t *testing.T) {
 	_, err := driver.Refresh(context.Background(), sdkgo.CredentialRefreshState[Credentials]{Credentials: appOnlyCredentials("contoso.onmicrosoft.com"), Now: refreshTestNow})
 	require.True(t, sdkgo.IsReauthorizationRequired(err))
 	require.NotContains(t, err.Error(), "SENTINEL")
-}
-
-func TestDecodeResolvedCredentialsJSONAcceptsOnlyTheMethodAndAccessToken(t *testing.T) {
-	credentials, err := DecodeResolvedCredentialsJSON(json.RawMessage(`{"auth_method":"microsoft-app-only","access_token":"short-lived"}`))
-	require.NoError(t, err)
-	require.Equal(t, MicrosoftAppOnlyAuthMethodID, credentials.AuthMethodID)
-	require.Equal(t, "short-lived", credentials.AccessToken.Reveal())
-	for _, contents := range []string{
-		`{"auth_method":"microsoft-oauth","access_token":"a","refresh_token":"b"}`,
-		`{"auth_method":"microsoft-app-only","access_token":"a","app_client_secret":"b"}`,
-		`{"auth_method":"other","access_token":"a"}`,
-		`{"access_token":"has space"}`, `{}`, `[]`,
-	} {
-		_, err := DecodeResolvedCredentialsJSON(json.RawMessage(contents))
-		require.Error(t, err, contents)
-		require.NotContains(t, err.Error(), "has space")
-	}
-}
-
-func TestEncodeCredentialsJSONRoundTripsTheSelectedMethod(t *testing.T) {
-	encoded, err := EncodeCredentialsJSON(appOnlyCredentials("contoso.onmicrosoft.com"))
-	require.NoError(t, err)
-	decoded, err := DecodeCredentialsJSON(encoded)
-	require.NoError(t, err)
-	require.Equal(t, "contoso.onmicrosoft.com", decoded.TenantID)
-	require.Equal(t, testClientSecret, decoded.AppClientSecret.Reveal())
-	_, err = EncodeCredentialsJSON(Credentials{AuthMethodID: MicrosoftOAuthAuthMethodID})
-	require.Error(t, err)
 }

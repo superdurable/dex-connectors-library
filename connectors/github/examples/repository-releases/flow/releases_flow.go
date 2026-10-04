@@ -7,33 +7,33 @@ import (
 	"errors"
 	"time"
 
-	githubconnector "github.com/superdurable/dex-connectors-library/connectors/github"
+	"github.com/superdurable/dex-connectors-library/connectors/github"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
 const ConnectionName = "github-repository-releases"
 
-var releasePageAttribute = dex.DefineAttribute[githubconnector.ListReleasesResult]("github-release-page")
+var releasePageAttribute = dex.DefineAttribute[github.ListReleasesResult]("github-release-page")
 
 // RepositoryReleasesFlow reads a single bounded provider page and retains the typed result.
 // It is independent of the existing repository-changes Flow and has no shared mutable state.
 type RepositoryReleasesFlow struct {
 	dex.FlowDefaults
-	connection githubconnector.Connection
+	connection github.Connection
 }
 
 // NewRepositoryReleasesFlow injects the configured read-only GitHub connection.
-func NewRepositoryReleasesFlow(connection githubconnector.Connection) *RepositoryReleasesFlow {
+func NewRepositoryReleasesFlow(connection github.Connection) *RepositoryReleasesFlow {
 	return &RepositoryReleasesFlow{connection: connection}
 }
 
 func (flow *RepositoryReleasesFlow) GetSteps() []dex.StepDef {
 	return []dex.StepDef{
-		dex.DefineStartStep(githubconnector.NewListReleasesStep(githubconnector.ListReleasesStepConfig[githubconnector.ListReleasesInput]{
+		dex.DefineStartStep(github.NewListReleasesStep(github.ListReleasesStepConfig[github.ListReleasesInput]{
 			StepType: "ListRepositoryReleases", ConnectionName: ConnectionName, Connection: flow.connection,
 			Annotations:         sdkgo.StepAnnotations{GroupID: "github", GroupLabel: "GitHub", Explanation: "Read one page of release identities, publication dates and bounded notes."},
-			MapToOperationInput: func(input githubconnector.ListReleasesInput) githubconnector.ListReleasesInput { return input },
+			MapToOperationInput: func(input github.ListReleasesInput) github.ListReleasesInput { return input },
 			Listed:              sdkgo.GoTo(RecordReleasePage{}),
 		})),
 		dex.DefineStep(RecordReleasePage{}),
@@ -49,13 +49,13 @@ func (flow *RepositoryReleasesFlow) GetRPCs() []dex.RPCDef {
 }
 
 // GetReleasePage provides typed retained state, including after the engine completes.
-func (*RepositoryReleasesFlow) GetReleasePage(ctx dex.Context, _ dex.None) (*dex.RPCResult[githubconnector.ListReleasesResult], error) {
+func (*RepositoryReleasesFlow) GetReleasePage(ctx dex.Context, _ dex.None) (*dex.RPCResult[github.ListReleasesResult], error) {
 	result, err := releasePageAttribute.Get(ctx)
 	var absent *dex.AttributeNotFoundError
 	if errors.As(err, &absent) {
-		return &dex.RPCResult[githubconnector.ListReleasesResult]{}, nil
+		return &dex.RPCResult[github.ListReleasesResult]{}, nil
 	}
-	return &dex.RPCResult[githubconnector.ListReleasesResult]{Output: result}, err
+	return &dex.RPCResult[github.ListReleasesResult]{Output: result}, err
 }
 
 // dex:field attribute-key:github-release-page value-type:object editable:false description:"Bounded release page"
@@ -79,14 +79,14 @@ func (flow *RepositoryReleasesFlow) GetDexDisplay(ctx dex.Context, input dex.Non
 // dex:group group-id:result group-label:"Result"
 // dex:explanation text:"Retain the exact typed query result and complete this page read."
 type RecordReleasePage struct {
-	dex.StepDefaultsNoWaitFor[githubconnector.ListReleasesResult]
+	dex.StepDefaultsNoWaitFor[github.ListReleasesResult]
 }
 
 func (RecordReleasePage) GetStepOptions() *dex.StepOptions {
 	return &dex.StepOptions{ExecuteMethodTimeout: 10 * time.Second, ExecuteRetry: &dex.RetryPolicy{MaximumAttempts: 1}}
 }
 
-func (RecordReleasePage) Execute(ctx dex.Context, result githubconnector.ListReleasesResult) (*dex.StepDecision, error) {
+func (RecordReleasePage) Execute(ctx dex.Context, result github.ListReleasesResult) (*dex.StepDecision, error) {
 	if err := releasePageAttribute.Set(ctx, result); err != nil {
 		return nil, err
 	}

@@ -24,8 +24,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/hubspot"
+	"github.com/superdurable/dex-connectors-library/connectors/hubspot/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -179,10 +179,15 @@ func TestExpiredOAuthConnectionRefreshesBeforeTheUpsertWithRealDex(t *testing.T)
 		writeProviderJSON(t, response, http.StatusOK, `{"token_type":"bearer","access_token":"refreshed-oauth-access-token",
 			"refresh_token":"rotated-refresh-token","expires_in":1800,"hub_id":1234567}`)
 	}}}
-	connectionsPath := writeOAuthConnections(t, provider.URL)
-	store, err := localconfig.LoadFile(connectionsPath)
+	expiredAt := time.Now().Add(-time.Minute)
+	credentials := testsupport.NewRefreshingCredentialSource(hubspot.Credentials{
+		AuthMethodID: hubspot.OAuthAuthMethodID, OAuthClientID: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+		OAuthClientSecret: sdkgo.NewSecretString("oauth-client-secret"), AccessToken: sdkgo.NewSecretString("expired-oauth-access-token"),
+		RefreshToken: sdkgo.NewSecretString("stored-refresh-token"),
+	}, &expiredAt)
+	client, err := hubspot.New(hubspot.Config{Endpoint: provider.URL}, credentials, hubspot.WithHTTPClient(httpClient))
 	require.NoError(t, err)
-	connection, err := hubspot.NewLocalConnection(store, ConnectionName, hubspot.WithHTTPClient(httpClient))
+	connection, err := hubspot.NewConnection(client, sdkgo.ConnectionRef{Provider: "hubspot", Name: ConnectionName})
 	require.NoError(t, err)
 	harness := newHarnessForConnection(t, connection)
 	ctx := integrationContext(t, time.Minute)
@@ -193,12 +198,10 @@ func TestExpiredOAuthConnectionRefreshesBeforeTheUpsertWithRealDex(t *testing.T)
 	tokenMutex.Lock()
 	require.Equal(t, 1, tokenRequests, "one refresh serves every later call until the new token nears expiry")
 	tokenMutex.Unlock()
-	contents, err := os.ReadFile(connectionsPath)
-	require.NoError(t, err)
-	require.Contains(t, string(contents), "refreshed-oauth-access-token")
-	require.Contains(t, string(contents), "rotated-refresh-token")
-	require.NotContains(t, string(contents), "expired-oauth-access-token")
-	require.Contains(t, string(contents), `"authMethodId": "hubspot-oauth"`, "the refresh rewrite keeps Dex Web's record member")
+	stored, _ := credentials.Current()
+	require.Equal(t, "refreshed-oauth-access-token", stored.AccessToken.Reveal())
+	require.Equal(t, "rotated-refresh-token", stored.RefreshToken.Reveal())
+	require.Equal(t, hubspot.OAuthAuthMethodID, stored.AuthMethodID, "the refresh keeps the authorization method")
 }
 
 func startQualification(t *testing.T, ctx context.Context, harness *leadQualificationHarness, scenario string, input Input) string {
@@ -533,29 +536,6 @@ func (transport tokenEndpointTransport) RoundTrip(request *http.Request) (*http.
 		return recorder.Result(), nil
 	}
 	return http.DefaultTransport.RoundTrip(request)
-}
-
-func writeOAuthConnections(t *testing.T, endpoint string) string {
-	t.Helper()
-	path := filepath.Join(t.TempDir(), "connections.json")
-	contents, err := json.Marshal(map[string]any{
-		"schemaVersion": localconfig.SchemaVersion,
-		"connections": []map[string]any{{
-			"connectorId": hubspot.ConnectorID, "authMethodId": hubspot.OAuthAuthMethodID,
-			"modulePath":    "github.com/superdurable/dex-connectors-library/connectors/hubspot",
-			"moduleVersion": "v0.1.0", "provider": "hubspot", "connectionName": ConnectionName,
-			"configuration": map[string]any{"endpoint": endpoint},
-			"credentials": map[string]any{
-				"auth_method": hubspot.OAuthAuthMethodID, "oauth_client_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-				"oauth_client_secret": "oauth-client-secret", "access_token": "expired-oauth-access-token",
-				"refresh_token": "stored-refresh-token",
-			},
-			"credentialExpiresAt": time.Now().Add(-time.Minute).UTC().Format(time.RFC3339),
-		}},
-	})
-	require.NoError(t, err)
-	require.NoError(t, os.WriteFile(path, contents, 0o600))
-	return path
 }
 
 type leadQualificationHarness struct {

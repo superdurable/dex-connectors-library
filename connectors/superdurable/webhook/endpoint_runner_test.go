@@ -6,66 +6,98 @@ package webhook_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
+	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/superdurable/webhook"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
-// writeLocalStore writes a Dex Web style connection file with one webhook connection and its bindings.
-func writeLocalStore(t *testing.T, bindings map[string]any) (*localconfig.Store, string) {
-	t.Helper()
-	directory := t.TempDir()
-	triggerBindings := []any{}
-	for bindingName, configuration := range bindings {
-		triggerBindings = append(triggerBindings, map[string]any{
-			"connectorId": webhook.ConnectorID, "connectionName": testConnection.Name, "triggerName": "requestReceived",
-			"bindingName": bindingName, "configuration": configuration,
+// projectConfiguration is the project configuration Dex Web saves for one webhook connection and its bindings.
+func projectConfiguration(bindings map[string]string) projectconfig.Configuration {
+	configuration := projectconfig.Configuration{Connections: []projectconfig.ConnectionConfiguration{{
+		ConnectorID: webhook.ConnectorID, ConnectionName: testConnection.Name,
+		ModulePath: "github.com/superdurable/dex-connectors-library/connectors/superdurable/webhook", Provider: "webhook",
+		Configuration: json.RawMessage(`{"eventIdPointer":"/event_id"}`),
+	}}}
+	for bindingName, bindingConfiguration := range bindings {
+		configuration.TriggerBindings = append(configuration.TriggerBindings, projectconfig.TriggerConfiguration{
+			ConnectorID: webhook.ConnectorID, ConnectionName: testConnection.Name, TriggerName: "requestReceived",
+			BindingName: bindingName, Configuration: json.RawMessage(bindingConfiguration),
 		})
 	}
-	contents, err := json.Marshal(map[string]any{
-		"schemaVersion": localconfig.SchemaVersion,
-		"connections": []any{map[string]any{
-			"connectorId": webhook.ConnectorID, "modulePath": "github.com/superdurable/dex-connectors-library/connectors/superdurable/webhook",
-			"moduleVersion": "v0.1.0", "provider": "webhook", "connectionName": testConnection.Name,
-			"configuration": map[string]any{"eventIdPointer": "/event_id"},
-			"credentials":   map[string]any{"signing_secret": sentinelSecret},
-		}},
-		"triggerBindings": triggerBindings,
-	})
-	require.NoError(t, err)
-	path := filepath.Join(directory, "connections.json")
-	require.NoError(t, os.WriteFile(path, contents, 0o600))
-	store, err := localconfig.LoadFile(path)
-	require.NoError(t, err)
-	return store, directory
+	return configuration
 }
 
-func TestLocalEndpointRunnerRecordsBeforeAcknowledgingAndAnswers503UntilRunning(t *testing.T) {
-	store, directory := writeLocalStore(t, map[string]any{"submissions": map[string]any{}})
+// recordingInboxes stands in for durable project inboxes, recording each inbox key and every prepared event.
+type recordingInboxes struct {
+	mu       sync.Mutex
+	keys     []projectconfig.TriggerInboxKey
+	prepared []sdkgo.TriggerEvent[webhook.WebhookRequestEvent]
+}
+
+func (inboxes *recordingInboxes) wrap(
+	key projectconfig.TriggerInboxKey, target sdkgo.TriggerTarget[webhook.WebhookRequestEvent],
+) (sdkgo.TriggerTarget[webhook.WebhookRequestEvent], error) {
+	inboxes.mu.Lock()
+	defer inboxes.mu.Unlock()
+	inboxes.keys = append(inboxes.keys, key)
+	return recordingTarget{inboxes: inboxes, target: target}, nil
+}
+
+func (inboxes *recordingInboxes) preparedEvents() []sdkgo.TriggerEvent[webhook.WebhookRequestEvent] {
+	inboxes.mu.Lock()
+	defer inboxes.mu.Unlock()
+	return slices.Clone(inboxes.prepared)
+}
+
+// recordingTarget records an event when the endpoint prepares it and passes deliveries to the application target.
+type recordingTarget struct {
+	inboxes *recordingInboxes
+	target  sdkgo.TriggerTarget[webhook.WebhookRequestEvent]
+}
+
+func (target recordingTarget) PrepareTrigger(_ context.Context, event sdkgo.TriggerEvent[webhook.WebhookRequestEvent]) error {
+	target.inboxes.mu.Lock()
+	defer target.inboxes.mu.Unlock()
+	target.inboxes.prepared = append(target.inboxes.prepared, event)
+	return nil
+}
+
+func (target recordingTarget) HandleTrigger(ctx context.Context, event sdkgo.TriggerEvent[webhook.WebhookRequestEvent]) error {
+	return target.target.HandleTrigger(ctx, event)
+}
+
+func TestEndpointRunnerRecordsBeforeAcknowledgingAndAnswers503UntilRunning(t *testing.T) {
+	inboxes := &recordingInboxes{}
 	release := make(chan struct{})
 	handled := make(chan string, 4)
-	runner, err := webhook.NewLocalRequestReceivedEndpointRunner(store, testConnection.Name, []webhook.LocalRequestReceivedTriggerRoute{{
-		BindingName: "submissions",
-		Target: sdkgo.TriggerTargetFunc[webhook.WebhookRequestEvent](func(ctx context.Context, event sdkgo.TriggerEvent[webhook.WebhookRequestEvent]) error {
-			select {
-			case <-release:
-			case <-ctx.Done():
-				return ctx.Err()
-			}
-			handled <- event.ID
-			return nil
-		}),
-	}})
+	connection := newTestConnection(t, webhook.Config{EventIDPointer: "/event_id"}, sentinelSecret)
+	runner, err := webhook.NewRequestReceivedEndpointRunnerForTest(connection, projectConfiguration(map[string]string{"submissions": `{}`}),
+		[]webhook.ProjectRequestReceivedTriggerRoute{{
+			BindingName: "submissions",
+			Target: sdkgo.TriggerTargetFunc[webhook.WebhookRequestEvent](func(ctx context.Context, event sdkgo.TriggerEvent[webhook.WebhookRequestEvent]) error {
+				select {
+				case <-release:
+				case <-ctx.Done():
+					return ctx.Err()
+				}
+				handled <- event.ID
+				return nil
+			}),
+		}}, inboxes.wrap)
 	require.NoError(t, err)
+	require.Equal(t, []projectconfig.TriggerInboxKey{{
+		ConnectorID: webhook.ConnectorID, ConnectionName: testConnection.Name, TriggerName: "requestReceived", BindingName: "submissions",
+	}}, inboxes.keys, "every route's target is wrapped in its binding's durable inbox")
 	server := httptest.NewServer(runner)
 	t.Cleanup(server.Close)
 	post := func() int {
@@ -90,13 +122,12 @@ func TestLocalEndpointRunnerRecordsBeforeAcknowledgingAndAnswers503UntilRunning(
 	})
 	require.Eventually(t, func() bool { return runner.RunningSourceCount() == 1 }, 5*time.Second, time.Millisecond)
 	require.Equal(t, http.StatusOK, post())
-	inboxes, err := filepath.Glob(filepath.Join(directory, ".trigger-inbox-*.json"))
+	prepared := inboxes.preparedEvents()
+	require.Len(t, prepared, 1, "the 200 came after the event was recorded")
+	require.Equal(t, "evt_1", prepared[0].ID)
+	stored, err := json.Marshal(prepared[0])
 	require.NoError(t, err)
-	require.Len(t, inboxes, 1, "the 200 came after the event was on disk")
-	inbox, err := os.ReadFile(inboxes[0])
-	require.NoError(t, err)
-	require.Contains(t, string(inbox), `"eventId":"evt_1"`)
-	require.NotContains(t, string(inbox), sentinelSecret)
+	require.NotContains(t, string(stored), sentinelSecret)
 	close(release)
 	select {
 	case eventID := <-handled:
@@ -106,18 +137,20 @@ func TestLocalEndpointRunnerRecordsBeforeAcknowledgingAndAnswers503UntilRunning(
 	}
 }
 
-func TestNewLocalEndpointRunnerRejectsIncompleteRoutes(t *testing.T) {
+func TestEndpointRunnerRejectsIncompleteRoutes(t *testing.T) {
 	target := sdkgo.TriggerTargetFunc[webhook.WebhookRequestEvent](func(context.Context, sdkgo.TriggerEvent[webhook.WebhookRequestEvent]) error { return nil })
-	store, _ := writeLocalStore(t, map[string]any{
-		"submissions": map[string]any{"matchPointer": "/event_type", "matchValues": []string{"form_response"}},
-		"invalid":     map[string]any{"matchPointer": "/event_type"},
-		"unknown":     map[string]any{"matchField": "event_type"},
+	connection := newTestConnection(t, webhook.Config{EventIDPointer: "/event_id"}, sentinelSecret)
+	configuration := projectConfiguration(map[string]string{
+		"submissions": `{"matchPointer":"/event_type","matchValues":["form_response"]}`,
+		"invalid":     `{"matchPointer":"/event_type"}`,
+		"unknown":     `{"matchField":"event_type"}`,
 	})
-	_, err := webhook.NewLocalRequestReceivedEndpointRunner(store, testConnection.Name, []webhook.LocalRequestReceivedTriggerRoute{
+	inboxes := &recordingInboxes{}
+	_, err := webhook.NewRequestReceivedEndpointRunnerForTest(connection, configuration, []webhook.ProjectRequestReceivedTriggerRoute{
 		{BindingName: "submissions", Target: target},
-	})
+	}, inboxes.wrap)
 	require.NoError(t, err)
-	for name, routes := range map[string][]webhook.LocalRequestReceivedTriggerRoute{
+	for name, routes := range map[string][]webhook.ProjectRequestReceivedTriggerRoute{
 		"no routes":          nil,
 		"unstored binding":   {{BindingName: "missing", Target: target}},
 		"invalid binding":    {{BindingName: "invalid", Target: target}},
@@ -127,11 +160,32 @@ func TestNewLocalEndpointRunnerRejectsIncompleteRoutes(t *testing.T) {
 		"duplicated binding": {{BindingName: "submissions", Target: target}, {BindingName: "submissions", Target: target}},
 	} {
 		t.Run(name, func(t *testing.T) {
-			_, err := webhook.NewLocalRequestReceivedEndpointRunner(store, testConnection.Name, routes)
+			_, err := webhook.NewRequestReceivedEndpointRunnerForTest(connection, configuration, routes, inboxes.wrap)
 			require.Error(t, err)
 		})
 	}
-	_, err = webhook.NewLocalRequestReceivedEndpointRunner(store, "another-connection", []webhook.LocalRequestReceivedTriggerRoute{
+	_, err = webhook.NewRequestReceivedEndpointRunnerForTest(connection, configuration, []webhook.ProjectRequestReceivedTriggerRoute{
+		{BindingName: "missing", Target: target},
+	}, inboxes.wrap)
+	require.ErrorIs(t, err, projectconfig.ErrObjectNotFound)
+
+	client, err := webhook.New(webhook.Config{EventIDPointer: "/event_id"}, staticCredentials(sentinelSecret))
+	require.NoError(t, err)
+	anotherConnection, err := webhook.NewConnection(client, sdkgo.ConnectionRef{Provider: "webhook", Name: "another-connection"})
+	require.NoError(t, err)
+	_, err = webhook.NewRequestReceivedEndpointRunnerForTest(anotherConnection, configuration, []webhook.ProjectRequestReceivedTriggerRoute{
+		{BindingName: "submissions", Target: target},
+	}, inboxes.wrap)
+	require.ErrorIs(t, err, projectconfig.ErrObjectNotFound, "bindings belong to the connection they name")
+
+	inboxFailure := errors.New("project trigger inbox is unavailable")
+	_, err = webhook.NewRequestReceivedEndpointRunnerForTest(connection, configuration, []webhook.ProjectRequestReceivedTriggerRoute{
+		{BindingName: "submissions", Target: target},
+	}, func(projectconfig.TriggerInboxKey, sdkgo.TriggerTarget[webhook.WebhookRequestEvent]) (sdkgo.TriggerTarget[webhook.WebhookRequestEvent], error) {
+		return nil, inboxFailure
+	})
+	require.ErrorIs(t, err, inboxFailure)
+	_, err = webhook.NewProjectRequestReceivedEndpointRunner(nil, testConnection.Name, []webhook.ProjectRequestReceivedTriggerRoute{
 		{BindingName: "submissions", Target: target},
 	})
 	require.Error(t, err)

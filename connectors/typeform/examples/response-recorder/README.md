@@ -3,9 +3,9 @@
 This example receives signed Typeform webhooks and starts one
 `TypeformResponseRecorder` Flow per submitted response:
 
-1. the Worker mounts `NewLocalResponseSubmittedEndpointRunner` at
+1. the Worker mounts `NewProjectResponseSubmittedEndpointRunner` at
    `/webhooks/typeform` and starts it at once, so a submission is recorded in
-   the binding's durable inbox even while Dex is unreachable;
+   the binding's durable project inbox even while Dex is unreachable;
 2. the `response-submitted` binding of the `responseSubmitted` Trigger keeps
    only submissions of the form chosen with the `formPicker` unit, and
    `AcceptSubmission` admits only a submission with at least one answer;
@@ -67,7 +67,7 @@ go run ./cmd/connectorctl ui-artifact \
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/typeform/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/typeform \
-  --version v0.1.0 --tag connectors/typeform/v0.1.0 \
+  --version v0.21.0 --tag connectors/typeform/v0.21.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/typeform-release/connector-ui.tgz \
   --ui-digest /tmp/typeform-release/connector-ui.tgz.sha256 \
@@ -75,7 +75,6 @@ go run ./cmd/connectorctl release-artifact \
   --digest-output /tmp/typeform-release/connector-release.json.sha256
 dexcli dev \
   --flow-rendering-dir "$PWD/connectors/typeform/build" \
-  --connector-config-dir "$HOME/.dex/connectors" \
   --connector-release-override typeform=/tmp/typeform-release
 ```
 
@@ -94,8 +93,8 @@ form:
 - leave the configuration fields blank unless the account is in an EU
   Responses Data Center, and save.
 
-Dex Web writes the credentials of the record in
-`$HOME/.dex/connectors/connections.json` like this:
+Dex Web stores the connection's credential in the private project storage
+with these fields:
 
 ```json
 {"auth_method": "personal-access-token", "access_token": "<personal access token>", "webhook_secret": "<openssl rand -hex 32>"}
@@ -135,11 +134,14 @@ where **Edit > Secret** must hold the same `webhook_secret`.
 
 ## 5. Run the Worker and send a delivery
 
-In a second terminal, from `connectors/typeform`:
+Dex Web or Superverse Studio writes the connection and the binding to the
+project configuration. In a second terminal, from `connectors/typeform`, run
+the Worker with the `DEX_PROJECT_*` environment that names that configuration,
+as [project configuration loading](../../../../sdkgo/projectconfig/README.md#application-loading)
+describes:
 
 ```bash
 cd "$(git rev-parse --show-toplevel)/connectors/typeform"
-export DEX_CONNECTOR_CONFIG_FILE="$HOME/.dex/connectors/connections.json"
 go run ./examples/response-recorder
 ```
 
@@ -196,10 +198,9 @@ the binding runs is answered `200` and starts the Flow.
 ## 8. Restart recovery
 
 Stop Dex, send a delivery, and stop the Worker. The endpoint answered `200`
-because the delivery was on disk; it stays in the binding's inbox, a
-`.trigger-inbox-*.json` file beside the connection file. Start Dex and the
-Worker again: the runner replays it, logs `replaying pending trigger events`,
-and the Flow starts and completes.
+because the delivery was stored; it stays in the binding's durable inbox in
+project storage. Start Dex and the Worker again: the runner replays it, logs
+`replaying pending trigger events`, and the Flow starts and completes.
 
 ## Test
 
@@ -209,18 +210,22 @@ From `connectors/typeform`:
 go test -race ./examples/response-recorder/...
 ```
 
-The unit tests cover the Flow's mapping and admission rules, and run the
-Worker against an unreachable Dex Server: a signed delivery is answered `200`
-only after it is in the inbox, a tampered or wrongly signed one `400`, and a
-delivery for another form or a partial response `200` without a record.
+The unit tests cover the Flow's mapping and admission rules, and serve the
+example's Flow target on the connection's endpoint against an unreachable Dex
+Server: a signed delivery is answered `200` and retried toward Dex, a tampered
+or wrongly signed one `400`, and a delivery for another form or a partial
+response `200` without reaching the target.
 
-The real Dex tests run the example against `dexcli dev` and a TLS stand-in for
-`api.typeform.com`: a signed delivery starts exactly one Flow that records its
-typed answers and reads the form once; a redelivery starts no second Flow and
-reads nothing again; a forged delivery answers `400` and starts nothing; a
-submission without answers is filtered; a delivery while the binding is not
-running answers `503` and its retry starts the Flow; and a delivery
-acknowledged while Dex was unreachable is replayed after a restart:
+Opening a connection from a loaded project needs project storage, so the tests
+build the connection with a static credential and run the binding without its
+durable project inbox; the Connector SDK's own tests cover the inbox,
+including replay after a restart. The real Dex tests serve the example's Flow
+target against `dexcli dev` and a TLS stand-in for `api.typeform.com`: a
+signed delivery starts exactly one Flow that records its typed answers and
+reads the form once; a redelivery starts no second Flow and reads nothing
+again; a forged delivery answers `400` and starts nothing; a submission
+without answers is filtered; and a delivery while the binding is not running
+answers `503` and its retry starts the Flow:
 
 ```bash
 DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 go test -tags=integration ./examples/response-recorder/... -count=1 -v

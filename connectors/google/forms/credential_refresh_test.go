@@ -189,37 +189,6 @@ func TestCredentialRefreshDriverRequiresReauthorizationForAnUnknownMethod(t *tes
 	require.True(t, sdkgo.IsReauthorizationRequired(err))
 }
 
-func TestDecodeResolvedCredentialsRejectsRenewalMaterial(t *testing.T) {
-	contents, err := json.Marshal(map[string]string{"auth_method": "google-oauth", "access_token": "short-lived"})
-	require.NoError(t, err)
-	credentials, err := DecodeResolvedCredentialsJSON(contents)
-	require.NoError(t, err)
-	require.Equal(t, "short-lived", credentials.AccessToken.Reveal())
-	for _, forbidden := range []string{"refresh_token", "oauth_client_secret", "service_account_key"} {
-		contents, err = json.Marshal(map[string]string{"access_token": "short-lived", forbidden: "must-not-cross-broker"})
-		require.NoError(t, err)
-		_, err = DecodeResolvedCredentialsJSON(contents)
-		require.Error(t, err, forbidden)
-		require.NotContains(t, err.Error(), "must-not-cross-broker")
-	}
-	_, err = DecodeResolvedCredentialsJSON(json.RawMessage(`{"auth_method":"other","access_token":"short-lived"}`))
-	require.Error(t, err)
-}
-
-func TestEncodeCredentialsJSONRoundTripsCompleteCredentials(t *testing.T) {
-	credentials := Credentials{
-		AuthMethodID: GoogleOAuthAuthMethodID, OAuthClientID: "client-id", OAuthClientSecret: sdkgo.NewSecretString("client-secret"),
-		AccessToken: sdkgo.NewSecretString("access"), RefreshToken: sdkgo.NewSecretString("refresh"),
-	}
-	encoded, err := EncodeCredentialsJSON(credentials)
-	require.NoError(t, err)
-	decoded, err := DecodeCredentialsJSON(encoded)
-	require.NoError(t, err)
-	require.Equal(t, "refresh", decoded.RefreshToken.Reveal())
-	_, err = EncodeCredentialsJSON(Credentials{AuthMethodID: GoogleOAuthAuthMethodID})
-	require.Error(t, err)
-}
-
 func serviceAccountKeyJSON(t *testing.T) string {
 	t.Helper()
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)

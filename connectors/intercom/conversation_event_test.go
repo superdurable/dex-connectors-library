@@ -9,10 +9,10 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
@@ -23,7 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/intercom"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
 func TestConversationEventEndpointVerifiesDecodesAndFiltersNotifications(t *testing.T) {
@@ -75,14 +75,21 @@ func TestConversationEventEndpointVerifiesDecodesAndFiltersNotifications(t *test
 
 func TestConversationEventEndpointAsksIntercomToRetryUntilItCanVerifyAndRecord(t *testing.T) {
 	created := notificationBody("notif_retry", intercom.TopicConversationUserCreated, conversationJSON(t, testConversation, "open", nil))
-	store := writeLocalConnection(t, map[string]any{"access_token": testAccessToken}, map[string]any{})
-	runner, err := intercom.NewLocalConversationEventEndpointRunner(store, intercomConnection.Name, []intercom.LocalConversationEventTriggerRoute{{
-		BindingName: "test-binding",
-		Target: sdkgo.TriggerTargetFunc[intercom.ConversationEvent](func(context.Context, sdkgo.TriggerEvent[intercom.ConversationEvent]) error {
-			t.Error("no notification may be delivered without a client secret")
-			return nil
-		}),
-	}})
+	withoutSecret, err := intercom.New(intercom.Config{Region: intercom.RegionEu}, sdkgo.StaticCredentialProvider[intercom.Credentials]{
+		intercomConnection: {AccessToken: sdkgo.NewSecretString(testAccessToken)},
+	})
+	require.NoError(t, err)
+	connectionWithoutSecret, err := intercom.NewConnection(withoutSecret, intercomConnection)
+	require.NoError(t, err)
+	inboxes := &recordingInboxes{}
+	runner, err := intercom.NewConversationEventEndpointRunnerForTest(connectionWithoutSecret, projectConfiguration(map[string]string{"test-binding": `{}`}),
+		[]intercom.ProjectConversationEventTriggerRoute{{
+			BindingName: "test-binding",
+			Target: sdkgo.TriggerTargetFunc[intercom.ConversationEvent](func(context.Context, sdkgo.TriggerEvent[intercom.ConversationEvent]) error {
+				t.Error("no notification may be delivered without a client secret")
+				return nil
+			}),
+		}}, inboxes.wrap)
 	require.NoError(t, err)
 	ctx, cancel := context.WithCancel(context.Background())
 	runResult := make(chan error, 1)
@@ -91,6 +98,7 @@ func TestConversationEventEndpointAsksIntercomToRetryUntilItCanVerifyAndRecord(t
 	require.Equal(t, http.StatusOK, serveNotification(runner, http.MethodHead, nil, ""))
 	require.Equal(t, http.StatusServiceUnavailable, serveNotification(runner, http.MethodPost, created, signNotification(created, testClientSecret)),
 		"a blank client_secret answers 503 so Intercom retries")
+	require.Empty(t, inboxes.preparedEvents(), "an unverified notification is not recorded")
 	cancel()
 	require.ErrorIs(t, <-runResult, context.Canceled)
 
@@ -144,49 +152,134 @@ func TestStudioTopicPickerListsTheSupportedTopics(t *testing.T) {
 	require.Equal(t, intercom.ConversationEventTopics(), uiTopics)
 }
 
-func TestLocalEndpointRunnerRejectsMissingOrInvalidBindings(t *testing.T) {
+func TestEndpointRunnerRecordsBeforeAcknowledging(t *testing.T) {
+	inboxes := &recordingInboxes{}
+	received := &receivedEvents{events: make(chan sdkgo.TriggerEvent[intercom.ConversationEvent], 4)}
+	runner, err := intercom.NewConversationEventEndpointRunnerForTest(newTestConnection(t),
+		projectConfiguration(map[string]string{"test-binding": `{"topics":["` + intercom.TopicConversationUserCreated + `"]}`}),
+		[]intercom.ProjectConversationEventTriggerRoute{{
+			BindingName: "test-binding",
+			Target: sdkgo.TriggerTargetFunc[intercom.ConversationEvent](func(_ context.Context, event sdkgo.TriggerEvent[intercom.ConversationEvent]) error {
+				received.events <- event
+				return nil
+			}),
+		}}, inboxes.wrap)
+	require.NoError(t, err)
+	require.Equal(t, []projectconfig.TriggerInboxKey{{
+		ConnectorID: intercom.ConnectorID, ConnectionName: intercomConnection.Name, TriggerName: "conversationEvent", BindingName: "test-binding",
+	}}, inboxes.keys, "every route's target is wrapped in its binding's durable inbox")
+	ctx, cancel := context.WithCancel(context.Background())
+	runResult := make(chan error, 1)
+	go func() { runResult <- runner.Run(ctx) }()
+	t.Cleanup(func() {
+		cancel()
+		require.ErrorIs(t, <-runResult, context.Canceled)
+	})
+	require.Eventually(t, func() bool { return runner.RunningSourceCount() == 1 }, 5*time.Second, 10*time.Millisecond)
+
+	created := notificationBody("notif_recorded", intercom.TopicConversationUserCreated, conversationJSON(t, testConversation, "open", nil))
+	require.Equal(t, http.StatusOK, serveNotification(runner, http.MethodPost, created, signNotification(created, testClientSecret)))
+	prepared := inboxes.preparedEvents()
+	require.Len(t, prepared, 1, "the 200 came after the notification was recorded")
+	require.Equal(t, "notif_recorded", prepared[0].ID)
+	stored, err := json.Marshal(prepared[0])
+	require.NoError(t, err)
+	require.NotContains(t, string(stored), testClientSecret)
+	require.NotContains(t, string(stored), testAccessToken)
+	require.Equal(t, "notif_recorded", received.next(t).ID)
+}
+
+func TestEndpointRunnerRejectsMissingOrInvalidBindings(t *testing.T) {
 	target := sdkgo.TriggerTargetFunc[intercom.ConversationEvent](func(context.Context, sdkgo.TriggerEvent[intercom.ConversationEvent]) error { return nil })
-	credentials := map[string]any{"access_token": testAccessToken, "client_secret": testClientSecret}
-	store := writeLocalConnection(t, credentials, map[string]any{"topics": []string{intercom.TopicConversationUserCreated}})
-	for name, routes := range map[string][]intercom.LocalConversationEventTriggerRoute{
+	connection := newTestConnection(t)
+	configuration := projectConfiguration(map[string]string{"test-binding": `{"topics":["` + intercom.TopicConversationUserCreated + `"]}`})
+	inboxes := &recordingInboxes{}
+	for name, routes := range map[string][]intercom.ProjectConversationEventTriggerRoute{
 		"no routes":         nil,
 		"unstored binding":  {{BindingName: "another-binding", Target: target}},
 		"blank binding":     {{BindingName: " ", Target: target}},
 		"nil target":        {{BindingName: "test-binding"}},
 		"duplicate binding": {{BindingName: "test-binding", Target: target}, {BindingName: "test-binding", Target: target}},
 	} {
-		_, err := intercom.NewLocalConversationEventEndpointRunner(store, intercomConnection.Name, routes)
+		_, err := intercom.NewConversationEventEndpointRunnerForTest(connection, configuration, routes, inboxes.wrap)
 		require.Error(t, err, name)
 	}
-	invalidTopics := writeLocalConnection(t, credentials, map[string]any{"topics": []string{"ticket.created"}})
-	_, err := intercom.NewLocalConversationEventEndpointRunner(invalidTopics, intercomConnection.Name, []intercom.LocalConversationEventTriggerRoute{{BindingName: "test-binding", Target: target}})
+	_, err := intercom.NewConversationEventEndpointRunnerForTest(connection, configuration,
+		[]intercom.ProjectConversationEventTriggerRoute{{BindingName: "another-binding", Target: target}}, inboxes.wrap)
+	require.ErrorIs(t, err, projectconfig.ErrObjectNotFound)
+	invalidTopics := projectConfiguration(map[string]string{"test-binding": `{"topics":["ticket.created"]}`})
+	_, err = intercom.NewConversationEventEndpointRunnerForTest(connection, invalidTopics,
+		[]intercom.ProjectConversationEventTriggerRoute{{BindingName: "test-binding", Target: target}}, inboxes.wrap)
 	require.ErrorContains(t, err, "not a supported conversation topic")
-	runner, err := intercom.NewLocalConversationEventEndpointRunner(store, intercomConnection.Name, []intercom.LocalConversationEventTriggerRoute{{BindingName: "test-binding", Target: target}})
+	inboxFailure := errors.New("project trigger inbox is unavailable")
+	_, err = intercom.NewConversationEventEndpointRunnerForTest(connection, configuration,
+		[]intercom.ProjectConversationEventTriggerRoute{{BindingName: "test-binding", Target: target}},
+		func(projectconfig.TriggerInboxKey, sdkgo.TriggerTarget[intercom.ConversationEvent]) (sdkgo.TriggerTarget[intercom.ConversationEvent], error) {
+			return nil, inboxFailure
+		})
+	require.ErrorIs(t, err, inboxFailure)
+	_, err = intercom.NewProjectConversationEventEndpointRunner(nil, intercomConnection.Name,
+		[]intercom.ProjectConversationEventTriggerRoute{{BindingName: "test-binding", Target: target}})
+	require.Error(t, err)
+	runner, err := intercom.NewConversationEventEndpointRunnerForTest(connection, configuration,
+		[]intercom.ProjectConversationEventTriggerRoute{{BindingName: "test-binding", Target: target}}, inboxes.wrap)
 	require.NoError(t, err)
 	require.Zero(t, runner.RunningSourceCount())
 }
 
-// writeLocalConnection writes the connection and conversationEvent binding records Dex Web saves, then loads them.
-func writeLocalConnection(t *testing.T, credentials map[string]any, bindingConfiguration map[string]any) *localconfig.Store {
-	t.Helper()
-	contents, err := json.Marshal(map[string]any{
-		"schemaVersion": localconfig.SchemaVersion,
-		"connections": []any{map[string]any{
-			"connectorId": intercom.ConnectorID, "modulePath": "github.com/superdurable/dex-connectors-library/connectors/intercom",
-			"moduleVersion": "v0.1.0", "provider": "intercom", "connectionName": intercomConnection.Name,
-			"configuration": map[string]any{"region": "eu"}, "credentials": credentials,
-		}},
-		"triggerBindings": []any{map[string]any{
-			"connectorId": intercom.ConnectorID, "connectionName": intercomConnection.Name, "triggerName": "conversationEvent",
-			"bindingName": "test-binding", "configuration": bindingConfiguration,
-		}},
-	})
-	require.NoError(t, err)
-	path := filepath.Join(t.TempDir(), "connections.json")
-	require.NoError(t, os.WriteFile(path, contents, 0o600))
-	store, err := localconfig.LoadFile(path)
-	require.NoError(t, err)
-	return store
+// projectConfiguration is the project configuration Dex Web saves for the connection and its conversationEvent bindings.
+func projectConfiguration(bindings map[string]string) projectconfig.Configuration {
+	configuration := projectconfig.Configuration{Connections: []projectconfig.ConnectionConfiguration{{
+		ConnectorID: intercom.ConnectorID, ConnectionName: intercomConnection.Name,
+		ModulePath: "github.com/superdurable/dex-connectors-library/connectors/intercom", Provider: "intercom",
+		Configuration: json.RawMessage(`{"region":"eu"}`),
+	}}}
+	for bindingName, bindingConfiguration := range bindings {
+		configuration.TriggerBindings = append(configuration.TriggerBindings, projectconfig.TriggerConfiguration{
+			ConnectorID: intercom.ConnectorID, ConnectionName: intercomConnection.Name, TriggerName: "conversationEvent",
+			BindingName: bindingName, Configuration: json.RawMessage(bindingConfiguration),
+		})
+	}
+	return configuration
+}
+
+// recordingInboxes stands in for durable project inboxes, recording each inbox key and every prepared event.
+type recordingInboxes struct {
+	mu       sync.Mutex
+	keys     []projectconfig.TriggerInboxKey
+	prepared []sdkgo.TriggerEvent[intercom.ConversationEvent]
+}
+
+func (inboxes *recordingInboxes) wrap(
+	key projectconfig.TriggerInboxKey, target sdkgo.TriggerTarget[intercom.ConversationEvent],
+) (sdkgo.TriggerTarget[intercom.ConversationEvent], error) {
+	inboxes.mu.Lock()
+	defer inboxes.mu.Unlock()
+	inboxes.keys = append(inboxes.keys, key)
+	return recordingTarget{inboxes: inboxes, target: target}, nil
+}
+
+func (inboxes *recordingInboxes) preparedEvents() []sdkgo.TriggerEvent[intercom.ConversationEvent] {
+	inboxes.mu.Lock()
+	defer inboxes.mu.Unlock()
+	return slices.Clone(inboxes.prepared)
+}
+
+// recordingTarget records an event when the endpoint prepares it and passes deliveries to the application target.
+type recordingTarget struct {
+	inboxes *recordingInboxes
+	target  sdkgo.TriggerTarget[intercom.ConversationEvent]
+}
+
+func (target recordingTarget) PrepareTrigger(_ context.Context, event sdkgo.TriggerEvent[intercom.ConversationEvent]) error {
+	target.inboxes.mu.Lock()
+	defer target.inboxes.mu.Unlock()
+	target.inboxes.prepared = append(target.inboxes.prepared, event)
+	return nil
+}
+
+func (target recordingTarget) HandleTrigger(ctx context.Context, event sdkgo.TriggerEvent[intercom.ConversationEvent]) error {
+	return target.target.HandleTrigger(ctx, event)
 }
 
 // receivedEvents collects the events a binding's target received.

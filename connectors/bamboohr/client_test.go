@@ -4,7 +4,6 @@
 package bamboohr_test
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 	"strings"
@@ -18,7 +17,7 @@ import (
 type failingCredentialProvider struct{}
 
 func (failingCredentialProvider) Resolve(sdkgo.Call) (bamboohr.Credentials, error) {
-	return bamboohr.Credentials{}, errors.New("SENTINEL broker detail")
+	return bamboohr.Credentials{}, errors.New("SENTINEL credential source detail")
 }
 
 func TestNewValidatesTheCompanyDomainAndOptions(t *testing.T) {
@@ -44,10 +43,10 @@ func TestNewValidatesTheCompanyDomainAndOptions(t *testing.T) {
 func TestUnusableCredentialsSelectDefectWithoutARequest(t *testing.T) {
 	provider := newRecordingBambooHR(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
 	for name, credentials := range map[string]sdkgo.CredentialProvider[bamboohr.Credentials]{
-		"broker failure": failingCredentialProvider{},
-		"colon in key":   sdkgo.StaticCredentialProvider[bamboohr.Credentials]{bambooHRConnection: {APIKey: sdkgo.NewSecretString("abc:def")}},
-		"space in key":   sdkgo.StaticCredentialProvider[bamboohr.Credentials]{bambooHRConnection: {APIKey: sdkgo.NewSecretString("abc def")}},
-		"empty key":      sdkgo.StaticCredentialProvider[bamboohr.Credentials]{bambooHRConnection: {}},
+		"credential source failure": failingCredentialProvider{},
+		"colon in key":              sdkgo.StaticCredentialProvider[bamboohr.Credentials]{bambooHRConnection: {APIKey: sdkgo.NewSecretString("abc:def")}},
+		"space in key":              sdkgo.StaticCredentialProvider[bamboohr.Credentials]{bambooHRConnection: {APIKey: sdkgo.NewSecretString("abc def")}},
+		"empty key":                 sdkgo.StaticCredentialProvider[bamboohr.Credentials]{bambooHRConnection: {}},
 	} {
 		t.Run(name, func(t *testing.T) {
 			client, err := bamboohr.New(bamboohr.Config{CompanyDomain: testCompanyDomain}, credentials, bamboohr.WithAPIBaseURL(provider.URL+"/api/v1"))
@@ -74,15 +73,4 @@ func TestOversizedResponsesSelectInvalidResponse(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, bamboohr.GetEmployeeBranchInvalidResponse, result.Branch)
 	require.Equal(t, sdkgo.FailureResponseTooLarge, result.Failure.Kind)
-}
-
-func TestDecodeResolvedCredentialsJSONAcceptsOnlyTheAPIKey(t *testing.T) {
-	credentials, err := bamboohr.DecodeResolvedCredentialsJSON(json.RawMessage(`{"api_key":"` + testAPIKey + `"}`))
-	require.NoError(t, err)
-	require.Equal(t, testAPIKey, credentials.APIKey.Reveal())
-	for _, contents := range []string{`{}`, `{"api_key":""}`, `{"api_key":"a:b"}`, `{"api_key":"` + testAPIKey + `","companyDomain":"acme"}`, `[]`} {
-		_, err := bamboohr.DecodeResolvedCredentialsJSON(json.RawMessage(contents))
-		require.Error(t, err, contents)
-		require.NotContains(t, err.Error(), testAPIKey)
-	}
 }

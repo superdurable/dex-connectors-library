@@ -80,7 +80,7 @@ func (flow *durabilityProbeFlow) GetSteps() []dex.StepDef {
 	return []dex.StepDef{
 		dex.DefineStartStep(startDurabilityProbe{}),
 		dex.DefineStep(outlookmail.NewSendMessageStep(outlookmail.SendMessageStepConfig[outlookmail.SendMessageInput]{
-			StepType: "SendProbeMessage", Connection: flow.connection,
+			StepType: "SendProbeMessage", Connection: flow.connection, ConnectionName: outlookConnection.Name,
 			Annotations:         sdkgo.StepAnnotations{GroupID: "outlook-mail", GroupLabel: "Outlook Mail", Explanation: "Send one probe message."},
 			MapToOperationInput: func(input outlookmail.SendMessageInput) outlookmail.SendMessageInput { return input },
 			Sent:                sdkgo.GoTo(completeDurabilityProbe{}),

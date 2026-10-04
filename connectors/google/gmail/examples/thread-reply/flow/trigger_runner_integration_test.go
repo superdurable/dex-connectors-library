@@ -12,8 +12,6 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -24,8 +22,10 @@ import (
 	"github.com/stretchr/testify/require"
 	gmail "github.com/superdurable/dex-connectors-library/connectors/google/gmail"
 	"github.com/superdurable/dex-connectors-library/connectors/google/gmail/internal/testlog"
+	"github.com/superdurable/dex-connectors-library/connectors/google/gmail/internal/triggerinboxtest"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -37,14 +37,14 @@ func TestThreadReplyRunnerSurvivesReplyAfterCompletionAndRestartWithRealDex(t *t
 	harness.startWorker(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer cancel()
-	store, directory := newGmailRunnerStore(t, provider.URL)
+	project := newGmailRunnerProject(t, provider.URL)
 	testRunID := strconv.FormatInt(time.Now().UnixNano(), 10)
 	threadA := "thread-a-" + testRunID
 	threadB := "thread-b-" + testRunID
 	flowID := func(threadID string) string { return fmt.Sprintf("gmail-thread-reply-%s-%s", ConnectionName, threadID) }
 	logs := newGmailRunnerLogs(t)
 
-	firstRun := startGmailRunner(t, ctx, store, harness, flow, logs)
+	firstRun := startGmailRunner(t, ctx, project, harness, flow, logs)
 	provider.receive(gmailInboxMessage{id: "root-a-" + testRunID, threadID: threadA})
 	waitForGmailStatus(t, ctx, harness.client, flow, flowID(threadA), StatusWaitingForReply)
 	provider.receive(gmailInboxMessage{id: "reply-a1-" + testRunID, threadID: threadA, reply: true})
@@ -54,7 +54,7 @@ func TestThreadReplyRunnerSurvivesReplyAfterCompletionAndRestartWithRealDex(t *t
 	// A later reply in the completed thread is consumed instead of stopping the reply route.
 	provider.receive(gmailInboxMessage{id: "reply-a2-" + testRunID, threadID: threadA, reply: true})
 	provider.waitForCompletedPoll(t)
-	require.Empty(t, pendingGmailRunnerEventIDs(t, directory))
+	require.Empty(t, project.pendingEventIDs(t))
 	require.Equal(t, 1, provider.sendCount(threadA))
 	// The durable reply inbox logs the skipped reply once, with its binding, the thread the poller passes
 	// along, the closed Flow, and the Dex reason.
@@ -78,7 +78,7 @@ func TestThreadReplyRunnerSurvivesReplyAfterCompletionAndRestartWithRealDex(t *t
 	requireGmailFlowCompleted(t, ctx, harness.client, flowID(threadB))
 	require.Equal(t, 1, provider.sendCount(threadB))
 	provider.waitForCompletedPoll(t)
-	require.Empty(t, pendingGmailRunnerEventIDs(t, directory))
+	require.Empty(t, project.pendingEventIDs(t))
 	firstRun.stop(t)
 	// The early reply retried once per poll, with the poll interval as its delay, until the Flow waited.
 	replyB := map[string]string{"event_id": "reply-b-" + testRunID}
@@ -100,11 +100,11 @@ func TestThreadReplyRunnerSurvivesReplyAfterCompletionAndRestartWithRealDex(t *t
 	require.Equal(t, strconv.Itoa(len(retries)+1), recovered[0].Attrs["attempts"])
 
 	// A restart rescans the whole page. Every event is consumed and the runner keeps polling.
-	secondRun := startGmailRunner(t, ctx, store, harness, flow, logs)
+	secondRun := startGmailRunner(t, ctx, project, harness, flow, logs)
 	provider.waitForCompletedPoll(t)
 	provider.waitForCompletedPoll(t)
 	secondRun.requireRunning(t)
-	require.Empty(t, pendingGmailRunnerEventIDs(t, directory))
+	require.Empty(t, project.pendingEventIDs(t))
 	require.Equal(t, 1, provider.sendCount(threadA))
 	require.Equal(t, 1, provider.sendCount(threadB))
 	secondRun.stop(t)
@@ -160,16 +160,16 @@ func TestThreadReplyRunnerDeliversRootBeforeReplyThatArrivesDuringPollWithRealDe
 	harness.startWorker(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	store, directory := newGmailRunnerStoreWithQueries(t, proxy.URL, "root-query", "reply-query")
+	project := newGmailRunnerProjectWithQueries(t, proxy.URL, "root-query", "reply-query")
 	logs := newGmailRunnerLogs(t)
-	run := startGmailRunner(t, ctx, store, harness, flow, logs)
+	run := startGmailRunner(t, ctx, project, harness, flow, logs)
 	provider.waitForCompletedPoll(t)
 	armed.Store(true)
 
 	requireGmailFlowCompleted(t, ctx, harness.client, fmt.Sprintf("gmail-thread-reply-%s-%s", ConnectionName, threadC))
 	require.Equal(t, 1, provider.sendCount(threadC))
 	provider.waitForCompletedPoll(t)
-	require.Empty(t, pendingGmailRunnerEventIDs(t, directory))
+	require.Empty(t, project.pendingEventIDs(t))
 	run.stop(t)
 	require.Empty(t, logs.Find("trigger event skipped: undeliverable", nil), "the reply never overtakes its root")
 	require.NotContains(t, logs.Text(), "SENTINEL")
@@ -194,45 +194,49 @@ type runningGmailRunner struct {
 	result chan error
 }
 
-// startGmailRunner wires the shared local runner exactly as main.go does, with the test's logger.
+// startGmailRunner wires the shared durable runner as NewProjectMessageTriggerRunner does for main.go, with the
+// test's logger and the test project's connection, bindings, and inboxes.
 func startGmailRunner(
 	t *testing.T,
 	parent context.Context,
-	store *localconfig.Store,
+	project *gmailRunnerProject,
 	harness *gmailIntegrationHarness,
 	flow *Flow,
 	logs *testlog.LogRecorder,
 ) *runningGmailRunner {
 	t.Helper()
 	var startConfiguration gmail.MessageReceivedTriggerConfiguration
-	require.NoError(t, store.DecodeTriggerConfiguration(
+	require.NoError(t, project.configuration.DecodeTriggerConfiguration(
 		gmail.ConnectorID, ConnectionName, gmail.MessageReceivedTriggerDefinition.Trigger.TriggerName, StartTriggerBinding, &startConfiguration,
 	))
 	startFilter, err := NewStartTriggerFilter(startConfiguration)
 	require.NoError(t, err)
 	var replyConfiguration gmail.ReplyReceivedTriggerConfiguration
-	require.NoError(t, store.DecodeTriggerConfiguration(
+	require.NoError(t, project.configuration.DecodeTriggerConfiguration(
 		gmail.ConnectorID, ConnectionName, gmail.ReplyReceivedTriggerDefinition.Trigger.TriggerName, ReplyTriggerBinding, &replyConfiguration,
 	))
 	replyFilter, err := NewReplyTriggerFilter(replyConfiguration)
 	require.NoError(t, err)
 	logger := logs.Logger()
-	runner, err := gmail.NewLocalMessageTriggerRunner(store, ConnectionName, gmail.LocalMessageTriggerRunnerConfig{
-		MessageReceivedRoutes: []gmail.LocalMessageReceivedTriggerRoute{{
-			BindingName: StartTriggerBinding,
-			Target: sdkgo.NewDexFlowTriggerTarget(harness.client, flow, startFilter, ResolveFlowID, MapToFlowInput,
-				sdkgo.WithTriggerLogger(logger.With("connector", gmail.ConnectorID, "connection", ConnectionName,
-					"trigger", gmail.MessageReceivedTriggerDefinition.Trigger.TriggerName, "binding", StartTriggerBinding))),
+	startTarget := sdkgo.NewDexFlowTriggerTarget(harness.client, flow, startFilter, ResolveFlowID, MapToFlowInput,
+		sdkgo.WithTriggerLogger(logger.With("connector", gmail.ConnectorID, "connection", ConnectionName,
+			"trigger", gmail.MessageReceivedTriggerDefinition.Trigger.TriggerName, "binding", StartTriggerBinding)))
+	replyTarget := sdkgo.NewDexRPCTriggerTarget(
+		harness.client, flow.ReceiveEmailReply, replyFilter, ResolveFlowID, MapToReceiveEmailReplyInput,
+		sdkgo.WithTriggerLogger(logger.With("connector", gmail.ConnectorID, "connection", ConnectionName,
+			"trigger", gmail.ReplyReceivedTriggerDefinition.Trigger.TriggerName, "binding", ReplyTriggerBinding)),
+	)
+	runner, err := gmail.NewMessageTriggerRunner(gmail.MessageTriggerRunnerConfig{
+		Connection: project.connection(t, gmail.WithLogger(logger)),
+		MessageReceivedRoutes: []gmail.MessageReceivedTriggerRoute{{
+			BindingName: StartTriggerBinding, Configuration: startConfiguration,
+			Target: project.durableTarget(t, gmail.MessageReceivedTriggerDefinition.Trigger.TriggerName, StartTriggerBinding, logger, startTarget),
 		}},
-		ReplyReceivedRoutes: []gmail.LocalReplyReceivedTriggerRoute{{
-			BindingName: ReplyTriggerBinding,
-			Target: sdkgo.NewDexRPCTriggerTarget(
-				harness.client, flow.ReceiveEmailReply, replyFilter, ResolveFlowID, MapToReceiveEmailReplyInput,
-				sdkgo.WithTriggerLogger(logger.With("connector", gmail.ConnectorID, "connection", ConnectionName,
-					"trigger", gmail.ReplyReceivedTriggerDefinition.Trigger.TriggerName, "binding", ReplyTriggerBinding)),
-			),
+		ReplyReceivedRoutes: []gmail.ReplyReceivedTriggerRoute{{
+			BindingName: ReplyTriggerBinding, Configuration: replyConfiguration,
+			Target: project.durableTarget(t, gmail.ReplyReceivedTriggerDefinition.Trigger.TriggerName, ReplyTriggerBinding, logger, replyTarget),
 		}},
-	}, gmail.WithLogger(logger))
+	})
 	require.NoError(t, err)
 	ctx, cancel := context.WithCancel(parent)
 	running := &runningGmailRunner{cancel: cancel, result: make(chan error, 1)}
@@ -261,67 +265,76 @@ func (running *runningGmailRunner) stop(t *testing.T) {
 	}
 }
 
-func newGmailRunnerStore(t *testing.T, endpoint string) (*localconfig.Store, string) {
-	t.Helper()
-	return newGmailRunnerStoreWithQueries(t, endpoint, "", "")
+// gmailRunnerProject stands in for a loaded project: the connection and Trigger bindings Dex Web saved, and
+// durable inbox storage that outlives each runner, as a restarted replica finds it.
+type gmailRunnerProject struct {
+	endpoint      string
+	configuration projectconfig.Configuration
+	inboxes       *triggerinboxtest.Inboxes
 }
 
-// newGmailRunnerStoreWithQueries sets each binding's Gmail search query, so a test proxy can tell the list calls apart.
-func newGmailRunnerStoreWithQueries(t *testing.T, endpoint string, rootQuery string, replyQuery string) (*localconfig.Store, string) {
+func newGmailRunnerProject(t *testing.T, endpoint string) *gmailRunnerProject {
 	t.Helper()
-	bindingConfiguration := func(searchQuery string) map[string]any {
-		if searchQuery == "" {
-			return map[string]any{}
+	return newGmailRunnerProjectWithQueries(t, endpoint, "", "")
+}
+
+// newGmailRunnerProjectWithQueries sets each binding's Gmail search query, so a test proxy can tell the list calls apart.
+func newGmailRunnerProjectWithQueries(t *testing.T, endpoint string, rootQuery string, replyQuery string) *gmailRunnerProject {
+	t.Helper()
+	binding := func(triggerName string, bindingName string, searchQuery string) projectconfig.TriggerConfiguration {
+		configuration := map[string]any{}
+		if searchQuery != "" {
+			configuration["searchQuery"] = searchQuery
 		}
-		return map[string]any{"searchQuery": searchQuery}
-	}
-	directory := t.TempDir()
-	path := filepath.Join(directory, "connections.json")
-	contents, err := json.Marshal(map[string]any{
-		"schemaVersion": localconfig.SchemaVersion,
-		"connections": []any{map[string]any{
-			"connectorId": gmail.ConnectorID, "modulePath": "github.com/superdurable/dex-connectors-library/connectors/google/gmail",
-			"moduleVersion": "v0.8.0", "provider": "google", "connectionName": ConnectionName,
-			"configuration": map[string]any{"endpoint": endpoint, "pollInterval": int64(time.Second)},
-			"credentials": map[string]any{
-				"auth_method": "google-oauth", "oauth_client_id": "client-id",
-				"oauth_client_secret": "client-secret", "access_token": "SENTINEL-ACCESS-TOKEN",
-				"refresh_token": "refresh-token", "primary_email": "owner@example.com",
-			},
-			"credentialExpiresAt": time.Now().Add(time.Hour).UTC().Format(time.RFC3339),
-		}},
-		"triggerBindings": []any{
-			map[string]any{"connectorId": gmail.ConnectorID, "connectionName": ConnectionName, "triggerName": "messageReceived",
-				"bindingName": StartTriggerBinding, "configuration": bindingConfiguration(rootQuery)},
-			map[string]any{"connectorId": gmail.ConnectorID, "connectionName": ConnectionName, "triggerName": "replyReceived",
-				"bindingName": ReplyTriggerBinding, "configuration": bindingConfiguration(replyQuery)},
-		},
-	})
-	require.NoError(t, err)
-	require.NoError(t, os.WriteFile(path, contents, 0o600))
-	store, err := localconfig.LoadFile(path)
-	require.NoError(t, err)
-	return store, directory
-}
-
-func pendingGmailRunnerEventIDs(t *testing.T, directory string) []string {
-	t.Helper()
-	paths, err := filepath.Glob(filepath.Join(directory, ".trigger-inbox-*.json"))
-	require.NoError(t, err)
-	eventIDs := []string{}
-	for _, path := range paths {
-		contents, err := os.ReadFile(path)
+		contents, err := json.Marshal(configuration)
 		require.NoError(t, err)
-		var inbox struct {
-			Events []struct {
-				EventID string `json:"eventId"`
-			} `json:"events"`
-		}
-		require.NoError(t, json.Unmarshal(contents, &inbox))
-		for _, event := range inbox.Events {
-			eventIDs = append(eventIDs, event.EventID)
+		return projectconfig.TriggerConfiguration{
+			ConnectorID: gmail.ConnectorID, ConnectionName: ConnectionName, TriggerName: triggerName, BindingName: bindingName,
+			Configuration: contents,
 		}
 	}
+	return &gmailRunnerProject{endpoint: endpoint, inboxes: triggerinboxtest.New(), configuration: projectconfig.Configuration{
+		TriggerBindings: []projectconfig.TriggerConfiguration{
+			binding("messageReceived", StartTriggerBinding, rootQuery), binding("replyReceived", ReplyTriggerBinding, replyQuery),
+		},
+	}}
+}
+
+// connection opens the project connection with an unexpired stored access token.
+func (project *gmailRunnerProject) connection(t *testing.T, options ...gmail.Option) gmail.Connection {
+	t.Helper()
+	reference := sdkgo.ConnectionRef{Provider: "google", Name: ConnectionName}
+	client, err := gmail.New(gmail.Config{Endpoint: project.endpoint, PollInterval: time.Second}, sdkgo.StaticCredentialProvider[gmail.Credentials]{
+		reference: {AccessToken: sdkgo.NewSecretString("SENTINEL-ACCESS-TOKEN"), PrimaryEmail: "owner@example.com"},
+	}, options...)
+	require.NoError(t, err)
+	connection, err := gmail.NewConnection(client, reference)
+	require.NoError(t, err)
+	return connection
+}
+
+// durableTarget keeps target's events in its binding's project inbox, which logs to logger.
+func (project *gmailRunnerProject) durableTarget(
+	t *testing.T,
+	triggerName string,
+	bindingName string,
+	logger *slog.Logger,
+	target sdkgo.TriggerTarget[gmail.MessageEvent],
+) sdkgo.TriggerTarget[gmail.MessageEvent] {
+	t.Helper()
+	key := projectconfig.TriggerInboxKey{ConnectorID: gmail.ConnectorID, ConnectionName: ConnectionName, TriggerName: triggerName, BindingName: bindingName}
+	inbox, err := project.inboxes.Open(key)
+	require.NoError(t, err)
+	durableTarget, err := provider.NewDurableTriggerTarget(inbox, key, target, provider.WithTriggerLogger(logger))
+	require.NoError(t, err)
+	return durableTarget
+}
+
+// pendingEventIDs lists the event IDs pending in every Trigger inbox of the project.
+func (project *gmailRunnerProject) pendingEventIDs(t *testing.T) []string {
+	t.Helper()
+	eventIDs, err := project.inboxes.PendingEventIDs(context.Background())
+	require.NoError(t, err)
 	return eventIDs
 }
 

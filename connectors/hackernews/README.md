@@ -7,7 +7,7 @@ developer topics and produce summaries with direct source links.
 The connector uses the [official Hacker News API](https://github.com/HackerNews/API).
 It requires no API key. Its Go module is
 `github.com/superdurable/dex-connectors-library/connectors/hackernews`.
-The connector ID is `hacker-news-daily`. The first release is `v0.1.0`.
+The connector ID is `hacker-news-daily`.
 
 ## Operations
 
@@ -30,9 +30,10 @@ item selects `notFound`. The operation does not fetch children automatically.
 Applications must escape or sanitize provider text before rendering HTML.
 
 Use the generated factories in [the runnable Flow](examples/daily-digest/flow/workflow.go).
-`NewLocalConnection` loads a Dex Web connection. `New` and `NewConnection` support
-applications that provide their own configuration. `WithHTTPClient` supplies a
-transport for tests or application networking.
+`NewProjectConnection` opens the connection from the project configuration that
+`projectconfig.LoadFromEnvironment` loads. `New` and `NewConnection` build a
+connection for tests. `WithHTTPClient` supplies a transport for tests or
+application networking.
 
 ## Execution contract
 

@@ -24,6 +24,9 @@ func (completeTarget[IN]) Execute(dex.Context, IN) (*dex.StepDecision, error) {
 	return dex.GracefulComplete(struct{}{}), nil
 }
 
+// GetStepType names the target: Dex gives a generic Step type no default name.
+func (completeTarget[IN]) GetStepType() string { return "Complete" }
+
 func TestFactoriesRequireOnlyTheHappyPathBranch(t *testing.T) {
 	connection := newTestConnection(t)
 	annotations := sdkgo.StepAnnotations{GroupID: "entra", GroupLabel: "Microsoft Entra ID", Explanation: "Call Microsoft Graph."}
@@ -32,36 +35,36 @@ func TestFactoriesRequireOnlyTheHappyPathBranch(t *testing.T) {
 		entraid.NewGetUserStep(entraid.GetUserStepConfig[string]{StepType: "GetUser", Annotations: annotations, Connection: connection, ConnectionName: testConnection.Name,
 			MapToOperationInput: func(key string) entraid.GetUserInput { return entraid.GetUserInput{UserKey: userKey(key)} },
 			Found:               sdkgo.GoTo(completeTarget[entraid.GetUserResult]{})})
-		entraid.NewListUsersStep(entraid.ListUsersStepConfig[string]{StepType: "ListUsers", Annotations: annotations, Connection: connection,
+		entraid.NewListUsersStep(entraid.ListUsersStepConfig[string]{StepType: "ListUsers", Annotations: annotations, Connection: connection, ConnectionName: testConnection.Name,
 			MapToOperationInput: func(filter string) entraid.ListUsersInput { return entraid.ListUsersInput{Filter: filter} },
 			Listed:              sdkgo.GoTo(completeTarget[entraid.ListUsersResult]{})})
-		entraid.NewCreateUserStep(entraid.CreateUserStepConfig[string]{StepType: "CreateUser", Annotations: annotations, Connection: connection,
+		entraid.NewCreateUserStep(entraid.CreateUserStepConfig[string]{StepType: "CreateUser", Annotations: annotations, Connection: connection, ConnectionName: testConnection.Name,
 			MapToOperationInput: func(string) entraid.CreateUserInput { return validCreateUserInput() },
 			Created:             sdkgo.GoTo(completeTarget[entraid.CreateUserResult]{})})
-		entraid.NewDisableUserStep(entraid.DisableUserStepConfig[string]{StepType: "DisableUser", Annotations: annotations, Connection: connection,
+		entraid.NewDisableUserStep(entraid.DisableUserStepConfig[string]{StepType: "DisableUser", Annotations: annotations, Connection: connection, ConnectionName: testConnection.Name,
 			MapToOperationInput: func(key string) entraid.DisableUserInput { return entraid.DisableUserInput{UserKey: key} },
 			Disabled:            sdkgo.GoTo(completeTarget[entraid.DisableUserResult]{})})
-		entraid.NewEnableUserStep(entraid.EnableUserStepConfig[string]{StepType: "EnableUser", Annotations: annotations, Connection: connection,
+		entraid.NewEnableUserStep(entraid.EnableUserStepConfig[string]{StepType: "EnableUser", Annotations: annotations, Connection: connection, ConnectionName: testConnection.Name,
 			MapToOperationInput: func(key string) entraid.EnableUserInput { return entraid.EnableUserInput{UserKey: key} },
 			Enabled:             sdkgo.GoTo(completeTarget[entraid.EnableUserResult]{})})
-		entraid.NewRevokeSignInSessionsStep(entraid.RevokeSignInSessionsStepConfig[string]{StepType: "RevokeSessions", Annotations: annotations, Connection: connection,
+		entraid.NewRevokeSignInSessionsStep(entraid.RevokeSignInSessionsStepConfig[string]{StepType: "RevokeSessions", Annotations: annotations, Connection: connection, ConnectionName: testConnection.Name,
 			MapToOperationInput: func(key string) entraid.RevokeSignInSessionsInput {
 				return entraid.RevokeSignInSessionsInput{UserKey: key}
 			},
 			Revoked: sdkgo.GoTo(completeTarget[entraid.RevokeSignInSessionsResult]{})})
-		entraid.NewAddUserToGroupStep(entraid.AddUserToGroupStepConfig[string]{StepType: "AddUserToGroup", Annotations: annotations, Connection: connection,
+		entraid.NewAddUserToGroupStep(entraid.AddUserToGroupStepConfig[string]{StepType: "AddUserToGroup", Annotations: annotations, Connection: connection, ConnectionName: testConnection.Name,
 			MapToOperationInput: func(id string) entraid.AddUserToGroupInput {
 				return entraid.AddUserToGroupInput{GroupID: testGroupID, UserID: id}
 			},
 			Added: sdkgo.GoTo(completeTarget[entraid.AddUserToGroupResult]{})})
-		entraid.NewRemoveUserFromGroupStep(entraid.RemoveUserFromGroupStepConfig[string]{StepType: "RemoveUserFromGroup", Annotations: annotations, Connection: connection,
+		entraid.NewRemoveUserFromGroupStep(entraid.RemoveUserFromGroupStepConfig[string]{StepType: "RemoveUserFromGroup", Annotations: annotations, Connection: connection, ConnectionName: testConnection.Name,
 			MapToOperationInput: func(id string) entraid.RemoveUserFromGroupInput {
 				return entraid.RemoveUserFromGroupInput{GroupID: testGroupID, UserID: id}
 			},
 			Removed: sdkgo.GoTo(completeTarget[entraid.RemoveUserFromGroupResult]{})})
 	})
 	require.Panics(t, func() {
-		entraid.NewCreateUserStep(entraid.CreateUserStepConfig[string]{StepType: "CreateUser", Connection: connection,
+		entraid.NewCreateUserStep(entraid.CreateUserStepConfig[string]{StepType: "CreateUser", Connection: connection, ConnectionName: testConnection.Name,
 			MapToOperationInput: func(string) entraid.CreateUserInput { return validCreateUserInput() },
 			AlreadyExists:       sdkgo.GoTo(completeTarget[entraid.CreateUserResult]{})})
 	}, "created is the required branch")

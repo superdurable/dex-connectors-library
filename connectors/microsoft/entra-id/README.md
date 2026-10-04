@@ -85,25 +85,35 @@ Microsoft access tokens always expire, so a token without a recorded expiry is
 refreshed. `invalid_request`, `invalid_grant`, `unauthorized_client`,
 `invalid_client`, `unsupported_grant_type`, `invalid_resource`,
 `interaction_required`, `consent_required`, and `invalid_scope` require
-reauthorization; a Microsoft 5xx is retried. A Graph 401 forces one
-coordinated refresh and one resend, never a refresh loop.
+reauthorization; a Microsoft 5xx is retried. After a Graph 401 the connector
+asks once for a refresh, which the project connection performs only when the
+stored expiry has passed, and then resends once; otherwise the 401 selects
+`providerRejected`. There is never a refresh loop.
 
-The driver never owns persistence. Local development reloads and atomically
-replaces the private `0600` connection file. Hosted applications receive only
-an operation-scoped access token: `DecodeResolvedCredentialsJSON` rejects
-client secrets and refresh tokens, and `DecodeCredentialsJSON` and
-`EncodeCredentialsJSON` are the broker's trusted decode and persistence hooks.
+The driver never owns persistence. The project connection that
+`NewProjectConnection` opens admits one refresh per credential generation
+across application replicas and stores the complete replacement before the call
+uses it. Client secrets and refresh tokens stay in encrypted project storage and
+never enter a Flow.
 
-Name the factory connection and load the same name at application startup, as
+Load the project configuration once at application startup and open the
+connection by the name its operations use, as
 [`examples/account-lifecycle/main.go`](examples/account-lifecycle/main.go) does:
 
 ```go
-store, err := localconfig.LoadFromEnvironment()
+project, err := projectconfig.LoadFromEnvironment(ctx)
 if err != nil {
 	return err
 }
-connection, err := entraid.NewLocalConnection(store, accountlifecycle.ConnectionName, connectorOptions()...)
+connection, err := entraid.NewProjectConnection(project, accountlifecycle.ConnectionName, connectorOptions()...)
 ```
+
+`projectconfig.LoadFromEnvironment` reads the `DEX_PROJECT_*` configuration
+that Dex Web or Superverse Studio writes; see
+[`sdkgo/projectconfig`](../../../sdkgo/projectconfig/README.md#application-loading).
+Set the same `ConnectionName` beside the typed `Connection` in each operation:
+a Step whose `ConnectionName` is empty or differs from its connection's name
+panics at construction.
 
 `WithLocalProviderURL` sends every request for `graph.microsoft.com` and
 `login.microsoftonline.com` to one loopback fake for local verification; it
@@ -229,7 +239,7 @@ apart.
 | Invalid input, configuration, or credential | `defect`, before any request |
 | 404 | `notFound` where the operation declares it, after the checks above |
 | 400 | read-back or membership check for `createUser` and `addUserToGroup`, otherwise `providerRejected` |
-| 401 after one forced refresh, 403, and other 4xx | `providerRejected` |
+| 401 (after one refresh and resend only when the stored token has expired), 403, and other 4xx | `providerRejected` |
 | Malformed or oversized response | `invalidResponse`, or Retry when a write may have been applied |
 | 429, 408, 5xx except 501, 409 `Directory_ConcurrencyViolation`, transport failure | Retry, honoring `Retry-After` up to one hour |
 

@@ -155,7 +155,7 @@ var probeAnnotations = sdkgo.StepAnnotations{GroupID: "probe", GroupLabel: "Prob
 func newProbeFlows(connection helpscout.Connection, client *helpscout.Client) []dex.Flow {
 	replyStep := func(stepType string, override *dex.StepOptions) dex.StepDef {
 		return dex.DefineStartStep(helpscout.NewReplyToConversationStep(helpscout.ReplyToConversationStepConfig[string]{
-			StepType: stepType, Connection: connection, StepOptionsOverride: override, Annotations: probeAnnotations,
+			StepType: stepType, Connection: connection, ConnectionName: testConnection.Name, StepOptionsOverride: override, Annotations: probeAnnotations,
 			MapToOperationInput: func(string) helpscout.ReplyToConversationInput {
 				return helpscout.ReplyToConversationInput{ConversationID: probeConversationID, Text: "We refunded the duplicate charge."}
 			},
@@ -171,7 +171,7 @@ func newProbeFlows(connection helpscout.Connection, client *helpscout.Client) []
 		&probeFlow{flowType: replyRetryProbeFlowType, steps: []dex.StepDef{dex.DefineStartStep(replyThenFailFirstAttempt{client: client})}},
 		&probeFlow{flowType: updateProbeFlowType, steps: []dex.StepDef{
 			dex.DefineStartStep(helpscout.NewUpdateConversationStep(helpscout.UpdateConversationStepConfig[string]{
-				StepType: "CloseAndTag", Connection: connection, Annotations: probeAnnotations,
+				StepType: "CloseAndTag", Connection: connection, ConnectionName: testConnection.Name, Annotations: probeAnnotations,
 				MapToOperationInput: func(string) helpscout.UpdateConversationInput {
 					return helpscout.UpdateConversationInput{ConversationID: probeConversationID, Status: helpscout.ConversationStatusClosed, AddTags: []string{"dex-triaged"}}
 				},

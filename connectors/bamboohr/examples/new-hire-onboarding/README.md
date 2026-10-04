@@ -83,27 +83,27 @@ mkdir -p /tmp/bamboohr-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/bamboohr/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/bamboohr \
-  --version v0.1.0 --tag connectors/bamboohr/v0.1.0 \
+  --version v0.21.0 --tag connectors/bamboohr/v0.21.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/bamboohr-release/connector-release.json \
   --digest-output /tmp/bamboohr-release/connector-release.json.sha256
 dexcli dev \
   --flow-rendering-dir "$PWD/connectors/bamboohr/build" \
-  --connector-config-dir "$HOME/.dex/connectors" \
   --connector-release-override bamboohr=/tmp/bamboohr-release
 ```
 
 Open **Connections** in Dex Web and select `bamboohr / bamboohr-company`, which
 every BambooHR Step of `BambooHRNewHireOnboarding` uses. Enter the company
 domain and the API key and save; the status becomes **Ready**. The example has
-no Step configuration. The key is stored only in the plaintext development
-file shown on the page; never commit or share it.
+no Step configuration. Dex Web or Superverse Studio writes the connection to
+the project configuration.
 
-In a second terminal, start the Worker from `connectors/bamboohr` with that
-file:
+In a second terminal, start the Worker from `connectors/bamboohr` with the
+`DEX_PROJECT_*` environment that names that configuration, as
+[project configuration loading](../../../../sdkgo/projectconfig/README.md#application-loading)
+describes:
 
 ```bash
-export DEX_CONNECTOR_CONFIG_FILE="$HOME/.dex/connectors/connections.json"
 go run ./examples/new-hire-onboarding
 ```
 

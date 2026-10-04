@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 // Command submission-intake runs the Notion submission intake Worker. It reads
-// the Notion connection from the Dex Web connection file named by
-// DEX_CONNECTOR_CONFIG_FILE and registers the NotionSubmissionIntake Flow with
+// the Notion connection from the project configuration named by the
+// DEX_PROJECT_* environment and registers the NotionSubmissionIntake Flow with
 // the Dex Server at DEX_FLOW_SERVICE_ADDRESS.
 package main
 
@@ -22,7 +22,7 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/connectors/notion"
 	submissionintake "github.com/superdurable/dex-connectors-library/connectors/notion/examples/submission-intake/flow"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -54,11 +54,11 @@ func newLogger(output io.Writer, levelName string) *slog.Logger {
 }
 
 func run(ctx context.Context, logger *slog.Logger) error {
-	store, err := localconfig.LoadFromEnvironment()
+	project, err := projectconfig.LoadFromEnvironment(ctx)
 	if err != nil {
 		return err
 	}
-	connection, err := notion.NewLocalConnection(store, submissionintake.ConnectionName)
+	connection, err := notion.NewProjectConnection(project, submissionintake.ConnectionName)
 	if err != nil {
 		return err
 	}

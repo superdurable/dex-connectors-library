@@ -81,7 +81,7 @@ func TestGeneratedFactoriesRequireTheHappyPathAndTheStaticConnection(t *testing.
 	require.Equal(t, dex.StepDurabilityAsync, query.GetStepOptions().ExecuteDurability)
 
 	write := mysql.NewExecuteStatementStep(mysql.ExecuteStatementStepConfig[string]{
-		StepType: "WriteRow", Connection: connection,
+		StepType: "WriteRow", ConnectionName: "ledger", Connection: connection,
 		Annotations: sdkgo.StepAnnotations{GroupID: "mysql", GroupLabel: "MySQL", Explanation: "Write a row."},
 		MapToOperationInput: func(value string) mysql.ExecuteStatementInput {
 			return mysql.ExecuteStatementInput{Statement: value}
@@ -93,7 +93,7 @@ func TestGeneratedFactoriesRequireTheHappyPathAndTheStaticConnection(t *testing.
 
 	require.Panics(t, func() {
 		mysql.NewExecuteStatementStep(mysql.ExecuteStatementStepConfig[string]{
-			StepType: "MissingCompleted", Connection: connection,
+			StepType: "MissingCompleted", ConnectionName: "ledger", Connection: connection,
 			Annotations: sdkgo.StepAnnotations{GroupID: "mysql", GroupLabel: "MySQL", Explanation: "Write a row."},
 			MapToOperationInput: func(value string) mysql.ExecuteStatementInput {
 				return mysql.ExecuteStatementInput{Statement: value}

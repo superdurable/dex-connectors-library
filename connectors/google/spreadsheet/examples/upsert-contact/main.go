@@ -17,7 +17,7 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/connectors/google/spreadsheet"
 	upsertcontact "github.com/superdurable/dex-connectors-library/connectors/google/spreadsheet/examples/upsert-contact/flow"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -32,11 +32,11 @@ func main() {
 }
 
 func run(ctx context.Context) error {
-	store, err := localconfig.LoadFromEnvironment()
+	project, err := projectconfig.LoadFromEnvironment(ctx)
 	if err != nil {
 		return err
 	}
-	connection, err := spreadsheet.NewLocalConnection(store, upsertcontact.ConnectionName)
+	connection, err := spreadsheet.NewProjectConnection(project, upsertcontact.ConnectionName)
 	if err != nil {
 		return err
 	}

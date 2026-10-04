@@ -113,44 +113,6 @@ func (driver *CredentialRefreshDriver) Refresh(
 	}, nil
 }
 
-// DecodeCredentialsJSON decodes trusted broker credential material using
-// connector validation, including the selected auth_method.
-func DecodeCredentialsJSON(contents json.RawMessage) (Credentials, error) {
-	return decodeLocalCredentials(contents)
-}
-
-// DecodeResolvedCredentialsJSON decodes an operation-scoped credential
-// returned by the hosted broker: an access_token and an optional auth_method.
-// Renewal material is rejected, because it never crosses the broker boundary.
-// Without auth_method the connector treats the token as static and never asks
-// the broker to refresh it after a rejection.
-func DecodeResolvedCredentialsJSON(contents json.RawMessage) (Credentials, error) {
-	var fields struct {
-		AuthMethodID string `json:"auth_method"`
-		AccessToken  string `json:"access_token"`
-	}
-	decoder := json.NewDecoder(bytes.NewReader(contents))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&fields); err != nil {
-		return Credentials{}, errors.New("HubSpot resolved credential is invalid")
-	}
-	switch fields.AuthMethodID {
-	case "", PrivateAppTokenAuthMethodID, OAuthAuthMethodID:
-	default:
-		return Credentials{}, errors.New("HubSpot resolved credential auth_method is invalid")
-	}
-	credentials := Credentials{AuthMethodID: fields.AuthMethodID, AccessToken: sdkgo.NewSecretString(fields.AccessToken)}
-	return credentials, validateResolvedCredentials(credentials)
-}
-
-// EncodeCredentialsJSON encodes complete credential material for trusted atomic persistence.
-func EncodeCredentialsJSON(credentials Credentials) ([]byte, error) {
-	if err := credentials.Validate(); err != nil {
-		return nil, err
-	}
-	return encodeLocalCredentials(credentials)
-}
-
 // validateGrantedScopes checks HubSpot's scopes array when the token response includes it.
 func validateGrantedScopes(rawScopes json.RawMessage) error {
 	if len(rawScopes) == 0 || bytes.Equal(bytes.TrimSpace(rawScopes), []byte("null")) {

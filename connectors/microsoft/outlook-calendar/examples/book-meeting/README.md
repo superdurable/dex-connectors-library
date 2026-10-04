@@ -74,7 +74,7 @@ go run ./cmd/connectorctl ui-artifact \
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/microsoft/outlook-calendar/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-calendar \
-  --version v0.1.0 --tag connectors/microsoft/outlook-calendar/v0.1.0 \
+  --version v0.21.0 --tag connectors/microsoft/outlook-calendar/v0.21.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/outlook-calendar-release/connector-ui.tgz \
   --ui-digest /tmp/outlook-calendar-release/connector-ui.tgz.sha256 \
@@ -82,15 +82,15 @@ go run ./cmd/connectorctl release-artifact \
   --digest-output /tmp/outlook-calendar-release/connector-release.json.sha256
 dexcli dev \
   --flow-rendering-dir "$PWD/connectors/microsoft/outlook-calendar/build" \
-  --connector-config-dir "$HOME/.dex/connectors" \
   --connector-release-override outlook-calendar=/tmp/outlook-calendar-release
 ```
 
-Then run the Worker from `connectors/microsoft/outlook-calendar` with the
-connection path shown by Dex Web:
+Then run the Worker from `connectors/microsoft/outlook-calendar`. It reads the
+`DEX_PROJECT_*` project configuration environment documented in
+[`sdkgo/projectconfig`](../../../../../sdkgo/projectconfig/README.md#application-loading);
+Dex Web or Superverse Studio writes that configuration:
 
 ```bash
-export DEX_CONNECTOR_CONFIG_FILE="$HOME/.dex/connectors/connections.json"
 go run ./examples/book-meeting
 ```
 
@@ -130,9 +130,8 @@ a create that Graph stores at once but answers after nine seconds, so Dex
 dispatches a second attempt that finds the hold; a create that Graph commits
 only after nine seconds, so the second attempt repeats the `transactionId`, is
 rejected, and retries until the lookup finds the one event; a busy attendee
-through an app-only connection loaded from a Dex Web connection file; a
-double booking; an unwired `incomplete` free/busy; and a time without an offset
-rejected before any provider request.
+through an app-only connection; a double booking; an unwired `incomplete`
+free/busy; and a time without an offset rejected before any provider request.
 
 ```bash
 GOWORK=off go test -tags=integration ./examples/book-meeting/... -count=1 -v

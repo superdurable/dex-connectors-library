@@ -41,7 +41,7 @@ func TestFactoriesRequireOnlyTheHappyPathBranch(t *testing.T) {
 			Accepted:            sdkgo.GoTo(sendMessageTarget{}),
 		})
 		messaging.NewSendMessageStep(messaging.SendMessageStepConfig[string]{
-			StepType: "SendTextWithRecovery", Annotations: annotations, Connection: connection,
+			StepType: "SendTextWithRecovery", Annotations: annotations, Connection: connection, ConnectionName: twilioConnection.Name,
 			MapToOperationInput: func(string) messaging.SendMessageInput { return validSendInput() },
 			Accepted:            sdkgo.GoTo(sendMessageTarget{}), ProviderRejected: sdkgo.GoTo(sendMessageTarget{}),
 			Uncertain: sdkgo.GoTo(sendMessageTarget{}), Defect: sdkgo.GoTo(sendMessageTarget{}),
@@ -56,7 +56,7 @@ func TestFactoriesRequireOnlyTheHappyPathBranch(t *testing.T) {
 	})
 	require.Panics(t, func() {
 		messaging.NewSendMessageStep(messaging.SendMessageStepConfig[string]{
-			StepType: "SendText", Connection: connection,
+			StepType: "SendText", Annotations: annotations, Connection: connection, ConnectionName: twilioConnection.Name,
 			MapToOperationInput: func(string) messaging.SendMessageInput { return validSendInput() },
 			Uncertain:           sdkgo.GoTo(sendMessageTarget{}),
 		})

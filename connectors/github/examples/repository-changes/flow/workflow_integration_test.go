@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	githubconnector "github.com/superdurable/dex-connectors-library/connectors/github"
+	"github.com/superdurable/dex-connectors-library/connectors/github"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
@@ -299,11 +299,11 @@ type repositoryChangesHarness struct {
 func newRepositoryChangesHarness(t *testing.T, baseURL string) (*Flow, *repositoryChangesHarness) {
 	t.Helper()
 	reference := sdkgo.ConnectionRef{Provider: "github", Name: ConnectionName}
-	providerClient, err := githubconnector.New(githubconnector.Config{BaseURL: baseURL}, sdkgo.StaticCredentialProvider[githubconnector.Credentials]{
+	providerClient, err := github.New(github.Config{BaseURL: baseURL}, sdkgo.StaticCredentialProvider[github.Credentials]{
 		reference: {AccessToken: sdkgo.NewSecretString("github-integration-token")},
 	})
 	require.NoError(t, err)
-	connection, err := githubconnector.NewConnection(providerClient, reference)
+	connection, err := github.NewConnection(providerClient, reference)
 	require.NoError(t, err)
 	flow := NewFlow(connection)
 	registry, err := dex.NewRegistry([]dex.Flow{flow})

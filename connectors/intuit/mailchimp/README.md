@@ -61,40 +61,25 @@ user. Credentials are reread before every provider call, so replacing a key,
 even with one for another data center, takes effect without a restart. The
 response limit is startup configuration.
 
-## Local configuration
+## Project configuration
 
-Dex Web writes this record for the connection name the application uses:
-
-```json
-{
-  "connectorId": "mailchimp",
-  "modulePath": "github.com/superdurable/dex-connectors-library/connectors/intuit/mailchimp",
-  "moduleVersion": "v0.1.0",
-  "provider": "mailchimp",
-  "connectionName": "mailchimp-audience",
-  "configuration": {},
-  "credentials": {"api_key": "..."}
-}
-```
-
-Load it with `localconfig.LoadFromEnvironment` and
-`mailchimp.NewLocalConnection`, as
+Dex Web or Superverse Studio writes the connection to the project
+configuration. Load it with `projectconfig.LoadFromEnvironment` and open the
+connection by the name the application uses with
+`mailchimp.NewProjectConnection`, as
 [`examples/approved-campaign-send/main.go`](examples/approved-campaign-send/main.go) does:
 
 ```go
-store, err := localconfig.LoadFromEnvironment()
+project, err := projectconfig.LoadFromEnvironment(ctx)
 if err != nil {
 	return err
 }
-connection, err := mailchimp.NewLocalConnection(store, approvedcampaignsend.ConnectionName, connectionOptions()...)
+connection, err := mailchimp.NewProjectConnection(project, approvedcampaignsend.ConnectionName, connectionOptions()...)
 ```
 
-## Hosted credentials
-
-In Superverse-hosted deployments, construct the client with the
-operation-scoped broker provider. `DecodeResolvedCredentialsJSON` accepts
-exactly `api_key` with its data-center suffix and rejects anything else
-without repeating the value.
+`LoadFromEnvironment` reads the `DEX_PROJECT_*` environment described in
+[project configuration loading](../../../sdkgo/projectconfig/README.md#application-loading).
+The stored credential holds exactly `api_key`.
 
 ## Contacts and the subscriber hash
 

@@ -17,7 +17,8 @@ import (
 
 	calendar "github.com/superdurable/dex-connectors-library/connectors/google/calendar"
 	schedulemeeting "github.com/superdurable/dex-connectors-library/connectors/google/calendar/examples/schedule-meeting/flow"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -32,15 +33,15 @@ func main() {
 }
 
 func run(ctx context.Context) error {
-	store, err := localconfig.LoadFromEnvironment()
+	project, err := projectconfig.LoadFromEnvironment(ctx)
 	if err != nil {
 		return err
 	}
-	connection, err := calendar.NewLocalConnection(store, schedulemeeting.ConnectionName)
+	connection, err := calendar.NewProjectConnection(project, schedulemeeting.ConnectionName)
 	if err != nil {
 		return err
 	}
-	selection, err := loadCalendarSelection(store)
+	selection, err := loadCalendarSelection(project.Configuration)
 	if err != nil {
 		return err
 	}
@@ -71,9 +72,9 @@ func run(ctx context.Context) error {
 }
 
 // loadCalendarSelection reads the picked calendar once at startup; an unsaved picker uses the primary calendar.
-func loadCalendarSelection(store *localconfig.Store) (schedulemeeting.CalendarSelection, error) {
-	loaded, err := localconfig.LoadOperationConfiguration[schedulemeeting.CalendarSelection](store, schedulemeeting.CalendarSelectionConfigurationRef())
-	if errors.Is(err, localconfig.ErrConfigurationNotFound) {
+func loadCalendarSelection(configuration projectconfig.Configuration) (schedulemeeting.CalendarSelection, error) {
+	loaded, err := provider.LoadOperationConfiguration[schedulemeeting.CalendarSelection](configuration, schedulemeeting.CalendarSelectionConfigurationRef())
+	if errors.Is(err, projectconfig.ErrObjectNotFound) {
 		return schedulemeeting.CalendarSelection{}, nil
 	}
 	if err != nil {

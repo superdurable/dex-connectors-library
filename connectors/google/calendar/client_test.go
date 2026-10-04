@@ -162,6 +162,15 @@ func (*rejectionRefreshingCredentialProvider) Resolve(sdkgo.Call) (calendar.Cred
 	return calendar.Credentials{AuthMethodID: calendar.GoogleOAuthAuthMethodID, AccessToken: sdkgo.NewSecretString("rejected-token")}, nil
 }
 
+// ResolveWithRefresh returns the stored credential unchanged: its expiry has not passed.
+func (provider *rejectionRefreshingCredentialProvider) ResolveWithRefresh(
+	_ context.Context,
+	call sdkgo.Call,
+	_ sdkgo.CredentialRefreshDriver[calendar.Credentials],
+) (calendar.Credentials, error) {
+	return provider.Resolve(call)
+}
+
 func (provider *rejectionRefreshingCredentialProvider) ResolveAfterRejection(
 	context.Context,
 	sdkgo.Call,

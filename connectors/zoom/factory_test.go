@@ -69,7 +69,7 @@ func TestGeneratedFactoriesExposeEveryTypedBranchAndExecutionDefault(t *testing.
 	requireExecutionDefaults(t, list.GetStepOptions(), dex.StepDurabilityAsync)
 
 	get := zoom.NewGetMeetingStep(zoom.GetMeetingStepConfig[int64]{
-		StepType: "GetMeeting", Annotations: annotations, Connection: connection,
+		StepType: "GetMeeting", Annotations: annotations, Connection: connection, ConnectionName: zoomConnection.Name,
 		MapToOperationInput: func(meetingID int64) zoom.GetMeetingInput { return zoom.GetMeetingInput{MeetingID: meetingID} },
 		Found:               sdkgo.GoTo(meetingTarget{}), NotFound: sdkgo.GoTo(meetingTarget{}),
 		ProviderRejected: sdkgo.GoTo(meetingTarget{}), InvalidResponse: sdkgo.GoTo(meetingTarget{}), Defect: sdkgo.GoTo(meetingTarget{}),
@@ -78,7 +78,7 @@ func TestGeneratedFactoriesExposeEveryTypedBranchAndExecutionDefault(t *testing.
 
 	createResult := dex.DefineAttribute[zoom.CreateMeetingResult]("zoom-create-meeting-result")
 	create := zoom.NewCreateMeetingStep(zoom.CreateMeetingStepConfig[string]{
-		StepType: "CreateMeeting", Annotations: annotations, Connection: connection,
+		StepType: "CreateMeeting", Annotations: annotations, Connection: connection, ConnectionName: zoomConnection.Name,
 		MapToOperationInput: func(topic string) zoom.CreateMeetingInput { return zoom.CreateMeetingInput{Topic: topic} },
 		Created:             sdkgo.GoTo(createdMeetingTarget{}), ProviderRejected: sdkgo.GoTo(createdMeetingTarget{}),
 		Uncertain: sdkgo.GoTo(createdMeetingTarget{}), Defect: sdkgo.GoTo(createdMeetingTarget{}), ResultAttribute: &createResult,
@@ -86,7 +86,7 @@ func TestGeneratedFactoriesExposeEveryTypedBranchAndExecutionDefault(t *testing.
 	requireExecutionDefaults(t, create.GetStepOptions(), dex.StepDurabilitySync)
 
 	update := zoom.NewUpdateMeetingStep(zoom.UpdateMeetingStepConfig[int64]{
-		StepType: "UpdateMeeting", Annotations: annotations, Connection: connection,
+		StepType: "UpdateMeeting", Annotations: annotations, Connection: connection, ConnectionName: zoomConnection.Name,
 		MapToOperationInput: func(meetingID int64) zoom.UpdateMeetingInput { return zoom.UpdateMeetingInput{MeetingID: meetingID} },
 		Updated:             sdkgo.GoTo(updatedMeetingTarget{}), NotFound: sdkgo.GoTo(updatedMeetingTarget{}),
 		ProviderRejected: sdkgo.GoTo(updatedMeetingTarget{}), Defect: sdkgo.GoTo(updatedMeetingTarget{}),
@@ -94,7 +94,7 @@ func TestGeneratedFactoriesExposeEveryTypedBranchAndExecutionDefault(t *testing.
 	requireExecutionDefaults(t, update.GetStepOptions(), dex.StepDurabilityAsync)
 
 	participants := zoom.NewListPastMeetingParticipantsStep(zoom.ListPastMeetingParticipantsStepConfig[int64]{
-		StepType: "ListPastMeetingParticipants", Annotations: annotations, Connection: connection,
+		StepType: "ListPastMeetingParticipants", Annotations: annotations, Connection: connection, ConnectionName: zoomConnection.Name,
 		MapToOperationInput: func(meetingID int64) zoom.ListPastMeetingParticipantsInput {
 			return zoom.ListPastMeetingParticipantsInput{MeetingID: meetingID}
 		},
@@ -106,7 +106,7 @@ func TestGeneratedFactoriesExposeEveryTypedBranchAndExecutionDefault(t *testing.
 
 	require.Panics(t, func() {
 		zoom.NewCreateMeetingStep(zoom.CreateMeetingStepConfig[string]{
-			StepType: "CreateMeetingWithoutHappyPath", Annotations: annotations, Connection: connection,
+			StepType: "CreateMeetingWithoutHappyPath", Annotations: annotations, Connection: connection, ConnectionName: zoomConnection.Name,
 			MapToOperationInput: func(string) zoom.CreateMeetingInput { return zoom.CreateMeetingInput{} },
 			Uncertain:           sdkgo.GoTo(createdMeetingTarget{}),
 		})

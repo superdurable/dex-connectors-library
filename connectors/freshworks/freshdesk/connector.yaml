@@ -5,7 +5,7 @@ metadata:
   displayName: Freshdesk
   description: Search, read, create, and update Freshdesk tickets and add private notes or public replies, keeping Freshdesk's own integer statuses and priorities.
   company: Freshworks
-  version: v0.1.0
+  version: v0.21.0
 spec:
   provider: freshdesk
   codegen:

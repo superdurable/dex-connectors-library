@@ -41,14 +41,13 @@ mkdir -p /tmp/spotify-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/spotify/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/spotify \
-  --version v0.1.0 \
-  --tag connectors/spotify/v0.1.0 \
+  --version v0.21.0 \
+  --tag connectors/spotify/v0.21.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/spotify-release/connector-release.json \
   --digest-output /tmp/spotify-release/connector-release.json.sha256
 dexcli dev \
   --flow-rendering-dir "$PWD/connectors/spotify/build" \
-  --connector-config-dir "$HOME/.dex/connectors" \
   --connector-release-override spotify=/tmp/spotify-release
 ```
 
@@ -57,12 +56,13 @@ Open the Dex Web URL printed by `dexcli`. Under **Connections**, select
 authorize `playlist-read-private`. Spotify requires the playlist to be owned by
 or collaborative with the authenticated user.
 
-In a second terminal, start the Worker with the connection file path shown in
-Dex Web:
+In a second terminal, start the Worker. It reads the `DEX_PROJECT_*` project
+configuration environment described in
+[project configuration](../../../../sdkgo/projectconfig/README.md); Dex Web or
+Superverse Studio writes that configuration when you save the connection.
 
 ```bash
 cd "$(git rev-parse --show-toplevel)/connectors/spotify"
-export DEX_CONNECTOR_CONFIG_FILE="$HOME/.dex/connectors/connections.json"
 go run ./examples/playlist-tracks
 ```
 

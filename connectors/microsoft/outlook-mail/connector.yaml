@@ -5,7 +5,7 @@ metadata:
   displayName: Microsoft Outlook Mail
   description: "Search, read, flag, categorize, and move messages in a Microsoft 365 (Exchange Online) mailbox through Microsoft Graph, and send new messages or threaded replies through drafts marked with the Step's idempotency key, so a retried Step never sends twice."
   company: Microsoft
-  version: v0.1.0
+  version: v0.21.0
 spec:
   provider: microsoft
   codegen:
@@ -20,6 +20,7 @@ spec:
         required: false
         default: 4194304
   auth:
+    refreshable: true
     defaultMethod: microsoft-oauth
     methods:
       - id: microsoft-oauth
@@ -92,7 +93,7 @@ spec:
           - name: access_token
             goName: AccessToken
             type: secretString
-            description: "Secret one-hour access token that the application requests from the tenant ID, client ID, and secret with the client credentials grant and stores here, renewing it five minutes before it expires or after Microsoft Graph answers 401. It is an output, so never enter it manually; leave it blank."
+            description: "Secret one-hour access token that the application requests from the tenant ID, client ID, and secret with the client credentials grant and stores here, renewing it five minutes before it expires. It is an output, so never enter it manually; leave it blank."
             required: false
         configuration:
           fields:

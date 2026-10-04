@@ -1,8 +1,9 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package summarizetext demonstrates the OpenAI generateText Query in a Flow
-// started from Dex Web Start Flow.
+// Package summarizetext demonstrates the OpenAI createResponse Mutation in a
+// Flow started from Dex Web Start Flow: it stores one Response that
+// summarizes the submitted text and streams the summary while it is written.
 package summarizetext
 
 import (
@@ -11,20 +12,17 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/connectors/openai"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/llm"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
 const (
 	// FlowType is the stable Flow identity that Dex Web Start Flow sends from the Flow Definition.
 	FlowType = "OpenAISummarizeText"
-	// ConnectionName is the static Dex Web connection that holds the OpenAI API key and model.
+	// ConnectionName is the static connection, declared in dex-app.yaml, that holds the OpenAI API key and model.
 	ConnectionName = "openai-api"
 
 	summarizeTextStepType = "SummarizeText"
 	maxTextBytes          = 64 << 10
-	// maxSummaryOutputTokens includes reasoning tokens, which count toward OpenAI's output limit.
-	maxSummaryOutputTokens = 8192
 )
 
 var (
@@ -41,16 +39,18 @@ type SummaryRequest struct {
 
 // SummaryOutcome is the Flow completion output.
 type SummaryOutcome struct {
-	// Branch is the generateText branch that completed the Flow: generated, truncated, or blocked.
+	// Branch is the createResponse branch that completed the Flow: completed or failed.
 	Branch sdkgo.BranchID `json:"branch"`
-	// Summary is the model's text; it is partial when truncated and empty when blocked.
+	// Summary is the stored Response's output text; it can be partial or empty when the Response failed.
 	Summary string `json:"summary"`
-	// ServedModel is the model OpenAI reports it used.
-	ServedModel string `json:"servedModel,omitempty"`
-	// FinishReason is the provider-neutral reason generation stopped.
-	FinishReason llm.FinishReason `json:"finishReason,omitempty"`
+	// ResponseID is the stored Response's ID, which retrieveResponse reads back.
+	ResponseID string `json:"responseId"`
+	// Model is the model OpenAI reports it used.
+	Model string `json:"model,omitempty"`
+	// Status is the Response status, such as completed or incomplete.
+	Status string `json:"status"`
 	// Usage is the token usage OpenAI reported.
-	Usage llm.Usage `json:"usage"`
+	Usage openai.Usage `json:"usage"`
 }
 
 // SummaryModelConfiguration is the SummarizeText Step's model pick from Dex Web.
@@ -62,12 +62,12 @@ type SummaryModelConfiguration struct {
 // SummaryModelConfigurationRef identifies the SummarizeText Step's use configuration.
 func SummaryModelConfigurationRef() sdkgo.ConnectorConfigurationRef {
 	return sdkgo.ConnectorConfigurationRef{
-		ConnectorID: openai.ConnectorID, ConnectionName: ConnectionName, OperationID: llm.TextGenerationOperationID,
+		ConnectorID: openai.ConnectorID, ConnectionName: ConnectionName, OperationID: openai.CreateResponseDefinition.Operation.OperationID,
 		FlowType: FlowType, StepType: summarizeTextStepType,
 	}
 }
 
-// Flow summarizes one piece of text with an OpenAI model.
+// Flow summarizes one piece of text in a stored OpenAI Response.
 type Flow struct {
 	dex.FlowDefaults
 	connection   openai.Connection
@@ -89,23 +89,22 @@ func (*Flow) GetFlowType() string { return FlowType }
 func (flow *Flow) GetSteps() []dex.StepDef {
 	return []dex.StepDef{
 		dex.DefineStartStep(recordSummaryRequest{}),
-		dex.DefineStep(openai.NewGenerateTextStep(openai.GenerateTextStepConfig[SummaryRequest]{
+		dex.DefineStep(openai.NewCreateResponseStep(openai.CreateResponseStepConfig[SummaryRequest]{
 			StepType: summarizeTextStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
 				GroupID: "summary", GroupLabel: "Summary",
-				Explanation: "Ask an OpenAI model for a short summary of the submitted text.",
+				Explanation: "Store an OpenAI Response that summarizes the submitted text, streaming the summary while it is written.",
 			},
 			ConfigurationUI: sdkgo.ConnectorConfigurationUI{Units: []sdkgo.ConnectorUIUnit{{
 				ID: "summaryModel", UnitID: openai.UIUnitModelPicker, Label: "Summary model",
-				Description: "Choose the OpenAI model that writes the summary, or keep the connection's model.",
+				Description: "Choose the OpenAI model that writes the summary from OpenAI's live model list, or keep the connection's model, which an empty pick uses.",
 				Bindings:    []sdkgo.ConnectorUIBinding{{Port: openai.UIModelPickerPortModel, JSONPointer: "/model"}},
 			}}},
 			Connection:          flow.connection,
-			MapToOperationInput: flow.MapToGenerateTextRequest,
+			MapToOperationInput: flow.MapToCreateRequest,
 			TextStream:          &summaryTextStream,
-			Generated:           sdkgo.GoTo(recordSummaryOutcome{}),
-			Truncated:           sdkgo.GoTo(recordSummaryOutcome{}),
-			Blocked:             sdkgo.GoTo(recordSummaryOutcome{}),
+			Completed:           sdkgo.GoTo(recordSummaryOutcome{}),
+			Failed:              sdkgo.GoTo(recordSummaryOutcome{}),
 		})),
 		dex.DefineStep(recordSummaryOutcome{}),
 	}
@@ -144,7 +143,7 @@ func (*Flow) GetDexSummary(ctx dex.Context, _ dex.None) (*dex.RPCResult[map[stri
 // GetDexDisplay returns the submitted request and the outcome for the Dex Web run detail.
 //
 // dex:field attribute-key:openai-summary-request value-type:json editable:false description:"Submitted text"
-// dex:field attribute-key:openai-summary-outcome value-type:json editable:false description:"Summary, finish reason, and token usage"
+// dex:field attribute-key:openai-summary-outcome value-type:json editable:false description:"Summary, Response ID, status, and token usage"
 func (*Flow) GetDexDisplay(ctx dex.Context, _ dex.None) (*dex.RPCResult[map[string]any], error) {
 	request, outcome, err := summaryInspection(ctx)
 	if err != nil {
@@ -177,16 +176,13 @@ func optionalAttribute[T any](ctx dex.Context, attribute dex.Attribute[T]) (T, e
 	return value, err
 }
 
-// MapToGenerateTextRequest maps the start input to the generateText request.
-// Model is the Step's pick, empty when the connection's model applies. It
-// leaves ReasoningEffort unset, because the picker also lists models that
-// accept no effort.
-func (flow *Flow) MapToGenerateTextRequest(request SummaryRequest) openai.GenerateTextRequest {
-	return openai.GenerateTextRequest{
-		Model:           flow.summaryModel.Model,
-		Instructions:    "Summarize the user's text in at most three sentences. Use only facts stated in the text.",
-		Messages:        []llm.Message{{Role: llm.MessageRoleUser, Text: request.Text}},
-		MaxOutputTokens: maxSummaryOutputTokens,
+// MapToCreateRequest maps the start input to the createResponse request.
+// Model is the Step's pick, empty when the connection's model applies.
+func (flow *Flow) MapToCreateRequest(request SummaryRequest) openai.CreateRequest {
+	return openai.CreateRequest{
+		Model:        flow.summaryModel.Model,
+		Instructions: "Summarize the user's text in at most three sentences. Use only facts stated in the text.",
+		Input:        request.Text,
 	}
 }
 
@@ -214,17 +210,17 @@ func (recordSummaryRequest) Execute(ctx dex.Context, request SummaryRequest) (*d
 }
 
 // dex:group group-id:summary group-label:"Summary"
-// dex:explanation text:"Persist the generated, truncated, or blocked summary outcome and complete the Flow."
+// dex:explanation text:"Persist the completed or failed Response with its ID and usage and complete the Flow."
 type recordSummaryOutcome struct {
-	dex.StepDefaultsNoWaitFor[openai.GenerateTextResult]
+	dex.StepDefaultsNoWaitFor[openai.CreateResponseResult]
 }
 
 func (recordSummaryOutcome) GetStepType() string { return "RecordSummaryOutcome" }
 
-func (recordSummaryOutcome) Execute(ctx dex.Context, result openai.GenerateTextResult) (*dex.StepDecision, error) {
+func (recordSummaryOutcome) Execute(ctx dex.Context, result openai.CreateResponseResult) (*dex.StepDecision, error) {
 	outcome := SummaryOutcome{
-		Branch: result.Branch, Summary: result.Value.Text, ServedModel: result.Value.ServedModel,
-		FinishReason: result.Value.FinishReason, Usage: result.Value.Usage,
+		Branch: result.Branch, Summary: result.Value.OutputText, ResponseID: result.Value.ID,
+		Model: result.Value.Model, Status: result.Value.Status, Usage: result.Value.Usage,
 	}
 	if err := summaryOutcomeAttribute.Set(ctx, outcome); err != nil {
 		return nil, err

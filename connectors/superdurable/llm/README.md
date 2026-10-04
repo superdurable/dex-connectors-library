@@ -1,256 +1,156 @@
 # LLM Connector
 
-The LLM Connector is an independent Go module that runs one provider-neutral
-`generateText` Query against OpenAI, Claude, or Gemini, choosing the provider
-from a `provider/model` string such as `anthropic/claude-sonnet-5`. It
-provides `llmrouter.NewGenerateTextStep` and a Studio model picker that
-merges the live model lists of the providers a connection adds. One
-connection holds any of the three providers, each with its own key. The
-Query follows
-[Text generation connectors](../../../docs/connector-contract.md#text-generation-connectors),
-with the two [differences](#differences-from-the-text-generation-contract)
-that routing requires.
+The LLM Connector is the one text generation connector for Dex
+applications. Its provider-neutral `generateText` Query runs a model of the
+provider that the connection names, with that provider's API key and its own
+model IDs, and returns the six shared branches. It provides
+`llm.NewGenerateTextStep` and a Studio model picker that lists the
+connection's provider's live models. The Query follows
+[Text generation connectors](../../../docs/connector-contract.md#text-generation-connectors).
 
-Each attempt dispatches to the released `generateText` Query of the provider
-connector that this module's `go.mod` pins, so a Result is exactly what a
-direct call to that connector returns:
-
-| Prefix | Provider connector | Pinned release | Public host | Key field | `Receipt.Provider` |
+| Provider | `provider` | API and wire format | Default model | Regions | Key |
 | --- | --- | --- | --- | --- | --- |
-| `openai` | [OpenAI](../../openai/README.md) | `connectors/openai/v0.7.0` | `api.openai.com` | `openai_api_key` | `openai` |
-| `anthropic` | [Claude](../../anthropic/README.md) | `connectors/anthropic/v0.1.0` | `api.anthropic.com` | `anthropic_api_key` | `claude` |
-| `gemini` | [Gemini](../../google/gemini/README.md) | `connectors/google/gemini/v0.3.0` | `generativelanguage.googleapis.com` | `gemini_api_key` | `gemini` |
+| OpenAI | `openai` | Responses API, `POST https://api.openai.com/v1/responses` | `gpt-6-sol` | `global` | `sk-` project key |
+| Claude | `anthropic` | Messages API, `POST https://api.anthropic.com/v1/messages` | `claude-sonnet-5` | `global` | `sk-ant-` key |
+| Gemini | `gemini` | `POST https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent` | `gemini-3.5-flash-lite` | `global` | `AIza` key |
+| Qwen | `qwen` | Model Studio Chat Completions, `https://dashscope-intl.aliyuncs.com/compatible-mode/v1` | `qwen3.7-plus` | `global` (Singapore), `hong-kong`, `china` (Beijing) | `sk-` key of the same region |
+| DeepSeek | `deepseek` | Chat Completions, `https://api.deepseek.com` | `deepseek-flash` | `global` | `sk-` key |
+| Meta | `meta` | Meta Model API Chat Completions, `https://api.meta.ai/v1` | `muse-spark-1.3` | `global` | `LLM\|<id>\|<secret>` team key |
+| Mistral | `mistral` | Chat Completions, `https://api.mistral.ai/v1` | `mistral-large-2512` | `global`, `eu`, `us` | workspace key |
+| Kimi | `kimi` | Kimi API Chat Completions, `https://api.moonshot.ai/v1` | `kimi-k2.6` | `global` (platform.kimi.ai), `china` (platform.kimi.com) | `sk-` key of the same platform |
+| xAI | `xai` | Chat Completions, `https://api.x.ai/v1` | `grok-4.3` | `global`, `us` | `xai-` team key |
+
+The module depends only on the Connector Go SDK, so an application never
+links a second provider connector for text generation, and a provider
+change is a connection change, not a code change. Use this connector for
+every text generation Step. Provider-native operations stay in their own
+connectors: OpenAI's stored `createResponse` and `retrieveResponse`, and
+Gemini's `generateContent`.
 
 Install a published component release:
 
 ```bash
-go get github.com/superdurable/dex-connectors-library/connectors/superdurable/llm@v0.2.0
+go get github.com/superdurable/dex-connectors-library/connectors/superdurable/llm@v0.21.0
 ```
 
-The module lives in the company directory, `connectors/superdurable/llm`,
-and its package is named `llmrouter`, so import it by that name:
+The package name, `llm`, is the last element of the module path, so import
+it without an alias:
 
 ```go
-llmrouter "github.com/superdurable/dex-connectors-library/connectors/superdurable/llm"
+"github.com/superdurable/dex-connectors-library/connectors/superdurable/llm"
 ```
-
-Use this connector for text generation with OpenAI, Claude, or Gemini. Use a
-provider's own connector for provider-native operations, such as OpenAI
-`createResponse` or Gemini `generateContent`, for a provider-specific
-setting such as Claude's `defaultMaxOutputTokens`, OpenAI's
-`maxSseEventBytes`, or a custom endpoint, and for a lab this connector does
-not route.
-
-## Differences from the text-generation contract
-
-This connector routes to the provider connectors instead of implementing a
-wire format, so it departs from two rules of the text-generation contract:
-
-- `GenerateText()` returns `sdkgo.Query[GenerateTextRequest, GenerateTextResponse]`,
-  not `*llm.TextGenerationQuery`, because each attempt invokes the Query of
-  the provider that the model selects. `llmtest.RunTextGenerationExchangeSuite`
-  therefore runs on each provider connector's Query as `New` builds it, and a
-  differential test proves the router returns those attempts unchanged.
-- The model picker declares `listOpenAIModels`, `listAnthropicModels`,
-  `listGeminiModels`, and `listGeminiOpenAICompatibleModels` under the
-  `llm.models-list` capability instead of one `listModels` command on
-  `api_key`, because each list is bound to its own provider's key field and
-  Dex Web authorizes each command with only that field.
 
 ## Connection
 
-Every provider method has the connection kind `llm-api-keys`. Dex Web
-**Connectors** renders the manifest form, and applications load the local
-development store and create
-the typed Connection once at startup, as
-[`examples/summarize-text/main.go`](examples/summarize-text/main.go) does:
+An application declares a named `llm` connection in `dex-app.yaml`. Dex Web
+**Connections** renders the manifest form, saves the settings and the key in
+the project configuration, and the application opens the typed Connection
+once at startup, as [`examples/summarize-text/main.go`](examples/summarize-text/main.go)
+does:
 
 ```go
-store, err := localconfig.LoadFromEnvironment()
+project, err := projectconfig.LoadFromEnvironment(ctx)
 if err != nil {
 	return err
 }
-connection, err := llmrouter.NewLocalConnection(store, summarizetext.ConnectionName)
+connection, err := llm.NewProjectConnection(project, summarizetext.ConnectionName)
 if err != nil {
 	return err
 }
 ```
 
-One connection holds one or more providers. The manifest declares each
-provider as an auth method with `selection: multiple`, so the Connectors
-form shows a **Providers** section: **Add provider** adds a card for OpenAI,
-Claude, or Gemini, and each card holds that provider's key, its setup guide,
-and its own fields. A new form starts with the OpenAI card; remove it when you
-do not use OpenAI. Save needs at least one provider.
+[`sdkgo/projectconfig`](../../../sdkgo/projectconfig/README.md#application-loading)
+documents the `DEX_PROJECT_*` environment that `LoadFromEnvironment` reads.
+`NewProjectConnection` reads the settings once and resolves the key from
+project storage during every call, so a replaced key takes effect without a
+restart; a settings change needs one. Settings decode strictly, so a field the
+manifest does not declare stops the Worker at startup.
 
-| Provider | Method ID | Key field | Where to get the key | Card fields |
-| --- | --- | --- | --- | --- |
-| OpenAI | `openai` | `openai_api_key`, starting `sk-` | [Platform > API keys](https://platform.openai.com/api-keys) | none |
-| Claude | `anthropic` | `anthropic_api_key`, starting `sk-ant-` | [Claude Console > Settings > API keys](https://platform.claude.com/settings/keys) | `anthropicWorkspaceId` |
-| Gemini | `gemini` | `gemini_api_key`, starting `AIza` | [Google AI Studio > API keys](https://aistudio.google.com/api-keys) | none |
-
-A provider's key is required while its card is added. Claude's card also
-takes `anthropicWorkspaceId`, a `wrkspc_` workspace ID from Claude Console >
-Settings > Workspaces that the Claude connector sends as
-`anthropic-workspace-id`. A multi-workspace Anthropic key requires it; leave
-it blank for a key scoped to one workspace. Any other value fails `New`.
-
-The saved credentials list the added providers in add order as
-`auth_methods`, which `Credentials.AuthMethodIDs` holds, and only the added
-providers' keys. A Step may pick any model of an added provider. A model
-whose provider is not added selects `defect` with `AUTHENTICATION` and no
-request, even when the credentials still hold that provider's key.
-
-Each key is sent only by its own provider connector, only in that provider's
-credential header, and only to that provider's host: OpenAI and Claude
-receive `Authorization: Bearer`, and Gemini receives `x-goog-api-key`. The
-provider connectors never follow a redirect, and no key enters a Result,
-Failure, Receipt, Stream, log, or formatted value. Credentials, including the
-list of added providers, are reread before every provider call, so a replaced
-key or an added or removed provider takes effect without a restart;
-configuration is captured at startup.
-
-After the providers come the connection fields:
+One connection names one provider and holds one key:
 
 | Field | Default | Meaning |
 | --- | --- | --- |
-| `model` | blank | The default model for Steps that pick none: `provider/model`, or a provider alone for that provider connector's default model. Its provider must be added. Blank uses the first added provider's default model. An invalid value fails `New`, so the Worker does not start. |
-| `maxResponseBytes` | `8388608` (8 MiB) | The response limit for every provider, counting every byte of a stream. Larger responses select `invalidResponse`. OpenAI adds about 260 bytes of event framing per streamed text delta, so the default holds roughly 30,000 `openai/` output tokens; raise it for longer outputs. |
+| `provider` | required | `openai`, `anthropic`, `gemini`, `qwen`, `deepseek`, `meta`, `mistral`, `kimi`, or `xai`. Every Step on the connection calls this provider. Use one connection per provider. |
+| `api_key` | required, secret | The provider's API key from its key page below. It is sent only to that provider's API host: in `x-goog-api-key` for Gemini and as an `Authorization` bearer token for every other provider. |
+| `model` | blank | The model for Steps that pick none, written as the provider names it, such as `claude-opus-5-5`. Blank uses the provider's default model in the table above. |
+| `region` | `global` | The regional API platform of the key; see [Regions](#regions). |
+| `anthropicWorkspaceId` | blank | Only for `anthropic` with a key that spans several workspaces: the `wrkspc_` ID from Claude Console > Settings > Workspaces, sent as `anthropic-workspace-id`. Any other provider with a value stops the Worker. |
+| `maxResponseBytes` | blank | The complete response limit in bytes, counting every byte of a stream. Blank uses 64 MiB for `deepseek`, whose streams carry keep-alive comments and reasoning chunks, and 8 MiB for every other provider. Larger responses select `invalidResponse`. |
 
-The `model` field declares `studioUnit: {unit: modelPicker, port: model}`.
-Once the connection is saved, Dex Web renders this connector's model picker
-for it, listing the added providers' live models, and saves the pick into the
-connection's `model`. Before the first save the form says to save the
-connection first. A host without Studio units in the connection form shows a
-plain text input.
+The `model` field declares `studioUnit: {unit: modelPicker, port: model}`, so
+once the connection is saved, Dex Web renders the model picker for it. The
+authorization guide links every provider's key page:
 
-The other provider settings keep each provider connector's defaults: Claude's
-`defaultMaxOutputTokens` of 16000, OpenAI's 1 MiB `maxSseEventBytes`, and the
-public endpoints. OpenAI's final stream event repeats the whole response, so
-an `openai/` response larger than 1 MiB selects `invalidResponse` whatever
-`maxResponseBytes` allows; use the OpenAI connector for such outputs.
-
-### Editing a saved connection
-
-On Dex Web releases with the provider form, the form shows each stored key as
-stored; leave it blank to keep it, or enter a new key to replace it. Removing
-a provider's card drops its key and its card fields, such as the Claude
-workspace ID. The default model and the other connection fields are shown
-with their saved values.
-
-The provider form, kept keys, and the connection's model picker need Dex CLI
-`cli-v1.2.0` or later. `cli-v1.1.2` and earlier ignore `selection: multiple`,
-show one radio choice per provider, and cannot save that form.
-
-### Migrate from v0.1.0
-
-v0.1.0 held three optional keys, a required `model`, and
-`anthropicWorkspaceId` in one flat form. A v0.1.0 record has no
-`auth_methods`, so after the upgrade every Step selects `defect` with
-`AUTHENTICATION` and `connection credentials are unavailable`, without a
-request, until the record is saved again. The Worker still starts, because
-credentials are read per call. To migrate:
-
-1. Clear the **Conflict** that the version change raises, as
-   [below](#conflict-after-a-version-change) describes.
-2. Open the connection, add each provider you use again with its key, and
-   enter the Claude workspace ID in the Claude card if you had one.
-3. Save, then pick the default model in the connection form, or leave it blank
-   for the first added provider's default model.
-4. Restart the application, which reads configuration at startup.
-
-Code changes: `Credentials` gains `AuthMethodIDs`, which an application that
-builds `Credentials` itself must fill with the providers it adds, and
-`Config.Model` may be blank. Step picks and request models keep their
-`provider/model` form.
-
-### Key-format guard
-
-Before any request, the connector rejects a key that clearly belongs to
-another routed provider, so a key pasted into the wrong card is never sent to
-the wrong host:
-
-| Field | Rejected formats |
+| Provider | Key page |
 | --- | --- |
-| `openai_api_key` | Claude keys (`sk-ant-`) and Google keys (`AIza`) |
-| `anthropic_api_key` | every `sk-` key that does not start `sk-ant-`, which covers every OpenAI key prefix, and Google keys (`AIza`) |
-| `gemini_api_key` | every `sk-` key, which covers OpenAI and Claude keys |
+| OpenAI | [Platform > API keys](https://platform.openai.com/api-keys) |
+| Claude | [Claude Console > Settings > API keys](https://platform.claude.com/settings/keys) |
+| Gemini | [Google AI Studio > API keys](https://aistudio.google.com/api-keys) |
+| Qwen | [Model Studio](https://bailian.console.aliyun.com/) > API Key, in the key's region |
+| DeepSeek | [DeepSeek Platform > API keys](https://platform.deepseek.com/api_keys) |
+| Meta | [Meta Model API dashboard](https://dev.meta.ai/) > API keys |
+| Mistral | [Mistral AI Studio > API Keys](https://console.mistral.ai/api-keys) |
+| Kimi | [Kimi Platform](https://platform.kimi.ai/) > Console > API Keys, or platform.kimi.com for a China key |
+| xAI | [xAI Console](https://console.x.ai/) > API Keys |
 
-Any other format is sent unchanged, so the provider decides. The guard runs
-after the provider check: a model whose provider is not added selects
-`defect` before any key is read. The check runs on the exact value the
-provider pipeline reads, so a key replaced, or a provider removed, between
-the router's check and the request is checked again. It cannot protect the
-Studio model lists, which Dex Web runs with the stored field.
+`New` validates the connection before the Worker starts: a missing or
+unknown provider, a region the provider does not serve, a model ID the
+provider's model-ID rule rejects, or an `anthropicWorkspaceId` on another
+provider is an error that never repeats the configured model or workspace
+ID. `New` makes no provider request.
 
-### Conflict after a version change
+### Regions
 
-A connection record stores the connector module version it was saved with.
-After an upgrade of this connector, or after an application's own provider
-requirement raises a provider connector version under minimal version
-selection, Dex Web shows the connection as **Conflict** and hides its form
-and pickers. Flows keep running, because the runtime ignores the stored
-version. To recover, edit the record's `moduleVersion` in the connection file
-that the Connectors page names, or delete the record and enter the values
-again. The upgrade from v0.1.0 also needs the record saved again with its
-providers; see [Migrate from v0.1.0](#migrate-from-v010). Provider connector
-upgrades are batched into planned minor releases of this connector to keep
-Conflicts rare; security fixes ship immediately.
+Every provider serves `global`. Four providers serve another region, each a
+fixed host, so a configured region never sends the key elsewhere:
+
+| `provider` | `region` | API base URL |
+| --- | --- | --- |
+| `qwen` | `global` | `https://dashscope-intl.aliyuncs.com/compatible-mode/v1` (Singapore) |
+| `qwen` | `hong-kong` | `https://cn-hongkong.dashscope.aliyuncs.com/compatible-mode/v1` |
+| `qwen` | `china` | `https://dashscope.aliyuncs.com/compatible-mode/v1` (Beijing) |
+| `mistral` | `eu` | `https://api.eu.mistral.ai/v1`, inference in the EU and EFTA at 1.1 times list price |
+| `mistral` | `us` | `https://api.us.mistral.ai/v1`, inference in the United States at 1.1 times list price |
+| `kimi` | `china` | `https://api.moonshot.cn/v1`, for keys issued on platform.kimi.com |
+| `xai` | `us` | `https://us.api.x.ai/v1`, which currently serves only `grok-4.7` and `grok-4.6` |
+
+Qwen and Kimi keys work only on the platform that issued them; a key used in
+the wrong region selects `providerRejected` with `AUTHENTICATION`. A
+regional Mistral or xAI endpoint serves only the models hosted there.
 
 ## Choose a model
 
-A model selection is `provider [ "/" model ]`:
+A model is the provider's own model ID, such as `gpt-6-luna`,
+`claude-haiku-4-5`, or `qwen3.8-flash`. It is never prefixed with the
+provider: the connection's `provider` selects the API. The request's trimmed
+`Model` wins; a blank one uses the connection's `model`, and a blank
+connection model uses the provider's default model. An application builds
+the request `Model` from the Step's model pick and any code fallback.
 
-- The provider is exactly `openai`, `anthropic`, or `gemini`, in lowercase.
-- The model is everything after the first `/`. It must not be blank, and it
-  is checked by that provider connector's model-ID rule: OpenAI and Claude
-  accept any 1 to 256 printable ASCII characters, such as
-  `openai/ft:gpt-6-sol:acme::abc123`, and Gemini accepts one path segment,
-  with or without `models/`, such as `gemini/models/gemini-3.8-flash`.
-- A provider alone uses that provider connector's default model:
-  `gpt-6-sol`, `claude-sonnet-5`, or `gemini-3.5-flash-lite`.
+Every provider except Gemini accepts any model ID of 1 to 256 printable
+ASCII characters without spaces, such as the OpenAI fine-tune
+`ft:gpt-6-sol:acme::abc123`. Gemini puts the model in the URL path, so it
+accepts one path segment of letters, digits, `.`, `_`, and `-`, with or
+without `models/`. Any other model selects `defect` with `VALIDATION` and no
+request, and the message never repeats the value. A model the provider does
+not serve, including one written as `provider/model`, reaches the provider,
+which rejects it with `providerRejected`.
 
-The request's trimmed `Model` wins; a blank one uses the connection's
-`model`. When both are blank, the call uses the first added provider alone,
-which is that provider connector's default model: a connection that added
-Claude and then OpenAI runs `claude-sonnet-5`. An application builds the
-request `Model` from the Step's model pick and any code fallback.
-
-A selection that breaks the grammar, such as a bare `claude-sonnet-5`,
-`Anthropic/claude-sonnet-5`, `anthropic/`, or an unrouted provider, selects
-`defect` with `VALIDATION` and no request, and the message shows the expected
-form without repeating the value. A selection whose provider is not added
-selects `defect` with `AUTHENTICATION` and no request to any provider, and
-the message names the provider to add, such as `the model selects anthropic,
-but the connection has not added the Claude provider; add Claude to the
-connection`. The first added provider is never a fallback for it. A
-selection whose provider key is blank, whitespace only, or in another
-provider's format also selects `defect` with `AUTHENTICATION` and no request,
-even when the other keys are set. A key is never used for another provider.
-
-`requestedModel` in the Result is the provider's model ID without the prefix,
-because the provider connector reports it. `llmrouter.QualifiedModel(result)`
-restores the prefix from `Receipt.Provider`, so the value can be fed back as
-a request `Model`:
-
-```go
-outcome := SummaryOutcome{
-	Branch: result.Branch, Summary: result.Value.Text, Model: llmrouter.QualifiedModel(result),
-	ServedModel: result.Value.ServedModel, FinishReason: result.Value.FinishReason, Usage: result.Value.Usage,
-}
-```
+`requestedModel` in the Result is the model the request was sent for and
+`Receipt.Provider` is the connection's provider, so the pair identifies the
+model exactly.
 
 ### Portable requests
 
-Every provider connector checks the request against the chosen model and
-selects `defect` without a request for a value that model does not accept. A
-request that should run on any model the picker lists sets no `Temperature`,
-no `ReasoningEffort`, and a zero or generous `MaxOutputTokens`:
+Each provider checks the request against the chosen model and selects
+`defect` without a request for a field that model does not accept. A request
+that should run on any model the picker lists sets no `Temperature`, no
+`ReasoningEffort`, and a zero or generous `MaxOutputTokens`:
 
-- current Claude models accept only the default temperature of 1.0;
-- `gpt-6-sol` accepts a temperature only with effort `none`, and GPT-5.x Pro
-  accepts only `medium`, `high`, or `xhigh` effort;
-- Claude Sonnet 4.5 and Haiku 4.5 accept no effort;
+- Claude models after Opus 4.6 accept only the default temperature of 1.0,
+  and Kimi and DeepSeek accept no temperature;
+- reasoning efforts differ per provider and model, as the
+  [provider reference](#provider-reference) lists;
 - reasoning models count thinking tokens against `MaxOutputTokens`, so a small
   limit truncates them.
 
@@ -260,16 +160,16 @@ The [summarize-text Flow](examples/summarize-text/flow/workflow.go) wires the
 Step with the model picker and streams the summary to its text Stream:
 
 ```go
-dex.DefineStep(llmrouter.NewGenerateTextStep(llmrouter.GenerateTextStepConfig[SummaryRequest]{
+dex.DefineStep(llm.NewGenerateTextStep(llm.GenerateTextStepConfig[SummaryRequest]{
 	StepType: summarizeTextStepType, ConnectionName: ConnectionName,
 	Annotations: sdkgo.StepAnnotations{
 		GroupID: "summary", GroupLabel: "Summary",
-		Explanation: "Ask the OpenAI, Claude, or Gemini model that the Step picks for a short summary of the submitted text.",
+		Explanation: "Ask the model that the Step picks, from the connection's provider, for a short summary of the submitted text.",
 	},
 	ConfigurationUI: sdkgo.ConnectorConfigurationUI{Units: []sdkgo.ConnectorUIUnit{{
-		ID: "summaryModel", UnitID: llmrouter.UIUnitModelPicker, Label: "Summary model",
-		Description: "Choose the provider/model that writes the summary from the live lists of the providers this connection adds, or keep the connection default: the connection's model, or the first added provider's default model when it has none.",
-		Bindings:    []sdkgo.ConnectorUIBinding{{Port: llmrouter.UIModelPickerPortModel, JSONPointer: "/model"}},
+		ID: "summaryModel", UnitID: llm.UIUnitModelPicker, Label: "Summary model",
+		Description: "Choose the model that writes the summary from the live model list of the connection's provider, or type one of its model IDs. Keep the connection default to use the connection's model, or the provider's default model when the connection has none.",
+		Bindings:    []sdkgo.ConnectorUIBinding{{Port: llm.UIModelPickerPortModel, JSONPointer: "/model"}},
 	}}},
 	Connection:          flow.connection,
 	MapToOperationInput: flow.MapToGenerateTextRequest,
@@ -283,45 +183,48 @@ dex.DefineStep(llmrouter.NewGenerateTextStep(llmrouter.GenerateTextStepConfig[Su
 })),
 ```
 
-The request carries the Step's pick, empty when the connection default
-applies:
+Every Step config sets `ConnectionName` to the name of its Connection, which
+the generated factory checks when the Flow registers. The request carries the
+Step's pick, empty when the connection default applies:
 
 ```go
-func (flow *Flow) MapToGenerateTextRequest(request SummaryRequest) llmrouter.GenerateTextRequest {
-	return llmrouter.GenerateTextRequest{
+func (flow *Flow) MapToGenerateTextRequest(request SummaryRequest) llm.GenerateTextRequest {
+	return llm.GenerateTextRequest{
 		Model:        flow.summaryModel.Model,
 		Instructions: "Summarize the user's text in at most three sentences. Use only facts stated in the text.",
-		Messages:     []llm.Message{{Role: llm.MessageRoleUser, Text: request.Text}},
+		Messages:     []textgen.Message{{Role: textgen.MessageRoleUser, Text: request.Text}},
 	}
 }
 ```
 
-`llmrouter.GenerateTextRequest` and `llmrouter.GenerateTextResponse` alias
-`llm.TextGenerationRequest` and `llm.TextGenerationResponse`, so the same
-application Step can also run on a provider connector.
+`llm.GenerateTextRequest` and `llm.GenerateTextResponse` alias
+`textgen.TextGenerationRequest` and `textgen.TextGenerationResponse` from
+`github.com/superdurable/dex-connectors-library/sdkgo/textgen`, which also
+defines `Message`, `StructuredOutput`, `ReasoningEffort`, `FinishReason`, and
+`Usage`.
 
 ### A Step that names a model
 
 When the user names a model, such as "use Claude Opus", keep the picker and
 fall back to that exact model ID in code, so Dex Web can replace a retired
-model without a code change. Take the ID from the user or the provider
-connector's README; never invent one. The one changed line of
-`MapToGenerateTextRequest` is:
+model without a code change. The model must belong to the connection's
+provider; take the ID from the user or the provider's documentation, never
+invent one. The one changed line of `MapToGenerateTextRequest` is:
 
 ```go named-model
-		Model:        cmp.Or(flow.summaryModel.Model, "anthropic/claude-opus-5-5"),
+		Model:        cmp.Or(flow.summaryModel.Model, "claude-opus-5-5"),
 ```
 
-For a named provider only, such as "use Claude", fall back to the provider
-alone, `cmp.Or(flow.summaryModel.Model, "anthropic")`.
+When the user names only a provider, such as "use Claude", set the
+connection's `provider` to `anthropic` and keep the line unchanged.
 
 ### An opt-in per-run model
 
 The example takes no model in its start input. Add one only when the
 application must choose the model per run, because anyone who can start the
-Flow can then choose any model, and bill any provider, that the connection
-adds. Add `Model string` with the JSON name `model` to
-`SummaryRequest` and change the same line to:
+Flow can then choose any model, and bill the provider, that the connection
+names. Add `Model string` with the JSON name `model` to `SummaryRequest` and
+change the same line to:
 
 ```go per-run-model
 		Model:        cmp.Or(request.Model, flow.summaryModel.Model),
@@ -330,140 +233,351 @@ adds. Add `Model string` with the JSON name `model` to
 ## Choose a model per Step
 
 The connector ships a Connector Studio bundle with one configuration unit,
-`modelPicker` (`llmrouter.UIUnitModelPicker`, output port
-`llmrouter.UIModelPickerPortModel`). Dex Web **Connectors** shows a tab for
-each Step that adds it, and renders the same unit for the connection's
-`model` field once the connection is saved. The picker lists only the
-providers the connection adds:
+`modelPicker` (`llm.UIUnitModelPicker`, output port
+`llm.UIModelPickerPortModel`). Dex Web **Connectors** shows a tab for each
+Step that adds it, and renders the same unit for the connection's `model`
+field once the connection is saved. The picker reads the saved `provider` and
+`region` and lists that provider's live models:
 
 1. a first option that saves an empty pick. On a Step it reads **Connection
-   default (anthropic/claude-sonnet-5)**, naming the connection's `model`, or
-   **Connection default (the first added provider's default model)** when the
-   connection has none. In the connection form it reads **Connector default
-   (the first added provider's default model)**;
-2. one default-model option per added provider, which saves `openai`,
-   `anthropic`, or `gemini`;
-3. the added providers' models, in the order OpenAI, Claude, Gemini, each
-   saved as `provider/model` and badged with its provider, so searching
-   `anthropic` or `gemini` finds a provider's models;
-4. a `provider/model-id` entry that accepts only a selection the connector
-   would accept.
+   default (claude-opus-5-5)**, naming the connection's `model`, or
+   **Connection default (the provider's default model)** when the connection
+   has none. In the connection form it reads **Connector default (the
+   provider's default model)**;
+2. the provider's listed models, with models that cannot serve
+   `generateText`, such as embedding or image models, behind **Show all
+   models**;
+3. a model ID entry, which accepts 1 to 256 printable ASCII characters
+   without spaces.
 
-A provider that is not added runs no list command and has no option. Dex Web
-releases that report no added providers to the frame, which predate the
-provider form, list all three providers, and their first option reads "Use
-the connection's default model".
+The picker runs only the list commands of the saved provider and region, so
+the key reaches only that provider's own hosts, and it never reaches the
+browser frame:
 
-Each list runs its own manifest command, and Dex Web's broker authorizes each
-command with only its own key field. The key never reaches the browser
-frame. The commands equal the pinned provider connectors' list commands
-except for their IDs, the shared `llm.models-list` capability, and the
-credential field; a test compares them with the pinned manifests.
+| `provider` | Commands | Request |
+| --- | --- | --- |
+| `openai` | `listOpenAIModels` | `GET https://api.openai.com/v1/models` |
+| `anthropic` | `listAnthropicModels` | `GET https://api.anthropic.com/v1/models?limit=1000` with `anthropic-version: 2023-06-01`, paged by `after_id`; Dex Web releases before `cli-v0.13.10` drop the header, so Claude rejects it there |
+| `gemini` | `listGeminiModels`, then `listGeminiOpenAICompatibleModels` | `GET https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000` with `x-goog-api-key`, or the OpenAI-compatible list with a bearer key on Dex Web releases before `cli-v0.13.10` |
+| `qwen` | `listQwenModels` and `listQwenReasoningModels`, or the `HongKong` pair for `hong-kong` | `GET https://dashscope-intl.aliyuncs.com/api/v1/models` or `https://cn-hongkong.dashscope.aliyuncs.com/api/v1/models` with `capabilities=TG` and `Reasoning`; `china` lists nothing, so type the model ID |
+| `deepseek` | `listDeepSeekModels` | `GET https://api.deepseek.com/models` |
+| `meta` | `listMetaModels` | `GET https://api.meta.ai/v1/models` |
+| `mistral` | `listMistralModels` | `GET https://api.mistral.ai/v1/models`; a regional endpoint serves only its region's subset of this catalog |
+| `kimi` | `listKimiModels`, or `listKimiModelsChina` for `china` | `GET https://api.moonshot.ai/v1/models` or `https://api.moonshot.cn/v1/models` |
+| `xai` | `listXAIModels`, or `listXAIModelsUS` for `us` | `GET https://api.x.ai/v1/language-models` or `https://us.api.x.ai/v1/models` |
 
-| Command | Request | Dex Web before `cli-v0.13.10` | Dex Web `cli-v0.13.10` and later |
-| --- | --- | --- | --- |
-| `listOpenAIModels` | `GET https://api.openai.com/v1/models` with `openai_api_key` as a bearer token | lists | lists |
-| `listAnthropicModels` | `GET https://api.anthropic.com/v1/models?limit=1000` with `anthropic_api_key` as a bearer token and `anthropic-version: 2023-06-01` | fails: the host drops the fixed header, so Claude rejects the list | lists |
-| `listGeminiModels` | `GET https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000` with `gemini_api_key` in `x-goog-api-key` | fails before sending: the host accepts only bearer credentials | lists, with the `generateContent` filter |
-| `listGeminiOpenAICompatibleModels` | `GET https://generativelanguage.googleapis.com/v1beta/openai/models` with `gemini_api_key` as a bearer token | lists, as the fallback | not reached |
-
-A blank key field sends nothing, and that provider's list fails. Each failed
-list adds a notice that names the key to check, the provider's default-model
-option, and `provider/<model-id>` entry. Only listing is affected: generation
-works for all three providers on every Dex Web release. When every list
-fails, the picker adds one more notice and still offers each listed
-provider's default-model option and manual entry, so a connection with only
-Claude on a Dex Web release before `cli-v0.13.10` can pick **Claude default
-model**.
-
-Dex Web releases before `cli-v0.14.2` also raise a page-level "Connector
-provider command failed" banner for a failed list, one banner for the page
-until the next catalog load. Before `cli-v0.13.10` the Claude and native
-Gemini lists always fail, so the banner appears each time the picker opens.
-The banner does not affect generation. The Claude list sends no
-`anthropic-workspace-id`, so a multi-workspace key cannot list Claude models;
-the Claude card's `anthropicWorkspaceId` still applies to generation.
+Every command shares the `llm.models-list` capability and sends `api_key`.
+A failed list shows a notice and keeps the default option and the model ID
+entry. Before the connection is saved, and on Dex Web releases that report no
+connection configuration to the frame, the picker cannot know the provider,
+so it lists nothing and offers only the default option and the model ID
+entry.
 
 The application reads the Step pick and the connection's `model` once at
 startup and passes the pick as the request `Model`; restart it after saving
 either. The example reads the pick like this:
 
 ```go
-loaded, err := localconfig.LoadOperationConfiguration[summarizetext.SummaryModelConfiguration](
-	store, summarizetext.SummaryModelConfigurationRef(),
+loaded, err := provider.LoadOperationConfiguration[summarizetext.SummaryModelConfiguration](
+	configuration, summarizetext.SummaryModelConfigurationRef(),
 )
-if errors.Is(err, localconfig.ErrConfigurationNotFound) {
+if errors.Is(err, projectconfig.ErrObjectNotFound) {
 	return summarizetext.SummaryModelConfiguration{}, nil
 }
 ```
 
-## Branches, retry, and passthrough
+## Provider reference
 
-`generateText` declares the six shared branches. Every branch, `Failure`,
-`Receipt`, and Retry that a provider connector returns reaches the Step
-unchanged, so each provider's README owns its status and finish-reason
-table. `Receipt.Provider` and `Failure.Provider` name the serving connector:
-`openai`, `claude`, or `gemini`. A `defect` that this connector selects
-itself, for a model selection, a provider that is not added, or a key,
-carries `llm` instead.
+Each provider keeps the wire format, model rules, and failure classification
+of the connector it replaces. Every streaming provider writes text deltas to
+the Step's text Stream as they arrive; Gemini, which does not stream, writes
+the whole text once.
+
+### OpenAI (`openai`)
+
+| `GenerateTextRequest` | Responses API |
+| --- | --- |
+| `Model` | `model` |
+| `Instructions` | `instructions` |
+| `Messages[]` (`user` or `assistant`) | `input[]` messages with string `content` |
+| `StructuredOutput` | `text.format` `json_schema` with `strict: true` |
+| `MaxOutputTokens` | `max_output_tokens`, which also counts reasoning tokens |
+| `Temperature` (0 to 2; nil omits) | `temperature` |
+| `ReasoningEffort` | `reasoning.effort`, with the same value, such as `xhigh` for `ReasoningEffortExtraHigh` |
+
+Every request sends `store: false`, so no stored Response is created; use
+the OpenAI connector's `createResponse` for a stored Response. Requests send
+`stream: true`, except for `o1-pro`, `o3-pro`, and `gpt-5.5-pro`, whose model
+pages do not list streaming. The connector applies the limits each model
+page documents, and selects `defect` without a request for a request outside
+them:
+
+| Models | `ReasoningEffort` | `Temperature` |
+| --- | --- | --- |
+| `gpt-6-astra` | `low`, `medium`, `high`, `xhigh`, `max` | not accepted |
+| `gpt-6-sol`, `gpt-6-luna` | `none`, `low`, `medium`, `high`, `xhigh`, `max`; default `medium` | only with `ReasoningEffortNone` |
+| `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna` | `none` through `max` | 0 to 2 |
+| `gpt-5.5` | `none` through `xhigh` | 0 to 2 |
+| `gpt-5.5-pro`, `gpt-5.4-pro`, `gpt-5.2-pro` | `medium`, `high`, `xhigh` | 0 to 2 |
+| `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.4-nano`, `gpt-5.2` | `none` through `xhigh`; default `none` | only when the effort is `none` or unset |
+| `gpt-5.3-codex`, `gpt-5.2-codex` | `low` through `xhigh` | 0 to 2 |
+| `gpt-5.1` | `none`, `low`, `medium`, `high` | 0 to 2 |
+| `gpt-5-pro` | `high` | 0 to 2 |
+| `gpt-5`, `gpt-5-mini`, `gpt-5-nano` | `minimal`, `low`, `medium`, `high` | 0 to 2 |
+| every other model | any value | 0 to 2 |
+
+A dated snapshot, such as `gpt-5.4-2026-03-05`, follows its family; a model
+the table does not name is sent as written. A fine-tuned `ft:` model receives
+`minimum`, `maximum`, length, item, and `format` bounds in descriptions.
+`blocked` covers `content_filter`, a refusal, and the
+`misalignment_policy_violation`, `bio_policy`, and `cyber_policy` errors. A
+429 whose type or code is `insufficient_quota`, `credit_balance_exhausted`, or
+a spend or usage limit selects `providerRejected` with `QUOTA_EXHAUSTED`; any
+other 429 retries. The final stream event repeats the whole response and may
+hold at most 1 MiB.
+
+### Claude (`anthropic`)
+
+| `GenerateTextRequest` | Messages API |
+| --- | --- |
+| `Model` | `model` |
+| `Instructions` | `system` |
+| `Messages[]` (`user` or `assistant`) | `messages[]` with string `content` |
+| `StructuredOutput` | `output_config.format` `json_schema`; `Description` becomes the schema's root `description`, and bounds Claude rejects move into descriptions |
+| `MaxOutputTokens` (zero sends 16000) | `max_tokens`, which includes thinking tokens |
+| `Temperature` (nil omits) | `temperature` |
+| `ReasoningEffort` | `output_config.effort`: `low`, `medium`, `high`, `xhigh` for `ReasoningEffortExtraHigh`, or `max` |
+
+Every request streams and sends `anthropic-version: 2023-06-01`. Models after
+Claude Opus 4.6, and IDs this release does not name, accept only temperature
+1.0 and every effort; Opus and Sonnet 4.6 accept 0 to 1 and no `xhigh`; Opus
+4.5 accepts `low` through `high`; Sonnet and Haiku 4.5 accept no effort.
+`truncated` covers `max_tokens` and `model_context_window_exceeded`, and
+`blocked` covers `refusal`. A 402 `billing_error` or the tier spend-cap 429
+whose `error.details.error_code` is `enforced_spend_limit_reached` selects
+`providerRejected` with `QUOTA_EXHAUSTED`; `overloaded_error`, `api_error`,
+`timeout_error`, and other 429s retry, including as stream error events.
+
+### Gemini (`gemini`)
+
+| `GenerateTextRequest` | Gemini API |
+| --- | --- |
+| `Model` (`gemini-3.8-flash` or `models/gemini-3.8-flash`) | path `models/{model}:generateContent` |
+| `Instructions` | `systemInstruction.parts[0].text` |
+| `Messages[]` (`user`, or `assistant` sent as `model`) | `contents[]` |
+| `StructuredOutput` | `generationConfig.responseJsonSchema` with `responseMimeType: application/json`; `Description` becomes the schema's root description, and `minLength`, `maxLength`, and `format` move into descriptions |
+| `MaxOutputTokens` (0 omits) | `generationConfig.maxOutputTokens`, which includes thought tokens |
+| `Temperature` (0 to 2; nil omits) | `generationConfig.temperature` |
+| `ReasoningEffort` (`minimal`, `low`, `medium`, or `high`) | `generationConfig.thinkingConfig.thinkingLevel` |
+
+Gemini 3.7 and 3.8 Flash, 3 and 3.1 Pro, and the `-latest` aliases accept no
+`minimal`; Gemini 1 and 2 models accept no effort. A prompt block reports
+`providerFinishReason` `blockReason:SAFETY` and so on and selects `blocked`,
+as do the candidate's `SAFETY`, `RECITATION`, `LANGUAGE`, `BLOCKLIST`,
+`PROHIBITED_CONTENT`, `SPII`, image-policy, `ESCALATION`, and
+`PUP_LIMITED_DISABLED` finishes. A 400 with `API_KEY_INVALID` selects
+`providerRejected` with `AUTHENTICATION`. A `RetryInfo` delay replaces
+`Retry-After` on a retried 429 or 5xx.
+
+### Qwen (`qwen`)
+
+| `GenerateTextRequest` | Chat Completions |
+| --- | --- |
+| `Model` | `model` |
+| `Instructions` | the first message, with the `system` role |
+| `Messages[]` (`user` or `assistant`) | `messages[]` |
+| `StructuredOutput` | `response_format` `json_object`, plus a schema instruction in the system message |
+| `MaxOutputTokens` | `max_completion_tokens`, which also counts thinking, on Qwen3.5 and later Plus and Flash and Qwen3.7 and later Max models; `max_tokens` on every other model |
+| `Temperature` (0 up to but excluding 2; nil omits) | `temperature` |
+| `ReasoningEffort` | `reasoning_effort` on `qwen3.8-max`, `qwen3.8-max-0902`, `qwen3.8-flash`, and `qwen3.8-27b`: `none`, `low`, `medium`, or `xhigh`; on `qwen3.8-2.4t-a95b`: `low`, `medium`, or `xhigh` |
+
+Every request streams with `stream_options.include_usage`. Content
+moderation, `data_inspection_failed` before or during the stream, selects
+`blocked`. `Arrearage`, `AllocationQuota.FreeTierOnly`,
+`CommodityNotPurchased`, overdue bills, and `BudgetLimitExceeded` select
+`providerRejected` with `QUOTA_EXHAUSTED`. Prefer Qwen3.7 and later models for
+structured output; older models may return invalid JSON while thinking.
+
+### DeepSeek (`deepseek`)
+
+| `GenerateTextRequest` | Chat Completions |
+| --- | --- |
+| `Model` | `model` |
+| `Instructions` | the first message, with the `system` role |
+| `Messages[]` (`user` or `assistant`) | `messages[]` |
+| `StructuredOutput` | `response_format` `json_object`, with the schema appended to the `system` message |
+| `MaxOutputTokens` | `max_tokens` |
+| `Temperature` | never sent; any value selects `defect` |
+| `ReasoningEffort` | `reasoning_effort`: `none` turns thinking off; `low`, `high`, or `max` set the thinking effort |
+
+Every request streams. DeepSeek queues a request for up to 10 minutes with
+`: keep-alive` comments, so its exchange may last 1170 seconds and a stream
+that sends no byte for 5 minutes retries. The unmapped
+`insufficient_system_resource` and `aborted` finishes and empty JSON output
+select `invalidResponse`; a 402 insufficient balance selects
+`providerRejected` with `QUOTA_EXHAUSTED`. The Receipt's request ID is the
+`x-ds-trace-id` header.
+
+### Meta (`meta`)
+
+| `GenerateTextRequest` | Chat Completions |
+| --- | --- |
+| `Model` | `model` |
+| `Instructions` | the first message, with the `developer` role Meta gives the highest precedence |
+| `Messages[]` (`user` or `assistant`) | `messages[]` |
+| `StructuredOutput` | `response_format` `json_schema` with `strict: true` |
+| `MaxOutputTokens` | `max_completion_tokens`, which also counts reasoning tokens |
+| `Temperature` (0 to 2; nil omits) | `temperature` |
+| `ReasoningEffort` | `reasoning_effort`: `minimal`, `low`, `medium`, `high`, or `xhigh`; `max` only on `muse-spark-1.3` |
+
+Every request streams, which Meta exempts from its non-streaming time limit.
+A 400 `content_policy_violation` selects `blocked`; `server_error`,
+`server_shutting_down`, `service_overloaded`, `backend_unavailable`, and rate
+limit tokens retry, including inside a stream. Contributor-tier models, such
+as `muse-spark-1.3-contributor`, let Meta train on prompts and completions.
+
+### Mistral (`mistral`)
+
+| `GenerateTextRequest` | Chat Completions |
+| --- | --- |
+| `Model` | `model` |
+| `Instructions` | the first message, with the `system` role |
+| `Messages[]` (`user` or `assistant`) | `messages[]` |
+| `StructuredOutput` | `response_format` `json_schema` with `strict: true` |
+| `MaxOutputTokens` | `max_tokens`; the prompt plus `max_tokens` cannot exceed the model's context length |
+| `Temperature` (0 to 1.5; nil omits) | `temperature` |
+| `ReasoningEffort` | `reasoning_effort`: `none` or `high`, only on `mistral-small-2603`, `mistral-medium-3-5`, and their aliases |
+
+Every request streams and sends only the fields Mistral's request schema
+accepts. `truncated` covers `length` and `model_length`. Errors use Mistral's
+top-level `type` and `code`, and the Receipt's request ID is the
+`mistral-correlation-id` header.
+
+### Kimi (`kimi`)
+
+| `GenerateTextRequest` | Chat Completions |
+| --- | --- |
+| `Model` | `model` |
+| `Instructions` | the first message, with the `system` role |
+| `Messages[]` (`user` or `assistant`) | `messages[]`, text only |
+| `StructuredOutput` | `response_format` `json_schema` with `strict: true`; `title` is removed and bounds move into descriptions |
+| `MaxOutputTokens` | `max_completion_tokens`, which also counts thinking tokens |
+| `Temperature` | never sent; any value selects `defect` |
+| `ReasoningEffort` | `reasoning_effort` on `kimi-k3` models only: `low`, `high`, or `max` |
+
+Every request streams, because Kimi's gateway ends a silent non-streaming
+request after 900 seconds. Assistant turns carry no `reasoning_content`, so
+use them only on `kimi-k2.6`; on `kimi-k3` and `kimi-k2.7-code`, send one user
+turn. A `content_filter` error selects `blocked`;
+`exceeded_current_quota_error` selects `providerRejected` with
+`QUOTA_EXHAUSTED`; `engine_overloaded_error`, `rate_limit_reached_error`, and
+server errors retry. For structured output, prefer `kimi-k2.7-code` or
+`kimi-k3` and keep schemas flat on `kimi-k2.6`.
+
+### xAI (`xai`)
+
+| `GenerateTextRequest` | Chat Completions |
+| --- | --- |
+| `Model` | `model` |
+| `Instructions` | the first message, with the `system` role |
+| `Messages[]` (`user` or `assistant`) | `messages[]` |
+| `StructuredOutput` | `response_format` `json_schema` with `strict: true` |
+| `MaxOutputTokens` | `max_completion_tokens`, which bounds visible output only, not reasoning tokens |
+| `Temperature` (0 to 2; nil omits) | `temperature` |
+| `ReasoningEffort` | `reasoning_effort`: `none` through `xhigh` on `grok-4.3`; `low` through `high` on `grok-4.5`; none on `grok-4.20` and `grok-build-0.1` aliases; `low` through `xhigh` on `grok-4.7`, `grok-4.6`, and other models |
+
+Every request streams. xAI reports `completion_tokens` without reasoning
+tokens, so the connector adds them to `Usage.OutputTokens`, as the shared
+`Usage` contract states. `end_turn` finishes select `generated`, errors
+carry xAI's `code` token, and a stream that carries an error object selects
+`invalidResponse`.
+
+## Branches, retry, and failures
+
+`generateText` is a Query with no idempotency key: text generation creates no
+provider resource, so a repeated call only bills the tokens again.
 
 | Branch | Required | Selected when |
 | --- | --- | --- |
 | `generated` | yes | The model finished normally and returned text. |
-| `truncated` | no | The model stopped at the output token limit; `Text` holds any partial output. |
-| `blocked` | no | The provider stopped the response for a content policy, or the model refused. |
-| `providerRejected` | no | The provider conclusively rejected the request, such as an invalid key, an unknown model, or exhausted quota. |
-| `invalidResponse` | no | The provider's response was malformed, oversized, or unusable. |
-| `defect` | no | The model selection, a provider the connection has not added, a missing or mismatched key, the request, or the configuration is invalid. |
+| `truncated` | no | The model stopped at the output token limit or the context window; `Text` holds any partial output. |
+| `blocked` | no | The provider stopped the request or response for a content policy, or the model refused. `Text` is empty. |
+| `providerRejected` | no | The provider conclusively rejected the request, such as an invalid key, an unknown model, or exhausted quota or balance (`QUOTA_EXHAUSTED`). |
+| `invalidResponse` | no | The response is malformed, larger than `maxResponseBytes`, or has an unknown finish reason, or structured output does not match its schema. |
+| `defect` | no | Local input, a request field the model does not accept, the credentials, or the configuration is invalid; no request is sent. |
 
-Each Step attempt makes at most one provider exchange, with the same Call ID
-for every attempt of the Step execution. The connector never falls back to
-another provider inside an attempt. Model failover belongs in the Flow: wire
-`providerRejected` or `invalidResponse` to a second llm Step with another
-model, or use `dex.ProceedToOnExecuteFailure`.
+An unwired optional branch fails the Flow. Transport failures, a stall, an
+interrupted stream, HTTP 408, 429 other than quota, and 5xx except 501 return
+Retry, honoring `Retry-After`. `Receipt.Provider` and `Failure.Provider` are
+the connection's provider, such as `anthropic`. A `Failure` carries only the
+status and the provider's bounded error tokens, never the message, prompt,
+text, or key. Each Step attempt makes at most one request with the same Call
+ID for every attempt of the Step execution; the connector never falls back
+to another model. Model failover belongs in the Flow: wire `providerRejected`
+or `invalidResponse` to a second llm Step on another connection, or use
+`dex.ProceedToOnExecuteFailure`.
 
-A request model, a Step pick, or a connection model fixes the provider, so a
-Retry returns to the same provider, and a key or provider-list change between
-attempts only toggles `defect`. When all three are blank, each attempt reads
-the first added provider again, so saving the connection with another first
-provider between attempts moves the retry to that provider. A Worker
-restarted with a new pick or connection model also maps the Step input again,
-so a retrying Step can move to another provider. Its text Stream can then
-hold text from both providers, and both bill. The Result's `Text` is the only
-authoritative text.
+Streamed text is written to the Step's text Stream before the finish reason
+is known, and a retry does not remove it. After a Retry the Stream can hold
+the interrupted attempt's text followed by the whole text of the next
+attempt; the Result's `Text` is the only authoritative text.
 
 ## Step defaults
 
 | Option | Default |
 | --- | --- |
 | Execute durability | `sync` |
-| Execute timeout | 900 seconds; each provider bounds one HTTP exchange at 870 seconds |
-| Heartbeat timeout | 60 seconds; the provider pipeline heartbeats every 5 seconds while a call is in flight |
+| Execute timeout | 1200 seconds; one HTTP exchange is bounded at 1170 seconds for DeepSeek, which queues requests for up to 10 minutes, and 870 seconds for every other provider |
+| Heartbeat timeout | 60 seconds; the pipeline heartbeats every 5 seconds while a call is in flight |
 | Retry | 2-second initial interval, backoff 2, 60-second maximum interval, 4 attempts, 30 minutes total |
 
-These equal every pinned provider connector's `generateText` defaults. Dex
-applies only the llm Step's options, so `New` fails when a linked provider
-connector needs a longer Execute timeout or declares other branches, which
-happens when an application requires a newer provider connector than this
-module's `go.mod` pins. The error names the provider connector and asks to
-upgrade this connector or pin the listed version.
+`llm.WithHTTPClient` supplies a transport, such as a proxy; the connector uses
+a copy that never follows redirects, and `New` rejects a client `Timeout` of
+1200 seconds or more. A `StepOptionsOverride` Execute timeout below the
+exchange bound lets Dex abandon an exchange that is still running and start
+another, which bills twice. `llm.WithBaseURLForTest` points the connection at
+a fake provider on `localhost`, `127.0.0.0/8`, or `::1`, such as
+`textgentest.FakeProvider`; `New` rejects any other host.
 
-A hung provider returns Retry at 870 seconds, before the Execute timeout. An
-`StepOptionsOverride` Execute timeout below 870 seconds lets Dex abandon an
-exchange that is still running and start another, which bills twice.
-`llmrouter.WithHTTPClient` supplies one transport for every provider, such
-as a proxy, and `New` rejects a client `Timeout` of 900 seconds or more.
-`llmrouter.WithProviderBaseURLForTest` points one provider at a fake
-provider on `127.0.0.1` or `localhost`, such as `llmtest.FakeProvider`; `New`
-rejects any other host.
+## Migrate from the provider router and the lab connectors
+
+This release is breaking. The package is `llm` instead of `llmrouter`, and
+the provider-specific text generation connectors are removed:
+
+| Before | `llm` connection |
+| --- | --- |
+| `llmrouter` with `openai/gpt-6-sol`, or the OpenAI connector's `generateText` | `provider: openai`, `model: gpt-6-sol` |
+| `llmrouter` with `anthropic/...`, or the Claude connector (`connectors/anthropic`) | `provider: anthropic`; its `workspaceId` becomes `anthropicWorkspaceId` |
+| `llmrouter` with `gemini/...`, or the Gemini connector's `generateText` | `provider: gemini` |
+| Qwen (`connectors/alibaba/qwen`) | `provider: qwen`; its `endpoint` becomes `region` |
+| DeepSeek (`connectors/deepseek`) | `provider: deepseek` |
+| Meta Model API (`connectors/meta`) | `provider: meta` |
+| Mistral AI (`connectors/mistral`) | `provider: mistral`; its `endpoint` becomes `region` |
+| Kimi (`connectors/moonshot/kimi`) | `provider: kimi`; its `endpoint` becomes `region` |
+| xAI Grok (`connectors/xai`, package `grok`) | `provider: xai`; its `endpoint` becomes `region` |
+
+A provider router connection from an earlier release held several providers
+as auth methods with `openai_api_key`, `anthropic_api_key`, and `gemini_api_key`.
+A connection now names one provider and holds `api_key`, so save one
+connection per provider again; a stored router credential selects `defect`
+with `AUTHENTICATION` and no request until it is saved again. Step picks and
+request models drop the `provider/` prefix, `QualifiedModel` is removed
+because `requestedModel` and `Receipt.Provider` identify the model, and
+`Receipt.Provider` is the connection's provider, so Claude reports
+`anthropic` and Grok reports `xai`. Claude's `defaultMaxOutputTokens` is
+fixed at 16000 and OpenAI's `maxSseEventBytes` at 1 MiB; a request sets
+`MaxOutputTokens` to change the first. The labs' custom endpoints are
+replaced by the fixed regional hosts above. Applications open connections
+with `NewProjectConnection` from the project configuration instead of a
+local connections file.
 
 ## Example
 
 The [summarize-text example](examples/summarize-text/README.md) runs one Flow
 from Dex Web **Start Flow**: it persists the request, asks the picked model
-for a summary while streaming it, and completes with a generated,
-truncated, or blocked outcome, or records a rejected, invalid, or defect
-outcome and fails.
+of the connection's provider for a summary while streaming it, and completes
+with a generated, truncated, or blocked outcome, or records a rejected,
+invalid, or defect outcome and fails.
 
 ## Verify
 
@@ -474,21 +588,22 @@ npm ci --prefix ../../../sdk/react && npm run build --prefix ../../../sdk/react
 npm ci --prefix ui && npm test --prefix ui && npm run build --prefix ui
 ```
 
-The unit suites run the shared `llmtest` exchange suite on every route as
-`New` builds it, compare every routed attempt with a direct call to the
-provider connector, and prove that each key reaches only its own provider
-and only while that provider is added. The real Dex suites need a running
-`dexcli dev`; they load connection files that list `auth_methods`, as Dex Web
-writes them:
+The unit suites run the shared `textgentest` exchange suite on every
+provider's wire format, pin each provider's documented request and
+classification, and prove each provider's production URL in every region it
+serves, its key header, and its default model, without a network call. The
+real Dex suites need a running `dexcli dev`:
 
 ```bash
 DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./... -count=1
 ```
 
 An opt-in live test makes one tiny generation with each provider whose key
-is set, using that provider's default model, and never prints a key:
+is set, using that provider's default model, and never prints a key. Set
+`LLM_CONNECTOR_TEST_<PROVIDER>_API_KEY`, and optionally `_REGION` and
+`_MODEL`, for each provider to test:
 
 ```bash
-LLM_CONNECTOR_TEST_OPENAI_API_KEY=... LLM_CONNECTOR_TEST_ANTHROPIC_API_KEY=... \
-  LLM_CONNECTOR_TEST_GEMINI_API_KEY=... GOWORK=off go test -tags=live -run TestLive ./...
+LLM_CONNECTOR_TEST_OPENAI_API_KEY=... LLM_CONNECTOR_TEST_DEEPSEEK_API_KEY=... \
+  GOWORK=off go test -tags=live -run TestLive ./...
 ```

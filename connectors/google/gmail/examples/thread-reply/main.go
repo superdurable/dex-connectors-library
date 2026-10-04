@@ -19,7 +19,8 @@ import (
 	gmail "github.com/superdurable/dex-connectors-library/connectors/google/gmail"
 	threadreply "github.com/superdurable/dex-connectors-library/connectors/google/gmail/examples/thread-reply/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -52,19 +53,19 @@ func newLogger(output io.Writer, levelName string) *slog.Logger {
 }
 
 func run(ctx context.Context, logger *slog.Logger) error {
-	store, err := localconfig.LoadFromEnvironment()
+	project, err := projectconfig.LoadFromEnvironment(ctx)
 	if err != nil {
 		return err
 	}
-	connection, err := gmail.NewLocalConnection(store, threadreply.ConnectionName)
+	connection, err := gmail.NewProjectConnection(project, threadreply.ConnectionName)
 	if err != nil {
 		return err
 	}
-	replyMessageConfiguration, err := localconfig.LoadOperationConfiguration[threadreply.ReplyMessageConfiguration](
-		store, threadreply.ReplyMessageConfigurationRef(),
+	replyMessageConfiguration, err := provider.LoadOperationConfiguration[threadreply.ReplyMessageConfiguration](
+		project.Configuration, threadreply.ReplyMessageConfigurationRef(),
 	)
 	if err != nil {
-		return err
+		return fmt.Errorf("load the saved reply message: %w", err)
 	}
 	flow := threadreply.NewFlow(connection, replyMessageConfiguration)
 	registry, err := dex.NewRegistry([]dex.Flow{flow})
@@ -91,10 +92,11 @@ func run(ctx context.Context, logger *slog.Logger) error {
 		return errors.Join(err, stopWorker(worker), cache.Close())
 	}
 	var startTriggerConfiguration gmail.MessageReceivedTriggerConfiguration
-	if err := store.DecodeTriggerConfiguration(
+	if err := project.Configuration.DecodeTriggerConfiguration(
 		gmail.ConnectorID, threadreply.ConnectionName, gmail.MessageReceivedTriggerDefinition.Trigger.TriggerName,
 		threadreply.StartTriggerBinding, &startTriggerConfiguration,
 	); err != nil {
+		err = fmt.Errorf("load the saved %s binding: %w", threadreply.StartTriggerBinding, err)
 		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
 	}
 	startTriggerFilter, err := threadreply.NewStartTriggerFilter(startTriggerConfiguration)
@@ -102,10 +104,11 @@ func run(ctx context.Context, logger *slog.Logger) error {
 		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
 	}
 	var replyTriggerConfiguration gmail.ReplyReceivedTriggerConfiguration
-	if err := store.DecodeTriggerConfiguration(
+	if err := project.Configuration.DecodeTriggerConfiguration(
 		gmail.ConnectorID, threadreply.ConnectionName, gmail.ReplyReceivedTriggerDefinition.Trigger.TriggerName,
 		threadreply.ReplyTriggerBinding, &replyTriggerConfiguration,
 	); err != nil {
+		err = fmt.Errorf("load the saved %s binding: %w", threadreply.ReplyTriggerBinding, err)
 		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
 	}
 	replyTriggerFilter, err := threadreply.NewReplyTriggerFilter(replyTriggerConfiguration)
@@ -115,8 +118,8 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	// One ordered runner delivers every root message before any reply in the same poll. The runner, its
 	// durable inboxes, and the Dex targets log every skipped message and every retry, so the example needs
 	// no wrapper of its own.
-	triggerRunner, err := gmail.NewLocalMessageTriggerRunner(store, threadreply.ConnectionName, gmail.LocalMessageTriggerRunnerConfig{
-		MessageReceivedRoutes: []gmail.LocalMessageReceivedTriggerRoute{{
+	triggerRunner, err := gmail.NewProjectMessageTriggerRunner(project, threadreply.ConnectionName, gmail.ProjectMessageTriggerRunnerConfig{
+		MessageReceivedRoutes: []gmail.ProjectMessageReceivedTriggerRoute{{
 			BindingName: threadreply.StartTriggerBinding,
 			Target: sdkgo.NewDexFlowTriggerTarget(
 				client, flow, startTriggerFilter, threadreply.ResolveFlowID, threadreply.MapToFlowInput,
@@ -125,7 +128,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 				)),
 			),
 		}},
-		ReplyReceivedRoutes: []gmail.LocalReplyReceivedTriggerRoute{{
+		ReplyReceivedRoutes: []gmail.ProjectReplyReceivedTriggerRoute{{
 			BindingName: threadreply.ReplyTriggerBinding,
 			Target: sdkgo.NewDexRPCTriggerTarget(
 				client, flow.ReceiveEmailReply, replyTriggerFilter, threadreply.ResolveFlowID,

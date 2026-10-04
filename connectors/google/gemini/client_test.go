@@ -4,14 +4,13 @@
 package gemini_test
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -21,7 +20,7 @@ import (
 	gemini "github.com/superdurable/dex-connectors-library/connectors/google/gemini"
 	"github.com/superdurable/dex-connectors-library/connectors/google/gemini/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -714,84 +713,63 @@ func TestWithHTTPClientUsesTheCallerTransportWithoutMutatingIt(t *testing.T) {
 	require.Zero(t, callerClient.Timeout)
 }
 
-// TestNewLocalConnectionUsesTheModelChosenInDexWeb reads the model that Dex Web
-// Connections saves as connection configuration.
-func TestNewLocalConnectionUsesTheModelChosenInDexWeb(t *testing.T) {
-	provider := newFakeGemini(t, replyJSON(http.StatusOK, stopResponse("local")))
-	path := filepath.Join(t.TempDir(), "connections.json")
-	writeConnection := func(model string) *localconfig.Store {
-		contents, err := json.Marshal(map[string]any{
-			"schemaVersion": localconfig.SchemaVersion,
-			"connections": []any{map[string]any{
-				"connectorId": gemini.ConnectorID, "modulePath": "github.com/superdurable/dex-connectors-library/connectors/google/gemini",
-				"moduleVersion": "v0.1.0", "provider": "google", "connectionName": "gemini-local",
-				"configuration": map[string]any{"endpoint": provider.URL, "model": model},
-				"credentials":   map[string]any{"api_key": "AIzaLOCAL-model-key"},
-			}},
-		})
-		require.NoError(t, err)
-		require.NoError(t, os.WriteFile(path, contents, 0o600))
-		store, err := localconfig.LoadFile(path)
-		require.NoError(t, err)
-		return store
+// TestNewProjectConnectionUsesTheModelChosenInDexWeb reads the model that Dex Web
+// Connections saves in the project configuration.
+func TestNewProjectConnectionUsesTheModelChosenInDexWeb(t *testing.T) {
+	provider := newFakeGemini(t, replyJSON(http.StatusOK, stopResponse("project")))
+	project := func(model string) *projectconfig.LoadedProject {
+		return testsupport.NewLoadedProject(t, gemini.ConnectorID, []testsupport.ProjectConnection{{
+			Name: "gemini-project", Configuration: map[string]any{"endpoint": provider.URL, "model": model},
+			Credentials: map[string]any{"api_key": "AIzaPROJECT-model-key"},
+		}}, nil)
 	}
-	connection, err := gemini.NewLocalConnection(writeConnection("gemini-3.8-flash"), "gemini-local")
+	connection, err := gemini.NewProjectConnection(project("gemini-3.8-flash"), "gemini-project")
 	require.NoError(t, err)
 	step := gemini.NewGenerateContentStep(gemini.GenerateContentStepConfig[string]{
-		StepType: "GenerateLocal", ConnectionName: "gemini-local", Annotations: geminiAnnotations(), Connection: connection,
+		StepType: "GenerateProject", ConnectionName: "gemini-project", Annotations: geminiAnnotations(), Connection: connection,
 		MapToOperationInput: func(prompt string) gemini.GenerateContentRequest {
 			return gemini.GenerateContentRequest{Contents: userPrompt(prompt)}
 		},
 		Generated: sdkgo.GoTo(generatedTarget{}),
 	})
-	decision, err := step.Execute(testsupport.NewDexContext("local-model-flow", "local-model-step"), "Hi")
+	decision, err := step.Execute(testsupport.NewDexContext("project-model-flow", "project-model-step"), "Hi")
 	require.NoError(t, err)
 	require.NotNil(t, decision)
 	requests := provider.recorded()
 	require.Len(t, requests, 1)
 	require.Equal(t, "/models/gemini-3.8-flash:generateContent", requests[0].Path)
 
-	_, err = gemini.NewLocalConnection(writeConnection("gemini 3.8 flash"), "gemini-local")
+	_, err = gemini.NewProjectConnection(project("gemini 3.8 flash"), "gemini-project")
 	require.ErrorContains(t, err, "Gemini model must be a Gemini model ID", "a mistyped model fails at startup, not on the first call")
 }
 
-func TestNewLocalConnectionReloadsCredentialsForEveryCall(t *testing.T) {
-	provider := newFakeGemini(t, replyJSON(http.StatusOK, stopResponse("local")))
-	path := filepath.Join(t.TempDir(), "connections.json")
-	writeConnection := func(apiKey string) {
-		contents, err := json.Marshal(map[string]any{
-			"schemaVersion": localconfig.SchemaVersion,
-			"connections": []any{map[string]any{
-				"connectorId": gemini.ConnectorID, "modulePath": "github.com/superdurable/dex-connectors-library/connectors/google/gemini",
-				"moduleVersion": "v0.1.0", "provider": "google", "connectionName": "gemini-local",
-				"configuration": map[string]any{"endpoint": provider.URL},
-				"credentials":   map[string]any{"api_key": apiKey},
-			}},
-		})
-		require.NoError(t, err)
-		require.NoError(t, os.WriteFile(path, contents, 0o600))
-	}
-	writeConnection("AIzaFIRST-local-key")
-	store, err := localconfig.LoadFile(path)
-	require.NoError(t, err)
-	connection, err := gemini.NewLocalConnection(store, "gemini-local")
+func TestNewProjectConnectionReloadsCredentialsForEveryCall(t *testing.T) {
+	provider := newFakeGemini(t, replyJSON(http.StatusOK, stopResponse("project")))
+	project := testsupport.NewLoadedProject(t, gemini.ConnectorID, []testsupport.ProjectConnection{{
+		Name: "gemini-project", Configuration: map[string]any{"endpoint": provider.URL},
+		Credentials: map[string]any{"api_key": "AIzaFIRST-project-key"},
+	}}, nil)
+	connection, err := gemini.NewProjectConnection(project, "gemini-project")
 	require.NoError(t, err)
 	step := gemini.NewGenerateContentStep(gemini.GenerateContentStepConfig[string]{
-		StepType: "GenerateLocal", ConnectionName: "gemini-local", Annotations: geminiAnnotations(), Connection: connection,
+		StepType: "GenerateProject", ConnectionName: "gemini-project", Annotations: geminiAnnotations(), Connection: connection,
 		MapToOperationInput: func(prompt string) gemini.GenerateContentRequest {
 			return gemini.GenerateContentRequest{Model: "gemini-2.5-flash", Contents: userPrompt(prompt)}
 		},
 		Generated: sdkgo.GoTo(generatedTarget{}),
 	})
-	for index, key := range []string{"AIzaFIRST-local-key", "AIzaSECOND-local-key"} {
+	key := projectconfig.ConnectionKey{ConnectorID: gemini.ConnectorID, ConnectionName: "gemini-project"}
+	for index, apiKey := range []string{"AIzaFIRST-project-key", "AIzaSECOND-project-key"} {
 		if index > 0 {
-			writeConnection(key)
+			material := projectconfig.CredentialMaterial{Credentials: json.RawMessage(`{"api_key":"` + apiKey + `"}`), AuthMethod: "default"}
+			_, err := project.Connections.ReplaceCredential(context.Background(), key, uint64(index), material)
+			require.NoError(t, err)
 		}
-		decision, err := step.Execute(testsupport.NewDexContext("local-flow", fmt.Sprintf("local-step-%d", index)), "Hi")
+		decision, err := step.Execute(testsupport.NewDexContext("project-flow", fmt.Sprintf("project-step-%d", index)), "Hi")
 		require.NoError(t, err)
 		require.NotNil(t, decision)
 		requests := provider.recorded()
 		require.Len(t, requests, index+1)
-		require.Equal(t, key, requests[index].Header.Get("x-goog-api-key"), "credential replacement is visible without a restart")
+		require.Equal(t, apiKey, requests[index].Header.Get("x-goog-api-key"), "credential replacement is visible without a restart")
 	}
 }

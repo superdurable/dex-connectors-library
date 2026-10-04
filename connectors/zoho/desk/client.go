@@ -99,7 +99,7 @@ type Client struct {
 	organizationID     string
 	apiBaseURLOverride string
 	httpClient         *http.Client
-	credentials        sdkgo.CredentialProvider[Credentials]
+	credentials        CredentialSource
 	refreshDriver      sdkgo.CredentialRefreshDriver[Credentials]
 	maxResponseBytes   int64
 	now                func() time.Time
@@ -187,7 +187,7 @@ type deskErrorSummary struct {
 // with the organizationPicker unit after Connect. Credentials are resolved, and refreshed when
 // they expire, before every provider request, so reauthorization takes effect without a restart;
 // orgId and the response limit are startup configuration.
-func New(config Config, credentials sdkgo.CredentialProvider[Credentials], options ...Option) (*Client, error) {
+func New(config Config, credentials CredentialSource, options ...Option) (*Client, error) {
 	config = withConfigDefaults(config)
 	if err := config.Validate(); err != nil {
 		return nil, err

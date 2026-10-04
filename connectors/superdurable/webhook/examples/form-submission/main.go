@@ -24,7 +24,7 @@ import (
 	"github.com/superdurable/dex-connectors-library/connectors/superdurable/webhook"
 	formsubmission "github.com/superdurable/dex-connectors-library/connectors/superdurable/webhook/examples/form-submission/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -60,11 +60,11 @@ func newLogger(output io.Writer, levelName string) *slog.Logger {
 
 // run serves the webhook endpoint at once, so submissions are recorded even while Dex is unreachable.
 func run(ctx context.Context, logger *slog.Logger, connectionOptions ...webhook.Option) error {
-	store, err := localconfig.LoadFromEnvironment()
+	project, err := projectconfig.LoadFromEnvironment(ctx)
 	if err != nil {
 		return err
 	}
-	connection, err := webhook.NewLocalConnection(store, formsubmission.ConnectionName, connectionOptions...)
+	connection, err := webhook.NewProjectConnection(project, formsubmission.ConnectionName, connectionOptions...)
 	if err != nil {
 		return err
 	}
@@ -92,7 +92,7 @@ func run(ctx context.Context, logger *slog.Logger, connectionOptions ...webhook.
 	if err != nil {
 		return errors.Join(err, stopWorker(worker), cache.Close())
 	}
-	endpointRunner, err := newSubmissionEndpointRunner(store, client, flow, logger, connectionOptions)
+	endpointRunner, err := newSubmissionEndpointRunner(project, client, flow, logger, connectionOptions)
 	if err != nil {
 		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
 	}
@@ -106,17 +106,22 @@ func run(ctx context.Context, logger *slog.Logger, connectionOptions ...webhook.
 	return errors.Join(runErr, client.Close(), cache.Close())
 }
 
-// newSubmissionEndpointRunner starts one Flow per accepted submission, with the event ID as request ID.
+// newSubmissionEndpointRunner delivers the submission binding to its target through the binding's durable
+// project inbox.
 func newSubmissionEndpointRunner(
-	store *localconfig.Store, client *dex.Client, flow *formsubmission.Flow, logger *slog.Logger, connectionOptions []webhook.Option,
+	project *projectconfig.LoadedProject, client *dex.Client, flow *formsubmission.Flow, logger *slog.Logger, connectionOptions []webhook.Option,
 ) (*webhook.RequestReceivedEndpointRunner, error) {
+	return webhook.NewProjectRequestReceivedEndpointRunner(project, formsubmission.ConnectionName, []webhook.ProjectRequestReceivedTriggerRoute{{
+		BindingName: formsubmission.SubmissionTriggerBinding, Target: newSubmissionTarget(client, flow, logger),
+	}}, append(slices.Clone(connectionOptions), webhook.WithLogger(logger))...)
+}
+
+// newSubmissionTarget starts one Flow per accepted submission, with the event ID as request ID.
+func newSubmissionTarget(client *dex.Client, flow *formsubmission.Flow, logger *slog.Logger) sdkgo.TriggerTarget[webhook.WebhookRequestEvent] {
 	bindingLogger := logger.With("connector", webhook.ConnectorID, "connection", formsubmission.ConnectionName,
 		"trigger", webhook.RequestReceivedTriggerDefinition.Trigger.TriggerName, "binding", formsubmission.SubmissionTriggerBinding)
-	return webhook.NewLocalRequestReceivedEndpointRunner(store, formsubmission.ConnectionName, []webhook.LocalRequestReceivedTriggerRoute{{
-		BindingName: formsubmission.SubmissionTriggerBinding,
-		Target: sdkgo.NewDexFlowTriggerTarget(client, flow, formsubmission.AcceptSubmission, formsubmission.ResolveFlowID,
-			formsubmission.MapToFlowInput, sdkgo.WithTriggerLogger(bindingLogger)),
-	}}, append(slices.Clone(connectionOptions), webhook.WithLogger(logger))...)
+	return sdkgo.NewDexFlowTriggerTarget(client, flow, formsubmission.AcceptSubmission, formsubmission.ResolveFlowID,
+		formsubmission.MapToFlowInput, sdkgo.WithTriggerLogger(bindingLogger))
 }
 
 // newWebhookMux mounts the endpoint and a readiness check that passes once the binding receives events.

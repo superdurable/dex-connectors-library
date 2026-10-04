@@ -71,14 +71,13 @@ go run ./cmd/connectorctl ui-artifact \
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/microsoft/outlook-mail/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-mail \
-  --version v0.1.0 --tag connectors/microsoft/outlook-mail/v0.1.0 \
+  --version v0.21.0 --tag connectors/microsoft/outlook-mail/v0.21.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/outlook-mail-reply/release/connector-ui.tgz \
   --ui-digest /tmp/outlook-mail-reply/release/connector-ui.tgz.sha256 \
   --output /tmp/outlook-mail-reply/release/connector-release.json \
   --digest-output /tmp/outlook-mail-reply/release/connector-release.json.sha256
 dexcli dev --open=false --flow-rendering-dir /tmp/outlook-mail-reply/graphs \
-  --connector-config-dir /tmp/outlook-mail-reply/connections \
   --connector-release-override outlook-mail=/tmp/outlook-mail-reply/release
 ```
 
@@ -94,8 +93,8 @@ Open Dex Web at `http://127.0.0.1:8802`, choose **Connections**, and select
   secret, and mailbox, leave `access_token` blank, and save; grant the app the
   mailbox with RBAC for Applications first.
 
-Secrets are stored only in the plaintext development file shown on the page;
-never commit or share it.
+Dex Web keeps the secrets in encrypted project storage; they never enter a
+Flow.
 
 ## Step configuration
 
@@ -110,10 +109,12 @@ a well-known name such as `archive`. The folder must already exist. An
 app-only connection lists folders only after the Worker has stored a token,
 so run the Flow once first or type the folder.
 
-In a second terminal, start the Worker from `connectors/microsoft/outlook-mail`:
+In a second terminal, start the Worker from `connectors/microsoft/outlook-mail`.
+It reads the `DEX_PROJECT_*` project configuration environment documented in
+[`sdkgo/projectconfig`](../../../../../sdkgo/projectconfig/README.md#application-loading);
+Dex Web or Superverse Studio writes that configuration:
 
 ```bash
-DEX_CONNECTOR_CONFIG_FILE=/tmp/outlook-mail-reply/connections/connections.json \
 DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 \
 go run ./examples/support-reply
 ```

@@ -31,8 +31,8 @@ of that endpoint. For each request the endpoint:
 3. decodes a JSON or form body and derives the event ID, answering `400` for
    another content type or a missing event ID;
 4. records the event in the durable inbox of every binding whose
-   `matchPointer` accepts it, and answers `200` only after every record is on
-   disk; an event that no binding accepts is answered `200` and dropped;
+   `matchPointer` accepts it, and answers `200` only after every record is
+   stored; an event that no binding accepts is answered `200` and dropped;
 5. delivers recorded events to each binding's target in arrival order.
 
 The endpoint answers `503` while no binding runs, while it replays inboxes
@@ -45,24 +45,29 @@ event on the next start. Applications deduplicate with the event ID: the
 `sdkgo.NewDexFlowTriggerTarget` start request ID is the event ID, so a Flow ID
 derived from it starts one Flow per event.
 
-`NewLocalRequestReceivedEndpointRunner` builds the whole local setup: it loads
-the connection and each route's stored binding, wraps each target in a durable
-inbox, and combines the endpoint with the bindings' Trigger runners. Its
-`RunningSourceCount` supports a readiness check. The checked-in example wires
-it like this, from
+`NewProjectRequestReceivedEndpointRunner` builds the whole setup from the
+project configuration that `projectconfig.LoadFromEnvironment` loads: it opens
+the connection and each route's stored binding, wraps each target in the
+binding's durable project inbox, and combines the endpoint with the bindings'
+Trigger runners. Its `RunningSourceCount` supports a readiness check. The
+checked-in example wires it like this, from
 [`examples/form-submission/main.go`](examples/form-submission/main.go):
 
 ```go
 func newSubmissionEndpointRunner(
-	store *localconfig.Store, client *dex.Client, flow *formsubmission.Flow, logger *slog.Logger, connectionOptions []webhook.Option,
+	project *projectconfig.LoadedProject, client *dex.Client, flow *formsubmission.Flow, logger *slog.Logger, connectionOptions []webhook.Option,
 ) (*webhook.RequestReceivedEndpointRunner, error) {
+	return webhook.NewProjectRequestReceivedEndpointRunner(project, formsubmission.ConnectionName, []webhook.ProjectRequestReceivedTriggerRoute{{
+		BindingName: formsubmission.SubmissionTriggerBinding, Target: newSubmissionTarget(client, flow, logger),
+	}}, append(slices.Clone(connectionOptions), webhook.WithLogger(logger))...)
+}
+
+// newSubmissionTarget starts one Flow per accepted submission, with the event ID as request ID.
+func newSubmissionTarget(client *dex.Client, flow *formsubmission.Flow, logger *slog.Logger) sdkgo.TriggerTarget[webhook.WebhookRequestEvent] {
 	bindingLogger := logger.With("connector", webhook.ConnectorID, "connection", formsubmission.ConnectionName,
 		"trigger", webhook.RequestReceivedTriggerDefinition.Trigger.TriggerName, "binding", formsubmission.SubmissionTriggerBinding)
-	return webhook.NewLocalRequestReceivedEndpointRunner(store, formsubmission.ConnectionName, []webhook.LocalRequestReceivedTriggerRoute{{
-		BindingName: formsubmission.SubmissionTriggerBinding,
-		Target: sdkgo.NewDexFlowTriggerTarget(client, flow, formsubmission.AcceptSubmission, formsubmission.ResolveFlowID,
-			formsubmission.MapToFlowInput, sdkgo.WithTriggerLogger(bindingLogger)),
-	}}, append(slices.Clone(connectionOptions), webhook.WithLogger(logger))...)
+	return sdkgo.NewDexFlowTriggerTarget(client, flow, formsubmission.AcceptSubmission, formsubmission.ResolveFlowID,
+		formsubmission.MapToFlowInput, sdkgo.WithTriggerLogger(bindingLogger))
 }
 ```
 
@@ -85,8 +90,8 @@ delivers them when Dex returns.
   cannot be forwarded; naming one fails connection construction.
 - `sendEvent` sends only to the configured HTTPS `deliveryUrl`, never to a URL
   from Flow input, and never follows a redirect.
-- The body is application data. It is stored in the binding's inbox file and
-  in Flow input, so keep the connection file directory private.
+- The body is application data. It is stored in the binding's durable inbox
+  in the private project storage and in Flow input.
 
 ## Sender setup
 
@@ -164,8 +169,9 @@ still enforce their own admission rule with the target's `TriggerFilter`.
 The connector declares no Studio units, so a Flow's binding declares no
 configuration paths. Dex Web `cli-v1.1.0` therefore saves a binding only as
 `{}` and rejects `matchPointer` with `CONNECTOR_TRIGGER_CONFIGURATION_INVALID`.
-Add the filter in the `triggerBindings` array of the connection file Dex Web
-writes; Dex Web reads it back unchanged. `configuration` may be `{}`:
+The filter belongs in the binding's record in the `triggerBindings` array of
+the project configuration that the application loads. `configuration` may be
+`{}`:
 
 ```json
 {
@@ -237,13 +243,12 @@ with `sendEvent`.
 
 ## Verification
 
-The module pins `sdkgo v0.16.0`, the release that adds `webhooktrigger`.
-Until it is published, run the checks in the repository workspace with a
-local `sdkgo` replacement in the ignored `go.work`:
+The module pins `sdkgo v0.21.0`. Until it is published, run the checks in the
+repository workspace with a local `sdkgo` replacement in the ignored `go.work`:
 
 ```bash
 make workspace
-go work edit -replace github.com/superdurable/dex-connectors-library/sdkgo@v0.16.0=./sdkgo
+go work edit -replace github.com/superdurable/dex-connectors-library/sdkgo@v0.21.0=./sdkgo
 cd connectors/superdurable/webhook
 go test -race ./...
 go vet ./...
