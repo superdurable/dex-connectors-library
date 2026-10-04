@@ -18,7 +18,8 @@ import (
 	"github.com/superdurable/dex-connectors-library/connectors/salesforce"
 	recordsync "github.com/superdurable/dex-connectors-library/connectors/salesforce/examples/record-sync/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -33,15 +34,15 @@ func main() {
 }
 
 func run(ctx context.Context) error {
-	store, err := localconfig.LoadFromEnvironment()
+	project, err := projectconfig.LoadFromEnvironment(ctx)
 	if err != nil {
 		return err
 	}
-	connection, err := salesforce.NewLocalConnection(store, recordsync.ConnectionName)
+	connection, err := salesforce.NewProjectConnection(project, recordsync.ConnectionName)
 	if err != nil {
 		return err
 	}
-	configuration, err := loadSyncConfiguration(store)
+	configuration, err := loadSyncConfiguration(project.Configuration)
 	if err != nil {
 		return err
 	}
@@ -75,10 +76,10 @@ func run(ctx context.Context) error {
 
 // loadSyncConfiguration reads the FindMatchingRecords Step's saved units once
 // at startup. A Step without saved units uses blank values, which the Flow documents.
-func loadSyncConfiguration(store *localconfig.Store) (sdkgo.ConnectorLoadedConfiguration[recordsync.SyncConfiguration], error) {
+func loadSyncConfiguration(configuration projectconfig.Configuration) (sdkgo.ConnectorLoadedConfiguration[recordsync.SyncConfiguration], error) {
 	reference := recordsync.SyncConfigurationRef()
-	loaded, err := localconfig.LoadOperationConfiguration[recordsync.SyncConfiguration](store, reference)
-	if errors.Is(err, localconfig.ErrConfigurationNotFound) {
+	loaded, err := provider.LoadOperationConfiguration[recordsync.SyncConfiguration](configuration, reference)
+	if errors.Is(err, projectconfig.ErrObjectNotFound) {
 		return sdkgo.ConnectorLoadedConfiguration[recordsync.SyncConfiguration]{Reference: reference}, nil
 	}
 	return loaded, err

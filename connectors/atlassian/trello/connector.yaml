@@ -5,7 +5,7 @@ metadata:
   displayName: Trello
   description: List and read Trello cards on a board or list with open, closed, and due-date filters, create cards and comments without silent duplicates, and move, archive, reopen, reschedule, or relabel cards.
   company: Atlassian
-  version: v0.1.0
+  version: v0.21.0
 spec:
   provider: trello
   codegen:

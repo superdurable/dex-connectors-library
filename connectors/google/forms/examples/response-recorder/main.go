@@ -18,7 +18,8 @@ import (
 	"github.com/superdurable/dex-connectors-library/connectors/google/forms"
 	responserecorder "github.com/superdurable/dex-connectors-library/connectors/google/forms/examples/response-recorder/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -33,15 +34,15 @@ func main() {
 }
 
 func run(ctx context.Context) error {
-	store, err := localconfig.LoadFromEnvironment()
+	project, err := projectconfig.LoadFromEnvironment(ctx)
 	if err != nil {
 		return err
 	}
-	connection, err := forms.NewLocalConnection(store, responserecorder.ConnectionName)
+	connection, err := forms.NewProjectConnection(project, responserecorder.ConnectionName)
 	if err != nil {
 		return err
 	}
-	form, err := loadFormConfiguration(store, responserecorder.FormConfigurationRef())
+	form, err := loadFormConfiguration(project.Configuration, responserecorder.FormConfigurationRef())
 	if err != nil {
 		return err
 	}
@@ -73,11 +74,11 @@ func run(ctx context.Context) error {
 
 // loadFormConfiguration reads the saved form pick once; without one, each run fails at its first Step.
 func loadFormConfiguration(
-	store *localconfig.Store,
+	configuration projectconfig.Configuration,
 	reference sdkgo.ConnectorConfigurationRef,
 ) (sdkgo.ConnectorLoadedConfiguration[responserecorder.FormConfiguration], error) {
-	loaded, err := localconfig.LoadOperationConfiguration[responserecorder.FormConfiguration](store, reference)
-	if errors.Is(err, localconfig.ErrConfigurationNotFound) {
+	loaded, err := provider.LoadOperationConfiguration[responserecorder.FormConfiguration](configuration, reference)
+	if errors.Is(err, projectconfig.ErrObjectNotFound) {
 		return sdkgo.ConnectorLoadedConfiguration[responserecorder.FormConfiguration]{Reference: reference}, nil
 	}
 	return loaded, err

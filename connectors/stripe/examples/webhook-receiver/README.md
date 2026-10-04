@@ -1,12 +1,17 @@
 # Stripe webhook receiver example
 
 This example runs the connector's durable Checkout Session Trigger without a
-Dex application. It is useful for validating a local connection file, Stripe
+Dex application. It is useful for validating a project connection, Stripe
 signature verification, and public webhook routing before wiring events to a
 Flow.
 
-1. Copy the local configuration from the connector README to a private file.
-2. Set `DEX_CONNECTOR_CONFIG` to that file path.
+1. Have Dex Web or Superverse Studio write the `stripe-payments` connection
+   and its `registration-payments` binding, shown in the
+   [connector README](../../README.md#project-configuration), to the project
+   configuration.
+2. Set the `DEX_PROJECT_*` environment that names that configuration, as
+   [project configuration loading](../../../../sdkgo/projectconfig/README.md#application-loading)
+   describes.
 3. Run `go run ./examples/webhook-receiver` from `connectors/stripe`.
 4. Expose `http://127.0.0.1:8080/webhooks/stripe` through an HTTPS development
    tunnel and configure that exact public URL in Stripe.

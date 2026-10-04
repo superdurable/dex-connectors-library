@@ -5,7 +5,6 @@ package desk_test
 
 import (
 	"context"
-	"encoding/json"
 	"io"
 	"net/http"
 	"net/url"
@@ -105,33 +104,4 @@ func TestCredentialRefreshIsRequiredWithoutATokenOrARecordedExpiry(t *testing.T)
 	require.False(t, driver.RefreshRequired(sdkgo.CredentialRefreshState[desk.Credentials]{Credentials: testCredentials(desk.USDataCenterAuthMethodID), Now: now, ExpiresAt: &later}))
 	require.True(t, driver.RefreshRequired(sdkgo.CredentialRefreshState[desk.Credentials]{Credentials: testCredentials(desk.USDataCenterAuthMethodID), Now: now, ExpiresAt: &soon}))
 	require.True(t, driver.RefreshRequired(sdkgo.CredentialRefreshState[desk.Credentials]{Credentials: desk.Credentials{AuthMethodID: desk.USDataCenterAuthMethodID}, Now: now, ExpiresAt: &later}))
-}
-
-func TestHostedCredentialDecodingAcceptsOnlyTheMethodAndAccessToken(t *testing.T) {
-	credentials, err := desk.DecodeResolvedCredentialsJSON(json.RawMessage(`{"auth_method":"zoho-eu-oauth","access_token":"1000.hosted"}`))
-	require.NoError(t, err)
-	require.Equal(t, desk.EUDataCenterAuthMethodID, credentials.AuthMethodID)
-	require.Equal(t, "1000.hosted", credentials.AccessToken.Reveal())
-	for name, contents := range map[string]string{
-		"refresh token":       `{"auth_method":"zoho-eu-oauth","access_token":"1000.hosted","refresh_token":"SENTINEL"}`,
-		"client secret":       `{"auth_method":"zoho-eu-oauth","access_token":"1000.hosted","oauth_client_secret":"SENTINEL"}`,
-		"unknown data center": `{"auth_method":"zoho-cn-oauth","access_token":"SENTINEL"}`,
-		"missing method":      `{"access_token":"SENTINEL"}`,
-		"spaced token":        `{"auth_method":"zoho-eu-oauth","access_token":"SENTINEL token"}`,
-	} {
-		_, err := desk.DecodeResolvedCredentialsJSON(json.RawMessage(contents))
-		require.Error(t, err, name)
-		require.NotContains(t, err.Error(), "SENTINEL", name)
-	}
-}
-
-func TestCompleteCredentialsRoundTripForTrustedPersistence(t *testing.T) {
-	encoded, err := desk.EncodeCredentialsJSON(testCredentials(desk.JPDataCenterAuthMethodID))
-	require.NoError(t, err)
-	decoded, err := desk.DecodeCredentialsJSON(encoded)
-	require.NoError(t, err)
-	require.Equal(t, desk.JPDataCenterAuthMethodID, decoded.AuthMethodID)
-	require.Equal(t, "1000.zohoDeskTestRefreshToken", decoded.RefreshToken.Reveal())
-	_, err = desk.EncodeCredentialsJSON(desk.Credentials{AuthMethodID: desk.JPDataCenterAuthMethodID})
-	require.Error(t, err, "incomplete material is never persisted")
 }

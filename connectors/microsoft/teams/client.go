@@ -80,7 +80,7 @@ type Client struct {
 	endpoint         string
 	endpointURL      *url.URL
 	httpClient       *http.Client
-	credentials      sdkgo.CredentialProvider[Credentials]
+	credentials      CredentialSource
 	refreshDriver    sdkgo.CredentialRefreshDriver[Credentials]
 	maxResponseBytes int64
 	maxMessageBytes  int64
@@ -170,7 +170,7 @@ type dispatchObservation struct {
 // configuration field takes its manifest default. The credential provider is consulted before
 // every request; a provider that supports refresh renews the access token with the Microsoft
 // identity platform before it expires.
-func New(config Config, credentials sdkgo.CredentialProvider[Credentials], options ...Option) (*Client, error) {
+func New(config Config, credentials CredentialSource, options ...Option) (*Client, error) {
 	config = withConfigDefaults(config)
 	if err := config.Validate(); err != nil {
 		return nil, err

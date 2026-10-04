@@ -41,14 +41,14 @@ func TestFactoriesRequireOnlyTheHappyPathBranch(t *testing.T) {
 			Created:             sdkgo.GoTo(createTarget{}),
 		})
 		docs.NewGetDocumentTextStep(docs.GetDocumentTextStepConfig[string]{
-			StepType: "Read", Annotations: testAnnotations, Connection: connection,
+			StepType: "Read", Annotations: testAnnotations, Connection: connection, ConnectionName: "policy-docs",
 			MapToOperationInput: func(string) docs.GetDocumentTextInput { return docs.GetDocumentTextInput{} },
 			Read:                sdkgo.GoTo(readTarget{}), TooLarge: sdkgo.GoTo(readTarget{}),
 		})
 	})
 	require.Panics(t, func() {
 		docs.NewCreateDocumentStep(docs.CreateDocumentStepConfig[string]{
-			StepType: "Create", Annotations: testAnnotations, Connection: connection,
+			StepType: "Create", Annotations: testAnnotations, Connection: connection, ConnectionName: "policy-docs",
 			MapToOperationInput: func(string) docs.CreateDocumentInput { return docs.CreateDocumentInput{} },
 			Uncertain:           sdkgo.GoTo(createTarget{}),
 		})

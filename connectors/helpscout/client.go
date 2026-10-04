@@ -11,7 +11,7 @@
 //
 // A connection holds the App ID and App Secret of a Help Scout app. The connector obtains a two-day access
 // token from them with the client credentials grant through sdkgo/oauthtoken, stores it, and renews it
-// before expiry; NewLocalRenewingConnection builds such a local connection. Conversation statuses are Help
+// when it expires; the generated NewProjectConnection builds such a connection. Conversation statuses are Help
 // Scout's own active, pending, closed, and spam, never remapped. The runnable examples/conversation-triage
 // application starts one Flow per new conversation and uses every operation.
 package helpscout
@@ -62,7 +62,7 @@ var (
 	errHelpScoutResponseMalformed = errors.New("Help Scout returned a malformed response")
 
 	errHelpScoutReauthorizationRequired = errors.New("Help Scout rejected the App ID or App Secret; save the app's current credentials in Dex Web Connections")
-	errHelpScoutCredentialsUnavailable  = errors.New("the Help Scout access token could not be loaded or obtained yet; a local connection needs helpscout.NewLocalRenewingConnection")
+	errHelpScoutCredentialsUnavailable  = errors.New("the Help Scout access token could not be loaded or obtained yet")
 	errHelpScoutAccessTokenUnusable     = errors.New("the Help Scout access token is blank or contains characters a header cannot carry")
 )
 
@@ -87,7 +87,7 @@ func WithClock(now func() time.Time) Option {
 }
 
 // WithLogger sends the webhook endpoint's delivery records and those of the durable inboxes that
-// NewLocalConversationEventEndpointRunner creates to logger. Without it, those records go to
+// NewProjectConversationEventEndpointRunner creates to logger. Without it, those records go to
 // slog.Default(). Records carry event IDs, never bodies or secrets.
 func WithLogger(logger *slog.Logger) Option {
 	return func(options *clientOptions) { options.logger = logger }
@@ -96,7 +96,7 @@ func WithLogger(logger *slog.Logger) Option {
 // Client executes authenticated Help Scout Inbox API calls and receives signed Help Scout webhooks for one
 // connection configuration. It is safe for concurrent use.
 type Client struct {
-	credentials         sdkgo.CredentialProvider[Credentials]
+	credentials         CredentialSource
 	refreshDriver       *CredentialRefreshDriver
 	httpClient          *http.Client
 	now                 func() time.Time
@@ -139,10 +139,10 @@ type helpScoutErrorSummary struct {
 
 // New validates config and constructs a Client. Blank configuration fields take their manifest defaults.
 // Credentials are resolved through sdkgo.ResolveCredential and the client's CredentialRefreshDriver before
-// every provider call, so credentials must come from a provider that can store the obtained access token,
-// such as the one NewLocalRenewingConnection builds, or that supplies one, such as a hosted broker.
+// every provider call, so credentials must come from a source that can store the obtained access token,
+// such as the one the generated NewProjectConnection builds.
 // Replaced credentials take effect without a restart; the response limits are startup configuration.
-func New(config Config, credentials sdkgo.CredentialProvider[Credentials], options ...Option) (*Client, error) {
+func New(config Config, credentials CredentialSource, options ...Option) (*Client, error) {
 	config = withConfigDefaults(config)
 	if err := config.Validate(); err != nil {
 		return nil, err
@@ -297,7 +297,7 @@ func (client *Client) sendOnce(
 	return response, nil
 }
 
-// canRefreshAfterRejection is false for a provider, such as a hosted broker token, that cannot force a refresh.
+// canRefreshAfterRejection is false for a provider, such as a static test provider, that cannot force a refresh.
 func (client *Client) canRefreshAfterRejection() bool {
 	_, isRefreshing := client.credentials.(sdkgo.RejectedCredentialRefreshingProvider[Credentials])
 	return isRefreshing

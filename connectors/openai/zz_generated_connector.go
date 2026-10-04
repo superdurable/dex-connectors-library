@@ -11,7 +11,8 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -33,11 +34,16 @@ type Credentials struct {
 	APIKey sdkgo.SecretString
 }
 
+// CredentialSource is the credential provider New requires: this connector never refreshes its credentials.
+type CredentialSource = sdkgo.CredentialProvider[Credentials]
+
 type Connection struct {
 	client    *Client
 	reference sdkgo.ConnectionRef
 }
 
+// NewConnection wraps a client built with New, such as a test client with a static credential provider.
+// Applications open declared connections with NewProjectConnection instead.
 func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, error) {
 	if client == nil {
 		return Connection{}, fmt.Errorf("openai connector client is required")
@@ -48,20 +54,25 @@ func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, e
 	return Connection{client: client, reference: reference}, nil
 }
 
-// NewLocalConnection loads startup configuration and reloads credentials before every provider call.
-func NewLocalConnection(store *localconfig.Store, connectionName string, options ...Option) (Connection, error) {
-	if store == nil {
-		return Connection{}, fmt.Errorf("local connector configuration store is required")
+// NewProjectConnection opens the connection that dex-app.yaml declares as connectionName from the
+// loaded project configuration. It reads ordinary settings now and resolves credentials during each call.
+func NewProjectConnection(project *projectconfig.LoadedProject, connectionName string, options ...Option) (Connection, error) {
+	if project == nil {
+		return Connection{}, fmt.Errorf("openai connection requires the loaded project configuration")
 	}
 	reference := sdkgo.ConnectionRef{Provider: "openai", Name: connectionName}
 	if err := reference.Validate(); err != nil {
-		return Connection{}, fmt.Errorf("openai local connection: %w", err)
+		return Connection{}, fmt.Errorf("openai connection: %w", err)
 	}
+	key := projectconfig.ConnectionKey{ConnectorID: ConnectorID, ConnectionName: connectionName}
 	var config Config
-	if err := store.DecodeConfiguration(ConnectorID, connectionName, &config); err != nil {
+	if err := project.Configuration.DecodeConnectionConfiguration(key, &config); err != nil {
+		return Connection{}, fmt.Errorf("openai connection %q settings: %w", connectionName, err)
+	}
+	credentials, err := provider.NewCredentialProvider(project.Connections, key, decodeCredentials)
+	if err != nil {
 		return Connection{}, err
 	}
-	credentials := localconfig.NewCredentialProvider(store, ConnectorID, connectionName, decodeLocalCredentials)
 	client, err := New(config, credentials, options...)
 	if err != nil {
 		return Connection{}, err
@@ -69,11 +80,11 @@ func NewLocalConnection(store *localconfig.Store, connectionName string, options
 	return NewConnection(client, reference)
 }
 
-func decodeLocalCredentials(contents json.RawMessage) (Credentials, error) {
+func decodeCredentials(contents json.RawMessage) (Credentials, error) {
 	var fields struct {
 		APIKey string `json:"api_key"`
 	}
-	if err := localconfig.DecodeCredentials(contents, &fields); err != nil {
+	if err := projectconfig.DecodeCredentials(contents, &fields); err != nil {
 		return Credentials{}, err
 	}
 	credentials := Credentials{
@@ -200,8 +211,8 @@ func NewCreateResponseStep[IN any](config CreateResponseStepConfig[IN]) sdkgo.Mu
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
-	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
-		panic(fmt.Errorf("openai connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("openai connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateRequest, Response]{
 		StepType: config.StepType, Annotations: config.Annotations,
@@ -281,8 +292,8 @@ func NewRetrieveResponseStep[IN any](config RetrieveResponseStepConfig[IN]) sdkg
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
-	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
-		panic(fmt.Errorf("openai connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("openai connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, RetrieveRequest, Response]{
 		StepType: config.StepType, Annotations: config.Annotations,
@@ -309,94 +320,6 @@ func NewRetrieveResponseStep[IN any](config RetrieveResponseStepConfig[IN]) sdkg
 			return branches
 		}(),
 		ResultAttribute:     config.ResultAttribute,
-		StepOptionsOverride: config.StepOptionsOverride,
-	})
-}
-
-const GenerateTextBranchGenerated sdkgo.BranchID = "generated"
-const GenerateTextBranchTruncated sdkgo.BranchID = "truncated"
-const GenerateTextBranchBlocked sdkgo.BranchID = "blocked"
-const GenerateTextBranchProviderRejected sdkgo.BranchID = "providerRejected"
-const GenerateTextBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
-const GenerateTextBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
-
-var GenerateTextDefinition = sdkgo.QueryDefinition{
-	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "generateText"},
-	Branches: []sdkgo.BranchDefinition{
-		{ID: GenerateTextBranchGenerated, Description: "The model finished normally and returned text."},
-		{ID: GenerateTextBranchTruncated, Description: "The model stopped at the output token limit and returned any partial text.", Optional: true},
-		{ID: GenerateTextBranchBlocked, Description: "OpenAI stopped the response for a content or safety policy, or the model refused.", Optional: true},
-		{ID: GenerateTextBranchProviderRejected, Description: "OpenAI conclusively rejected the request, such as invalid credentials, an unknown model, or exhausted credits or spend limits.", Optional: true},
-		{ID: GenerateTextBranchInvalidResponse, Description: "OpenAI returned a malformed, oversized, or unusable response, including structured output that does not match its schema.", Optional: true},
-		{ID: GenerateTextBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
-	},
-	StepDefaults: sdkgo.StepDefaults{
-		ExecuteMethodTimeout: time.Duration(900000000000), HeartbeatTimeout: time.Duration(60000000000),
-		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(2000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 4, TotalDuration: time.Duration(1800000000000)},
-		ExecuteDurability: dex.StepDurabilitySync,
-	},
-}
-
-type GenerateTextResult = sdkgo.QueryResult[GenerateTextResponse]
-
-type GenerateTextStepConfig[IN any] struct {
-	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
-	connectorID                    struct{}                                                `connector:"connectorId=openai"`
-	operationID                    struct{}                                                `connector:"operationId=generateText"`
-	StepType                       string                                                  `connector:"stepType"`
-	Annotations                    sdkgo.StepAnnotations                                   `connector:"annotations"`
-	ConfigurationUI                sdkgo.ConnectorConfigurationUI                          `connector:"configurationUI"`
-	Connection                     Connection                                              `connector:"connection"`
-	ConnectionName                 string                                                  `connector:"connectionName"`
-	MapToOperationInput            func(IN) GenerateTextRequest                            `connector:"mapToOperationInput"`
-	Generated                      sdkgo.Target[GenerateTextResult]                        `connector:"branch=generated"`
-	Truncated                      sdkgo.Target[GenerateTextResult]                        `connector:"branch=truncated,optional"`
-	Blocked                        sdkgo.Target[GenerateTextResult]                        `connector:"branch=blocked,optional"`
-	ProviderRejected               sdkgo.Target[GenerateTextResult]                        `connector:"branch=providerRejected,optional"`
-	InvalidResponse                sdkgo.Target[GenerateTextResult]                        `connector:"branch=invalidResponse,optional"`
-	Defect                         sdkgo.Target[GenerateTextResult]                        `connector:"branch=defect,optional"`
-	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[GenerateTextResponse]] `connector:"resultAttribute"`
-	TextStream                     *dex.Stream[string]                                     `connector:"textStream"`
-	TextOptions                    []dex.BufferedTextStreamOption                          `connector:"textOptions"`
-	StepOptionsOverride            *dex.StepOptions                                        `connector:"stepOptionsOverride"`
-}
-
-func NewGenerateTextStep[IN any](config GenerateTextStepConfig[IN]) sdkgo.QueryStep[IN, GenerateTextRequest, GenerateTextResponse] {
-	if err := config.Connection.validate(); err != nil {
-		panic(err)
-	}
-	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
-		panic(fmt.Errorf("openai connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
-	}
-	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GenerateTextRequest, GenerateTextResponse]{
-		StepType: config.StepType, Annotations: config.Annotations,
-		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.GenerateText(), Connection: config.Connection.reference,
-		MapToOperationInput: config.MapToOperationInput,
-		Branches: func() []sdkgo.BranchTarget[GenerateTextResult] {
-			branches := make([]sdkgo.BranchTarget[GenerateTextResult], 0, 6)
-			if config.Generated.HasStep() {
-				branches = append(branches, config.Generated.BranchTarget(GenerateTextBranchGenerated))
-			}
-			if config.Truncated.HasStep() {
-				branches = append(branches, config.Truncated.BranchTarget(GenerateTextBranchTruncated))
-			}
-			if config.Blocked.HasStep() {
-				branches = append(branches, config.Blocked.BranchTarget(GenerateTextBranchBlocked))
-			}
-			if config.ProviderRejected.HasStep() {
-				branches = append(branches, config.ProviderRejected.BranchTarget(GenerateTextBranchProviderRejected))
-			}
-			if config.InvalidResponse.HasStep() {
-				branches = append(branches, config.InvalidResponse.BranchTarget(GenerateTextBranchInvalidResponse))
-			}
-			if config.Defect.HasStep() {
-				branches = append(branches, config.Defect.BranchTarget(GenerateTextBranchDefect))
-			}
-			return branches
-		}(),
-		ResultAttribute: config.ResultAttribute,
-		TextStream:      config.TextStream, TextOptions: config.TextOptions,
 		StepOptionsOverride: config.StepOptionsOverride,
 	})
 }

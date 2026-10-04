@@ -52,39 +52,25 @@ Credentials are reread before every provider call, so replacing a key in Dex
 Web takes effect without a restart. The domain and response limit are startup
 configuration.
 
-## Local configuration
+## Project configuration
 
-Dex Web writes this record for the connection name the application uses:
-
-```json
-{
-  "connectorId": "freshdesk",
-  "modulePath": "github.com/superdurable/dex-connectors-library/connectors/freshworks/freshdesk",
-  "moduleVersion": "v0.1.0",
-  "provider": "freshdesk",
-  "connectionName": "freshdesk-helpdesk",
-  "configuration": {"domain": "acme"},
-  "credentials": {"api_key": "..."}
-}
-```
-
-Load it with `localconfig.LoadFromEnvironment` and
-`freshdesk.NewLocalConnection`, as
+Name the factory connection and open the same name from the project
+configuration at application startup, as
 [`examples/triage-issue/main.go`](examples/triage-issue/main.go) does:
 
 ```go
-store, err := localconfig.LoadFromEnvironment()
+project, err := projectconfig.LoadFromEnvironment(ctx)
 if err != nil {
 	return err
 }
-connection, err := freshdesk.NewLocalConnection(store, triageissue.ConnectionName, connectionOptions()...)
+connection, err := freshdesk.NewProjectConnection(project, triageissue.ConnectionName, connectionOptions()...)
 ```
 
-## Hosted credentials
-
-In Superverse-hosted deployments, construct the client with the
-operation-scoped broker provider. `DecodeResolvedCredentialsJSON` accepts
-exactly `api_key` and rejects anything else without repeating the value.
+Dex Web or Superverse Studio writes that configuration, and the application
+reads it through the `DEX_PROJECT_*` environment described in
+[project configuration loading](../../../sdkgo/projectconfig/README.md#application-loading).
+The stored credential holds exactly `api_key`; the connector resolves it for
+every call and rejects anything else without repeating the value.
 
 ## Statuses, priorities, and sources
 

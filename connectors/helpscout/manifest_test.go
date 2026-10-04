@@ -84,7 +84,6 @@ func readHelpScoutManifest(t *testing.T) helpScoutManifest {
 func TestConnectionFormFieldsCarryGuidance(t *testing.T) {
 	manifest := readHelpScoutManifest(t)
 	require.Equal(t, "Help Scout", manifest.Metadata.Company, "the company directory is helpscout")
-	require.Equal(t, "v0.1.0", manifest.Metadata.Version)
 	auth := manifest.Spec.Auth
 	require.Equal(t, "apiKey", auth.Type)
 	visibleFields := []string{}

@@ -5,7 +5,7 @@ metadata:
   displayName: Intercom
   description: "Search, read, answer, close, reopen, and snooze Intercom conversations, find contacts by email, and receive signed conversation webhooks, with Intercom's own open, closed, and snoozed states."
   company: Intercom
-  version: v0.1.0
+  version: v0.21.0
 spec:
   provider: intercom
   codegen:

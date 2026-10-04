@@ -77,13 +77,15 @@ restart. The endpoint and response limit are startup configuration.
 ## Token refresh
 
 Zoom access tokens last one hour. Before a call, the connector refreshes a
-token that expires within five minutes through `sdkgo/oauthtoken`, posting the
-`refresh_token` grant to `https://zoom.us/oauth/token` with the client as HTTP
-Basic credentials, as Zoom documents. Zoom returns a new refresh token on every
-refresh and tells clients to use the latest one; the local credential provider
-writes the replacement atomically before the next call. A 401 with Zoom code
-`124` forces one locked refresh and one more request; a second 401 selects
-`providerRejected`.
+token that is missing, has no recorded expiry, or expires within five minutes.
+The refresh goes through `sdkgo/oauthtoken`, posting the `refresh_token` grant
+to `https://zoom.us/oauth/token` with the client as HTTP Basic credentials, as
+Zoom documents. Zoom returns a new refresh token on every refresh and tells
+clients to use the latest one; project storage writes the replacement
+atomically before the next call. After a 401 the connector asks once for a
+refresh, which project storage performs only when the recorded expiry has
+passed, and then sends one more request; otherwise, or after a second 401, the
+401 selects `providerRejected`.
 
 Refresh tokens expire after 90 days. A refresh that Zoom answers below HTTP 500
 with `invalid_request`, `invalid_client`, `invalid_grant`, or
@@ -98,33 +100,27 @@ Server-to-Server OAuth apps use Zoom's `account_credentials` grant, which
 `sdkgo/oauthtoken` does not implement, so this release supports only user-level
 OAuth.
 
-## Local configuration
+## Project configuration
 
-Dex Web writes this record for the connection name the application uses:
+Dex Web or Superverse Studio saves the connection's settings and credentials in
+the project configuration. The application loads that configuration once and
+opens the connection by the name it declares, as
+[`examples/booked-meeting/main.go`](examples/booked-meeting/main.go) does:
 
-```json
-{
-  "schemaVersion": "connectors.dex.dev/local-connections/v1alpha1",
-  "connections": [{
-    "connectorId": "zoom",
-    "modulePath": "github.com/superdurable/dex-connectors-library/connectors/zoom",
-    "moduleVersion": "v0.1.0",
-    "provider": "zoom",
-    "connectionName": "zoom-scheduler",
-    "configuration": {},
-    "credentials": {"oauth_client_id": "...", "oauth_client_secret": "...", "access_token": "...", "refresh_token": "..."},
-    "credentialExpiresAt": "2026-10-08T17:00:00Z"
-  }]
+```go
+project, err := projectconfig.LoadFromEnvironment(ctx)
+if err != nil {
+	return err
+}
+connection, err := zoom.NewProjectConnection(project, bookedmeeting.ConnectionName)
+if err != nil {
+	return err
 }
 ```
 
-Load it with `localconfig.LoadFromEnvironment` and
-`zoom.NewLocalConnection(store, "zoom-scheduler")`, as
-[`examples/booked-meeting/main.go`](examples/booked-meeting/main.go) does.
-
-In a hosted deployment, pass `zoom.DecodeResolvedCredentialsJSON` to
-`hostedconfig.NewCredentialProviderFromEnvironment`. It accepts only
-`{"access_token": "..."}`, because refresh material stays in the broker.
+`LoadFromEnvironment` reads the `DEX_PROJECT_*` environment described in
+[project configuration](../../sdkgo/projectconfig/README.md). Credentials stay
+in project storage and are read for every provider call.
 
 ## Operations
 
@@ -262,9 +258,9 @@ go run ./cmd/connectorctl generate --check connectors/zoom/connector.yaml
 ```
 
 The deterministic provider fakes cover every branch above, the request shapes,
-the refresh exchange and rotation through a local connections file, credential
-reflection, redirects, oversized and malformed responses, and the absence of
-start URLs, passcodes, and Zoom message text in results.
+the refresh exchange and rotation, credential reflection, redirects, oversized
+and malformed responses, and the absence of start URLs, passcodes, and Zoom
+message text in results.
 
 No live Zoom account was used. The following behavior is unverified:
 

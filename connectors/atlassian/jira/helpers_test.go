@@ -150,6 +150,15 @@ func (*rejectionRefreshingCredentialProvider) Resolve(sdkgo.Call) (jira.Credenti
 	return jira.Credentials{AccessToken: sdkgo.NewSecretString("rejected-token")}, nil
 }
 
+// ResolveWithRefresh returns the token Resolve returns, which has not expired before Jira rejects it.
+func (provider *rejectionRefreshingCredentialProvider) ResolveWithRefresh(
+	_ context.Context,
+	call sdkgo.Call,
+	_ sdkgo.CredentialRefreshDriver[jira.Credentials],
+) (jira.Credentials, error) {
+	return provider.Resolve(call)
+}
+
 func (provider *rejectionRefreshingCredentialProvider) ResolveAfterRejection(
 	context.Context,
 	sdkgo.Call,

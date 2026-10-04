@@ -9,30 +9,27 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/openai"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/llm"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
-func TestMapToGenerateTextRequestSendsTheStepPick(t *testing.T) {
-	request := NewFlow(openai.Connection{}, SummaryModelConfiguration{}).MapToGenerateTextRequest(SummaryRequest{Text: "The connector shipped."})
+func TestMapToCreateRequestSendsTheStepPick(t *testing.T) {
+	request := NewFlow(openai.Connection{}, SummaryModelConfiguration{}).MapToCreateRequest(SummaryRequest{Text: "The connector shipped."})
 	require.Empty(t, request.Model, "the connection's model applies without a pick")
 	require.NotEmpty(t, request.Instructions)
-	require.Equal(t, []llm.Message{{Role: llm.MessageRoleUser, Text: "The connector shipped."}}, request.Messages)
-	require.Equal(t, 8192, request.MaxOutputTokens)
-	require.Empty(t, request.ReasoningEffort, "a picked model may accept no reasoning effort")
-	require.Nil(t, request.Temperature, "GPT-6 Sol accepts a temperature only without reasoning")
+	require.Equal(t, "The connector shipped.", request.Input)
+	require.Nil(t, request.StructuredOutput)
 
 	picked := NewFlow(openai.Connection{}, SummaryModelConfiguration{Model: " gpt-6-luna "})
-	require.Equal(t, "gpt-6-luna", picked.MapToGenerateTextRequest(SummaryRequest{Text: "x"}).Model)
+	require.Equal(t, "gpt-6-luna", picked.MapToCreateRequest(SummaryRequest{Text: "x"}).Model)
 }
 
 // TestStartFlowIdentitiesMatchTheFlowDefinition keeps registered types equal to the dexcli visualize names that Start Flow sends.
 func TestStartFlowIdentitiesMatchTheFlowDefinition(t *testing.T) {
 	require.Equal(t, "OpenAISummarizeText", dex.GetFinalFlowType(NewFlow(openai.Connection{}, SummaryModelConfiguration{})))
 	require.Equal(t, "RecordSummaryRequest", dex.GetFinalStepType[SummaryRequest](recordSummaryRequest{}))
-	require.Equal(t, "RecordSummaryOutcome", dex.GetFinalStepType[openai.GenerateTextResult](recordSummaryOutcome{}))
+	require.Equal(t, "RecordSummaryOutcome", dex.GetFinalStepType[openai.CreateResponseResult](recordSummaryOutcome{}))
 	require.Equal(t, sdkgo.ConnectorConfigurationRef{
-		ConnectorID: "openai", ConnectionName: ConnectionName, OperationID: "generateText",
+		ConnectorID: "openai", ConnectionName: ConnectionName, OperationID: "createResponse",
 		FlowType: "OpenAISummarizeText", StepType: "SummarizeText",
 	}, SummaryModelConfigurationRef())
 	// Dex Web Start Flow invokes the start Step's WaitFor, so it must be a real, immediate WaitFor.

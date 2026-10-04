@@ -5,7 +5,7 @@ metadata:
   displayName: Google Drive
   description: Find Google Drive files by name, read metadata and bounded text, and upload files without creating duplicates on retry.
   company: Google
-  version: v0.1.0
+  version: v0.21.0
 spec:
   provider: google
   codegen:
@@ -44,6 +44,7 @@ spec:
         required: false
         default: 25
   auth:
+    refreshable: true
     defaultMethod: google-oauth
     methods:
       - id: google-oauth

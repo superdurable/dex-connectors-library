@@ -73,51 +73,36 @@ with a JSON body and `client_secret_post`, as monday.com documents. A refresh
 that returns a `scope` lacking a required scope, or answers `invalid_grant`,
 `invalid_client`, `unauthorized_client`, or `invalid_token`, requires
 reauthorization. After monday.com rejects an OAuth token with 401, the
-connector forces one refresh and resends once; a 401 means monday.com did not
-run the request, so the resend cannot duplicate a mutation.
+connector asks once for a refresh, which project storage performs only when the
+stored expiry has passed, and then resends once; a 401 means monday.com did not
+run the request, so the resend cannot duplicate a mutation. Otherwise the 401
+selects `providerRejected` with `AUTHENTICATION`.
 
 monday.com's legacy flow, where the app's New OAuth Flow toggle is off, issues
 non-expiring tokens from `https://auth.monday.com/oauth2/token` and supports no
 refresh; this release does not declare it.
 
-## Local configuration
+## Project configuration
 
-Dex Web writes this record for the connection name the application uses:
-
-```json
-{
-  "connectorId": "monday",
-  "modulePath": "github.com/superdurable/dex-connectors-library/connectors/monday",
-  "moduleVersion": "v0.1.0",
-  "provider": "monday",
-  "connectionName": "monday-workspace",
-  "configuration": {},
-  "credentials": {"auth_method": "personal-api-token", "api_token": "..."}
-}
-```
-
-Load it with `localconfig.LoadFromEnvironment` and `monday.NewLocalConnection`,
-as [`examples/work-request/main.go`](examples/work-request/main.go) does:
+Dex Web or Superverse Studio saves the connection's settings and credentials in
+the project configuration. The application loads that configuration once and
+opens the connection by the name it declares, as
+[`examples/work-request/main.go`](examples/work-request/main.go) does:
 
 ```go
-store, err := localconfig.LoadFromEnvironment()
+project, err := projectconfig.LoadFromEnvironment(ctx)
 if err != nil {
 	return err
 }
-connection, err := monday.NewLocalConnection(store, workrequest.ConnectionName, connectionOptions()...)
+connection, err := monday.NewProjectConnection(project, workrequest.ConnectionName, connectionOptions()...)
 ```
 
-`NewLocalConnection` uses the refreshing local provider, which leaves a
-personal API token untouched and stores each refreshed OAuth token pair
-atomically.
-
-## Hosted credentials
-
-In Superverse-hosted deployments, construct the client with the
-operation-scoped broker provider. `DecodeResolvedCredentialsJSON` accepts
-`auth_method` with `api_token` for a personal API token, or with
-`access_token` for OAuth. It rejects renewal material, the other method's
-token, and unknown fields without repeating any value.
+`LoadFromEnvironment` reads the `DEX_PROJECT_*` environment described in
+[project configuration](../../sdkgo/projectconfig/README.md).
+`NewProjectConnection` reads credentials from project storage for every call.
+It leaves a personal API token untouched and refreshes an OAuth access token
+five minutes before its recorded expiry, or its `exp` claim when no expiry is
+recorded, storing the refreshed token pair atomically.
 
 ## API version
 
@@ -301,7 +286,7 @@ before the HTTP status.
 | `API_TEMPORARILY_BLOCKED`, 423 | Retry | same |
 | 408, 5xx, connection or read failure | Retry | Retry under the same key |
 | `DAILY_LIMIT_EXCEEDED` | `providerRejected`, `QUOTA_EXHAUSTED` | same |
-| `Unauthorized`, `NOT_AUTHENTICATED`, 401 | `providerRejected`, `AUTHENTICATION`, after one OAuth refresh | same |
+| `Unauthorized`, `NOT_AUTHENTICATED`, 401 | `providerRejected`, `AUTHENTICATION`; an HTTP 401 for an OAuth token whose stored expiry has passed is refreshed and resent once first | same |
 | `UserUnauthorizedException`, `USER_ACCESS_DENIED`, `missingRequiredPermissions`, 403 | `providerRejected`, `AUTHORIZATION` | same |
 | `ResourceNotFoundException`, `InvalidBoardIdException`, `InvalidItemIdException`, 404 | `notFound` | `notFound`; nothing was written |
 | `ColumnValueException`, `CorrectedValueException`, `InvalidColumnIdException`, `InvalidArgumentException`, `ItemNameTooLongException`, `ItemsLimitationException`, `RecordInvalidException`, 422 | `providerRejected`, `VALIDATION` | same |
@@ -383,7 +368,7 @@ The provider fakes cover:
 - partial data beside a nested error, redirects, and oversized, malformed, and
   credential-reflecting responses;
 - the OAuth 2.1 refresh with JWT expiry, scope checks, and a single refresh
-  and resend after a 401 through the real local refreshing provider.
+  and resend after a 401 through a refreshing credential source.
 
 No live monday.com account was used. The following live behavior is
 unverified:

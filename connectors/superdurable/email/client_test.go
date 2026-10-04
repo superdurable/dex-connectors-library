@@ -61,24 +61,6 @@ func TestOperationsSelectDefectForUnusableCredentialsOrSender(t *testing.T) {
 	require.Zero(t, fixture.smtp.MailCount())
 }
 
-func TestDecodeResolvedCredentialsJSONAcceptsOnlyTheDeclaredFields(t *testing.T) {
-	credentials, err := email.DecodeResolvedCredentialsJSON(json.RawMessage(`{"username":"support@example.com","password":"` + testPassword + `","smtp_username":"relay"}`))
-	require.NoError(t, err)
-	require.Equal(t, "support@example.com", credentials.Username)
-	require.Equal(t, testPassword, credentials.Password.Reveal())
-	require.Equal(t, "relay", credentials.SMTPUsername)
-	require.Empty(t, credentials.SMTPPassword.Reveal())
-	for _, invalid := range []string{
-		`{"username":"support@example.com"}`,
-		`{"username":"support@example.com","password":"` + testPassword + `","api_key":"x"}`,
-		`{"username":"support@example.com","password":"line\nbreak-` + testPassword + `"}`,
-	} {
-		_, err := email.DecodeResolvedCredentialsJSON(json.RawMessage(invalid))
-		require.Error(t, err)
-		require.NotContains(t, err.Error(), testPassword)
-	}
-}
-
 func TestCredentialsAndConnectionsNeverSerializeSecrets(t *testing.T) {
 	credentials := email.Credentials{Username: testUsername, Password: sdkgo.NewSecretString(testPassword)}
 	require.NotContains(t, fmt.Sprintf("%+v %#v", credentials, credentials), testPassword)

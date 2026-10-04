@@ -44,9 +44,11 @@ result carries the next refresh token: the one HubSpot returned, or the prior
 one. `invalid_grant` (HubSpot status `BAD_REFRESH_TOKEN`), `invalid_client`,
 `unauthorized_client`, or a refreshed grant missing a required scope marks the
 connection `reauthorization_required`; a 5xx or transport failure is retried.
-After HubSpot rejects an unexpired OAuth access token, the connector refreshes
-once and resends the request once. The older `/oauth/v1/token` endpoint is
-deprecated on 2027-02-16, and this connector never calls it.
+After HubSpot rejects an OAuth access token with `401`, the connector asks once
+for a refresh, which project storage performs only when the stored expiry has
+passed, and then resends the request once; otherwise the `401` selects
+`providerRejected` with `AUTHENTICATION`. The older `/oauth/v1/token` endpoint
+is deprecated on 2027-02-16, and this connector never calls it.
 
 Both methods need these scopes:
 
@@ -119,7 +121,7 @@ as any last-write-wins retry does.
 | HubSpot response | Result |
 | --- | --- |
 | `400`/`422` or `VALIDATION_ERROR` | `providerRejected`, `VALIDATION` |
-| `401` | `providerRejected`, `AUTHENTICATION`, after one OAuth refresh |
+| `401` | `providerRejected`, `AUTHENTICATION`, after one OAuth refresh and resend only when the stored token has expired |
 | `403` `MISSING_SCOPES` or other `403` | `providerRejected`, `AUTHORIZATION` |
 | `404` `OBJECT_NOT_FOUND` | `notFound` on `getObject` and `updateObject`; `providerRejected` otherwise |
 | `409` `CONFLICT` | `conflict` on both Mutations, after one resend for `upsertObject` |
@@ -157,35 +159,33 @@ The Dex Web broker sends each read-only command with the connection's
 `access_token` as a bearer credential; the bundle never receives it. When a
 list cannot load, each unit offers a manual ID field.
 
-## Local configuration
+## Project configuration
 
-```json
-{
-  "schemaVersion": "connectors.dex.dev/local-connections/v1alpha1",
-  "connections": [{
-    "connectorId": "hubspot",
-    "modulePath": "github.com/superdurable/dex-connectors-library/connectors/hubspot",
-    "moduleVersion": "v0.1.0",
-    "provider": "hubspot",
-    "connectionName": "hubspot-crm",
-    "configuration": {},
-    "credentials": {"auth_method": "private-app-token", "access_token": "pat-na1-..."}
-  }]
+Dex Web or Superverse Studio saves the connection's settings and credentials in
+the project configuration. The application loads that configuration once and
+opens the connection by the name it declares, as
+[`examples/lead-qualification/main.go`](examples/lead-qualification/main.go)
+does:
+
+```go
+project, err := projectconfig.LoadFromEnvironment(ctx)
+if err != nil {
+	return err
 }
+settings, err := loadSettings(project.Configuration)
+if err != nil {
+	return err
+}
+connection, err := hubspot.NewProjectConnection(project, leadqualification.ConnectionName)
 ```
 
-Load the file with `localconfig.LoadFromEnvironment` and create the connection
-with `hubspot.NewLocalConnection(store, "hubspot-crm")`. An OAuth connection
-also stores `oauth_client_id`, `oauth_client_secret`, `refresh_token`, and a
-record-level `credentialExpiresAt`; the local provider refreshes it under a
-lock and replaces the file atomically.
-
-Hosted applications resolve operation-scoped tokens with
-`hostedconfig.NewCredentialProviderFromEnvironment(hubspot.ConnectorID, name,
-hubspot.DecodeResolvedCredentialsJSON)`. The broker response holds only
-`access_token` and an optional `auth_method`; a response without
-`auth_method` is treated as a static token that is never refreshed after a
-rejection.
+`LoadFromEnvironment` reads the `DEX_PROJECT_*` environment described in
+[project configuration](../../sdkgo/projectconfig/README.md). Credentials stay
+in project storage and are read for every call. An OAuth connection also
+stores `oauth_client_id`, `oauth_client_secret`, `refresh_token`, and the
+access token's expiry; when the token is missing, has no recorded expiry, or
+expires within five minutes, the connector refreshes it and project storage
+replaces it atomically.
 
 ## Example
 

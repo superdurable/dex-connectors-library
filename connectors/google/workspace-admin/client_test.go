@@ -169,6 +169,15 @@ func (*rejectionRefreshingCredentialProvider) Resolve(sdkgo.Call) (workspaceadmi
 	return workspaceadmin.Credentials{AuthMethodID: workspaceadmin.GoogleOAuthAuthMethodID, AccessToken: sdkgo.NewSecretString("rejected-token")}, nil
 }
 
+// ResolveWithRefresh returns the stored credential unchanged: its expiry has not passed.
+func (provider *rejectionRefreshingCredentialProvider) ResolveWithRefresh(
+	_ context.Context,
+	call sdkgo.Call,
+	_ sdkgo.CredentialRefreshDriver[workspaceadmin.Credentials],
+) (workspaceadmin.Credentials, error) {
+	return provider.Resolve(call)
+}
+
 func (provider *rejectionRefreshingCredentialProvider) ResolveAfterRejection(
 	context.Context,
 	sdkgo.Call,

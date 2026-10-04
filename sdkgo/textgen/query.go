@@ -17,14 +17,14 @@ import (
 // heartbeatInterval is half of Dex's 10-second minimum heartbeat timeout, so a silent attempt beats twice per timeout.
 const heartbeatInterval = 5 * time.Second
 
-// TextGenerationOperationID is the operation ID every lab connector gives its
-// text-generation Query, so applications find the same operation, branches,
-// and types on every connector.
+// TextGenerationOperationID is the operation ID of the text-generation Query
+// that the llm connector exposes for every provider, so applications find the
+// same operation, branches, and types whichever provider a connection names.
 const TextGenerationOperationID = "generateText"
 
 // TextGenerationResult is the Result every generateText Step passes to its
-// branch target. It is the same Go type on every lab connector, so one
-// application Step can handle the Result of any lab's generateText.
+// branch target. It is the same Go type for every provider, so one
+// application Step handles the Result of any provider's generateText.
 type TextGenerationResult = sdkgo.QueryResult[TextGenerationResponse]
 
 // TextGenerationQueryConfig configures one connection's generateText Query.
@@ -198,7 +198,7 @@ func NewTextGenerationQuery(config *TextGenerationQueryConfig) (*TextGenerationQ
 func (query *TextGenerationQuery) Definition() sdkgo.QueryDefinition { return query.definition }
 
 // RequestFeatures returns the optional request fields the wire format
-// declares. The llmtest conformance suite uses it to prove that every other
+// declares. The textgentest conformance suite uses it to prove that every other
 // field selects defect without a provider request.
 func (query *TextGenerationQuery) RequestFeatures() RequestFeatures {
 	return query.wireFormat.Features

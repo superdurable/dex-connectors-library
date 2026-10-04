@@ -5,7 +5,7 @@ metadata:
   displayName: Notion
   description: Search Notion pages and data sources by title, query database rows with typed filters, read a page's properties and plain-text content, and create or update database rows without silent duplicates.
   company: Notion
-  version: v0.1.0
+  version: v0.21.0
 spec:
   provider: notion
   codegen:

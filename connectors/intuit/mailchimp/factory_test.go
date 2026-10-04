@@ -23,6 +23,9 @@ func (completeTarget[IN]) Execute(dex.Context, IN) (*dex.StepDecision, error) {
 	return dex.GracefulComplete(struct{}{}), nil
 }
 
+// GetStepType names the target: Dex gives a generic Step type no default name.
+func (completeTarget[IN]) GetStepType() string { return "Complete" }
+
 func TestFactoriesRequireOnlyTheHappyPathBranch(t *testing.T) {
 	connection := newTestConnection(t)
 	annotations := sdkgo.StepAnnotations{GroupID: "mailchimp", GroupLabel: "Mailchimp", Explanation: "Call Mailchimp."}
@@ -35,26 +38,26 @@ func TestFactoriesRequireOnlyTheHappyPathBranch(t *testing.T) {
 			Found: sdkgo.GoTo(completeTarget[mailchimp.GetMemberResult]{}),
 		})
 		mailchimp.NewListMembersStep(mailchimp.ListMembersStepConfig[string]{
-			StepType: "ListContacts", Annotations: annotations, Connection: connection,
+			StepType: "ListContacts", Annotations: annotations, Connection: connection, ConnectionName: mailchimpConnection.Name,
 			MapToOperationInput: func(listID string) mailchimp.ListMembersInput { return mailchimp.ListMembersInput{ListID: listID} },
 			Listed:              sdkgo.GoTo(completeTarget[mailchimp.ListMembersResult]{}),
 		})
 		mailchimp.NewUpsertMemberStep(mailchimp.UpsertMemberStepConfig[string]{
-			StepType: "UpsertContact", Annotations: annotations, Connection: connection,
+			StepType: "UpsertContact", Annotations: annotations, Connection: connection, ConnectionName: mailchimpConnection.Name,
 			MapToOperationInput: func(email string) mailchimp.UpsertMemberInput {
 				return mailchimp.UpsertMemberInput{ListID: testListID, EmailAddress: email, StatusIfNew: mailchimp.MemberStatusPending}
 			},
 			Upserted: sdkgo.GoTo(completeTarget[mailchimp.UpsertMemberResult]{}),
 		})
 		mailchimp.NewUpdateMemberTagsStep(mailchimp.UpdateMemberTagsStepConfig[string]{
-			StepType: "TagContact", Annotations: annotations, Connection: connection,
+			StepType: "TagContact", Annotations: annotations, Connection: connection, ConnectionName: mailchimpConnection.Name,
 			MapToOperationInput: func(email string) mailchimp.UpdateMemberTagsInput {
 				return mailchimp.UpdateMemberTagsInput{ListID: testListID, EmailAddress: email, AddTags: []string{"VIP"}}
 			},
 			Updated: sdkgo.GoTo(completeTarget[mailchimp.UpdateMemberTagsResult]{}),
 		})
 		mailchimp.NewSendCampaignStep(mailchimp.SendCampaignStepConfig[string]{
-			StepType: "SendCampaign", Annotations: annotations, Connection: connection,
+			StepType: "SendCampaign", Annotations: annotations, Connection: connection, ConnectionName: mailchimpConnection.Name,
 			MapToOperationInput: func(campaignID string) mailchimp.SendCampaignInput {
 				return mailchimp.SendCampaignInput{CampaignID: campaignID}
 			},
@@ -63,7 +66,7 @@ func TestFactoriesRequireOnlyTheHappyPathBranch(t *testing.T) {
 	})
 	require.Panics(t, func() {
 		mailchimp.NewSendCampaignStep(mailchimp.SendCampaignStepConfig[string]{
-			StepType: "SendCampaign", Connection: connection,
+			StepType: "SendCampaign", Annotations: annotations, Connection: connection, ConnectionName: mailchimpConnection.Name,
 			MapToOperationInput: func(campaignID string) mailchimp.SendCampaignInput {
 				return mailchimp.SendCampaignInput{CampaignID: campaignID}
 			},

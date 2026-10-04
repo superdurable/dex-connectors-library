@@ -131,6 +131,13 @@ func (*rejectionRefreshingCredentialProvider) Resolve(sdkgo.Call) (zoom.Credenti
 	return zoom.Credentials{AccessToken: sdkgo.NewSecretString("rejected-token")}, nil
 }
 
+// ResolveWithRefresh returns the token Resolve returns, which has not expired before Zoom rejects it.
+func (provider *rejectionRefreshingCredentialProvider) ResolveWithRefresh(
+	_ context.Context, call sdkgo.Call, _ sdkgo.CredentialRefreshDriver[zoom.Credentials],
+) (zoom.Credentials, error) {
+	return provider.Resolve(call)
+}
+
 func (provider *rejectionRefreshingCredentialProvider) ResolveAfterRejection(
 	context.Context, sdkgo.Call, sdkgo.CredentialRefreshDriver[zoom.Credentials],
 ) (zoom.Credentials, error) {
@@ -144,6 +151,12 @@ type failingCredentialProvider struct {
 }
 
 func (provider failingCredentialProvider) Resolve(sdkgo.Call) (zoom.Credentials, error) {
+	return zoom.Credentials{}, provider.err
+}
+
+func (provider failingCredentialProvider) ResolveWithRefresh(
+	context.Context, sdkgo.Call, sdkgo.CredentialRefreshDriver[zoom.Credentials],
+) (zoom.Credentials, error) {
 	return zoom.Credentials{}, provider.err
 }
 

@@ -4,9 +4,7 @@
 package desk
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"time"
@@ -86,38 +84,4 @@ func (driver *CredentialRefreshDriver) Refresh(
 		Credentials: credentials,
 		ExpiresAt:   driver.now().UTC().Add(min(token.ExpiresIn, zohoAccessTokenLifetime)),
 	}, nil
-}
-
-// DecodeCredentialsJSON decodes trusted broker credential material using connector validation.
-func DecodeCredentialsJSON(contents json.RawMessage) (Credentials, error) {
-	return decodeLocalCredentials(contents)
-}
-
-// DecodeResolvedCredentialsJSON decodes the operation-scoped credential a trusted hosted broker
-// returns, for use as a hostedconfig.CredentialDecoder. It accepts exactly auth_method, which
-// selects the data center, and access_token; renewal material is rejected, and the error never
-// repeats a value.
-func DecodeResolvedCredentialsJSON(contents json.RawMessage) (Credentials, error) {
-	var fields struct {
-		AuthMethodID string `json:"auth_method"`
-		AccessToken  string `json:"access_token"`
-	}
-	decoder := json.NewDecoder(bytes.NewReader(contents))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&fields); err != nil {
-		return Credentials{}, errors.New("Zoho Desk resolved credential is invalid")
-	}
-	credentials := Credentials{AuthMethodID: fields.AuthMethodID, AccessToken: sdkgo.NewSecretString(fields.AccessToken)}
-	if validateResolvedCredentials(credentials) != nil {
-		return Credentials{}, errors.New("Zoho Desk resolved credential is invalid")
-	}
-	return credentials, nil
-}
-
-// EncodeCredentialsJSON encodes complete credential material for trusted atomic persistence.
-func EncodeCredentialsJSON(credentials Credentials) ([]byte, error) {
-	if err := credentials.Validate(); err != nil {
-		return nil, err
-	}
-	return encodeLocalCredentials(credentials)
 }

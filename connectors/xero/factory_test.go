@@ -26,6 +26,9 @@ func (completeTarget[IN]) Execute(dex.Context, IN) (*dex.StepDecision, error) {
 	return dex.GracefulComplete(struct{}{}), nil
 }
 
+// GetStepType names the target: Dex gives a generic Step type no default name.
+func (completeTarget[IN]) GetStepType() string { return "Complete" }
+
 func TestFactoriesRequireOnlyTheHappyPathBranch(t *testing.T) {
 	connection := newTestConnection(t)
 	annotations := sdkgo.StepAnnotations{GroupID: "xero", GroupLabel: "Xero", Explanation: "Call Xero."}
@@ -36,36 +39,36 @@ func TestFactoriesRequireOnlyTheHappyPathBranch(t *testing.T) {
 			Listed:              sdkgo.GoTo(completeTarget[xero.ListContactsResult]{}),
 		})
 		xero.NewFindContactByEmailStep(xero.FindContactByEmailStepConfig[string]{
-			StepType: "FindContact", Annotations: annotations, Connection: connection,
+			StepType: "FindContact", Annotations: annotations, Connection: connection, ConnectionName: xeroConnection.Name,
 			MapToOperationInput: func(email string) xero.FindContactByEmailInput {
 				return xero.FindContactByEmailInput{EmailAddress: email}
 			},
 			Found: sdkgo.GoTo(completeTarget[xero.FindContactByEmailResult]{}),
 		})
 		xero.NewGetInvoiceStep(xero.GetInvoiceStepConfig[string]{
-			StepType: "GetInvoice", Annotations: annotations, Connection: connection,
+			StepType: "GetInvoice", Annotations: annotations, Connection: connection, ConnectionName: xeroConnection.Name,
 			MapToOperationInput: func(id string) xero.GetInvoiceInput { return xero.GetInvoiceInput{InvoiceID: id} },
 			Found:               sdkgo.GoTo(completeTarget[xero.GetInvoiceResult]{}),
 		})
 		xero.NewListInvoicesStep(xero.ListInvoicesStepConfig[string]{
-			StepType: "ListInvoices", Annotations: annotations, Connection: connection,
+			StepType: "ListInvoices", Annotations: annotations, Connection: connection, ConnectionName: xeroConnection.Name,
 			MapToOperationInput: func(reference string) xero.ListInvoicesInput { return xero.ListInvoicesInput{Reference: reference} },
 			Listed:              sdkgo.GoTo(completeTarget[xero.ListInvoicesResult]{}),
 		})
 		xero.NewCreateInvoiceStep(xero.CreateInvoiceStepConfig[string]{
-			StepType: "CreateInvoice", Annotations: annotations, Connection: connection,
+			StepType: "CreateInvoice", Annotations: annotations, Connection: connection, ConnectionName: xeroConnection.Name,
 			MapToOperationInput: func(string) xero.CreateInvoiceInput { return validCreateInvoiceInput() },
 			Created:             sdkgo.GoTo(completeTarget[xero.CreateInvoiceResult]{}),
 		})
 		xero.NewRecordPaymentStep(xero.RecordPaymentStepConfig[string]{
-			StepType: "RecordPayment", Annotations: annotations, Connection: connection,
+			StepType: "RecordPayment", Annotations: annotations, Connection: connection, ConnectionName: xeroConnection.Name,
 			MapToOperationInput: func(string) xero.RecordPaymentInput { return validRecordPaymentInput() },
 			Recorded:            sdkgo.GoTo(completeTarget[xero.RecordPaymentResult]{}),
 		})
 	})
 	require.Panics(t, func() {
 		xero.NewRecordPaymentStep(xero.RecordPaymentStepConfig[string]{
-			StepType: "RecordPayment", Connection: connection,
+			StepType: "RecordPayment", Connection: connection, ConnectionName: xeroConnection.Name,
 			MapToOperationInput: func(string) xero.RecordPaymentInput { return validRecordPaymentInput() },
 			Uncertain:           sdkgo.GoTo(completeTarget[xero.RecordPaymentResult]{}),
 		})

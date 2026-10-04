@@ -188,18 +188,6 @@ func TestAnErrorCodeThatRepeatsACredentialIsNeverReported(t *testing.T) {
 	requireNoSecrets(t, result)
 }
 
-func TestDecodeResolvedCredentialsJSONAcceptsOnlyTheDeclaredFields(t *testing.T) {
-	credentials, err := s3.DecodeResolvedCredentialsJSON(json.RawMessage(
-		`{"access_key_id":"` + testAccessKeyID + `","secret_access_key":"` + testSecretAccessKey + `","session_token":"` + testSessionToken + `"}`))
-	require.NoError(t, err)
-	require.Equal(t, testSessionToken, credentials.SessionToken.Reveal())
-	_, err = s3.DecodeResolvedCredentialsJSON(json.RawMessage(`{"access_key_id":"` + testAccessKeyID + `","secret_access_key":"x","region":"us-east-1"}`))
-	require.Error(t, err)
-	require.NotContains(t, err.Error(), testAccessKeyID)
-	_, err = s3.DecodeResolvedCredentialsJSON(json.RawMessage(`{"access_key_id":"` + testAccessKeyID + `"}`))
-	require.Error(t, err)
-}
-
 func TestConnectionCannotBeSerialized(t *testing.T) {
 	client, err := s3.New(s3.Config{}, staticCredentials(""))
 	require.NoError(t, err)

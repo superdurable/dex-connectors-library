@@ -163,7 +163,7 @@ func (client *Client) conversationEventWebhookEndpoint(
 	return endpoint, nil
 }
 
-// expiredRecordRefreshDriver renews only a record localconfig refuses as expired; verification needs only the secret.
+// expiredRecordRefreshDriver renews only a record project storage refuses as expired; verification needs only the secret.
 type expiredRecordRefreshDriver struct{ tokenDriver *CredentialRefreshDriver }
 
 // RefreshRequired reports whether the stored expiry has passed.

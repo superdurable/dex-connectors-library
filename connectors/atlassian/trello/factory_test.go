@@ -35,7 +35,7 @@ func TestCreateCardFactoryRequiresOnlyTheHappyPath(t *testing.T) {
 	})
 	require.Panics(t, func() {
 		trello.NewCreateCardStep(trello.CreateCardStepConfig[string]{
-			StepType: "Create", Annotations: annotations, Connection: connection,
+			StepType: "Create", Annotations: annotations, Connection: connection, ConnectionName: trelloConnection.Name,
 			MapToOperationInput: mapToInput, Uncertain: sdkgo.GoTo(createdCardTarget{}),
 		})
 	})

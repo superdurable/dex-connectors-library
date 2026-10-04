@@ -24,7 +24,7 @@ func TestDocumentedModelsAreOpenToNewProjects(t *testing.T) {
 		require.NotContains(t, liveDefaultModel, prefix)
 	}
 	for _, path := range []string{
-		"README.md", filepath.Join("examples", "generate-summary", "README.md"), filepath.Join("examples", "summarize-text", "README.md"),
+		"README.md", filepath.Join("examples", "generate-summary", "README.md"),
 	} {
 		contents, err := os.ReadFile(path)
 		require.NoError(t, err)
@@ -43,8 +43,6 @@ func TestREADMEGoSnippetsComeFromTheRunnableExample(t *testing.T) {
 	for _, path := range []string{
 		filepath.Join("examples", "generate-summary", "main.go"),
 		filepath.Join("examples", "generate-summary", "flow", "workflow.go"),
-		filepath.Join("examples", "summarize-text", "main.go"),
-		filepath.Join("examples", "summarize-text", "flow", "workflow.go"),
 	} {
 		source, err := os.ReadFile(path)
 		require.NoError(t, err)

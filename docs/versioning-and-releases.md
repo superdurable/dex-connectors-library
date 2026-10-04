@@ -1,8 +1,10 @@
 # Go Module Versioning and Releases
 
 The repository publishes the Connector Go SDK and each connector as a separate
-Go module. A Dex application depends only on the connector modules it uses,
-and connector releases do not force unrelated upgrades.
+Go module, and releases all of them together under one version. A Dex
+application depends only on the connector modules it uses, and every connector
+it uses shares one release version, so it never mixes connector releases built
+for different SDK releases.
 
 ## Module and tag identity
 
@@ -14,11 +16,12 @@ The module directory determines the Git tag prefix:
 - Company-owned families keep independent modules below one directory, such as
   `connectors/google/gmail` and `connectors/google/spreadsheet`.
 
-Each connector manifest declares `metadata.version`. Changing it to the next
-patch, minor, or major version requests an automatic release after merge.
-Leaving it unchanged explicitly defers release, even when connector code
-changes. Directory-prefixed Git tags record completed releases. Generated Go
-application APIs do not expose the release version.
+Every connector manifest declares the same `metadata.version`, which is also
+the Connector SDK version of that release; `connectorctl catalog --check`
+rejects a manifest whose version differs. A release changes every manifest to
+the next version in one pull request and requests an automatic release of every
+connector after merge. Directory-prefixed Git tags record completed releases.
+Generated Go application APIs do not expose the release version.
 
 GitHub Release titles are human-readable labels. SDK releases use
 `Go SDK vMAJOR.MINOR.PATCH`. Connector releases use the manifest
@@ -50,8 +53,10 @@ reproducible; they do not cap the versions an application selects.
 
 ## Release order
 
-An SDK API change is merged and released before any connector consumes it. A
-later connector PR requires that exact published SDK version. Connector modules
+A release first publishes the Connector SDK with the release version, then the
+connector pull request moves every manifest to that version and requires that
+exact published SDK version. An SDK API change is merged and released before
+any connector consumes it. Connector modules
 may not use a workspace replacement, pseudo-version, branch, or commit SHA in
 their checked-in `go.mod`. The same order applies when a connector requires
 another connector module; see [Connector dependencies](#connector-dependencies).
@@ -90,7 +95,9 @@ the original push commit, retaining its release matrix. The workflow:
    from `main` and downloadable with `GOPROXY=direct` against the committed
    `go.sum`, and that each required connector release carries
    `connector-release.complete`;
-5. verifies the declared version is the next patch, minor, or major;
+5. verifies the declared version is later than the connector's latest
+   release; a connector skips the versions it was not released at, and a new
+   connector starts at the current release version;
 6. includes only commits that changed that connector directory;
 7. builds and tests an optional Connector Studio UI;
 8. uploads `connector-release.json`, optional `connector-ui.tgz`, and digests;
@@ -140,8 +147,8 @@ copy the check runs:
 
 1. `go get github.com/superdurable/dex/sdk-go@<latest>` and `go mod tidy`;
 2. `go build ./...`;
-3. `go vet ./...` with no build tags and with each of `integration`, `live`,
-   and `dexcompat`, so tagged test files compile too.
+3. `go vet ./...` with no build tags and with each of `integration` and
+   `live`, so tagged test files compile too.
 
 The check only compiles code. It needs no Dex Server or provider credentials
 and never edits the checkout. CI runs it for affected connectors on pull

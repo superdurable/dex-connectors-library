@@ -11,8 +11,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -22,8 +20,10 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/slack/internal/testlog"
+	"github.com/superdurable/dex-connectors-library/connectors/slack/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -162,7 +162,7 @@ func TestSocketModeAcknowledgesBeforeTargetCompletes(t *testing.T) {
 	targetStarted := make(chan struct{})
 	releaseTarget := make(chan struct{})
 	runner := NewChannelThreadCreatedTrigger(ChannelThreadCreatedTriggerConfig{
-		Connection: configuredConnection, BindingName: "approval-start",
+		Connection: configuredConnection, ConnectionName: connectionReference.Name, BindingName: "approval-start",
 		Configuration: ChannelThreadCreatedTriggerConfiguration{ChannelID: "C123"},
 		Target: sdkgo.TriggerTargetFunc[MessageEvent](func(context.Context, sdkgo.TriggerEvent[MessageEvent]) error {
 			close(targetStarted)
@@ -411,44 +411,89 @@ func TestSharedRunnerConsumesUndeliverableReplyAndKeepsReading(t *testing.T) {
 	requireNoSentinel(t, logs)
 }
 
-// newLocalSlackStore writes a local connection file with one root and one reply binding for channel C1.
-func newLocalSlackStore(t *testing.T) (*localconfig.Store, string) {
+// projectSlackFixture holds one connection's project configuration, with one root and one reply binding
+// for channel C1, and the bindings' durable inboxes in memory.
+type projectSlackFixture struct {
+	endpoint      string
+	configuration projectconfig.Configuration
+	objects       *testsupport.ObjectStore
+}
+
+var projectSlackScope = projectconfig.Scope{ProjectID: "slack-tests", Kind: "live"}
+
+func newProjectSlackFixture(t *testing.T) *projectSlackFixture {
 	t.Helper()
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
 		_, _ = response.Write([]byte(`{"ok":true,"url":"ws://socket.test"}`))
 	}))
 	t.Cleanup(server.Close)
-	directory := t.TempDir()
-	path := filepath.Join(directory, "connections.json")
-	contents, err := json.Marshal(map[string]any{
-		"schemaVersion": localconfig.SchemaVersion,
-		"connections": []any{map[string]any{
-			"connectorId": ConnectorID, "modulePath": "github.com/superdurable/dex-connectors-library/connectors/slack",
-			"moduleVersion": "v0.7.0", "provider": "slack", "connectionName": "workspace",
-			"configuration": map[string]any{"endpoint": server.URL},
-			"credentials":   map[string]any{"bot_token": sentinelBotToken, "user_token": sentinelUserToken, "app_token": sentinelAppToken},
+	return &projectSlackFixture{
+		endpoint: server.URL,
+		configuration: projectconfig.Configuration{TriggerBindings: []projectconfig.TriggerConfiguration{
+			{ConnectorID: ConnectorID, ConnectionName: "workspace", TriggerName: "channelThreadCreated", BindingName: "approval-start",
+				Configuration: json.RawMessage(`{"channelId":"C1","threadTriggerMatcher":{"messageContains":"request approval"}}`)},
+			{ConnectorID: ConnectorID, ConnectionName: "workspace", TriggerName: "threadReplyCreated", BindingName: "approval-reply",
+				Configuration: json.RawMessage(`{"channelId":"C1","threadReplyMatcher":{"messageContains":"approve","posterUserIds":["U2"]}}`)},
 		}},
-		"triggerBindings": []any{
-			map[string]any{"connectorId": ConnectorID, "connectionName": "workspace", "triggerName": "channelThreadCreated", "bindingName": "approval-start",
-				"configuration": map[string]any{"channelId": "C1", "threadTriggerMatcher": map[string]any{"messageContains": "request approval"}}},
-			map[string]any{"connectorId": ConnectorID, "connectionName": "workspace", "triggerName": "threadReplyCreated", "bindingName": "approval-reply",
-				"configuration": map[string]any{"channelId": "C1", "threadReplyMatcher": map[string]any{"messageContains": "approve", "posterUserIds": []string{"U2"}}}},
-		},
-	})
-	require.NoError(t, err)
-	require.NoError(t, os.WriteFile(path, contents, 0o600))
-	store, err := localconfig.LoadFile(path)
-	require.NoError(t, err)
-	return store, directory
+		objects: testsupport.NewObjectStore(),
+	}
 }
 
-func TestLocalRunnerReplaysPastUndeliverableEventAfterRestart(t *testing.T) {
-	store, directory := newLocalSlackStore(t)
+// newRunner builds the runner that NewProjectMessageTriggerRunner builds, over the fixture's configuration and inboxes.
+func (fixture *projectSlackFixture) newRunner(t *testing.T, config ProjectMessageTriggerRunnerConfig, options ...Option) *MessageTriggerRunner {
+	t.Helper()
+	reference := sdkgo.ConnectionRef{Provider: "slack", Name: "workspace"}
+	client, err := New(Config{Endpoint: fixture.endpoint}, sdkgo.StaticCredentialProvider[Credentials]{reference: {
+		BotToken: sdkgo.NewSecretString(sentinelBotToken), UserToken: sdkgo.NewSecretString(sentinelUserToken),
+		AppToken: sdkgo.NewSecretString(sentinelAppToken),
+	}}, options...)
+	require.NoError(t, err)
+	connection, err := NewConnection(client, reference)
+	require.NoError(t, err)
+	runner, err := newDurableMessageTriggerRunner(connection, fixture.configuration, config, func(
+		key projectconfig.TriggerInboxKey, target sdkgo.TriggerTarget[MessageEvent],
+	) (sdkgo.TriggerTarget[MessageEvent], error) {
+		inbox, err := fixture.openInbox(key)
+		if err != nil {
+			return nil, err
+		}
+		return provider.NewDurableTriggerTarget(inbox, key, target, provider.WithTriggerLogger(connection.client.logger))
+	})
+	require.NoError(t, err)
+	return runner
+}
+
+func (fixture *projectSlackFixture) openInbox(key projectconfig.TriggerInboxKey) (*projectconfig.TriggerInbox, error) {
+	return projectconfig.NewTriggerInbox(fixture.objects, projectSlackScope, key)
+}
+
+// pendingEventIDs lists the event IDs waiting in both bindings' durable inboxes.
+func (fixture *projectSlackFixture) pendingEventIDs(t *testing.T) []string {
+	t.Helper()
+	eventIDs := []string{}
+	for _, binding := range []struct{ triggerName, bindingName string }{
+		{"channelThreadCreated", "approval-start"}, {"threadReplyCreated", "approval-reply"},
+	} {
+		inbox, err := fixture.openInbox(projectconfig.TriggerInboxKey{
+			ConnectorID: ConnectorID, ConnectionName: "workspace", TriggerName: binding.triggerName, BindingName: binding.bindingName,
+		})
+		require.NoError(t, err)
+		pending, err := inbox.Pending(context.Background())
+		require.NoError(t, err)
+		for _, event := range pending {
+			eventIDs = append(eventIDs, event.ID)
+		}
+	}
+	return eventIDs
+}
+
+func TestProjectRunnerReplaysPastUndeliverableEventAfterRestart(t *testing.T) {
+	fixture := newProjectSlackFixture(t)
 	logs := testlog.NewLogRecorder()
 	var rootCalls atomic.Int32
 	rootEvents := make(chan string, 4)
-	config := LocalMessageTriggerRunnerConfig{
-		ChannelThreadCreatedRoutes: []LocalChannelThreadCreatedTriggerRoute{{
+	config := ProjectMessageTriggerRunnerConfig{
+		ChannelThreadCreatedRoutes: []ProjectChannelThreadCreatedTriggerRoute{{
 			BindingName: "approval-start",
 			Target: sdkgo.TriggerTargetFunc[MessageEvent](func(_ context.Context, event sdkgo.TriggerEvent[MessageEvent]) error {
 				rootCalls.Add(1)
@@ -456,22 +501,21 @@ func TestLocalRunnerReplaysPastUndeliverableEventAfterRestart(t *testing.T) {
 				return nil
 			}),
 		}},
-		ThreadReplyCreatedRoutes: []LocalThreadReplyCreatedTriggerRoute{{
+		ThreadReplyCreatedRoutes: []ProjectThreadReplyCreatedTriggerRoute{{
 			BindingName: "approval-reply",
 			Target: sdkgo.TriggerTargetFunc[MessageEvent](func(context.Context, sdkgo.TriggerEvent[MessageEvent]) error {
 				return sdkgo.MarkTriggerUndeliverable(flowNotActiveError())
 			}),
 		}},
 	}
-	runLocal := func(socket *fakeSocketConnection) (*atomic.Int32, context.CancelFunc, chan error) {
+	runProject := func(socket *fakeSocketConnection) (*atomic.Int32, context.CancelFunc, chan error) {
 		var dials atomic.Int32
-		runner, err := NewLocalMessageTriggerRunner(store, "workspace", config, func(options *clientOptions) {
+		runner := fixture.newRunner(t, config, func(options *clientOptions) {
 			options.socketDialer = func(context.Context, string) (socketConnection, error) {
 				dials.Add(1)
 				return socket, nil
 			}
 		}, WithLogger(logs.Logger()))
-		require.NoError(t, err)
 		ctx, cancel := context.WithCancel(context.Background())
 		runFinished := make(chan error, 1)
 		go func() { runFinished <- runner.Run(ctx) }()
@@ -482,7 +526,7 @@ func TestLocalRunnerReplaysPastUndeliverableEventAfterRestart(t *testing.T) {
 		messageEnvelope(t, "EvOrphanReply", messageEvent{Type: "message", Channel: "C1", User: "U2", Text: sentinelText + " I approve", Timestamp: "5.0", ThreadTS: "4.0"}),
 		messageEnvelope(t, "EvRoot", messageEvent{Type: "message", Channel: "C1", User: "U1", Text: sentinelText + " request approval", Timestamp: "6.0"}),
 	}}
-	_, cancelFirst, firstFinished := runLocal(firstSocket)
+	_, cancelFirst, firstFinished := runProject(firstSocket)
 	defer cancelFirst()
 	require.Equal(t, "envelope-EvOrphanReply", receiveAcknowledgement(t, firstSocket.acknowledgements))
 	require.Equal(t, "envelope-EvRoot", receiveAcknowledgement(t, firstSocket.acknowledgements))
@@ -491,7 +535,10 @@ func TestLocalRunnerReplaysPastUndeliverableEventAfterRestart(t *testing.T) {
 	require.ErrorIs(t, receiveRunResult(t, firstFinished), context.Canceled)
 
 	// Persist an undeliverable reply as if the process crashed after acknowledging it.
-	replyInbox, err := localconfig.NewDurableTriggerTarget(store, ConnectorID, "workspace", "threadReplyCreated", "approval-reply",
+	replyKey := projectconfig.TriggerInboxKey{ConnectorID: ConnectorID, ConnectionName: "workspace", TriggerName: "threadReplyCreated", BindingName: "approval-reply"}
+	replyStore, err := fixture.openInbox(replyKey)
+	require.NoError(t, err)
+	replyInbox, err := provider.NewDurableTriggerTarget(replyStore, replyKey,
 		sdkgo.TriggerTargetFunc[MessageEvent](func(context.Context, sdkgo.TriggerEvent[MessageEvent]) error { return nil }))
 	require.NoError(t, err)
 	require.NoError(t, sdkgo.PrepareTriggerDelivery(context.Background(), replyInbox, sdkgo.TriggerEvent[MessageEvent]{
@@ -501,7 +548,7 @@ func TestLocalRunnerReplaysPastUndeliverableEventAfterRestart(t *testing.T) {
 	secondSocket := &fakeSocketConnection{acknowledgements: make(chan map[string]string, 1), envelopes: []socketEnvelope{
 		messageEnvelope(t, "EvRoot2", messageEvent{Type: "message", Channel: "C1", User: "U1", Text: "request approval", Timestamp: "7.0"}),
 	}}
-	dials, cancelSecond, secondFinished := runLocal(secondSocket)
+	dials, cancelSecond, secondFinished := runProject(secondSocket)
 	defer cancelSecond()
 	require.Equal(t, "envelope-EvRoot2", receiveAcknowledgement(t, secondSocket.acknowledgements))
 	require.Equal(t, "EvRoot2", receiveEventID(t, rootEvents))
@@ -514,13 +561,7 @@ func TestLocalRunnerReplaysPastUndeliverableEventAfterRestart(t *testing.T) {
 	}
 	cancelSecond()
 	require.ErrorIs(t, receiveRunResult(t, secondFinished), context.Canceled)
-	pending, err := filepath.Glob(filepath.Join(directory, ".trigger-inbox-*.json"))
-	require.NoError(t, err)
-	for _, inboxPath := range pending {
-		inbox, err := os.ReadFile(inboxPath)
-		require.NoError(t, err)
-		require.Contains(t, string(inbox), `"events":[]`)
-	}
+	require.Empty(t, fixture.pendingEventIDs(t))
 
 	// The durable inbox logs each skip once, with the binding identity and the closed Flow, live and on
 	// replay. A live delivery also names the channel and thread; the inbox replays events without them.
@@ -548,10 +589,10 @@ func TestLocalRunnerReplaysPastUndeliverableEventAfterRestart(t *testing.T) {
 	requireNoSentinel(t, logs)
 }
 
-// TestLocalRunnerDeliversPendingRootBeforeReplyAfterReconnect covers a root persisted on a connection that
+// TestProjectRunnerDeliversPendingRootBeforeReplyAfterReconnect covers a root persisted on a connection that
 // failed to acknowledge it. The reply read on the next connection must not reach Dex before that root.
-func TestLocalRunnerDeliversPendingRootBeforeReplyAfterReconnect(t *testing.T) {
-	store, directory := newLocalSlackStore(t)
+func TestProjectRunnerDeliversPendingRootBeforeReplyAfterReconnect(t *testing.T) {
+	fixture := newProjectSlackFixture(t)
 	var started atomic.Bool
 	var mutex sync.Mutex
 	outcomes := []string{}
@@ -565,8 +606,8 @@ func TestLocalRunnerDeliversPendingRootBeforeReplyAfterReconnect(t *testing.T) {
 		defer mutex.Unlock()
 		return append([]string(nil), outcomes...)
 	}
-	config := LocalMessageTriggerRunnerConfig{
-		ChannelThreadCreatedRoutes: []LocalChannelThreadCreatedTriggerRoute{{
+	config := ProjectMessageTriggerRunnerConfig{
+		ChannelThreadCreatedRoutes: []ProjectChannelThreadCreatedTriggerRoute{{
 			BindingName: "approval-start",
 			Target: sdkgo.TriggerTargetFunc[MessageEvent](func(_ context.Context, event sdkgo.TriggerEvent[MessageEvent]) error {
 				started.Store(true)
@@ -574,7 +615,7 @@ func TestLocalRunnerDeliversPendingRootBeforeReplyAfterReconnect(t *testing.T) {
 				return nil
 			}),
 		}},
-		ThreadReplyCreatedRoutes: []LocalThreadReplyCreatedTriggerRoute{{
+		ThreadReplyCreatedRoutes: []ProjectThreadReplyCreatedTriggerRoute{{
 			BindingName: "approval-reply",
 			// Like NewDexRPCTriggerTarget, a reply whose Flow has not started is undeliverable.
 			Target: sdkgo.TriggerTargetFunc[MessageEvent](func(_ context.Context, event sdkgo.TriggerEvent[MessageEvent]) error {
@@ -596,7 +637,7 @@ func TestLocalRunnerDeliversPendingRootBeforeReplyAfterReconnect(t *testing.T) {
 		}},
 	}
 	var dials atomic.Int32
-	runner, err := NewLocalMessageTriggerRunner(store, "workspace", config, func(options *clientOptions) {
+	runner := fixture.newRunner(t, config, func(options *clientOptions) {
 		options.socketDialer = func(context.Context, string) (socketConnection, error) {
 			dial := int(dials.Add(1)) - 1
 			if dial >= len(sockets) {
@@ -605,7 +646,6 @@ func TestLocalRunnerDeliversPendingRootBeforeReplyAfterReconnect(t *testing.T) {
 			return sockets[dial], nil
 		}
 	})
-	require.NoError(t, err)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	runFinished := make(chan error, 1)
@@ -616,29 +656,7 @@ func TestLocalRunnerDeliversPendingRootBeforeReplyAfterReconnect(t *testing.T) {
 	require.Equal(t, []string{"root:EvRoot", "reply:EvReply"}, snapshot())
 	cancel()
 	require.ErrorIs(t, receiveRunResult(t, runFinished), context.Canceled)
-	require.Empty(t, pendingSlackEventIDs(t, directory))
-}
-
-// pendingSlackEventIDs lists the event IDs persisted in every Trigger inbox in directory.
-func pendingSlackEventIDs(t *testing.T, directory string) []string {
-	t.Helper()
-	paths, err := filepath.Glob(filepath.Join(directory, ".trigger-inbox-*.json"))
-	require.NoError(t, err)
-	eventIDs := []string{}
-	for _, path := range paths {
-		contents, err := os.ReadFile(path)
-		require.NoError(t, err)
-		var inbox struct {
-			Events []struct {
-				EventID string `json:"eventId"`
-			} `json:"events"`
-		}
-		require.NoError(t, json.Unmarshal(contents, &inbox))
-		for _, event := range inbox.Events {
-			eventIDs = append(eventIDs, event.EventID)
-		}
-	}
-	return eventIDs
+	require.Empty(t, fixture.pendingEventIDs(t))
 }
 
 // shortenSocketModeTimings scales the reconnect schedule and the read deadline down for one test and

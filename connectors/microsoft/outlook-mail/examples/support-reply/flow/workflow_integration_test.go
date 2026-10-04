@@ -7,7 +7,6 @@ package supportreply
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net"
 	"net/http"
@@ -20,7 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 	outlookmail "github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-mail"
 	"github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-mail/internal/graphtest"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -222,9 +221,8 @@ func TestExpiredAccessTokenIsRefreshedDuringTheFlowWithRealDex(t *testing.T) {
 	outcome := harness.runReply(t, "refresh", integrationInput())
 	require.Equal(t, ReplyActionReplied, outcome.Action)
 	require.Equal(t, 1, harness.graph.RequestCount(graphtest.EndpointDelegatedToken))
-	contents, err := os.ReadFile(harness.connectionsPath)
-	require.NoError(t, err)
-	require.Contains(t, string(contents), harness.graph.CurrentRefreshToken(), "the rotated refresh token was persisted")
+	stored, _ := harness.credentials.Stored()
+	require.Equal(t, harness.graph.CurrentRefreshToken(), stored.RefreshToken.Reveal(), "the rotated refresh token was kept")
 }
 
 func TestRejectedRecipientFailsTheFlowWithoutServerTextWithRealDex(t *testing.T) {
@@ -255,7 +253,7 @@ func TestInvalidRequestFailsBeforeContactingGraphWithRealDex(t *testing.T) {
 type replyHarness struct {
 	graph           *graphtest.Server
 	archiveFolderID string
-	connectionsPath string
+	credentials     *graphtest.CredentialHost[outlookmail.Credentials]
 	flow            *Flow
 	registry        *dex.Registry
 	cache           *blobcache.Cache
@@ -280,7 +278,7 @@ func newReplyHarness(t *testing.T, pickedFolderName string) *replyHarness {
 		harness.archiveFolderID = harness.graph.AddFolder(pickedFolderName)
 		archiveFolder = ArchiveFolderSelection{FolderID: harness.archiveFolderID, FolderName: pickedFolderName}
 	}
-	harness.connectionsPath = harness.writeConnectionsFile(t)
+	harness.credentials = harness.newDelegatedCredentials()
 	var err error
 	harness.cache, err = blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -295,29 +293,21 @@ func newReplyHarness(t *testing.T, pickedFolderName string) *replyHarness {
 	return harness
 }
 
-// writeConnectionsFile writes the record Dex Web leaves after a delegated Microsoft consent.
-func (harness *replyHarness) writeConnectionsFile(t *testing.T) string {
-	t.Helper()
-	contents, err := json.Marshal(map[string]any{"schemaVersion": localconfig.SchemaVersion, "connections": []any{map[string]any{
-		"connectorId": outlookmail.ConnectorID, "modulePath": "github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-mail",
-		"moduleVersion": "v0.1.0", "provider": "microsoft", "connectionName": ConnectionName, "authMethodId": outlookmail.MicrosoftOAuthAuthMethodID,
-		"configuration": map[string]any{}, "credentialExpiresAt": time.Now().Add(time.Hour).UTC().Format(time.RFC3339Nano),
-		"credentials": map[string]any{
-			"auth_method": outlookmail.MicrosoftOAuthAuthMethodID, "client_id": integrationClientID(), "client_secret": integrationClientSecret,
-			"access_token": harness.graph.IssueDelegatedAccessToken(), "refresh_token": integrationRefreshToken,
-		},
-	}}})
-	require.NoError(t, err)
-	path := filepath.Join(t.TempDir(), "connections.json")
-	require.NoError(t, os.WriteFile(path, contents, 0o600))
-	return path
+// newDelegatedCredentials holds the credential Dex Web saves after a delegated Microsoft consent.
+func (harness *replyHarness) newDelegatedCredentials() *graphtest.CredentialHost[outlookmail.Credentials] {
+	expiresAt := time.Now().Add(time.Hour)
+	return graphtest.NewCredentialHost(outlookmail.Credentials{
+		AuthMethodID: outlookmail.MicrosoftOAuthAuthMethodID, ClientID: integrationClientID(),
+		ClientSecret: sdkgo.NewSecretString(integrationClientSecret), AccessToken: sdkgo.NewSecretString(harness.graph.IssueDelegatedAccessToken()),
+		RefreshToken: sdkgo.NewSecretString(integrationRefreshToken),
+	}, &expiresAt)
 }
 
 func (harness *replyHarness) registerFlow(t *testing.T, archiveFolder ArchiveFolderSelection) {
 	t.Helper()
-	store, err := localconfig.LoadFile(harness.connectionsPath)
+	providerClient, err := outlookmail.New(outlookmail.Config{}, harness.credentials, outlookmail.WithLocalProviderURL(harness.graph.URL))
 	require.NoError(t, err)
-	connection, err := outlookmail.NewLocalConnection(store, ConnectionName, outlookmail.WithLocalProviderURL(harness.graph.URL))
+	connection, err := outlookmail.NewConnection(providerClient, sdkgo.ConnectionRef{Provider: "microsoft", Name: ConnectionName})
 	require.NoError(t, err)
 	harness.flow = NewFlow(connection, archiveFolder)
 	harness.registry, err = dex.NewRegistry([]dex.Flow{harness.flow})

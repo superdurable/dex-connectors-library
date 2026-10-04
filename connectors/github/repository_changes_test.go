@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-package githubconnector_test
+package github_test
 
 import (
 	"encoding/json"
@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	githubconnector "github.com/superdurable/dex-connectors-library/connectors/github"
+	"github.com/superdurable/dex-connectors-library/connectors/github"
 	"github.com/superdurable/dex-connectors-library/connectors/github/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
@@ -56,17 +56,17 @@ func TestListMergedPullRequestsSearchesTheWindowAndBoundsBodies(t *testing.T) {
 	defer server.Close()
 
 	pacific := time.FixedZone("PDT", -7*60*60)
-	client := newClient(t, server.URL, githubconnector.Config{MaxPullRequestBodyCharacters: 7})
+	client := newClient(t, server.URL, github.Config{MaxPullRequestBodyCharacters: 7})
 	result, err := sdkgo.RunQuery(
 		testsupport.NewDexContext("changes-flow", "merged-step"), client.ListMergedPullRequests(), githubConnection,
-		githubconnector.ListMergedPullRequestsInput{
+		github.ListMergedPullRequestsInput{
 			Owner: " octocat ", Repository: "hello-world",
 			MergedAfter:  time.Date(2026, 8, 31, 17, 0, 0, 999, pacific),
 			MergedBefore: windowEnd.Add(900 * time.Millisecond), PageSize: 2, Page: 3,
 		},
 	)
 	require.NoError(t, err)
-	require.Equal(t, githubconnector.ListMergedPullRequestsBranchListed, result.Branch)
+	require.Equal(t, github.ListMergedPullRequestsBranchListed, result.Branch)
 	require.Nil(t, result.Failure)
 	require.Equal(t, 17, result.Value.TotalCount)
 	require.True(t, result.Value.IncompleteResults)
@@ -102,11 +102,11 @@ func TestListMergedPullRequestsUsesDefaultPageAndReportsTheLastPage(t *testing.T
 	defer server.Close()
 
 	result, err := sdkgo.RunQuery(
-		testsupport.NewDexContext("changes-flow", "merged-default-step"), newClient(t, server.URL, githubconnector.Config{}).ListMergedPullRequests(),
+		testsupport.NewDexContext("changes-flow", "merged-default-step"), newClient(t, server.URL, github.Config{}).ListMergedPullRequests(),
 		githubConnection, mergedPullRequestsInput(),
 	)
 	require.NoError(t, err)
-	require.Equal(t, githubconnector.ListMergedPullRequestsBranchListed, result.Branch)
+	require.Equal(t, github.ListMergedPullRequestsBranchListed, result.Branch)
 	require.Empty(t, result.Value.PullRequests)
 	require.NotNil(t, result.Value.PullRequests)
 	require.Zero(t, result.Value.NextPage)
@@ -120,7 +120,7 @@ func TestListMergedPullRequestsRejectsPagesBeyondTheSearchResultLimit(t *testing
 		writeJSON(t, response, map[string]any{"total_count": 5000, "incomplete_results": false, "items": []any{}})
 	}))
 	defer server.Close()
-	client := newClient(t, server.URL, githubconnector.Config{})
+	client := newClient(t, server.URL, github.Config{})
 
 	for _, test := range []struct {
 		pageSize, page int
@@ -137,10 +137,10 @@ func TestListMergedPullRequestsRejectsPagesBeyondTheSearchResultLimit(t *testing
 		)
 		require.NoError(t, err)
 		if test.isAllowed {
-			require.Equal(t, githubconnector.ListMergedPullRequestsBranchListed, result.Branch, "%+v", test)
+			require.Equal(t, github.ListMergedPullRequestsBranchListed, result.Branch, "%+v", test)
 			continue
 		}
-		require.Equal(t, githubconnector.ListMergedPullRequestsBranchDefect, result.Branch, "%+v", test)
+		require.Equal(t, github.ListMergedPullRequestsBranchDefect, result.Branch, "%+v", test)
 		require.Equal(t, sdkgo.FailureValidation, result.Failure.Kind)
 	}
 	require.Equal(t, int32(3), requests.Load())
@@ -163,16 +163,16 @@ func TestListPullRequestFilesPaginatesAndBoundsPatches(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := newClient(t, server.URL, githubconnector.Config{MaxPatchCharacters: 16})
+	client := newClient(t, server.URL, github.Config{MaxPatchCharacters: 16})
 	result, err := sdkgo.RunQuery(
 		testsupport.NewDexContext("changes-flow", "files-step"), client.ListPullRequestFiles(), githubConnection,
-		githubconnector.ListPullRequestFilesInput{Owner: "octocat", Repository: "hello-world", Number: 42},
+		github.ListPullRequestFilesInput{Owner: "octocat", Repository: "hello-world", Number: 42},
 	)
 	require.NoError(t, err)
-	require.Equal(t, githubconnector.ListPullRequestFilesBranchListed, result.Branch)
+	require.Equal(t, github.ListPullRequestFilesBranchListed, result.Branch)
 	require.Equal(t, 2, result.Value.NextPage)
 	require.Equal(t, "files-request-1", result.Receipt.ProviderRequestID)
-	require.Equal(t, []githubconnector.PullRequestFile{
+	require.Equal(t, []github.PullRequestFile{
 		{
 			Filename: "docs/renamed.md", PreviousFilename: "docs/original.md", Status: "renamed",
 			Additions: 3, Deletions: 1, Changes: 4, Patch: "@@ -1 +1 @@\n-añe", PatchTruncated: true,
@@ -203,16 +203,16 @@ func TestListCommitsFiltersWindowPathAndRefAndBoundsMessages(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := newClient(t, server.URL, githubconnector.Config{MaxCommitMessageCharacters: 26})
+	client := newClient(t, server.URL, github.Config{MaxCommitMessageCharacters: 26})
 	result, err := sdkgo.RunQuery(
 		testsupport.NewDexContext("changes-flow", "commits-step"), client.ListCommits(), githubConnection,
-		githubconnector.ListCommitsInput{
+		github.ListCommitsInput{
 			Owner: "octocat", Repository: "hello-world", Since: windowStart, Until: windowEnd,
 			Path: "docs/getting started.md", Ref: "release/v1", Page: 2,
 		},
 	)
 	require.NoError(t, err)
-	require.Equal(t, githubconnector.ListCommitsBranchListed, result.Branch)
+	require.Equal(t, github.ListCommitsBranchListed, result.Branch)
 	require.Zero(t, result.Value.NextPage)
 	require.Len(t, result.Value.Commits, 2)
 	first := result.Value.Commits[0]
@@ -245,12 +245,12 @@ func TestListCommitsTreatsAnEmptyRepositoryAsNoCommits(t *testing.T) {
 		_, _ = response.Write([]byte(`{"message":"Git Repository is empty. ` + providerBodySentinel + `"}`))
 	}))
 	defer server.Close()
-	client := newClient(t, server.URL, githubconnector.Config{})
-	input := githubconnector.ListCommitsInput{Owner: "octocat", Repository: "empty", Since: windowStart, Until: windowEnd}
+	client := newClient(t, server.URL, github.Config{})
+	input := github.ListCommitsInput{Owner: "octocat", Repository: "empty", Since: windowStart, Until: windowEnd}
 
 	result, err := sdkgo.RunQuery(testsupport.NewDexContext("changes-flow", "empty-step"), client.ListCommits(), githubConnection, input)
 	require.NoError(t, err)
-	require.Equal(t, githubconnector.ListCommitsBranchListed, result.Branch)
+	require.Equal(t, github.ListCommitsBranchListed, result.Branch)
 	require.Nil(t, result.Failure)
 	require.NotNil(t, result.Value.Commits)
 	require.Empty(t, result.Value.Commits)
@@ -262,7 +262,7 @@ func TestListCommitsTreatsAnEmptyRepositoryAsNoCommits(t *testing.T) {
 	scopes = "read:user, user:email, repo"
 	result, err = sdkgo.RunQuery(testsupport.NewDexContext("changes-flow", "empty-scope-step"), client.ListCommits(), githubConnection, input)
 	require.NoError(t, err)
-	require.Equal(t, githubconnector.ListCommitsBranchInsufficientScope, result.Branch)
+	require.Equal(t, github.ListCommitsBranchInsufficientScope, result.Branch)
 	require.Equal(t, sdkgo.FailureAuthorization, result.Failure.Kind)
 }
 
@@ -306,7 +306,7 @@ func TestRepositoryChangeQueriesClassifyConclusiveProviderResponses(t *testing.T
 					_, _ = response.Write([]byte(`{"message":"` + providerBodySentinel + `"}`))
 				}))
 				defer server.Close()
-				outcome := query.invoke(newClient(t, server.URL, githubconnector.Config{}), "classification-step")
+				outcome := query.invoke(newClient(t, server.URL, github.Config{}), "classification-step")
 				require.NoError(t, outcome.err)
 				require.Equal(t, test.wantBranch, outcome.branch)
 				require.Equal(t, test.wantKind, outcome.failure.Kind)
@@ -363,7 +363,7 @@ func TestRepositoryChangeQueriesRetryRateLimitsAndUnavailabilityWithProviderDela
 					_, _ = response.Write([]byte(body))
 				}))
 				defer server.Close()
-				client := newClient(t, server.URL, githubconnector.Config{}, githubconnector.WithClock(func() time.Time {
+				client := newClient(t, server.URL, github.Config{}, github.WithClock(func() time.Time {
 					return time.Unix(1767225605, 0)
 				}))
 				outcome := query.invoke(client, "retry-step")
@@ -400,7 +400,7 @@ func TestRepositoryChangeQueriesRejectMalformedResponses(t *testing.T) {
 					_, _ = response.Write([]byte(body))
 				}))
 				defer server.Close()
-				outcome := query.invoke(newClient(t, server.URL, githubconnector.Config{}), "malformed-step")
+				outcome := query.invoke(newClient(t, server.URL, github.Config{}), "malformed-step")
 				require.NoError(t, outcome.err)
 				require.Equal(t, sdkgo.BranchID("invalidResponse"), outcome.branch)
 				require.Equal(t, sdkgo.FailureProtocol, outcome.failure.Kind)
@@ -413,7 +413,7 @@ func TestRepositoryChangeQueriesRejectMalformedResponses(t *testing.T) {
 				_, _ = response.Write([]byte(strings.Repeat("x", 128)))
 			}))
 			defer server.Close()
-			outcome := query.invoke(newClient(t, server.URL, githubconnector.Config{MaxResponseBytes: 64}), "oversized-step")
+			outcome := query.invoke(newClient(t, server.URL, github.Config{MaxResponseBytes: 64}), "oversized-step")
 			require.NoError(t, outcome.err)
 			require.Equal(t, sdkgo.BranchID("invalidResponse"), outcome.branch)
 			require.Equal(t, sdkgo.FailureResponseTooLarge, outcome.failure.Kind)
@@ -425,29 +425,29 @@ func TestRepositoryChangeQueriesValidateInputBeforeProviderAccess(t *testing.T) 
 	var requests atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { requests.Add(1) }))
 	defer server.Close()
-	client := newClient(t, server.URL, githubconnector.Config{})
+	client := newClient(t, server.URL, github.Config{})
 
-	mergedInputs := map[string]func(*githubconnector.ListMergedPullRequestsInput){
-		"blank owner":         func(input *githubconnector.ListMergedPullRequestsInput) { input.Owner = "" },
-		"owner with slash":    func(input *githubconnector.ListMergedPullRequestsInput) { input.Owner = "octo/cat" },
-		"qualifier injection": func(input *githubconnector.ListMergedPullRequestsInput) { input.Repository = "hello is:private" },
-		"dot repository":      func(input *githubconnector.ListMergedPullRequestsInput) { input.Repository = ".." },
-		"missing start":       func(input *githubconnector.ListMergedPullRequestsInput) { input.MergedAfter = time.Time{} },
-		"missing end":         func(input *githubconnector.ListMergedPullRequestsInput) { input.MergedBefore = time.Time{} },
-		"reversed window":     func(input *githubconnector.ListMergedPullRequestsInput) { input.MergedAfter = windowEnd },
-		"oversized page":      func(input *githubconnector.ListMergedPullRequestsInput) { input.PageSize = 101 },
-		"negative page":       func(input *githubconnector.ListMergedPullRequestsInput) { input.Page = -1 },
+	mergedInputs := map[string]func(*github.ListMergedPullRequestsInput){
+		"blank owner":         func(input *github.ListMergedPullRequestsInput) { input.Owner = "" },
+		"owner with slash":    func(input *github.ListMergedPullRequestsInput) { input.Owner = "octo/cat" },
+		"qualifier injection": func(input *github.ListMergedPullRequestsInput) { input.Repository = "hello is:private" },
+		"dot repository":      func(input *github.ListMergedPullRequestsInput) { input.Repository = ".." },
+		"missing start":       func(input *github.ListMergedPullRequestsInput) { input.MergedAfter = time.Time{} },
+		"missing end":         func(input *github.ListMergedPullRequestsInput) { input.MergedBefore = time.Time{} },
+		"reversed window":     func(input *github.ListMergedPullRequestsInput) { input.MergedAfter = windowEnd },
+		"oversized page":      func(input *github.ListMergedPullRequestsInput) { input.PageSize = 101 },
+		"negative page":       func(input *github.ListMergedPullRequestsInput) { input.Page = -1 },
 	}
 	for name, mutate := range mergedInputs {
 		input := mergedPullRequestsInput()
 		mutate(&input)
 		result, err := sdkgo.RunQuery(testsupport.NewDexContext("changes-flow", "invalid-merged-step"), client.ListMergedPullRequests(), githubConnection, input)
 		require.NoError(t, err, name)
-		require.Equal(t, githubconnector.ListMergedPullRequestsBranchDefect, result.Branch, name)
+		require.Equal(t, github.ListMergedPullRequestsBranchDefect, result.Branch, name)
 		require.Equal(t, sdkgo.FailureValidation, result.Failure.Kind, name)
 	}
 
-	fileInputs := map[string]githubconnector.ListPullRequestFilesInput{
+	fileInputs := map[string]github.ListPullRequestFilesInput{
 		"missing number":  {Owner: "octocat", Repository: "hello-world"},
 		"negative number": {Owner: "octocat", Repository: "hello-world", Number: -4},
 		"invalid owner":   {Owner: "-octocat", Repository: "hello-world", Number: 1},
@@ -456,26 +456,26 @@ func TestRepositoryChangeQueriesValidateInputBeforeProviderAccess(t *testing.T) 
 	for name, input := range fileInputs {
 		result, err := sdkgo.RunQuery(testsupport.NewDexContext("changes-flow", "invalid-files-step"), client.ListPullRequestFiles(), githubConnection, input)
 		require.NoError(t, err, name)
-		require.Equal(t, githubconnector.ListPullRequestFilesBranchDefect, result.Branch, name)
+		require.Equal(t, github.ListPullRequestFilesBranchDefect, result.Branch, name)
 		require.Equal(t, sdkgo.FailureValidation, result.Failure.Kind, name)
 	}
 
-	commitInputs := map[string]func(*githubconnector.ListCommitsInput){
-		"invalid repository": func(input *githubconnector.ListCommitsInput) { input.Repository = "hello/world" },
-		"reversed window":    func(input *githubconnector.ListCommitsInput) { input.Since, input.Until = windowEnd, windowStart },
-		"empty window":       func(input *githubconnector.ListCommitsInput) { input.Until = input.Since },
-		"control path":       func(input *githubconnector.ListCommitsInput) { input.Path = "docs/\nREADME.md" },
-		"long path":          func(input *githubconnector.ListCommitsInput) { input.Path = strings.Repeat("p", 4097) },
-		"ref with space":     func(input *githubconnector.ListCommitsInput) { input.Ref = "release v1" },
-		"long ref":           func(input *githubconnector.ListCommitsInput) { input.Ref = strings.Repeat("r", 256) },
-		"invalid page size":  func(input *githubconnector.ListCommitsInput) { input.PageSize = -1 },
+	commitInputs := map[string]func(*github.ListCommitsInput){
+		"invalid repository": func(input *github.ListCommitsInput) { input.Repository = "hello/world" },
+		"reversed window":    func(input *github.ListCommitsInput) { input.Since, input.Until = windowEnd, windowStart },
+		"empty window":       func(input *github.ListCommitsInput) { input.Until = input.Since },
+		"control path":       func(input *github.ListCommitsInput) { input.Path = "docs/\nREADME.md" },
+		"long path":          func(input *github.ListCommitsInput) { input.Path = strings.Repeat("p", 4097) },
+		"ref with space":     func(input *github.ListCommitsInput) { input.Ref = "release v1" },
+		"long ref":           func(input *github.ListCommitsInput) { input.Ref = strings.Repeat("r", 256) },
+		"invalid page size":  func(input *github.ListCommitsInput) { input.PageSize = -1 },
 	}
 	for name, mutate := range commitInputs {
-		input := githubconnector.ListCommitsInput{Owner: "octocat", Repository: "hello-world", Since: windowStart, Until: windowEnd}
+		input := github.ListCommitsInput{Owner: "octocat", Repository: "hello-world", Since: windowStart, Until: windowEnd}
 		mutate(&input)
 		result, err := sdkgo.RunQuery(testsupport.NewDexContext("changes-flow", "invalid-commits-step"), client.ListCommits(), githubConnection, input)
 		require.NoError(t, err, name)
-		require.Equal(t, githubconnector.ListCommitsBranchDefect, result.Branch, name)
+		require.Equal(t, github.ListCommitsBranchDefect, result.Branch, name)
 		require.Equal(t, sdkgo.FailureValidation, result.Failure.Kind, name)
 	}
 	require.Zero(t, requests.Load())
@@ -486,7 +486,7 @@ func TestRepositoryChangeQueriesRetryTransportFailuresWithoutLeakingCredentials(
 		require.Equal(t, "Bearer one-use-token", request.Header.Get("Authorization"))
 		return nil, fmt.Errorf("transport failed with one-use-token")
 	})}
-	client := newClient(t, "https://api.github.test", githubconnector.Config{}, githubconnector.WithHTTPClient(transportClient))
+	client := newClient(t, "https://api.github.test", github.Config{}, github.WithHTTPClient(transportClient))
 	for _, query := range repositoryChangeQueries() {
 		outcome := query.invoke(client, "transport-step")
 		var retry *sdkgo.RetryError
@@ -497,14 +497,14 @@ func TestRepositoryChangeQueriesRetryTransportFailuresWithoutLeakingCredentials(
 }
 
 func TestRepositoryChangeBoundsDefaultFromConfiguration(t *testing.T) {
-	defaults := githubconnector.DefaultConfig()
+	defaults := github.DefaultConfig()
 	require.Equal(t, int64(4000), defaults.MaxPullRequestBodyCharacters)
 	require.Equal(t, int64(4000), defaults.MaxPatchCharacters)
 	require.Equal(t, int64(4000), defaults.MaxCommitMessageCharacters)
-	credentials := sdkgo.StaticCredentialProvider[githubconnector.Credentials]{githubConnection: {
+	credentials := sdkgo.StaticCredentialProvider[github.Credentials]{githubConnection: {
 		AccessToken: sdkgo.NewSecretString("one-use-token"),
 	}}
-	_, err := githubconnector.New(githubconnector.Config{MaxPatchCharacters: -1}, credentials)
+	_, err := github.New(github.Config{MaxPatchCharacters: -1}, credentials)
 	require.ErrorContains(t, err, "maxPatchCharacters cannot be negative")
 
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
@@ -513,8 +513,8 @@ func TestRepositoryChangeBoundsDefaultFromConfiguration(t *testing.T) {
 	}))
 	defer server.Close()
 	result, err := sdkgo.RunQuery(
-		testsupport.NewDexContext("changes-flow", "default-bounds-step"), newClient(t, server.URL, githubconnector.Config{}).ListCommits(),
-		githubConnection, githubconnector.ListCommitsInput{Owner: "octocat", Repository: "hello-world", Since: windowStart, Until: windowEnd},
+		testsupport.NewDexContext("changes-flow", "default-bounds-step"), newClient(t, server.URL, github.Config{}).ListCommits(),
+		githubConnection, github.ListCommitsInput{Owner: "octocat", Repository: "hello-world", Since: windowStart, Until: windowEnd},
 	)
 	require.NoError(t, err)
 	require.Equal(t, strings.Repeat("é", 4000), result.Value.Commits[0].Message)
@@ -523,7 +523,7 @@ func TestRepositoryChangeBoundsDefaultFromConfiguration(t *testing.T) {
 
 type changeQuery struct {
 	name            string
-	invoke          func(client *githubconnector.Client, stepExecutionID string) changeQueryOutcome
+	invoke          func(client *github.Client, stepExecutionID string) changeQueryOutcome
 	writeSuccess    func(t *testing.T, response http.ResponseWriter)
 	malformedBodies map[string]string
 }
@@ -539,7 +539,7 @@ func repositoryChangeQueries() []changeQuery {
 	return []changeQuery{
 		{
 			name: "listMergedPullRequests",
-			invoke: func(client *githubconnector.Client, stepExecutionID string) changeQueryOutcome {
+			invoke: func(client *github.Client, stepExecutionID string) changeQueryOutcome {
 				result, err := sdkgo.RunQuery(testsupport.NewDexContext("changes-flow", stepExecutionID), client.ListMergedPullRequests(), githubConnection, mergedPullRequestsInput())
 				return newChangeQueryOutcome(result.Branch, result.Failure, result, err)
 			},
@@ -562,9 +562,9 @@ func repositoryChangeQueries() []changeQuery {
 		},
 		{
 			name: "listPullRequestFiles",
-			invoke: func(client *githubconnector.Client, stepExecutionID string) changeQueryOutcome {
+			invoke: func(client *github.Client, stepExecutionID string) changeQueryOutcome {
 				result, err := sdkgo.RunQuery(testsupport.NewDexContext("changes-flow", stepExecutionID), client.ListPullRequestFiles(), githubConnection,
-					githubconnector.ListPullRequestFilesInput{Owner: "octocat", Repository: "hello-world", Number: 42})
+					github.ListPullRequestFilesInput{Owner: "octocat", Repository: "hello-world", Number: 42})
 				return newChangeQueryOutcome(result.Branch, result.Failure, result, err)
 			},
 			writeSuccess: func(t *testing.T, response http.ResponseWriter) {
@@ -583,9 +583,9 @@ func repositoryChangeQueries() []changeQuery {
 		},
 		{
 			name: "listCommits",
-			invoke: func(client *githubconnector.Client, stepExecutionID string) changeQueryOutcome {
+			invoke: func(client *github.Client, stepExecutionID string) changeQueryOutcome {
 				result, err := sdkgo.RunQuery(testsupport.NewDexContext("changes-flow", stepExecutionID), client.ListCommits(), githubConnection,
-					githubconnector.ListCommitsInput{Owner: "octocat", Repository: "hello-world", Since: windowStart, Until: windowEnd})
+					github.ListCommitsInput{Owner: "octocat", Repository: "hello-world", Since: windowStart, Until: windowEnd})
 				return newChangeQueryOutcome(result.Branch, result.Failure, result, err)
 			},
 			writeSuccess: func(t *testing.T, response http.ResponseWriter) {
@@ -614,8 +614,8 @@ func newChangeQueryOutcome(branch sdkgo.BranchID, failure *sdkgo.Failure, result
 	return changeQueryOutcome{branch: branch, failure: failure, encoded: string(encoded), err: err}
 }
 
-func mergedPullRequestsInput() githubconnector.ListMergedPullRequestsInput {
-	return githubconnector.ListMergedPullRequestsInput{
+func mergedPullRequestsInput() github.ListMergedPullRequestsInput {
+	return github.ListMergedPullRequestsInput{
 		Owner: "octocat", Repository: "hello-world", MergedAfter: windowStart, MergedBefore: windowEnd,
 	}
 }

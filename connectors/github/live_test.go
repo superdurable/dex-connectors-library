@@ -3,7 +3,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-package githubconnector_test
+package github_test
 
 import (
 	"os"
@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	githubconnector "github.com/superdurable/dex-connectors-library/connectors/github"
+	"github.com/superdurable/dex-connectors-library/connectors/github"
 	"github.com/superdurable/dex-connectors-library/connectors/github/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
@@ -22,24 +22,24 @@ func TestLiveAuthenticatedProfileAndPublicRepositories(t *testing.T) {
 	if token == "" {
 		t.Skip("GITHUB_CONNECTOR_TEST_TOKEN is not configured")
 	}
-	credentials := sdkgo.StaticCredentialProvider[githubconnector.Credentials]{githubConnection: {
+	credentials := sdkgo.StaticCredentialProvider[github.Credentials]{githubConnection: {
 		AccessToken: sdkgo.NewSecretString(token),
 	}}
-	client, err := githubconnector.New(githubconnector.Config{}, credentials)
+	client, err := github.New(github.Config{}, credentials)
 	require.NoError(t, err)
 	profile, err := sdkgo.RunQuery(
 		testsupport.NewDexContext("live-github-flow", "live-profile-step"), client.GetAuthenticatedProfile(), githubConnection,
-		githubconnector.GetAuthenticatedProfileInput{},
+		github.GetAuthenticatedProfileInput{},
 	)
 	require.NoError(t, err)
-	require.Equal(t, githubconnector.GetAuthenticatedProfileBranchProfileLoaded, profile.Branch)
+	require.Equal(t, github.GetAuthenticatedProfileBranchProfileLoaded, profile.Branch)
 	require.NotEmpty(t, profile.Value.VerifiedEmail)
 	repositories, err := sdkgo.RunQuery(
 		testsupport.NewDexContext("live-github-flow", "live-repositories-step"), client.ListPublicRepositories(), githubConnection,
-		githubconnector.ListPublicRepositoriesInput{Login: profile.Value.Login, Limit: 5},
+		github.ListPublicRepositoriesInput{Login: profile.Value.Login, Limit: 5},
 	)
 	require.NoError(t, err)
-	require.Equal(t, githubconnector.ListPublicRepositoriesBranchRepositoriesLoaded, repositories.Branch)
+	require.Equal(t, github.ListPublicRepositoriesBranchRepositoriesLoaded, repositories.Branch)
 	require.LessOrEqual(t, len(repositories.Value.Repositories), 5)
 }
 
@@ -50,24 +50,24 @@ func TestLiveRepositoryChangeQueries(t *testing.T) {
 	if token == "" {
 		t.Skip("GITHUB_CONNECTOR_TEST_TOKEN is not configured")
 	}
-	credentials := sdkgo.StaticCredentialProvider[githubconnector.Credentials]{githubConnection: {
+	credentials := sdkgo.StaticCredentialProvider[github.Credentials]{githubConnection: {
 		AccessToken: sdkgo.NewSecretString(token),
 	}}
-	client, err := githubconnector.New(githubconnector.Config{}, credentials)
+	client, err := github.New(github.Config{}, credentials)
 	require.NoError(t, err)
 	verifyLiveRepositoryChangeQueries(t, client, "superdurable", "dex")
 }
 
-func verifyLiveRepositoryChangeQueries(t *testing.T, client *githubconnector.Client, owner string, repository string) {
+func verifyLiveRepositoryChangeQueries(t *testing.T, client *github.Client, owner string, repository string) {
 	t.Helper()
 	windowEnd := time.Now().UTC().Truncate(time.Second)
 	windowStart := windowEnd.AddDate(0, 0, -30)
 	merged, err := sdkgo.RunQuery(
 		testsupport.NewDexContext("live-github-flow", "live-merged-step"), client.ListMergedPullRequests(), githubConnection,
-		githubconnector.ListMergedPullRequestsInput{Owner: owner, Repository: repository, MergedAfter: windowStart, MergedBefore: windowEnd, PageSize: 5},
+		github.ListMergedPullRequestsInput{Owner: owner, Repository: repository, MergedAfter: windowStart, MergedBefore: windowEnd, PageSize: 5},
 	)
 	require.NoError(t, err)
-	require.Equal(t, githubconnector.ListMergedPullRequestsBranchListed, merged.Branch, "%+v", merged.Failure)
+	require.Equal(t, github.ListMergedPullRequestsBranchListed, merged.Branch, "%+v", merged.Failure)
 	require.LessOrEqual(t, len(merged.Value.PullRequests), 5)
 	require.GreaterOrEqual(t, merged.Value.TotalCount, len(merged.Value.PullRequests))
 	for _, pullRequest := range merged.Value.PullRequests {
@@ -81,10 +81,10 @@ func verifyLiveRepositoryChangeQueries(t *testing.T, client *githubconnector.Cli
 	if len(merged.Value.PullRequests) > 0 {
 		files, err := sdkgo.RunQuery(
 			testsupport.NewDexContext("live-github-flow", "live-files-step"), client.ListPullRequestFiles(), githubConnection,
-			githubconnector.ListPullRequestFilesInput{Owner: owner, Repository: repository, Number: merged.Value.PullRequests[0].Number, PageSize: 5},
+			github.ListPullRequestFilesInput{Owner: owner, Repository: repository, Number: merged.Value.PullRequests[0].Number, PageSize: 5},
 		)
 		require.NoError(t, err)
-		require.Equal(t, githubconnector.ListPullRequestFilesBranchListed, files.Branch, "%+v", files.Failure)
+		require.Equal(t, github.ListPullRequestFilesBranchListed, files.Branch, "%+v", files.Failure)
 		require.LessOrEqual(t, len(files.Value.Files), 5)
 		for _, file := range files.Value.Files {
 			require.NotEmpty(t, file.Filename)
@@ -93,10 +93,10 @@ func verifyLiveRepositoryChangeQueries(t *testing.T, client *githubconnector.Cli
 	}
 	commits, err := sdkgo.RunQuery(
 		testsupport.NewDexContext("live-github-flow", "live-commits-step"), client.ListCommits(), githubConnection,
-		githubconnector.ListCommitsInput{Owner: owner, Repository: repository, Since: windowStart, Until: windowEnd, PageSize: 5},
+		github.ListCommitsInput{Owner: owner, Repository: repository, Since: windowStart, Until: windowEnd, PageSize: 5},
 	)
 	require.NoError(t, err)
-	require.Equal(t, githubconnector.ListCommitsBranchListed, commits.Branch, "%+v", commits.Failure)
+	require.Equal(t, github.ListCommitsBranchListed, commits.Branch, "%+v", commits.Failure)
 	require.LessOrEqual(t, len(commits.Value.Commits), 5)
 	for _, commit := range commits.Value.Commits {
 		require.Regexp(t, `^[0-9a-f]{40}$`, commit.SHA)
@@ -106,14 +106,14 @@ func verifyLiveRepositoryChangeQueries(t *testing.T, client *githubconnector.Cli
 	missingRepository := "dex-connector-live-test-missing-repository"
 	rejected, err := sdkgo.RunQuery(
 		testsupport.NewDexContext("live-github-flow", "live-missing-search-step"), client.ListMergedPullRequests(), githubConnection,
-		githubconnector.ListMergedPullRequestsInput{Owner: owner, Repository: missingRepository, MergedAfter: windowStart, MergedBefore: windowEnd, PageSize: 1},
+		github.ListMergedPullRequestsInput{Owner: owner, Repository: missingRepository, MergedAfter: windowStart, MergedBefore: windowEnd, PageSize: 1},
 	)
 	require.NoError(t, err)
-	require.Equal(t, githubconnector.ListMergedPullRequestsBranchProviderRejected, rejected.Branch)
+	require.Equal(t, github.ListMergedPullRequestsBranchProviderRejected, rejected.Branch)
 	missing, err := sdkgo.RunQuery(
 		testsupport.NewDexContext("live-github-flow", "live-missing-commits-step"), client.ListCommits(), githubConnection,
-		githubconnector.ListCommitsInput{Owner: owner, Repository: missingRepository, Since: windowStart, Until: windowEnd, PageSize: 1},
+		github.ListCommitsInput{Owner: owner, Repository: missingRepository, Since: windowStart, Until: windowEnd, PageSize: 1},
 	)
 	require.NoError(t, err)
-	require.Equal(t, githubconnector.ListCommitsBranchNotFound, missing.Branch)
+	require.Equal(t, github.ListCommitsBranchNotFound, missing.Branch)
 }

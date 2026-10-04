@@ -51,12 +51,11 @@ repository root:
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/postgresql/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/postgresql \
-  --version v0.1.0 --tag connectors/postgresql/v0.1.0 \
+  --version v0.21.0 --tag connectors/postgresql/v0.21.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/postgresql-refund/release/connector-release.json \
   --digest-output /tmp/postgresql-refund/release/connector-release.json.sha256
 dexcli dev --open=false --flow-rendering-dir /tmp/postgresql-refund/graphs \
-  --connector-config-dir /tmp/postgresql-refund/connections \
   --connector-release-override postgresql=/tmp/postgresql-refund/release
 ```
 
@@ -64,10 +63,13 @@ Open Dex Web at `http://127.0.0.1:8802`. In **Connections**, save
 `postgresql / postgresql-ledger` with the host, database, user, and password
 of the role that received the grant. Keep the defaults unless your server needs
 another port, a stricter `sslMode`, or longer timeouts. The connection must
-show **Ready** and **Local override**. In another terminal, start the Worker:
+show **Ready** and **Local override**. Dex Web or Superverse Studio writes the
+connection to the project configuration. In another terminal, start the Worker
+with the `DEX_PROJECT_*` environment that names that configuration, as
+[project configuration loading](../../../../sdkgo/projectconfig/README.md#application-loading)
+describes:
 
 ```bash
-DEX_CONNECTOR_CONFIG_FILE=/tmp/postgresql-refund/connections/connections.json \
 DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 \
 go run ./examples/record-refund
 ```

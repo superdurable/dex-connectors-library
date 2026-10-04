@@ -56,15 +56,16 @@ The refresh driver uses `sdkgo/oauthtoken`: the refresh-token grant with
 `ClientSecretPost`, `RefreshWhenExpiryMissing`, and an RS256 JWT-bearer
 assertion from `SignJWTBearerAssertion` for delegation. `invalid_grant`,
 `invalid_client`, and `unauthorized_client` require reauthorization. When
-Google omits a new refresh token, the prior one is kept. A 401 forces one
-coordinated refresh and one retry, never a refresh loop.
+Google omits a new refresh token, the prior one is kept. After a 401 the
+connector asks once for a refresh, which the project connection performs only
+when the stored expiry has passed, and then retries once; otherwise the 401
+selects `providerRejected`. There is never a refresh loop.
 
-The driver never owns persistence. Local development reloads and atomically
-replaces the private `0600` connection file. Hosted applications receive only
-an operation-scoped access token from the Superverse broker, decoded with
-`DecodeResolvedCredentialsJSON`, which rejects any renewal material; OAuth
-client secrets, refresh tokens, and service-account keys stay in the encrypted
-credential store.
+The driver never owns persistence. The project connection that
+`NewProjectConnection` opens admits one refresh per credential generation
+across application replicas and stores the complete replacement before the call
+uses it. OAuth client secrets, refresh tokens, and service-account keys stay in
+encrypted project storage and never enter a Flow.
 
 ## Time
 
@@ -160,20 +161,26 @@ The `ui/` package builds the credential-safe Studio setup bundle published as
 unit, including a manifest-declared picker, through that bundle, and release
 metadata requires the artifact whenever `spec.studio` is declared.
 
-## Local connection
+## Project connection
 
-Name the factory connection and load the same name at application startup, as
+Load the project configuration once at application startup and open the
+connection by the name its operations use, as
 [`examples/schedule-meeting/main.go`](examples/schedule-meeting/main.go) does:
 
 ```go
-store, err := localconfig.LoadFromEnvironment()
+project, err := projectconfig.LoadFromEnvironment(ctx)
 if err != nil {
 	return err
 }
-connection, err := calendar.NewLocalConnection(store, schedulemeeting.ConnectionName)
+connection, err := calendar.NewProjectConnection(project, schedulemeeting.ConnectionName)
 ```
 
-Set the same `ConnectionName` beside the typed `Connection` in each operation.
+`projectconfig.LoadFromEnvironment` reads the `DEX_PROJECT_*` configuration
+that Dex Web or Superverse Studio writes; see
+[`sdkgo/projectconfig`](../../../sdkgo/projectconfig/README.md#application-loading).
+Set the same `ConnectionName` beside the typed `Connection` in each operation:
+a Step whose `ConnectionName` is empty or differs from its connection's name
+panics at construction.
 
 ## Example
 

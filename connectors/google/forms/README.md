@@ -74,28 +74,36 @@ expire, so a token without a recorded expiry is refreshed
 `unauthorized_client`, missing refresh material, an invalid service-account
 key or delegated user, and a returned scope list without all three scopes
 require reauthorization. A Google 5xx is always retryable. If Google omits a new
-refresh token, the prior value is kept. A 401 forces one coordinated refresh and
-one resend, never a refresh loop.
+refresh token, the prior value is kept. After a 401 the connector asks once for
+a refresh, which the project connection performs only when the stored expiry
+has passed, and then resends once; otherwise the 401 selects
+`providerRejected`. There is never a refresh loop.
 
-The driver never owns persistence. Local development reloads and atomically
-replaces the private `0600` connection file. Hosted apps receive only an
-operation-scoped access token and the selected method from the Superverse
-broker: `DecodeResolvedCredentialsJSON` rejects refresh tokens, client
-secrets, and service-account keys, which stay in the encrypted credential
-store. `DecodeCredentialsJSON` and `EncodeCredentialsJSON` are the broker's
-trusted decode and persistence hooks.
+The driver never owns persistence. The project connection that
+`NewProjectConnection` opens admits one refresh per credential generation
+across application replicas and stores the complete replacement before the call
+uses it. Refresh tokens, client secrets, and service-account keys stay in
+encrypted project storage and never enter a Flow.
 
-For local Dex Web setup, name the factory connection and load the same name at
-application startup, as [`examples/response-recorder/main.go`](examples/response-recorder/main.go)
+Load the project configuration once at application startup and open the
+connection by the name its operations use, as
+[`examples/response-recorder/main.go`](examples/response-recorder/main.go)
 does:
 
 ```go
-store, err := localconfig.LoadFromEnvironment()
+project, err := projectconfig.LoadFromEnvironment(ctx)
 if err != nil {
 	return err
 }
-connection, err := forms.NewLocalConnection(store, responserecorder.ConnectionName)
+connection, err := forms.NewProjectConnection(project, responserecorder.ConnectionName)
 ```
+
+`projectconfig.LoadFromEnvironment` reads the `DEX_PROJECT_*` configuration
+that Dex Web or Superverse Studio writes; see
+[`sdkgo/projectconfig`](../../../sdkgo/projectconfig/README.md#application-loading).
+Set the same `ConnectionName` beside the typed `Connection` in each operation:
+a Step whose `ConnectionName` is empty or differs from its connection's name
+panics at construction.
 
 ## Reading a form
 
@@ -159,10 +167,9 @@ A poll `responseSubmitted` Trigger, modeled on Gmail's poller, would need a
 durable cursor, and `sdkgo` cannot persist one cleanly today. A
 `TriggerSource` receives only a context and a target. The generated source
 hook receives the connection reference and binding configuration, but no
-store and no binding name. `localconfig` persists pending events but no source
-state, and `hostedconfig` has no Trigger state. Gmail keeps its position in
-memory and rescans the newest inbox page after a restart. That works because
-Gmail lists newest first. The Forms listing has no documented order, so a
+store and no binding name. The project Trigger inbox persists pending events
+but no source state. Gmail keeps its position in memory and rescans the newest
+inbox page after a restart. That works because Gmail lists newest first. The Forms listing has no documented order, so a
 bounded rescan cannot find responses submitted while the process was down.
 
 The cursor a Forms poller needs, per binding, is:

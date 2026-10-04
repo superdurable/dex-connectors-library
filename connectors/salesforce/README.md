@@ -53,15 +53,23 @@ method's login host, `AcceptsMissingExpiresIn`, and `RetainedResponseFields`
 set to `instance_url`:
 
 - Dex Web maps `access_token`, `refresh_token`, and `instance_url` from the
-  authorization response. A session without an instance URL is refreshed once
-  before its first call, which fills it in.
-- A session without a recorded expiry is kept until Salesforce rejects it
-  (`KeepWhenExpiryMissing`). After a refresh the driver records a nominal
-  two-hour expiry, Salesforce's default session timeout; a shorter org timeout
-  costs one rejected call, and a longer one only refreshes early.
-- A 401 `INVALID_SESSION_ID` forces one coordinated refresh and one resend. A
-  second rejection selects `providerRejected`; it never loops. Salesforce
-  rejects a request with 401 before applying it, so resending a write is safe.
+  authorization response. A session without an access token or instance URL,
+  such as a new `salesforce-jwt-bearer` connection, is refreshed before its
+  first call, which fills both in.
+- A session without a recorded expiry, such as the one saved at
+  authorization, is kept (`KeepWhenExpiryMissing`). After a refresh the driver
+  records a nominal two-hour expiry, Salesforce's default session timeout, and
+  the session is refreshed within five minutes of it; a longer org timeout only
+  refreshes early.
+- After a 401 `INVALID_SESSION_ID` the connector asks once for a refresh.
+  Project storage refreshes only when the recorded expiry has passed, and the
+  connector then resends once; otherwise, or after a second rejection, the call
+  selects `providerRejected`. It never loops. Salesforce rejects a request with
+  401 before applying it, so resending a write is safe. A session that
+  Salesforce ends before its recorded expiry, because the org timeout is
+  shorter than two hours, therefore keeps selecting `providerRejected` until it
+  is within five minutes of that expiry; a session without a recorded expiry
+  keeps selecting it until the connection is authorized again.
 - `invalid_grant`, `invalid_client`, `invalid_client_id`,
   `invalid_client_credentials`, `unauthorized_client`, `unsupported_grant_type`,
   `inactive_user`, `inactive_org`, and a session without the `api` or `full`
@@ -77,24 +85,23 @@ two minutes after `iat`. It has no `scope` claim, because Salesforce takes the
 scopes from the app. The response has no refresh token, so every refresh mints
 a new session with a new assertion.
 
-The driver never owns persistence. Local development reloads and atomically
-replaces the private `0600` connection file. Hosted apps receive only the
-selected method, the session token, and the instance URL:
-`DecodeResolvedCredentialsJSON` rejects refresh tokens, client secrets, and
-private keys. `DecodeCredentialsJSON` and `EncodeCredentialsJSON` are the
-broker's trusted decode and persistence hooks.
+The driver never owns persistence. Project storage keeps the credentials, and
+each refreshed session replaces them atomically there.
 
-For local Dex Web setup, name the factory connection and load the same name at
-application startup, as [`examples/record-sync/main.go`](examples/record-sync/main.go)
-does:
+Dex Web or Superverse Studio saves the connection in the project configuration.
+Name the factory connection and open the same name at application startup, as
+[`examples/record-sync/main.go`](examples/record-sync/main.go) does:
 
 ```go
-store, err := localconfig.LoadFromEnvironment()
+project, err := projectconfig.LoadFromEnvironment(ctx)
 if err != nil {
 	return err
 }
-connection, err := salesforce.NewLocalConnection(store, recordsync.ConnectionName)
+connection, err := salesforce.NewProjectConnection(project, recordsync.ConnectionName)
 ```
+
+`LoadFromEnvironment` reads the `DEX_PROJECT_*` environment described in
+[project configuration](../../sdkgo/projectconfig/README.md).
 
 ## Querying with bound values
 
@@ -208,7 +215,7 @@ keeps the message text, which can repeat record values.
 | `UNABLE_TO_LOCK_ROW` | Retry, as a conflict |
 | `SERVER_UNAVAILABLE`, 5xx, transport failure | Retry |
 | `DUPLICATE_VALUE` on upsert | Retry, as a concurrent attempt |
-| 401, `INVALID_SESSION_ID` after the one refresh | `providerRejected` (authentication) |
+| 401, `INVALID_SESSION_ID`, after one refresh and resend only when the stored session has expired | `providerRejected` (authentication) |
 | `INSUFFICIENT_ACCESS`, `INSUFFICIENT_ACCESS_OR_READONLY`, `API_DISABLED_FOR_ORG`, 403 | `providerRejected` (authorization) |
 | `NOT_FOUND`, `ENTITY_IS_DELETED`, 404 | `notFound` on `getRecord` and `updateRecord`; `providerRejected` on `queryRecords` and upsert, where it means an unknown path, object, or external ID field |
 | Other 400, 409, 412, 422, such as `MALFORMED_QUERY`, `INVALID_FIELD`, `REQUIRED_FIELD_MISSING`, `FIELD_CUSTOM_VALIDATION_EXCEPTION`, `DUPLICATES_DETECTED`, `ENTITY_IS_LOCKED` | `queryRejected`, `recordRejected`, or `providerRejected` on `getRecord` |

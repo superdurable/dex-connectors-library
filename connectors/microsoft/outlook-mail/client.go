@@ -103,7 +103,7 @@ func WithClock(now func() time.Time) Option {
 // for concurrent use by several Steps.
 type Client struct {
 	httpClient       *http.Client
-	credentials      sdkgo.CredentialProvider[Credentials]
+	credentials      CredentialSource
 	refreshDriver    *CredentialRefreshDriver
 	appOnlyMailbox   string
 	maxResponseBytes int64
@@ -113,7 +113,7 @@ type Client struct {
 // New validates configuration and constructs a client. Credentials are resolved before every operation,
 // so a replaced secret or a refreshed token takes effect without a restart; the app-only mailbox and the
 // response limit are startup configuration. Construction never contacts Microsoft.
-func New(config Config, credentials sdkgo.CredentialProvider[Credentials], options ...Option) (*Client, error) {
+func New(config Config, credentials CredentialSource, options ...Option) (*Client, error) {
 	config = withConfigDefaults(config)
 	if err := config.Validate(); err != nil {
 		return nil, err

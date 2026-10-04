@@ -100,7 +100,7 @@ func WithClock(now func() time.Time) Option {
 type Client struct {
 	apiURL           string
 	httpClient       *http.Client
-	credentials      sdkgo.CredentialProvider[Credentials]
+	credentials      CredentialSource
 	refreshDriver    *CredentialRefreshDriver
 	maxResponseBytes int64
 	now              func() time.Time
@@ -159,7 +159,7 @@ type graphQLErrorSummary struct {
 // Credentials are resolved before every provider call, so a replaced personal token or a
 // refreshed OAuth token takes effect without a restart; the response limit is startup
 // configuration. Construction never contacts monday.com.
-func New(config Config, credentials sdkgo.CredentialProvider[Credentials], options ...Option) (*Client, error) {
+func New(config Config, credentials CredentialSource, options ...Option) (*Client, error) {
 	config = withConfigDefaults(config)
 	if err := config.Validate(); err != nil {
 		return nil, err
@@ -566,7 +566,7 @@ func (credentials Credentials) authorizationToken() sdkgo.SecretString {
 	return credentials.APIToken
 }
 
-// validateResolvedCredentials checks only what a request needs, so hosted broker output without renewal material passes.
+// validateResolvedCredentials checks only what a request needs, so credentials without renewal material pass.
 func validateResolvedCredentials(credentials Credentials) error {
 	switch credentials.AuthMethodID {
 	case PersonalAPITokenAuthMethodID, OAuthAuthMethodID:

@@ -28,7 +28,7 @@ The names follow the Slack connector's `PostChannelMessage` and
 `importance`, and, for a root channel message, a one-line `subject`. The
 connection's `maxMessageBytes` bounds content and subject before anything is
 sent; Microsoft's limit is about 100 KB per post and it advises staying within
-80 KB. Mentions, attachments, and cards are not supported in v0.1.0.
+80 KB. Mentions, attachments, and cards are not supported.
 
 `ListThreadReplies` returns one page of 1 to 50 replies and a `nextCursor`.
 Graph accepts only `$top` on this list, so no `$select` is sent; it documents
@@ -41,8 +41,10 @@ only when it stays on the endpoint's scheme and host and names the same thread.
 Every operation selects `defect` for invalid input or configuration without a
 request. A conclusive Graph refusal selects `providerRejected` (and `notFound`
 for a missing thread when reading); the failure names the HTTP status and
-Graph's `error.code`, never `error.message`. A 401 refreshes the token and
-retries once. 429, 503, 504, other 5xx, 408, and dropped connections retry
+Graph's `error.code`, never `error.message`. After a 401 the connector asks
+once for a token refresh, which the project connection performs only when the
+stored expiry has passed, and then retries once; otherwise the 401 selects
+`providerRejected`. 429, 503, 504, other 5xx, 408, and dropped connections retry
 after `Retry-After` when Graph sends one. Teams allows about one request per
 second per channel or chat.
 
@@ -165,30 +167,29 @@ There is no Adaptive Card approval. Graph can post a card, but the
 Bot Framework bot registered for the app, which this delegated connector is
 not. The example asks people to reply with a phrase instead.
 
-## Local configuration
+## Project connection
 
-The Worker reads a Dex Web connection file. A hand-written record looks like
-this; Dex Web writes the real tokens and `credentialExpiresAt` after Connect:
+Dex Web saves the client ID and secret and, after Connect, the access and
+refresh tokens in encrypted project storage. Load the project configuration
+once at application startup and open the connection by the name its operations
+use, as
+[`examples/incident-acknowledgement/main.go`](examples/incident-acknowledgement/main.go)
+does:
 
-```json
-{
-  "schemaVersion": "connectors.dex.dev/local-connections/v1alpha1",
-  "connections": [{
-    "connectorId": "microsoft-teams",
-    "modulePath": "github.com/superdurable/dex-connectors-library/connectors/microsoft/teams",
-    "moduleVersion": "v0.1.0",
-    "provider": "microsoft",
-    "connectionName": "microsoft-teams",
-    "configuration": {},
-    "credentials": {
-      "oauth_client_id": "00001111-aaaa-2222-bbbb-3333cccc4444",
-      "oauth_client_secret": "<client secret value>",
-      "access_token": "<from OAuth>",
-      "refresh_token": "<from OAuth>"
-    }
-  }]
+```go
+project, err := projectconfig.LoadFromEnvironment(ctx)
+if err != nil {
+	return err
 }
+connection, err := teams.NewProjectConnection(project, incidentacknowledgement.ConnectionName)
 ```
+
+`projectconfig.LoadFromEnvironment` reads the `DEX_PROJECT_*` configuration
+that Dex Web or Superverse Studio writes; see
+[`sdkgo/projectconfig`](../../../sdkgo/projectconfig/README.md#application-loading).
+Set the same `ConnectionName` beside the typed `Connection` in each operation:
+a Step whose `ConnectionName` is empty or differs from its connection's name
+panics at construction.
 
 ## Example
 

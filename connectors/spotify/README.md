@@ -17,13 +17,15 @@ number of returned tracks.
 The connector requests only `playlist-read-private` through Spotify OAuth with
 PKCE. The access token is resolved immediately before each provider call and
 never enters Flow input, Results, receipts, logs, fixtures, or generated code.
-Dex refreshes Spotify's one-hour access token within five minutes of expiry and
-atomically preserves or replaces the returned refresh token. Hosted apps
-receive only the operation-scoped access token from the Superverse broker.
-Spotify [refresh tokens now expire after six
+Credentials stay in project storage. When Spotify's one-hour access token is
+within five minutes of its recorded expiry, the connector refreshes it before
+the call and project storage atomically preserves or replaces the returned
+refresh token. Spotify [refresh tokens now expire after six
 months](https://developer.spotify.com/documentation/web-api/tutorials/refreshing-tokens);
-`invalid_grant` marks the connection for reauthorization. A 401 triggers at
-most one coordinated refresh and request retry.
+`invalid_grant` marks the connection for reauthorization. After a 401 the
+connector asks once for a refresh, which project storage performs only when the
+recorded expiry has passed, and then retries the request once; otherwise the
+401 selects `authorizationRevoked`.
 
 The operation has these branches:
 
@@ -54,7 +56,23 @@ and [Developer Policy](https://developer.spotify.com/policy), including links
 back to Spotify and the restrictions on downloads and AI training.
 
 The [playlist-tracks example](examples/playlist-tracks/README.md) is a runnable
-FDG 2.0 Start Flow that lists one page and displays it in Dex Web.
+FDG 2.0 Start Flow that lists one page and displays it in Dex Web. Its
+[`main.go`](examples/playlist-tracks/main.go) loads the project configuration
+that Dex Web or Superverse Studio writes and opens the connection by name:
+
+```go
+project, err := projectconfig.LoadFromEnvironment(ctx)
+if err != nil {
+	return err
+}
+connection, err := spotify.NewProjectConnection(project, playlisttracks.ConnectionName)
+if err != nil {
+	return err
+}
+```
+
+`LoadFromEnvironment` reads the `DEX_PROJECT_*` environment described in
+[project configuration](../../sdkgo/projectconfig/README.md).
 
 ## Test
 

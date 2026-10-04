@@ -4,7 +4,6 @@
 package gmail
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -81,40 +80,6 @@ func (driver *CredentialRefreshDriver) Refresh(
 	default:
 		return sdkgo.CredentialRefreshResult[Credentials]{}, errors.New("Gmail authorization method is not supported")
 	}
-}
-
-// DecodeCredentialsJSON decodes trusted broker credential material using connector validation.
-func DecodeCredentialsJSON(contents json.RawMessage) (Credentials, error) {
-	return decodeLocalCredentials(contents)
-}
-
-// DecodeResolvedCredentialsJSON decodes an operation-scoped credential returned by the hosted broker.
-// Renewal material is intentionally absent from this short-lived representation.
-func DecodeResolvedCredentialsJSON(contents json.RawMessage) (Credentials, error) {
-	var fields struct {
-		AuthMethodID string `json:"auth_method"`
-		AccessToken  string `json:"access_token"`
-		PrimaryEmail string `json:"primary_email"`
-	}
-	decoder := json.NewDecoder(bytes.NewReader(contents))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&fields); err != nil {
-		return Credentials{}, errors.New("Gmail resolved credential is invalid")
-	}
-	credentials := Credentials{
-		AuthMethodID: fields.AuthMethodID,
-		AccessToken:  sdkgo.NewSecretString(fields.AccessToken),
-		PrimaryEmail: fields.PrimaryEmail,
-	}
-	return credentials, validateResolvedCredentials(credentials)
-}
-
-// EncodeCredentialsJSON encodes complete credential material for trusted atomic persistence.
-func EncodeCredentialsJSON(credentials Credentials) ([]byte, error) {
-	if err := credentials.Validate(); err != nil {
-		return nil, err
-	}
-	return encodeLocalCredentials(credentials)
 }
 
 func (driver *CredentialRefreshDriver) googleTokenEndpoint(tokenEndpointURL string) oauthtoken.TokenEndpoint {

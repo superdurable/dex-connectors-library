@@ -5,12 +5,12 @@ metadata:
   displayName: LinkedIn
   description: Read the authenticated member's OpenID Connect UserInfo profile and verified email.
   company: LinkedIn
-  version: v0.8.1
+  version: v0.21.0
 spec:
   provider: linkedin
   codegen:
     go:
-      package: linkedinconnector
+      package: linkedin
   configuration:
     fields:
       - name: userInfoUrl
@@ -32,6 +32,7 @@ spec:
         required: false
         default: 1048576
   auth:
+    refreshable: true
     type: oauth2
     connectionKind: linkedin-oidc
     fields:

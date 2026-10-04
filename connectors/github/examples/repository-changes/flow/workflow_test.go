@@ -6,7 +6,7 @@ package repositorychanges
 import (
 	"testing"
 
-	githubconnector "github.com/superdurable/dex-connectors-library/connectors/github"
+	"github.com/superdurable/dex-connectors-library/connectors/github"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -17,10 +17,10 @@ func TestRegisteredTypesMatchTheFlowDefinitionGraph(t *testing.T) {
 		t.Fatalf("Flow type = %q", flowType)
 	}
 	for got, want := range map[string]string{
-		dex.GetFinalStepType[Input](startRepositoryChangesReport{}):                                    "startRepositoryChangesReport",
-		dex.GetFinalStepType[githubconnector.ListMergedPullRequestsResult](recordMergedPullRequests{}): "recordMergedPullRequests",
-		dex.GetFinalStepType[githubconnector.ListPullRequestFilesResult](recordPullRequestFiles{}):     "recordPullRequestFiles",
-		dex.GetFinalStepType[githubconnector.ListCommitsResult](completeRepositoryChangesReport{}):     "completeRepositoryChangesReport",
+		dex.GetFinalStepType[Input](startRepositoryChangesReport{}):                           "startRepositoryChangesReport",
+		dex.GetFinalStepType[github.ListMergedPullRequestsResult](recordMergedPullRequests{}): "recordMergedPullRequests",
+		dex.GetFinalStepType[github.ListPullRequestFilesResult](recordPullRequestFiles{}):     "recordPullRequestFiles",
+		dex.GetFinalStepType[github.ListCommitsResult](completeRepositoryChangesReport{}):     "completeRepositoryChangesReport",
 	} {
 		if got != want {
 			t.Fatalf("Step type = %q, want %q", got, want)
@@ -31,7 +31,7 @@ func TestRegisteredTypesMatchTheFlowDefinitionGraph(t *testing.T) {
 func TestFileReadsFollowTheNewestBoundedPullRequests(t *testing.T) {
 	report := Report{Input: Input{Owner: "octocat", Repository: "hello-world"}}
 	for _, number := range []int{44, 43, 42, 41} {
-		report.PullRequests = append(report.PullRequests, PullRequestChanges{PullRequest: githubconnector.MergedPullRequest{Number: number}})
+		report.PullRequests = append(report.PullRequests, PullRequestChanges{PullRequest: github.MergedPullRequest{Number: number}})
 	}
 	for _, want := range []int{44, 43, 42} {
 		request, hasPendingRequest := nextPullRequestFilesRequest(report)

@@ -6,14 +6,11 @@ package airtable_test
 import (
 	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/airtable"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -76,7 +73,7 @@ func TestFactoriesRequireOnlyTheHappyPathBranch(t *testing.T) {
 	})
 	require.Panics(t, func() {
 		airtable.NewUpsertRecordsStep(airtable.UpsertRecordsStepConfig[string]{
-			StepType: "Upsert", Connection: connection,
+			StepType: "Upsert", Annotations: annotations, Connection: connection, ConnectionName: airtableConnection.Name,
 			MapToOperationInput: func(string) airtable.UpsertRecordsInput { return airtable.UpsertRecordsInput{} },
 			ProviderRejected:    sdkgo.GoTo(upsertTarget{}),
 		})
@@ -136,38 +133,6 @@ func TestNewRejectsUnsafeEndpointsAndMissingDependencies(t *testing.T) {
 	require.NoError(t, err, "a blank endpoint uses Airtable's public API host")
 	require.NotNil(t, client)
 	require.Equal(t, "https://api.airtable.com", airtable.DefaultConfig().Endpoint)
-}
-
-// TestLocalConnectionReadsTheRecordDexWebWrites uses the record Dex Web saves for a manifest without auth methods.
-func TestLocalConnectionReadsTheRecordDexWebWrites(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "connections.json")
-	contents, err := json.Marshal(map[string]any{
-		"schemaVersion": localconfig.SchemaVersion,
-		"connections": []map[string]any{{
-			"connectorId": airtable.ConnectorID, "modulePath": "github.com/superdurable/dex-connectors-library/connectors/airtable",
-			"moduleVersion": "v0.1.0", "provider": "airtable", "connectionName": airtableConnection.Name,
-			"configuration": map[string]any{},
-			"credentials":   map[string]any{"personal_access_token": testAccessToken},
-		}},
-	})
-	require.NoError(t, err)
-	require.NoError(t, os.WriteFile(path, contents, 0o600))
-	store, err := localconfig.LoadFile(path)
-	require.NoError(t, err)
-	connection, err := airtable.NewLocalConnection(store, airtableConnection.Name)
-	require.NoError(t, err)
-	require.Contains(t, fmt.Sprint(connection), "REDACTED")
-}
-
-func TestDecodeResolvedCredentialsJSONAcceptsOnlyAHeaderSafeToken(t *testing.T) {
-	credentials, err := airtable.DecodeResolvedCredentialsJSON(json.RawMessage(`{"personal_access_token":"` + testAccessToken + `"}`))
-	require.NoError(t, err)
-	require.Equal(t, testAccessToken, credentials.PersonalAccessToken.Reveal())
-	for _, contents := range []string{`{}`, `{"personal_access_token":""}`, `{"personal_access_token":"pat with space"}`, `{"personal_access_token":"x","refresh_token":"y"}`} {
-		_, err := airtable.DecodeResolvedCredentialsJSON(json.RawMessage(contents))
-		require.Error(t, err, contents)
-		require.NotContains(t, err.Error(), "pat with space")
-	}
 }
 
 func newTestConnection(t *testing.T) airtable.Connection {

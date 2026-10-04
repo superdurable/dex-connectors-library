@@ -5,7 +5,7 @@ metadata:
   displayName: Xero
   description: "Find Xero contacts by email, list and read invoices, raise invoices with exact decimal amounts in any enabled currency, and record payments against them, with every write sent under a Xero Idempotency-Key derived from the Step."
   company: Xero
-  version: v0.1.0
+  version: v0.21.0
 spec:
   provider: xero
   codegen:
@@ -20,6 +20,7 @@ spec:
         required: false
         default: 4194304
   auth:
+    refreshable: true
     defaultMethod: custom-connection
     methods:
       - id: custom-connection

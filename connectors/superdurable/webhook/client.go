@@ -8,7 +8,7 @@
 // event in every accepting binding's durable inbox before answering 200. The sendEvent Mutation POSTs
 // one JSON event to the connection's delivery URL, signed with the Standard Webhooks scheme.
 //
-// The runnable examples/form-submission application mounts NewLocalRequestReceivedEndpointRunner and
+// The runnable examples/form-submission application mounts NewProjectRequestReceivedEndpointRunner and
 // starts one Flow per verified submission.
 package webhook
 
@@ -48,7 +48,7 @@ func WithClock(now func() time.Time) Option {
 }
 
 // WithLogger sends the endpoint's delivery records and those of the durable inboxes that
-// NewLocalRequestReceivedEndpointRunner creates to logger. Without it, those records go to slog.Default().
+// NewProjectRequestReceivedEndpointRunner creates to logger. Without it, those records go to slog.Default().
 // Records carry event IDs, never bodies or secrets.
 func WithLogger(logger *slog.Logger) Option {
 	return func(options *clientOptions) { options.logger = logger }

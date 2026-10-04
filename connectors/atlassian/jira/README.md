@@ -92,54 +92,43 @@ which Dex Web checks against `^[A-Za-z0-9._~-]+$` and path-escapes. On a
 Dex Web `cli-v1.1.0` sends no connection configuration to a unit, so the unit
 cannot read the connection's `cloudId`. It asks for a site `cloudId` used only
 for listing, and it always accepts a typed project key. Studio commands send
-the stored access token, which Dex Web does not refresh; a running Worker
-refreshes and persists it, and otherwise **Reconnect** issues a new one.
+the stored access token, which Dex Web does not refresh; the Worker's next Jira
+call refreshes and persists it, and otherwise **Reconnect** issues a new one.
 
-## Local configuration
+## Project configuration
 
-Dex Web writes this record for the connection name the application uses:
-
-```json
-{
-  "schemaVersion": "connectors.dex.dev/local-connections/v1alpha1",
-  "connections": [{
-    "connectorId": "jira",
-    "modulePath": "github.com/superdurable/dex-connectors-library/connectors/atlassian/jira",
-    "moduleVersion": "v0.1.0",
-    "provider": "atlassian",
-    "connectionName": "jira-triage",
-    "configuration": {"cloudId": "1324a887-45db-1bf4-1e99-ef0ff456d421"},
-    "credentials": {"oauth_client_id": "...", "oauth_client_secret": "...", "access_token": "...", "refresh_token": "..."}
-  }]
-}
-```
-
-Load it with `localconfig.LoadFromEnvironment` and
-`jira.NewLocalConnection(store, "jira-triage")`. Credentials are reread and
-refreshed before every provider call; `cloudId`, `endpoint`, and
-`maxResponseBytes` are startup configuration.
-
-## Hosted credentials
-
-In Superverse-hosted deployments, construct the client with the
-operation-scoped broker provider and `DecodeResolvedCredentialsJSON`, which
-accepts only `access_token`:
+Dex Web or Superverse Studio saves the connection's settings and credentials in
+the project configuration. The application loads that configuration once and
+opens the connection by the name it declares, as
+[`examples/triage-issue/main.go`](examples/triage-issue/main.go) does:
 
 ```go
-provider, err := hostedconfig.NewCredentialProviderFromEnvironment(jira.ConnectorID, "jira-triage", jira.DecodeResolvedCredentialsJSON)
+project, err := projectconfig.LoadFromEnvironment(ctx)
 if err != nil {
-    return err
+	return err
 }
-client, err := jira.New(jira.Config{CloudID: cloudID}, provider)
+connection, err := jira.NewProjectConnection(project, triageissue.ConnectionName)
+if err != nil {
+	return err
+}
 ```
+
+`LoadFromEnvironment` reads the `DEX_PROJECT_*` environment described in
+[project configuration](../../../sdkgo/projectconfig/README.md). Credentials
+stay in project storage, are read for every provider call, and are refreshed
+first when the access token is missing, has no recorded expiry, or expires
+within five minutes; `cloudId`, `endpoint`, and `maxResponseBytes` are startup
+configuration.
 
 ## Operations
 
 Every operation bounds its requests by 25 seconds in total and each request by
 20 seconds, below the 30-second Execute timeout. Redirects are never followed.
-After a 401, the connector refreshes the credential once and resends once,
-because Jira rejects an unauthenticated request before acting on it. A
-response that contains the access token is never returned.
+After a 401, the connector asks once for a refresh. Project storage refreshes
+only when the recorded expiry has passed, and the connector then resends once,
+because Jira rejects an unauthenticated request before acting on it; otherwise
+the 401 selects `providerRejected`. A response that contains the access token
+is never returned.
 
 ### searchIssues
 

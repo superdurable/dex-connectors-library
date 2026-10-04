@@ -22,8 +22,8 @@ import (
 var shouldUpdateGoldenFiles = flag.Bool("update-golden", false, "rewrite code generation golden files")
 
 const (
-	multipleAuthSelectionManifestPath = "../../schema/testdata/multiple-auth-selection.yaml"
-	multipleAuthSelectionFixturePath  = "testdata/multipleauthselection"
+	apiKeyMethodsManifestPath = "../../schema/testdata/api-key-methods.yaml"
+	apiKeyMethodsFixturePath  = "testdata/apikeymethods"
 )
 
 func TestGenerateIsDeterministicAndIncludesTypedOAuthCredentials(t *testing.T) {
@@ -53,10 +53,15 @@ func TestGenerateIsDeterministicAndIncludesTypedOAuthCredentials(t *testing.T) {
 	require.Contains(t, text, "func(IN) AppendRowsInput")
 	require.Contains(t, text, "`connector:\"mapToOperationInput\"`")
 	require.Contains(t, text, "func NewAppendRowsStep[IN any]")
-	require.Contains(t, text, "func NewLocalConnection(store *localconfig.Store, connectionName string")
+	require.Contains(t, text, "func NewProjectConnection(project *projectconfig.LoadedProject, connectionName string")
+	require.Contains(t, text, "type CredentialSource = sdkgo.CredentialProvider[Credentials]")
+	require.Contains(t, text, "provider.NewCredentialProvider(project.Connections, key, decodeCredentials)")
+	require.Contains(t, text, "Step ConnectionName %q must equal its connection's name %q")
+	require.NotContains(t, text, "localconfig")
+	require.NotContains(t, text, "encodeCredentials")
 	require.Contains(t, text, "ConnectionName")
 	require.Contains(t, text, "`connector:\"connectionName\"`")
-	require.Contains(t, text, "decodeLocalCredentials")
+	require.Contains(t, text, "func decodeCredentials(contents json.RawMessage) (Credentials, error)")
 	require.Contains(t, text, "sdkgo.MutationFactoryConfigMarker")
 	require.Contains(t, text, "`connector:\"connectorId=google-sheets-fixture\"`")
 	require.Contains(t, text, "`connector:\"operationId=appendRows\"`")
@@ -99,8 +104,9 @@ func TestGenerateValidatesOnlyTheSelectedAuthMethod(t *testing.T) {
 	require.Contains(t, text, "credential access_token is required")
 	require.Contains(t, text, "credential service_account_key is required")
 	require.Contains(t, text, "credential auth_method is invalid")
-	require.Contains(t, text, "localconfig.NewRefreshingCredentialProvider")
-	require.Contains(t, text, "func encodeLocalCredentials(credentials Credentials) (json.RawMessage, error)")
+	require.Contains(t, text, "type CredentialSource = sdkgo.RefreshingCredentialProvider[Credentials]")
+	require.Contains(t, text, "provider.NewRefreshingCredentialProvider(project.Connections, key, decodeCredentials, encodeCredentials)")
+	require.Contains(t, text, "func encodeCredentials(credentials Credentials) (json.RawMessage, error)")
 	require.Contains(t, text, "credentials.OAuthClientSecret.Reveal()")
 	require.Contains(t, text, "credentials.RefreshToken.Reveal()")
 	require.NotContains(t, text, "AuthMethodIDs")
@@ -110,7 +116,7 @@ func TestGenerateValidatesOnlyTheSelectedAuthMethod(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestGenerateSingleSelectionAddsMethodConfigurationAsOptionalConfig(t *testing.T) {
+func TestGenerateAddsMethodConfigurationAsOptionalConfig(t *testing.T) {
 	contents, err := os.ReadFile("../../schema/testdata/multi-auth.yaml")
 	require.NoError(t, err)
 	manifest, err := schema.Decode(strings.NewReader(strings.Replace(string(contents), `        guide:
@@ -133,9 +139,9 @@ func TestGenerateSingleSelectionAddsMethodConfigurationAsOptionalConfig(t *testi
 	require.NotContains(t, text, "AuthMethodIDs")
 }
 
-func TestGenerateMultipleAuthSelectionMatchesGolden(t *testing.T) {
-	generated := generateMultipleAuthSelectionFixture(t)
-	goldenPath := filepath.Join(multipleAuthSelectionFixturePath, codegen.OutputFile)
+func TestGenerateAPIKeyMethodsMatchesGolden(t *testing.T) {
+	generated := generateAPIKeyMethodsFixture(t)
+	goldenPath := filepath.Join(apiKeyMethodsFixturePath, codegen.OutputFile)
 	if *shouldUpdateGoldenFiles {
 		require.NoError(t, os.WriteFile(goldenPath, generated, 0o644))
 	}
@@ -144,32 +150,33 @@ func TestGenerateMultipleAuthSelectionMatchesGolden(t *testing.T) {
 	require.Equal(t, string(golden), string(generated), "run go test ./internal/codegen -run MatchesGolden -update-golden")
 }
 
-func TestGenerateMultipleAuthSelectionCredentialsAndConfig(t *testing.T) {
-	text := string(generateMultipleAuthSelectionFixture(t))
+func TestGenerateAPIKeyMethodsCredentialsAndConfig(t *testing.T) {
+	text := string(generateAPIKeyMethodsFixture(t))
 
-	require.Contains(t, text, "\tAuthMethodIDs   []string\n")
-	require.Contains(t, text, "AuthMethodIDs   []string `json:\"auth_methods\"`")
-	require.Contains(t, text, "AuthMethodIDs:   fields.AuthMethodIDs,")
-	require.NotContains(t, text, "AuthMethodID ")
-	require.NotContains(t, text, `"auth_method"`)
-	require.Contains(t, text, "func (credentials Credentials) HasAuthMethod(id string) bool {")
-	require.Contains(t, text, "credential auth_methods is required")
-	require.Contains(t, text, "credential auth_methods must be unique")
-	require.Contains(t, text, "credential auth_methods contains an undeclared auth method")
+	require.Contains(t, text, "\tAuthMethodID    string\n")
+	require.Contains(t, text, "AuthMethodID    string `json:\"auth_method\"`")
+	require.Contains(t, text, "AuthMethodID:    fields.AuthMethodID,")
+	require.Contains(t, text, "switch credentials.AuthMethodID {")
 	require.Contains(t, text, `case "anthropic":`)
 	require.Contains(t, text, "credential anthropic_api_key is required")
+	require.Contains(t, text, "credential auth_method is invalid")
 	require.Contains(t, text, "OpenAIProjectID      string           `json:\"openaiProjectId,omitempty\" yaml:\"openaiProjectId,omitempty\"`")
 	require.Contains(t, text, "AnthropicWorkspaceID string           `json:\"anthropicWorkspaceId,omitempty\" yaml:\"anthropicWorkspaceId,omitempty\"`")
 	require.Contains(t, text, `GeminiAPIVersionV1beta GeminiAPIVersion = "v1beta"`)
 	require.Contains(t, text, "configuration geminiApiVersion is invalid")
 	require.NotContains(t, text, "configuration openaiProjectId is required")
-	require.Contains(t, text, "localconfig.NewCredentialProvider")
-	require.NotContains(t, text, "encodeLocalCredentials")
+	require.Contains(t, text, "type CredentialSource = sdkgo.CredentialProvider[Credentials]")
+	require.Contains(t, text, "provider.NewCredentialProvider(project.Connections, key, decodeCredentials)")
+	require.NotContains(t, text, "AuthMethodIDs")
+	require.NotContains(t, text, "auth_methods")
+	require.NotContains(t, text, "HasAuthMethod")
+	require.NotContains(t, text, "localconfig")
+	require.NotContains(t, text, "encodeCredentials")
 }
 
-// TestGeneratedMultipleAuthSelectionConnectorBehaves compiles the generated code
+// TestGeneratedAPIKeyMethodsConnectorBehaves compiles the generated code
 // against the local SDK source and runs the fixture's behavior tests.
-func TestGeneratedMultipleAuthSelectionConnectorBehaves(t *testing.T) {
+func TestGeneratedAPIKeyMethodsConnectorBehaves(t *testing.T) {
 	sdkDirectory, err := filepath.Abs("../../sdkgo")
 	require.NoError(t, err)
 	sdkModule, err := os.ReadFile(filepath.Join(sdkDirectory, "go.mod"))
@@ -178,16 +185,16 @@ func TestGeneratedMultipleAuthSelectionConnectorBehaves(t *testing.T) {
 	require.NoError(t, err)
 	const sdkModulePath = "github.com/superdurable/dex-connectors-library/sdkgo"
 	require.True(t, bytes.HasPrefix(sdkModule, []byte("module "+sdkModulePath+"\n")))
-	fixtureModule := "module example.com/multipleauthselection\n" +
+	fixtureModule := "module example.com/apikeymethods\n" +
 		strings.TrimPrefix(string(sdkModule), "module "+sdkModulePath+"\n") +
 		"\nrequire " + sdkModulePath + " v0.0.0\n\nreplace " + sdkModulePath + " => " + sdkDirectory + "\n"
 
 	moduleDirectory := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(moduleDirectory, "go.mod"), []byte(fixtureModule), 0o600))
 	require.NoError(t, os.WriteFile(filepath.Join(moduleDirectory, "go.sum"), sdkSums, 0o600))
-	require.NoError(t, os.WriteFile(filepath.Join(moduleDirectory, codegen.OutputFile), generateMultipleAuthSelectionFixture(t), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(moduleDirectory, codegen.OutputFile), generateAPIKeyMethodsFixture(t), 0o600))
 	for _, name := range []string{"client.go", "connector_test.go"} {
-		contents, readErr := os.ReadFile(filepath.Join(multipleAuthSelectionFixturePath, name))
+		contents, readErr := os.ReadFile(filepath.Join(apiKeyMethodsFixturePath, name))
 		require.NoError(t, readErr)
 		require.NoError(t, os.WriteFile(filepath.Join(moduleDirectory, name), contents, 0o600))
 	}
@@ -200,9 +207,9 @@ func TestGeneratedMultipleAuthSelectionConnectorBehaves(t *testing.T) {
 	require.NoError(t, err, string(output))
 }
 
-func generateMultipleAuthSelectionFixture(t *testing.T) []byte {
+func generateAPIKeyMethodsFixture(t *testing.T) []byte {
 	t.Helper()
-	file, err := os.Open(multipleAuthSelectionManifestPath)
+	file, err := os.Open(apiKeyMethodsManifestPath)
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, file.Close()) })
 	manifest, err := schema.Decode(file)
@@ -256,7 +263,8 @@ spec:
 	require.Contains(t, text, "sdkgo.TriggerFactoryConfigMarker")
 	require.Contains(t, text, "func NewChannelThreadCreatedTrigger")
 	require.Contains(t, text, "func DefineChannelThreadCreatedTriggerBinding")
-	require.Contains(t, text, "func NewLocalThreadReplyCreatedTrigger")
+	require.NotContains(t, text, "func NewProjectThreadReplyCreatedTrigger")
+	require.Contains(t, text, "trigger ConnectionName %q must equal its connection's name %q")
 	require.NotContains(t, text, "triggerKind")
 	require.Contains(t, text, "`connector:\"bindingName\"`")
 	require.Contains(t, text, "UIUnitChannelPicker")

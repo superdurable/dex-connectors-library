@@ -252,16 +252,3 @@ func TestSubscriberHashIsTheMD5OfTheLowercasedAddress(t *testing.T) {
 	require.Equal(t, testSubscriberHash, mailchimp.SubscriberHash("urist.mcvankab@example.com"))
 	require.Equal(t, "d41d8cd98f00b204e9800998ecf8427e", mailchimp.SubscriberHash(""))
 }
-
-func TestDecodeResolvedCredentialsJSONAcceptsOnlyAKeyWithADataCenter(t *testing.T) {
-	credentials, err := mailchimp.DecodeResolvedCredentialsJSON([]byte(`{"api_key":"` + testAPIKey + `"}`))
-	require.NoError(t, err)
-	require.Equal(t, testAPIKey, credentials.APIKey.Reveal())
-	for _, contents := range []string{
-		`{"api_key":"0123456789abcdef0123456789abcdef"}`, `{"api_key":""}`, `{}`, `{"api_key":"` + testAPIKey + `","dc":"us6"}`, `[]`,
-	} {
-		_, err := mailchimp.DecodeResolvedCredentialsJSON([]byte(contents))
-		require.Error(t, err, contents)
-		require.NotContains(t, err.Error(), "0123456789abcdef")
-	}
-}

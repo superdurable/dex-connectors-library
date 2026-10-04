@@ -43,7 +43,7 @@ func TestFactoriesRequireOnlyTheHappyPathAndTheirOwnConnection(t *testing.T) {
 	})
 	require.Panics(t, func() {
 		s3.NewPutObjectStep(s3.PutObjectStepConfig[string]{
-			StepType: "Store", Annotations: annotations, Connection: connection,
+			StepType: "Store", Annotations: annotations, Connection: connection, ConnectionName: testConnection.Name,
 			MapToOperationInput: mapToPut, AlreadyExists: sdkgo.GoTo(storedObjectTarget{}),
 		})
 	}, "the stored branch is required")
@@ -55,7 +55,7 @@ func TestFactoriesRequireOnlyTheHappyPathAndTheirOwnConnection(t *testing.T) {
 	}, "the static connection name must match the runtime connection")
 	require.NotPanics(t, func() {
 		s3.NewHeadObjectStep(s3.HeadObjectStepConfig[string]{
-			StepType: "Inspect", Annotations: annotations, Connection: connection,
+			StepType: "Inspect", Annotations: annotations, Connection: connection, ConnectionName: testConnection.Name,
 			MapToOperationInput: func(string) s3.HeadObjectInput { return s3.HeadObjectInput{} }, Found: sdkgo.GoTo(objectMetadataTarget{}),
 		})
 	})

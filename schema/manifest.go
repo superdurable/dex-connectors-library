@@ -120,14 +120,6 @@ type Configuration struct {
 	Fields []Field `yaml:"fields" json:"fields"`
 }
 
-// Auth method selections. An empty Auth.Selection means AuthSelectionSingle.
-const (
-	// AuthSelectionSingle lets a connection hold exactly one auth method.
-	AuthSelectionSingle = "single"
-	// AuthSelectionMultiple lets a connection hold a non-empty subset of the auth methods.
-	AuthSelectionMultiple = "multiple"
-)
-
 const maximumAuthMethodLabelLength = 32
 
 type Auth struct {
@@ -136,12 +128,15 @@ type Auth struct {
 	Fields         []Field             `yaml:"fields,omitempty" json:"fields,omitempty"`
 	Guide          *AuthorizationGuide `yaml:"guide,omitempty" json:"guide,omitempty"`
 	OAuth2         *OAuth2             `yaml:"oauth2,omitempty" json:"oauth2,omitempty"`
-	// Selection is AuthSelectionSingle or AuthSelectionMultiple; empty means single.
-	Selection string `yaml:"selection,omitempty" json:"selection,omitempty"`
+	// Refreshable declares that the connector renews expiring credentials, such as with an OAuth
+	// refresh token, client credentials, or a signed JWT assertion. Generated code then requires a
+	// refreshing credential provider, so wiring a connector without refresh does not compile.
+	Refreshable bool `yaml:"refreshable,omitempty" json:"refreshable,omitempty"`
 	// MethodLabel is the singular noun, such as Provider, that setup UI uses for a method.
-	MethodLabel   string       `yaml:"methodLabel,omitempty" json:"methodLabel,omitempty"`
-	DefaultMethod string       `yaml:"defaultMethod,omitempty" json:"defaultMethod,omitempty"`
-	Methods       []AuthMethod `yaml:"methods,omitempty" json:"methods,omitempty"`
+	MethodLabel   string `yaml:"methodLabel,omitempty" json:"methodLabel,omitempty"`
+	DefaultMethod string `yaml:"defaultMethod,omitempty" json:"defaultMethod,omitempty"`
+	// Methods are alternative authentication models; each connection selects exactly one.
+	Methods []AuthMethod `yaml:"methods,omitempty" json:"methods,omitempty"`
 }
 
 type AuthMethod struct {
@@ -156,11 +151,6 @@ type AuthMethod struct {
 	Configuration *Configuration      `yaml:"configuration,omitempty" json:"configuration,omitempty"`
 	Guide         *AuthorizationGuide `yaml:"guide,omitempty" json:"guide,omitempty"`
 	OAuth2        *OAuth2             `yaml:"oauth2,omitempty" json:"oauth2,omitempty"`
-}
-
-// IsMultipleSelection reports whether a connection may hold several of the auth methods.
-func (auth Auth) IsMultipleSelection() bool {
-	return len(auth.Methods) > 0 && auth.Selection == AuthSelectionMultiple
 }
 
 type AuthorizationGuide struct {
@@ -281,10 +271,8 @@ var (
 
 const maximumStudioCommandFixedHeaderValueLength = 256
 
-// reservedAuthMethodSelectionNames are the credential wire and Go names that carry the selected methods.
-var reservedAuthMethodSelectionNames = map[string]bool{
-	"auth_method": true, "auth_methods": true, "AuthMethodID": true, "AuthMethodIDs": true,
-}
+// reservedAuthMethodNames are the credential wire and Go names that carry the selected method.
+var reservedAuthMethodNames = map[string]bool{"auth_method": true, "AuthMethodID": true}
 
 // studioCommandReservedHeaders are lowercase names the Dex Web broker, the
 // transport, or routing intermediaries own.
@@ -374,6 +362,9 @@ func (manifest Manifest) Validate() error {
 	if manifest.APIVersion != APIVersion {
 		problems = append(problems, "apiVersion must be "+APIVersion)
 	}
+	if mapsRefreshToken(manifest.Spec.Auth) && !manifest.Spec.Auth.Refreshable {
+		problems = append(problems, "spec.auth.refreshable must be true when an OAuth flow stores a refresh token")
+	}
 	if manifest.Kind != "Connector" {
 		problems = append(problems, "kind must be Connector")
 	}
@@ -401,14 +392,11 @@ func (manifest Manifest) Validate() error {
 			Type: manifest.Spec.Auth.Type, ConnectionKind: manifest.Spec.Auth.ConnectionKind,
 			Fields: manifest.Spec.Auth.Fields, Guide: manifest.Spec.Auth.Guide, OAuth2: manifest.Spec.Auth.OAuth2,
 		})...)
-		if manifest.Spec.Auth.Selection != "" {
-			problems = append(problems, "spec.auth.selection requires spec.auth methods")
-		}
 		if manifest.Spec.Auth.MethodLabel != "" {
 			problems = append(problems, "spec.auth.methodLabel requires spec.auth methods")
 		}
 	} else {
-		problems = append(problems, validateAuthMethodSelection(manifest.Spec.Auth)...)
+		problems = append(problems, validateAuthMethodLabel(manifest.Spec.Auth.MethodLabel)...)
 		if manifest.Spec.Auth.Type != "" || manifest.Spec.Auth.ConnectionKind != "" || manifest.Spec.Auth.Guide != nil || manifest.Spec.Auth.OAuth2 != nil {
 			problems = append(problems, "spec.auth methods cannot be combined with legacy auth fields")
 		}
@@ -428,8 +416,8 @@ func (manifest Manifest) Validate() error {
 			}
 			problems = append(problems, validateAuthMethod("spec.auth method "+method.ID, method)...)
 			for _, field := range method.Fields {
-				if reservedAuthMethodSelectionNames[field.Name] || reservedAuthMethodSelectionNames[field.GoName] {
-					problems = append(problems, "auth_method, auth_methods, AuthMethodID, and AuthMethodIDs are reserved for auth method selection")
+				if reservedAuthMethodNames[field.Name] || reservedAuthMethodNames[field.GoName] {
+					problems = append(problems, "auth_method and AuthMethodID are reserved for the selected auth method")
 				}
 				if existing, found := seenCredentialFields[field.Name]; found && (existing.GoName != field.GoName || existing.Type != field.Type) {
 					problems = append(problems, "credential fields shared by auth methods must use the same goName and type")
@@ -622,26 +610,12 @@ func (manifest Manifest) Validate() error {
 	return nil
 }
 
-func validateAuthMethodSelection(auth Auth) []string {
-	var problems []string
-	switch auth.Selection {
-	case "", AuthSelectionSingle:
-	case AuthSelectionMultiple:
-		if len(auth.Methods) < 2 {
-			problems = append(problems, "spec.auth selection multiple requires at least two auth methods")
-		}
-		for _, method := range auth.Methods {
-			if method.Type != "apiKey" {
-				problems = append(problems, "spec.auth selection multiple requires every auth method to use apiKey; "+method.ID+" uses "+method.Type)
-			}
-		}
-	default:
-		problems = append(problems, "spec.auth.selection must be single or multiple")
+// validateAuthMethodLabel checks the optional singular noun that setup UI uses for a method.
+func validateAuthMethodLabel(label string) []string {
+	if label != "" && (strings.TrimSpace(label) != label || utf8.RuneCountInString(label) > maximumAuthMethodLabelLength) {
+		return []string{fmt.Sprintf("spec.auth.methodLabel must be 1-%d characters without surrounding whitespace", maximumAuthMethodLabelLength)}
 	}
-	if auth.MethodLabel != "" && (strings.TrimSpace(auth.MethodLabel) != auth.MethodLabel || utf8.RuneCountInString(auth.MethodLabel) > maximumAuthMethodLabelLength) {
-		problems = append(problems, fmt.Sprintf("spec.auth.methodLabel must be 1-%d characters without surrounding whitespace", maximumAuthMethodLabelLength))
-	}
-	return problems
+	return nil
 }
 
 // validateConfigurationFieldNames keeps one flat generated Config, which holds
@@ -1093,4 +1067,23 @@ func hasValidUniqueStrings(values []string, pattern *regexp.Regexp) bool {
 		seen[value] = true
 	}
 	return true
+}
+
+// mapsRefreshToken reports whether any OAuth flow of auth stores a provider refresh token.
+func mapsRefreshToken(auth Auth) bool {
+	flows := []*OAuth2{auth.OAuth2}
+	for _, method := range auth.Methods {
+		flows = append(flows, method.OAuth2)
+	}
+	for _, flow := range flows {
+		if flow == nil {
+			continue
+		}
+		for _, mapping := range flow.CredentialMappings {
+			if mapping.Source == "refresh_token" {
+				return true
+			}
+		}
+	}
+	return false
 }

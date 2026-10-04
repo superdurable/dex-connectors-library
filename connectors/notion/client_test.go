@@ -135,5 +135,5 @@ func TestRejectionsNameTheStatusAndCodeButNeverTheProviderMessage(t *testing.T) 
 type failingCredentials struct{}
 
 func (failingCredentials) Resolve(sdkgo.Call) (notion.Credentials, error) {
-	return notion.Credentials{}, errors.New("connection file is unreadable")
+	return notion.Credentials{}, errors.New("project connection credential is unreadable")
 }

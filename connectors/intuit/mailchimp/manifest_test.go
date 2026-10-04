@@ -81,7 +81,6 @@ func TestEveryVisibleConnectionFieldGuidesTheUser(t *testing.T) {
 func TestAPIKeyGuideCoversWhereTheKeyIsItsExpiryAndHowToRevokeIt(t *testing.T) {
 	manifest := readGuidanceManifest(t)
 	require.Equal(t, "Intuit", manifest.Metadata.Company, "Mailchimp is an Intuit company, so it lives under connectors/intuit")
-	require.Equal(t, "v0.1.0", manifest.Metadata.Version)
 	require.Equal(t, "apiKey", manifest.Spec.Auth.Type)
 	require.Empty(t, manifest.Spec.Auth.Methods)
 	require.Nil(t, manifest.Spec.Auth.OAuth2, "OAuth is deferred; see the README")

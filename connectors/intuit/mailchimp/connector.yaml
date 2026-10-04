@@ -5,7 +5,7 @@ metadata:
   displayName: Mailchimp
   description: Read, upsert, tag, and list Mailchimp audience contacts without resubscribing anyone who unsubscribed, and send an existing campaign at most once after reading its status.
   company: Intuit
-  version: v0.1.0
+  version: v0.21.0
 spec:
   provider: mailchimp
   codegen:

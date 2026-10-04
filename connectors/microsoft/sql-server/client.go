@@ -102,7 +102,7 @@ type Client struct {
 	statementTimeout time.Duration
 	maxRows          int
 	maxResponseBytes int
-	credentials      sdkgo.CredentialProvider[Credentials]
+	credentials      CredentialSource
 	now              func() time.Time
 }
 
@@ -122,7 +122,7 @@ type databaseSession struct {
 // servers, a port outside 1 through 65535, a Windows account name, disabled encryption for a host
 // that is not a loopback address, a statementTimeout that SET LOCK_TIMEOUT cannot express, or a
 // nil credential provider. It never contacts the server.
-func New(config Config, credentials sdkgo.CredentialProvider[Credentials], options ...Option) (*Client, error) {
+func New(config Config, credentials CredentialSource, options ...Option) (*Client, error) {
 	config = withConfigDefaults(config)
 	if err := config.Validate(); err != nil {
 		return nil, err

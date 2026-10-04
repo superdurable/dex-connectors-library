@@ -145,22 +145,6 @@ func TestCredentialRefreshDriverMintsWorkspaceDelegatedToken(t *testing.T) {
 	require.Equal(t, now.Add(time.Hour), result.ExpiresAt)
 }
 
-func TestDecodeResolvedCredentialsRejectsRenewalMaterial(t *testing.T) {
-	contents, err := json.Marshal(map[string]string{
-		"auth_method": "google-oauth", "access_token": "short-lived", "primary_email": "owner@example.com",
-	})
-	require.NoError(t, err)
-	credentials, err := DecodeResolvedCredentialsJSON(contents)
-	require.NoError(t, err)
-	require.Equal(t, "short-lived", credentials.AccessToken.Reveal())
-	contents, err = json.Marshal(map[string]string{
-		"access_token": "short-lived", "primary_email": "owner@example.com", "refresh_token": "must-not-cross-broker",
-	})
-	require.NoError(t, err)
-	_, err = DecodeResolvedCredentialsJSON(contents)
-	require.Error(t, err)
-}
-
 func tokenResponse(t *testing.T, status int, body any) *http.Response {
 	t.Helper()
 	contents, err := json.Marshal(body)

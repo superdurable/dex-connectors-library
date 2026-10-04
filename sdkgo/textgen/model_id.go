@@ -46,7 +46,7 @@ func (rule ModelIDRule) String() string {
 
 // ValidateModelID returns the canonical model ID the provider receives, or an
 // error that never repeats the value. The same cases are pinned for the
-// TypeScript picker in llmtest's model_id_cases.json fixture.
+// TypeScript picker in textgentest's model_id_cases.json fixture.
 func (rule ModelIDRule) ValidateModelID(value string) (string, error) {
 	model := strings.TrimSpace(value)
 	switch rule {

@@ -17,7 +17,7 @@ import (
 
 	entraid "github.com/superdurable/dex-connectors-library/connectors/microsoft/entra-id"
 	accountlifecycle "github.com/superdurable/dex-connectors-library/connectors/microsoft/entra-id/examples/account-lifecycle/flow"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -35,11 +35,11 @@ func main() {
 }
 
 func run(ctx context.Context) error {
-	store, err := localconfig.LoadFromEnvironment()
+	project, err := projectconfig.LoadFromEnvironment(ctx)
 	if err != nil {
 		return err
 	}
-	connection, err := entraid.NewLocalConnection(store, accountlifecycle.ConnectionName, connectorOptions()...)
+	connection, err := entraid.NewProjectConnection(project, accountlifecycle.ConnectionName, connectorOptions()...)
 	if err != nil {
 		return err
 	}

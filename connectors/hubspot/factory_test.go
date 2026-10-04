@@ -75,7 +75,7 @@ func TestFactoriesRequireOnlyTheHappyPathBranch(t *testing.T) {
 	})
 	require.Panics(t, func() {
 		hubspot.NewUpsertObjectStep(hubspot.UpsertObjectStepConfig[string]{
-			StepType: "Upsert", Connection: connection,
+			StepType: "Upsert", Connection: connection, ConnectionName: hubspotConnection.Name,
 			MapToOperationInput: func(string) hubspot.UpsertObjectInput { return hubspot.UpsertObjectInput{} },
 			Conflict:            sdkgo.GoTo(upsertTarget{}),
 		})

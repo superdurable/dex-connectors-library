@@ -5,7 +5,7 @@ metadata:
   displayName: Zoom
   description: List, read, schedule, and reschedule the authorized user's Zoom meetings, and list who joined a past meeting.
   company: Zoom
-  version: v0.1.0
+  version: v0.21.0
 spec:
   provider: zoom
   codegen:
@@ -26,6 +26,7 @@ spec:
         required: false
         default: 2097152
   auth:
+    refreshable: true
     type: oauth2
     connectionKind: zoom-user-oauth
     fields:

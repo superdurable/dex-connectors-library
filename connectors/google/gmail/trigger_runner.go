@@ -10,7 +10,8 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 )
 
 // MessageReceivedTriggerRoute binds one root-message configuration to its application target.
@@ -151,72 +152,104 @@ func (runner *MessageTriggerRunner) poll(ctx context.Context) error {
 	return nil
 }
 
-// LocalMessageReceivedTriggerRoute binds one stored root-message configuration to its application target.
-type LocalMessageReceivedTriggerRoute struct {
+// ProjectMessageReceivedTriggerRoute binds one root-message binding saved in the project configuration to
+// its application target.
+type ProjectMessageReceivedTriggerRoute struct {
 	// BindingName names this configured Trigger binding.
 	BindingName string
 	// Target routes accepted events into the application.
 	Target sdkgo.TriggerTarget[MessageEvent]
 }
 
-// LocalReplyReceivedTriggerRoute binds one stored reply configuration to its application target.
-type LocalReplyReceivedTriggerRoute struct {
+// ProjectReplyReceivedTriggerRoute binds one reply binding saved in the project configuration to its
+// application target.
+type ProjectReplyReceivedTriggerRoute struct {
 	// BindingName names this configured Trigger binding.
 	BindingName string
 	// Target routes accepted events into the application.
 	Target sdkgo.TriggerTarget[MessageEvent]
 }
 
-// LocalMessageTriggerRunnerConfig selects stored Gmail message Trigger bindings.
-type LocalMessageTriggerRunnerConfig struct {
-	// MessageReceivedRoutes specifies message received routes for local message trigger runner config.
-	MessageReceivedRoutes []LocalMessageReceivedTriggerRoute
-	// ReplyReceivedRoutes specifies reply received routes for local message trigger runner config.
-	ReplyReceivedRoutes []LocalReplyReceivedTriggerRoute
+// ProjectMessageTriggerRunnerConfig selects Gmail message Trigger bindings saved in the project configuration.
+type ProjectMessageTriggerRunnerConfig struct {
+	// MessageReceivedRoutes specifies message received routes for project message trigger runner config.
+	MessageReceivedRoutes []ProjectMessageReceivedTriggerRoute
+	// ReplyReceivedRoutes specifies reply received routes for project message trigger runner config.
+	ReplyReceivedRoutes []ProjectReplyReceivedTriggerRoute
 }
 
-// NewLocalMessageTriggerRunner loads stored bindings and creates one durable, ordered Gmail runner. The
-// WithLogger option also applies to the durable inboxes it creates.
-func NewLocalMessageTriggerRunner(
-	store *localconfig.Store,
+// NewProjectMessageTriggerRunner opens connectionName from the loaded project configuration, loads the
+// selected bindings' saved configuration, and creates one durable, ordered Gmail runner. Each route keeps
+// acknowledged events in its binding's project Trigger inbox until its target consumes them, so a
+// restarted or replaced replica replays them. The WithLogger option also applies to those inboxes.
+func NewProjectMessageTriggerRunner(
+	project *projectconfig.LoadedProject,
 	connectionName string,
-	config LocalMessageTriggerRunnerConfig,
+	config ProjectMessageTriggerRunnerConfig,
 	options ...Option,
 ) (*MessageTriggerRunner, error) {
-	connection, err := NewLocalConnection(store, connectionName, options...)
+	connection, err := NewProjectConnection(project, connectionName, options...)
 	if err != nil {
 		return nil, err
 	}
+	return newDurableMessageTriggerRunner(connection, project.Configuration, project.TriggerInbox, config)
+}
+
+// newDurableMessageTriggerRunner wraps each route's target in the durable inbox that openInbox opens for its binding.
+func newDurableMessageTriggerRunner(
+	connection Connection,
+	configuration projectconfig.Configuration,
+	openInbox func(projectconfig.TriggerInboxKey) (*projectconfig.TriggerInbox, error),
+	config ProjectMessageTriggerRunnerConfig,
+) (*MessageTriggerRunner, error) {
+	if err := connection.validate(); err != nil {
+		return nil, err
+	}
+	connectionName := connection.reference.Name
 	runnerConfig := MessageTriggerRunnerConfig{Connection: connection}
 	for _, route := range config.MessageReceivedRoutes {
-		var configuration MessageReceivedTriggerConfiguration
-		if err := store.DecodeTriggerConfiguration(ConnectorID, connectionName, "messageReceived", route.BindingName, &configuration); err != nil {
-			return nil, err
+		var bindingConfiguration MessageReceivedTriggerConfiguration
+		if err := configuration.DecodeTriggerConfiguration(ConnectorID, connectionName, "messageReceived", route.BindingName, &bindingConfiguration); err != nil {
+			return nil, fmt.Errorf("gmail messageReceived binding %q configuration: %w", route.BindingName, err)
 		}
-		target, err := localconfig.NewDurableTriggerTarget(store, ConnectorID, connectionName, "messageReceived", route.BindingName, route.Target,
-			localconfig.WithTriggerLogger(connection.client.logger))
+		target, err := newDurableMessageTriggerTarget(connection, openInbox, "messageReceived", route.BindingName, route.Target)
 		if err != nil {
 			return nil, err
 		}
 		runnerConfig.MessageReceivedRoutes = append(runnerConfig.MessageReceivedRoutes, MessageReceivedTriggerRoute{
-			BindingName: route.BindingName, Configuration: configuration, Target: target,
+			BindingName: route.BindingName, Configuration: bindingConfiguration, Target: target,
 		})
 	}
 	for _, route := range config.ReplyReceivedRoutes {
-		var configuration ReplyReceivedTriggerConfiguration
-		if err := store.DecodeTriggerConfiguration(ConnectorID, connectionName, "replyReceived", route.BindingName, &configuration); err != nil {
-			return nil, err
+		var bindingConfiguration ReplyReceivedTriggerConfiguration
+		if err := configuration.DecodeTriggerConfiguration(ConnectorID, connectionName, "replyReceived", route.BindingName, &bindingConfiguration); err != nil {
+			return nil, fmt.Errorf("gmail replyReceived binding %q configuration: %w", route.BindingName, err)
 		}
-		target, err := localconfig.NewDurableTriggerTarget(store, ConnectorID, connectionName, "replyReceived", route.BindingName, route.Target,
-			localconfig.WithTriggerLogger(connection.client.logger))
+		target, err := newDurableMessageTriggerTarget(connection, openInbox, "replyReceived", route.BindingName, route.Target)
 		if err != nil {
 			return nil, err
 		}
 		runnerConfig.ReplyReceivedRoutes = append(runnerConfig.ReplyReceivedRoutes, ReplyReceivedTriggerRoute{
-			BindingName: route.BindingName, Configuration: configuration, Target: target,
+			BindingName: route.BindingName, Configuration: bindingConfiguration, Target: target,
 		})
 	}
 	return NewMessageTriggerRunner(runnerConfig)
+}
+
+// newDurableMessageTriggerTarget logs the inbox's records through the connection's WithLogger logger.
+func newDurableMessageTriggerTarget(
+	connection Connection,
+	openInbox func(projectconfig.TriggerInboxKey) (*projectconfig.TriggerInbox, error),
+	triggerName string,
+	bindingName string,
+	target sdkgo.TriggerTarget[MessageEvent],
+) (sdkgo.TriggerTarget[MessageEvent], error) {
+	key := projectconfig.TriggerInboxKey{ConnectorID: ConnectorID, ConnectionName: connection.reference.Name, TriggerName: triggerName, BindingName: bindingName}
+	inbox, err := openInbox(key)
+	if err != nil {
+		return nil, err
+	}
+	return provider.NewDurableTriggerTarget(inbox, key, target, provider.WithTriggerLogger(connection.client.logger))
 }
 
 func validateMessageTriggerRoute(

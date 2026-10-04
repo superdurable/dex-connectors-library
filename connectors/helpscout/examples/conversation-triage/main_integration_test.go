@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -26,16 +25,20 @@ import (
 // TestSignedNewConversationIsTriagedOnceAndDuplicatesAndForgeriesStartNoneWithRealDex covers README steps 5 and 6.
 func TestSignedNewConversationIsTriagedOnceAndDuplicatesAndForgeriesStartNoneWithRealDex(t *testing.T) {
 	fake := newFakeHelpScout(t)
-	setup := newExampleSetup(t, dexAddress())
-	running := setup.startExample(t, fake.connectionOption())
-	client := newInspectionClient(t)
+	logs := newRecordedLogs(t)
+	credentials := newExampleCredentials()
+	connection := newExampleConnection(t, credentials, fake.connectionOption(), helpscout.WithLogger(logs.logger()))
+	flow := conversationtriage.NewFlow(connection)
+	client := startWorkerAndClient(t, flow)
+	endpoint := newConversationEndpoint(t, connection, newConversationTarget(client, flow, logs.logger()))
+	endpoint.start(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 	conversationID := uniqueConversationID()
 	body := conversationWebhookBody(conversationID, triagedInboxID, "active")
 
-	require.Equal(t, http.StatusOK, setup.deliverWebhook(t, helpscout.WebhookEventConversationCreated, body, sentinelWebhookSecret, false))
-	eventID := waitForOneDeliveredEvent(t, setup, conversationID)
+	require.Equal(t, http.StatusOK, endpoint.deliverWebhook(t, helpscout.WebhookEventConversationCreated, body, sentinelWebhookSecret, false))
+	eventID := waitForOneDeliveredEvent(t, logs, conversationID)
 	triage := waitForTriage(t, ctx, client, eventID)
 	require.Equal(t, "completed", triage.Stage)
 	require.Equal(t, helpscout.ConversationStatusActive, triage.Status)
@@ -49,66 +52,63 @@ func TestSignedNewConversationIsTriagedOnceAndDuplicatesAndForgeriesStartNoneWit
 		fake.notesFor(conversationID), "one internal note")
 	require.Equal(t, triage.Tags, fake.tagsFor(conversationID))
 	require.Empty(t, fake.notesFor(otherActiveConv), "the other conversation is untouched")
-	storedToken, expiresAt := setup.storedAccessToken(t)
-	require.Equal(t, sentinelToken, storedToken, "the token obtained from the App ID and App Secret is stored")
-	require.WithinDuration(t, time.Now().Add(48*time.Hour), expiresAt, time.Minute)
+	stored, expiresAt := credentials.Current()
+	require.Equal(t, sentinelToken, stored.AccessToken.Reveal(), "the token obtained from the App ID and App Secret is stored")
+	require.NotNil(t, expiresAt)
+	require.WithinDuration(t, time.Now().Add(48*time.Hour), *expiresAt, time.Minute)
 	require.Equal(t, 1, fake.requestCount(http.MethodPost, "/v2/oauth2/token"))
 
 	// Help Scout redelivers the same body: the event ID repeats, so the Flow start is a duplicate.
-	require.Equal(t, http.StatusOK, setup.deliverWebhook(t, helpscout.WebhookEventConversationCreated, body, sentinelWebhookSecret, false))
+	require.Equal(t, http.StatusOK, endpoint.deliverWebhook(t, helpscout.WebhookEventConversationCreated, body, sentinelWebhookSecret, false))
 	require.Eventually(t, func() bool {
-		return len(setup.logs.find("trigger event delivered", map[string]string{"event_id": eventID, "duplicate": "true"})) == 1
+		return len(logs.find("trigger event delivered", map[string]string{"event_id": eventID, "duplicate": "true"})) == 1
 	}, 20*time.Second, 25*time.Millisecond, "the redelivery reaches Dex as a duplicate start")
 	require.Len(t, fake.notesFor(conversationID), 1, "no second note")
 
 	// A forged delivery answers 400, and a tags event is filtered by the application; neither starts a Flow.
 	forgedID := uniqueConversationID()
-	require.Equal(t, http.StatusBadRequest, setup.deliverWebhook(t, helpscout.WebhookEventConversationCreated,
+	require.Equal(t, http.StatusBadRequest, endpoint.deliverWebhook(t, helpscout.WebhookEventConversationCreated,
 		conversationWebhookBody(forgedID, triagedInboxID, "active"), sentinelWebhookSecret, true))
-	require.Equal(t, http.StatusBadRequest, setup.deliverWebhook(t, helpscout.WebhookEventConversationCreated,
+	require.Equal(t, http.StatusBadRequest, endpoint.deliverWebhook(t, helpscout.WebhookEventConversationCreated,
 		conversationWebhookBody(forgedID, triagedInboxID, "active"), "not-the-webhook-secret", false))
-	require.Equal(t, http.StatusOK, setup.deliverWebhook(t, helpscout.WebhookEventConversationTagsUpdated, body, sentinelWebhookSecret, false))
+	require.Equal(t, http.StatusOK, endpoint.deliverWebhook(t, helpscout.WebhookEventConversationTagsUpdated, body, sentinelWebhookSecret, false))
 	require.Eventually(t, func() bool {
-		return len(setup.logs.find("trigger event skipped: filtered", nil)) == 1
+		return len(logs.find("trigger event skipped: filtered", nil)) == 1
 	}, 20*time.Second, 25*time.Millisecond, "AcceptNewConversation consumes the tags event without a Flow")
 	laterID := uniqueConversationID()
-	require.Equal(t, http.StatusOK, setup.deliverWebhook(t, helpscout.WebhookEventConversationCreated,
+	require.Equal(t, http.StatusOK, endpoint.deliverWebhook(t, helpscout.WebhookEventConversationCreated,
 		conversationWebhookBody(laterID, triagedInboxID, "active"), sentinelWebhookSecret, false))
-	require.Equal(t, "completed", waitForTriage(t, ctx, client, waitForOneDeliveredEvent(t, setup, laterID)).Stage)
+	require.Equal(t, "completed", waitForTriage(t, ctx, client, waitForOneDeliveredEvent(t, logs, laterID)).Stage)
 	require.Zero(t, fake.requestCount(http.MethodGet, fmt.Sprintf("/v2/conversations/%d", forgedID)))
 	require.Equal(t, 1, fake.requestCount(http.MethodPost, "/v2/oauth2/token"), "the second Flow reuses the stored token")
-	require.Empty(t, setup.pendingEventIDs(t))
-
-	running.stop(t)
-	require.NotContains(t, setup.logs.text(), sentinelWebhookSecret)
-	require.NotContains(t, setup.logs.text(), sentinelToken)
+	require.NotContains(t, logs.text(), sentinelWebhookSecret)
+	require.NotContains(t, logs.text(), sentinelToken)
 }
 
-// TestRestartReplaysADeliveryRecordedButNotDeliveredWithRealDex covers README step 7: Dex is down while the
-// endpoint acknowledges a webhook, the process stops, and the next run delivers it.
-func TestRestartReplaysADeliveryRecordedButNotDeliveredWithRealDex(t *testing.T) {
+// TestDeliveryBeforeTheBindingRunsIsAnswered503AndTheRetryStartsTheFlowWithRealDex: while the binding is not
+// running, the endpoint answers 503, so Help Scout retries, and the retry that arrives once it runs starts the Flow.
+func TestDeliveryBeforeTheBindingRunsIsAnswered503AndTheRetryStartsTheFlowWithRealDex(t *testing.T) {
 	fake := newFakeHelpScout(t)
-	reachableDex := dexAddress()
-	unreachableDex := "unix://" + filepath.Join(os.TempDir(), fmt.Sprintf("dex-missing-%d.sock", time.Now().UnixNano()))
-	setup := newExampleSetup(t, unreachableDex)
-	conversationID := uniqueConversationID()
-
-	firstRun := setup.startExample(t, fake.connectionOption())
-	require.Equal(t, http.StatusOK, setup.deliverWebhook(t, helpscout.WebhookEventConversationCreated,
-		conversationWebhookBody(conversationID, triagedInboxID, "active"), sentinelWebhookSecret, false))
-	firstRun.stop(t)
-	pending := setup.pendingEventIDs(t)
-	require.Len(t, pending, 1, "acknowledged but never delivered")
-
-	t.Setenv("DEX_FLOW_SERVICE_ADDRESS", reachableDex)
-	secondRun := setup.startExample(t, fake.connectionOption())
+	logs := newRecordedLogs(t)
+	connection := newExampleConnection(t, newExampleCredentials(), fake.connectionOption(), helpscout.WithLogger(logs.logger()))
+	flow := conversationtriage.NewFlow(connection)
+	client := startWorkerAndClient(t, flow)
+	endpoint := newConversationEndpoint(t, connection, newConversationTarget(client, flow, logs.logger()))
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	require.Equal(t, "completed", waitForTriage(t, ctx, newInspectionClient(t), pending[0]).Stage)
+	conversationID := uniqueConversationID()
+	body := conversationWebhookBody(conversationID, triagedInboxID, "active")
+
+	require.Equal(t, http.StatusServiceUnavailable,
+		endpoint.deliverWebhook(t, helpscout.WebhookEventConversationCreated, body, sentinelWebhookSecret, false),
+		"no binding runs yet, so Help Scout must retry")
+	require.Empty(t, logs.find("trigger event delivered", nil))
+
+	endpoint.start(t)
+	require.Equal(t, http.StatusOK,
+		endpoint.deliverWebhook(t, helpscout.WebhookEventConversationCreated, body, sentinelWebhookSecret, false), "Help Scout's retry")
+	require.Equal(t, "completed", waitForTriage(t, ctx, client, waitForOneDeliveredEvent(t, logs, conversationID)).Stage)
 	require.Len(t, fake.notesFor(conversationID), 1)
-	require.Eventually(t, func() bool { return len(setup.pendingEventIDs(t)) == 0 }, 10*time.Second, 25*time.Millisecond)
-	require.Len(t, setup.logs.find("replaying pending trigger events", map[string]string{"count": "1"}), 1)
-	secondRun.stop(t)
 }
 
 func dexAddress() string {
@@ -121,12 +121,12 @@ func uniqueConversationID() int64 {
 }
 
 // waitForOneDeliveredEvent returns the event ID of the conversation's first delivery to Dex.
-func waitForOneDeliveredEvent(t *testing.T, setup *exampleSetup, conversationID int64) string {
+func waitForOneDeliveredEvent(t *testing.T, logs *recordedLogs, conversationID int64) string {
 	t.Helper()
 	prefix := fmt.Sprintf("%s:%d:", helpscout.WebhookEventConversationCreated, conversationID)
 	var eventID string
 	require.Eventually(t, func() bool {
-		for _, record := range setup.logs.find("trigger event delivered", map[string]string{"duplicate": "false"}) {
+		for _, record := range logs.find("trigger event delivered", map[string]string{"duplicate": "false"}) {
 			if candidate := record.attrs["event_id"]; len(candidate) > len(prefix) && candidate[:len(prefix)] == prefix {
 				eventID = candidate
 				return true
@@ -158,19 +158,25 @@ func waitForTriage(t *testing.T, ctx context.Context, client *dex.Client, eventI
 	}
 }
 
-// newInspectionClient waits for and inspects Flows; it registers no Worker.
-func newInspectionClient(t *testing.T) *dex.Client {
+// startWorkerAndClient runs a Worker for flow against the Dex Server until the test ends and returns its Client.
+func startWorkerAndClient(t *testing.T, flow *conversationtriage.Flow) *dex.Client {
 	t.Helper()
-	inspectionClient, err := helpscout.New(helpscout.Config{}, sdkgo.StaticCredentialProvider[helpscout.Credentials]{})
+	registry, err := dex.NewRegistry([]dex.Flow{flow})
 	require.NoError(t, err)
-	connection, err := helpscout.NewConnection(inspectionClient, sdkgo.ConnectionRef{Provider: "helpscout", Name: conversationtriage.ConnectionName})
+	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
-	registry, err := dex.NewRegistry([]dex.Flow{conversationtriage.NewFlow(connection)})
+	workerAddress := "127.0.0.1:" + unusedPort(t)
+	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{
+		BindAddress: workerAddress, FlowServiceAddress: dexAddress(), WorkerTarget: dex.WorkerTarget{Address: workerAddress},
+	})
 	require.NoError(t, err)
-	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "inspection-blobs"), MaxBytes: 64 << 20})
+	client, err := dex.NewClient(registry, cache, dex.ClientOptions{FlowServiceAddress: dexAddress(), WorkerTarget: worker.WorkerTarget()})
 	require.NoError(t, err)
-	client, err := dex.NewClient(registry, cache, dex.ClientOptions{FlowServiceAddress: dexAddress()})
-	require.NoError(t, err)
-	t.Cleanup(func() { require.NoError(t, errors.Join(client.Close(), cache.Close())) })
+	workerResult := make(chan error, 1)
+	go func() { workerResult <- worker.Start() }()
+	t.Cleanup(func() {
+		require.NoError(t, errors.Join(stopWorker(worker), client.Close(), cache.Close()))
+		<-workerResult
+	})
 	return client
 }

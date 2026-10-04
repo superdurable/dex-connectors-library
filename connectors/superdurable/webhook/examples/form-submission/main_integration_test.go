@@ -12,14 +12,11 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -28,7 +25,6 @@ import (
 	"github.com/superdurable/dex-connectors-library/connectors/superdurable/webhook"
 	formsubmission "github.com/superdurable/dex-connectors-library/connectors/superdurable/webhook/examples/form-submission/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -36,15 +32,18 @@ import (
 // TestSignedSubmissionStartsOneFlowAndDuplicatesAndForgeriesStartNoneWithRealDex covers README steps 4 and 5.
 func TestSignedSubmissionStartsOneFlowAndDuplicatesAndForgeriesStartNoneWithRealDex(t *testing.T) {
 	receiver := newForwardingReceiver(t)
-	setup := newExampleSetup(t, receiver.URL+"/forward", dexAddress())
-	running := setup.startExample(t, webhook.WithHTTPClient(receiver.Client()))
-	client := newInspectionClient(t)
+	logs := newRecordedLogs(t)
+	connection := newExampleConnection(t, receiver.URL+"/forward", webhook.WithHTTPClient(receiver.Client()), webhook.WithLogger(logs.logger()))
+	flow := formsubmission.NewFlow(connection)
+	client := startWorkerAndClient(t, flow)
+	endpoint := newSubmissionEndpoint(t, connection, newSubmissionTarget(client, flow, logs.logger()))
+	endpoint.start(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 	eventID := "evt_" + strconv.FormatInt(time.Now().UnixNano(), 10)
 	body := submissionBody(eventID, "form_response")
 
-	require.Equal(t, http.StatusOK, setup.postSubmission(t, body, false))
+	require.Equal(t, http.StatusOK, endpoint.postSubmission(t, body, false))
 	outcome := waitForForwarded(t, ctx, client, eventID)
 	require.Equal(t, webhook.SendEventBranchDelivered, outcome.Branch)
 	require.Equal(t, http.StatusAccepted, outcome.StatusCode)
@@ -53,91 +52,47 @@ func TestSignedSubmissionStartsOneFlowAndDuplicatesAndForgeriesStartNoneWithReal
 	require.True(t, deliveries[0].isSignatureValid, "the receiver verifies the Standard Webhooks signature")
 	require.Equal(t, outcome.WebhookID, deliveries[0].webhookID)
 
-	// The sender redelivers the same submission: the inbox and the Flow start both deduplicate it.
-	require.Equal(t, http.StatusOK, setup.postSubmission(t, body, false))
+	// The sender redelivers the same submission: the Flow start deduplicates it.
+	require.Equal(t, http.StatusOK, endpoint.postSubmission(t, body, false))
 	require.Eventually(t, func() bool {
-		return len(setup.logs.find("trigger event delivered", map[string]string{"event_id": eventID, "duplicate": "true"})) == 1
+		return len(logs.find("trigger event delivered", map[string]string{"event_id": eventID, "duplicate": "true"})) == 1
 	}, 20*time.Second, 25*time.Millisecond, "the redelivery reaches Dex as a duplicate start")
-	require.Len(t, setup.logs.find("trigger event delivered", map[string]string{"event_id": eventID, "duplicate": "false"}), 1)
+	require.Len(t, logs.find("trigger event delivered", map[string]string{"event_id": eventID, "duplicate": "false"}), 1)
 	require.Len(t, receiver.deliveriesFor(eventID), 1, "the Flow forwarded the submission once")
 
 	// A forged submission and a filtered partial response start nothing.
 	forgedID, partialID := eventID+"_forged", eventID+"_partial"
-	require.Equal(t, http.StatusBadRequest, setup.postSubmission(t, submissionBody(forgedID, "form_response"), true))
-	require.Equal(t, http.StatusOK, setup.postSubmission(t, submissionBody(partialID, "form_response_partial"), false))
+	require.Equal(t, http.StatusBadRequest, endpoint.postSubmission(t, submissionBody(forgedID, "form_response"), true))
+	require.Equal(t, http.StatusOK, endpoint.postSubmission(t, submissionBody(partialID, "form_response_partial"), false))
 	laterID := eventID + "_later"
-	require.Equal(t, http.StatusOK, setup.postSubmission(t, submissionBody(laterID, "form_response"), false))
+	require.Equal(t, http.StatusOK, endpoint.postSubmission(t, submissionBody(laterID, "form_response"), false))
 	waitForForwarded(t, ctx, client, laterID)
 	requireNoFlow(t, ctx, client, forgedID)
 	requireNoFlow(t, ctx, client, partialID)
 	require.Empty(t, receiver.deliveriesFor(forgedID))
-	require.Empty(t, setup.pendingEventIDs(t))
-
-	running.stop(t)
-	require.NotContains(t, setup.logs.text(), sentinelSecret)
+	require.NotContains(t, logs.text(), sentinelSecret)
 }
 
-// TestSubmissionBeforeTheRunnerRunsIsRetriedBySenderWithRealDex covers README step 6.
-func TestSubmissionBeforeTheRunnerRunsIsRetriedBySenderWithRealDex(t *testing.T) {
+// TestSubmissionBeforeTheBindingRunsIsRetriedBySenderWithRealDex covers README step 6.
+func TestSubmissionBeforeTheBindingRunsIsRetriedBySenderWithRealDex(t *testing.T) {
 	receiver := newForwardingReceiver(t)
-	setup := newExampleSetup(t, receiver.URL+"/forward", dexAddress())
-	store, err := localconfig.LoadFile(setup.configPath)
-	require.NoError(t, err)
-	connection, err := webhook.NewLocalConnection(store, formsubmission.ConnectionName, webhook.WithHTTPClient(receiver.Client()))
-	require.NoError(t, err)
+	logs := newRecordedLogs(t)
+	connection := newExampleConnection(t, receiver.URL+"/forward", webhook.WithHTTPClient(receiver.Client()), webhook.WithLogger(logs.logger()))
 	flow := formsubmission.NewFlow(connection)
 	client := startWorkerAndClient(t, flow)
-	endpointRunner, err := newSubmissionEndpointRunner(store, client, flow, setup.logs.logger(), []webhook.Option{webhook.WithHTTPClient(receiver.Client())})
-	require.NoError(t, err)
-	server := httptest.NewServer(newWebhookMux(endpointRunner))
-	t.Cleanup(server.Close)
-	setup.webhookAddress = strings.TrimPrefix(server.URL, "http://")
+	endpoint := newSubmissionEndpoint(t, connection, newSubmissionTarget(client, flow, logs.logger()))
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 	eventID := "evt_early_" + strconv.FormatInt(time.Now().UnixNano(), 10)
 
-	require.Equal(t, http.StatusServiceUnavailable, setup.postSubmission(t, submissionBody(eventID, "form_response"), false),
+	require.Equal(t, http.StatusServiceUnavailable, endpoint.postSubmission(t, submissionBody(eventID, "form_response"), false),
 		"no binding runs yet, so the sender must retry")
 	requireNoFlow(t, ctx, client, eventID)
-	require.Empty(t, setup.pendingEventIDs(t))
 
-	runCtx, stopRunner := context.WithCancel(ctx)
-	runFinished := make(chan error, 1)
-	go func() { runFinished <- endpointRunner.Run(runCtx) }()
-	require.Eventually(t, func() bool { return endpointRunner.RunningSourceCount() == 1 }, 10*time.Second, 10*time.Millisecond)
-	require.Equal(t, http.StatusOK, setup.postSubmission(t, submissionBody(eventID, "form_response"), false), "the sender's retry")
+	endpoint.start(t)
+	require.Equal(t, http.StatusOK, endpoint.postSubmission(t, submissionBody(eventID, "form_response"), false), "the sender's retry")
 	require.Equal(t, webhook.SendEventBranchDelivered, waitForForwarded(t, ctx, client, eventID).Branch)
 	require.Len(t, receiver.deliveriesFor(eventID), 1)
-	stopRunner()
-	require.ErrorIs(t, <-runFinished, context.Canceled)
-}
-
-// TestRestartReplaysASubmissionRecordedButNotDeliveredWithRealDex covers README step 7: Dex is down while
-// the endpoint acknowledges a submission, the process stops, and the next run delivers it.
-func TestRestartReplaysASubmissionRecordedButNotDeliveredWithRealDex(t *testing.T) {
-	receiver := newForwardingReceiver(t)
-	reachableDex := dexAddress()
-	unreachableDex := "unix://" + filepath.Join(os.TempDir(), fmt.Sprintf("dex-missing-%d.sock", time.Now().UnixNano()))
-	setup := newExampleSetup(t, receiver.URL+"/forward", unreachableDex)
-	eventID := "evt_replayed_" + strconv.FormatInt(time.Now().UnixNano(), 10)
-
-	firstRun := setup.startExample(t, webhook.WithHTTPClient(receiver.Client()))
-	require.Equal(t, http.StatusOK, setup.postSubmission(t, submissionBody(eventID, "form_response"), false))
-	firstRun.stop(t)
-	require.Equal(t, []string{eventID}, setup.pendingEventIDs(t), "acknowledged but never delivered")
-
-	t.Setenv("DEX_FLOW_SERVICE_ADDRESS", reachableDex)
-	secondRun := setup.startExample(t, webhook.WithHTTPClient(receiver.Client()))
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-	defer cancel()
-	outcome := waitForForwarded(t, ctx, newInspectionClient(t), eventID)
-	require.Equal(t, webhook.SendEventBranchDelivered, outcome.Branch)
-	require.Len(t, receiver.deliveriesFor(eventID), 1)
-	require.Eventually(t, func() bool { return len(setup.pendingEventIDs(t)) == 0 }, 10*time.Second, 25*time.Millisecond)
-	require.Len(t, setup.logs.find("replaying pending trigger events", map[string]string{"count": "1"}), 1)
-	require.Len(t, setup.logs.find("finished replaying pending trigger events", map[string]string{"delivered": "1", "remaining": "0"}), 1)
-	secondRun.stop(t)
-	require.NotContains(t, setup.logs.text(), sentinelSecret)
 }
 
 func dexAddress() string {

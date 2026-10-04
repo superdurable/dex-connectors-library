@@ -6,14 +6,12 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	refunddecision "github.com/superdurable/dex-connectors-library/connectors/airtable/examples/refund-decision/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
 var (
@@ -36,7 +34,7 @@ func TestNewLoggerUsesInfoForAnUnknownLevel(t *testing.T) {
 }
 
 func TestLoadSettingsReadsBothTablePicks(t *testing.T) {
-	settings, err := loadSettings(writeLocalConfiguration(t, policyTablePick, logTablePick))
+	settings, err := loadSettings(projectConfiguration(t, policyTablePick, logTablePick))
 	require.NoError(t, err)
 	require.Equal(t, refunddecision.Settings{
 		PolicyTable: refunddecision.TableSelection{BaseID: "appRefundBase0001", BaseName: "Refunds", TableID: "tblPolicies000001", TableName: "Policies"},
@@ -45,27 +43,22 @@ func TestLoadSettingsReadsBothTablePicks(t *testing.T) {
 }
 
 func TestLoadSettingsRequiresBothTablePicks(t *testing.T) {
-	_, err := loadSettings(writeLocalConfiguration(t, policyTablePick, nil))
-	require.ErrorIs(t, err, localconfig.ErrConfigurationNotFound)
+	_, err := loadSettings(projectConfiguration(t, policyTablePick, nil))
+	require.ErrorIs(t, err, projectconfig.ErrObjectNotFound)
 	require.ErrorContains(t, err, "decision log table")
-	_, err = loadSettings(writeLocalConfiguration(t, nil, logTablePick))
-	require.ErrorIs(t, err, localconfig.ErrConfigurationNotFound)
+	_, err = loadSettings(projectConfiguration(t, nil, logTablePick))
+	require.ErrorIs(t, err, projectconfig.ErrObjectNotFound)
 	require.ErrorContains(t, err, "policy table")
 }
 
-func writeLocalConfiguration(t *testing.T, policyConfiguration map[string]any, logConfiguration map[string]any) *localconfig.Store {
+// projectConfiguration is the project configuration Dex Web saves: the connection and the given table picks.
+func projectConfiguration(t *testing.T, policyConfiguration map[string]any, logConfiguration map[string]any) projectconfig.Configuration {
 	t.Helper()
-	directory := t.TempDir()
-	writeJSONFile(t, filepath.Join(directory, "connections.json"), map[string]any{
-		"schemaVersion": localconfig.SchemaVersion,
-		"connections": []map[string]any{{
-			"connectorId": "airtable", "modulePath": "github.com/superdurable/dex-connectors-library/connectors/airtable",
-			"moduleVersion": "v0.1.0", "provider": "airtable", "connectionName": refunddecision.ConnectionName,
-			"configuration": map[string]any{},
-			"credentials":   map[string]any{"personal_access_token": "patTESTtoken.0123456789abcdef"},
-		}},
-	})
-	records := []map[string]any{}
+	configuration := projectconfig.Configuration{Connections: []projectconfig.ConnectionConfiguration{{
+		ConnectorID: "airtable", ConnectionName: refunddecision.ConnectionName,
+		ModulePath: "github.com/superdurable/dex-connectors-library/connectors/airtable", Provider: "airtable",
+		Configuration: json.RawMessage(`{}`),
+	}}}
 	for _, entry := range []struct {
 		configuration map[string]any
 		reference     sdkgo.ConnectorConfigurationRef
@@ -76,30 +69,12 @@ func writeLocalConfiguration(t *testing.T, policyConfiguration map[string]any, l
 		if entry.configuration == nil {
 			continue
 		}
-		record := referenceRecord(t, entry.reference)
-		record["configuration"] = entry.configuration
-		records = append(records, record)
+		contents, err := json.Marshal(entry.configuration)
+		require.NoError(t, err)
+		configuration.OperationConfigurations = append(configuration.OperationConfigurations, projectconfig.OperationConfiguration{
+			ConnectorID: entry.reference.ConnectorID, ConnectionName: entry.reference.ConnectionName, OperationID: entry.reference.OperationID,
+			FlowType: entry.reference.FlowType, StepType: entry.reference.StepType, Configuration: contents,
+		})
 	}
-	writeJSONFile(t, filepath.Join(directory, localconfig.UseConfigurationsFileName), map[string]any{
-		"schemaVersion": localconfig.UseConfigurationsSchemaVersion, "operationConfigurations": records,
-	})
-	store, err := localconfig.LoadFile(filepath.Join(directory, "connections.json"))
-	require.NoError(t, err)
-	return store
-}
-
-func referenceRecord(t *testing.T, reference sdkgo.ConnectorConfigurationRef) map[string]any {
-	t.Helper()
-	contents, err := json.Marshal(reference)
-	require.NoError(t, err)
-	var record map[string]any
-	require.NoError(t, json.Unmarshal(contents, &record))
-	return record
-}
-
-func writeJSONFile(t *testing.T, path string, value any) {
-	t.Helper()
-	contents, err := json.Marshal(value)
-	require.NoError(t, err)
-	require.NoError(t, os.WriteFile(path, contents, 0o600))
+	return configuration
 }

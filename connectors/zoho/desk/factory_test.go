@@ -23,6 +23,9 @@ func (completeTarget[IN]) Execute(dex.Context, IN) (*dex.StepDecision, error) {
 	return dex.GracefulComplete(struct{}{}), nil
 }
 
+// GetStepType names the target: Dex gives a generic Step type no default name.
+func (completeTarget[IN]) GetStepType() string { return "Complete" }
+
 func TestFactoriesRequireOnlyTheHappyPathBranch(t *testing.T) {
 	connection := newTestConnection(t)
 	annotations := sdkgo.StepAnnotations{GroupID: "zoho-desk", GroupLabel: "Zoho Desk", Explanation: "Call Zoho Desk."}
@@ -33,32 +36,32 @@ func TestFactoriesRequireOnlyTheHappyPathBranch(t *testing.T) {
 			Searched:            sdkgo.GoTo(completeTarget[desk.SearchTicketsResult]{}),
 		})
 		desk.NewGetTicketStep(desk.GetTicketStepConfig[string]{
-			StepType: "ReadTicket", Annotations: annotations, Connection: connection,
+			StepType: "ReadTicket", Annotations: annotations, Connection: connection, ConnectionName: deskConnection.Name,
 			MapToOperationInput: func(id string) desk.GetTicketInput { return desk.GetTicketInput{TicketID: id} },
 			Found:               sdkgo.GoTo(completeTarget[desk.GetTicketResult]{}),
 		})
 		desk.NewCreateTicketStep(desk.CreateTicketStepConfig[string]{
-			StepType: "OpenTicket", Annotations: annotations, Connection: connection,
+			StepType: "OpenTicket", Annotations: annotations, Connection: connection, ConnectionName: deskConnection.Name,
 			MapToOperationInput: func(string) desk.CreateTicketInput { return validCreateTicketInput() },
 			Created:             sdkgo.GoTo(completeTarget[desk.CreateTicketResult]{}),
 			Uncertain:           sdkgo.GoTo(completeTarget[desk.CreateTicketResult]{}),
 		})
 		desk.NewUpdateTicketStep(desk.UpdateTicketStepConfig[string]{
-			StepType: "Prioritize", Annotations: annotations, Connection: connection,
+			StepType: "Prioritize", Annotations: annotations, Connection: connection, ConnectionName: deskConnection.Name,
 			MapToOperationInput: func(id string) desk.UpdateTicketInput {
 				return desk.UpdateTicketInput{TicketID: id, Priority: desk.TicketPriorityHigh}
 			},
 			Updated: sdkgo.GoTo(completeTarget[desk.UpdateTicketResult]{}),
 		})
 		desk.NewAddCommentStep(desk.AddCommentStepConfig[string]{
-			StepType: "AddComment", Annotations: annotations, Connection: connection,
+			StepType: "AddComment", Annotations: annotations, Connection: connection, ConnectionName: deskConnection.Name,
 			MapToOperationInput: func(id string) desk.AddCommentInput { return desk.AddCommentInput{TicketID: id, Content: "Triaged."} },
 			Added:               sdkgo.GoTo(completeTarget[desk.AddCommentResult]{}),
 		})
 	})
 	require.Panics(t, func() {
 		desk.NewAddCommentStep(desk.AddCommentStepConfig[string]{
-			StepType: "AddComment", Connection: connection,
+			StepType: "AddComment", Connection: connection, ConnectionName: deskConnection.Name,
 			MapToOperationInput: func(id string) desk.AddCommentInput { return desk.AddCommentInput{TicketID: id, Content: "Triaged."} },
 			Uncertain:           sdkgo.GoTo(completeTarget[desk.AddCommentResult]{}),
 		})

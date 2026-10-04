@@ -4,7 +4,6 @@
 package asana_test
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"testing"
@@ -133,20 +132,4 @@ func TestRedirectsAreNeverFollowed(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, asana.GetTaskBranchInvalidResponse, result.Branch)
 	require.Equal(t, 1, provider.requestCount())
-}
-
-func TestHostedCredentialDecodingAcceptsOnlyTheAccessToken(t *testing.T) {
-	credentials, err := asana.DecodeResolvedCredentialsJSON(json.RawMessage(`{"access_token":"asana-token"}`))
-	require.NoError(t, err)
-	require.Equal(t, "asana-token", credentials.AccessToken.Reveal())
-	for _, contents := range []string{
-		`{"access_token":"asana-token","refresh_token":"refresh"}`,
-		`{"access_token":""}`,
-		`{"access_token":"line\nbreak"}`,
-		`[]`,
-	} {
-		_, err := asana.DecodeResolvedCredentialsJSON(json.RawMessage(contents))
-		require.Error(t, err, contents)
-		require.NotContains(t, err.Error(), "asana-token")
-	}
 }

@@ -6,6 +6,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -16,6 +17,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/helpscout"
+	conversationtriage "github.com/superdurable/dex-connectors-library/connectors/helpscout/examples/conversation-triage/flow"
+	"github.com/superdurable/dex/blob-cache-go/blobcache"
+	"github.com/superdurable/dex/sdk-go/dex"
 )
 
 func TestNewLoggerUsesLogLevel(t *testing.T) {
@@ -31,30 +35,44 @@ func TestNewLoggerUsesLogLevel(t *testing.T) {
 	}
 }
 
-// TestRunRecordsDeliveriesWhileDexIsUnreachable proves the endpoint acknowledges only what is on disk.
-func TestRunRecordsDeliveriesWhileDexIsUnreachable(t *testing.T) {
+// TestEndpointAnswersDeliveriesWhileDexIsUnreachable proves the endpoint verifies and filters deliveries
+// without Dex, and retries the accepted conversation toward Dex.
+func TestEndpointAnswersDeliveriesWhileDexIsUnreachable(t *testing.T) {
 	unreachableDex := "unix://" + filepath.Join(os.TempDir(), fmt.Sprintf("dex-missing-%d.sock", time.Now().UnixNano()))
-	setup := newExampleSetup(t, unreachableDex)
-	running := setup.startExample(t)
+	logs := newRecordedLogs(t)
+	connection := newExampleConnection(t, newExampleCredentials(), helpscout.WithLogger(logs.logger()))
+	flow := conversationtriage.NewFlow(connection)
+	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	require.NoError(t, err)
+	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
+	require.NoError(t, err)
+	client, err := dex.NewClient(registry, cache, dex.ClientOptions{FlowServiceAddress: unreachableDex})
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, errors.Join(client.Close(), cache.Close())) })
+	endpoint := newConversationEndpoint(t, connection, newConversationTarget(client, flow, logs.logger()))
+	endpoint.start(t)
 
-	require.Equal(t, http.StatusOK, setup.deliverWebhook(t, helpscout.WebhookEventConversationCreated,
+	require.Equal(t, http.StatusOK, endpoint.deliverWebhook(t, helpscout.WebhookEventConversationCreated,
 		conversationWebhookBody(601, triagedInboxID, "active"), sentinelWebhookSecret, false))
-	pending := setup.pendingEventIDs(t)
-	require.Len(t, pending, 1, "the 200 came after the inbox write")
-	require.Regexp(t, `^convo\.created:601:[0-9a-f]{32}$`, pending[0])
-	require.Equal(t, http.StatusBadRequest, setup.deliverWebhook(t, helpscout.WebhookEventConversationCreated,
+	var accepted string
+	require.Eventually(t, func() bool {
+		for _, retry := range logs.find("trigger delivery failed; retrying", nil) {
+			accepted = retry.attrs["event_id"]
+			return true
+		}
+		return false
+	}, 10*time.Second, 25*time.Millisecond, "the acknowledged conversation is retried toward Dex")
+	require.Regexp(t, `^convo\.created:601:[0-9a-f]{32}$`, accepted)
+	require.Equal(t, http.StatusBadRequest, endpoint.deliverWebhook(t, helpscout.WebhookEventConversationCreated,
 		conversationWebhookBody(602, triagedInboxID, "active"), sentinelWebhookSecret, true))
-	require.Equal(t, http.StatusBadRequest, setup.deliverWebhook(t, helpscout.WebhookEventConversationCreated,
+	require.Equal(t, http.StatusBadRequest, endpoint.deliverWebhook(t, helpscout.WebhookEventConversationCreated,
 		conversationWebhookBody(603, triagedInboxID, "active"), "another-secret", false))
-	require.Equal(t, http.StatusOK, setup.deliverWebhook(t, helpscout.WebhookEventConversationCreated,
+	require.Equal(t, http.StatusOK, endpoint.deliverWebhook(t, helpscout.WebhookEventConversationCreated,
 		conversationWebhookBody(604, otherInboxID, "active"), sentinelWebhookSecret, false),
 		"the binding filters another inbox but still acknowledges it")
-	require.Equal(t, pending, setup.pendingEventIDs(t))
-	require.Eventually(t, func() bool { return len(setup.logs.find("dex server unavailable; retrying", nil)) > 0 },
-		10*time.Second, 25*time.Millisecond)
-
-	running.stop(t)
-	require.Equal(t, pending, setup.pendingEventIDs(t), "an undelivered event survives the shutdown")
-	require.NotContains(t, setup.logs.text(), sentinelWebhookSecret)
-	require.NotContains(t, setup.logs.text(), sentinelToken)
+	for _, retry := range logs.find("trigger delivery failed; retrying", nil) {
+		require.Equal(t, accepted, retry.attrs["event_id"], "only the accepted conversation reaches the target")
+	}
+	require.NotContains(t, logs.text(), sentinelWebhookSecret)
+	require.NotContains(t, logs.text(), sentinelToken)
 }

@@ -5,7 +5,7 @@ metadata:
   displayName: Google Workspace Admin
   description: Read and list Google Workspace user accounts, create, suspend, and restore them, and add or remove group members through the Admin SDK Directory API, converging instead of duplicating when a Step repeats.
   company: Google
-  version: v0.1.0
+  version: v0.21.0
 spec:
   provider: google
   codegen:
@@ -32,6 +32,7 @@ spec:
         required: false
         default: 100
   auth:
+    refreshable: true
     defaultMethod: workspace-domain-delegation
     methods:
       - id: workspace-domain-delegation

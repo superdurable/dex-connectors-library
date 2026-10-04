@@ -10,15 +10,17 @@ import (
 	"strings"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex-connectors-library/sdkgo/webhooktrigger"
 )
 
-// LocalInviteeEventReceivedTriggerRoute binds one stored inviteeEventReceived binding to its application target.
-type LocalInviteeEventReceivedTriggerRoute struct {
-	// BindingName names the stored Trigger binding whose configuration filters the events.
+// ProjectInviteeEventReceivedTriggerRoute binds one inviteeEventReceived binding from the project configuration
+// to its application target.
+type ProjectInviteeEventReceivedTriggerRoute struct {
+	// BindingName names the configured Trigger binding whose configuration filters the events.
 	BindingName string
-	// Target receives the binding's events through its durable local inbox, such as a
+	// Target receives the binding's events through its durable project inbox, such as a
 	// sdkgo.NewDexFlowTriggerTarget that starts one Flow per event ID.
 	Target sdkgo.TriggerTarget[InviteeEvent]
 }
@@ -31,29 +33,53 @@ type InviteeEventReceivedEndpointRunner struct {
 	endpoint       *webhooktrigger.Endpoint[Credentials, InviteeEvent]
 }
 
-// NewLocalInviteeEventReceivedEndpointRunner loads the connection and every route's stored binding from
-// store and wraps each target in a durable inbox, so an event is on disk before Calendly receives 200. A
-// route whose binding is not stored or is invalid returns an error. WithLogger also applies to the inboxes.
-func NewLocalInviteeEventReceivedEndpointRunner(
-	store *localconfig.Store,
+// durableInviteeEventReceivedTarget wraps one binding's target so that each event is stored before its
+// acknowledgement.
+type durableInviteeEventReceivedTarget func(
+	key projectconfig.TriggerInboxKey, target sdkgo.TriggerTarget[InviteeEvent],
+) (sdkgo.TriggerTarget[InviteeEvent], error)
+
+// NewProjectInviteeEventReceivedEndpointRunner opens connectionName and every route's binding from the loaded
+// project configuration and wraps each target in the binding's durable project inbox, so an event is stored
+// before Calendly receives 200. A route whose binding is not configured or is invalid returns an error.
+// WithLogger also applies to the inboxes.
+func NewProjectInviteeEventReceivedEndpointRunner(
+	project *projectconfig.LoadedProject,
 	connectionName string,
-	routes []LocalInviteeEventReceivedTriggerRoute,
+	routes []ProjectInviteeEventReceivedTriggerRoute,
 	options ...Option,
 ) (*InviteeEventReceivedEndpointRunner, error) {
-	if store == nil {
-		return nil, fmt.Errorf("local connector configuration store is required")
-	}
-	if len(routes) == 0 {
-		return nil, fmt.Errorf("Calendly inviteeEventReceived routes are required")
-	}
-	connection, err := NewLocalConnection(store, connectionName, options...)
+	connection, err := NewProjectConnection(project, connectionName, options...)
 	if err != nil {
 		return nil, err
+	}
+	return newInviteeEventReceivedEndpointRunner(connection, project.Configuration, routes, func(
+		key projectconfig.TriggerInboxKey, target sdkgo.TriggerTarget[InviteeEvent],
+	) (sdkgo.TriggerTarget[InviteeEvent], error) {
+		inbox, err := project.TriggerInbox(key)
+		if err != nil {
+			return nil, err
+		}
+		return provider.NewDurableTriggerTarget(inbox, key, target, provider.WithTriggerLogger(connection.client.logger))
+	})
+}
+
+// newInviteeEventReceivedEndpointRunner runs routes on connection with the bindings that configuration stores,
+// wrapping each target with makeDurable.
+func newInviteeEventReceivedEndpointRunner(
+	connection Connection,
+	configuration projectconfig.Configuration,
+	routes []ProjectInviteeEventReceivedTriggerRoute,
+	makeDurable durableInviteeEventReceivedTarget,
+) (*InviteeEventReceivedEndpointRunner, error) {
+	if len(routes) == 0 {
+		return nil, fmt.Errorf("Calendly inviteeEventReceived routes are required")
 	}
 	endpoint, err := connection.client.inviteeEventReceivedWebhookEndpoint(connection.reference)
 	if err != nil {
 		return nil, err
 	}
+	connectionName := connection.reference.Name
 	triggerName := InviteeEventReceivedTriggerDefinition.Trigger.TriggerName
 	runners := make([]sdkgo.TriggerRunner, 0, len(routes))
 	bindingNames := make(map[string]bool, len(routes))
@@ -66,21 +92,21 @@ func NewLocalInviteeEventReceivedEndpointRunner(
 			return nil, fmt.Errorf("Calendly inviteeEventReceived binding name %q is duplicated", bindingName)
 		}
 		bindingNames[bindingName] = true
-		var configuration InviteeEventReceivedTriggerConfiguration
-		if err := store.DecodeTriggerConfiguration(ConnectorID, connectionName, triggerName, bindingName, &configuration); err != nil {
-			return nil, err
+		var bindingConfiguration InviteeEventReceivedTriggerConfiguration
+		if err := configuration.DecodeTriggerConfiguration(ConnectorID, connectionName, triggerName, bindingName, &bindingConfiguration); err != nil {
+			return nil, fmt.Errorf("Calendly inviteeEventReceived binding %q configuration: %w", bindingName, err)
 		}
-		if err := configuration.Validate(); err != nil {
+		if err := bindingConfiguration.Validate(); err != nil {
 			return nil, fmt.Errorf("binding %q: %w", bindingName, err)
 		}
-		durableTarget, err := localconfig.NewDurableTriggerTarget(store, ConnectorID, connectionName, triggerName, bindingName,
-			route.Target, localconfig.WithTriggerLogger(connection.client.logger))
+		key := projectconfig.TriggerInboxKey{ConnectorID: ConnectorID, ConnectionName: connectionName, TriggerName: triggerName, BindingName: bindingName}
+		durableTarget, err := makeDurable(key, route.Target)
 		if err != nil {
 			return nil, err
 		}
 		runners = append(runners, NewInviteeEventReceivedTrigger(InviteeEventReceivedTriggerConfig{
 			Connection: connection, ConnectionName: connectionName, BindingName: bindingName,
-			Configuration: configuration, Target: durableTarget,
+			Configuration: bindingConfiguration, Target: durableTarget,
 		}))
 	}
 	endpointRunner, err := webhooktrigger.NewEndpointRunner(endpoint, runners...)

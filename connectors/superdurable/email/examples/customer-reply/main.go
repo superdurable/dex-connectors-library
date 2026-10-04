@@ -18,7 +18,7 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/connectors/superdurable/email"
 	customerreply "github.com/superdurable/dex-connectors-library/connectors/superdurable/email/examples/customer-reply/flow"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -37,7 +37,7 @@ func main() {
 }
 
 func run(ctx context.Context) error {
-	store, err := localconfig.LoadFromEnvironment()
+	project, err := projectconfig.LoadFromEnvironment(ctx)
 	if err != nil {
 		return err
 	}
@@ -45,7 +45,7 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	connection, err := email.NewLocalConnection(store, customerreply.ConnectionName, options...)
+	connection, err := email.NewProjectConnection(project, customerreply.ConnectionName, options...)
 	if err != nil {
 		return err
 	}

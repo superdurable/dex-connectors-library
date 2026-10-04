@@ -170,6 +170,15 @@ func (*rejectionRefreshingCredentialProvider) Resolve(sdkgo.Call) (confluence.Cr
 	return confluence.Credentials{AccessToken: sdkgo.NewSecretString("rejected-token")}, nil
 }
 
+// ResolveWithRefresh returns the token Resolve returns, which has not expired before Confluence rejects it.
+func (provider *rejectionRefreshingCredentialProvider) ResolveWithRefresh(
+	_ context.Context,
+	call sdkgo.Call,
+	_ sdkgo.CredentialRefreshDriver[confluence.Credentials],
+) (confluence.Credentials, error) {
+	return provider.Resolve(call)
+}
+
 func (provider *rejectionRefreshingCredentialProvider) ResolveAfterRejection(
 	context.Context,
 	sdkgo.Call,

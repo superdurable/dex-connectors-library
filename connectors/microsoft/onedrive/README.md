@@ -49,7 +49,7 @@ access, so they can reach only files and libraries that user can open.
   Dex Web treats a returned refresh token as proof of it from **Dex CLI 1.4.1**
   (dex#584); older Dex Web releases reject the consent. Use Dex CLI 1.4.1 or
   later for this method.
-- Personal Microsoft accounts are out of scope for v0.1.0: they need the
+- Personal Microsoft accounts are out of scope: they need the
   `consumers` endpoints, have no SharePoint, and report content hashes
   differently. The `organizations` endpoint rejects them.
 
@@ -72,9 +72,10 @@ authenticates as itself with a tenant ID, client ID, and client secret, which
 `https://graph.microsoft.com/.default`. This works for single-tenant
 registrations. The tenant ID must be a directory GUID or a DNS domain such as
 `contoso.onmicrosoft.com`; anything else, including `common` and
-`organizations`, requires new credentials before any request. The token is
-stored in the connection file with its expiry and renewed five minutes before
-it expires or after a 401.
+`organizations`, requires new credentials before any request. The project
+connection keeps the token with its expiry. A call requests a new token when
+none is stored, as on the first call, or when the stored one expires within
+five minutes.
 
 Application permissions need administrator consent. For least privilege:
 
@@ -94,23 +95,29 @@ search do not support `Sites.Selected`: scope `searchFiles` to a folder, which
 lists children instead of searching, and paste the site or drive ID into the
 pickers.
 
-For local Dex Web setup, name the factory connection and load the same name at
-application startup, as [`examples/text-copy/main.go`](examples/text-copy/main.go)
-does:
+Load the project configuration once at application startup and open the
+connection by the name its operations use, as
+[`examples/text-copy/main.go`](examples/text-copy/main.go) does:
 
 ```go
-store, err := localconfig.LoadFromEnvironment()
+project, err := projectconfig.LoadFromEnvironment(ctx)
 if err != nil {
 	return err
 }
-connection, err := onedrive.NewLocalConnection(store, textcopy.ConnectionName)
+connection, err := onedrive.NewProjectConnection(project, textcopy.ConnectionName)
 ```
 
-Both methods use the generated `NewLocalConnection`, whose refreshing provider
-stores renewed tokens. Hosted apps receive only an operation-scoped access
-token: `DecodeResolvedCredentialsJSON` rejects refresh tokens and client
-secrets, and `DecodeCredentialsJSON` and `EncodeCredentialsJSON` are the
-broker's trusted hooks.
+`projectconfig.LoadFromEnvironment` reads the `DEX_PROJECT_*` configuration
+that Dex Web or Superverse Studio writes; see
+[`sdkgo/projectconfig`](../../../sdkgo/projectconfig/README.md#application-loading).
+Set the same `ConnectionName` beside the typed `Connection` in each operation:
+a Step whose `ConnectionName` is empty or differs from its connection's name
+panics at construction.
+
+Both methods use the generated `NewProjectConnection`, whose refreshing
+provider admits one refresh per credential generation across application
+replicas and stores the renewed token before the call uses it. Refresh tokens
+and client secrets stay in encrypted project storage and never enter a Flow.
 
 ## Search fidelity
 
@@ -217,8 +224,10 @@ missing parent folder, a blocked file type, or `507` (a full quota, kind
 `QUOTA_EXHAUSTED`). `invalidResponse` is a malformed or oversized response.
 `408`, `429`, `5xx` other than `501` and `507`, and the codes
 `activityLimitReached`, `throttledRequest`, and `serviceNotAvailable` return
-Retry, honoring `Retry-After` up to one hour. A 401 forces one coordinated
-refresh and one resend. Errors are classified from the status and `error.code`
+Retry, honoring `Retry-After` up to one hour. After a 401 the connector asks
+once for a refresh, which the project connection performs only when the stored
+expiry has passed, and then resends once; otherwise the 401 selects
+`providerRejected`. Errors are classified from the status and `error.code`
 only; Failures never carry Graph's `error.message`, content, or credentials.
 Only each operation's happy-path branch is required; every other branch is
 optional and fails the Flow when unwired.

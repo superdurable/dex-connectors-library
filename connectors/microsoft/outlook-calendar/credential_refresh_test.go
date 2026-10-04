@@ -5,18 +5,14 @@ package outlookcalendar_test
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"net/url"
-	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 	outlookcalendar "github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-calendar"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
 )
 
 // The fake client secret is split so it never resembles a real Entra secret.
@@ -152,72 +148,4 @@ func TestRefreshRequiredForAMissingOrExpiringToken(t *testing.T) {
 	state.ExpiresAt = nil
 	require.True(t, driver.RefreshRequired(state), "a token without a recorded expiry is replaced")
 	require.True(t, driver.RefreshRequired(appOnlyRefreshState()), "an app-only connection starts without a token")
-}
-
-func TestDecodeResolvedCredentialsJSONAcceptsOnlyAnAccessToken(t *testing.T) {
-	credentials, err := outlookcalendar.DecodeResolvedCredentialsJSON(json.RawMessage(`{"auth_method":"app-only","access_token":"resolved"}`))
-	require.NoError(t, err)
-	require.Equal(t, "resolved", credentials.AccessToken.Reveal())
-	for _, contents := range []string{
-		`{"auth_method":"microsoft-oauth","access_token":"a","refresh_token":"b"}`, `{"auth_method":"app-only","access_token":"has space"}`,
-		`{"auth_method":"other","access_token":"a"}`, `{}`, `[]`,
-	} {
-		_, err := outlookcalendar.DecodeResolvedCredentialsJSON(json.RawMessage(contents))
-		require.Error(t, err, contents)
-		require.NotContains(t, err.Error(), "has space")
-	}
-}
-
-// TestLocalAppOnlyConnectionRequestsAndStoresATokenBeforeItsFirstCall runs the generated
-// NewLocalConnection against the file Dex Web writes for an app-only connection.
-func TestLocalAppOnlyConnectionRequestsAndStoresATokenBeforeItsFirstCall(t *testing.T) {
-	provider := newRecordingProvider(t, func(response http.ResponseWriter, request *http.Request, _ int) {
-		switch request.URL.Path {
-		case "/72f988bf-86f1-41af-91ab-2d7cd011db47/oauth2/v2.0/token":
-			writeJSON(t, response, http.StatusOK, `{"token_type":"Bearer","expires_in":3599,"access_token":"stored-app-token"}`)
-		default:
-			require.Equal(t, "Bearer stored-app-token", request.Header.Get("Authorization"))
-			writeJSON(t, response, http.StatusOK, timedEventJSON("event-1", "Planning"))
-		}
-	})
-	configPath := writeAppOnlyConnectionFile(t)
-	store, err := localconfig.LoadFile(configPath)
-	require.NoError(t, err)
-	connection, err := outlookcalendar.NewLocalConnection(store, calendarConnection.Name, outlookcalendar.WithLocalProviderURL(provider.URL))
-	require.NoError(t, err)
-
-	result, err := sdkgo.RunQuery(newCalendarDexContext("local-app-only"), outlookcalendar.ClientOfConnection(connection).GetEvent(), calendarConnection,
-		outlookcalendar.GetEventInput{EventID: "event-1"})
-	require.NoError(t, err)
-	require.Equal(t, outlookcalendar.GetEventBranchFound, result.Branch, "%+v", result.Failure)
-	require.Equal(t, "/v1.0/users/scheduling@contoso.com/events/event-1", provider.request(t, 1).path)
-
-	contents, err := os.ReadFile(configPath)
-	require.NoError(t, err)
-	var file struct {
-		Connections []struct {
-			Credentials         map[string]any `json:"credentials"`
-			CredentialExpiresAt time.Time      `json:"credentialExpiresAt"`
-			AuthMethodID        string         `json:"authMethodId"`
-		} `json:"connections"`
-	}
-	require.NoError(t, json.Unmarshal(contents, &file))
-	require.Equal(t, "stored-app-token", file.Connections[0].Credentials["access_token"], "the Studio picker reads the stored token")
-	require.True(t, file.Connections[0].CredentialExpiresAt.After(time.Now()))
-	require.Equal(t, "app-only", file.Connections[0].AuthMethodID, "Dex Web's record members survive the refresh")
-}
-
-func writeAppOnlyConnectionFile(t *testing.T) string {
-	t.Helper()
-	record := map[string]any{
-		"connectorId": outlookcalendar.ConnectorID, "modulePath": "github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-calendar",
-		"moduleVersion": "v0.1.0", "provider": "microsoft", "connectionName": calendarConnection.Name, "authMethodId": "app-only",
-		"configuration": map[string]any{"tenantId": "72f988bf-86f1-41af-91ab-2d7cd011db47", "mailbox": "scheduling@contoso.com"},
-		"credentials":   map[string]any{"auth_method": "app-only", "client_id": "client-id", "client_secret": fakeClientSecret},
-	}
-	contents, err := json.Marshal(map[string]any{"schemaVersion": localconfig.SchemaVersion, "connections": []any{record}})
-	require.NoError(t, err)
-	path := filepath.Join(t.TempDir(), "connections.json")
-	require.NoError(t, os.WriteFile(path, contents, 0o600))
-	return path
 }

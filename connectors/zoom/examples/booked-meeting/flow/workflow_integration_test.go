@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -26,7 +27,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/zoom"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -682,36 +682,61 @@ func isTerminalPhase(phase string) bool {
 	}
 }
 
-// startWorkerProcess runs the example's own Worker binary against the fake, so the test can kill it mid-request.
+// workerProcessEndpointEnvironmentVariable gives the fake Zoom endpoint to this test binary when
+// startWorkerProcess runs it again as the Worker process the test kills.
+const workerProcessEndpointEnvironmentVariable = "ZOOM_BOOKED_MEETING_WORKER_PROCESS_ENDPOINT"
+
+// TestMain runs the Worker process instead of the tests when startWorkerProcess re-executes this binary.
+func TestMain(m *testing.M) {
+	if endpoint := os.Getenv(workerProcessEndpointEnvironmentVariable); endpoint != "" {
+		if err := runWorkerProcess(endpoint); err != nil {
+			fmt.Fprintln(os.Stderr, "booked meeting Worker process stopped:", err)
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
+	os.Exit(m.Run())
+}
+
+// runWorkerProcess registers the booked meeting Flow as the example's Worker does and serves it until the
+// test kills the process.
+func runWorkerProcess(endpoint string) error {
+	reference := sdkgo.ConnectionRef{Provider: "zoom", Name: ConnectionName}
+	providerClient, err := zoom.New(zoom.Config{Endpoint: endpoint},
+		sdkgo.StaticCredentialProvider[zoom.Credentials]{reference: {AccessToken: sdkgo.NewSecretString(integrationAccessToken)}})
+	if err != nil {
+		return err
+	}
+	connection, err := zoom.NewConnection(providerClient, reference)
+	if err != nil {
+		return err
+	}
+	policy := DefaultAttendancePolicy()
+	registry, err := dex.NewRegistry([]dex.Flow{NewFlow(connection, &policy)})
+	if err != nil {
+		return err
+	}
+	cache, err := blobcache.New(&blobcache.Config{Dir: os.Getenv("DEX_BLOB_CACHE_DIR"), MaxBytes: 1 << 30})
+	if err != nil {
+		return err
+	}
+	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{
+		BindAddress: os.Getenv("DEX_WORKER_BIND_ADDRESS"), FlowServiceAddress: os.Getenv("DEX_FLOW_SERVICE_ADDRESS"),
+	})
+	if err != nil {
+		return errors.Join(err, cache.Close())
+	}
+	return errors.Join(worker.Start(), cache.Close())
+}
+
+// startWorkerProcess runs this test binary again as a Worker process against the fake, so the test can kill
+// it mid-request.
 func startWorkerProcess(t *testing.T, provider *fakeZoom, workerAddress string) *exec.Cmd {
 	t.Helper()
 	directory := t.TempDir()
-	binary := filepath.Join(directory, "booked-meeting-worker")
-	build := exec.Command("go", "build", "-o", binary, "..")
-	build.Env = append(os.Environ(), "GOWORK=off")
-	output, err := build.CombinedOutput()
-	require.NoError(t, err, string(output))
-
-	configurationPath := filepath.Join(directory, "connections.json")
-	connections, err := json.Marshal(map[string]any{
-		"schemaVersion": localconfig.SchemaVersion,
-		"connections": []map[string]any{{
-			"connectorId": zoom.ConnectorID, "modulePath": "github.com/superdurable/dex-connectors-library/connectors/zoom",
-			"moduleVersion": "v0.1.0", "provider": "zoom", "connectionName": ConnectionName,
-			"configuration": map[string]any{"endpoint": provider.URL + "/v2"},
-			"credentials": map[string]any{
-				"oauth_client_id": "client-id", "oauth_client_secret": "client-secret",
-				"access_token": integrationAccessToken, "refresh_token": "refresh-token",
-			},
-			"credentialExpiresAt": time.Now().Add(time.Hour).UTC().Format(time.RFC3339),
-		}},
-	})
-	require.NoError(t, err)
-	require.NoError(t, os.WriteFile(configurationPath, connections, 0o600))
-
-	process := exec.Command(binary)
+	process := exec.Command(os.Args[0])
 	process.Env = append(os.Environ(),
-		"DEX_CONNECTOR_CONFIG_FILE="+configurationPath, "DEX_WORKER_BIND_ADDRESS="+workerAddress,
+		workerProcessEndpointEnvironmentVariable+"="+provider.URL+"/v2", "DEX_WORKER_BIND_ADDRESS="+workerAddress,
 		"DEX_FLOW_SERVICE_ADDRESS="+environmentOr("DEX_FLOW_SERVICE_ADDRESS", "127.0.0.1:8801"),
 		"DEX_BLOB_CACHE_DIR="+filepath.Join(directory, "blobs"),
 	)

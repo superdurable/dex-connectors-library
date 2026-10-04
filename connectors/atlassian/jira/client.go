@@ -77,7 +77,7 @@ type Client struct {
 	endpoint          string
 	configuredCloudID string
 	httpClient        *http.Client
-	credentials       sdkgo.CredentialProvider[Credentials]
+	credentials       CredentialSource
 	refreshDriver     sdkgo.CredentialRefreshDriver[Credentials]
 	maxResponseBytes  int64
 	now               func() time.Time
@@ -181,7 +181,7 @@ type jiraErrorCollection struct {
 }
 
 // New validates configuration and constructs an authenticated Jira Cloud client.
-func New(config Config, credentials sdkgo.CredentialProvider[Credentials], options ...Option) (*Client, error) {
+func New(config Config, credentials CredentialSource, options ...Option) (*Client, error) {
 	config = withConfigDefaults(config)
 	if err := config.Validate(); err != nil {
 		return nil, err

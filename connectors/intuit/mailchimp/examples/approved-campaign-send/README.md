@@ -90,21 +90,23 @@ mkdir -p /tmp/mailchimp-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/intuit/mailchimp/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/intuit/mailchimp \
-  --version v0.1.0 --tag connectors/intuit/mailchimp/v0.1.0 \
+  --version v0.21.0 --tag connectors/intuit/mailchimp/v0.21.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/mailchimp-release/connector-release.json \
   --digest-output /tmp/mailchimp-release/connector-release.json.sha256
 dexcli dev \
   --flow-rendering-dir "$PWD/connectors/intuit/mailchimp/build" \
-  --connector-config-dir "$HOME/.dex/connectors" \
   --connector-release-override mailchimp=/tmp/mailchimp-release
 ```
 
-In a second terminal, start the Worker from `connectors/intuit/mailchimp` with
-the connection file Dex Web shows:
+Dex Web or Superverse Studio writes the connection to the project
+configuration. In a second terminal, start the Worker from
+`connectors/intuit/mailchimp` with the `DEX_PROJECT_*` environment that names
+it, as
+[project configuration loading](../../../../../sdkgo/projectconfig/README.md#application-loading)
+describes:
 
 ```bash
-export DEX_CONNECTOR_CONFIG_FILE="$HOME/.dex/connectors/connections.json"
 go run ./examples/approved-campaign-send
 ```
 

@@ -6,11 +6,13 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"log/slog"
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	answerduplicate "github.com/superdurable/dex-connectors-library/connectors/intercom/examples/answer-duplicate-conversation/flow"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
 func TestNewLoggerUsesLogLevelAndWarnsAboutAnInvalidOne(t *testing.T) {
@@ -36,19 +38,20 @@ func TestLocalAPIOptionsRedirectOnlyWhenTheLocalVariableIsSet(t *testing.T) {
 }
 
 func TestReplyConfigurationLoadsTheSavedAdminOrAnEmptyOne(t *testing.T) {
-	provider := newFakeIntercom(t)
-	setup := newExampleSetup(t, provider, "127.0.0.1:1")
-	store, err := localconfig.LoadFile(setup.configPath)
-	require.NoError(t, err)
+	reference := answerduplicate.ReplyConfigurationRef()
+	configuration := projectconfig.Configuration{OperationConfigurations: []projectconfig.OperationConfiguration{{
+		ConnectorID: reference.ConnectorID, ConnectionName: reference.ConnectionName, OperationID: reference.OperationID,
+		FlowType: reference.FlowType, StepType: reference.StepType, Configuration: json.RawMessage(`{"adminId":"` + fakeAdminID + `"}`),
+	}}}
 	var output bytes.Buffer
-	loaded, err := loadReplyConfiguration(store, slog.New(slog.NewTextHandler(&output, nil)))
+	loaded, err := loadReplyConfiguration(configuration, slog.New(slog.NewTextHandler(&output, nil)))
 	require.NoError(t, err)
 	require.Equal(t, fakeAdminID, loaded.Value.AdminID)
 	require.Empty(t, output.String())
 
-	unconfigured := newEmptyUseConfigurationStore(t, setup.configPath)
-	loaded, err = loadReplyConfiguration(unconfigured, slog.New(slog.NewTextHandler(&output, nil)))
+	loaded, err = loadReplyConfiguration(projectconfig.Configuration{}, slog.New(slog.NewTextHandler(&output, nil)))
 	require.NoError(t, err)
+	require.Equal(t, reference, loaded.Reference)
 	require.Empty(t, loaded.Value.AdminID, "an unsaved adminPicker fails each Flow with guidance instead of stopping the Worker")
 	require.Contains(t, output.String(), "the replying admin is not configured")
 }

@@ -40,7 +40,7 @@ func withClock(now func() time.Time) Option {
 type Client struct {
 	endpoint         *url.URL
 	httpClient       *http.Client
-	credentials      sdkgo.CredentialProvider[Credentials]
+	credentials      CredentialSource
 	refreshDriver    sdkgo.CredentialRefreshDriver[Credentials]
 	maxResponseBytes int64
 	maxRows          int
@@ -149,7 +149,7 @@ type providerRequestError struct {
 func (failure *providerRequestError) Error() string { return failure.message }
 
 // New validates configuration and constructs an authenticated Google Sheets client.
-func New(config Config, credentials sdkgo.CredentialProvider[Credentials], options ...Option) (*Client, error) {
+func New(config Config, credentials CredentialSource, options ...Option) (*Client, error) {
 	config = withConfigDefaults(config)
 	if err := config.Validate(); err != nil {
 		return nil, err

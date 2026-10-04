@@ -5,7 +5,7 @@ metadata:
   displayName: Microsoft Entra ID
   description: Read and list Microsoft Entra ID user accounts, create, disable, and enable them, revoke their sign-in sessions, and add or remove group members through Microsoft Graph, converging instead of duplicating when a Step repeats.
   company: Microsoft
-  version: v0.1.0
+  version: v0.21.0
 spec:
   provider: microsoft
   codegen:
@@ -33,6 +33,7 @@ spec:
         required: false
         default: extensionAttribute15
   auth:
+    refreshable: true
     defaultMethod: entra-app-only
     methods:
       - id: entra-app-only

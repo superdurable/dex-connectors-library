@@ -26,10 +26,8 @@ export interface ModelPickerBundleConfig {
    * provider's JSON. It runs for a configurationUnit target and for a
    * connection target that renders the modelPicker unit, again on Retry, and
    * again when the session or connection.authMethodIds change. connection is
-   * the ready message's connection; a loader that combines providers skips
-   * each provider whose auth method the connection has not added, with
-   * shouldListModelsForAuthMethod, which lists every provider when the host
-   * reports no auth methods.
+   * the ready message's connection, so a connector that serves several
+   * providers lists only the provider its configuration names.
    */
   loadModels(client: ConnectorStudioClient, connection: ConnectorStudioConnection): Promise<ModelListing>;
   /**
@@ -42,9 +40,9 @@ export interface ModelPickerBundleConfig {
   manualModelPlaceholder?: string;
   /**
    * defaultModelDescription names the model the connector uses when the
-   * connection saves no model, such as "first added provider's default model".
+   * connection saves no model, such as "the provider's default model".
    * A Step picker names the connection's configuration.model in its first
-   * option, "Connection default (anthropic/claude-sonnet-5)", and names this
+   * option, "Connection default (claude-sonnet-5)", and names this
    * description when the host reports a configuration without a model. The
    * connection's own picker labels its empty option "Connector default
    * (<description>)". Without it, and on hosts that report no configuration,
@@ -70,11 +68,12 @@ export function ModelPickerStudioApp({
     applyConnectorStudioTheme(ready);
     return observeConnectorStudioFrameAutoHeight(ready);
   }, [ready]);
-  // The client object changes every render; the picker reloads only when the session or its auth methods do.
+  // The client object changes every render; the picker reloads only when the session, its auth methods, or
+  // the connection's saved configuration, such as its provider, do.
   const loadModelsForSession = useCallback(async () => {
     if (!ready) throw new Error("Dex Web has not sent the connection");
     return loadModels(client, ready.connection);
-  }, [ready?.sessionNonce, ready?.connection.authMethodIds.join("\n")]);
+  }, [ready?.sessionNonce, ready?.connection.authMethodIds.join("\n"), JSON.stringify(ready?.connection.configuration)]);
 
   if (!ready) return <p className="studio-muted" role="status">Waiting for Dex Web…</p>;
   const {target} = ready;

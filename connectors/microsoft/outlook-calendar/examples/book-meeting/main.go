@@ -17,7 +17,8 @@ import (
 
 	outlookcalendar "github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-calendar"
 	bookmeeting "github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-calendar/examples/book-meeting/flow"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -35,15 +36,15 @@ func main() {
 }
 
 func run(ctx context.Context) error {
-	store, err := localconfig.LoadFromEnvironment()
+	project, err := projectconfig.LoadFromEnvironment(ctx)
 	if err != nil {
 		return err
 	}
-	connection, err := outlookcalendar.NewLocalConnection(store, bookmeeting.ConnectionName, connectionOptions()...)
+	connection, err := outlookcalendar.NewProjectConnection(project, bookmeeting.ConnectionName, connectionOptions()...)
 	if err != nil {
 		return err
 	}
-	selection, err := loadCalendarSelection(store)
+	selection, err := loadCalendarSelection(project.Configuration)
 	if err != nil {
 		return err
 	}
@@ -83,9 +84,9 @@ func connectionOptions() []outlookcalendar.Option {
 }
 
 // loadCalendarSelection reads the picked calendar once at startup; an unsaved picker uses the default calendar.
-func loadCalendarSelection(store *localconfig.Store) (bookmeeting.CalendarSelection, error) {
-	loaded, err := localconfig.LoadOperationConfiguration[bookmeeting.CalendarSelection](store, bookmeeting.CalendarSelectionConfigurationRef())
-	if errors.Is(err, localconfig.ErrConfigurationNotFound) {
+func loadCalendarSelection(configuration projectconfig.Configuration) (bookmeeting.CalendarSelection, error) {
+	loaded, err := provider.LoadOperationConfiguration[bookmeeting.CalendarSelection](configuration, bookmeeting.CalendarSelectionConfigurationRef())
+	if errors.Is(err, projectconfig.ErrObjectNotFound) {
 		return bookmeeting.CalendarSelection{}, nil
 	}
 	if err != nil {

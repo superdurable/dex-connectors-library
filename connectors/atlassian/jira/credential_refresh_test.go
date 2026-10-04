@@ -90,24 +90,6 @@ func TestCredentialRefreshIsRequiredWithoutARecordedExpiry(t *testing.T) {
 	require.True(t, driver.RefreshRequired(sdkgo.CredentialRefreshState[Credentials]{Credentials: credentials, ExpiresAt: &soon, Now: now}))
 }
 
-func TestHostedCredentialDecodingAcceptsOnlyTheAccessToken(t *testing.T) {
-	credentials, err := DecodeResolvedCredentialsJSON(json.RawMessage(`{"access_token":"access-1"}`))
-	require.NoError(t, err)
-	require.Equal(t, "access-1", credentials.AccessToken.Reveal())
-	_, err = DecodeResolvedCredentialsJSON(json.RawMessage(`{"access_token":"access-1","refresh_token":"refresh-1"}`))
-	require.Error(t, err)
-	_, err = DecodeResolvedCredentialsJSON(json.RawMessage(`{"access_token":"line\nbreak"}`))
-	require.Error(t, err)
-
-	encoded, err := EncodeCredentialsJSON(testRefreshCredentials())
-	require.NoError(t, err)
-	decoded, err := DecodeCredentialsJSON(encoded)
-	require.NoError(t, err)
-	require.Equal(t, "refresh-1", decoded.RefreshToken.Reveal())
-	_, err = EncodeCredentialsJSON(Credentials{AccessToken: sdkgo.NewSecretString("access-1")})
-	require.Error(t, err)
-}
-
 func testRefreshCredentials() Credentials {
 	return Credentials{
 		OAuthClientID: "client-id", OAuthClientSecret: sdkgo.NewSecretString("client-secret"),

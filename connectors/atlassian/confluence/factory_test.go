@@ -35,7 +35,7 @@ func TestCreatePageFactoryRequiresOnlyTheHappyPath(t *testing.T) {
 	})
 	require.Panics(t, func() {
 		confluence.NewCreatePageStep(confluence.CreatePageStepConfig[string]{
-			StepType: "Create", Annotations: annotations, Connection: connection,
+			StepType: "Create", Annotations: annotations, Connection: connection, ConnectionName: confluenceConnection.Name,
 			MapToOperationInput: mapToInput, TitleConflict: sdkgo.GoTo(createdPageTarget{}),
 		})
 	})

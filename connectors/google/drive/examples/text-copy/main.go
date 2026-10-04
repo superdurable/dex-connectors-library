@@ -18,7 +18,8 @@ import (
 	"github.com/superdurable/dex-connectors-library/connectors/google/drive"
 	textcopy "github.com/superdurable/dex-connectors-library/connectors/google/drive/examples/text-copy/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -33,19 +34,19 @@ func main() {
 }
 
 func run(ctx context.Context) error {
-	store, err := localconfig.LoadFromEnvironment()
+	project, err := projectconfig.LoadFromEnvironment(ctx)
 	if err != nil {
 		return err
 	}
-	connection, err := drive.NewLocalConnection(store, textcopy.ConnectionName)
+	connection, err := drive.NewProjectConnection(project, textcopy.ConnectionName)
 	if err != nil {
 		return err
 	}
-	sourceFolder, err := loadFolderConfiguration(store, textcopy.SourceFolderConfigurationRef())
+	sourceFolder, err := loadFolderConfiguration(project.Configuration, textcopy.SourceFolderConfigurationRef())
 	if err != nil {
 		return err
 	}
-	destinationFolder, err := loadFolderConfiguration(store, textcopy.DestinationFolderConfigurationRef())
+	destinationFolder, err := loadFolderConfiguration(project.Configuration, textcopy.DestinationFolderConfigurationRef())
 	if err != nil {
 		return err
 	}
@@ -79,11 +80,11 @@ func run(ctx context.Context) error {
 // loadFolderConfiguration reads a Step's saved folder pick once at startup. A
 // Step without a saved pick uses a blank folder, which the Flow documents.
 func loadFolderConfiguration(
-	store *localconfig.Store,
+	configuration projectconfig.Configuration,
 	reference sdkgo.ConnectorConfigurationRef,
 ) (sdkgo.ConnectorLoadedConfiguration[textcopy.FolderConfiguration], error) {
-	loaded, err := localconfig.LoadOperationConfiguration[textcopy.FolderConfiguration](store, reference)
-	if errors.Is(err, localconfig.ErrConfigurationNotFound) {
+	loaded, err := provider.LoadOperationConfiguration[textcopy.FolderConfiguration](configuration, reference)
+	if errors.Is(err, projectconfig.ErrObjectNotFound) {
 		return sdkgo.ConnectorLoadedConfiguration[textcopy.FolderConfiguration]{Reference: reference}, nil
 	}
 	return loaded, err

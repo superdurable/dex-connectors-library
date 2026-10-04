@@ -5,7 +5,7 @@ metadata:
   displayName: Webhook
   description: "Receive verified webhook requests from any sender, such as a form service, and start or resume Flows with a stable event ID. Send signed Standard Webhooks events to a configured HTTPS receiver."
   company: Super Durable
-  version: v0.1.0
+  version: v0.21.0
 spec:
   provider: webhook
   codegen:
@@ -83,7 +83,7 @@ spec:
       - name: signing_secret
         goName: SigningSecret
         type: secretString
-        description: "Secret shared with the sender and stored only in the local connection file. For hmacSha256, the exact key the sender signs with, such as the secret typed into GitHub or Typeform; for standardWebhooks, the whole whsec_ value; for sharedToken, the token the sender puts in tokenHeader. sendEvent signs outgoing requests with the same value. Required."
+        description: "Secret shared with the sender and stored only in this credential field. For hmacSha256, the exact key the sender signs with, such as the secret typed into GitHub or Typeform; for standardWebhooks, the whole whsec_ value; for sharedToken, the token the sender puts in tokenHeader. sendEvent signs outgoing requests with the same value. Required."
         required: true
     guide:
       startURL: https://github.com/superdurable/dex-connectors-library/tree/main/connectors/superdurable/webhook#sender-setup

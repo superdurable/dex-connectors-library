@@ -81,7 +81,7 @@ func TestGeneratedFactoriesRequireTheHappyPathAndTheStaticConnection(t *testing.
 	require.Equal(t, dex.StepDurabilityAsync, query.GetStepOptions().ExecuteDurability)
 
 	write := postgresql.NewExecuteStatementStep(postgresql.ExecuteStatementStepConfig[string]{
-		StepType: "WriteRow", Connection: connection,
+		StepType: "WriteRow", ConnectionName: "ledger", Connection: connection,
 		Annotations: sdkgo.StepAnnotations{GroupID: "postgresql", GroupLabel: "PostgreSQL", Explanation: "Write a row."},
 		MapToOperationInput: func(value string) postgresql.ExecuteStatementInput {
 			return postgresql.ExecuteStatementInput{Statement: value}
@@ -93,7 +93,7 @@ func TestGeneratedFactoriesRequireTheHappyPathAndTheStaticConnection(t *testing.
 
 	require.Panics(t, func() {
 		postgresql.NewExecuteStatementStep(postgresql.ExecuteStatementStepConfig[string]{
-			StepType: "MissingCompleted", Connection: connection,
+			StepType: "MissingCompleted", ConnectionName: "ledger", Connection: connection,
 			Annotations: sdkgo.StepAnnotations{GroupID: "postgresql", GroupLabel: "PostgreSQL", Explanation: "Write a row."},
 			MapToOperationInput: func(value string) postgresql.ExecuteStatementInput {
 				return postgresql.ExecuteStatementInput{Statement: value}

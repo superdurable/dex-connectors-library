@@ -41,20 +41,11 @@ FIXTURE_MODULE_PREFIX = f"github.com/{REPOSITORY}/connectors/dex-compat-fixtures
 CREDENTIAL_ISOLATION_MODULE_PATH = f"{FIXTURE_MODULE_PREFIX}/credential-isolation"
 FIXTURE_VERSION = "v0.1.0"
 CREDENTIAL_ISOLATION_RELEASE_ENVIRONMENT = "DEX_CONNECTOR_COMPAT_CREDENTIAL_ISOLATION_RELEASE"
-# One fixture per named authentication shape; the credential isolation fixture covers the unnamed shape.
-CONNECTION_RECORD_FIXTURES = (
-    DEX_WEB_COMPATIBILITY_TESTS / "connection-records-single",
-    DEX_WEB_COMPATIBILITY_TESTS / "connection-records-multiple",
-)
-CONNECTION_RECORD_RELEASES_ENVIRONMENT = "DEX_CONNECTOR_COMPAT_CONNECTION_RECORD_RELEASES"
-CONNECTION_RECORD_OUTPUT_ENVIRONMENT = "DEX_CONNECTOR_COMPAT_CONNECTION_RECORDS_OUTPUT"
-SDK_CONNECTION_RECORD_ENVIRONMENT = "DEX_CONNECTOR_COMPAT_CONNECTION_RECORDS"
-SDK_CONNECTION_RECORD_TEST = "TestDexWebWrittenConnectionRecords"
 DEX_GO_SDK_MODULE = "github.com/superdurable/dex/sdk-go"
 CONNECTOR_SDK_DIRECTORY = Path("sdkgo")
 CONNECTOR_SDK_MODULE = f"github.com/{REPOSITORY}/sdkgo"
 # Vetted one at a time because integration-only and live-only files may declare the same helpers.
-GO_VET_BUILD_TAG_SETS = ("", "integration", "live", "dexcompat")
+GO_VET_BUILD_TAG_SETS = ("", "integration", "live")
 GITHUB_REQUEST_ATTEMPTS = 5
 TRANSIENT_HTTP_STATUSES = frozenset({429, 500, 502, 503, 504})
 GO_MODULE_COPY_IGNORED_NAMES = ("node_modules", "dist", ".git")
@@ -104,10 +95,7 @@ def main() -> int:
             download_released_artifacts(releases, artifacts)
             test_released_examples(releases, examples, dexcli)
         credential_isolation_release = build_fixture_release(root, CREDENTIAL_ISOLATION_FIXTURE, temporary_root / "credential-isolation-release")
-        connection_record_releases = [
-            build_fixture_release(root, fixture, temporary_root / f"{fixture.name}-release") for fixture in CONNECTION_RECORD_FIXTURES
-        ]
-        test_dex_web(dex_release, root, artifacts, credential_isolation_release, connection_record_releases, temporary_root)
+        test_dex_web(dex_release, root, artifacts, credential_isolation_release, temporary_root)
     return 0
 
 
@@ -605,7 +593,6 @@ def test_dex_web(
     root: Path,
     artifacts: Path,
     credential_isolation_release: Path,
-    connection_record_releases: list[Path],
     temporary_root: Path,
 ) -> None:
     tag = str(dex_release["tag_name"])
@@ -627,23 +614,10 @@ def test_dex_web(
     environment["GOTOOLCHAIN"] = "auto"
     environment["DEX_CONNECTOR_COMPAT_ARTIFACT_ROOT"] = str(artifacts)
     environment[CREDENTIAL_ISOLATION_RELEASE_ENVIRONMENT] = str(credential_isolation_release)
-    connection_records = temporary_root / "connection-records"
-    environment[CONNECTION_RECORD_RELEASES_ENVIRONMENT] = os.pathsep.join(str(release) for release in connection_record_releases)
-    environment[CONNECTION_RECORD_OUTPUT_ENVIRONMENT] = str(connection_records)
     compatibility_tests = dex_web_compatibility_test_names(compatibility_sources)
     result = run(["go", "test", ".", "-run", "|".join((*compatibility_tests, *DEX_WEB_SECURITY_TESTS)), "-count=1", "-v"], web, environment)
     require_dex_web_tests_passed(result.stdout, compatibility_tests)
     require_dex_web_security_tests_passed(result.stdout, DEX_WEB_SECURITY_TESTS)
-    test_sdk_reads_dex_web_connection_records(root, connection_records)
-
-
-def test_sdk_reads_dex_web_connection_records(root: Path, connection_records: Path) -> None:
-    """Loads and refreshes the files Dex Web just wrote with this checkout's SDK."""
-    environment = os.environ.copy()
-    environment["GOWORK"] = "off"
-    environment[SDK_CONNECTION_RECORD_ENVIRONMENT] = str(connection_records)
-    result = run(["go", "test", "-tags=dexcompat", "./localconfig", "-run", f"^{SDK_CONNECTION_RECORD_TEST}$", "-count=1", "-v"], root / "sdkgo", environment)
-    require_dex_web_tests_passed(result.stdout, [SDK_CONNECTION_RECORD_TEST])
 
 
 def dex_web_compatibility_sources(root: Path) -> list[Path]:

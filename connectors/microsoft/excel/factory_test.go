@@ -24,14 +24,14 @@ func TestFactoriesRequireOnlyTheHappyPathBranch(t *testing.T) {
 			Appended:            sdkgo.GoTo(sdkgo.StepRef[excel.AppendTableRowsResult]("Done")),
 		})
 		excel.NewGetTableRowsStep(excel.GetTableRowsStepConfig[string]{
-			StepType: "Read", Annotations: testAnnotations, Connection: connection,
+			StepType: "Read", Annotations: testAnnotations, Connection: connection, ConnectionName: "approvals",
 			MapToOperationInput: func(string) excel.GetTableRowsInput { return excel.GetTableRowsInput{} },
 			Read:                sdkgo.GoTo(sdkgo.StepRef[excel.GetTableRowsResult]("Done")),
 		})
 	})
 	require.Panics(t, func() {
 		excel.NewAppendTableRowsStep(excel.AppendTableRowsStepConfig[string]{
-			StepType: "Append", Annotations: testAnnotations, Connection: connection,
+			StepType: "Append", Annotations: testAnnotations, Connection: connection, ConnectionName: "approvals",
 			MapToOperationInput: func(string) excel.AppendTableRowsInput { return excel.AppendTableRowsInput{} },
 			Uncertain:           sdkgo.GoTo(sdkgo.StepRef[excel.AppendTableRowsResult]("Review")),
 		})

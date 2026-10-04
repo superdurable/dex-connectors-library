@@ -8,11 +8,9 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
 	"html"
 	"net"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strconv"
 	"testing"
@@ -257,73 +255,45 @@ func TestUnconfiguredAdminFailsBeforeCallingIntercomWithRealDex(t *testing.T) {
 	require.Zero(t, provider.totalRequests())
 }
 
-// TestSignedNewConversationStartsOneFlowAndOtherDeliveriesStartNoneWithRealDex runs the example's
-// run function: README steps 4 and 5.
+// TestSignedNewConversationStartsOneFlowAndOtherDeliveriesStartNoneWithRealDex serves the example's inbound
+// target on the connection's endpoint: README steps 4 and 5.
 func TestSignedNewConversationStartsOneFlowAndOtherDeliveriesStartNoneWithRealDex(t *testing.T) {
 	provider := newFakeIntercom(t)
 	scenario := seedDuplicateScenario(provider)
-	setup := newExampleSetup(t, provider, dexAddress())
-	running := setup.startExample(t)
+	harness := newDuplicateHarness(t, provider, defaultRequestTimeout, fakeAdminID)
+	logs := newRecordedLogs(t)
+	endpoint := newInboundEndpoint(t, provider, newExampleConnection(t, provider, intercom.WithLogger(logs.logger())),
+		newInboundTarget(harness.client, harness.flow, logs.logger()))
+	endpoint.start(t)
 	client := newInspectionClient(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 
-	require.Equal(t, http.StatusOK, setup.postNotification(t, http.MethodHead, nil, ""), "Intercom validates the URL with HEAD")
+	require.Equal(t, http.StatusOK, endpoint.postNotification(t, http.MethodHead, nil, ""), "Intercom validates the URL with HEAD")
 	notificationID := "notif_" + strconv.FormatInt(time.Now().UnixNano(), 10)
 	body, signature := provider.signedNotification(notificationID, intercom.TopicConversationUserCreated, scenario.inboundID, fakeClientSecret)
-	require.Equal(t, http.StatusOK, setup.postNotification(t, http.MethodPost, body, signature))
+	require.Equal(t, http.StatusOK, endpoint.postNotification(t, http.MethodPost, body, signature))
 	outcome := waitForOutcome(t, ctx, client, scenario.inboundID)
 	require.Equal(t, answerduplicate.OutcomeAnsweredAndClosed, outcome.Action)
 	require.Equal(t, scenario.earlierID, outcome.EarlierConversationID)
 
-	// Intercom redelivers the same notification: the inbox and the Flow start both deduplicate it.
-	require.Equal(t, http.StatusOK, setup.postNotification(t, http.MethodPost, body, signature))
+	// Intercom redelivers the same notification: the Flow start deduplicates it.
+	require.Equal(t, http.StatusOK, endpoint.postNotification(t, http.MethodPost, body, signature))
 	require.Eventually(t, func() bool {
-		return len(setup.logs.find("trigger event delivered", map[string]string{"event_id": notificationID, "duplicate": "true"})) == 1
+		return len(logs.find("trigger event delivered", map[string]string{"event_id": notificationID, "duplicate": "true"})) == 1
 	}, 20*time.Second, 25*time.Millisecond, "the redelivery reaches Dex as a duplicate start")
 	require.Equal(t, 1, provider.count("reply"), "the Flow replied once")
 
 	// A forged notification, a ping, and a filtered topic start nothing.
 	forgedBody, _ := provider.signedNotification(notificationID+"-forged", intercom.TopicConversationUserCreated, scenario.otherCustomerOpenID, fakeClientSecret)
-	require.Equal(t, http.StatusBadRequest, setup.postNotification(t, http.MethodPost, forgedBody, hubSignature(forgedBody, "another-secret")))
+	require.Equal(t, http.StatusBadRequest, endpoint.postNotification(t, http.MethodPost, forgedBody, hubSignature(forgedBody, "another-secret")))
 	ping := []byte(`{"type":"notification_event","app_id":"` + fakeWorkspaceID + `","id":"` + notificationID + `-ping","topic":"ping","data":{"type":"notification_event_data","item":{"type":"ping","message":"something"}},"created_at":1}`)
-	require.Equal(t, http.StatusOK, setup.postNotification(t, http.MethodPost, ping, hubSignature(ping, fakeClientSecret)))
+	require.Equal(t, http.StatusOK, endpoint.postNotification(t, http.MethodPost, ping, hubSignature(ping, fakeClientSecret)))
 	repliedBody, repliedSignature := provider.signedNotification(notificationID+"-replied", intercom.TopicConversationAdminReplied, scenario.otherCustomerOpenID, fakeClientSecret)
-	require.Equal(t, http.StatusOK, setup.postNotification(t, http.MethodPost, repliedBody, repliedSignature))
+	require.Equal(t, http.StatusOK, endpoint.postNotification(t, http.MethodPost, repliedBody, repliedSignature))
 	requireNoFlow(t, ctx, client, scenario.otherCustomerOpenID)
-	require.Empty(t, setup.pendingEventIDs(t))
-
-	running.stop(t)
-	require.NotContains(t, setup.logs.text(), fakeClientSecret)
-	require.NotContains(t, setup.logs.text(), fakeAccessToken)
-}
-
-// TestNotificationAcknowledgedWhileDexIsDownIsReplayedAfterRestartWithRealDex covers README step 6.
-func TestNotificationAcknowledgedWhileDexIsDownIsReplayedAfterRestartWithRealDex(t *testing.T) {
-	provider := newFakeIntercom(t)
-	scenario := seedDuplicateScenario(provider)
-	reachableDex := dexAddress()
-	unreachableDex := "unix://" + filepath.Join(os.TempDir(), fmt.Sprintf("dex-missing-%d.sock", time.Now().UnixNano()))
-	setup := newExampleSetup(t, provider, unreachableDex)
-	notificationID := "notif_replayed_" + strconv.FormatInt(time.Now().UnixNano(), 10)
-	body, signature := provider.signedNotification(notificationID, intercom.TopicConversationUserCreated, scenario.inboundID, fakeClientSecret)
-
-	firstRun := setup.startExample(t)
-	require.Equal(t, http.StatusOK, setup.postNotification(t, http.MethodPost, body, signature))
-	firstRun.stop(t)
-	require.Equal(t, []string{notificationID}, setup.pendingEventIDs(t), "acknowledged but never delivered")
-
-	t.Setenv("DEX_FLOW_SERVICE_ADDRESS", reachableDex)
-	secondRun := setup.startExample(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-	defer cancel()
-	outcome := waitForOutcome(t, ctx, newInspectionClient(t), scenario.inboundID)
-	require.Equal(t, answerduplicate.OutcomeAnsweredAndClosed, outcome.Action)
-	require.Equal(t, 1, provider.count("reply"))
-	require.Eventually(t, func() bool { return len(setup.pendingEventIDs(t)) == 0 }, 10*time.Second, 25*time.Millisecond)
-	require.Len(t, setup.logs.find("replaying pending trigger events", map[string]string{"count": "1"}), 1)
-	secondRun.stop(t)
-	require.NotContains(t, setup.logs.text(), fakeClientSecret)
+	require.NotContains(t, logs.text(), fakeClientSecret)
+	require.NotContains(t, logs.text(), fakeAccessToken)
 }
 
 // answerduplicateReplyHTML is the reply as the connector sends it: one escaped paragraph.

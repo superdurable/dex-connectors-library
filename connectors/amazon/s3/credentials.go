@@ -4,7 +4,6 @@
 package s3
 
 import (
-	"encoding/json"
 	"errors"
 	"strings"
 	"unicode"
@@ -19,17 +18,6 @@ const (
 	// maxSessionTokenBytes keeps x-amz-security-token inside S3's 8 KB request-header limit.
 	maxSessionTokenBytes = 4096
 )
-
-// DecodeResolvedCredentialsJSON decodes the operation-scoped credential a trusted hosted broker returns,
-// {"access_key_id": "...", "secret_access_key": "...", "session_token": "..."}, where session_token is
-// optional. Unknown members are rejected, and errors never repeat a value.
-func DecodeResolvedCredentialsJSON(contents json.RawMessage) (Credentials, error) {
-	credentials, err := decodeLocalCredentials(contents)
-	if err != nil {
-		return Credentials{}, errors.New("S3 resolved credential is invalid")
-	}
-	return credentials, validateResolvedCredentials(credentials)
-}
 
 // validateResolvedCredentials accepts values that fit the SigV4 Credential scope and request headers.
 func validateResolvedCredentials(credentials Credentials) error {

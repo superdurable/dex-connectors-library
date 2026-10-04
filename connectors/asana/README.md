@@ -77,32 +77,26 @@ second method with `sdkgo/oauthtoken`: refresh-token grant, form body,
 `ClientSecretPost`, the prior refresh token kept when Asana omits one, and
 `invalid_grant` treated as reauthorization.
 
-## Local configuration
+## Project configuration
 
-Dex Web writes this record for the connection name the application uses:
+Name the factory connection and open the same name from the project
+configuration at application startup, as
+[`examples/approved-request-task/main.go`](examples/approved-request-task/main.go)
+does:
 
-```json
-{
-  "schemaVersion": "connectors.dex.dev/local-connections/v1alpha1",
-  "connections": [{
-    "connectorId": "asana",
-    "modulePath": "github.com/superdurable/dex-connectors-library/connectors/asana",
-    "moduleVersion": "v0.1.0",
-    "provider": "asana",
-    "connectionName": "asana-requests",
-    "configuration": {},
-    "credentials": {"access_token": "..."}
-  }]
+```go
+project, err := projectconfig.LoadFromEnvironment(ctx)
+if err != nil {
+	return err
 }
+connection, err := asana.NewProjectConnection(project, approvedrequesttask.ConnectionName)
 ```
 
-Load it with `localconfig.LoadFromEnvironment` and
-`asana.NewLocalConnection(store, "asana-requests")`. `endpoint` and
-`maxResponseBytes` are startup configuration.
-
-Hosted applications resolve operation-scoped tokens with
-`hostedconfig.NewCredentialProviderFromEnvironment(asana.ConnectorID, name,
-asana.DecodeResolvedCredentialsJSON)`, which accepts only `access_token`.
+Dex Web or Superverse Studio writes that configuration, and the application
+reads it through the `DEX_PROJECT_*` environment described in
+[project configuration loading](../../sdkgo/projectconfig/README.md#application-loading).
+The stored credential holds exactly `access_token`; the connector resolves it
+for every call. `endpoint` and `maxResponseBytes` are startup configuration.
 
 ## Operations
 

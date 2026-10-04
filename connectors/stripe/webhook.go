@@ -16,7 +16,8 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex-connectors-library/sdkgo/webhooktrigger"
 )
 
@@ -201,11 +202,11 @@ func decodeWebhookEvent(contents []byte) (sdkgo.TriggerEvent[CheckoutSessionEven
 	}, true, nil
 }
 
-// LocalCheckoutSessionUpdatedTriggerRoute binds one stored trigger configuration to its application target.
-type LocalCheckoutSessionUpdatedTriggerRoute struct {
+// ProjectCheckoutSessionUpdatedTriggerRoute binds one stored trigger configuration to its application target.
+type ProjectCheckoutSessionUpdatedTriggerRoute struct {
 	// BindingName names the stored trigger binding.
 	BindingName string
-	// Target receives verified events through the binding's durable local inbox.
+	// Target receives verified events through the binding's durable project inbox.
 	Target sdkgo.TriggerTarget[CheckoutSessionEvent]
 }
 
@@ -214,28 +215,49 @@ type CheckoutSessionWebhookRuntime struct {
 	endpointRunner *webhooktrigger.EndpointRunner
 }
 
-// NewLocalCheckoutSessionWebhookRuntime loads local connection and binding configuration and creates a
-// shared webhook runtime. Each target receives a durable inbox before Stripe is acknowledged.
-func NewLocalCheckoutSessionWebhookRuntime(
-	store *localconfig.Store,
+// durableCheckoutSessionTarget wraps one binding's target so that each event is stored before its acknowledgement.
+type durableCheckoutSessionTarget func(
+	key projectconfig.TriggerInboxKey, target sdkgo.TriggerTarget[CheckoutSessionEvent],
+) (sdkgo.TriggerTarget[CheckoutSessionEvent], error)
+
+// NewProjectCheckoutSessionWebhookRuntime loads the connection and binding configuration from the project and
+// creates a shared webhook runtime. Each target receives a durable inbox before Stripe is acknowledged.
+func NewProjectCheckoutSessionWebhookRuntime(
+	project *projectconfig.LoadedProject,
 	connectionName string,
-	routes []LocalCheckoutSessionUpdatedTriggerRoute,
+	routes []ProjectCheckoutSessionUpdatedTriggerRoute,
 	options ...Option,
 ) (*CheckoutSessionWebhookRuntime, error) {
-	if store == nil {
-		return nil, fmt.Errorf("local connector configuration store is required")
-	}
-	if len(routes) == 0 {
-		return nil, fmt.Errorf("Stripe Checkout Session trigger routes are required")
-	}
-	connection, err := NewLocalConnection(store, connectionName, options...)
+	connection, err := NewProjectConnection(project, connectionName, options...)
 	if err != nil {
 		return nil, err
+	}
+	return newCheckoutSessionWebhookRuntime(connection, project.Configuration, routes, func(
+		key projectconfig.TriggerInboxKey, target sdkgo.TriggerTarget[CheckoutSessionEvent],
+	) (sdkgo.TriggerTarget[CheckoutSessionEvent], error) {
+		inbox, err := project.TriggerInbox(key)
+		if err != nil {
+			return nil, err
+		}
+		return provider.NewDurableTriggerTarget(inbox, key, target)
+	})
+}
+
+// newCheckoutSessionWebhookRuntime runs routes on connection with the bindings that configuration stores.
+func newCheckoutSessionWebhookRuntime(
+	connection Connection,
+	configuration projectconfig.Configuration,
+	routes []ProjectCheckoutSessionUpdatedTriggerRoute,
+	makeDurable durableCheckoutSessionTarget,
+) (*CheckoutSessionWebhookRuntime, error) {
+	if len(routes) == 0 {
+		return nil, fmt.Errorf("Stripe Checkout Session trigger routes are required")
 	}
 	handler, err := connection.CheckoutSessionWebhookHandler()
 	if err != nil {
 		return nil, err
 	}
+	connectionName := connection.reference.Name
 	runners := make([]sdkgo.TriggerRunner, 0, len(routes))
 	bindings := make(map[string]bool, len(routes))
 	for _, route := range routes {
@@ -247,19 +269,21 @@ func NewLocalCheckoutSessionWebhookRuntime(
 			return nil, fmt.Errorf("Stripe Checkout Session trigger binding name %q is duplicated", bindingName)
 		}
 		bindings[bindingName] = true
-		var configuration CheckoutSessionUpdatedTriggerConfiguration
-		if err := store.DecodeTriggerConfiguration(ConnectorID, connectionName, "checkoutSessionUpdated", bindingName, &configuration); err != nil {
-			return nil, err
+		var bindingConfiguration CheckoutSessionUpdatedTriggerConfiguration
+		if err := configuration.DecodeTriggerConfiguration(ConnectorID, connectionName, "checkoutSessionUpdated", bindingName, &bindingConfiguration); err != nil {
+			return nil, fmt.Errorf("Stripe checkoutSessionUpdated binding %q configuration: %w", bindingName, err)
 		}
-		durableTarget, err := localconfig.NewDurableTriggerTarget(
-			store, ConnectorID, connectionName, "checkoutSessionUpdated", bindingName, route.Target,
-		)
+		if err := bindingConfiguration.Validate(); err != nil {
+			return nil, fmt.Errorf("binding %q: %w", bindingName, err)
+		}
+		key := projectconfig.TriggerInboxKey{ConnectorID: ConnectorID, ConnectionName: connectionName, TriggerName: "checkoutSessionUpdated", BindingName: bindingName}
+		durableTarget, err := makeDurable(key, route.Target)
 		if err != nil {
 			return nil, err
 		}
 		runners = append(runners, NewCheckoutSessionUpdatedTrigger(CheckoutSessionUpdatedTriggerConfig{
 			Connection: connection, ConnectionName: connectionName, BindingName: bindingName,
-			Configuration: configuration, Target: durableTarget,
+			Configuration: bindingConfiguration, Target: durableTarget,
 		}))
 	}
 	endpointRunner, err := webhooktrigger.NewEndpointRunner(handler, runners...)

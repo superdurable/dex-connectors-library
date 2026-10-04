@@ -10,7 +10,8 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -36,11 +37,16 @@ type Credentials struct {
 	TenantID     string
 }
 
+// CredentialSource is the credential provider New requires: this connector refreshes its credentials.
+type CredentialSource = sdkgo.RefreshingCredentialProvider[Credentials]
+
 type Connection struct {
 	client    *Client
 	reference sdkgo.ConnectionRef
 }
 
+// NewConnection wraps a client built with New, such as a test client with a static credential provider.
+// Applications open declared connections with NewProjectConnection instead.
 func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, error) {
 	if client == nil {
 		return Connection{}, fmt.Errorf("outlook-mail connector client is required")
@@ -51,20 +57,25 @@ func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, e
 	return Connection{client: client, reference: reference}, nil
 }
 
-// NewLocalConnection loads startup configuration and reloads credentials before every provider call.
-func NewLocalConnection(store *localconfig.Store, connectionName string, options ...Option) (Connection, error) {
-	if store == nil {
-		return Connection{}, fmt.Errorf("local connector configuration store is required")
+// NewProjectConnection opens the connection that dex-app.yaml declares as connectionName from the
+// loaded project configuration. It reads ordinary settings now and resolves credentials during each call.
+func NewProjectConnection(project *projectconfig.LoadedProject, connectionName string, options ...Option) (Connection, error) {
+	if project == nil {
+		return Connection{}, fmt.Errorf("outlook-mail connection requires the loaded project configuration")
 	}
 	reference := sdkgo.ConnectionRef{Provider: "microsoft", Name: connectionName}
 	if err := reference.Validate(); err != nil {
-		return Connection{}, fmt.Errorf("outlook-mail local connection: %w", err)
+		return Connection{}, fmt.Errorf("outlook-mail connection: %w", err)
 	}
+	key := projectconfig.ConnectionKey{ConnectorID: ConnectorID, ConnectionName: connectionName}
 	var config Config
-	if err := store.DecodeConfiguration(ConnectorID, connectionName, &config); err != nil {
+	if err := project.Configuration.DecodeConnectionConfiguration(key, &config); err != nil {
+		return Connection{}, fmt.Errorf("outlook-mail connection %q settings: %w", connectionName, err)
+	}
+	credentials, err := provider.NewRefreshingCredentialProvider(project.Connections, key, decodeCredentials, encodeCredentials)
+	if err != nil {
 		return Connection{}, err
 	}
-	credentials := localconfig.NewRefreshingCredentialProvider(store, ConnectorID, connectionName, decodeLocalCredentials, encodeLocalCredentials)
 	client, err := New(config, credentials, options...)
 	if err != nil {
 		return Connection{}, err
@@ -72,7 +83,7 @@ func NewLocalConnection(store *localconfig.Store, connectionName string, options
 	return NewConnection(client, reference)
 }
 
-func decodeLocalCredentials(contents json.RawMessage) (Credentials, error) {
+func decodeCredentials(contents json.RawMessage) (Credentials, error) {
 	var fields struct {
 		AuthMethodID string `json:"auth_method"`
 		ClientID     string `json:"client_id"`
@@ -81,7 +92,7 @@ func decodeLocalCredentials(contents json.RawMessage) (Credentials, error) {
 		RefreshToken string `json:"refresh_token"`
 		TenantID     string `json:"tenant_id"`
 	}
-	if err := localconfig.DecodeCredentials(contents, &fields); err != nil {
+	if err := projectconfig.DecodeCredentials(contents, &fields); err != nil {
 		return Credentials{}, err
 	}
 	credentials := Credentials{
@@ -95,7 +106,7 @@ func decodeLocalCredentials(contents json.RawMessage) (Credentials, error) {
 	return credentials, credentials.Validate()
 }
 
-func encodeLocalCredentials(credentials Credentials) (json.RawMessage, error) {
+func encodeCredentials(credentials Credentials) (json.RawMessage, error) {
 	fields := struct {
 		AuthMethodID string `json:"auth_method"`
 		ClientID     string `json:"client_id,omitempty"`
@@ -229,8 +240,8 @@ func NewSearchMessagesStep[IN any](config SearchMessagesStepConfig[IN]) sdkgo.Qu
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
-	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
-		panic(fmt.Errorf("outlook-mail connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("outlook-mail connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, SearchMessagesInput, SearchMessagesOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
@@ -305,8 +316,8 @@ func NewGetMessageStep[IN any](config GetMessageStepConfig[IN]) sdkgo.QueryStep[
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
-	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
-		panic(fmt.Errorf("outlook-mail connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("outlook-mail connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetMessageInput, Message]{
 		StepType: config.StepType, Annotations: config.Annotations,
@@ -381,8 +392,8 @@ func NewSendMessageStep[IN any](config SendMessageStepConfig[IN]) sdkgo.Mutation
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
-	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
-		panic(fmt.Errorf("outlook-mail connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("outlook-mail connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SendMessageInput, SentMessage]{
 		StepType: config.StepType, Annotations: config.Annotations,
@@ -457,8 +468,8 @@ func NewReplyToMessageStep[IN any](config ReplyToMessageStepConfig[IN]) sdkgo.Mu
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
-	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
-		panic(fmt.Errorf("outlook-mail connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("outlook-mail connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, ReplyToMessageInput, SentMessage]{
 		StepType: config.StepType, Annotations: config.Annotations,
@@ -533,8 +544,8 @@ func NewMoveMessageStep[IN any](config MoveMessageStepConfig[IN]) sdkgo.Mutation
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
-	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
-		panic(fmt.Errorf("outlook-mail connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("outlook-mail connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, MoveMessageInput, MovedMessage]{
 		StepType: config.StepType, Annotations: config.Annotations,
@@ -606,8 +617,8 @@ func NewSetMessageFlagsStep[IN any](config SetMessageFlagsStepConfig[IN]) sdkgo.
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
-	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
-		panic(fmt.Errorf("outlook-mail connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("outlook-mail connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SetMessageFlagsInput, MessageFlags]{
 		StepType: config.StepType, Annotations: config.Annotations,

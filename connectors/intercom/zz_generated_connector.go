@@ -10,7 +10,8 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -42,11 +43,16 @@ type Credentials struct {
 	ClientSecret sdkgo.SecretString
 }
 
+// CredentialSource is the credential provider New requires: this connector never refreshes its credentials.
+type CredentialSource = sdkgo.CredentialProvider[Credentials]
+
 type Connection struct {
 	client    *Client
 	reference sdkgo.ConnectionRef
 }
 
+// NewConnection wraps a client built with New, such as a test client with a static credential provider.
+// Applications open declared connections with NewProjectConnection instead.
 func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, error) {
 	if client == nil {
 		return Connection{}, fmt.Errorf("intercom connector client is required")
@@ -57,20 +63,25 @@ func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, e
 	return Connection{client: client, reference: reference}, nil
 }
 
-// NewLocalConnection loads startup configuration and reloads credentials before every provider call.
-func NewLocalConnection(store *localconfig.Store, connectionName string, options ...Option) (Connection, error) {
-	if store == nil {
-		return Connection{}, fmt.Errorf("local connector configuration store is required")
+// NewProjectConnection opens the connection that dex-app.yaml declares as connectionName from the
+// loaded project configuration. It reads ordinary settings now and resolves credentials during each call.
+func NewProjectConnection(project *projectconfig.LoadedProject, connectionName string, options ...Option) (Connection, error) {
+	if project == nil {
+		return Connection{}, fmt.Errorf("intercom connection requires the loaded project configuration")
 	}
 	reference := sdkgo.ConnectionRef{Provider: "intercom", Name: connectionName}
 	if err := reference.Validate(); err != nil {
-		return Connection{}, fmt.Errorf("intercom local connection: %w", err)
+		return Connection{}, fmt.Errorf("intercom connection: %w", err)
 	}
+	key := projectconfig.ConnectionKey{ConnectorID: ConnectorID, ConnectionName: connectionName}
 	var config Config
-	if err := store.DecodeConfiguration(ConnectorID, connectionName, &config); err != nil {
+	if err := project.Configuration.DecodeConnectionConfiguration(key, &config); err != nil {
+		return Connection{}, fmt.Errorf("intercom connection %q settings: %w", connectionName, err)
+	}
+	credentials, err := provider.NewCredentialProvider(project.Connections, key, decodeCredentials)
+	if err != nil {
 		return Connection{}, err
 	}
-	credentials := localconfig.NewCredentialProvider(store, ConnectorID, connectionName, decodeLocalCredentials)
 	client, err := New(config, credentials, options...)
 	if err != nil {
 		return Connection{}, err
@@ -78,12 +89,12 @@ func NewLocalConnection(store *localconfig.Store, connectionName string, options
 	return NewConnection(client, reference)
 }
 
-func decodeLocalCredentials(contents json.RawMessage) (Credentials, error) {
+func decodeCredentials(contents json.RawMessage) (Credentials, error) {
 	var fields struct {
 		AccessToken  string `json:"access_token"`
 		ClientSecret string `json:"client_secret"`
 	}
-	if err := localconfig.DecodeCredentials(contents, &fields); err != nil {
+	if err := projectconfig.DecodeCredentials(contents, &fields); err != nil {
 		return Credentials{}, err
 	}
 	credentials := Credentials{
@@ -192,32 +203,14 @@ func NewConversationEventTrigger(config ConversationEventTriggerConfig) sdkgo.Tr
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
-	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
-		panic(fmt.Errorf("intercom connector trigger connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("intercom connector trigger ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
 	}
 	binding := sdkgo.TriggerBindingRef{Connection: config.Connection.reference, Trigger: ConversationEventTriggerDefinition.Trigger, Name: config.BindingName}
 	return sdkgo.MustNewTrigger(sdkgo.TriggerConfig[ConversationEvent]{
 		Definition: ConversationEventTriggerDefinition, Binding: binding,
 		Source: config.Connection.client.conversationEventTriggerSource(config.Connection.reference, config.Configuration), Target: config.Target,
 	})
-}
-
-func NewLocalConversationEventTrigger(store *localconfig.Store, connectionName string, bindingName string, target sdkgo.TriggerTarget[ConversationEvent], options ...Option) (sdkgo.TriggerRunner, error) {
-	connection, err := NewLocalConnection(store, connectionName, options...)
-	if err != nil {
-		return nil, err
-	}
-	var configuration ConversationEventTriggerConfiguration
-	if err := store.DecodeTriggerConfiguration(ConnectorID, connectionName, "conversationEvent", bindingName, &configuration); err != nil {
-		return nil, err
-	}
-	durableTarget, err := localconfig.NewDurableTriggerTarget(store, ConnectorID, connectionName, "conversationEvent", bindingName, target)
-	if err != nil {
-		return nil, err
-	}
-	return NewConversationEventTrigger(ConversationEventTriggerConfig{
-		Connection: connection, ConnectionName: connectionName, BindingName: bindingName, Configuration: configuration, Target: durableTarget,
-	}), nil
 }
 
 const SearchConversationsBranchSearched sdkgo.BranchID = "searched"
@@ -264,8 +257,8 @@ func NewSearchConversationsStep[IN any](config SearchConversationsStepConfig[IN]
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
-	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
-		panic(fmt.Errorf("intercom connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("intercom connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, SearchConversationsInput, SearchConversationsOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
@@ -340,8 +333,8 @@ func NewGetConversationStep[IN any](config GetConversationStepConfig[IN]) sdkgo.
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
-	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
-		panic(fmt.Errorf("intercom connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("intercom connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetConversationInput, ConversationDetails]{
 		StepType: config.StepType, Annotations: config.Annotations,
@@ -422,8 +415,8 @@ func NewReplyToConversationStep[IN any](config ReplyToConversationStepConfig[IN]
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
-	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
-		panic(fmt.Errorf("intercom connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("intercom connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, ReplyToConversationInput, ReplyToConversationOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
@@ -504,8 +497,8 @@ func NewUpdateConversationStateStep[IN any](config UpdateConversationStateStepCo
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
-	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
-		panic(fmt.Errorf("intercom connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("intercom connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateConversationStateInput, UpdateConversationStateOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
@@ -583,8 +576,8 @@ func NewFindContactByEmailStep[IN any](config FindContactByEmailStepConfig[IN]) 
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
-	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
-		panic(fmt.Errorf("intercom connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("intercom connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, FindContactByEmailInput, FindContactByEmailOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,

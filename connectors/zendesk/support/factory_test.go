@@ -23,6 +23,9 @@ func (completeTarget[IN]) Execute(dex.Context, IN) (*dex.StepDecision, error) {
 	return dex.GracefulComplete(struct{}{}), nil
 }
 
+// GetStepType names the target: Dex gives a generic Step type no default name.
+func (completeTarget[IN]) GetStepType() string { return "Complete" }
+
 func TestFactoriesRequireOnlyTheHappyPathBranch(t *testing.T) {
 	connection := newTestConnection(t)
 	annotations := sdkgo.StepAnnotations{GroupID: "zendesk", GroupLabel: "Zendesk Support", Explanation: "Call Zendesk."}
@@ -35,12 +38,12 @@ func TestFactoriesRequireOnlyTheHappyPathBranch(t *testing.T) {
 			Searched: sdkgo.GoTo(completeTarget[support.SearchTicketsResult]{}),
 		})
 		support.NewGetTicketStep(support.GetTicketStepConfig[int64]{
-			StepType: "ReadTicket", Annotations: annotations, Connection: connection,
+			StepType: "ReadTicket", Annotations: annotations, Connection: connection, ConnectionName: zendeskConnection.Name,
 			MapToOperationInput: func(id int64) support.GetTicketInput { return support.GetTicketInput{TicketID: id} },
 			Found:               sdkgo.GoTo(completeTarget[support.GetTicketResult]{}),
 		})
 		support.NewCreateTicketStep(support.CreateTicketStepConfig[string]{
-			StepType: "OpenTicket", Annotations: annotations, Connection: connection,
+			StepType: "OpenTicket", Annotations: annotations, Connection: connection, ConnectionName: zendeskConnection.Name,
 			MapToOperationInput: func(string) support.CreateTicketInput { return validCreateTicketInput() },
 			Created:             sdkgo.GoTo(completeTarget[support.CreateTicketResult]{}),
 			ProviderRejected:    sdkgo.GoTo(completeTarget[support.CreateTicketResult]{}),
@@ -48,7 +51,7 @@ func TestFactoriesRequireOnlyTheHappyPathBranch(t *testing.T) {
 			Defect:              sdkgo.GoTo(completeTarget[support.CreateTicketResult]{}),
 		})
 		support.NewUpdateTicketStep(support.UpdateTicketStepConfig[int64]{
-			StepType: "FollowUp", Annotations: annotations, Connection: connection,
+			StepType: "FollowUp", Annotations: annotations, Connection: connection, ConnectionName: zendeskConnection.Name,
 			MapToOperationInput: func(id int64) support.UpdateTicketInput {
 				return support.UpdateTicketInput{TicketID: id, Status: "open"}
 			},
@@ -57,7 +60,7 @@ func TestFactoriesRequireOnlyTheHappyPathBranch(t *testing.T) {
 	})
 	require.Panics(t, func() {
 		support.NewCreateTicketStep(support.CreateTicketStepConfig[string]{
-			StepType: "OpenTicket", Connection: connection,
+			StepType: "OpenTicket", Annotations: annotations, Connection: connection, ConnectionName: zendeskConnection.Name,
 			MapToOperationInput: func(string) support.CreateTicketInput { return validCreateTicketInput() },
 			ProviderRejected:    sdkgo.GoTo(completeTarget[support.CreateTicketResult]{}),
 		})

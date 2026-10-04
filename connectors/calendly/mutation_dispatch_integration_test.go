@@ -180,7 +180,7 @@ func newProbeFlows(connection calendly.Connection) []dex.Flow {
 	asyncOverride := &dex.StepOptions{ExecuteDurability: dex.StepDurabilityAsync}
 	linkStep := func(stepType string, override *dex.StepOptions) dex.StepDef {
 		return dex.DefineStartStep(calendly.NewCreateSchedulingLinkStep(calendly.CreateSchedulingLinkStepConfig[string]{
-			StepType: stepType, Connection: connection, StepOptionsOverride: override, Annotations: probeAnnotations,
+			StepType: stepType, Connection: connection, ConnectionName: testConnection.Name, StepOptionsOverride: override, Annotations: probeAnnotations,
 			MapToOperationInput: func(string) calendly.CreateSchedulingLinkInput {
 				return calendly.CreateSchedulingLinkInput{EventTypeURI: testEventTypeURI}
 			},
@@ -193,7 +193,7 @@ func newProbeFlows(connection calendly.Connection) []dex.Flow {
 		&probeFlow{flowType: asyncLinkProbeFlowType, steps: []dex.StepDef{linkStep("CreateLinkAsync", asyncOverride), dex.DefineStep(recordLinkOutcome{})}},
 		&probeFlow{flowType: cancelProbeFlowType, steps: []dex.StepDef{
 			dex.DefineStartStep(calendly.NewCancelScheduledEventStep(calendly.CancelScheduledEventStepConfig[string]{
-				StepType: "CancelEvent", Connection: connection, Annotations: probeAnnotations,
+				StepType: "CancelEvent", Connection: connection, ConnectionName: testConnection.Name, Annotations: probeAnnotations,
 				MapToOperationInput: func(string) calendly.CancelScheduledEventInput {
 					return calendly.CancelScheduledEventInput{ScheduledEventURI: testEventURI}
 				},
@@ -204,7 +204,7 @@ func newProbeFlows(connection calendly.Connection) []dex.Flow {
 		}},
 		&probeFlow{flowType: subscriptionProbeFlowType, steps: []dex.StepDef{
 			dex.DefineStartStep(calendly.NewCreateWebhookSubscriptionStep(calendly.CreateWebhookSubscriptionStepConfig[string]{
-				StepType: "SubscribeCallback", Connection: connection, Annotations: probeAnnotations,
+				StepType: "SubscribeCallback", Connection: connection, ConnectionName: testConnection.Name, Annotations: probeAnnotations,
 				MapToOperationInput: func(string) calendly.CreateWebhookSubscriptionInput {
 					return calendly.CreateWebhookSubscriptionInput{CallbackURL: testCallbackURL}
 				},

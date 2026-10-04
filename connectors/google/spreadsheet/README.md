@@ -10,9 +10,10 @@ It uses a separate `google-sheets-oauth` Connection with the least-privilege
 `drive.file` scope. A Google Picker grant selects each accessible spreadsheet;
 manual IDs work only for files already granted to the application. The
 generated `Credentials` keeps the OAuth client, access token, and refresh token
-inside the configured credential provider. Local configuration refreshes and
-atomically persists expiring tokens; hosted applications receive only the
-operation-scoped access token from the Superverse credential broker. Google
+in the project connection that `NewProjectConnection` opens, as
+[`examples/upsert-contact/main.go`](examples/upsert-contact/main.go) does. That
+connection admits one refresh per credential generation across application
+replicas and stores the complete replacement before the call uses it. Google
 refresh-token rotation replaces the previous token only when Google returns a
 new one, and terminal `invalid_grant` responses require reauthorization.
 

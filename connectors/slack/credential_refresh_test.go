@@ -111,14 +111,6 @@ func TestCredentialRefreshDriverSupportsNonExpiringTokens(t *testing.T) {
 	require.True(t, driver.RefreshRequired(sdkgo.CredentialRefreshState[Credentials]{Credentials: credentials, ExpiresAt: &insideSkew, Now: now}))
 }
 
-func TestDecodeResolvedCredentialsRejectsRenewalMaterial(t *testing.T) {
-	credentials, err := DecodeResolvedCredentialsJSON(json.RawMessage(`{"bot_token":"short-lived"}`))
-	require.NoError(t, err)
-	require.Equal(t, "short-lived", credentials.BotToken.Reveal())
-	_, err = DecodeResolvedCredentialsJSON(json.RawMessage(`{"bot_token":"short-lived","bot_refresh_token":"must-not-cross-broker"}`))
-	require.Error(t, err)
-}
-
 func slackTokenResponseForTest(t *testing.T, body any) *http.Response {
 	t.Helper()
 	contents, err := json.Marshal(body)

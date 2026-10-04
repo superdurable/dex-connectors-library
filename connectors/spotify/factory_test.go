@@ -46,7 +46,7 @@ func TestListPlaylistTracksFactoryFailsClosed(t *testing.T) {
 	connection := factoryConnection(t)
 	require.Panics(t, func() {
 		spotify.NewListPlaylistTracksStep(spotify.ListPlaylistTracksStepConfig[string]{
-			StepType: "ListTracks", Connection: connection,
+			StepType: "ListTracks", Connection: connection, ConnectionName: spotifyConnection.Name,
 			MapToOperationInput: func(string) spotify.ListPlaylistTracksInput { return spotify.ListPlaylistTracksInput{} },
 		})
 	}, "the listed branch is required")

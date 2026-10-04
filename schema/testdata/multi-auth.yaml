@@ -11,6 +11,7 @@ spec:
   codegen: {go: {package: multiauthfixture}}
   configuration: {fields: []}
   auth:
+    refreshable: true
     defaultMethod: google-oauth
     methods:
       - id: google-oauth

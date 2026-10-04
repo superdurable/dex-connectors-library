@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -26,7 +27,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/microsoft/teams"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -47,6 +47,14 @@ const (
 	workerLossInFlight = 300 * time.Millisecond
 )
 
+// The test binary runs only a Worker, until it is killed, when workerProcessAddressVariable is set.
+const (
+	workerProcessAddressVariable       = "TEAMS_INCIDENT_WORKER_ADDRESS"
+	workerProcessProviderURLVariable   = "TEAMS_INCIDENT_PROVIDER_URL"
+	workerProcessServerAddressVariable = "TEAMS_INCIDENT_SERVER_ADDRESS"
+	workerProcessBlobDirectoryVariable = "TEAMS_INCIDENT_BLOB_DIRECTORY"
+)
+
 // rootPostBehavior selects how the fake answers a root channel post.
 type rootPostBehavior int
 
@@ -64,6 +72,13 @@ var (
 	threadRepliesPathPattern   = regexp.MustCompile(`^/v1\.0/teams/([^/]+)/channels/([^/]+)/messages/([0-9]+)/replies$`)
 	chatMessagesPathPattern    = regexp.MustCompile(`^/v1\.0/chats/([^/]+)/messages$`)
 )
+
+func TestMain(m *testing.M) {
+	if address := os.Getenv(workerProcessAddressVariable); address != "" {
+		os.Exit(runWorkerProcess(address))
+	}
+	os.Exit(m.Run())
+}
 
 func TestIncidentIsPostedRepliedAndAcknowledgedWithRealDex(t *testing.T) {
 	provider := newFakeTeams(t)
@@ -666,47 +681,15 @@ func (provider *fakeTeams) replyCreatedAt(t *testing.T, rootID string, replyID s
 	return provider.reply(t, rootID, replyID).createdAt
 }
 
-// startWorkerProcess runs the example's own Worker binary against the fake, so the test can kill it mid-request.
+// startWorkerProcess runs this test binary as a Worker wired like the example's main, so the test can kill it mid-request.
 func startWorkerProcess(t *testing.T, provider *fakeTeams, workerAddress string) *exec.Cmd {
 	t.Helper()
 	directory := t.TempDir()
-	binary := filepath.Join(directory, "incident-acknowledgement-worker")
-	build := exec.Command("go", "build", "-o", binary, "..")
-	build.Env = append(os.Environ(), "GOWORK=off")
-	output, err := build.CombinedOutput()
-	require.NoError(t, err, string(output))
-
-	connections, err := json.Marshal(map[string]any{
-		"schemaVersion": localconfig.SchemaVersion,
-		"connections": []map[string]any{{
-			"connectorId": teams.ConnectorID, "modulePath": "github.com/superdurable/dex-connectors-library/connectors/microsoft/teams",
-			"moduleVersion": "v0.1.0", "provider": "microsoft", "connectionName": ConnectionName,
-			"configuration": map[string]any{"endpoint": provider.URL + "/v1.0"},
-			"credentials": map[string]any{
-				"oauth_client_id": "client-id", "oauth_client_secret": "client-secret",
-				"access_token": integrationAccessToken, "refresh_token": "refresh-token",
-			},
-			"credentialExpiresAt": time.Now().Add(time.Hour).UTC().Format(time.RFC3339),
-		}},
-	})
-	require.NoError(t, err)
-	require.NoError(t, os.WriteFile(filepath.Join(directory, "connections.json"), connections, 0o600))
-	useConfigurations, err := json.Marshal(map[string]any{
-		"schemaVersion": localconfig.UseConfigurationsSchemaVersion,
-		"operationConfigurations": []map[string]any{{
-			"connectorId": teams.ConnectorID, "connectionName": ConnectionName, "operationId": "postChannelMessage",
-			"flowType": FlowType, "stepType": postIncidentUpdateStepType,
-			"configuration": map[string]any{"teamId": integrationTeamID, "channelId": integrationChannelID},
-		}},
-	})
-	require.NoError(t, err)
-	require.NoError(t, os.WriteFile(filepath.Join(directory, localconfig.UseConfigurationsFileName), useConfigurations, 0o600))
-
-	process := exec.Command(binary)
+	process := exec.Command(os.Args[0], "-test.run=^$")
 	process.Env = append(os.Environ(),
-		"DEX_CONNECTOR_CONFIG_FILE="+filepath.Join(directory, "connections.json"), "DEX_WORKER_BIND_ADDRESS="+workerAddress,
-		"DEX_FLOW_SERVICE_ADDRESS="+environmentOr("DEX_FLOW_SERVICE_ADDRESS", "127.0.0.1:8801"),
-		"DEX_BLOB_CACHE_DIR="+filepath.Join(directory, "blobs"),
+		workerProcessAddressVariable+"="+workerAddress, workerProcessProviderURLVariable+"="+provider.URL,
+		workerProcessServerAddressVariable+"="+environmentOr("DEX_FLOW_SERVICE_ADDRESS", "127.0.0.1:8801"),
+		workerProcessBlobDirectoryVariable+"="+filepath.Join(directory, "blobs"),
 	)
 	logFile, err := os.Create(filepath.Join(directory, "worker.log"))
 	require.NoError(t, err)
@@ -725,6 +708,49 @@ func startWorkerProcess(t *testing.T, provider *fakeTeams, workerAddress string)
 		return connection.Close() == nil
 	}, time.Minute, 100*time.Millisecond, "the Worker process listens on %s", workerAddress)
 	return process
+}
+
+// runWorkerProcess serves the Flow with the picked channel, no escalation chat, and the default policy,
+// as the example's main does, until the parent test kills this process.
+func runWorkerProcess(address string) int {
+	reference := sdkgo.ConnectionRef{Provider: "microsoft", Name: ConnectionName}
+	client, err := teams.New(
+		teams.Config{Endpoint: os.Getenv(workerProcessProviderURLVariable) + "/v1.0"},
+		sdkgo.StaticCredentialProvider[teams.Credentials]{reference: {AccessToken: sdkgo.NewSecretString(integrationAccessToken)}},
+	)
+	if err != nil {
+		slog.Error("create the Teams client", "error", err)
+		return 2
+	}
+	connection, err := teams.NewConnection(client, reference)
+	if err != nil {
+		slog.Error("create the Teams connection", "error", err)
+		return 2
+	}
+	policy := DefaultAcknowledgementPolicy()
+	flow := NewFlow(connection, ChannelSelection{TeamID: integrationTeamID, ChannelID: integrationChannelID}, EscalationChatSelection{}, &policy)
+	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	if err != nil {
+		slog.Error("register the incident Flow", "error", err)
+		return 2
+	}
+	cache, err := blobcache.New(&blobcache.Config{Dir: os.Getenv(workerProcessBlobDirectoryVariable), MaxBytes: 64 << 20})
+	if err != nil {
+		slog.Error("create the blob cache", "error", err)
+		return 2
+	}
+	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{
+		BindAddress: address, FlowServiceAddress: os.Getenv(workerProcessServerAddressVariable),
+	})
+	if err != nil {
+		slog.Error("create the Worker", "error", errors.Join(err, cache.Close()))
+		return 2
+	}
+	if err := worker.Start(); err != nil {
+		slog.Error("the Worker stopped", "error", errors.Join(err, cache.Close()))
+		return 1
+	}
+	return 0
 }
 
 func availableIntegrationPort(t *testing.T) string {

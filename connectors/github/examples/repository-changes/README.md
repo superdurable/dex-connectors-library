@@ -33,7 +33,7 @@ invokes `WaitFor` on the start Step and an execute-only Step rejects it.
 
 ## Release baseline
 
-- GitHub Connector `v0.7.0`
+- GitHub Connector `v0.21.0`
 - dexcli `v0.13.8` or a later stable release
 
 ## 1. Prepare a clean local test project
@@ -48,12 +48,12 @@ cd github-repository-changes-e2e
 mkdir -p flow build
 
 curl -fsSL \
-  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/github/v0.7.0/connectors/github/examples/repository-changes/flow/workflow.go \
+  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/github/v0.21.0/connectors/github/examples/repository-changes/flow/workflow.go \
   -o flow/workflow.go
 
 go mod init example.com/github-repository-changes-e2e
 go mod edit -go=1.24.0
-go get github.com/superdurable/dex-connectors-library/connectors/github@v0.7.0
+go get github.com/superdurable/dex-connectors-library/connectors/github@v0.21.0
 go mod tidy
 ```
 
@@ -78,8 +78,7 @@ and requires identical output.
 
 ```bash
 dexcli dev \
-  --flow-rendering-dir "$PWD/build" \
-  --connector-config-dir "$HOME/.dex/connectors"
+  --flow-rendering-dir "$PWD/build"
 ```
 
 Record the Dex Web URL and Dex Server address that dexcli prints. With the
@@ -107,17 +106,18 @@ Enter the OAuth client ID and secret, leave the configuration defaults, and
 choose **Authorize**. After GitHub returns to Dex Web, the connection status
 should be **Ready**.
 
-The connection file is a plaintext local-development secret store. Never commit
-or share it.
-
 ## 5. Run the Worker
 
+The Worker reads the `DEX_PROJECT_*` project configuration environment
+described in [project configuration](../../../../sdkgo/projectconfig/README.md);
+Dex Web or Superverse Studio writes that configuration when you save the
+connection.
+
 ```bash
-export DEX_CONNECTOR_CONFIG_FILE="$HOME/.dex/connectors/connections.json"
 export DEX_FLOW_SERVICE_ADDRESS="127.0.0.1:8801"
 
 GOWORK=off go run \
-  github.com/superdurable/dex-connectors-library/connectors/github/examples/repository-changes@v0.7.0
+  github.com/superdurable/dex-connectors-library/connectors/github/examples/repository-changes@v0.21.0
 ```
 
 The Worker listens on `127.0.0.1:8816` by default. Set
@@ -161,8 +161,8 @@ empty repository, a Flow failure for an unwired `providerRejected` branch, and
 a Flow failure without waiting when GitHub's rate-limit reset is past the
 Step's retry budget.
 
-Before `v0.7.0` is published, build a local release artifact with
+Before `v0.21.0` is published, build a local release artifact with
 `go run ./cmd/connectorctl release-artifact` from the repository root and pass
 its directory to `dexcli dev --connector-release-override github=DIRECTORY`.
-The test project must still resolve `connectors/github@v0.7.0` without a
+The test project must still resolve `connectors/github@v0.21.0` without a
 `replace`, as the compatibility gate does with a local module proxy.

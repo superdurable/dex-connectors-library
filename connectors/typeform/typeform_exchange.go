@@ -86,7 +86,7 @@ func mutationAttempt[T any](client *Client, outcome exchangeOutcome, objectID st
 	return sdkgo.NewMutationBranch(outcome.branch, zero, &failure, receipt)
 }
 
-// credentialOutcome retries a connection file that may still become readable; an unusable token is a defect.
+// credentialOutcome retries a connection credential that may still become readable; an unusable token is a defect.
 func credentialOutcome(operationID string, err error) exchangeOutcome {
 	if errors.Is(err, errTypeformCredentialsUnavailable) {
 		return exchangeOutcome{isRetry: true, failure: typeformFailure(operationID, sdkgo.FailureAvailability, err.Error())}

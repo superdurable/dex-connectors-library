@@ -9,7 +9,8 @@ import (
 	"strings"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 )
 
 // ChannelThreadCreatedTriggerRoute binds one root-message configuration to its application target.
@@ -97,72 +98,118 @@ func (runner *MessageTriggerRunner) Run(ctx context.Context) error {
 	return runMessageTriggerRoutes(ctx, runner.routes)
 }
 
-// LocalChannelThreadCreatedTriggerRoute binds one stored root-message configuration to its application target.
-type LocalChannelThreadCreatedTriggerRoute struct {
+// ProjectChannelThreadCreatedTriggerRoute binds one root-message binding from the project configuration to its
+// application target.
+type ProjectChannelThreadCreatedTriggerRoute struct {
 	// BindingName names this configured Trigger binding.
 	BindingName string
 	// Target routes accepted events into the application.
 	Target sdkgo.TriggerTarget[MessageEvent]
 }
 
-// LocalThreadReplyCreatedTriggerRoute binds one stored reply-message configuration to its application target.
-type LocalThreadReplyCreatedTriggerRoute struct {
+// ProjectThreadReplyCreatedTriggerRoute binds one reply-message binding from the project configuration to its
+// application target.
+type ProjectThreadReplyCreatedTriggerRoute struct {
 	// BindingName names this configured Trigger binding.
 	BindingName string
 	// Target routes accepted events into the application.
 	Target sdkgo.TriggerTarget[MessageEvent]
 }
 
-// LocalMessageTriggerRunnerConfig selects stored Slack message Trigger bindings.
-type LocalMessageTriggerRunnerConfig struct {
-	// ChannelThreadCreatedRoutes specifies channel thread created routes for local message trigger runner config.
-	ChannelThreadCreatedRoutes []LocalChannelThreadCreatedTriggerRoute
-	// ThreadReplyCreatedRoutes specifies thread reply created routes for local message trigger runner config.
-	ThreadReplyCreatedRoutes []LocalThreadReplyCreatedTriggerRoute
+// ProjectMessageTriggerRunnerConfig selects Slack message Trigger bindings from the project configuration.
+type ProjectMessageTriggerRunnerConfig struct {
+	// ChannelThreadCreatedRoutes specifies channel thread created routes for project message trigger runner config.
+	ChannelThreadCreatedRoutes []ProjectChannelThreadCreatedTriggerRoute
+	// ThreadReplyCreatedRoutes specifies thread reply created routes for project message trigger runner config.
+	ThreadReplyCreatedRoutes []ProjectThreadReplyCreatedTriggerRoute
 }
 
-// NewLocalMessageTriggerRunner loads stored bindings and creates one durable Socket Mode runner. The
-// WithLogger option also applies to the durable inboxes it creates.
-func NewLocalMessageTriggerRunner(
-	store *localconfig.Store,
+// durableMessageTriggerTarget wraps one binding's target so that each event is stored before its
+// acknowledgement.
+type durableMessageTriggerTarget func(
+	key projectconfig.TriggerInboxKey, target sdkgo.TriggerTarget[MessageEvent],
+) (sdkgo.TriggerTarget[MessageEvent], error)
+
+// NewProjectMessageTriggerRunner opens connectionName and its configured bindings from the loaded project
+// configuration and creates one durable Socket Mode runner. Each route's target receives its events through
+// the binding's durable project inbox, which every replica of the application shares. A route whose binding
+// is not configured returns an error. The WithLogger option also applies to the durable inboxes it creates.
+func NewProjectMessageTriggerRunner(
+	project *projectconfig.LoadedProject,
 	connectionName string,
-	config LocalMessageTriggerRunnerConfig,
+	config ProjectMessageTriggerRunnerConfig,
 	options ...Option,
 ) (*MessageTriggerRunner, error) {
-	connection, err := NewLocalConnection(store, connectionName, options...)
+	connection, err := NewProjectConnection(project, connectionName, options...)
 	if err != nil {
+		return nil, err
+	}
+	return newDurableMessageTriggerRunner(connection, project.Configuration, config, func(
+		key projectconfig.TriggerInboxKey, target sdkgo.TriggerTarget[MessageEvent],
+	) (sdkgo.TriggerTarget[MessageEvent], error) {
+		inbox, err := project.TriggerInbox(key)
+		if err != nil {
+			return nil, err
+		}
+		return provider.NewDurableTriggerTarget(inbox, key, target, provider.WithTriggerLogger(connection.client.logger))
+	})
+}
+
+// newDurableMessageTriggerRunner runs config's routes on connection with the bindings that configuration
+// stores, wrapping each target with makeDurable.
+func newDurableMessageTriggerRunner(
+	connection Connection,
+	configuration projectconfig.Configuration,
+	config ProjectMessageTriggerRunnerConfig,
+	makeDurable durableMessageTriggerTarget,
+) (*MessageTriggerRunner, error) {
+	if err := connection.validate(); err != nil {
 		return nil, err
 	}
 	runnerConfig := MessageTriggerRunnerConfig{Connection: connection}
 	for _, route := range config.ChannelThreadCreatedRoutes {
-		var configuration ChannelThreadCreatedTriggerConfiguration
-		if err := store.DecodeTriggerConfiguration(ConnectorID, connectionName, "channelThreadCreated", route.BindingName, &configuration); err != nil {
-			return nil, err
-		}
-		target, err := localconfig.NewDurableTriggerTarget(store, ConnectorID, connectionName, "channelThreadCreated", route.BindingName, route.Target,
-			localconfig.WithTriggerLogger(connection.client.logger))
+		var routeConfiguration ChannelThreadCreatedTriggerConfiguration
+		target, err := newDurableMessageTriggerTarget(connection, configuration, makeDurable,
+			ChannelThreadCreatedTriggerDefinition.Trigger.TriggerName, route.BindingName, route.Target, &routeConfiguration)
 		if err != nil {
 			return nil, err
 		}
 		runnerConfig.ChannelThreadCreatedRoutes = append(runnerConfig.ChannelThreadCreatedRoutes, ChannelThreadCreatedTriggerRoute{
-			BindingName: route.BindingName, Configuration: configuration, Target: target,
+			BindingName: route.BindingName, Configuration: routeConfiguration, Target: target,
 		})
 	}
 	for _, route := range config.ThreadReplyCreatedRoutes {
-		var configuration ThreadReplyCreatedTriggerConfiguration
-		if err := store.DecodeTriggerConfiguration(ConnectorID, connectionName, "threadReplyCreated", route.BindingName, &configuration); err != nil {
-			return nil, err
-		}
-		target, err := localconfig.NewDurableTriggerTarget(store, ConnectorID, connectionName, "threadReplyCreated", route.BindingName, route.Target,
-			localconfig.WithTriggerLogger(connection.client.logger))
+		var routeConfiguration ThreadReplyCreatedTriggerConfiguration
+		target, err := newDurableMessageTriggerTarget(connection, configuration, makeDurable,
+			ThreadReplyCreatedTriggerDefinition.Trigger.TriggerName, route.BindingName, route.Target, &routeConfiguration)
 		if err != nil {
 			return nil, err
 		}
 		runnerConfig.ThreadReplyCreatedRoutes = append(runnerConfig.ThreadReplyCreatedRoutes, ThreadReplyCreatedTriggerRoute{
-			BindingName: route.BindingName, Configuration: configuration, Target: target,
+			BindingName: route.BindingName, Configuration: routeConfiguration, Target: target,
 		})
 	}
 	return NewMessageTriggerRunner(runnerConfig)
+}
+
+// newDurableMessageTriggerTarget decodes one binding's configuration into routeConfiguration and wraps target
+// with makeDurable under the binding's inbox key.
+func newDurableMessageTriggerTarget(
+	connection Connection,
+	configuration projectconfig.Configuration,
+	makeDurable durableMessageTriggerTarget,
+	triggerName string,
+	bindingName string,
+	target sdkgo.TriggerTarget[MessageEvent],
+	routeConfiguration any,
+) (sdkgo.TriggerTarget[MessageEvent], error) {
+	connectionName := connection.reference.Name
+	if err := configuration.DecodeTriggerConfiguration(ConnectorID, connectionName, triggerName, bindingName, routeConfiguration); err != nil {
+		return nil, fmt.Errorf("slack %s binding %q configuration: %w", triggerName, bindingName, err)
+	}
+	return makeDurable(projectconfig.TriggerInboxKey{
+		ConnectorID: ConnectorID, ConnectionName: connectionName, TriggerName: triggerName, BindingName: bindingName,
+	}, target)
 }
 
 func validateMessageTriggerRoute(

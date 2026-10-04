@@ -10,7 +10,8 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -48,11 +49,16 @@ type Credentials struct {
 	SMTPPassword sdkgo.SecretString
 }
 
+// CredentialSource is the credential provider New requires: this connector never refreshes its credentials.
+type CredentialSource = sdkgo.CredentialProvider[Credentials]
+
 type Connection struct {
 	client    *Client
 	reference sdkgo.ConnectionRef
 }
 
+// NewConnection wraps a client built with New, such as a test client with a static credential provider.
+// Applications open declared connections with NewProjectConnection instead.
 func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, error) {
 	if client == nil {
 		return Connection{}, fmt.Errorf("email connector client is required")
@@ -63,20 +69,25 @@ func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, e
 	return Connection{client: client, reference: reference}, nil
 }
 
-// NewLocalConnection loads startup configuration and reloads credentials before every provider call.
-func NewLocalConnection(store *localconfig.Store, connectionName string, options ...Option) (Connection, error) {
-	if store == nil {
-		return Connection{}, fmt.Errorf("local connector configuration store is required")
+// NewProjectConnection opens the connection that dex-app.yaml declares as connectionName from the
+// loaded project configuration. It reads ordinary settings now and resolves credentials during each call.
+func NewProjectConnection(project *projectconfig.LoadedProject, connectionName string, options ...Option) (Connection, error) {
+	if project == nil {
+		return Connection{}, fmt.Errorf("email connection requires the loaded project configuration")
 	}
 	reference := sdkgo.ConnectionRef{Provider: "email", Name: connectionName}
 	if err := reference.Validate(); err != nil {
-		return Connection{}, fmt.Errorf("email local connection: %w", err)
+		return Connection{}, fmt.Errorf("email connection: %w", err)
 	}
+	key := projectconfig.ConnectionKey{ConnectorID: ConnectorID, ConnectionName: connectionName}
 	var config Config
-	if err := store.DecodeConfiguration(ConnectorID, connectionName, &config); err != nil {
+	if err := project.Configuration.DecodeConnectionConfiguration(key, &config); err != nil {
+		return Connection{}, fmt.Errorf("email connection %q settings: %w", connectionName, err)
+	}
+	credentials, err := provider.NewCredentialProvider(project.Connections, key, decodeCredentials)
+	if err != nil {
 		return Connection{}, err
 	}
-	credentials := localconfig.NewCredentialProvider(store, ConnectorID, connectionName, decodeLocalCredentials)
 	client, err := New(config, credentials, options...)
 	if err != nil {
 		return Connection{}, err
@@ -84,14 +95,14 @@ func NewLocalConnection(store *localconfig.Store, connectionName string, options
 	return NewConnection(client, reference)
 }
 
-func decodeLocalCredentials(contents json.RawMessage) (Credentials, error) {
+func decodeCredentials(contents json.RawMessage) (Credentials, error) {
 	var fields struct {
 		Username     string `json:"username"`
 		Password     string `json:"password"`
 		SMTPUsername string `json:"smtp_username"`
 		SMTPPassword string `json:"smtp_password"`
 	}
-	if err := localconfig.DecodeCredentials(contents, &fields); err != nil {
+	if err := projectconfig.DecodeCredentials(contents, &fields); err != nil {
 		return Credentials{}, err
 	}
 	credentials := Credentials{
@@ -227,8 +238,8 @@ func NewSearchMessagesStep[IN any](config SearchMessagesStepConfig[IN]) sdkgo.Qu
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
-	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
-		panic(fmt.Errorf("email connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("email connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, SearchMessagesInput, SearchMessagesOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
@@ -301,8 +312,8 @@ func NewGetMessageStep[IN any](config GetMessageStepConfig[IN]) sdkgo.QueryStep[
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
-	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
-		panic(fmt.Errorf("email connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("email connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetMessageInput, Message]{
 		StepType: config.StepType, Annotations: config.Annotations,
@@ -375,8 +386,8 @@ func NewSendMessageStep[IN any](config SendMessageStepConfig[IN]) sdkgo.Mutation
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
-	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
-		panic(fmt.Errorf("email connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("email connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SendMessageInput, SentMessage]{
 		StepType: config.StepType, Annotations: config.Annotations,
@@ -452,8 +463,8 @@ func NewReplyToMessageStep[IN any](config ReplyToMessageStepConfig[IN]) sdkgo.Mu
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
-	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
-		panic(fmt.Errorf("email connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("email connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, ReplyToMessageInput, SentMessage]{
 		StepType: config.StepType, Annotations: config.Annotations,
@@ -529,8 +540,8 @@ func NewMoveMessageStep[IN any](config MoveMessageStepConfig[IN]) sdkgo.Mutation
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
-	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
-		panic(fmt.Errorf("email connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("email connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, MoveMessageInput, MovedMessage]{
 		StepType: config.StepType, Annotations: config.Annotations,
@@ -600,8 +611,8 @@ func NewSetFlagsStep[IN any](config SetFlagsStepConfig[IN]) sdkgo.MutationStep[I
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
-	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
-		panic(fmt.Errorf("email connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("email connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SetFlagsInput, MessageFlags]{
 		StepType: config.StepType, Annotations: config.Annotations,

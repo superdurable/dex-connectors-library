@@ -17,7 +17,8 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/connectors/atlassian/jira"
 	triageissue "github.com/superdurable/dex-connectors-library/connectors/atlassian/jira/examples/triage-issue/flow"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -32,15 +33,15 @@ func main() {
 }
 
 func run(ctx context.Context) error {
-	store, err := localconfig.LoadFromEnvironment()
+	project, err := projectconfig.LoadFromEnvironment(ctx)
 	if err != nil {
 		return err
 	}
-	connection, err := jira.NewLocalConnection(store, triageissue.ConnectionName)
+	connection, err := jira.NewProjectConnection(project, triageissue.ConnectionName)
 	if err != nil {
 		return err
 	}
-	selection, err := loadProjectSelection(store)
+	selection, err := loadProjectSelection(project.Configuration)
 	if err != nil {
 		return err
 	}
@@ -71,9 +72,9 @@ func run(ctx context.Context) error {
 }
 
 // loadProjectSelection reads the picked project once at startup; an unsaved picker uses each input's projectKey.
-func loadProjectSelection(store *localconfig.Store) (triageissue.ProjectSelection, error) {
-	loaded, err := localconfig.LoadOperationConfiguration[triageissue.ProjectSelection](store, triageissue.ProjectSelectionConfigurationRef())
-	if errors.Is(err, localconfig.ErrConfigurationNotFound) {
+func loadProjectSelection(configuration projectconfig.Configuration) (triageissue.ProjectSelection, error) {
+	loaded, err := provider.LoadOperationConfiguration[triageissue.ProjectSelection](configuration, triageissue.ProjectSelectionConfigurationRef())
+	if errors.Is(err, projectconfig.ErrObjectNotFound) {
 		return triageissue.ProjectSelection{}, nil
 	}
 	if err != nil {

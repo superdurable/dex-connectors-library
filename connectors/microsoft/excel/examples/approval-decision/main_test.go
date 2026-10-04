@@ -4,13 +4,11 @@
 package main
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	approvaldecision "github.com/superdurable/dex-connectors-library/connectors/microsoft/excel/examples/approval-decision/flow"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
 func TestEnvironmentOr(t *testing.T) {
@@ -27,17 +25,14 @@ func TestConnectionOptionsRedirectOnlyWhenTheLocalVariableIsSet(t *testing.T) {
 }
 
 func TestLoadOperationConfigurationTreatsAMissingPickAsBlank(t *testing.T) {
-	connectionsPath := filepath.Join(t.TempDir(), "connections.json")
-	require.NoError(t, os.WriteFile(connectionsPath, []byte(`{"schemaVersion":"connectors.dex.dev/local-connections/v1alpha1","connections":[]}`), 0o600))
-	store, err := localconfig.LoadFile(connectionsPath)
-	require.NoError(t, err)
+	configuration := projectconfig.Configuration{}
 
-	policy, err := loadOperationConfiguration[approvaldecision.TableConfiguration](store, approvaldecision.PolicyTableConfigurationRef())
+	policy, err := loadOperationConfiguration[approvaldecision.TableConfiguration](configuration, approvaldecision.PolicyTableConfigurationRef())
 	require.NoError(t, err)
 	require.Equal(t, approvaldecision.PolicyTableConfigurationRef(), policy.Reference)
 	require.Empty(t, policy.Value.Table)
 
-	summary, err := loadOperationConfiguration[approvaldecision.WorksheetConfiguration](store, approvaldecision.SummaryWorksheetConfigurationRef())
+	summary, err := loadOperationConfiguration[approvaldecision.WorksheetConfiguration](configuration, approvaldecision.SummaryWorksheetConfigurationRef())
 	require.NoError(t, err)
 	require.Empty(t, summary.Value.Worksheet)
 }

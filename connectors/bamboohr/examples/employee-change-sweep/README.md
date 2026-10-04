@@ -42,11 +42,14 @@ The command must report `valid: true` with the expected
 Build the release override and start `dexcli dev` as the
 [new-hire onboarding](../new-hire-onboarding/README.md#configure-and-run)
 example describes, then configure `bamboohr / bamboohr-company` in Dex Web
-**Connections**; both examples share that connection. Start the Worker from
-`connectors/bamboohr`:
+**Connections**; both examples share that connection. Dex Web or Superverse
+Studio writes it to the project configuration. Start the Worker from
+`connectors/bamboohr` with the `DEX_PROJECT_*` environment that names that
+configuration, as
+[project configuration loading](../../../../sdkgo/projectconfig/README.md#application-loading)
+describes:
 
 ```bash
-export DEX_CONNECTOR_CONFIG_FILE="$HOME/.dex/connectors/connections.json"
 go run ./examples/employee-change-sweep
 ```
 

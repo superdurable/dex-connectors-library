@@ -54,7 +54,7 @@ func QuotaExhaustedOutcome() ErrorOutcome {
 // BlockedOutcome selects the blocked branch with sdkgo.FailureProviderRejection
 // and FinishReasonContentPolicy, for a provider that reports a content-policy
 // block as an error, such as a 400 with the token "content_filter", instead
-// of a finish reason. Applications then handle every lab's content-policy
+// of a finish reason. Applications then handle every provider's content-policy
 // stops on one branch.
 func BlockedOutcome() ErrorOutcome {
 	return ErrorOutcome{disposition: errorDispositionBlocked, kind: sdkgo.FailureProviderRejection}
@@ -121,7 +121,7 @@ func validateErrorRules(rules []ErrorRule) error {
 			return fmt.Errorf("error rule %d token must match %s", index, providerTokenPattern)
 		}
 		if rule.Outcome.disposition == errorDispositionInvalid || rule.Outcome.kind == "" {
-			return fmt.Errorf("error rule %d outcome is invalid; use an llm outcome constructor", index)
+			return fmt.Errorf("error rule %d outcome is invalid; use a textgen outcome constructor", index)
 		}
 	}
 	return nil

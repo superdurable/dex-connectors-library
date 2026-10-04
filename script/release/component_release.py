@@ -119,16 +119,18 @@ def next_version(baseline: str, bump: str) -> str:
 
 
 def version_bump(baseline: str, target: str) -> str:
-    parse_version(target)
+    """Classifies a declared version. Connectors release in lockstep, so a declared version may skip versions."""
+    target_parts = parse_version(target)
     if not baseline:
-        if target != "v0.1.0":
-            raise ValueError(f"the first component release must be v0.1.0, got {target}")
         return "minor"
-    parse_version(baseline)
-    for bump in ("patch", "minor", "major"):
-        if next_version(baseline, bump) == target:
-            return bump
-    raise ValueError(f"{target} must be the next patch, minor, or major after {baseline}")
+    baseline_parts = parse_version(baseline)
+    if target_parts <= baseline_parts:
+        raise ValueError(f"{target} must be after {baseline}")
+    if target_parts[0] > baseline_parts[0]:
+        return "major"
+    if target_parts[1] > baseline_parts[1]:
+        return "minor"
+    return "patch"
 
 
 def validate_release_ref(ref: str) -> None:

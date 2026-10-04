@@ -4,13 +4,11 @@
 package main
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	textcopy "github.com/superdurable/dex-connectors-library/connectors/microsoft/onedrive/examples/text-copy/flow"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
 func TestEnvironmentOr(t *testing.T) {
@@ -20,13 +18,7 @@ func TestEnvironmentOr(t *testing.T) {
 }
 
 func TestLoadLocationConfigurationTreatsMissingPicksAsTheOneDriveRoot(t *testing.T) {
-	directory := t.TempDir()
-	connectionsPath := filepath.Join(directory, "connections.json")
-	require.NoError(t, os.WriteFile(connectionsPath, []byte(`{"schemaVersion":"connectors.dex.dev/local-connections/v1alpha1","connections":[]}`), 0o600))
-	store, err := localconfig.LoadFile(connectionsPath)
-	require.NoError(t, err)
-
-	loaded, err := loadLocationConfiguration(store, textcopy.DestinationLocationConfigurationRef())
+	loaded, err := loadLocationConfiguration(projectconfig.Configuration{}, textcopy.DestinationLocationConfigurationRef())
 	require.NoError(t, err)
 	require.Equal(t, textcopy.DestinationLocationConfigurationRef(), loaded.Reference)
 	require.Empty(t, loaded.Value.DriveID)

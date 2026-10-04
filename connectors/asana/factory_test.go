@@ -35,7 +35,7 @@ func TestCreateTaskFactoryRequiresOnlyTheHappyPath(t *testing.T) {
 	})
 	require.Panics(t, func() {
 		asana.NewCreateTaskStep(asana.CreateTaskStepConfig[string]{
-			StepType: "Create", Annotations: annotations, Connection: connection,
+			StepType: "Create", Annotations: annotations, Connection: connection, ConnectionName: asanaConnection.Name,
 			MapToOperationInput: mapToInput, Uncertain: sdkgo.GoTo(createdTaskTarget{}),
 		})
 	})

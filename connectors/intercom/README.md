@@ -59,49 +59,51 @@ Workspaces** and choose **Regenerate token** or **Uninstall app**.
 Credentials are reread before every provider call, so a regenerated token takes
 effect without a restart. The region and size limits are startup configuration.
 
-## Local configuration
+## Project configuration
 
-Dex Web writes this record for the connection name the application uses:
+Dex Web or Superverse Studio writes this connection record to the project
+configuration for the connection name the application uses:
 
 ```json
 {
   "connectorId": "intercom",
-  "modulePath": "github.com/superdurable/dex-connectors-library/connectors/intercom",
-  "moduleVersion": "v0.1.0",
-  "provider": "intercom",
   "connectionName": "intercom-support-inbox",
-  "configuration": {"region": "us"},
-  "credentials": {"access_token": "...", "client_secret": "..."}
+  "modulePath": "github.com/superdurable/dex-connectors-library/connectors/intercom",
+  "provider": "intercom",
+  "configuration": {"region": "us"}
 }
 ```
 
-Load it with `localconfig.LoadFromEnvironment` and
-`intercom.NewLocalConnection`. The conversationEvent Trigger uses
-`intercom.NewLocalConversationEventEndpointRunner`, which loads the connection
-and each route's stored binding, wraps each target in a durable inbox, and
-returns one `http.Handler` to mount. The checked-in example wires it like this,
-from [`examples/answer-duplicate-conversation/main.go`](examples/answer-duplicate-conversation/main.go):
+The connection's credential, `access_token` and an optional `client_secret`,
+stays in the private project storage and is resolved for every call. The
+application reads the configuration through the `DEX_PROJECT_*` environment
+described in
+[project configuration loading](../../sdkgo/projectconfig/README.md#application-loading):
+load it with `projectconfig.LoadFromEnvironment` and open the connection with
+`intercom.NewProjectConnection`. The conversationEvent Trigger uses
+`intercom.NewProjectConversationEventEndpointRunner`, which opens the
+connection and each route's stored binding, wraps each target in the binding's
+durable project inbox, and returns one `http.Handler` to mount. The checked-in
+example wires it like this, from
+[`examples/answer-duplicate-conversation/main.go`](examples/answer-duplicate-conversation/main.go):
 
 ```go
 func newInboundEndpointRunner(
-	store *localconfig.Store, client *dex.Client, flow *answerduplicate.Flow, logger *slog.Logger, connectionOptions []intercom.Option,
+	project *projectconfig.LoadedProject, client *dex.Client, flow *answerduplicate.Flow, logger *slog.Logger, connectionOptions []intercom.Option,
 ) (*intercom.ConversationEventEndpointRunner, error) {
-	bindingLogger := logger.With("connector", intercom.ConnectorID, "connection", answerduplicate.ConnectionName,
-		"trigger", intercom.ConversationEventTriggerDefinition.Trigger.TriggerName, "binding", answerduplicate.InboundTriggerBinding)
-	return intercom.NewLocalConversationEventEndpointRunner(store, answerduplicate.ConnectionName, []intercom.LocalConversationEventTriggerRoute{{
-		BindingName: answerduplicate.InboundTriggerBinding,
-		Target: sdkgo.NewDexFlowTriggerTarget(client, flow, answerduplicate.AcceptInboundConversation, answerduplicate.ResolveFlowID,
-			answerduplicate.MapToFlowInput, sdkgo.WithTriggerLogger(bindingLogger)),
+	return intercom.NewProjectConversationEventEndpointRunner(project, answerduplicate.ConnectionName, []intercom.ProjectConversationEventTriggerRoute{{
+		BindingName: answerduplicate.InboundTriggerBinding, Target: newInboundTarget(client, flow, logger),
 	}}, connectionOptions...)
 }
+
+// newInboundTarget starts one Flow per new conversation, with the notification ID as request ID.
+func newInboundTarget(client *dex.Client, flow *answerduplicate.Flow, logger *slog.Logger) sdkgo.TriggerTarget[intercom.ConversationEvent] {
+	bindingLogger := logger.With("connector", intercom.ConnectorID, "connection", answerduplicate.ConnectionName,
+		"trigger", intercom.ConversationEventTriggerDefinition.Trigger.TriggerName, "binding", answerduplicate.InboundTriggerBinding)
+	return sdkgo.NewDexFlowTriggerTarget(client, flow, answerduplicate.AcceptInboundConversation, answerduplicate.ResolveFlowID,
+		answerduplicate.MapToFlowInput, sdkgo.WithTriggerLogger(bindingLogger))
+}
 ```
-
-## Hosted credentials
-
-In Superverse-hosted deployments, construct the client with the
-operation-scoped broker provider. `DecodeResolvedCredentialsJSON` accepts
-`access_token` and an optional `client_secret` and rejects anything else
-without repeating either value.
 
 ## States
 
@@ -242,7 +244,7 @@ that endpoint. For each request the handler:
    `intercom.ConversationEventTopics()`, including Intercom's periodic
    `ping`, is answered `200` and dropped;
 5. records the event in the durable inbox of every binding whose `topics`
-   accept it, answers `200` only after every record is on disk, and then
+   accept it, answers `200` only after every record is stored, and then
    delivers it to each binding's target in arrival order.
 
 The endpoint answers `503` while no binding runs, while it replays inboxes

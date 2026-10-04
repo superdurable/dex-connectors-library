@@ -47,7 +47,7 @@ func TestUpsertWebhookLeavesOneWebhookUnderDuplicateDispatchWithRealDex(t *testi
 	require.NoError(t, err)
 	flow := &probeFlow{steps: []dex.StepDef{
 		dex.DefineStartStep(typeform.NewUpsertWebhookStep(typeform.UpsertWebhookStepConfig[string]{
-			StepType: "RegisterWebhook", Connection: connection,
+			StepType: "RegisterWebhook", Connection: connection, ConnectionName: testConnection.Name,
 			Annotations: sdkgo.StepAnnotations{GroupID: "probe", GroupLabel: "Probe", Explanation: "Upsert one webhook against the slow fake Typeform."},
 			MapToOperationInput: func(string) typeform.UpsertWebhookInput {
 				return typeform.UpsertWebhookInput{FormID: testFormID, Tag: testWebhookTag, URL: testWebhookURL}

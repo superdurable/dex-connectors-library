@@ -16,9 +16,9 @@ import (
 	"syscall"
 	"time"
 
-	githubconnector "github.com/superdurable/dex-connectors-library/connectors/github"
+	"github.com/superdurable/dex-connectors-library/connectors/github"
 	repositorychanges "github.com/superdurable/dex-connectors-library/connectors/github/examples/repository-changes/flow"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -50,14 +50,19 @@ func newLogger(output io.Writer, levelName string) *slog.Logger {
 }
 
 func run(ctx context.Context, logger *slog.Logger) error {
-	store, err := localconfig.LoadFromEnvironment()
+	project, err := projectconfig.LoadFromEnvironment(ctx)
 	if err != nil {
 		return err
 	}
-	connection, err := githubconnector.NewLocalConnection(store, repositorychanges.ConnectionName)
+	connection, err := github.NewProjectConnection(project, repositorychanges.ConnectionName)
 	if err != nil {
 		return err
 	}
+	return serve(ctx, connection, logger)
+}
+
+// serve runs the Worker for connection until ctx ends; tests call it with a connection built in memory.
+func serve(ctx context.Context, connection github.Connection, logger *slog.Logger) error {
 	registry, err := dex.NewRegistry([]dex.Flow{repositorychanges.NewFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register GitHub repository changes Flow: %w", err)

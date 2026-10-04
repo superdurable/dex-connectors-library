@@ -39,7 +39,8 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 	}
 	generation.mustWrite("\t\"time\"\n\n")
 	generation.mustWrite("\t\"github.com/superdurable/dex-connectors-library/sdkgo\"\n")
-	generation.mustWrite("\t\"github.com/superdurable/dex-connectors-library/sdkgo/localconfig\"\n")
+	generation.mustWrite("\t\"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig\"\n")
+	generation.mustWrite("\t\"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider\"\n")
 	generation.mustWrite("\t\"github.com/superdurable/dex/sdk-go/dex\"\n)\n\n")
 	generation.mustWrite("const ConnectorID = %s\n\n", strconv.Quote(manifest.Metadata.Name))
 	if manifest.Spec.Studio != nil && len(manifest.Spec.Studio.Units) > 0 {
@@ -85,27 +86,40 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 		generation.mustWrite("\t%s %s\n", field.GoName, goType(field))
 	}
 	generation.mustWrite("}\n\n")
+	if manifest.Spec.Auth.Refreshable {
+		generation.mustWrite("// CredentialSource is the credential provider New requires: this connector refreshes its credentials.\n")
+		generation.mustWrite("type CredentialSource = sdkgo.RefreshingCredentialProvider[Credentials]\n\n")
+	} else {
+		generation.mustWrite("// CredentialSource is the credential provider New requires: this connector never refreshes its credentials.\n")
+		generation.mustWrite("type CredentialSource = sdkgo.CredentialProvider[Credentials]\n\n")
+	}
 	generation.mustWrite("type Connection struct {\n\tclient *Client\n\treference sdkgo.ConnectionRef\n}\n\n")
+	generation.mustWrite("// NewConnection wraps a client built with New, such as a test client with a static credential provider.\n")
+	generation.mustWrite("// Applications open declared connections with NewProjectConnection instead.\n")
 	generation.mustWrite("func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, error) {\n")
 	generation.mustWrite("\tif client == nil { return Connection{}, fmt.Errorf(%q) }\n", manifest.Metadata.Name+" connector client is required")
 	generation.mustWrite("\tif err := reference.Validate(); err != nil { return Connection{}, fmt.Errorf(%q, err) }\n", manifest.Metadata.Name+" connector connection: %w")
 	generation.mustWrite("\treturn Connection{client: client, reference: reference}, nil\n}\n\n")
-	generation.mustWrite("// NewLocalConnection loads startup configuration and reloads credentials before every provider call.\n")
-	generation.mustWrite("func NewLocalConnection(store *localconfig.Store, connectionName string, options ...Option) (Connection, error) {\n")
-	generation.mustWrite("\tif store == nil { return Connection{}, fmt.Errorf(%q) }\n", "local connector configuration store is required")
+	generation.mustWrite("// NewProjectConnection opens the connection that dex-app.yaml declares as connectionName from the\n")
+	generation.mustWrite("// loaded project configuration. It reads ordinary settings now and resolves credentials during each call.\n")
+	generation.mustWrite("func NewProjectConnection(project *projectconfig.LoadedProject, connectionName string, options ...Option) (Connection, error) {\n")
+	generation.mustWrite("\tif project == nil { return Connection{}, fmt.Errorf(%q) }\n", manifest.Metadata.Name+" connection requires the loaded project configuration")
 	generation.mustWrite("\treference := sdkgo.ConnectionRef{Provider: %s, Name: connectionName}\n", strconv.Quote(manifest.Spec.Provider))
-	generation.mustWrite("\tif err := reference.Validate(); err != nil { return Connection{}, fmt.Errorf(%q, err) }\n", manifest.Metadata.Name+" local connection: %w")
+	generation.mustWrite("\tif err := reference.Validate(); err != nil { return Connection{}, fmt.Errorf(%q, err) }\n", manifest.Metadata.Name+" connection: %w")
+	generation.mustWrite("\tkey := projectconfig.ConnectionKey{ConnectorID: ConnectorID, ConnectionName: connectionName}\n")
 	generation.mustWrite("\tvar config Config\n")
-	generation.mustWrite("\tif err := store.DecodeConfiguration(ConnectorID, connectionName, &config); err != nil { return Connection{}, err }\n")
-	if supportsCredentialRefresh(manifest.Spec.Auth) {
-		generation.mustWrite("\tcredentials := localconfig.NewRefreshingCredentialProvider(store, ConnectorID, connectionName, decodeLocalCredentials, encodeLocalCredentials)\n")
+	generation.mustWrite("\tif err := project.Configuration.DecodeConnectionConfiguration(key, &config); err != nil {\n")
+	generation.mustWrite("\t\treturn Connection{}, fmt.Errorf(%q, connectionName, err)\n\t}\n", manifest.Metadata.Name+" connection %q settings: %w")
+	if manifest.Spec.Auth.Refreshable {
+		generation.mustWrite("\tcredentials, err := provider.NewRefreshingCredentialProvider(project.Connections, key, decodeCredentials, encodeCredentials)\n")
 	} else {
-		generation.mustWrite("\tcredentials := localconfig.NewCredentialProvider(store, ConnectorID, connectionName, decodeLocalCredentials)\n")
+		generation.mustWrite("\tcredentials, err := provider.NewCredentialProvider(project.Connections, key, decodeCredentials)\n")
 	}
+	generation.mustWrite("\tif err != nil { return Connection{}, err }\n")
 	generation.mustWrite("\tclient, err := New(config, credentials, options...)\n")
 	generation.mustWrite("\tif err != nil { return Connection{}, err }\n")
 	generation.mustWrite("\treturn NewConnection(client, reference)\n}\n\n")
-	generation.mustWrite("func decodeLocalCredentials(contents json.RawMessage) (Credentials, error) {\n")
+	generation.mustWrite("func decodeCredentials(contents json.RawMessage) (Credentials, error) {\n")
 	generation.mustWrite("\tvar fields struct {\n")
 	if selection := credentialSelection(manifest.Spec.Auth); selection != nil {
 		generation.mustWrite("\t\t%s %s `json:\"%s\"`\n", selection.goName, selection.goType, selection.wireName)
@@ -118,7 +132,7 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 		generation.mustWrite("\t\t%s %s `json:\"%s\"`\n", field.GoName, fieldType, field.Name)
 	}
 	generation.mustWrite("\t}\n")
-	generation.mustWrite("\tif err := localconfig.DecodeCredentials(contents, &fields); err != nil { return Credentials{}, err }\n")
+	generation.mustWrite("\tif err := projectconfig.DecodeCredentials(contents, &fields); err != nil { return Credentials{}, err }\n")
 	generation.mustWrite("\tcredentials := Credentials{\n")
 	if selection := credentialSelection(manifest.Spec.Auth); selection != nil {
 		generation.mustWrite("\t\t%s: fields.%s,\n", selection.goName, selection.goName)
@@ -132,8 +146,8 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 	}
 	generation.mustWrite("\t}\n")
 	generation.mustWrite("\treturn credentials, credentials.Validate()\n}\n\n")
-	if supportsCredentialRefresh(manifest.Spec.Auth) {
-		generation.mustWrite("func encodeLocalCredentials(credentials Credentials) (json.RawMessage, error) {\n")
+	if manifest.Spec.Auth.Refreshable {
+		generation.mustWrite("func encodeCredentials(credentials Credentials) (json.RawMessage, error) {\n")
 		generation.mustWrite("\tfields := struct {\n")
 		if selection := credentialSelection(manifest.Spec.Auth); selection != nil {
 			generation.mustWrite("\t\t%s %s `json:\"%s\"`\n", selection.goName, selection.goType, selection.wireName)
@@ -200,8 +214,6 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 		for _, field := range manifest.Spec.Auth.Fields {
 			writeFieldValidation(generation, "credentials."+field.GoName, field, "credential")
 		}
-	} else if manifest.Spec.Auth.IsMultipleSelection() {
-		writeMultipleAuthMethodValidation(generation, manifest.Spec.Auth)
 	} else {
 		generation.mustWrite("\tswitch credentials.AuthMethodID {\n")
 		for _, method := range manifest.Spec.Auth.Methods {
@@ -213,12 +225,6 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 		generation.mustWrite("\tdefault:\n\t\treturn fmt.Errorf(%q)\n\t}\n", "credential auth_method is invalid")
 	}
 	generation.mustWrite("\treturn nil\n}\n\n")
-	if manifest.Spec.Auth.IsMultipleSelection() {
-		generation.mustWrite("func (credentials Credentials) HasAuthMethod(id string) bool {\n")
-		generation.mustWrite("\tfor _, authMethodID := range credentials.AuthMethodIDs {\n")
-		generation.mustWrite("\t\tif authMethodID == id { return true }\n\t}\n")
-		generation.mustWrite("\treturn false\n}\n\n")
-	}
 
 	for _, trigger := range manifest.Spec.Triggers {
 		generation.mustWrite("var %sTriggerDefinition = sdkgo.TriggerDefinition{\n", trigger.GoName)
@@ -294,32 +300,12 @@ type credentialSelectionField struct {
 	wireName string
 }
 
-// credentialSelection describes the Credentials field that records the selected auth methods, or nil without methods.
+// credentialSelection describes the Credentials field that records the selected auth method, or nil without methods.
 func credentialSelection(auth schema.Auth) *credentialSelectionField {
-	switch {
-	case len(auth.Methods) == 0:
+	if len(auth.Methods) == 0 {
 		return nil
-	case auth.IsMultipleSelection():
-		return &credentialSelectionField{goName: "AuthMethodIDs", goType: "[]string", wireName: "auth_methods"}
-	default:
-		return &credentialSelectionField{goName: "AuthMethodID", goType: "string", wireName: "auth_method"}
 	}
-}
-
-func writeMultipleAuthMethodValidation(generation *generator, auth schema.Auth) {
-	generation.mustWrite("\tif len(credentials.AuthMethodIDs) == 0 { return fmt.Errorf(%q) }\n", "credential auth_methods is required")
-	generation.mustWrite("\tselectedAuthMethodIDs := make(map[string]bool, len(credentials.AuthMethodIDs))\n")
-	generation.mustWrite("\tfor _, authMethodID := range credentials.AuthMethodIDs {\n")
-	generation.mustWrite("\t\tif selectedAuthMethodIDs[authMethodID] { return fmt.Errorf(%q) }\n", "credential auth_methods must be unique")
-	generation.mustWrite("\t\tselectedAuthMethodIDs[authMethodID] = true\n")
-	generation.mustWrite("\t\tswitch authMethodID {\n")
-	for _, method := range auth.Methods {
-		generation.mustWrite("\t\tcase %s:\n", strconv.Quote(method.ID))
-		for _, field := range method.Fields {
-			writeFieldValidation(generation, "credentials."+field.GoName, field, "credential")
-		}
-	}
-	generation.mustWrite("\t\tdefault:\n\t\t\treturn fmt.Errorf(%q)\n\t\t}\n\t}\n", "credential auth_methods contains an undeclared auth method")
+	return &credentialSelectionField{goName: "AuthMethodID", goType: "string", wireName: "auth_method"}
 }
 
 type operationDurations struct {
@@ -391,24 +377,14 @@ func writeTriggerFactory(generation *generator, manifest schema.Manifest, trigge
 	generation.mustWrite("}\n\n")
 	generation.mustWrite("func New%sTrigger(config %sTriggerConfig) sdkgo.TriggerRunner {\n", trigger.GoName, trigger.GoName)
 	generation.mustWrite("\tif err := config.Connection.validate(); err != nil { panic(err) }\n")
-	generation.mustWrite("\tif config.ConnectionName != \"\" && config.ConnectionName != config.Connection.reference.Name {\n")
-	generation.mustWrite("\t\tpanic(fmt.Errorf(%q, config.ConnectionName, config.Connection.reference.Name))\n", manifest.Metadata.Name+" connector trigger connection name %q does not match runtime connection %q")
+	generation.mustWrite("\tif config.ConnectionName != config.Connection.reference.Name {\n")
+	generation.mustWrite("\t\tpanic(fmt.Errorf(%q, config.ConnectionName, config.Connection.reference.Name))\n", manifest.Metadata.Name+" connector trigger ConnectionName %q must equal its connection's name %q")
 	generation.mustWrite("\t}\n")
 	generation.mustWrite("\tbinding := sdkgo.TriggerBindingRef{Connection: config.Connection.reference, Trigger: %sTriggerDefinition.Trigger, Name: config.BindingName}\n", trigger.GoName)
 	generation.mustWrite("\treturn sdkgo.MustNewTrigger(sdkgo.TriggerConfig[%s]{\n", trigger.EventType)
 	generation.mustWrite("\t\tDefinition: %sTriggerDefinition, Binding: binding,\n", trigger.GoName)
 	generation.mustWrite("\t\tSource: config.Connection.client.%sTriggerSource(config.Connection.reference, config.Configuration), Target: config.Target,\n", lowerFirst(trigger.GoName))
 	generation.mustWrite("\t})\n}\n\n")
-	generation.mustWrite("func NewLocal%sTrigger(store *localconfig.Store, connectionName string, bindingName string, target sdkgo.TriggerTarget[%s], options ...Option) (sdkgo.TriggerRunner, error) {\n", trigger.GoName, trigger.EventType)
-	generation.mustWrite("\tconnection, err := NewLocalConnection(store, connectionName, options...)\n")
-	generation.mustWrite("\tif err != nil { return nil, err }\n")
-	generation.mustWrite("\tvar configuration %s\n", trigger.ConfigurationType)
-	generation.mustWrite("\tif err := store.DecodeTriggerConfiguration(ConnectorID, connectionName, %s, bindingName, &configuration); err != nil { return nil, err }\n", strconv.Quote(trigger.Name))
-	generation.mustWrite("\tdurableTarget, err := localconfig.NewDurableTriggerTarget(store, ConnectorID, connectionName, %s, bindingName, target)\n", strconv.Quote(trigger.Name))
-	generation.mustWrite("\tif err != nil { return nil, err }\n")
-	generation.mustWrite("\treturn New%sTrigger(%sTriggerConfig{\n", trigger.GoName, trigger.GoName)
-	generation.mustWrite("\t\tConnection: connection, ConnectionName: connectionName, BindingName: bindingName, Configuration: configuration, Target: durableTarget,\n")
-	generation.mustWrite("\t}), nil\n}\n\n")
 }
 
 func writeOperationFactory(generation *generator, manifest schema.Manifest, operation schema.Operation) {
@@ -445,8 +421,8 @@ func writeOperationFactory(generation *generator, manifest schema.Manifest, oper
 	generation.mustWrite("}\n\n")
 	generation.mustWrite("func New%sStep[IN any](config %sStepConfig[IN]) sdkgo.%sStep[IN, %s, %s] {\n", operation.GoName, operation.GoName, kind, operation.InputType, operation.OutputType)
 	generation.mustWrite("\tif err := config.Connection.validate(); err != nil { panic(err) }\n")
-	generation.mustWrite("\tif config.ConnectionName != \"\" && config.ConnectionName != config.Connection.reference.Name {\n")
-	generation.mustWrite("\t\tpanic(fmt.Errorf(%q, config.ConnectionName, config.Connection.reference.Name))\n", manifest.Metadata.Name+" connector configuration connection name %q does not match runtime connection %q")
+	generation.mustWrite("\tif config.ConnectionName != config.Connection.reference.Name {\n")
+	generation.mustWrite("\t\tpanic(fmt.Errorf(%q, config.ConnectionName, config.Connection.reference.Name))\n", manifest.Metadata.Name+" connector Step ConnectionName %q must equal its connection's name %q")
 	generation.mustWrite("\t}\n")
 	generation.mustWrite("\treturn sdkgo.MustNew%sStep(sdkgo.%sStepConfig[IN, %s, %s]{\n", kind, kind, operation.InputType, operation.OutputType)
 	generation.mustWrite("\t\tStepType: config.StepType, Annotations: config.Annotations,\n")
@@ -650,27 +626,6 @@ func hasFieldType(manifest schema.Manifest, fieldType string) bool {
 func hasDefaults(fields []schema.Field) bool {
 	for _, field := range fields {
 		if field.Default != nil {
-			return true
-		}
-	}
-	return false
-}
-
-func supportsCredentialRefresh(auth schema.Auth) bool {
-	for _, method := range auth.Methods {
-		if oauthMapsRefreshToken(method.OAuth2) {
-			return true
-		}
-	}
-	return oauthMapsRefreshToken(auth.OAuth2)
-}
-
-func oauthMapsRefreshToken(oauth *schema.OAuth2) bool {
-	if oauth == nil {
-		return false
-	}
-	for _, mapping := range oauth.CredentialMappings {
-		if mapping.Source == "refresh_token" {
 			return true
 		}
 	}

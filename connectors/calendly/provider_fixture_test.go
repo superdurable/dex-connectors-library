@@ -117,7 +117,7 @@ func (function roundTripFunc) RoundTrip(request *http.Request) (*http.Response, 
 	return function(request)
 }
 
-func newTestClient(t *testing.T, httpClient *http.Client, credentials sdkgo.CredentialProvider[calendly.Credentials], config calendly.Config) *calendly.Client {
+func newTestClient(t *testing.T, httpClient *http.Client, credentials calendly.CredentialSource, config calendly.Config) *calendly.Client {
 	t.Helper()
 	client, err := calendly.New(config, credentials, calendly.WithHTTPClient(httpClient), calendly.WithClock(func() time.Time { return fixedNow }))
 	require.NoError(t, err)

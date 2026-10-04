@@ -17,7 +17,8 @@ import (
 
 	outlookmail "github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-mail"
 	supportreply "github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-mail/examples/support-reply/flow"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -35,15 +36,15 @@ func main() {
 }
 
 func run(ctx context.Context) error {
-	store, err := localconfig.LoadFromEnvironment()
+	project, err := projectconfig.LoadFromEnvironment(ctx)
 	if err != nil {
 		return err
 	}
-	connection, err := outlookmail.NewLocalConnection(store, supportreply.ConnectionName, connectionOptions()...)
+	connection, err := outlookmail.NewProjectConnection(project, supportreply.ConnectionName, connectionOptions()...)
 	if err != nil {
 		return err
 	}
-	archiveFolder, err := loadArchiveFolderSelection(store)
+	archiveFolder, err := loadArchiveFolderSelection(project.Configuration)
 	if err != nil {
 		return err
 	}
@@ -74,9 +75,9 @@ func run(ctx context.Context) error {
 }
 
 // loadArchiveFolderSelection reads the picked folder once at startup; an unsaved picker uses the Archive folder.
-func loadArchiveFolderSelection(store *localconfig.Store) (supportreply.ArchiveFolderSelection, error) {
-	loaded, err := localconfig.LoadOperationConfiguration[supportreply.ArchiveFolderSelection](store, supportreply.ArchiveFolderConfigurationRef())
-	if errors.Is(err, localconfig.ErrConfigurationNotFound) {
+func loadArchiveFolderSelection(configuration projectconfig.Configuration) (supportreply.ArchiveFolderSelection, error) {
+	loaded, err := provider.LoadOperationConfiguration[supportreply.ArchiveFolderSelection](configuration, supportreply.ArchiveFolderConfigurationRef())
+	if errors.Is(err, projectconfig.ErrObjectNotFound) {
 		return supportreply.ArchiveFolderSelection{}, nil
 	}
 	if err != nil {

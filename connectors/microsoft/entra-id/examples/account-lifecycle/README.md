@@ -58,13 +58,12 @@ mkdir -p /tmp/entra-id-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/microsoft/entra-id/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/microsoft/entra-id \
-  --version v0.1.0 --tag connectors/microsoft/entra-id/v0.1.0 \
+  --version v0.21.0 --tag connectors/microsoft/entra-id/v0.21.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/entra-id-release/connector-release.json \
   --digest-output /tmp/entra-id-release/connector-release.json.sha256
 dexcli dev \
   --flow-rendering-dir /tmp \
-  --connector-config-dir "$HOME/.dex/connectors" \
   --connector-release-override microsoft-entra-id=/tmp/entra-id-release
 ```
 
@@ -76,10 +75,12 @@ administrator** and authorize (Dex CLI 1.4.1 or later). No Step has
 configuration of its own; the account and group come from each Start Flow
 request.
 
-In a second terminal, start the Worker from `connectors/microsoft/entra-id`:
+In a second terminal, start the Worker from `connectors/microsoft/entra-id`. It
+reads the `DEX_PROJECT_*` project configuration environment documented in
+[`sdkgo/projectconfig`](../../../../../sdkgo/projectconfig/README.md#application-loading);
+Dex Web or Superverse Studio writes that configuration:
 
 ```bash
-export DEX_CONNECTOR_CONFIG_FILE="$HOME/.dex/connectors/connections.json"
 go run ./examples/account-lifecycle
 ```
 

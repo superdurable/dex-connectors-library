@@ -42,10 +42,10 @@ func WithHTTPClient(client *http.Client) Option {
 }
 
 // WithLogger sends the Trigger pollers' records to logger: failed polls, ignored and skipped messages,
-// delivery retries, and the durable inboxes that NewLocalMessageTriggerRunner creates. Without this
+// delivery retries, and the durable inboxes that NewProjectMessageTriggerRunner creates. Without this
 // option, or with a nil logger, records go to slog.Default() as of each record. Records carry message
 // and thread IDs and error messages, never senders, subjects, snippets, bodies, or tokens. The generated
-// per-Trigger factories, such as NewLocalReplyReceivedTrigger, pass logger to their poller only; their
+// per-Trigger factories, such as NewProjectReplyReceivedTrigger, pass logger to their poller only; their
 // durable inbox and runner records go to slog.Default(), so call slog.SetDefault when you use them.
 func WithLogger(logger *slog.Logger) Option {
 	return func(options *clientOptions) { options.logger = logger }
@@ -59,7 +59,7 @@ func withClock(now func() time.Time) Option {
 type Client struct {
 	endpoint         *url.URL
 	httpClient       *http.Client
-	credentials      sdkgo.CredentialProvider[Credentials]
+	credentials      CredentialSource
 	refreshDriver    sdkgo.CredentialRefreshDriver[Credentials]
 	maxResponseBytes int64
 	maxMessageBytes  int64
@@ -102,7 +102,7 @@ type sendResponse struct {
 }
 
 // New validates configuration and constructs an authenticated Gmail client.
-func New(config Config, credentials sdkgo.CredentialProvider[Credentials], options ...Option) (*Client, error) {
+func New(config Config, credentials CredentialSource, options ...Option) (*Client, error) {
 	config = withConfigDefaults(config)
 	if err := config.Validate(); err != nil {
 		return nil, err
@@ -231,15 +231,15 @@ func (client *Client) doAuthenticatedRequest(
 		if _, ok := client.credentials.(sdkgo.RejectedCredentialRefreshingProvider[Credentials]); !ok {
 			return response, credentials, nil
 		}
+		// A 401 proves Gmail did not serve the request. When the one refresh is refused or fails, the
+		// caller classifies the 401 itself instead of treating the request as possibly sent.
+		refreshed, err := sdkgo.ResolveCredentialAfterRejection(ctx, client.credentials, call, client.refreshDriver)
+		if err != nil || validateResolvedCredentials(refreshed) != nil {
+			return response, credentials, nil
+		}
 		_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, client.maxResponseBytes))
 		_ = response.Body.Close()
-		credentials, err = sdkgo.ResolveCredentialAfterRejection(ctx, client.credentials, call, client.refreshDriver)
-		if err != nil {
-			return nil, Credentials{}, err
-		}
-		if err := validateResolvedCredentials(credentials); err != nil {
-			return nil, Credentials{}, err
-		}
+		credentials = refreshed
 	}
 	return nil, Credentials{}, fmt.Errorf("Gmail authenticated request retry was exhausted")
 }

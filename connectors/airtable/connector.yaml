@@ -5,7 +5,7 @@ metadata:
   displayName: Airtable
   description: List, read, idempotently upsert, and update typed Airtable records, with base and table pickers.
   company: Airtable
-  version: v0.1.0
+  version: v0.21.0
 spec:
   provider: airtable
   codegen:

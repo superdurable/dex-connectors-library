@@ -5,7 +5,7 @@ metadata:
   displayName: monday.com
   description: List a monday.com board's items with a typed column filter, read one item, create items and set typed column values under monday.com idempotency keys, and add updates to items.
   company: monday
-  version: v0.1.0
+  version: v0.21.0
 spec:
   provider: monday
   codegen:
@@ -20,6 +20,7 @@ spec:
         required: false
         default: 4194304
   auth:
+    refreshable: true
     defaultMethod: personal-api-token
     methods:
       - id: personal-api-token

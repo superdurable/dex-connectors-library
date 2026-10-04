@@ -50,40 +50,26 @@ Credentials are reread before every provider call, so replacing a token in Dex
 Web takes effect without a restart. The subdomain and response limit are
 startup configuration.
 
-## Local configuration
+## Project configuration
 
-Dex Web writes this record for the connection name the application uses:
-
-```json
-{
-  "connectorId": "zendesk-support",
-  "modulePath": "github.com/superdurable/dex-connectors-library/connectors/zendesk/support",
-  "moduleVersion": "v0.1.0",
-  "provider": "zendesk",
-  "connectionName": "zendesk-support-desk",
-  "configuration": {"subdomain": "acme"},
-  "credentials": {"email": "agent@acme.example.com", "api_token": "..."}
-}
-```
-
-Load it with `localconfig.LoadFromEnvironment` and
-`support.NewLocalConnection`, as
+Name the factory connection and open the same name from the project
+configuration at application startup, as
 [`examples/customer-issue/main.go`](examples/customer-issue/main.go) does:
 
 ```go
-store, err := localconfig.LoadFromEnvironment()
+project, err := projectconfig.LoadFromEnvironment(ctx)
 if err != nil {
 	return err
 }
-connection, err := support.NewLocalConnection(store, customerissue.ConnectionName, connectionOptions()...)
+connection, err := support.NewProjectConnection(project, customerissue.ConnectionName, connectionOptions()...)
 ```
 
-## Hosted credentials
-
-In Superverse-hosted deployments, construct the client with the
-operation-scoped broker provider. `DecodeResolvedCredentialsJSON` accepts
-exactly `email` and `api_token` and rejects anything else without repeating
-either value.
+Dex Web or Superverse Studio writes that configuration, and the application
+reads it through the `DEX_PROJECT_*` environment described in
+[project configuration loading](../../../sdkgo/projectconfig/README.md#application-loading).
+The stored credential holds exactly `email` and `api_token`; the connector
+resolves it for every call and rejects anything else without repeating either
+value.
 
 ## Statuses, priorities, and types
 
@@ -242,7 +228,7 @@ The refresh side is ready in the SDK: `sdkgo/oauthtoken` supports
 `AcceptsMissingExpiresIn` for Zendesk clients created before April 30, 2026,
 whose tokens have no `expires_in`. Two SDK gaps remain for that method:
 `AdditionalRequestParameters` are encoded as JSON strings, but Zendesk
-documents `expires_in` as an integer; and `localconfig` requires a refresh
+documents `expires_in` as an integer; and `projectconfig` requires a refresh
 result with a future expiry, so a token Zendesk issues without a lifetime needs
 a synthetic one.
 

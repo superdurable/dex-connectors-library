@@ -3,9 +3,9 @@
 This example receives signed Help Scout webhooks and starts one
 `HelpScoutConversationTriage` Flow per new conversation:
 
-1. the Worker mounts `NewLocalConversationEventEndpointRunner` at
+1. the Worker mounts `NewProjectConversationEventEndpointRunner` at
    `/webhooks/helpscout` and starts it at once, so a delivery is recorded in the
-   binding's durable inbox even while Dex is unreachable;
+   binding's durable project inbox even while Dex is unreachable;
 2. the `new-conversations` binding of the `conversationEvent` Trigger keeps
    only conversations of the inbox chosen with the `mailboxPicker` unit, and
    `AcceptNewConversation` admits only a `convo.created` event for an `active`
@@ -71,7 +71,7 @@ go run ./cmd/connectorctl ui-artifact \
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/helpscout/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/helpscout \
-  --version v0.1.0 --tag connectors/helpscout/v0.1.0 \
+  --version v0.21.0 --tag connectors/helpscout/v0.21.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/helpscout-release/connector-ui.tgz \
   --ui-digest /tmp/helpscout-release/connector-ui.tgz.sha256 \
@@ -79,7 +79,6 @@ go run ./cmd/connectorctl release-artifact \
   --digest-output /tmp/helpscout-release/connector-release.json.sha256
 dexcli dev \
   --flow-rendering-dir "$PWD/connectors/helpscout/build" \
-  --connector-config-dir "$HOME/.dex/connectors" \
   --connector-release-override helpscout=/tmp/helpscout-release
 ```
 
@@ -98,9 +97,10 @@ sends test deliveries. Dex Web saves these credentials:
 {"app_id": "<App ID>", "app_secret": "<App Secret>", "webhook_secret": "<openssl rand -hex 20>"}
 ```
 
-On its first Help Scout call the application obtains a two-day access token
-with the client credentials grant and adds `access_token` and
-`credentialExpiresAt` to the same record; nothing is edited by hand.
+The application obtains a two-day access token with the client credentials
+grant on its first Help Scout call, and a new one when the stored token is
+within five minutes of expiry, and stores `access_token` and its expiry in
+project storage; nothing is edited by hand.
 
 Then open the Flow's `new-conversations` binding and, in the **Inbox** unit,
 choose **Load inboxes**. The list uses the stored access token, so it works
@@ -141,11 +141,14 @@ the endpoint answers `400`.
 
 ## 5. Run the Worker and send a delivery
 
-In a second terminal, from `connectors/helpscout`:
+Run the Worker in a second terminal from `connectors/helpscout`. It reads the
+`DEX_PROJECT_*` project configuration environment described in
+[project configuration](../../../../sdkgo/projectconfig/README.md); Dex Web or
+Superverse Studio writes that configuration when you save the connection and
+the binding:
 
 ```bash
 cd "$(git rev-parse --show-toplevel)/connectors/helpscout"
-export DEX_CONNECTOR_CONFIG_FILE="$HOME/.dex/connectors/connections.json"
 go run ./examples/conversation-triage
 ```
 
@@ -195,10 +198,9 @@ The internal note reads
 ## 7. Restart recovery
 
 Stop Dex, send a delivery, and stop the Worker. The endpoint answered `200`
-because the delivery was on disk; it stays in the binding's inbox, a
-`.trigger-inbox-*.json` file beside the connection file. Start Dex and the
-Worker again: the runner replays it, logs `replaying pending trigger events`,
-and the Flow starts and completes.
+because the delivery was stored; it stays in the binding's durable inbox in
+project storage. Start Dex and the Worker again: the runner replays it, logs
+`replaying pending trigger events`, and the Flow starts and completes.
 
 ## Test
 
@@ -208,19 +210,22 @@ From `connectors/helpscout`:
 go test -race ./examples/conversation-triage/...
 ```
 
-The unit tests cover the Flow's mapping, note, and admission rules, and run
-the Worker against an unreachable Dex Server: a signed delivery is answered
-`200` only after it is in the inbox, a tampered or wrongly signed one `400`,
-and a delivery for another inbox `200` without a record.
+The unit tests cover the Flow's mapping, note, and admission rules, and serve
+the example's Trigger target against an unreachable Dex Server: a signed
+delivery is answered `200` and retried toward Dex, a tampered or wrongly signed
+one `400`, and a delivery for another inbox `200` without a record. The
+connector's own tests cover the durable project inbox: a delivery is stored
+before its `200` and replayed after a restart.
 
-The real Dex tests run the example's `run` function against `dexcli dev` and a
-TLS stand-in for `api.helpscout.net`, starting from the credentials Dex Web
-saves: a signed delivery starts exactly one Flow that obtains and stores one
-access token, reads, looks up, searches, adds one internal note, and tags, and
-a second Flow reuses the stored token; a redelivery
-starts no second Flow and adds no second note; a forged delivery answers `400`
-and starts nothing; a tags event is filtered; and a delivery acknowledged while
-Dex was unreachable is replayed after a restart:
+The real Dex tests run the example's Flow on a Worker and serve its Trigger
+target, without the durable project inbox, against `dexcli dev` and a TLS
+stand-in for `api.helpscout.net`, starting from the credentials Dex Web saves
+held in memory: a signed delivery starts exactly one Flow that obtains and
+stores one access token, reads, looks up, searches, adds one internal note, and
+tags, and a second Flow reuses the stored token; a redelivery starts no second
+Flow and adds no second note; a forged delivery answers `400` and starts
+nothing; a tags event is filtered; and a delivery that arrives before the
+binding runs is answered `503`, and Help Scout's retry starts the Flow:
 
 ```bash
 DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 go test -tags=integration ./examples/conversation-triage/... -count=1 -v

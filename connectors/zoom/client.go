@@ -68,7 +68,7 @@ func WithHTTPClient(client *http.Client) Option {
 type Client struct {
 	baseURL          string
 	httpClient       *http.Client
-	credentials      sdkgo.CredentialProvider[Credentials]
+	credentials      CredentialSource
 	refreshDriver    *CredentialRefreshDriver
 	maxResponseBytes int64
 	now              func() time.Time
@@ -119,7 +119,7 @@ type dispatchObservation struct {
 
 // New validates configuration and constructs a Zoom client. A blank endpoint
 // uses Zoom's global API, and credentials are resolved before every call.
-func New(config Config, credentials sdkgo.CredentialProvider[Credentials], options ...Option) (*Client, error) {
+func New(config Config, credentials CredentialSource, options ...Option) (*Client, error) {
 	config = withConfigDefaults(config)
 	if err := config.Validate(); err != nil {
 		return nil, err

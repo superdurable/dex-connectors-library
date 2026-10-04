@@ -147,7 +147,7 @@ func WithClock(now func() time.Time) Option {
 // operations. A Client is immutable after New and safe for concurrent use by Dex Workers.
 type Client struct {
 	httpClient       *http.Client
-	credentials      sdkgo.CredentialProvider[Credentials]
+	credentials      CredentialSource
 	refreshDriver    *CredentialRefreshDriver
 	maxResponseBytes int64
 	maxCells         int64
@@ -205,7 +205,7 @@ type readOutcome struct {
 // New validates configuration and constructs an authenticated Excel client.
 // It fails when a limit is outside its documented range, the local provider URL
 // is not a loopback URL, or credentials is nil.
-func New(config Config, credentials sdkgo.CredentialProvider[Credentials], options ...Option) (*Client, error) {
+func New(config Config, credentials CredentialSource, options ...Option) (*Client, error) {
 	config = withConfigDefaults(config)
 	if err := config.Validate(); err != nil {
 		return nil, err

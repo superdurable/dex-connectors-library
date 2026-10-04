@@ -44,11 +44,11 @@ func WithClock(now func() time.Time) Option {
 }
 
 // WithLogger sends the Trigger runner's records to logger: Socket Mode connections, ignored and skipped
-// events, delivery retries, and the durable inboxes that NewLocalMessageTriggerRunner creates. Without
+// events, delivery retries, and the durable inboxes that NewProjectMessageTriggerRunner creates. Without
 // this option, or with a nil logger, records go to slog.Default() as of each record. Records carry IDs
 // and error messages, never message text or tokens. The generated per-Trigger factories, such as
-// NewLocalThreadReplyCreatedTrigger, pass logger to their Socket Mode source only; their durable inbox
-// and runner records go to slog.Default(), so call slog.SetDefault when you use them.
+// NewThreadReplyCreatedTrigger, pass logger to their Socket Mode source only; their runner records go to
+// slog.Default(), so call slog.SetDefault when you use them.
 func WithLogger(logger *slog.Logger) Option {
 	return func(options *clientOptions) { options.logger = logger }
 }
@@ -57,7 +57,7 @@ func WithLogger(logger *slog.Logger) Option {
 type Client struct {
 	endpoint             *url.URL
 	httpClient           *http.Client
-	credentials          sdkgo.CredentialProvider[Credentials]
+	credentials          CredentialSource
 	refreshDriver        sdkgo.CredentialRefreshDriver[Credentials]
 	maxResponseBytes     int64
 	maxMessageCharacters int
@@ -186,7 +186,7 @@ var (
 )
 
 // New validates configuration and constructs an authenticated Slack client.
-func New(config Config, credentials sdkgo.CredentialProvider[Credentials], options ...Option) (*Client, error) {
+func New(config Config, credentials CredentialSource, options ...Option) (*Client, error) {
 	config = withConfigDefaults(config)
 	if err := config.Validate(); err != nil {
 		return nil, err

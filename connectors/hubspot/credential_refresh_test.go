@@ -116,39 +116,6 @@ func TestCredentialRefreshDriverRefreshesOAuthWithinTheExpirySkew(t *testing.T) 
 	require.False(t, driver.RefreshRequired(sdkgo.CredentialRefreshState[hubspot.Credentials]{Credentials: credentials, ExpiresAt: &beyondSkew, Now: now}))
 }
 
-func TestDecodeResolvedCredentialsAcceptsOnlyTheShortLivedToken(t *testing.T) {
-	credentials, err := hubspot.DecodeResolvedCredentialsJSON(json.RawMessage(`{"auth_method":"hubspot-oauth","access_token":"short-lived"}`))
-	require.NoError(t, err)
-	require.Equal(t, "short-lived", credentials.AccessToken.Reveal())
-	require.Equal(t, hubspot.OAuthAuthMethodID, credentials.AuthMethodID)
-	for _, contents := range []string{
-		`{"access_token":"short-lived","refresh_token":"must-not-cross-the-broker"}`,
-		`{"auth_method":"api-key","access_token":"short-lived"}`,
-		`{"auth_method":"private-app-token"}`,
-	} {
-		_, err := hubspot.DecodeResolvedCredentialsJSON(json.RawMessage(contents))
-		require.Error(t, err)
-		require.NotContains(t, err.Error(), "must-not-cross-the-broker")
-	}
-}
-
-func TestLocalCredentialsRoundTripForEachAuthMethod(t *testing.T) {
-	for _, credentials := range []hubspot.Credentials{
-		{AuthMethodID: hubspot.PrivateAppTokenAuthMethodID, AccessToken: sdkgo.NewSecretString(testAccessToken)},
-		oauthCredentials(),
-	} {
-		encoded, err := hubspot.EncodeCredentialsJSON(credentials)
-		require.NoError(t, err)
-		decoded, err := hubspot.DecodeCredentialsJSON(encoded)
-		require.NoError(t, err)
-		require.Equal(t, credentials.AuthMethodID, decoded.AuthMethodID)
-		require.Equal(t, credentials.AccessToken.Reveal(), decoded.AccessToken.Reveal())
-		require.Equal(t, credentials.RefreshToken.Reveal(), decoded.RefreshToken.Reveal())
-	}
-	_, err := hubspot.EncodeCredentialsJSON(hubspot.Credentials{AuthMethodID: hubspot.OAuthAuthMethodID, AccessToken: sdkgo.NewSecretString("a")})
-	require.Error(t, err, "an OAuth credential without client and refresh material is incomplete")
-}
-
 func oauthCredentials() hubspot.Credentials {
 	return hubspot.Credentials{
 		AuthMethodID: hubspot.OAuthAuthMethodID, OAuthClientID: "client-id", OAuthClientSecret: sdkgo.NewSecretString("client-secret"),

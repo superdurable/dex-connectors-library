@@ -11,11 +11,14 @@ dexcli visualize ./examples/create-checkout-session/flow/workflow.go \
   --schema-version 2.0 --json --out ./build/create-checkout-session
 ```
 
-Run `dexcli dev` with that build directory, configure
-`stripe / stripe-payments` under **Connections**, then start the Worker:
+Run `dexcli dev` with that build directory and configure
+`stripe / stripe-payments` under **Connections**. Dex Web or Superverse Studio
+writes the connection to the project configuration; start the Worker with the
+`DEX_PROJECT_*` environment that names it, as
+[project configuration loading](../../../../sdkgo/projectconfig/README.md#application-loading)
+describes:
 
 ```bash
-export DEX_CONNECTOR_CONFIG_FILE="$HOME/.dex/connectors/connections.json"
 go run ./examples/create-checkout-session
 ```
 

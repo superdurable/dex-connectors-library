@@ -17,7 +17,7 @@
 //
 // Applications use the generated operation-specific Step factories, such as
 // NewHeadObjectStep and NewPutObjectStep, with a Connection built by
-// NewLocalConnection or NewConnection. The runnable example in
+// NewProjectConnection or NewConnection. The runnable example in
 // examples/report-archive uses every operation in one Flow.
 package s3
 

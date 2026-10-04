@@ -18,7 +18,8 @@ import (
 	"github.com/superdurable/dex-connectors-library/connectors/microsoft/onedrive"
 	textcopy "github.com/superdurable/dex-connectors-library/connectors/microsoft/onedrive/examples/text-copy/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -33,19 +34,19 @@ func main() {
 }
 
 func run(ctx context.Context) error {
-	store, err := localconfig.LoadFromEnvironment()
+	project, err := projectconfig.LoadFromEnvironment(ctx)
 	if err != nil {
 		return err
 	}
-	connection, err := onedrive.NewLocalConnection(store, textcopy.ConnectionName)
+	connection, err := onedrive.NewProjectConnection(project, textcopy.ConnectionName)
 	if err != nil {
 		return err
 	}
-	sourceLocation, err := loadLocationConfiguration(store, textcopy.SourceLocationConfigurationRef())
+	sourceLocation, err := loadLocationConfiguration(project.Configuration, textcopy.SourceLocationConfigurationRef())
 	if err != nil {
 		return err
 	}
-	destinationLocation, err := loadLocationConfiguration(store, textcopy.DestinationLocationConfigurationRef())
+	destinationLocation, err := loadLocationConfiguration(project.Configuration, textcopy.DestinationLocationConfigurationRef())
 	if err != nil {
 		return err
 	}
@@ -80,11 +81,11 @@ func run(ctx context.Context) error {
 // loadLocationConfiguration reads a Step's saved location picks once at startup. A
 // Step without saved picks uses the signed-in user's OneDrive root, which the Flow documents.
 func loadLocationConfiguration(
-	store *localconfig.Store,
+	configuration projectconfig.Configuration,
 	reference sdkgo.ConnectorConfigurationRef,
 ) (sdkgo.ConnectorLoadedConfiguration[textcopy.LocationConfiguration], error) {
-	loaded, err := localconfig.LoadOperationConfiguration[textcopy.LocationConfiguration](store, reference)
-	if errors.Is(err, localconfig.ErrConfigurationNotFound) {
+	loaded, err := provider.LoadOperationConfiguration[textcopy.LocationConfiguration](configuration, reference)
+	if errors.Is(err, projectconfig.ErrObjectNotFound) {
 		return sdkgo.ConnectorLoadedConfiguration[textcopy.LocationConfiguration]{Reference: reference}, nil
 	}
 	return loaded, err

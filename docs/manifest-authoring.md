@@ -99,10 +99,11 @@ factory functions. Applications use those factories directly, such as
 `openai.NewCreateResponseStep`, while generic SDK factories remain an advanced
 escape hatch.
 
-The generated surface also includes `NewLocalConnection` and a
-`ConnectionName` field on every operation factory config. The local helper
-decodes every manifest authentication field, including multiple optional
-secret fields, without assuming a single-token OAuth response. Keep secret
+The generated surface also includes `NewProjectConnection` and a required
+`ConnectionName` field on every operation and Trigger factory config.
+`NewProjectConnection` decodes every manifest authentication field, including
+multiple optional secret fields, without assuming a single-token OAuth
+response. Keep secret
 fields typed as `secretString` so code generation constructs `SecretString`
 at the provider boundary.
 
@@ -153,15 +154,15 @@ auth:
         steps: [Create a service account and enable domain-wide delegation.]
 ```
 
-Generated credentials include `AuthMethodID` plus the union of method fields.
-Only the selected method's required fields are validated. Local configuration
-stores the selection as `auth_method`; hosted runtimes keep the selection in
-the immutable non-secret revision and resolve secrets through the broker.
+A connection selects exactly one method. Generated credentials include
+`AuthMethodID` plus the union of method fields, and only the selected method's
+required fields are validated. The project connection stores the selected
+method as `auth_method` in the credential and as `AuthMethodID` in the
+connection configuration.
 
 The optional `auth.methodLabel` is the singular noun the setup UI uses for a
-method, such as `Provider` for "Providers" and "Add provider". It is 1 to 32
-characters without surrounding whitespace, and only a manifest with `methods`
-declares it.
+method, such as `Provider`. It is 1 to 32 characters without surrounding
+whitespace, and only a manifest with `methods` declares it.
 
 A method may declare non-secret `configuration.fields`, such as a Claude
 workspace ID that only the Claude method uses. They take the same types as
@@ -172,73 +173,26 @@ method, and `required: true` means required while that method is selected.
 Code generation adds each one to `Config` as an optional field: `Config`
 validation checks its type and never requires it.
 
-`auth_method`, `auth_methods`, `AuthMethodID`, and `AuthMethodIDs` are
-reserved; no credential field may use them as its name or `goName`.
+`auth_method` and `AuthMethodID` are reserved for the selected method; no
+credential field may use them as its name or `goName`.
 
-#### Several methods on one connection
+#### Several API-key methods
 
-`auth.selection` is `single` by default, so a connection holds exactly one
-method. With `selection: multiple`, a connection holds any non-empty subset of
-the methods, such as one API key for each model provider it routes to. Use it
-only for at least two methods, and give every method `type: apiKey`; OAuth,
-service-account, and `none` methods need `single`. This excerpt comes from
-[schema/testdata/multiple-auth-selection.yaml](../schema/testdata/multiple-auth-selection.yaml):
-
-```yaml
-  configuration:
-    fields:
-      - name: model
-        goName: Model
-        type: string
-        description: Default model written provider/model. Blank uses the first added provider's default model.
-        required: false
-        studioUnit: {unit: modelPicker, port: model}
-  auth:
-    selection: multiple
-    methodLabel: Provider
-    defaultMethod: openai
-    methods:
-      - id: openai
-        displayName: OpenAI
-        description: Use an OpenAI project API key.
-        type: apiKey
-        connectionKind: example-openai-api-key
-        fields:
-          - {name: openai_api_key, goName: OpenAIAPIKey, type: secretString, description: Secret OpenAI project API key., required: true}
-        configuration:
-          fields:
-            - {name: openaiProjectId, goName: OpenAIProjectID, type: string, description: OpenAI project ID that owns usage., required: true}
-        guide:
-          startURL: https://platform.openai.com/api-keys
-          steps: [Choose Create new secret key and copy the secret shown once.]
-      - id: anthropic
-        displayName: Claude
-        description: Use a Claude Console API key.
-        type: apiKey
-        connectionKind: example-anthropic-api-key
-        fields:
-          - {name: anthropic_api_key, goName: AnthropicAPIKey, type: secretString, description: Secret Claude API key., required: true}
-        configuration:
-          fields:
-            - {name: anthropicWorkspaceId, goName: AnthropicWorkspaceID, type: string, description: Claude workspace ID for a multi-workspace key., required: false}
-        guide:
-          startURL: https://platform.claude.com/settings/keys
-          steps: [Choose Create key and copy the secret shown once.]
-```
-
-Generated credentials then hold `AuthMethodIDs`, the selected method IDs in
-the order they were added, instead of `AuthMethodID`, plus
-`HasAuthMethod(id)`. Validation requires a non-empty list of unique, declared
-IDs and every selected method's required credential fields. Local
-configuration stores the list as the `auth_methods` string array. See
-[Generated Config and Credentials](connector-contract.md#generated-config-and-credentials).
+[schema/testdata/api-key-methods.yaml](../schema/testdata/api-key-methods.yaml)
+declares one `apiKey` method per model provider, and each connection selects
+one of them. `methodLabel: Provider` names its methods, and each method's
+`configuration.fields` hold that provider's non-secret settings, such as the
+Claude workspace ID. See
+[Generated Config and Credentials](connector-contract.md#generated-config-and-credentials)
+for its generated code.
 
 #### Studio unit for a connection field
 
 A `spec.configuration` field may declare `studioUnit: {unit, port}`. Once the
 connection is saved, the connection form renders that Studio unit for the field
-instead of a plain input, and the unit's output port writes the value. In the
-excerpt above, the `model` field uses the `modelPicker` unit's `model` port.
+instead of a plain input, and the unit's output port writes the value. In
+[schema/testdata/api-key-methods.yaml](../schema/testdata/api-key-methods.yaml),
+the `model` field uses the `modelPicker` unit's `model` port.
 `unit` names a `spec.studio.units` ID, and `port` names one of that unit's
 outputs whose type equals the field type, such as `string` for a `string`
 field. Credential fields and method configuration fields cannot declare
@@ -257,7 +211,9 @@ triggers:
     description: Receive a matching top-level channel message.
 ```
 
-Code generation creates direct and local-config Trigger factories. The
+Code generation creates the direct `New<Trigger>Trigger` factory and its
+binding definition. The connector's project runner loads the stored bindings
+and keeps acknowledged events in their durable project inboxes. The
 provider implements the generated source hook and owns transport acknowledgement,
 reconnection, filtering, and event decoding. The application selects the target
 and owns Flow ID, start-input, and RPC mapping.

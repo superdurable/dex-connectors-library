@@ -51,7 +51,8 @@ func TestStripeFactoriesRequireHappyPathsAndAllowOptionalBranches(t *testing.T) 
 	})
 	require.Panics(t, func() {
 		stripe.NewCreateACHCheckoutSessionStep(stripe.CreateACHCheckoutSessionStepConfig[string]{
-			StepType: "CreateCheckout", Connection: connection,
+			StepType: "CreateCheckout", Annotations: sdkgo.StepAnnotations{GroupID: "stripe", GroupLabel: "Stripe", Explanation: "Create Checkout."},
+			Connection: connection, ConnectionName: "payments",
 			MapToOperationInput: func(string) stripe.CreateACHCheckoutSessionInput { return validCreateInput() },
 			ProviderRejected:    sdkgo.GoTo(stripeMutationTarget{}),
 		})

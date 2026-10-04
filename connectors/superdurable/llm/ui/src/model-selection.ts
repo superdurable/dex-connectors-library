@@ -2,14 +2,10 @@
 // SPDX-License-Identifier: MIT
 
 import {
-  shouldListModelsForAuthMethod,
   validateModelIDForRule,
   type ConnectorStudioClient,
   type ConnectorStudioConnection,
-  type ModelIDRule,
   type ModelListing,
-  type ModelListingNotice,
-  type ModelOption,
 } from "@superdurable/dex-connectors-react";
 import {
   loadClaudeModelListing,
@@ -17,141 +13,123 @@ import {
   loadOpenAIModelListing,
 } from "@superdurable/dex-connectors-react/provider-model-lists";
 
-/** llmModelsListCapability is the manifest capability every llm list command declares. */
-export const llmModelsListCapability = "llm.models-list";
+import { loadDeepSeekModels } from "./deepseek-model-list.js";
+import { loadKimiModels } from "./kimi-model-list.js";
+import { loadMetaModels } from "./meta-model-list.js";
+import { loadMistralModels } from "./mistral-model-list.js";
+import { llmModelsListCapability } from "./models-list-capability.js";
+import { loadQwenModels, qwenHongKongModelLists, qwenSingaporeModelLists } from "./qwen-model-list.js";
+import { loadXAIModels } from "./xai-model-list.js";
 
-/** ProviderPrefix is the provider part of a provider/model selection. */
-export type ProviderPrefix = "openai" | "anthropic" | "gemini";
+/** LLMProvider is one value of the connection's provider field. */
+export type LLMProvider = "openai" | "anthropic" | "gemini" | "qwen" | "deepseek" | "meta" | "mistral" | "kimi" | "xai";
+
+/** LLMRegion is one value of the connection's region field; a blank region is global. */
+export type LLMRegion = "global" | "us" | "eu" | "china" | "hong-kong";
 
 /**
  * llmDefaultModelDescription names the model the llm connector runs when
  * neither a Step nor the connection picks one.
  */
-export const llmDefaultModelDescription = "the first added provider's default model";
+export const llmDefaultModelDescription = "the provider's default model";
 
-/** ProviderModelSource lists one provider's models for the combined picker. */
-export interface ProviderModelSource {
-  /**
-   * prefix is prepended to every listed model ID, as in anthropic/claude-sonnet-5.
-   * It is also the ID of the connection auth method that adds the provider.
-   */
-  prefix: ProviderPrefix;
-  /** label names the provider in the option badge and notices, such as "Claude". */
+/** LLMModelSource lists one provider's models for the picker. */
+export interface LLMModelSource {
+  /** label names the provider in messages, such as "Claude". */
   label: string;
-  /** keyName is how the notice names the connection's key for this provider, such as "the Claude key". */
-  keyName: string;
-  /** hostLimitation is an optional sentence about a Dex Web release that cannot list this provider. */
-  hostLimitation?: string;
-  /** load lists the provider's models through the Studio broker. */
-  load(): Promise<ModelListing>;
+  /** load lists the provider's models in region through the Studio broker. */
+  load(client: ConnectorStudioClient, region: LLMRegion): Promise<ModelListing>;
 }
 
-// The llm connector validates each provider's model with that provider connector's model-ID rule.
-const providerModelIDRules: Record<ProviderPrefix, ModelIDRule> = {openai: "body", anthropic: "body", gemini: "pathSegment"};
+const llmProviders: readonly LLMProvider[] = ["openai", "anthropic", "gemini", "qwen", "deepseek", "meta", "mistral", "kimi", "xai"];
+const llmRegions: readonly LLMRegion[] = ["global", "us", "eu", "china", "hong-kong"];
 
-const selectionFormatMessage =
-  "Enter provider/model, where provider is openai, anthropic, or gemini, such as anthropic/claude-sonnet-5, or a provider alone for its default model.";
+const unsavedProviderMessage =
+  "Save the connection with its provider and api_key first; the picker then lists that provider's models. Until then, enter the provider's model ID.";
 
-const noProviderListedMessage =
-  "No provider's models could be listed. Choose a provider's default model, or enter provider/model-id.";
+const unreportedConfigurationMessage =
+  "This Dex Web release does not tell the picker the connection's provider, so it lists no models. Enter a model ID of the connection's provider.";
 
-const providerCommandBanner =
-  "Dex Web releases before cli-v0.14.2 also show a 'Connector provider command failed' banner at the top of the page for this list; it does not affect generation.";
-
-/**
- * llmModelSources declares the three provider lists in picker order: OpenAI,
- * Claude, and Gemini. Each loader runs only its own manifest commands, which
- * Dex Web authorizes with only that provider's key field.
- */
-export function llmModelSources(client: ConnectorStudioClient): ProviderModelSource[] {
-  return [
-    {
-      prefix: "openai", label: "OpenAI", keyName: "the OpenAI key",
-      load: () => loadOpenAIModelListing(client, {capability: llmModelsListCapability, commandId: "listOpenAIModels"}),
-    },
-    {
-      prefix: "anthropic", label: "Claude", keyName: "the Claude key",
-      hostLimitation: "Dex Web releases before cli-v0.13.10 cannot list Claude models.",
-      load: () => loadClaudeModelListing(client, {capability: llmModelsListCapability, commandId: "listAnthropicModels"}),
-    },
-    {
-      prefix: "gemini", label: "Gemini", keyName: "the Gemini key",
-      load: () => loadGeminiModelListing(client, {
-        capability: llmModelsListCapability,
-        nativeCommandId: "listGeminiModels", openAICompatibleCommandId: "listGeminiOpenAICompatibleModels",
-      }),
-    },
-  ];
-}
+const qwenChinaMessage =
+  "Model Studio China (Beijing) has no model list here. Enter the model ID from the Model Studio console, such as qwen3.7-plus.";
 
 /**
- * loadLLMModels is the bundle's ModelPicker loader: the combined live lists of
- * the providers the connection adds, with a default-model option for each. A
- * provider the connection has not added runs no command and offers no option.
- * A host that reports no auth methods lists every provider.
+ * llmModelSources declares each provider's list. Each loader runs only its own
+ * provider's manifest commands for the connection's region, so Dex Web sends
+ * api_key only to that provider's hosts.
  */
-export function loadLLMModels(client: ConnectorStudioClient, connection: Pick<ConnectorStudioConnection, "authMethodIds">): Promise<ModelListing> {
-  return combineModelListings(llmModelSources(client).filter((source) => shouldListModelsForAuthMethod(connection, source.prefix)));
-}
+export const llmModelSources: Record<LLMProvider, LLMModelSource> = {
+  openai: {
+    label: "OpenAI",
+    load: (client) => loadOpenAIModelListing(client, {capability: llmModelsListCapability, commandId: "listOpenAIModels"}),
+  },
+  anthropic: {
+    label: "Claude",
+    load: (client) => loadClaudeModelListing(client, {capability: llmModelsListCapability, commandId: "listAnthropicModels"}),
+  },
+  gemini: {
+    label: "Gemini",
+    load: (client) => loadGeminiModelListing(client, {
+      capability: llmModelsListCapability,
+      nativeCommandId: "listGeminiModels", openAICompatibleCommandId: "listGeminiOpenAICompatibleModels",
+    }),
+  },
+  qwen: {
+    label: "Qwen",
+    load: (client, region) => region === "china"
+      ? Promise.resolve({models: [], notices: [{tone: "info", message: qwenChinaMessage}]})
+      : loadQwenModels(client, region === "hong-kong" ? qwenHongKongModelLists : qwenSingaporeModelLists),
+  },
+  deepseek: {label: "DeepSeek", load: (client) => loadDeepSeekModels(client)},
+  meta: {label: "Meta", load: (client) => loadMetaModels(client)},
+  mistral: {label: "Mistral", load: (client) => loadMistralModels(client)},
+  kimi: {label: "Kimi", load: (client, region) => loadKimiModels(client, region === "china")},
+  xai: {label: "xAI", load: (client, region) => loadXAIModels(client, region === "us")},
+};
 
 /**
- * combineModelListings loads every source at once and merges the results.
- * The listing starts with one default-model option per source, whose value is
- * the provider alone, so a provider stays selectable when its list fails.
- * Listed models follow in source order with IDs written prefix/id and the
- * provider label as their first badge. Each failed source adds one attention
- * notice, after one overall notice when every source fails. It never rejects,
- * so the default-model options stay selectable when every list fails.
+ * loadLLMModels is the bundle's ModelPicker loader: the live list of the
+ * connection's saved provider in its saved region. Without a saved provider
+ * it runs no command, so the key never reaches a provider the connection does
+ * not name, and resolves with a notice; the picker still offers the default
+ * option and model ID entry. A failed list rejects with a message that names
+ * the provider, so ModelPicker offers retry and model ID entry.
  */
-export async function combineModelListings(sources: ProviderModelSource[]): Promise<ModelListing> {
-  const settled = await Promise.allSettled(sources.map((source) => source.load()));
-  const models: ModelOption[] = sources.map((source) => ({
-    id: source.prefix, label: `${source.label} default model`,
-    detail: `The model the ${source.label} connector uses when a Step names none.`, badges: [source.label],
-  }));
-  const notices: ModelListingNotice[] = [];
-  if (settled.length > 0 && settled.every((outcome) => outcome.status === "rejected")) {
-    notices.push({tone: "attention", message: noProviderListedMessage});
+export async function loadLLMModels(
+  client: ConnectorStudioClient, connection: Pick<ConnectorStudioConnection, "configuration" | "isConfigurationReported">,
+): Promise<ModelListing> {
+  const provider = readConfiguredProvider(connection.configuration);
+  if (provider === undefined) {
+    const message = connection.isConfigurationReported ? unsavedProviderMessage : unreportedConfigurationMessage;
+    return {models: [], notices: [{tone: "attention", message}]};
   }
-  let isTruncated = false;
-  settled.forEach((outcome, index) => {
-    const source = sources[index];
-    if (outcome.status === "rejected") {
-      notices.push({tone: "attention", message: providerListFailureMessage(source)});
-      return;
-    }
-    isTruncated ||= outcome.value.isTruncated === true;
-    for (const model of outcome.value.models) {
-      models.push({...model, id: `${source.prefix}/${model.id}`, badges: [source.label, ...(model.badges ?? [])]});
-    }
-  });
-  return {models, isTruncated, notices};
+  const source = llmModelSources[provider];
+  try {
+    return await source.load(client, readConfiguredRegion(connection.configuration));
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "Unknown error";
+    throw new Error(`The ${source.label} model list failed (${reason}). Check the connection's api_key and region.`);
+  }
 }
 
 /**
- * validateProviderQualifiedModel checks a typed model the way the llm
- * connector does: a provider alone, or provider/model whose model passes that
- * provider's model-ID rule. It returns a message for an invalid entry, or
- * undefined to accept it.
+ * validateLLMModelID checks a typed model ID the way the llm connector checks
+ * a request model for most providers: 1 to 256 printable ASCII characters
+ * without spaces. It returns a message for an invalid entry, or undefined to
+ * accept it. Gemini's stricter path-segment rule is applied when the Worker
+ * calls the model.
  */
-export function validateProviderQualifiedModel(value: string): string | undefined {
-  const separator = value.indexOf("/");
-  const prefix = separator === -1 ? value : value.slice(0, separator);
-  if (!isProviderPrefix(prefix)) return selectionFormatMessage;
-  if (separator === -1) return undefined;
-  const model = value.slice(separator + 1);
-  if (model.trim() === "") return selectionFormatMessage;
-  const validation = validateModelIDForRule(providerModelIDRules[prefix], model);
+export function validateLLMModelID(model: string): string | undefined {
+  const validation = validateModelIDForRule("body", model);
   return validation.isValid ? undefined : validation.message;
 }
 
-function providerListFailureMessage(source: ProviderModelSource): string {
-  return [
-    `${source.label} models could not be listed. Check ${source.keyName} in the connection, or choose ${source.label} default model, or enter ${source.prefix}/<model-id>.`,
-    source.hostLimitation, providerCommandBanner,
-  ].filter((sentence) => sentence !== undefined).join(" ");
+function readConfiguredProvider(configuration: Record<string, unknown>): LLMProvider | undefined {
+  const provider = configuration.provider;
+  return llmProviders.find((candidate) => candidate === provider);
 }
 
-function isProviderPrefix(value: string): value is ProviderPrefix {
-  return value === "openai" || value === "anthropic" || value === "gemini";
+function readConfiguredRegion(configuration: Record<string, unknown>): LLMRegion {
+  const region = configuration.region;
+  return llmRegions.find((candidate) => candidate === region) ?? "global";
 }

@@ -18,7 +18,8 @@ import (
 
 	gemini "github.com/superdurable/dex-connectors-library/connectors/google/gemini"
 	generatesummary "github.com/superdurable/dex-connectors-library/connectors/google/gemini/examples/generate-summary/flow"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -49,15 +50,20 @@ func newLogger(output io.Writer, levelName string) *slog.Logger {
 }
 
 func run(ctx context.Context, logger *slog.Logger) error {
-	store, err := localconfig.LoadFromEnvironment()
+	project, err := projectconfig.LoadFromEnvironment(ctx)
 	if err != nil {
 		return err
 	}
-	connection, err := gemini.NewLocalConnection(store, generatesummary.ConnectionName)
+	return runWorker(ctx, logger, project)
+}
+
+// runWorker serves the example Flow with the connection and Step pick that project holds until ctx ends.
+func runWorker(ctx context.Context, logger *slog.Logger, project *projectconfig.LoadedProject) error {
+	connection, err := gemini.NewProjectConnection(project, generatesummary.ConnectionName)
 	if err != nil {
 		return err
 	}
-	summaryModel, err := loadSummaryModelConfiguration(store)
+	summaryModel, err := loadSummaryModelConfiguration(project.Configuration)
 	if err != nil {
 		return err
 	}
@@ -134,11 +140,11 @@ func waitForDexServer(ctx context.Context, healthCheck func(context.Context) (de
 
 // loadSummaryModelConfiguration reads the GenerateSummary Step's model pick. A
 // Step that was never configured in Dex Web uses the connection's model.
-func loadSummaryModelConfiguration(store *localconfig.Store) (generatesummary.SummaryModelConfiguration, error) {
-	loaded, err := localconfig.LoadOperationConfiguration[generatesummary.SummaryModelConfiguration](
-		store, generatesummary.SummaryModelConfigurationRef(),
+func loadSummaryModelConfiguration(configuration projectconfig.Configuration) (generatesummary.SummaryModelConfiguration, error) {
+	loaded, err := provider.LoadOperationConfiguration[generatesummary.SummaryModelConfiguration](
+		configuration, generatesummary.SummaryModelConfigurationRef(),
 	)
-	if errors.Is(err, localconfig.ErrConfigurationNotFound) {
+	if errors.Is(err, projectconfig.ErrObjectNotFound) {
 		return generatesummary.SummaryModelConfiguration{}, nil
 	}
 	if err != nil {

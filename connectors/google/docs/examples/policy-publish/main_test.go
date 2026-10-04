@@ -4,13 +4,11 @@
 package main
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	policypublish "github.com/superdurable/dex-connectors-library/connectors/google/docs/examples/policy-publish/flow"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
 func TestEnvironmentOr(t *testing.T) {
@@ -20,18 +18,14 @@ func TestEnvironmentOr(t *testing.T) {
 }
 
 func TestLoadOperationConfigurationTreatsAMissingPickAsBlank(t *testing.T) {
-	directory := t.TempDir()
-	connectionsPath := filepath.Join(directory, "connections.json")
-	require.NoError(t, os.WriteFile(connectionsPath, []byte(`{"schemaVersion":"connectors.dex.dev/local-connections/v1alpha1","connections":[]}`), 0o600))
-	store, err := localconfig.LoadFile(connectionsPath)
-	require.NoError(t, err)
+	configuration := projectconfig.Configuration{}
 
-	template, err := loadOperationConfiguration[policypublish.TemplateConfiguration](store, policypublish.TemplateConfigurationRef())
+	template, err := loadOperationConfiguration[policypublish.TemplateConfiguration](configuration, policypublish.TemplateConfigurationRef())
 	require.NoError(t, err)
 	require.Equal(t, policypublish.TemplateConfigurationRef(), template.Reference)
 	require.Empty(t, template.Value.DocumentID)
 
-	folder, err := loadOperationConfiguration[policypublish.FolderConfiguration](store, policypublish.DestinationFolderConfigurationRef())
+	folder, err := loadOperationConfiguration[policypublish.FolderConfiguration](configuration, policypublish.DestinationFolderConfigurationRef())
 	require.NoError(t, err)
 	require.Empty(t, folder.Value.FolderID)
 }

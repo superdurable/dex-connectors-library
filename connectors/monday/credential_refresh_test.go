@@ -10,16 +10,14 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"github.com/superdurable/dex-connectors-library/connectors/monday/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -109,7 +107,8 @@ func TestRefreshRequiredReadsTheJWTExpiryWhenNoneIsRecorded(t *testing.T) {
 	require.Error(t, err)
 }
 
-// TestRejectedOAuthTokenIsRefreshedOnceAndTheRequestResent runs the real local refreshing provider.
+// TestRejectedOAuthTokenIsRefreshedOnceAndTheRequestResent refreshes through a credential source that
+// honors a rejection; the stored token has not reached its JWT expiry.
 func TestRejectedOAuthTokenIsRefreshedOnceAndTheRequestResent(t *testing.T) {
 	staleToken, freshToken := jwtForTest(t, time.Now().Add(time.Hour)), jwtForTest(t, time.Now().Add(2*time.Hour))
 	var mutex sync.Mutex
@@ -130,63 +129,21 @@ func TestRejectedOAuthTokenIsRefreshedOnceAndTheRequestResent(t *testing.T) {
 		}
 		return tokenResponseForTest(t, http.StatusOK, map[string]any{"data": map[string]any{"items": []any{map[string]any{"id": "9876543210", "name": "Fire drill"}}}}), nil
 	})
-	path := filepath.Join(t.TempDir(), "connections.json")
-	require.NoError(t, os.WriteFile(path, []byte(`{
-		"schemaVersion": "connectors.dex.dev/local-connections/v1alpha1",
-		"connections": [{
-			"connectorId": "monday", "modulePath": "github.com/superdurable/dex-connectors-library/connectors/monday",
-			"moduleVersion": "v0.1.0", "provider": "monday", "connectionName": "monday-oauth", "authMethodId": "monday-oauth",
-			"configuration": {},
-			"credentials": {"auth_method": "monday-oauth", "oauth_client_id": "client-id", "oauth_client_secret": "client-secret",
-				"access_token": "`+staleToken+`", "refresh_token": "existing-refresh"}
-		}]
-	}`), 0o600))
-	store, err := localconfig.LoadFile(path)
+	source := testsupport.NewRefreshingCredentialSource(oauthCredentialsForTest(staleToken), nil)
+	client, err := New(Config{}, source, WithHTTPClient(&http.Client{Transport: transport}))
 	require.NoError(t, err)
-	connection, err := NewLocalConnection(store, "monday-oauth", WithHTTPClient(&http.Client{Transport: transport}))
+	connection, err := NewConnection(client, sdkgo.ConnectionRef{Provider: "monday", Name: "monday-oauth"})
 	require.NoError(t, err)
 	result, err := sdkgo.RunQuery(newInternalDexContext(), connection.client.GetItem(), connection.reference, GetItemInput{ItemID: "9876543210"})
 	require.NoError(t, err)
 	require.Equal(t, GetItemBranchFound, result.Branch)
 	require.Equal(t, []string{staleToken, freshToken}, apiAuthorizations, "one rejection, one refresh, one resend")
 	require.Equal(t, 1, tokenRequests)
-	persisted, err := os.ReadFile(path)
-	require.NoError(t, err)
-	var file struct {
-		Connections []struct {
-			AuthMethodID        string          `json:"authMethodId"`
-			Credentials         json.RawMessage `json:"credentials"`
-			CredentialExpiresAt *time.Time      `json:"credentialExpiresAt"`
-		} `json:"connections"`
-	}
-	require.NoError(t, json.Unmarshal(persisted, &file))
-	require.Len(t, file.Connections, 1)
-	require.Equal(t, "monday-oauth", file.Connections[0].AuthMethodID, "Dex Web's record member survives the refresh")
-	require.Contains(t, string(file.Connections[0].Credentials), "rotated-refresh", "the rotated refresh token is stored atomically")
-	require.NotNil(t, file.Connections[0].CredentialExpiresAt)
-}
-
-func TestDecodeResolvedCredentialsJSONAcceptsOneTokenForItsMethod(t *testing.T) {
-	personal, err := DecodeResolvedCredentialsJSON(json.RawMessage(`{"api_token":"token-value"}`))
-	require.NoError(t, err)
-	require.Equal(t, PersonalAPITokenAuthMethodID, personal.AuthMethodID)
-	require.Equal(t, "token-value", personal.APIToken.Reveal())
-	oauth, err := DecodeResolvedCredentialsJSON(json.RawMessage(`{"auth_method":"monday-oauth","access_token":"access-value"}`))
-	require.NoError(t, err)
-	require.Equal(t, "access-value", oauth.authorizationToken().Reveal())
-	for name, contents := range map[string]string{
-		"refresh material":    `{"auth_method":"monday-oauth","access_token":"access-value","refresh_token":"secret-refresh"}`,
-		"other method token":  `{"auth_method":"monday-oauth","api_token":"token-value","access_token":"access-value"}`,
-		"missing token":       `{"auth_method":"monday-oauth"}`,
-		"unknown auth method": `{"auth_method":"basic","api_token":"token-value"}`,
-		"token with space":    `{"api_token":"two words"}`,
-		"not an object":       `["token-value"]`,
-	} {
-		_, err := DecodeResolvedCredentialsJSON(json.RawMessage(contents))
-		require.Error(t, err, name)
-		require.NotContains(t, err.Error(), "secret-refresh", name)
-		require.NotContains(t, err.Error(), "token-value", name)
-	}
+	stored, expiresAt := source.Current()
+	require.Equal(t, OAuthAuthMethodID, stored.AuthMethodID)
+	require.Equal(t, freshToken, stored.AccessToken.Reveal())
+	require.Equal(t, "rotated-refresh", stored.RefreshToken.Reveal(), "the rotated refresh token replaces the prior one")
+	require.NotNil(t, expiresAt)
 }
 
 func oauthCredentialsForTest(accessToken string) Credentials {

@@ -10,15 +10,16 @@ import (
 	"strings"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex-connectors-library/sdkgo/webhooktrigger"
 )
 
-// LocalConversationEventTriggerRoute binds one stored conversationEvent binding to its application target.
-type LocalConversationEventTriggerRoute struct {
+// ProjectConversationEventTriggerRoute binds one stored conversationEvent binding to its application target.
+type ProjectConversationEventTriggerRoute struct {
 	// BindingName names the stored Trigger binding whose configuration selects the topics.
 	BindingName string
-	// Target receives the binding's events through its durable local inbox, such as a
+	// Target receives the binding's events through its durable project inbox, such as a
 	// sdkgo.NewDexFlowTriggerTarget that starts one Flow per conversation.
 	Target sdkgo.TriggerTarget[ConversationEvent]
 }
@@ -32,30 +33,51 @@ type ConversationEventEndpointRunner struct {
 	handler        http.Handler
 }
 
-// NewLocalConversationEventEndpointRunner loads the connection and every route's stored binding from
-// store and wraps each target in a durable inbox, so a notification is on disk before Intercom receives
-// 200. A route whose binding is not stored or is invalid returns an error. WithLogger also applies to
-// the inboxes.
-func NewLocalConversationEventEndpointRunner(
-	store *localconfig.Store,
+// durableConversationEventTarget wraps one binding's target so that each event is stored before its acknowledgement.
+type durableConversationEventTarget func(
+	key projectconfig.TriggerInboxKey, target sdkgo.TriggerTarget[ConversationEvent],
+) (sdkgo.TriggerTarget[ConversationEvent], error)
+
+// NewProjectConversationEventEndpointRunner loads the connection and every route's stored binding from
+// project and wraps each target in a durable inbox, so a notification is in project storage before Intercom
+// receives 200. A route whose binding is not stored or is invalid returns an error. WithLogger also applies
+// to the inboxes.
+func NewProjectConversationEventEndpointRunner(
+	project *projectconfig.LoadedProject,
 	connectionName string,
-	routes []LocalConversationEventTriggerRoute,
+	routes []ProjectConversationEventTriggerRoute,
 	options ...Option,
 ) (*ConversationEventEndpointRunner, error) {
-	if store == nil {
-		return nil, fmt.Errorf("local connector configuration store is required")
-	}
-	if len(routes) == 0 {
-		return nil, fmt.Errorf("Intercom conversationEvent routes are required")
-	}
-	connection, err := NewLocalConnection(store, connectionName, options...)
+	connection, err := NewProjectConnection(project, connectionName, options...)
 	if err != nil {
 		return nil, err
+	}
+	return newConversationEventEndpointRunner(connection, project.Configuration, routes, func(
+		key projectconfig.TriggerInboxKey, target sdkgo.TriggerTarget[ConversationEvent],
+	) (sdkgo.TriggerTarget[ConversationEvent], error) {
+		inbox, err := project.TriggerInbox(key)
+		if err != nil {
+			return nil, err
+		}
+		return provider.NewDurableTriggerTarget(inbox, key, target, provider.WithTriggerLogger(connection.client.logger))
+	})
+}
+
+// newConversationEventEndpointRunner runs routes on connection with the bindings that configuration stores.
+func newConversationEventEndpointRunner(
+	connection Connection,
+	configuration projectconfig.Configuration,
+	routes []ProjectConversationEventTriggerRoute,
+	makeDurable durableConversationEventTarget,
+) (*ConversationEventEndpointRunner, error) {
+	if len(routes) == 0 {
+		return nil, fmt.Errorf("Intercom conversationEvent routes are required")
 	}
 	endpoint, err := connection.client.conversationEventWebhookEndpoint(connection.reference)
 	if err != nil {
 		return nil, err
 	}
+	connectionName := connection.reference.Name
 	triggerName := ConversationEventTriggerDefinition.Trigger.TriggerName
 	runners := make([]sdkgo.TriggerRunner, 0, len(routes))
 	bindingNames := make(map[string]bool, len(routes))
@@ -68,21 +90,21 @@ func NewLocalConversationEventEndpointRunner(
 			return nil, fmt.Errorf("Intercom conversationEvent binding name %q is duplicated", bindingName)
 		}
 		bindingNames[bindingName] = true
-		var configuration ConversationEventTriggerConfiguration
-		if err := store.DecodeTriggerConfiguration(ConnectorID, connectionName, triggerName, bindingName, &configuration); err != nil {
-			return nil, err
+		var bindingConfiguration ConversationEventTriggerConfiguration
+		if err := configuration.DecodeTriggerConfiguration(ConnectorID, connectionName, triggerName, bindingName, &bindingConfiguration); err != nil {
+			return nil, fmt.Errorf("Intercom conversationEvent binding %q configuration: %w", bindingName, err)
 		}
-		if err := configuration.Validate(); err != nil {
+		if err := bindingConfiguration.Validate(); err != nil {
 			return nil, fmt.Errorf("binding %q: %w", bindingName, err)
 		}
-		durableTarget, err := localconfig.NewDurableTriggerTarget(store, ConnectorID, connectionName, triggerName, bindingName,
-			route.Target, localconfig.WithTriggerLogger(connection.client.logger))
+		key := projectconfig.TriggerInboxKey{ConnectorID: ConnectorID, ConnectionName: connectionName, TriggerName: triggerName, BindingName: bindingName}
+		durableTarget, err := makeDurable(key, route.Target)
 		if err != nil {
 			return nil, err
 		}
 		runners = append(runners, NewConversationEventTrigger(ConversationEventTriggerConfig{
 			Connection: connection, ConnectionName: connectionName, BindingName: bindingName,
-			Configuration: configuration, Target: durableTarget,
+			Configuration: bindingConfiguration, Target: durableTarget,
 		}))
 	}
 	endpointRunner, err := webhooktrigger.NewEndpointRunner(endpoint, runners...)

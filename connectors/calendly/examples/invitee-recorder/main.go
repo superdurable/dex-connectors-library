@@ -24,7 +24,7 @@ import (
 	"github.com/superdurable/dex-connectors-library/connectors/calendly"
 	inviteerecorder "github.com/superdurable/dex-connectors-library/connectors/calendly/examples/invitee-recorder/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -60,11 +60,11 @@ func newLogger(output io.Writer, levelName string) *slog.Logger {
 
 // run serves the webhook endpoint at once, so deliveries are recorded even while Dex is unreachable.
 func run(ctx context.Context, logger *slog.Logger, connectionOptions ...calendly.Option) error {
-	store, err := localconfig.LoadFromEnvironment()
+	project, err := projectconfig.LoadFromEnvironment(ctx)
 	if err != nil {
 		return err
 	}
-	connection, err := calendly.NewLocalConnection(store, inviteerecorder.ConnectionName, connectionOptions...)
+	connection, err := calendly.NewProjectConnection(project, inviteerecorder.ConnectionName, connectionOptions...)
 	if err != nil {
 		return err
 	}
@@ -92,7 +92,7 @@ func run(ctx context.Context, logger *slog.Logger, connectionOptions ...calendly
 	if err != nil {
 		return errors.Join(err, stopWorker(worker), cache.Close())
 	}
-	endpointRunner, err := newInviteeEndpointRunner(store, client, flow, logger, connectionOptions)
+	endpointRunner, err := newInviteeEndpointRunner(project, client, flow, logger, connectionOptions)
 	if err != nil {
 		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
 	}
@@ -106,17 +106,22 @@ func run(ctx context.Context, logger *slog.Logger, connectionOptions ...calendly
 	return errors.Join(runErr, client.Close(), cache.Close())
 }
 
-// newInviteeEndpointRunner starts one Flow per booked invitee, with the Trigger event ID as request ID.
+// newInviteeEndpointRunner serves the invitee-created binding from the project configuration through its
+// durable project inbox.
 func newInviteeEndpointRunner(
-	store *localconfig.Store, client *dex.Client, flow *inviteerecorder.Flow, logger *slog.Logger, connectionOptions []calendly.Option,
+	project *projectconfig.LoadedProject, client *dex.Client, flow *inviteerecorder.Flow, logger *slog.Logger, connectionOptions []calendly.Option,
 ) (*calendly.InviteeEventReceivedEndpointRunner, error) {
+	return calendly.NewProjectInviteeEventReceivedEndpointRunner(project, inviteerecorder.ConnectionName, []calendly.ProjectInviteeEventReceivedTriggerRoute{{
+		BindingName: inviteerecorder.InviteeCreatedTriggerBinding, Target: newInviteeTarget(client, flow, logger),
+	}}, append(slices.Clone(connectionOptions), calendly.WithLogger(logger))...)
+}
+
+// newInviteeTarget starts one Flow per booked invitee, with the Trigger event ID as request ID.
+func newInviteeTarget(client *dex.Client, flow *inviteerecorder.Flow, logger *slog.Logger) sdkgo.TriggerTarget[calendly.InviteeEvent] {
 	bindingLogger := logger.With("connector", calendly.ConnectorID, "connection", inviteerecorder.ConnectionName,
 		"trigger", calendly.InviteeEventReceivedTriggerDefinition.Trigger.TriggerName, "binding", inviteerecorder.InviteeCreatedTriggerBinding)
-	return calendly.NewLocalInviteeEventReceivedEndpointRunner(store, inviteerecorder.ConnectionName, []calendly.LocalInviteeEventReceivedTriggerRoute{{
-		BindingName: inviteerecorder.InviteeCreatedTriggerBinding,
-		Target: sdkgo.NewDexFlowTriggerTarget(client, flow, inviteerecorder.AcceptBooking, inviteerecorder.ResolveFlowID,
-			inviteerecorder.MapToFlowInput, sdkgo.WithTriggerLogger(bindingLogger)),
-	}}, append(slices.Clone(connectionOptions), calendly.WithLogger(logger))...)
+	return sdkgo.NewDexFlowTriggerTarget(client, flow, inviteerecorder.AcceptBooking, inviteerecorder.ResolveFlowID,
+		inviteerecorder.MapToFlowInput, sdkgo.WithTriggerLogger(bindingLogger))
 }
 
 // newWebhookMux mounts the endpoint and a readiness check that passes once the binding receives events.

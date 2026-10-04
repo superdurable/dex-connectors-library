@@ -17,7 +17,8 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/connectors/asana"
 	approvedrequesttask "github.com/superdurable/dex-connectors-library/connectors/asana/examples/approved-request-task/flow"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -32,15 +33,15 @@ func main() {
 }
 
 func run(ctx context.Context) error {
-	store, err := localconfig.LoadFromEnvironment()
+	project, err := projectconfig.LoadFromEnvironment(ctx)
 	if err != nil {
 		return err
 	}
-	connection, err := asana.NewLocalConnection(store, approvedrequesttask.ConnectionName)
+	connection, err := asana.NewProjectConnection(project, approvedrequesttask.ConnectionName)
 	if err != nil {
 		return err
 	}
-	selection, err := loadProjectSelection(store)
+	selection, err := loadProjectSelection(project.Configuration)
 	if err != nil {
 		return err
 	}
@@ -71,9 +72,9 @@ func run(ctx context.Context) error {
 }
 
 // loadProjectSelection reads the picked project once at startup; an unsaved picker uses each input's projectId.
-func loadProjectSelection(store *localconfig.Store) (approvedrequesttask.ProjectSelection, error) {
-	loaded, err := localconfig.LoadOperationConfiguration[approvedrequesttask.ProjectSelection](store, approvedrequesttask.ProjectSelectionConfigurationRef())
-	if errors.Is(err, localconfig.ErrConfigurationNotFound) {
+func loadProjectSelection(configuration projectconfig.Configuration) (approvedrequesttask.ProjectSelection, error) {
+	loaded, err := provider.LoadOperationConfiguration[approvedrequesttask.ProjectSelection](configuration, approvedrequesttask.ProjectSelectionConfigurationRef())
+	if errors.Is(err, projectconfig.ErrObjectNotFound) {
 		return approvedrequesttask.ProjectSelection{}, nil
 	}
 	if err != nil {

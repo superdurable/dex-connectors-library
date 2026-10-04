@@ -51,7 +51,7 @@
           }
         },
         "auth": {
-          "description": "Either one authentication model (type, connectionKind, fields, guide, oauth2) or several methods.",
+          "description": "Either one authentication model (type, connectionKind, fields, guide, oauth2) or several methods, of which each connection selects one.",
           "type": "object",
           "additionalProperties": false,
           "properties": {
@@ -64,10 +64,6 @@
             },
             "guide": { "$ref": "#/$defs/authorizationGuide" },
             "oauth2": { "$ref": "#/$defs/oauth2" },
-            "selection": {
-              "description": "single, the default, lets a connection hold one method; multiple lets it hold a non-empty subset of methods.",
-              "enum": ["single", "multiple"]
-            },
             "methodLabel": {
               "description": "Singular noun, such as Provider, that setup UI uses for a method.",
               "type": "string",
@@ -91,7 +87,6 @@
                 "anyOf": [
                   { "required": ["methods"] },
                   { "required": ["defaultMethod"] },
-                  { "required": ["selection"] },
                   { "required": ["methodLabel"] }
                 ]
               }
@@ -107,16 +102,7 @@
                 ]
               }
             }
-          ],
-          "if": { "properties": { "selection": { "const": "multiple" } }, "required": ["selection"] },
-          "then": {
-            "properties": {
-              "methods": {
-                "minItems": 2,
-                "items": { "properties": { "type": { "const": "apiKey" } } }
-              }
-            }
-          }
+          ]
         },
         "studio": {
           "type": "object",
@@ -346,7 +332,7 @@
         "type": { "$ref": "#/$defs/authType" },
         "connectionKind": { "type": "string" },
         "fields": {
-          "description": "Names auth_method and auth_methods and Go names AuthMethodID and AuthMethodIDs are reserved.",
+          "description": "Name auth_method and Go name AuthMethodID are reserved for the selected method.",
           "type": "array",
           "items": { "$ref": "#/$defs/authField" }
         },

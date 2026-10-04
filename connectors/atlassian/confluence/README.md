@@ -97,46 +97,44 @@ segment and the `cursor` query parameter are declared, and the unit follows
 the cursor in the `_links.next` URL. It stores `spaceId`, `spaceKey`, and
 `spaceName`, and always accepts a typed space key. When the host reports no
 connection `cloudId`, the unit asks for one used only for listing. Studio
-commands send the stored access token, which Dex Web does not refresh; a
-running Worker refreshes and persists it, and otherwise **Reconnect** issues a
-new one.
+commands send the stored access token, which Dex Web does not refresh; the
+Worker's next Confluence call refreshes and persists it, and otherwise
+**Reconnect** issues a new one.
 
-## Local configuration
+## Project configuration
 
-Dex Web writes this record for the connection name the application uses:
+Dex Web or Superverse Studio saves the connection's settings and credentials in
+the project configuration. The application loads that configuration once and
+opens the connection by the name it declares, as
+[`examples/publish-policy/main.go`](examples/publish-policy/main.go) does:
 
-```json
-{
-  "schemaVersion": "connectors.dex.dev/local-connections/v1alpha1",
-  "connections": [{
-    "connectorId": "confluence",
-    "modulePath": "github.com/superdurable/dex-connectors-library/connectors/atlassian/confluence",
-    "moduleVersion": "v0.1.0",
-    "provider": "atlassian",
-    "connectionName": "confluence-policies",
-    "configuration": {"cloudId": "1324a887-45db-1bf4-1e99-ef0ff456d421"},
-    "credentials": {"oauth_client_id": "...", "oauth_client_secret": "...", "access_token": "...", "refresh_token": "..."}
-  }]
+```go
+project, err := projectconfig.LoadFromEnvironment(ctx)
+if err != nil {
+	return err
+}
+connection, err := confluence.NewProjectConnection(project, publishpolicy.ConnectionName)
+if err != nil {
+	return err
 }
 ```
 
-Load it with `localconfig.LoadFromEnvironment` and
-`confluence.NewLocalConnection(store, "confluence-policies")`, as
-[`examples/publish-policy/main.go`](examples/publish-policy/main.go) does.
-Credentials are reread and refreshed before every provider call; `cloudId`,
-`endpoint`, and `maxResponseBytes` are startup configuration. In
-Superverse-hosted deployments, construct the client with
-`hostedconfig.NewCredentialProviderFromEnvironment(confluence.ConnectorID,
-connectionName, confluence.DecodeResolvedCredentialsJSON)`, which accepts only
-`access_token`.
+`LoadFromEnvironment` reads the `DEX_PROJECT_*` environment described in
+[project configuration](../../../sdkgo/projectconfig/README.md). Credentials
+stay in project storage, are read for every provider call, and are refreshed
+first when the access token is missing, has no recorded expiry, or expires
+within five minutes; `cloudId`, `endpoint`, and `maxResponseBytes` are startup
+configuration.
 
 ## Operations
 
 Every operation bounds its requests by 25 seconds in total and each request by
 20 seconds, below the 30-second Execute timeout. Redirects are never followed.
-After a 401, the connector refreshes the credential once and resends once,
-because Confluence rejects an unauthenticated request before acting on it. A
-response that contains the access token is never returned. 408, 429, 5xx, and
+After a 401, the connector asks once for a refresh. Project storage refreshes
+only when the recorded expiry has passed, and the connector then resends once,
+because Confluence rejects an unauthenticated request before acting on it;
+otherwise the 401 selects `providerRejected`. A response that contains the
+access token is never returned. 408, 429, 5xx, and
 transport failures of reads retry, honoring `Retry-After`.
 
 ### searchPages

@@ -103,23 +103,6 @@ through the Connections API, opens a UI session, and runs each command:
 - no Dex Web response contains either key, and neither does any frame
   message the host page builds from those responses.
 
-`TestConnectorConnectionRecordContract` proves that the SDK reads what Dex Web
-writes. Connector tests write `connections.json` themselves, so without it a
-new Dex Web record member breaks every local Worker unnoticed. The test saves
-one connection for each authentication shape through the Connections API: the
-unnamed credential isolation connection, one named method from
-`test/dexcompat/connection-records-single`, and several methods from
-`test/dexcompat/connection-records-multiple`. It also saves one use
-configuration. A Dex Web release that cannot store several methods logs that
-and saves only the other shapes. The gate then runs
-`TestDexWebWrittenConnectionRecords` in `sdkgo/localconfig` with the
-`dexcompat` build tag against exactly those files:
-
-- `localconfig.LoadFile` loads both files;
-- a credential refresh of every connection writes each Dex Web record member,
-  such as `authMethodId`, back unchanged;
-- every written use configuration loads.
-
 Released compatibility downloads the selected public component tags and their
 unmodified release artifacts:
 
@@ -143,8 +126,7 @@ make test-dex-compat-latest-go-sdk
 ```
 
 It is accepted when every selected module selects that version, builds, and
-vets with no build tags and with the `integration`, `live`, and `dexcompat`
-tags. Logs name the resolved version and each module that passed. CI runs it
+vets with no build tags and with the `integration` and `live` tags. Logs name the resolved version and each module that passed. CI runs it
 for affected connectors on pull requests and `main`, and for the complete
 catalog on the daily schedule.
 
@@ -206,7 +188,7 @@ Dex-integrated verified, not live or end-to-end verified.
 ## Release acceptance
 
 Normal `main` pushes produce a matrix containing only connectors whose manifest
-version requests the next patch, minor, or major release. Each connector job
+version is later than their latest release. Each connector job
 runs current compatibility before publication and released compatibility after
 publication. More than 256 pending releases fails with guidance to split work
 by independently released module.

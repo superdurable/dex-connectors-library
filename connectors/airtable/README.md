@@ -35,8 +35,7 @@ sent as `Authorization: Bearer`. Create it at
 use under **Access**. The token acts as the user who created it, so that user
 needs editor access to those bases. Regenerating or deleting the token rejects
 the old value; paste the replacement into the connection, and the running
-Worker uses it on its next call. Hosted applications decode the broker's
-operation-scoped token with `DecodeResolvedCredentialsJSON`.
+Worker uses it on its next call.
 
 Airtable OAuth is not shipped. Airtable's token endpoint,
 `https://airtable.com/oauth2/v1/token`, requires the client credentials as
@@ -219,10 +218,11 @@ whose key matches the request, decides the refund, upserts the case's decision
 log row with a link to the policy, stamps the policy with the case, and reads
 the log row back.
 
-The Worker builds the connection from the Dex Web connection file:
+The Worker loads the project configuration once with
+`projectconfig.LoadFromEnvironment` and opens the connection from it:
 
 ```go
-connection, err := airtable.NewLocalConnection(store, refunddecision.ConnectionName)
+connection, err := airtable.NewProjectConnection(project, refunddecision.ConnectionName)
 if err != nil {
 	return err
 }

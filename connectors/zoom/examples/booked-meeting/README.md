@@ -52,10 +52,12 @@ expected `connector_release_required` warning on the five Zoom Steps.
 Run `dexcli dev` with that build directory, open Dex Web at
 `http://127.0.0.1:8802` rather than `localhost`, open **Connections**, and
 authorize `zoom / zoom-scheduler` as described in the
-[connector README](../../README.md#zoom-setup). Then start the Worker:
+[connector README](../../README.md#zoom-setup). Then start the Worker. It reads
+the `DEX_PROJECT_*` project configuration environment described in
+[project configuration](../../../../sdkgo/projectconfig/README.md); Dex Web or
+Superverse Studio writes that configuration when you save the connection.
 
 ```bash
-export DEX_CONNECTOR_CONFIG_FILE="$HOME/.dex/connectors/connections.json"
 go run ./examples/booked-meeting
 ```
 
@@ -102,5 +104,6 @@ Dex dispatches twice with identical patches; a reschedule of a deleted
 meeting; a no-show; the attendance Timer after a one-minute meeting; and a
 Worker process killed one second into its create request, whose replacement
 reconciles instead of creating again. The Timer test takes about a minute, and
-the Worker-loss test builds this example's Worker binary. Set
+the Worker-loss test runs the test binary again as the Worker process it
+kills. Set
 `DEX_FLOW_SERVICE_ADDRESS` when the server is not at `127.0.0.1:8801`.

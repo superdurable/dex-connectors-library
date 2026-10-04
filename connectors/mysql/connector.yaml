@@ -5,7 +5,7 @@ metadata:
   displayName: MySQL
   description: Run one parameterized read-only query, or one transactional write statement, against a MySQL or MariaDB database.
   company: MySQL
-  version: v0.1.0
+  version: v0.21.0
 spec:
   provider: mysql
   codegen:

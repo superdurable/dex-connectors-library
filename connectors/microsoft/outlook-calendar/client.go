@@ -86,7 +86,7 @@ func WithClock(now func() time.Time) Option {
 // A Client is safe for concurrent use by several Steps.
 type Client struct {
 	httpClient       *http.Client
-	credentials      sdkgo.CredentialProvider[Credentials]
+	credentials      CredentialSource
 	refreshDriver    *CredentialRefreshDriver
 	mailbox          string
 	maxResponseBytes int64
@@ -154,7 +154,7 @@ type eventReadResult struct {
 // are resolved before every provider call, so a refreshed token takes effect without a
 // restart; the tenant, mailbox, and response limit are startup configuration. Construction
 // never contacts Microsoft.
-func New(config Config, credentials sdkgo.CredentialProvider[Credentials], options ...Option) (*Client, error) {
+func New(config Config, credentials CredentialSource, options ...Option) (*Client, error) {
 	config = withConfigDefaults(config)
 	if err := config.Validate(); err != nil {
 		return nil, err

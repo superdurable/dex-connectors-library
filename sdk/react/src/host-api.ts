@@ -20,16 +20,15 @@ export interface ConnectorConnectionView {
   grantedScopes: string[];
   detail?: string;
   /**
-   * authMethodIds lists the manifest auth method IDs the connection has added,
-   * in add order. A single-selection connection reports its one method, or an
-   * empty list before one is chosen. Hosts that predate the field omit it;
+   * authMethodIds holds the manifest auth method ID the connection selected,
+   * or is empty before one is chosen. Hosts that predate the field omit it;
    * ConnectorStudioClient.ready reports an empty list for them.
    */
   authMethodIds?: string[];
   /**
    * configuration is the connection's stored non-secret configuration, keyed
-   * by field name, such as {model: "anthropic/claude-sonnet-5"}. It never
-   * carries credential fields. Hosts that predate the field omit it;
+   * by field name, such as {provider: "anthropic", model: "claude-sonnet-5"}.
+   * It never carries credential fields. Hosts that predate the field omit it;
    * ConnectorStudioClient.ready reports an empty object for them.
    */
   configuration?: Record<string, unknown>;

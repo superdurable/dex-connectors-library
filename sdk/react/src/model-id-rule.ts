@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: MIT
 
 /**
- * ModelIDRule names how the Go SDK's llm package validates a provider model
- * ID, spelled as llm.ModelIDRule's String method spells it: "body" for a model
- * sent in the JSON request body, and "pathSegment" for a model sent in a URL
- * path segment.
+ * ModelIDRule names how the Go SDK's textgen package validates a provider
+ * model ID, spelled as textgen.ModelIDRule's String method spells it: "body"
+ * for a model sent in the JSON request body, and "pathSegment" for a model
+ * sent in a URL path segment.
  */
 export type ModelIDRule = "body" | "pathSegment";
 
@@ -23,8 +23,8 @@ const bodyModelIDMessage = "The model ID must be 1 to 256 printable ASCII charac
 const pathSegmentModelIDMessage = 'The model ID must start with a letter or digit and contain at most 128 letters, digits, ".", "_", or "-".';
 
 /**
- * validateModelIDForRule applies sdkgo's llm.ModelIDRule.ValidateModelID in
- * the browser, so a picker rejects exactly the model IDs the connector's
+ * validateModelIDForRule applies sdkgo's textgen.ModelIDRule.ValidateModelID
+ * in the browser, so a picker rejects exactly the model IDs the connector's
  * generateText would reject as defect without a request.
  *
  * Both rules first trim the whitespace Go's strings.TrimSpace trims. "body"

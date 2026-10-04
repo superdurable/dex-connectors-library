@@ -17,7 +17,8 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/connectors/openai"
 	summarizetext "github.com/superdurable/dex-connectors-library/connectors/openai/examples/summarize-text/flow"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -32,15 +33,15 @@ func main() {
 }
 
 func run(ctx context.Context) error {
-	store, err := localconfig.LoadFromEnvironment()
+	project, err := projectconfig.LoadFromEnvironment(ctx)
 	if err != nil {
 		return err
 	}
-	connection, err := openai.NewLocalConnection(store, summarizetext.ConnectionName)
+	connection, err := openai.NewProjectConnection(project, summarizetext.ConnectionName)
 	if err != nil {
 		return err
 	}
-	summaryModel, err := loadSummaryModelConfiguration(store)
+	summaryModel, err := loadSummaryModelConfiguration(project.Configuration)
 	if err != nil {
 		return err
 	}
@@ -73,11 +74,11 @@ func run(ctx context.Context) error {
 
 // loadSummaryModelConfiguration reads the SummarizeText Step's model pick. A
 // Step that was never configured in Dex Web uses the connection's model.
-func loadSummaryModelConfiguration(store *localconfig.Store) (summarizetext.SummaryModelConfiguration, error) {
-	loaded, err := localconfig.LoadOperationConfiguration[summarizetext.SummaryModelConfiguration](
-		store, summarizetext.SummaryModelConfigurationRef(),
+func loadSummaryModelConfiguration(configuration projectconfig.Configuration) (summarizetext.SummaryModelConfiguration, error) {
+	loaded, err := provider.LoadOperationConfiguration[summarizetext.SummaryModelConfiguration](
+		configuration, summarizetext.SummaryModelConfigurationRef(),
 	)
-	if errors.Is(err, localconfig.ErrConfigurationNotFound) {
+	if errors.Is(err, projectconfig.ErrObjectNotFound) {
 		return summarizetext.SummaryModelConfiguration{}, nil
 	}
 	if err != nil {

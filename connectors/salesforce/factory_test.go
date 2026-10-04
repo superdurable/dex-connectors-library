@@ -41,7 +41,7 @@ func TestFactoriesRequireOnlyTheHappyPathBranch(t *testing.T) {
 			Found:               sdkgo.GoTo(queryTarget{}),
 		})
 		salesforce.NewUpsertRecordByExternalIDStep(salesforce.UpsertRecordByExternalIDStepConfig[string]{
-			StepType: "Upsert", Annotations: testAnnotations, Connection: connection,
+			StepType: "Upsert", Annotations: testAnnotations, Connection: connection, ConnectionName: salesforceConnection.Name,
 			MapToOperationInput: func(string) salesforce.UpsertRecordByExternalIDInput {
 				return salesforce.UpsertRecordByExternalIDInput{}
 			},
@@ -50,7 +50,7 @@ func TestFactoriesRequireOnlyTheHappyPathBranch(t *testing.T) {
 	})
 	require.Panics(t, func() {
 		salesforce.NewUpsertRecordByExternalIDStep(salesforce.UpsertRecordByExternalIDStepConfig[string]{
-			StepType: "Upsert", Annotations: testAnnotations, Connection: connection,
+			StepType: "Upsert", Annotations: testAnnotations, Connection: connection, ConnectionName: salesforceConnection.Name,
 			MapToOperationInput: func(string) salesforce.UpsertRecordByExternalIDInput {
 				return salesforce.UpsertRecordByExternalIDInput{}
 			},

@@ -105,17 +105,16 @@ func TestDelegatedRefreshClassifiesTerminalAndTransientErrorsWithoutProviderText
 func TestRevokedGrantStopsOperationsUntilAuthorizedAgain(t *testing.T) {
 	fake := newGraphFake(t)
 	expired := time.Now().Add(-time.Minute)
-	path := writeConnectionFile(t, map[string]any{}, map[string]any{
-		"auth_method": outlookmail.MicrosoftOAuthAuthMethodID, "client_id": testClientID(), "client_secret": testClientSecret,
-		"access_token": "expired-access-token", "refresh_token": "revoked-refresh-token",
-	}, &expired)
-	client := clientFromConnectionFile(t, fake, path, outlookmail.Config{})
+	revoked := delegatedCredentials()
+	revoked.RefreshToken = sdkgo.NewSecretString("revoked-refresh-token")
+	credentials := graphtest.NewCredentialHost(revoked, &expired)
+	client := newHostedClient(t, fake, outlookmail.Config{}, credentials)
 	result, err := sdkgo.RunQuery(newOutlookDexContext("revoked"), client.SearchMessages(), outlookConnection, outlookmail.SearchMessagesInput{})
 	require.NoError(t, err)
 	require.Equal(t, outlookmail.SearchMessagesBranchProviderRejected, result.Branch)
 	require.Equal(t, "Microsoft authorization must be renewed: authorize the connection again or replace the client secret", result.Failure.Message)
-	_, status := readStoredCredentials(t, path)
-	require.Equal(t, "reauthorization_required", status)
+	_, isReauthorizationRequired := credentials.Stored()
+	require.True(t, isReauthorizationRequired)
 	require.Zero(t, fake.RequestCount(graphtest.EndpointListFolderMessages))
 }
 
@@ -170,19 +169,4 @@ func TestRefreshRequiredFiveMinutesBeforeExpiry(t *testing.T) {
 	require.True(t, driver.RefreshRequired(sdkgo.CredentialRefreshState[outlookmail.Credentials]{Credentials: credentials, Now: now}), "no recorded expiry refreshes")
 	credentials.AccessToken = sdkgo.NewSecretString("")
 	require.True(t, driver.RefreshRequired(sdkgo.CredentialRefreshState[outlookmail.Credentials]{Credentials: credentials, ExpiresAt: &later, Now: now}))
-}
-
-func TestDecodeResolvedCredentialsJSONAcceptsOnlyTheShortLivedToken(t *testing.T) {
-	credentials, err := outlookmail.DecodeResolvedCredentialsJSON([]byte(`{"auth_method":"app-only","access_token":"broker-access-token"}`))
-	require.NoError(t, err)
-	require.Equal(t, outlookmail.AppOnlyAuthMethodID, credentials.AuthMethodID)
-	for _, contents := range []string{
-		`{"auth_method":"microsoft-oauth","access_token":"token","refresh_token":"refresh-secret"}`,
-		`{"auth_method":"app-only","access_token":"token","client_secret":"client-secret-value"}`,
-		`{"auth_method":"basic","access_token":"token"}`,
-		`{"auth_method":"app-only","access_token":"has space"}`,
-	} {
-		_, err := outlookmail.DecodeResolvedCredentialsJSON([]byte(contents))
-		require.EqualError(t, err, "Outlook Mail resolved credential is invalid")
-	}
 }

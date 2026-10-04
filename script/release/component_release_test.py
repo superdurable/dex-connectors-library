@@ -171,17 +171,24 @@ class ComponentReleaseTest(unittest.TestCase):
         self.commit("sdkgo: add API")
         self.assertEqual(self.plan("major").version, "v1.0.0")
 
-    def test_declared_version_must_be_the_next_semantic_version(self) -> None:
+    def test_declared_version_may_skip_versions_but_not_go_back(self) -> None:
         self.git("tag", "sdkgo/v0.7.0")
         (self.repository / "sdkgo/sdk.go").write_text("package sdkgo\n\nconst Version = 2\n", encoding="utf-8")
         self.commit("sdkgo: add API")
         previous = Path.cwd()
         os.chdir(self.repository)
         self.addCleanup(os.chdir, previous)
-        plan = release.create_plan("sdkgo", "sdkgo/", target_version="v0.8.0")
-        self.assertEqual(plan.bump, "minor")
-        with self.assertRaisesRegex(ValueError, "must be the next"):
-            release.create_plan("sdkgo", "sdkgo/", target_version="v0.9.0")
+        self.assertEqual(release.create_plan("sdkgo", "sdkgo/", target_version="v0.7.3").bump, "patch")
+        self.assertEqual(release.create_plan("sdkgo", "sdkgo/", target_version="v0.8.0").bump, "minor")
+        self.assertEqual(release.create_plan("sdkgo", "sdkgo/", target_version="v0.21.0").bump, "minor")
+        self.assertEqual(release.create_plan("sdkgo", "sdkgo/", target_version="v1.0.0").bump, "major")
+        with self.assertRaisesRegex(ValueError, "behind latest release"):
+            release.create_plan("sdkgo", "sdkgo/", target_version="v0.6.0")
+
+    def test_first_declared_connector_version_joins_the_lockstep_version(self) -> None:
+        self.assertEqual(release.version_bump("", "v0.21.0"), "minor")
+        with self.assertRaisesRegex(ValueError, "must be after"):
+            release.version_bump("v0.21.0", "v0.21.0")
 
     def test_declared_version_can_recover_an_existing_reachable_tag(self) -> None:
         self.git("tag", "sdkgo/v0.1.0")
@@ -408,7 +415,7 @@ class ComponentReleaseTest(unittest.TestCase):
             f"{LIBRARY} v0.1.1-0.20260928041452-7b7fbe591824",
             f"{LIBRARY} v0.1.0",
             f"{LIBRARY}/sdkgo/v2 v2.0.0-20260928041452-7b7fbe591824",
-            f"{LIBRARY}/examples/local-config v0.1.0",
+            f"{LIBRARY}/examples/app v0.1.0",
             f"{LIBRARY}/connectors v0.1.0",
         ):
             with self.subTest(requirement=requirement):

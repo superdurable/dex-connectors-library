@@ -18,7 +18,8 @@ import (
 	"github.com/superdurable/dex-connectors-library/connectors/microsoft/excel"
 	approvaldecision "github.com/superdurable/dex-connectors-library/connectors/microsoft/excel/examples/approval-decision/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -35,23 +36,23 @@ func main() {
 }
 
 func run(ctx context.Context) error {
-	store, err := localconfig.LoadFromEnvironment()
+	project, err := projectconfig.LoadFromEnvironment(ctx)
 	if err != nil {
 		return err
 	}
-	connection, err := excel.NewLocalConnection(store, approvaldecision.ConnectionName, connectionOptions()...)
+	connection, err := excel.NewProjectConnection(project, approvaldecision.ConnectionName, connectionOptions()...)
 	if err != nil {
 		return err
 	}
-	policyTable, err := loadOperationConfiguration[approvaldecision.TableConfiguration](store, approvaldecision.PolicyTableConfigurationRef())
+	policyTable, err := loadOperationConfiguration[approvaldecision.TableConfiguration](project.Configuration, approvaldecision.PolicyTableConfigurationRef())
 	if err != nil {
 		return err
 	}
-	decisionTable, err := loadOperationConfiguration[approvaldecision.TableConfiguration](store, approvaldecision.DecisionTableConfigurationRef())
+	decisionTable, err := loadOperationConfiguration[approvaldecision.TableConfiguration](project.Configuration, approvaldecision.DecisionTableConfigurationRef())
 	if err != nil {
 		return err
 	}
-	summaryWorksheet, err := loadOperationConfiguration[approvaldecision.WorksheetConfiguration](store, approvaldecision.SummaryWorksheetConfigurationRef())
+	summaryWorksheet, err := loadOperationConfiguration[approvaldecision.WorksheetConfiguration](project.Configuration, approvaldecision.SummaryWorksheetConfigurationRef())
 	if err != nil {
 		return err
 	}
@@ -94,11 +95,11 @@ func connectionOptions() []excel.Option {
 
 // loadOperationConfiguration treats a Step without saved picks as blank, which the first Step rejects.
 func loadOperationConfiguration[T any](
-	store *localconfig.Store,
+	configuration projectconfig.Configuration,
 	reference sdkgo.ConnectorConfigurationRef,
 ) (sdkgo.ConnectorLoadedConfiguration[T], error) {
-	loaded, err := localconfig.LoadOperationConfiguration[T](store, reference)
-	if errors.Is(err, localconfig.ErrConfigurationNotFound) {
+	loaded, err := provider.LoadOperationConfiguration[T](configuration, reference)
+	if errors.Is(err, projectconfig.ErrObjectNotFound) {
 		return sdkgo.ConnectorLoadedConfiguration[T]{Reference: reference}, nil
 	}
 	return loaded, err

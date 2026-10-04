@@ -112,7 +112,7 @@ func TestPollingTriggersSeparateRootsAndRepliesAndSuppressRescans(t *testing.T) 
 
 	rootEvents := make(chan sdkgo.TriggerEvent[gmail.MessageEvent], 2)
 	rootRunner := gmail.NewMessageReceivedTrigger(gmail.MessageReceivedTriggerConfig{
-		Connection: connection, BindingName: "gmail-thread-start",
+		Connection: connection, ConnectionName: gmailConnection.Name, BindingName: "gmail-thread-start",
 		Configuration: gmail.MessageReceivedTriggerConfiguration{MessageMatcher: gmail.MessageMatcher{SenderEmails: []string{"sender@example.com"}}},
 		Target: sdkgo.TriggerTargetFunc[gmail.MessageEvent](func(_ context.Context, event sdkgo.TriggerEvent[gmail.MessageEvent]) error {
 			rootEvents <- event
@@ -121,7 +121,7 @@ func TestPollingTriggersSeparateRootsAndRepliesAndSuppressRescans(t *testing.T) 
 	})
 	replyEvents := make(chan sdkgo.TriggerEvent[gmail.MessageEvent], 2)
 	replyRunner := gmail.NewReplyReceivedTrigger(gmail.ReplyReceivedTriggerConfig{
-		Connection: connection, BindingName: "gmail-thread-reply",
+		Connection: connection, ConnectionName: gmailConnection.Name, BindingName: "gmail-thread-reply",
 		Configuration: gmail.ReplyReceivedTriggerConfiguration{ReplyMatcher: gmail.MessageMatcher{MessageContains: "approval"}},
 		Target: sdkgo.TriggerTargetFunc[gmail.MessageEvent](func(_ context.Context, event sdkgo.TriggerEvent[gmail.MessageEvent]) error {
 			replyEvents <- event

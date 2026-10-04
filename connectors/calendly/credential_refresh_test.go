@@ -5,20 +5,17 @@ package calendly_test
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/calendly"
+	"github.com/superdurable/dex-connectors-library/connectors/calendly/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
 )
 
 func oauthCredentials(accessToken string, refreshToken string) calendly.Credentials {
@@ -89,8 +86,8 @@ func TestCredentialRefreshDriverNeverRefreshesAPersonalAccessToken(t *testing.T)
 	require.True(t, sdkgo.IsReauthorizationRequired(err))
 }
 
-// TestOAuthConnectionRefreshesOnceAfterCalendlyRejectsTheAccessToken uses the local connection file that
-// Dex Web writes, so the rotated tokens are persisted where the next call reads them.
+// TestOAuthConnectionRefreshesOnceAfterCalendlyRejectsTheAccessToken stores the rotated tokens in the
+// connection's credential source, where the next call reads them.
 func TestOAuthConnectionRefreshesOnceAfterCalendlyRejectsTheAccessToken(t *testing.T) {
 	fake := newFakeCalendly(t, map[string]http.HandlerFunc{
 		"POST /oauth/token": respondJSON(http.StatusOK, `{"token_type":"Bearer","access_token":"access-2","refresh_token":"refresh-2","expires_in":7200,"owner":"x","organization":"y"}`),
@@ -102,104 +99,68 @@ func TestOAuthConnectionRefreshesOnceAfterCalendlyRejectsTheAccessToken(t *testi
 			writeJSON(response, http.StatusOK, `{"resource":`+scheduledEventJSON("EVENT0001", "active", testWindowStart)+`}`)
 		},
 	})
-	expiresAt := time.Now().Add(time.Hour).UTC()
-	configPath := writeConnectionFile(t, map[string]any{
-		"auth_method": calendly.CalendlyOAuthAuthMethodID, "oauth_client_id": "client-id", "oauth_client_secret": "client-secret",
-		"access_token": "access-1", "refresh_token": "refresh-1",
-	}, &expiresAt)
-	result, err := getScheduledEventFromConnectionFile(t, configPath, fake.redirectingClient())
+	credentials := unexpiredOAuthCredentials()
+	result, err := getScheduledEventWithCredentials(t, credentials, fake.redirectingClient())
 	require.NoError(t, err)
 	require.Equal(t, calendly.GetScheduledEventBranchFound, result.Branch)
 	require.Len(t, fake.requestsTo(http.MethodPost, "/oauth/token"), 1)
 	require.Len(t, fake.requestsTo(http.MethodGet, "/scheduled_events/EVENT0001"), 2)
 
-	contents, err := os.ReadFile(configPath)
-	require.NoError(t, err)
-	var persisted struct {
-		Connections []struct {
-			AuthMethodID string            `json:"authMethodId"`
-			Credentials  map[string]string `json:"credentials"`
-		} `json:"connections"`
-	}
-	require.NoError(t, json.Unmarshal(contents, &persisted))
-	require.Len(t, persisted.Connections, 1)
-	require.Equal(t, "refresh-2", persisted.Connections[0].Credentials["refresh_token"], "the rotated refresh token is persisted")
-	require.Equal(t, "access-2", persisted.Connections[0].Credentials["access_token"])
-	require.Equal(t, calendly.CalendlyOAuthAuthMethodID, persisted.Connections[0].AuthMethodID, "Dex Web's record members survive the refresh")
+	stored, _ := credentials.Current()
+	require.Equal(t, "refresh-2", stored.RefreshToken.Reveal(), "the rotated refresh token is stored")
+	require.Equal(t, "access-2", stored.AccessToken.Reveal())
+	require.Equal(t, calendly.CalendlyOAuthAuthMethodID, stored.AuthMethodID, "the refresh keeps the authorization method")
 }
 
 func TestPersonalAccessTokenRejectionIsNotRefreshed(t *testing.T) {
 	fake := newFakeCalendly(t, map[string]http.HandlerFunc{
 		"GET /scheduled_events/EVENT0001": respondJSON(http.StatusUnauthorized, providerError("Unauthenticated", "revoked")),
 	})
-	configPath := writeConnectionFile(t, map[string]any{"auth_method": calendly.PersonalAccessTokenAuthMethodID, "access_token": sentinelToken}, nil)
-	result, err := getScheduledEventFromConnectionFile(t, configPath, fake.redirectingClient())
+	credentials := testsupport.NewRefreshingCredentialSource(calendly.Credentials{
+		AuthMethodID: calendly.PersonalAccessTokenAuthMethodID, AccessToken: sdkgo.NewSecretString(sentinelToken),
+	}, nil)
+	result, err := getScheduledEventWithCredentials(t, credentials, fake.redirectingClient())
 	require.NoError(t, err)
 	require.Equal(t, calendly.GetScheduledEventBranchProviderRejected, result.Branch)
 	require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
 	require.Len(t, fake.recordedRequests(), 1, "a personal access token has nothing to refresh")
-	contents, err := os.ReadFile(configPath)
-	require.NoError(t, err)
-	require.NotContains(t, string(contents), "reauthorization_required")
+	require.False(t, credentials.IsReauthorizationRequired())
 }
 
-// getScheduledEventFromConnectionFile runs getScheduledEvent with the local file's refreshing provider.
-func getScheduledEventFromConnectionFile(t *testing.T, configPath string, httpClient *http.Client) (calendly.GetScheduledEventResult, error) {
+// getScheduledEventWithCredentials runs getScheduledEvent with credentials.
+func getScheduledEventWithCredentials(
+	t *testing.T, credentials *testsupport.RefreshingCredentialSource[calendly.Credentials], httpClient *http.Client,
+) (calendly.GetScheduledEventResult, error) {
 	t.Helper()
-	client := newLocalFileClient(t, configPath, httpClient)
+	client := newRefreshingClient(t, credentials, httpClient)
 	return sdkgo.RunQuery(newStepContext("get"), client.GetScheduledEvent(), testConnection,
 		calendly.GetScheduledEventInput{ScheduledEventURI: testEventURI})
 }
 
-// testCredentialFields mirrors the credentials object that Dex Web writes for this connector.
-type testCredentialFields struct {
-	AuthMethodID      string `json:"auth_method"`
-	AccessToken       string `json:"access_token,omitempty"`
-	OAuthClientID     string `json:"oauth_client_id,omitempty"`
-	OAuthClientSecret string `json:"oauth_client_secret,omitempty"`
-	RefreshToken      string `json:"refresh_token,omitempty"`
-	WebhookSigningKey string `json:"webhook_signing_key,omitempty"`
-}
-
-func decodeTestCredentials(contents json.RawMessage) (calendly.Credentials, error) {
-	var fields testCredentialFields
-	if err := localconfig.DecodeCredentials(contents, &fields); err != nil {
-		return calendly.Credentials{}, err
-	}
-	return calendly.Credentials{
-		AuthMethodID: fields.AuthMethodID, AccessToken: sdkgo.NewSecretString(fields.AccessToken), OAuthClientID: fields.OAuthClientID,
-		OAuthClientSecret: sdkgo.NewSecretString(fields.OAuthClientSecret), RefreshToken: sdkgo.NewSecretString(fields.RefreshToken),
-		WebhookSigningKey: sdkgo.NewSecretString(fields.WebhookSigningKey),
-	}, nil
-}
-
-func encodeTestCredentials(credentials calendly.Credentials) (json.RawMessage, error) {
-	return json.Marshal(testCredentialFields{
-		AuthMethodID: credentials.AuthMethodID, AccessToken: credentials.AccessToken.Reveal(), OAuthClientID: credentials.OAuthClientID,
-		OAuthClientSecret: credentials.OAuthClientSecret.Reveal(), RefreshToken: credentials.RefreshToken.Reveal(),
-		WebhookSigningKey: credentials.WebhookSigningKey.Reveal(),
-	})
-}
-
-// newLocalFileClient builds a client on the local file's refreshing provider with the real clock, because
-// the provider requires a refreshed expiry after the wall-clock time.
-func newLocalFileClient(t *testing.T, configPath string, httpClient *http.Client) *calendly.Client {
+// newRefreshingClient builds a client on a refreshing credential source with the real clock, because a
+// refreshed expiry is compared with the wall-clock time.
+func newRefreshingClient(
+	t *testing.T, credentials *testsupport.RefreshingCredentialSource[calendly.Credentials], httpClient *http.Client,
+) *calendly.Client {
 	t.Helper()
-	store, err := localconfig.LoadFile(configPath)
-	require.NoError(t, err)
-	credentials := localconfig.NewRefreshingCredentialProvider(store, calendly.ConnectorID, testConnection.Name, decodeTestCredentials, encodeTestCredentials)
 	client, err := calendly.New(calendly.Config{}, credentials, calendly.WithHTTPClient(httpClient))
 	require.NoError(t, err)
 	return client
 }
 
-func expiredOAuthConnectionFile(t *testing.T) string {
-	t.Helper()
+// unexpiredOAuthCredentials holds an OAuth token that expires in an hour.
+func unexpiredOAuthCredentials() *testsupport.RefreshingCredentialSource[calendly.Credentials] {
+	expiresAt := time.Now().Add(time.Hour).UTC()
+	return testsupport.NewRefreshingCredentialSource(calendly.Credentials{
+		AuthMethodID: calendly.CalendlyOAuthAuthMethodID, OAuthClientID: "client-id", OAuthClientSecret: sdkgo.NewSecretString("client-secret"),
+		AccessToken: sdkgo.NewSecretString("access-1"), RefreshToken: sdkgo.NewSecretString("refresh-1"),
+	}, &expiresAt)
+}
+
+// expiredOAuthCredentials holds an OAuth token that expired a minute ago, with the webhook signing key.
+func expiredOAuthCredentials() *testsupport.RefreshingCredentialSource[calendly.Credentials] {
 	expiredAt := time.Now().Add(-time.Minute).UTC()
-	return writeConnectionFile(t, map[string]any{
-		"auth_method": calendly.CalendlyOAuthAuthMethodID, "oauth_client_id": "client-id", "oauth_client_secret": "client-secret",
-		"access_token": "access-1", "refresh_token": "refresh-1", "webhook_signing_key": sentinelSigningKey,
-	}, &expiredAt)
+	return testsupport.NewRefreshingCredentialSource(oauthCredentials("access-1", "refresh-1"), &expiredAt)
 }
 
 func TestARetryableRefreshFailureRetriesAndAReusedGrantNeedsReauthorization(t *testing.T) {
@@ -216,7 +177,7 @@ func TestARetryableRefreshFailureRetriesAndAReusedGrantNeedsReauthorization(t *t
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			fake := newFakeCalendly(t, map[string]http.HandlerFunc{"POST /oauth/token": respondJSON(test.status, test.body)})
-			client := newLocalFileClient(t, expiredOAuthConnectionFile(t), fake.redirectingClient())
+			client := newRefreshingClient(t, expiredOAuthCredentials(), fake.redirectingClient())
 			result, err := sdkgo.RunQuery(newStepContext("get"), client.GetScheduledEvent(), testConnection,
 				calendly.GetScheduledEventInput{ScheduledEventURI: testEventURI})
 			if test.isRetry {
@@ -240,12 +201,7 @@ func TestCreateSchedulingLinkDoesNotRepeatAPostAfterARejectedOAuthToken(t *testi
 		"POST /oauth/token":      respondJSON(http.StatusOK, `{"token_type":"Bearer","access_token":"access-2","refresh_token":"refresh-2","expires_in":7200}`),
 		"POST /scheduling_links": respondJSON(http.StatusUnauthorized, providerError("Unauthenticated", "The access token is invalid")),
 	})
-	expiresAt := time.Now().Add(time.Hour).UTC()
-	configPath := writeConnectionFile(t, map[string]any{
-		"auth_method": calendly.CalendlyOAuthAuthMethodID, "oauth_client_id": "client-id", "oauth_client_secret": "client-secret",
-		"access_token": "access-1", "refresh_token": "refresh-1",
-	}, &expiresAt)
-	result, err := createSchedulingLink(t, newLocalFileClient(t, configPath, fake.redirectingClient()), testEventTypeURI)
+	result, err := createSchedulingLink(t, newRefreshingClient(t, unexpiredOAuthCredentials(), fake.redirectingClient()), testEventTypeURI)
 	require.NoError(t, err)
 	require.Equal(t, calendly.CreateSchedulingLinkBranchProviderRejected, result.Branch)
 	require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
@@ -257,7 +213,7 @@ func TestOAuthWebhookEndpointRefreshesAnExpiredTokenToReadTheSigningKey(t *testi
 	fake := newFakeCalendly(t, map[string]http.HandlerFunc{
 		"POST /oauth/token": respondJSON(http.StatusOK, `{"token_type":"Bearer","access_token":"access-2","refresh_token":"refresh-2","expires_in":7200}`),
 	})
-	client := newLocalFileClient(t, expiredOAuthConnectionFile(t), fake.redirectingClient())
+	client := newRefreshingClient(t, expiredOAuthCredentials(), fake.redirectingClient())
 	connection, err := calendly.NewConnection(client, testConnection)
 	require.NoError(t, err)
 	handler, err := connection.InviteeEventReceivedWebhookHandler()
@@ -283,22 +239,4 @@ func TestOAuthWebhookEndpointRefreshesAnExpiredTokenToReadTheSigningKey(t *testi
 	require.Equal(t, http.StatusOK, response.Code, "an idle OAuth connection keeps receiving after its access token expires")
 	require.Equal(t, "invitee.created:EVENT0001:INVITEE01", (<-delivered).ID)
 	require.Len(t, fake.requestsTo(http.MethodPost, "/oauth/token"), 1)
-}
-
-func writeConnectionFile(t *testing.T, credentials map[string]any, expiresAt *time.Time) string {
-	t.Helper()
-	record := map[string]any{
-		"connectorId": calendly.ConnectorID, "modulePath": "github.com/superdurable/dex-connectors-library/connectors/calendly",
-		"moduleVersion": "v0.1.0", "provider": "calendly", "connectionName": testConnection.Name,
-		"authMethodId": credentials["auth_method"], "configuration": map[string]any{}, "credentials": credentials,
-	}
-	if expiresAt != nil {
-		record["credentialExpiresAt"] = expiresAt.Format(time.RFC3339Nano)
-	}
-	contents, err := json.Marshal(map[string]any{"schemaVersion": localconfig.SchemaVersion, "connections": []any{record}})
-	require.NoError(t, err)
-	path := filepath.Join(t.TempDir(), "connections.json")
-	require.NoError(t, os.WriteFile(path, contents, 0o600))
-	require.False(t, strings.Contains(string(contents), "\n"))
-	return path
 }

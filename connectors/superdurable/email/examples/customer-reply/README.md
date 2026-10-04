@@ -60,12 +60,11 @@ cd "$(git rev-parse --show-toplevel)"
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/superdurable/email/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/superdurable/email \
-  --version v0.1.0 --tag connectors/superdurable/email/v0.1.0 \
+  --version v0.21.0 --tag connectors/superdurable/email/v0.21.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/email-reply/release/connector-release.json \
   --digest-output /tmp/email-reply/release/connector-release.json.sha256
 dexcli dev --open=false --flow-rendering-dir /tmp/email-reply/graphs \
-  --connector-config-dir /tmp/email-reply/connections \
   --connector-release-override email=/tmp/email-reply/release
 ```
 
@@ -75,15 +74,17 @@ use. Follow the authorization guide on the page and the
 [connection setup](../../README.md#connection-setup): enter the IMAP and SMTP
 hosts, ports, and TLS modes from your provider's settings page, the login, and
 an app password, then save; the status becomes **Ready** and **Local
-override**. The example has no Step configuration. The password is stored only
-in the plaintext development file shown on the page; never commit or share it.
+override**. The example has no Step configuration. Dex Web or Superverse Studio
+writes the connection to the project configuration.
 
 Create the archive mailbox, such as `Archive`, in your mail client first; the
 connector never creates mailboxes. In a second terminal, start the Worker from
-`connectors/superdurable/email`:
+`connectors/superdurable/email` with the `DEX_PROJECT_*` environment that names
+that configuration, as
+[project configuration loading](../../../../../sdkgo/projectconfig/README.md#application-loading)
+describes:
 
 ```bash
-DEX_CONNECTOR_CONFIG_FILE=/tmp/email-reply/connections/connections.json \
 DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 \
 go run ./examples/customer-reply
 ```

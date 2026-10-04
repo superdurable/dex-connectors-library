@@ -5,7 +5,7 @@ metadata:
   displayName: Confluence
   description: Search Confluence Cloud pages with bounded CQL, read a page as Markdown or plain text, publish and update pages without duplicates, and add footer comments.
   company: Atlassian
-  version: v0.1.0
+  version: v0.21.0
 spec:
   provider: atlassian
   codegen:
@@ -32,6 +32,7 @@ spec:
         required: false
         default: 8388608
   auth:
+    refreshable: true
     type: oauth2
     connectionKind: confluence-atlassian-oauth
     fields:

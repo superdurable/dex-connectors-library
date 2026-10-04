@@ -3,9 +3,9 @@
 This example receives signed Calendly webhooks and starts one
 `CalendlyInviteeRecorder` Flow per booked invitee:
 
-1. the Worker mounts `NewLocalInviteeEventReceivedEndpointRunner` at
+1. the Worker mounts `NewProjectInviteeEventReceivedEndpointRunner` at
    `/webhooks/calendly` and starts it at once, so a delivery is recorded in the
-   binding's durable inbox even while Dex is unreachable;
+   binding's durable project inbox even while Dex is unreachable;
 2. the `invitee-created` binding of the `inviteeEventReceived` Trigger keeps
    only bookings of the event type chosen with the `eventTypePicker` unit, and
    `AcceptBooking` admits only an active `invitee.created` event;
@@ -61,7 +61,7 @@ go run ./cmd/connectorctl ui-artifact \
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/calendly/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/calendly \
-  --version v0.1.0 --tag connectors/calendly/v0.1.0 \
+  --version v0.21.0 --tag connectors/calendly/v0.21.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/calendly-release/connector-ui.tgz \
   --ui-digest /tmp/calendly-release/connector-ui.tgz.sha256 \
@@ -69,7 +69,6 @@ go run ./cmd/connectorctl release-artifact \
   --digest-output /tmp/calendly-release/connector-release.json.sha256
 dexcli dev \
   --flow-rendering-dir "$PWD/connectors/calendly/build" \
-  --connector-config-dir "$HOME/.dex/connectors" \
   --connector-release-override calendly=/tmp/calendly-release
 ```
 
@@ -89,15 +88,7 @@ token** and follow the guide shown above the form:
 
 Dex Web releases before `cli-v1.2.0` cannot save the personal access token
 method of a connector with several sign-in methods (superdurable/dex#570, fixed
-in `cli-v1.2.0`). With such a release, either run `dexcli` `cli-v1.2.0` or
-later, or add the connection to the `connections` array of
-`$HOME/.dex/connectors/connections.json` yourself, with
-`"authMethodId": "personal-access-token"` beside the record's other members and
-these credentials:
-
-```json
-{"auth_method": "personal-access-token", "access_token": "<personal access token>", "webhook_signing_key": "<openssl rand -hex 32>"}
-```
+in `cli-v1.2.0`), so run `dexcli` `cli-v1.2.0` or later.
 
 Then open the Flow's `invitee-created` binding, choose **Load event types** in
 the **Event type** unit, select the event type whose bookings start the Flow,
@@ -130,11 +121,14 @@ curl -s https://api.calendly.com/webhook_subscriptions \
 
 ## 5. Run the Worker and send a delivery
 
-In a second terminal, from `connectors/calendly`:
+Run the Worker in a second terminal from `connectors/calendly`. It reads the
+`DEX_PROJECT_*` project configuration environment described in
+[project configuration](../../../../sdkgo/projectconfig/README.md); Dex Web or
+Superverse Studio writes that configuration when you save the connection and
+the binding:
 
 ```bash
 cd "$(git rev-parse --show-toplevel)/connectors/calendly"
-export DEX_CONNECTOR_CONFIG_FILE="$HOME/.dex/connectors/connections.json"
 go run ./examples/invitee-recorder
 ```
 
@@ -183,10 +177,9 @@ every time in UTC:
 ## 7. Restart recovery
 
 Stop Dex, send a delivery, and stop the Worker. The endpoint answered `200`
-because the delivery was on disk; it stays in the binding's inbox, a
-`.trigger-inbox-*.json` file beside the connection file. Start Dex and the
-Worker again: the runner replays it, logs `replaying pending trigger events`,
-and the Flow starts and completes.
+because the delivery was stored; it stays in the binding's durable inbox in
+project storage. Start Dex and the Worker again: the runner replays it, logs
+`replaying pending trigger events`, and the Flow starts and completes.
 
 ## Test
 
@@ -196,17 +189,20 @@ From `connectors/calendly`:
 go test -race ./examples/invitee-recorder/...
 ```
 
-The unit tests cover the Flow's mapping and admission rules, and run the
-Worker against an unreachable Dex Server: a signed delivery is answered `200`
-only after it is in the inbox, a tampered or wrongly signed one `400`, and a
-delivery for another event type `200` without a record.
+The unit tests cover the Flow's mapping and admission rules, and serve the
+example's Trigger target against an unreachable Dex Server: a signed delivery
+is answered `200` and retried toward Dex, a tampered or wrongly signed one
+`400`, and a delivery for another event type `200` without a record. The
+connector's own tests cover the durable project inbox: a delivery is stored
+before its `200` and replayed after a restart.
 
-The real Dex tests run the example's `run` function against `dexcli dev` and a
-TLS stand-in for `api.calendly.com`: a signed delivery starts exactly one Flow
-that reads the scheduled event once; a redelivery starts no second Flow and
-reads nothing again; a forged delivery answers `400` and starts nothing; a
-cancellation is filtered; and a delivery acknowledged while Dex was unreachable
-is replayed after a restart:
+The real Dex tests run the example's Flow on a Worker and serve its Trigger
+target, without the durable project inbox, against `dexcli dev` and a TLS
+stand-in for `api.calendly.com`: a signed delivery starts exactly one Flow that
+reads the scheduled event once; a redelivery starts no second Flow and reads
+nothing again; a forged delivery answers `400` and starts nothing; a
+cancellation is filtered; and a delivery that arrives before the binding runs
+is answered `503`, and Calendly's retry starts the Flow:
 
 ```bash
 DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 go test -tags=integration ./examples/invitee-recorder/... -count=1 -v

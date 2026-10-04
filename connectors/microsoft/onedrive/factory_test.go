@@ -55,14 +55,14 @@ func TestFactoriesRequireOnlyTheHappyPathBranch(t *testing.T) {
 			Uploaded:            sdkgo.GoTo(uploadTarget{}),
 		})
 		onedrive.NewCreateFolderStep(onedrive.CreateFolderStepConfig[string]{
-			StepType: "Folder", Annotations: testAnnotations, Connection: connection,
+			StepType: "Folder", Annotations: testAnnotations, Connection: connection, ConnectionName: graphConnection.Name,
 			MapToOperationInput: func(string) onedrive.CreateFolderInput { return onedrive.CreateFolderInput{} },
 			Created:             sdkgo.GoTo(folderTarget{}),
 		})
 	})
 	require.Panics(t, func() {
 		onedrive.NewUploadFileStep(onedrive.UploadFileStepConfig[string]{
-			StepType: "Upload", Annotations: testAnnotations, Connection: connection,
+			StepType: "Upload", Annotations: testAnnotations, Connection: connection, ConnectionName: graphConnection.Name,
 			MapToOperationInput: func(string) onedrive.UploadFileInput { return onedrive.UploadFileInput{} },
 			AlreadyExists:       sdkgo.GoTo(uploadTarget{}),
 		})

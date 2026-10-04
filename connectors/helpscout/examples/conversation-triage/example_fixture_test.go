@@ -17,8 +17,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
-	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -29,7 +27,9 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/helpscout"
 	conversationtriage "github.com/superdurable/dex-connectors-library/connectors/helpscout/examples/conversation-triage/flow"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/connectors/helpscout/internal/testsupport"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/webhooktrigger"
 )
 
 const (
@@ -44,87 +44,70 @@ const (
 	otherActiveConv int64 = 502
 )
 
-// exampleSetup is one connection file plus the addresses that run reads from the environment.
-type exampleSetup struct {
-	directory      string
-	configPath     string
-	webhookAddress string
-	logs           *recordedLogs
+// mailboxBinding is the mailboxPicker binding Dex Web saves: only the triaged inbox starts a Flow.
+var mailboxBinding = helpscout.ConversationEventTriggerConfiguration{MailboxID: triagedInboxID}
+
+// newExampleCredentials holds the credentials Dex Web saves, with no access token yet. The refreshing source
+// replaces project storage and keeps the token the connector obtains.
+func newExampleCredentials() *testsupport.RefreshingCredentialSource[helpscout.Credentials] {
+	return testsupport.NewRefreshingCredentialSource(helpscout.Credentials{
+		AppID: "app-id", AppSecret: sdkgo.NewSecretString("app-secret"), WebhookSecret: sdkgo.NewSecretString(sentinelWebhookSecret),
+	}, nil)
 }
 
-// newExampleSetup writes the connection Dex Web saves, with no access token yet, and the mailboxPicker binding.
-func newExampleSetup(t *testing.T, dexAddress string) *exampleSetup {
+// newExampleConnection builds the example's connection on credentials.
+func newExampleConnection(t *testing.T, credentials helpscout.CredentialSource, options ...helpscout.Option) helpscout.Connection {
 	t.Helper()
-	directory := t.TempDir()
-	contents, err := json.Marshal(map[string]any{
-		"schemaVersion": localconfig.SchemaVersion,
-		"connections": []any{map[string]any{
-			"connectorId": helpscout.ConnectorID, "modulePath": "github.com/superdurable/dex-connectors-library/connectors/helpscout",
-			"moduleVersion": "v0.1.0", "provider": "helpscout", "connectionName": conversationtriage.ConnectionName,
-			"configuration": map[string]any{},
-			"credentials":   map[string]any{"app_id": "app-id", "app_secret": "app-secret", "webhook_secret": sentinelWebhookSecret},
-		}},
-		"triggerBindings": []any{map[string]any{
-			"connectorId": helpscout.ConnectorID, "connectionName": conversationtriage.ConnectionName, "triggerName": "conversationEvent",
-			"bindingName": conversationtriage.NewConversationTriggerBinding, "configuration": map[string]any{"mailboxId": triagedInboxID},
-		}},
-	})
+	client, err := helpscout.New(helpscout.Config{}, credentials, options...)
 	require.NoError(t, err)
-	setup := &exampleSetup{
-		directory: directory, configPath: filepath.Join(directory, "connections.json"),
-		webhookAddress: "127.0.0.1:" + unusedPort(t), logs: newRecordedLogs(),
-	}
-	require.NoError(t, os.WriteFile(setup.configPath, contents, 0o600))
-	t.Setenv(localconfig.EnvironmentVariable, setup.configPath)
-	t.Setenv("DEX_FLOW_SERVICE_ADDRESS", dexAddress)
-	t.Setenv("WEBHOOK_BIND_ADDRESS", setup.webhookAddress)
-	t.Cleanup(func() {
-		if t.Failed() || testing.Verbose() {
-			t.Logf("captured logs:\n%s", setup.logs.text())
-		}
+	connection, err := helpscout.NewConnection(client, sdkgo.ConnectionRef{Provider: "helpscout", Name: conversationtriage.ConnectionName})
+	require.NoError(t, err)
+	return connection
+}
+
+// conversationEndpoint serves the example's target like newConversationEndpointRunner, without the durable
+// project inbox.
+type conversationEndpoint struct {
+	server         *httptest.Server
+	endpointRunner *webhooktrigger.EndpointRunner
+	readiness      interface{ RunningSourceCount() int }
+}
+
+func newConversationEndpoint(
+	t *testing.T, connection helpscout.Connection, target sdkgo.TriggerTarget[helpscout.ConversationEvent],
+) *conversationEndpoint {
+	t.Helper()
+	handler, err := connection.ConversationEventWebhookHandler()
+	require.NoError(t, err)
+	trigger := helpscout.NewConversationEventTrigger(helpscout.ConversationEventTriggerConfig{
+		Connection: connection, ConnectionName: conversationtriage.ConnectionName,
+		BindingName: conversationtriage.NewConversationTriggerBinding, Configuration: mailboxBinding, Target: target,
 	})
-	return setup
+	endpointRunner, err := webhooktrigger.NewEndpointRunner(handler, trigger)
+	require.NoError(t, err)
+	mux := http.NewServeMux()
+	mux.Handle(webhookPath, endpointRunner)
+	server := httptest.NewServer(mux)
+	t.Cleanup(server.Close)
+	return &conversationEndpoint{server: server, endpointRunner: endpointRunner, readiness: handler.(interface{ RunningSourceCount() int })}
 }
 
-// runningExample is one run of the example's run function.
-type runningExample struct {
-	cancel context.CancelFunc
-	result chan error
-}
-
-// startExample calls run with a fresh Worker port and blob cache, then waits for the readiness check.
-func (setup *exampleSetup) startExample(t *testing.T, connectionOptions ...helpscout.Option) *runningExample {
+// start runs the binding until the test ends and waits until it receives deliveries.
+func (endpoint *conversationEndpoint) start(t *testing.T) {
 	t.Helper()
-	t.Setenv("DEX_WORKER_BIND_ADDRESS", "127.0.0.1:"+unusedPort(t))
-	t.Setenv("DEX_BLOB_CACHE_DIR", filepath.Join(setup.directory, "blobs-"+strconv.FormatInt(time.Now().UnixNano(), 10)))
 	ctx, cancel := context.WithCancel(context.Background())
-	running := &runningExample{cancel: cancel, result: make(chan error, 1)}
-	go func() { running.result <- run(ctx, setup.logs.logger(), connectionOptions...) }()
-	t.Cleanup(cancel)
-	require.Eventually(t, func() bool {
-		response, err := http.Get("http://" + setup.webhookAddress + readinessPath)
-		if err != nil {
-			return false
-		}
-		_ = response.Body.Close() // Only the status matters.
-		return response.StatusCode == http.StatusOK
-	}, 20*time.Second, 25*time.Millisecond, "the Help Scout binding must start receiving")
-	return running
-}
-
-func (running *runningExample) stop(t *testing.T) {
-	t.Helper()
-	running.cancel()
-	select {
-	case err := <-running.result:
-		require.NoError(t, err)
-	case <-time.After(20 * time.Second):
-		t.Fatal("the example did not stop after cancellation")
-	}
+	runFinished := make(chan error, 1)
+	go func() { runFinished <- endpoint.endpointRunner.Run(ctx) }()
+	t.Cleanup(func() {
+		cancel()
+		require.ErrorIs(t, <-runFinished, context.Canceled)
+	})
+	require.Eventually(t, func() bool { return endpoint.readiness.RunningSourceCount() == 1 }, 10*time.Second, 10*time.Millisecond,
+		"the Help Scout binding must start receiving")
 }
 
 // deliverWebhook posts body as Help Scout does, signed with secret; tamper changes it after signing.
-func (setup *exampleSetup) deliverWebhook(t *testing.T, event string, body string, secret string, isTampered bool) int {
+func (endpoint *conversationEndpoint) deliverWebhook(t *testing.T, event string, body string, secret string, isTampered bool) int {
 	t.Helper()
 	mac := hmac.New(sha1.New, []byte(secret))
 	mac.Write([]byte(body))
@@ -132,55 +115,18 @@ func (setup *exampleSetup) deliverWebhook(t *testing.T, event string, body strin
 	if isTampered {
 		body = strings.Replace(body, "jane@", "eve@", 1)
 	}
-	request, err := http.NewRequest(http.MethodPost, "http://"+setup.webhookAddress+webhookPath, strings.NewReader(body))
+	request, err := http.NewRequest(http.MethodPost, endpoint.server.URL+webhookPath, strings.NewReader(body))
 	require.NoError(t, err)
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("X-HelpScout-Event", event)
 	request.Header.Set("X-HelpScout-Signature", signature)
-	response, err := http.DefaultClient.Do(request)
+	response, err := endpoint.server.Client().Do(request)
 	require.NoError(t, err)
 	responseBody, err := io.ReadAll(response.Body)
 	require.NoError(t, err)
 	require.NoError(t, response.Body.Close())
 	require.NotContains(t, string(responseBody), sentinelWebhookSecret)
 	return response.StatusCode
-}
-
-// storedAccessToken returns the access token and expiry the connector wrote into the connection file.
-func (setup *exampleSetup) storedAccessToken(t *testing.T) (string, time.Time) {
-	t.Helper()
-	contents, err := os.ReadFile(setup.configPath)
-	require.NoError(t, err)
-	var file struct {
-		Connections []struct {
-			Credentials         map[string]string `json:"credentials"`
-			CredentialExpiresAt time.Time         `json:"credentialExpiresAt"`
-		} `json:"connections"`
-	}
-	require.NoError(t, json.Unmarshal(contents, &file))
-	require.Len(t, file.Connections, 1)
-	return file.Connections[0].Credentials["access_token"], file.Connections[0].CredentialExpiresAt
-}
-
-func (setup *exampleSetup) pendingEventIDs(t *testing.T) []string {
-	t.Helper()
-	paths, err := filepath.Glob(filepath.Join(setup.directory, ".trigger-inbox-*.json"))
-	require.NoError(t, err)
-	eventIDs := []string{}
-	for _, path := range paths {
-		contents, err := os.ReadFile(path)
-		require.NoError(t, err)
-		var inbox struct {
-			Events []struct {
-				EventID string `json:"eventId"`
-			} `json:"events"`
-		}
-		require.NoError(t, json.Unmarshal(contents, &inbox))
-		for _, event := range inbox.Events {
-			eventIDs = append(eventIDs, event.EventID)
-		}
-	}
-	return eventIDs
 }
 
 // conversationWebhookBody is a v2 Conversation object as a Help Scout conversation webhook carries it.
@@ -390,7 +336,16 @@ type recordedLog struct {
 	attrs   map[string]string
 }
 
-func newRecordedLogs() *recordedLogs { return &recordedLogs{} }
+func newRecordedLogs(t *testing.T) *recordedLogs {
+	t.Helper()
+	logs := &recordedLogs{}
+	t.Cleanup(func() {
+		if t.Failed() || testing.Verbose() {
+			t.Logf("captured logs:\n%s", logs.text())
+		}
+	})
+	return logs
+}
 
 func (logs *recordedLogs) logger() *slog.Logger {
 	return slog.New(recordedLogHandler{logs: logs})

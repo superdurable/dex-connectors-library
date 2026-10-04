@@ -47,8 +47,11 @@ the `access_token` credential:
   each refresh persists the rotated token, and `invalid_grant`,
   `invalid_client`, and `unauthorized_client` require reauthorization and
   select `defect`. Any other refresh failure, such as Calendly's limit of eight
-  tokens per user per minute, returns Retry. After a `401` the connector forces
-  one refresh and repeats the request once, except `createSchedulingLink`.
+  tokens per user per minute, returns Retry. After a `401` the connector asks
+  once for a refresh, which project storage performs only when the stored
+  expiry has passed, and then repeats the request once, except
+  `createSchedulingLink`; otherwise the `401` selects `providerRejected` with
+  `AUTHENTICATION`.
 
 `webhook_signing_key` is optional for both methods and needed only by the
 Trigger. With a personal access token it is a secret you generate, such as
@@ -58,9 +61,7 @@ app's key is the one Calendly showed when the app was created.
 Dex Web releases before `cli-v1.2.0` cannot save the personal access token
 method of a connector with several sign-in methods
 ([superdurable/dex#570](https://github.com/superdurable/dex/pull/570), fixed
-in `cli-v1.2.0`); for those releases, the
-[example README](examples/invitee-recorder/README.md#3-configure-the-connection)
-shows the connection record to write by hand.
+in `cli-v1.2.0`); use `cli-v1.2.0` or later.
 
 When an operation names no user or organization, the connector reads
 `GET /users/me` in the same call and uses the connected user, so no field asks
@@ -110,8 +111,8 @@ answers `409` for a callback URL that another scope or user owns.
 
 The `inviteeEventReceived` Trigger serves one `webhooktrigger.Endpoint` per
 connection. `Connection.InviteeEventReceivedWebhookHandler` returns it, and
-`NewLocalInviteeEventReceivedEndpointRunner` wraps every binding in a durable
-inbox. For each delivery the endpoint:
+`NewProjectInviteeEventReceivedEndpointRunner` wraps every binding in a durable
+project inbox. For each delivery the endpoint:
 
 1. accepts only `POST` up to `webhookMaxBodyBytes`, answering `405` or `413`;
 2. verifies `Calendly-Webhook-Signature: t=<unix seconds>,v1=<hex>` as the
@@ -120,13 +121,13 @@ inbox. For each delivery the endpoint:
    and rejects a timestamp more than `webhookSignatureTolerance` from the
    server clock either way. A failure answers `400`; a connection without a
    signing key answers `503`, so Calendly retries. An OAuth connection whose
-   access token expired while idle is refreshed first, because the local
-   connection file returns no credentials for an expired token; one that needs
+   access token expired while idle is refreshed first, because project storage
+   returns no credentials for an expired token; one that needs
    reauthorization answers `503` until it is authorized again;
 3. decodes `invitee.created` and `invitee.canceled`, acknowledging any other
    event, such as `routing_form_submission.created`, with `200`;
 4. records the event for every binding whose `events` and `eventTypeUri`
-   accept it, and answers `200` only after every record is on disk.
+   accept it, and answers `200` only after every record is in its inbox.
 
 The event ID is the webhook event followed by the scheduled event and invitee
 IDs from the invitee's stable URI, such as
@@ -135,20 +136,28 @@ ID while the cancellation of the same invitee has its own. A reschedule sends
 `invitee.canceled` for the old invitee, with `rescheduled` set, and
 `invitee.created` for a new invitee URI.
 
-The checked-in example wires the endpoint like this, from
+The checked-in example loads the project configuration with
+`projectconfig.LoadFromEnvironment`, which reads the `DEX_PROJECT_*`
+environment described in [project configuration](../../sdkgo/projectconfig/README.md),
+opens the connection with `calendly.NewProjectConnection`, and wires the
+endpoint like this, from
 [`examples/invitee-recorder/main.go`](examples/invitee-recorder/main.go):
 
 ```go
 func newInviteeEndpointRunner(
-	store *localconfig.Store, client *dex.Client, flow *inviteerecorder.Flow, logger *slog.Logger, connectionOptions []calendly.Option,
+	project *projectconfig.LoadedProject, client *dex.Client, flow *inviteerecorder.Flow, logger *slog.Logger, connectionOptions []calendly.Option,
 ) (*calendly.InviteeEventReceivedEndpointRunner, error) {
+	return calendly.NewProjectInviteeEventReceivedEndpointRunner(project, inviteerecorder.ConnectionName, []calendly.ProjectInviteeEventReceivedTriggerRoute{{
+		BindingName: inviteerecorder.InviteeCreatedTriggerBinding, Target: newInviteeTarget(client, flow, logger),
+	}}, append(slices.Clone(connectionOptions), calendly.WithLogger(logger))...)
+}
+
+// newInviteeTarget starts one Flow per booked invitee, with the Trigger event ID as request ID.
+func newInviteeTarget(client *dex.Client, flow *inviteerecorder.Flow, logger *slog.Logger) sdkgo.TriggerTarget[calendly.InviteeEvent] {
 	bindingLogger := logger.With("connector", calendly.ConnectorID, "connection", inviteerecorder.ConnectionName,
 		"trigger", calendly.InviteeEventReceivedTriggerDefinition.Trigger.TriggerName, "binding", inviteerecorder.InviteeCreatedTriggerBinding)
-	return calendly.NewLocalInviteeEventReceivedEndpointRunner(store, inviteerecorder.ConnectionName, []calendly.LocalInviteeEventReceivedTriggerRoute{{
-		BindingName: inviteerecorder.InviteeCreatedTriggerBinding,
-		Target: sdkgo.NewDexFlowTriggerTarget(client, flow, inviteerecorder.AcceptBooking, inviteerecorder.ResolveFlowID,
-			inviteerecorder.MapToFlowInput, sdkgo.WithTriggerLogger(bindingLogger)),
-	}}, append(slices.Clone(connectionOptions), calendly.WithLogger(logger))...)
+	return sdkgo.NewDexFlowTriggerTarget(client, flow, inviteerecorder.AcceptBooking, inviteerecorder.ResolveFlowID,
+		inviteerecorder.MapToFlowInput, sdkgo.WithTriggerLogger(bindingLogger))
 }
 ```
 

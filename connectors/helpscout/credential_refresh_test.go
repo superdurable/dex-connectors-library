@@ -5,19 +5,16 @@ package helpscout_test
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/helpscout"
+	"github.com/superdurable/dex-connectors-library/connectors/helpscout/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
 )
 
 // documentedTokenResponse is Help Scout's documented client credentials answer: no refresh token, two days.
@@ -100,16 +97,16 @@ func TestCredentialRefreshDriverClassifiesTerminalAndRetryableFailures(t *testin
 	require.True(t, sdkgo.IsReauthorizationRequired(err), "a missing App Secret is never sent")
 }
 
-// TestRenewingLocalConnectionObtainsAndStoresTheTokenOnFirstUse starts from the record Dex Web saves for
+// TestRefreshingConnectionObtainsAndStoresTheTokenOnFirstUse starts from the credentials Dex Web saves for
 // this connector: an App ID, App Secret, and webhook secret, with no token and no expiry.
-func TestRenewingLocalConnectionObtainsAndStoresTheTokenOnFirstUse(t *testing.T) {
+func TestRefreshingConnectionObtainsAndStoresTheTokenOnFirstUse(t *testing.T) {
 	fake := newFakeHelpScout(t, map[string]http.HandlerFunc{
 		"POST /v2/oauth2/token":             clientCredentialsTokenRoute,
 		"GET /v2/conversations/501":         requireBearer("access-2", respondJSON(http.StatusOK, conversationJSON(501, "active", 123))),
 		"GET /v2/conversations/501/threads": requireBearer("access-2", respondJSON(http.StatusOK, threadPageJSON(nil, false))),
 	})
-	configPath := writeConnectionFile(t, map[string]any{"app_id": "app-id", "app_secret": "app-secret", "webhook_secret": sentinelWebhookSecret}, nil)
-	client := newRenewingClient(t, configPath, fake.redirectingClient())
+	credentials := testsupport.NewRefreshingCredentialSource(appCredentials(""), nil)
+	client := newRefreshingClient(t, credentials, fake.redirectingClient())
 	for range 2 {
 		result, err := sdkgo.RunQuery(newStepContext("get"), client.GetConversation(), testConnection, helpscout.GetConversationInput{ConversationID: 501})
 		require.NoError(t, err)
@@ -118,28 +115,32 @@ func TestRenewingLocalConnectionObtainsAndStoresTheTokenOnFirstUse(t *testing.T)
 	}
 	require.Len(t, fake.requestsTo(http.MethodPost, "/v2/oauth2/token"), 1, "the stored token is reused until it nears expiry")
 
-	persisted := readConnectionRecord(t, configPath)
-	require.Equal(t, "access-2", persisted.Credentials["access_token"])
-	require.Equal(t, "app-secret", persisted.Credentials["app_secret"])
-	require.Equal(t, sentinelWebhookSecret, persisted.Credentials["webhook_secret"])
-	require.WithinDuration(t, time.Now().Add(48*time.Hour), persisted.CredentialExpiresAt, time.Minute)
+	stored, expiresAt := credentials.Current()
+	require.Equal(t, "access-2", stored.AccessToken.Reveal())
+	require.Equal(t, "app-secret", stored.AppSecret.Reveal())
+	require.Equal(t, sentinelWebhookSecret, stored.WebhookSecret.Reveal())
+	require.NotNil(t, expiresAt)
+	require.WithinDuration(t, time.Now().Add(48*time.Hour), *expiresAt, time.Minute)
 }
 
-func TestRenewingLocalConnectionObtainsANewTokenAfterHelpScoutAnswers401(t *testing.T) {
+func TestRefreshingConnectionObtainsANewTokenAfterHelpScoutAnswers401(t *testing.T) {
 	fake := newFakeHelpScout(t, map[string]http.HandlerFunc{
 		"POST /v2/oauth2/token":             clientCredentialsTokenRoute,
 		"GET /v2/conversations/501":         requireBearer("access-2", respondJSON(http.StatusOK, conversationJSON(501, "active", 123))),
 		"GET /v2/conversations/501/threads": requireBearer("access-2", respondJSON(http.StatusOK, threadPageJSON(nil, false))),
 	})
 	inOneDay := time.Now().Add(24 * time.Hour).UTC()
-	configPath := writeConnectionFile(t, map[string]any{"app_id": "app-id", "app_secret": "app-secret", "access_token": "access-1"}, &inOneDay)
-	result, err := sdkgo.RunQuery(newStepContext("get"), newRenewingClient(t, configPath, fake.redirectingClient()).GetConversation(),
+	credentials := testsupport.NewRefreshingCredentialSource(helpscout.Credentials{
+		AppID: "app-id", AppSecret: sdkgo.NewSecretString("app-secret"), AccessToken: sdkgo.NewSecretString("access-1"),
+	}, &inOneDay)
+	result, err := sdkgo.RunQuery(newStepContext("get"), newRefreshingClient(t, credentials, fake.redirectingClient()).GetConversation(),
 		testConnection, helpscout.GetConversationInput{ConversationID: 501})
 	require.NoError(t, err)
 	require.Equal(t, helpscout.GetConversationBranchFound, result.Branch)
 	require.Len(t, fake.requestsTo(http.MethodPost, "/v2/oauth2/token"), 1)
 	require.Len(t, fake.requestsTo(http.MethodGet, "/v2/conversations/501"), 2, "the rejected read is repeated once")
-	require.Equal(t, "access-2", readConnectionRecord(t, configPath).Credentials["access_token"])
+	stored, _ := credentials.Current()
+	require.Equal(t, "access-2", stored.AccessToken.Reveal())
 }
 
 func TestARejectedAppNeedsNewCredentialsAndATokenOutageRetries(t *testing.T) {
@@ -154,8 +155,10 @@ func TestARejectedAppNeedsNewCredentialsAndATokenOutageRetries(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			fake := newFakeHelpScout(t, map[string]http.HandlerFunc{"POST /v2/oauth2/token": respondJSON(test.status, test.body)})
-			configPath := writeConnectionFile(t, map[string]any{"app_id": "app-id", "app_secret": "app-secret"}, nil)
-			result, err := sdkgo.RunQuery(newStepContext("search"), newRenewingClient(t, configPath, fake.redirectingClient()).SearchConversations(),
+			credentials := testsupport.NewRefreshingCredentialSource(helpscout.Credentials{
+				AppID: "app-id", AppSecret: sdkgo.NewSecretString("app-secret"),
+			}, nil)
+			result, err := sdkgo.RunQuery(newStepContext("search"), newRefreshingClient(t, credentials, fake.redirectingClient()).SearchConversations(),
 				testConnection, helpscout.SearchConversationsInput{})
 			if test.isRetry {
 				retry := requireRetry(t, err, sdkgo.FailureAvailability)
@@ -171,15 +174,13 @@ func TestARejectedAppNeedsNewCredentialsAndATokenOutageRetries(t *testing.T) {
 	}
 }
 
-// TestWebhookEndpointRenewsAnExpiredTokenToReadTheWebhookSecret covers an idle connection: the local
-// provider refuses an expired record, so EndpointConfig.CredentialRefresh renews it before verifying.
+// TestWebhookEndpointRenewsAnExpiredTokenToReadTheWebhookSecret covers an idle connection: project storage
+// refuses an expired record, so EndpointConfig.CredentialRefresh renews it before verifying.
 func TestWebhookEndpointRenewsAnExpiredTokenToReadTheWebhookSecret(t *testing.T) {
 	fake := newFakeHelpScout(t, map[string]http.HandlerFunc{"POST /v2/oauth2/token": clientCredentialsTokenRoute})
 	expiredAt := time.Now().Add(-time.Minute).UTC()
-	configPath := writeConnectionFile(t, map[string]any{
-		"app_id": "app-id", "app_secret": "app-secret", "access_token": "access-1", "webhook_secret": sentinelWebhookSecret,
-	}, &expiredAt)
-	fixture := startWebhookFixture(t, newRenewingClient(t, configPath, fake.redirectingClient()), helpscout.ConversationEventTriggerConfiguration{})
+	credentials := testsupport.NewRefreshingCredentialSource(appCredentials("access-1"), &expiredAt)
+	fixture := startWebhookFixture(t, newRefreshingClient(t, credentials, fake.redirectingClient()), helpscout.ConversationEventTriggerConfiguration{})
 	body := conversationJSON(501, "active", 123)
 	request := httptest.NewRequest(http.MethodPost, "/webhooks/helpscout", strings.NewReader(body))
 	request.Header.Set("X-HelpScout-Event", helpscout.WebhookEventConversationCreated)
@@ -189,45 +190,19 @@ func TestWebhookEndpointRenewsAnExpiredTokenToReadTheWebhookSecret(t *testing.T)
 	require.Equal(t, http.StatusOK, response.Code, "an idle connection keeps receiving after its access token expires")
 	require.EqualValues(t, 501, fixture.receiveEvent(t).Payload.Conversation.ID)
 	require.Len(t, fake.requestsTo(http.MethodPost, "/v2/oauth2/token"), 1)
-	require.Equal(t, "access-2", readConnectionRecord(t, configPath).Credentials["access_token"])
+	stored, _ := credentials.Current()
+	require.Equal(t, "access-2", stored.AccessToken.Reveal())
 }
 
 // TestWebhookEndpointOfAFreshConnectionVerifiesWithoutObtainingAToken proves a delivery needs only the
 // webhook secret: a token outage cannot answer 503 to a connection that has no token yet.
 func TestWebhookEndpointOfAFreshConnectionVerifiesWithoutObtainingAToken(t *testing.T) {
 	fake := newFakeHelpScout(t, map[string]http.HandlerFunc{"POST /v2/oauth2/token": respondJSON(http.StatusServiceUnavailable, `{"error":"server_error"}`)})
-	configPath := writeConnectionFile(t, map[string]any{"app_id": "app-id", "app_secret": "app-secret", "webhook_secret": sentinelWebhookSecret}, nil)
-	fixture := startWebhookFixture(t, newRenewingClient(t, configPath, fake.redirectingClient()), helpscout.ConversationEventTriggerConfiguration{})
+	credentials := testsupport.NewRefreshingCredentialSource(appCredentials(""), nil)
+	fixture := startWebhookFixture(t, newRefreshingClient(t, credentials, fake.redirectingClient()), helpscout.ConversationEventTriggerConfiguration{})
 	require.Equal(t, http.StatusOK, fixture.deliver(t, helpscout.WebhookEventConversationCreated, conversationJSON(501, "active", 123), sentinelWebhookSecret))
 	require.EqualValues(t, 501, fixture.receiveEvent(t).Payload.Conversation.ID)
 	require.Empty(t, fake.recordedRequests(), "verification never waits for the token endpoint")
-}
-
-// TestGeneratedLocalConnectionCannotStoreTheToken pins a code generation limit: the generated
-// NewLocalConnection gives an apiKey connector a provider without refresh, so a call retries unsent.
-func TestGeneratedLocalConnectionCannotStoreTheToken(t *testing.T) {
-	fake := newFakeHelpScout(t, map[string]http.HandlerFunc{"POST /v2/oauth2/token": clientCredentialsTokenRoute})
-	configPath := writeConnectionFile(t, map[string]any{"app_id": "app-id", "app_secret": "app-secret"}, nil)
-	store, err := localconfig.LoadFile(configPath)
-	require.NoError(t, err)
-	connection, err := helpscout.NewLocalConnection(store, testConnection.Name, helpscout.WithHTTPClient(fake.redirectingClient()))
-	require.NoError(t, err)
-	_, err = sdkgo.RunQuery(newStepContext("search"), helpscout.ClientOfConnection(connection).SearchConversations(), testConnection,
-		helpscout.SearchConversationsInput{})
-	retry := requireRetry(t, err, sdkgo.FailureAvailability)
-	require.Contains(t, retry.Failure.Message, "NewLocalRenewingConnection")
-	require.Empty(t, fake.recordedRequests())
-}
-
-func TestDecodeResolvedCredentialsJSONAcceptsOnlyAnAccessToken(t *testing.T) {
-	credentials, err := helpscout.DecodeResolvedCredentialsJSON(json.RawMessage(`{"access_token":"` + sentinelToken + `"}`))
-	require.NoError(t, err)
-	require.Equal(t, sentinelToken, credentials.AccessToken.Reveal())
-	for _, contents := range []string{`{"access_token":"a","app_secret":"b"}`, `{"access_token":"has space"}`, `{}`, `[]`} {
-		_, err := helpscout.DecodeResolvedCredentialsJSON(json.RawMessage(contents))
-		require.Error(t, err, contents)
-		require.NotContains(t, err.Error(), "has space")
-	}
 }
 
 // requireBearer answers 401 unless the request carries accessToken.
@@ -241,48 +216,12 @@ func requireBearer(accessToken string, handler http.HandlerFunc) http.HandlerFun
 	}
 }
 
-// newRenewingClient uses the real clock, because localconfig requires a renewed expiry after wall-clock time.
-func newRenewingClient(t *testing.T, configPath string, httpClient *http.Client) *helpscout.Client {
+// newRefreshingClient uses the real clock, because a renewed expiry is compared with the wall-clock time.
+func newRefreshingClient(
+	t *testing.T, credentials *testsupport.RefreshingCredentialSource[helpscout.Credentials], httpClient *http.Client,
+) *helpscout.Client {
 	t.Helper()
-	store, err := localconfig.LoadFile(configPath)
+	client, err := helpscout.New(helpscout.Config{}, credentials, helpscout.WithHTTPClient(httpClient))
 	require.NoError(t, err)
-	connection, err := helpscout.NewLocalRenewingConnection(store, testConnection.Name, helpscout.WithHTTPClient(httpClient))
-	require.NoError(t, err)
-	return helpscout.ClientOfConnection(connection)
-}
-
-type connectionRecord struct {
-	Credentials         map[string]string `json:"credentials"`
-	CredentialExpiresAt time.Time         `json:"credentialExpiresAt"`
-	ModuleVersion       string            `json:"moduleVersion"`
-}
-
-func readConnectionRecord(t *testing.T, configPath string) connectionRecord {
-	t.Helper()
-	contents, err := os.ReadFile(configPath)
-	require.NoError(t, err)
-	var file struct {
-		Connections []connectionRecord `json:"connections"`
-	}
-	require.NoError(t, json.Unmarshal(contents, &file))
-	require.Len(t, file.Connections, 1)
-	return file.Connections[0]
-}
-
-// writeConnectionFile writes the record Dex Web saves for this connector's connection.
-func writeConnectionFile(t *testing.T, credentials map[string]any, expiresAt *time.Time) string {
-	t.Helper()
-	record := map[string]any{
-		"connectorId": helpscout.ConnectorID, "modulePath": "github.com/superdurable/dex-connectors-library/connectors/helpscout",
-		"moduleVersion": "v0.1.0", "provider": "helpscout", "connectionName": testConnection.Name,
-		"configuration": map[string]any{}, "credentials": credentials,
-	}
-	if expiresAt != nil {
-		record["credentialExpiresAt"] = expiresAt.Format(time.RFC3339Nano)
-	}
-	contents, err := json.Marshal(map[string]any{"schemaVersion": localconfig.SchemaVersion, "connections": []any{record}})
-	require.NoError(t, err)
-	path := filepath.Join(t.TempDir(), "connections.json")
-	require.NoError(t, os.WriteFile(path, contents, 0o600))
-	return path
+	return client
 }

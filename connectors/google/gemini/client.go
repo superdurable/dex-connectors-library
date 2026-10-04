@@ -2,14 +2,15 @@
 // SPDX-License-Identifier: MIT
 
 // Package gemini implements the Google Gemini API models.generateContent
-// method as two Dex Connector Queries: the provider-neutral generateText
-// Query that every lab connector shares, and the native generateContent Query.
+// method as the native generateContent Dex Connector Query, for
+// Gemini-specific fields such as contents and a thinking budget.
 //
-// generateText runs on the shared sdkgo/llm pipeline; wire_format.go declares
-// how it reads and writes Gemini. Applications build a Connection once at
-// startup and wire gemini.NewGenerateTextStep into a Flow, as the runnable
-// example in examples/summarize-text does, or gemini.NewGenerateContentStep
-// for Gemini-specific fields, as examples/generate-summary does.
+// Provider-neutral text generation Steps use the llm connector,
+// github.com/superdurable/dex-connectors-library/connectors/superdurable/llm,
+// whose generateText Query also runs Gemini models. Applications open a
+// Connection once at startup with NewProjectConnection and wire
+// gemini.NewGenerateContentStep into a Flow, as the runnable example in
+// examples/generate-summary does.
 package gemini
 
 import (
@@ -27,7 +28,6 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/llm"
 )
 
 const (
@@ -37,10 +37,8 @@ const (
 
 	// defaultRequestTimeout stays below the 300-second Execute timeout, so a stalled exchange returns Retry first.
 	defaultRequestTimeout = 270 * time.Second
-	// generateTextRequestTimeout stays 30 seconds below generateText's 900-second Execute timeout.
-	generateTextRequestTimeout = 870 * time.Second
-	maxErrorResponseBytes      = 64 << 10
-	maxProviderRetryDelay      = time.Hour
+	maxErrorResponseBytes = 64 << 10
+	maxProviderRetryDelay = time.Hour
 )
 
 var (
@@ -64,12 +62,9 @@ type Option func(*clientOptions)
 type clientOptions struct{ httpClient *http.Client }
 
 // WithHTTPClient supplies the HTTP client used for provider calls. The
-// connector uses copies, disables redirects so the API key header is never
-// forwarded, and applies a timeout when the client sets none: 270 seconds for
-// generateContent and 870 seconds for generateText. generateText also bounds a
-// longer client timeout at 870 seconds, so an exchange returns Retry before its
-// 900-second Execute timeout. The caller retains ownership of the original
-// client and its transport.
+// connector uses a copy, disables redirects so the API key header is never
+// forwarded, and applies a 270-second timeout when the client sets none. The
+// caller retains ownership of the original client and its transport.
 func WithHTTPClient(client *http.Client) Option {
 	return func(options *clientOptions) { options.httpClient = client }
 }
@@ -83,14 +78,7 @@ type Client struct {
 	httpClient       *http.Client
 	credentials      sdkgo.CredentialProvider[Credentials]
 	maxResponseBytes int64
-	generateText     *llm.TextGenerationQuery
 }
-
-// GenerateTextRequest is the provider-neutral generateText input shared by every lab connector.
-type GenerateTextRequest = llm.TextGenerationRequest
-
-// GenerateTextResponse is the provider-neutral generateText output shared by every lab connector.
-type GenerateTextResponse = llm.TextGenerationResponse
 
 // Part is one text part of a Content.
 type Part struct {
@@ -225,8 +213,6 @@ type wireGenerateContentResponse struct {
 		} `json:"content"`
 		FinishReason string `json:"finishReason"`
 	} `json:"candidates"`
-	// Error is read only by generateText, which classifies an error object inside a 2xx body.
-	Error          json.RawMessage `json:"error"`
 	PromptFeedback struct {
 		BlockReason string `json:"blockReason"`
 	} `json:"promptFeedback"`
@@ -300,29 +286,9 @@ func New(config Config, credentials sdkgo.CredentialProvider[Credentials], optio
 		httpClient = &callerHTTPClient
 	}
 	httpClient.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
-	generateTextHTTPClient := dependencies.httpClient
-	if generateTextHTTPClient != nil && generateTextHTTPClient.Timeout > generateTextRequestTimeout {
-		// A longer exchange would outlast generateText's Execute timeout instead of returning Retry.
-		boundedHTTPClient := *generateTextHTTPClient
-		boundedHTTPClient.Timeout = generateTextRequestTimeout
-		generateTextHTTPClient = &boundedHTTPClient
-	}
-	generateText, err := llm.NewTextGenerationQuery(&llm.TextGenerationQueryConfig{
-		Definition: GenerateTextDefinition, WireFormat: newGenerateTextWireFormat(),
-		BaseURL: endpoint, ConnectionModel: model,
-		HTTPClient: generateTextHTTPClient, RequestTimeout: generateTextRequestTimeout,
-		ResolveCredential: func(call sdkgo.Call) (sdkgo.SecretString, error) {
-			credential, err := credentials.Resolve(call)
-			return credential.APIKey, err
-		},
-		MaxResponseBytes: config.MaxResponseBytes,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("Gemini generateText: %w", err)
-	}
 	return &Client{
 		endpoint: endpoint, model: model, httpClient: httpClient, credentials: credentials,
-		maxResponseBytes: config.MaxResponseBytes, generateText: generateText,
+		maxResponseBytes: config.MaxResponseBytes,
 	}, nil
 }
 
@@ -331,12 +297,6 @@ func (*Client) String() string { return "gemini.Client{[REDACTED]}" }
 
 // GoString returns the same redacted description for the %#v verb.
 func (*Client) GoString() string { return "gemini.Client{[REDACTED]}" }
-
-// GenerateText returns the provider-neutral generateText Query, which
-// NewGenerateTextStep and the llmtest suites run.
-func (client *Client) GenerateText() *llm.TextGenerationQuery {
-	return client.generateText
-}
 
 // GenerateContent returns the generateContent Query operation.
 func (client *Client) GenerateContent() GenerateContentOperation {

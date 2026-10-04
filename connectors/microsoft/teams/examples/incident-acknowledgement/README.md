@@ -57,11 +57,12 @@ dexcli visualize ./examples/incident-acknowledgement/flow/workflow.go \
 
 Before the first connector release the graph reports only the expected
 `connector_release_required` warning on the four Teams Steps. Run `dexcli dev`
-with that build directory, then run the Worker with the connection path shown
-by Dex Web:
+with that build directory, then run the Worker. It reads the `DEX_PROJECT_*`
+project configuration environment documented in
+[`sdkgo/projectconfig`](../../../../../sdkgo/projectconfig/README.md#application-loading);
+Dex Web or Superverse Studio writes that configuration:
 
 ```bash
-export DEX_CONNECTOR_CONFIG_FILE="$HOME/.dex/connectors/connections.json"
 go run ./examples/incident-acknowledgement
 ```
 

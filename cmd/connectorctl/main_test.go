@@ -135,7 +135,7 @@ func TestReleaseArtifactIsDeterministicAndVersioned(t *testing.T) {
 	require.Equal(t, firstContent, secondContent)
 	require.Contains(t, string(firstContent), `"version": "v0.1.0"`)
 	require.Contains(t, string(firstContent), `"tag": "connectors/google-fixture/v0.1.0"`)
-	for _, absentKey := range []string{`"selection"`, `"methodLabel"`, `"studioUnit"`} {
+	for _, absentKey := range []string{`"methodLabel"`, `"studioUnit"`} {
 		require.NotContains(t, string(firstContent), absentKey, "manifests without the field publish no key")
 	}
 	digest, err := os.ReadFile(firstDigest)
@@ -256,13 +256,13 @@ func TestStudioUIArtifactIsDeterministicAndIncludedInRelease(t *testing.T) {
 	require.Equal(t, map[string]string{"x-api-version": "2023-06-01"}, commandRequest.FixedHeaders)
 }
 
-func TestReleaseArtifactPublishesMultipleAuthSelectionManifestFields(t *testing.T) {
+func TestReleaseArtifactPublishesAuthMethodManifestFields(t *testing.T) {
 	directory := t.TempDir()
 	uiRoot := filepath.Join(directory, "dist")
 	require.NoError(t, os.MkdirAll(uiRoot, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(uiRoot, "index.html"), []byte("<main>Providers</main>"), 0o600))
 	require.NoError(t, os.WriteFile(filepath.Join(uiRoot, "icon.svg"), []byte("<svg xmlns=\"http://www.w3.org/2000/svg\"/>"), 0o600))
-	manifest := filepath.Join("..", "..", "schema", "testdata", "multiple-auth-selection.yaml")
+	manifest := filepath.Join("..", "..", "schema", "testdata", "api-key-methods.yaml")
 	uiTarball := filepath.Join(directory, "connector-ui.tgz")
 	require.NoError(t, uiArtifact([]string{"--manifest", manifest, "--ui-root", uiRoot, "--output", uiTarball, "--digest-output", uiTarball + ".sha256"}))
 	release := filepath.Join(directory, "connector-release.json")
@@ -288,7 +288,6 @@ func TestReleaseArtifactPublishesMultipleAuthSelectionManifestFields(t *testing.
 					Fields []wireField `json:"fields"`
 				} `json:"configuration"`
 				Auth struct {
-					Selection     string `json:"selection"`
 					MethodLabel   string `json:"methodLabel"`
 					DefaultMethod string `json:"defaultMethod"`
 					Methods       []struct {
@@ -303,7 +302,6 @@ func TestReleaseArtifactPublishesMultipleAuthSelectionManifestFields(t *testing.
 	}
 	require.NoError(t, json.Unmarshal(releaseBytes, &releaseWire))
 	spec := releaseWire.Manifest.Spec
-	require.Equal(t, "multiple", spec.Auth.Selection)
 	require.Equal(t, "Provider", spec.Auth.MethodLabel)
 	require.Equal(t, "openai", spec.Auth.DefaultMethod)
 	require.Len(t, spec.Auth.Methods, 3)

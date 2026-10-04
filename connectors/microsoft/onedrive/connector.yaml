@@ -5,7 +5,7 @@ metadata:
   displayName: Microsoft OneDrive and SharePoint
   description: Find, read, and write files in OneDrive and SharePoint document libraries through Microsoft Graph, with uploads and folders that stay single under retries.
   company: Microsoft
-  version: v0.1.0
+  version: v0.21.0
 spec:
   provider: microsoft
   codegen:
@@ -44,6 +44,7 @@ spec:
         required: false
         default: 50
   auth:
+    refreshable: true
     defaultMethod: microsoft-oauth
     methods:
       - id: microsoft-oauth

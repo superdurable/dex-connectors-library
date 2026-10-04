@@ -5,12 +5,9 @@ package hubspot_test
 
 import (
 	"context"
-	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"sync"
 	"testing"
 	"time"
@@ -18,7 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/hubspot"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -105,45 +101,6 @@ func (transport tokenEndpointTransport) RoundTrip(request *http.Request) (*http.
 		return recorder.Result(), nil
 	}
 	return http.DefaultTransport.RoundTrip(request)
-}
-
-// writeOAuthConnectionsFile writes a 0600 local connection file with one OAuth connection shaped as Dex Web writes it.
-func writeOAuthConnectionsFile(t *testing.T, endpoint string, accessToken string, expiresAt time.Time) string {
-	t.Helper()
-	path := filepath.Join(t.TempDir(), "connections.json")
-	contents, err := json.Marshal(map[string]any{
-		"schemaVersion": localconfig.SchemaVersion,
-		"connections": []map[string]any{{
-			"connectorId": hubspot.ConnectorID, "authMethodId": hubspot.OAuthAuthMethodID,
-			"modulePath":    "github.com/superdurable/dex-connectors-library/connectors/hubspot",
-			"moduleVersion": "v0.1.0", "provider": "hubspot", "connectionName": hubspotConnection.Name,
-			"configuration": map[string]any{"endpoint": endpoint},
-			"credentials": map[string]any{
-				"auth_method": hubspot.OAuthAuthMethodID, "oauth_client_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-				"oauth_client_secret": "oauth-client-secret", "access_token": accessToken, "refresh_token": "stored-refresh-token",
-			},
-			"credentialExpiresAt": expiresAt.UTC().Format(time.RFC3339),
-		}},
-	})
-	require.NoError(t, err)
-	require.NoError(t, os.WriteFile(path, contents, 0o600))
-	return path
-}
-
-func readStoredCredentials(t *testing.T, path string) map[string]any {
-	t.Helper()
-	contents, err := os.ReadFile(path)
-	require.NoError(t, err)
-	var file struct {
-		Connections []struct {
-			AuthMethodID string         `json:"authMethodId"`
-			Credentials  map[string]any `json:"credentials"`
-		} `json:"connections"`
-	}
-	require.NoError(t, json.Unmarshal(contents, &file))
-	require.Len(t, file.Connections, 1)
-	require.Equal(t, hubspot.OAuthAuthMethodID, file.Connections[0].AuthMethodID, "a refresh rewrite keeps Dex Web's record-level authMethodId")
-	return file.Connections[0].Credentials
 }
 
 type stepDexContext struct {

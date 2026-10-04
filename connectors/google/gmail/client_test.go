@@ -28,6 +28,15 @@ func (*rejectionRefreshingCredentialProvider) Resolve(sdkgo.Call) (gmail.Credent
 	return gmail.Credentials{AccessToken: sdkgo.NewSecretString("rejected-token"), PrimaryEmail: "owner@example.com"}, nil
 }
 
+// ResolveWithRefresh returns the stored credential unchanged: its expiry has not passed.
+func (provider *rejectionRefreshingCredentialProvider) ResolveWithRefresh(
+	_ context.Context,
+	call sdkgo.Call,
+	_ sdkgo.CredentialRefreshDriver[gmail.Credentials],
+) (gmail.Credentials, error) {
+	return provider.Resolve(call)
+}
+
 func (provider *rejectionRefreshingCredentialProvider) ResolveAfterRejection(
 	context.Context,
 	sdkgo.Call,

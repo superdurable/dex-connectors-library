@@ -5,6 +5,7 @@ package openai_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -144,6 +145,45 @@ func TestConfirmedRejectionUsesProviderRejectedBranch(t *testing.T) {
 	require.Equal(t, openai.CreateResponseBranchProviderRejected, result.Branch)
 	require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
 	require.Equal(t, "req_rejected", result.Receipt.ProviderRequestID)
+}
+
+// TestCreateResponseSendsTheConnectionModelWhenTheRequestNamesNone keeps the connection's model field meaningful.
+func TestCreateResponseSendsTheConnectionModelWhenTheRequestNamesNone(t *testing.T) {
+	var sentModels []any
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		var body map[string]any
+		require.NoError(t, json.NewDecoder(request.Body).Decode(&body))
+		sentModels = append(sentModels, body["model"])
+		_, _ = response.Write([]byte(`{"id":"resp_model","model":"gpt-6-luna","status":"completed","output":[],"usage":{}}`))
+	}))
+	defer server.Close()
+	client, err := openai.New(openai.Config{Endpoint: server.URL, Model: " gpt-6-luna "}, sdkgo.StaticCredentialProvider[openai.Credentials]{
+		openAIConnection: {APIKey: sdkgo.NewSecretString("test-key")},
+	})
+	require.NoError(t, err)
+	for index, model := range []string{"", " ", "gpt-6-sol"} {
+		result, err := sdkgo.RunMutation(
+			testsupport.NewDexContext("flow-1", fmt.Sprintf("connection-model-%d", index)), client.CreateResponse(), openAIConnection,
+			openai.CreateRequest{Model: model, Input: "profile"},
+		)
+		require.NoError(t, err)
+		require.Equal(t, openai.CreateResponseBranchCompleted, result.Branch, "failure: %+v", result.Failure)
+	}
+	require.Equal(t, []any{"gpt-6-luna", "gpt-6-luna", "gpt-6-sol"}, sentModels, "a request's model overrides the connection's model")
+
+	defaultClient := newClient(t, server.URL)
+	_, err = sdkgo.RunMutation(testsupport.NewDexContext("flow-1", "connection-model-default"), defaultClient.CreateResponse(),
+		openAIConnection, openai.CreateRequest{Input: "profile"})
+	require.NoError(t, err)
+	require.Equal(t, openai.DefaultConfig().Model, sentModels[len(sentModels)-1], "a blank connection model uses the manifest default")
+
+	_, err = openai.New(openai.Config{Model: "gpt 6"}, sdkgo.StaticCredentialProvider[openai.Credentials]{})
+	require.ErrorContains(t, err, "OpenAI model must be")
+	invalid, err := sdkgo.RunMutation(testsupport.NewDexContext("flow-1", "connection-model-invalid"), client.CreateResponse(),
+		openAIConnection, openai.CreateRequest{Model: "gpt 6", Input: "profile"})
+	require.NoError(t, err)
+	require.Equal(t, openai.CreateResponseBranchDefect, invalid.Branch)
+	require.Len(t, sentModels, 4, "an invalid model selects defect without a request")
 }
 
 func newClient(t *testing.T, endpoint string) *openai.Client {

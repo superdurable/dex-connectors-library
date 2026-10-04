@@ -35,7 +35,7 @@ func TestPostChannelMessageFactoryRequiresOnlyTheHappyPath(t *testing.T) {
 	})
 	require.Panics(t, func() {
 		teams.NewPostChannelMessageStep(teams.PostChannelMessageStepConfig[string]{
-			StepType: "Post", Annotations: annotations, Connection: connection,
+			StepType: "Post", Annotations: annotations, Connection: connection, ConnectionName: teamsConnection.Name,
 			MapToOperationInput: mapToInput, Uncertain: sdkgo.GoTo(postedMessageTarget{}),
 		})
 	})

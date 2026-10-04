@@ -50,7 +50,7 @@ are reread before every call, so a replaced key takes effect without a restart.
   `providerRejected` until all three values are replaced.
 
 IAM roles, EC2 instance profiles, ECS task roles, IAM Identity Center (SSO), and
-`AssumeRole` chaining are out of scope for v0.1.0: Dex Web connections hold
+`AssumeRole` chaining are out of scope: Dex Web connections hold
 static secrets, and this release reads no AWS shared configuration, environment
 credentials, or instance metadata.
 
@@ -58,22 +58,23 @@ credentials, or instance metadata.
 attempt, and `s3:ListBucket` lets `headObject` report a missing key as
 `notFound`; without it Amazon S3 answers 403, which selects `providerRejected`.
 
-For local Dex Web setup, name the factory connection and load the same name at
-application startup, as [`examples/report-archive/main.go`](examples/report-archive/main.go)
-does:
+Name the factory connection and open the same name from the project
+configuration at application startup, as
+[`examples/report-archive/main.go`](examples/report-archive/main.go) does:
 
 ```go
-store, err := localconfig.LoadFromEnvironment()
+project, err := projectconfig.LoadFromEnvironment(ctx)
 if err != nil {
 	return err
 }
-connection, err := s3.NewLocalConnection(store, reportarchive.ConnectionName)
+connection, err := s3.NewProjectConnection(project, reportarchive.ConnectionName)
 ```
 
-Hosted applications resolve operation-scoped credentials with
-`hostedconfig.NewCredentialProviderFromEnvironment(s3.ConnectorID, name,
-s3.DecodeResolvedCredentialsJSON)`, which accepts exactly `access_key_id`,
-`secret_access_key`, and an optional `session_token`.
+Dex Web or Superverse Studio writes that configuration, and the application
+reads it through the `DEX_PROJECT_*` environment described in
+[project configuration loading](../../../sdkgo/projectconfig/README.md#application-loading).
+The stored credential holds exactly `access_key_id`, `secret_access_key`, and
+an optional `session_token`; the connector resolves it for every call.
 
 ## Endpoint, Region, and addressing
 
@@ -109,7 +110,7 @@ the connection's `defaultBucket`.
 The connector depends only on the core module `github.com/aws/aws-sdk-go-v2`
 v1.43.0, whose `go.mod` declares `go 1.24` and requires only
 `github.com/aws/smithy-go`. Both modules are already in the module graph of
-`sdkgo` v0.18.0, so a consuming application downloads nothing new. Signing,
+`sdkgo` v0.21.0, so a consuming application downloads nothing new. Signing,
 the subtle part, comes from the SDK's own `aws/signer/v4`, and the tests
 reproduce the three worked signatures (GET Object, PUT Object of
 `test$file.text`, and list objects) from the Amazon S3 API Reference page

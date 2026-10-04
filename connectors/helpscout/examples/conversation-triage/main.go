@@ -24,7 +24,7 @@ import (
 	"github.com/superdurable/dex-connectors-library/connectors/helpscout"
 	conversationtriage "github.com/superdurable/dex-connectors-library/connectors/helpscout/examples/conversation-triage/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -60,11 +60,11 @@ func newLogger(output io.Writer, levelName string) *slog.Logger {
 
 // run serves the webhook endpoint at once, so deliveries are recorded even while Dex is unreachable.
 func run(ctx context.Context, logger *slog.Logger, connectionOptions ...helpscout.Option) error {
-	store, err := localconfig.LoadFromEnvironment()
+	project, err := projectconfig.LoadFromEnvironment(ctx)
 	if err != nil {
 		return err
 	}
-	connection, err := helpscout.NewLocalRenewingConnection(store, conversationtriage.ConnectionName, connectionOptions...)
+	connection, err := helpscout.NewProjectConnection(project, conversationtriage.ConnectionName, connectionOptions...)
 	if err != nil {
 		return err
 	}
@@ -92,7 +92,7 @@ func run(ctx context.Context, logger *slog.Logger, connectionOptions ...helpscou
 	if err != nil {
 		return errors.Join(err, stopWorker(worker), cache.Close())
 	}
-	endpointRunner, err := newConversationEndpointRunner(store, client, flow, logger, connectionOptions)
+	endpointRunner, err := newConversationEndpointRunner(project, client, flow, logger, connectionOptions)
 	if err != nil {
 		return errors.Join(err, client.Close(), stopWorker(worker), cache.Close())
 	}
@@ -106,17 +106,22 @@ func run(ctx context.Context, logger *slog.Logger, connectionOptions ...helpscou
 	return errors.Join(runErr, client.Close(), cache.Close())
 }
 
-// newConversationEndpointRunner starts one Flow per new conversation, with the Trigger event ID as request ID.
+// newConversationEndpointRunner serves the new-conversation binding from the project configuration through its
+// durable project inbox.
 func newConversationEndpointRunner(
-	store *localconfig.Store, client *dex.Client, flow *conversationtriage.Flow, logger *slog.Logger, connectionOptions []helpscout.Option,
+	project *projectconfig.LoadedProject, client *dex.Client, flow *conversationtriage.Flow, logger *slog.Logger, connectionOptions []helpscout.Option,
 ) (*helpscout.ConversationEventEndpointRunner, error) {
+	return helpscout.NewProjectConversationEventEndpointRunner(project, conversationtriage.ConnectionName, []helpscout.ProjectConversationEventTriggerRoute{{
+		BindingName: conversationtriage.NewConversationTriggerBinding, Target: newConversationTarget(client, flow, logger),
+	}}, append(slices.Clone(connectionOptions), helpscout.WithLogger(logger))...)
+}
+
+// newConversationTarget starts one Flow per new conversation, with the Trigger event ID as request ID.
+func newConversationTarget(client *dex.Client, flow *conversationtriage.Flow, logger *slog.Logger) sdkgo.TriggerTarget[helpscout.ConversationEvent] {
 	bindingLogger := logger.With("connector", helpscout.ConnectorID, "connection", conversationtriage.ConnectionName,
 		"trigger", helpscout.ConversationEventTriggerDefinition.Trigger.TriggerName, "binding", conversationtriage.NewConversationTriggerBinding)
-	return helpscout.NewLocalConversationEventEndpointRunner(store, conversationtriage.ConnectionName, []helpscout.LocalConversationEventTriggerRoute{{
-		BindingName: conversationtriage.NewConversationTriggerBinding,
-		Target: sdkgo.NewDexFlowTriggerTarget(client, flow, conversationtriage.AcceptNewConversation, conversationtriage.ResolveFlowID,
-			conversationtriage.MapToFlowInput, sdkgo.WithTriggerLogger(bindingLogger)),
-	}}, append(slices.Clone(connectionOptions), helpscout.WithLogger(logger))...)
+	return sdkgo.NewDexFlowTriggerTarget(client, flow, conversationtriage.AcceptNewConversation, conversationtriage.ResolveFlowID,
+		conversationtriage.MapToFlowInput, sdkgo.WithTriggerLogger(bindingLogger))
 }
 
 // newWebhookMux mounts the endpoint and a readiness check that passes once the binding receives events.

@@ -26,6 +26,9 @@ func (completeTarget[IN]) Execute(dex.Context, IN) (*dex.StepDecision, error) {
 	return dex.GracefulComplete(struct{}{}), nil
 }
 
+// GetStepType names the target: Dex gives a generic Step type no default name.
+func (completeTarget[IN]) GetStepType() string { return "Complete" }
+
 func TestFactoriesRequireOnlyTheHappyPathBranch(t *testing.T) {
 	connection := newTestConnection(t)
 	annotations := sdkgo.StepAnnotations{GroupID: "monday", GroupLabel: "monday.com", Explanation: "Call monday.com."}
@@ -36,31 +39,31 @@ func TestFactoriesRequireOnlyTheHappyPathBranch(t *testing.T) {
 			Listed:              sdkgo.GoTo(completeTarget[monday.ListItemsResult]{}),
 		})
 		monday.NewGetItemStep(monday.GetItemStepConfig[string]{
-			StepType: "GetItem", Annotations: annotations, Connection: connection,
+			StepType: "GetItem", Annotations: annotations, Connection: connection, ConnectionName: mondayConnection.Name,
 			MapToOperationInput: func(itemID string) monday.GetItemInput { return monday.GetItemInput{ItemID: itemID} },
 			Found:               sdkgo.GoTo(completeTarget[monday.GetItemResult]{}),
 		})
 		monday.NewCreateItemStep(monday.CreateItemStepConfig[string]{
-			StepType: "CreateItem", Annotations: annotations, Connection: connection,
+			StepType: "CreateItem", Annotations: annotations, Connection: connection, ConnectionName: mondayConnection.Name,
 			MapToOperationInput: func(string) monday.CreateItemInput { return validCreateItemInput() },
 			Created:             sdkgo.GoTo(completeTarget[monday.CreateItemResult]{}),
 		})
 		monday.NewUpdateItemColumnValuesStep(monday.UpdateItemColumnValuesStepConfig[string]{
-			StepType: "UpdateItem", Annotations: annotations, Connection: connection,
+			StepType: "UpdateItem", Annotations: annotations, Connection: connection, ConnectionName: mondayConnection.Name,
 			MapToOperationInput: func(itemID string) monday.UpdateItemColumnValuesInput {
 				return monday.UpdateItemColumnValuesInput{BoardID: testBoardID, ItemID: itemID, ColumnValues: map[string]monday.ColumnValue{"status": monday.StatusLabelValue("Done")}}
 			},
 			Updated: sdkgo.GoTo(completeTarget[monday.UpdateItemColumnValuesResult]{}),
 		})
 		monday.NewAddUpdateStep(monday.AddUpdateStepConfig[string]{
-			StepType: "AddUpdate", Annotations: annotations, Connection: connection,
+			StepType: "AddUpdate", Annotations: annotations, Connection: connection, ConnectionName: mondayConnection.Name,
 			MapToOperationInput: func(itemID string) monday.AddUpdateInput { return monday.AddUpdateInput{ItemID: itemID, Body: "Done."} },
 			Added:               sdkgo.GoTo(completeTarget[monday.AddUpdateResult]{}),
 		})
 	})
 	require.Panics(t, func() {
 		monday.NewAddUpdateStep(monday.AddUpdateStepConfig[string]{
-			StepType: "AddUpdate", Connection: connection,
+			StepType: "AddUpdate", Connection: connection, ConnectionName: mondayConnection.Name,
 			MapToOperationInput: func(itemID string) monday.AddUpdateInput { return monday.AddUpdateInput{ItemID: itemID, Body: "Done."} },
 			Uncertain:           sdkgo.GoTo(completeTarget[monday.AddUpdateResult]{}),
 		})

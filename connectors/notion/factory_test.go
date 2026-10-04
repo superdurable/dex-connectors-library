@@ -36,7 +36,7 @@ func TestCreatePageFactoryRequiresOnlyTheHappyPath(t *testing.T) {
 	})
 	require.Panics(t, func() {
 		notion.NewCreatePageStep(notion.CreatePageStepConfig[string]{
-			StepType: "Create", Annotations: annotations, Connection: connection,
+			StepType: "Create", Annotations: annotations, Connection: connection, ConnectionName: notionConnection.Name,
 			MapToOperationInput: mapToInput, Uncertain: sdkgo.GoTo(createdPageTarget{}),
 		})
 	})

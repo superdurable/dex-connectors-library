@@ -8,7 +8,7 @@
 //
 // Applications use the generated operation-specific Step factories, such as
 // NewCreateUserStep and NewAddUserToGroupStep, with a Connection built by
-// NewLocalConnection or NewConnection. Every operation acts with the
+// NewProjectConnection or NewConnection. Every operation acts with the
 // privileges of one Workspace administrator: the delegated administrator of
 // the domain-wide delegation method, or the administrator who consented to
 // the Google OAuth method. The runnable example in examples/account-lifecycle
@@ -73,7 +73,7 @@ func WithHTTPClient(client *http.Client) Option {
 type Client struct {
 	apiBaseURL        string
 	httpClient        *http.Client
-	credentials       sdkgo.CredentialProvider[Credentials]
+	credentials       CredentialSource
 	refreshDriver     sdkgo.CredentialRefreshDriver[Credentials]
 	maxResponseBytes  int64
 	listUsersPageSize int
@@ -169,7 +169,7 @@ type googleErrorEnvelope struct {
 // New validates configuration and constructs an authenticated Directory API client.
 // It fails when the endpoint is not HTTPS (loopback HTTP is accepted for tests),
 // a limit is outside its documented range, or credentials is nil.
-func New(config Config, credentials sdkgo.CredentialProvider[Credentials], options ...Option) (*Client, error) {
+func New(config Config, credentials CredentialSource, options ...Option) (*Client, error) {
 	config = withConfigDefaults(config)
 	if err := config.Validate(); err != nil {
 		return nil, err

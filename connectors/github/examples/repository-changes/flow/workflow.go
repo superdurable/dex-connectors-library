@@ -8,7 +8,7 @@ import (
 	"errors"
 	"time"
 
-	githubconnector "github.com/superdurable/dex-connectors-library/connectors/github"
+	"github.com/superdurable/dex-connectors-library/connectors/github"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -63,28 +63,28 @@ type PullRequestFilesRequest struct {
 
 // Report is the bounded record of repository changes that the Flow returns.
 type Report struct {
-	Input                  Input                           `json:"input"`
-	Status                 Status                          `json:"status"`
-	MergedPullRequestCount int                             `json:"mergedPullRequestCount"`
-	MorePullRequests       bool                            `json:"morePullRequests"`
-	PullRequests           []PullRequestChanges            `json:"pullRequests"`
-	Commits                []githubconnector.CommitSummary `json:"commits"`
-	MoreCommits            bool                            `json:"moreCommits"`
+	Input                  Input                  `json:"input"`
+	Status                 Status                 `json:"status"`
+	MergedPullRequestCount int                    `json:"mergedPullRequestCount"`
+	MorePullRequests       bool                   `json:"morePullRequests"`
+	PullRequests           []PullRequestChanges   `json:"pullRequests"`
+	Commits                []github.CommitSummary `json:"commits"`
+	MoreCommits            bool                   `json:"moreCommits"`
 }
 
 type PullRequestChanges struct {
-	PullRequest githubconnector.MergedPullRequest `json:"pullRequest"`
-	FilesLoaded bool                              `json:"filesLoaded"`
-	Files       []githubconnector.PullRequestFile `json:"files,omitempty"`
-	MoreFiles   bool                              `json:"moreFiles"`
+	PullRequest github.MergedPullRequest `json:"pullRequest"`
+	FilesLoaded bool                     `json:"filesLoaded"`
+	Files       []github.PullRequestFile `json:"files,omitempty"`
+	MoreFiles   bool                     `json:"moreFiles"`
 }
 
 type Flow struct {
 	dex.FlowDefaults
-	connection githubconnector.Connection
+	connection github.Connection
 }
 
-func NewFlow(connection githubconnector.Connection) *Flow {
+func NewFlow(connection github.Connection) *Flow {
 	return &Flow{connection: connection}
 }
 
@@ -97,12 +97,12 @@ func (*Flow) GetFlowType() string {
 func (flow *Flow) GetSteps() []dex.StepDef {
 	return []dex.StepDef{
 		dex.DefineStartStep(startRepositoryChangesReport{}),
-		dex.DefineStep(githubconnector.NewListMergedPullRequestsStep(githubconnector.ListMergedPullRequestsStepConfig[Input]{
+		dex.DefineStep(github.NewListMergedPullRequestsStep(github.ListMergedPullRequestsStepConfig[Input]{
 			StepType: listMergedPullRequestsStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{GroupID: "github", GroupLabel: "GitHub", Explanation: "List the newest pull requests merged in the report window."},
 			Connection:  flow.connection,
-			MapToOperationInput: func(input Input) githubconnector.ListMergedPullRequestsInput {
-				return githubconnector.ListMergedPullRequestsInput{
+			MapToOperationInput: func(input Input) github.ListMergedPullRequestsInput {
+				return github.ListMergedPullRequestsInput{
 					Owner: input.Owner, Repository: input.Repository,
 					MergedAfter: input.WindowStart, MergedBefore: input.WindowEnd, PageSize: PullRequestPageSize,
 				}
@@ -110,24 +110,24 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Listed: sdkgo.GoTo(recordMergedPullRequests{}),
 		})),
 		dex.DefineStep(recordMergedPullRequests{}),
-		dex.DefineStep(githubconnector.NewListPullRequestFilesStep(githubconnector.ListPullRequestFilesStepConfig[PullRequestFilesRequest]{
+		dex.DefineStep(github.NewListPullRequestFilesStep(github.ListPullRequestFilesStepConfig[PullRequestFilesRequest]{
 			StepType: listPullRequestFilesStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{GroupID: "github", GroupLabel: "GitHub", Explanation: "List the files changed by one merged pull request."},
 			Connection:  flow.connection,
-			MapToOperationInput: func(request PullRequestFilesRequest) githubconnector.ListPullRequestFilesInput {
-				return githubconnector.ListPullRequestFilesInput{
+			MapToOperationInput: func(request PullRequestFilesRequest) github.ListPullRequestFilesInput {
+				return github.ListPullRequestFilesInput{
 					Owner: request.Owner, Repository: request.Repository, Number: request.Number, PageSize: FilePageSize,
 				}
 			},
 			Listed: sdkgo.GoTo(recordPullRequestFiles{}),
 		})),
 		dex.DefineStep(recordPullRequestFiles{}),
-		dex.DefineStep(githubconnector.NewListCommitsStep(githubconnector.ListCommitsStepConfig[Input]{
+		dex.DefineStep(github.NewListCommitsStep(github.ListCommitsStepConfig[Input]{
 			StepType: listCommitsStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{GroupID: "github", GroupLabel: "GitHub", Explanation: "List the newest default-branch commits in the report window."},
 			Connection:  flow.connection,
-			MapToOperationInput: func(input Input) githubconnector.ListCommitsInput {
-				return githubconnector.ListCommitsInput{
+			MapToOperationInput: func(input Input) github.ListCommitsInput {
+				return github.ListCommitsInput{
 					Owner: input.Owner, Repository: input.Repository,
 					Since: input.WindowStart, Until: input.WindowEnd, PageSize: CommitPageSize,
 				}
@@ -201,12 +201,12 @@ func (startRepositoryChangesReport) Execute(ctx dex.Context, input Input) (*dex.
 // dex:group group-id:report group-label:"Report"
 // dex:explanation text:"Record the merged pull requests, then read files for the newest ones."
 type recordMergedPullRequests struct {
-	dex.StepDefaultsNoWaitFor[githubconnector.ListMergedPullRequestsResult]
+	dex.StepDefaultsNoWaitFor[github.ListMergedPullRequestsResult]
 }
 
 func (recordMergedPullRequests) GetStepType() string { return recordMergedPullRequestsStepType }
 
-func (recordMergedPullRequests) Execute(ctx dex.Context, result githubconnector.ListMergedPullRequestsResult) (*dex.StepDecision, error) {
+func (recordMergedPullRequests) Execute(ctx dex.Context, result github.ListMergedPullRequestsResult) (*dex.StepDecision, error) {
 	report, err := reportAttribute.Get(ctx)
 	if err != nil {
 		return nil, err
@@ -234,12 +234,12 @@ func (recordMergedPullRequests) Execute(ctx dex.Context, result githubconnector.
 // dex:group group-id:report group-label:"Report"
 // dex:explanation text:"Record one pull request's files, then read the next pull request or the commits."
 type recordPullRequestFiles struct {
-	dex.StepDefaultsNoWaitFor[githubconnector.ListPullRequestFilesResult]
+	dex.StepDefaultsNoWaitFor[github.ListPullRequestFilesResult]
 }
 
 func (recordPullRequestFiles) GetStepType() string { return recordPullRequestFilesStepType }
 
-func (recordPullRequestFiles) Execute(ctx dex.Context, result githubconnector.ListPullRequestFilesResult) (*dex.StepDecision, error) {
+func (recordPullRequestFiles) Execute(ctx dex.Context, result github.ListPullRequestFilesResult) (*dex.StepDecision, error) {
 	report, err := reportAttribute.Get(ctx)
 	if err != nil {
 		return nil, err
@@ -267,14 +267,14 @@ func (recordPullRequestFiles) Execute(ctx dex.Context, result githubconnector.Li
 // dex:group group-id:report group-label:"Report"
 // dex:explanation text:"Record the commits and complete the repository change report."
 type completeRepositoryChangesReport struct {
-	dex.StepDefaultsNoWaitFor[githubconnector.ListCommitsResult]
+	dex.StepDefaultsNoWaitFor[github.ListCommitsResult]
 }
 
 func (completeRepositoryChangesReport) GetStepType() string {
 	return completeRepositoryChangesReportStepType
 }
 
-func (completeRepositoryChangesReport) Execute(ctx dex.Context, result githubconnector.ListCommitsResult) (*dex.StepDecision, error) {
+func (completeRepositoryChangesReport) Execute(ctx dex.Context, result github.ListCommitsResult) (*dex.StepDecision, error) {
 	report, err := reportAttribute.Get(ctx)
 	if err != nil {
 		return nil, err

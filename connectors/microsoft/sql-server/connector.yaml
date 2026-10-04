@@ -5,7 +5,7 @@ metadata:
   displayName: Microsoft SQL Server
   description: Run one parameterized read query, or one transactional write statement, against Microsoft SQL Server, Azure SQL Database, or Azure SQL Managed Instance.
   company: Microsoft
-  version: v0.1.0
+  version: v0.21.0
 spec:
   provider: microsoft-sql-server
   codegen:
