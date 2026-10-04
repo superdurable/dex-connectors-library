@@ -67,7 +67,8 @@ func (provider *CredentialProvider[C]) ResolveContext(ctx context.Context, call 
 	return value, classifyError(err)
 }
 
-// ResolveWithRefresh refreshes only after known expiry and winning durable admission.
+// ResolveWithRefresh refreshes known-expired credentials and those the driver requires, such as a missing or
+// soon-expiring access token, after winning durable admission.
 func (provider *RefreshingCredentialProvider[C]) ResolveWithRefresh(ctx context.Context, call sdkgo.Call, driver sdkgo.CredentialRefreshDriver[C]) (C, error) {
 	var zero C
 	if err := provider.validateCall(call); err != nil {
@@ -76,7 +77,7 @@ func (provider *RefreshingCredentialProvider[C]) ResolveWithRefresh(ctx context.
 	if driver == nil {
 		return zero, errors.New("credential refresh driver is required")
 	}
-	value, err := provider.resolver.ResolveWithRefresh(ctx, refreshAdapter[C]{driver: driver}.refresh)
+	value, err := provider.resolver.ResolveWithRefresh(ctx, refreshAdapter[C]{driver: driver})
 	return value, classifyError(err)
 }
 
@@ -89,7 +90,7 @@ func (provider *RefreshingCredentialProvider[C]) ResolveAfterRejection(ctx conte
 	if driver == nil {
 		return zero, errors.New("credential refresh driver is required")
 	}
-	value, err := provider.resolver.ResolveAfterRejection(ctx, refreshAdapter[C]{driver: driver}.refresh)
+	value, err := provider.resolver.ResolveAfterRejection(ctx, refreshAdapter[C]{driver: driver})
 	return value, classifyError(err)
 }
 
@@ -107,13 +108,22 @@ type refreshAdapter[C any] struct {
 	driver sdkgo.CredentialRefreshDriver[C]
 }
 
-// refresh marks a driver's reauthorization-required failure for projectconfig, which cannot import sdkgo.
-func (adapter refreshAdapter[C]) refresh(ctx context.Context, state projectconfig.RefreshState[C]) (projectconfig.RefreshResult[C], error) {
-	result, err := adapter.driver.Refresh(ctx, sdkgo.CredentialRefreshState[C]{Credentials: state.Credentials, ExpiresAt: state.ExpiresAt, Now: state.Now})
+// RefreshRequired asks the connector's driver, which knows its provider's token rules.
+func (adapter refreshAdapter[C]) RefreshRequired(state projectconfig.RefreshState[C]) bool {
+	return adapter.driver.RefreshRequired(refreshState(state))
+}
+
+// Refresh marks a driver's reauthorization-required failure for projectconfig, which cannot import sdkgo.
+func (adapter refreshAdapter[C]) Refresh(ctx context.Context, state projectconfig.RefreshState[C]) (projectconfig.RefreshResult[C], error) {
+	result, err := adapter.driver.Refresh(ctx, refreshState(state))
 	if sdkgo.IsReauthorizationRequired(err) {
 		err = fmt.Errorf("%w: %w", projectconfig.ErrReauthorizationRequired, err)
 	}
 	return projectconfig.RefreshResult[C]{Credentials: result.Credentials, ExpiresAt: result.ExpiresAt}, err
+}
+
+func refreshState[C any](state projectconfig.RefreshState[C]) sdkgo.CredentialRefreshState[C] {
+	return sdkgo.CredentialRefreshState[C]{Credentials: state.Credentials, ExpiresAt: state.ExpiresAt, Now: state.Now}
 }
 
 func classifyError(err error) error {

@@ -82,10 +82,12 @@ connector uses `NewCredentialProvider(store, key, decode)`. The generated codecs
 validate and preserve the complete credential, including a prior refresh token
 omitted by a provider.
 
-The provider only refreshes when the authoritative access expiry is known and
-has elapsed. Unknown expiry, a driver's early-refresh skew, and an unclassified
-HTTP 401 do not trigger rotation. A refresh driver's reauthorization-required
-error fences the connection. Any other failure, and an ambiguous or canceled
+The provider refreshes before a call when the stored access expiry has
+elapsed or the connector's driver requires it: a missing access token (such as
+an app-only connection saved without one), an unknown expiry the provider
+always sets, or an expiry within the driver's skew. An unclassified HTTP 401
+refreshes only when the stored expiry has elapsed. A refresh driver's
+reauthorization-required error fences the connection. Any other failure, and an ambiguous or canceled
 request, keeps the prior credential `READY` and returns `ErrRefreshFailed`; the
 next call refreshes again. Provider callbacks must honor context cancellation;
 one request is bounded by 30 seconds. Concurrent callers join via bounded reads

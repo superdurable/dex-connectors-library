@@ -334,6 +334,7 @@ func validateMaterial(material CredentialMaterial) error {
 	}
 	return nil
 }
+
 // DecodeCredentials strictly decodes one stored credential object into a connector's credential fields.
 // Unknown members and trailing values are rejected. Generated connector code is its caller.
 func DecodeCredentials(contents json.RawMessage, destination any) error {
