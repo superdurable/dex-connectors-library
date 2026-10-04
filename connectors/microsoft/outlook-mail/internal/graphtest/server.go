@@ -147,8 +147,9 @@ func Start(t testing.TB, config ServerConfig) *Server {
 	server.httpServer = httptest.NewServer(http.HandlerFunc(server.serveHTTP))
 	server.URL = server.httpServer.URL
 	t.Cleanup(func() {
-		server.inFlight.Wait()
+		// Close stops new requests; hijacked handlers still need the explicit wait.
 		server.httpServer.Close()
+		server.inFlight.Wait()
 	})
 	return server
 }

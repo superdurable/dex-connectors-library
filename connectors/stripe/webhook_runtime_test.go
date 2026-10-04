@@ -15,6 +15,7 @@ import (
 	"github.com/superdurable/dex-connectors-library/connectors/stripe"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/webhooktrigger"
 )
 
 // stripeProjectConfiguration is the project configuration Dex Web saves for the connection and its bindings.
@@ -56,6 +57,10 @@ func TestCheckoutSessionWebhookRuntimeRecordsEachBindingBeforeAcknowledging(t *t
 	require.NoError(t, err)
 	connection, err := stripe.NewConnection(client, stripeConnection)
 	require.NoError(t, err)
+	handler, err := connection.CheckoutSessionWebhookHandler()
+	require.NoError(t, err)
+	endpoint, hasWebhookEndpoint := handler.(*webhooktrigger.Endpoint[stripe.Credentials, stripe.CheckoutSessionEvent])
+	require.True(t, hasWebhookEndpoint)
 	unusedTarget := sdkgo.TriggerTargetFunc[stripe.CheckoutSessionEvent](func(context.Context, sdkgo.TriggerEvent[stripe.CheckoutSessionEvent]) error {
 		return nil
 	})
@@ -82,9 +87,11 @@ func TestCheckoutSessionWebhookRuntimeRecordsEachBindingBeforeAcknowledging(t *t
 		cancel()
 		require.ErrorIs(t, <-runFinished, context.Canceled)
 	}()
+	// A filtering binding can acknowledge before the matching binding starts.
 	require.Eventually(t, func() bool {
-		return serveSignedWebhook(runtime, body, "whsec_example", now) == http.StatusOK
+		return endpoint.RunningSourceCount() == len(inboxes.targets)
 	}, 5*time.Second, 10*time.Millisecond)
+	require.Equal(t, http.StatusOK, serveSignedWebhook(runtime, body, "whsec_example", now))
 	require.Eventually(t, func() bool { return len(inboxes.targets[0].calls()) == 2 }, 5*time.Second, 10*time.Millisecond)
 	require.Equal(t, []string{"prepare:evt_paid", "handle:evt_paid"}, inboxes.targets[0].calls())
 	require.Empty(t, inboxes.targets[1].calls(), "the expirations binding filters a payment event")
