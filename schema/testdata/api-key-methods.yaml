@@ -1,24 +1,23 @@
 apiVersion: connectors.dex.dev/v1alpha1
 kind: Connector
 metadata:
-  name: multiple-auth-selection-fixture
-  displayName: Multiple Auth Selection Fixture
-  description: Deterministic fixture for one connection that holds several API-key providers.
+  name: api-key-methods-fixture
+  displayName: API Key Methods Fixture
+  description: Deterministic fixture for one connection that selects one of several API-key providers.
   company: Example
   version: v0.1.0
 spec:
   provider: example
-  codegen: {go: {package: multipleauthselection}}
+  codegen: {go: {package: apikeymethods}}
   configuration:
     fields:
       - name: model
         goName: Model
         type: string
-        description: Default model written provider/model. Blank uses the first added provider's default model.
+        description: Default model ID of the selected provider. Blank uses the provider's default model.
         required: false
         studioUnit: {unit: modelPicker, port: model}
   auth:
-    selection: multiple
     methodLabel: Provider
     defaultMethod: openai
     methods:
@@ -71,7 +70,7 @@ spec:
     units:
       - id: modelPicker
         goName: ModelPicker
-        description: Choose one model from the providers this connection added.
+        description: Choose one model of the selected provider.
         backendCapabilities: [example.models-list]
         outputs:
           - {name: model, goName: Model, type: string}

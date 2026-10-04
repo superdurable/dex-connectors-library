@@ -101,6 +101,9 @@ func catalogCommand(args []string) error {
 	if err != nil {
 		return err
 	}
+	if err := validateLockstepVersions(entries); err != nil {
+		return err
+	}
 	if *check {
 		return nil
 	}
@@ -521,33 +524,21 @@ func gitRevisionCommit(repositoryRoot string, revision string) (string, error) {
 	return strings.TrimSpace(string(output)), nil
 }
 
+// validateConnectorVersionTransition reports whether target is a release after baseline, the latest released
+// version. Connectors release in lockstep, so a connector skips the versions it was not released at, and a new
+// connector starts at the current lockstep version.
 func validateConnectorVersionTransition(baseline, target string) (bool, error) {
 	if !connectorVersionPattern.MatchString(target) {
 		return false, fmt.Errorf("invalid target connector version: %s", target)
 	}
 	if baseline == "" {
-		if target != "v0.1.0" {
-			return false, fmt.Errorf("first connector release must be v0.1.0, got %s", target)
-		}
 		return true, nil
 	}
 	comparison := compareConnectorVersions(target, baseline)
-	if comparison == 0 {
-		return false, nil
-	}
 	if comparison < 0 {
 		return false, fmt.Errorf("connector version %s is behind latest release %s", target, baseline)
 	}
-	baselineParts := connectorVersionParts(baseline)
-	allowed := map[string]bool{
-		fmt.Sprintf("v%d.%d.%d", baselineParts[0], baselineParts[1], baselineParts[2]+1): true,
-		fmt.Sprintf("v%d.%d.0", baselineParts[0], baselineParts[1]+1):                    true,
-		fmt.Sprintf("v%d.0.0", baselineParts[0]+1):                                       true,
-	}
-	if !allowed[target] {
-		return false, fmt.Errorf("connector version %s must be the next patch, minor, or major after %s", target, baseline)
-	}
-	return true, nil
+	return comparison > 0, nil
 }
 
 func compareConnectorVersions(left, right string) int {
@@ -575,4 +566,20 @@ func connectorVersionParts(version string) [3]int {
 		parts[index] = part
 	}
 	return parts
+}
+
+// validateLockstepVersions requires every connector to declare one release version. The Connector SDK and every
+// connector release together under that version, so an application never mixes releases built for different SDKs.
+func validateLockstepVersions(entries []connectorDirectoryEntry) error {
+	if len(entries) == 0 {
+		return nil
+	}
+	version := entries[0].Manifest.Metadata.Version
+	for _, entry := range entries[1:] {
+		if entry.Manifest.Metadata.Version != version {
+			return fmt.Errorf("connector %s declares %s, but every connector declares the same release version (%s declares %s)",
+				entry.Directory, entry.Manifest.Metadata.Version, entries[0].Directory, version)
+		}
+	}
+	return nil
 }

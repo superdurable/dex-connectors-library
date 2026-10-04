@@ -191,8 +191,8 @@ func TestDecodeMultiAuthManifestFixture(t *testing.T) {
 	}
 }
 
-func TestDecodeMultipleAuthSelectionFixture(t *testing.T) {
-	file, err := os.Open("testdata/multiple-auth-selection.yaml")
+func TestDecodeAPIKeyMethodsFixture(t *testing.T) {
+	file, err := os.Open("testdata/api-key-methods.yaml")
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, file.Close()) })
 
@@ -200,8 +200,6 @@ func TestDecodeMultipleAuthSelectionFixture(t *testing.T) {
 
 	require.NoError(t, err)
 	auth := manifest.Spec.Auth
-	require.Equal(t, schema.AuthSelectionMultiple, auth.Selection)
-	require.True(t, auth.IsMultipleSelection())
 	require.Equal(t, "Provider", auth.MethodLabel)
 	require.Equal(t, []string{"openai", "anthropic", "gemini"}, []string{auth.Methods[0].ID, auth.Methods[1].ID, auth.Methods[2].ID})
 	require.Equal(t, []schema.Field{{
@@ -213,9 +211,9 @@ func TestDecodeMultipleAuthSelectionFixture(t *testing.T) {
 	require.Equal(t, []string{"openai_api_key", "anthropic_api_key", "gemini_api_key"}, []string{auth.Fields[0].Name, auth.Fields[1].Name, auth.Fields[2].Name})
 }
 
-func TestDecodeSingleSelectionAllowsMethodLabelAndMethodConfiguration(t *testing.T) {
+func TestDecodeMethodLabelAndMethodConfiguration(t *testing.T) {
 	contents := readManifestFixture(t, "testdata/multi-auth.yaml")
-	contents = replaceOnce(t, contents, "    defaultMethod: google-oauth\n", "    selection: single\n    methodLabel: Sign-in method\n    defaultMethod: google-oauth\n")
+	contents = replaceOnce(t, contents, "    defaultMethod: google-oauth\n", "    methodLabel: Sign-in method\n    defaultMethod: google-oauth\n")
 	contents = replaceOnce(t, contents, serviceAccountGuide, `        configuration:
           fields:
             - {name: tokenEndpoint, goName: TokenEndpoint, type: url, description: Service-account token endpoint., required: true}
@@ -224,13 +222,12 @@ func TestDecodeSingleSelectionAllowsMethodLabelAndMethodConfiguration(t *testing
 	manifest, err := schema.Decode(strings.NewReader(contents))
 
 	require.NoError(t, err)
-	require.False(t, manifest.Spec.Auth.IsMultipleSelection())
 	require.Equal(t, "Sign-in method", manifest.Spec.Auth.MethodLabel)
 	require.True(t, manifest.Spec.Auth.Methods[1].Configuration.Fields[0].Required)
 }
 
 func TestDecodeAuthMethodLabelLengthBoundary(t *testing.T) {
-	contents := replaceOnce(t, readManifestFixture(t, "testdata/multiple-auth-selection.yaml"), "methodLabel: Provider", "methodLabel: "+strings.Repeat("é", 32))
+	contents := replaceOnce(t, readManifestFixture(t, "testdata/api-key-methods.yaml"), "methodLabel: Provider", "methodLabel: "+strings.Repeat("é", 32))
 
 	manifest, err := schema.Decode(strings.NewReader(contents))
 
@@ -242,7 +239,7 @@ const serviceAccountGuide = `        guide:
           startURL: https://console.cloud.google.com/iam-admin/serviceaccounts
 `
 
-func TestRejectInvalidAuthMethodSelectionManifests(t *testing.T) {
+func TestRejectInvalidAuthMethodManifests(t *testing.T) {
 	type manifestReplacement struct{ old, new string }
 	testCases := []struct {
 		name         string
@@ -251,100 +248,72 @@ func TestRejectInvalidAuthMethodSelectionManifests(t *testing.T) {
 		message      string
 	}{
 		{
-			name: "selection without methods", fixture: "testdata/google-oauth.yaml",
-			replacements: []manifestReplacement{{"    type: oauth2\n", "    selection: single\n    type: oauth2\n"}},
-			message:      "spec.auth.selection requires spec.auth methods",
-		},
-		{
 			name: "method label without methods", fixture: "testdata/google-oauth.yaml",
 			replacements: []manifestReplacement{{"    type: oauth2\n", "    methodLabel: Account\n    type: oauth2\n"}},
 			message:      "spec.auth.methodLabel requires spec.auth methods",
 		},
 		{
-			name: "unknown selection", fixture: "testdata/multiple-auth-selection.yaml",
-			replacements: []manifestReplacement{{"selection: multiple", "selection: several"}},
-			message:      "spec.auth.selection must be single or multiple",
+			name: "removed selection key", fixture: "testdata/api-key-methods.yaml",
+			replacements: []manifestReplacement{{"    methodLabel: Provider\n", "    selection: multiple\n    methodLabel: Provider\n"}},
+			message:      "field selection not found in type schema.Auth",
 		},
 		{
-			name: "multiple selection with one method", fixture: "testdata/multi-auth.yaml",
-			replacements: []manifestReplacement{
-				{"    defaultMethod: google-oauth\n", "    selection: multiple\n    defaultMethod: workspace-service-account\n"},
-				{multiAuthGoogleOAuthMethod, ""},
-			},
-			message: "spec.auth selection multiple requires at least two auth methods",
-		},
-		{
-			name: "multiple selection with OAuth", fixture: "testdata/multi-auth.yaml",
-			replacements: []manifestReplacement{{"    defaultMethod: google-oauth\n", "    selection: multiple\n    defaultMethod: google-oauth\n"}},
-			message:      "spec.auth selection multiple requires every auth method to use apiKey; google-oauth uses oauth2",
-		},
-		{
-			name: "multiple selection with a service account", fixture: "testdata/multi-auth.yaml",
-			replacements: []manifestReplacement{{"    defaultMethod: google-oauth\n", "    selection: multiple\n    defaultMethod: google-oauth\n"}},
-			message:      "spec.auth selection multiple requires every auth method to use apiKey; workspace-service-account uses serviceAccount",
-		},
-		{
-			name: "multiple selection still needs a default method", fixture: "testdata/multiple-auth-selection.yaml",
+			name: "several methods still need a default method", fixture: "testdata/api-key-methods.yaml",
 			replacements: []manifestReplacement{{"    defaultMethod: openai\n", ""}},
 			message:      "spec.auth.defaultMethod must identify a declared auth method",
 		},
 		{
-			name: "method label too long", fixture: "testdata/multiple-auth-selection.yaml",
+			name: "method label too long", fixture: "testdata/api-key-methods.yaml",
 			replacements: []manifestReplacement{{"methodLabel: Provider", "methodLabel: " + strings.Repeat("p", 33)}},
 			message:      "spec.auth.methodLabel must be 1-32 characters without surrounding whitespace",
 		},
 		{
-			name: "method label with surrounding whitespace", fixture: "testdata/multiple-auth-selection.yaml",
+			name: "method label with surrounding whitespace", fixture: "testdata/api-key-methods.yaml",
 			replacements: []manifestReplacement{{"methodLabel: Provider", `methodLabel: " Provider"`}},
 			message:      "spec.auth.methodLabel must be 1-32 characters without surrounding whitespace",
 		},
 		{
-			name: "secret method configuration", fixture: "testdata/multiple-auth-selection.yaml",
+			name: "secret method configuration", fixture: "testdata/api-key-methods.yaml",
 			replacements: []manifestReplacement{{"goName: AnthropicWorkspaceID, type: string", "goName: AnthropicWorkspaceID, type: secretString"}},
 			message:      "spec.auth method anthropic configuration fields require goName, supported type, and description",
 		},
 		{
-			name: "method configuration repeats spec configuration", fixture: "testdata/multiple-auth-selection.yaml",
+			name: "method configuration repeats spec configuration", fixture: "testdata/api-key-methods.yaml",
 			replacements: []manifestReplacement{{"{name: anthropicWorkspaceId, goName: AnthropicWorkspaceID,", "{name: model, goName: AnthropicWorkspaceID,"}},
 			message:      "configuration field model must be unique across spec.configuration and auth method configuration",
 		},
 		{
-			name: "method configuration repeats another method", fixture: "testdata/multiple-auth-selection.yaml",
+			name: "method configuration repeats another method", fixture: "testdata/api-key-methods.yaml",
 			replacements: []manifestReplacement{{"{name: anthropicWorkspaceId, goName: AnthropicWorkspaceID,", "{name: openaiProjectId, goName: AnthropicWorkspaceID,"}},
 			message:      "configuration field openaiProjectId must be unique across spec.configuration and auth method configuration",
 		},
 		{
-			name: "method configuration repeats a Go name", fixture: "testdata/multiple-auth-selection.yaml",
+			name: "method configuration repeats a Go name", fixture: "testdata/api-key-methods.yaml",
 			replacements: []manifestReplacement{{"goName: AnthropicWorkspaceID,", "goName: Model,"}},
 			message:      "configuration field goName Model must be unique across spec.configuration and auth method configuration",
 		},
 		{
-			name: "method configuration repeats a credential field", fixture: "testdata/multiple-auth-selection.yaml",
+			name: "method configuration repeats a credential field", fixture: "testdata/api-key-methods.yaml",
 			replacements: []manifestReplacement{{"{name: anthropicWorkspaceId,", "{name: gemini_api_key,"}},
 			message:      "auth method anthropic configuration field gemini_api_key cannot repeat a credential field name",
 		},
 		{
-			name: "reserved auth_methods credential name", fixture: "testdata/multiple-auth-selection.yaml",
-			replacements: []manifestReplacement{{"{name: gemini_api_key,", "{name: auth_methods,"}},
-			message:      "auth_method, auth_methods, AuthMethodID, and AuthMethodIDs are reserved for auth method selection",
-		},
-		{
-			name: "reserved AuthMethodIDs credential Go name", fixture: "testdata/multiple-auth-selection.yaml",
-			replacements: []manifestReplacement{{"goName: GeminiAPIKey,", "goName: AuthMethodIDs,"}},
-			message:      "auth_method, auth_methods, AuthMethodID, and AuthMethodIDs are reserved for auth method selection",
-		},
-		{
-			name: "reserved auth_method credential name", fixture: "testdata/multiple-auth-selection.yaml",
+			name: "reserved auth_method credential name", fixture: "testdata/api-key-methods.yaml",
 			replacements: []manifestReplacement{{"{name: gemini_api_key,", "{name: auth_method,"}},
-			message:      "auth_method, auth_methods, AuthMethodID, and AuthMethodIDs are reserved for auth method selection",
+			message:      "auth_method and AuthMethodID are reserved for the selected auth method",
 		},
 		{
-			name: "Studio unit on a credential field", fixture: "testdata/multiple-auth-selection.yaml",
+			name: "reserved AuthMethodID credential Go name", fixture: "testdata/api-key-methods.yaml",
+			replacements: []manifestReplacement{{"goName: GeminiAPIKey,", "goName: AuthMethodID,"}},
+			message:      "auth_method and AuthMethodID are reserved for the selected auth method",
+		},
+		{
+			name: "Studio unit on a credential field", fixture: "testdata/api-key-methods.yaml",
 			replacements: []manifestReplacement{{"description: Secret Gemini API key., required: true}", "description: Secret Gemini API key., required: true, studioUnit: {unit: modelPicker, port: model}}"}},
 			message:      "spec.auth method gemini field gemini_api_key: studioUnit is allowed only on spec.configuration fields",
 		},
 		{
-			name: "Studio unit on a method configuration field", fixture: "testdata/multiple-auth-selection.yaml",
+			name: "Studio unit on a method configuration field", fixture: "testdata/api-key-methods.yaml",
 			replacements: []manifestReplacement{{"description: OpenAI project ID that owns usage., required: true}", "description: OpenAI project ID that owns usage., required: true, studioUnit: {unit: modelPicker, port: model}}"}},
 			message:      "spec.auth method openai configuration field openaiProjectId: studioUnit is allowed only on spec.configuration fields",
 		},
@@ -354,17 +323,17 @@ func TestRejectInvalidAuthMethodSelectionManifests(t *testing.T) {
 			message:      "spec.auth field access_token: studioUnit is allowed only on spec.configuration fields",
 		},
 		{
-			name: "Studio unit without spec.studio", fixture: "testdata/multiple-auth-selection.yaml",
-			replacements: []manifestReplacement{{multipleAuthSelectionStudio, ""}},
+			name: "Studio unit without spec.studio", fixture: "testdata/api-key-methods.yaml",
+			replacements: []manifestReplacement{{apiKeyMethodsStudio, ""}},
 			message:      "configuration field model studioUnit must name a declared spec.studio unit",
 		},
 		{
-			name: "Studio unit is undeclared", fixture: "testdata/multiple-auth-selection.yaml",
+			name: "Studio unit is undeclared", fixture: "testdata/api-key-methods.yaml",
 			replacements: []manifestReplacement{{"studioUnit: {unit: modelPicker, port: model}", "studioUnit: {unit: modelChooser, port: model}"}},
 			message:      "configuration field model studioUnit must name a declared spec.studio unit",
 		},
 		{
-			name: "Studio unit port is an input", fixture: "testdata/multiple-auth-selection.yaml",
+			name: "Studio unit port is an input", fixture: "testdata/api-key-methods.yaml",
 			replacements: []manifestReplacement{
 				{"studioUnit: {unit: modelPicker, port: model}", "studioUnit: {unit: modelPicker, port: provider}"},
 				{"        outputs:\n          - {name: model,", "        inputs:\n          - {name: provider, goName: Provider, type: string}\n        outputs:\n          - {name: model,"},
@@ -372,12 +341,12 @@ func TestRejectInvalidAuthMethodSelectionManifests(t *testing.T) {
 			message: "configuration field model studioUnit port must name an output port of studio unit modelPicker",
 		},
 		{
-			name: "Studio unit port type differs", fixture: "testdata/multiple-auth-selection.yaml",
+			name: "Studio unit port type differs", fixture: "testdata/api-key-methods.yaml",
 			replacements: []manifestReplacement{{"- {name: model, goName: Model, type: string}", "- {name: model, goName: Model, type: stringList}"}},
 			message:      "configuration field model studioUnit port model type stringList must equal field type string",
 		},
 		{
-			name: "Studio unit declares an unknown key", fixture: "testdata/multiple-auth-selection.yaml",
+			name: "Studio unit declares an unknown key", fixture: "testdata/api-key-methods.yaml",
 			replacements: []manifestReplacement{{"studioUnit: {unit: modelPicker, port: model}", "studioUnit: {unit: modelPicker, port: model, label: Model}"}},
 			message:      "field label not found",
 		},
@@ -396,34 +365,7 @@ func TestRejectInvalidAuthMethodSelectionManifests(t *testing.T) {
 	}
 }
 
-const multiAuthGoogleOAuthMethod = `      - id: google-oauth
-        displayName: Google OAuth
-        description: Authorize an individual Google account.
-        recommended: true
-        type: oauth2
-        connectionKind: example-google-oauth
-        fields:
-          - {name: oauth_client_id, goName: OAuthClientID, type: string, description: OAuth application client ID., required: true}
-          - {name: oauth_client_secret, goName: OAuthClientSecret, type: secretString, description: OAuth application client secret., required: true}
-          - {name: access_token, goName: AccessToken, type: secretString, description: Short-lived access token., required: true}
-          - {name: refresh_token, goName: RefreshToken, type: secretString, description: Long-lived refresh token., required: true}
-        guide:
-          startURL: https://console.cloud.google.com/apis/credentials
-          steps: [Create a Web application and copy its client credentials.]
-        oauth2:
-          authorizationEndpoint: https://accounts.google.com/o/oauth2/v2/auth
-          tokenEndpoint: https://oauth2.googleapis.com/token
-          authorizationParameters: {access_type: offline, prompt: consent}
-          clientIDCredential: oauth_client_id
-          clientSecretCredential: oauth_client_secret
-          scopes: [openid]
-          credentialMappings:
-            - {credential: access_token, source: access_token}
-            - {credential: refresh_token, source: refresh_token}
-          pkce: true
-`
-
-const multipleAuthSelectionStudio = `  studio:
+const apiKeyMethodsStudio = `  studio:
     setup:
       entrypoint: index.html
       hostApiRange: ">=0.2.0 <0.3.0"
@@ -433,7 +375,7 @@ const multipleAuthSelectionStudio = `  studio:
     units:
       - id: modelPicker
         goName: ModelPicker
-        description: Choose one model from the providers this connection added.
+        description: Choose one model of the selected provider.
         backendCapabilities: [example.models-list]
         outputs:
           - {name: model, goName: Model, type: string}

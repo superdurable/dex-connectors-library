@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-package multipleauthselection
+package apikeymethods
 
 import (
 	"encoding/json"
@@ -10,11 +10,12 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/localconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
-const ConnectorID = "multiple-auth-selection-fixture"
+const ConnectorID = "api-key-methods-fixture"
 
 const (
 	UIUnitModelPicker      = "modelPicker"
@@ -36,41 +37,51 @@ type Config struct {
 }
 
 type Credentials struct {
-	AuthMethodIDs   []string
+	AuthMethodID    string
 	OpenAIAPIKey    sdkgo.SecretString
 	AnthropicAPIKey sdkgo.SecretString
 	GeminiAPIKey    sdkgo.SecretString
 }
+
+// CredentialSource is the credential provider New requires: this connector never refreshes its credentials.
+type CredentialSource = sdkgo.CredentialProvider[Credentials]
 
 type Connection struct {
 	client    *Client
 	reference sdkgo.ConnectionRef
 }
 
+// NewConnection wraps a client built with New, such as a test client with a static credential provider.
+// Applications open declared connections with NewProjectConnection instead.
 func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, error) {
 	if client == nil {
-		return Connection{}, fmt.Errorf("multiple-auth-selection-fixture connector client is required")
+		return Connection{}, fmt.Errorf("api-key-methods-fixture connector client is required")
 	}
 	if err := reference.Validate(); err != nil {
-		return Connection{}, fmt.Errorf("multiple-auth-selection-fixture connector connection: %w", err)
+		return Connection{}, fmt.Errorf("api-key-methods-fixture connector connection: %w", err)
 	}
 	return Connection{client: client, reference: reference}, nil
 }
 
-// NewLocalConnection loads startup configuration and reloads credentials before every provider call.
-func NewLocalConnection(store *localconfig.Store, connectionName string, options ...Option) (Connection, error) {
-	if store == nil {
-		return Connection{}, fmt.Errorf("local connector configuration store is required")
+// NewProjectConnection opens the connection that dex-app.yaml declares as connectionName from the
+// loaded project configuration. It reads ordinary settings now and resolves credentials during each call.
+func NewProjectConnection(project *projectconfig.LoadedProject, connectionName string, options ...Option) (Connection, error) {
+	if project == nil {
+		return Connection{}, fmt.Errorf("api-key-methods-fixture connection requires the loaded project configuration")
 	}
 	reference := sdkgo.ConnectionRef{Provider: "example", Name: connectionName}
 	if err := reference.Validate(); err != nil {
-		return Connection{}, fmt.Errorf("multiple-auth-selection-fixture local connection: %w", err)
+		return Connection{}, fmt.Errorf("api-key-methods-fixture connection: %w", err)
 	}
+	key := projectconfig.ConnectionKey{ConnectorID: ConnectorID, ConnectionName: connectionName}
 	var config Config
-	if err := store.DecodeConfiguration(ConnectorID, connectionName, &config); err != nil {
+	if err := project.Configuration.DecodeConnectionConfiguration(key, &config); err != nil {
+		return Connection{}, fmt.Errorf("api-key-methods-fixture connection %q settings: %w", connectionName, err)
+	}
+	credentials, err := provider.NewCredentialProvider(project.Connections, key, decodeCredentials)
+	if err != nil {
 		return Connection{}, err
 	}
-	credentials := localconfig.NewCredentialProvider(store, ConnectorID, connectionName, decodeLocalCredentials)
 	client, err := New(config, credentials, options...)
 	if err != nil {
 		return Connection{}, err
@@ -78,18 +89,18 @@ func NewLocalConnection(store *localconfig.Store, connectionName string, options
 	return NewConnection(client, reference)
 }
 
-func decodeLocalCredentials(contents json.RawMessage) (Credentials, error) {
+func decodeCredentials(contents json.RawMessage) (Credentials, error) {
 	var fields struct {
-		AuthMethodIDs   []string `json:"auth_methods"`
-		OpenAIAPIKey    string   `json:"openai_api_key"`
-		AnthropicAPIKey string   `json:"anthropic_api_key"`
-		GeminiAPIKey    string   `json:"gemini_api_key"`
+		AuthMethodID    string `json:"auth_method"`
+		OpenAIAPIKey    string `json:"openai_api_key"`
+		AnthropicAPIKey string `json:"anthropic_api_key"`
+		GeminiAPIKey    string `json:"gemini_api_key"`
 	}
-	if err := localconfig.DecodeCredentials(contents, &fields); err != nil {
+	if err := projectconfig.DecodeCredentials(contents, &fields); err != nil {
 		return Credentials{}, err
 	}
 	credentials := Credentials{
-		AuthMethodIDs:   fields.AuthMethodIDs,
+		AuthMethodID:    fields.AuthMethodID,
 		OpenAIAPIKey:    sdkgo.NewSecretString(fields.OpenAIAPIKey),
 		AnthropicAPIKey: sdkgo.NewSecretString(fields.AnthropicAPIKey),
 		GeminiAPIKey:    sdkgo.NewSecretString(fields.GeminiAPIKey),
@@ -99,22 +110,22 @@ func decodeLocalCredentials(contents json.RawMessage) (Credentials, error) {
 
 func (connection Connection) validate() error {
 	if connection.client == nil {
-		return fmt.Errorf("multiple-auth-selection-fixture connector connection is required")
+		return fmt.Errorf("api-key-methods-fixture connector connection is required")
 	}
 	return connection.reference.Validate()
 }
 
 func (Connection) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("multiple-auth-selection-fixture connector connections cannot be serialized")
+	return nil, fmt.Errorf("api-key-methods-fixture connector connections cannot be serialized")
 }
 func (Connection) MarshalText() ([]byte, error) {
-	return nil, fmt.Errorf("multiple-auth-selection-fixture connector connections cannot be serialized")
+	return nil, fmt.Errorf("api-key-methods-fixture connector connections cannot be serialized")
 }
 func (Connection) MarshalYAML() (any, error) {
-	return nil, fmt.Errorf("multiple-auth-selection-fixture connector connections cannot be serialized")
+	return nil, fmt.Errorf("api-key-methods-fixture connector connections cannot be serialized")
 }
-func (Connection) String() string   { return "multipleauthselection.Connection{[REDACTED]}" }
-func (Connection) GoString() string { return "multipleauthselection.Connection{[REDACTED]}" }
+func (Connection) String() string   { return "apikeymethods.Connection{[REDACTED]}" }
+func (Connection) GoString() string { return "apikeymethods.Connection{[REDACTED]}" }
 
 func DefaultConfig() Config {
 	return Config{
@@ -140,42 +151,23 @@ func (config Config) Validate() error {
 }
 
 func (credentials Credentials) Validate() error {
-	if len(credentials.AuthMethodIDs) == 0 {
-		return fmt.Errorf("credential auth_methods is required")
-	}
-	selectedAuthMethodIDs := make(map[string]bool, len(credentials.AuthMethodIDs))
-	for _, authMethodID := range credentials.AuthMethodIDs {
-		if selectedAuthMethodIDs[authMethodID] {
-			return fmt.Errorf("credential auth_methods must be unique")
+	switch credentials.AuthMethodID {
+	case "openai":
+		if credentials.OpenAIAPIKey.Reveal() == "" {
+			return fmt.Errorf("credential openai_api_key is required")
 		}
-		selectedAuthMethodIDs[authMethodID] = true
-		switch authMethodID {
-		case "openai":
-			if credentials.OpenAIAPIKey.Reveal() == "" {
-				return fmt.Errorf("credential openai_api_key is required")
-			}
-		case "anthropic":
-			if credentials.AnthropicAPIKey.Reveal() == "" {
-				return fmt.Errorf("credential anthropic_api_key is required")
-			}
-		case "gemini":
-			if credentials.GeminiAPIKey.Reveal() == "" {
-				return fmt.Errorf("credential gemini_api_key is required")
-			}
-		default:
-			return fmt.Errorf("credential auth_methods contains an undeclared auth method")
+	case "anthropic":
+		if credentials.AnthropicAPIKey.Reveal() == "" {
+			return fmt.Errorf("credential anthropic_api_key is required")
 		}
+	case "gemini":
+		if credentials.GeminiAPIKey.Reveal() == "" {
+			return fmt.Errorf("credential gemini_api_key is required")
+		}
+	default:
+		return fmt.Errorf("credential auth_method is invalid")
 	}
 	return nil
-}
-
-func (credentials Credentials) HasAuthMethod(id string) bool {
-	for _, authMethodID := range credentials.AuthMethodIDs {
-		if authMethodID == id {
-			return true
-		}
-	}
-	return false
 }
 
 const GetThingBranchFound sdkgo.BranchID = "found"
@@ -198,7 +190,7 @@ type GetThingResult = sdkgo.QueryResult[GetThingOutput]
 
 type GetThingStepConfig[IN any] struct {
 	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
-	connectorID                    struct{}                                          `connector:"connectorId=multiple-auth-selection-fixture"`
+	connectorID                    struct{}                                          `connector:"connectorId=api-key-methods-fixture"`
 	operationID                    struct{}                                          `connector:"operationId=getThing"`
 	StepType                       string                                            `connector:"stepType"`
 	Annotations                    sdkgo.StepAnnotations                             `connector:"annotations"`
@@ -216,8 +208,8 @@ func NewGetThingStep[IN any](config GetThingStepConfig[IN]) sdkgo.QueryStep[IN, 
 	if err := config.Connection.validate(); err != nil {
 		panic(err)
 	}
-	if config.ConnectionName != "" && config.ConnectionName != config.Connection.reference.Name {
-		panic(fmt.Errorf("multiple-auth-selection-fixture connector configuration connection name %q does not match runtime connection %q", config.ConnectionName, config.Connection.reference.Name))
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("api-key-methods-fixture connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetThingInput, GetThingOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,

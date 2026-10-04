@@ -38,13 +38,14 @@ func TestConnectorVersionTransitions(t *testing.T) {
 		hasError bool
 	}{
 		{target: "v0.1.0", pending: true},
-		{target: "v0.2.0", hasError: true},
+		{target: "v0.21.0", pending: true},
 		{baseline: "v0.7.0", target: "v0.7.0"},
 		{baseline: "v0.7.0", target: "v0.7.1", pending: true},
 		{baseline: "v0.7.0", target: "v0.8.0", pending: true},
 		{baseline: "v0.7.4", target: "v1.0.0", pending: true},
-		{baseline: "v0.7.0", target: "v0.9.0", hasError: true},
+		{baseline: "v0.1.0", target: "v0.21.0", pending: true},
 		{baseline: "v0.7.0", target: "v0.6.0", hasError: true},
+		{baseline: "v0.7.0", target: "0.8.0", hasError: true},
 	}
 	for _, testCase := range testCases {
 		pending, err := validateConnectorVersionTransition(testCase.baseline, testCase.target)

@@ -1,8 +1,8 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package multipleauthselection is the hand-written half of the multiple-auth-selection code generation fixture.
-package multipleauthselection
+// Package apikeymethods is the hand-written half of the api-key-methods code generation fixture.
+package apikeymethods
 
 import "github.com/superdurable/dex-connectors-library/sdkgo"
 
@@ -12,7 +12,7 @@ type Option interface{ applyClientOption(*Client) }
 // Client keeps the configuration and credential provider that generated constructors pass to New.
 type Client struct {
 	config      Config
-	credentials sdkgo.CredentialProvider[Credentials]
+	credentials CredentialSource
 }
 
 // GetThingInput is the fixture operation input.
@@ -25,7 +25,7 @@ type GetThingOutput struct{}
 type GetThingOperation struct{}
 
 // New applies manifest defaults and validates config.
-func New(config Config, credentials sdkgo.CredentialProvider[Credentials], options ...Option) (*Client, error) {
+func New(config Config, credentials CredentialSource, options ...Option) (*Client, error) {
 	config = withConfigDefaults(config)
 	if err := config.Validate(); err != nil {
 		return nil, err
