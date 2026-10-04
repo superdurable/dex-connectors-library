@@ -44,8 +44,9 @@ refresh does not change the snapshot and does not require rebuilding an app.
 `ConnectionStore` owns heads at
 `<scope>/connections/<connectorID>/<base64url(connectionName)>/head`.
 Private immutable credential/result objects are referenced by exact version and
-digest. Safe metadata contains revision, fence, expiry, authorization method,
-and module version. `ReadConnection` never refreshes. `ReadCredentialMaterial`
+digest. Safe metadata contains revision, fence, expiry and authorization method.
+Credentials are not tied to a connector release: a newer release of the same
+connector keeps using them. `ReadConnection` never refreshes. `ReadCredentialMaterial`
 is for trusted server-side setup commands and keep-field updates; it must never
 be returned to a browser.
 

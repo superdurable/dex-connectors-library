@@ -201,7 +201,7 @@ func (provider *CredentialResolver[C]) refreshAdmitted(ctx context.Context, admi
 	if err != nil {
 		return zero, provider.failRefresh(ctx, admission)
 	}
-	material := CredentialMaterial{Credentials: encoded, ExpiresAt: &result.ExpiresAt, ModuleVersion: prior.ModuleVersion, AuthMethod: prior.AuthMethod}
+	material := CredentialMaterial{Credentials: encoded, ExpiresAt: &result.ExpiresAt, AuthMethod: prior.AuthMethod}
 	if err = validateMaterial(material); err != nil {
 		return zero, provider.failRefresh(ctx, admission)
 	}

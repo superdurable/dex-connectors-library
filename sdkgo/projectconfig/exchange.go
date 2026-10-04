@@ -55,7 +55,7 @@ func (store *ConnectionStore) CommitCredentialExchange(ctx context.Context, admi
 	if err = validateMaterial(material); err != nil {
 		return record.Connection, err
 	}
-	envelope := credentialEnvelope{SchemaVersion: connectionSchema, Scope: store.scope, Key: record.Key, Fence: record.Fence, AttemptID: admission.AttemptID, Credentials: material.Credentials, ExpiresAt: material.ExpiresAt, ModuleVersion: material.ModuleVersion, AuthMethod: material.AuthMethod}
+	envelope := credentialEnvelope{SchemaVersion: connectionSchema, Scope: store.scope, Key: record.Key, Fence: record.Fence, AttemptID: admission.AttemptID, Credentials: material.Credentials, ExpiresAt: material.ExpiresAt, AuthMethod: material.AuthMethod}
 	contents, err := json.Marshal(envelope)
 	if err != nil {
 		return record.Connection, errors.New("credential result encoding failed")
@@ -99,7 +99,7 @@ func (store *ConnectionStore) RecoverCredentialExchange(ctx context.Context, adm
 	if strictJSON(result.Contents, &envelope) != nil || result.Version == "" || result.Version == "null" || envelope.SchemaVersion != connectionSchema || envelope.Scope != store.scope || envelope.Key != record.Key || envelope.Fence != record.Fence || envelope.AttemptID != admission.AttemptID {
 		return record.Connection, errors.New("credential exchange result identity is invalid")
 	}
-	if err = validateMaterial(CredentialMaterial{Credentials: envelope.Credentials, ExpiresAt: envelope.ExpiresAt, ModuleVersion: envelope.ModuleVersion, AuthMethod: envelope.AuthMethod}); err != nil {
+	if err = validateMaterial(CredentialMaterial{Credentials: envelope.Credentials, ExpiresAt: envelope.ExpiresAt, AuthMethod: envelope.AuthMethod}); err != nil {
 		return record.Connection, err
 	}
 	reference := objectReference{Key: result.Key, Version: result.Version, Digest: digestBytes(result.Contents)}
@@ -186,7 +186,7 @@ func (store *ConnectionStore) publishExchange(ctx context.Context, record connec
 	record.Revision++
 	record.Status = CredentialReady
 	record.Credential, record.Mutation = &reference, nil
-	record.ExpiresAt, record.ModuleVersion, record.AuthMethod = envelope.ExpiresAt, envelope.ModuleVersion, envelope.AuthMethod
+	record.ExpiresAt, record.AuthMethod = envelope.ExpiresAt, envelope.AuthMethod
 	_, err := store.writeRecord(ctx, record, etag)
 	return record.Connection, err
 }

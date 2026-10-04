@@ -77,9 +77,6 @@ func LoadFromEnvironment(ctx context.Context) (*LoadedProject, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := validateLocalConnectorConfiguration(configuration, allowLocal == "true", os.Getenv("DEX_PROJECT_LOCAL_CONNECTOR_AUTHORITY")); err != nil {
-		return nil, err
-	}
 	return &LoadedProject{configurations: configurations, Connections: connections, Configuration: configuration, Snapshot: reference}, nil
 }
 
