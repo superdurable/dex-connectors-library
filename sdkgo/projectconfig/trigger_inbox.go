@@ -31,10 +31,14 @@ var ErrTriggerInboxFull = errors.New("project trigger inbox is full")
 
 // TriggerInboxKey identifies one application binding of a connector Trigger.
 type TriggerInboxKey struct {
-	ConnectorID    string
+	// ConnectorID is the manifest's connector identifier.
+	ConnectorID string
+	// ConnectionName is the application-declared connection the Trigger reads.
 	ConnectionName string
-	TriggerName    string
-	BindingName    string
+	// TriggerName is the manifest Trigger name.
+	TriggerName string
+	// BindingName is the application's binding of that Trigger.
+	BindingName string
 }
 
 // PendingTriggerEvent is one acknowledged Trigger event that the application has not yet consumed.

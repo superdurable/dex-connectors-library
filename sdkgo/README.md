@@ -19,6 +19,10 @@ generated code chooses `provider.NewCredentialProvider` or
 refresh. Local development uses the same project configuration on a local
 S3-compatible store.
 
+`localconfig`, `hostedconfig` and `llm` remain in this release only while
+connectors migrate; they are deprecated and are removed in the next SDK
+release. Use `projectconfig` with generated connections and `textgen` instead.
+
 Connector Trigger sources run outside Dex Steps and deliver typed, stable-ID
 events through `TriggerRunner`. Generated Trigger factories accept any typed
 `TriggerTarget`. Applications choose `NewDexFlowTriggerTarget`,
