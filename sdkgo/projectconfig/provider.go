@@ -19,7 +19,7 @@ var ErrRefreshFailed = errors.New("project credential refresh failed; the curren
 type RefreshState[C any] struct {
 	// Credentials contains complete current credential material.
 	Credentials C
-	// ExpiresAt is the authoritative known-expired access credential expiry.
+	// ExpiresAt is the stored access credential expiry, when known.
 	ExpiresAt *time.Time
 	// Now captures the caller's refresh decision time.
 	Now time.Time
@@ -33,8 +33,14 @@ type RefreshResult[C any] struct {
 	ExpiresAt time.Time
 }
 
-// RefreshFunc performs exactly one provider request after durable admission. Implementations must honor context cancellation.
-type RefreshFunc[C any] func(context.Context, RefreshState[C]) (RefreshResult[C], error)
+// RefreshDriver decides when credentials need renewal and performs the provider request.
+type RefreshDriver[C any] interface {
+	// RefreshRequired reports whether credentials need a refresh before use, such as a missing access token,
+	// unknown expiry, or expiry within the driver's skew. Known-expired credentials are always refreshed.
+	RefreshRequired(RefreshState[C]) bool
+	// Refresh performs exactly one provider request after durable admission. It must honor context cancellation.
+	Refresh(context.Context, RefreshState[C]) (RefreshResult[C], error)
+}
 
 // CredentialDecoder validates complete private JSON at the connector boundary.
 type CredentialDecoder[C any] func(json.RawMessage) (C, error)
@@ -45,7 +51,8 @@ type CredentialEncoder[C any] func(C) (json.RawMessage, error)
 // refreshTimeout bounds one provider refresh request.
 const refreshTimeout = 30 * time.Second
 
-// CredentialResolver resolves credentials per call and refreshes only known-expired credentials during actual use.
+// CredentialResolver resolves credentials per call and refreshes them during actual use when they are known to be
+// expired or the driver requires a refresh.
 // It coordinates through conditional object writes, not process-local locks, timers, or a broker.
 type CredentialResolver[C any] struct {
 	store  *ConnectionStore
@@ -83,9 +90,9 @@ func (provider *CredentialResolver[C]) Resolve(ctx context.Context) (C, error) {
 	return credentials, nil
 }
 
-// ResolveWithRefresh admits at most one provider dispatch for an expired credential generation across application replicas.
-// Observers wait or recover immutable results; abandoned admissions require reauthorization and never permit provider replay.
-func (provider *CredentialResolver[C]) ResolveWithRefresh(ctx context.Context, driver RefreshFunc[C]) (C, error) {
+// ResolveWithRefresh admits at most one provider dispatch for a credential generation across application replicas.
+// Observers wait or recover immutable results; abandoned admissions never permit provider replay.
+func (provider *CredentialResolver[C]) ResolveWithRefresh(ctx context.Context, driver RefreshDriver[C]) (C, error) {
 	var zero C
 	if ctx == nil || driver == nil {
 		return zero, errors.New("credential context and refresh driver are required")
@@ -137,7 +144,9 @@ func (provider *CredentialResolver[C]) ResolveWithRefresh(ctx context.Context, d
 				return zero, errors.New("project credential decoding failed")
 			}
 			now := provider.store.now()
-			if material.ExpiresAt == nil || material.ExpiresAt.After(now) {
+			state := RefreshState[C]{Credentials: credentials, ExpiresAt: material.ExpiresAt, Now: now}
+			knownExpired := material.ExpiresAt != nil && !material.ExpiresAt.After(now)
+			if !knownExpired && !driver.RefreshRequired(state) {
 				return credentials, nil
 			}
 			attemptID, err := newAttemptID()
@@ -154,7 +163,7 @@ func (provider *CredentialResolver[C]) ResolveWithRefresh(ctx context.Context, d
 			if !admission.ProviderDispatchAllowed {
 				continue
 			}
-			return provider.refreshAdmitted(ctx, admission, material, credentials, driver)
+			return provider.refreshAdmitted(ctx, admission, material, state, driver)
 		default:
 			return zero, errors.New("project credential status is invalid")
 		}
@@ -163,7 +172,7 @@ func (provider *CredentialResolver[C]) ResolveWithRefresh(ctx context.Context, d
 
 // ResolveAfterRejection refreshes only when authoritative expiry has elapsed.
 // A generic HTTP 401, permission error, or unknown expiry is insufficient evidence for an extra provider mutation.
-func (provider *CredentialResolver[C]) ResolveAfterRejection(ctx context.Context, driver RefreshFunc[C]) (C, error) {
+func (provider *CredentialResolver[C]) ResolveAfterRejection(ctx context.Context, driver RefreshDriver[C]) (C, error) {
 	var zero C
 	connection, err := provider.store.ReadConnection(ctx, provider.key)
 	if err != nil {
@@ -175,10 +184,10 @@ func (provider *CredentialResolver[C]) ResolveAfterRejection(ctx context.Context
 	return provider.ResolveWithRefresh(ctx, driver)
 }
 
-func (provider *CredentialResolver[C]) refreshAdmitted(ctx context.Context, admission ExchangeAdmission, prior CredentialMaterial, credentials C, driver RefreshFunc[C]) (C, error) {
+func (provider *CredentialResolver[C]) refreshAdmitted(ctx context.Context, admission ExchangeAdmission, prior CredentialMaterial, state RefreshState[C], driver RefreshDriver[C]) (C, error) {
 	var zero C
 	requestContext, cancel := context.WithTimeout(ctx, refreshTimeout)
-	result, err := driver(requestContext, RefreshState[C]{Credentials: credentials, ExpiresAt: prior.ExpiresAt, Now: provider.store.now()})
+	result, err := driver.Refresh(requestContext, state)
 	cancel()
 	if errors.Is(err, ErrReauthorizationRequired) {
 		return zero, provider.failRefresh(ctx, admission)
