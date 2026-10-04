@@ -12,6 +12,7 @@ directories:
   - connectors/calendly
   - connectors/clickup
   - connectors/freshworks/freshdesk
+  - connectors/front
   - connectors/github
   - connectors/google/calendar
   - connectors/google/docs

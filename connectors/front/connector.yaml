@@ -1,0 +1,169 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: front
+  displayName: Front
+  description: "Search, read, reply to, comment on, and update Front conversations and find contacts by email, keeping Front's own conversation statuses, ticket status IDs, and tag and teammate IDs."
+  company: Front
+  version: v0.21.0
+spec:
+  provider: front
+  codegen:
+    go:
+      package: front
+  configuration:
+    fields:
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Largest complete Front API response, in bytes, that one request reads; a larger response selects invalidResponse. getConversation reads a conversation's newest messages as HTML and every comment, so raise it only when conversations with very long emails select invalidResponse; enter a positive integer. Blank keeps the displayed safety limit."
+        required: false
+        default: 4194304
+  auth:
+    type: apiKey
+    connectionKind: front-api-token
+    fields:
+      - name: api_token
+        goName: APIToken
+        type: secretString
+        description: "Secret Front API token. Sign in at https://app.frontapp.com/ as a company admin, open Settings > Developers > API Tokens, choose Create API token, and after it is created open the token and choose Copy; it is a long JSON Web Token of three dot-separated segments that begins with eyJ. It is sent only as an Authorization bearer token to https://api2.frontapp.com and stored only in this credential field. Required. Front tokens do not expire; after deleting a token in Front, create a new one and paste it here, which takes effect without a restart."
+        required: true
+    guide:
+      startURL: https://app.frontapp.com/
+      steps:
+        - "Sign in at https://app.frontapp.com/ as a company admin; only admins can create or manage API tokens, and every admin sees the tokens of the company."
+        - "Open Settings > Developers, select the API Tokens tab, choose Create API token, and give it a descriptive name such as Dex conversation triage."
+        - "Under features select Access resources. Under namespaces select Shared resources with All shared workspaces, and Global resources for company tags and teammates; add Private resources only when Flows must reach teammates' personal inboxes, whose owners must also allow API access."
+        - "Grant read on conversations, messages, comments, contacts, inboxes, tags, and teammates; write on conversations and comments; and send on messages, which replyToConversation needs for a reply to the customer. Choose Create."
+        - "Open the new token, choose Copy, and paste it into api_token. To revoke access, open the token under Settings > Developers > API Tokens and choose Delete; requests using it stop at once."
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.2.0 <0.3.0"
+      backendCapabilities: [use.configuration.write, front.inboxes-list, front.teammates-list, front.tags-list]
+      mockScenarios: [not-configured, connected]
+      icon: icon.svg
+    commands:
+      - id: listInboxes
+        capability: front.inboxes-list
+        request:
+          method: GET
+          url: https://api2.frontapp.com/inboxes
+          credential: {field: api_token, scheme: bearer}
+      - id: listTeammates
+        capability: front.teammates-list
+        request:
+          method: GET
+          url: https://api2.frontapp.com/teammates
+          credential: {field: api_token, scheme: bearer}
+      - id: listTags
+        capability: front.tags-list
+        request:
+          method: GET
+          url: https://api2.frontapp.com/tags
+          credential: {field: api_token, scheme: bearer}
+          fixedQuery: {limit: "100"}
+          parameters:
+            - {name: pageToken, location: query, target: page_token}
+    units:
+      - id: inboxPicker
+        goName: InboxPicker
+        description: "Select one Front inbox, listed live from GET https://api2.frontapp.com/inboxes with the connection's API token, or enter its ID; the unit stores the stable inbox ID, such as inb_41w25, never the inbox name."
+        backendCapabilities: [front.inboxes-list]
+        outputs:
+          - {name: inboxId, goName: InboxID, type: string}
+      - id: teammatePicker
+        goName: TeammatePicker
+        description: "Select one Front teammate, listed live from GET https://api2.frontapp.com/teammates with the connection's API token, or enter the teammate ID; the unit stores the stable teammate ID, such as tea_2thf, never the email address."
+        backendCapabilities: [front.teammates-list]
+        outputs:
+          - {name: teammateId, goName: TeammateID, type: string}
+      - id: tagPicker
+        goName: TagPicker
+        description: "Select one Front tag, listed live from GET https://api2.frontapp.com/tags with the connection's API token, or enter the tag ID; the unit stores the stable tag ID, such as tag_13o8r1, because Front adds, removes, and searches tags by ID, never by name."
+        backendCapabilities: [front.tags-list]
+        outputs:
+          - {name: tagId, goName: TagID, type: string}
+  operations:
+    - name: searchConversations
+      goName: SearchConversations
+      inputType: SearchConversationsInput
+      outputType: SearchConversationsOutput
+      kind: query
+      description: "Search conversations by text, inbox, tag, Front status filters, recipient email, assignee, and recent activity, returning one bounded page newest activity first and a page token for the next."
+      idempotency: none
+      branches:
+        - {id: searched, goName: Searched, description: "Front returned one page of matching conversations; it may be empty."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Front conclusively rejected the search, such as an invalid token, a token without conversation read access, or an expired page token.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Front returned a malformed or oversized page, or a next-page link outside Front's API hosts.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &frontReadExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
+    - name: getConversation
+      goName: GetConversation
+      inputType: GetConversationInput
+      outputType: ConversationDetails
+      kind: query
+      description: "Read one conversation by ID with a bounded list of its newest messages and newest internal comments."
+      idempotency: none
+      branches:
+        - {id: found, goName: Found, description: "Front returned the conversation with its newest messages and comments."}
+        - {id: merged, goName: Merged, description: "The conversation was merged into another; mergedIntoConversationId names the conversation to read instead.", optional: true}
+        - {id: notFound, goName: NotFound, description: "The conversation does not exist or is not visible to the API token.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Front conclusively rejected the read, such as an invalid token or a token without message or comment read access.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Front returned a malformed or oversized conversation, message page, or comment list.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 45s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
+    - name: replyToConversation
+      goName: ReplyToConversation
+      inputType: ReplyToConversationInput
+      outputType: ConversationReply
+      kind: mutation
+      description: "Send one reply that Front delivers to the conversation's recipients, or add one internal comment that only teammates see. Front has no idempotency key, so the Step runs with sync durability and records a Dex checkpoint before it sends, which keeps a later attempt from sending again; a Worker lost before Dex stores the checkpoint can still send twice."
+      idempotency: required
+      branches:
+        - {id: replied, goName: Replied, description: "Front accepted the reply for delivery or created the comment."}
+        - {id: notFound, goName: NotFound, description: "The conversation does not exist, was merged, or is not visible to the API token; nothing was sent.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Front conclusively rejected the reply or comment, such as a token without send permission or an unknown author; nothing was sent.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The request may have reached Front, but its answer was lost, was a server error, or arrived too late, so the reply or comment may exist; the connector never sends it again.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m}
+    - name: updateConversation
+      goName: UpdateConversation
+      inputType: UpdateConversationInput
+      outputType: UpdateConversationOutput
+      kind: mutation
+      description: "Set the Front status or ticket status, assignee, and tags of one conversation, then read it back; a repeated attempt finds the values already applied and writes nothing."
+      idempotency: required
+      branches:
+        - {id: updated, goName: Updated, description: "The conversation holds the requested status, assignee, and tags, written now or by an earlier attempt."}
+        - {id: notFound, goName: NotFound, description: "The conversation does not exist, was merged, or is not visible to the API token.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Front conclusively rejected a change, such as an unknown teammate, tag, or ticket status; changes sent before it stay applied.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Front returned a malformed or oversized conversation, so the change may have been applied.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 60s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
+    - name: findContactByEmail
+      goName: FindContactByEmail
+      inputType: FindContactByEmailInput
+      outputType: FindContactByEmailOutput
+      kind: query
+      description: "Find the Front contact whose email handle equals one address; Front keeps each handle on at most one contact."
+      idempotency: none
+      branches:
+        - {id: found, goName: Found, description: "A Front contact has the email handle."}
+        - {id: notFound, goName: NotFound, description: "No Front contact has the email handle.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Front conclusively rejected the lookup, such as an invalid token or a token without contact read access.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Front returned a malformed or oversized contact.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *frontReadExecution
