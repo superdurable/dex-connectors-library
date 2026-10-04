@@ -189,6 +189,12 @@ func ResolveCredentialAfterRejection[C any](
 // StaticCredentialProvider resolves credentials from an in-memory connection map.
 type StaticCredentialProvider[C any] map[ConnectionRef]C
 
+// ResolveWithRefresh returns the static credentials: they never expire, so there is nothing to refresh.
+// It lets tests pass a static provider where a connector requires a refreshing one.
+func (provider StaticCredentialProvider[C]) ResolveWithRefresh(_ context.Context, call Call, _ CredentialRefreshDriver[C]) (C, error) {
+	return provider.Resolve(call)
+}
+
 // Resolve returns credentials for one connector call without persisting them.
 func (provider StaticCredentialProvider[C]) Resolve(call Call) (C, error) {
 	credential, ok := provider[call.Connection]
