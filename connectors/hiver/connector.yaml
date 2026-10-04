@@ -1,0 +1,137 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: hiver
+  displayName: Hiver
+  description: "List Hiver shared inboxes and their conversations, read one conversation, set its status, assignee, and tags, add internal notes, and create shared reply drafts, keeping Hiver's own open, pending, and closed statuses."
+  company: Hiver
+  version: v0.21.0
+spec:
+  provider: hiver
+  codegen:
+    go:
+      package: hiver
+  configuration:
+    fields:
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Largest Hiver API response body, in bytes, that one request reads; a larger response selects invalidResponse, or uncertain for addNote and createSharedDraft. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example for conversation pages that list unusually many messages."
+        required: false
+        default: 4194304
+      - name: requestIntervalMilliseconds
+        goName: RequestIntervalMilliseconds
+        type: integer
+        description: "Shortest time, in milliseconds, between two Hiver API requests from this connection in one Worker. Hiver limits every account to one request per second and answers 429 above it, as https://developer.hiverhq.com/hiver-api describes. Leave blank to keep the displayed spacing. Enter an integer from 1 to 60000: a larger value leaves room for other integrations on the same account, and a smaller one only makes sense after Hiver support has raised your account's rate limit."
+        required: false
+        default: 1000
+  auth:
+    type: apiKey
+    connectionKind: hiver-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        description: "Secret Hiver API key that the connector sends as a bearer token to https://api2.hiverhq.com/v1. A Hiver admin creates it at https://v2.hiverhq.com/ > Admin Panel > Integrations > Developer APIs > Create an API key, turns on the app's toggle, and copies the key with the copy icon. It is an opaque string of letters, digits, and punctuation without spaces. Stored only in this credential field; after deleting a compromised key in Hiver, create a new one and paste it here."
+        required: true
+    guide:
+      startURL: https://v2.hiverhq.com/
+      steps:
+        - "Sign in to Hiver at https://v2.hiverhq.com/, or open Hiver from Gmail, as a Hiver admin; only admins can create API keys, and every key acts with admin access to all shared inboxes of the account. The Pro and Elite plans include API access, as does the trial."
+        - "Open Admin Panel > Integrations > Developer APIs and choose Create an API key; https://help.hiverhq.com/hiver-api/hiver-api shows the same steps."
+        - "Enter an app name such as Dex, choose Create and generate API key, turn on the app's toggle to enable it, and copy the key with the copy icon into api_key below."
+        - "Hiver allows one request per second and 5000 requests per day per account; the connector spaces its own requests, and a busier account asks Hiver support for a higher limit."
+        - "To revoke access, delete the app's API key under Admin Panel > Integrations > Developer APIs; requests with a deleted key are rejected."
+  operations:
+    - name: listInboxes
+      goName: ListInboxes
+      inputType: ListInboxesInput
+      outputType: ListInboxesOutput
+      kind: query
+      description: "List one page of the account's Hiver shared inboxes with their IDs, names, and email addresses, and the token of the next page."
+      idempotency: none
+      branches:
+        - {id: listed, goName: Listed, description: "Hiver returned one page of shared inboxes; it may be empty."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Hiver conclusively rejected the request, such as an invalid or disabled API key or an account without API access.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Hiver returned a malformed or oversized page.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &hiverReadExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
+    - name: listConversations
+      goName: ListConversations
+      inputType: ListConversationsInput
+      outputType: ListConversationsOutput
+      kind: query
+      description: "List one page of up to 100 conversations of one shared inbox with their Hiver status, assignee, and tag IDs, and the token of the next page."
+      idempotency: none
+      branches:
+        - {id: listed, goName: Listed, description: "Hiver returned one page of the inbox's conversations; it may be empty."}
+        - {id: notFound, goName: NotFound, description: "The shared inbox does not exist or is not visible to the API key.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Hiver conclusively rejected the request, such as an invalid API key or an expired page token.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Hiver returned a malformed or oversized page.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *hiverReadExecution
+    - name: getConversation
+      goName: GetConversation
+      inputType: GetConversationInput
+      outputType: ConversationDetails
+      kind: query
+      description: "Read one conversation of a shared inbox by Hiver conversation ID or Gmail thread ID, with its status, assignee, tag IDs, and message IDs."
+      idempotency: none
+      branches:
+        - {id: found, goName: Found, description: "Hiver returned the conversation."}
+        - {id: notFound, goName: NotFound, description: "The conversation or shared inbox does not exist or is not visible to the API key.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Hiver conclusively rejected the read, such as an invalid API key.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Hiver returned a malformed or oversized conversation.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *hiverReadExecution
+    - name: updateConversation
+      goName: UpdateConversation
+      inputType: UpdateConversationInput
+      outputType: UpdateConversationOutput
+      kind: mutation
+      description: "Set the Hiver status or assignee of one conversation and apply or remove tags by name, then read the conversation back; a repeated attempt sends the same absolute change again."
+      idempotency: required
+      branches:
+        - {id: updated, goName: Updated, description: "The conversation, read back after the change, holds the requested status, assignee, and tags."}
+        - {id: notFound, goName: NotFound, description: "The conversation or shared inbox does not exist or is not visible to the API key.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Hiver conclusively rejected the change, or the assignee email or a tag name was not found in the shared inbox; this attempt changed nothing, though an earlier attempt that ended unconfirmed may have applied the change.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Hiver returned a malformed or oversized user, tag, or conversation response, or rejected the read-back after accepting the change, so part or all of the change may have been applied.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 60s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
+    - name: addNote
+      goName: AddNote
+      inputType: AddNoteInput
+      outputType: AddNoteOutput
+      kind: mutation
+      description: "Add one internal note, visible only to Hiver users, to a conversation. Hiver has no idempotency key and no note list, so the Step runs with sync durability and records a Dex checkpoint before sending; a retry that finds it selects uncertain instead of sending again. A Worker that loses its Dex connection before Dex stores the checkpoint can still send a second note on the retry."
+      idempotency: required
+      branches:
+        - {id: added, goName: Added, description: "Hiver added the note and returned it."}
+        - {id: notFound, goName: NotFound, description: "The conversation or shared inbox does not exist or is not visible to the API key; nothing was added.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Hiver conclusively rejected the note; nothing was added.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The note may exist: Hiver's answer was lost, a server error, or unreadable, or an earlier attempt of this Step may have sent it. The Step does not send it again.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &hiverSingleDispatchExecution
+        executeMethodTimeout: 30s
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m}
+    - name: createSharedDraft
+      goName: CreateSharedDraft
+      inputType: CreateSharedDraftInput
+      outputType: SharedDraft
+      kind: mutation
+      description: "Create one shared reply draft to a conversation message for a Hiver user to review and send; Hiver's API cannot send a reply itself. Hiver has no idempotency key, so the Step runs with sync durability and records a Dex checkpoint before sending; a retry that finds it selects uncertain instead of sending again. A Worker that loses its Dex connection before Dex stores the checkpoint can still create a second draft on the retry."
+      idempotency: required
+      branches:
+        - {id: created, goName: Created, description: "Hiver created the shared draft and returned its ID."}
+        - {id: notFound, goName: NotFound, description: "The message or shared inbox does not exist or is not visible to the API key; no draft was created.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Hiver conclusively rejected the draft; no draft was created.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The draft may exist: Hiver's answer was lost, a server error, or unreadable, or an earlier attempt of this Step may have sent it. The Step does not send it again.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *hiverSingleDispatchExecution
