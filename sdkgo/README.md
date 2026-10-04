@@ -143,9 +143,8 @@ that arrives before its Flow starts is now lost instead of retried. The Gmail
 connector's generated per-Trigger factories poll independently and work this
 way. Choose one:
 
-- Deliver both through one ordered runner. Slack's
-  `NewLocalMessageTriggerRunner` is one, and Gmail v0.11.0 adds one with the
-  same name.
+- Deliver both through one ordered runner, such as Slack's or Gmail's
+  `NewProjectMessageTriggerRunner`.
 - Wrap the RPC target so it returns the unwrapped Dex error for a bounded time,
   as described above.
 
@@ -265,7 +264,7 @@ A connector keeps one `Endpoint` per connection on its client, returns it as the
 from each Trigger's generated source hook. `webhooktrigger.NewEndpointRunner`
 combines the handler with the bindings' Trigger runners so an application
 mounts one handler and runs one value. The Stripe connector's
-`NewLocalCheckoutSessionWebhookRuntime` is built this way. Like `providerhttp`,
+`NewProjectCheckoutSessionWebhookRuntime` is built this way. Like `providerhttp`,
 the package contains no provider host, signature format, event type, or
 credential.
 
@@ -400,8 +399,9 @@ unknown outcome; otherwise generated factories do not require that target.
 
 ## Text generation connectors
 
-Every lab connector exposes the same `generateText` Query, built on a shared
-framework in three subpackages instead of its own request pipeline:
+The llm connector exposes one `generateText` Query for every provider, built on
+a shared framework in three subpackages instead of a request pipeline per
+provider:
 
 - `providerhttp` holds provider-neutral HTTP safety helpers: a client copy that
   never follows redirects, base-URL and header-safe credential checks, bounded
@@ -692,8 +692,8 @@ Trigger delivery through the durable project inbox:
 - the log records for each skip, filter, backoff, recovery, and replay summary,
   with a sentinel that proves message text never reaches a record.
 
-The `integrationtest/fixturellm` package is a lab connector built on `llm` and
-`openaichat`. Its exchange test runs with the ordinary suite, and the
+The `integrationtest/fixturellm` package is a fixture connector built on
+`textgen` and `openaichat`. Its exchange test runs with the ordinary suite, and the
 integration run adds the real-Dex text-generation scenarios: a generated
 result streamed in order, a rate limit retried after its `Retry-After`, an
 unwired optional branch that fails the Flow, a Step's model pick overriding

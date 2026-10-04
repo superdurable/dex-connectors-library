@@ -46,5 +46,4 @@ export {
   hasAnyModelIDFragment,
   openAICompatibleModelOptions,
   readProviderModelArray,
-  shouldListModelsForAuthMethod,
 } from "./model-listing.js";

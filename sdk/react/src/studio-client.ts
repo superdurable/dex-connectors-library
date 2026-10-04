@@ -19,9 +19,8 @@ import {
  */
 export interface ConnectorStudioConnection extends ConnectorConnectionView {
   /**
-   * authMethodIds lists the auth method IDs the connection has added, in add
-   * order, or [] when the host omits it. Model loaders list every provider for
-   * an empty list; see shouldListModelsForAuthMethod.
+   * authMethodIds holds the auth method ID the connection selected, or is []
+   * before one is chosen and when the host omits it.
    */
   authMethodIds: string[];
   /** configuration is the connection's stored non-secret configuration, or {} when the host omits it. */

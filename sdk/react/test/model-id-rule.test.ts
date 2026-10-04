@@ -9,7 +9,7 @@ import { validateModelIDForRule, type ModelIDRule } from "../src/index.js";
 const ruleNames: readonly ModelIDRule[] = ["body", "pathSegment"];
 
 describe("validateModelIDForRule", () => {
-  it("reads the fixture sdkgo's llm model ID rules are pinned by", () => {
+  it("reads the fixture sdkgo's textgen model ID rules are pinned by", () => {
     expect(modelIDCases.schemaVersion).toBe("connectors.dex.dev/model-id-cases/v1");
     expect(Object.keys(modelIDCases.rules).sort()).toEqual([...ruleNames].sort());
     for (const rule of ruleNames) expect(modelIDCases.cases.some((modelCase) => modelCase.rule === rule), rule).toBe(true);

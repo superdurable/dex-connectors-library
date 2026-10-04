@@ -42,10 +42,10 @@ returns `send` and `executeProviderCommand`. Results are matched by request ID
 and session nonce, and a rejected command raises
 `ConnectorStudioCommandError` with the host's error code.
 `client.ready.connection` is a `ConnectorStudioConnection`. Beside the
-connection state it carries `authMethodIds`, the auth method IDs the
-connection has added, in add order, and `configuration`, the connection's
-stored non-secret configuration. Hosts that predate them omit both. The client
-then reports `[]` and `{}`, and `isConfigurationReported` is `false`.
+connection state it carries `authMethodIds`, which holds the auth method the
+connection selected, and `configuration`, the connection's stored non-secret
+configuration. Hosts that predate them omit both. The client then reports `[]`
+and `{}`, and `isConfigurationReported` is `false`.
 `collectProviderPages` follows provider cursors with a page cap, stops on a
 repeated cursor, and reports `isTruncated`.
 
@@ -227,17 +227,17 @@ must not throw.
 and these options, the picker renders exactly as before.
 
 `validateModelIDForRule(rule, value)` applies the Go SDK's
-`llm.ModelIDRule.ValidateModelID` in the browser, so a picker rejects exactly
-the model IDs a connector's `generateText` would reject as `defect`. `rule` is
-`"body"` or `"pathSegment"`, as `llm.ModelIDRule`'s `String` method spells
-it. The result is `{isValid: true, modelId}`, where `modelId` is the canonical
+`textgen.ModelIDRule.ValidateModelID` in the browser, so a picker rejects
+exactly the model IDs a connector's `generateText` would reject as `defect`.
+`rule` is `"body"` or `"pathSegment"`, as `textgen.ModelIDRule`'s `String`
+method spells it. The result is `{isValid: true, modelId}`, where `modelId` is the canonical
 ID the provider receives, or `{isValid: false, message}`, whose message never
 repeats the value. Both rules first trim the whitespace Go's
 `strings.TrimSpace` trims, which differs from `String.prototype.trim` for
 U+0085 and U+FEFF. `"body"` then requires 1 to 256 printable ASCII characters
 without spaces; `"pathSegment"` removes one leading `models/` and requires
 `^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$`. The package's tests run every case in
-[`sdkgo/llm/llmtest/testdata/model_id_cases.json`](../../sdkgo/llm/llmtest/testdata/model_id_cases.json).
+[`sdkgo/textgen/textgentest/testdata/model_id_cases.json`](../../sdkgo/textgen/textgentest/testdata/model_id_cases.json).
 
 ```tsx
 mountModelPickerBundle({
@@ -252,23 +252,25 @@ mountModelPickerBundle({
 ### Connection context
 
 `mountModelPickerBundle` calls `loadModels(client, connection)` with the ready
-message's `ConnectorStudioConnection`. A loader that combines several
-providers skips each provider whose auth method the connection has not added.
-`shouldListModelsForAuthMethod(connection, authMethodId)` is `true` when
-`authMethodIds` contains the method, and `true` for every method when
-`authMethodIds` is empty, as on hosts that predate it, so the loader lists
-every provider there as before. Existing one-argument loaders work unchanged.
-The picker loads again on Retry and when the session or `authMethodIds`
-change.
+message's `ConnectorStudioConnection`, whose `configuration` holds the
+connection's saved non-secret settings. A connector that serves several
+providers, such as `llm`, keeps one provider per connection, so its loader
+reads the saved `provider` and runs only that provider's list commands, and
+the API key reaches only that provider's hosts. Before the provider is saved,
+and on hosts that report no configuration, the loader runs no command and
+returns a notice; the picker still offers the default option and model ID
+entry. Existing one-argument loaders work unchanged. The picker loads again on
+Retry and when the session, `authMethodIds`, or the connection's saved
+configuration change, so a new provider lists its own models.
 
 On a Step or Trigger unit, the first option saves an empty `model`, which
 inherits the connection's model. The bundle labels it
 `Connection default (<model>)` with the connection's `configuration.model`,
-such as `Connection default (anthropic/claude-sonnet-5)`. When the host reports
-a configuration without a model, the label names `defaultModelDescription`
-instead, such as `Connection default (first added provider's default model)`.
-On hosts that report no configuration, and when neither names the default, the
-option keeps its label "Use the connection's default model".
+such as `Connection default (claude-sonnet-5)`. When the host reports a
+configuration without a model, the label names `defaultModelDescription`
+instead, such as `Connection default (the provider's default model)`. On hosts
+that report no configuration, and when neither names the default, the option
+keeps its label "Use the connection's default model".
 
 For a `connection` target whose `unitId` is `modelPicker`, the bundle renders
 `ModelPicker` for the connection's model field. It reads the saved model at the
@@ -283,21 +285,25 @@ card. A bundle that renders `ModelPicker` itself passes the same labels with
 This example is tested in `test/model-picker-connection-context.test.tsx`:
 
 ```ts
-import { mountModelPickerBundle, shouldListModelsForAuthMethod, type ModelListing } from "@superdurable/dex-connectors-react";
+import { mountModelPickerBundle } from "@superdurable/dex-connectors-react";
 import { loadClaudeModelListing, loadOpenAIModelListing } from "@superdurable/dex-connectors-react/provider-model-lists";
 
 mountModelPickerBundle({
   connectorId: "llm", providerName: "LLM", iconUrl: "./icon.svg",
-  defaultModelDescription: "first added provider's default model",
+  defaultModelDescription: "the provider's default model",
   loadModels: async (client, connection) => {
-    const listings: Promise<ModelListing>[] = [];
-    if (shouldListModelsForAuthMethod(connection, "openai")) {
-      listings.push(loadOpenAIModelListing(client, {capability: "llm.models-list", commandId: "listOpenAIModels"}));
+    switch (connection.configuration.provider) {
+      case "openai":
+        return loadOpenAIModelListing(client, {capability: "llm.models-list", commandId: "listOpenAIModels"});
+      case "anthropic":
+        return loadClaudeModelListing(client, {capability: "llm.models-list", commandId: "listAnthropicModels"});
+      default: {
+        const message = connection.isConfigurationReported
+          ? "Save the connection's provider to list its models, or enter a model ID."
+          : "This Dex Web release does not report the connection's provider. Enter a model ID.";
+        return {models: [], notices: [{tone: "attention", message}]};
+      }
     }
-    if (shouldListModelsForAuthMethod(connection, "anthropic")) {
-      listings.push(loadClaudeModelListing(client, {capability: "llm.models-list", commandId: "listAnthropicModels"}));
-    }
-    return {models: (await Promise.all(listings)).flatMap((providerListing) => providerListing.models)};
   },
 });
 ```

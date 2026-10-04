@@ -1,13 +1,13 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package textgen is the provider-neutral text-generation contract that every lab
-// connector's generateText Query implements, and the shared pipeline that
-// runs it.
+// Package textgen is the provider-neutral text-generation contract that the llm
+// connector's generateText Query implements for every provider, and the shared
+// pipeline that runs it.
 //
 // A connector aliases the contract types, so its generated Result type is
 // TextGenerationResult and one application Step can handle the Result of
-// every lab's generateText:
+// every provider's generateText:
 //
 //	type GenerateTextRequest = textgen.TextGenerationRequest
 //	type GenerateTextResponse = textgen.TextGenerationResponse

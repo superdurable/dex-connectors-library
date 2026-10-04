@@ -10,7 +10,6 @@ import {
   ModelPickerStudioApp,
   connectorStudioHostAPIVersion,
   savedModel,
-  shouldListModelsForAuthMethod,
   useConnectorStudioClient,
   type ConnectorConnectionView,
   type ConnectorStudioCommand,
@@ -54,7 +53,7 @@ const hostReady = (connection: ConnectorConnectionView, target: ConnectorStudioT
 
 const listing: ModelListing = {models: [{id: "openai/gpt-6-sol", label: "GPT-6 Sol"}, {id: "anthropic/claude-sonnet-5"}]};
 
-const firstAddedProviderDefault = "first added provider's default model";
+const providerDefaultDescription = "the provider's default model";
 
 const mountedContainers: {unmount(): void}[] = [];
 
@@ -149,16 +148,6 @@ describe("useConnectorStudioClient connection context", () => {
   });
 });
 
-describe("shouldListModelsForAuthMethod", () => {
-  it("lists only added auth methods, and every method when the host reports none", () => {
-    expect(shouldListModelsForAuthMethod({authMethodIds: ["anthropic"]}, "anthropic")).toBe(true);
-    expect(shouldListModelsForAuthMethod({authMethodIds: ["anthropic"]}, "openai")).toBe(false);
-    for (const authMethodId of ["openai", "anthropic", "gemini"]) {
-      expect(shouldListModelsForAuthMethod({authMethodIds: []}, authMethodId)).toBe(true);
-    }
-  });
-});
-
 describe("ModelPickerStudioApp model loaders", () => {
   it("receive the ready message's connection, with no auth methods from an old host", async () => {
     for (const [connection, expectedAuthMethodIds] of [
@@ -188,7 +177,7 @@ describe("ModelPickerStudioApp Step connection default", () => {
   for (const scope of [operationScope, triggerScope]) {
     it(`names the connection's model in the first option of a ${scope.kind} unit and saves it as empty`, async () => {
       const commands = answerHostCommands(() => ({}));
-      const container = await renderBundle({defaultModelDescription: firstAddedProviderDefault},
+      const container = await renderBundle({defaultModelDescription: providerDefaultDescription},
         hostReady(newHostConnection(["anthropic"], {model: " anthropic/claude-sonnet-5 "}), stepTarget(scope)));
       expect(defaultModelOption(container)).toEqual({label: "Connection default (anthropic/claude-sonnet-5)", value: "", isChecked: true});
       await act(async () => { saveButton(container).click(); });
@@ -196,15 +185,15 @@ describe("ModelPickerStudioApp Step connection default", () => {
     });
 
     it(`keeps the generic first option of a ${scope.kind} unit when the host reports no configuration`, async () => {
-      const container = await renderBundle({defaultModelDescription: firstAddedProviderDefault}, hostReady(oldHostConnection, stepTarget(scope)));
+      const container = await renderBundle({defaultModelDescription: providerDefaultDescription}, hostReady(oldHostConnection, stepTarget(scope)));
       expect(defaultModelOption(container)).toEqual({label: "Use the connection's default model", value: "", isChecked: true});
     });
   }
 
   it("names the connector default when the connection has no model", async () => {
-    const container = await renderBundle({defaultModelDescription: firstAddedProviderDefault},
+    const container = await renderBundle({defaultModelDescription: providerDefaultDescription},
       hostReady(newHostConnection(["anthropic"], {model: ""}), stepTarget(operationScope, {model: "openai/gpt-6-sol"})));
-    expect(defaultModelOption(container)).toEqual({label: `Connection default (${firstAddedProviderDefault})`, value: "", isChecked: false});
+    expect(defaultModelOption(container)).toEqual({label: `Connection default (${providerDefaultDescription})`, value: "", isChecked: false});
     expect(modelRadio(container, "openai/gpt-6-sol").checked).toBe(true);
   });
 
@@ -229,11 +218,11 @@ describe("ModelPickerStudioApp connection target", () => {
     const commands = answerHostCommands(() => ({}));
     const connections: ConnectorStudioConnection[] = [];
     const container = await renderBundle(
-      {defaultModelDescription: firstAddedProviderDefault, loadModels: async (_client, connection) => { connections.push(connection); return listing; }},
+      {defaultModelDescription: providerDefaultDescription, loadModels: async (_client, connection) => { connections.push(connection); return listing; }},
       hostReady(newHostConnection(["openai", "anthropic"], {model: "anthropic/claude-sonnet-5"}), connectionModelTarget({model: "anthropic/claude-sonnet-5"})));
     expect(connections.map((connection) => connection.authMethodIds)).toEqual([["openai", "anthropic"]]);
     expect(container.querySelector("h2")?.textContent).toBe("Default model");
-    expect(defaultModelOption(container)).toEqual({label: `Connector default (${firstAddedProviderDefault})`, value: "", isChecked: false});
+    expect(defaultModelOption(container)).toEqual({label: `Connector default (${providerDefaultDescription})`, value: "", isChecked: false});
     expect(modelRadio(container, "anthropic/claude-sonnet-5").checked).toBe(true);
 
     await act(async () => { modelRadio(container, "openai/gpt-6-sol").click(); });
@@ -273,16 +262,20 @@ describe("ModelPickerStudioApp connection target", () => {
 // This bundle configuration is the "Connection context" example in README.md, verbatim.
 const readmeBundleConfig: ModelPickerBundleConfig = {
   connectorId: "llm", providerName: "LLM", iconUrl: "./icon.svg",
-  defaultModelDescription: "first added provider's default model",
+  defaultModelDescription: "the provider's default model",
   loadModels: async (client, connection) => {
-    const listings: Promise<ModelListing>[] = [];
-    if (shouldListModelsForAuthMethod(connection, "openai")) {
-      listings.push(loadOpenAIModelListing(client, {capability: "llm.models-list", commandId: "listOpenAIModels"}));
+    switch (connection.configuration.provider) {
+      case "openai":
+        return loadOpenAIModelListing(client, {capability: "llm.models-list", commandId: "listOpenAIModels"});
+      case "anthropic":
+        return loadClaudeModelListing(client, {capability: "llm.models-list", commandId: "listAnthropicModels"});
+      default: {
+        const message = connection.isConfigurationReported
+          ? "Save the connection's provider to list its models, or enter a model ID."
+          : "This Dex Web release does not report the connection's provider. Enter a model ID.";
+        return {models: [], notices: [{tone: "attention", message}]};
+      }
     }
-    if (shouldListModelsForAuthMethod(connection, "anthropic")) {
-      listings.push(loadClaudeModelListing(client, {capability: "llm.models-list", commandId: "listAnthropicModels"}));
-    }
-    return {models: (await Promise.all(listings)).flatMap((providerListing) => providerListing.models)};
   },
 };
 
@@ -291,22 +284,50 @@ describe("README connection context example", () => {
     listOpenAIModels: {data: [{id: "gpt-6-sol", created: 1}]},
     listAnthropicModels: {data: [{id: "claude-sonnet-5", display_name: "Claude Sonnet 5"}], has_more: false},
   };
+  const testCases: {
+    name: string;
+    connection: ConnectorConnectionView;
+    commandIds: string[];
+    modelIds: string[];
+    notice?: string;
+    defaultLabel: string;
+  }[] = [
+    {
+      name: "lists only Claude's models for an anthropic connection",
+      connection: newHostConnection([], {provider: "anthropic", model: "claude-sonnet-5"}),
+      commandIds: ["listAnthropicModels"], modelIds: ["claude-sonnet-5"],
+      defaultLabel: "Connection default (claude-sonnet-5)",
+    },
+    {
+      name: "lists only OpenAI's models for an openai connection",
+      connection: newHostConnection([], {provider: "openai"}),
+      commandIds: ["listOpenAIModels"], modelIds: ["gpt-6-sol"],
+      defaultLabel: "Connection default (the provider's default model)",
+    },
+    {
+      name: "runs no command before the provider is saved",
+      connection: newHostConnection([], {}),
+      commandIds: [], modelIds: [], notice: "Save the connection's provider to list its models, or enter a model ID.",
+      defaultLabel: "Connection default (the provider's default model)",
+    },
+    {
+      name: "runs no command on a host that reports no configuration",
+      connection: oldHostConnection,
+      commandIds: [], modelIds: [], notice: "This Dex Web release does not report the connection's provider. Enter a model ID.",
+      defaultLabel: "Use the connection's default model",
+    },
+  ];
 
-  for (const [connection, expectedCommandIds, expectedModelIds] of [
-    [newHostConnection(["anthropic"], {model: "anthropic/claude-sonnet-5"}), ["listAnthropicModels"], ["claude-sonnet-5"]],
-    [oldHostConnection, ["listOpenAIModels", "listAnthropicModels"], ["gpt-6-sol", "claude-sonnet-5"]],
-  ] as const) {
-    it(`lists ${expectedCommandIds.join(" and ")} for auth methods [${(connection.authMethodIds ?? []).join(", ")}]`, async () => {
+  for (const testCase of testCases) {
+    it(testCase.name, async () => {
       const commands = answerHostCommands((command) => providerLists[String(command.input?.commandId)] ?? {});
       const container = await renderInDocument(<ModelPickerStudioApp {...readmeBundleConfig}/>,
-        () => sendFromHost(hostReady(connection, stepTarget())));
-      await waitForBundle(() => {
-        expect([...container.querySelectorAll<HTMLInputElement>('input[type="radio"]')].map((radio) => radio.value)).toEqual(["", ...expectedModelIds]);
-      });
-      expect(commands.map((command) => command.input?.commandId)).toEqual(expectedCommandIds);
-      expect(defaultModelOption(container).label).toBe(connection.configuration === undefined
-        ? "Use the connection's default model"
-        : "Connection default (anthropic/claude-sonnet-5)");
+        () => sendFromHost(hostReady(testCase.connection, stepTarget())));
+      await waitForBundle(() => expect(container.textContent).toContain("Search models"));
+      expect([...container.querySelectorAll<HTMLInputElement>('input[type="radio"]')].map((radio) => radio.value)).toEqual(["", ...testCase.modelIds]);
+      expect(commands.map((command) => command.input?.commandId)).toEqual(testCase.commandIds);
+      if (testCase.notice !== undefined) expect(container.textContent).toContain(testCase.notice);
+      expect(defaultModelOption(container).label).toBe(testCase.defaultLabel);
     });
   }
 });
