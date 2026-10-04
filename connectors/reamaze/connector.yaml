@@ -1,0 +1,137 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: reamaze
+  displayName: Re:amaze
+  description: Search, read, create, and update Re:amaze conversations, add public replies or internal notes, and find contacts by email, keeping Re:amaze's own integer statuses.
+  company: Re:amaze
+  version: v0.21.0
+spec:
+  provider: reamaze
+  codegen:
+    go:
+      package: reamaze
+  configuration:
+    fields:
+      - name: brand
+        goName: Brand
+        type: string
+        description: "Non-secret Re:amaze brand subdomain: the acme in https://acme.reamaze.io. Sign in at https://www.reamaze.com/login, open Settings, choose Brands, open the brand, and copy the part of its Re:amaze host before .reamaze.io; the address bar of your Re:amaze inbox shows the same host. Enter lowercase letters, digits, and hyphens only, without https:// or .reamaze.io; a custom support or help-center domain does not work, because Re:amaze serves its API only on reamaze.io brand hosts. Required: Re:amaze scopes conversations and channels by this brand, while contacts are shared by every brand of the account."
+        required: true
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Non-secret connector safety limit: the maximum complete Re:amaze API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when conversations carry unusually long messages. An oversized response selects invalidResponse for a read or an update; for a create or reply the connector reads back instead of resending, and selects uncertain if it cannot confirm the write."
+        required: false
+        default: 4194304
+  auth:
+    type: apiKey
+    connectionKind: reamaze-api-token
+    fields:
+      - name: email
+        goName: Email
+        type: string
+        description: "Non-secret login email address of the Re:amaze staff user the connector acts as, the address that user signs in with at https://www.reamaze.com/login and that Settings > Staff lists; enter one bare address such as agent@example.com. Re:amaze authenticates the API with HTTP Basic, this email as the user name and the API token as the password, so it must be the email of the user who generated the token. Replies, notes, and changes the connector writes are attributed to this user, and the user's role limits what it can read and change. It is stored with the token, so replacing both takes effect without an application restart. Required: Re:amaze authenticates every API request with it."
+        required: true
+      - name: api_token
+        goName: APIToken
+        type: secretString
+        description: "Secret Re:amaze API token of the staff user named in email. Sign in at https://www.reamaze.com/login as that user, open Settings, choose API Token under Developer, and select Generate New Token. It is an opaque string of letters and digits that belongs to that one user. Stored only in this credential field; after generating a new token in Re:amaze, paste it here. Required: no operation can run without it."
+        required: true
+    guide:
+      startURL: https://www.reamaze.com/login
+      steps:
+        - Sign in to Re:amaze at https://www.reamaze.com/login as the staff user the connector should act as; replies, notes, and changes it writes are attributed to that user, and every Re:amaze user has their own API token.
+        - Open Settings, choose API Token under Developer, select Generate New Token, and copy the token into api_token.
+        - Enter that user's login email address in email; Re:amaze authenticates every API request with HTTP Basic as {email}:{api_token}.
+        - Enter the brand field as the acme in https://acme.reamaze.io, from Settings > Brands; each brand of an account has its own host, and Re:amaze scopes conversations and channels by that brand.
+        - To revoke access, generate a new token for the user in Settings > API Token, which replaces the old one, or remove the staff user; then paste the new token here.
+  operations:
+    - name: searchConversations
+      goName: SearchConversations
+      inputType: SearchConversationsInput
+      outputType: SearchConversationsOutput
+      kind: query
+      description: "List one page of up to 30 conversations of the brand, filtered by Re:amaze view, requester email, tags, channel, and latest customer message time, with the next page number."
+      idempotency: none
+      branches:
+        - {id: searched, goName: Searched, description: "Re:amaze returned one page of matching conversations; it may be empty."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Re:amaze conclusively rejected the search, such as invalid credentials, an unknown brand, or a missing permission.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Re:amaze returned an invalid or oversized conversation page., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &reamazeReadExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
+    - name: getConversation
+      goName: GetConversation
+      inputType: GetConversationInput
+      outputType: ConversationDetails
+      kind: query
+      description: Read one conversation by its slug with its first message and a bounded list of its newest messages and internal notes.
+      idempotency: none
+      branches:
+        - {id: found, goName: Found, description: The conversation and its newest messages were read.}
+        - {id: notFound, goName: NotFound, description: The conversation does not exist in the brand or is not visible to the connection's user., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Re:amaze conclusively rejected the conversation read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Re:amaze returned an invalid or oversized conversation or message page., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *reamazeReadExecution
+    - name: createConversation
+      goName: CreateConversation
+      inputType: CreateConversationInput
+      outputType: CreateConversationOutput
+      kind: mutation
+      description: "Create one conversation on behalf of a customer in one channel. Re:amaze has no idempotency key, so the Step runs with sync durability, sends the request once per Step execution, and reconciles an unconfirmed attempt by finding the conversation whose data attribute holds the Step's key. Dex accepts the dispatch checkpoint when the Worker writes it to its stream, so a Worker lost before Dex stored it can still send twice."
+      idempotency: required
+      branches:
+        - {id: created, goName: Created, description: "The conversation exists; a retried attempt that found the conversation an earlier attempt created reports it instead of sending again."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Re:amaze conclusively rejected the conversation, such as an unknown channel or an invalid status; no conversation was created.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The request was sent but its outcome cannot be confirmed and no conversation carries the Step's key, so it may still appear; the connector never resends it.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &reamazeSingleDispatchExecution
+        executeMethodTimeout: 30s
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m}
+    - name: updateConversation
+      goName: UpdateConversation
+      inputType: UpdateConversationInput
+      outputType: UpdateConversationOutput
+      kind: mutation
+      description: "Set the Re:amaze status or assignee of one conversation and add or remove tags; a repeated attempt finds the values already applied and writes nothing."
+      idempotency: required
+      branches:
+        - {id: updated, goName: Updated, description: "The conversation holds the requested status, assignee, and tags, written now or by an earlier attempt."}
+        - {id: notFound, goName: NotFound, description: The conversation does not exist in the brand or is not visible to the connection's user., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Re:amaze conclusively rejected the change, such as an assignee email that is not a staff user.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Re:amaze returned an invalid or oversized conversation, so the change may have been applied.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *reamazeReadExecution
+    - name: replyToConversation
+      goName: ReplyToConversation
+      inputType: ReplyToConversationInput
+      outputType: ConversationReply
+      kind: mutation
+      description: "Add one public reply, which Re:amaze sends to the customer, or one internal note to a conversation. The message carries an origin_id derived from the Step, the Step runs with sync durability, and an unconfirmed attempt is reconciled by finding that origin_id instead of sending again. Dex accepts the dispatch checkpoint when the Worker writes it to its stream, so a Worker lost before Dex stored it can still send twice."
+      idempotency: required
+      branches:
+        - {id: replied, goName: Replied, description: "The reply or note is in the conversation; a retried attempt that found its own earlier message reports it instead of sending again."}
+        - {id: notFound, goName: NotFound, description: "The conversation does not exist in the brand or is not visible to the connection's user; nothing was added.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Re:amaze conclusively rejected the message; nothing was added.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The message was sent but its outcome cannot be confirmed and the conversation shows no message with its origin_id, so it may still appear; the connector never resends it.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *reamazeSingleDispatchExecution
+    - name: findContactByEmail
+      goName: FindContactByEmail
+      inputType: FindContactByEmailInput
+      outputType: FindContactByEmailOutput
+      kind: query
+      description: "Find the Re:amaze contacts whose email equals one address, from the first page of Re:amaze's name-or-email contact search; contacts belong to the account, not one brand."
+      idempotency: none
+      branches:
+        - {id: found, goName: Found, description: At least one contact has the email address.}
+        - {id: notFound, goName: NotFound, description: "No contact on the first page of candidates has the email address; hasMoreCandidates reports whether Re:amaze listed more.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Re:amaze conclusively rejected the contact search., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Re:amaze returned an invalid or oversized contact page., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *reamazeReadExecution
