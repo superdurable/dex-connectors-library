@@ -68,7 +68,8 @@ func (store *ConnectionStore) CommitCredentialExchange(ctx context.Context, admi
 }
 
 // RecoverCredentialExchange reconciles a persisted result without ever calling the provider.
-// Before Deadline it returns ErrExchangePending. Afterward, absence of a result fences the connection for reauthorization.
+// Before Deadline it returns ErrExchangePending. Afterward, an abandoned refresh restores the prior credential,
+// and an abandoned authorization fences the connection for reauthorization.
 func (store *ConnectionStore) RecoverCredentialExchange(ctx context.Context, admission ExchangeAdmission) (Connection, error) {
 	record, object, err := store.readAdmitted(ctx, admission)
 	if errors.Is(err, ErrConflict) {
@@ -85,6 +86,9 @@ func (store *ConnectionStore) RecoverCredentialExchange(ctx context.Context, adm
 	if errors.Is(err, ErrObjectNotFound) {
 		if store.now().Before(record.Mutation.Deadline) {
 			return record.Connection, ErrExchangePending
+		}
+		if record.Mutation.Kind == string(CredentialRefreshing) && record.Credential != nil {
+			return store.restoreRefresh(ctx, record, object.ETag)
 		}
 		connection, failureErr := store.failExchange(ctx, record, object.ETag)
 		if failureErr != nil {
@@ -115,6 +119,30 @@ func (store *ConnectionStore) FailCredentialExchange(ctx context.Context, admiss
 	}
 	_, err = store.failExchange(ctx, record, object.ETag)
 	return err
+}
+
+// abortRefresh ends an admitted refresh whose provider request failed without proving the credential invalid.
+func (store *ConnectionStore) abortRefresh(ctx context.Context, admission ExchangeAdmission) error {
+	record, object, err := store.readAdmitted(ctx, admission)
+	if err != nil {
+		return err
+	}
+	if record.Mutation.Kind != string(CredentialRefreshing) || record.Credential == nil {
+		return ErrConflict
+	}
+	_, err = store.restoreRefresh(ctx, record, object.ETag)
+	return err
+}
+
+// restoreRefresh keeps the prior credential READY. The fence still advances, so a late result of the
+// abandoned attempt can never publish.
+func (store *ConnectionStore) restoreRefresh(ctx context.Context, record connectionRecord, etag string) (Connection, error) {
+	record.Revision++
+	record.Fence++
+	record.Status = CredentialReady
+	record.Mutation = nil
+	_, err := store.writeRecord(ctx, record, etag)
+	return record.Connection, err
 }
 
 func (store *ConnectionStore) beginExchange(ctx context.Context, key ConnectionKey, expectedRevision uint64, attemptID string, deadline time.Time, status CredentialStatus) (ExchangeAdmission, error) {

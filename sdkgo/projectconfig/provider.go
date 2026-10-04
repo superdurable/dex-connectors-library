@@ -7,8 +7,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 )
+
+// ErrRefreshFailed reports a credential refresh that failed without proving the credential invalid.
+// The prior credential stays authorized, and a later call refreshes again.
+var ErrRefreshFailed = errors.New("project credential refresh failed; the current authorization is kept")
 
 // RefreshState carries private current credentials only at the provider boundary.
 type RefreshState[C any] struct {
@@ -191,19 +196,22 @@ func (provider *CredentialResolver[C]) refreshAdmitted(ctx context.Context, admi
 	requestContext, cancel := context.WithTimeout(ctx, provider.refreshTimeout)
 	result, err := driver(requestContext, RefreshState[C]{Credentials: credentials, ExpiresAt: prior.ExpiresAt, Now: provider.store.now()})
 	cancel()
-	if err != nil {
+	if errors.Is(err, ErrReauthorizationRequired) {
 		return zero, provider.failRefresh(ctx, admission)
 	}
+	if err != nil {
+		return zero, provider.abortRefresh(ctx, admission, err)
+	}
 	if !result.ExpiresAt.After(provider.store.now()) {
-		return zero, provider.failRefresh(ctx, admission)
+		return zero, provider.abortRefresh(ctx, admission, errors.New("refreshed credential has no future expiry"))
 	}
 	encoded, err := provider.encode(result.Credentials)
 	if err != nil {
-		return zero, provider.failRefresh(ctx, admission)
+		return zero, provider.abortRefresh(ctx, admission, errors.New("refreshed credential encoding failed"))
 	}
 	material := CredentialMaterial{Credentials: encoded, ExpiresAt: &result.ExpiresAt, AuthMethod: prior.AuthMethod}
 	if err = validateMaterial(material); err != nil {
-		return zero, provider.failRefresh(ctx, admission)
+		return zero, provider.abortRefresh(ctx, admission, err)
 	}
 	if _, err = provider.store.CommitCredentialExchange(ctx, admission, material); err != nil {
 		return zero, err
@@ -211,6 +219,18 @@ func (provider *CredentialResolver[C]) refreshAdmitted(ctx context.Context, admi
 	return result.Credentials, nil
 }
 
+// abortRefresh keeps the prior credential usable after a refresh that a later call may retry.
+// The write uses a short detached deadline so a canceled Step still releases its admission.
+func (provider *CredentialResolver[C]) abortRefresh(ctx context.Context, admission ExchangeAdmission, cause error) error {
+	restoreContext, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+	defer cancel()
+	if err := provider.store.abortRefresh(restoreContext, admission); err != nil {
+		return errors.Join(fmt.Errorf("%w: %w", ErrRefreshFailed, cause), err)
+	}
+	return fmt.Errorf("%w: %w", ErrRefreshFailed, cause)
+}
+
+// failRefresh fences the connection after a provider proved the credential can no longer be renewed.
 func (provider *CredentialResolver[C]) failRefresh(ctx context.Context, admission ExchangeAdmission) error {
 	// Canceled callers leave durable admission for later reconciliation without starting a detached worker.
 	if err := provider.store.FailCredentialExchange(ctx, admission); err != nil {
