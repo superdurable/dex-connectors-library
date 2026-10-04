@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-package llmtest
+package textgentest
 
 import (
 	"cmp"
@@ -19,9 +19,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/llm"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
+	"github.com/superdurable/dex-connectors-library/sdkgo/textgen"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -46,7 +46,7 @@ const (
 
 var (
 	scenarioTextStream        = dex.DefineStream[string]("llmtest-generated-text", 1<<20)
-	scenarioPickedModelResult = dex.DefineAttribute[llm.TextGenerationResult]("llmtest-picked-model-result")
+	scenarioPickedModelResult = dex.DefineAttribute[textgen.TextGenerationResult]("llmtest-picked-model-result")
 )
 
 // DexScenarioInput is the start input of every scenario Flow.
@@ -64,19 +64,19 @@ type DexScenarioStepConfig struct {
 	// Annotations are the Step's group and explanation.
 	Annotations sdkgo.StepAnnotations
 	// MapToOperationInput builds the request from the scenario input.
-	MapToOperationInput func(DexScenarioInput) llm.TextGenerationRequest
+	MapToOperationInput func(DexScenarioInput) textgen.TextGenerationRequest
 	// Generated is the required happy-path target.
-	Generated sdkgo.Target[llm.TextGenerationResult]
+	Generated sdkgo.Target[textgen.TextGenerationResult]
 	// Truncated is an optional target; scenarios leave it empty to prove an unwired branch fails the Flow.
-	Truncated sdkgo.Target[llm.TextGenerationResult]
+	Truncated sdkgo.Target[textgen.TextGenerationResult]
 	// Blocked is an optional target.
-	Blocked sdkgo.Target[llm.TextGenerationResult]
+	Blocked sdkgo.Target[textgen.TextGenerationResult]
 	// ProviderRejected is an optional target.
-	ProviderRejected sdkgo.Target[llm.TextGenerationResult]
+	ProviderRejected sdkgo.Target[textgen.TextGenerationResult]
 	// InvalidResponse is an optional target.
-	InvalidResponse sdkgo.Target[llm.TextGenerationResult]
+	InvalidResponse sdkgo.Target[textgen.TextGenerationResult]
 	// Defect is an optional target.
-	Defect sdkgo.Target[llm.TextGenerationResult]
+	Defect sdkgo.Target[textgen.TextGenerationResult]
 	// TextStream receives generated text when non-nil.
 	TextStream *dex.Stream[string]
 	// StepOptionsOverride overrides the operation's Step defaults when non-nil.
@@ -93,7 +93,7 @@ type TextGenerationDexScenarioSuite struct {
 	// NewGenerateTextStep builds the connector's generateText Step with its
 	// generated factory: a Connection for connection, and config's fields. The
 	// connection's request timeout must exceed 20 seconds. It is required.
-	NewGenerateTextStep func(t testing.TB, connection FakeConnection, config DexScenarioStepConfig) sdkgo.QueryStep[DexScenarioInput, llm.TextGenerationRequest, llm.TextGenerationResponse]
+	NewGenerateTextStep func(t testing.TB, connection FakeConnection, config DexScenarioStepConfig) sdkgo.QueryStep[DexScenarioInput, textgen.TextGenerationRequest, textgen.TextGenerationResponse]
 }
 
 // RunTextGenerationDexScenarios runs one-Step Flows that use the connector's
@@ -162,7 +162,7 @@ func (run dexScenarioRun) testGenerated(t *testing.T) {
 	flowID := uniqueFlowID("llmtest-generated")
 	results := harness.requireCompletedResults(t, flow, flowID)
 	require.Len(t, results, 1)
-	require.Equal(t, llm.GeneratedBranchID, results[0].Branch)
+	require.Equal(t, textgen.GeneratedBranchID, results[0].Branch)
 	require.Equal(t, generatedText, results[0].Value.Text)
 	require.Equal(t, canonicalDialectModel(run.suite.Dialect.ConnectionModel), results[0].Value.RequestedModel)
 	require.NoError(t, results[0].Receipt.CallID.Validate())
@@ -189,7 +189,7 @@ func (run dexScenarioRun) testRetryThenGenerated(t *testing.T) {
 	flow := newScenarioFlow(run.flowType("RetryThenGenerated"), dex.DefineStartStep(generate), dex.DefineStep(completeWithGenerationStep{}))
 	harness := newScenarioHarness(t, run.serverAddress, flow)
 	results := harness.requireCompletedResults(t, flow, uniqueFlowID("llmtest-retry"))
-	require.Equal(t, llm.GeneratedBranchID, results[0].Branch)
+	require.Equal(t, textgen.GeneratedBranchID, results[0].Branch)
 	requests := provider.Requests()
 	require.Len(t, requests, 2)
 	// Elapsed time is the behavior: Dex must honor the provider's Retry-After.
@@ -265,7 +265,7 @@ func (run dexScenarioRun) testSilentProvider(t *testing.T) {
 	harness := newScenarioHarness(t, run.serverAddress, flow)
 	// With one attempt allowed, a heartbeat timeout fails the Flow, so completion is the assertion.
 	results := harness.requireCompletedResults(t, flow, uniqueFlowID("llmtest-silent"))
-	require.Equal(t, llm.GeneratedBranchID, results[0].Branch)
+	require.Equal(t, textgen.GeneratedBranchID, results[0].Branch)
 	require.Len(t, provider.Requests(), 1)
 }
 
@@ -292,10 +292,10 @@ func (run dexScenarioRun) testLostWorker(t *testing.T) {
 	harness.replaceWorker(t)
 	result := harness.waitForFlow(t, flowID)
 	require.Equal(t, dex.FlowCompleted, result.Status, "Flow %s: %s", flowID, result.ErrorMessage)
-	var results []llm.TextGenerationResult
+	var results []textgen.TextGenerationResult
 	require.NoError(t, result.DecodeSingleOutput(&results))
 	require.Len(t, results, 1)
-	require.Equal(t, llm.GeneratedBranchID, results[0].Branch)
+	require.Equal(t, textgen.GeneratedBranchID, results[0].Branch)
 	require.Equal(t, generatedText, results[0].Value.Text)
 	require.Len(t, provider.Requests(), 2, "generateText repeats a call whose outcome the lost Worker never reported")
 }
@@ -318,7 +318,7 @@ func (run dexScenarioRun) testInterruptedStreamRepeatsText(t *testing.T) {
 	harness := newScenarioHarness(t, run.serverAddress, flow)
 	flowID := uniqueFlowID("llmtest-interrupted")
 	results := harness.requireCompletedResults(t, flow, flowID)
-	require.Equal(t, llm.GeneratedBranchID, results[0].Branch)
+	require.Equal(t, textgen.GeneratedBranchID, results[0].Branch)
 	require.Equal(t, generatedText, results[0].Value.Text, "the Result holds only the retry's text")
 	require.Len(t, provider.Requests(), 2)
 	var text string
@@ -356,7 +356,7 @@ func (run dexScenarioRun) flowType(scenario string) string {
 func (run dexScenarioRun) configurationReference(connection FakeConnection, flowType string, stepType string) sdkgo.ConnectorConfigurationRef {
 	return sdkgo.ConnectorConfigurationRef{
 		ConnectorID: run.suite.ConnectorID, ConnectionName: connection.Reference.Name,
-		OperationID: llm.TextGenerationOperationID, FlowType: flowType, StepType: stepType,
+		OperationID: textgen.TextGenerationOperationID, FlowType: flowType, StepType: stepType,
 	}
 }
 
@@ -396,10 +396,10 @@ func loadStepModelPick(configuration projectconfig.Configuration, reference sdkg
 	return loaded.Value.Model, nil
 }
 
-func requestWithModel(model string) func(DexScenarioInput) llm.TextGenerationRequest {
-	return func(input DexScenarioInput) llm.TextGenerationRequest {
-		return llm.TextGenerationRequest{
-			Model: model, Messages: []llm.Message{{Role: llm.MessageRoleUser, Text: input.Prompt}},
+func requestWithModel(model string) func(DexScenarioInput) textgen.TextGenerationRequest {
+	return func(input DexScenarioInput) textgen.TextGenerationRequest {
+		return textgen.TextGenerationRequest{
+			Model: model, Messages: []textgen.Message{{Role: textgen.MessageRoleUser, Text: input.Prompt}},
 		}
 	}
 }
@@ -450,20 +450,20 @@ func (*scenarioFlow) GetPersistenceSchema() dex.PersistenceSchema {
 }
 
 type completeWithGenerationStep struct {
-	dex.StepDefaultsNoWaitFor[llm.TextGenerationResult]
+	dex.StepDefaultsNoWaitFor[textgen.TextGenerationResult]
 }
 
 // Execute completes the Flow with the generateText Result.
-func (completeWithGenerationStep) Execute(_ dex.Context, result llm.TextGenerationResult) (*dex.StepDecision, error) {
-	return dex.GracefulComplete([]llm.TextGenerationResult{result}), nil
+func (completeWithGenerationStep) Execute(_ dex.Context, result textgen.TextGenerationResult) (*dex.StepDecision, error) {
+	return dex.GracefulComplete([]textgen.TextGenerationResult{result}), nil
 }
 
 type rememberPickedModelResultStep struct {
-	dex.StepDefaultsNoWaitFor[llm.TextGenerationResult]
+	dex.StepDefaultsNoWaitFor[textgen.TextGenerationResult]
 }
 
 // Execute keeps the first Result and runs the inherited-model Step.
-func (rememberPickedModelResultStep) Execute(ctx dex.Context, result llm.TextGenerationResult) (*dex.StepDecision, error) {
+func (rememberPickedModelResultStep) Execute(ctx dex.Context, result textgen.TextGenerationResult) (*dex.StepDecision, error) {
 	if err := scenarioPickedModelResult.Set(ctx, result); err != nil {
 		return nil, err
 	}
@@ -471,16 +471,16 @@ func (rememberPickedModelResultStep) Execute(ctx dex.Context, result llm.TextGen
 }
 
 type completeModelPrecedenceStep struct {
-	dex.StepDefaultsNoWaitFor[llm.TextGenerationResult]
+	dex.StepDefaultsNoWaitFor[textgen.TextGenerationResult]
 }
 
 // Execute completes the Flow with both Results in Step order.
-func (completeModelPrecedenceStep) Execute(ctx dex.Context, inherited llm.TextGenerationResult) (*dex.StepDecision, error) {
+func (completeModelPrecedenceStep) Execute(ctx dex.Context, inherited textgen.TextGenerationResult) (*dex.StepDecision, error) {
 	picked, err := scenarioPickedModelResult.Get(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return dex.GracefulComplete([]llm.TextGenerationResult{picked, inherited}), nil
+	return dex.GracefulComplete([]textgen.TextGenerationResult{picked, inherited}), nil
 }
 
 // scenarioHarness owns one scenario's Registry, Worker, and Client.
@@ -575,11 +575,11 @@ func (harness *scenarioHarness) waitForFlow(t *testing.T, flowID string) dex.Flo
 	}
 }
 
-func (harness *scenarioHarness) requireCompletedResults(t *testing.T, flow dex.Flow, flowID string) []llm.TextGenerationResult {
+func (harness *scenarioHarness) requireCompletedResults(t *testing.T, flow dex.Flow, flowID string) []textgen.TextGenerationResult {
 	t.Helper()
 	result := harness.runFlow(t, flow, flowID)
 	require.Equal(t, dex.FlowCompleted, result.Status, "Flow %s: %s", flowID, result.ErrorMessage)
-	var results []llm.TextGenerationResult
+	var results []textgen.TextGenerationResult
 	require.NoError(t, result.DecodeSingleOutput(&results))
 	require.NotEmpty(t, results)
 	return results

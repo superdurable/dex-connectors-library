@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package llmtest proves that a lab connector's generateText Query follows
+// Package textgentest proves that a lab connector's generateText Query follows
 // the shared text-generation contract.
 //
 // It provides three tools:
@@ -25,12 +25,12 @@
 // its own Connection and Step config types. The fixture connector in
 // sdkgo/integrationtest/fixturellm builds its Query like this:
 //
-//	func newFixtureQuery(t testing.TB, connection llmtest.FakeConnection) *llm.TextGenerationQuery {
+//	func newFixtureQuery(t testing.TB, connection textgentest.FakeConnection) *textgen.TextGenerationQuery {
 //		client := newFixtureClient(t, connection)
 //		return client.GenerateText()
 //	}
 //
-//	func newFixtureClient(t testing.TB, connection llmtest.FakeConnection) *fixturellm.Client {
+//	func newFixtureClient(t testing.TB, connection textgentest.FakeConnection) *fixturellm.Client {
 //		t.Helper()
 //		client, err := fixturellm.New(fixturellm.Config{
 //			Model: connection.Model, Endpoint: connection.BaseURL, MaxResponseBytes: connection.MaxResponseBytes,
@@ -45,4 +45,4 @@
 // The model-ID cases the suite runs are also published as
 // testdata/model_id_cases.json, which the TypeScript picker's validator must
 // accept and reject identically.
-package llmtest
+package textgentest

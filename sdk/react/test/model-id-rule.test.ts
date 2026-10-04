@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import modelIDCases from "../../../sdkgo/llm/llmtest/testdata/model_id_cases.json" with { type: "json" };
+import modelIDCases from "../../../sdkgo/textgen/textgentest/testdata/model_id_cases.json" with { type: "json" };
 import { validateModelIDForRule, type ModelIDRule } from "../src/index.js";
 
 const ruleNames: readonly ModelIDRule[] = ["body", "pathSegment"];

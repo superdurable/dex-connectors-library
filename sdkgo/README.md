@@ -403,13 +403,13 @@ framework in three subpackages instead of its own request pipeline:
   never follows redirects, base-URL and header-safe credential checks, bounded
   body reads, `Retry-After` parsing capped at one hour, error-token extraction
   that never returns message text, and a bounded server-sent event reader.
-- `llm` holds the contract types (`TextGenerationRequest`,
+- `textgen` holds the contract types (`TextGenerationRequest`,
   `TextGenerationResponse`, `Usage`, finish reasons, reasoning effort), the six
   branch IDs, the model-ID rules and precedence, the `ErrorRule` table, the
   portable structured-output subset with its transforms and post-validation,
   and `TextGenerationQuery`, the pipeline that implements
   `sdkgo.Query[TextGenerationRequest, TextGenerationResponse]`.
-- `llm/openaichat` is the OpenAI-compatible Chat Completions wire format,
+- `textgen/openaichat` is the OpenAI-compatible Chat Completions wire format,
   configured by a declarative `Profile`.
 
 The root package stays provider-neutral. A subpackage holds a wire format only
@@ -431,19 +431,19 @@ var chatProfile = openaichat.Profile{
 	ChatCompletionsPath:        "/v1/chat/completions",
 	InstructionsRole:           openaichat.InstructionsRoleDeveloper,
 	MaxTokensField:             openaichat.MaxTokensFieldMaxCompletionTokens,
-	Temperature:                llm.TemperatureRange(0, 1.5),
-	StructuredOutput:           llm.StructuredOutputRules{Mode: llm.StructuredOutputModeJSONSchema},
+	Temperature:                textgen.TemperatureRange(0, 1.5),
+	StructuredOutput:           textgen.StructuredOutputRules{Mode: textgen.StructuredOutputModeJSONSchema},
 	ShouldSendStrictJSONSchema: true,
 	Streaming:                  openaichat.StreamingPolicyAlways,
 	ShouldRequestStreamUsage:   true,
-	ErrorRules: []llm.ErrorRule{
-		{StatusCode: http.StatusTooManyRequests, ErrorToken: "fixture_quota_exhausted", Outcome: llm.QuotaExhaustedOutcome()},
-		{StatusCode: http.StatusBadRequest, ErrorToken: "fixture_content_filter", Outcome: llm.BlockedOutcome()},
+	ErrorRules: []textgen.ErrorRule{
+		{StatusCode: http.StatusTooManyRequests, ErrorToken: "fixture_quota_exhausted", Outcome: textgen.QuotaExhaustedOutcome()},
+		{StatusCode: http.StatusBadRequest, ErrorToken: "fixture_content_filter", Outcome: textgen.BlockedOutcome()},
 	},
 	RateLimitHeaders: []string{"x-ratelimit-remaining-requests"},
 	ModelRules: []openaichat.ModelRule{{
 		ModelIDPrefix: "fixture-reasoner", Temperature: &temperatureNotAccepted,
-		ReasoningEfforts: map[llm.ReasoningEffort]string{llm.ReasoningEffortLow: "low", llm.ReasoningEffortHigh: "high"},
+		ReasoningEfforts: map[textgen.ReasoningEffort]string{textgen.ReasoningEffortLow: "low", textgen.ReasoningEffortHigh: "high"},
 	}},
 }
 ```
@@ -456,7 +456,7 @@ wireFormat, err := openaichat.NewWireFormat(&chatProfile)
 if err != nil {
 	return nil, err
 }
-generateText, err := llm.NewTextGenerationQuery(&llm.TextGenerationQueryConfig{
+generateText, err := textgen.NewTextGenerationQuery(&textgen.TextGenerationQueryConfig{
 	Definition: GenerateTextDefinition, WireFormat: wireFormat,
 	BaseURL: config.Endpoint, ConnectionModel: config.Model,
 	HTTPClient: resolved.httpClient, RequestTimeout: requestTimeout,
@@ -474,21 +474,21 @@ return &Client{generateText: generateText}, nil
 ```
 
 ```go
-func (client *Client) GenerateText() *llm.TextGenerationQuery {
+func (client *Client) GenerateText() *textgen.TextGenerationQuery {
 	return client.generateText
 }
 ```
 
 `NewTextGenerationQuery` requires the operation ID `generateText`, exactly
-the branches of `llm.TextGenerationBranchDefinitions()`, and Step defaults
+the branches of `textgen.TextGenerationBranchDefinitions()`, and Step defaults
 with sync Execute durability, a heartbeat timeout of zero or at least 10
 seconds, and an Execute timeout longer than the request timeout. It trims the
 connection model, so a blank one means every request must name a model. The
 wire format carries the model-ID rule, because it follows from where the
 model travels: `openaichat` sends it in the body and uses
-`llm.ModelIDRuleBody`. The constructor copies the wire format's map and
+`textgen.ModelIDRuleBody`. The constructor copies the wire format's map and
 slices; its functions and any state they capture stay shared. A native API,
-such as Claude Messages, supplies an `llm.WireFormat` struct of functions from
+such as Claude Messages, supplies an `textgen.WireFormat` struct of functions from
 its own module instead of a Profile; the pipeline, error table, schema checks,
 and event reader stay shared.
 
@@ -506,7 +506,7 @@ older connector never silently ignores a newer field.
 | --- | --- | --- |
 | Normal finish with text | `generated` | none |
 | Output token limit | `truncated`, with any partial text | `RESPONSE_TOO_LARGE` |
-| Content policy or refusal, or an error that a rule maps with `llm.BlockedOutcome()`, such as a 400 `content_filter` | `blocked`, without text | `PROVIDER_REJECTION` |
+| Content policy or refusal, or an error that a rule maps with `textgen.BlockedOutcome()`, such as a 400 `content_filter` | `blocked`, without text | `PROVIDER_REJECTION` |
 | 401, 403, 404, 409, 501, and other 4xx | `providerRejected` | authentication, authorization, not found, conflict, or rejection |
 | 402, or a quota rule such as a billing 429 | `providerRejected` | `QUOTA_EXHAUSTED`; never retried |
 | 408, 429, 5xx except 501, a dropped connection, an interrupted event stream, a stall | Retry, after the provider's delay when it sends one | availability, rate limit, or transport |
@@ -549,10 +549,10 @@ The Result's `Text` is the only authoritative text.
 
 The request's `Model`, trimmed, wins; a blank one uses the connection's model.
 `RequestedModel` is set on every branch once the model is valid, and
-`ServedModel` is the provider's echo. `llm.ModelIDRuleBody` accepts 1 to 256
-bytes of printable ASCII, and `llm.ModelIDRulePathSegment` accepts a URL path
+`ServedModel` is the provider's echo. `textgen.ModelIDRuleBody` accepts 1 to 256
+bytes of printable ASCII, and `textgen.ModelIDRulePathSegment` accepts a URL path
 segment after stripping one `models/`. The shared cases in
-[`llm/llmtest/testdata/model_id_cases.json`](llm/llmtest/testdata/model_id_cases.json)
+[`textgen/textgentest/testdata/model_id_cases.json`](textgen/textgentest/testdata/model_id_cases.json)
 pin both rules for the TypeScript picker.
 
 An application reads a Step's model pick once at startup with
@@ -564,7 +564,7 @@ an empty pick also inherits the connection's model.
 
 ### Prove a connector
 
-`llm/llmtest` holds the conformance kit. `RunTextGenerationExchangeSuite` runs
+`textgen/textgentest` holds the conformance kit. `RunTextGenerationExchangeSuite` runs
 the provider-exchange cases against a credential-safe fake provider without
 Dex, and `RunTextGenerationDexScenarios` runs one-Step Flows through a real
 Worker. Both take closures, because each connector generates its own
@@ -583,30 +583,30 @@ var fixtureDialect = openaichattest.NewProviderDialect(&openaichattest.ProviderD
 ```go
 func TestGenerateTextFollowsTheExchangeContract(t *testing.T) {
 	temperatureAboveRange, temperature := 1.6, 0.2
-	llmtest.RunTextGenerationExchangeSuite(t, &llmtest.TextGenerationExchangeSuite{
+	textgentest.RunTextGenerationExchangeSuite(t, &textgentest.TextGenerationExchangeSuite{
 		Dialect:  fixtureDialect,
 		NewQuery: newFixtureQuery,
-		LocallyRejectedRequests: []llmtest.NamedTextGenerationRequest{
-			{Name: "temperature above the model range", Request: llm.TextGenerationRequest{Temperature: &temperatureAboveRange}},
-			{Name: "temperature on a reasoning model", Request: llm.TextGenerationRequest{
+		LocallyRejectedRequests: []textgentest.NamedTextGenerationRequest{
+			{Name: "temperature above the model range", Request: textgen.TextGenerationRequest{Temperature: &temperatureAboveRange}},
+			{Name: "temperature on a reasoning model", Request: textgen.TextGenerationRequest{
 				Model: "fixture-reasoner-b", Temperature: &temperature,
 			}},
-			{Name: "reasoning effort on a model without effort", Request: llm.TextGenerationRequest{
-				ReasoningEffort: llm.ReasoningEffortHigh,
+			{Name: "reasoning effort on a model without effort", Request: textgen.TextGenerationRequest{
+				ReasoningEffort: textgen.ReasoningEffortHigh,
 			}},
-			{Name: "unmapped reasoning effort", Request: llm.TextGenerationRequest{
-				Model: "fixture-reasoner-b", ReasoningEffort: llm.ReasoningEffortMax,
+			{Name: "unmapped reasoning effort", Request: textgen.TextGenerationRequest{
+				Model: "fixture-reasoner-b", ReasoningEffort: textgen.ReasoningEffortMax,
 			}},
 		},
 	})
 }
 
-func newFixtureQuery(t testing.TB, connection llmtest.FakeConnection) *llm.TextGenerationQuery {
+func newFixtureQuery(t testing.TB, connection textgentest.FakeConnection) *textgen.TextGenerationQuery {
 	client := newFixtureClient(t, connection)
 	return client.GenerateText()
 }
 
-func newFixtureClient(t testing.TB, connection llmtest.FakeConnection) *fixturellm.Client {
+func newFixtureClient(t testing.TB, connection textgentest.FakeConnection) *fixturellm.Client {
 	t.Helper()
 	client, err := fixturellm.New(fixturellm.Config{
 		Model: connection.Model, Endpoint: connection.BaseURL, MaxResponseBytes: connection.MaxResponseBytes,

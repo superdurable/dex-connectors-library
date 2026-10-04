@@ -1,14 +1,14 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-package llmtest
+package textgentest
 
 import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
 
-	"github.com/superdurable/dex-connectors-library/sdkgo/llm"
+	"github.com/superdurable/dex-connectors-library/sdkgo/textgen"
 )
 
 //go:embed testdata/model_id_cases.json
@@ -30,7 +30,7 @@ type modelIDCasesFile struct {
 }
 
 // modelIDCasesForRule returns the embedded cases that pin rule's behavior.
-func modelIDCasesForRule(rule llm.ModelIDRule) ([]modelIDCase, error) {
+func modelIDCasesForRule(rule textgen.ModelIDRule) ([]modelIDCase, error) {
 	var file modelIDCasesFile
 	if err := json.Unmarshal(modelIDCasesJSON, &file); err != nil {
 		return nil, fmt.Errorf("decode model ID cases: %w", err)

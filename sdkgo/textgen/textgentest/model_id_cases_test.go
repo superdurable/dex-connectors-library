@@ -1,21 +1,21 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-package llmtest
+package textgentest
 
 import (
 	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/sdkgo/llm"
+	"github.com/superdurable/dex-connectors-library/sdkgo/textgen"
 )
 
 func TestModelIDCasesMatchTheGoRules(t *testing.T) {
 	var file modelIDCasesFile
 	require.NoError(t, json.Unmarshal(modelIDCasesJSON, &file))
 	require.Equal(t, "connectors.dex.dev/model-id-cases/v1", file.SchemaVersion)
-	for _, rule := range []llm.ModelIDRule{llm.ModelIDRuleBody, llm.ModelIDRulePathSegment} {
+	for _, rule := range []textgen.ModelIDRule{textgen.ModelIDRuleBody, textgen.ModelIDRulePathSegment} {
 		require.NotEmpty(t, file.Rules[rule.String()], "every rule is described for the TypeScript mirror")
 		cases, err := modelIDCasesForRule(rule)
 		require.NoError(t, err)
@@ -32,6 +32,6 @@ func TestModelIDCasesMatchTheGoRules(t *testing.T) {
 			})
 		}
 	}
-	_, err := llm.ModelIDRule(0).ValidateModelID("anything")
+	_, err := textgen.ModelIDRule(0).ValidateModelID("anything")
 	require.Error(t, err)
 }

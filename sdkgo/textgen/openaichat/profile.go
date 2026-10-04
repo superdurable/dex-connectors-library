@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 // Package openaichat is the OpenAI-compatible Chat Completions wire format for
-// llm.TextGenerationQuery. A connector describes its provider declaratively in
+// textgen.TextGenerationQuery. A connector describes its provider declaratively in
 // a Profile and passes the Profile to NewWireFormat; it writes no encoding or
 // decoding code. The package contains no provider host, model ID, error code,
 // or credential: those live in the connector's Profile and manifest.
@@ -28,7 +28,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/sdkgo/llm"
+	"github.com/superdurable/dex-connectors-library/sdkgo/textgen"
 )
 
 // InstructionsRole is the chat role that carries TextGenerationRequest.Instructions.
@@ -81,7 +81,7 @@ type Profile struct {
 	ChatCompletionsPath string
 	// CredentialHeader is where the credential travels. An empty Name uses
 	// "Authorization" with the "Bearer " prefix.
-	CredentialHeader llm.CredentialHeader
+	CredentialHeader textgen.CredentialHeader
 	// FixedHeaders are sent with every request, such as an API version. They
 	// must not name the credential header, Content-Type, Content-Length,
 	// Accept, or Host, and must not hold secrets.
@@ -92,14 +92,14 @@ type Profile struct {
 	MaxTokensField MaxTokensField
 	// ReasoningEfforts maps each accepted effort to its "reasoning_effort" wire
 	// value. Nil or empty rejects every effort with defect.
-	ReasoningEfforts map[llm.ReasoningEffort]string
+	ReasoningEfforts map[textgen.ReasoningEffort]string
 	// Temperature states whether models accept a temperature. The zero value accepts one.
-	Temperature llm.TemperaturePolicy
+	Temperature textgen.TemperaturePolicy
 	// StructuredOutput states how models receive a schema. The zero value
 	// rejects structured output. StructuredOutputModeJSONSchema sends
 	// response_format type json_schema; StructuredOutputModeJSONObjectWithInstruction
 	// sends type json_object and appends the schema instruction.
-	StructuredOutput llm.StructuredOutputRules
+	StructuredOutput textgen.StructuredOutputRules
 	// ShouldSendStrictJSONSchema sends "strict": true inside json_schema.
 	ShouldSendStrictJSONSchema bool
 	// Streaming selects streamed or complete responses. Empty uses StreamingPolicyNever.
@@ -115,9 +115,9 @@ type Profile struct {
 	// FinishReasons extends or overrides the default finish-token map, which is
 	// "stop" to stop, "length" to length, and "content_filter" to content
 	// policy. Any other token selects invalidResponse.
-	FinishReasons map[string]llm.FinishReason
-	// ErrorRules classify non-2xx responses before the llm.ErrorRule defaults.
-	ErrorRules []llm.ErrorRule
+	FinishReasons map[string]textgen.FinishReason
+	// ErrorRules classify non-2xx responses before the textgen.ErrorRule defaults.
+	ErrorRules []textgen.ErrorRule
 	// ErrorTokenPointers name the error tokens read from a non-2xx body. Nil
 	// uses "/error/type" and "/error/code".
 	ErrorTokenPointers []string
@@ -141,12 +141,12 @@ type ModelRule struct {
 	// ModelIDPattern matches model IDs with an RE2 expression anchored by ^ and $.
 	ModelIDPattern string
 	// Temperature replaces Profile.Temperature.
-	Temperature *llm.TemperaturePolicy
+	Temperature *textgen.TemperaturePolicy
 	// ReasoningEfforts replaces Profile.ReasoningEfforts when non-nil; an empty
 	// map rejects every effort.
-	ReasoningEfforts map[llm.ReasoningEffort]string
+	ReasoningEfforts map[textgen.ReasoningEffort]string
 	// StructuredOutput replaces Profile.StructuredOutput.
-	StructuredOutput *llm.StructuredOutputRules
+	StructuredOutput *textgen.StructuredOutputRules
 	// MaxTokensField replaces Profile.MaxTokensField.
 	MaxTokensField MaxTokensField
 	// Streaming replaces Profile.Streaming.
@@ -155,7 +155,7 @@ type ModelRule struct {
 
 // modelSettings are the Profile values after applying the first matching ModelRule.
 type modelSettings struct {
-	rules          llm.ModelRequestRules
+	rules          textgen.ModelRequestRules
 	maxTokensField MaxTokensField
 	streaming      StreamingPolicy
 }
@@ -266,7 +266,7 @@ func compileModelRule(rule ModelRule) (compiledModelRule, error) {
 		}
 		compiled.pattern = pattern
 	}
-	structuredOutput := llm.StructuredOutputRules{}
+	structuredOutput := textgen.StructuredOutputRules{}
 	if rule.StructuredOutput != nil {
 		structuredOutput = *rule.StructuredOutput
 	}
@@ -277,8 +277,8 @@ func compileModelRule(rule ModelRule) (compiledModelRule, error) {
 }
 
 func validateModelSettings(
-	maxTokensField MaxTokensField, streaming StreamingPolicy, efforts map[llm.ReasoningEffort]string,
-	structuredOutput llm.StructuredOutputRules,
+	maxTokensField MaxTokensField, streaming StreamingPolicy, efforts map[textgen.ReasoningEffort]string,
+	structuredOutput textgen.StructuredOutputRules,
 ) error {
 	switch maxTokensField {
 	case "", MaxTokensFieldMaxTokens, MaxTokensFieldMaxCompletionTokens:
@@ -292,8 +292,8 @@ func validateModelSettings(
 	}
 	for effort, wireValue := range efforts {
 		switch effort {
-		case llm.ReasoningEffortNone, llm.ReasoningEffortMinimal, llm.ReasoningEffortLow, llm.ReasoningEffortMedium,
-			llm.ReasoningEffortHigh, llm.ReasoningEffortExtraHigh, llm.ReasoningEffortMax:
+		case textgen.ReasoningEffortNone, textgen.ReasoningEffortMinimal, textgen.ReasoningEffortLow, textgen.ReasoningEffortMedium,
+			textgen.ReasoningEffortHigh, textgen.ReasoningEffortExtraHigh, textgen.ReasoningEffortMax:
 		default:
 			return fmt.Errorf("reasoning effort %q is unknown", effort)
 		}

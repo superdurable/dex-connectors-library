@@ -8,7 +8,7 @@
 //	dialect := openaichattest.NewProviderDialect(&openaichattest.ProviderDialectConfig{
 //		ConnectionModel: "fixture-model-a", AlternateModel: "fixture-reasoner-b", IsStreaming: true,
 //	})
-//	llmtest.RunTextGenerationExchangeSuite(t, &llmtest.TextGenerationExchangeSuite{Dialect: dialect, NewQuery: newQuery})
+//	textgentest.RunTextGenerationExchangeSuite(t, &textgentest.TextGenerationExchangeSuite{Dialect: dialect, NewQuery: newQuery})
 //
 // Replies use neutral error tokens such as "llmtest_http_429", so a
 // connector's token-specific ErrorRules only match the quota and
@@ -23,8 +23,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/superdurable/dex-connectors-library/sdkgo/llm"
-	"github.com/superdurable/dex-connectors-library/sdkgo/llm/llmtest"
+	"github.com/superdurable/dex-connectors-library/sdkgo/textgen"
+	"github.com/superdurable/dex-connectors-library/sdkgo/textgen/textgentest"
 )
 
 const reasoningText = "llmtest reasoning that never reaches the text"
@@ -39,7 +39,7 @@ var optionalRequestFieldPointers = []string{
 type ProviderDialectConfig struct {
 	// CredentialHeader is where the connector sends the API key. An empty
 	// Name uses Authorization with the "Bearer " prefix, the openaichat default.
-	CredentialHeader llm.CredentialHeader
+	CredentialHeader textgen.CredentialHeader
 	// ConnectionModel is the connection's model ID. It is required and must
 	// accept structured output under the connector's Profile.
 	ConnectionModel string
@@ -78,10 +78,10 @@ type ProviderDialectConfig struct {
 	ContentPolicyErrorStatusCode int
 }
 
-// NewProviderDialect returns an llmtest.ProviderDialect that answers like a
+// NewProviderDialect returns an textgentest.ProviderDialect that answers like a
 // Chat Completions provider. It panics when config is nil, a model is empty,
 // or an error-token pointer is invalid, because those are static test wiring.
-func NewProviderDialect(config *ProviderDialectConfig) llmtest.ProviderDialect {
+func NewProviderDialect(config *ProviderDialectConfig) textgentest.ProviderDialect {
 	if config == nil || config.ConnectionModel == "" || config.AlternateModel == "" {
 		panic("openaichattest provider dialect requires ConnectionModel and AlternateModel")
 	}
@@ -96,15 +96,19 @@ func NewProviderDialect(config *ProviderDialectConfig) llmtest.ProviderDialect {
 	}
 	credentialHeader := config.CredentialHeader
 	if credentialHeader.Name == "" {
-		credentialHeader = llm.CredentialHeader{Name: "Authorization", Prefix: "Bearer "}
+		credentialHeader = textgen.CredentialHeader{Name: "Authorization", Prefix: "Bearer "}
 	}
-	providerDialect := llmtest.ProviderDialect{
+	providerDialect := textgentest.ProviderDialect{
 		CredentialHeader: credentialHeader,
 		ConnectionModel:  config.ConnectionModel, AlternateModel: config.AlternateModel,
-		RequestIDHeader:              cmp.Or(config.RequestIDHeader, "x-request-id"),
-		ReadRequestModel:             readRequestModel,
-		GeneratedReply:               func(reply llmtest.GeneratedReply) llmtest.FakeReply { return dialect.completionReply(reply, "stop") },
-		TruncatedReply:               func(reply llmtest.GeneratedReply) llmtest.FakeReply { return dialect.completionReply(reply, "length") },
+		RequestIDHeader:  cmp.Or(config.RequestIDHeader, "x-request-id"),
+		ReadRequestModel: readRequestModel,
+		GeneratedReply: func(reply textgentest.GeneratedReply) textgentest.FakeReply {
+			return dialect.completionReply(reply, "stop")
+		},
+		TruncatedReply: func(reply textgentest.GeneratedReply) textgentest.FakeReply {
+			return dialect.completionReply(reply, "length")
+		},
 		BlockedReply:                 dialect.blockedReply,
 		ErrorReply:                   dialect.errorReply,
 		QuotaExhaustedReply:          dialect.quotaExhaustedReply,
@@ -131,14 +135,14 @@ type chatDialect struct {
 	errorTokenPointers []string
 }
 
-func (dialect *chatDialect) completionReply(reply llmtest.GeneratedReply, finishReason string) llmtest.FakeReply {
+func (dialect *chatDialect) completionReply(reply textgentest.GeneratedReply, finishReason string) textgentest.FakeReply {
 	if dialect.config.IsStreaming {
 		return dialect.streamReply(reply, finishReason)
 	}
 	return completionBodyReply(reply, finishReason)
 }
 
-func completionBodyReply(reply llmtest.GeneratedReply, finishReason string) llmtest.FakeReply {
+func completionBodyReply(reply textgentest.GeneratedReply, finishReason string) textgentest.FakeReply {
 	body := map[string]any{
 		"id": reply.ResponseID, "object": "chat.completion", "created": 1790000000, "model": reply.ServedModel,
 		"choices": []any{map[string]any{
@@ -148,11 +152,11 @@ func completionBodyReply(reply llmtest.GeneratedReply, finishReason string) llmt
 		}},
 		"usage": usageBody(reply.Usage),
 	}
-	return llmtest.FakeReply{Header: http.Header{"Content-Type": {"application/json"}}, Body: mustEncodeJSON(body)}
+	return textgentest.FakeReply{Header: http.Header{"Content-Type": {"application/json"}}, Body: mustEncodeJSON(body)}
 }
 
 // streamReply splits the text across two deltas and sends usage in a final choiceless chunk.
-func (dialect *chatDialect) streamReply(reply llmtest.GeneratedReply, finishReason string) llmtest.FakeReply {
+func (dialect *chatDialect) streamReply(reply textgentest.GeneratedReply, finishReason string) textgentest.FakeReply {
 	var stream strings.Builder
 	stream.WriteString(": keep-alive\n\n\n")
 	stream.WriteString(chunkEvent(reply, deltaChoices(map[string]any{"role": "assistant", "reasoning_content": reasoningText}), nil))
@@ -169,25 +173,25 @@ func (dialect *chatDialect) streamReply(reply llmtest.GeneratedReply, finishReas
 }
 
 // interruptedStreamReply sends the text in one delta and then ends without a finish reason or [DONE].
-func (dialect *chatDialect) interruptedStreamReply(reply llmtest.GeneratedReply) llmtest.FakeReply {
+func (dialect *chatDialect) interruptedStreamReply(reply textgentest.GeneratedReply) textgentest.FakeReply {
 	return eventStreamReply(chunkEvent(reply, deltaChoices(map[string]any{"role": "assistant", "content": reply.Text}), nil))
 }
 
 // unstreamedReply is the complete chat.completion a gateway returns when it ignores "stream": true.
-func (dialect *chatDialect) unstreamedReply(reply llmtest.GeneratedReply) llmtest.FakeReply {
+func (dialect *chatDialect) unstreamedReply(reply textgentest.GeneratedReply) textgentest.FakeReply {
 	return completionBodyReply(reply, "stop")
 }
 
-func (dialect *chatDialect) blockedReply(reply llmtest.GeneratedReply) llmtest.FakeReply {
+func (dialect *chatDialect) blockedReply(reply textgentest.GeneratedReply) textgentest.FakeReply {
 	reply.Text = ""
 	return dialect.completionReply(reply, cmp.Or(dialect.config.BlockedFinishReason, "content_filter"))
 }
 
-func (dialect *chatDialect) errorReply(statusCode int, message string) llmtest.FakeReply {
+func (dialect *chatDialect) errorReply(statusCode int, message string) textgentest.FakeReply {
 	return dialect.errorBodyReply(statusCode, message, fmt.Sprintf("llmtest_http_%d", statusCode))
 }
 
-func (dialect *chatDialect) quotaExhaustedReply(message string) llmtest.FakeReply {
+func (dialect *chatDialect) quotaExhaustedReply(message string) textgentest.FakeReply {
 	statusCode := cmp.Or(dialect.config.QuotaExhaustedStatusCode, http.StatusPaymentRequired)
 	return dialect.errorBodyReply(statusCode, message, dialect.quotaExhaustedErrorToken())
 }
@@ -196,7 +200,7 @@ func (dialect *chatDialect) quotaExhaustedErrorToken() string {
 	return cmp.Or(dialect.config.QuotaExhaustedErrorToken, "llmtest_quota_exhausted")
 }
 
-func (dialect *chatDialect) contentPolicyErrorReply(message string) llmtest.FakeReply {
+func (dialect *chatDialect) contentPolicyErrorReply(message string) textgentest.FakeReply {
 	statusCode := cmp.Or(dialect.config.ContentPolicyErrorStatusCode, http.StatusBadRequest)
 	return dialect.errorBodyReply(statusCode, message, dialect.config.ContentPolicyErrorToken)
 }
@@ -212,24 +216,24 @@ func (dialect *chatDialect) hasNestedErrorEnvelope() bool {
 }
 
 // reportedErrorReply sends a 200 error body, or for a streaming dialect a content delta followed by an error event.
-func (dialect *chatDialect) reportedErrorReply(token string, message string) llmtest.FakeReply {
+func (dialect *chatDialect) reportedErrorReply(token string, message string) textgentest.FakeReply {
 	if !dialect.config.IsStreaming {
 		return dialect.errorBodyReply(http.StatusOK, message, token)
 	}
-	reply := llmtest.GeneratedReply{ServedModel: "llmtest-reported-error", ResponseID: "resp-llmtest-reported-error"}
+	reply := textgentest.GeneratedReply{ServedModel: "llmtest-reported-error", ResponseID: "resp-llmtest-reported-error"}
 	return eventStreamReply(chunkEvent(reply, deltaChoices(map[string]any{"role": "assistant", "content": "Partial"}), nil) +
 		"event: error\ndata: " + mustEncodeJSON(dialect.errorBody(message, token)) + "\n\n")
 }
 
-func (dialect *chatDialect) malformedReply() llmtest.FakeReply {
+func (dialect *chatDialect) malformedReply() textgentest.FakeReply {
 	if dialect.config.IsStreaming {
 		return eventStreamReply("data: {not json\n\n")
 	}
-	return llmtest.FakeReply{Header: http.Header{"Content-Type": {"application/json"}}, Body: `{"id":"x","choices":"not-an-array"}`}
+	return textgentest.FakeReply{Header: http.Header{"Content-Type": {"application/json"}}, Body: `{"id":"x","choices":"not-an-array"}`}
 }
 
-func (dialect *chatDialect) errorBodyReply(statusCode int, message string, token string) llmtest.FakeReply {
-	return llmtest.FakeReply{
+func (dialect *chatDialect) errorBodyReply(statusCode int, message string, token string) textgentest.FakeReply {
+	return textgentest.FakeReply{
 		StatusCode: statusCode, Header: http.Header{"Content-Type": {"application/json"}},
 		Body: mustEncodeJSON(dialect.errorBody(message, token)),
 	}
@@ -263,7 +267,7 @@ func setAtJSONPointer(document map[string]any, pointer string, value any) {
 	current[strings.ReplaceAll(strings.ReplaceAll(last, "~1", "/"), "~0", "~")] = value
 }
 
-func chunkEvent(reply llmtest.GeneratedReply, choices []any, usage map[string]any) string {
+func chunkEvent(reply textgentest.GeneratedReply, choices []any, usage map[string]any) string {
 	body := map[string]any{
 		"id": reply.ResponseID, "object": "chat.completion.chunk", "created": 1790000000,
 		"model": reply.ServedModel, "choices": choices,
@@ -278,11 +282,11 @@ func deltaChoices(fields map[string]any) []any {
 	return []any{map[string]any{"index": 0, "delta": fields, "finish_reason": nil}}
 }
 
-func eventStreamReply(body string) llmtest.FakeReply {
-	return llmtest.FakeReply{Header: http.Header{"Content-Type": {"text/event-stream"}}, Body: body}
+func eventStreamReply(body string) textgentest.FakeReply {
+	return textgentest.FakeReply{Header: http.Header{"Content-Type": {"text/event-stream"}}, Body: body}
 }
 
-func usageBody(usage llm.Usage) map[string]any {
+func usageBody(usage textgen.Usage) map[string]any {
 	return map[string]any{
 		"prompt_tokens": usage.InputTokens, "completion_tokens": usage.OutputTokens, "total_tokens": usage.TotalTokens,
 		"prompt_tokens_details":     map[string]any{"cached_tokens": usage.CachedInputTokens},
@@ -290,7 +294,7 @@ func usageBody(usage llm.Usage) map[string]any {
 	}
 }
 
-func readRequestModel(request llmtest.RecordedRequest) (string, error) {
+func readRequestModel(request textgentest.RecordedRequest) (string, error) {
 	var body struct {
 		Model *string `json:"model"`
 	}

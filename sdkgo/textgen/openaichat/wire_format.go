@@ -15,8 +15,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/superdurable/dex-connectors-library/sdkgo/llm"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"github.com/superdurable/dex-connectors-library/sdkgo/textgen"
 )
 
 var (
@@ -38,15 +38,15 @@ type chatWireFormat struct {
 }
 
 // NewWireFormat validates profile and returns its Chat Completions wire
-// format for llm.TextGenerationQueryConfig. It returns an error for a nil
+// format for textgen.TextGenerationQueryConfig. It returns an error for a nil
 // profile, a missing provider name, an invalid path, header, role, token
 // field, streaming policy, reasoning map, structured-output rule, request
 // field, allowlist that omits a field every request sends, or model rule.
 // Error rules, finish tokens, and header names are validated again by
-// llm.NewTextGenerationQuery. The model travels in the JSON body, so the wire
-// format uses llm.ModelIDRuleBody.
+// textgen.NewTextGenerationQuery. The model travels in the JSON body, so the wire
+// format uses textgen.ModelIDRuleBody.
 //
-// The wire format declares exactly the llm.RequestFeatures fields of SDK
+// The wire format declares exactly the textgen.RequestFeatures fields of SDK
 // v0.10: instructions, structured output, max output tokens, temperature, and
 // reasoning effort. A Profile limits what models accept through its
 // temperature policy, reasoning map, and structured-output rules. A
@@ -54,20 +54,20 @@ type chatWireFormat struct {
 // Profile field, whose zero value leaves it off, opts in, so a connector
 // released against an older SDK keeps rejecting that request field under
 // minimal version selection.
-func NewWireFormat(profile *Profile) (llm.WireFormat, error) {
+func NewWireFormat(profile *Profile) (textgen.WireFormat, error) {
 	if profile == nil {
-		return llm.WireFormat{}, fmt.Errorf("openaichat profile is required")
+		return textgen.WireFormat{}, fmt.Errorf("openaichat profile is required")
 	}
 	modelRules, err := validateProfile(profile)
 	if err != nil {
-		return llm.WireFormat{}, fmt.Errorf("openaichat %w", err)
+		return textgen.WireFormat{}, fmt.Errorf("openaichat %w", err)
 	}
 	format := &chatWireFormat{
 		chatCompletionsPath: cmp.Or(profile.ChatCompletionsPath, "/chat/completions"),
 		fixedHeaders:        http.Header{},
 		instructionsRole:    InstructionsRole(cmp.Or(string(profile.InstructionsRole), string(InstructionsRoleSystem))),
 		baseSettings: modelSettings{
-			rules: llm.ModelRequestRules{
+			rules: textgen.ModelRequestRules{
 				Temperature: profile.Temperature, ReasoningEfforts: profile.ReasoningEfforts,
 				StructuredOutput: profile.StructuredOutput,
 			},
@@ -87,10 +87,10 @@ func NewWireFormat(profile *Profile) (llm.WireFormat, error) {
 	}
 	credentialHeader := profile.CredentialHeader
 	if credentialHeader.Name == "" {
-		credentialHeader = llm.CredentialHeader{Name: "Authorization", Prefix: "Bearer "}
+		credentialHeader = textgen.CredentialHeader{Name: "Authorization", Prefix: "Bearer "}
 	}
-	finishReasons := map[string]llm.FinishReason{
-		"stop": llm.FinishReasonStop, "length": llm.FinishReasonLength, "content_filter": llm.FinishReasonContentPolicy,
+	finishReasons := map[string]textgen.FinishReason{
+		"stop": textgen.FinishReasonStop, "length": textgen.FinishReasonLength, "content_filter": textgen.FinishReasonContentPolicy,
 	}
 	for token, reason := range profile.FinishReasons {
 		finishReasons[token] = reason
@@ -104,10 +104,10 @@ func NewWireFormat(profile *Profile) (llm.WireFormat, error) {
 	if requestIDHeaders == nil {
 		requestIDHeaders = []string{"x-request-id"}
 	}
-	return llm.WireFormat{
+	return textgen.WireFormat{
 		ProviderName: profile.ProviderName,
-		ModelIDRule:  llm.ModelIDRuleBody,
-		Features: llm.RequestFeatures{
+		ModelIDRule:  textgen.ModelIDRuleBody,
+		Features: textgen.RequestFeatures{
 			SupportsInstructions: true, SupportsStructuredOutput: true, SupportsMaxOutputTokens: true, SupportsTemperature: true,
 			SupportsReasoningEffort: true,
 		},
@@ -117,7 +117,7 @@ func NewWireFormat(profile *Profile) (llm.WireFormat, error) {
 		DecodeResponse:     format.decodeResponse,
 		DecodeStream:       format.decodeStream,
 		FinishReasons:      finishReasons,
-		ErrorRules:         append([]llm.ErrorRule(nil), profile.ErrorRules...),
+		ErrorRules:         append([]textgen.ErrorRule(nil), profile.ErrorRules...),
 		ErrorTokenPointers: append([]string(nil), errorTokenPointers...),
 		RequestIDHeaders:   append([]string(nil), requestIDHeaders...),
 		RateLimitHeaders:   append([]string(nil), profile.RateLimitHeaders...),
@@ -125,7 +125,7 @@ func NewWireFormat(profile *Profile) (llm.WireFormat, error) {
 	}, nil
 }
 
-func (format *chatWireFormat) rulesForModel(model string) llm.ModelRequestRules {
+func (format *chatWireFormat) rulesForModel(model string) textgen.ModelRequestRules {
 	return format.settingsForModel(model).rules
 }
 
@@ -161,7 +161,7 @@ type chatMessage struct {
 	Content string `json:"content"`
 }
 
-func (format *chatWireFormat) encodeRequest(input llm.EncodeRequestInput) (llm.EncodedRequest, error) {
+func (format *chatWireFormat) encodeRequest(input textgen.EncodeRequestInput) (textgen.EncodedRequest, error) {
 	request := input.Request
 	settings := format.settingsForModel(request.Model)
 	messages := make([]chatMessage, 0, len(request.Messages)+1)
@@ -183,7 +183,7 @@ func (format *chatWireFormat) encodeRequest(input llm.EncodeRequestInput) (llm.E
 	}
 	if output := request.StructuredOutput; output != nil {
 		switch input.Rules.StructuredOutput.Mode {
-		case llm.StructuredOutputModeJSONSchema:
+		case textgen.StructuredOutputModeJSONSchema:
 			jsonSchema := map[string]any{"name": output.Name, "schema": output.Schema}
 			if output.Description != "" {
 				jsonSchema["description"] = output.Description
@@ -192,7 +192,7 @@ func (format *chatWireFormat) encodeRequest(input llm.EncodeRequestInput) (llm.E
 				jsonSchema["strict"] = true
 			}
 			body["response_format"] = map[string]any{"type": "json_schema", "json_schema": jsonSchema}
-		case llm.StructuredOutputModeJSONObjectWithInstruction:
+		case textgen.StructuredOutputModeJSONObjectWithInstruction:
 			body["response_format"] = map[string]any{"type": "json_object"}
 		}
 	}
@@ -206,15 +206,15 @@ func (format *chatWireFormat) encodeRequest(input llm.EncodeRequestInput) (llm.E
 	if format.allowedRequestFields != nil {
 		for _, field := range sortedFieldNames(body) {
 			if !format.allowedRequestFields[field] {
-				return llm.EncodedRequest{}, fmt.Errorf("the provider does not accept the %q request field", field)
+				return textgen.EncodedRequest{}, fmt.Errorf("the provider does not accept the %q request field", field)
 			}
 		}
 	}
 	encoded, err := json.Marshal(body)
 	if err != nil {
-		return llm.EncodedRequest{}, fmt.Errorf("the request body is not JSON serializable")
+		return textgen.EncodedRequest{}, fmt.Errorf("the request body is not JSON serializable")
 	}
-	return llm.EncodedRequest{
+	return textgen.EncodedRequest{
 		Path: format.chatCompletionsPath, Body: encoded, Header: format.fixedHeaders.Clone(), IsStreaming: isStreaming,
 	}, nil
 }
@@ -257,21 +257,21 @@ type chatUsage struct {
 	} `json:"completion_tokens_details"`
 }
 
-func (format *chatWireFormat) decodeResponse(body []byte) (llm.DecodedResponse, error) {
+func (format *chatWireFormat) decodeResponse(body []byte) (textgen.DecodedResponse, error) {
 	var completion chatCompletion
 	if err := json.Unmarshal(body, &completion); err != nil {
-		return llm.DecodedResponse{}, err
+		return textgen.DecodedResponse{}, err
 	}
 	if hasErrorObject(completion.Error) {
-		return llm.DecodedResponse{}, format.reportedError(body)
+		return textgen.DecodedResponse{}, format.reportedError(body)
 	}
 	choice, found := firstChoice(completion.Choices)
 	if !found {
-		return llm.DecodedResponse{}, errNoChoice
+		return textgen.DecodedResponse{}, errNoChoice
 	}
-	decoded := llm.DecodedResponse{ServedModel: completion.Model, ResponseID: completion.ID, Usage: completion.Usage.usage()}
+	decoded := textgen.DecodedResponse{ServedModel: completion.Model, ResponseID: completion.ID, Usage: completion.Usage.usage()}
 	if err := appendDeltaParts(&decoded, choice.Message, nil); err != nil {
-		return llm.DecodedResponse{}, err
+		return textgen.DecodedResponse{}, err
 	}
 	if choice.FinishReason != nil {
 		decoded.ProviderFinishReason = *choice.FinishReason
@@ -279,8 +279,8 @@ func (format *chatWireFormat) decodeResponse(body []byte) (llm.DecodedResponse, 
 	return decoded, nil
 }
 
-func (format *chatWireFormat) decodeStream(events *providerhttp.ServerSentEventReader, writeTextDelta func(string) error) (llm.DecodedResponse, error) {
-	var decoded llm.DecodedResponse
+func (format *chatWireFormat) decodeStream(events *providerhttp.ServerSentEventReader, writeTextDelta func(string) error) (textgen.DecodedResponse, error) {
+	var decoded textgen.DecodedResponse
 	hasFinished := false
 	for {
 		event, err := events.ReadEvent()
@@ -288,23 +288,23 @@ func (format *chatWireFormat) decodeStream(events *providerhttp.ServerSentEventR
 			if hasFinished {
 				return decoded, nil
 			}
-			return llm.DecodedResponse{}, io.ErrUnexpectedEOF
+			return textgen.DecodedResponse{}, io.ErrUnexpectedEOF
 		}
 		if err != nil {
-			return llm.DecodedResponse{}, fmt.Errorf("read chat completion stream: %w", err)
+			return textgen.DecodedResponse{}, fmt.Errorf("read chat completion stream: %w", err)
 		}
 		if strings.TrimSpace(event.Data) == "[DONE]" {
 			if !hasFinished {
-				return llm.DecodedResponse{}, errStreamEndedWithoutFinish
+				return textgen.DecodedResponse{}, errStreamEndedWithoutFinish
 			}
 			return decoded, nil
 		}
 		var chunk chatCompletion
 		if err := json.Unmarshal([]byte(event.Data), &chunk); err != nil {
-			return llm.DecodedResponse{}, err
+			return textgen.DecodedResponse{}, err
 		}
 		if hasErrorObject(chunk.Error) {
-			return llm.DecodedResponse{}, format.reportedError([]byte(event.Data))
+			return textgen.DecodedResponse{}, format.reportedError([]byte(event.Data))
 		}
 		decoded.ResponseID = cmp.Or(decoded.ResponseID, chunk.ID)
 		decoded.ServedModel = cmp.Or(decoded.ServedModel, chunk.Model)
@@ -316,7 +316,7 @@ func (format *chatWireFormat) decodeStream(events *providerhttp.ServerSentEventR
 			continue
 		}
 		if err := appendDeltaParts(&decoded, choice.Delta, writeTextDelta); err != nil {
-			return llm.DecodedResponse{}, err
+			return textgen.DecodedResponse{}, err
 		}
 		if choice.FinishReason != nil && *choice.FinishReason != "" {
 			decoded.ProviderFinishReason = *choice.FinishReason
@@ -326,8 +326,8 @@ func (format *chatWireFormat) decodeStream(events *providerhttp.ServerSentEventR
 }
 
 // reportedError keeps only the error object's bounded tokens, never its message.
-func (format *chatWireFormat) reportedError(body []byte) *llm.ProviderReportedError {
-	return &llm.ProviderReportedError{ErrorTokens: providerhttp.ReadErrorTokens(body, format.errorTokenPointers)}
+func (format *chatWireFormat) reportedError(body []byte) *textgen.ProviderReportedError {
+	return &textgen.ProviderReportedError{ErrorTokens: providerhttp.ReadErrorTokens(body, format.errorTokenPointers)}
 }
 
 func hasErrorObject(value json.RawMessage) bool {
@@ -336,9 +336,9 @@ func hasErrorObject(value json.RawMessage) bool {
 }
 
 // appendDeltaParts adds one message or delta's text and reasoning, writing text deltas when a writer is given.
-func appendDeltaParts(decoded *llm.DecodedResponse, delta chatDelta, writeTextDelta func(string) error) error {
+func appendDeltaParts(decoded *textgen.DecodedResponse, delta chatDelta, writeTextDelta func(string) error) error {
 	if delta.ReasoningContent != nil && *delta.ReasoningContent != "" {
-		appendPart(decoded, llm.ResponsePart{Text: *delta.ReasoningContent, IsReasoning: true})
+		appendPart(decoded, textgen.ResponsePart{Text: *delta.ReasoningContent, IsReasoning: true})
 	}
 	if delta.Refusal != nil && *delta.Refusal != "" {
 		decoded.IsRefusal = true
@@ -348,7 +348,7 @@ func appendDeltaParts(decoded *llm.DecodedResponse, delta chatDelta, writeTextDe
 		return err
 	}
 	for _, text := range texts {
-		appendPart(decoded, llm.ResponsePart{Text: text})
+		appendPart(decoded, textgen.ResponsePart{Text: text})
 		if writeTextDelta != nil {
 			if err := writeTextDelta(text); err != nil {
 				return err
@@ -359,7 +359,7 @@ func appendDeltaParts(decoded *llm.DecodedResponse, delta chatDelta, writeTextDe
 }
 
 // appendPart merges consecutive parts of the same kind so a stream yields few parts.
-func appendPart(decoded *llm.DecodedResponse, part llm.ResponsePart) {
+func appendPart(decoded *textgen.DecodedResponse, part textgen.ResponsePart) {
 	if count := len(decoded.Parts); count > 0 && decoded.Parts[count-1].IsReasoning == part.IsReasoning {
 		decoded.Parts[count-1].Text += part.Text
 		return
@@ -405,11 +405,11 @@ func firstChoice(choices []chatChoice) (chatChoice, bool) {
 	return chatChoice{}, false
 }
 
-func (usage *chatUsage) usage() llm.Usage {
+func (usage *chatUsage) usage() textgen.Usage {
 	if usage == nil {
-		return llm.Usage{}
+		return textgen.Usage{}
 	}
-	converted := llm.Usage{
+	converted := textgen.Usage{
 		InputTokens: int64(usage.PromptTokens), OutputTokens: int64(usage.CompletionTokens),
 		TotalTokens: int64(usage.TotalTokens),
 	}

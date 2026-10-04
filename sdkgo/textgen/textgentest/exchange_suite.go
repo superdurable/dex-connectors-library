@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-package llmtest
+package textgentest
 
 import (
 	"bytes"
@@ -18,7 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/internal/testsupport"
-	"github.com/superdurable/dex-connectors-library/sdkgo/llm"
+	"github.com/superdurable/dex-connectors-library/sdkgo/textgen"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -39,7 +39,7 @@ const (
 )
 
 // reportedUsage has distinct counts, so a swapped field fails the assertions.
-var reportedUsage = llm.Usage{InputTokens: 11, CachedInputTokens: 3, OutputTokens: 7, ReasoningTokens: 2, TotalTokens: 18}
+var reportedUsage = textgen.Usage{InputTokens: 11, CachedInputTokens: 3, OutputTokens: 7, ReasoningTokens: 2, TotalTokens: 18}
 
 // ProviderDialect describes how one connector's provider API looks on the
 // wire, so the fake provider can answer like it and the suites can read what
@@ -48,7 +48,7 @@ var reportedUsage = llm.Usage{InputTokens: 11, CachedInputTokens: 3, OutputToken
 type ProviderDialect struct {
 	// CredentialHeader is where the connector must send the API key, such as
 	// Authorization with the "Bearer " prefix.
-	CredentialHeader llm.CredentialHeader
+	CredentialHeader textgen.CredentialHeader
 	// ConnectionModel is the connection's configured model ID.
 	ConnectionModel string
 	// AlternateModel is a second valid model ID, used to prove that a
@@ -86,7 +86,7 @@ type ProviderDialect struct {
 	// ContentPolicyErrorReply optionally renders a content-policy block that
 	// the provider reports as an error, such as a 400 with the token
 	// "content_filter", with message as its text. The connector's ErrorRules
-	// must select blocked with llm.BlockedOutcome.
+	// must select blocked with textgen.BlockedOutcome.
 	ContentPolicyErrorReply func(message string) FakeReply
 	// ReportedErrorReply optionally renders a 2xx response, or a streamed
 	// error event, that carries a provider error object with token as its
@@ -120,7 +120,7 @@ type GeneratedReply struct {
 	// ResponseID is the provider's response identifier.
 	ResponseID string
 	// Usage holds the token counts to report.
-	Usage llm.Usage
+	Usage textgen.Usage
 }
 
 // FakeConnection is what a suite gives a connector's closure to build its
@@ -146,7 +146,7 @@ type NamedTextGenerationRequest struct {
 	// Name labels the subtest.
 	Name string
 	// Request is the rejected request. Empty Messages use one user message.
-	Request llm.TextGenerationRequest
+	Request textgen.TextGenerationRequest
 }
 
 // TextGenerationExchangeSuite configures RunTextGenerationExchangeSuite for one connector.
@@ -155,7 +155,7 @@ type TextGenerationExchangeSuite struct {
 	Dialect ProviderDialect
 	// NewQuery builds the connector's generateText Query for connection, the
 	// way the connector's GenerateText method does. It is required.
-	NewQuery func(t testing.TB, connection FakeConnection) *llm.TextGenerationQuery
+	NewQuery func(t testing.TB, connection FakeConnection) *textgen.TextGenerationQuery
 	// LocallyRejectedRequests are connector-specific requests that must select
 	// defect without a provider request, such as the rows of a temperature or
 	// reasoning-effort table. It is optional.
@@ -274,13 +274,13 @@ func (run exchangeSuiteRun) testGenerated(t *testing.T) {
 	if exchange.query.RequestFeatures().SupportsInstructions {
 		request.Instructions = "Answer in one sentence."
 	}
-	result := exchange.requireBranch(t, request, llm.GeneratedBranchID, "")
+	result := exchange.requireBranch(t, request, textgen.GeneratedBranchID, "")
 	value := result.Value
 	require.Equal(t, generatedText, value.Text)
 	require.Equal(t, exchange.connectionModel, value.RequestedModel)
 	require.Equal(t, servedModel, value.ServedModel)
 	require.Equal(t, responseID, value.ResponseID)
-	require.Equal(t, llm.FinishReasonStop, value.FinishReason)
+	require.Equal(t, textgen.FinishReasonStop, value.FinishReason)
 	require.NotEmpty(t, value.ProviderFinishReason)
 	require.Equal(t, reportedUsage.InputTokens, value.Usage.InputTokens)
 	require.Equal(t, reportedUsage.OutputTokens, value.Usage.OutputTokens)
@@ -307,9 +307,9 @@ func (run exchangeSuiteRun) testTruncated(t *testing.T) {
 	exchange.provider.EnqueueReplies(run.suite.Dialect.TruncatedReply(GeneratedReply{
 		Text: partialText, ServedModel: servedModel, ResponseID: responseID, Usage: reportedUsage,
 	}))
-	result := exchange.requireBranch(t, baseRequest(), llm.TruncatedBranchID, sdkgo.FailureResponseTooLarge)
+	result := exchange.requireBranch(t, baseRequest(), textgen.TruncatedBranchID, sdkgo.FailureResponseTooLarge)
 	require.Equal(t, partialText, result.Value.Text)
-	require.Equal(t, llm.FinishReasonLength, result.Value.FinishReason)
+	require.Equal(t, textgen.FinishReasonLength, result.Value.FinishReason)
 	require.Equal(t, exchange.connectionModel, result.Value.RequestedModel)
 	exchange.requireRequestCount(t, 1)
 }
@@ -319,16 +319,16 @@ func (run exchangeSuiteRun) testBlocked(t *testing.T) {
 	exchange.provider.EnqueueReplies(run.suite.Dialect.BlockedReply(GeneratedReply{
 		ServedModel: servedModel, ResponseID: responseID, Usage: reportedUsage,
 	}))
-	result := exchange.requireBranch(t, baseRequest(), llm.BlockedBranchID, sdkgo.FailureProviderRejection)
+	result := exchange.requireBranch(t, baseRequest(), textgen.BlockedBranchID, sdkgo.FailureProviderRejection)
 	require.Empty(t, result.Value.Text)
-	require.Contains(t, []llm.FinishReason{llm.FinishReasonContentPolicy, llm.FinishReasonRefusal}, result.Value.FinishReason)
+	require.Contains(t, []textgen.FinishReason{textgen.FinishReasonContentPolicy, textgen.FinishReasonRefusal}, result.Value.FinishReason)
 	exchange.requireRequestCount(t, 1)
 }
 
 func (run exchangeSuiteRun) testErrorStatus(t *testing.T, statusCode int, kind sdkgo.FailureKind) {
 	exchange := run.newExchange(t)
 	exchange.provider.EnqueueReplies(run.suite.Dialect.ErrorReply(statusCode, providerMessageCanary))
-	result := exchange.requireBranch(t, baseRequest(), llm.ProviderRejectedBranchID, kind)
+	result := exchange.requireBranch(t, baseRequest(), textgen.ProviderRejectedBranchID, kind)
 	require.Equal(t, exchange.connectionModel, result.Value.RequestedModel)
 	require.Contains(t, result.Failure.Message, fmt.Sprint(statusCode))
 	exchange.requireRequestCount(t, 1)
@@ -337,7 +337,7 @@ func (run exchangeSuiteRun) testErrorStatus(t *testing.T, statusCode int, kind s
 func (run exchangeSuiteRun) testQuotaExhausted(t *testing.T) {
 	exchange := run.newExchange(t)
 	exchange.provider.EnqueueReplies(run.suite.Dialect.QuotaExhaustedReply(providerMessageCanary))
-	result := exchange.requireBranch(t, baseRequest(), llm.ProviderRejectedBranchID, sdkgo.FailureQuotaExhausted)
+	result := exchange.requireBranch(t, baseRequest(), textgen.ProviderRejectedBranchID, sdkgo.FailureQuotaExhausted)
 	if token := run.suite.Dialect.QuotaExhaustedErrorToken; token != "" {
 		require.Contains(t, result.Failure.Message, token, "the connector's error-token pointers must read the quota token")
 	}
@@ -395,7 +395,7 @@ func (run exchangeSuiteRun) testRedirect(t *testing.T) {
 	exchange.provider.EnqueueReplies(FakeReply{
 		StatusCode: http.StatusTemporaryRedirect, Header: http.Header{"Location": {exchange.provider.BaseURL() + "/llmtest-redirected"}},
 	})
-	exchange.requireBranch(t, baseRequest(), llm.InvalidResponseBranchID, sdkgo.FailureProtocol)
+	exchange.requireBranch(t, baseRequest(), textgen.InvalidResponseBranchID, sdkgo.FailureProtocol)
 	exchange.requireRequestCount(t, 1)
 }
 
@@ -409,7 +409,7 @@ func (run exchangeSuiteRun) testTransportFailure(t *testing.T) {
 func (run exchangeSuiteRun) testMalformedResponse(t *testing.T) {
 	exchange := run.newExchange(t)
 	exchange.provider.EnqueueReplies(run.suite.Dialect.MalformedReply())
-	result := exchange.requireBranch(t, baseRequest(), llm.InvalidResponseBranchID, sdkgo.FailureProtocol)
+	result := exchange.requireBranch(t, baseRequest(), textgen.InvalidResponseBranchID, sdkgo.FailureProtocol)
 	require.Equal(t, exchange.connectionModel, result.Value.RequestedModel)
 	exchange.requireRequestCount(t, 1)
 }
@@ -419,7 +419,7 @@ func (run exchangeSuiteRun) testOversizedResponse(t *testing.T) {
 	exchange.provider.EnqueueReplies(run.suite.Dialect.GeneratedReply(GeneratedReply{
 		Text: strings.Repeat("x", fakeMaxResponseBytes+1), ServedModel: servedModel, ResponseID: responseID, Usage: reportedUsage,
 	}))
-	exchange.requireBranch(t, baseRequest(), llm.InvalidResponseBranchID, sdkgo.FailureResponseTooLarge)
+	exchange.requireBranch(t, baseRequest(), textgen.InvalidResponseBranchID, sdkgo.FailureResponseTooLarge)
 	exchange.requireRequestCount(t, 1)
 }
 
@@ -432,20 +432,20 @@ func (run exchangeSuiteRun) testStructuredOutput(t *testing.T) {
 	t.Run("matching object", func(t *testing.T) {
 		exchange := run.newExchange(t)
 		exchange.provider.EnqueueReplies(run.generatedReply(matching))
-		result := exchange.requireBranch(t, structuredRequest(answerSchema()), llm.GeneratedBranchID, "")
+		result := exchange.requireBranch(t, structuredRequest(answerSchema()), textgen.GeneratedBranchID, "")
 		require.JSONEq(t, matching, result.Value.Text)
 		exchange.requireRequestCount(t, 1)
 	})
 	t.Run("fenced object", func(t *testing.T) {
 		exchange := run.newExchange(t)
 		exchange.provider.EnqueueReplies(run.generatedReply("```json\n" + matching + "\n```"))
-		result := exchange.requireBranch(t, structuredRequest(answerSchema()), llm.GeneratedBranchID, "")
+		result := exchange.requireBranch(t, structuredRequest(answerSchema()), textgen.GeneratedBranchID, "")
 		require.Equal(t, matching, result.Value.Text)
 	})
 	t.Run("mismatched object", func(t *testing.T) {
 		exchange := run.newExchange(t)
 		exchange.provider.EnqueueReplies(run.generatedReply(`{"answer":"` + structuredValueCanary + `","score":42}`))
-		result := exchange.requireBranch(t, structuredRequest(answerSchema()), llm.InvalidResponseBranchID, sdkgo.FailureProtocol)
+		result := exchange.requireBranch(t, structuredRequest(answerSchema()), textgen.InvalidResponseBranchID, sdkgo.FailureProtocol)
 		require.Contains(t, result.Failure.Message, "/score")
 		require.Empty(t, result.Value.Text)
 	})
@@ -455,7 +455,7 @@ func (run exchangeSuiteRun) testStructuredOutput(t *testing.T) {
 		schema["properties"].(map[string]any)["answer"] = map[string]any{
 			"anyOf": []any{map[string]any{"type": "string"}, map[string]any{"type": "integer"}},
 		}
-		result := exchange.requireBranch(t, structuredRequest(schema), llm.DefectBranchID, sdkgo.FailureValidation)
+		result := exchange.requireBranch(t, structuredRequest(schema), textgen.DefectBranchID, sdkgo.FailureValidation)
 		require.Contains(t, result.Failure.Message, "anyOf")
 		exchange.requireRequestCount(t, 0)
 	})
@@ -468,7 +468,7 @@ func (run exchangeSuiteRun) testRequestModelPrecedence(t *testing.T) {
 	exchange.provider.EnqueueReplies(run.generatedReply(generatedText))
 	request := baseRequest()
 	request.Model = "  " + run.suite.Dialect.AlternateModel + "\t"
-	result := exchange.requireBranch(t, request, llm.GeneratedBranchID, "")
+	result := exchange.requireBranch(t, request, textgen.GeneratedBranchID, "")
 	require.Equal(t, alternateModel, result.Value.RequestedModel)
 	exchange.requireRequestModel(t, exchange.requireRequestCount(t, 1)[0], alternateModel)
 }
@@ -477,7 +477,7 @@ func (run exchangeSuiteRun) testInvalidRequestModel(t *testing.T) {
 	exchange := run.newExchange(t)
 	request := baseRequest()
 	request.Model = "llmtest invalid model"
-	result := exchange.requireBranch(t, request, llm.DefectBranchID, sdkgo.FailureValidation)
+	result := exchange.requireBranch(t, request, textgen.DefectBranchID, sdkgo.FailureValidation)
 	require.Empty(t, result.Value.RequestedModel)
 	exchange.requireRequestCount(t, 0)
 }
@@ -495,12 +495,12 @@ func (run exchangeSuiteRun) testSharedModelIDCases(t *testing.T) {
 				// A blank request model is unset, so precedence selects the connection model.
 				expectedModel = exchange.connectionModel
 			} else if !modelCase.IsValid {
-				exchange.requireBranch(t, request, llm.DefectBranchID, sdkgo.FailureValidation)
+				exchange.requireBranch(t, request, textgen.DefectBranchID, sdkgo.FailureValidation)
 				exchange.requireRequestCount(t, 0)
 				return
 			}
 			exchange.provider.EnqueueReplies(run.generatedReply(generatedText))
-			result := exchange.requireBranch(t, request, llm.GeneratedBranchID, "")
+			result := exchange.requireBranch(t, request, textgen.GeneratedBranchID, "")
 			require.Equal(t, expectedModel, result.Value.RequestedModel)
 			exchange.requireRequestModel(t, exchange.requireRequestCount(t, 1)[0], expectedModel)
 		})
@@ -510,26 +510,26 @@ func (run exchangeSuiteRun) testSharedModelIDCases(t *testing.T) {
 // featureRequest sets exactly one optional request field, which the defect message must name.
 type featureRequest struct {
 	requestField string
-	setField     func(*llm.TextGenerationRequest)
+	setField     func(*textgen.TextGenerationRequest)
 }
 
 // featureRequests is keyed by RequestFeatures field name.
 var featureRequests = map[string]featureRequest{
-	"SupportsInstructions": {requestField: "Instructions", setField: func(request *llm.TextGenerationRequest) {
+	"SupportsInstructions": {requestField: "Instructions", setField: func(request *textgen.TextGenerationRequest) {
 		request.Instructions = "Answer in one sentence."
 	}},
-	"SupportsStructuredOutput": {requestField: "StructuredOutput", setField: func(request *llm.TextGenerationRequest) {
+	"SupportsStructuredOutput": {requestField: "StructuredOutput", setField: func(request *textgen.TextGenerationRequest) {
 		*request = structuredRequest(answerSchema())
 	}},
-	"SupportsMaxOutputTokens": {requestField: "MaxOutputTokens", setField: func(request *llm.TextGenerationRequest) {
+	"SupportsMaxOutputTokens": {requestField: "MaxOutputTokens", setField: func(request *textgen.TextGenerationRequest) {
 		request.MaxOutputTokens = 64
 	}},
-	"SupportsTemperature": {requestField: "Temperature", setField: func(request *llm.TextGenerationRequest) {
+	"SupportsTemperature": {requestField: "Temperature", setField: func(request *textgen.TextGenerationRequest) {
 		temperature := 0.5
 		request.Temperature = &temperature
 	}},
-	"SupportsReasoningEffort": {requestField: "ReasoningEffort", setField: func(request *llm.TextGenerationRequest) {
-		request.ReasoningEffort = llm.ReasoningEffortLow
+	"SupportsReasoningEffort": {requestField: "ReasoningEffort", setField: func(request *textgen.TextGenerationRequest) {
+		request.ReasoningEffort = textgen.ReasoningEffortLow
 	}},
 }
 
@@ -546,7 +546,7 @@ func (run exchangeSuiteRun) testUndeclaredRequestFeatures(t *testing.T) {
 			exchange := run.newExchange(t)
 			request := baseRequest()
 			known.setField(&request)
-			result := exchange.requireBranch(t, request, llm.DefectBranchID, sdkgo.FailureValidation)
+			result := exchange.requireBranch(t, request, textgen.DefectBranchID, sdkgo.FailureValidation)
 			require.Contains(t, result.Failure.Message, known.requestField)
 			exchange.requireRequestCount(t, 0)
 		})
@@ -561,7 +561,7 @@ func (run exchangeSuiteRun) testLocallyRejectedRequests(t *testing.T) {
 			if len(request.Messages) == 0 {
 				request.Messages = baseRequest().Messages
 			}
-			exchange.requireBranch(t, request, llm.DefectBranchID, "")
+			exchange.requireBranch(t, request, textgen.DefectBranchID, "")
 			exchange.requireRequestCount(t, 0)
 		})
 	}
@@ -570,9 +570,9 @@ func (run exchangeSuiteRun) testLocallyRejectedRequests(t *testing.T) {
 func (run exchangeSuiteRun) testContentPolicyError(t *testing.T) {
 	exchange := run.newExchange(t)
 	exchange.provider.EnqueueReplies(run.suite.Dialect.ContentPolicyErrorReply(providerMessageCanary))
-	result := exchange.requireBranch(t, baseRequest(), llm.BlockedBranchID, sdkgo.FailureProviderRejection)
+	result := exchange.requireBranch(t, baseRequest(), textgen.BlockedBranchID, sdkgo.FailureProviderRejection)
 	require.Empty(t, result.Value.Text)
-	require.Equal(t, llm.FinishReasonContentPolicy, result.Value.FinishReason)
+	require.Equal(t, textgen.FinishReasonContentPolicy, result.Value.FinishReason)
 	require.Equal(t, exchange.connectionModel, result.Value.RequestedModel)
 	exchange.requireRequestCount(t, 1)
 }
@@ -580,7 +580,7 @@ func (run exchangeSuiteRun) testContentPolicyError(t *testing.T) {
 func (run exchangeSuiteRun) testUnmatchedReportedError(t *testing.T) {
 	exchange := run.newExchange(t)
 	exchange.provider.EnqueueReplies(run.suite.Dialect.ReportedErrorReply(unmatchedReportedErrorToken, providerMessageCanary))
-	result := exchange.requireBranch(t, baseRequest(), llm.InvalidResponseBranchID, sdkgo.FailureProtocol)
+	result := exchange.requireBranch(t, baseRequest(), textgen.InvalidResponseBranchID, sdkgo.FailureProtocol)
 	require.Contains(t, result.Failure.Message, unmatchedReportedErrorToken, "the Failure names the provider's error token")
 	require.Empty(t, result.Value.Text)
 	exchange.requireRequestCount(t, 1)
@@ -600,7 +600,7 @@ func (run exchangeSuiteRun) testUnstreamedReply(t *testing.T) {
 	exchange.provider.EnqueueReplies(run.suite.Dialect.UnstreamedReply(GeneratedReply{
 		Text: generatedText, ServedModel: servedModel, ResponseID: responseID, Usage: reportedUsage,
 	}))
-	result := exchange.requireBranch(t, baseRequest(), llm.GeneratedBranchID, "")
+	result := exchange.requireBranch(t, baseRequest(), textgen.GeneratedBranchID, "")
 	require.Equal(t, generatedText, result.Value.Text)
 	require.Equal(t, responseID, result.Value.ResponseID)
 	exchange.requireRequestCount(t, 1)
@@ -609,7 +609,7 @@ func (run exchangeSuiteRun) testUnstreamedReply(t *testing.T) {
 func (run exchangeSuiteRun) testRequestWithoutOptionalFields(t *testing.T) {
 	exchange := run.newExchange(t)
 	exchange.provider.EnqueueReplies(run.generatedReply(generatedText))
-	exchange.requireBranch(t, baseRequest(), llm.GeneratedBranchID, "")
+	exchange.requireBranch(t, baseRequest(), textgen.GeneratedBranchID, "")
 	decoder := json.NewDecoder(bytes.NewReader(exchange.requireRequestCount(t, 1)[0].Body))
 	decoder.UseNumber()
 	var body any
@@ -635,7 +635,7 @@ func (run exchangeSuiteRun) newExchange(t *testing.T) *providerExchange {
 		APIKey: sdkgo.NewSecretString(credentialCanary), MaxResponseBytes: fakeMaxResponseBytes,
 	}
 	query := run.suite.NewQuery(t, connection)
-	require.NotNil(t, query, "NewQuery must return the Query built by llm.NewTextGenerationQuery")
+	require.NotNil(t, query, "NewQuery must return the Query built by textgen.NewTextGenerationQuery")
 	exchange := &providerExchange{
 		dialect: dialect, provider: provider, query: query, connection: connection.Reference,
 	}
@@ -647,20 +647,20 @@ func (run exchangeSuiteRun) newExchange(t *testing.T) *providerExchange {
 type providerExchange struct {
 	dialect         *ProviderDialect
 	provider        *FakeProvider
-	query           *llm.TextGenerationQuery
+	query           *textgen.TextGenerationQuery
 	connection      sdkgo.ConnectionRef
 	connectionModel string
 	invocations     int
 }
 
 func (exchange *providerExchange) requireBranch(
-	t *testing.T, request llm.TextGenerationRequest, branch sdkgo.BranchID, kind sdkgo.FailureKind,
-) llm.TextGenerationResult {
+	t *testing.T, request textgen.TextGenerationRequest, branch sdkgo.BranchID, kind sdkgo.FailureKind,
+) textgen.TextGenerationResult {
 	t.Helper()
 	result, err := exchange.invoke(t, request)
 	require.NoError(t, err, "the attempt must select a branch, not Retry")
 	require.Equal(t, branch, result.Branch, "failure: %+v", result.Failure)
-	if kind == "" && branch == llm.GeneratedBranchID {
+	if kind == "" && branch == textgen.GeneratedBranchID {
 		require.Nil(t, result.Failure)
 		return result
 	}
@@ -672,7 +672,7 @@ func (exchange *providerExchange) requireBranch(
 }
 
 // requireRetry returns the provider-requested delay, or zero when the Step policy applies.
-func (exchange *providerExchange) requireRetry(t *testing.T, request llm.TextGenerationRequest, kind sdkgo.FailureKind) time.Duration {
+func (exchange *providerExchange) requireRetry(t *testing.T, request textgen.TextGenerationRequest, kind sdkgo.FailureKind) time.Duration {
 	t.Helper()
 	_, err := exchange.invoke(t, request)
 	var retryError *sdkgo.RetryError
@@ -685,7 +685,7 @@ func (exchange *providerExchange) requireRetry(t *testing.T, request llm.TextGen
 	return 0
 }
 
-func (exchange *providerExchange) invoke(t *testing.T, request llm.TextGenerationRequest) (llm.TextGenerationResult, error) {
+func (exchange *providerExchange) invoke(t *testing.T, request textgen.TextGenerationRequest) (textgen.TextGenerationResult, error) {
 	t.Helper()
 	exchange.invocations++
 	ctx := testsupport.NewDexContext("llmtest-flow", fmt.Sprintf("llmtest-step-%d-%d", time.Now().UnixNano(), exchange.invocations))
@@ -694,7 +694,7 @@ func (exchange *providerExchange) invoke(t *testing.T, request llm.TextGeneratio
 	return result, err
 }
 
-func (exchange *providerExchange) requireRedacted(t *testing.T, result llm.TextGenerationResult, err error) {
+func (exchange *providerExchange) requireRedacted(t *testing.T, result textgen.TextGenerationResult, err error) {
 	t.Helper()
 	encoded, marshalErr := json.Marshal(result)
 	require.NoError(t, marshalErr)
@@ -736,15 +736,15 @@ func (exchange *providerExchange) canonicalModel(t *testing.T, model string) str
 	return canonical
 }
 
-func baseRequest() llm.TextGenerationRequest {
-	return llm.TextGenerationRequest{Messages: []llm.Message{
-		{Role: llm.MessageRoleUser, Text: "Answer the question in " + promptCanary + "."},
+func baseRequest() textgen.TextGenerationRequest {
+	return textgen.TextGenerationRequest{Messages: []textgen.Message{
+		{Role: textgen.MessageRoleUser, Text: "Answer the question in " + promptCanary + "."},
 	}}
 }
 
-func structuredRequest(schema map[string]any) llm.TextGenerationRequest {
+func structuredRequest(schema map[string]any) textgen.TextGenerationRequest {
 	request := baseRequest()
-	request.StructuredOutput = &llm.StructuredOutput{
+	request.StructuredOutput = &textgen.StructuredOutput{
 		Name: "llmtest_answer", Description: "An answer with a score.", Schema: schema,
 	}
 	return request

@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-package llmtest_test
+package textgentest_test
 
 import (
 	"io"
@@ -11,16 +11,16 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/sdkgo/llm"
-	"github.com/superdurable/dex-connectors-library/sdkgo/llm/llmtest"
+	"github.com/superdurable/dex-connectors-library/sdkgo/textgen"
+	"github.com/superdurable/dex-connectors-library/sdkgo/textgen/textgentest"
 )
 
 func TestFakeProviderRecordsRequestsWithoutTheCredential(t *testing.T) {
-	provider := llmtest.NewFakeProvider(t, llm.CredentialHeader{Name: "x-api-key"}, "sk-fake-key")
+	provider := textgentest.NewFakeProvider(t, textgen.CredentialHeader{Name: "x-api-key"}, "sk-fake-key")
 	provider.EnqueueReplies(
-		llmtest.FakeReply{StatusCode: http.StatusAccepted, Header: http.Header{"X-Reply": {"one"}}, Body: "a",
-			StreamChunks: []llmtest.FakeStreamChunk{{Delay: 10 * time.Millisecond, Data: "b"}}},
-		llmtest.FakeReply{ShouldDropConnection: true},
+		textgentest.FakeReply{StatusCode: http.StatusAccepted, Header: http.Header{"X-Reply": {"one"}}, Body: "a",
+			StreamChunks: []textgentest.FakeStreamChunk{{Delay: 10 * time.Millisecond, Data: "b"}}},
+		textgentest.FakeReply{ShouldDropConnection: true},
 	)
 	send := func(path string, credential string, body string) (*http.Response, error) {
 		request, err := http.NewRequest(http.MethodPost, provider.BaseURL()+path, strings.NewReader(body))

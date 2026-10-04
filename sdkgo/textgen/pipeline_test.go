@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-package llm_test
+package textgen_test
 
 import (
 	"encoding/json"
@@ -16,9 +16,9 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/internal/testsupport"
-	"github.com/superdurable/dex-connectors-library/sdkgo/llm"
-	"github.com/superdurable/dex-connectors-library/sdkgo/llm/llmtest"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"github.com/superdurable/dex-connectors-library/sdkgo/textgen"
+	"github.com/superdurable/dex-connectors-library/sdkgo/textgen/textgentest"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -28,12 +28,12 @@ const (
 )
 
 var (
-	testCredentialHeader = llm.CredentialHeader{Name: "Authorization", Prefix: "Bearer "}
+	testCredentialHeader = textgen.CredentialHeader{Name: "Authorization", Prefix: "Bearer "}
 	eventStream          = http.Header{"Content-Type": {"text/event-stream; charset=utf-8"}}
 	testConnection       = sdkgo.ConnectionRef{Provider: "test", Name: "pipeline"}
 	testDefinition       = sdkgo.QueryDefinition{
-		Operation:    sdkgo.OperationRef{ConnectorID: "test-lab", OperationID: llm.TextGenerationOperationID},
-		Branches:     llm.TextGenerationBranchDefinitions(),
+		Operation:    sdkgo.OperationRef{ConnectorID: "test-lab", OperationID: textgen.TextGenerationOperationID},
+		Branches:     textgen.TextGenerationBranchDefinitions(),
 		StepDefaults: sdkgo.StepDefaults{ExecuteMethodTimeout: time.Minute, ExecuteDurability: dex.StepDurabilitySync},
 	}
 )
@@ -46,81 +46,81 @@ type testResponse struct {
 	Model     string          `json:"model,omitempty"`
 	ID        string          `json:"id,omitempty"`
 	IsRefusal bool            `json:"refusal,omitempty"`
-	Usage     llm.Usage       `json:"usage"`
+	Usage     textgen.Usage   `json:"usage"`
 	Error     json.RawMessage `json:"error,omitempty"`
 }
 
 // newTestWireFormat declares every feature and sends the validated request as JSON to /generate.
-func newTestWireFormat(isStreaming bool) llm.WireFormat {
-	return llm.WireFormat{
+func newTestWireFormat(isStreaming bool) textgen.WireFormat {
+	return textgen.WireFormat{
 		ProviderName: "test-lab",
-		ModelIDRule:  llm.ModelIDRuleBody,
-		Features: llm.RequestFeatures{
+		ModelIDRule:  textgen.ModelIDRuleBody,
+		Features: textgen.RequestFeatures{
 			SupportsInstructions: true, SupportsStructuredOutput: true, SupportsMaxOutputTokens: true, SupportsTemperature: true,
 			SupportsReasoningEffort: true,
 		},
 		CredentialHeader: testCredentialHeader,
-		RulesForModel: func(model string) llm.ModelRequestRules {
-			rules := llm.ModelRequestRules{
-				Temperature:      llm.TemperatureRange(0, 1),
-				ReasoningEfforts: map[llm.ReasoningEffort]string{llm.ReasoningEffortLow: "wire-low"},
-				StructuredOutput: llm.StructuredOutputRules{Mode: llm.StructuredOutputModeJSONSchema},
+		RulesForModel: func(model string) textgen.ModelRequestRules {
+			rules := textgen.ModelRequestRules{
+				Temperature:      textgen.TemperatureRange(0, 1),
+				ReasoningEfforts: map[textgen.ReasoningEffort]string{textgen.ReasoningEffortLow: "wire-low"},
+				StructuredOutput: textgen.StructuredOutputRules{Mode: textgen.StructuredOutputModeJSONSchema},
 			}
 			if strings.HasPrefix(model, "fixed-") {
-				rules.Temperature = llm.TemperatureNotAccepted()
+				rules.Temperature = textgen.TemperatureNotAccepted()
 			}
 			return rules
 		},
-		EncodeRequest: func(input llm.EncodeRequestInput) (llm.EncodedRequest, error) {
+		EncodeRequest: func(input textgen.EncodeRequestInput) (textgen.EncodedRequest, error) {
 			body, err := json.Marshal(input.Request)
 			if err != nil {
-				return llm.EncodedRequest{}, err
+				return textgen.EncodedRequest{}, err
 			}
-			return llm.EncodedRequest{Path: "/generate", Body: body, IsStreaming: isStreaming}, nil
+			return textgen.EncodedRequest{Path: "/generate", Body: body, IsStreaming: isStreaming}, nil
 		},
-		DecodeResponse: func(body []byte) (llm.DecodedResponse, error) {
+		DecodeResponse: func(body []byte) (textgen.DecodedResponse, error) {
 			var response testResponse
 			if err := json.Unmarshal(body, &response); err != nil {
-				return llm.DecodedResponse{}, err
+				return textgen.DecodedResponse{}, err
 			}
 			if len(response.Error) > 0 {
-				return llm.DecodedResponse{}, &llm.ProviderReportedError{ErrorTokens: providerhttp.ReadErrorTokens(body, []string{"/error/code"})}
+				return textgen.DecodedResponse{}, &textgen.ProviderReportedError{ErrorTokens: providerhttp.ReadErrorTokens(body, []string{"/error/code"})}
 			}
-			return llm.DecodedResponse{
-				Parts:       []llm.ResponsePart{{Text: response.Reasoning, IsReasoning: true}, {Text: response.Text}},
+			return textgen.DecodedResponse{
+				Parts:       []textgen.ResponsePart{{Text: response.Reasoning, IsReasoning: true}, {Text: response.Text}},
 				ServedModel: response.Model, ResponseID: response.ID, ProviderFinishReason: response.Finish,
 				IsRefusal: response.IsRefusal, Usage: response.Usage,
 			}, nil
 		},
 		DecodeStream:       decodeTestStream,
-		FinishReasons:      map[string]llm.FinishReason{"done": llm.FinishReasonStop, "cut": llm.FinishReasonLength, "filtered": llm.FinishReasonContentPolicy},
+		FinishReasons:      map[string]textgen.FinishReason{"done": textgen.FinishReasonStop, "cut": textgen.FinishReasonLength, "filtered": textgen.FinishReasonContentPolicy},
 		ErrorTokenPointers: []string{"/error/code"},
 		RequestIDHeaders:   []string{"x-first-request-id", "x-request-id"},
 		RateLimitHeaders:   []string{"x-ratelimit-remaining", "x-ratelimit-echo"},
 	}
 }
 
-func decodeTestStream(events *providerhttp.ServerSentEventReader, writeTextDelta func(string) error) (llm.DecodedResponse, error) {
-	var decoded llm.DecodedResponse
+func decodeTestStream(events *providerhttp.ServerSentEventReader, writeTextDelta func(string) error) (textgen.DecodedResponse, error) {
+	var decoded textgen.DecodedResponse
 	for {
 		event, err := events.ReadEvent()
 		if errors.Is(err, io.EOF) {
-			return llm.DecodedResponse{}, io.ErrUnexpectedEOF
+			return textgen.DecodedResponse{}, io.ErrUnexpectedEOF
 		}
 		if err != nil {
-			return llm.DecodedResponse{}, fmt.Errorf("read test stream: %w", err)
+			return textgen.DecodedResponse{}, fmt.Errorf("read test stream: %w", err)
 		}
 		var chunk testResponse
 		if err := json.Unmarshal([]byte(event.Data), &chunk); err != nil {
-			return llm.DecodedResponse{}, err
+			return textgen.DecodedResponse{}, err
 		}
 		if len(chunk.Error) > 0 {
-			return llm.DecodedResponse{}, &llm.ProviderReportedError{ErrorTokens: providerhttp.ReadErrorTokens([]byte(event.Data), []string{"/error/code"})}
+			return textgen.DecodedResponse{}, &textgen.ProviderReportedError{ErrorTokens: providerhttp.ReadErrorTokens([]byte(event.Data), []string{"/error/code"})}
 		}
 		if chunk.Text != "" {
-			decoded.Parts = append(decoded.Parts, llm.ResponsePart{Text: chunk.Text})
+			decoded.Parts = append(decoded.Parts, textgen.ResponsePart{Text: chunk.Text})
 			if err := writeTextDelta(chunk.Text); err != nil {
-				return llm.DecodedResponse{}, err
+				return textgen.DecodedResponse{}, err
 			}
 		}
 		if chunk.Finish != "" {
@@ -131,14 +131,14 @@ func decodeTestStream(events *providerhttp.ServerSentEventReader, writeTextDelta
 }
 
 type pipelineTest struct {
-	provider *llmtest.FakeProvider
-	query    *llm.TextGenerationQuery
+	provider *textgentest.FakeProvider
+	query    *textgen.TextGenerationQuery
 }
 
-func newPipelineTest(t *testing.T, configure func(*llm.TextGenerationQueryConfig)) *pipelineTest {
+func newPipelineTest(t *testing.T, configure func(*textgen.TextGenerationQueryConfig)) *pipelineTest {
 	t.Helper()
-	provider := llmtest.NewFakeProvider(t, testCredentialHeader, testAPIKey)
-	config := &llm.TextGenerationQueryConfig{
+	provider := textgentest.NewFakeProvider(t, testCredentialHeader, testAPIKey)
+	config := &textgen.TextGenerationQueryConfig{
 		Definition: testDefinition, WireFormat: newTestWireFormat(false), BaseURL: provider.BaseURL() + "/v1/",
 		ConnectionModel: " " + testConnectionModel + " ", RequestTimeout: 10 * time.Second,
 		ResolveCredential: func(sdkgo.Call) (sdkgo.SecretString, error) { return sdkgo.NewSecretString(testAPIKey), nil },
@@ -147,18 +147,18 @@ func newPipelineTest(t *testing.T, configure func(*llm.TextGenerationQueryConfig
 	if configure != nil {
 		configure(config)
 	}
-	query, err := llm.NewTextGenerationQuery(config)
+	query, err := textgen.NewTextGenerationQuery(config)
 	require.NoError(t, err)
 	return &pipelineTest{provider: provider, query: query}
 }
 
-func (test *pipelineTest) invoke(t *testing.T, request llm.TextGenerationRequest) (sdkgo.QueryResult[llm.TextGenerationResponse], error) {
+func (test *pipelineTest) invoke(t *testing.T, request textgen.TextGenerationRequest) (sdkgo.QueryResult[textgen.TextGenerationResponse], error) {
 	t.Helper()
 	ctx := testsupport.NewDexContext("pipeline-flow", fmt.Sprintf("step-%d", time.Now().UnixNano()))
 	return sdkgo.RunQuery(ctx, test.query, testConnection, request)
 }
 
-func (test *pipelineTest) requireBranch(t *testing.T, request llm.TextGenerationRequest, branch sdkgo.BranchID, kind sdkgo.FailureKind) sdkgo.QueryResult[llm.TextGenerationResponse] {
+func (test *pipelineTest) requireBranch(t *testing.T, request textgen.TextGenerationRequest, branch sdkgo.BranchID, kind sdkgo.FailureKind) sdkgo.QueryResult[textgen.TextGenerationResponse] {
 	t.Helper()
 	result, err := test.invoke(t, request)
 	require.NoError(t, err)
@@ -172,7 +172,7 @@ func (test *pipelineTest) requireBranch(t *testing.T, request llm.TextGeneration
 	return result
 }
 
-func (test *pipelineTest) requireRetry(t *testing.T, request llm.TextGenerationRequest, kind sdkgo.FailureKind) (sdkgo.Failure, time.Duration) {
+func (test *pipelineTest) requireRetry(t *testing.T, request textgen.TextGenerationRequest, kind sdkgo.FailureKind) (sdkgo.Failure, time.Duration) {
 	t.Helper()
 	_, err := test.invoke(t, request)
 	var retryError *sdkgo.RetryError
@@ -185,19 +185,19 @@ func (test *pipelineTest) requireRetry(t *testing.T, request llm.TextGenerationR
 	return retryError.Failure, 0
 }
 
-func userRequest() llm.TextGenerationRequest {
-	return llm.TextGenerationRequest{Messages: []llm.Message{{Role: llm.MessageRoleUser, Text: "hello"}}}
+func userRequest() textgen.TextGenerationRequest {
+	return textgen.TextGenerationRequest{Messages: []textgen.Message{{Role: textgen.MessageRoleUser, Text: "hello"}}}
 }
 
-func jsonReply(statusCode int, header http.Header, body any) llmtest.FakeReply {
+func jsonReply(statusCode int, header http.Header, body any) textgentest.FakeReply {
 	encoded, err := json.Marshal(body)
 	if err != nil {
 		panic(err)
 	}
-	return llmtest.FakeReply{StatusCode: statusCode, Header: header, Body: string(encoded)}
+	return textgentest.FakeReply{StatusCode: statusCode, Header: header, Body: string(encoded)}
 }
 
-func doneReply(text string) llmtest.FakeReply {
+func doneReply(text string) textgentest.FakeReply {
 	return jsonReply(http.StatusOK, nil, testResponse{Text: text, Reasoning: "hidden reasoning", Finish: "done", Model: "served", ID: "resp-1"})
 }
 
@@ -208,20 +208,20 @@ func TestTextGenerationQueryRunsThePipeline(t *testing.T) {
 		"X-Unlisted": {"dropped"},
 	}, testResponse{
 		Text: "answer", Reasoning: "hidden reasoning", Finish: "done", Model: "served-model", ID: "resp-1",
-		Usage: llm.Usage{InputTokens: 5, CachedInputTokens: 1, OutputTokens: 3, ReasoningTokens: 1},
+		Usage: textgen.Usage{InputTokens: 5, CachedInputTokens: 1, OutputTokens: 3, ReasoningTokens: 1},
 	}))
 	temperature := 0.25
-	request := llm.TextGenerationRequest{
-		Instructions: "Be brief.", Messages: []llm.Message{
-			{Role: llm.MessageRoleUser, Text: "hi"}, {Role: llm.MessageRoleAssistant, Text: "hello"}, {Role: llm.MessageRoleUser, Text: "and?"},
+	request := textgen.TextGenerationRequest{
+		Instructions: "Be brief.", Messages: []textgen.Message{
+			{Role: textgen.MessageRoleUser, Text: "hi"}, {Role: textgen.MessageRoleAssistant, Text: "hello"}, {Role: textgen.MessageRoleUser, Text: "and?"},
 		},
-		MaxOutputTokens: 32, Temperature: &temperature, ReasoningEffort: llm.ReasoningEffortLow,
+		MaxOutputTokens: 32, Temperature: &temperature, ReasoningEffort: textgen.ReasoningEffortLow,
 	}
-	result := test.requireBranch(t, request, llm.GeneratedBranchID, "")
-	require.Equal(t, llm.TextGenerationResponse{
+	result := test.requireBranch(t, request, textgen.GeneratedBranchID, "")
+	require.Equal(t, textgen.TextGenerationResponse{
 		Text: "answer", RequestedModel: testConnectionModel, ServedModel: "served-model", ResponseID: "resp-1",
-		FinishReason: llm.FinishReasonStop, ProviderFinishReason: "done",
-		Usage: llm.Usage{InputTokens: 5, CachedInputTokens: 1, OutputTokens: 3, ReasoningTokens: 1, TotalTokens: 8},
+		FinishReason: textgen.FinishReasonStop, ProviderFinishReason: "done",
+		Usage: textgen.Usage{InputTokens: 5, CachedInputTokens: 1, OutputTokens: 3, ReasoningTokens: 1, TotalTokens: 8},
 	}, result.Value)
 	require.Equal(t, "test-lab", result.Receipt.Provider)
 	require.Equal(t, "resp-1", result.Receipt.ProviderObjectID)
@@ -234,7 +234,7 @@ func TestTextGenerationQueryRunsThePipeline(t *testing.T) {
 	require.True(t, requests[0].HasCredentialInSlot)
 	require.False(t, requests[0].HasCredentialOutsideSlot)
 	require.Equal(t, "application/json", requests[0].Header.Get("Content-Type"))
-	var sent llm.TextGenerationRequest
+	var sent textgen.TextGenerationRequest
 	require.NoError(t, json.Unmarshal(requests[0].Body, &sent))
 	require.Equal(t, testConnectionModel, sent.Model, "the connection model is trimmed and sent")
 	require.Equal(t, request.Messages, sent.Messages)
@@ -245,45 +245,47 @@ func TestTextGenerationQueryResolvesModelPrecedence(t *testing.T) {
 	test.provider.EnqueueReplies(doneReply("one"))
 	request := userRequest()
 	request.Model = "\trequest-model "
-	require.Equal(t, "request-model", test.requireBranch(t, request, llm.GeneratedBranchID, "").Value.RequestedModel)
+	require.Equal(t, "request-model", test.requireBranch(t, request, textgen.GeneratedBranchID, "").Value.RequestedModel)
 
 	for _, connectionModel := range []string{"", " \t "} {
-		blank := newPipelineTest(t, func(config *llm.TextGenerationQueryConfig) { config.ConnectionModel = connectionModel })
-		result := blank.requireBranch(t, userRequest(), llm.DefectBranchID, sdkgo.FailureValidation)
+		blank := newPipelineTest(t, func(config *textgen.TextGenerationQueryConfig) { config.ConnectionModel = connectionModel })
+		result := blank.requireBranch(t, userRequest(), textgen.DefectBranchID, sdkgo.FailureValidation)
 		require.Contains(t, result.Failure.Message, "no model is selected", "a blank connection model %q is unset", connectionModel)
 		require.Empty(t, blank.provider.Requests())
 	}
 
-	require.Equal(t, "request", llm.ResolveModel(" request ", "connection"))
-	require.Equal(t, "connection", llm.ResolveModel(" \t", "connection"))
-	require.Empty(t, llm.ResolveModel("", ""))
+	require.Equal(t, "request", textgen.ResolveModel(" request ", "connection"))
+	require.Equal(t, "connection", textgen.ResolveModel(" \t", "connection"))
+	require.Empty(t, textgen.ResolveModel("", ""))
 }
 
 func TestTextGenerationQuerySelectsDefectWithoutARequest(t *testing.T) {
 	temperature, outOfRange, negative := 0.5, 1.5, -0.1
 	cases := map[string]struct {
-		configure func(*llm.TextGenerationQueryConfig)
-		request   func(*llm.TextGenerationRequest)
+		configure func(*textgen.TextGenerationQueryConfig)
+		request   func(*textgen.TextGenerationRequest)
 		kind      sdkgo.FailureKind
 		message   string
 	}{
-		"no messages":            {request: func(request *llm.TextGenerationRequest) { request.Messages = nil }, message: "at least one message"},
-		"unknown role":           {request: func(request *llm.TextGenerationRequest) { request.Messages[0].Role = "system" }, message: "role"},
-		"empty message":          {request: func(request *llm.TextGenerationRequest) { request.Messages[0].Text = "" }, message: "requires text"},
-		"negative token limit":   {request: func(request *llm.TextGenerationRequest) { request.MaxOutputTokens = -1 }, message: "maxOutputTokens"},
-		"temperature over range": {request: func(request *llm.TextGenerationRequest) { request.Temperature = &outOfRange }, message: "from 0 through 1"},
-		"negative temperature":   {request: func(request *llm.TextGenerationRequest) { request.Temperature = &negative }, message: "non-negative"},
-		"temperature on a fixed model": {request: func(request *llm.TextGenerationRequest) {
+		"no messages":            {request: func(request *textgen.TextGenerationRequest) { request.Messages = nil }, message: "at least one message"},
+		"unknown role":           {request: func(request *textgen.TextGenerationRequest) { request.Messages[0].Role = "system" }, message: "role"},
+		"empty message":          {request: func(request *textgen.TextGenerationRequest) { request.Messages[0].Text = "" }, message: "requires text"},
+		"negative token limit":   {request: func(request *textgen.TextGenerationRequest) { request.MaxOutputTokens = -1 }, message: "maxOutputTokens"},
+		"temperature over range": {request: func(request *textgen.TextGenerationRequest) { request.Temperature = &outOfRange }, message: "from 0 through 1"},
+		"negative temperature":   {request: func(request *textgen.TextGenerationRequest) { request.Temperature = &negative }, message: "non-negative"},
+		"temperature on a fixed model": {request: func(request *textgen.TextGenerationRequest) {
 			request.Model, request.Temperature = "fixed-sampler", &temperature
 		}, message: "does not accept a temperature"},
-		"unmapped effort": {request: func(request *llm.TextGenerationRequest) { request.ReasoningEffort = llm.ReasoningEffortHigh }, message: `"high"`},
-		"unknown effort":  {request: func(request *llm.TextGenerationRequest) { request.ReasoningEffort = "ultra" }, message: "must be none"},
+		"unmapped effort": {request: func(request *textgen.TextGenerationRequest) { request.ReasoningEffort = textgen.ReasoningEffortHigh }, message: `"high"`},
+		"unknown effort":  {request: func(request *textgen.TextGenerationRequest) { request.ReasoningEffort = "ultra" }, message: "must be none"},
 		"undeclared feature": {
-			configure: func(config *llm.TextGenerationQueryConfig) { config.WireFormat.Features.SupportsTemperature = false },
-			request:   func(request *llm.TextGenerationRequest) { request.Temperature = &temperature }, message: "Temperature",
+			configure: func(config *textgen.TextGenerationQueryConfig) {
+				config.WireFormat.Features.SupportsTemperature = false
+			},
+			request: func(request *textgen.TextGenerationRequest) { request.Temperature = &temperature }, message: "Temperature",
 		},
 		"credential unavailable": {
-			configure: func(config *llm.TextGenerationQueryConfig) {
+			configure: func(config *textgen.TextGenerationQueryConfig) {
 				config.ResolveCredential = func(sdkgo.Call) (sdkgo.SecretString, error) {
 					return sdkgo.SecretString{}, errors.New("vault is down")
 				}
@@ -291,7 +293,7 @@ func TestTextGenerationQuerySelectsDefectWithoutARequest(t *testing.T) {
 			kind: sdkgo.FailureAuthentication, message: "unavailable",
 		},
 		"credential not header safe": {
-			configure: func(config *llm.TextGenerationQueryConfig) {
+			configure: func(config *textgen.TextGenerationQueryConfig) {
 				config.ResolveCredential = func(sdkgo.Call) (sdkgo.SecretString, error) {
 					return sdkgo.NewSecretString("sk-line\r\nX-Injected: 1"), nil
 				}
@@ -299,31 +301,31 @@ func TestTextGenerationQuerySelectsDefectWithoutARequest(t *testing.T) {
 			kind: sdkgo.FailureAuthentication, message: "invalid",
 		},
 		"encode failure": {
-			configure: func(config *llm.TextGenerationQueryConfig) {
-				config.WireFormat.EncodeRequest = func(llm.EncodeRequestInput) (llm.EncodedRequest, error) {
-					return llm.EncodedRequest{}, errors.New("field is not accepted")
+			configure: func(config *textgen.TextGenerationQueryConfig) {
+				config.WireFormat.EncodeRequest = func(textgen.EncodeRequestInput) (textgen.EncodedRequest, error) {
+					return textgen.EncodedRequest{}, errors.New("field is not accepted")
 				}
 			},
 			message: "field is not accepted",
 		},
 		"encoded request sets the credential header": {
-			configure: func(config *llm.TextGenerationQueryConfig) {
-				config.WireFormat.EncodeRequest = func(llm.EncodeRequestInput) (llm.EncodedRequest, error) {
-					return llm.EncodedRequest{Path: "/generate", Header: http.Header{"Authorization": {"Bearer other"}}}, nil
+			configure: func(config *textgen.TextGenerationQueryConfig) {
+				config.WireFormat.EncodeRequest = func(textgen.EncodeRequestInput) (textgen.EncodedRequest, error) {
+					return textgen.EncodedRequest{Path: "/generate", Header: http.Header{"Authorization": {"Bearer other"}}}, nil
 				}
 			},
 			kind: sdkgo.FailureLocalDefect, message: "reserved",
 		},
 		"encoded path is relative": {
-			configure: func(config *llm.TextGenerationQueryConfig) {
-				config.WireFormat.EncodeRequest = func(llm.EncodeRequestInput) (llm.EncodedRequest, error) {
-					return llm.EncodedRequest{Path: "generate"}, nil
+			configure: func(config *textgen.TextGenerationQueryConfig) {
+				config.WireFormat.EncodeRequest = func(textgen.EncodeRequestInput) (textgen.EncodedRequest, error) {
+					return textgen.EncodedRequest{Path: "generate"}, nil
 				}
 			},
 			kind: sdkgo.FailureLocalDefect, message: "start with /",
 		},
 		"stream without a stream decoder": {
-			configure: func(config *llm.TextGenerationQueryConfig) {
+			configure: func(config *textgen.TextGenerationQueryConfig) {
 				config.WireFormat = newTestWireFormat(true)
 				config.WireFormat.DecodeStream = nil
 			},
@@ -341,10 +343,10 @@ func TestTextGenerationQuerySelectsDefectWithoutARequest(t *testing.T) {
 			if kind == "" {
 				kind = sdkgo.FailureValidation
 			}
-			result := test.requireBranch(t, request, llm.DefectBranchID, kind)
+			result := test.requireBranch(t, request, textgen.DefectBranchID, kind)
 			require.Contains(t, result.Failure.Message, testCase.message)
 			require.NotContains(t, result.Failure.Message, testAPIKey)
-			require.Equal(t, llm.ResolveModel(request.Model, testConnectionModel), result.Value.RequestedModel,
+			require.Equal(t, textgen.ResolveModel(request.Model, testConnectionModel), result.Value.RequestedModel,
 				"RequestedModel is set once the model is valid")
 			require.Empty(t, test.provider.Requests())
 		})
@@ -357,7 +359,7 @@ func TestTextGenerationQueryClassifiesErrorStatuses(t *testing.T) {
 	}
 	cases := []struct {
 		name       string
-		rules      []llm.ErrorRule
+		rules      []textgen.ErrorRule
 		statusCode int
 		code       string
 		branch     sdkgo.BranchID
@@ -366,41 +368,41 @@ func TestTextGenerationQueryClassifiesErrorStatuses(t *testing.T) {
 		{name: "408 retries", statusCode: 408, kind: sdkgo.FailureAvailability},
 		{name: "429 retries", statusCode: 429, kind: sdkgo.FailureRateLimit},
 		{name: "500 retries", statusCode: 500, kind: sdkgo.FailureAvailability},
-		{name: "501 is a rejection", statusCode: 501, branch: llm.ProviderRejectedBranchID, kind: sdkgo.FailureProviderRejection},
-		{name: "400 is a rejection", statusCode: 400, branch: llm.ProviderRejectedBranchID, kind: sdkgo.FailureProviderRejection},
-		{name: "401 is authentication", statusCode: 401, branch: llm.ProviderRejectedBranchID, kind: sdkgo.FailureAuthentication},
-		{name: "402 is quota", statusCode: 402, branch: llm.ProviderRejectedBranchID, kind: sdkgo.FailureQuotaExhausted},
-		{name: "403 is authorization", statusCode: 403, branch: llm.ProviderRejectedBranchID, kind: sdkgo.FailureAuthorization},
-		{name: "404 is not found", statusCode: 404, branch: llm.ProviderRejectedBranchID, kind: sdkgo.FailureNotFound},
-		{name: "409 is conflict", statusCode: 409, branch: llm.ProviderRejectedBranchID, kind: sdkgo.FailureConflict},
-		{name: "a redirect is never followed", statusCode: 307, branch: llm.InvalidResponseBranchID, kind: sdkgo.FailureProtocol},
+		{name: "501 is a rejection", statusCode: 501, branch: textgen.ProviderRejectedBranchID, kind: sdkgo.FailureProviderRejection},
+		{name: "400 is a rejection", statusCode: 400, branch: textgen.ProviderRejectedBranchID, kind: sdkgo.FailureProviderRejection},
+		{name: "401 is authentication", statusCode: 401, branch: textgen.ProviderRejectedBranchID, kind: sdkgo.FailureAuthentication},
+		{name: "402 is quota", statusCode: 402, branch: textgen.ProviderRejectedBranchID, kind: sdkgo.FailureQuotaExhausted},
+		{name: "403 is authorization", statusCode: 403, branch: textgen.ProviderRejectedBranchID, kind: sdkgo.FailureAuthorization},
+		{name: "404 is not found", statusCode: 404, branch: textgen.ProviderRejectedBranchID, kind: sdkgo.FailureNotFound},
+		{name: "409 is conflict", statusCode: 409, branch: textgen.ProviderRejectedBranchID, kind: sdkgo.FailureConflict},
+		{name: "a redirect is never followed", statusCode: 307, branch: textgen.InvalidResponseBranchID, kind: sdkgo.FailureProtocol},
 		{
 			name: "a token rule overrides the status default", statusCode: 429, code: "billing_exhausted",
-			rules:  []llm.ErrorRule{{StatusCode: 429, ErrorToken: "billing_exhausted", Outcome: llm.QuotaExhaustedOutcome()}},
-			branch: llm.ProviderRejectedBranchID, kind: sdkgo.FailureQuotaExhausted,
+			rules:  []textgen.ErrorRule{{StatusCode: 429, ErrorToken: "billing_exhausted", Outcome: textgen.QuotaExhaustedOutcome()}},
+			branch: textgen.ProviderRejectedBranchID, kind: sdkgo.FailureQuotaExhausted,
 		},
 		{
 			name: "the first matching rule wins", statusCode: 400, code: "overloaded",
-			rules: []llm.ErrorRule{
-				{ErrorToken: "overloaded", Outcome: llm.RetryOutcome(sdkgo.FailureAvailability)},
-				{StatusCode: 400, Outcome: llm.InvalidResponseOutcome()},
+			rules: []textgen.ErrorRule{
+				{ErrorToken: "overloaded", Outcome: textgen.RetryOutcome(sdkgo.FailureAvailability)},
+				{StatusCode: 400, Outcome: textgen.InvalidResponseOutcome()},
 			},
 			kind: sdkgo.FailureAvailability,
 		},
 		{
 			name: "a status rule without a token matches any body", statusCode: 504, code: "gateway_timeout",
-			rules:  []llm.ErrorRule{{StatusCode: 504, Outcome: llm.ProviderRejectedOutcome(sdkgo.FailureAvailability)}},
-			branch: llm.ProviderRejectedBranchID, kind: sdkgo.FailureAvailability,
+			rules:  []textgen.ErrorRule{{StatusCode: 504, Outcome: textgen.ProviderRejectedOutcome(sdkgo.FailureAvailability)}},
+			branch: textgen.ProviderRejectedBranchID, kind: sdkgo.FailureAvailability,
 		},
 		{
 			name: "a content-policy rule selects blocked", statusCode: 400, code: "content_filter",
-			rules:  []llm.ErrorRule{{StatusCode: 400, ErrorToken: "content_filter", Outcome: llm.BlockedOutcome()}},
-			branch: llm.BlockedBranchID, kind: sdkgo.FailureProviderRejection,
+			rules:  []textgen.ErrorRule{{StatusCode: 400, ErrorToken: "content_filter", Outcome: textgen.BlockedOutcome()}},
+			branch: textgen.BlockedBranchID, kind: sdkgo.FailureProviderRejection,
 		},
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
-			test := newPipelineTest(t, func(config *llm.TextGenerationQueryConfig) { config.WireFormat.ErrorRules = testCase.rules })
+			test := newPipelineTest(t, func(config *textgen.TextGenerationQueryConfig) { config.WireFormat.ErrorRules = testCase.rules })
 			test.provider.EnqueueReplies(jsonReply(testCase.statusCode, http.Header{"Location": {"https://elsewhere.example"}}, errorBody(testCase.code)))
 			if testCase.branch == "" {
 				failure, _ := test.requireRetry(t, userRequest(), testCase.kind)
@@ -412,8 +414,8 @@ func TestTextGenerationQueryClassifiesErrorStatuses(t *testing.T) {
 					require.Contains(t, result.Failure.Message, testCase.code)
 				}
 				require.NotContains(t, result.Failure.Message, "secret provider text")
-				if testCase.branch == llm.BlockedBranchID {
-					require.Equal(t, llm.FinishReasonContentPolicy, result.Value.FinishReason)
+				if testCase.branch == textgen.BlockedBranchID {
+					require.Equal(t, textgen.FinishReasonContentPolicy, result.Value.FinishReason)
 					require.Empty(t, result.Value.Text)
 				}
 			}
@@ -423,7 +425,7 @@ func TestTextGenerationQueryClassifiesErrorStatuses(t *testing.T) {
 }
 
 func TestTextGenerationQueryPrefersTheProviderRetryDelay(t *testing.T) {
-	test := newPipelineTest(t, func(config *llm.TextGenerationQueryConfig) {
+	test := newPipelineTest(t, func(config *textgen.TextGenerationQueryConfig) {
 		config.WireFormat.ReadErrorRetryDelay = func(body []byte) time.Duration {
 			if strings.Contains(string(body), "wait-long") {
 				return 48 * time.Hour
@@ -443,10 +445,10 @@ func TestTextGenerationQueryPrefersTheProviderRetryDelay(t *testing.T) {
 }
 
 func TestTextGenerationQueryClassifiesProviderReportedErrors(t *testing.T) {
-	test := newPipelineTest(t, func(config *llm.TextGenerationQueryConfig) {
-		config.WireFormat.ErrorRules = []llm.ErrorRule{
-			{StatusCode: 500, ErrorToken: "overloaded", Outcome: llm.QuotaExhaustedOutcome()},
-			{ErrorToken: "overloaded", Outcome: llm.RetryOutcome(sdkgo.FailureAvailability)},
+	test := newPipelineTest(t, func(config *textgen.TextGenerationQueryConfig) {
+		config.WireFormat.ErrorRules = []textgen.ErrorRule{
+			{StatusCode: 500, ErrorToken: "overloaded", Outcome: textgen.QuotaExhaustedOutcome()},
+			{ErrorToken: "overloaded", Outcome: textgen.RetryOutcome(sdkgo.FailureAvailability)},
 		}
 	})
 	test.provider.EnqueueReplies(
@@ -456,9 +458,9 @@ func TestTextGenerationQueryClassifiesProviderReportedErrors(t *testing.T) {
 	)
 	failure, _ := test.requireRetry(t, userRequest(), sdkgo.FailureAvailability)
 	require.Contains(t, failure.Message, "overloaded", "only status-independent rules match a 2xx error")
-	result := test.requireBranch(t, userRequest(), llm.InvalidResponseBranchID, sdkgo.FailureProtocol)
+	result := test.requireBranch(t, userRequest(), textgen.InvalidResponseBranchID, sdkgo.FailureProtocol)
 	require.Equal(t, "provider reported an error inside a 2xx response mystery", result.Failure.Message)
-	result = test.requireBranch(t, userRequest(), llm.InvalidResponseBranchID, sdkgo.FailureProtocol)
+	result = test.requireBranch(t, userRequest(), textgen.InvalidResponseBranchID, sdkgo.FailureProtocol)
 	require.NotContains(t, result.Failure.Message, testAPIKey)
 }
 
@@ -470,35 +472,35 @@ func TestTextGenerationQueryClassifiesSuccessfulResponses(t *testing.T) {
 		branch   sdkgo.BranchID
 		kind     sdkgo.FailureKind
 		text     string
-		finish   llm.FinishReason
+		finish   textgen.FinishReason
 	}{
 		{name: "truncated keeps partial text", response: testResponse{Text: "par", Finish: "cut"},
-			branch: llm.TruncatedBranchID, kind: sdkgo.FailureResponseTooLarge, text: "par", finish: llm.FinishReasonLength},
+			branch: textgen.TruncatedBranchID, kind: sdkgo.FailureResponseTooLarge, text: "par", finish: textgen.FinishReasonLength},
 		{name: "content policy drops text", response: testResponse{Text: "partial", Finish: "filtered"},
-			branch: llm.BlockedBranchID, kind: sdkgo.FailureProviderRejection, finish: llm.FinishReasonContentPolicy},
+			branch: textgen.BlockedBranchID, kind: sdkgo.FailureProviderRejection, finish: textgen.FinishReasonContentPolicy},
 		{name: "refusal is blocked", response: testResponse{Text: "no", Finish: "done", IsRefusal: true},
-			branch: llm.BlockedBranchID, kind: sdkgo.FailureProviderRejection, finish: llm.FinishReasonRefusal},
+			branch: textgen.BlockedBranchID, kind: sdkgo.FailureProviderRejection, finish: textgen.FinishReasonRefusal},
 		{name: "unknown finish token", response: testResponse{Text: "x", Finish: "tool_calls"},
-			branch: llm.InvalidResponseBranchID, kind: sdkgo.FailureProtocol},
+			branch: textgen.InvalidResponseBranchID, kind: sdkgo.FailureProtocol},
 		{name: "missing finish token", response: testResponse{Text: "x"},
-			branch: llm.InvalidResponseBranchID, kind: sdkgo.FailureProtocol},
+			branch: textgen.InvalidResponseBranchID, kind: sdkgo.FailureProtocol},
 		{name: "unbounded finish token", response: testResponse{Text: "x", Finish: "done because I said so"},
-			branch: llm.InvalidResponseBranchID, kind: sdkgo.FailureProtocol},
+			branch: textgen.InvalidResponseBranchID, kind: sdkgo.FailureProtocol},
 		{name: "stop without text", response: testResponse{Reasoning: "only thinking", Finish: "done"},
-			branch: llm.InvalidResponseBranchID, kind: sdkgo.FailureProtocol, finish: llm.FinishReasonStop},
+			branch: textgen.InvalidResponseBranchID, kind: sdkgo.FailureProtocol, finish: textgen.FinishReasonStop},
 		{name: "served model with spaces", response: testResponse{Text: "x", Finish: "done", Model: "a model"},
-			branch: llm.InvalidResponseBranchID, kind: sdkgo.FailureProtocol},
+			branch: textgen.InvalidResponseBranchID, kind: sdkgo.FailureProtocol},
 		{name: "served model holds the credential", response: testResponse{Text: "x", Finish: "done", Model: "echo-" + testAPIKey},
-			branch: llm.InvalidResponseBranchID, kind: sdkgo.FailureProtocol},
+			branch: textgen.InvalidResponseBranchID, kind: sdkgo.FailureProtocol},
 		{name: "response ID holds the credential", response: testResponse{Text: "x", Finish: "done", ID: testAPIKey},
-			branch: llm.InvalidResponseBranchID, kind: sdkgo.FailureProtocol},
+			branch: textgen.InvalidResponseBranchID, kind: sdkgo.FailureProtocol},
 		{name: "finish token holds the credential", response: testResponse{Text: "x", Finish: testAPIKey},
-			branch: llm.InvalidResponseBranchID, kind: sdkgo.FailureProtocol},
-		{name: "negative usage", response: testResponse{Text: "x", Finish: "done", Usage: llm.Usage{OutputTokens: -1}},
-			branch: llm.InvalidResponseBranchID, kind: sdkgo.FailureProtocol, finish: ""},
-		{name: "not JSON", body: "<html>ok</html>", branch: llm.InvalidResponseBranchID, kind: sdkgo.FailureProtocol},
+			branch: textgen.InvalidResponseBranchID, kind: sdkgo.FailureProtocol},
+		{name: "negative usage", response: testResponse{Text: "x", Finish: "done", Usage: textgen.Usage{OutputTokens: -1}},
+			branch: textgen.InvalidResponseBranchID, kind: sdkgo.FailureProtocol, finish: ""},
+		{name: "not JSON", body: "<html>ok</html>", branch: textgen.InvalidResponseBranchID, kind: sdkgo.FailureProtocol},
 		{name: "oversized", body: `{"text":"` + strings.Repeat("x", 1<<16) + `","finish":"done"}`,
-			branch: llm.InvalidResponseBranchID, kind: sdkgo.FailureResponseTooLarge},
+			branch: textgen.InvalidResponseBranchID, kind: sdkgo.FailureResponseTooLarge},
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -520,25 +522,25 @@ func TestTextGenerationQueryClassifiesSuccessfulResponses(t *testing.T) {
 }
 
 func TestTextGenerationQueryDecodesACompleteBodyForAStreamingRequest(t *testing.T) {
-	streaming := func(config *llm.TextGenerationQueryConfig) { config.WireFormat = newTestWireFormat(true) }
+	streaming := func(config *textgen.TextGenerationQueryConfig) { config.WireFormat = newTestWireFormat(true) }
 	test := newPipelineTest(t, streaming)
 	applicationJSON := http.Header{"Content-Type": {"application/json"}}
 	test.provider.EnqueueReplies(
 		jsonReply(http.StatusOK, applicationJSON, testResponse{Text: "whole answer", Finish: "done", ID: "resp-9"}),
 		jsonReply(http.StatusOK, applicationJSON, map[string]any{"error": map[string]any{"code": "insufficient_quota"}}),
 	)
-	result := test.requireBranch(t, userRequest(), llm.GeneratedBranchID, "")
+	result := test.requireBranch(t, userRequest(), textgen.GeneratedBranchID, "")
 	require.Equal(t, "whole answer", result.Value.Text, "a gateway that ignores streaming returns a finished generation")
 	require.Equal(t, "resp-9", result.Value.ResponseID)
-	result = test.requireBranch(t, userRequest(), llm.InvalidResponseBranchID, sdkgo.FailureProtocol)
+	result = test.requireBranch(t, userRequest(), textgen.InvalidResponseBranchID, sdkgo.FailureProtocol)
 	require.Contains(t, result.Failure.Message, "insufficient_quota", "a 2xx error object is a reported error, not an interrupted stream")
 
-	streamOnly := newPipelineTest(t, func(config *llm.TextGenerationQueryConfig) {
+	streamOnly := newPipelineTest(t, func(config *textgen.TextGenerationQueryConfig) {
 		config.WireFormat = newTestWireFormat(true)
 		config.WireFormat.DecodeResponse = nil
 	})
 	streamOnly.provider.EnqueueReplies(jsonReply(http.StatusOK, applicationJSON, testResponse{Text: "whole answer", Finish: "done"}))
-	result = streamOnly.requireBranch(t, userRequest(), llm.InvalidResponseBranchID, sdkgo.FailureProtocol)
+	result = streamOnly.requireBranch(t, userRequest(), textgen.InvalidResponseBranchID, sdkgo.FailureProtocol)
 	require.Contains(t, result.Failure.Message, "event stream")
 	require.Len(t, streamOnly.provider.Requests(), 1)
 }
@@ -548,9 +550,9 @@ func TestTextGenerationQueryValidatesStructuredOutput(t *testing.T) {
 		"type": "object", "additionalProperties": false, "required": []string{"score"},
 		"properties": map[string]any{"score": map[string]any{"type": "integer", "minimum": 0, "maximum": 10}},
 	}
-	test := newPipelineTest(t, func(config *llm.TextGenerationQueryConfig) {
+	test := newPipelineTest(t, func(config *textgen.TextGenerationQueryConfig) {
 		rulesForModel := config.WireFormat.RulesForModel
-		config.WireFormat.RulesForModel = func(model string) llm.ModelRequestRules {
+		config.WireFormat.RulesForModel = func(model string) textgen.ModelRequestRules {
 			rules := rulesForModel(model)
 			rules.StructuredOutput.KeywordsMovedToDescription = []string{"minimum", "maximum"}
 			return rules
@@ -558,12 +560,12 @@ func TestTextGenerationQueryValidatesStructuredOutput(t *testing.T) {
 	})
 	test.provider.EnqueueReplies(doneReply(`{"score": 11}`), doneReply("```JSON\n{\"score\": 4}\n```"))
 	request := userRequest()
-	request.StructuredOutput = &llm.StructuredOutput{Name: "score", Schema: schema}
-	result := test.requireBranch(t, request, llm.InvalidResponseBranchID, sdkgo.FailureProtocol)
+	request.StructuredOutput = &textgen.StructuredOutput{Name: "score", Schema: schema}
+	result := test.requireBranch(t, request, textgen.InvalidResponseBranchID, sdkgo.FailureProtocol)
 	require.Equal(t, "structured output does not match its schema at /score: the value is above maximum", result.Failure.Message)
-	require.Equal(t, `{"score": 4}`, test.requireBranch(t, request, llm.GeneratedBranchID, "").Value.Text)
+	require.Equal(t, `{"score": 4}`, test.requireBranch(t, request, textgen.GeneratedBranchID, "").Value.Text)
 
-	var sent llm.TextGenerationRequest
+	var sent textgen.TextGenerationRequest
 	require.NoError(t, json.Unmarshal(test.provider.Requests()[0].Body, &sent))
 	providerProperty := sent.StructuredOutput.Schema["properties"].(map[string]any)["score"].(map[string]any)
 	require.Equal(t, map[string]any{"type": "integer", "description": "(maximum: 10, minimum: 0)"}, providerProperty,
@@ -572,70 +574,70 @@ func TestTextGenerationQueryValidatesStructuredOutput(t *testing.T) {
 }
 
 func TestTextGenerationQueryAddsTheJSONObjectInstruction(t *testing.T) {
-	test := newPipelineTest(t, func(config *llm.TextGenerationQueryConfig) {
-		config.WireFormat.RulesForModel = func(string) llm.ModelRequestRules {
-			return llm.ModelRequestRules{StructuredOutput: llm.StructuredOutputRules{Mode: llm.StructuredOutputModeJSONObjectWithInstruction}}
+	test := newPipelineTest(t, func(config *textgen.TextGenerationQueryConfig) {
+		config.WireFormat.RulesForModel = func(string) textgen.ModelRequestRules {
+			return textgen.ModelRequestRules{StructuredOutput: textgen.StructuredOutputRules{Mode: textgen.StructuredOutputModeJSONObjectWithInstruction}}
 		}
 	})
 	test.provider.EnqueueReplies(doneReply(`{"ok":true}`))
 	request := userRequest()
 	request.Instructions = "Be terse."
-	request.StructuredOutput = &llm.StructuredOutput{Name: "verdict", Description: "A verdict.", Schema: map[string]any{
+	request.StructuredOutput = &textgen.StructuredOutput{Name: "verdict", Description: "A verdict.", Schema: map[string]any{
 		"type": "object", "additionalProperties": false, "required": []any{"ok"},
 		"properties": map[string]any{"ok": map[string]any{"type": "boolean"}},
 	}}
-	test.requireBranch(t, request, llm.GeneratedBranchID, "")
-	var sent llm.TextGenerationRequest
+	test.requireBranch(t, request, textgen.GeneratedBranchID, "")
+	var sent textgen.TextGenerationRequest
 	require.NoError(t, json.Unmarshal(test.provider.Requests()[0].Body, &sent))
 	require.True(t, strings.HasPrefix(sent.Instructions, "Be terse.\n\nRespond with only one JSON object"), sent.Instructions)
 	require.Contains(t, sent.Instructions, `named "verdict" (A verdict.)`)
 	require.Contains(t, sent.Instructions, `"properties":{"ok":{"type":"boolean"}}`)
 
-	none := newPipelineTest(t, func(config *llm.TextGenerationQueryConfig) {
-		config.WireFormat.RulesForModel = func(string) llm.ModelRequestRules { return llm.ModelRequestRules{} }
+	none := newPipelineTest(t, func(config *textgen.TextGenerationQueryConfig) {
+		config.WireFormat.RulesForModel = func(string) textgen.ModelRequestRules { return textgen.ModelRequestRules{} }
 	})
-	result := none.requireBranch(t, request, llm.DefectBranchID, sdkgo.FailureValidation)
+	result := none.requireBranch(t, request, textgen.DefectBranchID, sdkgo.FailureValidation)
 	require.Contains(t, result.Failure.Message, "does not support structured output")
 }
 
 func TestTextGenerationQueryStreamsAndRetriesInterruptedStreams(t *testing.T) {
-	streaming := func(config *llm.TextGenerationQueryConfig) { config.WireFormat = newTestWireFormat(true) }
+	streaming := func(config *textgen.TextGenerationQueryConfig) { config.WireFormat = newTestWireFormat(true) }
 	test := newPipelineTest(t, streaming)
 	test.provider.EnqueueReplies(
-		llmtest.FakeReply{Header: eventStream, Body: ": keep-alive\n\ndata: {\"text\":\"Hel\"}\n\n", StreamChunks: []llmtest.FakeStreamChunk{
+		textgentest.FakeReply{Header: eventStream, Body: ": keep-alive\n\ndata: {\"text\":\"Hel\"}\n\n", StreamChunks: []textgentest.FakeStreamChunk{
 			{Data: "data: {\"text\":\"lo\"}\n\n"}, {Data: "data: {\"finish\":\"done\"}\n\n"},
 		}},
-		llmtest.FakeReply{Header: eventStream, Body: "data: {\"text\":\"Hel\"}\n\n"},
-		llmtest.FakeReply{Header: eventStream, Body: "data: {\"text\":\"Hel\"}\n\ndata: {\"error\":{\"code\":\"stream_failed\"}}\n\n"},
-		llmtest.FakeReply{Header: eventStream, Body: "data: {\"text\":\"" + strings.Repeat("x", 1<<12) + "\"}\n\n"},
+		textgentest.FakeReply{Header: eventStream, Body: "data: {\"text\":\"Hel\"}\n\n"},
+		textgentest.FakeReply{Header: eventStream, Body: "data: {\"text\":\"Hel\"}\n\ndata: {\"error\":{\"code\":\"stream_failed\"}}\n\n"},
+		textgentest.FakeReply{Header: eventStream, Body: "data: {\"text\":\"" + strings.Repeat("x", 1<<12) + "\"}\n\n"},
 	)
-	require.Equal(t, "Hello", test.requireBranch(t, userRequest(), llm.GeneratedBranchID, "").Value.Text)
+	require.Equal(t, "Hello", test.requireBranch(t, userRequest(), textgen.GeneratedBranchID, "").Value.Text)
 	require.Equal(t, "text/event-stream", test.provider.Requests()[0].Header.Get("Accept"))
 	test.requireRetry(t, userRequest(), sdkgo.FailureTransport)
-	result := test.requireBranch(t, userRequest(), llm.InvalidResponseBranchID, sdkgo.FailureProtocol)
+	result := test.requireBranch(t, userRequest(), textgen.InvalidResponseBranchID, sdkgo.FailureProtocol)
 	require.Contains(t, result.Failure.Message, "stream_failed")
-	test.requireBranch(t, userRequest(), llm.InvalidResponseBranchID, sdkgo.FailureResponseTooLarge)
+	test.requireBranch(t, userRequest(), textgen.InvalidResponseBranchID, sdkgo.FailureResponseTooLarge)
 }
 
 func TestTextGenerationQueryStallRuleCountsEveryByte(t *testing.T) {
-	stalling := func(config *llm.TextGenerationQueryConfig) {
+	stalling := func(config *textgen.TextGenerationQueryConfig) {
 		config.WireFormat = newTestWireFormat(true)
 		config.WireFormat.StallTimeout = 300 * time.Millisecond
 	}
-	keepAlives := make([]llmtest.FakeStreamChunk, 0, 8)
+	keepAlives := make([]textgentest.FakeStreamChunk, 0, 8)
 	for range 6 {
-		keepAlives = append(keepAlives, llmtest.FakeStreamChunk{Delay: 100 * time.Millisecond, Data: ": keep-alive\n\n"})
+		keepAlives = append(keepAlives, textgentest.FakeStreamChunk{Delay: 100 * time.Millisecond, Data: ": keep-alive\n\n"})
 	}
-	keepAlives = append(keepAlives, llmtest.FakeStreamChunk{Data: "data: {\"text\":\"late\",\"finish\":\"done\"}\n\n"})
+	keepAlives = append(keepAlives, textgentest.FakeStreamChunk{Data: "data: {\"text\":\"late\",\"finish\":\"done\"}\n\n"})
 	test := newPipelineTest(t, stalling)
 	test.provider.EnqueueReplies(
-		llmtest.FakeReply{Header: eventStream, StreamChunks: keepAlives},
-		llmtest.FakeReply{Header: eventStream, Body: "data: {\"text\":\"Hel\"}\n\n", StreamChunks: []llmtest.FakeStreamChunk{
+		textgentest.FakeReply{Header: eventStream, StreamChunks: keepAlives},
+		textgentest.FakeReply{Header: eventStream, Body: "data: {\"text\":\"Hel\"}\n\n", StreamChunks: []textgentest.FakeStreamChunk{
 			{Delay: 2 * time.Second, Data: "data: {\"finish\":\"done\"}\n\n"},
 		}},
-		llmtest.FakeReply{Delay: 2 * time.Second},
+		textgentest.FakeReply{Delay: 2 * time.Second},
 	)
-	require.Equal(t, "late", test.requireBranch(t, userRequest(), llm.GeneratedBranchID, "").Value.Text,
+	require.Equal(t, "late", test.requireBranch(t, userRequest(), textgen.GeneratedBranchID, "").Value.Text,
 		"600 ms of keep-alives outlast a 300 ms stall rule because every byte counts")
 	failure, _ := test.requireRetry(t, userRequest(), sdkgo.FailureAvailability)
 	require.Contains(t, failure.Message, "stall")
@@ -644,108 +646,112 @@ func TestTextGenerationQueryStallRuleCountsEveryByte(t *testing.T) {
 }
 
 func TestNewTextGenerationQueryRejectsInvalidConfiguration(t *testing.T) {
-	cases := map[string]func(*llm.TextGenerationQueryConfig){
-		"operation ID": func(config *llm.TextGenerationQueryConfig) {
+	cases := map[string]func(*textgen.TextGenerationQueryConfig){
+		"operation ID": func(config *textgen.TextGenerationQueryConfig) {
 			config.Definition.Operation.OperationID = "generateContent"
 		},
-		"missing branch": func(config *llm.TextGenerationQueryConfig) {
+		"missing branch": func(config *textgen.TextGenerationQueryConfig) {
 			config.Definition.Branches = config.Definition.Branches[:5]
 		},
-		"required optional branch": func(config *llm.TextGenerationQueryConfig) {
-			config.Definition.Branches = llm.TextGenerationBranchDefinitions()
+		"required optional branch": func(config *textgen.TextGenerationQueryConfig) {
+			config.Definition.Branches = textgen.TextGenerationBranchDefinitions()
 			config.Definition.Branches[1].Optional = false
 		},
-		"no encoder":        func(config *llm.TextGenerationQueryConfig) { config.WireFormat.EncodeRequest = nil },
-		"credential header": func(config *llm.TextGenerationQueryConfig) { config.WireFormat.CredentialHeader.Name = "Bad Header" },
-		"finish mapping":    func(config *llm.TextGenerationQueryConfig) { config.WireFormat.FinishReasons["odd"] = "maybe" },
-		"error rule outcome": func(config *llm.TextGenerationQueryConfig) {
-			config.WireFormat.ErrorRules = []llm.ErrorRule{{StatusCode: 400}}
+		"no encoder": func(config *textgen.TextGenerationQueryConfig) { config.WireFormat.EncodeRequest = nil },
+		"credential header": func(config *textgen.TextGenerationQueryConfig) {
+			config.WireFormat.CredentialHeader.Name = "Bad Header"
 		},
-		"error rule status": func(config *llm.TextGenerationQueryConfig) {
-			config.WireFormat.ErrorRules = []llm.ErrorRule{{StatusCode: 200, Outcome: llm.InvalidResponseOutcome()}}
+		"finish mapping": func(config *textgen.TextGenerationQueryConfig) { config.WireFormat.FinishReasons["odd"] = "maybe" },
+		"error rule outcome": func(config *textgen.TextGenerationQueryConfig) {
+			config.WireFormat.ErrorRules = []textgen.ErrorRule{{StatusCode: 400}}
 		},
-		"error rule token": func(config *llm.TextGenerationQueryConfig) {
-			config.WireFormat.ErrorRules = []llm.ErrorRule{{ErrorToken: "has space", Outcome: llm.InvalidResponseOutcome()}}
+		"error rule status": func(config *textgen.TextGenerationQueryConfig) {
+			config.WireFormat.ErrorRules = []textgen.ErrorRule{{StatusCode: 200, Outcome: textgen.InvalidResponseOutcome()}}
 		},
-		"plain HTTP base URL": func(config *llm.TextGenerationQueryConfig) { config.BaseURL = "http://api.example.test/v1" },
-		"base URL user info":  func(config *llm.TextGenerationQueryConfig) { config.BaseURL = "https://user:hunter2@api.example.test" },
-		"model ID rule":       func(config *llm.TextGenerationQueryConfig) { config.WireFormat.ModelIDRule = 0 },
-		"connection model":    func(config *llm.TextGenerationQueryConfig) { config.ConnectionModel = "has space" },
-		"request timeout":     func(config *llm.TextGenerationQueryConfig) { config.RequestTimeout = 0 },
-		"credential resolver": func(config *llm.TextGenerationQueryConfig) { config.ResolveCredential = nil },
-		"response limit":      func(config *llm.TextGenerationQueryConfig) { config.MaxResponseBytes = 0 },
-		"stream event limit":  func(config *llm.TextGenerationQueryConfig) { config.MaxStreamEventBytes = 0 },
-		"negative stall":      func(config *llm.TextGenerationQueryConfig) { config.WireFormat.StallTimeout = -time.Second },
-		"rate-limit header": func(config *llm.TextGenerationQueryConfig) {
+		"error rule token": func(config *textgen.TextGenerationQueryConfig) {
+			config.WireFormat.ErrorRules = []textgen.ErrorRule{{ErrorToken: "has space", Outcome: textgen.InvalidResponseOutcome()}}
+		},
+		"plain HTTP base URL": func(config *textgen.TextGenerationQueryConfig) { config.BaseURL = "http://api.example.test/v1" },
+		"base URL user info": func(config *textgen.TextGenerationQueryConfig) {
+			config.BaseURL = "https://user:hunter2@api.example.test"
+		},
+		"model ID rule":       func(config *textgen.TextGenerationQueryConfig) { config.WireFormat.ModelIDRule = 0 },
+		"connection model":    func(config *textgen.TextGenerationQueryConfig) { config.ConnectionModel = "has space" },
+		"request timeout":     func(config *textgen.TextGenerationQueryConfig) { config.RequestTimeout = 0 },
+		"credential resolver": func(config *textgen.TextGenerationQueryConfig) { config.ResolveCredential = nil },
+		"response limit":      func(config *textgen.TextGenerationQueryConfig) { config.MaxResponseBytes = 0 },
+		"stream event limit":  func(config *textgen.TextGenerationQueryConfig) { config.MaxStreamEventBytes = 0 },
+		"negative stall":      func(config *textgen.TextGenerationQueryConfig) { config.WireFormat.StallTimeout = -time.Second },
+		"rate-limit header": func(config *textgen.TextGenerationQueryConfig) {
 			config.WireFormat.RateLimitHeaders = []string{"bad header"}
 		},
-		"error-token pointer": func(config *llm.TextGenerationQueryConfig) {
+		"error-token pointer": func(config *textgen.TextGenerationQueryConfig) {
 			config.WireFormat.ErrorTokenPointers = []string{"error/code"}
 		},
-		"missing provider name": func(config *llm.TextGenerationQueryConfig) { config.WireFormat.ProviderName = "" },
-		"async durability": func(config *llm.TextGenerationQueryConfig) {
+		"missing provider name": func(config *textgen.TextGenerationQueryConfig) { config.WireFormat.ProviderName = "" },
+		"async durability": func(config *textgen.TextGenerationQueryConfig) {
 			config.Definition.StepDefaults.ExecuteDurability = dex.StepDurabilityAsync
 		},
-		"flow-default durability": func(config *llm.TextGenerationQueryConfig) {
+		"flow-default durability": func(config *textgen.TextGenerationQueryConfig) {
 			config.Definition.StepDefaults.ExecuteDurability = dex.StepDurabilityDefault
 		},
-		"heartbeat timeout below two beats": func(config *llm.TextGenerationQueryConfig) {
+		"heartbeat timeout below two beats": func(config *textgen.TextGenerationQueryConfig) {
 			config.Definition.StepDefaults.HeartbeatTimeout = 9 * time.Second
 		},
-		"Execute timeout within the request timeout": func(config *llm.TextGenerationQueryConfig) {
+		"Execute timeout within the request timeout": func(config *textgen.TextGenerationQueryConfig) {
 			config.Definition.StepDefaults.ExecuteMethodTimeout = config.RequestTimeout
 		},
 	}
 	for name, configure := range cases {
 		t.Run(name, func(t *testing.T) {
-			config := &llm.TextGenerationQueryConfig{
+			config := &textgen.TextGenerationQueryConfig{
 				Definition: testDefinition, WireFormat: newTestWireFormat(false), BaseURL: "https://api.example.test/v1",
 				ConnectionModel: testConnectionModel, RequestTimeout: time.Second,
 				ResolveCredential: func(sdkgo.Call) (sdkgo.SecretString, error) { return sdkgo.NewSecretString(testAPIKey), nil },
 				MaxResponseBytes:  1, MaxStreamEventBytes: 1,
 			}
-			config.Definition.Branches = llm.TextGenerationBranchDefinitions()
+			config.Definition.Branches = textgen.TextGenerationBranchDefinitions()
 			configure(config)
-			_, err := llm.NewTextGenerationQuery(config)
+			_, err := textgen.NewTextGenerationQuery(config)
 			require.Error(t, err)
 			require.NotContains(t, err.Error(), "hunter2")
 		})
 	}
-	_, err := llm.NewTextGenerationQuery(nil)
+	_, err := textgen.NewTextGenerationQuery(nil)
 	require.Error(t, err)
 }
 
 func TestNewTextGenerationQueryAcceptsDexHeartbeatTimeouts(t *testing.T) {
 	for _, heartbeatTimeout := range []time.Duration{0, 10 * time.Second, time.Minute} {
-		newPipelineTest(t, func(config *llm.TextGenerationQueryConfig) {
+		newPipelineTest(t, func(config *textgen.TextGenerationQueryConfig) {
 			config.Definition.StepDefaults.HeartbeatTimeout = heartbeatTimeout
 		})
 	}
 }
 
 func TestNewTextGenerationQueryCopiesTheWireFormat(t *testing.T) {
-	var config *llm.TextGenerationQueryConfig
-	test := newPipelineTest(t, func(configured *llm.TextGenerationQueryConfig) { config = configured })
-	config.WireFormat.FinishReasons["done"] = llm.FinishReason("invalid")
+	var config *textgen.TextGenerationQueryConfig
+	test := newPipelineTest(t, func(configured *textgen.TextGenerationQueryConfig) { config = configured })
+	config.WireFormat.FinishReasons["done"] = textgen.FinishReason("invalid")
 	config.WireFormat.RequestIDHeaders[0] = "bad header"
 	test.provider.EnqueueReplies(jsonReply(http.StatusOK, http.Header{"X-First-Request-Id": {"req-1"}},
 		testResponse{Text: "still stops", Finish: "done"}))
-	result := test.requireBranch(t, userRequest(), llm.GeneratedBranchID, "")
+	result := test.requireBranch(t, userRequest(), textgen.GeneratedBranchID, "")
 	require.Equal(t, "still stops", result.Value.Text, "a later change to the caller's map bypasses no validation")
 	require.Equal(t, "req-1", result.Receipt.ProviderRequestID, "a later change to the caller's slices has no effect")
 }
 
 func TestTextGenerationBranchDefinitionsMatchTheContract(t *testing.T) {
-	branches := llm.TextGenerationBranchDefinitions()
+	branches := textgen.TextGenerationBranchDefinitions()
 	require.NoError(t, sdkgo.QueryDefinition{
-		Operation: sdkgo.OperationRef{ConnectorID: "test-lab", OperationID: llm.TextGenerationOperationID}, Branches: branches,
+		Operation: sdkgo.OperationRef{ConnectorID: "test-lab", OperationID: textgen.TextGenerationOperationID}, Branches: branches,
 	}.Validate())
 	var ids []sdkgo.BranchID
 	for _, branch := range branches {
 		ids = append(ids, branch.ID)
-		require.Equal(t, branch.ID != llm.GeneratedBranchID, branch.Optional, "only generated is required")
+		require.Equal(t, branch.ID != textgen.GeneratedBranchID, branch.Optional, "only generated is required")
 	}
 	require.Equal(t, []sdkgo.BranchID{"generated", "truncated", "blocked", "providerRejected", "invalidResponse", "defect"}, ids)
 	branches[0].Description = "changed"
-	require.NotEqual(t, "changed", llm.TextGenerationBranchDefinitions()[0].Description, "every call returns a new slice")
+	require.NotEqual(t, "changed", textgen.TextGenerationBranchDefinitions()[0].Description, "every call returns a new slice")
 }

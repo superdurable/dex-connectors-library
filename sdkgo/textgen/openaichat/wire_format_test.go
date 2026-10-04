@@ -12,10 +12,10 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/internal/testsupport"
-	"github.com/superdurable/dex-connectors-library/sdkgo/llm"
-	"github.com/superdurable/dex-connectors-library/sdkgo/llm/llmtest"
-	"github.com/superdurable/dex-connectors-library/sdkgo/llm/openaichat"
-	"github.com/superdurable/dex-connectors-library/sdkgo/llm/openaichat/openaichattest"
+	"github.com/superdurable/dex-connectors-library/sdkgo/textgen"
+	"github.com/superdurable/dex-connectors-library/sdkgo/textgen/openaichat"
+	"github.com/superdurable/dex-connectors-library/sdkgo/textgen/openaichat/openaichattest"
+	"github.com/superdurable/dex-connectors-library/sdkgo/textgen/textgentest"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -27,31 +27,31 @@ const (
 var (
 	chatConnection = sdkgo.ConnectionRef{Provider: "chat", Name: "test"}
 	chatDefinition = sdkgo.QueryDefinition{
-		Operation:    sdkgo.OperationRef{ConnectorID: "chat-lab", OperationID: llm.TextGenerationOperationID},
-		Branches:     llm.TextGenerationBranchDefinitions(),
+		Operation:    sdkgo.OperationRef{ConnectorID: "chat-lab", OperationID: textgen.TextGenerationOperationID},
+		Branches:     textgen.TextGenerationBranchDefinitions(),
 		StepDefaults: sdkgo.StepDefaults{ExecuteMethodTimeout: time.Minute, ExecuteDurability: dex.StepDurabilitySync},
 	}
-	bearerHeader = llm.CredentialHeader{Name: "Authorization", Prefix: "Bearer "}
+	bearerHeader = textgen.CredentialHeader{Name: "Authorization", Prefix: "Bearer "}
 )
 
 func TestChatWireFormatFollowsTheExchangeContract(t *testing.T) {
 	profile := &openaichat.Profile{
 		ProviderName:     "chat-lab",
-		StructuredOutput: llm.StructuredOutputRules{Mode: llm.StructuredOutputModeJSONObjectWithInstruction},
-		ReasoningEfforts: map[llm.ReasoningEffort]string{llm.ReasoningEffortLow: "low"},
+		StructuredOutput: textgen.StructuredOutputRules{Mode: textgen.StructuredOutputModeJSONObjectWithInstruction},
+		ReasoningEfforts: map[textgen.ReasoningEffort]string{textgen.ReasoningEffortLow: "low"},
 	}
-	llmtest.RunTextGenerationExchangeSuite(t, &llmtest.TextGenerationExchangeSuite{
+	textgentest.RunTextGenerationExchangeSuite(t, &textgentest.TextGenerationExchangeSuite{
 		Dialect: openaichattest.NewProviderDialect(&openaichattest.ProviderDialectConfig{
 			ConnectionModel: chatModel, AlternateModel: "chat-model-2",
 		}),
-		NewQuery: func(t testing.TB, connection llmtest.FakeConnection) *llm.TextGenerationQuery {
+		NewQuery: func(t testing.TB, connection textgentest.FakeConnection) *textgen.TextGenerationQuery {
 			return newChatQueryFor(t, profile, connection.BaseURL, connection.Model, connection.MaxResponseBytes,
 				func(call sdkgo.Call) (sdkgo.SecretString, error) {
 					return sdkgo.StaticCredentialProvider[sdkgo.SecretString]{connection.Reference: connection.APIKey}.Resolve(call)
 				})
 		},
-		LocallyRejectedRequests: []llmtest.NamedTextGenerationRequest{
-			{Name: "unmapped reasoning effort", Request: llm.TextGenerationRequest{ReasoningEffort: llm.ReasoningEffortHigh}},
+		LocallyRejectedRequests: []textgentest.NamedTextGenerationRequest{
+			{Name: "unmapped reasoning effort", Request: textgen.TextGenerationRequest{ReasoningEffort: textgen.ReasoningEffortHigh}},
 		},
 	})
 }
@@ -60,22 +60,22 @@ func TestChatWireFormatFollowsTheExchangeContract(t *testing.T) {
 func TestChatWireFormatWithATopLevelErrorEnvelope(t *testing.T) {
 	profile := &openaichat.Profile{
 		ProviderName:               "strict-lab",
-		StructuredOutput:           llm.StructuredOutputRules{Mode: llm.StructuredOutputModeJSONSchema},
+		StructuredOutput:           textgen.StructuredOutputRules{Mode: textgen.StructuredOutputModeJSONSchema},
 		ShouldSendStrictJSONSchema: true,
 		AllowedRequestFields:       []string{"model", "messages", "max_tokens", "temperature", "response_format"},
 		ErrorTokenPointers:         []string{"/type", "/code"},
-		ErrorRules: []llm.ErrorRule{
-			{StatusCode: http.StatusTooManyRequests, ErrorToken: "lab_quota_exceeded", Outcome: llm.QuotaExhaustedOutcome()},
-			{StatusCode: http.StatusBadRequest, ErrorToken: "lab_content_blocked", Outcome: llm.BlockedOutcome()},
+		ErrorRules: []textgen.ErrorRule{
+			{StatusCode: http.StatusTooManyRequests, ErrorToken: "lab_quota_exceeded", Outcome: textgen.QuotaExhaustedOutcome()},
+			{StatusCode: http.StatusBadRequest, ErrorToken: "lab_content_blocked", Outcome: textgen.BlockedOutcome()},
 		},
 	}
-	llmtest.RunTextGenerationExchangeSuite(t, &llmtest.TextGenerationExchangeSuite{
+	textgentest.RunTextGenerationExchangeSuite(t, &textgentest.TextGenerationExchangeSuite{
 		Dialect: openaichattest.NewProviderDialect(&openaichattest.ProviderDialectConfig{
 			ConnectionModel: chatModel, AlternateModel: "chat-model-2", ErrorTokenPointers: []string{"/type", "/code"},
 			QuotaExhaustedStatusCode: http.StatusTooManyRequests, QuotaExhaustedErrorToken: "lab_quota_exceeded",
 			ContentPolicyErrorToken: "lab_content_blocked",
 		}),
-		NewQuery: func(t testing.TB, connection llmtest.FakeConnection) *llm.TextGenerationQuery {
+		NewQuery: func(t testing.TB, connection textgentest.FakeConnection) *textgen.TextGenerationQuery {
 			return newChatQueryFor(t, profile, connection.BaseURL, connection.Model, connection.MaxResponseBytes,
 				func(call sdkgo.Call) (sdkgo.SecretString, error) {
 					return sdkgo.StaticCredentialProvider[sdkgo.SecretString]{connection.Reference: connection.APIKey}.Resolve(call)
@@ -94,7 +94,7 @@ func TestChatRequestBodies(t *testing.T) {
 	cases := []struct {
 		name     string
 		profile  openaichat.Profile
-		request  llm.TextGenerationRequest
+		request  textgen.TextGenerationRequest
 		expected string
 	}{
 		{
@@ -104,12 +104,12 @@ func TestChatRequestBodies(t *testing.T) {
 		},
 		{
 			name: "system instructions, max_tokens, temperature, and effort",
-			profile: openaichat.Profile{ReasoningEfforts: map[llm.ReasoningEffort]string{
-				llm.ReasoningEffortExtraHigh: "very_high",
+			profile: openaichat.Profile{ReasoningEfforts: map[textgen.ReasoningEffort]string{
+				textgen.ReasoningEffortExtraHigh: "very_high",
 			}},
-			request: chatRequest(func(request *llm.TextGenerationRequest) {
+			request: chatRequest(func(request *textgen.TextGenerationRequest) {
 				request.Instructions, request.MaxOutputTokens, request.Temperature = "Be brief.", 64, &temperature
-				request.ReasoningEffort = llm.ReasoningEffortExtraHigh
+				request.ReasoningEffort = textgen.ReasoningEffortExtraHigh
 			}),
 			expected: `{"model":"chat-model","messages":[{"role":"system","content":"Be brief."},` + userMessage + `],
 				"max_tokens":64,"temperature":0.7,"reasoning_effort":"very_high"}`,
@@ -117,18 +117,18 @@ func TestChatRequestBodies(t *testing.T) {
 		{
 			name:    "developer instructions and max_completion_tokens",
 			profile: openaichat.Profile{InstructionsRole: openaichat.InstructionsRoleDeveloper, MaxTokensField: openaichat.MaxTokensFieldMaxCompletionTokens},
-			request: chatRequest(func(request *llm.TextGenerationRequest) {
+			request: chatRequest(func(request *textgen.TextGenerationRequest) {
 				request.Instructions, request.MaxOutputTokens = "Be brief.", 64
 			}),
 			expected: `{"model":"chat-model","messages":[{"role":"developer","content":"Be brief."},` + userMessage + `],"max_completion_tokens":64}`,
 		},
 		{
 			name: "strict json_schema with transforms",
-			profile: openaichat.Profile{ShouldSendStrictJSONSchema: true, StructuredOutput: llm.StructuredOutputRules{
-				Mode: llm.StructuredOutputModeJSONSchema, KeywordsMovedToDescription: []string{"minimum"},
+			profile: openaichat.Profile{ShouldSendStrictJSONSchema: true, StructuredOutput: textgen.StructuredOutputRules{
+				Mode: textgen.StructuredOutputModeJSONSchema, KeywordsMovedToDescription: []string{"minimum"},
 			}},
-			request: chatRequest(func(request *llm.TextGenerationRequest) {
-				request.StructuredOutput = &llm.StructuredOutput{Name: "count", Description: "A count.", Schema: strictSchema}
+			request: chatRequest(func(request *textgen.TextGenerationRequest) {
+				request.StructuredOutput = &textgen.StructuredOutput{Name: "count", Description: "A count.", Schema: strictSchema}
 			}),
 			expected: `{"model":"chat-model","messages":[` + userMessage + `],"response_format":{"type":"json_schema","json_schema":{
 				"name":"count","description":"A count.","strict":true,"schema":{"type":"object","additionalProperties":false,
@@ -147,7 +147,7 @@ func TestChatRequestBodies(t *testing.T) {
 				{ModelIDPattern: `^chat-(model|other)$`, MaxTokensField: openaichat.MaxTokensFieldMaxCompletionTokens, Streaming: openaichat.StreamingPolicyAlways},
 				{ModelIDPrefix: "chat-", MaxTokensField: openaichat.MaxTokensFieldMaxTokens},
 			}},
-			request: chatRequest(func(request *llm.TextGenerationRequest) { request.MaxOutputTokens = 8 }),
+			request: chatRequest(func(request *textgen.TextGenerationRequest) { request.MaxOutputTokens = 8 }),
 			expected: `{"model":"chat-model","messages":[` + userMessage + `],"max_completion_tokens":8,
 				"stream":true}`,
 		},
@@ -156,7 +156,7 @@ func TestChatRequestBodies(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			profile := testCase.profile
 			profile.ProviderName = "chat-lab"
-			provider := llmtest.NewFakeProvider(t, bearerHeader, chatAPIKey)
+			provider := textgentest.NewFakeProvider(t, bearerHeader, chatAPIKey)
 			query := newChatQuery(t, &profile, provider)
 			isStreaming := profile.Streaming == openaichat.StreamingPolicyAlways || len(profile.ModelRules) > 0
 			dialect := openaichattest.NewProviderDialect(&openaichattest.ProviderDialectConfig{
@@ -166,10 +166,10 @@ func TestChatRequestBodies(t *testing.T) {
 			if testCase.request.StructuredOutput != nil {
 				text = `{"n":2}`
 			}
-			provider.EnqueueReplies(dialect.GeneratedReply(llmtest.GeneratedReply{Text: text, ServedModel: chatModel, ResponseID: "r"}))
+			provider.EnqueueReplies(dialect.GeneratedReply(textgentest.GeneratedReply{Text: text, ServedModel: chatModel, ResponseID: "r"}))
 			result, err := runChatQuery(query, testCase.request)
 			require.NoError(t, err)
-			require.Equal(t, llm.GeneratedBranchID, result.Branch, "failure: %+v", result.Failure)
+			require.Equal(t, textgen.GeneratedBranchID, result.Branch, "failure: %+v", result.Failure)
 			requests := provider.Requests()
 			require.Len(t, requests, 1)
 			require.Equal(t, "/v1/chat/completions", requests[0].Path)
@@ -179,20 +179,20 @@ func TestChatRequestBodies(t *testing.T) {
 }
 
 func TestChatJSONObjectModeAddsTheInstruction(t *testing.T) {
-	provider := llmtest.NewFakeProvider(t, bearerHeader, chatAPIKey)
+	provider := textgentest.NewFakeProvider(t, bearerHeader, chatAPIKey)
 	query := newChatQuery(t, &openaichat.Profile{
-		ProviderName: "chat-lab", StructuredOutput: llm.StructuredOutputRules{Mode: llm.StructuredOutputModeJSONObjectWithInstruction},
+		ProviderName: "chat-lab", StructuredOutput: textgen.StructuredOutputRules{Mode: textgen.StructuredOutputModeJSONObjectWithInstruction},
 	}, provider)
 	dialect := openaichattest.NewProviderDialect(&openaichattest.ProviderDialectConfig{ConnectionModel: chatModel, AlternateModel: "unused"})
-	provider.EnqueueReplies(dialect.GeneratedReply(llmtest.GeneratedReply{Text: `{"ok":true}`}))
-	result, err := runChatQuery(query, chatRequest(func(request *llm.TextGenerationRequest) {
-		request.StructuredOutput = &llm.StructuredOutput{Name: "verdict", Schema: map[string]any{
+	provider.EnqueueReplies(dialect.GeneratedReply(textgentest.GeneratedReply{Text: `{"ok":true}`}))
+	result, err := runChatQuery(query, chatRequest(func(request *textgen.TextGenerationRequest) {
+		request.StructuredOutput = &textgen.StructuredOutput{Name: "verdict", Schema: map[string]any{
 			"type": "object", "additionalProperties": false, "required": []any{"ok"},
 			"properties": map[string]any{"ok": map[string]any{"type": "boolean"}},
 		}}
 	}))
 	require.NoError(t, err)
-	require.Equal(t, llm.GeneratedBranchID, result.Branch)
+	require.Equal(t, textgen.GeneratedBranchID, result.Branch)
 	body := string(provider.Requests()[0].Body)
 	require.Contains(t, body, `"response_format":{"type":"json_object"}`)
 	require.Contains(t, body, `{"role":"system","content":"Respond with only one JSON object`)
@@ -200,28 +200,28 @@ func TestChatJSONObjectModeAddsTheInstruction(t *testing.T) {
 }
 
 func TestChatAllowlistRejectsUnacceptedFieldsWithoutARequest(t *testing.T) {
-	provider := llmtest.NewFakeProvider(t, bearerHeader, chatAPIKey)
+	provider := textgentest.NewFakeProvider(t, bearerHeader, chatAPIKey)
 	query := newChatQuery(t, &openaichat.Profile{
 		ProviderName: "chat-lab", Streaming: openaichat.StreamingPolicyAlways, ShouldRequestStreamUsage: true,
 		AllowedRequestFields: []string{"model", "messages", "max_tokens", "stream", "stream_options"},
 	}, provider)
 	temperature := 0.5
-	result, err := runChatQuery(query, chatRequest(func(request *llm.TextGenerationRequest) { request.Temperature = &temperature }))
+	result, err := runChatQuery(query, chatRequest(func(request *textgen.TextGenerationRequest) { request.Temperature = &temperature }))
 	require.NoError(t, err)
-	require.Equal(t, llm.DefectBranchID, result.Branch)
+	require.Equal(t, textgen.DefectBranchID, result.Branch)
 	require.Contains(t, result.Failure.Message, `"temperature"`)
 	require.Empty(t, provider.Requests())
 }
 
 func TestChatHeadersAndReceipt(t *testing.T) {
-	provider := llmtest.NewFakeProvider(t, llm.CredentialHeader{Name: "x-api-key"}, chatAPIKey)
+	provider := textgentest.NewFakeProvider(t, textgen.CredentialHeader{Name: "x-api-key"}, chatAPIKey)
 	query := newChatQuery(t, &openaichat.Profile{
-		ProviderName: "chat-lab", CredentialHeader: llm.CredentialHeader{Name: "x-api-key"},
+		ProviderName: "chat-lab", CredentialHeader: textgen.CredentialHeader{Name: "x-api-key"},
 		FixedHeaders:     map[string]string{"Chat-Version": "2026-09-01"},
 		RequestIDHeaders: []string{"request-id"}, RateLimitHeaders: []string{"x-ratelimit-remaining-tokens"},
 	}, provider)
 	dialect := openaichattest.NewProviderDialect(&openaichattest.ProviderDialectConfig{ConnectionModel: chatModel, AlternateModel: "unused"})
-	reply := dialect.GeneratedReply(llmtest.GeneratedReply{Text: "ok", ResponseID: "chatcmpl-1"})
+	reply := dialect.GeneratedReply(textgentest.GeneratedReply{Text: "ok", ResponseID: "chatcmpl-1"})
 	reply.Header.Set("request-id", "req-9")
 	reply.Header.Set("x-ratelimit-remaining-tokens", "900")
 	provider.EnqueueReplies(reply)
@@ -237,11 +237,11 @@ func TestChatHeadersAndReceipt(t *testing.T) {
 }
 
 func TestChatDecodesProviderVariants(t *testing.T) {
-	jsonReply := func(statusCode int, body string) llmtest.FakeReply {
-		return llmtest.FakeReply{StatusCode: statusCode, Header: http.Header{"Content-Type": {"application/json"}}, Body: body}
+	jsonReply := func(statusCode int, body string) textgentest.FakeReply {
+		return textgentest.FakeReply{StatusCode: statusCode, Header: http.Header{"Content-Type": {"application/json"}}, Body: body}
 	}
-	streamReply := func(body string) llmtest.FakeReply {
-		return llmtest.FakeReply{Header: http.Header{"Content-Type": {"text/event-stream"}}, Body: body}
+	streamReply := func(body string) textgentest.FakeReply {
+		return textgentest.FakeReply{Header: http.Header{"Content-Type": {"text/event-stream"}}, Body: body}
 	}
 	completion := func(message string, finishReason string) string {
 		return `{"id":"c1","model":"served","choices":[{"index":0,"message":` + message + `,"finish_reason":` + finishReason + `}],
@@ -251,54 +251,54 @@ func TestChatDecodesProviderVariants(t *testing.T) {
 	cases := []struct {
 		name      string
 		profile   openaichat.Profile
-		reply     llmtest.FakeReply
+		reply     textgentest.FakeReply
 		branch    sdkgo.BranchID
 		retryKind sdkgo.FailureKind
 		text      string
-		finish    llm.FinishReason
-		usage     llm.Usage
+		finish    textgen.FinishReason
+		usage     textgen.Usage
 	}{
 		{
 			name:   "content parts skip thinking",
 			reply:  jsonReply(200, completion(`{"content":[{"type":"thinking","thinking":"hmm"},{"type":"text","text":"A"},{"type":"text","text":"B"}]}`, `"stop"`)),
-			branch: llm.GeneratedBranchID, text: "AB", finish: llm.FinishReasonStop,
-			usage: llm.Usage{InputTokens: 12, OutputTokens: 3, TotalTokens: 15},
+			branch: textgen.GeneratedBranchID, text: "AB", finish: textgen.FinishReasonStop,
+			usage: textgen.Usage{InputTokens: 12, OutputTokens: 3, TotalTokens: 15},
 		},
 		{
 			name:   "refusal is blocked",
 			reply:  jsonReply(200, completion(`{"content":null,"refusal":"I cannot help with that."}`, `"stop"`)),
-			branch: llm.BlockedBranchID, finish: llm.FinishReasonRefusal,
+			branch: textgen.BlockedBranchID, finish: textgen.FinishReasonRefusal,
 		},
 		{
 			name:    "extended finish token",
-			profile: openaichat.Profile{FinishReasons: map[string]llm.FinishReason{"model_length": llm.FinishReasonLength}},
+			profile: openaichat.Profile{FinishReasons: map[string]textgen.FinishReason{"model_length": textgen.FinishReasonLength}},
 			reply:   jsonReply(200, completion(`{"content":"par"}`, `"model_length"`)),
-			branch:  llm.TruncatedBranchID, text: "par", finish: llm.FinishReasonLength,
+			branch:  textgen.TruncatedBranchID, text: "par", finish: textgen.FinishReasonLength,
 		},
 		{
 			name:   "tool call finish is unusable",
 			reply:  jsonReply(200, completion(`{"content":null}`, `"tool_calls"`)),
-			branch: llm.InvalidResponseBranchID,
+			branch: textgen.InvalidResponseBranchID,
 		},
 		{
 			name:   "fractional token count",
 			reply:  jsonReply(200, `{"choices":[{"index":0,"message":{"content":"x"},"finish_reason":"stop"}],"usage":{"prompt_tokens":1.5}}`),
-			branch: llm.InvalidResponseBranchID,
+			branch: textgen.InvalidResponseBranchID,
 		},
 		{
 			name:   "no first choice",
 			reply:  jsonReply(200, `{"choices":[{"index":1,"message":{"content":"x"},"finish_reason":"stop"}]}`),
-			branch: llm.InvalidResponseBranchID,
+			branch: textgen.InvalidResponseBranchID,
 		},
 		{
 			name:   "error body on 200",
 			reply:  jsonReply(200, `{"error":{"type":"server_busy","message":"secret provider text"}}`),
-			branch: llm.InvalidResponseBranchID,
+			branch: textgen.InvalidResponseBranchID,
 		},
 		{
 			name: "error body on 200 matched by a status-independent rule",
-			profile: openaichat.Profile{ErrorRules: []llm.ErrorRule{
-				{ErrorToken: "server_busy", Outcome: llm.RetryOutcome(sdkgo.FailureAvailability)},
+			profile: openaichat.Profile{ErrorRules: []textgen.ErrorRule{
+				{ErrorToken: "server_busy", Outcome: textgen.RetryOutcome(sdkgo.FailureAvailability)},
 			}},
 			reply:     jsonReply(200, `{"error":{"type":"server_busy","message":"secret provider text"}}`),
 			retryKind: sdkgo.FailureAvailability,
@@ -310,8 +310,8 @@ func TestChatDecodesProviderVariants(t *testing.T) {
 				chunk(`"choices":[{"index":0,"delta":{"content":"Hi"}}]`) +
 				chunk(`"choices":[{"index":0,"delta":{},"finish_reason":"stop"}]`) +
 				chunk(`"choices":[],"usage":{"prompt_tokens":2,"completion_tokens":1,"total_tokens":3,"completion_tokens_details":{"reasoning_tokens":1}}`)),
-			branch: llm.GeneratedBranchID, text: "Hi", finish: llm.FinishReasonStop,
-			usage: llm.Usage{InputTokens: 2, OutputTokens: 1, ReasoningTokens: 1, TotalTokens: 3},
+			branch: textgen.GeneratedBranchID, text: "Hi", finish: textgen.FinishReasonStop,
+			usage: textgen.Usage{InputTokens: 2, OutputTokens: 1, ReasoningTokens: 1, TotalTokens: 3},
 		},
 		{
 			name:      "stream ends before a finish",
@@ -323,12 +323,12 @@ func TestChatDecodesProviderVariants(t *testing.T) {
 			name:    "stream sends DONE without a finish",
 			profile: openaichat.Profile{Streaming: openaichat.StreamingPolicyAlways},
 			reply:   streamReply(chunk(`"choices":[{"index":0,"delta":{"content":"Hi"}}]`) + "data: [DONE]\n\n"),
-			branch:  llm.InvalidResponseBranchID,
+			branch:  textgen.InvalidResponseBranchID,
 		},
 		{
 			name: "stream error event",
-			profile: openaichat.Profile{Streaming: openaichat.StreamingPolicyAlways, ErrorRules: []llm.ErrorRule{
-				{ErrorToken: "overloaded_error", Outcome: llm.RetryOutcome(sdkgo.FailureAvailability)},
+			profile: openaichat.Profile{Streaming: openaichat.StreamingPolicyAlways, ErrorRules: []textgen.ErrorRule{
+				{ErrorToken: "overloaded_error", Outcome: textgen.RetryOutcome(sdkgo.FailureAvailability)},
 			}},
 			reply: streamReply(chunk(`"choices":[{"index":0,"delta":{"content":"Hi"}}]`) +
 				"event: error\ndata: {\"error\":{\"type\":\"overloaded_error\",\"message\":\"secret provider text\"}}\n\n"),
@@ -339,7 +339,7 @@ func TestChatDecodesProviderVariants(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			profile := testCase.profile
 			profile.ProviderName = "chat-lab"
-			provider := llmtest.NewFakeProvider(t, bearerHeader, chatAPIKey)
+			provider := textgentest.NewFakeProvider(t, bearerHeader, chatAPIKey)
 			provider.EnqueueReplies(testCase.reply)
 			result, err := runChatQuery(newChatQuery(t, &profile, provider), chatRequest(nil))
 			if testCase.retryKind != "" {
@@ -355,7 +355,7 @@ func TestChatDecodesProviderVariants(t *testing.T) {
 			if testCase.finish != "" {
 				require.Equal(t, testCase.finish, result.Value.FinishReason)
 			}
-			if testCase.usage != (llm.Usage{}) {
+			if testCase.usage != (textgen.Usage{}) {
 				require.Equal(t, testCase.usage, result.Value.Usage)
 			}
 			if result.Failure != nil {
@@ -375,9 +375,9 @@ func TestNewWireFormatRejectsInvalidProfiles(t *testing.T) {
 		"instructions role":          {ProviderName: "p", InstructionsRole: "tool"},
 		"token field":                {ProviderName: "p", MaxTokensField: "max_output_tokens"},
 		"streaming policy":           {ProviderName: "p", Streaming: "sometimes"},
-		"effort wire value":          {ProviderName: "p", ReasoningEfforts: map[llm.ReasoningEffort]string{llm.ReasoningEffortLow: "Low Effort"}},
-		"unknown effort":             {ProviderName: "p", ReasoningEfforts: map[llm.ReasoningEffort]string{"ultra": "ultra"}},
-		"structured mode":            {ProviderName: "p", StructuredOutput: llm.StructuredOutputRules{Mode: "xml"}},
+		"effort wire value":          {ProviderName: "p", ReasoningEfforts: map[textgen.ReasoningEffort]string{textgen.ReasoningEffortLow: "Low Effort"}},
+		"unknown effort":             {ProviderName: "p", ReasoningEfforts: map[textgen.ReasoningEffort]string{"ultra": "ultra"}},
+		"structured mode":            {ProviderName: "p", StructuredOutput: textgen.StructuredOutputRules{Mode: "xml"}},
 		"request field":              {ProviderName: "p", AllowedRequestFields: []string{"Model"}},
 		"allowlist without messages": {ProviderName: "p", AllowedRequestFields: []string{"model", "max_tokens"}},
 		"allowlist without stream": {ProviderName: "p", AllowedRequestFields: []string{"model", "messages"},
@@ -402,15 +402,15 @@ func TestNewWireFormatRejectsInvalidProfiles(t *testing.T) {
 	require.Error(t, err)
 }
 
-func chatRequest(customize func(*llm.TextGenerationRequest)) llm.TextGenerationRequest {
-	request := llm.TextGenerationRequest{Messages: []llm.Message{{Role: llm.MessageRoleUser, Text: "hi"}}}
+func chatRequest(customize func(*textgen.TextGenerationRequest)) textgen.TextGenerationRequest {
+	request := textgen.TextGenerationRequest{Messages: []textgen.Message{{Role: textgen.MessageRoleUser, Text: "hi"}}}
 	if customize != nil {
 		customize(&request)
 	}
 	return request
 }
 
-func newChatQuery(t testing.TB, profile *openaichat.Profile, provider *llmtest.FakeProvider) *llm.TextGenerationQuery {
+func newChatQuery(t testing.TB, profile *openaichat.Profile, provider *textgentest.FakeProvider) *textgen.TextGenerationQuery {
 	t.Helper()
 	return newChatQueryFor(t, profile, provider.BaseURL()+"/v1", chatModel, 1<<16,
 		func(sdkgo.Call) (sdkgo.SecretString, error) { return sdkgo.NewSecretString(chatAPIKey), nil })
@@ -419,11 +419,11 @@ func newChatQuery(t testing.TB, profile *openaichat.Profile, provider *llmtest.F
 func newChatQueryFor(
 	t testing.TB, profile *openaichat.Profile, baseURL string, model string, maxResponseBytes int64,
 	resolveCredential func(sdkgo.Call) (sdkgo.SecretString, error),
-) *llm.TextGenerationQuery {
+) *textgen.TextGenerationQuery {
 	t.Helper()
 	wireFormat, err := openaichat.NewWireFormat(profile)
 	require.NoError(t, err)
-	query, err := llm.NewTextGenerationQuery(&llm.TextGenerationQueryConfig{
+	query, err := textgen.NewTextGenerationQuery(&textgen.TextGenerationQueryConfig{
 		Definition: chatDefinition, WireFormat: wireFormat, BaseURL: baseURL, ConnectionModel: model,
 		RequestTimeout: 10 * time.Second, ResolveCredential: resolveCredential,
 		MaxResponseBytes: maxResponseBytes, MaxStreamEventBytes: 1 << 14,
@@ -432,7 +432,7 @@ func newChatQueryFor(
 	return query
 }
 
-func runChatQuery(query *llm.TextGenerationQuery, request llm.TextGenerationRequest) (sdkgo.QueryResult[llm.TextGenerationResponse], error) {
+func runChatQuery(query *textgen.TextGenerationQuery, request textgen.TextGenerationRequest) (sdkgo.QueryResult[textgen.TextGenerationResponse], error) {
 	ctx := testsupport.NewDexContext("chat-flow", fmt.Sprintf("step-%d", time.Now().UnixNano()))
 	return sdkgo.RunQuery(ctx, query, chatConnection, request)
 }

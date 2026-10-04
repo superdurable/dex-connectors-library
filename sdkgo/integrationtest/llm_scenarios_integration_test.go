@@ -12,13 +12,13 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/integrationtest/fixturellm"
-	"github.com/superdurable/dex-connectors-library/sdkgo/llm"
-	"github.com/superdurable/dex-connectors-library/sdkgo/llm/llmtest"
-	"github.com/superdurable/dex-connectors-library/sdkgo/llm/openaichat/openaichattest"
+	"github.com/superdurable/dex-connectors-library/sdkgo/textgen"
+	"github.com/superdurable/dex-connectors-library/sdkgo/textgen/openaichat/openaichattest"
+	"github.com/superdurable/dex-connectors-library/sdkgo/textgen/textgentest"
 )
 
 func TestFixtureLLMConnectorRunsTheTextGenerationScenariosWithRealDex(t *testing.T) {
-	llmtest.RunTextGenerationDexScenarios(t, &llmtest.TextGenerationDexScenarioSuite{
+	textgentest.RunTextGenerationDexScenarios(t, &textgentest.TextGenerationDexScenarioSuite{
 		Dialect: openaichattest.NewProviderDialect(&openaichattest.ProviderDialectConfig{
 			ConnectionModel: "fixture-model-a", AlternateModel: "fixture-reasoner-b", IsStreaming: true,
 			QuotaExhaustedStatusCode: http.StatusTooManyRequests, QuotaExhaustedErrorToken: "fixture_quota_exhausted",
@@ -30,8 +30,8 @@ func TestFixtureLLMConnectorRunsTheTextGenerationScenariosWithRealDex(t *testing
 }
 
 func newFixtureGenerateTextStep(
-	t testing.TB, connection llmtest.FakeConnection, config llmtest.DexScenarioStepConfig,
-) sdkgo.QueryStep[llmtest.DexScenarioInput, llm.TextGenerationRequest, llm.TextGenerationResponse] {
+	t testing.TB, connection textgentest.FakeConnection, config textgentest.DexScenarioStepConfig,
+) sdkgo.QueryStep[textgentest.DexScenarioInput, textgen.TextGenerationRequest, textgen.TextGenerationResponse] {
 	t.Helper()
 	client, err := fixturellm.New(fixturellm.Config{
 		Model: connection.Model, Endpoint: connection.BaseURL, MaxResponseBytes: connection.MaxResponseBytes,
@@ -39,7 +39,7 @@ func newFixtureGenerateTextStep(
 	require.NoError(t, err)
 	fixtureConnection, err := fixturellm.NewConnection(client, connection.Reference)
 	require.NoError(t, err)
-	return fixturellm.NewGenerateTextStep(fixturellm.GenerateTextStepConfig[llmtest.DexScenarioInput]{
+	return fixturellm.NewGenerateTextStep(fixturellm.GenerateTextStepConfig[textgentest.DexScenarioInput]{
 		StepType: config.StepType, Annotations: config.Annotations, Connection: fixtureConnection,
 		MapToOperationInput: config.MapToOperationInput,
 		Generated:           config.Generated, Truncated: config.Truncated, Blocked: config.Blocked,

@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-package llmtest
+package textgentest
 
 import (
 	"bytes"
@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/sdkgo/llm"
+	"github.com/superdurable/dex-connectors-library/sdkgo/textgen"
 )
 
 const (
@@ -81,7 +81,7 @@ type RecordedRequest struct {
 // A FakeProvider is safe for concurrent use.
 type FakeProvider struct {
 	server           *httptest.Server
-	credentialHeader llm.CredentialHeader
+	credentialHeader textgen.CredentialHeader
 	credential       string
 	mu               sync.Mutex
 	replies          []FakeReply
@@ -92,7 +92,7 @@ type FakeProvider struct {
 // credentialHeader, such as Authorization with the "Bearer " prefix. The
 // provider closes when the test ends. A delaying reply stops as soon as its
 // client disconnects.
-func NewFakeProvider(t testing.TB, credentialHeader llm.CredentialHeader, credential string) *FakeProvider {
+func NewFakeProvider(t testing.TB, credentialHeader textgen.CredentialHeader, credential string) *FakeProvider {
 	t.Helper()
 	if credentialHeader.Name == "" || credential == "" {
 		t.Fatal("llmtest fake provider requires a credential header name and a credential")
