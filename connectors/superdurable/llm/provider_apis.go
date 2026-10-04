@@ -13,7 +13,8 @@ import (
 )
 
 const (
-	// streamingRequestTimeout is the exchange bound every lab connector except DeepSeek used under a 900-second budget.
+	// streamingRequestTimeout bounds one streamed exchange for every provider except DeepSeek, so it ends within
+	// a 900-second Execute timeout.
 	streamingRequestTimeout = 870 * time.Second
 	// queuedStreamingRequestTimeout stays 30 seconds below the 1200-second Execute
 	// timeout, so a stalled exchange returns Retry first.

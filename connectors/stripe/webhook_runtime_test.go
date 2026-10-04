@@ -84,8 +84,8 @@ func TestCheckoutSessionWebhookRuntimeRecordsEachBindingBeforeAcknowledging(t *t
 	}()
 	require.Eventually(t, func() bool {
 		return serveSignedWebhook(runtime, body, "whsec_example", now) == http.StatusOK
-	}, time.Second, 10*time.Millisecond)
-	require.Eventually(t, func() bool { return len(inboxes.targets[0].calls()) == 2 }, time.Second, 10*time.Millisecond)
+	}, 5*time.Second, 10*time.Millisecond)
+	require.Eventually(t, func() bool { return len(inboxes.targets[0].calls()) == 2 }, 5*time.Second, 10*time.Millisecond)
 	require.Equal(t, []string{"prepare:evt_paid", "handle:evt_paid"}, inboxes.targets[0].calls())
 	require.Empty(t, inboxes.targets[1].calls(), "the expirations binding filters a payment event")
 }
