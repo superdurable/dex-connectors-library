@@ -6,6 +6,7 @@ directories:
   - connectors/asana
   - connectors/atlassian/confluence
   - connectors/atlassian/jira
+  - connectors/atlassian/jira-service-management
   - connectors/atlassian/trello
   - connectors/bamboohr
   - connectors/calendly
