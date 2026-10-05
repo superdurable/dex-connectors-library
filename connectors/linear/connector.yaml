@@ -1,0 +1,249 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: linear
+  displayName: Linear
+  description: "Search and read Linear issues, create issues and comments under client-supplied IDs that every repeated attempt reuses and reads back, move issues through their team's workflow states, assign and label them, find users by email, and receive signed Issue webhooks."
+  company: Linear
+  version: v0.21.0
+spec:
+  provider: linear
+  codegen:
+    go:
+      package: linear
+  configuration:
+    fields:
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Largest Linear GraphQL response body, in bytes, that one call reads; a larger answer to a read selects invalidResponse and a larger answer to a write is read back by its ID instead. Enter a positive integer only to change this safety limit, for example when issue descriptions are very long. Blank uses the default."
+        required: false
+        default: 4194304
+      - name: webhookMaxBodyBytes
+        goName: WebhookMaxBodyBytes
+        type: integer
+        description: "Largest Linear webhook request body, in bytes, that the issueEventReceived endpoint accepts; a larger body is answered 413 before its Linear-Signature is checked, so Linear retries it. Each delivery carries the issue with its description, so raise it only for very long descriptions; enter a positive integer. Blank uses the default."
+        required: false
+        default: 1048576
+      - name: webhookSignatureTolerance
+        goName: WebhookSignatureTolerance
+        type: duration
+        description: "Largest difference between the signed webhookTimestamp inside a Linear webhook body and this server's clock, as a positive Go duration such as 90s or 2m. An older or future-dated delivery is answered 400, which stops replayed requests; Linear's webhook guide at https://linear.app/developers/webhooks recommends one minute. Raise it only when this server's clock drifts. Blank uses the default."
+        required: false
+        default: 1m
+  auth:
+    refreshable: true
+    methodLabel: Sign-in method
+    defaultMethod: personal-api-key
+    methods:
+      - id: personal-api-key
+        displayName: Personal API key
+        description: "Recommended for one Linear workspace used by your own application: paste a personal API key; issues and comments the connector writes are authored by the key's user, and the user's team access limits what it reads and changes."
+        recommended: true
+        type: apiKey
+        connectionKind: linear-personal-api-key
+        fields:
+          - name: api_key
+            goName: APIKey
+            type: secretString
+            description: "Secret Linear personal API key created at https://linear.app/settings/account/security under Personal API keys > New API key, with Read and Write permission and access to the teams the Flows use. It begins with lin_api_ and is sent only to api.linear.app as the raw Authorization header, never as a Bearer token. Dex Web stores it only in this credential field; revoking the key in Linear stops it at once. Required: no operation can run without it."
+            required: true
+          - name: webhook_signing_secret
+            goName: WebhookSigningSecret
+            type: secretString
+            description: "Secret signing secret of the Linear webhook that sends Issue events to this application, copied from https://linear.app/settings/api > Webhooks > the webhook's detail page. The issueEventReceived endpoint checks every Linear-Signature HMAC with it. It is an opaque string stored only in this credential field and never sent to Linear. Blank is fine for operations only; the endpoint then answers 503 so Linear retries."
+            required: false
+        guide:
+          startURL: https://linear.app/settings/account/security
+          steps:
+            - "Sign in to the Linear workspace as the user the Flows should act as, open Settings > Account > Security & access, and under Personal API keys choose New API key; a workspace admin may have to allow members to create API keys first."
+            - "Name the key, give it Read and Write permission and access to every team the Flows read or write, choose Create, and copy the lin_api_ key into api_key; Linear shows it only once."
+            - "To receive issue webhooks, a workspace admin opens Settings > API > Webhooks > New webhook, enters the public HTTPS URL where the application mounts its webhook handler, selects the teams and the Issues data change event, and saves."
+            - "Open the saved webhook's detail page, copy its signing secret into webhook_signing_secret, and keep it private; to revoke access later, delete the API key or the webhook in Linear."
+      - id: linear-oauth
+        displayName: Linear OAuth
+        description: "For an application that other Linear users authorize: Dex opens Linear consent with your OAuth application, requests write access, and refreshes the 24-hour access token automatically."
+        type: oauth2
+        connectionKind: linear-oauth
+        fields:
+          - name: oauth_client_id
+            goName: OAuthClientID
+            type: string
+            description: "Non-secret Client ID of your Linear OAuth application, copied from https://linear.app/settings/api/applications after opening the application; it is an opaque hexadecimal string, and blank means authorization and refresh cannot start."
+            required: true
+          - name: oauth_client_secret
+            goName: OAuthClientSecret
+            type: secretString
+            description: "Secret Client secret shown on the same OAuth application page at https://linear.app/settings/api/applications; Dex Web stores it only in this credential field and sends it only to Linear's token endpoint, and blank means authorization and refresh cannot start."
+            required: true
+          - name: access_token
+            goName: AccessToken
+            type: secretString
+            description: "Secret Linear OAuth access token produced automatically by the authorization; Dex refreshes it before its 24-hour expiry, so never enter it manually, and blank means Connect has not completed."
+            required: true
+          - name: refresh_token
+            goName: RefreshToken
+            type: secretString
+            description: "Secret rotating Linear refresh token produced automatically by the authorization; every refresh returns a replacement that Dex stores, so never enter it manually, and blank or rejected means the connection must be authorized again."
+            required: true
+          - name: webhook_signing_secret
+            goName: WebhookSigningSecret
+            type: secretString
+            description: "Secret webhook signing secret of your OAuth application, shown at https://linear.app/settings/api/applications > the application > Webhooks after you enable webhooks with the Issues event and the application's public HTTPS webhook URL. The issueEventReceived endpoint checks every Linear-Signature HMAC with it; it is stored only here. Blank is fine for operations only; the endpoint then answers 503 so Linear retries."
+            required: false
+        guide:
+          startURL: https://linear.app/settings/api/applications/new
+          steps:
+            - "Sign in to the Linear workspace that owns the integration as a workspace admin, open Settings > API > OAuth applications, and choose New OAuth application, or open an existing one."
+            - "Enter a name and developer details, add the exact Redirect URI that Dex Web displays below to Callback URLs, enable Public only if users of other workspaces will authorize it, and save; Dex requests the write scope, which Linear grants together with read."
+            - "Copy the Client ID and Client secret into the fields below; to receive issue webhooks, enable Webhooks on the same page with the application's public HTTPS webhook URL and the Issues event, and copy its signing secret into webhook_signing_secret."
+            - "Choose Connect, pick the Linear workspace on the consent screen, and approve; issues and comments are then authored by the authorizing user, and revoking the application in Linear requires connecting again."
+        oauth2:
+          protocol: oauth2
+          authorizationEndpoint: https://linear.app/oauth/authorize
+          tokenEndpoint: https://api.linear.app/oauth/token
+          authorizationParameters: {prompt: consent}
+          clientIDCredential: oauth_client_id
+          clientSecretCredential: oauth_client_secret
+          scopes: [write]
+          credentialMappings:
+            - {credential: access_token, source: access_token}
+            - {credential: refresh_token, source: refresh_token}
+          pkce: true
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.2.0 <0.3.0"
+      backendCapabilities: [oauth.connection.manage, use.configuration.write, linear.teams-list]
+      mockScenarios: [not-configured, authorization-pending, connected, insufficient-scope, revoked, broker-unavailable, ready]
+      icon: icon.svg
+    commands:
+      - id: listTeams
+        capability: linear.teams-list
+        request:
+          method: GET
+          url: https://api.linear.app/graphql
+          credential: {field: access_token, scheme: bearer}
+          fixedHeaders: {apollo-require-preflight: "true"}
+          fixedQuery: {query: "query LinearTeamPicker { teams(first: 100) { nodes { id key name } pageInfo { hasNextPage } } }"}
+    units:
+      - id: teamPicker
+        goName: TeamPicker
+        description: "Choose one Linear team the connection can see, listed live from Linear for an OAuth connection; the unit stores the team's UUID, key, and name. A personal API key cannot list teams through Dex Web, so the unit then offers manual entry of the team UUID, which Linear shows under Settings > Teams > the team > Copy team ID."
+        backendCapabilities: [linear.teams-list]
+        outputs:
+          - {name: teamId, goName: TeamID, type: string}
+          - {name: teamKey, goName: TeamKey, type: string}
+          - {name: teamName, goName: TeamName, type: string}
+  triggers:
+    - name: issueEventReceived
+      goName: IssueEventReceived
+      eventType: IssueEvent
+      configurationType: IssueEventReceivedTriggerConfiguration
+      description: "Receive a signed Linear Issue webhook for a created, updated, or removed issue, verified with its Linear-Signature and fresh webhookTimestamp; the event ID is the action, the issue UUID, and the issue's updatedAt."
+  operations:
+    - name: searchIssues
+      goName: SearchIssues
+      inputType: SearchIssuesInput
+      outputType: SearchIssuesOutput
+      kind: query
+      description: "List one bounded page of issue summaries that match a typed filter, such as a team, workflow state types, an assignee email, labels, a title, or changes after a time, continuing with Linear's pagination cursor."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: searched, goName: Searched, description: "One page of matching issue summaries was read; it can be empty."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Linear conclusively rejected the search, such as an invalid cursor, missing team access, or a rejected credential.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Linear returned an invalid or oversized page of issues., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &linearExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
+    - name: getIssue
+      goName: GetIssue
+      inputType: GetIssueInput
+      outputType: Issue
+      kind: query
+      description: "Read one issue by UUID or identifier, such as ENG-123, with its description, workflow state, team, assignee, labels, project, cycle, and timestamps."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: The issue was read.}
+        - {id: notFound, goName: NotFound, description: "The issue does not exist, was deleted, or the connection cannot see its team.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Linear conclusively rejected the issue read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Linear returned an invalid or oversized issue., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *linearExecution
+    - name: createIssue
+      goName: CreateIssue
+      inputType: CreateIssueInput
+      outputType: CreateIssueOutput
+      kind: mutation
+      description: "Create one issue in a team with a title, Markdown description, workflow state, assignee, labels, priority, and due date; every attempt of the Step sends the same client-supplied issue UUID, so a repeated dispatch finds the first issue instead of creating another."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: created, goName: Created, description: "Linear created the issue, or an earlier attempt of this Step already had, and the issue was read."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Linear conclusively rejected the issue, such as an unknown team, a workflow state or label of another team, or missing permission; unless Linear rejected the credential or permission, a read-back by the Step's UUID found no issue.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      # Async: the client-supplied UUID makes a re-dispatched or retried create converge on one issue.
+      execution: *linearExecution
+    - name: updateIssue
+      goName: UpdateIssue
+      inputType: UpdateIssueInput
+      outputType: UpdateIssueOutput
+      kind: mutation
+      description: "Move one issue to a workflow state, assign or unassign it, add or remove labels, and set its priority, due date, or title with absolute values, so a repeated update leaves the issue unchanged."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: updated, goName: Updated, description: Linear applied the change and returned the issue.}
+        - {id: notFound, goName: NotFound, description: "The issue does not exist, was deleted, or the connection cannot see its team; nothing was changed.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Linear conclusively rejected the change, such as a workflow state or label of another team, an unknown assignee, or missing permission.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Linear returned an invalid or oversized issue, so the change may have been applied; repeating the Step is safe.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *linearExecution
+    - name: addComment
+      goName: AddComment
+      inputType: AddCommentInput
+      outputType: AddCommentOutput
+      kind: mutation
+      description: "Add one Markdown comment to an issue; every attempt of the Step sends the same client-supplied comment UUID, so a repeated dispatch finds the first comment instead of posting another."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: added, goName: Added, description: "Linear added the comment, or an earlier attempt of this Step already had, and the comment was read."}
+        - {id: notFound, goName: NotFound, description: "The issue does not exist, was deleted, or the connection cannot see its team; nothing was added.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Linear conclusively rejected the comment, such as missing permission; unless Linear rejected the credential or permission, a read-back by the Step's UUID found no comment.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *linearExecution
+    - name: findUserByEmail
+      goName: FindUserByEmail
+      inputType: FindUserByEmailInput
+      outputType: User
+      kind: query
+      description: "Find the workspace user with an email address, compared without case, to resolve an assignee."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: The user was found.}
+        - {id: notFound, goName: NotFound, description: "No user of the workspace has the email, or the user is disabled and disabled users were not requested.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Linear conclusively rejected the user lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Linear returned an invalid or oversized user list., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *linearExecution
+    - name: listWorkflowStates
+      goName: ListWorkflowStates
+      inputType: ListWorkflowStatesInput
+      outputType: ListWorkflowStatesOutput
+      kind: query
+      description: "List a team's workflow states, Linear's issue statuses, with their names and types such as backlog, unstarted, started, completed, and canceled, so a Flow can choose the state to move an issue to."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: The team's workflow states were read.}
+        - {id: notFound, goName: NotFound, description: "The team does not exist or the connection cannot see it.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Linear conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Linear returned an invalid or oversized list of workflow states., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *linearExecution
