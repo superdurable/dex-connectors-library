@@ -1,0 +1,250 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: jira-service-management
+  displayName: Jira Service Management
+  description: Raise, read, label, comment on, and move Jira Service Management customer requests as tickets, with public replies and internal notes, SLA cycles, and customers found by email, never sending a request or comment twice.
+  company: Atlassian
+  version: v0.21.0
+spec:
+  provider: atlassian
+  codegen:
+    go:
+      package: jiraservicemanagement
+  configuration:
+    fields:
+      - name: cloudId
+        goName: CloudID
+        type: string
+        description: "Non-secret Atlassian site ID (cloudId), a UUID such as 1324a887-45db-1bf4-1e99-ef0ff456d421, naming the one site with Jira Service Management that every operation of this connection uses. After Connect, choose the site with the site picker; where Dex Web shows a text field instead, sign in to Jira, open https://<your-site>.atlassian.net/_edge/tenant_info in the same browser, and copy its cloudId value. Blank means the connector uses the only Jira Service Management site the authorization grants, found through Atlassian's accessible-resources endpoint, and selects defect when the grant covers no such site or several. The value is read when the application starts."
+        required: false
+        studioUnit: {unit: sitePicker, port: cloudId}
+      - name: endpoint
+        goName: Endpoint
+        type: url
+        description: "Atlassian API gateway base URL for the accessible-resources site lookup and for the /ex/jira/{cloudId}/rest/servicedeskapi and /ex/jira/{cloudId}/rest/api/3 paths; leave blank for Atlassian's public gateway. Enter an absolute HTTPS URL only for an explicitly supported compatible gateway: Atlassian rejects OAuth tokens sent to site URLs such as https://your-site.atlassian.net."
+        required: false
+        default: https://api.atlassian.com
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Maximum complete Jira Service Management or Jira API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it. An oversized read selects invalidResponse, and an oversized response to an accepted createTicket or addComment selects uncertain."
+        required: false
+        default: 4194304
+  auth:
+    refreshable: true
+    type: oauth2
+    connectionKind: jira-service-management-atlassian-oauth
+    fields:
+      - name: oauth_client_id
+        goName: OAuthClientID
+        type: string
+        description: "Non-secret OAuth 2.0 (3LO) client ID copied from https://developer.atlassian.com/console/myapps/ after selecting the app > Settings > Authentication details > Client ID; an alphanumeric value, and blank means authorization and refresh cannot start."
+        required: true
+      - name: oauth_client_secret
+        goName: OAuthClientSecret
+        type: secretString
+        description: "Secret OAuth 2.0 (3LO) client secret copied from https://developer.atlassian.com/console/myapps/ > the app > Settings > Authentication details > Secret; store it only in this credential field, and blank means authorization and refresh cannot start."
+        required: true
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        description: "Secret short-lived access token returned by Atlassian after consent; Dex derives it automatically and refreshes it before its one-hour expiry, so never enter it manually, and blank means Connect has not completed."
+        required: true
+      - name: refresh_token
+        goName: RefreshToken
+        type: secretString
+        description: "Secret rotating refresh token returned because the connection requests offline_access; Atlassian disables each refresh token once it issues the next, so Dex stores every replacement atomically, and blank means reauthorization is required."
+        required: true
+    guide:
+      startURL: https://developer.atlassian.com/console/myapps/
+      steps:
+        - Choose Create > OAuth 2.0 integration, name the app, and accept the developer terms; one app can serve every Dex connection.
+        - Open Permissions, choose Add next to Jira Service Management API, then Configure, and add the classic scopes read:servicedesk-request, write:servicedesk-request, and manage:servicedesk-customer.
+        - Still under Permissions, choose Add next to Jira API, then Configure, and add the classic scopes read:jira-work and write:jira-work, which the SLA read, ticket search, labels, priority, and workflow transitions use; Dex also requests offline_access so Atlassian issues a rotating refresh token.
+        - Open Authorization, choose Configure next to OAuth 2.0 (3LO), paste the exact Redirect URI shown below into Callback URL, and choose Save changes.
+        - Open Settings and copy Client ID and Secret into the fields below; the secret is sensitive.
+        - Choose Connect while signed in as a licensed Jira Service Management agent, pick the site on the Atlassian consent screen, and choose Accept. The app stays private to its owner until Distribution > Enable sharing is on, and a refresh token unused for 90 days requires reconnecting.
+    oauth2:
+      protocol: oauth2
+      authorizationEndpoint: https://auth.atlassian.com/authorize
+      tokenEndpoint: https://auth.atlassian.com/oauth/token
+      authorizationParameters: {audience: api.atlassian.com, prompt: consent}
+      clientIDCredential: oauth_client_id
+      clientSecretCredential: oauth_client_secret
+      scopes: [read:servicedesk-request, write:servicedesk-request, manage:servicedesk-customer, read:jira-work, write:jira-work, offline_access]
+      credentialMappings:
+        - {credential: access_token, source: access_token}
+        - {credential: refresh_token, source: refresh_token}
+      pkce: false
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.2.0 <0.3.0"
+      backendCapabilities: [oauth.connection.manage, use.configuration.write, jiraservicemanagement.sites-list, jiraservicemanagement.service-desks-list, jiraservicemanagement.request-types-list]
+      mockScenarios: [not-configured, authorization-pending, connected, insufficient-scope, revoked, broker-unavailable, ready]
+      icon: icon.svg
+    commands:
+      - id: listAccessibleSites
+        capability: jiraservicemanagement.sites-list
+        request:
+          method: GET
+          url: https://api.atlassian.com/oauth/token/accessible-resources
+          credential: {field: access_token, scheme: bearer}
+      - id: listServiceDesks
+        capability: jiraservicemanagement.service-desks-list
+        request:
+          method: GET
+          url: https://api.atlassian.com/ex/jira/{cloudId}/rest/servicedeskapi/servicedesk
+          credential: {field: access_token, scheme: bearer}
+          fixedQuery: {limit: "50"}
+          parameters:
+            - {name: cloudId, location: path, target: cloudId}
+            - {name: start, location: query, target: start}
+      - id: listRequestTypes
+        capability: jiraservicemanagement.request-types-list
+        request:
+          method: GET
+          url: https://api.atlassian.com/ex/jira/{cloudId}/rest/servicedeskapi/servicedesk/{serviceDeskId}/requesttype
+          credential: {field: access_token, scheme: bearer}
+          fixedQuery: {limit: "50"}
+          parameters:
+            - {name: cloudId, location: path, target: cloudId}
+            - {name: serviceDeskId, location: path, target: serviceDeskId}
+            - {name: start, location: query, target: start}
+            - {name: searchQuery, location: query, target: searchQuery}
+    units:
+      - id: sitePicker
+        goName: SitePicker
+        description: "Choose the Atlassian site with Jira Service Management that this connection works in from the sites the authorization grants; the unit stores the site's cloudId, and when the host cannot list sites it offers manual entry of the cloudId shown at https://<your-site>.atlassian.net/_edge/tenant_info."
+        backendCapabilities: [jiraservicemanagement.sites-list]
+        outputs:
+          - {name: cloudId, goName: CloudID, type: string}
+      - id: serviceDeskPicker
+        goName: ServiceDeskPicker
+        description: "Choose one service desk on the connection's site from the desks the connected agent can access; the unit stores the service desk ID, the key of the Jira project behind it, which ticket search uses, and the desk's name."
+        backendCapabilities: [jiraservicemanagement.service-desks-list]
+        outputs:
+          - {name: serviceDeskId, goName: ServiceDeskID, type: string}
+          - {name: projectKey, goName: ProjectKey, type: string}
+          - {name: serviceDeskName, goName: ServiceDeskName, type: string}
+      - id: requestTypePicker
+        goName: RequestTypePicker
+        description: "Choose a service desk and then one of its request types, such as Get IT help; the unit stores the service desk ID, the request type ID, and the request type's name, and lists the request types the connected agent can see on that desk."
+        backendCapabilities: [jiraservicemanagement.service-desks-list, jiraservicemanagement.request-types-list]
+        outputs:
+          - {name: serviceDeskId, goName: ServiceDeskID, type: string}
+          - {name: requestTypeId, goName: RequestTypeID, type: string}
+          - {name: requestTypeName, goName: RequestTypeName, type: string}
+  operations:
+    - name: findCustomerByEmail
+      goName: FindCustomerByEmail
+      inputType: FindCustomerByEmailInput
+      outputType: CustomerMatches
+      kind: query
+      description: Find the customers of one service desk whose email address equals the given address, for raising a request on a customer's behalf.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: At least one customer of the service desk has exactly this email address.}
+        - {id: notFound, goName: NotFound, description: "No customer of the service desk has this email address, or Jira hides the customer's email address.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Jira Service Management conclusively rejected the lookup, such as an unknown service desk or an account that cannot view its customers.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Jira Service Management returned an invalid or oversized customer page., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &jsmReadExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+    - name: searchTickets
+      goName: SearchTickets
+      inputType: SearchTicketsInput
+      outputType: SearchTicketsOutput
+      kind: query
+      description: Search one bounded page of a service desk's requests with typed filters that the connector escapes into JQL, continuing with Jira's enhanced search nextPageToken.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: searched, goName: Searched, description: "One page of matching tickets was read; Jira search is eventually consistent, so a just-created request can be missing."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Jira conclusively rejected the search, such as an unknown project or status, an expired page token, or missing permission.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Jira returned an invalid or oversized search page., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *jsmReadExecution
+    - name: getTicket
+      goName: GetTicket
+      inputType: GetTicketInput
+      outputType: TicketDetails
+      kind: query
+      description: Read one customer request with its plain-text description, labels, priority, and status, its first public replies and internal notes, and its SLA cycles.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: "The request, its first comments, and its SLAs were read."}
+        - {id: notFound, goName: NotFound, description: "The issue does not exist, is not a Jira Service Management request, or the connection cannot browse it.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Jira Service Management conclusively rejected a read, such as an SLA read by an account that is not an agent of the desk.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Jira returned an invalid or oversized request, comment page, or SLA page.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *jsmReadExecution
+    - name: createTicket
+      goName: CreateTicket
+      inputType: CreateTicketInput
+      outputType: CreateTicketOutput
+      kind: mutation
+      description: Raise one customer request of a request type, optionally on a customer's behalf. Jira Service Management has no idempotency key, so the Step runs with sync durability and sends the request at most once per Step execution.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: created, goName: Created, description: Jira Service Management created the request and returned its key.}
+        - {id: providerRejected, goName: ProviderRejected, description: "Jira Service Management conclusively rejected the request, such as a missing required field, an unknown request type or customer, or missing permission; nothing was created.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The request was sent but its outcome cannot be confirmed, so the customer request may exist; the connector never resends it.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      # Sync: an async fallback attempt re-sends a slow create, and the provider has no idempotency key.
+      execution: &jsmSingleDispatchExecution
+        executeMethodTimeout: 30s
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+    - name: updateTicket
+      goName: UpdateTicket
+      inputType: UpdateTicketInput
+      outputType: UpdateTicketOutput
+      kind: mutation
+      description: Add or remove labels on one request and set its priority; a repeated attempt finds the change already applied and writes nothing.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: updated, goName: Updated, description: "The request holds the requested labels and priority, written now or by an earlier attempt."}
+        - {id: notFound, goName: NotFound, description: The issue does not exist or the connection cannot browse it., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Jira conclusively rejected the change, such as an unknown priority, a field missing from the edit screen, or missing Edit Issues permission.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Jira returned an invalid or oversized issue., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *jsmReadExecution
+    - name: transitionTicket
+      goName: TransitionTicket
+      inputType: TransitionTicketInput
+      outputType: TransitionTicketOutput
+      kind: mutation
+      description: Move one request through its Jira workflow by transition ID, transition name, or destination status, reading the available transitions first and skipping a transition the request has already made.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: transitioned, goName: Transitioned, description: "The request is in the transition's destination status, including when it already was."}
+        - {id: notFound, goName: NotFound, description: The issue does not exist or the connection cannot browse it., optional: true}
+        - {id: transitionUnavailable, goName: TransitionUnavailable, description: "No available transition from the request's current status matches, or several do; the Value lists the current status and the available transitions.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Jira conclusively rejected the transition, such as a required transition screen field or missing permission.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Jira returned an invalid or oversized issue or transition list., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *jsmReadExecution
+    - name: addComment
+      goName: AddComment
+      inputType: AddCommentInput
+      outputType: AddCommentOutput
+      kind: mutation
+      description: Add one public reply, which Jira Service Management shares with the customer, or one internal note that only agents see. The Step runs with sync durability and sends the comment at most once per Step execution.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: added, goName: Added, description: Jira Service Management added the comment and returned its ID.}
+        - {id: notFound, goName: NotFound, description: "The request does not exist or the connection cannot view it; nothing was added.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Jira Service Management conclusively rejected the comment, such as missing Add Comments permission; nothing was added.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The comment was sent but its outcome cannot be confirmed, so it may exist; the connector never resends it.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *jsmSingleDispatchExecution
