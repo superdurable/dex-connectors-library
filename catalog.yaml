@@ -41,6 +41,7 @@ directories:
   - connectors/openai
   - connectors/pipedrive
   - connectors/postgresql
+  - connectors/reamaze
   - connectors/salesforce
   - connectors/slack
   - connectors/snowflake
