@@ -1,0 +1,148 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: snowflake
+  displayName: Snowflake
+  description: Submit one parameterized SQL statement to a Snowflake warehouse through the SQL API, read its status and result partitions, and cancel it.
+  company: Snowflake
+  version: v0.21.0
+spec:
+  provider: snowflake
+  codegen:
+    go:
+      package: snowflake
+  configuration:
+    fields:
+      - name: accountIdentifier
+        goName: AccountIdentifier
+        type: string
+        description: "Account identifier from https://app.snowflake.com > open the account selector at the bottom of the navigation menu > View account details > Account identifier. Use the preferred orgname-account_name form, such as myorg-analytics_prod, or a legacy account locator with its region and cloud segments, such as xy12345.us-east-2.aws; append .privatelink only when the Worker reaches Snowflake through private connectivity. Enter it without https:// and without .snowflakecomputing.com: the connector sends every request to https://<identifier>.snowflakecomputing.com and uses the part before the first period, upper-cased, in key-pair JWTs. Accounts on snowflakecomputing.cn (China) are not supported. Not secret; blank is invalid."
+        required: true
+      - name: warehouse
+        goName: Warehouse
+        type: string
+        description: "Virtual warehouse that runs each statement, exactly as https://app.snowflake.com > Compute > Warehouses or SHOW WAREHOUSES lists it; the value is case-sensitive, so an unquoted warehouse created as reporting_wh is entered as REPORTING_WH. The connection's role needs USAGE on it. Not secret; blank uses the user's DEFAULT_WAREHOUSE."
+        required: false
+      - name: role
+        goName: Role
+        type: string
+        description: "Role whose privileges run each statement, exactly as https://app.snowflake.com > Governance & security > Users & roles > Roles or SHOW ROLES lists it (case-sensitive, such as DEX_REPORTING). Grant it only the warehouse, database, schema, and table privileges the Flows need. A programmatic access token restricted to one role always uses that role. Not secret; blank uses the user's DEFAULT_ROLE."
+        required: false
+      - name: database
+        goName: Database
+        type: string
+        description: "Database that unqualified table names resolve in, exactly as https://app.snowflake.com > Catalog > Explorer or SHOW DATABASES lists it (case-sensitive, such as ANALYTICS). Not secret; blank uses the database of the user's DEFAULT_NAMESPACE, and statements may still name tables as DATABASE.SCHEMA.TABLE."
+        required: false
+      - name: schema
+        goName: Schema
+        type: string
+        description: "Schema that unqualified table names resolve in, exactly as https://app.snowflake.com > Catalog > Explorer > the database or SHOW SCHEMAS lists it (case-sensitive, such as BILLING). Not secret; blank uses the schema of the user's DEFAULT_NAMESPACE."
+        required: false
+      - name: statementTimeoutSeconds
+        goName: StatementTimeoutSeconds
+        type: integer
+        description: "Longest a statement may run before Snowflake cancels it, in whole seconds from 1 through 604800 (seven days), sent as the SQL API timeout field; a canceled statement then reports SQLSTATE 57014 through getStatementResult. A Flow keeps waiting durably while the statement runs, so this bounds warehouse cost rather than a Dex Step. Lower it for interactive reports; raise it only for a deliberately long transformation. Blank uses the displayed default."
+        required: false
+        default: 3600
+      - name: maxRows
+        goName: MaxRows
+        type: integer
+        description: "Maximum rows that one getStatementResult call returns from one result partition, as a positive integer of at most 100,000. Beyond it the operation selects truncated and keeps the rows that fit. Prefer a LIMIT in the statement; raise this only for a deliberately large read. Blank uses the displayed default."
+        required: false
+        default: 1000
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Maximum JSON-encoded size, in bytes, of the rows one getStatementResult call returns, as a positive integer of at most 16777216, with the same truncated behavior as maxRows. Rows are stored in Dex Flow state, so raise it cautiously. Blank uses the displayed default."
+        required: false
+        default: 1048576
+  auth:
+    methodLabel: Credential
+    defaultMethod: key-pair
+    methods:
+      - id: key-pair
+        displayName: Key-pair authentication
+        description: Sign a short-lived JWT for every request with an RSA private key whose public key is assigned to a Snowflake service user; nothing expires on its own and rotation needs no downtime.
+        recommended: true
+        type: serviceAccount
+        connectionKind: snowflake-key-pair
+        fields:
+          - name: user
+            goName: User
+            type: string
+            description: "Login name of the Snowflake user that holds the public key, the LOGIN_NAME property that DESC USER shows in a worksheet at https://app.snowflake.com, such as DEX_SERVICE. It equals the user name unless the user was created with a different LOGIN_NAME; Snowflake rejects the JWT when this is the name instead of a differing login name. The connector upper-cases it in the JWT as Snowflake requires. Not secret; blank is invalid."
+            required: true
+          - name: private_key
+            goName: PrivateKey
+            type: secretString
+            description: "Secret unencrypted PKCS #8 RSA private key in PEM form, starting with -----BEGIN PRIVATE KEY-----, created as https://docs.snowflake.com/en/user-guide/key-pair-auth describes with openssl genrsa 2048 | openssl pkcs8 -topk8 -inform PEM -out rsa_key.p8 -nocrypt. Paste the complete file. An encrypted key (-----BEGIN ENCRYPTED PRIVATE KEY-----) is rejected because the connector has no passphrase. Dex keeps it in the credential store and out of Flow state and logs; blank is invalid."
+            required: true
+        guide:
+          startURL: https://docs.snowflake.com/en/user-guide/key-pair-auth
+          steps:
+            - "Generate a 2048-bit key pair on a trusted machine: openssl genrsa 2048 | openssl pkcs8 -topk8 -inform PEM -out rsa_key.p8 -nocrypt, then openssl rsa -in rsa_key.p8 -pubout -out rsa_key.pub."
+            - "In a worksheet at https://app.snowflake.com, as a user with the SECURITYADMIN role, create a service user for Dex, such as CREATE USER dex_service TYPE = SERVICE DEFAULT_ROLE = dex_reporting DEFAULT_WAREHOUSE = reporting_wh, and grant it a role that has only the privileges your Flows need."
+            - "Assign the public key without its BEGIN and END lines: ALTER USER dex_service SET RSA_PUBLIC_KEY='MIIBIjANBgkqh...'. DESC USER dex_service shows its RSA_PUBLIC_KEY_FP fingerprint."
+            - "Enter the user's LOGIN_NAME, as DESC USER dex_service shows it, in user and paste the whole rsa_key.p8 file into private_key. To rotate, assign a new key to RSA_PUBLIC_KEY_2, save the new private key here, then ALTER USER dex_service UNSET RSA_PUBLIC_KEY; to revoke, unset both properties."
+      - id: programmatic-access-token
+        displayName: Programmatic access token
+        description: Send a Snowflake programmatic access token as the bearer credential; quick to create, but it expires after the days chosen at creation and requires a network policy unless an authentication policy lifts that requirement.
+        type: apiKey
+        connectionKind: snowflake-programmatic-access-token
+        fields:
+          - name: programmatic_access_token
+            goName: ProgrammaticAccessToken
+            type: secretString
+            description: "Secret programmatic access token shown once after Generate new token at https://app.snowflake.com > Governance & security > Users & roles > the user > Programmatic access tokens, or returned once by ALTER USER ... ADD PROGRAMMATIC ACCESS TOKEN. Snowflake never shows it again; generate a new one when it is lost or expires. Dex keeps it in the credential store and out of Flow state and logs; blank is invalid."
+            required: true
+        guide:
+          startURL: https://docs.snowflake.com/en/user-guide/programmatic-access-tokens
+          steps:
+            - "Make sure the user is subject to a network policy that allows the Worker's egress IP addresses, or that an authentication policy sets PAT_POLICY NETWORK_POLICY_EVALUATION to ENFORCED_NOT_REQUIRED; otherwise Snowflake refuses the token."
+            - "Sign in at https://app.snowflake.com, open Governance & security > Users & roles, select the user, and under Programmatic access tokens select Generate new token."
+            - "Name the token, choose Expires in, select One specific role and the least-privileged role your Flows need, then select Generate and copy the token shown once into programmatic_access_token."
+            - "Rotate with ALTER USER dex_service ROTATE PROGRAMMATIC ACCESS TOKEN <name> and save the new value here; revoke with ALTER USER dex_service REMOVE PROGRAMMATIC ACCESS TOKEN <name>."
+  operations:
+    - name: submitStatement
+      goName: SubmitStatement
+      inputType: SubmitStatementInput
+      outputType: StatementSubmission
+      kind: mutation
+      description: Submit one parameterized SQL statement for asynchronous execution and return its statement handle without waiting for it to finish.
+      idempotency: required
+      branches:
+        - {id: submitted, goName: Submitted, description: "Snowflake accepted the statement and returned its handle; it may still be running. Read its status and rows with getStatementResult after a durable Timer."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Snowflake conclusively refused the request or the statement, such as bad credentials, a missing warehouse or privilege, a SQL compilation error, or a binding mismatch; nothing ran.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, credentials, or connector definition is invalid.", optional: true}
+      # Async: the request returns as soon as Snowflake queues the statement, and requestId with retry=true makes a duplicate dispatch return the same statement.
+      execution: &snowflakeExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+    - name: getStatementResult
+      goName: GetStatementResult
+      inputType: GetStatementResultInput
+      outputType: StatementResult
+      kind: query
+      description: Read a submitted statement's status and, once it finished, its column metadata and the bounded rows of one result partition.
+      idempotency: none
+      branches:
+        - {id: completed, goName: Completed, description: "The statement finished successfully; the Result holds its columns, partition count, total row count, and every row of the requested partition, possibly none, within maxRows and maxResponseBytes."}
+        - {id: running, goName: Running, description: "The statement is still queued or running; wait on a durable Timer and read it again.", optional: true}
+        - {id: truncated, goName: Truncated, description: "The statement finished, but the requested partition holds more rows or bytes than maxRows or maxResponseBytes allow; the Result holds only the rows that fit.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "The statement failed, was canceled, or exceeded statementTimeoutSeconds, or Snowflake refused the request, such as bad credentials or an unknown statement handle; the Receipt carries Snowflake's code and SQLSTATE.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Snowflake returned a response or value the connector cannot decode under its documented type mapping.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, credentials, or connector definition is invalid.", optional: true}
+      execution: *snowflakeExecution
+    - name: cancelStatement
+      goName: CancelStatement
+      inputType: CancelStatementInput
+      outputType: StatementCancellation
+      kind: mutation
+      description: Ask Snowflake to cancel a submitted statement that is still queued or running.
+      idempotency: required
+      branches:
+        - {id: canceled, goName: Canceled, description: "Snowflake accepted the cancellation; reading the statement afterwards reports it as canceled unless it had already finished."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Snowflake refused the cancellation, such as an unknown statement handle, a statement that already finished, or bad credentials; the Receipt carries Snowflake's code and SQLSTATE.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, credentials, or connector definition is invalid.", optional: true}
+      execution: *snowflakeExecution
