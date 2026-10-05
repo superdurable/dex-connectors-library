@@ -1,0 +1,180 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: clickup
+  displayName: ClickUp
+  description: "Search a ClickUp Workspace's tasks by List, status, assignee, tag, and update time, read one task with its custom fields, create tasks and comments without silent duplicates, change a task's status, priority, due date, and assignees, add or remove tags, find a member by email, and receive signed task webhooks."
+  company: ClickUp
+  version: v0.21.0
+spec:
+  provider: clickup
+  codegen:
+    go:
+      package: clickup
+  configuration:
+    fields:
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Largest complete ClickUp API response, in bytes. searchTasks reads up to 100 tasks with their custom fields in one page, and findMemberByEmail reads every member of the token's Workspaces, so raise it only when those select invalidResponse in a very large Workspace; enter a positive integer. Blank keeps the displayed safety limit."
+        required: false
+        default: 4194304
+      - name: webhookMaxBodyBytes
+        goName: WebhookMaxBodyBytes
+        type: integer
+        description: "Largest ClickUp webhook request body, in bytes, that the taskEvent endpoint accepts; a larger request is answered 413 before its signature is checked. A task event carries its history items, including a custom field's option list, so raise it only when the endpoint answers 413 to real events; enter a positive integer. Blank keeps the displayed limit."
+        required: false
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: clickup-personal-api-token
+    fields:
+      - name: api_token
+        goName: APIToken
+        type: secretString
+        description: "Secret ClickUp personal API token. Sign in at https://app.clickup.com/settings/apps (avatar > Settings > Apps) as the user the Flows act as, choose Generate or Regenerate under API Token, and choose Copy. It starts with pk_, never expires, and is sent only to ClickUp as the raw Authorization header; it is stored only in this credential field. Required: no operation can run while it is blank. After Regenerate in ClickUp, paste the new token here; it takes effect without a restart."
+        required: true
+      - name: webhook_secret
+        goName: WebhookSecret
+        type: secretString
+        description: "Secret signing secret of the ClickUp webhook that delivers task events to this connection, returned once as webhook.secret by Create Webhook (POST https://api.clickup.com/api/v2/team/{team_id}/webhook, documented at https://developer.clickup.com/reference/createwebhook). It is an opaque string of letters and digits, stored only in this credential field and never sent to ClickUp; the taskEvent Trigger checks each request's X-Signature, a hex HMAC-SHA256 of the body, with it. Leave it blank when no Flow uses the taskEvent Trigger; while it is blank, the webhook endpoint answers 503."
+        required: false
+    guide:
+      startURL: https://app.clickup.com/settings/apps
+      steps:
+        - "Sign in to ClickUp as the user the Flows should act as; tasks, comments, and webhooks are created as that user, and the user's Workspaces, Spaces, and Lists limit what the token can read and change. A dedicated ClickUp user narrows what a leaked token can reach."
+        - "Open your avatar > Settings > Apps, choose Generate under API Token (or Regenerate to replace an existing token, which stops the old one at once), choose Copy, and paste the pk_ token into api_token."
+        - "For the taskEvent Trigger, create a webhook with that token: POST https://api.clickup.com/api/v2/team/{team_id}/webhook with a JSON body naming the public HTTPS endpoint where the application mounts the webhook handler, the task events such as taskStatusUpdated, and optionally a space_id, folder_id, or list_id; the connector README shows the request. Copy webhook.secret from the response into webhook_secret, because ClickUp shows it only there."
+        - "To revoke access, choose Regenerate under API Token in the same Settings > Apps page, and delete the webhook with DELETE https://api.clickup.com/api/v2/webhook/{webhook_id}."
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.2.0 <0.3.0"
+      backendCapabilities: [use.configuration.write]
+      mockScenarios: [not-configured, connected]
+      icon: icon.svg
+    units:
+      - id: taskEventPicker
+        goName: TaskEventPicker
+        description: "Select the ClickUp task webhook events a taskEvent binding accepts, such as taskCreated or taskStatusUpdated; the unit stores the event names, and selecting none accepts every task event. ClickUp sends only the events its webhook subscribes to."
+        outputs:
+          - {name: events, goName: Events, type: stringList}
+  triggers:
+    - name: taskEvent
+      goName: TaskEvent
+      eventType: TaskEvent
+      configurationType: TaskEventTriggerConfiguration
+      description: "Receive one ClickUp task webhook event, verified with its X-Signature, such as a created task or a status change, filtered by event name."
+  operations:
+    - name: searchTasks
+      goName: SearchTasks
+      inputType: SearchTasksInput
+      outputType: SearchTasksOutput
+      kind: query
+      description: "Search one Workspace's tasks by List, Folder, Space, status, assignee, tag, and update time, returning one page of up to 100 tasks and the next page number."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: searched, goName: Searched, description: "One page of matching tasks was read; it can be empty."}
+        - {id: notFound, goName: NotFound, description: "The Workspace does not exist or the token's user is not a member of it.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "ClickUp conclusively rejected the search, such as an invalid filter or an invalid token.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ClickUp returned an invalid or oversized page of tasks., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &clickupExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
+    - name: getTask
+      goName: GetTask
+      inputType: GetTaskInput
+      outputType: Task
+      kind: query
+      description: "Read one task by ID or custom task ID with its status, priority, dates, assignees, tags, List, Markdown description, and custom field values."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: The task was read.}
+        - {id: notFound, goName: NotFound, description: The task does not exist or the connection cannot see it., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ClickUp conclusively rejected the task read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ClickUp returned an invalid or oversized task., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *clickupExecution
+    - name: createTask
+      goName: CreateTask
+      inputType: CreateTaskInput
+      outputType: CreateTaskOutput
+      kind: mutation
+      description: "Create one task in a List with a name, Markdown description, status, priority, due time, assignees, tags, parent task, and custom field values. ClickUp has no idempotency key, so the Step runs with sync durability, records a Dex heartbeat checkpoint before sending, and reconciles an unconfirmed attempt by reading the List back instead of resending."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: created, goName: Created, description: "ClickUp created the task; a retried attempt that found its own earlier task in the List reports it instead of creating another."}
+        - {id: notFound, goName: NotFound, description: "The List does not exist or the connection cannot see it; nothing was created.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "ClickUp conclusively rejected the task, such as an unknown status, assignee, or custom field value, or missing permission; nothing was created.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "An earlier attempt sent the create but its outcome cannot be confirmed and the List shows no single matching task, so the task may exist; the connector never sends it again.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      # Sync: ClickUp has no idempotency key, and an async backup attempt would send a slow create twice.
+      execution: &clickupUnkeyedWriteExecution
+        executeMethodTimeout: 30s
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m}
+    - name: updateTask
+      goName: UpdateTask
+      inputType: UpdateTaskInput
+      outputType: UpdateTaskOutput
+      kind: mutation
+      description: "Change one task's name, Markdown description, status, priority, or due time, and add or remove assignees; every change is an absolute value or a set membership, so a repeated update leaves the same task."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: updated, goName: Updated, description: "ClickUp applied every requested change, including when the task already had those values, and the Value holds the task it returned."}
+        - {id: notFound, goName: NotFound, description: The task does not exist or the connection cannot see it., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "ClickUp conclusively rejected the change, such as a status that is not in the task's List or missing permission.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "ClickUp returned an invalid or oversized task after the update, so the change may have been applied.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *clickupExecution
+    - name: updateTaskTags
+      goName: UpdateTaskTags
+      inputType: UpdateTaskTagsInput
+      outputType: UpdateTaskTagsOutput
+      kind: mutation
+      description: "Add tags to and remove tags from one task, then read the task's tags back; adding a present tag or removing an absent one changes nothing, so a repeated update is safe."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: updated, goName: Updated, description: "ClickUp applied every tag change, and the Value holds the task's tags read back."}
+        - {id: notFound, goName: NotFound, description: The task does not exist or the connection cannot see it., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "ClickUp conclusively rejected a tag change, such as missing permission; earlier changes in the same Step may have been applied.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "ClickUp returned an invalid or oversized task when its tags were read back; the tag changes were applied.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *clickupExecution
+    - name: addComment
+      goName: AddComment
+      inputType: AddCommentInput
+      outputType: AddCommentOutput
+      kind: mutation
+      description: "Add one plain-text comment, authored by the token's user, to a task. ClickUp has no idempotency key, so the Step runs with sync durability, records a Dex heartbeat checkpoint before sending, and reconciles an unconfirmed attempt by reading the task's comments back instead of resending."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: added, goName: Added, description: "The comment is on the task; a retried attempt that found its own earlier comment reports it instead of adding another."}
+        - {id: notFound, goName: NotFound, description: "The task does not exist or the connection cannot see it; nothing was added.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "ClickUp conclusively rejected the comment, such as missing permission; nothing was added.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "An earlier attempt sent the comment but its outcome cannot be confirmed and the task shows no matching comment, so the comment may exist; the connector never sends it again.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *clickupUnkeyedWriteExecution
+    - name: findMemberByEmail
+      goName: FindMemberByEmail
+      inputType: FindMemberByEmailInput
+      outputType: Member
+      kind: query
+      description: "Find the member of one Workspace whose email address equals the given address, returning the numeric user ID that task assignees use."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: A member of the Workspace has the email address.}
+        - {id: notFound, goName: NotFound, description: "No member of the Workspace has the email address, or the token's user is not a member of the Workspace.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ClickUp conclusively rejected the Workspace read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ClickUp returned an invalid or oversized list of Workspaces., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *clickupExecution
