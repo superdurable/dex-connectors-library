@@ -36,6 +36,7 @@ directories:
   - connectors/mysql
   - connectors/notion
   - connectors/openai
+  - connectors/pipedrive
   - connectors/postgresql
   - connectors/salesforce
   - connectors/slack

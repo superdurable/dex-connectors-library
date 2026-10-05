@@ -1,0 +1,276 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: pipedrive
+  displayName: Pipedrive
+  description: Search, list, read, create, upsert, and update Pipedrive persons, organizations, and deals, with persons upserted by email and deal stages and owners passed through as Pipedrive IDs.
+  company: Pipedrive
+  version: v0.21.0
+spec:
+  provider: pipedrive
+  codegen:
+    go:
+      package: pipedrive
+  configuration:
+    fields:
+      - name: endpoint
+        goName: Endpoint
+        type: url
+        description: Pipedrive API base URL for a Personal API token connection. Leave blank for Pipedrive's shared API host, which serves every company and the Studio pickers; enter your company domain, such as https://acme.pipedrive.com from the address bar after you sign in at https://app.pipedrive.com, only to send API token requests there as Pipedrive suggests. Only HTTPS hosts under pipedrive.com are accepted. OAuth connections ignore this field and use the api_domain that Pipedrive returns.
+        required: false
+        default: https://api.pipedrive.com
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete Pipedrive API response in bytes; enter a positive integer only to change the safety limit, for example after lowering a list limit or when records carry many custom fields. Oversized reads select invalidResponse, and an oversized create response selects uncertain.
+        required: false
+        default: 1048576
+  auth:
+    refreshable: true
+    defaultMethod: api-token
+    methods:
+      - id: api-token
+        displayName: Personal API token
+        description: Recommended for one Pipedrive company; paste the personal API token of the user whose permissions every Flow should use. The token does not expire until that user regenerates it.
+        recommended: true
+        type: apiKey
+        connectionKind: pipedrive-api-token
+        fields:
+          - name: api_token
+            goName: APIToken
+            type: secretString
+            description: Secret personal API token copied after signing in at https://app.pipedrive.com/settings/api (account name > Company settings > Personal preferences > API) as the Pipedrive user whose visibility and permissions every Flow should use; it is a 40-character hexadecimal string that differs for every company the user belongs to, Dex Web stores it as a secret and sends it only in Pipedrive's x-api-token header, and blank means no Pipedrive call can authenticate.
+            required: true
+        guide:
+          startURL: https://app.pipedrive.com/settings/api
+          steps:
+            - Sign in to https://app.pipedrive.com as the Pipedrive user whose visibility and permissions the Flows should use, in the company this connection works in.
+            - Open your account name in the upper right > Company settings > Personal preferences > API; if API is missing, a company admin must turn on use API for your permission set under Settings > Manage users > Permission sets.
+            - Copy the 40-character API token into the secret field below; a user has one active token per company, and Pipedrive rejects the old token after you choose Generate new token, so paste the replacement here.
+            - The Studio pickers for owners, pipelines and stages, and custom fields use this token on Pipedrive's shared API host, so they work as soon as the connection is saved.
+      - id: pipedrive-oauth
+        displayName: Pipedrive OAuth app
+        description: For a private or public app registered in Pipedrive Developer Hub and installed into a company through OAuth consent; Dex refreshes Pipedrive's hourly access token automatically and sends requests to the company's own API domain.
+        type: oauth2
+        connectionKind: pipedrive-oauth
+        fields:
+          - name: oauth_client_id
+            goName: OAuthClientID
+            type: string
+            description: Non-secret client ID copied from https://app.pipedrive.com/developer-hub > the app > OAuth & access scopes; it is a short alphanumeric string, and blank means authorization and refresh cannot start.
+            required: true
+          - name: oauth_client_secret
+            goName: OAuthClientSecret
+            type: secretString
+            description: Secret client secret copied from https://app.pipedrive.com/developer-hub > the app > OAuth & access scopes; Dex Web stores it as a secret and sends it only to https://oauth.pipedrive.com, and blank means authorization and refresh cannot start.
+            required: true
+          - name: access_token
+            goName: AccessToken
+            type: secretString
+            description: Secret 60-minute access token produced automatically by Pipedrive OAuth and refreshed before it expires; never paste a token here.
+            required: true
+          - name: refresh_token
+            goName: RefreshToken
+            type: secretString
+            description: Secret refresh token produced automatically by Pipedrive OAuth; never paste a token here. Pipedrive keeps the same refresh token and extends it by 60 days on every refresh, so a blank, revoked, or unused-for-60-days token means you must authorize again.
+            required: true
+          - name: api_domain
+            goName: APIDomain
+            type: string
+            description: Non-secret company API base URL, such as https://acme.pipedrive.com, returned automatically as api_domain by authorization and by every refresh; never enter it manually, and blank makes Dex refresh once to obtain it.
+            required: false
+        guide:
+          startURL: https://app.pipedrive.com/developer-hub
+          steps:
+            - Sign in to a Pipedrive developer sandbox account (sign up free at https://developers.pipedrive.com), open your profile name in the upper right > the sandbox company > Developer Hub, and choose Create an app > Create private app, or open the app for this connection.
+            - In Basic info, enter an App name, paste the exact Redirect URI shown by Dex Web as the Callback URL (Pipedrive allows one per app), and choose Save.
+            - In OAuth & access scopes, turn on Deals Full access (deals:full) to search, read, create, and update deals, and Contacts Full access (contacts:full) to do the same for persons and organizations; Access to basic information (base) is always on. These match the scopes Dex requests, and Pipedrive takes them from the app rather than from the authorization request.
+            - Copy the client ID and client secret from OAuth & access scopes into the fields below; the client secret is sensitive. For a private app, choose Change to live so the app can be installed into your production company.
+            - Choose Connect, sign in to the Pipedrive company this connection works in, and choose Allow and install; the app acts with the visibility and permissions of the user who installs it, and Dex stores the company's api_domain that Pipedrive returns.
+            - Studio pickers cannot reach a company API domain, so with this method enter owner, pipeline, stage, and custom field IDs by hand; Pipedrive shows them in Company settings, or use a Personal API token connection to pick them.
+        oauth2:
+          authorizationEndpoint: https://oauth.pipedrive.com/oauth/authorize
+          tokenEndpoint: https://oauth.pipedrive.com/oauth/token
+          clientIDCredential: oauth_client_id
+          clientSecretCredential: oauth_client_secret
+          scopes: [base, "deals:full", "contacts:full"]
+          credentialMappings:
+            - {credential: access_token, source: access_token}
+            - {credential: refresh_token, source: refresh_token}
+            - {credential: api_domain, source: api_domain}
+          pkce: false
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.2.0 <0.3.0"
+      backendCapabilities: [oauth.connection.manage, use.configuration.write, pipedrive.users-list, pipedrive.stages-list, pipedrive.fields-list]
+      mockScenarios: [not-configured, authorization-pending, connected, insufficient-scope, revoked, broker-unavailable, ready]
+      icon: icon.svg
+    commands:
+      - id: listUsers
+        capability: pipedrive.users-list
+        request:
+          method: GET
+          url: https://api.pipedrive.com/v1/users
+          credential: &pipedriveAPITokenCredential {field: api_token, scheme: header, header: x-api-token}
+      - id: listPipelines
+        capability: pipedrive.stages-list
+        request:
+          method: GET
+          url: https://api.pipedrive.com/api/v2/pipelines
+          credential: *pipedriveAPITokenCredential
+          fixedQuery: {limit: "500"}
+          parameters:
+            - {name: cursor, location: query, target: cursor}
+      - id: listStages
+        capability: pipedrive.stages-list
+        request:
+          method: GET
+          url: https://api.pipedrive.com/api/v2/stages
+          credential: *pipedriveAPITokenCredential
+          fixedQuery: {limit: "500"}
+          parameters:
+            - {name: cursor, location: query, target: cursor}
+      - id: listDealFields
+        capability: pipedrive.fields-list
+        request:
+          method: GET
+          url: https://api.pipedrive.com/api/v2/dealFields
+          credential: *pipedriveAPITokenCredential
+          fixedQuery: {limit: "500"}
+          parameters:
+            - {name: cursor, location: query, target: cursor}
+      - id: listPersonFields
+        capability: pipedrive.fields-list
+        request:
+          method: GET
+          url: https://api.pipedrive.com/api/v2/personFields
+          credential: *pipedriveAPITokenCredential
+          fixedQuery: {limit: "500"}
+          parameters:
+            - {name: cursor, location: query, target: cursor}
+      - id: listOrganizationFields
+        capability: pipedrive.fields-list
+        request:
+          method: GET
+          url: https://api.pipedrive.com/api/v2/organizationFields
+          credential: *pipedriveAPITokenCredential
+          fixedQuery: {limit: "500"}
+          parameters:
+            - {name: cursor, location: query, target: cursor}
+    units:
+      - id: ownerPicker
+        goName: OwnerPicker
+        description: Select one active Pipedrive user, loaded from Company settings > Manage users of a Personal API token connection, as the owner the operation sets; the unit stores the user's numeric ID for owner_id, offers a numeric ID field when the list cannot load, and blank sets no owner.
+        backendCapabilities: [pipedrive.users-list]
+        outputs:
+          - {name: ownerId, goName: OwnerID, type: string}
+      - id: dealStagePicker
+        goName: DealStagePicker
+        description: Select one deal pipeline and one of its stages, loaded from the Pipeline view of a Personal API token connection; the unit stores the numeric pipeline ID and stage ID for pipeline_id and stage_id, and offers numeric ID fields when the lists cannot load.
+        backendCapabilities: [pipedrive.stages-list]
+        outputs:
+          - {name: pipelineId, goName: PipelineID, type: string}
+          - {name: stageId, goName: StageID, type: string}
+      - id: customFieldPicker
+        goName: CustomFieldPicker
+        description: Select persons, organizations, or deals and one of that object's custom fields, loaded from Company settings > Data fields of a Personal API token connection; the unit stores the object type and the field's 40-character key, offers a key field when the list cannot load, and blank writes no custom field.
+        backendCapabilities: [pipedrive.fields-list]
+        outputs:
+          - {name: objectType, goName: ObjectType, type: string}
+          - {name: fieldKey, goName: FieldKey, type: string}
+  operations:
+    - name: searchObjects
+      goName: SearchObjects
+      inputType: SearchObjectsInput
+      outputType: ObjectPage
+      kind: query
+      description: Search one bounded page of Pipedrive persons, organizations, or deals by a term in chosen fields, optionally as an exact match, returning partial records with IDs and a next cursor.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: searched, goName: Searched, description: Pipedrive returned one bounded page of matching partial records; the page may be empty.}
+        - {id: providerRejected, goName: ProviderRejected, description: "Pipedrive conclusively rejected the search, such as a revoked token, a missing scope, an exhausted daily token budget, or an invalid term.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Pipedrive returned an invalid or oversized search page., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &pipedriveAsyncExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+    - name: getObject
+      goName: GetObject
+      inputType: GetObjectInput
+      outputType: CRMObject
+      kind: query
+      description: Read one Pipedrive person, organization, or deal by ID with every standard and custom field.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: The record exists and was returned.}
+        - {id: notFound, goName: NotFound, description: "No record of that object type has the ID, or the connection's user cannot see it.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Pipedrive conclusively rejected the read, such as a revoked token, a missing scope, or an exhausted daily token budget.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Pipedrive returned an invalid or oversized record., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *pipedriveAsyncExecution
+    - name: listObjects
+      goName: ListObjects
+      inputType: ListObjectsInput
+      outputType: ObjectPage
+      kind: query
+      description: List one bounded page of Pipedrive persons, organizations, or deals changed since a time or filtered by owner, person, organization, pipeline, stage, or deal status, with a next cursor.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: Pipedrive returned one bounded page of full records; the page may be empty.}
+        - {id: providerRejected, goName: ProviderRejected, description: "Pipedrive conclusively rejected the list, such as a revoked token, a missing scope, an exhausted daily token budget, or an expired cursor.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Pipedrive returned an invalid or oversized page., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *pipedriveAsyncExecution
+    - name: upsertObject
+      goName: UpsertObject
+      inputType: UpsertObjectInput
+      outputType: UpsertedObject
+      kind: mutation
+      description: Create or update one Pipedrive person identified by email, or one organization identified by name. Pipedrive has no idempotency key, so the Step runs with sync durability and records a Dex checkpoint before a create; a later attempt searches the identity again and updates the record it finds or reports uncertain, and a Worker lost before Dex stores the checkpoint can still create twice while search has not indexed the first record.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: upserted, goName: Upserted, description: Pipedrive created the record or updated the one record that carries the identity value.}
+        - {id: multipleMatches, goName: MultipleMatches, description: "More than one record carries the identity value, so the connector changed nothing; the Result lists their IDs.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Pipedrive conclusively rejected the search or the write, such as an invalid field value, a revoked token, a missing scope, or an exhausted daily token budget; nothing was created.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Pipedrive returned an invalid or oversized search page or updated record.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "An earlier attempt sent a create whose outcome was never confirmed, and a search by the identity value finds no record or this attempt's search or update failed without a retry, so the record may exist; the connector does not create it again.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &pipedriveSingleDispatchExecution
+        executeMethodTimeout: 30s
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+    - name: createObject
+      goName: CreateObject
+      inputType: CreateObjectInput
+      outputType: CRMObject
+      kind: mutation
+      description: Create one Pipedrive person, organization, or deal. Pipedrive has no idempotency key, so the Step runs with sync durability and records a Dex checkpoint before sending, so a later attempt reports uncertain instead of sending the create again; a Worker lost before Dex stores the checkpoint can still send twice.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: created, goName: Created, description: Pipedrive created the record and returned it.}
+        - {id: providerRejected, goName: ProviderRejected, description: "Pipedrive conclusively rejected the create, such as a missing title or name, an unknown stage or owner, a revoked token, or an exhausted daily token budget; nothing was created.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The create was sent but its outcome cannot be confirmed, so the record may exist; the connector never sends it again.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *pipedriveSingleDispatchExecution
+    - name: updateObject
+      goName: UpdateObject
+      inputType: UpdateObjectInput
+      outputType: CRMObject
+      kind: mutation
+      description: Set named standard or custom fields on one Pipedrive person, organization, or deal by ID, such as a deal's stage or owner; a repeated update writes the same values again.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: updated, goName: Updated, description: Pipedrive updated the record and returned it.}
+        - {id: notFound, goName: NotFound, description: "No record of that object type has the ID, or the connection's user cannot see it.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Pipedrive conclusively rejected the update, such as an invalid field value, an unknown stage or owner, a revoked token, or an exhausted daily token budget.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Pipedrive applied or rejected the update but returned an invalid or oversized record.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *pipedriveAsyncExecution
