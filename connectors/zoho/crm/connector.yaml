@@ -1,0 +1,318 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: zoho-crm
+  displayName: Zoho CRM
+  description: Find, read, upsert, and update Zoho CRM records such as contacts, accounts, and deals in the connection's Zoho data center, list records changed since a watermark, and read a module's fields and picklist values, keeping Zoho CRM's own field names and stages.
+  company: Zoho
+  version: v0.21.0
+spec:
+  provider: zoho
+  codegen:
+    go:
+      package: crm
+  configuration:
+    fields:
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Maximum complete Zoho CRM API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when a module has unusually many fields or records carry long text. An oversized response selects invalidResponse and is never partly read."
+        required: false
+        default: 4194304
+  auth:
+    refreshable: true
+    methodLabel: Data center
+    defaultMethod: zoho-us-oauth
+    methods:
+      - id: zoho-us-oauth
+        displayName: United States (zoho.com)
+        description: For Zoho CRM accounts at https://crm.zoho.com; Dex signs in through https://accounts.zoho.com, calls the Zoho CRM API at https://www.zohoapis.com or the sandbox or developer host Zoho names at sign-in, and refreshes the hourly access token automatically.
+        recommended: true
+        type: oauth2
+        connectionKind: zoho-crm-us-oauth
+        fields: &zohoCRMOAuthFields
+          - name: oauth_client_id
+            goName: OAuthClientID
+            type: string
+            description: "Non-secret Client ID of the Zoho API console server-based client, such as 1000.GMB0YULZHJK411248S8I5GZ4CHUEX0, copied from the client's Client Secret tab in the Zoho API console of this data center; one client ID serves every data center its Settings tab enables, and blank means authorization and refresh cannot start."
+            required: true
+          - name: oauth_client_secret
+            goName: OAuthClientSecret
+            type: secretString
+            description: "Secret Client Secret for this data center, revealed beside the Client ID on the client's Client Secret tab in the Zoho API console; a client with multi-DC support enabled can have a different secret per data center, so copy the one shown for this data center. Dex stores it only in the credential store, and blank means authorization and refresh cannot start."
+            required: true
+          - name: access_token
+            goName: AccessToken
+            type: secretString
+            description: "Secret Zoho access token produced automatically by authorization and replaced by every refresh before its one-hour expiry; never enter it manually, and blank means Connect has not completed."
+            required: true
+          - name: refresh_token
+            goName: RefreshToken
+            type: secretString
+            description: "Secret Zoho refresh token returned automatically because Dex requests access_type=offline; Zoho keeps it until it is revoked and does not rotate it, so never enter it manually, and blank means reauthorization is required."
+            required: true
+          - name: api_domain
+            goName: APIDomain
+            type: string
+            description: "Non-secret Zoho CRM API host, such as https://www.zohoapis.com for production or https://sandbox.zohoapis.com for a sandbox, returned automatically as api_domain by authorization and by every refresh; never enter it manually. The connector accepts only the www, sandbox, or developer zohoapis host of this data center, and blank makes Dex refresh once to obtain it."
+            required: false
+        guide:
+          startURL: https://api-console.zoho.com
+          steps:
+            - Sign in to https://api-console.zoho.com with the Zoho account that owns the integration, choose GET STARTED or ADD CLIENT, and create a Server-based Applications client with a Client Name and Homepage URL.
+            - Add the exact Redirect URI shown by Dex Web under Authorized Redirect URIs, then choose CREATE; a client registered in another data center instead needs this data center turned on in its Settings tab.
+            - Open the Client Secret tab and copy the Client ID and the Client Secret into the fields below.
+            - Choose Connect and sign in at https://accounts.zoho.com as the Zoho CRM user the connector acts as; records it writes are created and modified by that user, and the user's profile and role limit which modules, fields, and records it can read and change.
+            - On the Zoho consent screen, accept ZohoCRM.modules.READ for getRecord, ZohoCRM.modules.CREATE and ZohoCRM.modules.UPDATE for upsertRecord and updateRecord, ZohoCRM.coql.READ for findRecords and listModifiedRecords, and ZohoCRM.settings.fields.READ for listModuleFields; if the account belongs to several Zoho CRM organizations or a sandbox, pick the one this connection uses, because Zoho binds the token to it.
+            - To revoke access, remove the connected app under Zoho Accounts > Sessions > Connected Apps or delete the client in the API console; every operation then reports an AUTHENTICATION failure until you choose Reconnect.
+        oauth2:
+          authorizationEndpoint: https://accounts.zoho.com/oauth/v2/auth
+          tokenEndpoint: https://accounts.zoho.com/oauth/v2/token
+          authorizationParameters: &zohoCRMAuthorizationParameters {access_type: offline, prompt: consent}
+          clientIDCredential: oauth_client_id
+          clientSecretCredential: oauth_client_secret
+          scopes: &zohoCRMScopes [ZohoCRM.modules.READ, ZohoCRM.modules.CREATE, ZohoCRM.modules.UPDATE, ZohoCRM.coql.READ, ZohoCRM.settings.fields.READ]
+          credentialMappings: &zohoCRMCredentialMappings
+            - {credential: access_token, source: access_token}
+            - {credential: refresh_token, source: refresh_token}
+            - {credential: api_domain, source: api_domain}
+          pkce: false
+      - id: zoho-eu-oauth
+        displayName: European Union (zoho.eu)
+        description: For Zoho CRM accounts at https://crm.zoho.eu; Dex signs in through https://accounts.zoho.eu, calls the Zoho CRM API at https://www.zohoapis.eu or the sandbox or developer host Zoho names at sign-in, and refreshes the hourly access token automatically.
+        type: oauth2
+        connectionKind: zoho-crm-eu-oauth
+        fields: *zohoCRMOAuthFields
+        guide:
+          startURL: https://api-console.zoho.eu
+          steps:
+            - Sign in to https://api-console.zoho.eu with the Zoho account that owns the integration, choose GET STARTED or ADD CLIENT, and create a Server-based Applications client with a Client Name and Homepage URL.
+            - Add the exact Redirect URI shown by Dex Web under Authorized Redirect URIs, then choose CREATE; a client registered in another data center instead needs the European Union data center turned on in its Settings tab.
+            - Open the Client Secret tab and copy the Client ID and the Client Secret for this data center into the fields below.
+            - Choose Connect and sign in at https://accounts.zoho.eu as the Zoho CRM user the connector acts as; records it writes are created and modified by that user, and the user's profile and role limit which modules, fields, and records it can read and change.
+            - On the Zoho consent screen, accept ZohoCRM.modules.READ for getRecord, ZohoCRM.modules.CREATE and ZohoCRM.modules.UPDATE for upsertRecord and updateRecord, ZohoCRM.coql.READ for findRecords and listModifiedRecords, and ZohoCRM.settings.fields.READ for listModuleFields; if the account belongs to several Zoho CRM organizations or a sandbox, pick the one this connection uses, because Zoho binds the token to it.
+            - To revoke access, remove the connected app under Zoho Accounts > Sessions > Connected Apps or delete the client in the API console; every operation then reports an AUTHENTICATION failure until you choose Reconnect.
+        oauth2:
+          authorizationEndpoint: https://accounts.zoho.eu/oauth/v2/auth
+          tokenEndpoint: https://accounts.zoho.eu/oauth/v2/token
+          authorizationParameters: *zohoCRMAuthorizationParameters
+          clientIDCredential: oauth_client_id
+          clientSecretCredential: oauth_client_secret
+          scopes: *zohoCRMScopes
+          credentialMappings: *zohoCRMCredentialMappings
+          pkce: false
+      - id: zoho-in-oauth
+        displayName: India (zoho.in)
+        description: For Zoho CRM accounts at https://crm.zoho.in; Dex signs in through https://accounts.zoho.in, calls the Zoho CRM API at https://www.zohoapis.in or the sandbox or developer host Zoho names at sign-in, and refreshes the hourly access token automatically.
+        type: oauth2
+        connectionKind: zoho-crm-in-oauth
+        fields: *zohoCRMOAuthFields
+        guide:
+          startURL: https://api-console.zoho.in
+          steps:
+            - Sign in to https://api-console.zoho.in with the Zoho account that owns the integration, choose GET STARTED or ADD CLIENT, and create a Server-based Applications client with a Client Name and Homepage URL.
+            - Add the exact Redirect URI shown by Dex Web under Authorized Redirect URIs, then choose CREATE; a client registered in another data center instead needs the India data center turned on in its Settings tab.
+            - Open the Client Secret tab and copy the Client ID and the Client Secret for this data center into the fields below.
+            - Choose Connect and sign in at https://accounts.zoho.in as the Zoho CRM user the connector acts as; records it writes are created and modified by that user, and the user's profile and role limit which modules, fields, and records it can read and change.
+            - On the Zoho consent screen, accept ZohoCRM.modules.READ for getRecord, ZohoCRM.modules.CREATE and ZohoCRM.modules.UPDATE for upsertRecord and updateRecord, ZohoCRM.coql.READ for findRecords and listModifiedRecords, and ZohoCRM.settings.fields.READ for listModuleFields; if the account belongs to several Zoho CRM organizations or a sandbox, pick the one this connection uses, because Zoho binds the token to it.
+            - To revoke access, remove the connected app under Zoho Accounts > Sessions > Connected Apps or delete the client in the API console; every operation then reports an AUTHENTICATION failure until you choose Reconnect.
+        oauth2:
+          authorizationEndpoint: https://accounts.zoho.in/oauth/v2/auth
+          tokenEndpoint: https://accounts.zoho.in/oauth/v2/token
+          authorizationParameters: *zohoCRMAuthorizationParameters
+          clientIDCredential: oauth_client_id
+          clientSecretCredential: oauth_client_secret
+          scopes: *zohoCRMScopes
+          credentialMappings: *zohoCRMCredentialMappings
+          pkce: false
+      - id: zoho-au-oauth
+        displayName: Australia (zoho.com.au)
+        description: For Zoho CRM accounts at https://crm.zoho.com.au; Dex signs in through https://accounts.zoho.com.au, calls the Zoho CRM API at https://www.zohoapis.com.au or the sandbox or developer host Zoho names at sign-in, and refreshes the hourly access token automatically.
+        type: oauth2
+        connectionKind: zoho-crm-au-oauth
+        fields: *zohoCRMOAuthFields
+        guide:
+          startURL: https://api-console.zoho.com.au
+          steps:
+            - Sign in to https://api-console.zoho.com.au with the Zoho account that owns the integration, choose GET STARTED or ADD CLIENT, and create a Server-based Applications client with a Client Name and Homepage URL.
+            - Add the exact Redirect URI shown by Dex Web under Authorized Redirect URIs, then choose CREATE; a client registered in another data center instead needs the Australia data center turned on in its Settings tab.
+            - Open the Client Secret tab and copy the Client ID and the Client Secret for this data center into the fields below.
+            - Choose Connect and sign in at https://accounts.zoho.com.au as the Zoho CRM user the connector acts as; records it writes are created and modified by that user, and the user's profile and role limit which modules, fields, and records it can read and change.
+            - On the Zoho consent screen, accept ZohoCRM.modules.READ for getRecord, ZohoCRM.modules.CREATE and ZohoCRM.modules.UPDATE for upsertRecord and updateRecord, ZohoCRM.coql.READ for findRecords and listModifiedRecords, and ZohoCRM.settings.fields.READ for listModuleFields; if the account belongs to several Zoho CRM organizations or a sandbox, pick the one this connection uses, because Zoho binds the token to it.
+            - To revoke access, remove the connected app under Zoho Accounts > Sessions > Connected Apps or delete the client in the API console; every operation then reports an AUTHENTICATION failure until you choose Reconnect.
+        oauth2:
+          authorizationEndpoint: https://accounts.zoho.com.au/oauth/v2/auth
+          tokenEndpoint: https://accounts.zoho.com.au/oauth/v2/token
+          authorizationParameters: *zohoCRMAuthorizationParameters
+          clientIDCredential: oauth_client_id
+          clientSecretCredential: oauth_client_secret
+          scopes: *zohoCRMScopes
+          credentialMappings: *zohoCRMCredentialMappings
+          pkce: false
+      - id: zoho-jp-oauth
+        displayName: Japan (zoho.jp)
+        description: For Zoho CRM accounts at https://crm.zoho.jp; Dex signs in through https://accounts.zoho.jp, calls the Zoho CRM API at https://www.zohoapis.jp or the sandbox or developer host Zoho names at sign-in, and refreshes the hourly access token automatically.
+        type: oauth2
+        connectionKind: zoho-crm-jp-oauth
+        fields: *zohoCRMOAuthFields
+        guide:
+          startURL: https://api-console.zoho.jp
+          steps:
+            - Sign in to https://api-console.zoho.jp with the Zoho account that owns the integration, choose GET STARTED or ADD CLIENT, and create a Server-based Applications client with a Client Name and Homepage URL.
+            - Add the exact Redirect URI shown by Dex Web under Authorized Redirect URIs, then choose CREATE; a client registered in another data center instead needs the Japan data center turned on in its Settings tab.
+            - Open the Client Secret tab and copy the Client ID and the Client Secret for this data center into the fields below.
+            - Choose Connect and sign in at https://accounts.zoho.jp as the Zoho CRM user the connector acts as; records it writes are created and modified by that user, and the user's profile and role limit which modules, fields, and records it can read and change.
+            - On the Zoho consent screen, accept ZohoCRM.modules.READ for getRecord, ZohoCRM.modules.CREATE and ZohoCRM.modules.UPDATE for upsertRecord and updateRecord, ZohoCRM.coql.READ for findRecords and listModifiedRecords, and ZohoCRM.settings.fields.READ for listModuleFields; if the account belongs to several Zoho CRM organizations or a sandbox, pick the one this connection uses, because Zoho binds the token to it.
+            - To revoke access, remove the connected app under Zoho Accounts > Sessions > Connected Apps or delete the client in the API console; every operation then reports an AUTHENTICATION failure until you choose Reconnect.
+        oauth2:
+          authorizationEndpoint: https://accounts.zoho.jp/oauth/v2/auth
+          tokenEndpoint: https://accounts.zoho.jp/oauth/v2/token
+          authorizationParameters: *zohoCRMAuthorizationParameters
+          clientIDCredential: oauth_client_id
+          clientSecretCredential: oauth_client_secret
+          scopes: *zohoCRMScopes
+          credentialMappings: *zohoCRMCredentialMappings
+          pkce: false
+      - id: zoho-ca-oauth
+        displayName: Canada (zohocloud.ca)
+        description: For Zoho CRM accounts at https://crm.zohocloud.ca; Dex signs in through https://accounts.zohocloud.ca, calls the Zoho CRM API at https://www.zohoapis.ca or the sandbox or developer host Zoho names at sign-in, and refreshes the hourly access token automatically.
+        type: oauth2
+        connectionKind: zoho-crm-ca-oauth
+        fields: *zohoCRMOAuthFields
+        guide:
+          startURL: https://api-console.zohocloud.ca
+          steps:
+            - Sign in to https://api-console.zohocloud.ca with the Zoho account that owns the integration, choose GET STARTED or ADD CLIENT, and create a Server-based Applications client with a Client Name and Homepage URL.
+            - Add the exact Redirect URI shown by Dex Web under Authorized Redirect URIs, then choose CREATE; a client registered in another data center instead needs the Canada data center turned on in its Settings tab.
+            - Open the Client Secret tab and copy the Client ID and the Client Secret for this data center into the fields below.
+            - Choose Connect and sign in at https://accounts.zohocloud.ca as the Zoho CRM user the connector acts as; records it writes are created and modified by that user, and the user's profile and role limit which modules, fields, and records it can read and change.
+            - On the Zoho consent screen, accept ZohoCRM.modules.READ for getRecord, ZohoCRM.modules.CREATE and ZohoCRM.modules.UPDATE for upsertRecord and updateRecord, ZohoCRM.coql.READ for findRecords and listModifiedRecords, and ZohoCRM.settings.fields.READ for listModuleFields; if the account belongs to several Zoho CRM organizations or a sandbox, pick the one this connection uses, because Zoho binds the token to it.
+            - To revoke access, remove the connected app under Zoho Accounts > Sessions > Connected Apps or delete the client in the API console; every operation then reports an AUTHENTICATION failure until you choose Reconnect.
+        oauth2:
+          authorizationEndpoint: https://accounts.zohocloud.ca/oauth/v2/auth
+          tokenEndpoint: https://accounts.zohocloud.ca/oauth/v2/token
+          authorizationParameters: *zohoCRMAuthorizationParameters
+          clientIDCredential: oauth_client_id
+          clientSecretCredential: oauth_client_secret
+          scopes: *zohoCRMScopes
+          credentialMappings: *zohoCRMCredentialMappings
+          pkce: false
+      - id: zoho-sa-oauth
+        displayName: Saudi Arabia (zoho.sa)
+        description: For Zoho CRM accounts at https://crm.zoho.sa; Dex signs in through https://accounts.zoho.sa, calls the Zoho CRM API at https://www.zohoapis.sa or the sandbox or developer host Zoho names at sign-in, and refreshes the hourly access token automatically.
+        type: oauth2
+        connectionKind: zoho-crm-sa-oauth
+        fields: *zohoCRMOAuthFields
+        guide:
+          startURL: https://api-console.zoho.sa
+          steps:
+            - Sign in to https://api-console.zoho.sa with the Zoho account that owns the integration, choose GET STARTED or ADD CLIENT, and create a Server-based Applications client with a Client Name and Homepage URL.
+            - Add the exact Redirect URI shown by Dex Web under Authorized Redirect URIs, then choose CREATE; a client registered in another data center instead needs the Saudi Arabia data center turned on in its Settings tab.
+            - Open the Client Secret tab and copy the Client ID and the Client Secret for this data center into the fields below.
+            - Choose Connect and sign in at https://accounts.zoho.sa as the Zoho CRM user the connector acts as; records it writes are created and modified by that user, and the user's profile and role limit which modules, fields, and records it can read and change.
+            - On the Zoho consent screen, accept ZohoCRM.modules.READ for getRecord, ZohoCRM.modules.CREATE and ZohoCRM.modules.UPDATE for upsertRecord and updateRecord, ZohoCRM.coql.READ for findRecords and listModifiedRecords, and ZohoCRM.settings.fields.READ for listModuleFields; if the account belongs to several Zoho CRM organizations or a sandbox, pick the one this connection uses, because Zoho binds the token to it.
+            - To revoke access, remove the connected app under Zoho Accounts > Sessions > Connected Apps or delete the client in the API console; every operation then reports an AUTHENTICATION failure until you choose Reconnect.
+        oauth2:
+          authorizationEndpoint: https://accounts.zoho.sa/oauth/v2/auth
+          tokenEndpoint: https://accounts.zoho.sa/oauth/v2/token
+          authorizationParameters: *zohoCRMAuthorizationParameters
+          clientIDCredential: oauth_client_id
+          clientSecretCredential: oauth_client_secret
+          scopes: *zohoCRMScopes
+          credentialMappings: *zohoCRMCredentialMappings
+          pkce: false
+  operations:
+    - name: findRecords
+      goName: FindRecords
+      inputType: FindRecordsInput
+      outputType: FindRecordsOutput
+      kind: query
+      description: Find up to 200 records of one module whose fields match every condition, such as a contact by email or an account by name, through a COQL query with typed, escaped values; results are immediate, with no search-index delay, and an offset cursor reads the next page.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: "At least one record matched; the page holds the matches and reports whether more remain."}
+        - {id: notFound, goName: NotFound, description: No record of the module matched every condition., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Zoho CRM conclusively rejected the query, such as an unknown module or field, a value of the wrong type, a missing scope, or a revoked authorization.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Zoho CRM returned an invalid or oversized page of records., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &zohoCRMExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
+    - name: getRecord
+      goName: GetRecord
+      inputType: GetRecordInput
+      outputType: Record
+      kind: query
+      description: Read one record of a module by record ID, with every field or the chosen fields, including lookups such as a contact's account and a deal's owner.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Zoho CRM returned the record.}
+        - {id: notFound, goName: NotFound, description: "No record of the module has the ID, or the record was deleted or is not visible to the connection's user.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Zoho CRM conclusively rejected the read, such as an unknown module or field, a missing scope, or a revoked authorization.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Zoho CRM returned an invalid or oversized record., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *zohoCRMExecution
+    - name: listModifiedRecords
+      goName: ListModifiedRecords
+      inputType: ListModifiedRecordsInput
+      outputType: ListModifiedRecordsOutput
+      kind: query
+      description: List up to 200 records of one module modified at or after a time, oldest change first, and return a watermark cursor that reads the next page now or the next changes in a later poll.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "One page of changed records was returned with the cursor to continue from; the page may be empty."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Zoho CRM conclusively rejected the listing, such as an unknown module or field, a missing scope, or a revoked authorization.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Zoho CRM returned an invalid or oversized page, such as a record without its modified time.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, cursor, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *zohoCRMExecution
+    - name: upsertRecord
+      goName: UpsertRecord
+      inputType: UpsertRecordInput
+      outputType: UpsertRecordOutput
+      kind: mutation
+      description: Create one record, or update the record whose duplicate-check field, such as a contact's Email or a unique external ID field, already holds the value, so a retried Step updates the record an earlier attempt created instead of creating a duplicate.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: upserted, goName: Upserted, description: Zoho CRM created the record or updated the record that holds the duplicate-check value.}
+        - {id: conflict, goName: Conflict, description: "Another record already holds a value of a unique field the upsert sets, after one resend; nothing was written.", optional: true}
+        - {id: recordRejected, goName: RecordRejected, description: "Zoho CRM rejected the field values, such as MANDATORY_NOT_FOUND, INVALID_DATA, or RECORD_LOCKED; nothing was written.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Zoho CRM conclusively refused the request, such as an unknown module, a user without create or edit permission, a missing scope, or a revoked authorization.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Zoho CRM answered with an invalid or oversized response, so the record may have been written.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *zohoCRMExecution
+    - name: updateRecord
+      goName: UpdateRecord
+      inputType: UpdateRecordInput
+      outputType: UpdateRecordOutput
+      kind: mutation
+      description: Set the named fields of one record by record ID, such as a deal's Stage or Owner, leaving every other field unchanged; repeating the update sets the same values again.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: updated, goName: Updated, description: Zoho CRM applied the field values to the record.}
+        - {id: notFound, goName: NotFound, description: "No record of the module has the ID, or it is not visible to the connection's user; nothing was written.", optional: true}
+        - {id: conflict, goName: Conflict, description: "Another record already holds a value of a unique field the update sets; nothing was written.", optional: true}
+        - {id: recordRejected, goName: RecordRejected, description: "Zoho CRM rejected the field values, such as INVALID_DATA, RECORD_LOCKED, or a blueprint that forbids the change; nothing was written.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Zoho CRM conclusively refused the request, such as an unknown module, a user without edit permission, a missing scope, or a revoked authorization.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Zoho CRM answered with an invalid or oversized response, so the update may have been applied.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *zohoCRMExecution
+    - name: listModuleFields
+      goName: ListModuleFields
+      inputType: ListModuleFieldsInput
+      outputType: ListModuleFieldsOutput
+      kind: query
+      description: List the fields of one module with their API names, data types, unique and custom flags, lookup modules, and picklist values, such as the stages a deal's Stage accepts.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: Zoho CRM returned the module's fields.}
+        - {id: providerRejected, goName: ProviderRejected, description: "Zoho CRM conclusively rejected the request, such as an unknown module, a missing ZohoCRM.settings.fields.READ scope, or a revoked authorization.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Zoho CRM returned an invalid or oversized field list., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *zohoCRMExecution

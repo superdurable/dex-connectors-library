@@ -48,5 +48,6 @@ directories:
   - connectors/typeform
   - connectors/xero
   - connectors/zendesk/support
+  - connectors/zoho/crm
   - connectors/zoho/desk
   - connectors/zoom
