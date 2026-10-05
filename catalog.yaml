@@ -10,6 +10,7 @@ directories:
   - connectors/atlassian/trello
   - connectors/bamboohr
   - connectors/calendly
+  - connectors/clickup
   - connectors/freshworks/freshdesk
   - connectors/github
   - connectors/google/calendar
