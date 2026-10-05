@@ -26,6 +26,7 @@ directories:
   - connectors/hubspot
   - connectors/intercom
   - connectors/intuit/mailchimp
+  - connectors/linear
   - connectors/linkedin
   - connectors/microsoft/entra-id
   - connectors/microsoft/excel
