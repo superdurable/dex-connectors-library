@@ -1,0 +1,64 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: newsapi
+  displayName: NewsAPI
+  description: Search recent news articles from the publishers NewsAPI indexes by keyword, title or body fields, sources, domains, language, and publication window.
+  company: NewsAPI
+  version: v0.21.0
+spec:
+  provider: newsapi
+  codegen:
+    go:
+      package: newsapi
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: NewsAPI REST base URL; this is NewsAPI's fixed public v2 endpoint, so leave the field blank unless a compatible gateway or a loopback test server is being used.
+        default: https://newsapi.org/v2
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration for one NewsAPI HTTP request, using a positive Go duration such as 15s or 1m; leave blank for the displayed default.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum bytes accepted from one NewsAPI response; enter a positive integer only to change the safety limit. Oversized responses select invalidResponse.
+        default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: newsapi-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        description: Secret NewsAPI key shown under Your API key at https://newsapi.org/account after you sign in, 32 lowercase hexadecimal characters. It is sent only in the X-Api-Key header, never in a URL; blank makes every search select defect without a request.
+        required: true
+    guide:
+      startURL: https://newsapi.org/register
+      steps:
+        - Open https://newsapi.org/register, create an account with your name, email address, and a password, and choose a plan; the free Developer plan allows 100 requests a day for development and testing only.
+        - Sign in, open https://newsapi.org/account, and copy the key shown under Your API key.
+        - Paste the key into the secret api_key field below and save the connection.
+        - Leave baseUrl, timeout, and maxResponseBytes blank to use their displayed defaults.
+  operations:
+    - name: searchArticles
+      goName: SearchArticles
+      inputType: SearchArticlesInput
+      outputType: ArticlePage
+      kind: query
+      description: Search one page of articles through NewsAPI's everything endpoint by keyword, title or body fields, sources, domains, language, and publication window, newest or most relevant first.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: searched, goName: Searched, description: "NewsAPI returned one page of matching articles, possibly empty."}
+        - {id: providerRejected, goName: ProviderRejected, description: "NewsAPI conclusively rejected the search, such as an invalid or exhausted API key, a request the plan does not permit, or an unknown source.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: NewsAPI returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or credentials are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 3, totalDuration: 2m}
