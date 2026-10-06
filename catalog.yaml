@@ -42,6 +42,7 @@ directories:
   - connectors/microsoft/teams
   - connectors/monday
   - connectors/mysql
+  - connectors/newsapi
   - connectors/notion
   - connectors/openai
   - connectors/pipedrive
