@@ -1,0 +1,212 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: docusign
+  displayName: DocuSign eSignature
+  description: "Send DocuSign eSignature envelopes from templates, guarded against duplicates on retry, read envelope and recipient status, void an envelope as compensation, record the signed combined PDF's digest outside Dex payloads, and receive HMAC-verified Connect envelope-completed, envelope-declined, and envelope-voided events."
+  company: DocuSign
+  version: v0.21.0
+spec:
+  provider: docusign
+  codegen:
+    go:
+      package: docusign
+  configuration:
+    fields:
+      - name: accountId
+        goName: AccountID
+        type: string
+        description: "DocuSign API account ID that every envelope is sent from, a GUID such as 00000000-0000-0000-0000-000000000000. Find it after signing in at https://apps.docusign.com/admin/apps-and-keys, or https://apps-d.docusign.com/admin/apps-and-keys for the developer environment, under My Account Information > API Account ID. It is not secret. Blank uses the account that DocuSign marks as the authorizing user's default; enter an ID only when that user belongs to several accounts."
+        required: false
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Largest DocuSign API JSON response body, in bytes, that one call reads; a larger envelope or recipient response selects invalidResponse. Enter a positive integer only to raise or lower this safety limit, for example for envelopes with very many recipients. Blank uses the default."
+        required: false
+        default: 1048576
+      - name: maxDocumentBytes
+        goName: MaxDocumentBytes
+        type: integer
+        description: "Largest combined PDF, in bytes, that downloadCombinedDocument streams through its SHA-256 digest; a larger document selects tooLarge without reading the rest. Enter a positive integer only when envelopes carry very large documents. Blank uses the default."
+        required: false
+        default: 67108864
+      - name: connectMaxBodyBytes
+        goName: ConnectMaxBodyBytes
+        type: integer
+        description: "Largest DocuSign Connect request body, in bytes, that the envelopeEventReceived endpoint accepts; a larger body is answered 413 before its HMAC signature is checked. Raise it only when the Connect configuration includes large envelope data such as many recipients or tabs; never include documents. Blank uses the default."
+        required: false
+        default: 2097152
+  auth:
+    refreshable: true
+    methodLabel: Environment
+    defaultMethod: docusign-oauth
+    methods:
+      - id: docusign-oauth
+        displayName: Production account
+        description: "Recommended for live envelopes: Dex signs in through account.docusign.com with the Authorization Code Grant and refreshes the eight-hour access token automatically."
+        recommended: true
+        type: oauth2
+        connectionKind: docusign-oauth
+        fields: &docusignOAuthFields
+          - name: oauth_client_id
+            goName: OAuthClientID
+            type: string
+            description: "Non-secret integration key of your DocuSign app, a GUID copied after signing in at https://apps.docusign.com/admin/apps-and-keys (Settings > Integrations > Apps and Keys > the app > Integration Key), or from the app in the Developer Console at https://apps.docusign.com/dev-console/integrations; blank means authorization and refresh cannot start."
+            required: true
+          - name: oauth_client_secret
+            goName: OAuthClientSecret
+            type: secretString
+            description: "Secret key of the same DocuSign app, a GUID such as 00000000-0000-0000-0000-000000000000, created under Authentication > Secret Keys > Add Secret Key at https://apps.docusign.com/admin/apps-and-keys and shown only once; Dex stores it only in this credential field, and blank means authorization and refresh cannot start. An app can hold several secret keys, so to rotate or revoke one, add a new key, enter it here, then delete the old key on the same page; DocuSign can take up to five minutes to apply the change."
+            required: true
+          - name: access_token
+            goName: AccessToken
+            type: secretString
+            description: "Secret DocuSign access token produced automatically by authorization; it lasts eight hours and Dex refreshes it before expiry, so never enter it manually."
+            required: true
+          - name: refresh_token
+            goName: RefreshToken
+            type: secretString
+            description: "Secret DocuSign refresh token produced automatically by authorization; the extended scope makes every refresh issue a new 30-day token, so never enter it manually, and a blank or rejected token means the connection must be authorized again."
+            required: true
+          - name: connect_hmac_key
+            goName: ConnectHMACKey
+            type: secretString
+            description: "Secret DocuSign Connect HMAC key that verifies X-DocuSign-Signature headers on envelopeEventReceived deliveries. Create it after signing in at https://apps.docusign.com/admin/admin-dashboard, or https://apps-d.docusign.com/admin/admin-dashboard for the developer environment, under Integrations > Connect > Connect Keys > Add Secret Key, copy the whole value exactly as shown (an opaque string that DocuSign shows in full only once, and later only its first four characters), and enable Include HMAC Signature on the Connect configuration. To rotate it, add a new key, enter it here, then choose Remove next to the old key: DocuSign signs with every key and one match is enough, so no delivery is refused. Blank is fine for operations only; the Connect endpoint then answers 503 so DocuSign retries."
+            required: false
+        guide:
+          startURL: https://apps.docusign.com/admin/apps-and-keys
+          steps:
+            - "Sign in to the production DocuSign account as an administrator and open Settings > Integrations > Apps and Keys; an integration key must already have passed Go-Live review in the developer environment, or be taken live from the Developer Console at https://apps.docusign.com/dev-console/integrations."
+            - "Open the app, keep Authorization Code Grant selected under Authentication, choose Add Secret Key, and copy the secret key that DocuSign shows only once, together with the Integration Key, into the fields below."
+            - "Under Additional Settings > Redirect URIs choose Add URI, paste the exact Redirect URI that Dex Web shows below, and save the app. Dex requests two scopes, which need no separate enabling: signature, which every eSignature call needs, and extended, which makes each refresh return a new 30-day refresh token so an idle connection keeps working."
+            - "Choose Connect and grant consent as the DocuSign user who sends the envelopes; that user's permission profile must allow sending, and Dex reads the API account and its regional base URI from the user's account information."
+            - "To resume Flows from Connect, open Admin > Integrations > Connect > Connect Keys, choose Add Secret Key, paste the key into connect_hmac_key, and create a Custom configuration whose URL to Publish is your application's endpoint, using the JSON SIM format, the events Envelope Signed/Completed, Envelope Declined, and Envelope Voided, Include Data: Custom Fields, and Include HMAC Signature."
+        oauth2:
+          authorizationEndpoint: https://account.docusign.com/oauth/auth
+          tokenEndpoint: https://account.docusign.com/oauth/token
+          clientIDCredential: oauth_client_id
+          clientSecretCredential: oauth_client_secret
+          scopes: [signature, extended]
+          credentialMappings:
+            - {credential: access_token, source: access_token}
+            - {credential: refresh_token, source: refresh_token}
+          # DocuSign spells the PKCE method s256; a confidential client needs no PKCE, so none is sent.
+          pkce: false
+      - id: docusign-developer-oauth
+        displayName: Developer account
+        description: "For building and testing: Dex signs in through account-d.docusign.com, the DocuSign developer environment, whose envelopes are not legally binding."
+        type: oauth2
+        connectionKind: docusign-developer-oauth
+        fields: *docusignOAuthFields
+        guide:
+          startURL: https://apps-d.docusign.com/admin/apps-and-keys
+          steps:
+            - "Create a free developer account at https://developers.docusign.com if you have none, sign in, and open Settings > Integrations > Apps and Keys at https://apps-d.docusign.com/admin/apps-and-keys."
+            - "Choose Add App and Integration Key, name the app, keep Authorization Code Grant selected under Authentication, choose Add Secret Key, and copy the Integration Key and the secret key, shown only once, into the fields below."
+            - "Under Additional Settings > Redirect URIs choose Add URI, paste the exact Redirect URI that Dex Web shows below, and save the app. Dex requests two scopes, which need no separate enabling: signature, which every eSignature call needs, and extended, which makes each refresh return a new 30-day refresh token so an idle connection keeps working."
+            - "Choose Connect and grant consent as the developer account user who sends the envelopes; Dex reads the API account and its demo.docusign.net base URI from that user's account information."
+            - "To resume Flows from Connect, open Admin > Integrations > Connect > Connect Keys at https://apps-d.docusign.com/admin/admin-dashboard, choose Add Secret Key, paste the key into connect_hmac_key, and create a Custom configuration with your endpoint URL, JSON SIM format, Envelope Signed/Completed, Declined, and Voided events, Include Data: Custom Fields, and Include HMAC Signature."
+        oauth2:
+          authorizationEndpoint: https://account-d.docusign.com/oauth/auth
+          tokenEndpoint: https://account-d.docusign.com/oauth/token
+          clientIDCredential: oauth_client_id
+          clientSecretCredential: oauth_client_secret
+          scopes: [signature, extended]
+          credentialMappings:
+            - {credential: access_token, source: access_token}
+            - {credential: refresh_token, source: refresh_token}
+          pkce: false
+  triggers:
+    - name: envelopeEventReceived
+      goName: EnvelopeEventReceived
+      eventType: EnvelopeEvent
+      configurationType: EnvelopeEventReceivedTriggerConfiguration
+      description: "Receive an HMAC-verified DocuSign Connect envelope-completed, envelope-declined, or envelope-voided event in the JSON SIM format, with the envelope ID and event name as its event ID and the envelope's text custom fields for correlation."
+  operations:
+    - name: createEnvelopeFromTemplate
+      goName: CreateEnvelopeFromTemplate
+      inputType: CreateEnvelopeFromTemplateInput
+      outputType: CreatedEnvelope
+      kind: mutation
+      description: "Create one envelope from a server template, filling its roles in their routing order, and send it or keep it as a draft. DocuSign has no idempotency key, so the call runs with sync durability, tags the envelope with a hidden custom field derived from the Step's idempotency key, and on every later attempt looks for that envelope by the field before sending again; an outcome it cannot confirm selects uncertain."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: created, goName: Created, description: "DocuSign holds the envelope this Step execution created; wasRecovered tells whether a later attempt found it by its custom field after an interrupted one."}
+        - {id: providerRejected, goName: ProviderRejected, description: "DocuSign conclusively rejected the envelope, such as an unknown template, an unfilled or unknown role, an invalid email address, an exhausted envelope allowance, or a user who may not send; nothing was created.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The create request was sent but DocuSign's answer was lost, a server error, or unreadable, and no envelope with this Step's custom field could be found, so an envelope may exist that this Result does not name; do not create another automatically.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      # Sync: an async fallback attempt would send a slow create again, and DocuSign has no idempotency key.
+      execution:
+        executeMethodTimeout: 60s
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 65m}
+    - name: getEnvelope
+      goName: GetEnvelope
+      inputType: GetEnvelopeInput
+      outputType: Envelope
+      kind: query
+      description: "Read one envelope's status, status timestamps, void reason, and text custom fields. DocuSign allows an app one status read per envelope every 15 minutes, so prefer the envelopeEventReceived Trigger and poll only as a fallback."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: "DocuSign returned the envelope."}
+        - {id: notFound, goName: NotFound, description: "The envelope does not exist in the connection's account or the user may not see it.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "DocuSign conclusively rejected the read, such as a revoked consent or a user without access to the account.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "DocuSign returned a malformed or oversized response.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &docusignQueryExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 65m}
+    - name: listEnvelopeRecipients
+      goName: ListEnvelopeRecipients
+      inputType: ListEnvelopeRecipientsInput
+      outputType: EnvelopeRecipients
+      kind: query
+      description: "List an envelope's recipients in routing order with each one's type, role, status, and sent, delivered, signed, and declined times, and the routing order DocuSign is currently waiting on."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "DocuSign returned the envelope's recipients."}
+        - {id: notFound, goName: NotFound, description: "The envelope does not exist in the connection's account or the user may not see it.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "DocuSign conclusively rejected the read, such as a revoked consent or a user without access to the account.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "DocuSign returned a malformed or oversized response.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *docusignQueryExecution
+    - name: voidEnvelope
+      goName: VoidEnvelope
+      inputType: VoidEnvelopeInput
+      outputType: VoidedEnvelope
+      kind: mutation
+      description: "Void one sent or delivered envelope with a reason, the compensation for a send that must not complete. An envelope that is already voided also selects voided, so a repeated call is safe; a completed, declined, or draft envelope selects notVoidable with its status."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: voided, goName: Voided, description: "The envelope is voided, by this call or earlier; wasAlreadyVoided tells which."}
+        - {id: notVoidable, goName: NotVoidable, description: "The envelope is completed, declined, or still a draft, which DocuSign does not void; status names which.", optional: true}
+        - {id: notFound, goName: NotFound, description: "The envelope does not exist in the connection's account or the user may not see it.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "DocuSign conclusively rejected the void, such as a user who is not the sender or lacks permission.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "DocuSign returned a malformed or oversized response.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *docusignQueryExecution
+    - name: downloadCombinedDocument
+      goName: DownloadCombinedDocument
+      inputType: DownloadCombinedDocumentInput
+      outputType: CombinedDocument
+      kind: query
+      description: "Stream an envelope's documents as one combined PDF, optionally with the certificate of completion, through a SHA-256 digest and into the application's CombinedDocumentStore when one is configured. The Result holds the byte count, digest, and the store's location, never the PDF bytes."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: downloaded, goName: Downloaded, description: "DocuSign returned the combined PDF and its digest was recorded, and stored when the client has a CombinedDocumentStore."}
+        - {id: notFound, goName: NotFound, description: "The envelope does not exist in the connection's account or the user may not see it.", optional: true}
+        - {id: tooLarge, goName: TooLarge, description: "The combined PDF exceeds the connection's maxDocumentBytes; nothing was stored.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "DocuSign conclusively rejected the download, such as a revoked consent or a user without access to the envelope.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "DocuSign returned something other than a complete PDF, or the CombinedDocumentStore rejected it.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 120s
+        heartbeatTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 65m}

@@ -11,6 +11,7 @@ directories:
   - connectors/bamboohr
   - connectors/calendly
   - connectors/clickup
+  - connectors/docusign
   - connectors/freshworks/freshdesk
   - connectors/front
   - connectors/github
