@@ -23,6 +23,7 @@ directories:
   - connectors/google/workspace-admin
   - connectors/hackernews
   - connectors/helpscout
+  - connectors/hiver
   - connectors/hubspot
   - connectors/intercom
   - connectors/intuit/mailchimp
