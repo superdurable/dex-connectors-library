@@ -1,0 +1,193 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: quickbooks
+  displayName: QuickBooks Online
+  description: "Find or create QuickBooks Online customers, raise invoices with exact decimal amounts, list and read them page by page, email them, and record payments against them, with every write sent under a QuickBooks requestid derived from the Step."
+  company: Intuit
+  version: v0.21.0
+spec:
+  provider: quickbooks
+  codegen:
+    go:
+      package: quickbooks
+  configuration:
+    fields:
+      - name: environment
+        goName: Environment
+        type: enum
+        enum: [production, sandbox]
+        description: "Non-secret QuickBooks Online environment of the connected company, which selects the API host: production sends every request to https://quickbooks.api.intuit.com for a real company authorized with the app's Production keys, and sandbox sends to https://sandbox-quickbooks.api.intuit.com for a sandbox company authorized with the app's Development keys from https://developer.intuit.com. A token from one environment is rejected by the other, so every request then fails with HTTP 401. Blank uses the displayed environment."
+        required: false
+        default: production
+      - name: realmId
+        goName: RealmID
+        type: string
+        description: "Non-secret QuickBooks company ID, also called the realm ID, a number such as 9341453050298464, needed only when Intuit's ID token does not carry it. Intuit returns it in the ID token when you are signed in to the company while authorizing; otherwise find it in QuickBooks Online at https://qbo.intuit.com under Settings > Subscriptions and billing, at the top of the page, or, for a sandbox company, as the Realm ID shown by the OAuth 2.0 Playground at https://developer.intuit.com/app/developer/playground. Blank uses the ID token's company; when both are present they must match."
+        required: false
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Largest complete QuickBooks API response, in bytes, that one call reads. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when invoices carry hundreds of lines. An oversized read selects invalidResponse, and an oversized answer to an accepted write selects uncertain."
+        required: false
+        default: 4194304
+  auth:
+    refreshable: true
+    type: oauth2
+    connectionKind: quickbooks-online-oauth
+    fields:
+      - name: client_id
+        goName: ClientID
+        type: string
+        description: "Non-secret Client ID of the Intuit app, copied from https://developer.intuit.com > My Hub > App dashboard > the app > Keys and credentials with Development (sandbox companies) or Production selected and Show credentials turned on; it is an opaque string of letters and digits, and blank means authorization and refresh cannot start."
+        required: true
+      - name: client_secret
+        goName: ClientSecret
+        type: secretString
+        description: "Secret Client Secret shown beside the Client ID on the same Keys and credentials page at https://developer.intuit.com, for the same Development or Production keys; it is an opaque string of letters and digits. Dex Web stores it only in this credential field and sends it only to https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer, and blank means authorization and refresh cannot start."
+        required: true
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        description: "Secret one-hour access token returned by Intuit after consent; Dex derives it automatically and refreshes it five minutes before it expires, so never enter it manually, and blank means Connect has not completed."
+        required: true
+      - name: refresh_token
+        goName: RefreshToken
+        type: secretString
+        description: "Secret refresh token returned by Intuit after consent; Intuit replaces it on a refresh and expires the previous value, and Dex stores the new one atomically, so never enter it manually. A blank token, one unused for 100 days, or one five years old means you must authorize again."
+        required: true
+      - name: id_token
+        goName: IDToken
+        type: secretString
+        description: "Secret OpenID Connect ID token returned by Intuit after consent because Dex requests openid; the connector reads only its issuer, audience, and realmid claim, the connected company's ID, so never enter it manually. Blank, or a token without realmid, means the company ID comes from the realmId field."
+        required: false
+    guide:
+      startURL: https://developer.intuit.com
+      steps:
+        - "Sign in at https://developer.intuit.com, choose My Hub > App dashboard, and select the app card with a + to create an app that uses the QuickBooks Online Accounting API, or open an existing app."
+        - "Choose Settings > Redirect URIs, select Development or Production, choose Add URI, and add the exact Redirect URI shown below. Intuit accepts an http://localhost URI without HTTPS only for Development keys and sandbox companies and never an IP address, so open Dex Web at http://localhost with its port rather than http://127.0.0.1; Production needs an https Redirect URI."
+        - "Choose Keys and credentials, select the same Development or Production keys, turn on Show credentials, and copy the Client ID and Client Secret into the fields below. Production keys appear only after Intuit approves the app's Production Key questionnaire. Set environment to sandbox for Development keys and to production for Production keys."
+        - "In the same browser, sign in to the QuickBooks Online company you will connect, then choose Authorize and pick that company on Intuit's consent screen. Dex requests com.intuit.quickbooks.accounting and openid and asks for the realmId claim, so Intuit's ID token names the company; if Intuit omits it, enter the company ID in realmId."
+        - "Intuit refresh tokens expire after 100 days without use and five years after consent, and Intuit refuses a second refresh of the same token, so never reuse this authorization in another tool; Dex refreshes it once for every replica of the application. Disconnecting the app from the company requires authorizing again."
+    oauth2:
+      protocol: oauth2
+      authorizationEndpoint: https://appcenter.intuit.com/connect/oauth2
+      tokenEndpoint: https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer
+      authorizationParameters: {claims: '{"id_token":{"realmId":null}}'}
+      clientIDCredential: client_id
+      clientSecretCredential: client_secret
+      scopes: [com.intuit.quickbooks.accounting, openid]
+      credentialMappings:
+        - {credential: access_token, source: access_token}
+        - {credential: refresh_token, source: refresh_token}
+        - {credential: id_token, source: id_token}
+      pkce: false
+  operations:
+    - name: findCustomer
+      goName: FindCustomer
+      inputType: FindCustomerInput
+      outputType: FindCustomerOutput
+      kind: query
+      description: "Resolve one customer by exact primary email address or exact display name with a QuickBooks query, distinguishing one match, none, and several."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Exactly one customer matches.}
+        - {id: notFound, goName: NotFound, description: "No customer matches; inactive customers count only when the input includes them.", optional: true}
+        - {id: ambiguous, goName: Ambiguous, description: "Several customers share the email address; the output lists them so the application can choose.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "QuickBooks conclusively rejected the query, such as a revoked connection or a company the app can no longer reach.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: QuickBooks returned an invalid or oversized customer list., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &quickbooksReadExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
+    - name: createCustomer
+      goName: CreateCustomer
+      inputType: CreateCustomerInput
+      outputType: CreateCustomerOutput
+      kind: mutation
+      description: "Create one customer with a unique display name, email address, names, company, phone, and currency; every attempt of the Step sends the same QuickBooks requestid, so a repeated dispatch returns the first customer instead of creating another."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: created, goName: Created, description: "QuickBooks created the customer, or returned the customer this Step already created."}
+        - {id: nameConflict, goName: NameConflict, description: "Another customer, vendor, or employee already uses the display name (QuickBooks error 6240); nothing was created, so resolve it with findCustomer by display name.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "QuickBooks conclusively rejected the customer, such as an invalid field or a revoked connection; nothing was created.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "QuickBooks accepted the request but returned an unusable customer; look it up with findCustomer before creating again.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &quickbooksKeyedWriteExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
+    - name: createInvoice
+      goName: CreateInvoice
+      inputType: CreateInvoiceInput
+      outputType: CreateInvoiceOutput
+      kind: mutation
+      description: "Create one invoice for a customer with exact decimal item lines, dates, an optional document number, and a billing email; every attempt of the Step sends the same QuickBooks requestid, so a repeated dispatch returns the first invoice instead of creating another."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: created, goName: Created, description: "QuickBooks created the invoice, or returned the invoice this Step already created, with its number, total, and balance."}
+        - {id: providerRejected, goName: ProviderRejected, description: "QuickBooks conclusively rejected the invoice, such as an unknown or inactive customer or item, a duplicate document number, a closed period, or a revoked connection; nothing was created.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "QuickBooks accepted the request but returned an unusable invoice; look it up by document number before creating again.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *quickbooksKeyedWriteExecution
+    - name: getInvoice
+      goName: GetInvoice
+      inputType: GetInvoiceInput
+      outputType: Invoice
+      kind: query
+      description: "Read one invoice by Id with its lines, exact decimal total and balance, email status, and linked payments."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: The invoice was read.}
+        - {id: notFound, goName: NotFound, description: The invoice does not exist in the company or was deleted., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "QuickBooks conclusively rejected the read, such as a revoked connection.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: QuickBooks returned an invalid or oversized invoice., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *quickbooksReadExecution
+    - name: listInvoices
+      goName: ListInvoices
+      inputType: ListInvoicesInput
+      outputType: InvoicePage
+      kind: query
+      description: "List one bounded page of invoices, at most 100, filtered by customer, document number, open balance, invoice date, and last update, in a stable order with the next start position."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "One page of matching invoices was read; it can be empty."}
+        - {id: providerRejected, goName: ProviderRejected, description: "QuickBooks conclusively rejected the query, such as a revoked connection.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: QuickBooks returned an invalid or oversized page of invoices., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *quickbooksReadExecution
+    - name: sendInvoice
+      goName: SendInvoice
+      inputType: SendInvoiceInput
+      outputType: Invoice
+      kind: mutation
+      description: "Email one invoice to its billing address or a given address; every attempt of the Step sends the same QuickBooks requestid, so a repeated dispatch returns the first delivery instead of emailing again."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: sent, goName: Sent, description: "QuickBooks emailed the invoice, or returned the delivery this Step already made, with EmailStatus EmailSent."}
+        - {id: providerRejected, goName: ProviderRejected, description: "QuickBooks conclusively rejected the delivery, such as an invoice without an address, a deleted invoice, or a revoked connection; nothing was sent.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "QuickBooks accepted the request but returned an unusable invoice; read it back with getInvoice and check its EmailStatus before sending again.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *quickbooksKeyedWriteExecution
+    - name: recordPayment
+      goName: RecordPayment
+      inputType: RecordPaymentInput
+      outputType: Payment
+      kind: mutation
+      description: "Record one received payment of an exact decimal amount and apply it to an invoice; every attempt of the Step sends the same QuickBooks requestid, so a repeated dispatch returns the first payment instead of paying twice."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: recorded, goName: Recorded, description: "QuickBooks recorded the payment, or returned the payment this Step already recorded, with the invoices it applies to."}
+        - {id: providerRejected, goName: ProviderRejected, description: "QuickBooks conclusively rejected the payment, such as an invoice of another customer, an amount above the balance, an invalid deposit account, a closed period, or a revoked connection; nothing was recorded.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "QuickBooks accepted the request but returned an unusable payment; read the invoice back before paying again.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *quickbooksKeyedWriteExecution
