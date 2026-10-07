@@ -33,7 +33,7 @@ type LoadedProject struct {
 // It reads only the pinned ordinary snapshot at startup; no credential read or provider refresh occurs.
 // Hosted storage requires an exact KMS key ARN. Local S3 endpoints require explicit local-storage opt-in.
 func LoadFromEnvironment(ctx context.Context) (*LoadedProject, error) {
-	scope := Scope{ProjectID: os.Getenv("DEX_PROJECT_ID"), Kind: os.Getenv("DEX_PROJECT_SCOPE"), SessionID: os.Getenv("DEX_PROJECT_SESSION_ID")}
+	scope := Scope{ProjectID: os.Getenv("DEX_PROJECT_ID"), Kind: os.Getenv("DEX_PROJECT_SCOPE")}
 	if _, err := scope.Prefix(); err != nil {
 		return nil, err
 	}

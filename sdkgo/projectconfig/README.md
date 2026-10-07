@@ -21,10 +21,13 @@ require an exact version identity and matching KMS encryption; writes use
 write is reconciled by reading the same identity before another mutation.
 `AllowUnencrypted` is only for explicitly isolated local MinIO fixtures.
 
-`Scope{ProjectID, Kind, SessionID}` selects one fixed prefix:
+`Scope{ProjectID, Kind}` selects one fixed prefix:
 
 - `projects/<projectID>/live`
-- `projects/<projectID>/preview/<sessionID>`
+- `projects/<projectID>/preview`
+
+A Project has one Live and one Preview configuration; Preview is not keyed by a
+Session.
 
 The environment-specific bucket and IAM policy provide the outer boundary.
 Storage targets and scope must come from trusted deployment configuration, not
@@ -158,7 +161,6 @@ connector's `examples/` tree is a runnable application that does exactly this.
 | --- | --- |
 | `DEX_PROJECT_ID` | Fixed project identity. |
 | `DEX_PROJECT_SCOPE` | `live` or `preview`. |
-| `DEX_PROJECT_SESSION_ID` | Required only for Preview. |
 | `DEX_PROJECT_CONFIG_KEY` | Scope's exact `configuration/head` key. |
 | `DEX_PROJECT_CONFIG_VERSION` | Exact version frozen by Dex Web. |
 | `DEX_PROJECT_CONFIG_DIGEST` | `sha256:<hex>` over exact object bytes. |
