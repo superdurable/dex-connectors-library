@@ -38,6 +38,10 @@ class ConnectorDependency:
     tag: str
 
 
+class ComponentUnchangedError(ValueError):
+    """Reports that no component commits remain to release."""
+
+
 class DependencyReleaseLookup:
     """Reads tags, GitHub releases, and module downloads; tests override it to stay offline."""
 
@@ -222,7 +226,7 @@ def create_plan(
         target_is_reachable = False
     commits = component_commits(component_path, baseline_tag, release_ref)
     if not commits:
-        raise ValueError(f"{component_path} has no changes since {baseline_tag or 'repository creation'}")
+        raise ComponentUnchangedError(f"{component_path} has no changes since {baseline_tag or 'repository creation'}")
     tag = tag_prefix + version
     tag_exists = git("show-ref", "--verify", "--quiet", f"refs/tags/{tag}", check=False).returncode == 0
     if tag_exists and not target_is_reachable:
@@ -309,6 +313,7 @@ def write_github_output(path: Path, plan: ReleasePlan) -> None:
     path.write_text(
         "\n".join(
             (
+                "release_required=true",
                 f"version={plan.version}",
                 f"tag={plan.tag}",
                 f"baseline_tag={plan.baseline_tag}",
@@ -438,6 +443,9 @@ def main() -> int:
     version_group.add_argument("--bump")
     version_group.add_argument("--version")
     plan_parser.add_argument("--ref", default="")
+    plan_parser.add_argument(
+        "--skip-unchanged", action="store_true", help="Succeed without a release when a bump has no component changes"
+    )
     plan_parser.add_argument("--json-output", type=Path, required=True)
     plan_parser.add_argument("--github-output", type=Path, required=True)
     notes_parser = subparsers.add_parser("notes")
@@ -453,12 +461,19 @@ def main() -> int:
         if arguments.command == "plan":
             if arguments.ref:
                 validate_release_ref(arguments.ref)
-            plan = create_plan(
-                arguments.component_path,
-                arguments.tag_prefix,
-                bump=arguments.bump or "",
-                target_version=arguments.version or "",
-            )
+            try:
+                plan = create_plan(
+                    arguments.component_path,
+                    arguments.tag_prefix,
+                    bump=arguments.bump or "",
+                    target_version=arguments.version or "",
+                )
+            except ComponentUnchangedError as error:
+                if not arguments.skip_unchanged or not arguments.bump:
+                    raise
+                arguments.github_output.write_text("release_required=false\n", encoding="utf-8")
+                print(f"{error}; skipping release")
+                return 0
             arguments.json_output.write_text(json.dumps(asdict(plan), indent=2) + "\n", encoding="utf-8")
             write_github_output(arguments.github_output, plan)
         elif arguments.command == "notes":

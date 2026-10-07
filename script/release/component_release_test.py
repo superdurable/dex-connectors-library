@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import os
 import re
 import subprocess
@@ -101,6 +102,27 @@ class ComponentReleaseTest(unittest.TestCase):
         os.chdir(self.repository)
         self.addCleanup(os.chdir, previous)
         return release.create_plan("sdkgo", "sdkgo/", bump)
+
+    def run_plan_command(self, *arguments: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            (
+                sys.executable,
+                str(SCRIPT.resolve()),
+                "plan",
+                "--component-path", "sdkgo",
+                "--tag-prefix", "sdkgo/",
+                "--bump", "minor",
+                "--ref", "refs/heads/main",
+                "--json-output", str(self.repository / "plan.json"),
+                "--github-output", str(self.repository / "github-output"),
+                *arguments,
+            ),
+            cwd=self.repository,
+            check=False,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
 
     def connector(self, go_mod_suffix: str = "") -> Path:
         self.git("tag", "sdkgo/v0.1.0")
@@ -212,6 +234,52 @@ class ComponentReleaseTest(unittest.TestCase):
         self.commit("docs: update")
         with self.assertRaisesRegex(ValueError, "no changes"):
             self.plan("minor")
+
+    def test_plan_command_skips_unchanged_sdk_only_when_requested(self) -> None:
+        self.git("tag", "sdkgo/v0.1.0")
+        (self.repository / "README.md").write_text("docs\n", encoding="utf-8")
+        self.commit("docs: update")
+        strict_result = self.run_plan_command()
+        self.assertEqual(strict_result.returncode, 1)
+        self.assertIn("no changes since sdkgo/v0.1.0", strict_result.stderr)
+        self.assertFalse((self.repository / "github-output").exists())
+
+        skip_result = self.run_plan_command("--skip-unchanged")
+        self.assertEqual(skip_result.returncode, 0, skip_result.stderr)
+        self.assertIn("skipping release", skip_result.stdout)
+        self.assertEqual((self.repository / "github-output").read_text(), "release_required=false\n")
+        self.assertFalse((self.repository / "plan.json").exists())
+        self.assertEqual(self.git("tag", "--list"), "sdkgo/v0.1.0")
+
+    def test_plan_command_preserves_first_and_changed_releases_with_skip_unchanged(self) -> None:
+        for baseline in ("", "sdkgo/v0.1.0"):
+            with self.subTest(baseline=baseline):
+                if baseline:
+                    self.git("tag", baseline)
+                    (self.repository / "sdkgo/sdk.go").write_text("package sdkgo\n\nconst Version = 2\n", encoding="utf-8")
+                    self.commit("sdkgo: add API")
+                result = self.run_plan_command("--skip-unchanged")
+                self.assertEqual(result.returncode, 0, result.stderr)
+                plan = json.loads((self.repository / "plan.json").read_text())
+                expected_version = "v0.2.0" if baseline else "v0.1.0"
+                self.assertEqual(plan["version"], expected_version)
+                self.assertEqual(plan["source_sha"], self.git("rev-parse", "HEAD"))
+                self.assertTrue(plan["commits"])
+                self.assertIn("release_required=true\n", (self.repository / "github-output").read_text())
+
+    def test_skip_unchanged_does_not_suppress_invalid_release_inputs(self) -> None:
+        self.git("tag", "sdkgo/v0.1.0")
+        for arguments, expected_error in (
+            (("--bump", "invalid"), "invalid version bump"),
+            (("--ref", "refs/heads/feature"), "only from main"),
+            (("--component-path", "missing"), "not a Go module"),
+        ):
+            with self.subTest(arguments=arguments):
+                result = self.run_plan_command("--skip-unchanged", *arguments)
+                self.assertEqual(result.returncode, 1)
+                self.assertIn(expected_error, result.stderr)
+                self.assertFalse((self.repository / "github-output").exists())
+                self.assertFalse((self.repository / "plan.json").exists())
 
     def test_breaking_notes_reject_v0_patch(self) -> None:
         self.git("tag", "sdkgo/v0.1.0")

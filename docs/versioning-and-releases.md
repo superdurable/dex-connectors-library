@@ -67,6 +67,13 @@ tag, calculates the requested semantic-version bump, and publishes path-scoped
 release notes. The first SDK release is `sdkgo/v0.1.0` and must use the default
 minor selection.
 
+If the SDK has no commits since its latest reachable SDK tag, the workflow
+succeeds without testing or publishing another version. Planning runs before
+the release checks and sets `release_required=false`; every subsequent release
+step requires `release_required=true`. The planner enables this behavior only
+with `--skip-unchanged` and `--bump`. Without that option, unchanged components
+remain an error, and invalid inputs or release conflicts still fail.
+
 The root `catalog.yaml` file is a sorted allowlist of connector directories.
 Each path starts below `connectors/` and may have any number of directory
 levels. The first directory under `connectors/` is the company. Its name is

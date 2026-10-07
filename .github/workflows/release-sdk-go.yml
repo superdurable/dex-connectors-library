@@ -29,11 +29,24 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
+      - name: Plan SDK release
+        id: plan
+        run: |
+          python3 script/release/component_release.py plan \
+            --component-path sdkgo \
+            --tag-prefix sdkgo/ \
+            --skip-unchanged \
+            --bump "${{ inputs.bump }}" \
+            --ref "${GITHUB_REF}" \
+            --json-output /tmp/connector-sdk-release-plan.json \
+            --github-output "${GITHUB_OUTPUT}"
       - uses: actions/setup-go@v6
+        if: steps.plan.outputs.release_required == 'true'
         with:
           go-version-file: sdkgo/go.mod
           cache-dependency-path: sdkgo/go.sum
       - name: Test standalone SDK module
+        if: steps.plan.outputs.release_required == 'true'
         working-directory: sdkgo
         env:
           GOWORK: "off"
@@ -41,6 +54,7 @@ jobs:
           go test -race ./...
           go vet ./...
       - name: Download the latest stable Dex CLI and the Temporal CLI
+        if: steps.plan.outputs.release_required == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -52,6 +66,7 @@ jobs:
           tar --extract --gzip --file temporal.tar.gz --directory temporal-cli
           echo "$PWD/temporal-cli" >> "$GITHUB_PATH"
       - name: Test fixture connector with real Dex
+        if: steps.plan.outputs.release_required == 'true'
         run: |
           ./dexcli dev -dex-port 18801 -web-port 18802 -open=false \
             -blob-store-dir /tmp/dex-connectors-sdk/blobs \
@@ -78,17 +93,8 @@ jobs:
           cd sdkgo
           DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:18801 GOWORK=off \
             go test -race -tags=integration ./integrationtest/... -count=1 -v
-      - name: Plan SDK release
-        id: plan
-        run: |
-          python3 script/release/component_release.py plan \
-            --component-path sdkgo \
-            --tag-prefix sdkgo/ \
-            --bump "${{ inputs.bump }}" \
-            --ref "${GITHUB_REF}" \
-            --json-output /tmp/connector-sdk-release-plan.json \
-            --github-output "${GITHUB_OUTPUT}"
       - name: Build path-scoped release notes
+        if: steps.plan.outputs.release_required == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -97,6 +103,7 @@ jobs:
             --repository "${GITHUB_REPOSITORY}" \
             --output /tmp/connector-sdk-release-notes.md
       - name: Create SDK release
+        if: steps.plan.outputs.release_required == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ steps.plan.outputs.tag }}
@@ -107,6 +114,7 @@ jobs:
             --title "Go SDK ${RELEASE_VERSION}" \
             --notes-file /tmp/connector-sdk-release-notes.md
       - name: Verify published module
+        if: steps.plan.outputs.release_required == 'true'
         env:
           MODULE_PATH: ${{ steps.plan.outputs.module_path }}
           RELEASE_VERSION: ${{ steps.plan.outputs.version }}
