@@ -133,7 +133,7 @@ func TestAWSProjectConfigurationSnapshotsAndConcurrentAdmission(t *testing.T) {
 	require.Error(t, err)
 	_, err = connectionStores[1].ReplaceCredential(ctx, key, 0, material)
 	require.True(t, errors.Is(err, projectconfig.ErrConflict))
-	for name, value := range map[string]string{"DEX_PROJECT_ID": scope.ProjectID, "DEX_PROJECT_SCOPE": scope.Kind, "DEX_PROJECT_SESSION_ID": "", "DEX_PROJECT_CONFIG_KEY": snapshot.Key, "DEX_PROJECT_CONFIG_VERSION": snapshot.Version, "DEX_PROJECT_CONFIG_DIGEST": snapshot.Digest, "DEX_PROJECT_STORAGE_BUCKET": bucket, "DEX_PROJECT_STORAGE_PREFIX": prefix, "DEX_PROJECT_STORAGE_KMS_KEY_ARN": kmsKey, "DEX_PROJECT_ALLOW_LOCAL_STORAGE": "", "DEX_PROJECT_STORAGE_ENDPOINT": ""} {
+	for name, value := range map[string]string{"DEX_PROJECT_ID": scope.ProjectID, "DEX_PROJECT_SCOPE": scope.Kind, "DEX_PROJECT_CONFIG_KEY": snapshot.Key, "DEX_PROJECT_CONFIG_VERSION": snapshot.Version, "DEX_PROJECT_CONFIG_DIGEST": snapshot.Digest, "DEX_PROJECT_STORAGE_BUCKET": bucket, "DEX_PROJECT_STORAGE_PREFIX": prefix, "DEX_PROJECT_STORAGE_KMS_KEY_ARN": kmsKey, "DEX_PROJECT_ALLOW_LOCAL_STORAGE": "", "DEX_PROJECT_STORAGE_ENDPOINT": ""} {
 		t.Setenv(name, value)
 	}
 	loaded, err := projectconfig.LoadFromEnvironment(ctx)

@@ -61,24 +61,18 @@ type ObjectStore interface {
 type Scope struct {
 	// ProjectID is a trusted project identity, never an arbitrary browser path.
 	ProjectID string `json:"projectId"`
-	// Kind is live or preview.
+	// Kind is live or preview. A project has one Live and one Preview configuration.
 	Kind string `json:"kind"`
-	// SessionID is required only for preview.
-	SessionID string `json:"sessionId,omitempty"`
 }
 
 var scopeIdentity = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_-]{0,127}$`)
 
 // Prefix validates the fixed scope and returns its canonical relative storage prefix.
 func (scope Scope) Prefix() (string, error) {
-	if !scopeIdentity.MatchString(scope.ProjectID) || (scope.Kind != "live" && scope.Kind != "preview") || (scope.Kind == "live" && scope.SessionID != "") || (scope.Kind == "preview" && !scopeIdentity.MatchString(scope.SessionID)) {
+	if !scopeIdentity.MatchString(scope.ProjectID) || (scope.Kind != "live" && scope.Kind != "preview") {
 		return "", errors.New("invalid project configuration scope")
 	}
-	prefix := "projects/" + scope.ProjectID + "/" + scope.Kind
-	if scope.Kind == "preview" {
-		prefix += "/" + scope.SessionID
-	}
-	return prefix, nil
+	return "projects/" + scope.ProjectID + "/" + scope.Kind, nil
 }
 
 func validateObjectKey(key string) error {
