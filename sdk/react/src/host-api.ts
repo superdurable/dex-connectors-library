@@ -32,6 +32,37 @@ export interface ConnectorConnectionView {
    * ConnectorStudioClient.ready reports an empty object for them.
    */
   configuration?: Record<string, unknown>;
+  /**
+   * storedCredentialFields names the credential fields that hold a saved
+   * value, such as ["api_key"], so a setup surface can offer to keep them.
+   * It never carries a value. Hosts that predate the field omit it;
+   * ConnectorStudioClient.ready reports an empty list for them.
+   */
+  storedCredentialFields?: string[];
+}
+
+/**
+ * connectorConnectionWriteCapability lets a connection setup surface own the
+ * whole connection: it collects new credential values the user types and saves
+ * the connection with connection.save. The host grants it only to a release
+ * whose setup declares it, and never sends a stored credential value back.
+ */
+export const connectorConnectionWriteCapability = "connection.write" as const;
+
+/**
+ * ConnectorStudioConnectionSave is the input of the connection.save command:
+ * the connection's complete non-secret configuration and the credential fields
+ * to store, in one host write.
+ */
+export interface ConnectorStudioConnectionSave {
+  /** configuration is the complete non-secret configuration, keyed by field name; fields it omits are cleared. */
+  configuration: Record<string, unknown>;
+  /** credentials holds newly typed credential values, keyed by credential field name. */
+  credentials: Record<string, string>;
+  /** keepCredentialFields names stored credential fields to keep unchanged; each must be in storedCredentialFields. */
+  keepCredentialFields: string[];
+  /** authMethodId selects the manifest auth method of a connector that declares several; omit it otherwise. */
+  authMethodId?: string;
 }
 
 /**
@@ -112,7 +143,8 @@ export type ConnectorStudioCommandType =
   | "oauth.reconnect"
   | "oauth.revoke"
   | "provider.command.execute"
-  | "use.configuration.save";
+  | "use.configuration.save"
+  | "connection.save";
 
 export interface ConnectorStudioCommand {
   type: "connector.command";
@@ -155,6 +187,7 @@ const commandTypes = new Set<ConnectorStudioCommandType>([
   "oauth.revoke",
   "provider.command.execute",
   "use.configuration.save",
+  "connection.save",
 ]);
 
 export function isConnectorStudioMessage(value: unknown): value is ConnectorStudioMessage {
@@ -199,7 +232,9 @@ export function isConnectorStudioMessage(value: unknown): value is ConnectorStud
 function isConnectorConnectionView(value: unknown): value is ConnectorConnectionView {
   return isRecord(value)
     && (value.authMethodIds === undefined || (Array.isArray(value.authMethodIds) && value.authMethodIds.every(nonEmptyString)))
-    && (value.configuration === undefined || isRecord(value.configuration));
+    && (value.configuration === undefined || isRecord(value.configuration))
+    && (value.storedCredentialFields === undefined
+      || (Array.isArray(value.storedCredentialFields) && value.storedCredentialFields.every(nonEmptyString)));
 }
 
 function isConnectorStudioTarget(value: unknown): value is ConnectorStudioTarget {

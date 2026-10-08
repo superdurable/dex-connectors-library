@@ -5,9 +5,15 @@ import { StrictMode, useCallback, useEffect, type ReactElement } from "react";
 import { createRoot } from "react-dom/client";
 
 import { observeConnectorStudioFrameAutoHeight } from "./frame-auto-height.js";
+import { connectorConnectionWriteCapability } from "./host-api.js";
 import { ModelPicker, type ModelListing } from "./model-picker.js";
 import { StudioHeader, StudioNotice, StudioSurface } from "./studio-components.js";
-import { useConnectorStudioClient, type ConnectorStudioClient, type ConnectorStudioConnection } from "./studio-client.js";
+import {
+  useConnectorStudioClient,
+  type ConnectorStudioClient,
+  type ConnectorStudioClientReady,
+  type ConnectorStudioConnection,
+} from "./studio-client.js";
 import { applyConnectorStudioTheme } from "./studio-theme.js";
 
 /** modelPickerUnitID is the Studio unit ID every LLM connector declares for its model picker. */
@@ -49,6 +55,22 @@ export interface ModelPickerBundleConfig {
    * the options keep their generic labels.
    */
   defaultModelDescription?: string;
+  /**
+   * renderConnectionSetup renders the whole connection setup surface: the
+   * provider, credentials, settings, model, and one Save through
+   * saveConnectorConnection. ModelPickerStudioApp calls it for the connection
+   * target only when the host grants connection.write; older hosts keep their
+   * own connection form and get the status card instead.
+   */
+  renderConnectionSetup?(props: ConnectionSetupProps): ReactElement;
+}
+
+/** ConnectionSetupProps is what a connector's connection setup surface receives. */
+export interface ConnectionSetupProps {
+  /** client sends commands for this session; its ready message is ready. */
+  client: ConnectorStudioClient;
+  /** ready is the host's latest ready message for the connection setup target. */
+  ready: ConnectorStudioClientReady;
 }
 
 /**
@@ -60,6 +82,7 @@ export interface ModelPickerBundleConfig {
  */
 export function ModelPickerStudioApp({
   connectorId, providerName, iconUrl, loadModels, validateManualModel, manualModelPlaceholder, defaultModelDescription,
+  renderConnectionSetup,
 }: ModelPickerBundleConfig): ReactElement {
   const client = useConnectorStudioClient(connectorId);
   const {ready} = client;
@@ -77,6 +100,10 @@ export function ModelPickerStudioApp({
 
   if (!ready) return <p className="studio-muted" role="status">Waiting for Dex Web…</p>;
   const {target} = ready;
+  if (target.kind === "connection" && target.unitId === undefined
+    && renderConnectionSetup !== undefined && ready.capabilities.includes(connectorConnectionWriteCapability)) {
+    return renderConnectionSetup({client, ready});
+  }
   if (target.kind === "connection" && target.unitId === undefined) {
     return <StudioSurface label={`${providerName} connection`}>
       <StudioHeader description="Enter the API key in the form above. Each Flow Step chooses its model below." iconUrl={iconUrl} title={providerName}/>

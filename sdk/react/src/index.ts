@@ -3,7 +3,7 @@
 
 export { ConnectionStatus } from "./connection-status.js";
 export type { ConnectionStatusProps, ConnectionState } from "./connection-status.js";
-export { connectorStudioHostAPIVersion, isConnectorStudioMessage } from "./host-api.js";
+export { connectorConnectionWriteCapability, connectorStudioHostAPIVersion, isConnectorStudioMessage } from "./host-api.js";
 export { observeConnectorStudioFrameAutoHeight } from "./frame-auto-height.js";
 export type {
   ConnectorConnectionState,
@@ -12,6 +12,7 @@ export type {
   ConnectorStudioCommandResult,
   ConnectorStudioCommandType,
   ConnectorStudioConfigurationUnitTarget,
+  ConnectorStudioConnectionSave,
   ConnectorStudioConnectionTarget,
   ConnectorStudioFrameResize,
   ConnectorStudioHostReady,
@@ -20,7 +21,13 @@ export type {
   ConnectorStudioTarget,
   ConnectorStudioTriggerScope,
 } from "./host-api.js";
-export { ConnectorStudioCommandError, collectProviderPages, useConnectorStudioClient } from "./studio-client.js";
+export {
+  ConnectorStudioCommandError,
+  collectProviderPages,
+  saveConnectorConnection,
+  useConnectorStudioClient,
+  withDraftCredentials,
+} from "./studio-client.js";
 export type { ConnectorStudioClient, ConnectorStudioClientReady, ConnectorStudioConnection, ProviderPage } from "./studio-client.js";
 export {
   applyConnectorStudioTheme,
@@ -40,7 +47,7 @@ export type { ModelListing, ModelListingNotice, ModelOption, ModelPickerProps } 
 export { validateModelIDForRule } from "./model-id-rule.js";
 export type { ModelIDRule, ModelIDValidation } from "./model-id-rule.js";
 export { ModelPickerStudioApp, modelPickerUnitID, mountModelPickerBundle } from "./model-picker-bundle.js";
-export type { ModelPickerBundleConfig } from "./model-picker-bundle.js";
+export type { ConnectionSetupProps, ModelPickerBundleConfig } from "./model-picker-bundle.js";
 export {
   executeFirstAcceptedProviderCommand,
   hasAnyModelIDFragment,

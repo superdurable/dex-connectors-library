@@ -4,9 +4,11 @@
 import { useEffect, useMemo, useState } from "react";
 
 import {
+  connectorConnectionWriteCapability,
   connectorStudioHostAPIVersion,
   isConnectorStudioMessage,
   type ConnectorConnectionView,
+  type ConnectorStudioConnectionSave,
   type ConnectorStudioCommand,
   type ConnectorStudioCommandResult,
   type ConnectorStudioHostReady,
@@ -25,6 +27,8 @@ export interface ConnectorStudioConnection extends ConnectorConnectionView {
   authMethodIds: string[];
   /** configuration is the connection's stored non-secret configuration, or {} when the host omits it. */
   configuration: Record<string, unknown>;
+  /** storedCredentialFields names the credential fields with a saved value, or is [] when the host omits it. */
+  storedCredentialFields: string[];
   /**
    * isConfigurationReported reports whether the host sent configuration. It is
    * false on hosts that predate it, where configuration is empty even when the
@@ -65,8 +69,16 @@ export interface ConnectorStudioClient {
    * ConnectorStudioCommandError when the host lacks the capability or rejects the command.
    */
   send(command: ConnectorStudioCommand["command"], capability: string, input?: Record<string, unknown>): Promise<Record<string, unknown>>;
-  /** executeProviderCommand runs one manifest-declared provider command through the host broker. */
-  executeProviderCommand(commandId: string, capability: string, parameters?: Record<string, string>): Promise<Record<string, unknown>>;
+  /**
+   * executeProviderCommand runs one manifest-declared provider command through
+   * the host broker. The host injects the connection's stored credential. A
+   * setup surface granted connection.write may pass draftCredentials, values
+   * the user typed but has not saved yet; the host sends the command's own
+   * credential field from them instead, so a model list can load before Save.
+   */
+  executeProviderCommand(
+    commandId: string, capability: string, parameters?: Record<string, string>, draftCredentials?: Record<string, string>,
+  ): Promise<Record<string, unknown>>;
 }
 
 interface PendingCommand {
@@ -122,8 +134,34 @@ export function useConnectorStudioClient(connectorId: string): ConnectorStudioCl
     ready,
     busy: pendingCount > 0,
     send,
+    executeProviderCommand: (commandId, capability, parameters = {}, draftCredentials) =>
+      send("provider.command.execute", capability, {
+        commandId, parameters, ...(draftCredentials === undefined ? {} : {credentials: draftCredentials}),
+      }),
+  };
+}
+
+/**
+ * saveConnectorConnection stores the whole connection in one host write: its
+ * configuration and new or kept credentials. It requires connection.write and
+ * rejects with ConnectorStudioCommandError carrying the host's message when the
+ * write fails, for example when a required field is missing.
+ */
+export function saveConnectorConnection(client: ConnectorStudioClient, save: ConnectorStudioConnectionSave): Promise<Record<string, unknown>> {
+  return client.send("connection.save", connectorConnectionWriteCapability, {...save});
+}
+
+/**
+ * withDraftCredentials returns client with draftCredentials attached to every
+ * provider command, so existing model-list loaders run against a key the user
+ * typed but has not saved. An empty record leaves the stored credential in use.
+ */
+export function withDraftCredentials(client: ConnectorStudioClient, draftCredentials: Record<string, string>): ConnectorStudioClient {
+  if (Object.keys(draftCredentials).length === 0) return client;
+  return {
+    ...client,
     executeProviderCommand: (commandId, capability, parameters = {}) =>
-      send("provider.command.execute", capability, {commandId, parameters}),
+      client.executeProviderCommand(commandId, capability, parameters, draftCredentials),
   };
 }
 
@@ -135,6 +173,7 @@ function fillOmittedConnectionContext(ready: ConnectorStudioHostReady): Connecto
       ...connection,
       authMethodIds: connection.authMethodIds ?? [],
       configuration: connection.configuration ?? {},
+      storedCredentialFields: connection.storedCredentialFields ?? [],
       isConfigurationReported: connection.configuration !== undefined,
     },
   };

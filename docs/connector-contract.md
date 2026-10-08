@@ -382,8 +382,21 @@ a bounded frame height, the host theme (`light` or `dark`), `--studio-*`
 theme tokens whose names and values the host and `sdk/react` both validate,
 and the host's Studio stylesheet. Connector bundles report content changes with
 `connector.frame.resize` so the host can fit the opaque-origin iframe without
-reading its DOM. OAuth tokens, API keys, client secrets, and refresh tokens
-never enter iframe props, messages, markup, logs, or artifacts.
+reading its DOM. Stored OAuth tokens, API keys, client secrets, and refresh
+tokens never enter iframe props, messages, markup, logs, or artifacts.
+
+A release whose setup declares the `connection.write` capability renders the
+whole connection form in its bundle. The host grants it, renders the bundle in
+place of the manifest form, and accepts `connection.save` with the complete
+configuration, newly typed credentials, and stored fields to keep. The ready
+message lists the names of stored credential fields, never their values. Such
+a bundle may also send typed but unsaved credentials with
+`provider.command.execute`, so a declared command such as a model list runs
+before the first save; the host uses them for that call only. A typed
+credential therefore passes through that bundle, which is release code the host
+verified by digest. The bundle sends it only in those two commands and keeps it
+out of markup, logs, and storage. The host serves such a bundle without remote
+images, in addition to blocking every network connection.
 
 Dex Web owns how bundles look. A bundle renders only the `studio-*` classes in
 `sdk/react`'s `connectorStudioClassNames`, and the ready message's optional

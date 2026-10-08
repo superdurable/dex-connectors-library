@@ -42,10 +42,16 @@ it without an alias:
 
 ## Connection
 
-An application declares a named `llm` connection in `dex-app.yaml`. Dex Web
-**Connections** renders the manifest form, saves the settings and the key in
-the project configuration, and the application opens the typed Connection
-once at startup, as [`examples/summarize-text/main.go`](examples/summarize-text/main.go)
+An application declares a named `llm` connection in `dex-app.yaml`. On a Dex
+Web that grants the Studio `connection.write` capability, the connector's own
+setup page configures it in one pass: choose the provider from a list, paste
+its API key, set the region or Claude workspace when the provider has them,
+pick a model from the provider's live list, which loads with the key you just
+typed, and Save once. A saved key stays when you leave the key blank, and
+switching provider asks for that provider's key. An older Dex Web renders the
+manifest form instead and offers the model picker after the first save. Either
+way, Dex Web saves the settings and the key in the project configuration, and
+the application opens the typed Connection once at startup, as [`examples/summarize-text/main.go`](examples/summarize-text/main.go)
 does:
 
 ```go
