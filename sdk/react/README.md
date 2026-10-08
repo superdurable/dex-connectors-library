@@ -33,7 +33,37 @@ without an inner scrollbar.
 Every message carries the connector ID, protocol version, and session nonce.
 Command messages additionally carry request identity. Hosts also validate the
 iframe `Window` source and declared backend capability before executing a
-command. Messages never carry provider credentials.
+command. Messages never carry stored provider credentials.
+
+### Connection setup surface
+
+A release whose `studio.setup.backendCapabilities` declares
+`connection.write` (exported as `connectorConnectionWriteCapability`) owns the
+whole connection form. A host that supports it renders the `connection`
+target without a `unitId` in place of its own form, and grants
+`connection.write` in the ready message. The bundle then collects the
+configuration and any credential the user types, and saves both with one
+`connection.save` command through `saveConnectorConnection(client, save)`.
+`save.configuration` is the complete non-secret configuration; a field it
+omits is cleared. `save.credentials` holds newly typed values, and
+`save.keepCredentialFields` names stored fields to keep. The ready message's
+`connection.storedCredentialFields` lists which fields hold a saved value,
+never the value itself, so the bundle can offer "leave blank to keep".
+
+Before saving, the bundle can run a declared provider command with the typed
+value: `withDraftCredentials(client, {api_key: typed})` returns a client whose
+`executeProviderCommand` sends the value as `credentials`. The host forwards it
+to its broker, which uses it in place of the stored value for that one call
+and stores nothing. Existing model-list loaders therefore list models before
+the first save. Hosts refuse `credentials` from a bundle without
+`connection.write`.
+
+A setup bundle receives typed credentials, so it must send them only in these
+two commands, keep them out of logs, markup, and storage, and clear a typed
+value when the user switches to another provider. Dex Web serves a
+`connection.write` bundle without remote images. `ModelPickerStudioApp` takes
+the surface through `renderConnectionSetup`; on a host that does not grant
+`connection.write` it keeps the status card and the host form.
 
 ## Studio client and styling
 
@@ -45,7 +75,9 @@ and session nonce, and a rejected command raises
 connection state it carries `authMethodIds`, which holds the auth method the
 connection selected, and `configuration`, the connection's stored non-secret
 configuration. Hosts that predate them omit both. The client then reports `[]`
-and `{}`, and `isConfigurationReported` is `false`.
+and `{}`, and `isConfigurationReported` is `false`. `storedCredentialFields`
+names the credential fields with a saved value, and is `[]` from hosts that
+predate it.
 `collectProviderPages` follows provider cursors with a page cap, stops on a
 repeated cursor, and reports `isTruncated`.
 

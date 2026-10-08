@@ -63,7 +63,7 @@ spec:
     setup:
       entrypoint: index.html
       hostApiRange: ">=0.2.0 <0.3.0"
-      backendCapabilities: [use.configuration.write, llm.models-list]
+      backendCapabilities: [use.configuration.write, llm.models-list, connection.write]
       mockScenarios: [not-configured, connected]
       icon: icon.svg
     commands:

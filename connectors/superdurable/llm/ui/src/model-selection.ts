@@ -103,9 +103,18 @@ export async function loadLLMModels(
     const message = connection.isConfigurationReported ? unsavedProviderMessage : unreportedConfigurationMessage;
     return {models: [], notices: [{tone: "attention", message}]};
   }
+  return loadProviderModels(client, provider, readConfiguredRegion(connection.configuration));
+}
+
+/**
+ * loadProviderModels lists provider's live models in region. The connection
+ * setup calls it with a client that carries the key the user typed, before the
+ * connection is saved. A failed list rejects with a message naming the provider.
+ */
+export async function loadProviderModels(client: ConnectorStudioClient, provider: LLMProvider, region: LLMRegion): Promise<ModelListing> {
   const source = llmModelSources[provider];
   try {
-    return await source.load(client, readConfiguredRegion(connection.configuration));
+    return await source.load(client, region);
   } catch (error) {
     const reason = error instanceof Error ? error.message : "Unknown error";
     throw new Error(`The ${source.label} model list failed (${reason}). Check the connection's api_key and region.`);

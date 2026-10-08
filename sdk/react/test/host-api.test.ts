@@ -85,6 +85,18 @@ describe("Connector Studio Host API", () => {
     for (const configuration of [["model"], "model", null]) {
       expect(isConnectorStudioMessage({...ready, connection: {...connection, configuration}}), JSON.stringify(configuration)).toBe(false);
     }
+    expect(isConnectorStudioMessage({...ready, connection: {...connection, storedCredentialFields: ["api_key"]}})).toBe(true);
+    for (const storedCredentialFields of ["api_key", [""], [7], null]) {
+      expect(isConnectorStudioMessage({...ready, connection: {...connection, storedCredentialFields}}), JSON.stringify(storedCredentialFields)).toBe(false);
+    }
+  });
+
+  it("accepts the connection.save command", () => {
+    expect(isConnectorStudioMessage({
+      type: "connector.command", protocolVersion: connectorStudioHostAPIVersion, sessionNonce: "nonce", connectorId: "llm",
+      requestId: "request", command: "connection.save",
+      input: {configuration: {provider: "anthropic"}, credentials: {api_key: "typed"}, keepCredentialFields: []},
+    })).toBe(true);
   });
 
   it("accepts a connection target for one configuration field's unit, whole or not at all", () => {

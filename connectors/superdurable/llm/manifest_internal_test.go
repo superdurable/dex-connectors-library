@@ -213,7 +213,7 @@ func TestAuthorizationHoldsOneAPIKeyWithAGuideForEveryProvider(t *testing.T) {
 // TestEachListCommandSendsTheKeyOnlyToItsProvidersAPIHost binds every command to a host the provider also generates on.
 func TestEachListCommandSendsTheKeyOnlyToItsProvidersAPIHost(t *testing.T) {
 	studio := readManifest(t).Spec.Studio
-	require.Equal(t, []string{"use.configuration.write", "llm.models-list"}, studio.Setup.BackendCapabilities)
+	require.Equal(t, []string{"use.configuration.write", "llm.models-list", "connection.write"}, studio.Setup.BackendCapabilities)
 	require.Len(t, studio.Units, 1)
 	require.Equal(t, UIUnitModelPicker, studio.Units[0].ID)
 	require.Equal(t, []string{"llm.models-list"}, studio.Units[0].BackendCapabilities)

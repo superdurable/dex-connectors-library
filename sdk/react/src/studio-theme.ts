@@ -205,7 +205,7 @@ body { font: 13px/1.45 var(--studio-font-sans); color: var(--studio-ink-max); }
 .studio-header p, .studio-muted { margin: 2px 0 0; color: var(--studio-ink-mid); }
 .studio-field, .studio-field > label { display: grid; gap: 5px; font-size: 12px; font-weight: 650; color: var(--studio-ink-strong); }
 .studio-field small { font-weight: 400; color: var(--studio-ink-mid); }
-.studio-surface input[type='text'], .studio-surface input[type='search'], .studio-surface input:not([type]), .studio-surface select {
+.studio-surface input[type='text'], .studio-surface input[type='search'], .studio-surface input[type='password'], .studio-surface input:not([type]), .studio-surface select {
   font: inherit; font-weight: 400; padding: 8px 10px; border: 1px solid var(--studio-line-mid); border-radius: 7px;
   background: var(--studio-surface-page); color: var(--studio-ink-max);
 }

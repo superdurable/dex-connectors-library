@@ -9,8 +9,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   ModelPickerStudioApp,
   connectorStudioHostAPIVersion,
+  saveConnectorConnection,
   savedModel,
   useConnectorStudioClient,
+  withDraftCredentials,
   type ConnectorConnectionView,
   type ConnectorStudioCommand,
   type ConnectorStudioConfigurationUnitTarget,
@@ -133,8 +135,14 @@ describe("useConnectorStudioClient connection context", () => {
   it("reports an old host's omitted auth methods and configuration as empty", async () => {
     const container = await renderInDocument(<ConnectionProbe/>, () => sendFromHost(hostReady(oldHostConnection, {kind: "connection"})));
     expect(JSON.parse(container.textContent ?? "")).toEqual({
-      ...oldHostConnection, authMethodIds: [], configuration: {}, isConfigurationReported: false,
+      ...oldHostConnection, authMethodIds: [], configuration: {}, storedCredentialFields: [], isConfigurationReported: false,
     });
+  });
+
+  it("passes the host's stored credential field names through", async () => {
+    const container = await renderInDocument(<ConnectionProbe/>, () => sendFromHost(hostReady(
+      {...newHostConnection(["anthropic"], {provider: "anthropic"}), storedCredentialFields: ["api_key"]}, {kind: "connection"})));
+    expect(JSON.parse(container.textContent ?? "").storedCredentialFields).toEqual(["api_key"]);
   });
 
   it("passes the host's auth methods and configuration through", async () => {
@@ -142,7 +150,7 @@ describe("useConnectorStudioClient connection context", () => {
       const container = await renderInDocument(<ConnectionProbe/>,
         () => sendFromHost(hostReady(newHostConnection([...authMethodIds], {...configuration}), {kind: "connection"})));
       expect(JSON.parse(container.textContent ?? "")).toEqual({
-        ...oldHostConnection, authMethodIds, configuration, isConfigurationReported: true,
+        ...oldHostConnection, authMethodIds, configuration, storedCredentialFields: [], isConfigurationReported: true,
       });
     }
   });
@@ -330,4 +338,52 @@ describe("README connection context example", () => {
       expect(defaultModelOption(container).label).toBe(testCase.defaultLabel);
     });
   }
+});
+
+describe("connection setup surface", () => {
+  const setupReady = (capabilities: string[]): ConnectorStudioHostReady => ({
+    ...hostReady(newHostConnection([], {}), {kind: "connection"}), capabilities,
+  });
+  const renderSetup = (props: {client: unknown; ready: ConnectorStudioHostReady}) => <output>setup for {props.ready.connectorId}</output>;
+
+  it("renders the connector's setup only when the host grants connection.write", async () => {
+    const granted = await renderBundle({renderConnectionSetup: renderSetup}, setupReady(["llm.models-list", "connection.write"]));
+    expect(granted.textContent).toBe("setup for llm");
+    const olderHost = await renderBundle({renderConnectionSetup: renderSetup}, setupReady(["llm.models-list"]));
+    expect(olderHost.textContent).toContain("Enter the API key in the form above.");
+  });
+
+  it("sends typed credentials with provider commands and saves the whole connection in one command", async () => {
+    const commands = answerHostCommands(() => ({data: []}));
+    let probeClient: ReturnType<typeof useConnectorStudioClient> | undefined;
+    function ClientProbe(): ReactElement {
+      probeClient = useConnectorStudioClient("llm");
+      return <output>{probeClient.ready ? "ready" : "waiting"}</output>;
+    }
+    await renderInDocument(<ClientProbe/>, () => sendFromHost(setupReady(["llm.models-list", "connection.write"])));
+    await act(async () => {
+      await withDraftCredentials(probeClient!, {api_key: "typed"}).executeProviderCommand("listAnthropicModels", "llm.models-list");
+      await saveConnectorConnection(probeClient!, {
+        configuration: {provider: "anthropic", model: "claude-opus-5-5"}, credentials: {api_key: "typed"}, keepCredentialFields: [],
+      });
+    });
+    expect(commands.map((command) => [command.command, command.input])).toEqual([
+      ["provider.command.execute", {commandId: "listAnthropicModels", parameters: {}, credentials: {api_key: "typed"}}],
+      ["connection.save", {configuration: {provider: "anthropic", model: "claude-opus-5-5"}, credentials: {api_key: "typed"}, keepCredentialFields: []}],
+    ]);
+  });
+
+  it("keeps the stored credential when no key was typed", async () => {
+    const commands = answerHostCommands(() => ({data: []}));
+    let probeClient: ReturnType<typeof useConnectorStudioClient> | undefined;
+    function ClientProbe(): ReactElement {
+      probeClient = useConnectorStudioClient("llm");
+      return <output>{probeClient.ready ? "ready" : "waiting"}</output>;
+    }
+    await renderInDocument(<ClientProbe/>, () => sendFromHost(setupReady(["llm.models-list", "connection.write"])));
+    await act(async () => {
+      await withDraftCredentials(probeClient!, {}).executeProviderCommand("listAnthropicModels", "llm.models-list");
+    });
+    expect(commands[0]?.input).toEqual({commandId: "listAnthropicModels", parameters: {}});
+  });
 });
