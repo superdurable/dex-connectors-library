@@ -222,6 +222,10 @@ type Operation struct {
 	Progress      []string          `yaml:"progress,omitempty" json:"progress,omitempty"`
 	Authorization string            `yaml:"authorization,omitempty" json:"authorization,omitempty"`
 	Execution     Execution         `yaml:"execution" json:"execution"`
+	// Pagination names a query's listing cursor fields; generated mocks follow it across pages.
+	Pagination *Pagination `yaml:"pagination,omitempty" json:"pagination,omitempty"`
+	// Mocks are the maintained outcomes that the generated mock package offers to application tests.
+	Mocks []OperationMock `yaml:"mocks,omitempty" json:"mocks,omitempty"`
 }
 
 type Trigger struct {
@@ -602,6 +606,7 @@ func (manifest Manifest) Validate() error {
 		if operation.Execution.Retry.MaximumAttempts < 1 || operation.Execution.Retry.BackoffCoefficient < 1 {
 			problems = append(problems, operation.Name+": retry attempts and backoff must be positive")
 		}
+		problems = append(problems, validateOperationMocks(operation)...)
 	}
 	if len(problems) > 0 {
 		sort.Strings(problems)
