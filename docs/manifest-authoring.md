@@ -451,7 +451,8 @@ cursor and the output's next cursor. Its pages chain through that cursor: each
 page but the last names a distinct next cursor, and the last ends the listing
 with an empty or zero one. The generated mock answers an input without a
 cursor with the first page and an input whose cursor equals page `k`'s next
-cursor with page `k+1`:
+cursor with page `k+1`. When the pages name one-based page numbers, an input
+page `n` gets page `n`, so an explicit page `1` also gets the first page:
 
 ```yaml
       pagination: {inputField: page, nextField: nextPage}
