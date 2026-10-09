@@ -5,7 +5,7 @@ metadata:
   displayName: LLM
   description: "The text generation connector for applications: one generateText Step runs a model of the provider that the connection names, OpenAI, Claude, Gemini, Qwen, DeepSeek, Meta, Mistral, Kimi, or xAI Grok, with that provider's API key and its own model IDs."
   company: Super Durable
-  version: v0.21.0
+  version: v0.22.0
 spec:
   provider: llm
   codegen:
