@@ -51,7 +51,7 @@ settings documented by the [repository changes setup](../repository-changes/READ
 Use a distinct local Worker address when both examples run.
 
 The logical connection is `github-repository-releases`. Configure the released
-GitHub v0.21.0 module through the host Configuration UI and complete OAuth with
+GitHub v0.22.0 module through the host Configuration UI and complete OAuth with
 exactly the documented profile/email scopes; no additional repository scope is
 requested. The existing authorization guide, provider defaults and shared
 connection configuration apply unchanged. `listReleases` adds no operation
@@ -59,7 +59,7 @@ settings or new form fields. Credentials remain in the private configuration
 store and are resolved by the official adapter on each actual call.
 
 For a strict definition, copy this Flow into a clean consumer module requiring
-`github.com/superdurable/dex-connectors-library/connectors/github@v0.21.0`, run
+`github.com/superdurable/dex-connectors-library/connectors/github@v0.22.0`, run
 `go mod tidy`, then:
 
 ```sh

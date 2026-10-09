@@ -33,7 +33,7 @@ invokes `WaitFor` on the start Step and an execute-only Step rejects it.
 
 ## Release baseline
 
-- GitHub Connector `v0.21.0`
+- GitHub Connector `v0.22.0`
 - dexcli `v0.13.8` or a later stable release
 
 ## 1. Prepare a clean local test project
@@ -48,12 +48,12 @@ cd github-repository-changes-e2e
 mkdir -p flow build
 
 curl -fsSL \
-  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/github/v0.21.0/connectors/github/examples/repository-changes/flow/workflow.go \
+  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/github/v0.22.0/connectors/github/examples/repository-changes/flow/workflow.go \
   -o flow/workflow.go
 
 go mod init example.com/github-repository-changes-e2e
 go mod edit -go=1.24.0
-go get github.com/superdurable/dex-connectors-library/connectors/github@v0.21.0
+go get github.com/superdurable/dex-connectors-library/connectors/github@v0.22.0
 go mod tidy
 ```
 
@@ -117,7 +117,7 @@ connection.
 export DEX_FLOW_SERVICE_ADDRESS="127.0.0.1:8801"
 
 GOWORK=off go run \
-  github.com/superdurable/dex-connectors-library/connectors/github/examples/repository-changes@v0.21.0
+  github.com/superdurable/dex-connectors-library/connectors/github/examples/repository-changes@v0.22.0
 ```
 
 The Worker listens on `127.0.0.1:8816` by default. Set
@@ -165,8 +165,8 @@ application test does: the paged defaults complete a report whose search and
 commit pages are followed by more pages, and a scripted `providerRejected`
 search fails the Flow before the commit read.
 
-Before `v0.21.0` is published, build a local release artifact with
+Before `v0.22.0` is published, build a local release artifact with
 `go run ./cmd/connectorctl release-artifact` from the repository root and pass
 its directory to `dexcli dev --connector-release-override github=DIRECTORY`.
-The test project must still resolve `connectors/github@v0.21.0` without a
+The test project must still resolve `connectors/github@v0.22.0` without a
 `replace`, as the compatibility gate does with a local module proxy.
