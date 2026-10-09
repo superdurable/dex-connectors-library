@@ -54,6 +54,13 @@ type Failure struct {
 	Message string `json:"message"`
 }
 
+// Validate returns an error when the failure has an unknown kind or lacks its
+// provider, operation, or message. RunQuery and RunMutation select the defect
+// branch for an attempt whose failure does not validate.
+func (failure Failure) Validate() error {
+	return failure.validate()
+}
+
 func (failure Failure) validate() error {
 	switch failure.Kind {
 	case FailureValidation, FailureAuthentication, FailureAuthorization, FailureNotFound,

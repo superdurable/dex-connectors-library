@@ -632,6 +632,76 @@ The caller's test file carries `//go:build integration`, as
 [`integrationtest/llm_scenarios_integration_test.go`](integrationtest/llm_scenarios_integration_test.go)
 does.
 
+## Connector mocks
+
+`connectormock` scripts connector operations for application tests that run
+Flows on a real Dex Worker without calling a provider. `Query[IN, OUT]` and
+`Mutation[IN, OUT]` implement `sdkgo.Query` and `sdkgo.Mutation` with the
+operation's real definition, so the SDK validates each scripted answer as it
+validates a provider connector: an undeclared branch, an invalid failure, or
+an uncertain case on a Query still selects `defect`. A connector whose manifest
+declares mocks also generates a mock package, such as `llm/llmmock`, that
+builds these mocks for every operation; applications normally use that package.
+
+A generic Step can take a mock as its operation, as
+[`integrationtest/connector_mock_integration_test.go`](integrationtest/connector_mock_integration_test.go)
+does:
+
+```go
+checkStock := connectormock.NewQuery[stockRequest, stockLevel](t, checkStockDefinition)
+checkStock.Respond(
+	connectormock.Retry[stockLevel](sdkgo.Failure{Kind: sdkgo.FailureAvailability, Message: "warehouse busy"}, 0),
+	connectormock.Branch(mockedInventoryFound, stockLevel{SKU: "sku-1", Quantity: 7}, nil),
+)
+flow := mockedStockFlow{checkStock: checkStock}
+```
+
+Scripting:
+
+- `Respond(cases...)` queues cases that answer the next calls in order.
+- `When(func(IN) bool, case)` answers every matching input and is never
+  consumed. Rules are checked before the `Respond` queue.
+- `ForFlow(idOrPrefix)` returns a script for the Flows whose ID starts with the
+  value. The longest matching script answers first; a call it cannot answer
+  falls through to the next matching script and then to the mock's own.
+- `Default(cases...)` answers calls that no `Respond` or `When` case answers,
+  in order, repeating the last. `Strict()` ignores every `Default`.
+- A call that nothing answers fails the test with `t.Errorf` and selects
+  `defect`. A case that cannot be valid, such as an undeclared branch, fails the
+  test when it is scripted and selects `defect` when it answers. A mock stops
+  reporting once its test has finished, because a Worker can still call it
+  during cleanup.
+
+Cases:
+
+- `Branch(id, value, failure)` selects a declared branch.
+- `Retry[OUT](failure, after)` asks Dex to retry the Step, after the delay when
+  it is positive. The retried attempt takes the next case.
+- `Uncertain(value, failure)` selects the standard `uncertain` branch of a
+  Mutation that declares it.
+- `Paged(branch, page func(IN) int, pages...)` answers page `n` of a listing
+  with `pages[n-1]`; a page outside the listing fails the test and selects
+  `defect`. `CursorPageNumber(inputField, nextField, pages)` builds the page
+  function from the listing's own JSON cursor fields, for numbered pages and
+  page tokens alike.
+
+A failure with an empty `Provider` or `Operation` is completed with the
+operation's connector and operation IDs. A Mutation answers a repeated
+idempotency key, which is the Call ID and therefore stable across the retries
+of one Step execution, with its first terminal outcome without consuming a
+case. `Calls()` returns each call's Flow ID, Call ID, idempotency key,
+connection, input, and branch. `connectormock.RecordedCalls()` returns every
+call that any mock in the process answered, without inputs and with stable JSON
+field names, so a test harness can check that every wired branch was
+exercised.
+
+`DecodeOutput[OUT]` strictly decodes a JSON fixture: unknown fields and
+trailing data fail, and an output type with a `Validate() error` method must
+pass it. Generated mock packages decode their manifest fixtures with it.
+
+Mocks never write progress or text Streams and never resolve credentials. The
+package imports `testing`; keep it in test code.
+
 ## Trigger bindings
 
 Project configuration stores named connections and named Trigger bindings
@@ -687,6 +757,13 @@ Trigger delivery through the durable project inbox:
 - replay while the Worker is unavailable;
 - the log records for each skip, filter, backoff, recovery, and replay summary,
   with a sentinel that proves message text never reaches a record.
+
+`connector_mock_integration_test.go` runs `connectormock` mocks on a real
+Worker: a Retry whose retried attempt takes the next case with the same Call
+ID, a Mutation whose Step loses its first response and replays the first
+outcome for the repeated idempotency key, an unscripted call that fails the
+test and sends the Flow to the unwired `defect` branch, and two concurrent
+Flows answered by their own `ForFlow` scripts.
 
 The `integrationtest/fixturellm` package is a fixture connector built on
 `textgen` and `openaichat`. Its exchange test runs with the ordinary suite, and the
