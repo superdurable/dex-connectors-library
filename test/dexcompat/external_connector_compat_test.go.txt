@@ -91,7 +91,7 @@ func TestExternalConnectorCompatibility(t *testing.T) {
 			t.Fatalf("UI entrypoint %s: %v", identity.ConnectorID, statErr)
 		}
 		response := httptest.NewRecorder()
-		serveConnectorUIAsset(response, httptest.NewRequest(http.MethodGet, "/connector-ui", nil), resolved.release.UI.Entrypoint, resolved.uiRoot)
+		serveConnectorUIAsset(response, httptest.NewRequest(http.MethodGet, "/connector-ui", nil), resolved.release.UI.Entrypoint, resolved.uiRoot, false)
 		if response.Code != http.StatusOK || !strings.Contains(response.Header().Get("Content-Security-Policy"), "connect-src 'none'") {
 			t.Fatalf("UI response %s: status=%d CSP=%q", identity.ConnectorID, response.Code, response.Header().Get("Content-Security-Policy"))
 		}
