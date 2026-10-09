@@ -104,6 +104,7 @@ func TestGenerateValidatesOnlyTheSelectedAuthMethod(t *testing.T) {
 	require.Contains(t, text, "credential access_token is required")
 	require.Contains(t, text, "credential service_account_key is required")
 	require.Contains(t, text, "credential auth_method is invalid")
+	require.Contains(t, text, "if fields.AuthMethodID == \"\" {\n\t\tfields.AuthMethodID = \"google-oauth\"\n\t}", "credentials without a method use the default method")
 	require.Contains(t, text, "type CredentialSource = sdkgo.RefreshingCredentialProvider[Credentials]")
 	require.Contains(t, text, "provider.NewRefreshingCredentialProvider(project.Connections, key, decodeCredentials, encodeCredentials)")
 	require.Contains(t, text, "func encodeCredentials(credentials Credentials) (json.RawMessage, error)")

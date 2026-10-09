@@ -124,6 +124,10 @@ func decodeCredentials(contents json.RawMessage) (Credentials, error) {
 	if err := projectconfig.DecodeCredentials(contents, &fields); err != nil {
 		return Credentials{}, err
 	}
+	// Credentials saved before the connector declared auth methods carry no auth_method; they use the default method.
+	if fields.AuthMethodID == "" {
+		fields.AuthMethodID = "key-pair"
+	}
 	credentials := Credentials{
 		AuthMethodID:            fields.AuthMethodID,
 		User:                    fields.User,

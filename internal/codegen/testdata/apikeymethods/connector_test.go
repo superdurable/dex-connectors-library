@@ -25,15 +25,23 @@ func TestDecodeCredentialsKeepsTheSelectedMethodAndItsKey(t *testing.T) {
 	require.Empty(t, credentials.GeminiAPIKey.Reveal())
 }
 
+func TestDecodeCredentialsWithoutAMethodUsesTheDefaultMethod(t *testing.T) {
+	credentials, err := decodeCredentials(json.RawMessage(`{"openai_api_key": "openai-test-key"}`))
+
+	require.NoError(t, err)
+	require.Equal(t, "openai", credentials.AuthMethodID)
+	require.Equal(t, "openai-test-key", credentials.OpenAIAPIKey.Reveal())
+}
+
 func TestDecodeCredentialsRejectsInvalidSelections(t *testing.T) {
 	testCases := map[string]struct {
 		contents string
 		message  string
 	}{
-		"missing method":       {`{"anthropic_api_key": "anthropic-test-key"}`, "credential auth_method is invalid"},
-		"undeclared method":    {`{"auth_method": "mistral", "anthropic_api_key": "anthropic-test-key"}`, "credential auth_method is invalid"},
-		"selected key missing": {`{"auth_method": "gemini", "anthropic_api_key": "anthropic-test-key"}`, "credential gemini_api_key is required"},
-		"method list":          {`{"auth_method": "anthropic", "auth_methods": ["anthropic"], "anthropic_api_key": "anthropic-test-key"}`, "stored credential does not match the connector's credential fields"},
+		"missing method uses the default method": {`{"anthropic_api_key": "anthropic-test-key"}`, "credential openai_api_key is required"},
+		"undeclared method":                      {`{"auth_method": "mistral", "anthropic_api_key": "anthropic-test-key"}`, "credential auth_method is invalid"},
+		"selected key missing":                   {`{"auth_method": "gemini", "anthropic_api_key": "anthropic-test-key"}`, "credential gemini_api_key is required"},
+		"method list":                            {`{"auth_method": "anthropic", "auth_methods": ["anthropic"], "anthropic_api_key": "anthropic-test-key"}`, "stored credential does not match the connector's credential fields"},
 	}
 	for name, testCase := range testCases {
 		t.Run(name, func(t *testing.T) {
