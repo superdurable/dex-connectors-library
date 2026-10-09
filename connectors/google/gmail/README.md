@@ -164,6 +164,32 @@ Deleting a stored credential does not itself revoke the Google grant.
 [`examples/thread-reply`](examples/thread-reply) combines a Flow-start target,
 `GetMessage`, a typed reply RPC, and `ReplyToMessage` in one runnable Flow.
 
+## Test with gmailmock
+
+`gmailmock` is the generated mock package for application tests.
+`gmailmock.New(t, connectionName)` returns a scripted connection that the
+operation Step factories accept, so a Flow runs on a real Worker without the
+Gmail API. Its connection serves operation Steps only; Trigger runners need a
+connection with a client. An unscripted `getMessage` call answers with the
+manifest default, `customerQuestion`; `sendMessage` and `replyToMessage` have
+no default, so a test scripts every send and an unscripted send fails it. The
+thread-reply example's
+[mock test](examples/thread-reply/flow/workflow_mock_integration_test.go)
+scripts one reply per Flow:
+
+```go
+	mock.ReplyToMessage().ForFlow(ResolveFlowID(threadEvent(sentThreadID))).Respond(gmailmock.ReplyToMessageRepliedInThread())
+	mock.ReplyToMessage().ForFlow(ResolveFlowID(threadEvent(uncertainThreadID))).Respond(gmailmock.ReplyToMessageConnectionLost())
+```
+
+The uncertain reply fails the example Flow, which leaves that optional branch
+unwired, and `Calls()` shows it was sent once and never resent. Each
+operation's manifest mocks cover every branch: for example
+`GetMessageDeletedMessage`, `SendMessageInvalidRecipient`, and
+`SendMessageConnectionLost`, with `<Operation>Retry` for a retried attempt.
+Scripting is described in
+[`sdkgo/connectormock`](../../../sdkgo/README.md#connector-mocks).
+
 ## Verification
 
 ```bash
