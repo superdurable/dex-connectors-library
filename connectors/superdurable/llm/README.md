@@ -30,7 +30,7 @@ Gemini's `generateContent`.
 Install a published component release:
 
 ```bash
-go get github.com/superdurable/dex-connectors-library/connectors/superdurable/llm@v0.21.0
+go get github.com/superdurable/dex-connectors-library/connectors/superdurable/llm@v0.22.0
 ```
 
 The package name, `llm`, is the last element of the module path, so import
@@ -547,7 +547,7 @@ a fake provider on `localhost`, `127.0.0.0/8`, or `::1`, such as
 
 ## Migrate from the provider router and the lab connectors
 
-This release is breaking. The package is `llm` instead of `llmrouter`, and
+Release v0.21.0 is breaking. The package is `llm` instead of `llmrouter`, and
 the provider-specific text generation connectors are removed:
 
 | Before | `llm` connection |
