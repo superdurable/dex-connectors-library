@@ -47,8 +47,21 @@ type Credentials struct {
 type CredentialSource = sdkgo.CredentialProvider[Credentials]
 
 type Connection struct {
-	client    *Client
-	reference sdkgo.ConnectionRef
+	client     *Client
+	operations Operations
+	reference  sdkgo.ConnectionRef
+}
+
+// Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
+// NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
+type Operations interface {
+	GetThing() sdkgo.Query[GetThingInput, GetThingOutput]
+}
+
+type clientOperations struct{ client *Client }
+
+func (operations clientOperations) GetThing() sdkgo.Query[GetThingInput, GetThingOutput] {
+	return operations.client.GetThing()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -60,7 +73,19 @@ func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, e
 	if err := reference.Validate(); err != nil {
 		return Connection{}, fmt.Errorf("api-key-methods-fixture connector connection: %w", err)
 	}
-	return Connection{client: client, reference: reference}, nil
+	return Connection{client: client, operations: clientOperations{client: client}, reference: reference}, nil
+}
+
+// NewConnectionWithOperations binds other operations, such as a generated mock package's, to a connection.
+// The connection serves operation Steps only: Trigger factories and runners require NewConnection.
+func NewConnectionWithOperations(operations Operations, reference sdkgo.ConnectionRef) (Connection, error) {
+	if operations == nil {
+		return Connection{}, fmt.Errorf("api-key-methods-fixture connector operations are required")
+	}
+	if err := reference.Validate(); err != nil {
+		return Connection{}, fmt.Errorf("api-key-methods-fixture connector connection: %w", err)
+	}
+	return Connection{operations: operations, reference: reference}, nil
 }
 
 // NewProjectConnection opens the connection that dex-app.yaml declares as connectionName from the
@@ -109,7 +134,17 @@ func decodeCredentials(contents json.RawMessage) (Credentials, error) {
 }
 
 func (connection Connection) validate() error {
+	if connection.client == nil && connection.operations != nil {
+		return fmt.Errorf("api-key-methods-fixture connector connection from NewConnectionWithOperations serves only operation Steps")
+	}
 	if connection.client == nil {
+		return fmt.Errorf("api-key-methods-fixture connector connection is required")
+	}
+	return connection.reference.Validate()
+}
+
+func (connection Connection) validateOperations() error {
+	if connection.operations == nil {
 		return fmt.Errorf("api-key-methods-fixture connector connection is required")
 	}
 	return connection.reference.Validate()
@@ -205,7 +240,7 @@ type GetThingStepConfig[IN any] struct {
 }
 
 func NewGetThingStep[IN any](config GetThingStepConfig[IN]) sdkgo.QueryStep[IN, GetThingInput, GetThingOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -214,7 +249,7 @@ func NewGetThingStep[IN any](config GetThingStepConfig[IN]) sdkgo.QueryStep[IN, 
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetThingInput, GetThingOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.GetThing(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.GetThing(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[GetThingResult] {
 			branches := make([]sdkgo.BranchTarget[GetThingResult], 0, 2)
