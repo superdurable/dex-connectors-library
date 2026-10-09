@@ -4,7 +4,7 @@ go 1.24.0
 
 require (
 	github.com/stretchr/testify v1.11.1
-	github.com/superdurable/dex-connectors-library/sdkgo v0.21.0
+	github.com/superdurable/dex-connectors-library/sdkgo v0.24.0
 	github.com/superdurable/dex/blob-cache-go v0.1.0
 	github.com/superdurable/dex/sdk-go v1.5.0
 	gopkg.in/yaml.v3 v3.0.1
