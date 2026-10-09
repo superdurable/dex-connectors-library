@@ -46,8 +46,33 @@ type Credentials struct {
 type CredentialSource = sdkgo.RefreshingCredentialProvider[Credentials]
 
 type Connection struct {
-	client    *Client
-	reference sdkgo.ConnectionRef
+	client     *Client
+	operations Operations
+	reference  sdkgo.ConnectionRef
+}
+
+// Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
+// NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
+type Operations interface {
+	SearchFiles() sdkgo.Query[SearchFilesInput, SearchFilesOutput]
+	GetFile() sdkgo.Query[GetFileInput, File]
+	ReadFileText() sdkgo.Query[ReadFileTextInput, ReadFileTextOutput]
+	UploadFile() sdkgo.Mutation[UploadFileInput, UploadFileOutput]
+}
+
+type clientOperations struct{ client *Client }
+
+func (operations clientOperations) SearchFiles() sdkgo.Query[SearchFilesInput, SearchFilesOutput] {
+	return operations.client.SearchFiles()
+}
+func (operations clientOperations) GetFile() sdkgo.Query[GetFileInput, File] {
+	return operations.client.GetFile()
+}
+func (operations clientOperations) ReadFileText() sdkgo.Query[ReadFileTextInput, ReadFileTextOutput] {
+	return operations.client.ReadFileText()
+}
+func (operations clientOperations) UploadFile() sdkgo.Mutation[UploadFileInput, UploadFileOutput] {
+	return operations.client.UploadFile()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -59,7 +84,19 @@ func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, e
 	if err := reference.Validate(); err != nil {
 		return Connection{}, fmt.Errorf("google-drive connector connection: %w", err)
 	}
-	return Connection{client: client, reference: reference}, nil
+	return Connection{client: client, operations: clientOperations{client: client}, reference: reference}, nil
+}
+
+// NewConnectionWithOperations binds other operations, such as a generated mock package's, to a connection.
+// The connection serves operation Steps only: Trigger factories and runners require NewConnection.
+func NewConnectionWithOperations(operations Operations, reference sdkgo.ConnectionRef) (Connection, error) {
+	if operations == nil {
+		return Connection{}, fmt.Errorf("google-drive connector operations are required")
+	}
+	if err := reference.Validate(); err != nil {
+		return Connection{}, fmt.Errorf("google-drive connector connection: %w", err)
+	}
+	return Connection{operations: operations, reference: reference}, nil
 }
 
 // NewProjectConnection opens the connection that dex-app.yaml declares as connectionName from the
@@ -135,7 +172,17 @@ func encodeCredentials(credentials Credentials) (json.RawMessage, error) {
 }
 
 func (connection Connection) validate() error {
+	if connection.client == nil && connection.operations != nil {
+		return fmt.Errorf("google-drive connector connection from NewConnectionWithOperations serves only operation Steps")
+	}
 	if connection.client == nil {
+		return fmt.Errorf("google-drive connector connection is required")
+	}
+	return connection.reference.Validate()
+}
+
+func (connection Connection) validateOperations() error {
+	if connection.operations == nil {
 		return fmt.Errorf("google-drive connector connection is required")
 	}
 	return connection.reference.Validate()
@@ -277,7 +324,7 @@ type SearchFilesStepConfig[IN any] struct {
 }
 
 func NewSearchFilesStep[IN any](config SearchFilesStepConfig[IN]) sdkgo.QueryStep[IN, SearchFilesInput, SearchFilesOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -286,7 +333,7 @@ func NewSearchFilesStep[IN any](config SearchFilesStepConfig[IN]) sdkgo.QuerySte
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, SearchFilesInput, SearchFilesOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.SearchFiles(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.SearchFiles(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[SearchFilesResult] {
 			branches := make([]sdkgo.BranchTarget[SearchFilesResult], 0, 5)
@@ -356,7 +403,7 @@ type GetFileStepConfig[IN any] struct {
 }
 
 func NewGetFileStep[IN any](config GetFileStepConfig[IN]) sdkgo.QueryStep[IN, GetFileInput, File] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -365,7 +412,7 @@ func NewGetFileStep[IN any](config GetFileStepConfig[IN]) sdkgo.QueryStep[IN, Ge
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetFileInput, File]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.GetFile(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.GetFile(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[GetFileResult] {
 			branches := make([]sdkgo.BranchTarget[GetFileResult], 0, 5)
@@ -441,7 +488,7 @@ type ReadFileTextStepConfig[IN any] struct {
 }
 
 func NewReadFileTextStep[IN any](config ReadFileTextStepConfig[IN]) sdkgo.QueryStep[IN, ReadFileTextInput, ReadFileTextOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -450,7 +497,7 @@ func NewReadFileTextStep[IN any](config ReadFileTextStepConfig[IN]) sdkgo.QueryS
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ReadFileTextInput, ReadFileTextOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.ReadFileText(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.ReadFileText(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[ReadFileTextResult] {
 			branches := make([]sdkgo.BranchTarget[ReadFileTextResult], 0, 7)
@@ -526,7 +573,7 @@ type UploadFileStepConfig[IN any] struct {
 }
 
 func NewUploadFileStep[IN any](config UploadFileStepConfig[IN]) sdkgo.MutationStep[IN, UploadFileInput, UploadFileOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -535,7 +582,7 @@ func NewUploadFileStep[IN any](config UploadFileStepConfig[IN]) sdkgo.MutationSt
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UploadFileInput, UploadFileOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.UploadFile(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.UploadFile(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[UploadFileResult] {
 			branches := make([]sdkgo.BranchTarget[UploadFileResult], 0, 5)

@@ -44,8 +44,29 @@ type Credentials struct {
 type CredentialSource = sdkgo.RefreshingCredentialProvider[Credentials]
 
 type Connection struct {
-	client    *Client
-	reference sdkgo.ConnectionRef
+	client     *Client
+	operations Operations
+	reference  sdkgo.ConnectionRef
+}
+
+// Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
+// NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
+type Operations interface {
+	GetForm() sdkgo.Query[GetFormInput, Form]
+	ListResponses() sdkgo.Query[ListResponsesInput, ResponsePage]
+	GetResponse() sdkgo.Query[GetResponseInput, FormResponse]
+}
+
+type clientOperations struct{ client *Client }
+
+func (operations clientOperations) GetForm() sdkgo.Query[GetFormInput, Form] {
+	return operations.client.GetForm()
+}
+func (operations clientOperations) ListResponses() sdkgo.Query[ListResponsesInput, ResponsePage] {
+	return operations.client.ListResponses()
+}
+func (operations clientOperations) GetResponse() sdkgo.Query[GetResponseInput, FormResponse] {
+	return operations.client.GetResponse()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -57,7 +78,19 @@ func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, e
 	if err := reference.Validate(); err != nil {
 		return Connection{}, fmt.Errorf("google-forms connector connection: %w", err)
 	}
-	return Connection{client: client, reference: reference}, nil
+	return Connection{client: client, operations: clientOperations{client: client}, reference: reference}, nil
+}
+
+// NewConnectionWithOperations binds other operations, such as a generated mock package's, to a connection.
+// The connection serves operation Steps only: Trigger factories and runners require NewConnection.
+func NewConnectionWithOperations(operations Operations, reference sdkgo.ConnectionRef) (Connection, error) {
+	if operations == nil {
+		return Connection{}, fmt.Errorf("google-forms connector operations are required")
+	}
+	if err := reference.Validate(); err != nil {
+		return Connection{}, fmt.Errorf("google-forms connector connection: %w", err)
+	}
+	return Connection{operations: operations, reference: reference}, nil
 }
 
 // NewProjectConnection opens the connection that dex-app.yaml declares as connectionName from the
@@ -133,7 +166,17 @@ func encodeCredentials(credentials Credentials) (json.RawMessage, error) {
 }
 
 func (connection Connection) validate() error {
+	if connection.client == nil && connection.operations != nil {
+		return fmt.Errorf("google-forms connector connection from NewConnectionWithOperations serves only operation Steps")
+	}
 	if connection.client == nil {
+		return fmt.Errorf("google-forms connector connection is required")
+	}
+	return connection.reference.Validate()
+}
+
+func (connection Connection) validateOperations() error {
+	if connection.operations == nil {
 		return fmt.Errorf("google-forms connector connection is required")
 	}
 	return connection.reference.Validate()
@@ -261,7 +304,7 @@ type GetFormStepConfig[IN any] struct {
 }
 
 func NewGetFormStep[IN any](config GetFormStepConfig[IN]) sdkgo.QueryStep[IN, GetFormInput, Form] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -270,7 +313,7 @@ func NewGetFormStep[IN any](config GetFormStepConfig[IN]) sdkgo.QueryStep[IN, Ge
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetFormInput, Form]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.GetForm(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.GetForm(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[GetFormResult] {
 			branches := make([]sdkgo.BranchTarget[GetFormResult], 0, 5)
@@ -340,7 +383,7 @@ type ListResponsesStepConfig[IN any] struct {
 }
 
 func NewListResponsesStep[IN any](config ListResponsesStepConfig[IN]) sdkgo.QueryStep[IN, ListResponsesInput, ResponsePage] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -349,7 +392,7 @@ func NewListResponsesStep[IN any](config ListResponsesStepConfig[IN]) sdkgo.Quer
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListResponsesInput, ResponsePage]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.ListResponses(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.ListResponses(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[ListResponsesResult] {
 			branches := make([]sdkgo.BranchTarget[ListResponsesResult], 0, 5)
@@ -419,7 +462,7 @@ type GetResponseStepConfig[IN any] struct {
 }
 
 func NewGetResponseStep[IN any](config GetResponseStepConfig[IN]) sdkgo.QueryStep[IN, GetResponseInput, FormResponse] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -428,7 +471,7 @@ func NewGetResponseStep[IN any](config GetResponseStepConfig[IN]) sdkgo.QuerySte
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetResponseInput, FormResponse]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.GetResponse(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.GetResponse(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[GetResponseResult] {
 			branches := make([]sdkgo.BranchTarget[GetResponseResult], 0, 5)

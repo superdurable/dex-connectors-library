@@ -20,6 +20,7 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/superdurable/dex-connectors-library/internal/codegen"
 	"github.com/superdurable/dex-connectors-library/schema"
 	"gopkg.in/yaml.v3"
 )
@@ -54,6 +55,18 @@ type connectorCatalogItem struct {
 	UIUnits     []catalogCapability `yaml:"uiUnits"`
 	Triggers    []catalogCapability `yaml:"triggers"`
 	Operations  []catalogCapability `yaml:"operations"`
+	// MockPackage is the Go import path of the generated mock package, or empty when the connector has no mocks.
+	MockPackage string `yaml:"mockPackage,omitempty"`
+	// Mocks lists the maintained mock outcomes that the mock package offers.
+	Mocks []catalogMock `yaml:"mocks,omitempty"`
+}
+
+type catalogMock struct {
+	Operation   string `yaml:"operation"`
+	Name        string `yaml:"name"`
+	Branch      string `yaml:"branch,omitempty"`
+	Description string `yaml:"description"`
+	IsDefault   bool   `yaml:"default,omitempty"`
 }
 
 type catalogCapability struct {
@@ -462,17 +475,38 @@ func encodeConnectorCatalog(entries []connectorDirectoryEntry) ([]byte, error) {
 				Name: operation.Name, Kind: operation.Kind, Description: operation.Description,
 			})
 		}
-		catalog.Connectors = append(catalog.Connectors, connectorCatalogItem{
+		item := connectorCatalogItem{
 			Company: metadata.Company, ID: metadata.Name, Name: metadata.DisplayName,
 			Description: metadata.Description, Version: metadata.Version, Directory: entry.Directory,
 			UIUnits: uiUnits, Triggers: triggers, Operations: operations,
-		})
+		}
+		if entry.Manifest.HasMocks() {
+			item.MockPackage = codegen.MockPackageImportPath(entry.Manifest, entry.ModulePath)
+			item.Mocks = catalogMocks(entry.Manifest)
+		}
+		catalog.Connectors = append(catalog.Connectors, item)
 	}
 	encoded, err := yaml.Marshal(catalog)
 	if err != nil {
 		return nil, fmt.Errorf("encode connector catalog: %w", err)
 	}
 	return encoded, nil
+}
+
+func catalogMocks(manifest schema.Manifest) []catalogMock {
+	mocks := make([]catalogMock, 0)
+	for _, operation := range manifest.Spec.Operations {
+		for _, mock := range operation.Mocks {
+			branch := mock.Branch
+			if mock.Uncertain != nil {
+				branch = "uncertain"
+			}
+			mocks = append(mocks, catalogMock{
+				Operation: operation.Name, Name: mock.Name, Branch: branch, Description: mock.Description, IsDefault: mock.Default,
+			})
+		}
+	}
+	return mocks
 }
 
 func latestReachableConnectorReleases(repositoryRoot string) (map[string]reachableConnectorRelease, error) {

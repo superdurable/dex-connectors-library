@@ -77,7 +77,8 @@ company logo, and a company that does not match its directory. It generates
 the public catalog from the registered manifests. Each catalog entry lists UI
 units and Triggers by name and description, and operations by name, kind, and
 description, so the directory can show and search supported configuration and
-actions without reading provider code.
+actions without reading provider code. A connector with mocks also lists them
+under `mocks` with the import path of its generated `mockPackage`.
 
 The `Release Connectors and Catalog` workflow runs automatically after a push
 to `main`. It compares every declared manifest version with reachable tags and

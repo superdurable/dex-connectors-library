@@ -47,8 +47,33 @@ type Credentials struct {
 type CredentialSource = sdkgo.CredentialProvider[Credentials]
 
 type Connection struct {
-	client    *Client
-	reference sdkgo.ConnectionRef
+	client     *Client
+	operations Operations
+	reference  sdkgo.ConnectionRef
+}
+
+// Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
+// NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
+type Operations interface {
+	ListObjects() sdkgo.Query[ListObjectsInput, ListObjectsOutput]
+	HeadObject() sdkgo.Query[HeadObjectInput, ObjectMetadata]
+	GetObjectText() sdkgo.Query[GetObjectTextInput, ObjectText]
+	PutObject() sdkgo.Mutation[PutObjectInput, StoredObject]
+}
+
+type clientOperations struct{ client *Client }
+
+func (operations clientOperations) ListObjects() sdkgo.Query[ListObjectsInput, ListObjectsOutput] {
+	return operations.client.ListObjects()
+}
+func (operations clientOperations) HeadObject() sdkgo.Query[HeadObjectInput, ObjectMetadata] {
+	return operations.client.HeadObject()
+}
+func (operations clientOperations) GetObjectText() sdkgo.Query[GetObjectTextInput, ObjectText] {
+	return operations.client.GetObjectText()
+}
+func (operations clientOperations) PutObject() sdkgo.Mutation[PutObjectInput, StoredObject] {
+	return operations.client.PutObject()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -60,7 +85,19 @@ func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, e
 	if err := reference.Validate(); err != nil {
 		return Connection{}, fmt.Errorf("amazon-s3 connector connection: %w", err)
 	}
-	return Connection{client: client, reference: reference}, nil
+	return Connection{client: client, operations: clientOperations{client: client}, reference: reference}, nil
+}
+
+// NewConnectionWithOperations binds other operations, such as a generated mock package's, to a connection.
+// The connection serves operation Steps only: Trigger factories and runners require NewConnection.
+func NewConnectionWithOperations(operations Operations, reference sdkgo.ConnectionRef) (Connection, error) {
+	if operations == nil {
+		return Connection{}, fmt.Errorf("amazon-s3 connector operations are required")
+	}
+	if err := reference.Validate(); err != nil {
+		return Connection{}, fmt.Errorf("amazon-s3 connector connection: %w", err)
+	}
+	return Connection{operations: operations, reference: reference}, nil
 }
 
 // NewProjectConnection opens the connection that dex-app.yaml declares as connectionName from the
@@ -107,7 +144,17 @@ func decodeCredentials(contents json.RawMessage) (Credentials, error) {
 }
 
 func (connection Connection) validate() error {
+	if connection.client == nil && connection.operations != nil {
+		return fmt.Errorf("amazon-s3 connector connection from NewConnectionWithOperations serves only operation Steps")
+	}
 	if connection.client == nil {
+		return fmt.Errorf("amazon-s3 connector connection is required")
+	}
+	return connection.reference.Validate()
+}
+
+func (connection Connection) validateOperations() error {
+	if connection.operations == nil {
 		return fmt.Errorf("amazon-s3 connector connection is required")
 	}
 	return connection.reference.Validate()
@@ -239,7 +286,7 @@ type ListObjectsStepConfig[IN any] struct {
 }
 
 func NewListObjectsStep[IN any](config ListObjectsStepConfig[IN]) sdkgo.QueryStep[IN, ListObjectsInput, ListObjectsOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -247,7 +294,7 @@ func NewListObjectsStep[IN any](config ListObjectsStepConfig[IN]) sdkgo.QuerySte
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListObjectsInput, ListObjectsOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.ListObjects(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.ListObjects(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[ListObjectsResult] {
 			branches := make([]sdkgo.BranchTarget[ListObjectsResult], 0, 5)
@@ -316,7 +363,7 @@ type HeadObjectStepConfig[IN any] struct {
 }
 
 func NewHeadObjectStep[IN any](config HeadObjectStepConfig[IN]) sdkgo.QueryStep[IN, HeadObjectInput, ObjectMetadata] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -324,7 +371,7 @@ func NewHeadObjectStep[IN any](config HeadObjectStepConfig[IN]) sdkgo.QueryStep[
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, HeadObjectInput, ObjectMetadata]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.HeadObject(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.HeadObject(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[HeadObjectResult] {
 			branches := make([]sdkgo.BranchTarget[HeadObjectResult], 0, 5)
@@ -399,7 +446,7 @@ type GetObjectTextStepConfig[IN any] struct {
 }
 
 func NewGetObjectTextStep[IN any](config GetObjectTextStepConfig[IN]) sdkgo.QueryStep[IN, GetObjectTextInput, ObjectText] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -407,7 +454,7 @@ func NewGetObjectTextStep[IN any](config GetObjectTextStepConfig[IN]) sdkgo.Quer
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetObjectTextInput, ObjectText]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.GetObjectText(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.GetObjectText(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[GetObjectTextResult] {
 			branches := make([]sdkgo.BranchTarget[GetObjectTextResult], 0, 7)
@@ -479,7 +526,7 @@ type PutObjectStepConfig[IN any] struct {
 }
 
 func NewPutObjectStep[IN any](config PutObjectStepConfig[IN]) sdkgo.MutationStep[IN, PutObjectInput, StoredObject] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -487,7 +534,7 @@ func NewPutObjectStep[IN any](config PutObjectStepConfig[IN]) sdkgo.MutationStep
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, PutObjectInput, StoredObject]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.PutObject(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.PutObject(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[PutObjectResult] {
 			branches := make([]sdkgo.BranchTarget[PutObjectResult], 0, 4)

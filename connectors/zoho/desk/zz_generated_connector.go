@@ -39,8 +39,37 @@ type Credentials struct {
 type CredentialSource = sdkgo.RefreshingCredentialProvider[Credentials]
 
 type Connection struct {
-	client    *Client
-	reference sdkgo.ConnectionRef
+	client     *Client
+	operations Operations
+	reference  sdkgo.ConnectionRef
+}
+
+// Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
+// NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
+type Operations interface {
+	SearchTickets() sdkgo.Query[SearchTicketsInput, SearchTicketsOutput]
+	GetTicket() sdkgo.Query[GetTicketInput, TicketDetails]
+	CreateTicket() sdkgo.Mutation[CreateTicketInput, CreateTicketOutput]
+	UpdateTicket() sdkgo.Mutation[UpdateTicketInput, UpdateTicketOutput]
+	AddComment() sdkgo.Mutation[AddCommentInput, AddCommentOutput]
+}
+
+type clientOperations struct{ client *Client }
+
+func (operations clientOperations) SearchTickets() sdkgo.Query[SearchTicketsInput, SearchTicketsOutput] {
+	return operations.client.SearchTickets()
+}
+func (operations clientOperations) GetTicket() sdkgo.Query[GetTicketInput, TicketDetails] {
+	return operations.client.GetTicket()
+}
+func (operations clientOperations) CreateTicket() sdkgo.Mutation[CreateTicketInput, CreateTicketOutput] {
+	return operations.client.CreateTicket()
+}
+func (operations clientOperations) UpdateTicket() sdkgo.Mutation[UpdateTicketInput, UpdateTicketOutput] {
+	return operations.client.UpdateTicket()
+}
+func (operations clientOperations) AddComment() sdkgo.Mutation[AddCommentInput, AddCommentOutput] {
+	return operations.client.AddComment()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -52,7 +81,19 @@ func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, e
 	if err := reference.Validate(); err != nil {
 		return Connection{}, fmt.Errorf("zoho-desk connector connection: %w", err)
 	}
-	return Connection{client: client, reference: reference}, nil
+	return Connection{client: client, operations: clientOperations{client: client}, reference: reference}, nil
+}
+
+// NewConnectionWithOperations binds other operations, such as a generated mock package's, to a connection.
+// The connection serves operation Steps only: Trigger factories and runners require NewConnection.
+func NewConnectionWithOperations(operations Operations, reference sdkgo.ConnectionRef) (Connection, error) {
+	if operations == nil {
+		return Connection{}, fmt.Errorf("zoho-desk connector operations are required")
+	}
+	if err := reference.Validate(); err != nil {
+		return Connection{}, fmt.Errorf("zoho-desk connector connection: %w", err)
+	}
+	return Connection{operations: operations, reference: reference}, nil
 }
 
 // NewProjectConnection opens the connection that dex-app.yaml declares as connectionName from the
@@ -120,7 +161,17 @@ func encodeCredentials(credentials Credentials) (json.RawMessage, error) {
 }
 
 func (connection Connection) validate() error {
+	if connection.client == nil && connection.operations != nil {
+		return fmt.Errorf("zoho-desk connector connection from NewConnectionWithOperations serves only operation Steps")
+	}
 	if connection.client == nil {
+		return fmt.Errorf("zoho-desk connector connection is required")
+	}
+	return connection.reference.Validate()
+}
+
+func (connection Connection) validateOperations() error {
+	if connection.operations == nil {
 		return fmt.Errorf("zoho-desk connector connection is required")
 	}
 	return connection.reference.Validate()
@@ -325,7 +376,7 @@ type SearchTicketsStepConfig[IN any] struct {
 }
 
 func NewSearchTicketsStep[IN any](config SearchTicketsStepConfig[IN]) sdkgo.QueryStep[IN, SearchTicketsInput, SearchTicketsOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -334,7 +385,7 @@ func NewSearchTicketsStep[IN any](config SearchTicketsStepConfig[IN]) sdkgo.Quer
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, SearchTicketsInput, SearchTicketsOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.SearchTickets(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.SearchTickets(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[SearchTicketsResult] {
 			branches := make([]sdkgo.BranchTarget[SearchTicketsResult], 0, 4)
@@ -401,7 +452,7 @@ type GetTicketStepConfig[IN any] struct {
 }
 
 func NewGetTicketStep[IN any](config GetTicketStepConfig[IN]) sdkgo.QueryStep[IN, GetTicketInput, TicketDetails] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -410,7 +461,7 @@ func NewGetTicketStep[IN any](config GetTicketStepConfig[IN]) sdkgo.QueryStep[IN
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetTicketInput, TicketDetails]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.GetTicket(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.GetTicket(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[GetTicketResult] {
 			branches := make([]sdkgo.BranchTarget[GetTicketResult], 0, 5)
@@ -477,7 +528,7 @@ type CreateTicketStepConfig[IN any] struct {
 }
 
 func NewCreateTicketStep[IN any](config CreateTicketStepConfig[IN]) sdkgo.MutationStep[IN, CreateTicketInput, CreateTicketOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -486,7 +537,7 @@ func NewCreateTicketStep[IN any](config CreateTicketStepConfig[IN]) sdkgo.Mutati
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateTicketInput, CreateTicketOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.CreateTicket(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.CreateTicket(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[CreateTicketResult] {
 			branches := make([]sdkgo.BranchTarget[CreateTicketResult], 0, 4)
@@ -553,7 +604,7 @@ type UpdateTicketStepConfig[IN any] struct {
 }
 
 func NewUpdateTicketStep[IN any](config UpdateTicketStepConfig[IN]) sdkgo.MutationStep[IN, UpdateTicketInput, UpdateTicketOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -562,7 +613,7 @@ func NewUpdateTicketStep[IN any](config UpdateTicketStepConfig[IN]) sdkgo.Mutati
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateTicketInput, UpdateTicketOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.UpdateTicket(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.UpdateTicket(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[UpdateTicketResult] {
 			branches := make([]sdkgo.BranchTarget[UpdateTicketResult], 0, 5)
@@ -632,7 +683,7 @@ type AddCommentStepConfig[IN any] struct {
 }
 
 func NewAddCommentStep[IN any](config AddCommentStepConfig[IN]) sdkgo.MutationStep[IN, AddCommentInput, AddCommentOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -641,7 +692,7 @@ func NewAddCommentStep[IN any](config AddCommentStepConfig[IN]) sdkgo.MutationSt
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, AddCommentInput, AddCommentOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.AddComment(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.AddComment(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[AddCommentResult] {
 			branches := make([]sdkgo.BranchTarget[AddCommentResult], 0, 5)

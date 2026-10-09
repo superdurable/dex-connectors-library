@@ -93,13 +93,20 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 		generation.mustWrite("// CredentialSource is the credential provider New requires: this connector never refreshes its credentials.\n")
 		generation.mustWrite("type CredentialSource = sdkgo.CredentialProvider[Credentials]\n\n")
 	}
-	generation.mustWrite("type Connection struct {\n\tclient *Client\n\treference sdkgo.ConnectionRef\n}\n\n")
+	generation.mustWrite("type Connection struct {\n\tclient *Client\n\toperations Operations\n\treference sdkgo.ConnectionRef\n}\n\n")
+	writeOperationsSeam(generation, manifest)
 	generation.mustWrite("// NewConnection wraps a client built with New, such as a test client with a static credential provider.\n")
 	generation.mustWrite("// Applications open declared connections with NewProjectConnection instead.\n")
 	generation.mustWrite("func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, error) {\n")
 	generation.mustWrite("\tif client == nil { return Connection{}, fmt.Errorf(%q) }\n", manifest.Metadata.Name+" connector client is required")
 	generation.mustWrite("\tif err := reference.Validate(); err != nil { return Connection{}, fmt.Errorf(%q, err) }\n", manifest.Metadata.Name+" connector connection: %w")
-	generation.mustWrite("\treturn Connection{client: client, reference: reference}, nil\n}\n\n")
+	generation.mustWrite("\treturn Connection{client: client, operations: clientOperations{client: client}, reference: reference}, nil\n}\n\n")
+	generation.mustWrite("// NewConnectionWithOperations binds other operations, such as a generated mock package's, to a connection.\n")
+	generation.mustWrite("// The connection serves operation Steps only: Trigger factories and runners require NewConnection.\n")
+	generation.mustWrite("func NewConnectionWithOperations(operations Operations, reference sdkgo.ConnectionRef) (Connection, error) {\n")
+	generation.mustWrite("\tif operations == nil { return Connection{}, fmt.Errorf(%q) }\n", manifest.Metadata.Name+" connector operations are required")
+	generation.mustWrite("\tif err := reference.Validate(); err != nil { return Connection{}, fmt.Errorf(%q, err) }\n", manifest.Metadata.Name+" connector connection: %w")
+	generation.mustWrite("\treturn Connection{operations: operations, reference: reference}, nil\n}\n\n")
 	generation.mustWrite("// NewProjectConnection opens the connection that dex-app.yaml declares as connectionName from the\n")
 	generation.mustWrite("// loaded project configuration. It reads ordinary settings now and resolves credentials during each call.\n")
 	generation.mustWrite("func NewProjectConnection(project *projectconfig.LoadedProject, connectionName string, options ...Option) (Connection, error) {\n")
@@ -174,7 +181,11 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 		generation.mustWrite("\treturn json.Marshal(fields)\n}\n\n")
 	}
 	generation.mustWrite("func (connection Connection) validate() error {\n")
+	generation.mustWrite("\tif connection.client == nil && connection.operations != nil { return fmt.Errorf(%q) }\n", manifest.Metadata.Name+" connector connection from NewConnectionWithOperations serves only operation Steps")
 	generation.mustWrite("\tif connection.client == nil { return fmt.Errorf(%q) }\n", manifest.Metadata.Name+" connector connection is required")
+	generation.mustWrite("\treturn connection.reference.Validate()\n}\n\n")
+	generation.mustWrite("func (connection Connection) validateOperations() error {\n")
+	generation.mustWrite("\tif connection.operations == nil { return fmt.Errorf(%q) }\n", manifest.Metadata.Name+" connector connection is required")
 	generation.mustWrite("\treturn connection.reference.Validate()\n}\n\n")
 	generation.mustWrite("func (Connection) MarshalJSON() ([]byte, error) { return nil, fmt.Errorf(%q) }\n", manifest.Metadata.Name+" connector connections cannot be serialized")
 	generation.mustWrite("func (Connection) MarshalText() ([]byte, error) { return nil, fmt.Errorf(%q) }\n", manifest.Metadata.Name+" connector connections cannot be serialized")
@@ -347,6 +358,23 @@ func parseOperationDurations(operation schema.Operation) (operationDurations, er
 	return values, nil
 }
 
+// writeOperationsSeam declares the Operations interface that Connection calls and its adapter over Client.
+func writeOperationsSeam(generation *generator, manifest schema.Manifest) {
+	generation.mustWrite("// Operations returns the operations that this connector's Step factories invoke, one accessor per operation.\n")
+	generation.mustWrite("// NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.\n")
+	generation.mustWrite("type Operations interface {\n")
+	for _, operation := range manifest.Spec.Operations {
+		generation.mustWrite("\t%s() sdkgo.%s[%s, %s]\n", operation.GoName, title(operation.Kind), operation.InputType, operation.OutputType)
+	}
+	generation.mustWrite("}\n\n")
+	generation.mustWrite("type clientOperations struct{ client *Client }\n\n")
+	for _, operation := range manifest.Spec.Operations {
+		generation.mustWrite("func (operations clientOperations) %s() sdkgo.%s[%s, %s] { return operations.client.%s() }\n",
+			operation.GoName, title(operation.Kind), operation.InputType, operation.OutputType, operation.GoName)
+	}
+	generation.mustWrite("\n")
+}
+
 func writeTriggerFactory(generation *generator, manifest schema.Manifest, trigger schema.Trigger) {
 	generation.mustWrite("type %sTriggerBindingConfig struct {\n", trigger.GoName)
 	generation.mustWrite("\tsdkgo.TriggerBindingFactoryConfigMarker `connector:\"factory=triggerBinding\"`\n")
@@ -420,7 +448,7 @@ func writeOperationFactory(generation *generator, manifest schema.Manifest, oper
 	generation.mustWrite("\tStepOptionsOverride *dex.StepOptions `connector:\"stepOptionsOverride\"`\n")
 	generation.mustWrite("}\n\n")
 	generation.mustWrite("func New%sStep[IN any](config %sStepConfig[IN]) sdkgo.%sStep[IN, %s, %s] {\n", operation.GoName, operation.GoName, kind, operation.InputType, operation.OutputType)
-	generation.mustWrite("\tif err := config.Connection.validate(); err != nil { panic(err) }\n")
+	generation.mustWrite("\tif err := config.Connection.validateOperations(); err != nil { panic(err) }\n")
 	generation.mustWrite("\tif config.ConnectionName != config.Connection.reference.Name {\n")
 	generation.mustWrite("\t\tpanic(fmt.Errorf(%q, config.ConnectionName, config.Connection.reference.Name))\n", manifest.Metadata.Name+" connector Step ConnectionName %q must equal its connection's name %q")
 	generation.mustWrite("\t}\n")
@@ -429,7 +457,7 @@ func writeOperationFactory(generation *generator, manifest schema.Manifest, oper
 	if manifest.Spec.Studio != nil && len(manifest.Spec.Studio.Units) > 0 {
 		generation.mustWrite("\t\tConfigurationUI: config.ConfigurationUI,\n")
 	}
-	generation.mustWrite("\t\tOperation: config.Connection.client.%s(), Connection: config.Connection.reference,\n", operation.GoName)
+	generation.mustWrite("\t\tOperation: config.Connection.operations.%s(), Connection: config.Connection.reference,\n", operation.GoName)
 	generation.mustWrite("\t\tMapToOperationInput: config.MapToOperationInput,\n")
 	if operationHasOptionalBranch(operation) {
 		generation.mustWrite("\t\tBranches: func() []sdkgo.BranchTarget[%sResult] {\n", operation.GoName)

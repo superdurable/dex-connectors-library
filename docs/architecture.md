@@ -113,7 +113,9 @@ Each manifest supplies:
 - Trigger factories and optional Studio metadata.
 
 `connectorctl generate` writes `zz_generated_connector.go`, including strongly
-typed configs and operation factories. Generated configs embed the canonical
+typed configs, operation factories, and the `Operations` seam that a mocked
+connection replaces. A manifest with mocks also generates the
+`<package>mock` package and its fixture-decoding test. Generated configs embed the canonical
 SDK marker and metadata tags used by Dex CLI static analysis. Provider code
 contains transport and classification logic; constructor options carry code
 dependencies such as HTTP clients and idempotency derivation functions.

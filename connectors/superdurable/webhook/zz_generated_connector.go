@@ -55,8 +55,21 @@ type Credentials struct {
 type CredentialSource = sdkgo.CredentialProvider[Credentials]
 
 type Connection struct {
-	client    *Client
-	reference sdkgo.ConnectionRef
+	client     *Client
+	operations Operations
+	reference  sdkgo.ConnectionRef
+}
+
+// Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
+// NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
+type Operations interface {
+	SendEvent() sdkgo.Mutation[SendEventInput, SendEventOutput]
+}
+
+type clientOperations struct{ client *Client }
+
+func (operations clientOperations) SendEvent() sdkgo.Mutation[SendEventInput, SendEventOutput] {
+	return operations.client.SendEvent()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -68,7 +81,19 @@ func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, e
 	if err := reference.Validate(); err != nil {
 		return Connection{}, fmt.Errorf("webhook connector connection: %w", err)
 	}
-	return Connection{client: client, reference: reference}, nil
+	return Connection{client: client, operations: clientOperations{client: client}, reference: reference}, nil
+}
+
+// NewConnectionWithOperations binds other operations, such as a generated mock package's, to a connection.
+// The connection serves operation Steps only: Trigger factories and runners require NewConnection.
+func NewConnectionWithOperations(operations Operations, reference sdkgo.ConnectionRef) (Connection, error) {
+	if operations == nil {
+		return Connection{}, fmt.Errorf("webhook connector operations are required")
+	}
+	if err := reference.Validate(); err != nil {
+		return Connection{}, fmt.Errorf("webhook connector connection: %w", err)
+	}
+	return Connection{operations: operations, reference: reference}, nil
 }
 
 // NewProjectConnection opens the connection that dex-app.yaml declares as connectionName from the
@@ -111,7 +136,17 @@ func decodeCredentials(contents json.RawMessage) (Credentials, error) {
 }
 
 func (connection Connection) validate() error {
+	if connection.client == nil && connection.operations != nil {
+		return fmt.Errorf("webhook connector connection from NewConnectionWithOperations serves only operation Steps")
+	}
 	if connection.client == nil {
+		return fmt.Errorf("webhook connector connection is required")
+	}
+	return connection.reference.Validate()
+}
+
+func (connection Connection) validateOperations() error {
+	if connection.operations == nil {
 		return fmt.Errorf("webhook connector connection is required")
 	}
 	return connection.reference.Validate()
@@ -280,7 +315,7 @@ type SendEventStepConfig[IN any] struct {
 }
 
 func NewSendEventStep[IN any](config SendEventStepConfig[IN]) sdkgo.MutationStep[IN, SendEventInput, SendEventOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -288,7 +323,7 @@ func NewSendEventStep[IN any](config SendEventStepConfig[IN]) sdkgo.MutationStep
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SendEventInput, SendEventOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.SendEvent(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.SendEvent(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[SendEventResult] {
 			branches := make([]sdkgo.BranchTarget[SendEventResult], 0, 4)

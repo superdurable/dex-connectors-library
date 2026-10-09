@@ -41,8 +41,33 @@ type Credentials struct {
 type CredentialSource = sdkgo.CredentialProvider[Credentials]
 
 type Connection struct {
-	client    *Client
-	reference sdkgo.ConnectionRef
+	client     *Client
+	operations Operations
+	reference  sdkgo.ConnectionRef
+}
+
+// Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
+// NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
+type Operations interface {
+	ListRecords() sdkgo.Query[ListRecordsInput, RecordPage]
+	GetRecord() sdkgo.Query[GetRecordInput, Record]
+	UpsertRecords() sdkgo.Mutation[UpsertRecordsInput, UpsertedRecords]
+	UpdateRecords() sdkgo.Mutation[UpdateRecordsInput, UpdatedRecords]
+}
+
+type clientOperations struct{ client *Client }
+
+func (operations clientOperations) ListRecords() sdkgo.Query[ListRecordsInput, RecordPage] {
+	return operations.client.ListRecords()
+}
+func (operations clientOperations) GetRecord() sdkgo.Query[GetRecordInput, Record] {
+	return operations.client.GetRecord()
+}
+func (operations clientOperations) UpsertRecords() sdkgo.Mutation[UpsertRecordsInput, UpsertedRecords] {
+	return operations.client.UpsertRecords()
+}
+func (operations clientOperations) UpdateRecords() sdkgo.Mutation[UpdateRecordsInput, UpdatedRecords] {
+	return operations.client.UpdateRecords()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -54,7 +79,19 @@ func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, e
 	if err := reference.Validate(); err != nil {
 		return Connection{}, fmt.Errorf("airtable connector connection: %w", err)
 	}
-	return Connection{client: client, reference: reference}, nil
+	return Connection{client: client, operations: clientOperations{client: client}, reference: reference}, nil
+}
+
+// NewConnectionWithOperations binds other operations, such as a generated mock package's, to a connection.
+// The connection serves operation Steps only: Trigger factories and runners require NewConnection.
+func NewConnectionWithOperations(operations Operations, reference sdkgo.ConnectionRef) (Connection, error) {
+	if operations == nil {
+		return Connection{}, fmt.Errorf("airtable connector operations are required")
+	}
+	if err := reference.Validate(); err != nil {
+		return Connection{}, fmt.Errorf("airtable connector connection: %w", err)
+	}
+	return Connection{operations: operations, reference: reference}, nil
 }
 
 // NewProjectConnection opens the connection that dex-app.yaml declares as connectionName from the
@@ -97,7 +134,17 @@ func decodeCredentials(contents json.RawMessage) (Credentials, error) {
 }
 
 func (connection Connection) validate() error {
+	if connection.client == nil && connection.operations != nil {
+		return fmt.Errorf("airtable connector connection from NewConnectionWithOperations serves only operation Steps")
+	}
 	if connection.client == nil {
+		return fmt.Errorf("airtable connector connection is required")
+	}
+	return connection.reference.Validate()
+}
+
+func (connection Connection) validateOperations() error {
+	if connection.operations == nil {
 		return fmt.Errorf("airtable connector connection is required")
 	}
 	return connection.reference.Validate()
@@ -197,7 +244,7 @@ type ListRecordsStepConfig[IN any] struct {
 }
 
 func NewListRecordsStep[IN any](config ListRecordsStepConfig[IN]) sdkgo.QueryStep[IN, ListRecordsInput, RecordPage] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -206,7 +253,7 @@ func NewListRecordsStep[IN any](config ListRecordsStepConfig[IN]) sdkgo.QuerySte
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListRecordsInput, RecordPage]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.ListRecords(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.ListRecords(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[ListRecordsResult] {
 			branches := make([]sdkgo.BranchTarget[ListRecordsResult], 0, 5)
@@ -276,7 +323,7 @@ type GetRecordStepConfig[IN any] struct {
 }
 
 func NewGetRecordStep[IN any](config GetRecordStepConfig[IN]) sdkgo.QueryStep[IN, GetRecordInput, Record] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -285,7 +332,7 @@ func NewGetRecordStep[IN any](config GetRecordStepConfig[IN]) sdkgo.QueryStep[IN
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetRecordInput, Record]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.GetRecord(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.GetRecord(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[GetRecordResult] {
 			branches := make([]sdkgo.BranchTarget[GetRecordResult], 0, 5)
@@ -352,7 +399,7 @@ type UpsertRecordsStepConfig[IN any] struct {
 }
 
 func NewUpsertRecordsStep[IN any](config UpsertRecordsStepConfig[IN]) sdkgo.MutationStep[IN, UpsertRecordsInput, UpsertedRecords] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -361,7 +408,7 @@ func NewUpsertRecordsStep[IN any](config UpsertRecordsStepConfig[IN]) sdkgo.Muta
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpsertRecordsInput, UpsertedRecords]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.UpsertRecords(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.UpsertRecords(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[UpsertRecordsResult] {
 			branches := make([]sdkgo.BranchTarget[UpsertRecordsResult], 0, 4)
@@ -428,7 +475,7 @@ type UpdateRecordsStepConfig[IN any] struct {
 }
 
 func NewUpdateRecordsStep[IN any](config UpdateRecordsStepConfig[IN]) sdkgo.MutationStep[IN, UpdateRecordsInput, UpdatedRecords] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -437,7 +484,7 @@ func NewUpdateRecordsStep[IN any](config UpdateRecordsStepConfig[IN]) sdkgo.Muta
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateRecordsInput, UpdatedRecords]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.UpdateRecords(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.UpdateRecords(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[UpdateRecordsResult] {
 			branches := make([]sdkgo.BranchTarget[UpdateRecordsResult], 0, 5)

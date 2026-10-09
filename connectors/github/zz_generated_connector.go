@@ -41,8 +41,41 @@ type Credentials struct {
 type CredentialSource = sdkgo.RefreshingCredentialProvider[Credentials]
 
 type Connection struct {
-	client    *Client
-	reference sdkgo.ConnectionRef
+	client     *Client
+	operations Operations
+	reference  sdkgo.ConnectionRef
+}
+
+// Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
+// NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
+type Operations interface {
+	GetAuthenticatedProfile() sdkgo.Query[GetAuthenticatedProfileInput, AuthenticatedProfile]
+	ListPublicRepositories() sdkgo.Query[ListPublicRepositoriesInput, PublicRepositories]
+	ListMergedPullRequests() sdkgo.Query[ListMergedPullRequestsInput, MergedPullRequestPage]
+	ListPullRequestFiles() sdkgo.Query[ListPullRequestFilesInput, PullRequestFilePage]
+	ListReleases() sdkgo.Query[ListReleasesInput, ReleasePage]
+	ListCommits() sdkgo.Query[ListCommitsInput, CommitPage]
+}
+
+type clientOperations struct{ client *Client }
+
+func (operations clientOperations) GetAuthenticatedProfile() sdkgo.Query[GetAuthenticatedProfileInput, AuthenticatedProfile] {
+	return operations.client.GetAuthenticatedProfile()
+}
+func (operations clientOperations) ListPublicRepositories() sdkgo.Query[ListPublicRepositoriesInput, PublicRepositories] {
+	return operations.client.ListPublicRepositories()
+}
+func (operations clientOperations) ListMergedPullRequests() sdkgo.Query[ListMergedPullRequestsInput, MergedPullRequestPage] {
+	return operations.client.ListMergedPullRequests()
+}
+func (operations clientOperations) ListPullRequestFiles() sdkgo.Query[ListPullRequestFilesInput, PullRequestFilePage] {
+	return operations.client.ListPullRequestFiles()
+}
+func (operations clientOperations) ListReleases() sdkgo.Query[ListReleasesInput, ReleasePage] {
+	return operations.client.ListReleases()
+}
+func (operations clientOperations) ListCommits() sdkgo.Query[ListCommitsInput, CommitPage] {
+	return operations.client.ListCommits()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -54,7 +87,19 @@ func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, e
 	if err := reference.Validate(); err != nil {
 		return Connection{}, fmt.Errorf("github connector connection: %w", err)
 	}
-	return Connection{client: client, reference: reference}, nil
+	return Connection{client: client, operations: clientOperations{client: client}, reference: reference}, nil
+}
+
+// NewConnectionWithOperations binds other operations, such as a generated mock package's, to a connection.
+// The connection serves operation Steps only: Trigger factories and runners require NewConnection.
+func NewConnectionWithOperations(operations Operations, reference sdkgo.ConnectionRef) (Connection, error) {
+	if operations == nil {
+		return Connection{}, fmt.Errorf("github connector operations are required")
+	}
+	if err := reference.Validate(); err != nil {
+		return Connection{}, fmt.Errorf("github connector connection: %w", err)
+	}
+	return Connection{operations: operations, reference: reference}, nil
 }
 
 // NewProjectConnection opens the connection that dex-app.yaml declares as connectionName from the
@@ -118,7 +163,17 @@ func encodeCredentials(credentials Credentials) (json.RawMessage, error) {
 }
 
 func (connection Connection) validate() error {
+	if connection.client == nil && connection.operations != nil {
+		return fmt.Errorf("github connector connection from NewConnectionWithOperations serves only operation Steps")
+	}
 	if connection.client == nil {
+		return fmt.Errorf("github connector connection is required")
+	}
+	return connection.reference.Validate()
+}
+
+func (connection Connection) validateOperations() error {
+	if connection.operations == nil {
 		return fmt.Errorf("github connector connection is required")
 	}
 	return connection.reference.Validate()
@@ -278,7 +333,7 @@ type GetAuthenticatedProfileStepConfig[IN any] struct {
 }
 
 func NewGetAuthenticatedProfileStep[IN any](config GetAuthenticatedProfileStepConfig[IN]) sdkgo.QueryStep[IN, GetAuthenticatedProfileInput, AuthenticatedProfile] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -286,7 +341,7 @@ func NewGetAuthenticatedProfileStep[IN any](config GetAuthenticatedProfileStepCo
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetAuthenticatedProfileInput, AuthenticatedProfile]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.GetAuthenticatedProfile(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.GetAuthenticatedProfile(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[GetAuthenticatedProfileResult] {
 			branches := make([]sdkgo.BranchTarget[GetAuthenticatedProfileResult], 0, 8)
@@ -370,7 +425,7 @@ type ListPublicRepositoriesStepConfig[IN any] struct {
 }
 
 func NewListPublicRepositoriesStep[IN any](config ListPublicRepositoriesStepConfig[IN]) sdkgo.QueryStep[IN, ListPublicRepositoriesInput, PublicRepositories] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -378,7 +433,7 @@ func NewListPublicRepositoriesStep[IN any](config ListPublicRepositoriesStepConf
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListPublicRepositoriesInput, PublicRepositories]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.ListPublicRepositories(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.ListPublicRepositories(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[ListPublicRepositoriesResult] {
 			branches := make([]sdkgo.BranchTarget[ListPublicRepositoriesResult], 0, 7)
@@ -459,7 +514,7 @@ type ListMergedPullRequestsStepConfig[IN any] struct {
 }
 
 func NewListMergedPullRequestsStep[IN any](config ListMergedPullRequestsStepConfig[IN]) sdkgo.QueryStep[IN, ListMergedPullRequestsInput, MergedPullRequestPage] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -467,7 +522,7 @@ func NewListMergedPullRequestsStep[IN any](config ListMergedPullRequestsStepConf
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListMergedPullRequestsInput, MergedPullRequestPage]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.ListMergedPullRequests(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.ListMergedPullRequests(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[ListMergedPullRequestsResult] {
 			branches := make([]sdkgo.BranchTarget[ListMergedPullRequestsResult], 0, 7)
@@ -548,7 +603,7 @@ type ListPullRequestFilesStepConfig[IN any] struct {
 }
 
 func NewListPullRequestFilesStep[IN any](config ListPullRequestFilesStepConfig[IN]) sdkgo.QueryStep[IN, ListPullRequestFilesInput, PullRequestFilePage] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -556,7 +611,7 @@ func NewListPullRequestFilesStep[IN any](config ListPullRequestFilesStepConfig[I
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListPullRequestFilesInput, PullRequestFilePage]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.ListPullRequestFiles(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.ListPullRequestFiles(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[ListPullRequestFilesResult] {
 			branches := make([]sdkgo.BranchTarget[ListPullRequestFilesResult], 0, 7)
@@ -637,7 +692,7 @@ type ListReleasesStepConfig[IN any] struct {
 }
 
 func NewListReleasesStep[IN any](config ListReleasesStepConfig[IN]) sdkgo.QueryStep[IN, ListReleasesInput, ReleasePage] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -645,7 +700,7 @@ func NewListReleasesStep[IN any](config ListReleasesStepConfig[IN]) sdkgo.QueryS
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListReleasesInput, ReleasePage]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.ListReleases(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.ListReleases(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[ListReleasesResult] {
 			branches := make([]sdkgo.BranchTarget[ListReleasesResult], 0, 7)
@@ -726,7 +781,7 @@ type ListCommitsStepConfig[IN any] struct {
 }
 
 func NewListCommitsStep[IN any](config ListCommitsStepConfig[IN]) sdkgo.QueryStep[IN, ListCommitsInput, CommitPage] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -734,7 +789,7 @@ func NewListCommitsStep[IN any](config ListCommitsStepConfig[IN]) sdkgo.QuerySte
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListCommitsInput, CommitPage]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.ListCommits(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.ListCommits(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[ListCommitsResult] {
 			branches := make([]sdkgo.BranchTarget[ListCommitsResult], 0, 7)

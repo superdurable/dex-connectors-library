@@ -48,8 +48,41 @@ type Credentials struct {
 type CredentialSource = sdkgo.RefreshingCredentialProvider[Credentials]
 
 type Connection struct {
-	client    *Client
-	reference sdkgo.ConnectionRef
+	client     *Client
+	operations Operations
+	reference  sdkgo.ConnectionRef
+}
+
+// Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
+// NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
+type Operations interface {
+	SearchObjects() sdkgo.Query[SearchObjectsInput, ObjectPage]
+	GetObject() sdkgo.Query[GetObjectInput, CRMObject]
+	ListObjects() sdkgo.Query[ListObjectsInput, ObjectPage]
+	UpsertObject() sdkgo.Mutation[UpsertObjectInput, UpsertedObject]
+	CreateObject() sdkgo.Mutation[CreateObjectInput, CRMObject]
+	UpdateObject() sdkgo.Mutation[UpdateObjectInput, CRMObject]
+}
+
+type clientOperations struct{ client *Client }
+
+func (operations clientOperations) SearchObjects() sdkgo.Query[SearchObjectsInput, ObjectPage] {
+	return operations.client.SearchObjects()
+}
+func (operations clientOperations) GetObject() sdkgo.Query[GetObjectInput, CRMObject] {
+	return operations.client.GetObject()
+}
+func (operations clientOperations) ListObjects() sdkgo.Query[ListObjectsInput, ObjectPage] {
+	return operations.client.ListObjects()
+}
+func (operations clientOperations) UpsertObject() sdkgo.Mutation[UpsertObjectInput, UpsertedObject] {
+	return operations.client.UpsertObject()
+}
+func (operations clientOperations) CreateObject() sdkgo.Mutation[CreateObjectInput, CRMObject] {
+	return operations.client.CreateObject()
+}
+func (operations clientOperations) UpdateObject() sdkgo.Mutation[UpdateObjectInput, CRMObject] {
+	return operations.client.UpdateObject()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -61,7 +94,19 @@ func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, e
 	if err := reference.Validate(); err != nil {
 		return Connection{}, fmt.Errorf("pipedrive connector connection: %w", err)
 	}
-	return Connection{client: client, reference: reference}, nil
+	return Connection{client: client, operations: clientOperations{client: client}, reference: reference}, nil
+}
+
+// NewConnectionWithOperations binds other operations, such as a generated mock package's, to a connection.
+// The connection serves operation Steps only: Trigger factories and runners require NewConnection.
+func NewConnectionWithOperations(operations Operations, reference sdkgo.ConnectionRef) (Connection, error) {
+	if operations == nil {
+		return Connection{}, fmt.Errorf("pipedrive connector operations are required")
+	}
+	if err := reference.Validate(); err != nil {
+		return Connection{}, fmt.Errorf("pipedrive connector connection: %w", err)
+	}
+	return Connection{operations: operations, reference: reference}, nil
 }
 
 // NewProjectConnection opens the connection that dex-app.yaml declares as connectionName from the
@@ -137,7 +182,17 @@ func encodeCredentials(credentials Credentials) (json.RawMessage, error) {
 }
 
 func (connection Connection) validate() error {
+	if connection.client == nil && connection.operations != nil {
+		return fmt.Errorf("pipedrive connector connection from NewConnectionWithOperations serves only operation Steps")
+	}
 	if connection.client == nil {
+		return fmt.Errorf("pipedrive connector connection is required")
+	}
+	return connection.reference.Validate()
+}
+
+func (connection Connection) validateOperations() error {
+	if connection.operations == nil {
 		return fmt.Errorf("pipedrive connector connection is required")
 	}
 	return connection.reference.Validate()
@@ -252,7 +307,7 @@ type SearchObjectsStepConfig[IN any] struct {
 }
 
 func NewSearchObjectsStep[IN any](config SearchObjectsStepConfig[IN]) sdkgo.QueryStep[IN, SearchObjectsInput, ObjectPage] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -261,7 +316,7 @@ func NewSearchObjectsStep[IN any](config SearchObjectsStepConfig[IN]) sdkgo.Quer
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, SearchObjectsInput, ObjectPage]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.SearchObjects(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.SearchObjects(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[SearchObjectsResult] {
 			branches := make([]sdkgo.BranchTarget[SearchObjectsResult], 0, 4)
@@ -328,7 +383,7 @@ type GetObjectStepConfig[IN any] struct {
 }
 
 func NewGetObjectStep[IN any](config GetObjectStepConfig[IN]) sdkgo.QueryStep[IN, GetObjectInput, CRMObject] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -337,7 +392,7 @@ func NewGetObjectStep[IN any](config GetObjectStepConfig[IN]) sdkgo.QueryStep[IN
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetObjectInput, CRMObject]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.GetObject(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.GetObject(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[GetObjectResult] {
 			branches := make([]sdkgo.BranchTarget[GetObjectResult], 0, 5)
@@ -404,7 +459,7 @@ type ListObjectsStepConfig[IN any] struct {
 }
 
 func NewListObjectsStep[IN any](config ListObjectsStepConfig[IN]) sdkgo.QueryStep[IN, ListObjectsInput, ObjectPage] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -413,7 +468,7 @@ func NewListObjectsStep[IN any](config ListObjectsStepConfig[IN]) sdkgo.QuerySte
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListObjectsInput, ObjectPage]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.ListObjects(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.ListObjects(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[ListObjectsResult] {
 			branches := make([]sdkgo.BranchTarget[ListObjectsResult], 0, 4)
@@ -483,7 +538,7 @@ type UpsertObjectStepConfig[IN any] struct {
 }
 
 func NewUpsertObjectStep[IN any](config UpsertObjectStepConfig[IN]) sdkgo.MutationStep[IN, UpsertObjectInput, UpsertedObject] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -492,7 +547,7 @@ func NewUpsertObjectStep[IN any](config UpsertObjectStepConfig[IN]) sdkgo.Mutati
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpsertObjectInput, UpsertedObject]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.UpsertObject(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.UpsertObject(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[UpsertObjectResult] {
 			branches := make([]sdkgo.BranchTarget[UpsertObjectResult], 0, 6)
@@ -562,7 +617,7 @@ type CreateObjectStepConfig[IN any] struct {
 }
 
 func NewCreateObjectStep[IN any](config CreateObjectStepConfig[IN]) sdkgo.MutationStep[IN, CreateObjectInput, CRMObject] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -571,7 +626,7 @@ func NewCreateObjectStep[IN any](config CreateObjectStepConfig[IN]) sdkgo.Mutati
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateObjectInput, CRMObject]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.CreateObject(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.CreateObject(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[CreateObjectResult] {
 			branches := make([]sdkgo.BranchTarget[CreateObjectResult], 0, 4)
@@ -638,7 +693,7 @@ type UpdateObjectStepConfig[IN any] struct {
 }
 
 func NewUpdateObjectStep[IN any](config UpdateObjectStepConfig[IN]) sdkgo.MutationStep[IN, UpdateObjectInput, CRMObject] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -647,7 +702,7 @@ func NewUpdateObjectStep[IN any](config UpdateObjectStepConfig[IN]) sdkgo.Mutati
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateObjectInput, CRMObject]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.UpdateObject(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.UpdateObject(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[UpdateObjectResult] {
 			branches := make([]sdkgo.BranchTarget[UpdateObjectResult], 0, 5)

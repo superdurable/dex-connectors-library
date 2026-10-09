@@ -48,8 +48,33 @@ type Credentials struct {
 type CredentialSource = sdkgo.RefreshingCredentialProvider[Credentials]
 
 type Connection struct {
-	client    *Client
-	reference sdkgo.ConnectionRef
+	client     *Client
+	operations Operations
+	reference  sdkgo.ConnectionRef
+}
+
+// Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
+// NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
+type Operations interface {
+	ListThreadReplies() sdkgo.Query[ListThreadRepliesInput, ListThreadRepliesOutput]
+	PostChannelMessage() sdkgo.Mutation[PostChannelMessageInput, PostMessageOutput]
+	PostThreadReply() sdkgo.Mutation[PostThreadReplyInput, PostMessageOutput]
+	PostChatMessage() sdkgo.Mutation[PostChatMessageInput, PostMessageOutput]
+}
+
+type clientOperations struct{ client *Client }
+
+func (operations clientOperations) ListThreadReplies() sdkgo.Query[ListThreadRepliesInput, ListThreadRepliesOutput] {
+	return operations.client.ListThreadReplies()
+}
+func (operations clientOperations) PostChannelMessage() sdkgo.Mutation[PostChannelMessageInput, PostMessageOutput] {
+	return operations.client.PostChannelMessage()
+}
+func (operations clientOperations) PostThreadReply() sdkgo.Mutation[PostThreadReplyInput, PostMessageOutput] {
+	return operations.client.PostThreadReply()
+}
+func (operations clientOperations) PostChatMessage() sdkgo.Mutation[PostChatMessageInput, PostMessageOutput] {
+	return operations.client.PostChatMessage()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -61,7 +86,19 @@ func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, e
 	if err := reference.Validate(); err != nil {
 		return Connection{}, fmt.Errorf("microsoft-teams connector connection: %w", err)
 	}
-	return Connection{client: client, reference: reference}, nil
+	return Connection{client: client, operations: clientOperations{client: client}, reference: reference}, nil
+}
+
+// NewConnectionWithOperations binds other operations, such as a generated mock package's, to a connection.
+// The connection serves operation Steps only: Trigger factories and runners require NewConnection.
+func NewConnectionWithOperations(operations Operations, reference sdkgo.ConnectionRef) (Connection, error) {
+	if operations == nil {
+		return Connection{}, fmt.Errorf("microsoft-teams connector operations are required")
+	}
+	if err := reference.Validate(); err != nil {
+		return Connection{}, fmt.Errorf("microsoft-teams connector connection: %w", err)
+	}
+	return Connection{operations: operations, reference: reference}, nil
 }
 
 // NewProjectConnection opens the connection that dex-app.yaml declares as connectionName from the
@@ -125,7 +162,17 @@ func encodeCredentials(credentials Credentials) (json.RawMessage, error) {
 }
 
 func (connection Connection) validate() error {
+	if connection.client == nil && connection.operations != nil {
+		return fmt.Errorf("microsoft-teams connector connection from NewConnectionWithOperations serves only operation Steps")
+	}
 	if connection.client == nil {
+		return fmt.Errorf("microsoft-teams connector connection is required")
+	}
+	return connection.reference.Validate()
+}
+
+func (connection Connection) validateOperations() error {
+	if connection.operations == nil {
 		return fmt.Errorf("microsoft-teams connector connection is required")
 	}
 	return connection.reference.Validate()
@@ -241,7 +288,7 @@ type ListThreadRepliesStepConfig[IN any] struct {
 }
 
 func NewListThreadRepliesStep[IN any](config ListThreadRepliesStepConfig[IN]) sdkgo.QueryStep[IN, ListThreadRepliesInput, ListThreadRepliesOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -250,7 +297,7 @@ func NewListThreadRepliesStep[IN any](config ListThreadRepliesStepConfig[IN]) sd
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListThreadRepliesInput, ListThreadRepliesOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.ListThreadReplies(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.ListThreadReplies(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[ListThreadRepliesResult] {
 			branches := make([]sdkgo.BranchTarget[ListThreadRepliesResult], 0, 5)
@@ -317,7 +364,7 @@ type PostChannelMessageStepConfig[IN any] struct {
 }
 
 func NewPostChannelMessageStep[IN any](config PostChannelMessageStepConfig[IN]) sdkgo.MutationStep[IN, PostChannelMessageInput, PostMessageOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -326,7 +373,7 @@ func NewPostChannelMessageStep[IN any](config PostChannelMessageStepConfig[IN]) 
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, PostChannelMessageInput, PostMessageOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.PostChannelMessage(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.PostChannelMessage(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[PostChannelMessageResult] {
 			branches := make([]sdkgo.BranchTarget[PostChannelMessageResult], 0, 4)
@@ -390,7 +437,7 @@ type PostThreadReplyStepConfig[IN any] struct {
 }
 
 func NewPostThreadReplyStep[IN any](config PostThreadReplyStepConfig[IN]) sdkgo.MutationStep[IN, PostThreadReplyInput, PostMessageOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -399,7 +446,7 @@ func NewPostThreadReplyStep[IN any](config PostThreadReplyStepConfig[IN]) sdkgo.
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, PostThreadReplyInput, PostMessageOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.PostThreadReply(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.PostThreadReply(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[PostThreadReplyResult] {
 			branches := make([]sdkgo.BranchTarget[PostThreadReplyResult], 0, 4)
@@ -463,7 +510,7 @@ type PostChatMessageStepConfig[IN any] struct {
 }
 
 func NewPostChatMessageStep[IN any](config PostChatMessageStepConfig[IN]) sdkgo.MutationStep[IN, PostChatMessageInput, PostMessageOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -472,7 +519,7 @@ func NewPostChatMessageStep[IN any](config PostChatMessageStepConfig[IN]) sdkgo.
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, PostChatMessageInput, PostMessageOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.PostChatMessage(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.PostChatMessage(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[PostChatMessageResult] {
 			branches := make([]sdkgo.BranchTarget[PostChatMessageResult], 0, 4)

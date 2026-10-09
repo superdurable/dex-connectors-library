@@ -1,0 +1,98 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: mock-fixture
+  displayName: Mock Fixture
+  description: Code generation fixture for connector mocks.
+  company: Example
+  version: v0.1.0
+spec:
+  provider: example
+  codegen:
+    go:
+      package: mockfixture
+  configuration:
+    fields: []
+  auth:
+    type: none
+    connectionKind: none
+    fields: []
+  operations:
+    - name: getWidget
+      goName: GetWidget
+      inputType: GetWidgetInput
+      outputType: Widget
+      kind: query
+      description: Read one widget.
+      idempotency: none
+      branches:
+        - {id: found, goName: Found, description: The widget was read.}
+        - {id: notFound, goName: NotFound, description: The widget does not exist., optional: true}
+        - {id: defect, goName: Defect, description: The input is invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}}
+      mocks:
+        - name: gear
+          branch: found
+          description: A widget with every field set.
+          default: true
+          output: {id: w-1, name: Gear, createdAt: "2026-01-02T03:04:05Z", tags: [metal, "007"]}
+        - name: missing
+          branch: notFound
+          description: The provider reports no such widget.
+          failure: {kind: NOT_FOUND, message: The widget does not exist.}
+        - name: invalidID
+          branch: defect
+          description: The widget ID is empty.
+          failure: {kind: VALIDATION, message: The widget ID is required.}
+        - name: throttled
+          description: The provider throttles the read once.
+          retry: {failure: {kind: RATE_LIMIT, message: Too many requests.}, after: 2s}
+    - name: listWidgets
+      goName: ListWidgets
+      inputType: ListWidgetsInput
+      outputType: WidgetPage
+      kind: query
+      description: List one page of widgets.
+      idempotency: none
+      branches:
+        - {id: listed, goName: Listed, description: One page was listed.}
+        - {id: defect, goName: Defect, description: The input is invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}}
+      pagination: {inputField: page, nextField: nextPage}
+      mocks:
+        - name: threePages
+          branch: listed
+          description: Three unordered pages with a duplicate across a page boundary and an archived widget.
+          default: true
+          pages:
+            - {widgets: [{id: w-3, name: Spring}, {id: w-1, name: Gear}], nextPage: 2}
+            - {widgets: [{id: w-1, name: Gear}, {id: w-9, name: Archived, tags: [archived]}], nextPage: 3}
+            - {widgets: [], nextPage: 0}
+        - name: invalidPage
+          branch: defect
+          description: The page number is negative.
+          failure: {kind: VALIDATION, message: The page must not be negative.}
+    - name: createWidget
+      goName: CreateWidget
+      inputType: CreateWidgetInput
+      outputType: Widget
+      kind: mutation
+      description: Create one widget.
+      idempotency: required
+      branches:
+        - {id: created, goName: Created, description: The widget was created.}
+        - {id: uncertain, goName: Uncertain, description: The create outcome is unknown., optional: true}
+        - {id: defect, goName: Defect, description: The input is invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}}
+      mocks:
+        - name: createdGear
+          branch: created
+          description: The provider created the widget.
+          output: {id: w-1, name: Gear}
+        - name: connectionLost
+          description: The connection closed after the request was sent.
+          uncertain: {failure: {kind: TRANSPORT, message: The connection closed before the response.}}
+        - name: emptyName
+          branch: defect
+          description: The widget name is empty.
+          failure: {kind: VALIDATION, message: The widget name is required.}

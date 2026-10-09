@@ -51,8 +51,33 @@ type Credentials struct {
 type CredentialSource = sdkgo.RefreshingCredentialProvider[Credentials]
 
 type Connection struct {
-	client    *Client
-	reference sdkgo.ConnectionRef
+	client     *Client
+	operations Operations
+	reference  sdkgo.ConnectionRef
+}
+
+// Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
+// NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
+type Operations interface {
+	GetTableRows() sdkgo.Query[GetTableRowsInput, GetTableRowsOutput]
+	GetValues() sdkgo.Query[GetValuesInput, GetValuesOutput]
+	UpdateValues() sdkgo.Mutation[UpdateValuesInput, UpdateValuesOutput]
+	AppendTableRows() sdkgo.Mutation[AppendTableRowsInput, AppendTableRowsOutput]
+}
+
+type clientOperations struct{ client *Client }
+
+func (operations clientOperations) GetTableRows() sdkgo.Query[GetTableRowsInput, GetTableRowsOutput] {
+	return operations.client.GetTableRows()
+}
+func (operations clientOperations) GetValues() sdkgo.Query[GetValuesInput, GetValuesOutput] {
+	return operations.client.GetValues()
+}
+func (operations clientOperations) UpdateValues() sdkgo.Mutation[UpdateValuesInput, UpdateValuesOutput] {
+	return operations.client.UpdateValues()
+}
+func (operations clientOperations) AppendTableRows() sdkgo.Mutation[AppendTableRowsInput, AppendTableRowsOutput] {
+	return operations.client.AppendTableRows()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -64,7 +89,19 @@ func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, e
 	if err := reference.Validate(); err != nil {
 		return Connection{}, fmt.Errorf("microsoft-excel connector connection: %w", err)
 	}
-	return Connection{client: client, reference: reference}, nil
+	return Connection{client: client, operations: clientOperations{client: client}, reference: reference}, nil
+}
+
+// NewConnectionWithOperations binds other operations, such as a generated mock package's, to a connection.
+// The connection serves operation Steps only: Trigger factories and runners require NewConnection.
+func NewConnectionWithOperations(operations Operations, reference sdkgo.ConnectionRef) (Connection, error) {
+	if operations == nil {
+		return Connection{}, fmt.Errorf("microsoft-excel connector operations are required")
+	}
+	if err := reference.Validate(); err != nil {
+		return Connection{}, fmt.Errorf("microsoft-excel connector connection: %w", err)
+	}
+	return Connection{operations: operations, reference: reference}, nil
 }
 
 // NewProjectConnection opens the connection that dex-app.yaml declares as connectionName from the
@@ -132,7 +169,17 @@ func encodeCredentials(credentials Credentials) (json.RawMessage, error) {
 }
 
 func (connection Connection) validate() error {
+	if connection.client == nil && connection.operations != nil {
+		return fmt.Errorf("microsoft-excel connector connection from NewConnectionWithOperations serves only operation Steps")
+	}
 	if connection.client == nil {
+		return fmt.Errorf("microsoft-excel connector connection is required")
+	}
+	return connection.reference.Validate()
+}
+
+func (connection Connection) validateOperations() error {
+	if connection.operations == nil {
 		return fmt.Errorf("microsoft-excel connector connection is required")
 	}
 	return connection.reference.Validate()
@@ -246,7 +293,7 @@ type GetTableRowsStepConfig[IN any] struct {
 }
 
 func NewGetTableRowsStep[IN any](config GetTableRowsStepConfig[IN]) sdkgo.QueryStep[IN, GetTableRowsInput, GetTableRowsOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -255,7 +302,7 @@ func NewGetTableRowsStep[IN any](config GetTableRowsStepConfig[IN]) sdkgo.QueryS
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetTableRowsInput, GetTableRowsOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.GetTableRows(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.GetTableRows(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[GetTableRowsResult] {
 			branches := make([]sdkgo.BranchTarget[GetTableRowsResult], 0, 6)
@@ -331,7 +378,7 @@ type GetValuesStepConfig[IN any] struct {
 }
 
 func NewGetValuesStep[IN any](config GetValuesStepConfig[IN]) sdkgo.QueryStep[IN, GetValuesInput, GetValuesOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -340,7 +387,7 @@ func NewGetValuesStep[IN any](config GetValuesStepConfig[IN]) sdkgo.QueryStep[IN
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetValuesInput, GetValuesOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.GetValues(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.GetValues(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[GetValuesResult] {
 			branches := make([]sdkgo.BranchTarget[GetValuesResult], 0, 6)
@@ -410,7 +457,7 @@ type UpdateValuesStepConfig[IN any] struct {
 }
 
 func NewUpdateValuesStep[IN any](config UpdateValuesStepConfig[IN]) sdkgo.MutationStep[IN, UpdateValuesInput, UpdateValuesOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -419,7 +466,7 @@ func NewUpdateValuesStep[IN any](config UpdateValuesStepConfig[IN]) sdkgo.Mutati
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateValuesInput, UpdateValuesOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.UpdateValues(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.UpdateValues(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[UpdateValuesResult] {
 			branches := make([]sdkgo.BranchTarget[UpdateValuesResult], 0, 4)
@@ -492,7 +539,7 @@ type AppendTableRowsStepConfig[IN any] struct {
 }
 
 func NewAppendTableRowsStep[IN any](config AppendTableRowsStepConfig[IN]) sdkgo.MutationStep[IN, AppendTableRowsInput, AppendTableRowsOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -501,7 +548,7 @@ func NewAppendTableRowsStep[IN any](config AppendTableRowsStepConfig[IN]) sdkgo.
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, AppendTableRowsInput, AppendTableRowsOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.AppendTableRows(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.AppendTableRows(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[AppendTableRowsResult] {
 			branches := make([]sdkgo.BranchTarget[AppendTableRowsResult], 0, 7)

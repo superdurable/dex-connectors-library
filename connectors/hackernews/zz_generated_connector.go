@@ -31,8 +31,25 @@ type Credentials struct {
 type CredentialSource = sdkgo.CredentialProvider[Credentials]
 
 type Connection struct {
-	client    *Client
-	reference sdkgo.ConnectionRef
+	client     *Client
+	operations Operations
+	reference  sdkgo.ConnectionRef
+}
+
+// Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
+// NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
+type Operations interface {
+	ListStoryIDs() sdkgo.Query[ListStoryIDsInput, StoryIDs]
+	GetItem() sdkgo.Query[GetItemInput, Item]
+}
+
+type clientOperations struct{ client *Client }
+
+func (operations clientOperations) ListStoryIDs() sdkgo.Query[ListStoryIDsInput, StoryIDs] {
+	return operations.client.ListStoryIDs()
+}
+func (operations clientOperations) GetItem() sdkgo.Query[GetItemInput, Item] {
+	return operations.client.GetItem()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -44,7 +61,19 @@ func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, e
 	if err := reference.Validate(); err != nil {
 		return Connection{}, fmt.Errorf("hacker-news-daily connector connection: %w", err)
 	}
-	return Connection{client: client, reference: reference}, nil
+	return Connection{client: client, operations: clientOperations{client: client}, reference: reference}, nil
+}
+
+// NewConnectionWithOperations binds other operations, such as a generated mock package's, to a connection.
+// The connection serves operation Steps only: Trigger factories and runners require NewConnection.
+func NewConnectionWithOperations(operations Operations, reference sdkgo.ConnectionRef) (Connection, error) {
+	if operations == nil {
+		return Connection{}, fmt.Errorf("hacker-news-daily connector operations are required")
+	}
+	if err := reference.Validate(); err != nil {
+		return Connection{}, fmt.Errorf("hacker-news-daily connector connection: %w", err)
+	}
+	return Connection{operations: operations, reference: reference}, nil
 }
 
 // NewProjectConnection opens the connection that dex-app.yaml declares as connectionName from the
@@ -84,7 +113,17 @@ func decodeCredentials(contents json.RawMessage) (Credentials, error) {
 }
 
 func (connection Connection) validate() error {
+	if connection.client == nil && connection.operations != nil {
+		return fmt.Errorf("hacker-news-daily connector connection from NewConnectionWithOperations serves only operation Steps")
+	}
 	if connection.client == nil {
+		return fmt.Errorf("hacker-news-daily connector connection is required")
+	}
+	return connection.reference.Validate()
+}
+
+func (connection Connection) validateOperations() error {
+	if connection.operations == nil {
 		return fmt.Errorf("hacker-news-daily connector connection is required")
 	}
 	return connection.reference.Validate()
@@ -184,7 +223,7 @@ type ListStoryIDsStepConfig[IN any] struct {
 }
 
 func NewListStoryIDsStep[IN any](config ListStoryIDsStepConfig[IN]) sdkgo.QueryStep[IN, ListStoryIDsInput, StoryIDs] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -192,7 +231,7 @@ func NewListStoryIDsStep[IN any](config ListStoryIDsStepConfig[IN]) sdkgo.QueryS
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListStoryIDsInput, StoryIDs]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.ListStoryIDs(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.ListStoryIDs(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[ListStoryIDsResult] {
 			branches := make([]sdkgo.BranchTarget[ListStoryIDsResult], 0, 4)
@@ -258,7 +297,7 @@ type GetItemStepConfig[IN any] struct {
 }
 
 func NewGetItemStep[IN any](config GetItemStepConfig[IN]) sdkgo.QueryStep[IN, GetItemInput, Item] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -266,7 +305,7 @@ func NewGetItemStep[IN any](config GetItemStepConfig[IN]) sdkgo.QueryStep[IN, Ge
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetItemInput, Item]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.GetItem(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.GetItem(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[GetItemResult] {
 			branches := make([]sdkgo.BranchTarget[GetItemResult], 0, 5)

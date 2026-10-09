@@ -485,6 +485,53 @@
         }
       }
     },
+    "mockFailure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "message"],
+      "properties": {
+        "kind": { "enum": ["VALIDATION", "AUTHENTICATION", "AUTHORIZATION", "NOT_FOUND", "CONFLICT", "RATE_LIMIT", "QUOTA_EXHAUSTED", "AVAILABILITY", "PROVIDER_REJECTION", "TRANSPORT", "RESPONSE_TOO_LARGE", "PROTOCOL", "LOCAL_DEFECT"] },
+        "message": { "type": "string", "minLength": 1 }
+      }
+    },
+    "operationMock": {
+      "description": "One maintained outcome of the generated mock package: a branch mock with output, pages, or failure; a retry; or an uncertain mutation outcome.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "description"],
+      "properties": {
+        "name": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]+$" },
+        "branch": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]+$" },
+        "description": { "type": "string", "minLength": 1 },
+        "output": {},
+        "pages": { "type": "array", "minItems": 1, "items": { "type": "object" } },
+        "failure": { "$ref": "#/$defs/mockFailure" },
+        "retry": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["failure"],
+          "properties": {
+            "failure": { "$ref": "#/$defs/mockFailure" },
+            "after": { "type": "string" }
+          }
+        },
+        "uncertain": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["failure"],
+          "properties": {
+            "output": {},
+            "failure": { "$ref": "#/$defs/mockFailure" }
+          }
+        },
+        "default": { "type": "boolean" }
+      },
+      "oneOf": [
+        { "required": ["retry"], "not": { "anyOf": [{ "required": ["branch"] }, { "required": ["output"] }, { "required": ["pages"] }, { "required": ["failure"] }, { "required": ["uncertain"] }, { "required": ["default"] }] } },
+        { "required": ["uncertain"], "not": { "anyOf": [{ "required": ["output"] }, { "required": ["pages"] }, { "required": ["failure"] }, { "required": ["retry"] }, { "required": ["default"] }] } },
+        { "required": ["branch"], "anyOf": [{ "required": ["output"] }, { "required": ["pages"] }, { "required": ["failure"] }], "not": { "anyOf": [{ "required": ["retry"] }, { "required": ["uncertain"] }] } }
+      ]
+    },
     "operation": {
       "type": "object",
       "additionalProperties": false,
@@ -500,7 +547,17 @@
         "branches": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/branch" } },
         "progress": { "type": "array", "uniqueItems": true, "items": { "enum": ["structured", "text"] } },
         "authorization": { "enum": ["none", "required"] },
-        "execution": { "$ref": "#/$defs/execution" }
+        "execution": { "$ref": "#/$defs/execution" },
+        "pagination": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["inputField", "nextField"],
+          "properties": {
+            "inputField": { "type": "string", "pattern": "^[a-z][A-Za-z0-9_]*$" },
+            "nextField": { "type": "string", "pattern": "^[a-z][A-Za-z0-9_]*$" }
+          }
+        },
+        "mocks": { "type": "array", "items": { "$ref": "#/$defs/operationMock" } }
       },
       "allOf": [
         {

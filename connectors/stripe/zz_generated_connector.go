@@ -34,8 +34,25 @@ type Credentials struct {
 type CredentialSource = sdkgo.CredentialProvider[Credentials]
 
 type Connection struct {
-	client    *Client
-	reference sdkgo.ConnectionRef
+	client     *Client
+	operations Operations
+	reference  sdkgo.ConnectionRef
+}
+
+// Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
+// NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
+type Operations interface {
+	CreateACHCheckoutSession() sdkgo.Mutation[CreateACHCheckoutSessionInput, CheckoutSession]
+	GetCheckoutSession() sdkgo.Query[GetCheckoutSessionInput, CheckoutSession]
+}
+
+type clientOperations struct{ client *Client }
+
+func (operations clientOperations) CreateACHCheckoutSession() sdkgo.Mutation[CreateACHCheckoutSessionInput, CheckoutSession] {
+	return operations.client.CreateACHCheckoutSession()
+}
+func (operations clientOperations) GetCheckoutSession() sdkgo.Query[GetCheckoutSessionInput, CheckoutSession] {
+	return operations.client.GetCheckoutSession()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -47,7 +64,19 @@ func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, e
 	if err := reference.Validate(); err != nil {
 		return Connection{}, fmt.Errorf("stripe connector connection: %w", err)
 	}
-	return Connection{client: client, reference: reference}, nil
+	return Connection{client: client, operations: clientOperations{client: client}, reference: reference}, nil
+}
+
+// NewConnectionWithOperations binds other operations, such as a generated mock package's, to a connection.
+// The connection serves operation Steps only: Trigger factories and runners require NewConnection.
+func NewConnectionWithOperations(operations Operations, reference sdkgo.ConnectionRef) (Connection, error) {
+	if operations == nil {
+		return Connection{}, fmt.Errorf("stripe connector operations are required")
+	}
+	if err := reference.Validate(); err != nil {
+		return Connection{}, fmt.Errorf("stripe connector connection: %w", err)
+	}
+	return Connection{operations: operations, reference: reference}, nil
 }
 
 // NewProjectConnection opens the connection that dex-app.yaml declares as connectionName from the
@@ -92,7 +121,17 @@ func decodeCredentials(contents json.RawMessage) (Credentials, error) {
 }
 
 func (connection Connection) validate() error {
+	if connection.client == nil && connection.operations != nil {
+		return fmt.Errorf("stripe connector connection from NewConnectionWithOperations serves only operation Steps")
+	}
 	if connection.client == nil {
+		return fmt.Errorf("stripe connector connection is required")
+	}
+	return connection.reference.Validate()
+}
+
+func (connection Connection) validateOperations() error {
+	if connection.operations == nil {
 		return fmt.Errorf("stripe connector connection is required")
 	}
 	return connection.reference.Validate()
@@ -252,7 +291,7 @@ type CreateACHCheckoutSessionStepConfig[IN any] struct {
 }
 
 func NewCreateACHCheckoutSessionStep[IN any](config CreateACHCheckoutSessionStepConfig[IN]) sdkgo.MutationStep[IN, CreateACHCheckoutSessionInput, CheckoutSession] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -260,7 +299,7 @@ func NewCreateACHCheckoutSessionStep[IN any](config CreateACHCheckoutSessionStep
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateACHCheckoutSessionInput, CheckoutSession]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.CreateACHCheckoutSession(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.CreateACHCheckoutSession(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[CreateACHCheckoutSessionResult] {
 			branches := make([]sdkgo.BranchTarget[CreateACHCheckoutSessionResult], 0, 5)
@@ -329,7 +368,7 @@ type GetCheckoutSessionStepConfig[IN any] struct {
 }
 
 func NewGetCheckoutSessionStep[IN any](config GetCheckoutSessionStepConfig[IN]) sdkgo.QueryStep[IN, GetCheckoutSessionInput, CheckoutSession] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -337,7 +376,7 @@ func NewGetCheckoutSessionStep[IN any](config GetCheckoutSessionStepConfig[IN]) 
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetCheckoutSessionInput, CheckoutSession]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.GetCheckoutSession(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.GetCheckoutSession(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[GetCheckoutSessionResult] {
 			branches := make([]sdkgo.BranchTarget[GetCheckoutSessionResult], 0, 5)

@@ -318,6 +318,19 @@ YAML, and text serialization. Connector-specific credential types prevent a
 Google Sheets connection from being accidentally passed to Gmail, even when
 both use one Google account.
 
+### Operations seam
+
+Every generated connector declares an `Operations` interface with one accessor
+per operation, returning `sdkgo.Query[IN, OUT]` or `sdkgo.Mutation[IN, OUT]`,
+and an adapter over the client. `NewConnection(client, reference)` binds the
+client's operations; `NewConnectionWithOperations(operations, reference)`
+binds another implementation, such as a generated mock package's. Operation
+Step factories invoke the connection's operations, so a mocked connection runs
+the same factory, definition, branch routing, and Result Attribute as a real
+one. A connection from `NewConnectionWithOperations` serves operation Steps
+only: Trigger factories and the connection's webhook handlers and Trigger
+runners return an error for it, because it has no client. See [Connector mocks](manifest-authoring.md#connector-mocks).
+
 ## Project connections
 
 Applications have one way to reach a connection. At startup they call

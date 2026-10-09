@@ -42,8 +42,45 @@ type Credentials struct {
 type CredentialSource = sdkgo.RefreshingCredentialProvider[Credentials]
 
 type Connection struct {
-	client    *Client
-	reference sdkgo.ConnectionRef
+	client     *Client
+	operations Operations
+	reference  sdkgo.ConnectionRef
+}
+
+// Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
+// NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
+type Operations interface {
+	FindCustomer() sdkgo.Query[FindCustomerInput, FindCustomerOutput]
+	CreateCustomer() sdkgo.Mutation[CreateCustomerInput, CreateCustomerOutput]
+	CreateInvoice() sdkgo.Mutation[CreateInvoiceInput, CreateInvoiceOutput]
+	GetInvoice() sdkgo.Query[GetInvoiceInput, Invoice]
+	ListInvoices() sdkgo.Query[ListInvoicesInput, InvoicePage]
+	SendInvoice() sdkgo.Mutation[SendInvoiceInput, Invoice]
+	RecordPayment() sdkgo.Mutation[RecordPaymentInput, Payment]
+}
+
+type clientOperations struct{ client *Client }
+
+func (operations clientOperations) FindCustomer() sdkgo.Query[FindCustomerInput, FindCustomerOutput] {
+	return operations.client.FindCustomer()
+}
+func (operations clientOperations) CreateCustomer() sdkgo.Mutation[CreateCustomerInput, CreateCustomerOutput] {
+	return operations.client.CreateCustomer()
+}
+func (operations clientOperations) CreateInvoice() sdkgo.Mutation[CreateInvoiceInput, CreateInvoiceOutput] {
+	return operations.client.CreateInvoice()
+}
+func (operations clientOperations) GetInvoice() sdkgo.Query[GetInvoiceInput, Invoice] {
+	return operations.client.GetInvoice()
+}
+func (operations clientOperations) ListInvoices() sdkgo.Query[ListInvoicesInput, InvoicePage] {
+	return operations.client.ListInvoices()
+}
+func (operations clientOperations) SendInvoice() sdkgo.Mutation[SendInvoiceInput, Invoice] {
+	return operations.client.SendInvoice()
+}
+func (operations clientOperations) RecordPayment() sdkgo.Mutation[RecordPaymentInput, Payment] {
+	return operations.client.RecordPayment()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -55,7 +92,19 @@ func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, e
 	if err := reference.Validate(); err != nil {
 		return Connection{}, fmt.Errorf("quickbooks connector connection: %w", err)
 	}
-	return Connection{client: client, reference: reference}, nil
+	return Connection{client: client, operations: clientOperations{client: client}, reference: reference}, nil
+}
+
+// NewConnectionWithOperations binds other operations, such as a generated mock package's, to a connection.
+// The connection serves operation Steps only: Trigger factories and runners require NewConnection.
+func NewConnectionWithOperations(operations Operations, reference sdkgo.ConnectionRef) (Connection, error) {
+	if operations == nil {
+		return Connection{}, fmt.Errorf("quickbooks connector operations are required")
+	}
+	if err := reference.Validate(); err != nil {
+		return Connection{}, fmt.Errorf("quickbooks connector connection: %w", err)
+	}
+	return Connection{operations: operations, reference: reference}, nil
 }
 
 // NewProjectConnection opens the connection that dex-app.yaml declares as connectionName from the
@@ -123,7 +172,17 @@ func encodeCredentials(credentials Credentials) (json.RawMessage, error) {
 }
 
 func (connection Connection) validate() error {
+	if connection.client == nil && connection.operations != nil {
+		return fmt.Errorf("quickbooks connector connection from NewConnectionWithOperations serves only operation Steps")
+	}
 	if connection.client == nil {
+		return fmt.Errorf("quickbooks connector connection is required")
+	}
+	return connection.reference.Validate()
+}
+
+func (connection Connection) validateOperations() error {
+	if connection.operations == nil {
 		return fmt.Errorf("quickbooks connector connection is required")
 	}
 	return connection.reference.Validate()
@@ -233,7 +292,7 @@ type FindCustomerStepConfig[IN any] struct {
 }
 
 func NewFindCustomerStep[IN any](config FindCustomerStepConfig[IN]) sdkgo.QueryStep[IN, FindCustomerInput, FindCustomerOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -241,7 +300,7 @@ func NewFindCustomerStep[IN any](config FindCustomerStepConfig[IN]) sdkgo.QueryS
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, FindCustomerInput, FindCustomerOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.FindCustomer(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.FindCustomer(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[FindCustomerResult] {
 			branches := make([]sdkgo.BranchTarget[FindCustomerResult], 0, 6)
@@ -313,7 +372,7 @@ type CreateCustomerStepConfig[IN any] struct {
 }
 
 func NewCreateCustomerStep[IN any](config CreateCustomerStepConfig[IN]) sdkgo.MutationStep[IN, CreateCustomerInput, CreateCustomerOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -321,7 +380,7 @@ func NewCreateCustomerStep[IN any](config CreateCustomerStepConfig[IN]) sdkgo.Mu
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateCustomerInput, CreateCustomerOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.CreateCustomer(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.CreateCustomer(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[CreateCustomerResult] {
 			branches := make([]sdkgo.BranchTarget[CreateCustomerResult], 0, 5)
@@ -387,7 +446,7 @@ type CreateInvoiceStepConfig[IN any] struct {
 }
 
 func NewCreateInvoiceStep[IN any](config CreateInvoiceStepConfig[IN]) sdkgo.MutationStep[IN, CreateInvoiceInput, CreateInvoiceOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -395,7 +454,7 @@ func NewCreateInvoiceStep[IN any](config CreateInvoiceStepConfig[IN]) sdkgo.Muta
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateInvoiceInput, CreateInvoiceOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.CreateInvoice(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.CreateInvoice(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[CreateInvoiceResult] {
 			branches := make([]sdkgo.BranchTarget[CreateInvoiceResult], 0, 4)
@@ -461,7 +520,7 @@ type GetInvoiceStepConfig[IN any] struct {
 }
 
 func NewGetInvoiceStep[IN any](config GetInvoiceStepConfig[IN]) sdkgo.QueryStep[IN, GetInvoiceInput, Invoice] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -469,7 +528,7 @@ func NewGetInvoiceStep[IN any](config GetInvoiceStepConfig[IN]) sdkgo.QueryStep[
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetInvoiceInput, Invoice]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.GetInvoice(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.GetInvoice(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[GetInvoiceResult] {
 			branches := make([]sdkgo.BranchTarget[GetInvoiceResult], 0, 5)
@@ -535,7 +594,7 @@ type ListInvoicesStepConfig[IN any] struct {
 }
 
 func NewListInvoicesStep[IN any](config ListInvoicesStepConfig[IN]) sdkgo.QueryStep[IN, ListInvoicesInput, InvoicePage] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -543,7 +602,7 @@ func NewListInvoicesStep[IN any](config ListInvoicesStepConfig[IN]) sdkgo.QueryS
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListInvoicesInput, InvoicePage]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.ListInvoices(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.ListInvoices(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[ListInvoicesResult] {
 			branches := make([]sdkgo.BranchTarget[ListInvoicesResult], 0, 4)
@@ -606,7 +665,7 @@ type SendInvoiceStepConfig[IN any] struct {
 }
 
 func NewSendInvoiceStep[IN any](config SendInvoiceStepConfig[IN]) sdkgo.MutationStep[IN, SendInvoiceInput, Invoice] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -614,7 +673,7 @@ func NewSendInvoiceStep[IN any](config SendInvoiceStepConfig[IN]) sdkgo.Mutation
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SendInvoiceInput, Invoice]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.SendInvoice(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.SendInvoice(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[SendInvoiceResult] {
 			branches := make([]sdkgo.BranchTarget[SendInvoiceResult], 0, 4)
@@ -677,7 +736,7 @@ type RecordPaymentStepConfig[IN any] struct {
 }
 
 func NewRecordPaymentStep[IN any](config RecordPaymentStepConfig[IN]) sdkgo.MutationStep[IN, RecordPaymentInput, Payment] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -685,7 +744,7 @@ func NewRecordPaymentStep[IN any](config RecordPaymentStepConfig[IN]) sdkgo.Muta
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, RecordPaymentInput, Payment]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.RecordPayment(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.RecordPayment(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[RecordPaymentResult] {
 			branches := make([]sdkgo.BranchTarget[RecordPaymentResult], 0, 4)

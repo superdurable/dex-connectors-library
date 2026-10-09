@@ -44,8 +44,45 @@ type Credentials struct {
 type CredentialSource = sdkgo.RefreshingCredentialProvider[Credentials]
 
 type Connection struct {
-	client    *Client
-	reference sdkgo.ConnectionRef
+	client     *Client
+	operations Operations
+	reference  sdkgo.ConnectionRef
+}
+
+// Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
+// NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
+type Operations interface {
+	SearchIssues() sdkgo.Query[SearchIssuesInput, SearchIssuesOutput]
+	GetIssue() sdkgo.Query[GetIssueInput, Issue]
+	CreateIssue() sdkgo.Mutation[CreateIssueInput, CreateIssueOutput]
+	UpdateIssue() sdkgo.Mutation[UpdateIssueInput, UpdateIssueOutput]
+	AddComment() sdkgo.Mutation[AddCommentInput, AddCommentOutput]
+	FindUserByEmail() sdkgo.Query[FindUserByEmailInput, User]
+	ListWorkflowStates() sdkgo.Query[ListWorkflowStatesInput, ListWorkflowStatesOutput]
+}
+
+type clientOperations struct{ client *Client }
+
+func (operations clientOperations) SearchIssues() sdkgo.Query[SearchIssuesInput, SearchIssuesOutput] {
+	return operations.client.SearchIssues()
+}
+func (operations clientOperations) GetIssue() sdkgo.Query[GetIssueInput, Issue] {
+	return operations.client.GetIssue()
+}
+func (operations clientOperations) CreateIssue() sdkgo.Mutation[CreateIssueInput, CreateIssueOutput] {
+	return operations.client.CreateIssue()
+}
+func (operations clientOperations) UpdateIssue() sdkgo.Mutation[UpdateIssueInput, UpdateIssueOutput] {
+	return operations.client.UpdateIssue()
+}
+func (operations clientOperations) AddComment() sdkgo.Mutation[AddCommentInput, AddCommentOutput] {
+	return operations.client.AddComment()
+}
+func (operations clientOperations) FindUserByEmail() sdkgo.Query[FindUserByEmailInput, User] {
+	return operations.client.FindUserByEmail()
+}
+func (operations clientOperations) ListWorkflowStates() sdkgo.Query[ListWorkflowStatesInput, ListWorkflowStatesOutput] {
+	return operations.client.ListWorkflowStates()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -57,7 +94,19 @@ func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, e
 	if err := reference.Validate(); err != nil {
 		return Connection{}, fmt.Errorf("linear connector connection: %w", err)
 	}
-	return Connection{client: client, reference: reference}, nil
+	return Connection{client: client, operations: clientOperations{client: client}, reference: reference}, nil
+}
+
+// NewConnectionWithOperations binds other operations, such as a generated mock package's, to a connection.
+// The connection serves operation Steps only: Trigger factories and runners require NewConnection.
+func NewConnectionWithOperations(operations Operations, reference sdkgo.ConnectionRef) (Connection, error) {
+	if operations == nil {
+		return Connection{}, fmt.Errorf("linear connector operations are required")
+	}
+	if err := reference.Validate(); err != nil {
+		return Connection{}, fmt.Errorf("linear connector connection: %w", err)
+	}
+	return Connection{operations: operations, reference: reference}, nil
 }
 
 // NewProjectConnection opens the connection that dex-app.yaml declares as connectionName from the
@@ -133,7 +182,17 @@ func encodeCredentials(credentials Credentials) (json.RawMessage, error) {
 }
 
 func (connection Connection) validate() error {
+	if connection.client == nil && connection.operations != nil {
+		return fmt.Errorf("linear connector connection from NewConnectionWithOperations serves only operation Steps")
+	}
 	if connection.client == nil {
+		return fmt.Errorf("linear connector connection is required")
+	}
+	return connection.reference.Validate()
+}
+
+func (connection Connection) validateOperations() error {
+	if connection.operations == nil {
 		return fmt.Errorf("linear connector connection is required")
 	}
 	return connection.reference.Validate()
@@ -298,7 +357,7 @@ type SearchIssuesStepConfig[IN any] struct {
 }
 
 func NewSearchIssuesStep[IN any](config SearchIssuesStepConfig[IN]) sdkgo.QueryStep[IN, SearchIssuesInput, SearchIssuesOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -307,7 +366,7 @@ func NewSearchIssuesStep[IN any](config SearchIssuesStepConfig[IN]) sdkgo.QueryS
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, SearchIssuesInput, SearchIssuesOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.SearchIssues(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.SearchIssues(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[SearchIssuesResult] {
 			branches := make([]sdkgo.BranchTarget[SearchIssuesResult], 0, 4)
@@ -374,7 +433,7 @@ type GetIssueStepConfig[IN any] struct {
 }
 
 func NewGetIssueStep[IN any](config GetIssueStepConfig[IN]) sdkgo.QueryStep[IN, GetIssueInput, Issue] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -383,7 +442,7 @@ func NewGetIssueStep[IN any](config GetIssueStepConfig[IN]) sdkgo.QueryStep[IN, 
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetIssueInput, Issue]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.GetIssue(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.GetIssue(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[GetIssueResult] {
 			branches := make([]sdkgo.BranchTarget[GetIssueResult], 0, 5)
@@ -447,7 +506,7 @@ type CreateIssueStepConfig[IN any] struct {
 }
 
 func NewCreateIssueStep[IN any](config CreateIssueStepConfig[IN]) sdkgo.MutationStep[IN, CreateIssueInput, CreateIssueOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -456,7 +515,7 @@ func NewCreateIssueStep[IN any](config CreateIssueStepConfig[IN]) sdkgo.Mutation
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateIssueInput, CreateIssueOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.CreateIssue(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.CreateIssue(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[CreateIssueResult] {
 			branches := make([]sdkgo.BranchTarget[CreateIssueResult], 0, 3)
@@ -520,7 +579,7 @@ type UpdateIssueStepConfig[IN any] struct {
 }
 
 func NewUpdateIssueStep[IN any](config UpdateIssueStepConfig[IN]) sdkgo.MutationStep[IN, UpdateIssueInput, UpdateIssueOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -529,7 +588,7 @@ func NewUpdateIssueStep[IN any](config UpdateIssueStepConfig[IN]) sdkgo.Mutation
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateIssueInput, UpdateIssueOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.UpdateIssue(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.UpdateIssue(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[UpdateIssueResult] {
 			branches := make([]sdkgo.BranchTarget[UpdateIssueResult], 0, 5)
@@ -596,7 +655,7 @@ type AddCommentStepConfig[IN any] struct {
 }
 
 func NewAddCommentStep[IN any](config AddCommentStepConfig[IN]) sdkgo.MutationStep[IN, AddCommentInput, AddCommentOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -605,7 +664,7 @@ func NewAddCommentStep[IN any](config AddCommentStepConfig[IN]) sdkgo.MutationSt
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, AddCommentInput, AddCommentOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.AddComment(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.AddComment(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[AddCommentResult] {
 			branches := make([]sdkgo.BranchTarget[AddCommentResult], 0, 4)
@@ -672,7 +731,7 @@ type FindUserByEmailStepConfig[IN any] struct {
 }
 
 func NewFindUserByEmailStep[IN any](config FindUserByEmailStepConfig[IN]) sdkgo.QueryStep[IN, FindUserByEmailInput, User] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -681,7 +740,7 @@ func NewFindUserByEmailStep[IN any](config FindUserByEmailStepConfig[IN]) sdkgo.
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, FindUserByEmailInput, User]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.FindUserByEmail(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.FindUserByEmail(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[FindUserByEmailResult] {
 			branches := make([]sdkgo.BranchTarget[FindUserByEmailResult], 0, 5)
@@ -751,7 +810,7 @@ type ListWorkflowStatesStepConfig[IN any] struct {
 }
 
 func NewListWorkflowStatesStep[IN any](config ListWorkflowStatesStepConfig[IN]) sdkgo.QueryStep[IN, ListWorkflowStatesInput, ListWorkflowStatesOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -760,7 +819,7 @@ func NewListWorkflowStatesStep[IN any](config ListWorkflowStatesStepConfig[IN]) 
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListWorkflowStatesInput, ListWorkflowStatesOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.ListWorkflowStates(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.ListWorkflowStates(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[ListWorkflowStatesResult] {
 			branches := make([]sdkgo.BranchTarget[ListWorkflowStatesResult], 0, 5)

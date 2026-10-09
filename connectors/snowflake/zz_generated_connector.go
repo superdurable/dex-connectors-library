@@ -39,8 +39,29 @@ type Credentials struct {
 type CredentialSource = sdkgo.CredentialProvider[Credentials]
 
 type Connection struct {
-	client    *Client
-	reference sdkgo.ConnectionRef
+	client     *Client
+	operations Operations
+	reference  sdkgo.ConnectionRef
+}
+
+// Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
+// NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
+type Operations interface {
+	SubmitStatement() sdkgo.Mutation[SubmitStatementInput, StatementSubmission]
+	GetStatementResult() sdkgo.Query[GetStatementResultInput, StatementResult]
+	CancelStatement() sdkgo.Mutation[CancelStatementInput, StatementCancellation]
+}
+
+type clientOperations struct{ client *Client }
+
+func (operations clientOperations) SubmitStatement() sdkgo.Mutation[SubmitStatementInput, StatementSubmission] {
+	return operations.client.SubmitStatement()
+}
+func (operations clientOperations) GetStatementResult() sdkgo.Query[GetStatementResultInput, StatementResult] {
+	return operations.client.GetStatementResult()
+}
+func (operations clientOperations) CancelStatement() sdkgo.Mutation[CancelStatementInput, StatementCancellation] {
+	return operations.client.CancelStatement()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -52,7 +73,19 @@ func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, e
 	if err := reference.Validate(); err != nil {
 		return Connection{}, fmt.Errorf("snowflake connector connection: %w", err)
 	}
-	return Connection{client: client, reference: reference}, nil
+	return Connection{client: client, operations: clientOperations{client: client}, reference: reference}, nil
+}
+
+// NewConnectionWithOperations binds other operations, such as a generated mock package's, to a connection.
+// The connection serves operation Steps only: Trigger factories and runners require NewConnection.
+func NewConnectionWithOperations(operations Operations, reference sdkgo.ConnectionRef) (Connection, error) {
+	if operations == nil {
+		return Connection{}, fmt.Errorf("snowflake connector operations are required")
+	}
+	if err := reference.Validate(); err != nil {
+		return Connection{}, fmt.Errorf("snowflake connector connection: %w", err)
+	}
+	return Connection{operations: operations, reference: reference}, nil
 }
 
 // NewProjectConnection opens the connection that dex-app.yaml declares as connectionName from the
@@ -101,7 +134,17 @@ func decodeCredentials(contents json.RawMessage) (Credentials, error) {
 }
 
 func (connection Connection) validate() error {
+	if connection.client == nil && connection.operations != nil {
+		return fmt.Errorf("snowflake connector connection from NewConnectionWithOperations serves only operation Steps")
+	}
 	if connection.client == nil {
+		return fmt.Errorf("snowflake connector connection is required")
+	}
+	return connection.reference.Validate()
+}
+
+func (connection Connection) validateOperations() error {
+	if connection.operations == nil {
 		return fmt.Errorf("snowflake connector connection is required")
 	}
 	return connection.reference.Validate()
@@ -213,7 +256,7 @@ type SubmitStatementStepConfig[IN any] struct {
 }
 
 func NewSubmitStatementStep[IN any](config SubmitStatementStepConfig[IN]) sdkgo.MutationStep[IN, SubmitStatementInput, StatementSubmission] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -221,7 +264,7 @@ func NewSubmitStatementStep[IN any](config SubmitStatementStepConfig[IN]) sdkgo.
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SubmitStatementInput, StatementSubmission]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.SubmitStatement(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.SubmitStatement(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[SubmitStatementResult] {
 			branches := make([]sdkgo.BranchTarget[SubmitStatementResult], 0, 3)
@@ -287,7 +330,7 @@ type GetStatementResultStepConfig[IN any] struct {
 }
 
 func NewGetStatementResultStep[IN any](config GetStatementResultStepConfig[IN]) sdkgo.QueryStep[IN, GetStatementResultInput, StatementResult] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -295,7 +338,7 @@ func NewGetStatementResultStep[IN any](config GetStatementResultStepConfig[IN]) 
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetStatementResultInput, StatementResult]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.GetStatementResult(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.GetStatementResult(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[GetStatementResultResult] {
 			branches := make([]sdkgo.BranchTarget[GetStatementResultResult], 0, 6)
@@ -361,7 +404,7 @@ type CancelStatementStepConfig[IN any] struct {
 }
 
 func NewCancelStatementStep[IN any](config CancelStatementStepConfig[IN]) sdkgo.MutationStep[IN, CancelStatementInput, StatementCancellation] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -369,7 +412,7 @@ func NewCancelStatementStep[IN any](config CancelStatementStepConfig[IN]) sdkgo.
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CancelStatementInput, StatementCancellation]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.CancelStatement(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.CancelStatement(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[CancelStatementResult] {
 			branches := make([]sdkgo.BranchTarget[CancelStatementResult], 0, 3)

@@ -62,8 +62,21 @@ type Credentials struct {
 type CredentialSource = sdkgo.CredentialProvider[Credentials]
 
 type Connection struct {
-	client    *Client
-	reference sdkgo.ConnectionRef
+	client     *Client
+	operations Operations
+	reference  sdkgo.ConnectionRef
+}
+
+// Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
+// NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
+type Operations interface {
+	GenerateText() sdkgo.Query[GenerateTextRequest, GenerateTextResponse]
+}
+
+type clientOperations struct{ client *Client }
+
+func (operations clientOperations) GenerateText() sdkgo.Query[GenerateTextRequest, GenerateTextResponse] {
+	return operations.client.GenerateText()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -75,7 +88,19 @@ func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, e
 	if err := reference.Validate(); err != nil {
 		return Connection{}, fmt.Errorf("llm connector connection: %w", err)
 	}
-	return Connection{client: client, reference: reference}, nil
+	return Connection{client: client, operations: clientOperations{client: client}, reference: reference}, nil
+}
+
+// NewConnectionWithOperations binds other operations, such as a generated mock package's, to a connection.
+// The connection serves operation Steps only: Trigger factories and runners require NewConnection.
+func NewConnectionWithOperations(operations Operations, reference sdkgo.ConnectionRef) (Connection, error) {
+	if operations == nil {
+		return Connection{}, fmt.Errorf("llm connector operations are required")
+	}
+	if err := reference.Validate(); err != nil {
+		return Connection{}, fmt.Errorf("llm connector connection: %w", err)
+	}
+	return Connection{operations: operations, reference: reference}, nil
 }
 
 // NewProjectConnection opens the connection that dex-app.yaml declares as connectionName from the
@@ -118,7 +143,17 @@ func decodeCredentials(contents json.RawMessage) (Credentials, error) {
 }
 
 func (connection Connection) validate() error {
+	if connection.client == nil && connection.operations != nil {
+		return fmt.Errorf("llm connector connection from NewConnectionWithOperations serves only operation Steps")
+	}
 	if connection.client == nil {
+		return fmt.Errorf("llm connector connection is required")
+	}
+	return connection.reference.Validate()
+}
+
+func (connection Connection) validateOperations() error {
+	if connection.operations == nil {
 		return fmt.Errorf("llm connector connection is required")
 	}
 	return connection.reference.Validate()
@@ -226,7 +261,7 @@ type GenerateTextStepConfig[IN any] struct {
 }
 
 func NewGenerateTextStep[IN any](config GenerateTextStepConfig[IN]) sdkgo.QueryStep[IN, GenerateTextRequest, GenerateTextResponse] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -235,7 +270,7 @@ func NewGenerateTextStep[IN any](config GenerateTextStepConfig[IN]) sdkgo.QueryS
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GenerateTextRequest, GenerateTextResponse]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.GenerateText(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.GenerateText(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[GenerateTextResult] {
 			branches := make([]sdkgo.BranchTarget[GenerateTextResult], 0, 6)

@@ -32,8 +32,37 @@ type Credentials struct {
 type CredentialSource = sdkgo.CredentialProvider[Credentials]
 
 type Connection struct {
-	client    *Client
-	reference sdkgo.ConnectionRef
+	client     *Client
+	operations Operations
+	reference  sdkgo.ConnectionRef
+}
+
+// Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
+// NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
+type Operations interface {
+	ListCards() sdkgo.Query[ListCardsInput, ListCardsOutput]
+	GetCard() sdkgo.Query[GetCardInput, Card]
+	CreateCard() sdkgo.Mutation[CreateCardInput, CreateCardOutput]
+	UpdateCard() sdkgo.Mutation[UpdateCardInput, UpdateCardOutput]
+	AddComment() sdkgo.Mutation[AddCommentInput, AddCommentOutput]
+}
+
+type clientOperations struct{ client *Client }
+
+func (operations clientOperations) ListCards() sdkgo.Query[ListCardsInput, ListCardsOutput] {
+	return operations.client.ListCards()
+}
+func (operations clientOperations) GetCard() sdkgo.Query[GetCardInput, Card] {
+	return operations.client.GetCard()
+}
+func (operations clientOperations) CreateCard() sdkgo.Mutation[CreateCardInput, CreateCardOutput] {
+	return operations.client.CreateCard()
+}
+func (operations clientOperations) UpdateCard() sdkgo.Mutation[UpdateCardInput, UpdateCardOutput] {
+	return operations.client.UpdateCard()
+}
+func (operations clientOperations) AddComment() sdkgo.Mutation[AddCommentInput, AddCommentOutput] {
+	return operations.client.AddComment()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -45,7 +74,19 @@ func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, e
 	if err := reference.Validate(); err != nil {
 		return Connection{}, fmt.Errorf("trello connector connection: %w", err)
 	}
-	return Connection{client: client, reference: reference}, nil
+	return Connection{client: client, operations: clientOperations{client: client}, reference: reference}, nil
+}
+
+// NewConnectionWithOperations binds other operations, such as a generated mock package's, to a connection.
+// The connection serves operation Steps only: Trigger factories and runners require NewConnection.
+func NewConnectionWithOperations(operations Operations, reference sdkgo.ConnectionRef) (Connection, error) {
+	if operations == nil {
+		return Connection{}, fmt.Errorf("trello connector operations are required")
+	}
+	if err := reference.Validate(); err != nil {
+		return Connection{}, fmt.Errorf("trello connector connection: %w", err)
+	}
+	return Connection{operations: operations, reference: reference}, nil
 }
 
 // NewProjectConnection opens the connection that dex-app.yaml declares as connectionName from the
@@ -90,7 +131,17 @@ func decodeCredentials(contents json.RawMessage) (Credentials, error) {
 }
 
 func (connection Connection) validate() error {
+	if connection.client == nil && connection.operations != nil {
+		return fmt.Errorf("trello connector connection from NewConnectionWithOperations serves only operation Steps")
+	}
 	if connection.client == nil {
+		return fmt.Errorf("trello connector connection is required")
+	}
+	return connection.reference.Validate()
+}
+
+func (connection Connection) validateOperations() error {
+	if connection.operations == nil {
 		return fmt.Errorf("trello connector connection is required")
 	}
 	return connection.reference.Validate()
@@ -192,7 +243,7 @@ type ListCardsStepConfig[IN any] struct {
 }
 
 func NewListCardsStep[IN any](config ListCardsStepConfig[IN]) sdkgo.QueryStep[IN, ListCardsInput, ListCardsOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -200,7 +251,7 @@ func NewListCardsStep[IN any](config ListCardsStepConfig[IN]) sdkgo.QueryStep[IN
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListCardsInput, ListCardsOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.ListCards(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.ListCards(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[ListCardsResult] {
 			branches := make([]sdkgo.BranchTarget[ListCardsResult], 0, 5)
@@ -269,7 +320,7 @@ type GetCardStepConfig[IN any] struct {
 }
 
 func NewGetCardStep[IN any](config GetCardStepConfig[IN]) sdkgo.QueryStep[IN, GetCardInput, Card] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -277,7 +328,7 @@ func NewGetCardStep[IN any](config GetCardStepConfig[IN]) sdkgo.QueryStep[IN, Ge
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetCardInput, Card]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.GetCard(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.GetCard(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[GetCardResult] {
 			branches := make([]sdkgo.BranchTarget[GetCardResult], 0, 5)
@@ -343,7 +394,7 @@ type CreateCardStepConfig[IN any] struct {
 }
 
 func NewCreateCardStep[IN any](config CreateCardStepConfig[IN]) sdkgo.MutationStep[IN, CreateCardInput, CreateCardOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -351,7 +402,7 @@ func NewCreateCardStep[IN any](config CreateCardStepConfig[IN]) sdkgo.MutationSt
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateCardInput, CreateCardOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.CreateCard(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.CreateCard(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[CreateCardResult] {
 			branches := make([]sdkgo.BranchTarget[CreateCardResult], 0, 4)
@@ -417,7 +468,7 @@ type UpdateCardStepConfig[IN any] struct {
 }
 
 func NewUpdateCardStep[IN any](config UpdateCardStepConfig[IN]) sdkgo.MutationStep[IN, UpdateCardInput, UpdateCardOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -425,7 +476,7 @@ func NewUpdateCardStep[IN any](config UpdateCardStepConfig[IN]) sdkgo.MutationSt
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateCardInput, UpdateCardOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.UpdateCard(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.UpdateCard(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[UpdateCardResult] {
 			branches := make([]sdkgo.BranchTarget[UpdateCardResult], 0, 5)
@@ -494,7 +545,7 @@ type AddCommentStepConfig[IN any] struct {
 }
 
 func NewAddCommentStep[IN any](config AddCommentStepConfig[IN]) sdkgo.MutationStep[IN, AddCommentInput, AddCommentOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -502,7 +553,7 @@ func NewAddCommentStep[IN any](config AddCommentStepConfig[IN]) sdkgo.MutationSt
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, AddCommentInput, AddCommentOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.AddComment(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.AddComment(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[AddCommentResult] {
 			branches := make([]sdkgo.BranchTarget[AddCommentResult], 0, 5)

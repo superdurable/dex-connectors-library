@@ -30,6 +30,9 @@ The automated suite must prove these cross-connector contracts:
 - generated Config, Credentials, definitions, factories, Triggers, branches,
   Attributes, Streams, and defaults match each connector manifest;
 - generated code is current and standalone modules compile without a workspace;
+- a connector that declares mocks covers every operation and branch, has one
+  default per query and a paginated default of at least three pages, and its
+  generated mock package is current and strictly decodes every fixture;
 - release planning validates semantic-version transitions and produces only
   pending connector releases by default;
 - UI and release artifacts are deterministic, checksummed, credential-safe,

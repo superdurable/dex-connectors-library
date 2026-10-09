@@ -36,8 +36,25 @@ type Credentials struct {
 type CredentialSource = sdkgo.CredentialProvider[Credentials]
 
 type Connection struct {
-	client    *Client
-	reference sdkgo.ConnectionRef
+	client     *Client
+	operations Operations
+	reference  sdkgo.ConnectionRef
+}
+
+// Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
+// NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
+type Operations interface {
+	SendMessage() sdkgo.Mutation[SendMessageInput, Message]
+	GetMessage() sdkgo.Query[GetMessageInput, Message]
+}
+
+type clientOperations struct{ client *Client }
+
+func (operations clientOperations) SendMessage() sdkgo.Mutation[SendMessageInput, Message] {
+	return operations.client.SendMessage()
+}
+func (operations clientOperations) GetMessage() sdkgo.Query[GetMessageInput, Message] {
+	return operations.client.GetMessage()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -49,7 +66,19 @@ func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, e
 	if err := reference.Validate(); err != nil {
 		return Connection{}, fmt.Errorf("twilio-messaging connector connection: %w", err)
 	}
-	return Connection{client: client, reference: reference}, nil
+	return Connection{client: client, operations: clientOperations{client: client}, reference: reference}, nil
+}
+
+// NewConnectionWithOperations binds other operations, such as a generated mock package's, to a connection.
+// The connection serves operation Steps only: Trigger factories and runners require NewConnection.
+func NewConnectionWithOperations(operations Operations, reference sdkgo.ConnectionRef) (Connection, error) {
+	if operations == nil {
+		return Connection{}, fmt.Errorf("twilio-messaging connector operations are required")
+	}
+	if err := reference.Validate(); err != nil {
+		return Connection{}, fmt.Errorf("twilio-messaging connector connection: %w", err)
+	}
+	return Connection{operations: operations, reference: reference}, nil
 }
 
 // NewProjectConnection opens the connection that dex-app.yaml declares as connectionName from the
@@ -98,7 +127,17 @@ func decodeCredentials(contents json.RawMessage) (Credentials, error) {
 }
 
 func (connection Connection) validate() error {
+	if connection.client == nil && connection.operations != nil {
+		return fmt.Errorf("twilio-messaging connector connection from NewConnectionWithOperations serves only operation Steps")
+	}
 	if connection.client == nil {
+		return fmt.Errorf("twilio-messaging connector connection is required")
+	}
+	return connection.reference.Validate()
+}
+
+func (connection Connection) validateOperations() error {
+	if connection.operations == nil {
 		return fmt.Errorf("twilio-messaging connector connection is required")
 	}
 	return connection.reference.Validate()
@@ -209,7 +248,7 @@ type SendMessageStepConfig[IN any] struct {
 }
 
 func NewSendMessageStep[IN any](config SendMessageStepConfig[IN]) sdkgo.MutationStep[IN, SendMessageInput, Message] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -217,7 +256,7 @@ func NewSendMessageStep[IN any](config SendMessageStepConfig[IN]) sdkgo.Mutation
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SendMessageInput, Message]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.SendMessage(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.SendMessage(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[SendMessageResult] {
 			branches := make([]sdkgo.BranchTarget[SendMessageResult], 0, 4)
@@ -283,7 +322,7 @@ type GetMessageStepConfig[IN any] struct {
 }
 
 func NewGetMessageStep[IN any](config GetMessageStepConfig[IN]) sdkgo.QueryStep[IN, GetMessageInput, Message] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -291,7 +330,7 @@ func NewGetMessageStep[IN any](config GetMessageStepConfig[IN]) sdkgo.QueryStep[
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetMessageInput, Message]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.GetMessage(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.GetMessage(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[GetMessageResult] {
 			branches := make([]sdkgo.BranchTarget[GetMessageResult], 0, 5)
