@@ -305,6 +305,12 @@ func newRepositoryChangesHarness(t *testing.T, baseURL string) (*Flow, *reposito
 	require.NoError(t, err)
 	connection, err := github.NewConnection(providerClient, reference)
 	require.NoError(t, err)
+	return newRepositoryChangesHarnessWithConnection(t, connection)
+}
+
+// newRepositoryChangesHarnessWithConnection runs the Flow with one GitHub Connection on a new Worker.
+func newRepositoryChangesHarnessWithConnection(t *testing.T, connection github.Connection) (*Flow, *repositoryChangesHarness) {
+	t.Helper()
 	flow := NewFlow(connection)
 	registry, err := dex.NewRegistry([]dex.Flow{flow})
 	require.NoError(t, err)

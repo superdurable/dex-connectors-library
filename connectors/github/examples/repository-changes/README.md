@@ -160,6 +160,10 @@ GitHub's `Retry-After` delay, a duplicate start with the same request ID, an
 empty repository, a Flow failure for an unwired `providerRejected` branch, and
 a Flow failure without waiting when GitHub's rate-limit reset is past the
 Step's retry budget.
+A mock test runs the same Flow on a `githubmock` connection, as an
+application test does: the paged defaults complete a report whose search and
+commit pages are followed by more pages, and a scripted `providerRejected`
+search fails the Flow before the commit read.
 
 Before `v0.21.0` is published, build a local release artifact with
 `go run ./cmd/connectorctl release-artifact` from the repository root and pass
