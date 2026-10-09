@@ -185,8 +185,8 @@ class ComponentReleaseTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "behind latest release"):
             release.create_plan("sdkgo", "sdkgo/", target_version="v0.6.0")
 
-    def test_first_declared_connector_version_joins_the_lockstep_version(self) -> None:
-        self.assertEqual(release.version_bump("", "v0.21.0"), "minor")
+    def test_first_declared_version_is_a_minor_release(self) -> None:
+        self.assertEqual(release.version_bump("", "v0.1.0"), "minor")
         with self.assertRaisesRegex(ValueError, "must be after"):
             release.version_bump("v0.21.0", "v0.21.0")
 

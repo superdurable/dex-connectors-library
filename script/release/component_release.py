@@ -119,7 +119,7 @@ def next_version(baseline: str, bump: str) -> str:
 
 
 def version_bump(baseline: str, target: str) -> str:
-    """Classifies a declared version. Connectors release in lockstep, so a declared version may skip versions."""
+    """Classifies a declared version against the component's latest release; a declared version may skip versions."""
     target_parts = parse_version(target)
     if not baseline:
         return "minor"

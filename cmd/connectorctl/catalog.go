@@ -114,9 +114,6 @@ func catalogCommand(args []string) error {
 	if err != nil {
 		return err
 	}
-	if err := validateLockstepVersions(entries); err != nil {
-		return err
-	}
 	if *check {
 		return nil
 	}
@@ -558,9 +555,8 @@ func gitRevisionCommit(repositoryRoot string, revision string) (string, error) {
 	return strings.TrimSpace(string(output)), nil
 }
 
-// validateConnectorVersionTransition reports whether target is a release after baseline, the latest released
-// version. Connectors release in lockstep, so a connector skips the versions it was not released at, and a new
-// connector starts at the current lockstep version.
+// validateConnectorVersionTransition reports whether target is a release after baseline, the connector's latest
+// released version. Each connector is versioned independently; an empty baseline means the connector has no release.
 func validateConnectorVersionTransition(baseline, target string) (bool, error) {
 	if !connectorVersionPattern.MatchString(target) {
 		return false, fmt.Errorf("invalid target connector version: %s", target)
@@ -600,20 +596,4 @@ func connectorVersionParts(version string) [3]int {
 		parts[index] = part
 	}
 	return parts
-}
-
-// validateLockstepVersions requires every connector to declare one release version. The Connector SDK and every
-// connector release together under that version, so an application never mixes releases built for different SDKs.
-func validateLockstepVersions(entries []connectorDirectoryEntry) error {
-	if len(entries) == 0 {
-		return nil
-	}
-	version := entries[0].Manifest.Metadata.Version
-	for _, entry := range entries[1:] {
-		if entry.Manifest.Metadata.Version != version {
-			return fmt.Errorf("connector %s declares %s, but every connector declares the same release version (%s declares %s)",
-				entry.Directory, entry.Manifest.Metadata.Version, entries[0].Directory, version)
-		}
-	}
-	return nil
 }

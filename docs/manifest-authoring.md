@@ -2,8 +2,9 @@
 
 Each connector module owns `connector.yaml`. Its `metadata.company` and
 `metadata.version` fields feed the public Connector catalog and declarative
-release workflow. A version change requests a release after merge; leaving it
-unchanged explicitly defers release.
+release workflow. A version change requests a release of that connector only
+after merge; leaving it unchanged explicitly defers release. See
+[Choosing a connector version](versioning-and-releases.md#choosing-a-connector-version).
 
 An operation declares:
 
