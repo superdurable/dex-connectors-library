@@ -159,10 +159,15 @@ Every implementation plan includes Tests, Documentation, and UI/UX. Use
 
 ## Versioning and Release Order
 
-- Connector manifest `metadata.version` is the release source of truth. Leaving
-  it unchanged explicitly defers release.
-- A declared connector version equals the latest tag or advances by one patch,
-  minor, or major version. First releases use `v0.1.0`.
+- Each connector is versioned and released on its own. Its manifest
+  `metadata.version` is the release source of truth and is independent of
+  other connectors and of the SDK version. Leaving it unchanged explicitly
+  defers release.
+- A connector PR that should release moves only that connector's version one
+  step from its latest tag: patch for a fix, minor for an addition such as an
+  operation or mocks, and for a breaking change `(breaking)` with a minor bump
+  before v1 or a major bump from v1. First releases use `v0.1.0`. Tooling
+  accepts a skipped step or another first version, so review checks both.
 - Core SDK tags use `sdkgo/vX.Y.Z`. Connector tags use the module directory,
   such as `connectors/openai/vX.Y.Z`.
 - Connector modules require an exact published Connector Go SDK release.

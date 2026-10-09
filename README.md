@@ -300,7 +300,8 @@ are grouped below that folder, such as `connectors/google/gmail` and
 
 Each connector is its own Go module. Release tags use the module directory,
 such as `connectors/github/vX.Y.Z` and `connectors/google/gmail/vX.Y.Z`.
-The manifest `metadata.version` is the release version. The root `catalog.yaml`
+The manifest `metadata.version` is that connector's own release version, and
+moving it releases only that connector. The root `catalog.yaml`
 is the sorted membership allowlist used to generate the public catalog. Adding
 a connector changes no other shared inventory.
 

@@ -290,6 +290,47 @@ directories:
 	require.Contains(t, string(contents), fmt.Sprintf(`"directory":%q`, selectedDirectory))
 }
 
+func TestCatalogVersionsEachConnectorIndependently(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	for _, connector := range []struct{ directory, name string }{
+		{directory: "connectors/acme/chat", name: "acme-chat"},
+		{directory: "connectors/acme/mail", name: "acme-mail"},
+	} {
+		writeConnectorFixture(t, repositoryRoot, connector.directory, "example.com/"+connector.directory)
+		replaceInFile(t, filepath.Join(repositoryRoot, filepath.FromSlash(connector.directory), "connector.yaml"),
+			"name: fixture-connector", "name: "+connector.name)
+	}
+	catalogPath := filepath.Join(repositoryRoot, "catalog.yaml")
+	require.NoError(t, os.WriteFile(catalogPath, []byte(`apiVersion: connectors.dex.dev/catalog-source/v1alpha1
+kind: ConnectorCatalogSource
+directories:
+  - connectors/acme/chat
+  - connectors/acme/mail
+`), 0o600))
+	initializeConnectorReleaseRepository(t, repositoryRoot, "connectors/acme/chat/v0.1.0")
+	command := exec.Command("git", "tag", "connectors/acme/mail/v0.1.0")
+	command.Dir = repositoryRoot
+	output, err := command.CombinedOutput()
+	require.NoError(t, err, "%s", output)
+	replaceInFile(t, filepath.Join(repositoryRoot, "connectors", "acme", "chat", "connector.yaml"), "version: v0.1.0", "version: v0.2.0")
+
+	require.NoError(t, catalogCommand([]string{"--check", "--catalog", catalogPath}), "connectors may declare different versions")
+	githubOutput := filepath.Join(t.TempDir(), "github-output")
+	require.NoError(t, releaseMatrixCommand([]string{"--catalog", catalogPath, "--github-output", githubOutput}))
+	require.Equal(t, []connectorReleaseMatrixItem{{
+		Directory: "connectors/acme/chat", ManifestPath: "connectors/acme/chat/connector.yaml", TagPrefix: "connectors/acme/chat/",
+		Version: "v0.2.0", DisplayName: "Google Sheets Fixture",
+	}}, readReleaseMatrixOutput(t, githubOutput).Include, "only the connector whose version moved releases")
+}
+
+func replaceInFile(t *testing.T, path, old, replacement string) {
+	t.Helper()
+	contents, err := os.ReadFile(path)
+	require.NoError(t, err)
+	require.Contains(t, string(contents), old)
+	require.NoError(t, os.WriteFile(path, []byte(strings.Replace(string(contents), old, replacement, 1)), 0o600))
+}
+
 func initializeConnectorReleaseRepository(t *testing.T, repositoryRoot, tag string) string {
 	t.Helper()
 	for _, args := range [][]string{
