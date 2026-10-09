@@ -139,6 +139,32 @@ empty with `PatchTruncated` false.
 The [repository changes example](examples/repository-changes/README.md) runs
 all three queries in one Flow from Dex Web **Start Flow**.
 
+## Test with githubmock
+
+`githubmock` is the generated mock package for application tests.
+`githubmock.New(t, connectionName)` returns a scripted connection that the
+operation Step factories accept, so a Flow runs on a real Worker without
+GitHub or a token. Every query answers unscripted calls with its manifest
+default. The four paginated listings, `listMergedPullRequests`,
+`listPullRequestFiles`, `listReleases`, and `listCommits`, serve three pages
+that follow `page` and `nextPage`, with an item repeated across a page
+boundary and, where GitHub documents no order, items out of order and items
+an application usually filters out, such as drafts, prereleases, and forks.
+A test that reads only the first page, or stops one page early, sees a
+`nextPage`. The repository-changes example's
+[mock test](examples/repository-changes/flow/workflow_mock_integration_test.go)
+scripts one Flow's search with a scaffolded failure mock:
+
+```go
+	mock.ListMergedPullRequests().ForFlow(rejectedFlowID).Respond(githubmock.ListMergedPullRequestsProviderRejectedFailure())
+```
+
+Each operation has a mock for every branch, such as
+`GetAuthenticatedProfileInsufficientScopeFailure` and
+`ListCommitsEmptyRepository`, and a `rateLimited` retry; `<Operation><Branch>`
+and `<Operation>Retry` build any other outcome. Scripting is described in
+[`sdkgo/connectormock`](../../sdkgo/README.md#connector-mocks).
+
 ## Install and verify
 
 Install the published module:
