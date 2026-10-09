@@ -34,7 +34,7 @@ func main() {
 
 func run(args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: connectorctl <validate|catalog|release-matrix|test-matrix|generate|ui-artifact|release-artifact> [path ...]")
+		return errors.New("usage: connectorctl <validate|catalog|release-matrix|test-matrix|generate|mocks|ui-artifact|release-artifact> [path ...]")
 	}
 	switch args[0] {
 	case "validate":
@@ -45,6 +45,9 @@ func run(args []string) error {
 			manifest, err := load(path)
 			if err != nil {
 				return err
+			}
+			if err := manifest.ValidateMockCoverage(); err != nil {
+				return fmt.Errorf("validate %s: %w", path, err)
 			}
 			fmt.Printf("valid %s\n", manifest.Metadata.Name)
 		}
@@ -57,6 +60,8 @@ func run(args []string) error {
 		return testMatrixCommand(args[1:])
 	case "generate":
 		return generate(args[1:])
+	case "mocks":
+		return mocksCommand(args[1:], os.Stderr)
 	case "ui-artifact":
 		return uiArtifact(args[1:])
 	case "release-artifact":
@@ -355,6 +360,11 @@ func generate(args []string) error {
 		return err
 	}
 	output := filepath.Join(filepath.Dir(args[0]), codegen.OutputFile)
+	mockFiles, err := generatedMockFiles(args[0], manifest)
+	if err != nil {
+		return err
+	}
+	stale := staleMockFiles(args[0], manifest)
 	if check {
 		current, readErr := os.ReadFile(output)
 		if readErr != nil {
@@ -363,12 +373,20 @@ func generate(args []string) error {
 		if !bytes.Equal(current, generated) {
 			return fmt.Errorf("generated connector is stale: %s", output)
 		}
-		return nil
+		if len(stale) > 0 {
+			return fmt.Errorf("generated mock package is stale because the manifest declares no mocks: %s", stale[0])
+		}
+		return checkGeneratedFiles(mockFiles)
 	}
 	if err := os.WriteFile(output, generated, 0o644); err != nil {
 		return fmt.Errorf("write %s: %w", output, err)
 	}
-	return nil
+	for _, path := range stale {
+		if err := os.Remove(path); err != nil {
+			return fmt.Errorf("remove stale %s: %w", path, err)
+		}
+	}
+	return writeGeneratedFiles(mockFiles)
 }
 
 func load(path string) (schema.Manifest, error) {
