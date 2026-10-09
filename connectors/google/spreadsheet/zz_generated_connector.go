@@ -36,10 +36,13 @@ type Config struct {
 }
 
 type Credentials struct {
+	AuthMethodID      string
 	OAuthClientID     string
 	OAuthClientSecret sdkgo.SecretString
 	AccessToken       sdkgo.SecretString
 	RefreshToken      sdkgo.SecretString
+	ServiceAccountKey sdkgo.SecretString
+	DelegatedUser     string
 }
 
 // CredentialSource is the credential provider New requires: this connector refreshes its credentials.
@@ -123,34 +126,50 @@ func NewProjectConnection(project *projectconfig.LoadedProject, connectionName s
 
 func decodeCredentials(contents json.RawMessage) (Credentials, error) {
 	var fields struct {
+		AuthMethodID      string `json:"auth_method"`
 		OAuthClientID     string `json:"oauth_client_id"`
 		OAuthClientSecret string `json:"oauth_client_secret"`
 		AccessToken       string `json:"access_token"`
 		RefreshToken      string `json:"refresh_token"`
+		ServiceAccountKey string `json:"service_account_key"`
+		DelegatedUser     string `json:"delegated_user"`
 	}
 	if err := projectconfig.DecodeCredentials(contents, &fields); err != nil {
 		return Credentials{}, err
 	}
+	// Credentials saved before the connector declared auth methods carry no auth_method; they use the default method.
+	if fields.AuthMethodID == "" {
+		fields.AuthMethodID = "google-oauth"
+	}
 	credentials := Credentials{
+		AuthMethodID:      fields.AuthMethodID,
 		OAuthClientID:     fields.OAuthClientID,
 		OAuthClientSecret: sdkgo.NewSecretString(fields.OAuthClientSecret),
 		AccessToken:       sdkgo.NewSecretString(fields.AccessToken),
 		RefreshToken:      sdkgo.NewSecretString(fields.RefreshToken),
+		ServiceAccountKey: sdkgo.NewSecretString(fields.ServiceAccountKey),
+		DelegatedUser:     fields.DelegatedUser,
 	}
 	return credentials, credentials.Validate()
 }
 
 func encodeCredentials(credentials Credentials) (json.RawMessage, error) {
 	fields := struct {
+		AuthMethodID      string `json:"auth_method"`
 		OAuthClientID     string `json:"oauth_client_id,omitempty"`
 		OAuthClientSecret string `json:"oauth_client_secret,omitempty"`
 		AccessToken       string `json:"access_token,omitempty"`
 		RefreshToken      string `json:"refresh_token,omitempty"`
+		ServiceAccountKey string `json:"service_account_key,omitempty"`
+		DelegatedUser     string `json:"delegated_user,omitempty"`
 	}{
+		AuthMethodID:      credentials.AuthMethodID,
 		OAuthClientID:     credentials.OAuthClientID,
 		OAuthClientSecret: credentials.OAuthClientSecret.Reveal(),
 		AccessToken:       credentials.AccessToken.Reveal(),
 		RefreshToken:      credentials.RefreshToken.Reveal(),
+		ServiceAccountKey: credentials.ServiceAccountKey.Reveal(),
+		DelegatedUser:     credentials.DelegatedUser,
 	}
 	return json.Marshal(fields)
 }
@@ -223,17 +242,29 @@ func (config Config) Validate() error {
 }
 
 func (credentials Credentials) Validate() error {
-	if credentials.OAuthClientID == "" {
-		return fmt.Errorf("credential oauth_client_id is required")
-	}
-	if credentials.OAuthClientSecret.Reveal() == "" {
-		return fmt.Errorf("credential oauth_client_secret is required")
-	}
-	if credentials.AccessToken.Reveal() == "" {
-		return fmt.Errorf("credential access_token is required")
-	}
-	if credentials.RefreshToken.Reveal() == "" {
-		return fmt.Errorf("credential refresh_token is required")
+	switch credentials.AuthMethodID {
+	case "google-oauth":
+		if credentials.OAuthClientID == "" {
+			return fmt.Errorf("credential oauth_client_id is required")
+		}
+		if credentials.OAuthClientSecret.Reveal() == "" {
+			return fmt.Errorf("credential oauth_client_secret is required")
+		}
+		if credentials.AccessToken.Reveal() == "" {
+			return fmt.Errorf("credential access_token is required")
+		}
+		if credentials.RefreshToken.Reveal() == "" {
+			return fmt.Errorf("credential refresh_token is required")
+		}
+	case "workspace-domain-delegation":
+		if credentials.ServiceAccountKey.Reveal() == "" {
+			return fmt.Errorf("credential service_account_key is required")
+		}
+		if credentials.DelegatedUser == "" {
+			return fmt.Errorf("credential delegated_user is required")
+		}
+	default:
+		return fmt.Errorf("credential auth_method is invalid")
 	}
 	return nil
 }

@@ -5,7 +5,7 @@ metadata:
   displayName: Google Sheets
   description: Read ranges, find stable keyed rows, and idempotently upsert rows in Google Sheets.
   company: Google
-  version: v0.21.0
+  version: v0.22.0
 spec:
   provider: google
   codegen:
@@ -33,47 +33,82 @@ spec:
         default: 10000
   auth:
     refreshable: true
-    type: oauth2
-    connectionKind: google-sheets-oauth
-    fields:
-      - name: oauth_client_id
-        goName: OAuthClientID
-        type: string
-        description: Non-secret OAuth client ID copied from https://console.cloud.google.com/apis/credentials after opening APIs & Services > Credentials > OAuth 2.0 Client IDs; the value ends in .apps.googleusercontent.com and blank means authorization or refresh cannot start.
-        required: true
-      - name: oauth_client_secret
-        goName: OAuthClientSecret
-        type: secretString
-        description: Secret OAuth client secret copied from the selected Web application at https://console.cloud.google.com/apis/credentials; store it only in the credential form and blank means authorization or refresh cannot start.
-        required: true
-      - name: access_token
-        goName: AccessToken
-        type: secretString
-        description: Secret short-lived Google OAuth access token produced automatically after authorization and refreshed before expiry; do not enter it manually.
-        required: true
-      - name: refresh_token
-        goName: RefreshToken
-        type: secretString
-        description: Secret long-lived refresh token returned by Google because offline access is requested; Dex stores and rotates it automatically, and blank means reauthorization is required.
-        required: true
-    guide:
-      startURL: https://console.cloud.google.com/apis/credentials
-      steps:
-        - Select a Google Cloud project, open APIs & Services > Library, and enable both Google Sheets API and Google Drive API.
-        - In Google Auth Platform, configure Branding, Audience, and Data Access for the drive.file scope; add test users while the app is in Testing.
-        - Open Clients > Create client > Web application, add the exact Redirect URI shown below, then copy the client ID and one-time client secret.
-        - Complete consent with the Google account that owns the spreadsheets; Google Testing refresh tokens can expire after seven days, so publish the app or use an Internal Workspace audience for long-lived use.
-    oauth2:
-      authorizationEndpoint: https://accounts.google.com/o/oauth2/v2/auth
-      tokenEndpoint: https://oauth2.googleapis.com/token
-      authorizationParameters: {access_type: offline, prompt: consent}
-      clientIDCredential: oauth_client_id
-      clientSecretCredential: oauth_client_secret
-      scopes: [https://www.googleapis.com/auth/drive.file]
-      credentialMappings:
-        - {credential: access_token, source: access_token}
-        - {credential: refresh_token, source: refresh_token}
-      pkce: true
+    defaultMethod: google-oauth
+    methods:
+      - id: google-oauth
+        displayName: Google OAuth
+        description: Recommended for personal Google accounts and ordinary Google Workspace users; Dex opens Google consent, and the connection reaches only spreadsheets this app created or was granted.
+        recommended: true
+        type: oauth2
+        connectionKind: google-sheets-oauth
+        fields:
+          - name: oauth_client_id
+            goName: OAuthClientID
+            type: string
+            description: Non-secret OAuth client ID copied from https://console.cloud.google.com/apis/credentials after opening APIs & Services > Credentials > OAuth 2.0 Client IDs; the value ends in .apps.googleusercontent.com and blank means authorization or refresh cannot start.
+            required: true
+          - name: oauth_client_secret
+            goName: OAuthClientSecret
+            type: secretString
+            description: Secret OAuth client secret copied from the selected Web application at https://console.cloud.google.com/apis/credentials; store it only in the credential form and blank means authorization or refresh cannot start.
+            required: true
+          - name: access_token
+            goName: AccessToken
+            type: secretString
+            description: Secret short-lived Google OAuth access token produced automatically after authorization and refreshed before expiry; do not enter it manually.
+            required: true
+          - name: refresh_token
+            goName: RefreshToken
+            type: secretString
+            description: Secret long-lived refresh token returned by Google because offline access is requested; Dex stores and rotates it automatically, and blank means reauthorization is required.
+            required: true
+        guide:
+          startURL: https://console.cloud.google.com/apis/credentials
+          steps:
+            - Select a Google Cloud project, open APIs & Services > Library, and enable both Google Sheets API and Google Drive API.
+            - In Google Auth Platform, configure Branding, Audience, and Data Access for the drive.file scope; add test users while the app is in Testing.
+            - Open Clients > Create client > Web application, add the exact Redirect URI shown below, then copy the client ID and one-time client secret.
+            - Complete consent with the Google account that owns the spreadsheets; Google Testing refresh tokens can expire after seven days, so publish the app or use an Internal Workspace audience for long-lived use.
+        oauth2:
+          authorizationEndpoint: https://accounts.google.com/o/oauth2/v2/auth
+          tokenEndpoint: https://oauth2.googleapis.com/token
+          authorizationParameters: {access_type: offline, prompt: consent}
+          clientIDCredential: oauth_client_id
+          clientSecretCredential: oauth_client_secret
+          scopes: [https://www.googleapis.com/auth/drive.file]
+          credentialMappings:
+            - {credential: access_token, source: access_token}
+            - {credential: refresh_token, source: refresh_token}
+          pkce: true
+      - id: workspace-domain-delegation
+        displayName: Workspace domain-wide delegation
+        description: Advanced administrator-only method for a Google Workspace domain; the service account mints delegated user tokens without interactive consent and reaches every spreadsheet the delegated user can open.
+        type: serviceAccount
+        connectionKind: google-sheets-workspace-domain-delegation
+        fields:
+          - name: service_account_key
+            goName: ServiceAccountKey
+            type: secretString
+            description: Secret service-account JSON key downloaded from https://console.cloud.google.com/iam-admin/serviceaccounts after selecting the account > Keys > Add key > Create new key > JSON; blank means delegated token minting cannot start.
+            required: true
+          - name: delegated_user
+            goName: DelegatedUser
+            type: string
+            description: Complete Workspace user address whose spreadsheets the Flows read and write, chosen by an administrator after authorizing the service account client ID at https://admin.google.com/ac/owl/domainwidedelegation; the value must be one user@example.com address and blank means no user can be impersonated.
+            required: true
+          - name: access_token
+            goName: AccessToken
+            type: secretString
+            description: Secret short-lived delegated access token minted automatically from the service-account assertion; never paste a token, and blank causes Dex to mint one before the next call.
+            required: false
+        guide:
+          startURL: https://console.cloud.google.com/iam-admin/serviceaccounts
+          steps:
+            - Select the Workspace-owned Google Cloud project, open APIs & Services > Library, and enable both Google Sheets API and Google Drive API.
+            - Create a service account, open Details > Show advanced settings, and enable Google Workspace domain-wide delegation; an existing delegated service account can be reused.
+            - Open the service account > Keys > Add key > Create new key > JSON, download the one-time private key, and paste the complete JSON document into the secret field.
+            - Copy the service account OAuth 2 Client ID, then open https://admin.google.com/ac/owl/domainwidedelegation and authorize that client ID for https://www.googleapis.com/auth/spreadsheets and https://www.googleapis.com/auth/drive.readonly, keeping any scopes it already has, because saving the entry replaces its scope list.
+            - Enter one managed Workspace user as delegated_user; personal @gmail.com accounts and users outside the administrator's domain cannot use this method.
   studio:
     setup:
       entrypoint: index.html
