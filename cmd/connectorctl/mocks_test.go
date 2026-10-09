@@ -15,37 +15,36 @@ import (
 )
 
 func TestScaffoldWritesFailureFixturesAndKeepsTheRestOfTheManifest(t *testing.T) {
-	source, err := os.ReadFile(filepath.Join("..", "..", "connectors", "google", "gmail", "connector.yaml"))
-	require.NoError(t, err)
-	manifestPath := filepath.Join(t.TempDir(), "connector.yaml")
-	require.NoError(t, os.WriteFile(manifestPath, source, 0o600))
+	directory := t.TempDir()
+	manifestPath := writeMockFixtureConnector(t, directory)
+	source := removeAllMocks(t, manifestPath)
+	require.NoError(t, os.WriteFile(manifestPath, []byte(source), 0o600))
 	var notes bytes.Buffer
 
 	require.NoError(t, scaffoldMocks(manifestPath, &notes))
 
 	scaffolded, err := os.ReadFile(manifestPath)
 	require.NoError(t, err)
-	require.True(t, strings.HasPrefix(string(scaffolded), strings.SplitN(string(source), "      mocks:", 2)[0][:200]))
 	manifest, err := load(manifestPath)
 	require.NoError(t, err)
-	getMessage := manifest.Spec.Operations[0]
-	require.Equal(t, []string{"notFoundFailure", "providerRejectedFailure", "invalidResponseFailure", "defectFailure"}, mockNames(getMessage))
-	require.Equal(t, "NOT_FOUND", getMessage.Mocks[0].Failure.Kind)
-	require.Equal(t, "The Gmail message does not exist.", getMessage.Mocks[0].Failure.Message)
-	require.Equal(t, "VALIDATION", getMessage.Mocks[3].Failure.Kind)
-	sendMessage := manifest.Spec.Operations[1]
-	require.Contains(t, mockNames(sendMessage), "lostResponse")
-	require.Equal(t, "TRANSPORT", sendMessage.Mocks[1].Uncertain.Failure.Kind)
-	require.Contains(t, notes.String(), "getMessage: write the read mock output by hand")
-	require.Contains(t, notes.String(), "sendMessage: write the sent mock output by hand")
-	require.ErrorContains(t, manifest.ValidateMockCoverage(), "getMessage: branch read needs a mock")
+	getWidget, createWidget := manifest.Spec.Operations[0], manifest.Spec.Operations[2]
+	require.Equal(t, []string{"notFoundFailure", "defectFailure"}, mockNames(getWidget))
+	require.Equal(t, "NOT_FOUND", getWidget.Mocks[0].Failure.Kind)
+	require.Equal(t, "The widget does not exist.", getWidget.Mocks[0].Failure.Message)
+	require.Equal(t, "VALIDATION", getWidget.Mocks[1].Failure.Kind)
+	require.Equal(t, []string{"defectFailure"}, mockNames(manifest.Spec.Operations[1]))
+	require.Equal(t, []string{"lostResponse", "defectFailure"}, mockNames(createWidget))
+	require.Equal(t, "TRANSPORT", createWidget.Mocks[0].Uncertain.Failure.Kind)
+	require.Contains(t, notes.String(), "getWidget: write the found mock output by hand")
+	require.Contains(t, notes.String(), "createWidget: write the created mock output by hand")
+	require.ErrorContains(t, manifest.ValidateMockCoverage(), "getWidget: branch found needs a mock")
 
 	notes.Reset()
 	require.NoError(t, scaffoldMocks(manifestPath, &notes))
 	rescaffolded, err := os.ReadFile(manifestPath)
 	require.NoError(t, err)
 	require.Equal(t, string(scaffolded), string(rescaffolded), "a second scaffold adds nothing")
-	require.Equal(t, string(source), strings.Join(removeScaffoldedLines(string(scaffolded)), ""))
+	require.Equal(t, source, strings.Join(removeScaffoldedLines(string(scaffolded)), ""), "scaffold edits only the lines it inserts")
 }
 
 func TestScaffoldAppendsToAnExistingMocksSequence(t *testing.T) {

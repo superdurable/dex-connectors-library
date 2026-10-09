@@ -399,3 +399,97 @@ file calls `applyConnectorStudioTheme` or `mountModelPickerBundle` imported
 from the package or from a local module that re-exports it, or when the Vite
 config does not dedupe `react` and `react-dom`. A `<style>` mentioned only in a
 comment or in string text does not count on its own.
+
+## Connector mocks
+
+An operation may declare maintained mock outcomes that applications use in
+their tests instead of the provider. A manifest with any `mocks` generates a
+mock package beside the connector, named after the Go package with a `mock`
+suffix, such as `llm/llmmock`. The catalog lists the mocks and the package's
+import path as `mocks` and `mockPackage`. Connector maintainers write the
+mocks; adding one is a minor change, changing its data a patch, and renaming
+or removing one a breaking change.
+
+The fixture in
+[`schema/testdata/mocks.yaml`](../schema/testdata/mocks.yaml) declares one
+mock of each shape:
+
+```yaml
+      mocks:
+        - name: gear
+          branch: found
+          description: A widget with every field set.
+          default: true
+          output: {id: w-1, name: Gear, createdAt: "2026-01-02T03:04:05Z", tags: [metal, "007"]}
+        - name: missing
+          branch: notFound
+          description: The provider reports no such widget.
+          failure: {kind: NOT_FOUND, message: The widget does not exist.}
+        - name: invalidID
+          branch: defect
+          description: The widget ID is empty.
+          failure: {kind: VALIDATION, message: The widget ID is required.}
+        - name: throttled
+          description: The provider throttles the read once.
+          retry: {failure: {kind: RATE_LIMIT, message: Too many requests.}, after: 2s}
+```
+
+- A branch mock names a declared `branch` and an `output`, a `failure`, or
+  both. A paginated query's branch mock may use `pages` instead of `output`.
+- A `retry` mock asks Dex to retry the Step, after `after` when it is set.
+- An `uncertain` mock is a dispatched mutation outcome that cannot be
+  confirmed; only a mutation that declares the `uncertain` branch has one.
+- A `failure` names a Connector SDK failure kind, such as `NOT_FOUND`, and a
+  safe message. The mock fills the provider and operation.
+- `default: true` marks the mock that answers every call a test does not
+  script. A default selects a branch other than `defect` without a failure.
+- Outputs are YAML written as the operation output's JSON. Quote a string
+  that YAML would read as a number, a boolean, or a date, such as `"007"`.
+
+A listing query declares `pagination` with the JSON field names of the input's
+cursor and the output's next cursor. Its pages chain through that cursor: each
+page but the last names a distinct next cursor, and the last ends the listing
+with an empty or zero one. The generated mock answers an input without a
+cursor with the first page and an input whose cursor equals page `k`'s next
+cursor with page `k+1`:
+
+```yaml
+      pagination: {inputField: page, nextField: nextPage}
+      mocks:
+        - name: threePages
+          branch: listed
+          description: Three unordered pages with a duplicate across a page boundary and an archived widget.
+          default: true
+          pages:
+            - {widgets: [{id: w-3, name: Spring}, {id: w-1, name: Gear}], nextPage: 2}
+            - {widgets: [{id: w-1, name: Gear}, {id: w-9, name: Archived, tags: [archived]}], nextPage: 3}
+            - {widgets: [], nextPage: 0}
+```
+
+Write defaults that keep a weak application test from passing: a paginated
+default serves at least three pages, and when the provider documents no order
+its items are unordered, include a duplicate across a page boundary, and
+include items the application is expected to filter out.
+
+Once a connector declares a mock, `connectorctl validate` requires the whole
+surface: at least one mock for every declared branch of every operation,
+including an `uncertain` mock where the branch exists, exactly one default per
+query, and at most one per mutation. Every manifest load also checks each
+mock's shape, names, failure kinds, retry delays, and page chain. The
+generated `zz_generated_mock_test.go` strictly decodes every output into the
+connector's Go type and, when the type has a `Validate() error` method, runs
+it; `go test` in the connector module runs that test.
+
+`connectorctl mocks scaffold connector.yaml` appends a failure mock for every
+optional branch that has none, with a failure kind chosen from the branch ID,
+and an `uncertain` mock for a mutation that declares the branch. It edits only
+the lines it inserts, prints the happy-path branches whose outputs a
+maintainer still writes by hand, and adds nothing on a second run. Review the
+scaffolded kinds and messages before committing them.
+
+The generated package exposes `New(t, connectionName)`, `Connection()` for
+the connector's Step factories, one scripting accessor per operation, a
+constructor per branch and per manifest mock, `<Operation>Retry`, and
+`<Operation>Default`. A connector with mocks shows its use in its
+`examples/` tree. Scripting and case semantics belong to
+[`sdkgo/connectormock`](../sdkgo/README.md#connector-mocks).
