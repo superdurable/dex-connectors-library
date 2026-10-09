@@ -245,6 +245,12 @@ func newGmailIntegrationHarness(t *testing.T, endpoint string) (*Flow, *gmailInt
 	require.NoError(t, err)
 	connection, err := gmail.NewConnection(providerClient, reference)
 	require.NoError(t, err)
+	return newGmailIntegrationHarnessWithConnection(t, connection)
+}
+
+// newGmailIntegrationHarnessWithConnection registers the Flow with one Gmail Connection and a Dex Client.
+func newGmailIntegrationHarnessWithConnection(t *testing.T, connection gmail.Connection) (*Flow, *gmailIntegrationHarness) {
+	t.Helper()
 	flow := NewFlow(connection)
 	registry, err := dex.NewRegistry([]dex.Flow{flow})
 	require.NoError(t, err)

@@ -184,6 +184,31 @@ spec:
         executeMethodTimeout: 30s
         durability: async
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+      mocks:
+        - name: customerQuestion
+          branch: read
+          description: A plain-text and HTML customer question in an existing thread, with its threading headers and labels.
+          default: true
+          output: {messageId: 18c0a1b2c3d4e5f6, threadId: 18c0a1b2c3d4e5f0, rfcMessageId: <question-1@mail.example.com>, inReplyTo: <welcome-1@mail.example.com>, references: <welcome-1@mail.example.com>, from: Ada Customer <ada@example.com>, replyTo: ada.support@example.com, to: [support@example.org], subject: "Re: Order 1042 has not arrived", textBody: "Hello, my order 1042 has not arrived yet. Can you check?", htmlBody: "<p>Hello, my order 1042 has not arrived yet. Can you check?</p>", snippet: "Hello, my order 1042 has not arrived yet.", receivedAt: "2026-03-04T09:15:00Z", labelIds: [INBOX, UNREAD]}
+        - name: deletedMessage
+          branch: notFound
+          description: The message was deleted or never existed in the mailbox.
+          failure: {kind: NOT_FOUND, message: The Gmail message does not exist.}
+        - name: revokedGrant
+          branch: providerRejected
+          description: Gmail rejected the read because the grant lost the required scope.
+          failure: {kind: AUTHORIZATION, message: Gmail rejected the message query for the granted scopes.}
+        - name: malformedPayload
+          branch: invalidResponse
+          description: Gmail returned a message payload that cannot be decoded.
+          failure: {kind: PROTOCOL, message: Gmail returned an invalid message payload.}
+        - name: emptyMessageID
+          branch: defect
+          description: The input has no message ID, so no request is sent.
+          failure: {kind: VALIDATION, message: The message ID is required.}
+        - name: rateLimited
+          description: Gmail throttles the read once.
+          retry: {failure: {kind: RATE_LIMIT, message: Gmail rate limit was reached.}, after: 1s}
     - name: sendMessage
       goName: SendMessage
       inputType: SendMessageInput
@@ -200,6 +225,25 @@ spec:
         executeMethodTimeout: 30s
         durability: async
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+      mocks:
+        - name: sentToCustomer
+          branch: sent
+          description: Gmail accepted the message and returned its identity.
+          output: {sender: support@example.org, recipients: [ada@example.com], messageId: 18c0a1b2c3d4e600, threadId: 18c0a1b2c3d4e600}
+        - name: invalidRecipient
+          branch: providerRejected
+          description: Gmail rejected the message because a recipient address is invalid.
+          failure: {kind: PROVIDER_REJECTION, message: Gmail rejected the message recipients.}
+        - name: connectionLost
+          description: The connection closed after the message was sent, so delivery is unknown.
+          uncertain: {failure: {kind: TRANSPORT, message: The connection closed before Gmail answered.}}
+        - name: noRecipients
+          branch: defect
+          description: The message has no recipient, so no request is sent.
+          failure: {kind: VALIDATION, message: At least one recipient is required.}
+        - name: unavailable
+          description: Gmail is briefly unavailable before the message is sent.
+          retry: {failure: {kind: AVAILABILITY, message: Gmail is temporarily unavailable.}}
     - name: replyToMessage
       goName: ReplyToMessage
       inputType: ReplyToMessageInput
@@ -217,3 +261,23 @@ spec:
         executeMethodTimeout: 30s
         durability: async
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+      mocks:
+        - name: repliedInThread
+          branch: sent
+          description: Gmail accepted the reply in the source message's thread.
+          output: {sender: support@example.org, recipients: [ada.support@example.com], messageId: 18c0a1b2c3d4e700, threadId: 18c0a1b2c3d4e5f0}
+        - name: sourceMissing
+          branch: providerRejected
+          description: Gmail rejected the reply because the source message no longer exists.
+          failure: {kind: NOT_FOUND, message: The source Gmail message does not exist.}
+        - name: malformedSource
+          branch: invalidResponse
+          description: Gmail returned a source message that cannot be decoded, so no reply is sent.
+          failure: {kind: PROTOCOL, message: Gmail returned an invalid source message.}
+        - name: connectionLost
+          description: The connection closed after the reply was sent, so delivery is unknown.
+          uncertain: {failure: {kind: TRANSPORT, message: The connection closed before Gmail answered.}}
+        - name: emptyBody
+          branch: defect
+          description: The reply has no body, so no request is sent.
+          failure: {kind: VALIDATION, message: The reply body is required.}
