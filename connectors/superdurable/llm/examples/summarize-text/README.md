@@ -155,7 +155,10 @@ the Dex Client against local fake DeepSeek, Mistral, Claude, and Kimi APIs. It
 covers the provider's default model streaming its text, a connection model, a
 Claude pick that is blocked, a rejected key that records the failure, and a
 pick the provider's model-ID rule rejects, which records a defect without a
-request:
+request. A second real Dex test runs the same Flow on an `llmmock` connection,
+as an application test does: the manifest default completes the summary, a
+scripted quota failure fails the Flow, and a scripted rate limit is retried
+before a truncated result:
 
 ```bash
 DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./examples/summarize-text/... -count=1

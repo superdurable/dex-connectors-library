@@ -577,6 +577,36 @@ replaced by the fixed regional hosts above. Applications open connections
 with `NewProjectConnection` from the project configuration instead of a
 local connections file.
 
+## Test with llmmock
+
+`llmmock` is the generated mock package for application tests. `llmmock.New`
+returns a scripted connection that the Step factories accept in place of a
+project connection, so a Flow runs on a real Worker without a provider or a
+key. Unscripted calls answer with the manifest default, `shortSummary`, a
+`generated` result with usage. The example's
+[mock test](examples/summarize-text/flow/workflow_mock_integration_test.go)
+passes the mock's connection to the Flow:
+
+```go
+	mock := llmmock.New(t, ConnectionName)
+	flow, client := startSummaryWorkerWithConnection(t, mock.Connection(), SummaryModelConfiguration{Model: "mock-model"})
+```
+
+and scripts one Flow's call with a manifest mock:
+
+```go
+		mock.GenerateText().ForFlow(flowID).Respond(llmmock.GenerateTextQuotaExhausted())
+```
+
+The manifest mocks are `shortSummary` (the default), `structuredAnswer`,
+`outputTokenLimit`, `contentPolicy`, `invalidKey`, `quotaExhausted`,
+`schemaMismatch`, `unsupportedField`, and the retry `rateLimited`;
+`GenerateText<Branch>` and `GenerateTextRetry` build any other outcome. A
+mocked Result's `Receipt.Provider` and Failure provider are `llm`, not the
+connection's provider, and the mock writes nothing to the text Stream.
+Scripting is described in
+[`sdkgo/connectormock`](../../../sdkgo/README.md#connector-mocks).
+
 ## Example
 
 The [summarize-text example](examples/summarize-text/README.md) runs one Flow

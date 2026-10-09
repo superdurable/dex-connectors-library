@@ -175,6 +175,12 @@ func startSummaryWorker(
 	}}, nil)
 	llmConnection, err := llm.NewProjectConnection(project, ConnectionName, llm.WithBaseURLForTest(provider.BaseURL()))
 	require.NoError(t, err)
+	return startSummaryWorkerWithConnection(t, llmConnection, summaryModel)
+}
+
+// startSummaryWorkerWithConnection registers the Flow with one llm Connection on a new Worker.
+func startSummaryWorkerWithConnection(t *testing.T, llmConnection llm.Connection, summaryModel SummaryModelConfiguration) (*Flow, *dex.Client) {
+	t.Helper()
 	flow := NewFlow(llmConnection, summaryModel)
 	serverAddress := cmp.Or(os.Getenv(textgentest.DexFlowServiceAddressEnvironmentVariable), textgentest.DefaultDexFlowServiceAddress)
 	registry, err := dex.NewRegistry([]dex.Flow{flow})

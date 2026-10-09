@@ -218,3 +218,43 @@ spec:
         heartbeatTimeout: 60s
         durability: sync
         retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 4, totalDuration: 30m}
+      mocks:
+        - name: shortSummary
+          branch: generated
+          description: The model finished normally with a short answer and its token usage.
+          default: true
+          output: {text: The connector shipped on time., requestedModel: mock-model, servedModel: mock-model-2026-01, responseId: resp-mock-1, finishReason: stop, usage: {inputTokens: 30, outputTokens: 7, totalTokens: 37}}
+        - name: structuredAnswer
+          branch: generated
+          description: The model returned JSON text that matches the request's structured output schema.
+          output: {text: '{"status":"shipped","confidence":0.9}', requestedModel: mock-model, servedModel: mock-model, responseId: resp-mock-2, finishReason: stop, usage: {inputTokens: 48, outputTokens: 12, totalTokens: 60}}
+        - name: outputTokenLimit
+          branch: truncated
+          description: The model stopped at the output token limit after partial text.
+          output: {text: The connector shipped on, requestedModel: mock-model, servedModel: mock-model, responseId: resp-mock-3, finishReason: length, providerFinishReason: max_tokens, usage: {inputTokens: 30, outputTokens: 5, totalTokens: 35}}
+          failure: {kind: RESPONSE_TOO_LARGE, message: The model stopped at the output token limit.}
+        - name: contentPolicy
+          branch: blocked
+          description: The provider stopped the response for a content policy and returned no text.
+          output: {text: "", requestedModel: mock-model, finishReason: contentPolicy, providerFinishReason: content_filter, usage: {inputTokens: 30, outputTokens: 0, totalTokens: 30}}
+          failure: {kind: PROVIDER_REJECTION, message: The provider blocked the response for a content policy.}
+        - name: invalidKey
+          branch: providerRejected
+          description: The provider rejected the connection's API key.
+          failure: {kind: AUTHENTICATION, message: The provider rejected the API key.}
+        - name: quotaExhausted
+          branch: providerRejected
+          description: The account has no credit or quota left, which waiting does not restore.
+          failure: {kind: QUOTA_EXHAUSTED, message: The provider account has exhausted its quota.}
+        - name: schemaMismatch
+          branch: invalidResponse
+          description: The structured output does not match the request's schema.
+          output: {text: "", requestedModel: mock-model, finishReason: stop, usage: {inputTokens: 48, outputTokens: 9, totalTokens: 57}}
+          failure: {kind: PROTOCOL, message: The structured output does not match the schema at /status.}
+        - name: unsupportedField
+          branch: defect
+          description: The request sets a field the model does not accept, so no provider request is sent.
+          failure: {kind: VALIDATION, message: The model does not accept a temperature.}
+        - name: rateLimited
+          description: The provider throttles the request once and asks for a short wait.
+          retry: {failure: {kind: RATE_LIMIT, message: The provider rate limit was reached.}, after: 2s}

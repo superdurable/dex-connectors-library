@@ -85,6 +85,7 @@ func readExampleSources(t *testing.T) []string {
 	for _, path := range []string{
 		filepath.Join("examples", "summarize-text", "main.go"),
 		filepath.Join("examples", "summarize-text", "flow", "workflow.go"),
+		filepath.Join("examples", "summarize-text", "flow", "workflow_mock_integration_test.go"),
 	} {
 		source, err := os.ReadFile(path)
 		require.NoError(t, err)
