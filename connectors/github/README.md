@@ -170,7 +170,7 @@ and `<Operation>Retry` build any other outcome. Scripting is described in
 Install the published module:
 
 ```bash
-go get github.com/superdurable/dex-connectors-library/connectors/github@v0.21.0
+go get github.com/superdurable/dex-connectors-library/connectors/github@v0.22.0
 ```
 
 Verify it independently:
