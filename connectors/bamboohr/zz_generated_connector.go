@@ -30,8 +30,41 @@ type Credentials struct {
 type CredentialSource = sdkgo.CredentialProvider[Credentials]
 
 type Connection struct {
-	client    *Client
-	reference sdkgo.ConnectionRef
+	client     *Client
+	operations Operations
+	reference  sdkgo.ConnectionRef
+}
+
+// Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
+// NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
+type Operations interface {
+	GetEmployee() sdkgo.Query[GetEmployeeInput, EmployeeRecord]
+	FindEmployeeByEmail() sdkgo.Query[FindEmployeeByEmailInput, FindEmployeeByEmailOutput]
+	ListEmployeeChanges() sdkgo.Query[ListEmployeeChangesInput, ListEmployeeChangesOutput]
+	ListTimeOffRequests() sdkgo.Query[ListTimeOffRequestsInput, ListTimeOffRequestsOutput]
+	UpdateEmployee() sdkgo.Mutation[UpdateEmployeeInput, UpdateEmployeeOutput]
+	AddEmployee() sdkgo.Mutation[AddEmployeeInput, AddEmployeeOutput]
+}
+
+type clientOperations struct{ client *Client }
+
+func (operations clientOperations) GetEmployee() sdkgo.Query[GetEmployeeInput, EmployeeRecord] {
+	return operations.client.GetEmployee()
+}
+func (operations clientOperations) FindEmployeeByEmail() sdkgo.Query[FindEmployeeByEmailInput, FindEmployeeByEmailOutput] {
+	return operations.client.FindEmployeeByEmail()
+}
+func (operations clientOperations) ListEmployeeChanges() sdkgo.Query[ListEmployeeChangesInput, ListEmployeeChangesOutput] {
+	return operations.client.ListEmployeeChanges()
+}
+func (operations clientOperations) ListTimeOffRequests() sdkgo.Query[ListTimeOffRequestsInput, ListTimeOffRequestsOutput] {
+	return operations.client.ListTimeOffRequests()
+}
+func (operations clientOperations) UpdateEmployee() sdkgo.Mutation[UpdateEmployeeInput, UpdateEmployeeOutput] {
+	return operations.client.UpdateEmployee()
+}
+func (operations clientOperations) AddEmployee() sdkgo.Mutation[AddEmployeeInput, AddEmployeeOutput] {
+	return operations.client.AddEmployee()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -43,7 +76,19 @@ func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, e
 	if err := reference.Validate(); err != nil {
 		return Connection{}, fmt.Errorf("bamboohr connector connection: %w", err)
 	}
-	return Connection{client: client, reference: reference}, nil
+	return Connection{client: client, operations: clientOperations{client: client}, reference: reference}, nil
+}
+
+// NewConnectionWithOperations binds other operations, such as a generated mock package's, to a connection.
+// The connection serves operation Steps only: Trigger factories and runners require NewConnection.
+func NewConnectionWithOperations(operations Operations, reference sdkgo.ConnectionRef) (Connection, error) {
+	if operations == nil {
+		return Connection{}, fmt.Errorf("bamboohr connector operations are required")
+	}
+	if err := reference.Validate(); err != nil {
+		return Connection{}, fmt.Errorf("bamboohr connector connection: %w", err)
+	}
+	return Connection{operations: operations, reference: reference}, nil
 }
 
 // NewProjectConnection opens the connection that dex-app.yaml declares as connectionName from the
@@ -86,7 +131,17 @@ func decodeCredentials(contents json.RawMessage) (Credentials, error) {
 }
 
 func (connection Connection) validate() error {
+	if connection.client == nil && connection.operations != nil {
+		return fmt.Errorf("bamboohr connector connection from NewConnectionWithOperations serves only operation Steps")
+	}
 	if connection.client == nil {
+		return fmt.Errorf("bamboohr connector connection is required")
+	}
+	return connection.reference.Validate()
+}
+
+func (connection Connection) validateOperations() error {
+	if connection.operations == nil {
 		return fmt.Errorf("bamboohr connector connection is required")
 	}
 	return connection.reference.Validate()
@@ -178,7 +233,7 @@ type GetEmployeeStepConfig[IN any] struct {
 }
 
 func NewGetEmployeeStep[IN any](config GetEmployeeStepConfig[IN]) sdkgo.QueryStep[IN, GetEmployeeInput, EmployeeRecord] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -186,7 +241,7 @@ func NewGetEmployeeStep[IN any](config GetEmployeeStepConfig[IN]) sdkgo.QuerySte
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetEmployeeInput, EmployeeRecord]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.GetEmployee(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.GetEmployee(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[GetEmployeeResult] {
 			branches := make([]sdkgo.BranchTarget[GetEmployeeResult], 0, 5)
@@ -258,7 +313,7 @@ type FindEmployeeByEmailStepConfig[IN any] struct {
 }
 
 func NewFindEmployeeByEmailStep[IN any](config FindEmployeeByEmailStepConfig[IN]) sdkgo.QueryStep[IN, FindEmployeeByEmailInput, FindEmployeeByEmailOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -266,7 +321,7 @@ func NewFindEmployeeByEmailStep[IN any](config FindEmployeeByEmailStepConfig[IN]
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, FindEmployeeByEmailInput, FindEmployeeByEmailOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.FindEmployeeByEmail(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.FindEmployeeByEmail(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[FindEmployeeByEmailResult] {
 			branches := make([]sdkgo.BranchTarget[FindEmployeeByEmailResult], 0, 6)
@@ -335,7 +390,7 @@ type ListEmployeeChangesStepConfig[IN any] struct {
 }
 
 func NewListEmployeeChangesStep[IN any](config ListEmployeeChangesStepConfig[IN]) sdkgo.QueryStep[IN, ListEmployeeChangesInput, ListEmployeeChangesOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -343,7 +398,7 @@ func NewListEmployeeChangesStep[IN any](config ListEmployeeChangesStepConfig[IN]
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListEmployeeChangesInput, ListEmployeeChangesOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.ListEmployeeChanges(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.ListEmployeeChanges(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[ListEmployeeChangesResult] {
 			branches := make([]sdkgo.BranchTarget[ListEmployeeChangesResult], 0, 4)
@@ -406,7 +461,7 @@ type ListTimeOffRequestsStepConfig[IN any] struct {
 }
 
 func NewListTimeOffRequestsStep[IN any](config ListTimeOffRequestsStepConfig[IN]) sdkgo.QueryStep[IN, ListTimeOffRequestsInput, ListTimeOffRequestsOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -414,7 +469,7 @@ func NewListTimeOffRequestsStep[IN any](config ListTimeOffRequestsStepConfig[IN]
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListTimeOffRequestsInput, ListTimeOffRequestsOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.ListTimeOffRequests(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.ListTimeOffRequests(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[ListTimeOffRequestsResult] {
 			branches := make([]sdkgo.BranchTarget[ListTimeOffRequestsResult], 0, 4)
@@ -480,7 +535,7 @@ type UpdateEmployeeStepConfig[IN any] struct {
 }
 
 func NewUpdateEmployeeStep[IN any](config UpdateEmployeeStepConfig[IN]) sdkgo.MutationStep[IN, UpdateEmployeeInput, UpdateEmployeeOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -488,7 +543,7 @@ func NewUpdateEmployeeStep[IN any](config UpdateEmployeeStepConfig[IN]) sdkgo.Mu
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateEmployeeInput, UpdateEmployeeOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.UpdateEmployee(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.UpdateEmployee(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[UpdateEmployeeResult] {
 			branches := make([]sdkgo.BranchTarget[UpdateEmployeeResult], 0, 5)
@@ -554,7 +609,7 @@ type AddEmployeeStepConfig[IN any] struct {
 }
 
 func NewAddEmployeeStep[IN any](config AddEmployeeStepConfig[IN]) sdkgo.MutationStep[IN, AddEmployeeInput, AddEmployeeOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -562,7 +617,7 @@ func NewAddEmployeeStep[IN any](config AddEmployeeStepConfig[IN]) sdkgo.Mutation
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, AddEmployeeInput, AddEmployeeOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.AddEmployee(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.AddEmployee(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[AddEmployeeResult] {
 			branches := make([]sdkgo.BranchTarget[AddEmployeeResult], 0, 4)

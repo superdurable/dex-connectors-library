@@ -29,8 +29,37 @@ type Credentials struct {
 type CredentialSource = sdkgo.CredentialProvider[Credentials]
 
 type Connection struct {
-	client    *Client
-	reference sdkgo.ConnectionRef
+	client     *Client
+	operations Operations
+	reference  sdkgo.ConnectionRef
+}
+
+// Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
+// NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
+type Operations interface {
+	GetMember() sdkgo.Query[GetMemberInput, Member]
+	ListMembers() sdkgo.Query[ListMembersInput, ListMembersOutput]
+	UpsertMember() sdkgo.Mutation[UpsertMemberInput, UpsertMemberOutput]
+	UpdateMemberTags() sdkgo.Mutation[UpdateMemberTagsInput, UpdateMemberTagsOutput]
+	SendCampaign() sdkgo.Mutation[SendCampaignInput, SendCampaignOutput]
+}
+
+type clientOperations struct{ client *Client }
+
+func (operations clientOperations) GetMember() sdkgo.Query[GetMemberInput, Member] {
+	return operations.client.GetMember()
+}
+func (operations clientOperations) ListMembers() sdkgo.Query[ListMembersInput, ListMembersOutput] {
+	return operations.client.ListMembers()
+}
+func (operations clientOperations) UpsertMember() sdkgo.Mutation[UpsertMemberInput, UpsertMemberOutput] {
+	return operations.client.UpsertMember()
+}
+func (operations clientOperations) UpdateMemberTags() sdkgo.Mutation[UpdateMemberTagsInput, UpdateMemberTagsOutput] {
+	return operations.client.UpdateMemberTags()
+}
+func (operations clientOperations) SendCampaign() sdkgo.Mutation[SendCampaignInput, SendCampaignOutput] {
+	return operations.client.SendCampaign()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -42,7 +71,19 @@ func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, e
 	if err := reference.Validate(); err != nil {
 		return Connection{}, fmt.Errorf("mailchimp connector connection: %w", err)
 	}
-	return Connection{client: client, reference: reference}, nil
+	return Connection{client: client, operations: clientOperations{client: client}, reference: reference}, nil
+}
+
+// NewConnectionWithOperations binds other operations, such as a generated mock package's, to a connection.
+// The connection serves operation Steps only: Trigger factories and runners require NewConnection.
+func NewConnectionWithOperations(operations Operations, reference sdkgo.ConnectionRef) (Connection, error) {
+	if operations == nil {
+		return Connection{}, fmt.Errorf("mailchimp connector operations are required")
+	}
+	if err := reference.Validate(); err != nil {
+		return Connection{}, fmt.Errorf("mailchimp connector connection: %w", err)
+	}
+	return Connection{operations: operations, reference: reference}, nil
 }
 
 // NewProjectConnection opens the connection that dex-app.yaml declares as connectionName from the
@@ -85,7 +126,17 @@ func decodeCredentials(contents json.RawMessage) (Credentials, error) {
 }
 
 func (connection Connection) validate() error {
+	if connection.client == nil && connection.operations != nil {
+		return fmt.Errorf("mailchimp connector connection from NewConnectionWithOperations serves only operation Steps")
+	}
 	if connection.client == nil {
+		return fmt.Errorf("mailchimp connector connection is required")
+	}
+	return connection.reference.Validate()
+}
+
+func (connection Connection) validateOperations() error {
+	if connection.operations == nil {
 		return fmt.Errorf("mailchimp connector connection is required")
 	}
 	return connection.reference.Validate()
@@ -174,7 +225,7 @@ type GetMemberStepConfig[IN any] struct {
 }
 
 func NewGetMemberStep[IN any](config GetMemberStepConfig[IN]) sdkgo.QueryStep[IN, GetMemberInput, Member] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -182,7 +233,7 @@ func NewGetMemberStep[IN any](config GetMemberStepConfig[IN]) sdkgo.QueryStep[IN
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetMemberInput, Member]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.GetMember(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.GetMember(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[GetMemberResult] {
 			branches := make([]sdkgo.BranchTarget[GetMemberResult], 0, 5)
@@ -251,7 +302,7 @@ type ListMembersStepConfig[IN any] struct {
 }
 
 func NewListMembersStep[IN any](config ListMembersStepConfig[IN]) sdkgo.QueryStep[IN, ListMembersInput, ListMembersOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -259,7 +310,7 @@ func NewListMembersStep[IN any](config ListMembersStepConfig[IN]) sdkgo.QuerySte
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListMembersInput, ListMembersOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.ListMembers(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.ListMembers(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[ListMembersResult] {
 			branches := make([]sdkgo.BranchTarget[ListMembersResult], 0, 5)
@@ -325,7 +376,7 @@ type UpsertMemberStepConfig[IN any] struct {
 }
 
 func NewUpsertMemberStep[IN any](config UpsertMemberStepConfig[IN]) sdkgo.MutationStep[IN, UpsertMemberInput, UpsertMemberOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -333,7 +384,7 @@ func NewUpsertMemberStep[IN any](config UpsertMemberStepConfig[IN]) sdkgo.Mutati
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpsertMemberInput, UpsertMemberOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.UpsertMember(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.UpsertMember(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[UpsertMemberResult] {
 			branches := make([]sdkgo.BranchTarget[UpsertMemberResult], 0, 4)
@@ -399,7 +450,7 @@ type UpdateMemberTagsStepConfig[IN any] struct {
 }
 
 func NewUpdateMemberTagsStep[IN any](config UpdateMemberTagsStepConfig[IN]) sdkgo.MutationStep[IN, UpdateMemberTagsInput, UpdateMemberTagsOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -407,7 +458,7 @@ func NewUpdateMemberTagsStep[IN any](config UpdateMemberTagsStepConfig[IN]) sdkg
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateMemberTagsInput, UpdateMemberTagsOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.UpdateMemberTags(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.UpdateMemberTags(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[UpdateMemberTagsResult] {
 			branches := make([]sdkgo.BranchTarget[UpdateMemberTagsResult], 0, 5)
@@ -485,7 +536,7 @@ type SendCampaignStepConfig[IN any] struct {
 }
 
 func NewSendCampaignStep[IN any](config SendCampaignStepConfig[IN]) sdkgo.MutationStep[IN, SendCampaignInput, SendCampaignOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -493,7 +544,7 @@ func NewSendCampaignStep[IN any](config SendCampaignStepConfig[IN]) sdkgo.Mutati
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SendCampaignInput, SendCampaignOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.SendCampaign(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.SendCampaign(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[SendCampaignResult] {
 			branches := make([]sdkgo.BranchTarget[SendCampaignResult], 0, 8)

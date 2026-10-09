@@ -56,8 +56,49 @@ type Credentials struct {
 type CredentialSource = sdkgo.RefreshingCredentialProvider[Credentials]
 
 type Connection struct {
-	client    *Client
-	reference sdkgo.ConnectionRef
+	client     *Client
+	operations Operations
+	reference  sdkgo.ConnectionRef
+}
+
+// Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
+// NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
+type Operations interface {
+	GetUser() sdkgo.Query[GetUserInput, User]
+	ListUsers() sdkgo.Query[ListUsersInput, ListUsersOutput]
+	CreateUser() sdkgo.Mutation[CreateUserInput, CreateUserOutput]
+	DisableUser() sdkgo.Mutation[DisableUserInput, User]
+	EnableUser() sdkgo.Mutation[EnableUserInput, User]
+	RevokeSignInSessions() sdkgo.Mutation[RevokeSignInSessionsInput, RevokeSignInSessionsOutput]
+	AddUserToGroup() sdkgo.Mutation[AddUserToGroupInput, AddUserToGroupOutput]
+	RemoveUserFromGroup() sdkgo.Mutation[RemoveUserFromGroupInput, RemoveUserFromGroupOutput]
+}
+
+type clientOperations struct{ client *Client }
+
+func (operations clientOperations) GetUser() sdkgo.Query[GetUserInput, User] {
+	return operations.client.GetUser()
+}
+func (operations clientOperations) ListUsers() sdkgo.Query[ListUsersInput, ListUsersOutput] {
+	return operations.client.ListUsers()
+}
+func (operations clientOperations) CreateUser() sdkgo.Mutation[CreateUserInput, CreateUserOutput] {
+	return operations.client.CreateUser()
+}
+func (operations clientOperations) DisableUser() sdkgo.Mutation[DisableUserInput, User] {
+	return operations.client.DisableUser()
+}
+func (operations clientOperations) EnableUser() sdkgo.Mutation[EnableUserInput, User] {
+	return operations.client.EnableUser()
+}
+func (operations clientOperations) RevokeSignInSessions() sdkgo.Mutation[RevokeSignInSessionsInput, RevokeSignInSessionsOutput] {
+	return operations.client.RevokeSignInSessions()
+}
+func (operations clientOperations) AddUserToGroup() sdkgo.Mutation[AddUserToGroupInput, AddUserToGroupOutput] {
+	return operations.client.AddUserToGroup()
+}
+func (operations clientOperations) RemoveUserFromGroup() sdkgo.Mutation[RemoveUserFromGroupInput, RemoveUserFromGroupOutput] {
+	return operations.client.RemoveUserFromGroup()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -69,7 +110,19 @@ func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, e
 	if err := reference.Validate(); err != nil {
 		return Connection{}, fmt.Errorf("microsoft-entra-id connector connection: %w", err)
 	}
-	return Connection{client: client, reference: reference}, nil
+	return Connection{client: client, operations: clientOperations{client: client}, reference: reference}, nil
+}
+
+// NewConnectionWithOperations binds other operations, such as a generated mock package's, to a connection.
+// The connection serves operation Steps only: Trigger factories and runners require NewConnection.
+func NewConnectionWithOperations(operations Operations, reference sdkgo.ConnectionRef) (Connection, error) {
+	if operations == nil {
+		return Connection{}, fmt.Errorf("microsoft-entra-id connector operations are required")
+	}
+	if err := reference.Validate(); err != nil {
+		return Connection{}, fmt.Errorf("microsoft-entra-id connector connection: %w", err)
+	}
+	return Connection{operations: operations, reference: reference}, nil
 }
 
 // NewProjectConnection opens the connection that dex-app.yaml declares as connectionName from the
@@ -141,7 +194,17 @@ func encodeCredentials(credentials Credentials) (json.RawMessage, error) {
 }
 
 func (connection Connection) validate() error {
+	if connection.client == nil && connection.operations != nil {
+		return fmt.Errorf("microsoft-entra-id connector connection from NewConnectionWithOperations serves only operation Steps")
+	}
 	if connection.client == nil {
+		return fmt.Errorf("microsoft-entra-id connector connection is required")
+	}
+	return connection.reference.Validate()
+}
+
+func (connection Connection) validateOperations() error {
+	if connection.operations == nil {
 		return fmt.Errorf("microsoft-entra-id connector connection is required")
 	}
 	return connection.reference.Validate()
@@ -270,7 +333,7 @@ type GetUserStepConfig[IN any] struct {
 }
 
 func NewGetUserStep[IN any](config GetUserStepConfig[IN]) sdkgo.QueryStep[IN, GetUserInput, User] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -278,7 +341,7 @@ func NewGetUserStep[IN any](config GetUserStepConfig[IN]) sdkgo.QueryStep[IN, Ge
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetUserInput, User]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.GetUser(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.GetUser(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[GetUserResult] {
 			branches := make([]sdkgo.BranchTarget[GetUserResult], 0, 5)
@@ -344,7 +407,7 @@ type ListUsersStepConfig[IN any] struct {
 }
 
 func NewListUsersStep[IN any](config ListUsersStepConfig[IN]) sdkgo.QueryStep[IN, ListUsersInput, ListUsersOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -352,7 +415,7 @@ func NewListUsersStep[IN any](config ListUsersStepConfig[IN]) sdkgo.QueryStep[IN
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListUsersInput, ListUsersOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.ListUsers(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.ListUsers(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[ListUsersResult] {
 			branches := make([]sdkgo.BranchTarget[ListUsersResult], 0, 4)
@@ -418,7 +481,7 @@ type CreateUserStepConfig[IN any] struct {
 }
 
 func NewCreateUserStep[IN any](config CreateUserStepConfig[IN]) sdkgo.MutationStep[IN, CreateUserInput, CreateUserOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -426,7 +489,7 @@ func NewCreateUserStep[IN any](config CreateUserStepConfig[IN]) sdkgo.MutationSt
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateUserInput, CreateUserOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.CreateUser(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.CreateUser(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[CreateUserResult] {
 			branches := make([]sdkgo.BranchTarget[CreateUserResult], 0, 5)
@@ -495,7 +558,7 @@ type DisableUserStepConfig[IN any] struct {
 }
 
 func NewDisableUserStep[IN any](config DisableUserStepConfig[IN]) sdkgo.MutationStep[IN, DisableUserInput, User] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -503,7 +566,7 @@ func NewDisableUserStep[IN any](config DisableUserStepConfig[IN]) sdkgo.Mutation
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DisableUserInput, User]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.DisableUser(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.DisableUser(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[DisableUserResult] {
 			branches := make([]sdkgo.BranchTarget[DisableUserResult], 0, 5)
@@ -572,7 +635,7 @@ type EnableUserStepConfig[IN any] struct {
 }
 
 func NewEnableUserStep[IN any](config EnableUserStepConfig[IN]) sdkgo.MutationStep[IN, EnableUserInput, User] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -580,7 +643,7 @@ func NewEnableUserStep[IN any](config EnableUserStepConfig[IN]) sdkgo.MutationSt
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, EnableUserInput, User]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.EnableUser(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.EnableUser(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[EnableUserResult] {
 			branches := make([]sdkgo.BranchTarget[EnableUserResult], 0, 5)
@@ -649,7 +712,7 @@ type RevokeSignInSessionsStepConfig[IN any] struct {
 }
 
 func NewRevokeSignInSessionsStep[IN any](config RevokeSignInSessionsStepConfig[IN]) sdkgo.MutationStep[IN, RevokeSignInSessionsInput, RevokeSignInSessionsOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -657,7 +720,7 @@ func NewRevokeSignInSessionsStep[IN any](config RevokeSignInSessionsStepConfig[I
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, RevokeSignInSessionsInput, RevokeSignInSessionsOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.RevokeSignInSessions(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.RevokeSignInSessions(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[RevokeSignInSessionsResult] {
 			branches := make([]sdkgo.BranchTarget[RevokeSignInSessionsResult], 0, 5)
@@ -726,7 +789,7 @@ type AddUserToGroupStepConfig[IN any] struct {
 }
 
 func NewAddUserToGroupStep[IN any](config AddUserToGroupStepConfig[IN]) sdkgo.MutationStep[IN, AddUserToGroupInput, AddUserToGroupOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -734,7 +797,7 @@ func NewAddUserToGroupStep[IN any](config AddUserToGroupStepConfig[IN]) sdkgo.Mu
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, AddUserToGroupInput, AddUserToGroupOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.AddUserToGroup(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.AddUserToGroup(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[AddUserToGroupResult] {
 			branches := make([]sdkgo.BranchTarget[AddUserToGroupResult], 0, 5)
@@ -803,7 +866,7 @@ type RemoveUserFromGroupStepConfig[IN any] struct {
 }
 
 func NewRemoveUserFromGroupStep[IN any](config RemoveUserFromGroupStepConfig[IN]) sdkgo.MutationStep[IN, RemoveUserFromGroupInput, RemoveUserFromGroupOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -811,7 +874,7 @@ func NewRemoveUserFromGroupStep[IN any](config RemoveUserFromGroupStepConfig[IN]
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, RemoveUserFromGroupInput, RemoveUserFromGroupOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.RemoveUserFromGroup(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.RemoveUserFromGroup(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[RemoveUserFromGroupResult] {
 			branches := make([]sdkgo.BranchTarget[RemoveUserFromGroupResult], 0, 5)

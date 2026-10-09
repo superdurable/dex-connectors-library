@@ -46,8 +46,29 @@ type Credentials struct {
 type CredentialSource = sdkgo.RefreshingCredentialProvider[Credentials]
 
 type Connection struct {
-	client    *Client
-	reference sdkgo.ConnectionRef
+	client     *Client
+	operations Operations
+	reference  sdkgo.ConnectionRef
+}
+
+// Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
+// NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
+type Operations interface {
+	GetValues() sdkgo.Query[GetValuesInput, GetValuesOutput]
+	FindRow() sdkgo.Query[FindRowInput, FindRowOutput]
+	UpsertRow() sdkgo.Mutation[UpsertRowInput, UpsertRowOutput]
+}
+
+type clientOperations struct{ client *Client }
+
+func (operations clientOperations) GetValues() sdkgo.Query[GetValuesInput, GetValuesOutput] {
+	return operations.client.GetValues()
+}
+func (operations clientOperations) FindRow() sdkgo.Query[FindRowInput, FindRowOutput] {
+	return operations.client.FindRow()
+}
+func (operations clientOperations) UpsertRow() sdkgo.Mutation[UpsertRowInput, UpsertRowOutput] {
+	return operations.client.UpsertRow()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -59,7 +80,19 @@ func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, e
 	if err := reference.Validate(); err != nil {
 		return Connection{}, fmt.Errorf("google-sheets connector connection: %w", err)
 	}
-	return Connection{client: client, reference: reference}, nil
+	return Connection{client: client, operations: clientOperations{client: client}, reference: reference}, nil
+}
+
+// NewConnectionWithOperations binds other operations, such as a generated mock package's, to a connection.
+// The connection serves operation Steps only: Trigger factories and runners require NewConnection.
+func NewConnectionWithOperations(operations Operations, reference sdkgo.ConnectionRef) (Connection, error) {
+	if operations == nil {
+		return Connection{}, fmt.Errorf("google-sheets connector operations are required")
+	}
+	if err := reference.Validate(); err != nil {
+		return Connection{}, fmt.Errorf("google-sheets connector connection: %w", err)
+	}
+	return Connection{operations: operations, reference: reference}, nil
 }
 
 // NewProjectConnection opens the connection that dex-app.yaml declares as connectionName from the
@@ -123,7 +156,17 @@ func encodeCredentials(credentials Credentials) (json.RawMessage, error) {
 }
 
 func (connection Connection) validate() error {
+	if connection.client == nil && connection.operations != nil {
+		return fmt.Errorf("google-sheets connector connection from NewConnectionWithOperations serves only operation Steps")
+	}
 	if connection.client == nil {
+		return fmt.Errorf("google-sheets connector connection is required")
+	}
+	return connection.reference.Validate()
+}
+
+func (connection Connection) validateOperations() error {
+	if connection.operations == nil {
 		return fmt.Errorf("google-sheets connector connection is required")
 	}
 	return connection.reference.Validate()
@@ -239,7 +282,7 @@ type GetValuesStepConfig[IN any] struct {
 }
 
 func NewGetValuesStep[IN any](config GetValuesStepConfig[IN]) sdkgo.QueryStep[IN, GetValuesInput, GetValuesOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -248,7 +291,7 @@ func NewGetValuesStep[IN any](config GetValuesStepConfig[IN]) sdkgo.QueryStep[IN
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetValuesInput, GetValuesOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.GetValues(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.GetValues(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[GetValuesResult] {
 			branches := make([]sdkgo.BranchTarget[GetValuesResult], 0, 5)
@@ -321,7 +364,7 @@ type FindRowStepConfig[IN any] struct {
 }
 
 func NewFindRowStep[IN any](config FindRowStepConfig[IN]) sdkgo.QueryStep[IN, FindRowInput, FindRowOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -330,7 +373,7 @@ func NewFindRowStep[IN any](config FindRowStepConfig[IN]) sdkgo.QueryStep[IN, Fi
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, FindRowInput, FindRowOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.FindRow(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.FindRow(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[FindRowResult] {
 			branches := make([]sdkgo.BranchTarget[FindRowResult], 0, 6)
@@ -406,7 +449,7 @@ type UpsertRowStepConfig[IN any] struct {
 }
 
 func NewUpsertRowStep[IN any](config UpsertRowStepConfig[IN]) sdkgo.MutationStep[IN, UpsertRowInput, UpsertRowOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -415,7 +458,7 @@ func NewUpsertRowStep[IN any](config UpsertRowStepConfig[IN]) sdkgo.MutationStep
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpsertRowInput, UpsertRowOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.UpsertRow(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.UpsertRow(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[UpsertRowResult] {
 			branches := make([]sdkgo.BranchTarget[UpsertRowResult], 0, 6)

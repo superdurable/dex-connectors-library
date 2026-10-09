@@ -41,8 +41,41 @@ type Credentials struct {
 type CredentialSource = sdkgo.RefreshingCredentialProvider[Credentials]
 
 type Connection struct {
-	client    *Client
-	reference sdkgo.ConnectionRef
+	client     *Client
+	operations Operations
+	reference  sdkgo.ConnectionRef
+}
+
+// Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
+// NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
+type Operations interface {
+	ListScheduledEvents() sdkgo.Query[ListScheduledEventsInput, ScheduledEventPage]
+	GetScheduledEvent() sdkgo.Query[GetScheduledEventInput, ScheduledEvent]
+	ListEventInvitees() sdkgo.Query[ListEventInviteesInput, EventInviteePage]
+	CancelScheduledEvent() sdkgo.Mutation[CancelScheduledEventInput, ScheduledEventCancellation]
+	CreateSchedulingLink() sdkgo.Mutation[CreateSchedulingLinkInput, SchedulingLink]
+	CreateWebhookSubscription() sdkgo.Mutation[CreateWebhookSubscriptionInput, WebhookSubscription]
+}
+
+type clientOperations struct{ client *Client }
+
+func (operations clientOperations) ListScheduledEvents() sdkgo.Query[ListScheduledEventsInput, ScheduledEventPage] {
+	return operations.client.ListScheduledEvents()
+}
+func (operations clientOperations) GetScheduledEvent() sdkgo.Query[GetScheduledEventInput, ScheduledEvent] {
+	return operations.client.GetScheduledEvent()
+}
+func (operations clientOperations) ListEventInvitees() sdkgo.Query[ListEventInviteesInput, EventInviteePage] {
+	return operations.client.ListEventInvitees()
+}
+func (operations clientOperations) CancelScheduledEvent() sdkgo.Mutation[CancelScheduledEventInput, ScheduledEventCancellation] {
+	return operations.client.CancelScheduledEvent()
+}
+func (operations clientOperations) CreateSchedulingLink() sdkgo.Mutation[CreateSchedulingLinkInput, SchedulingLink] {
+	return operations.client.CreateSchedulingLink()
+}
+func (operations clientOperations) CreateWebhookSubscription() sdkgo.Mutation[CreateWebhookSubscriptionInput, WebhookSubscription] {
+	return operations.client.CreateWebhookSubscription()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -54,7 +87,19 @@ func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, e
 	if err := reference.Validate(); err != nil {
 		return Connection{}, fmt.Errorf("calendly connector connection: %w", err)
 	}
-	return Connection{client: client, reference: reference}, nil
+	return Connection{client: client, operations: clientOperations{client: client}, reference: reference}, nil
+}
+
+// NewConnectionWithOperations binds other operations, such as a generated mock package's, to a connection.
+// The connection serves operation Steps only: Trigger factories and runners require NewConnection.
+func NewConnectionWithOperations(operations Operations, reference sdkgo.ConnectionRef) (Connection, error) {
+	if operations == nil {
+		return Connection{}, fmt.Errorf("calendly connector operations are required")
+	}
+	if err := reference.Validate(); err != nil {
+		return Connection{}, fmt.Errorf("calendly connector connection: %w", err)
+	}
+	return Connection{operations: operations, reference: reference}, nil
 }
 
 // NewProjectConnection opens the connection that dex-app.yaml declares as connectionName from the
@@ -126,7 +171,17 @@ func encodeCredentials(credentials Credentials) (json.RawMessage, error) {
 }
 
 func (connection Connection) validate() error {
+	if connection.client == nil && connection.operations != nil {
+		return fmt.Errorf("calendly connector connection from NewConnectionWithOperations serves only operation Steps")
+	}
 	if connection.client == nil {
+		return fmt.Errorf("calendly connector connection is required")
+	}
+	return connection.reference.Validate()
+}
+
+func (connection Connection) validateOperations() error {
+	if connection.operations == nil {
 		return fmt.Errorf("calendly connector connection is required")
 	}
 	return connection.reference.Validate()
@@ -291,7 +346,7 @@ type ListScheduledEventsStepConfig[IN any] struct {
 }
 
 func NewListScheduledEventsStep[IN any](config ListScheduledEventsStepConfig[IN]) sdkgo.QueryStep[IN, ListScheduledEventsInput, ScheduledEventPage] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -300,7 +355,7 @@ func NewListScheduledEventsStep[IN any](config ListScheduledEventsStepConfig[IN]
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListScheduledEventsInput, ScheduledEventPage]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.ListScheduledEvents(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.ListScheduledEvents(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[ListScheduledEventsResult] {
 			branches := make([]sdkgo.BranchTarget[ListScheduledEventsResult], 0, 4)
@@ -367,7 +422,7 @@ type GetScheduledEventStepConfig[IN any] struct {
 }
 
 func NewGetScheduledEventStep[IN any](config GetScheduledEventStepConfig[IN]) sdkgo.QueryStep[IN, GetScheduledEventInput, ScheduledEvent] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -376,7 +431,7 @@ func NewGetScheduledEventStep[IN any](config GetScheduledEventStepConfig[IN]) sd
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetScheduledEventInput, ScheduledEvent]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.GetScheduledEvent(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.GetScheduledEvent(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[GetScheduledEventResult] {
 			branches := make([]sdkgo.BranchTarget[GetScheduledEventResult], 0, 5)
@@ -446,7 +501,7 @@ type ListEventInviteesStepConfig[IN any] struct {
 }
 
 func NewListEventInviteesStep[IN any](config ListEventInviteesStepConfig[IN]) sdkgo.QueryStep[IN, ListEventInviteesInput, EventInviteePage] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -455,7 +510,7 @@ func NewListEventInviteesStep[IN any](config ListEventInviteesStepConfig[IN]) sd
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListEventInviteesInput, EventInviteePage]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.ListEventInvitees(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.ListEventInvitees(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[ListEventInviteesResult] {
 			branches := make([]sdkgo.BranchTarget[ListEventInviteesResult], 0, 5)
@@ -525,7 +580,7 @@ type CancelScheduledEventStepConfig[IN any] struct {
 }
 
 func NewCancelScheduledEventStep[IN any](config CancelScheduledEventStepConfig[IN]) sdkgo.MutationStep[IN, CancelScheduledEventInput, ScheduledEventCancellation] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -534,7 +589,7 @@ func NewCancelScheduledEventStep[IN any](config CancelScheduledEventStepConfig[I
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CancelScheduledEventInput, ScheduledEventCancellation]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.CancelScheduledEvent(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.CancelScheduledEvent(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[CancelScheduledEventResult] {
 			branches := make([]sdkgo.BranchTarget[CancelScheduledEventResult], 0, 5)
@@ -601,7 +656,7 @@ type CreateSchedulingLinkStepConfig[IN any] struct {
 }
 
 func NewCreateSchedulingLinkStep[IN any](config CreateSchedulingLinkStepConfig[IN]) sdkgo.MutationStep[IN, CreateSchedulingLinkInput, SchedulingLink] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -610,7 +665,7 @@ func NewCreateSchedulingLinkStep[IN any](config CreateSchedulingLinkStepConfig[I
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateSchedulingLinkInput, SchedulingLink]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.CreateSchedulingLink(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.CreateSchedulingLink(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[CreateSchedulingLinkResult] {
 			branches := make([]sdkgo.BranchTarget[CreateSchedulingLinkResult], 0, 4)
@@ -677,7 +732,7 @@ type CreateWebhookSubscriptionStepConfig[IN any] struct {
 }
 
 func NewCreateWebhookSubscriptionStep[IN any](config CreateWebhookSubscriptionStepConfig[IN]) sdkgo.MutationStep[IN, CreateWebhookSubscriptionInput, WebhookSubscription] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -686,7 +741,7 @@ func NewCreateWebhookSubscriptionStep[IN any](config CreateWebhookSubscriptionSt
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateWebhookSubscriptionInput, WebhookSubscription]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.CreateWebhookSubscription(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.CreateWebhookSubscription(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[CreateWebhookSubscriptionResult] {
 			branches := make([]sdkgo.BranchTarget[CreateWebhookSubscriptionResult], 0, 5)

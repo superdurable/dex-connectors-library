@@ -41,8 +41,37 @@ type Credentials struct {
 type CredentialSource = sdkgo.RefreshingCredentialProvider[Credentials]
 
 type Connection struct {
-	client    *Client
-	reference sdkgo.ConnectionRef
+	client     *Client
+	operations Operations
+	reference  sdkgo.ConnectionRef
+}
+
+// Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
+// NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
+type Operations interface {
+	ListEvents() sdkgo.Query[ListEventsInput, ListEventsOutput]
+	GetEvent() sdkgo.Query[GetEventInput, Event]
+	CreateEvent() sdkgo.Mutation[CreateEventInput, CreateEventOutput]
+	UpdateEvent() sdkgo.Mutation[UpdateEventInput, UpdateEventOutput]
+	QueryFreeBusy() sdkgo.Query[QueryFreeBusyInput, QueryFreeBusyOutput]
+}
+
+type clientOperations struct{ client *Client }
+
+func (operations clientOperations) ListEvents() sdkgo.Query[ListEventsInput, ListEventsOutput] {
+	return operations.client.ListEvents()
+}
+func (operations clientOperations) GetEvent() sdkgo.Query[GetEventInput, Event] {
+	return operations.client.GetEvent()
+}
+func (operations clientOperations) CreateEvent() sdkgo.Mutation[CreateEventInput, CreateEventOutput] {
+	return operations.client.CreateEvent()
+}
+func (operations clientOperations) UpdateEvent() sdkgo.Mutation[UpdateEventInput, UpdateEventOutput] {
+	return operations.client.UpdateEvent()
+}
+func (operations clientOperations) QueryFreeBusy() sdkgo.Query[QueryFreeBusyInput, QueryFreeBusyOutput] {
+	return operations.client.QueryFreeBusy()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -54,7 +83,19 @@ func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, e
 	if err := reference.Validate(); err != nil {
 		return Connection{}, fmt.Errorf("outlook-calendar connector connection: %w", err)
 	}
-	return Connection{client: client, reference: reference}, nil
+	return Connection{client: client, operations: clientOperations{client: client}, reference: reference}, nil
+}
+
+// NewConnectionWithOperations binds other operations, such as a generated mock package's, to a connection.
+// The connection serves operation Steps only: Trigger factories and runners require NewConnection.
+func NewConnectionWithOperations(operations Operations, reference sdkgo.ConnectionRef) (Connection, error) {
+	if operations == nil {
+		return Connection{}, fmt.Errorf("outlook-calendar connector operations are required")
+	}
+	if err := reference.Validate(); err != nil {
+		return Connection{}, fmt.Errorf("outlook-calendar connector connection: %w", err)
+	}
+	return Connection{operations: operations, reference: reference}, nil
 }
 
 // NewProjectConnection opens the connection that dex-app.yaml declares as connectionName from the
@@ -122,7 +163,17 @@ func encodeCredentials(credentials Credentials) (json.RawMessage, error) {
 }
 
 func (connection Connection) validate() error {
+	if connection.client == nil && connection.operations != nil {
+		return fmt.Errorf("outlook-calendar connector connection from NewConnectionWithOperations serves only operation Steps")
+	}
 	if connection.client == nil {
+		return fmt.Errorf("outlook-calendar connector connection is required")
+	}
+	return connection.reference.Validate()
+}
+
+func (connection Connection) validateOperations() error {
+	if connection.operations == nil {
 		return fmt.Errorf("outlook-calendar connector connection is required")
 	}
 	return connection.reference.Validate()
@@ -233,7 +284,7 @@ type ListEventsStepConfig[IN any] struct {
 }
 
 func NewListEventsStep[IN any](config ListEventsStepConfig[IN]) sdkgo.QueryStep[IN, ListEventsInput, ListEventsOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -242,7 +293,7 @@ func NewListEventsStep[IN any](config ListEventsStepConfig[IN]) sdkgo.QueryStep[
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListEventsInput, ListEventsOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.ListEvents(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.ListEvents(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[ListEventsResult] {
 			branches := make([]sdkgo.BranchTarget[ListEventsResult], 0, 5)
@@ -312,7 +363,7 @@ type GetEventStepConfig[IN any] struct {
 }
 
 func NewGetEventStep[IN any](config GetEventStepConfig[IN]) sdkgo.QueryStep[IN, GetEventInput, Event] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -321,7 +372,7 @@ func NewGetEventStep[IN any](config GetEventStepConfig[IN]) sdkgo.QueryStep[IN, 
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetEventInput, Event]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.GetEvent(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.GetEvent(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[GetEventResult] {
 			branches := make([]sdkgo.BranchTarget[GetEventResult], 0, 5)
@@ -388,7 +439,7 @@ type CreateEventStepConfig[IN any] struct {
 }
 
 func NewCreateEventStep[IN any](config CreateEventStepConfig[IN]) sdkgo.MutationStep[IN, CreateEventInput, CreateEventOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -397,7 +448,7 @@ func NewCreateEventStep[IN any](config CreateEventStepConfig[IN]) sdkgo.Mutation
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateEventInput, CreateEventOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.CreateEvent(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.CreateEvent(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[CreateEventResult] {
 			branches := make([]sdkgo.BranchTarget[CreateEventResult], 0, 4)
@@ -464,7 +515,7 @@ type UpdateEventStepConfig[IN any] struct {
 }
 
 func NewUpdateEventStep[IN any](config UpdateEventStepConfig[IN]) sdkgo.MutationStep[IN, UpdateEventInput, UpdateEventOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -473,7 +524,7 @@ func NewUpdateEventStep[IN any](config UpdateEventStepConfig[IN]) sdkgo.Mutation
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateEventInput, UpdateEventOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.UpdateEvent(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.UpdateEvent(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[UpdateEventResult] {
 			branches := make([]sdkgo.BranchTarget[UpdateEventResult], 0, 5)
@@ -543,7 +594,7 @@ type QueryFreeBusyStepConfig[IN any] struct {
 }
 
 func NewQueryFreeBusyStep[IN any](config QueryFreeBusyStepConfig[IN]) sdkgo.QueryStep[IN, QueryFreeBusyInput, QueryFreeBusyOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -552,7 +603,7 @@ func NewQueryFreeBusyStep[IN any](config QueryFreeBusyStepConfig[IN]) sdkgo.Quer
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, QueryFreeBusyInput, QueryFreeBusyOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
 		ConfigurationUI: config.ConfigurationUI,
-		Operation:       config.Connection.client.QueryFreeBusy(), Connection: config.Connection.reference,
+		Operation:       config.Connection.operations.QueryFreeBusy(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[QueryFreeBusyResult] {
 			branches := make([]sdkgo.BranchTarget[QueryFreeBusyResult], 0, 5)

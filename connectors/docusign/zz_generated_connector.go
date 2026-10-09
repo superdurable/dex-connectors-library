@@ -37,8 +37,37 @@ type Credentials struct {
 type CredentialSource = sdkgo.RefreshingCredentialProvider[Credentials]
 
 type Connection struct {
-	client    *Client
-	reference sdkgo.ConnectionRef
+	client     *Client
+	operations Operations
+	reference  sdkgo.ConnectionRef
+}
+
+// Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
+// NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
+type Operations interface {
+	CreateEnvelopeFromTemplate() sdkgo.Mutation[CreateEnvelopeFromTemplateInput, CreatedEnvelope]
+	GetEnvelope() sdkgo.Query[GetEnvelopeInput, Envelope]
+	ListEnvelopeRecipients() sdkgo.Query[ListEnvelopeRecipientsInput, EnvelopeRecipients]
+	VoidEnvelope() sdkgo.Mutation[VoidEnvelopeInput, VoidedEnvelope]
+	DownloadCombinedDocument() sdkgo.Query[DownloadCombinedDocumentInput, CombinedDocument]
+}
+
+type clientOperations struct{ client *Client }
+
+func (operations clientOperations) CreateEnvelopeFromTemplate() sdkgo.Mutation[CreateEnvelopeFromTemplateInput, CreatedEnvelope] {
+	return operations.client.CreateEnvelopeFromTemplate()
+}
+func (operations clientOperations) GetEnvelope() sdkgo.Query[GetEnvelopeInput, Envelope] {
+	return operations.client.GetEnvelope()
+}
+func (operations clientOperations) ListEnvelopeRecipients() sdkgo.Query[ListEnvelopeRecipientsInput, EnvelopeRecipients] {
+	return operations.client.ListEnvelopeRecipients()
+}
+func (operations clientOperations) VoidEnvelope() sdkgo.Mutation[VoidEnvelopeInput, VoidedEnvelope] {
+	return operations.client.VoidEnvelope()
+}
+func (operations clientOperations) DownloadCombinedDocument() sdkgo.Query[DownloadCombinedDocumentInput, CombinedDocument] {
+	return operations.client.DownloadCombinedDocument()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -50,7 +79,19 @@ func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, e
 	if err := reference.Validate(); err != nil {
 		return Connection{}, fmt.Errorf("docusign connector connection: %w", err)
 	}
-	return Connection{client: client, reference: reference}, nil
+	return Connection{client: client, operations: clientOperations{client: client}, reference: reference}, nil
+}
+
+// NewConnectionWithOperations binds other operations, such as a generated mock package's, to a connection.
+// The connection serves operation Steps only: Trigger factories and runners require NewConnection.
+func NewConnectionWithOperations(operations Operations, reference sdkgo.ConnectionRef) (Connection, error) {
+	if operations == nil {
+		return Connection{}, fmt.Errorf("docusign connector operations are required")
+	}
+	if err := reference.Validate(); err != nil {
+		return Connection{}, fmt.Errorf("docusign connector connection: %w", err)
+	}
+	return Connection{operations: operations, reference: reference}, nil
 }
 
 // NewProjectConnection opens the connection that dex-app.yaml declares as connectionName from the
@@ -122,7 +163,17 @@ func encodeCredentials(credentials Credentials) (json.RawMessage, error) {
 }
 
 func (connection Connection) validate() error {
+	if connection.client == nil && connection.operations != nil {
+		return fmt.Errorf("docusign connector connection from NewConnectionWithOperations serves only operation Steps")
+	}
 	if connection.client == nil {
+		return fmt.Errorf("docusign connector connection is required")
+	}
+	return connection.reference.Validate()
+}
+
+func (connection Connection) validateOperations() error {
+	if connection.operations == nil {
 		return fmt.Errorf("docusign connector connection is required")
 	}
 	return connection.reference.Validate()
@@ -293,7 +344,7 @@ type CreateEnvelopeFromTemplateStepConfig[IN any] struct {
 }
 
 func NewCreateEnvelopeFromTemplateStep[IN any](config CreateEnvelopeFromTemplateStepConfig[IN]) sdkgo.MutationStep[IN, CreateEnvelopeFromTemplateInput, CreatedEnvelope] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -301,7 +352,7 @@ func NewCreateEnvelopeFromTemplateStep[IN any](config CreateEnvelopeFromTemplate
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateEnvelopeFromTemplateInput, CreatedEnvelope]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.CreateEnvelopeFromTemplate(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.CreateEnvelopeFromTemplate(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[CreateEnvelopeFromTemplateResult] {
 			branches := make([]sdkgo.BranchTarget[CreateEnvelopeFromTemplateResult], 0, 4)
@@ -367,7 +418,7 @@ type GetEnvelopeStepConfig[IN any] struct {
 }
 
 func NewGetEnvelopeStep[IN any](config GetEnvelopeStepConfig[IN]) sdkgo.QueryStep[IN, GetEnvelopeInput, Envelope] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -375,7 +426,7 @@ func NewGetEnvelopeStep[IN any](config GetEnvelopeStepConfig[IN]) sdkgo.QuerySte
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetEnvelopeInput, Envelope]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.GetEnvelope(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.GetEnvelope(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[GetEnvelopeResult] {
 			branches := make([]sdkgo.BranchTarget[GetEnvelopeResult], 0, 5)
@@ -444,7 +495,7 @@ type ListEnvelopeRecipientsStepConfig[IN any] struct {
 }
 
 func NewListEnvelopeRecipientsStep[IN any](config ListEnvelopeRecipientsStepConfig[IN]) sdkgo.QueryStep[IN, ListEnvelopeRecipientsInput, EnvelopeRecipients] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -452,7 +503,7 @@ func NewListEnvelopeRecipientsStep[IN any](config ListEnvelopeRecipientsStepConf
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListEnvelopeRecipientsInput, EnvelopeRecipients]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.ListEnvelopeRecipients(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.ListEnvelopeRecipients(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[ListEnvelopeRecipientsResult] {
 			branches := make([]sdkgo.BranchTarget[ListEnvelopeRecipientsResult], 0, 5)
@@ -524,7 +575,7 @@ type VoidEnvelopeStepConfig[IN any] struct {
 }
 
 func NewVoidEnvelopeStep[IN any](config VoidEnvelopeStepConfig[IN]) sdkgo.MutationStep[IN, VoidEnvelopeInput, VoidedEnvelope] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -532,7 +583,7 @@ func NewVoidEnvelopeStep[IN any](config VoidEnvelopeStepConfig[IN]) sdkgo.Mutati
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, VoidEnvelopeInput, VoidedEnvelope]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.VoidEnvelope(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.VoidEnvelope(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[VoidEnvelopeResult] {
 			branches := make([]sdkgo.BranchTarget[VoidEnvelopeResult], 0, 6)
@@ -607,7 +658,7 @@ type DownloadCombinedDocumentStepConfig[IN any] struct {
 }
 
 func NewDownloadCombinedDocumentStep[IN any](config DownloadCombinedDocumentStepConfig[IN]) sdkgo.QueryStep[IN, DownloadCombinedDocumentInput, CombinedDocument] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -615,7 +666,7 @@ func NewDownloadCombinedDocumentStep[IN any](config DownloadCombinedDocumentStep
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, DownloadCombinedDocumentInput, CombinedDocument]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.DownloadCombinedDocument(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.DownloadCombinedDocument(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[DownloadCombinedDocumentResult] {
 			branches := make([]sdkgo.BranchTarget[DownloadCombinedDocumentResult], 0, 6)

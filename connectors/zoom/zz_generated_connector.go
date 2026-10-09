@@ -34,8 +34,37 @@ type Credentials struct {
 type CredentialSource = sdkgo.RefreshingCredentialProvider[Credentials]
 
 type Connection struct {
-	client    *Client
-	reference sdkgo.ConnectionRef
+	client     *Client
+	operations Operations
+	reference  sdkgo.ConnectionRef
+}
+
+// Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
+// NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
+type Operations interface {
+	ListMeetings() sdkgo.Query[ListMeetingsInput, MeetingPage]
+	GetMeeting() sdkgo.Query[GetMeetingInput, Meeting]
+	CreateMeeting() sdkgo.Mutation[CreateMeetingInput, Meeting]
+	UpdateMeeting() sdkgo.Mutation[UpdateMeetingInput, UpdatedMeeting]
+	ListPastMeetingParticipants() sdkgo.Query[ListPastMeetingParticipantsInput, ParticipantPage]
+}
+
+type clientOperations struct{ client *Client }
+
+func (operations clientOperations) ListMeetings() sdkgo.Query[ListMeetingsInput, MeetingPage] {
+	return operations.client.ListMeetings()
+}
+func (operations clientOperations) GetMeeting() sdkgo.Query[GetMeetingInput, Meeting] {
+	return operations.client.GetMeeting()
+}
+func (operations clientOperations) CreateMeeting() sdkgo.Mutation[CreateMeetingInput, Meeting] {
+	return operations.client.CreateMeeting()
+}
+func (operations clientOperations) UpdateMeeting() sdkgo.Mutation[UpdateMeetingInput, UpdatedMeeting] {
+	return operations.client.UpdateMeeting()
+}
+func (operations clientOperations) ListPastMeetingParticipants() sdkgo.Query[ListPastMeetingParticipantsInput, ParticipantPage] {
+	return operations.client.ListPastMeetingParticipants()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -47,7 +76,19 @@ func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, e
 	if err := reference.Validate(); err != nil {
 		return Connection{}, fmt.Errorf("zoom connector connection: %w", err)
 	}
-	return Connection{client: client, reference: reference}, nil
+	return Connection{client: client, operations: clientOperations{client: client}, reference: reference}, nil
+}
+
+// NewConnectionWithOperations binds other operations, such as a generated mock package's, to a connection.
+// The connection serves operation Steps only: Trigger factories and runners require NewConnection.
+func NewConnectionWithOperations(operations Operations, reference sdkgo.ConnectionRef) (Connection, error) {
+	if operations == nil {
+		return Connection{}, fmt.Errorf("zoom connector operations are required")
+	}
+	if err := reference.Validate(); err != nil {
+		return Connection{}, fmt.Errorf("zoom connector connection: %w", err)
+	}
+	return Connection{operations: operations, reference: reference}, nil
 }
 
 // NewProjectConnection opens the connection that dex-app.yaml declares as connectionName from the
@@ -111,7 +152,17 @@ func encodeCredentials(credentials Credentials) (json.RawMessage, error) {
 }
 
 func (connection Connection) validate() error {
+	if connection.client == nil && connection.operations != nil {
+		return fmt.Errorf("zoom connector connection from NewConnectionWithOperations serves only operation Steps")
+	}
 	if connection.client == nil {
+		return fmt.Errorf("zoom connector connection is required")
+	}
+	return connection.reference.Validate()
+}
+
+func (connection Connection) validateOperations() error {
+	if connection.operations == nil {
 		return fmt.Errorf("zoom connector connection is required")
 	}
 	return connection.reference.Validate()
@@ -216,7 +267,7 @@ type ListMeetingsStepConfig[IN any] struct {
 }
 
 func NewListMeetingsStep[IN any](config ListMeetingsStepConfig[IN]) sdkgo.QueryStep[IN, ListMeetingsInput, MeetingPage] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -224,7 +275,7 @@ func NewListMeetingsStep[IN any](config ListMeetingsStepConfig[IN]) sdkgo.QueryS
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListMeetingsInput, MeetingPage]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.ListMeetings(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.ListMeetings(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[ListMeetingsResult] {
 			branches := make([]sdkgo.BranchTarget[ListMeetingsResult], 0, 4)
@@ -290,7 +341,7 @@ type GetMeetingStepConfig[IN any] struct {
 }
 
 func NewGetMeetingStep[IN any](config GetMeetingStepConfig[IN]) sdkgo.QueryStep[IN, GetMeetingInput, Meeting] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -298,7 +349,7 @@ func NewGetMeetingStep[IN any](config GetMeetingStepConfig[IN]) sdkgo.QueryStep[
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetMeetingInput, Meeting]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.GetMeeting(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.GetMeeting(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[GetMeetingResult] {
 			branches := make([]sdkgo.BranchTarget[GetMeetingResult], 0, 5)
@@ -364,7 +415,7 @@ type CreateMeetingStepConfig[IN any] struct {
 }
 
 func NewCreateMeetingStep[IN any](config CreateMeetingStepConfig[IN]) sdkgo.MutationStep[IN, CreateMeetingInput, Meeting] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -372,7 +423,7 @@ func NewCreateMeetingStep[IN any](config CreateMeetingStepConfig[IN]) sdkgo.Muta
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateMeetingInput, Meeting]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.CreateMeeting(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.CreateMeeting(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[CreateMeetingResult] {
 			branches := make([]sdkgo.BranchTarget[CreateMeetingResult], 0, 4)
@@ -435,7 +486,7 @@ type UpdateMeetingStepConfig[IN any] struct {
 }
 
 func NewUpdateMeetingStep[IN any](config UpdateMeetingStepConfig[IN]) sdkgo.MutationStep[IN, UpdateMeetingInput, UpdatedMeeting] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -443,7 +494,7 @@ func NewUpdateMeetingStep[IN any](config UpdateMeetingStepConfig[IN]) sdkgo.Muta
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateMeetingInput, UpdatedMeeting]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.UpdateMeeting(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.UpdateMeeting(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[UpdateMeetingResult] {
 			branches := make([]sdkgo.BranchTarget[UpdateMeetingResult], 0, 4)
@@ -509,7 +560,7 @@ type ListPastMeetingParticipantsStepConfig[IN any] struct {
 }
 
 func NewListPastMeetingParticipantsStep[IN any](config ListPastMeetingParticipantsStepConfig[IN]) sdkgo.QueryStep[IN, ListPastMeetingParticipantsInput, ParticipantPage] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -517,7 +568,7 @@ func NewListPastMeetingParticipantsStep[IN any](config ListPastMeetingParticipan
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListPastMeetingParticipantsInput, ParticipantPage]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.ListPastMeetingParticipants(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.ListPastMeetingParticipants(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[ListPastMeetingParticipantsResult] {
 			branches := make([]sdkgo.BranchTarget[ListPastMeetingParticipantsResult], 0, 5)

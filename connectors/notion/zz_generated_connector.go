@@ -31,8 +31,37 @@ type Credentials struct {
 type CredentialSource = sdkgo.CredentialProvider[Credentials]
 
 type Connection struct {
-	client    *Client
-	reference sdkgo.ConnectionRef
+	client     *Client
+	operations Operations
+	reference  sdkgo.ConnectionRef
+}
+
+// Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
+// NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
+type Operations interface {
+	Search() sdkgo.Query[SearchInput, SearchOutput]
+	QueryDatabase() sdkgo.Query[QueryDatabaseInput, QueryDatabaseOutput]
+	GetPage() sdkgo.Query[GetPageInput, GetPageOutput]
+	CreatePage() sdkgo.Mutation[CreatePageInput, CreatePageOutput]
+	UpdatePageProperties() sdkgo.Mutation[UpdatePagePropertiesInput, UpdatePagePropertiesOutput]
+}
+
+type clientOperations struct{ client *Client }
+
+func (operations clientOperations) Search() sdkgo.Query[SearchInput, SearchOutput] {
+	return operations.client.Search()
+}
+func (operations clientOperations) QueryDatabase() sdkgo.Query[QueryDatabaseInput, QueryDatabaseOutput] {
+	return operations.client.QueryDatabase()
+}
+func (operations clientOperations) GetPage() sdkgo.Query[GetPageInput, GetPageOutput] {
+	return operations.client.GetPage()
+}
+func (operations clientOperations) CreatePage() sdkgo.Mutation[CreatePageInput, CreatePageOutput] {
+	return operations.client.CreatePage()
+}
+func (operations clientOperations) UpdatePageProperties() sdkgo.Mutation[UpdatePagePropertiesInput, UpdatePagePropertiesOutput] {
+	return operations.client.UpdatePageProperties()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -44,7 +73,19 @@ func NewConnection(client *Client, reference sdkgo.ConnectionRef) (Connection, e
 	if err := reference.Validate(); err != nil {
 		return Connection{}, fmt.Errorf("notion connector connection: %w", err)
 	}
-	return Connection{client: client, reference: reference}, nil
+	return Connection{client: client, operations: clientOperations{client: client}, reference: reference}, nil
+}
+
+// NewConnectionWithOperations binds other operations, such as a generated mock package's, to a connection.
+// The connection serves operation Steps only: Trigger factories and runners require NewConnection.
+func NewConnectionWithOperations(operations Operations, reference sdkgo.ConnectionRef) (Connection, error) {
+	if operations == nil {
+		return Connection{}, fmt.Errorf("notion connector operations are required")
+	}
+	if err := reference.Validate(); err != nil {
+		return Connection{}, fmt.Errorf("notion connector connection: %w", err)
+	}
+	return Connection{operations: operations, reference: reference}, nil
 }
 
 // NewProjectConnection opens the connection that dex-app.yaml declares as connectionName from the
@@ -87,7 +128,17 @@ func decodeCredentials(contents json.RawMessage) (Credentials, error) {
 }
 
 func (connection Connection) validate() error {
+	if connection.client == nil && connection.operations != nil {
+		return fmt.Errorf("notion connector connection from NewConnectionWithOperations serves only operation Steps")
+	}
 	if connection.client == nil {
+		return fmt.Errorf("notion connector connection is required")
+	}
+	return connection.reference.Validate()
+}
+
+func (connection Connection) validateOperations() error {
+	if connection.operations == nil {
 		return fmt.Errorf("notion connector connection is required")
 	}
 	return connection.reference.Validate()
@@ -186,7 +237,7 @@ type SearchStepConfig[IN any] struct {
 }
 
 func NewSearchStep[IN any](config SearchStepConfig[IN]) sdkgo.QueryStep[IN, SearchInput, SearchOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -194,7 +245,7 @@ func NewSearchStep[IN any](config SearchStepConfig[IN]) sdkgo.QueryStep[IN, Sear
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, SearchInput, SearchOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.Search(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.Search(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[SearchResult] {
 			branches := make([]sdkgo.BranchTarget[SearchResult], 0, 5)
@@ -263,7 +314,7 @@ type QueryDatabaseStepConfig[IN any] struct {
 }
 
 func NewQueryDatabaseStep[IN any](config QueryDatabaseStepConfig[IN]) sdkgo.QueryStep[IN, QueryDatabaseInput, QueryDatabaseOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -271,7 +322,7 @@ func NewQueryDatabaseStep[IN any](config QueryDatabaseStepConfig[IN]) sdkgo.Quer
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, QueryDatabaseInput, QueryDatabaseOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.QueryDatabase(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.QueryDatabase(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[QueryDatabaseResult] {
 			branches := make([]sdkgo.BranchTarget[QueryDatabaseResult], 0, 5)
@@ -340,7 +391,7 @@ type GetPageStepConfig[IN any] struct {
 }
 
 func NewGetPageStep[IN any](config GetPageStepConfig[IN]) sdkgo.QueryStep[IN, GetPageInput, GetPageOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -348,7 +399,7 @@ func NewGetPageStep[IN any](config GetPageStepConfig[IN]) sdkgo.QueryStep[IN, Ge
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetPageInput, GetPageOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.GetPage(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.GetPage(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[GetPageResult] {
 			branches := make([]sdkgo.BranchTarget[GetPageResult], 0, 5)
@@ -420,7 +471,7 @@ type CreatePageStepConfig[IN any] struct {
 }
 
 func NewCreatePageStep[IN any](config CreatePageStepConfig[IN]) sdkgo.MutationStep[IN, CreatePageInput, CreatePageOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -428,7 +479,7 @@ func NewCreatePageStep[IN any](config CreatePageStepConfig[IN]) sdkgo.MutationSt
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreatePageInput, CreatePageOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.CreatePage(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.CreatePage(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[CreatePageResult] {
 			branches := make([]sdkgo.BranchTarget[CreatePageResult], 0, 6)
@@ -500,7 +551,7 @@ type UpdatePagePropertiesStepConfig[IN any] struct {
 }
 
 func NewUpdatePagePropertiesStep[IN any](config UpdatePagePropertiesStepConfig[IN]) sdkgo.MutationStep[IN, UpdatePagePropertiesInput, UpdatePagePropertiesOutput] {
-	if err := config.Connection.validate(); err != nil {
+	if err := config.Connection.validateOperations(); err != nil {
 		panic(err)
 	}
 	if config.ConnectionName != config.Connection.reference.Name {
@@ -508,7 +559,7 @@ func NewUpdatePagePropertiesStep[IN any](config UpdatePagePropertiesStepConfig[I
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdatePagePropertiesInput, UpdatePagePropertiesOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.client.UpdatePageProperties(), Connection: config.Connection.reference,
+		Operation: config.Connection.operations.UpdatePageProperties(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[UpdatePagePropertiesResult] {
 			branches := make([]sdkgo.BranchTarget[UpdatePagePropertiesResult], 0, 5)
