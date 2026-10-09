@@ -304,9 +304,15 @@ func TestCursorPageNumberAcceptsNumberedPages(t *testing.T) {
 	}
 	pageNumber := connectormock.CursorPageNumber[numberedInput]("page", "nextPage", []numberedPage{{NextPage: 2}, {NextPage: 3}, {}})
 
-	require.Equal(t, []int{1, 2, 3, 0}, []int{
-		pageNumber(numberedInput{}), pageNumber(numberedInput{Page: 2}), pageNumber(numberedInput{Page: 3}), pageNumber(numberedInput{Page: 4}),
-	})
+	require.Equal(t, []int{1, 1, 2, 3, 4}, []int{
+		pageNumber(numberedInput{}), pageNumber(numberedInput{Page: 1}), pageNumber(numberedInput{Page: 2}),
+		pageNumber(numberedInput{Page: 3}), pageNumber(numberedInput{Page: 4}),
+	}, "a numbered listing maps page n to page n; the mock reports page 4 as outside the listing")
+
+	tokenPageNumber := connectormock.CursorPageNumber[numberedInput]("page", "nextPage", []numberedPage{{NextPage: 7}, {}})
+	require.Equal(t, []int{1, 2, 0}, []int{
+		tokenPageNumber(numberedInput{}), tokenPageNumber(numberedInput{Page: 7}), tokenPageNumber(numberedInput{Page: 1}),
+	}, "a listing whose cursors are not page numbers matches cursors only")
 }
 
 func TestPagedCaseRejectsAnotherInputType(t *testing.T) {

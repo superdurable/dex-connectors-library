@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
@@ -90,8 +91,10 @@ func Paged[IN, OUT any](branch sdkgo.BranchID, pageNumber func(IN) int, pages ..
 // listing's own cursor. inputField and nextField are JSON field names: the
 // operation input's cursor and each page's next cursor. An input whose cursor
 // is absent, null, zero, or empty requests the first page; an input whose
-// cursor equals page k's next cursor requests page k+1. Any other cursor
-// returns zero, which the mock reports as a page outside the listing.
+// cursor equals page k's next cursor requests page k+1. When every page names
+// its successor's one-based number, the listing is numbered and an input
+// cursor n requests page n, so 1 also requests the first page. Any other
+// cursor returns zero, which the mock reports as a page outside the listing.
 //
 // Generated mock packages use it for operations whose manifest declares
 // pagination, so numbered pages and opaque page tokens work alike.
@@ -100,10 +103,17 @@ func CursorPageNumber[IN, OUT any](inputField, nextField string, pages []OUT) fu
 	for index, page := range pages {
 		nextCursors[index] = jsonFieldValue(page, nextField)
 	}
+	isNumbered := true
+	for index, nextCursor := range nextCursors[:max(len(nextCursors)-1, 0)] {
+		isNumbered = isNumbered && nextCursor == strconv.Itoa(index+2)
+	}
 	return func(input IN) int {
 		cursor := jsonFieldValue(input, inputField)
 		if isEmptyJSONValue(cursor) {
 			return 1
+		}
+		if pageNumber, err := strconv.Atoi(cursor); isNumbered && err == nil {
+			return pageNumber
 		}
 		for index, nextCursor := range nextCursors {
 			if !isEmptyJSONValue(nextCursor) && nextCursor == cursor {
