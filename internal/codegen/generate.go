@@ -140,6 +140,10 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 	}
 	generation.mustWrite("\t}\n")
 	generation.mustWrite("\tif err := projectconfig.DecodeCredentials(contents, &fields); err != nil { return Credentials{}, err }\n")
+	if selection := credentialSelection(manifest.Spec.Auth); selection != nil {
+		generation.mustWrite("\t// Credentials saved before the connector declared auth methods carry no %s; they use the default method.\n", selection.wireName)
+		generation.mustWrite("\tif fields.%s == \"\" { fields.%s = %s }\n", selection.goName, selection.goName, strconv.Quote(manifest.Spec.Auth.DefaultMethod))
+	}
 	generation.mustWrite("\tcredentials := Credentials{\n")
 	if selection := credentialSelection(manifest.Spec.Auth); selection != nil {
 		generation.mustWrite("\t\t%s: fields.%s,\n", selection.goName, selection.goName)

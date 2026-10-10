@@ -60,9 +60,11 @@ func TestProjectConnectionReadsEachAuthenticationMethod(t *testing.T) {
 	var config Config
 	missing := projectconfig.ConnectionKey{ConnectorID: ConnectorID, ConnectionName: "missing"}
 	require.ErrorIs(t, configuration.DecodeConnectionConfiguration(missing, &config), projectconfig.ErrObjectNotFound)
+	withoutMethod, err := decodeCredentials(json.RawMessage(`{"auth_token":"auth-token-sentinel-0123456789ab"}`))
+	require.NoError(t, err, "credentials without a method use the default method")
+	require.Equal(t, "auth-token", withoutMethod.AuthMethodID)
 	for _, contents := range []string{
 		`{}`,
-		`{"auth_token":"auth-token-sentinel-0123456789ab"}`,
 		`{"auth_method":"api-key","api_key_secret":"api-key-secret-sentinel-012345678"}`,
 		`{"auth_method":"auth-token","auth_token":"auth-token-sentinel-0123456789ab","account_sid":"` + fakeAccountSID + `"}`,
 	} {
