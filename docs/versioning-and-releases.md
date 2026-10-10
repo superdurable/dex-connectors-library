@@ -163,6 +163,42 @@ PR body, or direct commit message. A v0 breaking release cannot use a patch
 bump. At v1 or later, a breaking release requires a major bump and the Go
 module path must be migrated before publishing v2 or later.
 
+## Release candidates
+
+A release candidate lets an application use a connector change before review.
+It publishes one connector from a commit that is not on `main` yet, tagged
+`<connector directory>/vX.Y.Z-rc.N`, where `vX.Y.Z` is the version the
+commit's manifest declares and `N` counts from 1. Each new commit of the same
+change takes the next `N`. A maintainer still reviews the pull request and the
+release workflow publishes `vX.Y.Z` after merge.
+
+The `Release Connector Candidate` workflow runs from `main`. A repository
+dispatch of type `connector-release-candidate` with
+`{"directory", "commit", "version"}`, or a manual run with the same inputs,
+starts it. Because the workflow is read from `main`, a candidate commit cannot
+change it. It:
+
+1. checks the request with `connectorctl release-candidate` and `main`'s
+   tooling: the commit changes only the connector's directory since it left
+   `main` (a new connector also adds its `catalog.yaml` entry and, for a new
+   company, its `logo.svg`); its catalog validates; the manifest declares
+   `vX.Y.Z`; `vX.Y.Z` is after the connector's latest release reachable from
+   `main`; and the tag is free or already names the commit;
+2. verifies the commit with a read-only token, the only job that runs the
+   candidate's code: generated code, the SDK and connector dependency rules,
+   `go test -race` and `go vet` with `GOWORK=off`, the Current compatibility
+   gate, and an optional Connector Studio UI;
+3. builds `connector-release.json` with `main`'s `connectorctl
+   release-artifact`, whose version is the candidate version;
+4. creates the tag and a GitHub pre-release with the release assets, or repairs
+   an existing one at the same commit;
+5. verifies the module downloads with `GOPROXY=direct` and uploads
+   `connector-release.complete`.
+
+A candidate never enters the public catalog, and no connector may require a
+candidate: connector dependencies stay exact releases reachable from `main`.
+The Released compatibility canary ignores pre-releases.
+
 ## Latest Dex Go SDK check
 
 `make test-dex-compat-latest-go-sdk` checks that the Connector SDK and the
