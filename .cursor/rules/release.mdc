@@ -41,6 +41,12 @@ alwaysApply: true
 - Run module verification with GOWORK=off. Connector releases run automatically
   after merge to main; manual runs only repair incomplete releases and catalog
   deployment.
+- A release candidate <connector directory>/vX.Y.Z-rc.N publishes one connector
+  from a commit that is not on main through the Release Connector Candidate
+  workflow. The commit changes only that connector's directory (a new connector
+  also its catalog entry and company logo), and vX.Y.Z is its manifest version,
+  after its latest release. A candidate is a GitHub pre-release with the release
+  assets, never a release, a public catalog entry or a connector dependency.
 - v0 breaking releases cannot be patch releases. v1+ breaking releases require
   a major module-path migration.
 - Use one released module per PR unless a repository-wide mechanical change

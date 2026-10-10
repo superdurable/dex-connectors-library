@@ -34,7 +34,7 @@ func main() {
 
 func run(args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: connectorctl <validate|catalog|release-matrix|test-matrix|generate|mocks|ui-artifact|release-artifact> [path ...]")
+		return errors.New("usage: connectorctl <validate|catalog|release-matrix|release-candidate|test-matrix|generate|mocks|ui-artifact|release-artifact> [path ...]")
 	}
 	switch args[0] {
 	case "validate":
@@ -66,6 +66,8 @@ func run(args []string) error {
 		return uiArtifact(args[1:])
 	case "release-artifact":
 		return releaseArtifact(args[1:])
+	case "release-candidate":
+		return releaseCandidateCommand(args[1:])
 	default:
 		return fmt.Errorf("unknown command %q", args[0])
 	}
@@ -117,8 +119,9 @@ func releaseArtifact(args []string) error {
 	if err != nil {
 		return err
 	}
-	if manifest.Metadata.Version != *version {
-		return fmt.Errorf("release version %s does not match manifest version %s", *version, manifest.Metadata.Version)
+	if candidate := connectorReleaseCandidateVersionPattern.FindStringSubmatch(*version); manifest.Metadata.Version != *version &&
+		(candidate == nil || candidate[1] != manifest.Metadata.Version) {
+		return fmt.Errorf("release version %s does not match manifest version %s or a release candidate of it", *version, manifest.Metadata.Version)
 	}
 	manifestDigest := fmt.Sprintf("%x", sha256.Sum256(manifestBytes))
 	artifact := connectorReleaseArtifact{

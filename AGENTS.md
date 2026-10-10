@@ -195,6 +195,13 @@ Every implementation plan includes Tests, Documentation, and UI/UX. Use
 - Test every module with `GOWORK=off` before release.
 - Connector releases run automatically after merge to `main`; manual runs only
   repair incomplete releases or catalog deployment.
+- A release candidate `<connector directory>/vX.Y.Z-rc.N` publishes one
+  connector from a commit that is not on `main` through the `Release Connector
+  Candidate` workflow. The commit changes only that connector's directory (a new
+  connector also its catalog entry and company logo), and `vX.Y.Z` is its
+  manifest version, after its latest release. A candidate is a GitHub
+  pre-release with the release assets, never a release, a public catalog entry
+  or a connector dependency.
 - A v0 breaking release cannot be a patch. A v1+ breaking release requires a
   major-version module-path migration.
 

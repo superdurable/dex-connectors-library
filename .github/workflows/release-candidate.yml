@@ -1,0 +1,206 @@
+name: Release Connector Candidate
+
+# A release candidate publishes one connector from a commit that is not on main yet, with the same release assets as
+# a release. The workflow runs from main, so a candidate branch cannot change it; only the verify job runs the
+# candidate's code, and it holds a read-only token.
+on:
+  repository_dispatch:
+    types: [connector-release-candidate]
+  workflow_dispatch:
+    inputs:
+      directory:
+        description: Registered Connector directory, such as connectors/superdurable/llm
+        required: true
+        type: string
+      commit:
+        description: Full SHA of the candidate commit
+        required: true
+        type: string
+      version:
+        description: Release candidate version, vX.Y.Z-rc.N, where vX.Y.Z is the manifest version
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-connector-candidate-${{ github.event.client_payload.directory || inputs.directory }}
+  cancel-in-progress: false
+
+env:
+  CANDIDATE_DIRECTORY: ${{ github.event.client_payload.directory || inputs.directory }}
+  CANDIDATE_COMMIT: ${{ github.event.client_payload.commit || inputs.commit }}
+  CANDIDATE_VERSION: ${{ github.event.client_payload.version || inputs.version }}
+  GOWORK: "off"
+
+jobs:
+  plan:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      manifest_path: ${{ steps.candidate.outputs.manifest_path }}
+      module_path: ${{ steps.candidate.outputs.module_path }}
+      version: ${{ steps.candidate.outputs.version }}
+      tag: ${{ steps.candidate.outputs.tag }}
+      source_sha: ${{ steps.candidate.outputs.source_sha }}
+      display_name: ${{ steps.candidate.outputs.display_name }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Validate the candidate with main's tooling
+        id: candidate
+        run: |
+          git fetch --no-tags origin "${CANDIDATE_COMMIT}"
+          git worktree add --detach "${RUNNER_TEMP}/candidate" "${CANDIDATE_COMMIT}"
+          go run ./cmd/connectorctl release-candidate \
+            --catalog catalog.yaml \
+            --candidate-root "${RUNNER_TEMP}/candidate" \
+            --directory "${CANDIDATE_DIRECTORY}" \
+            --commit "${CANDIDATE_COMMIT}" \
+            --version "${CANDIDATE_VERSION}" \
+            --github-output "${GITHUB_OUTPUT}"
+
+  verify:
+    needs: plan
+    runs-on: ubuntu-latest
+    env:
+      MANIFEST_PATH: ${{ needs.plan.outputs.manifest_path }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.plan.outputs.source_sha }}
+          fetch-depth: 0
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: |
+            go.sum
+            sdkgo/go.sum
+            ${{ env.CANDIDATE_DIRECTORY }}/go.sum
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Check generated Connector code
+        run: go run ./cmd/connectorctl generate --check "${MANIFEST_PATH}"
+      - name: Validate published SDK and connector dependencies
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          python3 script/release/component_release.py validate-connector \
+            --component-path "${CANDIDATE_DIRECTORY}" \
+            --sdk-module github.com/superdurable/dex-connectors-library/sdkgo
+      - name: Test standalone Connector module
+        working-directory: ${{ env.CANDIDATE_DIRECTORY }}
+        run: |
+          go test -race ./...
+          go vet ./...
+      - name: Verify the Connector with the latest stable Dex CLI and Web
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 script/dex_compatibility.py current --connector-directories "${CANDIDATE_DIRECTORY}"
+      - name: Build and test Connector Studio UI
+        run: |
+          if [ -f "${CANDIDATE_DIRECTORY}/ui/package-lock.json" ]; then
+            npm ci --prefix sdk/react
+            npm run build --prefix sdk/react
+            npm ci --prefix "${CANDIDATE_DIRECTORY}/ui"
+            npm test --prefix "${CANDIDATE_DIRECTORY}/ui"
+            npm run build --prefix "${CANDIDATE_DIRECTORY}/ui"
+            mkdir -p "${RUNNER_TEMP}/ui"
+            go run ./cmd/connectorctl ui-artifact \
+              --manifest "${MANIFEST_PATH}" \
+              --ui-root "${CANDIDATE_DIRECTORY}/ui/dist" \
+              --output "${RUNNER_TEMP}/ui/connector-ui.tgz" \
+              --digest-output "${RUNNER_TEMP}/ui/connector-ui.tgz.sha256"
+          fi
+      - name: Keep the Studio UI artifact for publication
+        if: hashFiles(format('{0}/ui/package-lock.json', env.CANDIDATE_DIRECTORY)) != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: connector-ui
+          path: ${{ runner.temp }}/ui
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    needs: [plan, verify]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ needs.plan.outputs.tag }}
+      RELEASE_VERSION: ${{ needs.plan.outputs.version }}
+      MODULE_PATH: ${{ needs.plan.outputs.module_path }}
+      SOURCE_SHA: ${{ needs.plan.outputs.source_sha }}
+      MANIFEST_PATH: ${{ needs.plan.outputs.manifest_path }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: connector-ui
+          path: ${{ runner.temp }}/ui
+      - name: Build the release candidate artifact with main's tooling
+        run: |
+          git fetch --no-tags origin "${SOURCE_SHA}"
+          git worktree add --detach "${RUNNER_TEMP}/candidate" "${SOURCE_SHA}"
+          UI_ARGS=()
+          if [ -f "${RUNNER_TEMP}/ui/connector-ui.tgz" ]; then
+            UI_ARGS+=(--ui-artifact "${RUNNER_TEMP}/ui/connector-ui.tgz" --ui-digest "${RUNNER_TEMP}/ui/connector-ui.tgz.sha256")
+          fi
+          go run ./cmd/connectorctl release-artifact \
+            --manifest "${RUNNER_TEMP}/candidate/${MANIFEST_PATH}" \
+            --module-path "${MODULE_PATH}" \
+            --version "${RELEASE_VERSION}" \
+            --tag "${RELEASE_TAG}" \
+            --source-sha "${SOURCE_SHA}" \
+            --output /tmp/connector-release.json \
+            --digest-output /tmp/connector-release.json.sha256 \
+            "${UI_ARGS[@]}"
+      - name: Create or repair the pre-release
+        env:
+          RELEASE_DISPLAY_NAME: ${{ needs.plan.outputs.display_name }}
+        run: |
+          assets=(/tmp/connector-release.json /tmp/connector-release.json.sha256)
+          if [ -f "${RUNNER_TEMP}/ui/connector-ui.tgz" ]; then
+            assets+=("${RUNNER_TEMP}/ui/connector-ui.tgz" "${RUNNER_TEMP}/ui/connector-ui.tgz.sha256")
+          fi
+          printf 'Release candidate of %s %s from %s, which is not on main yet. A maintainer releases the reviewed version after its pull request merges.\n' \
+            "${RELEASE_DISPLAY_NAME}" "${RELEASE_VERSION}" "${SOURCE_SHA}" > /tmp/connector-release-notes.md
+          if gh release view "${RELEASE_TAG}" >/dev/null 2>&1; then
+            gh release upload "${RELEASE_TAG}" --clobber "${assets[@]}"
+          else
+            gh release create "${RELEASE_TAG}" \
+              --target "${SOURCE_SHA}" \
+              --prerelease \
+              --title "${RELEASE_DISPLAY_NAME} ${RELEASE_VERSION}" \
+              --notes-file /tmp/connector-release-notes.md \
+              "${assets[@]}"
+          fi
+      - name: Verify the published Connector module
+        run: |
+          deadline=$((SECONDS + 120))
+          until GOPROXY=direct GONOSUMDB=github.com/superdurable/dex-connectors-library \
+            go mod download "${MODULE_PATH}@${RELEASE_VERSION}"; do
+            if (( SECONDS >= deadline )); then
+              echo "Published Connector module did not become downloadable before the deadline" >&2
+              exit 1
+            fi
+            sleep 2
+          done
+      - name: Mark the release candidate complete
+        run: |
+          printf '%s\n' "${RELEASE_TAG}" > /tmp/connector-release.complete
+          gh release upload "${RELEASE_TAG}" --clobber /tmp/connector-release.complete
