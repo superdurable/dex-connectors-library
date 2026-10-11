@@ -12,6 +12,7 @@ directories:
   - connectors/calendly
   - connectors/clickup
   - connectors/docusign
+  - connectors/doist/todoist
   - connectors/freshworks/freshdesk
   - connectors/front
   - connectors/github
