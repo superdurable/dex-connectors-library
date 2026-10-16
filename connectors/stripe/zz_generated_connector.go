@@ -26,6 +26,7 @@ type Config struct {
 }
 
 type Credentials struct {
+	AuthMethodID  string
 	SecretKey     sdkgo.SecretString
 	WebhookSecret sdkgo.SecretString
 }
@@ -115,13 +116,19 @@ func NewProjectConnection(project *projectconfig.LoadedProject, connectionName s
 
 func decodeCredentials(contents json.RawMessage) (Credentials, error) {
 	var fields struct {
+		AuthMethodID  string `json:"auth_method"`
 		SecretKey     string `json:"secret_key"`
 		WebhookSecret string `json:"webhook_secret"`
 	}
 	if err := projectconfig.DecodeCredentials(contents, &fields); err != nil {
 		return Credentials{}, err
 	}
+	// Credentials saved before the connector declared auth methods carry no auth_method; they use the default method.
+	if fields.AuthMethodID == "" {
+		fields.AuthMethodID = "api-key-with-webhook"
+	}
 	credentials := Credentials{
+		AuthMethodID:  fields.AuthMethodID,
 		SecretKey:     sdkgo.NewSecretString(fields.SecretKey),
 		WebhookSecret: sdkgo.NewSecretString(fields.WebhookSecret),
 	}
@@ -203,11 +210,20 @@ func (config Config) Validate() error {
 }
 
 func (credentials Credentials) Validate() error {
-	if credentials.SecretKey.Reveal() == "" {
-		return fmt.Errorf("credential secret_key is required")
-	}
-	if credentials.WebhookSecret.Reveal() == "" {
-		return fmt.Errorf("credential webhook_secret is required")
+	switch credentials.AuthMethodID {
+	case "api-key-with-webhook":
+		if credentials.SecretKey.Reveal() == "" {
+			return fmt.Errorf("credential secret_key is required")
+		}
+		if credentials.WebhookSecret.Reveal() == "" {
+			return fmt.Errorf("credential webhook_secret is required")
+		}
+	case "api-key-only":
+		if credentials.SecretKey.Reveal() == "" {
+			return fmt.Errorf("credential secret_key is required")
+		}
+	default:
+		return fmt.Errorf("credential auth_method is invalid")
 	}
 	return nil
 }

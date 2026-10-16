@@ -38,25 +38,48 @@ spec:
         required: false
         default: 5m
   auth:
-    type: apiKey
-    connectionKind: stripe-secret-key-webhook
-    fields:
-      - name: secret_key
-        goName: SecretKey
-        type: secretString
-        description: Secret Stripe key from Developers > API keys; use an rk_test_/rk_live_ restricted key with Checkout Session access when possible, otherwise an sk_test_/sk_live_ key.
-        required: true
-      - name: webhook_secret
-        goName: WebhookSecret
-        type: secretString
-        description: Secret whsec_ signing secret from Developers > Webhooks > select the Dex endpoint > Signing secret > Reveal; this is different from an API key.
-        required: true
-    guide:
-      startURL: https://dashboard.stripe.com/apikeys
-      steps:
-        - Choose Test mode or Live mode, open Developers > API keys, and create a restricted key with the Checkout Session permissions this connector needs or reveal the matching secret key.
-        - Open Developers > Webhooks, create or select the endpoint that sends Checkout Session events to the application, then reveal and copy its whsec_ signing secret.
-        - Keep the API key and webhook endpoint in the same Stripe mode; paste rk_/sk_ into secret_key and whsec_ into webhook_secret.
+    defaultMethod: api-key-with-webhook
+    methodLabel: Connection type
+    methods:
+      - id: api-key-with-webhook
+        displayName: API key and webhook
+        description: Use Stripe API operations and receive signed Checkout Session events.
+        type: apiKey
+        connectionKind: stripe-secret-key-webhook
+        fields:
+          - name: secret_key
+            goName: SecretKey
+            type: secretString
+            description: Secret Stripe key from Developers > API keys; use an rk_test_/rk_live_ restricted key with the permissions required by your operations, otherwise an sk_test_/sk_live_ key.
+            required: true
+          - name: webhook_secret
+            goName: WebhookSecret
+            type: secretString
+            description: Secret whsec_ signing secret from Developers > Webhooks > select the Dex endpoint > Signing secret > Reveal; this is different from an API key.
+            required: true
+        guide:
+          startURL: https://dashboard.stripe.com/apikeys
+          steps:
+            - Choose Test mode or Live mode, open Developers > API keys, and create a restricted key with the permissions required by your operations or reveal the matching secret key.
+            - Open Developers > Webhooks, create or select the endpoint that sends Checkout Session events to the application, then reveal and copy its whsec_ signing secret.
+            - Keep the API key and webhook endpoint in the same Stripe mode; paste rk_/sk_ into secret_key and whsec_ into webhook_secret.
+      - id: api-key-only
+        displayName: API key only
+        description: Use Stripe API operations without a webhook or signing secret.
+        recommended: true
+        type: apiKey
+        connectionKind: stripe-secret-key-only
+        fields:
+          - name: secret_key
+            goName: SecretKey
+            type: secretString
+            description: Secret rk_test_/rk_live_ restricted or sk_test_/sk_live_ key from Developers > API keys. Grant only the permissions needed by the chosen operations.
+            required: true
+        guide:
+          startURL: https://dashboard.stripe.com/apikeys
+          steps:
+            - Choose Test mode or Live mode, open Developers > API keys, and create a restricted key with permissions for the selected API operations or reveal the matching secret key.
+            - Paste the key into secret_key. No webhook endpoint or signing secret is needed for API operations alone.
   triggers:
     - name: checkoutSessionUpdated
       goName: CheckoutSessionUpdated

@@ -11,6 +11,15 @@ provider bodies, API keys, or webhook signing secrets.
 
 ## Stripe setup
 
+Choose **API key only** for applications that call Stripe operations without
+receiving webhooks. Create a restricted key in Stripe Dashboard > Developers >
+API keys with access to the operations the application uses. For
+`GetPaymentIntent` and `CreateRefund`, grant PaymentIntent and Charge read
+access and Refund write access. Store the `rk_test_` or `rk_live_` key as
+`secret_key`; this method requires no webhook endpoint or signing secret.
+
+Choose **API key and webhook** when using `checkoutSessionUpdated`:
+
 1. Create a restricted or secret Stripe API key that can create and read
    Checkout Sessions.
 2. Create one Stripe webhook endpoint that routes to this application's
@@ -21,8 +30,12 @@ provider bodies, API keys, or webhook signing secrets.
    - `checkout.session.async_payment_failed`
    - `checkout.session.expired`
 4. Store the API key as `secret_key` and the endpoint signing secret as
-   `webhook_secret`. Never place either secret in Flow input or connector
-   configuration.
+   `webhook_secret`. Keep both in the same Stripe mode. Never place either
+   secret in Flow input or connector configuration.
+
+Existing connections without an `auth_method` keep using the webhook method.
+A webhook request on an API-key-only connection fails closed because it has no
+signing secret.
 
 `checkout.session.completed` means the customer finished hosted Checkout; it
 does not by itself prove that an ACH payment settled. Applications should issue
@@ -62,8 +75,8 @@ like this:
 }
 ```
 
-The connection's credential, `secret_key` and `webhook_secret`, stays in the
-private project storage and is resolved for every call. The application reads
+The connection's selected-method credentials stay in private project storage
+and are resolved for every call. The application reads
 the configuration through the `DEX_PROJECT_*` environment described in
 [project configuration loading](../../sdkgo/projectconfig/README.md#application-loading)
 and opens the connection with `stripe.NewProjectConnection`. Use
