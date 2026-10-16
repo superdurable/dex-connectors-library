@@ -310,6 +310,10 @@ jobs:
 
   deploy-catalog:
     needs: build-catalog
+    # always() so a skipped release (a push that changes no Connector) does not
+    # skip the deploy too: without it the implicit success() fails on that
+    # skipped ancestor and only Connector releases reach the catalog site.
+    if: always() && needs.build-catalog.result == 'success'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
