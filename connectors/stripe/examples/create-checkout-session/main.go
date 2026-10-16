@@ -40,7 +40,7 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{createcheckoutsession.NewFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{createcheckoutsession.NewFlow(connection), createcheckoutsession.NewCardFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Stripe Checkout Flow: %w", err)
 	}

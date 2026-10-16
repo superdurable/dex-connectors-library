@@ -1,7 +1,7 @@
 # Stripe Connector
 
 This module creates and reconciles Stripe-hosted Checkout Sessions that accept
-US bank account (ACH Direct Debit) payments. It also receives signed Checkout
+card or US bank account (ACH Direct Debit) payments. It also receives signed Checkout
 Session webhooks through one shared HTTP endpoint.
 
 Only a safe Checkout Session summary crosses the connector boundary: IDs,
@@ -105,8 +105,9 @@ receive the same event again after an acknowledgement race.
 
 ## Operations
 
-`CreateACHCheckoutSession` always sends `mode=payment` and
-`payment_method_types[0]=us_bank_account`. It maps the stable Dex Call ID to
+`CreateCardCheckoutSession` sends `mode=payment` and
+`payment_method_types[0]=card`. `CreateACHCheckoutSession` sends
+`mode=payment` and `payment_method_types[0]=us_bank_account`. It maps the stable Dex Call ID to
 Stripe's `Idempotency-Key`, includes application metadata on both the Checkout
 Session and PaymentIntent, and disables HTTP redirects so credentials cannot be
 forwarded to another host.
@@ -133,7 +134,7 @@ retry under the generated Dex policy.
 ## Example
 
 [`examples/create-checkout-session`](examples/create-checkout-session) is a
-runnable Start Flow for creating one hosted ACH Checkout Session.
+runnable Start Flows for creating hosted card and ACH Checkout Sessions.
 
 [`examples/webhook-receiver`](examples/webhook-receiver) is a runnable local
 receiver that loads the project configuration, starts the durable Trigger

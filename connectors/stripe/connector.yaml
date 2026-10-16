@@ -3,9 +3,9 @@ kind: Connector
 metadata:
   name: stripe
   displayName: Stripe
-  description: Create and reconcile hosted ACH Checkout Sessions and receive signed Checkout Session events.
+  description: Create and reconcile hosted card or ACH Checkout Sessions and receive signed Checkout Session events.
   company: Stripe
-  version: v0.21.1
+  version: v0.22.0
 spec:
   provider: stripe
   codegen:
@@ -64,6 +64,23 @@ spec:
       configurationType: CheckoutSessionUpdatedTriggerConfiguration
       description: Receive a verified Checkout Session completion, delayed-payment, or expiration event.
   operations:
+    - name: createCardCheckoutSession
+      goName: CreateCardCheckoutSession
+      inputType: CreateCardCheckoutSessionInput
+      outputType: CheckoutSession
+      kind: mutation
+      description: Create one Stripe-hosted Checkout Session for a card payment.
+      idempotency: required
+      branches:
+        - {id: created, goName: Created, description: Stripe created the Checkout Session.}
+        - {id: providerRejected, goName: ProviderRejected, description: Stripe conclusively rejected the Checkout Session request., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The dispatched Checkout Session outcome cannot be confirmed., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Stripe returned an invalid or oversized Checkout Session response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &stripeExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
     - name: createACHCheckoutSession
       goName: CreateACHCheckoutSession
       inputType: CreateACHCheckoutSessionInput
@@ -77,10 +94,7 @@ spec:
         - {id: uncertain, goName: Uncertain, description: The dispatched Checkout Session outcome cannot be confirmed., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Stripe returned an invalid or oversized Checkout Session response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &stripeExecution
-        executeMethodTimeout: 30s
-        durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+      execution: *stripeExecution
     - name: getCheckoutSession
       goName: GetCheckoutSession
       inputType: GetCheckoutSessionInput
