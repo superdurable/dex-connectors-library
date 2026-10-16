@@ -1,0 +1,142 @@
+# Todoist CRUD and list example
+
+[TodoistTaskCRUDFlow](flow/workflow.go) has two explicitly different start modes:
+
+- `list` (the default) calls `NewListTasksStep`, persists one task page, and
+  completes without any write. Supply the returned cursor in another list run
+  to continue with unchanged filters.
+- `lifecycle` creates a new disposable task using `NewCreateTaskStep`, reads its
+  returned ID with `NewGetTaskStep`, updates selected title/description fields using
+  `NewUpdateTaskStep`, reads the task back, locates the changed task through
+  `NewListTasksStep`, deletes only that task using `NewDeleteTaskStep`, and
+  confirms that `NewGetTaskStep` returns `notFound`.
+
+Every provider call runs inside a connector Step. The created task ID, update
+and delete results, request, page counter, and final outcome are registered
+Attributes. Retained summary/Display RPCs read persisted state only. The
+lifecycle list path follows at most fifty pages. It never chooses mutation
+or deletion targets by title and never modifies unrelated listed tasks.
+
+Both `updated` and `uncertain` update branches read the known task ID with
+`GetUpdatedLifecycleTask`. The read compares only requested replacement fields.
+Confirmed matching updates continue to list and delete. Uncertain updates
+complete with `status: uncertain`, the original `mutationBranch`, the original
+created task, the observed `after` task, and `matchesRequestedFields`. A matching
+read never proves this request caused the change. Uncertain runs do not resend
+the update or automatically delete the task: inspect the retained facts before
+reconciliation or cleanup.
+
+Conclusive missing/rejected reads or updates complete with their status and
+retain creation and mutation facts. An uncertain mutation stays recorded even
+if its subsequent read is missing or rejected. Unwired invalid-response,
+defect, or uncertain-creation branches fail the Flow and retain available
+results; a failed lifecycle may leave its created task. Display exposes created,
+update, read-back, and completion Attributes without calling Todoist. A 404
+delete result is wired as `alreadyAbsent`, followed by the final lookup.
+
+## Validate and configure
+
+From the connector module, using the latest stable Dex CLI:
+
+```bash
+dexcli visualize ./examples/task-crud/flow/workflow.go \
+  --schema-version 2.0 --json --out /tmp/todoist-crud-rendering/task-crud
+```
+
+The FDG must be valid. The local unpublished-module warning is expected. The same directory supplies the local Dex Web Flow rendering.
+
+From the repository root, build
+local release metadata to make the connector available in Dex Web:
+
+```bash
+mkdir -p /tmp/todoist-release
+GOWORK=off go run ./cmd/connectorctl release-artifact \
+  --manifest connectors/doist/todoist/connector.yaml \
+  --module-path github.com/superdurable/dex-connectors-library/connectors/doist/todoist \
+  --version v0.1.0 --tag connectors/doist/todoist/v0.1.0 \
+  --source-sha "$(git rev-parse HEAD)" \
+  --output /tmp/todoist-release/connector-release.json \
+  --digest-output /tmp/todoist-release/connector-release.json.sha256
+dexcli dev \
+  --flow-rendering-dir "/tmp/todoist-crud-rendering" \
+  --connector-config-dir /tmp/todoist-connections \
+  --connector-release-override todoist=/tmp/todoist-release
+```
+
+Open the printed Dex Web URL and its Connectors/Connections page. Select
+`todoist / todoist`, follow the authorization guide, paste the token from
+[Todoist's Developer settings](https://app.todoist.com/app/settings/integrations/developer)
+into `api_token`, leave non-secret settings blank, and save. Never put a token
+in Flow input or source code.
+
+No operation/Trigger configuration UI units are introduced.
+
+The [Worker](main.go) uses `NewProjectConnection` and the project's
+[DEX_PROJECT environment](../../../../../sdkgo/projectconfig/README.md#application-loading).
+From the connector module:
+
+```bash
+GOWORK=off go run ./examples/task-crud
+```
+
+The Worker defaults to `127.0.0.1:8874`. Set `DEX_FLOW_SERVICE_ADDRESS`,
+`DEX_WORKER_BIND_ADDRESS`, and `DEX_BLOB_CACHE_DIR` as appropriate.
+In Dex Web Start Flow, choose `TodoistTaskCRUDFlow`, this Worker, and a unique
+Flow ID. For read-only listing, submit:
+
+```json
+{"mode":"list","limit":200}
+```
+
+For the disposable CRUD lifecycle, submit:
+
+```json
+{"mode":"lifecycle","content":"Dex Todoist CRUD local test"}
+```
+
+Lifecycle mode creates in Inbox when `projectId` is blank. `description`
+sets the original description. `updateContent` and `updateDescription` are
+optional replacements: omitted fields remain unchanged and empty
+`updateDescription` clears the description. If both are omitted, the example
+changes the title to the original content plus ` - updated`. It then deletes
+the new task. For a description-only update that preserves the title:
+
+```json
+{"mode":"lifecycle","content":"Temporary task","description":"Before","updateDescription":"After"}
+```
+
+Project moves are outside the update operation's scope. Successful
+completion returns `deletedAndVerified`. This means deletion was acknowledged
+or the target was already absent, and the final task lookup returned 404.
+Listing returns `listed`, one page of tasks, and `nextCursor` when present.
+
+## Tests
+
+Run the deterministic real-Dex suite against a local Dex Server:
+
+```bash
+DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./examples/task-crud/flow -count=1
+```
+
+It verifies read-only listing makes no writes, the complete lifecycle, a
+rate-limited create that retries with the same provider request identity,
+multi-page verification, deletion that applies before a 503 and then returns
+404 on retry, uncertain creation that is not blindly retried, invalid input, description-only updates, clearing a description, updating both fields, read/update retry, uncertain applied/unapplied writes without resend or deletion, conclusive rejection/missing reads, malformed reads, and failed read-back after uncertainty.
+
+Current local CLI versions may save credentials to a local connection file
+while the production Worker uses project storage. The
+[test-only live adapter](flow/workflow_live_test.go) reads that user-controlled
+file and runs the same Flow through a real Worker and Client:
+
+```bash
+DEX_CONNECTOR_CONFIG_FILE=/tmp/todoist-connections/connections.json \
+TODOIST_CONNECTOR_ALLOW_LOCAL_TEST=true \
+DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 \
+GOWORK=off go test -tags='integration live' -run TestLiveTaskCRUD -v ./examples/task-crud/flow -count=1
+```
+
+This starts three disposable lifecycle runs: description-only, clearing the description, and updating both title and description. Create and
+delete now execute through the connector Steps, with no raw API fixture setup
+or teardown on the successful path. It checks retained Display data for secret
+leakage. It does not force a real provider outage or test request-ID retention;
+those limits remain explicit rather than claiming an exactly-once result.
