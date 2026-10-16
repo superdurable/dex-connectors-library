@@ -68,3 +68,47 @@ func TestStripeConnectionCannotBeSerialized(t *testing.T) {
 	require.NotContains(t, err.Error(), "sk_test_example")
 	require.NotContains(t, err.Error(), "whsec_example")
 }
+
+type stripePaymentIntentTarget struct {
+	dex.StepDefaultsNoWaitFor[stripe.GetPaymentIntentResult]
+}
+
+func (stripePaymentIntentTarget) Execute(dex.Context, stripe.GetPaymentIntentResult) (*dex.StepDecision, error) {
+	return dex.GracefulComplete(struct{}{}), nil
+}
+
+type stripeRefundTarget struct {
+	dex.StepDefaultsNoWaitFor[stripe.CreateRefundResult]
+}
+
+func (stripeRefundTarget) Execute(dex.Context, stripe.CreateRefundResult) (*dex.StepDecision, error) {
+	return dex.GracefulComplete(struct{}{}), nil
+}
+
+func TestStripePaymentFactoriesRequireHappyPathsAndAllowOptionalBranches(t *testing.T) {
+	client := newStripeClient(t, "http://127.0.0.1:1", stripe.Config{})
+	connection, err := stripe.NewConnection(client, stripeConnection)
+	require.NoError(t, err)
+	annotations := sdkgo.StepAnnotations{GroupID: "stripe", GroupLabel: "Stripe", Explanation: "Stripe payment step."}
+	require.NotPanics(t, func() {
+		stripe.NewGetPaymentIntentStep(stripe.GetPaymentIntentStepConfig[string]{
+			StepType: "GetIntent", Annotations: annotations, Connection: connection, ConnectionName: "payments",
+			MapToOperationInput: func(string) stripe.GetPaymentIntentInput {
+				return stripe.GetPaymentIntentInput{PaymentIntentID: "pi_123"}
+			},
+			Found: sdkgo.GoTo(stripePaymentIntentTarget{}),
+		})
+		stripe.NewCreateRefundStep(stripe.CreateRefundStepConfig[string]{
+			StepType: "CreateRefund", Annotations: annotations, Connection: connection, ConnectionName: "payments",
+			MapToOperationInput: func(string) stripe.CreateRefundInput { return validRefundInput() },
+			Refunded:            sdkgo.GoTo(stripeRefundTarget{}),
+		})
+	})
+	require.Panics(t, func() {
+		stripe.NewCreateRefundStep(stripe.CreateRefundStepConfig[string]{
+			StepType: "CreateRefund", Annotations: annotations, Connection: connection, ConnectionName: "payments",
+			MapToOperationInput: func(string) stripe.CreateRefundInput { return validRefundInput() },
+			Uncertain:           sdkgo.GoTo(stripeRefundTarget{}),
+		})
+	})
+}

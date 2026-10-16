@@ -130,10 +130,44 @@ payment. Rate limits retry with the same idempotency key.
 `invalidResponse`, or `defect`. Transport, rate-limit, and availability errors
 retry under the generated Dex policy.
 
+`GetPaymentIntent` reads one PaymentIntent (`pi_...`) with its latest charge
+expanded and returns `id`, `amount` and `currency` (minor units),
+`status`, `amountRefunded` (the latest charge's refunded amount, `0` without a
+charge), `customerEmail` (the receipt email, otherwise the charge's billing
+email) and `latestChargeId`. Branches are `found`, `notFound` (HTTP 404, for
+example `resource_missing`), `providerRejected`, `invalidResponse`, and
+`defect`.
+
+`CreateRefund` posts `payment_intent`, `amount` (a positive minor-unit
+amount), an optional `reason` (`duplicate`, `fraudulent`, or
+`requested_by_customer`) and bounded `metadata` to `/v1/refunds`, with the
+Step's stable Call ID as Stripe's `Idempotency-Key`. Its `Refund` output has
+`refundId`, `status` (`succeeded`, `pending`, `failed`, `requires_action`, or
+`canceled`), `amount` and `currency`; read `status` on the `refunded` branch,
+because a refund can be accepted without having succeeded. Branches are
+`refunded`, `providerRejected`, `uncertain`, `invalidResponse`, and `defect`.
+A Stripe 4xx error such as `charge_already_refunded` or an amount above the
+refundable balance is `providerRejected`, and its failure message carries
+Stripe's error code and message (never for 401 or 403, whose messages can echo
+part of the key). A network loss, timeout, or 5xx response after dispatch is
+`uncertain`: the refund may exist, so check `GetPaymentIntent.amountRefunded`
+before refunding again. Rate limits and a 409 for a key still in flight retry
+with the same key.
+
+The key needs PaymentIntent and Charge read access and Refund write access in
+addition to the Checkout Session permissions.
+
+The `stripemock` package, generated from the manifest, scripts every
+operation and branch in application tests without calling Stripe.
+
 ## Example
 
 [`examples/create-checkout-session`](examples/create-checkout-session) is a
 runnable Start Flow for creating one hosted ACH Checkout Session.
+
+[`examples/refund-payment`](examples/refund-payment) is a runnable Start Flow
+that reads a PaymentIntent with `GetPaymentIntent` and refunds the balance that
+is still unrefunded with `CreateRefund`.
 
 [`examples/webhook-receiver`](examples/webhook-receiver) is a runnable local
 receiver that loads the project configuration, starts the durable Trigger

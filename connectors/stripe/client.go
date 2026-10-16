@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package stripe connects Dex applications to Stripe-hosted Checkout Sessions.
+// Package stripe connects Dex applications to Stripe Checkout Sessions, PaymentIntents, and refunds.
 package stripe
 
 import (
@@ -199,6 +199,16 @@ func (client *Client) CreateACHCheckoutSession() CreateACHCheckoutSessionOperati
 // GetCheckoutSession returns the Checkout Session query bound to this client.
 func (client *Client) GetCheckoutSession() GetCheckoutSessionOperation {
 	return GetCheckoutSessionOperation{client: client}
+}
+
+// GetPaymentIntent returns the PaymentIntent query bound to this client.
+func (client *Client) GetPaymentIntent() GetPaymentIntentOperation {
+	return GetPaymentIntentOperation{client: client}
+}
+
+// CreateRefund returns the refund mutation bound to this client.
+func (client *Client) CreateRefund() CreateRefundOperation {
+	return CreateRefundOperation{client: client}
 }
 
 // Definition returns the immutable connector operation definition.

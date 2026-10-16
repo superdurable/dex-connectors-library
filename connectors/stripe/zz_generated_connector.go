@@ -44,6 +44,8 @@ type Connection struct {
 type Operations interface {
 	CreateACHCheckoutSession() sdkgo.Mutation[CreateACHCheckoutSessionInput, CheckoutSession]
 	GetCheckoutSession() sdkgo.Query[GetCheckoutSessionInput, CheckoutSession]
+	GetPaymentIntent() sdkgo.Query[GetPaymentIntentInput, PaymentIntent]
+	CreateRefund() sdkgo.Mutation[CreateRefundInput, Refund]
 }
 
 type clientOperations struct{ client *Client }
@@ -53,6 +55,12 @@ func (operations clientOperations) CreateACHCheckoutSession() sdkgo.Mutation[Cre
 }
 func (operations clientOperations) GetCheckoutSession() sdkgo.Query[GetCheckoutSessionInput, CheckoutSession] {
 	return operations.client.GetCheckoutSession()
+}
+func (operations clientOperations) GetPaymentIntent() sdkgo.Query[GetPaymentIntentInput, PaymentIntent] {
+	return operations.client.GetPaymentIntent()
+}
+func (operations clientOperations) CreateRefund() sdkgo.Mutation[CreateRefundInput, Refund] {
+	return operations.client.CreateRefund()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -394,6 +402,160 @@ func NewGetCheckoutSessionStep[IN any](config GetCheckoutSessionStepConfig[IN]) 
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(GetCheckoutSessionBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetPaymentIntentBranchFound sdkgo.BranchID = "found"
+const GetPaymentIntentBranchNotFound sdkgo.BranchID = "notFound"
+const GetPaymentIntentBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetPaymentIntentBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetPaymentIntentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetPaymentIntentDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getPaymentIntent"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetPaymentIntentBranchFound, Description: "The PaymentIntent exists and was returned."},
+		{ID: GetPaymentIntentBranchNotFound, Description: "Stripe reported resource_missing for the PaymentIntent.", Optional: true},
+		{ID: GetPaymentIntentBranchProviderRejected, Description: "Stripe conclusively rejected the PaymentIntent query.", Optional: true},
+		{ID: GetPaymentIntentBranchInvalidResponse, Description: "Stripe returned an invalid or oversized PaymentIntent response.", Optional: true},
+		{ID: GetPaymentIntentBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetPaymentIntentResult = sdkgo.QueryResult[PaymentIntent]
+
+type GetPaymentIntentStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                         `connector:"connectorId=stripe"`
+	operationID                    struct{}                                         `connector:"operationId=getPaymentIntent"`
+	StepType                       string                                           `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                     Connection                                       `connector:"connection"`
+	ConnectionName                 string                                           `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetPaymentIntentInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetPaymentIntentResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetPaymentIntentResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetPaymentIntentResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetPaymentIntentResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetPaymentIntentResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[PaymentIntent]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewGetPaymentIntentStep[IN any](config GetPaymentIntentStepConfig[IN]) sdkgo.QueryStep[IN, GetPaymentIntentInput, PaymentIntent] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("stripe connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetPaymentIntentInput, PaymentIntent]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetPaymentIntent(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetPaymentIntentResult] {
+			branches := make([]sdkgo.BranchTarget[GetPaymentIntentResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetPaymentIntentBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetPaymentIntentBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetPaymentIntentBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetPaymentIntentBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetPaymentIntentBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateRefundBranchRefunded sdkgo.BranchID = "refunded"
+const CreateRefundBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateRefundBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateRefundBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const CreateRefundBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateRefundDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createRefund"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateRefundBranchRefunded, Description: "Stripe accepted the refund; read its status to tell succeeded from pending."},
+		{ID: CreateRefundBranchProviderRejected, Description: "Stripe conclusively rejected the refund with a 4xx error such as charge_already_refunded or an amount that is too large.", Optional: true},
+		{ID: CreateRefundBranchUncertain, Description: "The dispatched refund outcome cannot be confirmed after a network loss or timeout or a Stripe 5xx response.", Optional: true},
+		{ID: CreateRefundBranchInvalidResponse, Description: "Stripe returned an invalid or oversized refund response.", Optional: true},
+		{ID: CreateRefundBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type CreateRefundResult = sdkgo.MutationResult[Refund]
+
+type CreateRefundStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                     `connector:"connectorId=stripe"`
+	operationID                       struct{}                                     `connector:"operationId=createRefund"`
+	StepType                          string                                       `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                        `connector:"annotations"`
+	Connection                        Connection                                   `connector:"connection"`
+	ConnectionName                    string                                       `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateRefundInput                   `connector:"mapToOperationInput"`
+	Refunded                          sdkgo.Target[CreateRefundResult]             `connector:"branch=refunded"`
+	ProviderRejected                  sdkgo.Target[CreateRefundResult]             `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateRefundResult]             `connector:"branch=uncertain,optional"`
+	InvalidResponse                   sdkgo.Target[CreateRefundResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[CreateRefundResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Refund]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                             `connector:"stepOptionsOverride"`
+}
+
+func NewCreateRefundStep[IN any](config CreateRefundStepConfig[IN]) sdkgo.MutationStep[IN, CreateRefundInput, Refund] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("stripe connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateRefundInput, Refund]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateRefund(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateRefundResult] {
+			branches := make([]sdkgo.BranchTarget[CreateRefundResult], 0, 5)
+			if config.Refunded.HasStep() {
+				branches = append(branches, config.Refunded.BranchTarget(CreateRefundBranchRefunded))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateRefundBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateRefundBranchUncertain))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(CreateRefundBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateRefundBranchDefect))
 			}
 			return branches
 		}(),

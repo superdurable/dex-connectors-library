@@ -3,9 +3,9 @@ kind: Connector
 metadata:
   name: stripe
   displayName: Stripe
-  description: Create and reconcile hosted ACH Checkout Sessions and receive signed Checkout Session events.
+  description: Create and reconcile hosted ACH Checkout Sessions, read PaymentIntents, refund payments, and receive signed Checkout Session events.
   company: Stripe
-  version: v0.21.1
+  version: v0.22.0
 spec:
   provider: stripe
   codegen:
@@ -81,6 +81,27 @@ spec:
         executeMethodTimeout: 30s
         durability: async
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+      mocks:
+        - name: createdSession
+          branch: created
+          description: Stripe created an open hosted Checkout Session.
+          default: true
+          output: {id: cs_test_a1b2c3, url: "https://checkout.stripe.com/c/pay/cs_test_a1b2c3", clientReferenceId: registration-42, paymentStatus: unpaid, status: open, currency: usd, amountTotal: 7500, metadata: {registration_id: registration-42}}
+        - name: invalidRequest
+          branch: providerRejected
+          description: Stripe rejected the Checkout Session parameters.
+          failure: {kind: PROVIDER_REJECTION, message: Stripe rejected the request}
+        - name: connectionLost
+          description: The connection closed after the request was sent.
+          uncertain: {failure: {kind: TRANSPORT, message: Stripe Checkout Session outcome is unknown}}
+        - name: malformedSession
+          branch: invalidResponse
+          description: Stripe returned a body that is not a Checkout Session.
+          failure: {kind: PROTOCOL, message: "Stripe response is invalid: Stripe returned an invalid Checkout Session"}
+        - name: invalidCurrency
+          branch: defect
+          description: The currency is not a lowercase three-letter code.
+          failure: {kind: VALIDATION, message: currency must be a lowercase three-letter code}
     - name: getCheckoutSession
       goName: GetCheckoutSession
       inputType: GetCheckoutSessionInput
@@ -95,3 +116,96 @@ spec:
         - {id: invalidResponse, goName: InvalidResponse, description: Stripe returned an invalid or oversized Checkout Session response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution: *stripeExecution
+      mocks:
+        - name: paidSession
+          branch: found
+          description: A completed Checkout Session whose payment is paid.
+          default: true
+          output: {id: cs_test_a1b2c3, paymentStatus: paid, status: complete, paymentIntentId: pi_3Pabc123, currency: usd, amountTotal: 7500}
+        - name: missingSession
+          branch: notFound
+          description: Stripe reports no such Checkout Session.
+          failure: {kind: NOT_FOUND, message: Stripe Checkout Session was not found}
+        - name: unauthorizedKey
+          branch: providerRejected
+          description: Stripe rejected the API key.
+          failure: {kind: AUTHENTICATION, message: Stripe rejected the request}
+        - name: malformedSession
+          branch: invalidResponse
+          description: Stripe returned a body that is not a Checkout Session.
+          failure: {kind: PROTOCOL, message: "Stripe response is invalid: Stripe returned an invalid Checkout Session"}
+        - name: invalidSessionID
+          branch: defect
+          description: The Checkout Session ID is empty or not a cs_ identifier.
+          failure: {kind: VALIDATION, message: Stripe Checkout Session ID is required}
+    - name: getPaymentIntent
+      goName: GetPaymentIntent
+      inputType: GetPaymentIntentInput
+      outputType: PaymentIntent
+      kind: query
+      description: Retrieve one PaymentIntent with its refunded amount and customer email.
+      idempotency: none
+      branches:
+        - {id: found, goName: Found, description: The PaymentIntent exists and was returned.}
+        - {id: notFound, goName: NotFound, description: Stripe reported resource_missing for the PaymentIntent., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Stripe conclusively rejected the PaymentIntent query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Stripe returned an invalid or oversized PaymentIntent response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *stripeExecution
+      mocks:
+        - name: partiallyRefundedPayment
+          branch: found
+          description: A succeeded PaymentIntent with part of its amount already refunded.
+          default: true
+          output: {id: pi_3Pabc123, amount: 7500, currency: usd, status: succeeded, amountRefunded: 2500, customerEmail: person@example.com, latestChargeId: ch_3Pabc123}
+        - name: missingPaymentIntent
+          branch: notFound
+          description: Stripe reports no such PaymentIntent.
+          failure: {kind: NOT_FOUND, message: "Stripe PaymentIntent was not found: resource_missing"}
+        - name: unauthorizedKey
+          branch: providerRejected
+          description: Stripe rejected the API key.
+          failure: {kind: AUTHENTICATION, message: Stripe rejected the request}
+        - name: malformedPaymentIntent
+          branch: invalidResponse
+          description: Stripe returned a body that is not a PaymentIntent.
+          failure: {kind: PROTOCOL, message: "Stripe response is invalid: Stripe returned an invalid PaymentIntent"}
+        - name: invalidPaymentIntentID
+          branch: defect
+          description: The PaymentIntent ID is empty or not a pi_ identifier.
+          failure: {kind: VALIDATION, message: Stripe PaymentIntent ID must be a pi_ identifier}
+    - name: createRefund
+      goName: CreateRefund
+      inputType: CreateRefundInput
+      outputType: Refund
+      kind: mutation
+      description: Refund part or all of one PaymentIntent in minor currency units.
+      idempotency: required
+      branches:
+        - {id: refunded, goName: Refunded, description: Stripe accepted the refund; read its status to tell succeeded from pending.}
+        - {id: providerRejected, goName: ProviderRejected, description: Stripe conclusively rejected the refund with a 4xx error such as charge_already_refunded or an amount that is too large., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The dispatched refund outcome cannot be confirmed after a network loss or timeout or a Stripe 5xx response., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Stripe returned an invalid or oversized refund response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *stripeExecution
+      mocks:
+        - name: succeededRefund
+          branch: refunded
+          description: Stripe created a refund that has already succeeded.
+          default: true
+          output: {refundId: re_3Pabc123, status: succeeded, amount: 2500, currency: usd}
+        - name: alreadyRefunded
+          branch: providerRejected
+          description: Stripe rejected the refund because the charge is already fully refunded.
+          failure: {kind: PROVIDER_REJECTION, message: "Stripe rejected the refund: charge_already_refunded: Charge ch_3Pabc123 has already been refunded."}
+        - name: connectionLost
+          description: The connection closed after the refund request was sent.
+          uncertain: {failure: {kind: TRANSPORT, message: Stripe refund outcome is unknown}}
+        - name: malformedRefund
+          branch: invalidResponse
+          description: Stripe returned a body that is not a refund.
+          failure: {kind: PROTOCOL, message: "Stripe response is invalid: Stripe returned an invalid refund"}
+        - name: invalidAmount
+          branch: defect
+          description: The refund amount is not positive.
+          failure: {kind: VALIDATION, message: refund amount must be positive}
