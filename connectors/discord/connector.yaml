@@ -1,0 +1,111 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: discord
+  displayName: Discord
+  description: Read Discord channels and bounded pages of channel messages, send nonce-deduplicated bot messages, and add reactions.
+  company: Discord
+  version: v0.1.0
+spec:
+  provider: discord
+  codegen:
+    go:
+      package: discord
+  configuration:
+    fields:
+      - name: endpoint
+        goName: Endpoint
+        type: url
+        description: Discord HTTP API base URL including the API version path; leave blank for Discord's public v10 API. Enter an absolute HTTPS URL only for an explicitly supported compatible gateway, or a loopback HTTP URL for a local test server.
+        required: false
+        default: https://discord.com/api/v10
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete Discord API response in bytes; leave blank to keep the safety limit, or enter a larger positive integer only when one page of messages carries many embeds. Oversized responses select invalidResponse.
+        required: false
+        default: 4194304
+  auth:
+    type: apiKey
+    connectionKind: discord-bot-token
+    fields:
+      - name: bot_token
+        goName: BotToken
+        type: secretString
+        description: Secret Discord bot token copied from https://discord.com/developers/applications after selecting the application > Bot > Reset Token; it is an opaque string of three dot-separated parts, entered without the Bot prefix, Dex Web stores it as a secret, and blank means no Discord call can authenticate.
+        required: true
+    guide:
+      startURL: https://discord.com/developers/applications
+      steps:
+        - Open https://discord.com/developers/applications, choose New Application, name it after this Dex application, and accept the developer terms.
+        - Open Bot, choose Reset Token, and copy the token Discord shows once into the secret field below; resetting it again on the same page rejects the old value, so paste any replacement here.
+        - Under Bot > Privileged Gateway Intents enable Message Content Intent when Flows read message content in servers; without it Discord returns empty content for messages that do not mention the bot.
+        - Open OAuth2 > URL Generator, select the bot scope and the View Channels, Read Message History, Send Messages, and Add Reactions permissions, open the generated URL, and add the bot to the server whose channels the Flows use.
+        - In Discord, enable User Settings > Advanced > Developer Mode, then right-click a channel and choose Copy Channel ID to find the 17 to 20 digit channel IDs that Flow input names.
+  operations:
+    - name: getChannel
+      goName: GetChannel
+      inputType: GetChannelInput
+      outputType: Channel
+      kind: query
+      description: Read one channel the bot can view by channel ID.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: The channel exists and the bot can view it.}
+        - {id: notFound, goName: NotFound, description: Discord knows no channel with the ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Discord conclusively rejected the read, such as a channel the bot cannot view or a rejected token.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Discord returned an invalid or oversized channel response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or credentials are invalid.", optional: true}
+      execution: &discordAsyncExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+    - name: listChannelMessages
+      goName: ListChannelMessages
+      inputType: ListChannelMessagesInput
+      outputType: MessagePage
+      kind: query
+      description: List one bounded page of up to 100 channel messages, newest first, before or after a message ID.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: Discord returned one bounded page of messages; the page may be empty.}
+        - {id: notFound, goName: NotFound, description: Discord knows no channel with the ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Discord conclusively rejected the listing, such as a missing Read Message History permission or a rejected token.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Discord returned an invalid or oversized message page., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or credentials are invalid.", optional: true}
+      execution: *discordAsyncExecution
+    - name: createMessage
+      goName: CreateMessage
+      inputType: CreateMessageInput
+      outputType: Message
+      kind: mutation
+      description: Send one bot text message to a channel, deduplicated by a Discord nonce derived from the idempotency key, with every mention disabled.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: created, goName: Created, description: "Discord created the message, or returned the message an earlier attempt created with the same nonce."}
+        - {id: notFound, goName: NotFound, description: Discord knows no channel with the ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Discord conclusively rejected the message, such as a missing Send Messages permission, invalid content, or a rejected token.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Discord applied or rejected the message but returned an invalid or oversized response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or credentials are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        # Discord enforces a nonce for only a few minutes, so every retry must fit that window.
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+    - name: addReaction
+      goName: AddReaction
+      inputType: AddReactionInput
+      outputType: AddedReaction
+      kind: mutation
+      description: Add the bot's reaction with one emoji to a channel message; repeating it leaves one reaction.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: added, goName: Added, description: The message carries the bot's reaction with the emoji.}
+        - {id: notFound, goName: NotFound, description: "Discord knows no such channel, message, or custom emoji.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Discord conclusively rejected the reaction, such as a missing Add Reactions permission, a reaction limit, or a rejected token.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or credentials are invalid.", optional: true}
+      execution: *discordAsyncExecution
