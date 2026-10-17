@@ -74,21 +74,18 @@ func (*Flow) GetFlowType() string { return FlowType }
 
 // GetSteps returns the request, Stripe, planning, and completion Steps.
 func (flow *Flow) GetSteps() []dex.StepDef {
-	annotations := func(explanation string) sdkgo.StepAnnotations {
-		return sdkgo.StepAnnotations{GroupID: "stripe", GroupLabel: "Stripe", Explanation: explanation}
-	}
 	return []dex.StepDef{
 		dex.DefineStartStep(recordRefundRequest{}),
 		dex.DefineStep(stripe.NewGetPaymentIntentStep(stripe.GetPaymentIntentStepConfig[Input]{
 			StepType: getPaymentIntentStepType, ConnectionName: ConnectionName,
-			Annotations: annotations("Read the PaymentIntent to learn how much of it is still refundable."),
+			Annotations: sdkgo.StepAnnotations{GroupID: "stripe-lookup", GroupLabel: "Stripe lookup", Explanation: "Read the PaymentIntent to learn how much of it is still refundable."},
 			Connection:  flow.connection, MapToOperationInput: MapToGetPaymentIntentInput,
 			Found: sdkgo.GoTo(planRefund{}),
 		})),
 		dex.DefineStep(planRefund{}),
 		dex.DefineStep(stripe.NewCreateRefundStep(stripe.CreateRefundStepConfig[RefundRequest]{
 			StepType: createRefundStepType, ConnectionName: ConnectionName,
-			Annotations: annotations("Refund the remaining balance with a Stripe idempotency key derived from the Step."),
+			Annotations: sdkgo.StepAnnotations{GroupID: "stripe-payment", GroupLabel: "Stripe payment", Explanation: "Refund the remaining balance with a Stripe idempotency key derived from the Step."},
 			Connection:  flow.connection, MapToOperationInput: MapToCreateRefundInput,
 			Refunded: sdkgo.GoTo(completeRefund{}),
 		})),
@@ -114,7 +111,14 @@ func (*Flow) GetPersistenceSchema() dex.PersistenceSchema {
 // dex:field attribute-key:stripe-refund-request value-type:json editable:false description:"Submitted refund request"
 // dex:field attribute-key:stripe-refund-outcome value-type:json editable:false description:"PaymentIntent and refund summary"
 func (*Flow) GetDexSummary(ctx dex.Context, _ dex.None) (*dex.RPCResult[map[string]any], error) {
-	return refundInspection(ctx)
+	request, outcome, err := refundInspection(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &dex.RPCResult[map[string]any]{Output: map[string]any{
+		"stripe-refund-request": request,
+		"stripe-refund-outcome": outcome,
+	}}, nil
 }
 
 // GetDexDisplay returns the refund request and its safe outcome.
@@ -122,7 +126,14 @@ func (*Flow) GetDexSummary(ctx dex.Context, _ dex.None) (*dex.RPCResult[map[stri
 // dex:field attribute-key:stripe-refund-request value-type:json editable:false description:"PaymentIntent and reason"
 // dex:field attribute-key:stripe-refund-outcome value-type:json editable:false description:"Refund ID, status, amount, and currency"
 func (*Flow) GetDexDisplay(ctx dex.Context, _ dex.None) (*dex.RPCResult[map[string]any], error) {
-	return refundInspection(ctx)
+	request, outcome, err := refundInspection(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &dex.RPCResult[map[string]any]{Output: map[string]any{
+		"stripe-refund-request": request,
+		"stripe-refund-outcome": outcome,
+	}}, nil
 }
 
 // MapToGetPaymentIntentInput maps the Flow input to the PaymentIntent Query input.
@@ -147,19 +158,16 @@ func RefundableAmount(paymentIntent stripe.PaymentIntent) int64 {
 	return paymentIntent.Amount - paymentIntent.AmountRefunded
 }
 
-func refundInspection(ctx dex.Context) (*dex.RPCResult[map[string]any], error) {
+func refundInspection(ctx dex.Context) (Input, Outcome, error) {
 	request, err := optionalAttribute(ctx, refundRequestAttribute)
 	if err != nil {
-		return nil, err
+		return Input{}, Outcome{}, err
 	}
 	outcome, err := optionalAttribute(ctx, refundOutcomeAttribute)
 	if err != nil {
-		return nil, err
+		return Input{}, Outcome{}, err
 	}
-	return &dex.RPCResult[map[string]any]{Output: map[string]any{
-		"stripe-refund-request": request,
-		"stripe-refund-outcome": outcome,
-	}}, nil
+	return request, outcome, nil
 }
 
 func optionalAttribute[T any](ctx dex.Context, attribute dex.Attribute[T]) (T, error) {
@@ -172,7 +180,7 @@ func optionalAttribute[T any](ctx dex.Context, attribute dex.Attribute[T]) (T, e
 	return value, err
 }
 
-// dex:group group-id:stripe group-label:"Stripe"
+// dex:group group-id:refund-request group-label:"Refund request"
 // dex:explanation text:"Validate and record the refund request before calling Stripe."
 type recordRefundRequest struct {
 	dex.StepDefaults
@@ -197,7 +205,7 @@ func (recordRefundRequest) Execute(ctx dex.Context, input Input) (*dex.StepDecis
 	return dex.GoTo(sdkgo.StepRef[Input](getPaymentIntentStepType), input), nil
 }
 
-// dex:group group-id:stripe group-label:"Stripe"
+// dex:group group-id:refund-planning group-label:"Refund planning"
 // dex:explanation text:"Refund the unrefunded balance, or finish when nothing remains to refund."
 type planRefund struct {
 	dex.StepDefaultsNoWaitFor[stripe.GetPaymentIntentResult]
@@ -220,7 +228,7 @@ func (planRefund) Execute(ctx dex.Context, result stripe.GetPaymentIntentResult)
 	return dex.GoTo(sdkgo.StepRef[RefundRequest](createRefundStepType), RefundRequest{PaymentIntent: result.Value, Reason: request.Reason}), nil
 }
 
-// dex:group group-id:stripe group-label:"Stripe"
+// dex:group group-id:refund-completion group-label:"Refund completion"
 // dex:explanation text:"Persist the safe refund summary and complete the Flow."
 type completeRefund struct {
 	dex.StepDefaultsNoWaitFor[stripe.CreateRefundResult]
