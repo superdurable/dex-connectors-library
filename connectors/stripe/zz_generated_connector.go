@@ -43,6 +43,7 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	CreateCardCheckoutSession() sdkgo.Mutation[CreateCardCheckoutSessionInput, CheckoutSession]
 	CreateACHCheckoutSession() sdkgo.Mutation[CreateACHCheckoutSessionInput, CheckoutSession]
 	GetCheckoutSession() sdkgo.Query[GetCheckoutSessionInput, CheckoutSession]
 	GetPaymentIntent() sdkgo.Query[GetPaymentIntentInput, PaymentIntent]
@@ -51,6 +52,9 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) CreateCardCheckoutSession() sdkgo.Mutation[CreateCardCheckoutSessionInput, CheckoutSession] {
+	return operations.client.CreateCardCheckoutSession()
+}
 func (operations clientOperations) CreateACHCheckoutSession() sdkgo.Mutation[CreateACHCheckoutSessionInput, CheckoutSession] {
 	return operations.client.CreateACHCheckoutSession()
 }
@@ -269,6 +273,83 @@ func NewCheckoutSessionUpdatedTrigger(config CheckoutSessionUpdatedTriggerConfig
 	return sdkgo.MustNewTrigger(sdkgo.TriggerConfig[CheckoutSessionEvent]{
 		Definition: CheckoutSessionUpdatedTriggerDefinition, Binding: binding,
 		Source: config.Connection.client.checkoutSessionUpdatedTriggerSource(config.Connection.reference, config.Configuration), Target: config.Target,
+	})
+}
+
+const CreateCardCheckoutSessionBranchCreated sdkgo.BranchID = "created"
+const CreateCardCheckoutSessionBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateCardCheckoutSessionBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateCardCheckoutSessionBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const CreateCardCheckoutSessionBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateCardCheckoutSessionDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createCardCheckoutSession"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateCardCheckoutSessionBranchCreated, Description: "Stripe created the Checkout Session."},
+		{ID: CreateCardCheckoutSessionBranchProviderRejected, Description: "Stripe conclusively rejected the Checkout Session request.", Optional: true},
+		{ID: CreateCardCheckoutSessionBranchUncertain, Description: "The dispatched Checkout Session outcome cannot be confirmed.", Optional: true},
+		{ID: CreateCardCheckoutSessionBranchInvalidResponse, Description: "Stripe returned an invalid or oversized Checkout Session response.", Optional: true},
+		{ID: CreateCardCheckoutSessionBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type CreateCardCheckoutSessionResult = sdkgo.MutationResult[CheckoutSession]
+
+type CreateCardCheckoutSessionStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=stripe"`
+	operationID                       struct{}                                              `connector:"operationId=createCardCheckoutSession"`
+	StepType                          string                                                `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateCardCheckoutSessionInput               `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateCardCheckoutSessionResult]         `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateCardCheckoutSessionResult]         `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateCardCheckoutSessionResult]         `connector:"branch=uncertain,optional"`
+	InvalidResponse                   sdkgo.Target[CreateCardCheckoutSessionResult]         `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[CreateCardCheckoutSessionResult]         `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CheckoutSession]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewCreateCardCheckoutSessionStep[IN any](config CreateCardCheckoutSessionStepConfig[IN]) sdkgo.MutationStep[IN, CreateCardCheckoutSessionInput, CheckoutSession] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("stripe connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateCardCheckoutSessionInput, CheckoutSession]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateCardCheckoutSession(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateCardCheckoutSessionResult] {
+			branches := make([]sdkgo.BranchTarget[CreateCardCheckoutSessionResult], 0, 5)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateCardCheckoutSessionBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateCardCheckoutSessionBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateCardCheckoutSessionBranchUncertain))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(CreateCardCheckoutSessionBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateCardCheckoutSessionBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
 	})
 }
 

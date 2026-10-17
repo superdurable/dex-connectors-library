@@ -17,11 +17,12 @@ import (
 
 // Mock is a scripted stripe connection. Script each operation through its accessor.
 type Mock struct {
-	connection               stripe.Connection
-	createACHCheckoutSession *connectormock.Mutation[stripe.CreateACHCheckoutSessionInput, stripe.CheckoutSession]
-	getCheckoutSession       *connectormock.Query[stripe.GetCheckoutSessionInput, stripe.CheckoutSession]
-	getPaymentIntent         *connectormock.Query[stripe.GetPaymentIntentInput, stripe.PaymentIntent]
-	createRefund             *connectormock.Mutation[stripe.CreateRefundInput, stripe.Refund]
+	connection                stripe.Connection
+	createCardCheckoutSession *connectormock.Mutation[stripe.CreateCardCheckoutSessionInput, stripe.CheckoutSession]
+	createACHCheckoutSession  *connectormock.Mutation[stripe.CreateACHCheckoutSessionInput, stripe.CheckoutSession]
+	getCheckoutSession        *connectormock.Query[stripe.GetCheckoutSessionInput, stripe.CheckoutSession]
+	getPaymentIntent          *connectormock.Query[stripe.GetPaymentIntentInput, stripe.PaymentIntent]
+	createRefund              *connectormock.Mutation[stripe.CreateRefundInput, stripe.Refund]
 }
 
 // New returns a mock connection named connectionName. Unscripted calls fail t, except a query's call that its
@@ -29,11 +30,13 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		createACHCheckoutSession: connectormock.NewMutation[stripe.CreateACHCheckoutSessionInput, stripe.CheckoutSession](t, stripe.CreateACHCheckoutSessionDefinition),
-		getCheckoutSession:       connectormock.NewQuery[stripe.GetCheckoutSessionInput, stripe.CheckoutSession](t, stripe.GetCheckoutSessionDefinition),
-		getPaymentIntent:         connectormock.NewQuery[stripe.GetPaymentIntentInput, stripe.PaymentIntent](t, stripe.GetPaymentIntentDefinition),
-		createRefund:             connectormock.NewMutation[stripe.CreateRefundInput, stripe.Refund](t, stripe.CreateRefundDefinition),
+		createCardCheckoutSession: connectormock.NewMutation[stripe.CreateCardCheckoutSessionInput, stripe.CheckoutSession](t, stripe.CreateCardCheckoutSessionDefinition),
+		createACHCheckoutSession:  connectormock.NewMutation[stripe.CreateACHCheckoutSessionInput, stripe.CheckoutSession](t, stripe.CreateACHCheckoutSessionDefinition),
+		getCheckoutSession:        connectormock.NewQuery[stripe.GetCheckoutSessionInput, stripe.CheckoutSession](t, stripe.GetCheckoutSessionDefinition),
+		getPaymentIntent:          connectormock.NewQuery[stripe.GetPaymentIntentInput, stripe.PaymentIntent](t, stripe.GetPaymentIntentDefinition),
+		createRefund:              connectormock.NewMutation[stripe.CreateRefundInput, stripe.Refund](t, stripe.CreateRefundDefinition),
 	}
+	mock.createCardCheckoutSession.Default(CreateCardCheckoutSessionDefault())
 	mock.createACHCheckoutSession.Default(CreateACHCheckoutSessionDefault())
 	mock.getCheckoutSession.Default(GetCheckoutSessionDefault())
 	mock.getPaymentIntent.Default(GetPaymentIntentDefault())
@@ -48,6 +51,11 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() stripe.Connection { return mock.connection }
+
+// CreateCardCheckoutSession returns the createCardCheckoutSession script.
+func (mock *Mock) CreateCardCheckoutSession() *connectormock.Mutation[stripe.CreateCardCheckoutSessionInput, stripe.CheckoutSession] {
+	return mock.createCardCheckoutSession
+}
 
 // CreateACHCheckoutSession returns the createACHCheckoutSession script.
 func (mock *Mock) CreateACHCheckoutSession() *connectormock.Mutation[stripe.CreateACHCheckoutSessionInput, stripe.CheckoutSession] {
@@ -71,6 +79,9 @@ func (mock *Mock) CreateRefund() *connectormock.Mutation[stripe.CreateRefundInpu
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) CreateCardCheckoutSession() sdkgo.Mutation[stripe.CreateCardCheckoutSessionInput, stripe.CheckoutSession] {
+	return operations.mock.createCardCheckoutSession
+}
 func (operations mockOperations) CreateACHCheckoutSession() sdkgo.Mutation[stripe.CreateACHCheckoutSessionInput, stripe.CheckoutSession] {
 	return operations.mock.createACHCheckoutSession
 }
@@ -82,6 +93,71 @@ func (operations mockOperations) GetPaymentIntent() sdkgo.Query[stripe.GetPaymen
 }
 func (operations mockOperations) CreateRefund() sdkgo.Mutation[stripe.CreateRefundInput, stripe.Refund] {
 	return operations.mock.createRefund
+}
+
+// CreateCardCheckoutSessionCreated selects the created branch: Stripe created the Checkout Session.
+func CreateCardCheckoutSessionCreated(value stripe.CheckoutSession, failure *sdkgo.Failure) connectormock.Case[stripe.CheckoutSession] {
+	return connectormock.Branch(stripe.CreateCardCheckoutSessionBranchCreated, value, failure)
+}
+
+// CreateCardCheckoutSessionProviderRejected selects the providerRejected branch: Stripe conclusively rejected the Checkout Session request.
+func CreateCardCheckoutSessionProviderRejected(value stripe.CheckoutSession, failure *sdkgo.Failure) connectormock.Case[stripe.CheckoutSession] {
+	return connectormock.Branch(stripe.CreateCardCheckoutSessionBranchProviderRejected, value, failure)
+}
+
+// CreateCardCheckoutSessionUncertain returns an uncertain createCardCheckoutSession outcome.
+func CreateCardCheckoutSessionUncertain(value stripe.CheckoutSession, failure sdkgo.Failure) connectormock.Case[stripe.CheckoutSession] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateCardCheckoutSessionInvalidResponse selects the invalidResponse branch: Stripe returned an invalid or oversized Checkout Session response.
+func CreateCardCheckoutSessionInvalidResponse(value stripe.CheckoutSession, failure *sdkgo.Failure) connectormock.Case[stripe.CheckoutSession] {
+	return connectormock.Branch(stripe.CreateCardCheckoutSessionBranchInvalidResponse, value, failure)
+}
+
+// CreateCardCheckoutSessionDefect selects the defect branch: Local input, connection configuration, or connector definition is invalid.
+func CreateCardCheckoutSessionDefect(value stripe.CheckoutSession, failure *sdkgo.Failure) connectormock.Case[stripe.CheckoutSession] {
+	return connectormock.Branch(stripe.CreateCardCheckoutSessionBranchDefect, value, failure)
+}
+
+// CreateCardCheckoutSessionRetry asks Dex to retry the createCardCheckoutSession Step, after the delay when it is positive.
+func CreateCardCheckoutSessionRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[stripe.CheckoutSession] {
+	return connectormock.Retry[stripe.CheckoutSession](failure, after)
+}
+
+// CreateCardCheckoutSessionCreatedCardSession is the manifest mock createdCardSession: Stripe created an open hosted card Checkout Session.
+func CreateCardCheckoutSessionCreatedCardSession() connectormock.Case[stripe.CheckoutSession] {
+	value := connectormock.MustDecodeOutput[stripe.CheckoutSession](`{"id":"cs_test_card123","url":"https://checkout.stripe.com/c/pay/cs_test_card123","clientReferenceId":"registration-card-42","paymentStatus":"unpaid","status":"open","currency":"usd","amountTotal":7500,"metadata":{"registration_id":"registration-card-42"}}`)
+	return connectormock.Branch(stripe.CreateCardCheckoutSessionBranchCreated, value, nil)
+}
+
+// CreateCardCheckoutSessionInvalidCardRequest is the manifest mock invalidCardRequest: Stripe rejected the card Checkout Session parameters.
+func CreateCardCheckoutSessionInvalidCardRequest() connectormock.Case[stripe.CheckoutSession] {
+	var value stripe.CheckoutSession
+	return connectormock.Branch(stripe.CreateCardCheckoutSessionBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "Stripe rejected the request"})
+}
+
+// CreateCardCheckoutSessionCardConnectionLost is the manifest mock cardConnectionLost: The connection closed after the card request was sent.
+func CreateCardCheckoutSessionCardConnectionLost() connectormock.Case[stripe.CheckoutSession] {
+	var value stripe.CheckoutSession
+	return connectormock.Uncertain(value, sdkgo.Failure{Kind: sdkgo.FailureTransport, Message: "Stripe Checkout Session outcome is unknown"})
+}
+
+// CreateCardCheckoutSessionMalformedCardSession is the manifest mock malformedCardSession: Stripe returned a body that is not a Checkout Session.
+func CreateCardCheckoutSessionMalformedCardSession() connectormock.Case[stripe.CheckoutSession] {
+	var value stripe.CheckoutSession
+	return connectormock.Branch(stripe.CreateCardCheckoutSessionBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "Stripe response is invalid: Stripe returned an invalid Checkout Session"})
+}
+
+// CreateCardCheckoutSessionInvalidCardCurrency is the manifest mock invalidCardCurrency: The currency is not a lowercase three-letter code.
+func CreateCardCheckoutSessionInvalidCardCurrency() connectormock.Case[stripe.CheckoutSession] {
+	var value stripe.CheckoutSession
+	return connectormock.Branch(stripe.CreateCardCheckoutSessionBranchDefect, value, &sdkgo.Failure{Kind: sdkgo.FailureValidation, Message: "currency must be a lowercase three-letter code"})
+}
+
+// CreateCardCheckoutSessionDefault is the manifest default, createdCardSession, which New installs.
+func CreateCardCheckoutSessionDefault() connectormock.Case[stripe.CheckoutSession] {
+	return CreateCardCheckoutSessionCreatedCardSession()
 }
 
 // CreateACHCheckoutSessionCreated selects the created branch: Stripe created the Checkout Session.

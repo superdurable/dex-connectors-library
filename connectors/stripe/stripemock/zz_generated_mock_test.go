@@ -16,6 +16,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "createCardCheckoutSession/createdCardSession/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[stripe.CheckoutSession](`{"id":"cs_test_card123","url":"https://checkout.stripe.com/c/pay/cs_test_card123","clientReferenceId":"registration-card-42","paymentStatus":"unpaid","status":"open","currency":"usd","amountTotal":7500,"metadata":{"registration_id":"registration-card-42"}}`)
+			return err
+		}},
 		{name: "createACHCheckoutSession/createdSession/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[stripe.CheckoutSession](`{"id":"cs_test_a1b2c3","url":"https://checkout.stripe.com/c/pay/cs_test_a1b2c3","clientReferenceId":"registration-42","paymentStatus":"unpaid","status":"open","currency":"usd","amountTotal":7500,"metadata":{"registration_id":"registration-42"}}`)
 			return err
@@ -42,6 +46,9 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.CreateCardCheckoutSession().Definition().Operation.OperationID != "createCardCheckoutSession" {
+		t.Errorf("createCardCheckoutSession mock has another definition")
+	}
 	if mock.CreateACHCheckoutSession().Definition().Operation.OperationID != "createACHCheckoutSession" {
 		t.Errorf("createACHCheckoutSession mock has another definition")
 	}
