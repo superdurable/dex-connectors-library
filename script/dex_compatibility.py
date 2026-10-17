@@ -460,7 +460,7 @@ def create_module_proxy(module_root: Path, proxy: Path) -> tuple[str, str]:
     name = module_path(module_root)
     files = [
         path for path in sorted(module_root.rglob("*"))
-        if path.is_file() and not any(part in GO_MODULE_COPY_IGNORED_NAMES for part in path.parts)
+        if path.is_file() and not any(part in GO_MODULE_COPY_IGNORED_NAMES for part in path.relative_to(module_root).parts)
     ]
     digest = hashlib.sha256()
     for file in files:
