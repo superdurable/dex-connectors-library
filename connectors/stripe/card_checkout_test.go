@@ -37,6 +37,7 @@ func TestCreateCardCheckoutSessionUsesCardAndStableIdempotency(t *testing.T) {
 	require.Equal(t, "payment", form.Get("mode"))
 	require.Equal(t, "7500", form.Get("line_items[0][price_data][unit_amount]"))
 	require.Equal(t, "registration-123", form.Get("metadata[registration_id]"))
+	require.Equal(t, "registration-123", form.Get("payment_intent_data[metadata][registration_id]"))
 	require.Equal(t, string(result.Receipt.IdempotencyKey), idempotencyKey)
 }
 
@@ -51,6 +52,19 @@ func TestCreateCardCheckoutSessionClassifiesInvalidAndUncertain(t *testing.T) {
 	result, err = sdkgo.RunMutation(newStripeDexContext("uncertain-card"), client.CreateCardCheckoutSession(), stripeConnection, input)
 	require.NoError(t, err)
 	require.Equal(t, stripe.CreateCardCheckoutSessionBranchUncertain, result.Branch)
+}
+
+func TestCreateCardCheckoutSessionTreatsServerFailureAsUncertain(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		response.WriteHeader(http.StatusInternalServerError)
+		_, _ = response.Write([]byte(`{"error":{"type":"api_error"}}`))
+	}))
+	defer server.Close()
+	client := newStripeClient(t, server.URL, stripe.Config{})
+	result, err := sdkgo.RunMutation(newStripeDexContext("server-failure-card"), client.CreateCardCheckoutSession(), stripeConnection, stripe.CreateCardCheckoutSessionInput(validCreateInput()))
+	require.NoError(t, err)
+	require.Equal(t, stripe.CreateCardCheckoutSessionBranchUncertain, result.Branch)
+	require.Equal(t, sdkgo.FailureAvailability, result.Failure.Kind)
 }
 
 func TestCreateCardCheckoutSessionRejectsProviderError(t *testing.T) {
