@@ -35,15 +35,6 @@ func TestStartFlowIdentitiesMatchTheFlowDefinition(t *testing.T) {
 	require.Equal(t, dex.SkipWaitImmediately(), wait)
 }
 
-func TestCardFlowRegistersWithItsStaticConnection(t *testing.T) {
-	client, err := stripe.New(stripe.Config{}, sdkgo.StaticCredentialProvider[stripe.Credentials]{})
-	require.NoError(t, err)
-	connection, err := stripe.NewConnection(client, sdkgo.ConnectionRef{Provider: "stripe", Name: ConnectionName})
-	require.NoError(t, err)
-	_, err = dex.NewRegistry([]dex.Flow{NewCardFlow(connection)})
-	require.NoError(t, err)
-}
-
 func TestFlowRegistersOnlyWithItsStaticConnection(t *testing.T) {
 	client, err := stripe.New(stripe.Config{}, sdkgo.StaticCredentialProvider[stripe.Credentials]{})
 	require.NoError(t, err)

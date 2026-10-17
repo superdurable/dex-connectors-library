@@ -1,15 +1,38 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-package createcheckoutsession
+// Package createcardcheckoutsession demonstrates hosted Stripe card Checkout.
+package createcardcheckoutsession
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/superdurable/dex-connectors-library/connectors/stripe"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
+
+// ConnectionName is the static Dex Web connection for Stripe.
+const ConnectionName = "stripe-payments"
+
+// Input contains the card Checkout fields entered in Dex Web Start Flow.
+type Input struct {
+	// ClientReferenceID is the application's non-sensitive payment reference.
+	ClientReferenceID string `json:"clientReferenceId"`
+	// CustomerEmail is the plain email address pre-filled by Stripe Checkout.
+	CustomerEmail string `json:"customerEmail"`
+	// SuccessURL is the HTTPS return location after successful Checkout.
+	SuccessURL string `json:"successUrl"`
+	// CancelURL is the HTTPS return location after cancelled Checkout.
+	CancelURL string `json:"cancelUrl"`
+	// Currency is the lowercase three-letter settlement currency.
+	Currency string `json:"currency"`
+	// UnitAmount is the positive price in the currency's minor unit.
+	UnitAmount int64 `json:"unitAmount"`
+	// ProductName is the customer-visible product or event name.
+	ProductName string `json:"productName"`
+}
 
 var (
 	cardCheckoutRequest = dex.DefineAttribute[Input]("card-checkout-request")
@@ -139,4 +162,14 @@ func (CompleteCardCheckout) Execute(ctx dex.Context, result stripe.CreateCardChe
 		return nil, err
 	}
 	return dex.GracefulComplete(result.Value), nil
+}
+
+func optionalAttribute[T any](ctx dex.Context, attribute dex.Attribute[T]) (T, error) {
+	value, err := attribute.Get(ctx)
+	var missingAttribute *dex.AttributeNotFoundError
+	if errors.As(err, &missingAttribute) {
+		var zero T
+		return zero, nil
+	}
+	return value, err
 }

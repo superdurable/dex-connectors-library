@@ -133,8 +133,9 @@ retry under the generated Dex policy.
 
 ## Example
 
-[`examples/create-checkout-session`](examples/create-checkout-session) is a
-runnable Start Flows for creating hosted card and ACH Checkout Sessions.
+[`examples/create-checkout-session`](examples/create-checkout-session) is the
+runnable ACH Checkout Flow. [`examples/create-card-checkout-session`](examples/create-card-checkout-session)
+is the runnable card Checkout Flow. Each example has its own Worker and Flow source.
 
 [`examples/webhook-receiver`](examples/webhook-receiver) is a runnable local
 receiver that loads the project configuration, starts the durable Trigger
