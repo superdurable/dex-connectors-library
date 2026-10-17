@@ -361,10 +361,24 @@ def download_dexcli(release: dict[str, object], directory: Path) -> Path:
         members = [member for member in archive_file.getmembers() if Path(member.name).name == "dexcli" and member.isfile()]
         if len(members) != 1:
             raise RuntimeError("Dex CLI archive must contain exactly one dexcli binary")
-        archive_file.extract(members[0], directory, filter="data")
+        extract_data(archive_file, members, directory)
         binary = directory / members[0].name
     binary.chmod(0o755)
     return binary
+
+
+def extract_data(archive: tarfile.TarFile, members: list[tarfile.TarInfo], directory: Path) -> None:
+    """Extract members with the "data" filter, or its checks on a Python without it (before 3.11.4)."""
+    if hasattr(tarfile, "data_filter"):
+        archive.extractall(directory, members=members, filter="data")
+        return
+    root = directory.resolve()
+    for member in members:
+        target = (root / member.name).resolve()
+        if not (member.isfile() or member.isdir()) or member.name.startswith("/") or not target.is_relative_to(root):
+            raise RuntimeError(f"archive member {member.name!r} is not a regular file or directory inside the destination")
+        member.mode &= 0o755
+    archive.extractall(directory, members=members)
 
 
 def checksum_entry(contents: str, filename: str) -> str:
@@ -685,7 +699,7 @@ def test_dex_web(
     source_archive = temporary_root / "dex-source.tar.gz"
     download(f"https://github.com/{DEX_REPOSITORY}/archive/refs/tags/{tag}.tar.gz", source_archive)
     with tarfile.open(source_archive, "r:gz") as archive:
-        archive.extractall(temporary_root, filter="data")
+        extract_data(archive, archive.getmembers(), temporary_root)
     candidates = [path for path in temporary_root.iterdir() if path.is_dir() and (path / "web" / "go.mod").exists()]
     if len(candidates) != 1:
         raise RuntimeError("Dex source archive has an unexpected layout")
