@@ -1,0 +1,127 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: amazon-sqs
+  displayName: Amazon SQS
+  description: Consume messages from an Amazon SQS standard or FIFO queue, or an SQS-compatible queue such as ElasticMQ, with long-polling receive, acknowledgement by delete, and visibility changes that release or extend a message.
+  company: Amazon
+  version: v0.1.0
+spec:
+  provider: amazon-sqs
+  codegen:
+    go:
+      package: sqs
+  configuration:
+    fields:
+      - name: region
+        goName: Region
+        type: string
+        description: "AWS Region of the queue, written as a Region code such as eu-west-1. Open https://console.aws.amazon.com/sqs/v3/home, choose the Region in the console's Region selector, and read it from the queue URL, which starts https://sqs.<region>.amazonaws.com. An SQS-compatible server such as ElasticMQ or LocalStack uses the Region it is configured with. Not secret. A Region that differs from the queue's selects providerRejected. Blank uses the displayed default."
+        required: false
+        default: us-east-1
+      - name: endpoint
+        goName: Endpoint
+        type: url
+        description: "Base URL of an SQS-compatible API, for a queue server other than Amazon SQS, such as http://127.0.0.1:9324 for ElasticMQ or http://127.0.0.1:4566 for LocalStack on the Worker's own host. Use HTTPS except for a loopback host; a path is kept as a prefix. The access key is used to sign requests to whatever host this names. Blank uses the Amazon SQS Regional endpoint for region, such as https://sqs.eu-west-1.amazonaws.com."
+        required: false
+      - name: defaultQueueUrl
+        goName: DefaultQueueURL
+        type: url
+        description: "Queue an operation uses when its input leaves queueUrl blank, written as the full queue URL, such as https://sqs.eu-west-1.amazonaws.com/123456789012/orders or https://sqs.eu-west-1.amazonaws.com/123456789012/orders.fifo. Open https://console.aws.amazon.com/sqs/v3/home > Queues, choose the queue, and copy URL from its Details panel. ElasticMQ and LocalStack print the URL when they create a queue. Not secret. Blank means every operation input must name its queueUrl."
+        required: false
+      - name: maxMessagesPerReceive
+        goName: MaxMessagesPerReceive
+        type: integer
+        description: "Most messages receiveMessages asks for when its input leaves maxMessages at zero, as a whole number from 1 up to the Amazon SQS batch limit of 10. Every received message enters Dex Flow state and stays hidden from other consumers until it is deleted or its visibility timeout ends, so ask only for what one Flow processes. Blank uses the displayed default."
+        required: false
+        default: 10
+      - name: receiveWaitSeconds
+        goName: ReceiveWaitSeconds
+        type: integer
+        description: "Seconds receiveMessages waits for a message to arrive when its input leaves waitTimeSeconds unset, as a whole number from 1 to 20. This is SQS long polling: the call returns as soon as a message arrives and avoids the empty answers a short poll gets from a sampled subset of servers. To return at once, set waitTimeSeconds to 0 in the operation input instead. Blank uses the displayed default."
+        required: false
+        default: 20
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Maximum complete receiveMessages response in bytes, as a positive integer. A larger batch selects invalidResponse and its messages reappear on the queue when their visibility timeout ends, so lower maxMessagesPerReceive before raising this, because the batch is stored in Dex Flow state. Blank uses the displayed default."
+        required: false
+        default: 4194304
+  auth:
+    type: apiKey
+    connectionKind: amazon-sqs-access-key
+    fields:
+      - name: access_key_id
+        goName: AccessKeyID
+        type: secretString
+        description: "Secret-stored access key ID that names the key pair. Open https://console.aws.amazon.com/iam > Users > the user > Security credentials > Access keys > Create access key; long-term IDs start with AKIA and temporary IDs with ASIA. ElasticMQ and LocalStack accept any non-blank value. Dex Web stores it as a secret because it identifies the account; blank means no request can be signed."
+        required: true
+      - name: secret_access_key
+        goName: SecretAccessKey
+        type: secretString
+        description: "Secret access key paired with access_key_id, shown only once when the key is created, on the IAM Retrieve access keys page (choose Show or Download .csv file). It signs every request and never leaves the Worker; Dex keeps it out of Flow state, logs, and Results. ElasticMQ and LocalStack accept any non-blank value. Blank means no request can be signed."
+        required: true
+      - name: session_token
+        goName: SessionToken
+        type: secretString
+        description: "Secret session token, only for temporary AWS credentials whose access key ID starts with ASIA, such as the output of aws sts get-session-token or aws sts assume-role (https://docs.aws.amazon.com/STS/latest/APIReference/API_GetSessionToken.html). Temporary credentials expire, usually within hours, and this connector cannot renew them: replace all three values before they expire, or an expired token selects providerRejected. Blank means long-term credentials, which IAM user keys use."
+        required: false
+    guide:
+      startURL: https://console.aws.amazon.com/iam
+      steps:
+        - "Open IAM > Users > Create user and create a user only for Dex; do not use the account's root user. On Permissions, attach an inline policy that allows sqs:ReceiveMessage, sqs:DeleteMessage, and sqs:ChangeMessageVisibility on the queue's ARN, such as arn:aws:sqs:eu-west-1:123456789012:orders, so the key reaches nothing else. A queue encrypted with a customer managed AWS KMS key also needs kms:Decrypt on that key; a queue with SQS-managed encryption (SSE-SQS) needs nothing more."
+        - "Open the user > Security credentials > Access keys > Create access key, choose Other > Next, then Create access key. On the Retrieve access keys page choose Show, paste the Access key into access_key_id and the Secret access key into secret_access_key; AWS never shows the secret again. Leave session_token blank for these long-term keys."
+        - "Open https://console.aws.amazon.com/sqs/v3/home > Queues in the queue's Region, choose the queue, and copy URL from its Details panel. Set region to the Region in that URL, leave endpoint blank, and optionally set defaultQueueUrl to the URL so operations can leave queueUrl blank."
+        - "Set the queue's Visibility timeout (queue > Edit > Configuration) longer than the Flow needs between receiveMessages and deleteMessage, or pass visibilityTimeoutSeconds on receive. Configure a Dead-letter queue redrive policy (queue > Edit > Dead-letter queue) so a message that keeps failing stops returning after its maximum receives."
+        - "ElasticMQ or LocalStack: set endpoint to the server's address, such as http://127.0.0.1:9324, set region to the server's Region, and save any non-blank access key ID and secret access key."
+        - "To rotate, create a second access key, save it here, run a Flow, then open Actions > Deactivate and Actions > Delete on the old key. This release does not use IAM roles, instance profiles, or SSO; temporary credentials pasted with session_token stop working when they expire."
+  operations:
+    - name: receiveMessages
+      goName: ReceiveMessages
+      inputType: ReceiveMessagesInput
+      outputType: ReceivedMessages
+      kind: mutation
+      description: Long-poll one queue for up to ten messages with their bodies, receipt handles, receive counts, and message attributes, hiding each received message from other consumers for its visibility timeout.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: received, goName: Received, description: SQS returned at least one message.}
+        - {id: empty, goName: Empty, description: No message arrived within the wait time., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "SQS conclusively rejected the receive, such as a missing queue, a wrong Region, invalid credentials, missing sqs:ReceiveMessage or kms:Decrypt permission, or too many in-flight messages.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "SQS returned an invalid or oversized batch, or a message whose body does not match its MD5 digest; the batch's messages reappear when their visibility timeout ends.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+    - name: deleteMessage
+      goName: DeleteMessage
+      inputType: DeleteMessageInput
+      outputType: DeletedMessage
+      kind: mutation
+      description: Acknowledge one received message by deleting it from its queue with the receipt handle of its latest delivery, so SQS does not deliver it again; repeating an attempt is safe.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: deleted, goName: Deleted, description: "SQS accepted the deletion. Amazon SQS also accepts an outdated receipt handle from an earlier delivery without deleting the message, which is then delivered again."}
+        - {id: receiptHandleInvalid, goName: ReceiptHandleInvalid, description: "SQS no longer accepts the receipt handle, such as an expired FIFO receipt handle or a malformed one, or, on a compatible server such as ElasticMQ, a handle whose message an earlier attempt already deleted; the message may be delivered again.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "SQS conclusively rejected the deletion, such as a missing queue, a wrong Region, invalid credentials, or missing sqs:DeleteMessage permission.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: &sqsAcknowledgementExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+    - name: changeMessageVisibility
+      goName: ChangeMessageVisibility
+      inputType: ChangeMessageVisibilityInput
+      outputType: ChangedMessageVisibility
+      kind: mutation
+      description: Release one received message back to the queue at once with a zero timeout, or hide it for longer while the Flow keeps processing it, by setting its visibility timeout from now.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: changed, goName: Changed, description: SQS set the message's visibility timeout.}
+        - {id: receiptHandleInvalid, goName: ReceiptHandleInvalid, description: "SQS no longer accepts the receipt handle, because the message is no longer in flight, was deleted, or the handle is expired or malformed.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "SQS conclusively rejected the change, such as a missing queue, a wrong Region, invalid credentials, missing sqs:ChangeMessageVisibility permission, or a timeout above the 12-hour limit.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution: *sqsAcknowledgementExecution
