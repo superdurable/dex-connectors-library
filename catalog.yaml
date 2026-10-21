@@ -3,6 +3,7 @@ kind: ConnectorCatalogSource
 directories:
   - connectors/airtable
   - connectors/amazon/s3
+  - connectors/amazon/sqs
   - connectors/asana
   - connectors/atlassian/confluence
   - connectors/atlassian/jira
@@ -11,7 +12,9 @@ directories:
   - connectors/bamboohr
   - connectors/calendly
   - connectors/clickup
+  - connectors/discord
   - connectors/docusign
+  - connectors/doist/todoist
   - connectors/freshworks/freshdesk
   - connectors/front
   - connectors/github
@@ -23,6 +26,7 @@ directories:
   - connectors/google/gmail
   - connectors/google/spreadsheet
   - connectors/google/workspace-admin
+  - connectors/google/youtube
   - connectors/gorgias
   - connectors/hackernews
   - connectors/helpscout

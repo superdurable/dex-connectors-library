@@ -28,7 +28,7 @@ Last reviewed against `main` at `f5c9edf` (2026-10-01).
 | Level | Count | Connectors |
 |---|---|---|
 | Live | 7 | github, google/gemini, hackernews, mysql, postgresql, slack, spotify |
-| Partial live | 12 | amazon/s3, atlassian/trello, calendly, google/gmail, intercom, microsoft/excel, microsoft/onedrive, microsoft/outlook-calendar, monday, superdurable/oauth2-http, typeform, xero |
+| Partial live | 13 | amazon/s3, amazon/sqs, atlassian/trello, calendly, google/gmail, intercom, microsoft/excel, microsoft/onedrive, microsoft/outlook-calendar, monday, superdurable/oauth2-http, typeform, xero |
 | Dex-integrated | 28 | every other connector except the three below |
 | Structural | 3 | google/spreadsheet, linkedin, stripe |
 
@@ -38,6 +38,7 @@ Last reviewed against `main` at `f5c9edf` (2026-10-01).
 |---|---|---|---|---|
 | airtable | Dex-integrated | Dex Web Start Flow run and 6 real-Dex tests against a fake | upsert match errors, 10-record write cap, 429 timing, pickers on a real base | #155 |
 | amazon/s3 | Partial live | live suite and the example on real Dex against MinIO RELEASE.2025-10-15 | real Amazon S3 and Cloudflare R2, session tokens, conditional writes, Object Lock | #167 |
+| amazon/sqs | Partial live | live suite and the example on real Dex against ElasticMQ 1.6.14; 6 real-Dex tests against a SigV4-verifying fake | real Amazon SQS signing and error shapes, session tokens, KMS-encrypted queues, a repeated delete of a deleted message | — |
 | asana | Dex-integrated | Dex Web Start Flow run and 11 real-Dex scenarios against a fake | real response shapes, date filters, the three pickers | #147 |
 | atlassian/confluence | Dex-integrated | 11 real-Dex runs against a fake; Dex Web built the authorize URL | OAuth code exchange and refresh, title lookup, stale-version status, pickers | #159 |
 | atlassian/jira | Dex-integrated | Dex Web Start Flow run and 11 real-Dex tests against a fake | OAuth code exchange and refresh, enhanced-search paging, pickers | #148 |

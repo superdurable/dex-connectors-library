@@ -1,0 +1,211 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: google-youtube
+  displayName: YouTube
+  description: Search YouTube videos, read videos, channels, and playlist pages, and add a video to a playlist once through the YouTube Data API v3.
+  company: Google
+  version: v0.1.0
+spec:
+  provider: google
+  codegen:
+    go:
+      package: youtube
+  configuration:
+    fields:
+      - name: endpoint
+        goName: Endpoint
+        type: url
+        description: YouTube Data API base URL including the v3 path; leave blank for Google's public API. Enter an absolute HTTPS URL only for an explicitly supported compatible gateway, or a loopback HTTP URL for a local test server.
+        required: false
+        default: https://www.googleapis.com/youtube/v3
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete YouTube Data API response in bytes; leave blank to keep the safety limit, or enter a larger positive integer only when pages of 50 results carry very long descriptions. Oversized responses select invalidResponse.
+        required: false
+        default: 4194304
+  auth:
+    refreshable: true
+    defaultMethod: google-oauth-readonly
+    methods:
+      - id: google-oauth-readonly
+        displayName: Google OAuth, read-only
+        description: "Recommended for Flows that only read; requests the youtube.readonly scope, which allows searchVideos, getVideo, getChannel, and listPlaylistItems, and addPlaylistItem selects providerRejected without calling YouTube."
+        recommended: true
+        type: oauth2
+        connectionKind: google-youtube-readonly-oauth
+        fields:
+          - name: oauth_client_id
+            goName: OAuthClientID
+            type: string
+            description: Non-secret OAuth client ID copied from https://console.cloud.google.com/apis/credentials after opening APIs & Services > Credentials > OAuth 2.0 Client IDs; the value ends in .apps.googleusercontent.com and blank means authorization or refresh cannot start.
+            required: true
+          - name: oauth_client_secret
+            goName: OAuthClientSecret
+            type: secretString
+            description: Secret OAuth client secret copied from the selected Web application at https://console.cloud.google.com/apis/credentials; store it only in the credential form and blank means authorization or refresh cannot start.
+            required: true
+          - name: access_token
+            goName: AccessToken
+            type: secretString
+            description: Secret short-lived Google OAuth access token produced automatically after authorization and refreshed before expiry; do not enter it manually, and blank means authorization has not completed.
+            required: true
+          - name: refresh_token
+            goName: RefreshToken
+            type: secretString
+            description: Secret long-lived refresh token returned by Google because offline access is requested; Dex stores and rotates it automatically, and blank means reauthorization is required.
+            required: true
+        guide:
+          startURL: https://console.cloud.google.com/apis/credentials
+          steps:
+            - Select a Google Cloud project, open APIs & Services > Library, search YouTube Data API v3, and choose Enable; its default quota is 10,000 units a day, and each search costs 100.
+            - In Google Auth Platform, configure Branding, Audience, and Data Access for the youtube.readonly scope, which only reads the authorized account's YouTube data; add test users while the app is in Testing.
+            - Open Clients > Create client > Web application, add the exact Redirect URI shown below, then copy the client ID and one-time client secret.
+            - Complete consent with the Google account whose channel and private playlists the Flows read; Google Testing refresh tokens can expire after seven days, so publish the app for long-lived use.
+        oauth2:
+          authorizationEndpoint: https://accounts.google.com/o/oauth2/v2/auth
+          tokenEndpoint: https://oauth2.googleapis.com/token
+          authorizationParameters: {access_type: offline, prompt: consent}
+          clientIDCredential: oauth_client_id
+          clientSecretCredential: oauth_client_secret
+          scopes: [https://www.googleapis.com/auth/youtube.readonly]
+          credentialMappings:
+            - {credential: access_token, source: access_token}
+            - {credential: refresh_token, source: refresh_token}
+          pkce: true
+          refresh:
+            terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
+      - id: google-oauth-manage
+        displayName: Google OAuth, manage
+        description: "Required for addPlaylistItem; requests the youtube scope, which reads and manages the authorized account's YouTube data, so use it only for the connection that changes playlists."
+        type: oauth2
+        connectionKind: google-youtube-oauth
+        fields:
+          - name: oauth_client_id
+            goName: OAuthClientID
+            type: string
+            description: Non-secret OAuth client ID copied from https://console.cloud.google.com/apis/credentials after opening APIs & Services > Credentials > OAuth 2.0 Client IDs; the value ends in .apps.googleusercontent.com and blank means authorization or refresh cannot start.
+            required: true
+          - name: oauth_client_secret
+            goName: OAuthClientSecret
+            type: secretString
+            description: Secret OAuth client secret copied from the selected Web application at https://console.cloud.google.com/apis/credentials; store it only in the credential form and blank means authorization or refresh cannot start.
+            required: true
+          - name: access_token
+            goName: AccessToken
+            type: secretString
+            description: Secret short-lived Google OAuth access token produced automatically after authorization and refreshed before expiry; do not enter it manually, and blank means authorization has not completed.
+            required: true
+          - name: refresh_token
+            goName: RefreshToken
+            type: secretString
+            description: Secret long-lived refresh token returned by Google because offline access is requested; Dex stores and rotates it automatically, and blank means reauthorization is required.
+            required: true
+        guide:
+          startURL: https://console.cloud.google.com/apis/credentials
+          steps:
+            - Select a Google Cloud project, open APIs & Services > Library, search YouTube Data API v3, and choose Enable; its default quota is 10,000 units a day, and each search costs 100.
+            - In Google Auth Platform, configure Branding, Audience, and Data Access for the youtube scope, which reads and manages the authorized account's YouTube data; add test users while the app is in Testing.
+            - Open Clients > Create client > Web application, add the exact Redirect URI shown below, then copy the client ID and one-time client secret.
+            - Complete consent with the Google account that owns the target playlists, choosing that channel if the account has several; Google Testing refresh tokens can expire after seven days, so publish the app for long-lived use.
+        oauth2:
+          authorizationEndpoint: https://accounts.google.com/o/oauth2/v2/auth
+          tokenEndpoint: https://oauth2.googleapis.com/token
+          authorizationParameters: {access_type: offline, prompt: consent}
+          clientIDCredential: oauth_client_id
+          clientSecretCredential: oauth_client_secret
+          scopes: [https://www.googleapis.com/auth/youtube]
+          credentialMappings:
+            - {credential: access_token, source: access_token}
+            - {credential: refresh_token, source: refresh_token}
+          pkce: true
+          refresh:
+            terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
+  operations:
+    - name: searchVideos
+      goName: SearchVideos
+      inputType: SearchVideosInput
+      outputType: VideoSearchPage
+      kind: query
+      description: Search one page of up to 50 public videos by keywords, optionally within one channel, in relevance, date, view count, rating, or title order; each call costs 100 quota units.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: searched, goName: Searched, description: YouTube returned one page of matching videos; the page may be empty.}
+        - {id: quotaExhausted, goName: QuotaExhausted, description: "The project's daily YouTube Data API quota is spent; it resets at midnight Pacific Time.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "YouTube conclusively rejected the search, such as an invalid parameter, a missing scope, or a revoked grant.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: YouTube returned an invalid or oversized search response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or credentials are invalid.", optional: true}
+      execution: &youtubeAsyncExecution
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+    - name: getVideo
+      goName: GetVideo
+      inputType: GetVideoInput
+      outputType: Video
+      kind: query
+      description: Read one video's details, duration, statistics, and privacy status by video ID.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: The video exists and the account can see it.}
+        - {id: notFound, goName: NotFound, description: "No visible video has the ID, such as a deleted or private video.", optional: true}
+        - {id: quotaExhausted, goName: QuotaExhausted, description: "The project's daily YouTube Data API quota is spent; it resets at midnight Pacific Time.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "YouTube conclusively rejected the read, such as a missing scope or a revoked grant.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: YouTube returned an invalid or oversized video response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or credentials are invalid.", optional: true}
+      execution: *youtubeAsyncExecution
+    - name: getChannel
+      goName: GetChannel
+      inputType: GetChannelInput
+      outputType: Channel
+      kind: query
+      description: Read one channel by channel ID, by @handle, or as the authorized account's own channel, including its uploads playlist ID.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: The channel exists and was returned.}
+        - {id: notFound, goName: NotFound, description: "No channel has the ID or handle, or the authorized account has no channel.", optional: true}
+        - {id: quotaExhausted, goName: QuotaExhausted, description: "The project's daily YouTube Data API quota is spent; it resets at midnight Pacific Time.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "YouTube conclusively rejected the read, such as a missing scope or a revoked grant.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: YouTube returned an invalid or oversized channel response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or credentials are invalid.", optional: true}
+      execution: *youtubeAsyncExecution
+    - name: listPlaylistItems
+      goName: ListPlaylistItems
+      inputType: ListPlaylistItemsInput
+      outputType: PlaylistItemPage
+      kind: query
+      description: List one page of up to 50 playlist items, such as a channel's uploads, optionally only the items of one video.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: YouTube returned one page of playlist items; the page may be empty.}
+        - {id: notFound, goName: NotFound, description: No playlist visible to the account has the ID., optional: true}
+        - {id: quotaExhausted, goName: QuotaExhausted, description: "The project's daily YouTube Data API quota is spent; it resets at midnight Pacific Time.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "YouTube conclusively rejected the listing, such as a private playlist of another account or a revoked grant.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: YouTube returned an invalid or oversized playlist page., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or credentials are invalid.", optional: true}
+      execution: *youtubeAsyncExecution
+    - name: addPlaylistItem
+      goName: AddPlaylistItem
+      inputType: AddPlaylistItemInput
+      outputType: AddedPlaylistItem
+      kind: mutation
+      description: Add a video to a playlist the authorized account owns unless the playlist already holds it, so a repeated Step never adds a second copy.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: added, goName: Added, description: "The playlist holds the video, added now or found already present."}
+        - {id: notFound, goName: NotFound, description: No playlist the account can manage or no visible video has the ID., optional: true}
+        - {id: quotaExhausted, goName: QuotaExhausted, description: "The project's daily YouTube Data API quota is spent; it resets at midnight Pacific Time.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "YouTube conclusively rejected the insert, such as a playlist of another account, a full playlist, or a revoked grant.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: YouTube returned an invalid or oversized response to the check or the insert., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or credentials are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        # Check-then-insert is repeat-safe only when two attempts never overlap, so the Step uses sync durability.
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}

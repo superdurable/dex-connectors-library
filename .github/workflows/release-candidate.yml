@@ -1,4 +1,6 @@
 name: Release Connector Candidate
+# The platform finds the run of its dispatched request by this name.
+run-name: "RC ${{ github.event.client_payload.directory || inputs.directory }} ${{ github.event.client_payload.version || inputs.version }} ${{ github.event.client_payload.commit || inputs.commit }}"
 
 # A release candidate publishes one connector from a commit that is not on main yet, with the same release assets as
 # a release. The workflow runs from main, so a candidate branch cannot change it; only the verify job runs the
