@@ -279,18 +279,34 @@ func newReplyHarness(t *testing.T, pickedFolderName string) *replyHarness {
 		archiveFolder = ArchiveFolderSelection{FolderID: harness.archiveFolderID, FolderName: pickedFolderName}
 	}
 	harness.credentials = harness.newDelegatedCredentials()
+	providerClient, err := outlookmail.New(outlookmail.Config{}, harness.credentials, outlookmail.WithLocalProviderURL(harness.graph.URL))
+	require.NoError(t, err)
+	connection, err := outlookmail.NewConnection(providerClient, sdkgo.ConnectionRef{Provider: "microsoft", Name: ConnectionName})
+	require.NoError(t, err)
+	harness.startForConnection(t, connection, archiveFolder)
+	return harness
+}
+
+func newReplyHarnessForConnection(t *testing.T, connection outlookmail.Connection) *replyHarness {
+	t.Helper()
+	harness := &replyHarness{serverAddress: environmentOr("DEX_FLOW_SERVICE_ADDRESS", "127.0.0.1:8801")}
+	harness.startForConnection(t, connection, ArchiveFolderSelection{})
+	return harness
+}
+
+func (harness *replyHarness) startForConnection(t *testing.T, connection outlookmail.Connection, archiveFolder ArchiveFolderSelection) {
+	t.Helper()
 	var err error
 	harness.cache, err = blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
 	harness.workerAddress = net.JoinHostPort("127.0.0.1", availableIntegrationPort(t))
-	harness.registerFlow(t, archiveFolder)
+	harness.registerFlowWithConnection(t, connection, archiveFolder)
 	harness.startWorker(t)
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
 		require.NoError(t, errors.Join(harness.worker.Stop(ctx), <-harness.workerResult, harness.client.Close(), harness.cache.Close()))
 	})
-	return harness
 }
 
 // newDelegatedCredentials holds the credential Dex Web saves after a delegated Microsoft consent.
@@ -303,13 +319,10 @@ func (harness *replyHarness) newDelegatedCredentials() *graphtest.CredentialHost
 	}, &expiresAt)
 }
 
-func (harness *replyHarness) registerFlow(t *testing.T, archiveFolder ArchiveFolderSelection) {
+func (harness *replyHarness) registerFlowWithConnection(t *testing.T, connection outlookmail.Connection, archiveFolder ArchiveFolderSelection) {
 	t.Helper()
-	providerClient, err := outlookmail.New(outlookmail.Config{}, harness.credentials, outlookmail.WithLocalProviderURL(harness.graph.URL))
-	require.NoError(t, err)
-	connection, err := outlookmail.NewConnection(providerClient, sdkgo.ConnectionRef{Provider: "microsoft", Name: ConnectionName})
-	require.NoError(t, err)
 	harness.flow = NewFlow(connection, archiveFolder)
+	var err error
 	harness.registry, err = dex.NewRegistry([]dex.Flow{harness.flow})
 	require.NoError(t, err)
 	harness.client, err = dex.NewClient(harness.registry, harness.cache, dex.ClientOptions{

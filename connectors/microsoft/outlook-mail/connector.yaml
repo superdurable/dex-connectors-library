@@ -5,7 +5,7 @@ metadata:
   displayName: Microsoft Outlook Mail
   description: "Search, read, flag, categorize, and move messages in a Microsoft 365 (Exchange Online) mailbox through Microsoft Graph, and send new messages or threaded replies through drafts marked with the Step's idempotency key, so a retried Step never sends twice."
   company: Microsoft
-  version: v0.22.0
+  version: v0.23.0
 spec:
   provider: microsoft
   codegen:
@@ -195,6 +195,31 @@ spec:
         executeMethodTimeout: 30s
         durability: async
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
+      pagination: {inputField: pageCursor, nextField: nextPageCursor}
+      mocks:
+        - name: customerInbox
+          branch: searched
+          description: Three newest-first pages with a lookalike sender and a repeated customer message.
+          default: true
+          pages:
+            - folder: inbox
+              messages:
+                - {id: AAMkAGI2MDEyMzQ1AAABC001, subject: Refund request, from: {name: Jane Example, address: jane@acme.example.com.au}, receivedAt: "2026-09-28T10:00:00Z", flagStatus: notFlagged}
+              hasMore: true
+              nextPageCursor: "https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages?$skiptoken=mock-page-2"
+            - folder: inbox
+              messages:
+                - {id: AAMkAGI2MDEyMzQ1AAABC002, subject: Refund request for order 88213, from: {name: Jane Smith, address: jane@acme.example.com}, receivedAt: "2026-09-28T09:00:00Z", flagStatus: notFlagged, hasAttachments: true}
+              hasMore: true
+              nextPageCursor: "https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages?$skiptoken=mock-page-3"
+            - folder: inbox
+              messages:
+                - {id: AAMkAGI2MDEyMzQ1AAABC002, subject: Refund request for order 88213, from: {name: Jane Smith, address: jane@acme.example.com}, receivedAt: "2026-09-28T09:00:00Z", flagStatus: notFlagged, hasAttachments: true}
+                - {id: AAMkAGI2MDEyMzQ1AAABC003, subject: Earlier refund question, from: {name: Jane Smith, address: jane@acme.example.com}, receivedAt: "2026-09-26T09:00:00Z", flagStatus: notFlagged}
+        - name: searchRejected
+          branch: providerRejected
+          description: The mailbox search is not authorized.
+          failure: {kind: AUTHORIZATION, message: Microsoft Graph rejected the mailbox search.}
     - name: getMessage
       goName: GetMessage
       inputType: GetMessageInput
@@ -210,6 +235,30 @@ spec:
         - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Graph returned a malformed or oversized message or attachment list., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution: *outlookReadExecution
+      mocks:
+        - name: customerMessage
+          branch: found
+          description: The customer's refund request with a receipt attachment.
+          default: true
+          output:
+            id: AAMkAGI2MDEyMzQ1AAABC002
+            subject: Refund request for order 88213
+            from: {name: Jane Smith, address: jane@acme.example.com}
+            receivedAt: "2026-09-28T09:00:00Z"
+            flagStatus: notFlagged
+            hasAttachments: true
+            text: I was charged twice for order 88213.
+            textSource: text
+            attachments:
+              - {id: AAMkAGI2MDEyMzQ1ATT0001, name: receipt.pdf, contentType: application/pdf, sizeBytes: 20480, kind: file}
+        - name: messageMissing
+          branch: notFound
+          description: The customer message was deleted before it was read.
+          failure: {kind: NOT_FOUND, message: Microsoft Graph could not find the message.}
+        - name: messageReadRejected
+          branch: providerRejected
+          description: The mailbox does not permit this read.
+          failure: {kind: AUTHORIZATION, message: Microsoft Graph rejected the message read.}
     - name: sendMessage
       goName: SendMessage
       inputType: SendMessageInput
@@ -228,6 +277,21 @@ spec:
         heartbeatTimeout: 90s
         durability: sync
         retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 8, totalDuration: 10m}
+      mocks:
+        - name: newMessageSent
+          branch: sent
+          description: A new refund message accepted for sending.
+          default: true
+          output:
+            messageId: AAMkAGI2MDEyMzQ1AAABC010
+            internetMessageId: "<mock-new-88213@contoso.example>"
+            subject: Your refund for order 88213
+            recipients: [jane@acme.example.com]
+            idempotencyMarker: dex-mock-new-message
+        - name: sendRejected
+          branch: providerRejected
+          description: Microsoft Graph rejects an invalid recipient.
+          failure: {kind: VALIDATION, message: Microsoft Graph rejected the recipient.}
     - name: replyToMessage
       goName: ReplyToMessage
       inputType: ReplyToMessageInput
@@ -243,6 +307,26 @@ spec:
         - {id: uncertain, goName: Uncertain, description: "The send was dispatched but its answer was lost and the draft has not appeared as sent, so the reply may have been sent; the connector never sends it again, and the Result names the draft to inspect.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution: *outlookSendExecution
+      mocks:
+        - name: customerReplySent
+          branch: sent
+          description: A threaded refund reply accepted for sending.
+          default: true
+          output:
+            messageId: AAMkAGI2MDEyMzQ1AAABC011
+            internetMessageId: "<mock-reply-88213@contoso.example>"
+            conversationId: AAQkAGI2MDEyMzQ1CONV001
+            subject: "RE: Refund request for order 88213"
+            recipients: [jane@acme.example.com]
+            idempotencyMarker: dex-mock-customer-reply
+        - name: originalMessageMissing
+          branch: notFound
+          description: The original customer message was deleted before drafting the reply.
+          failure: {kind: NOT_FOUND, message: Microsoft Graph could not find the original message.}
+        - name: replyRejected
+          branch: providerRejected
+          description: Microsoft Graph rejects an unusable reply recipient.
+          failure: {kind: VALIDATION, message: Microsoft Graph rejected the reply recipient.}
     - name: moveMessage
       goName: MoveMessage
       inputType: MoveMessageInput
@@ -260,6 +344,20 @@ spec:
         executeMethodTimeout: 30s
         durability: async
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
+      mocks:
+        - name: customerMessageArchived
+          branch: moved
+          description: The answered customer message now belongs to Archive.
+          default: true
+          output: {messageId: AAMkAGI2MDEyMzQ1AAABC002, destinationFolderId: AAMkAGI2MDEyMzQ1FOLDERARC, destinationFolderName: Archive}
+        - name: moveMessageMissing
+          branch: notFound
+          description: The answered message was removed before archiving.
+          failure: {kind: NOT_FOUND, message: Microsoft Graph could not find the message to move.}
+        - name: moveRejected
+          branch: providerRejected
+          description: Microsoft Graph denies moving into the destination folder.
+          failure: {kind: AUTHORIZATION, message: Microsoft Graph rejected the message move.}
     - name: setMessageFlags
       goName: SetMessageFlags
       inputType: SetMessageFlagsInput
@@ -274,3 +372,17 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively refused the change, such as a revoked authorization or a read-only mailbox.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution: *outlookUpdateExecution
+      mocks:
+        - name: customerMessageRead
+          branch: updated
+          description: The answered customer message is marked read.
+          default: true
+          output: {messageId: AAMkAGI2MDEyMzQ1AAABC002, isRead: true, flagStatus: notFlagged}
+        - name: flaggedMessageMissing
+          branch: notFound
+          description: The message was removed before its flags changed.
+          failure: {kind: NOT_FOUND, message: Microsoft Graph could not find the message to mark read.}
+        - name: flagsRejected
+          branch: providerRejected
+          description: Microsoft Graph denies a read-state update.
+          failure: {kind: AUTHORIZATION, message: Microsoft Graph rejected the message flag update.}

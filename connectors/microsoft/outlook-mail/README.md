@@ -370,6 +370,25 @@ shared mailboxes for a delegated connection), searching subfolders or every
 folder, `$search` (KQL), personal Microsoft accounts, certificate credentials
 for app-only, national clouds, and the archive mailbox are not supported.
 
+## Connector mocks
+
+`outlookmailmock.New` returns a typed connection whose six operations answer
+unscripted calls on their happy-path branches. The default Inbox search serves
+three newest-first pages with a lookalike sender, a repeated message across a
+page boundary, and an older message. Named cases cover missing messages and
+conclusive provider rejections. Send and reply defaults describe accepted
+messages; uncertain sends have no default mock.
+
+The [runnable integration test](examples/support-reply/flow/workflow_mock_integration_test.go)
+runs the example on these defaults with a real Dex Worker and no Graph setup:
+
+```go
+mock := outlookmailmock.New(t, ConnectionName)
+harness := newReplyHarnessForConnection(t, mock.Connection())
+outcome := harness.runReply(t, "mock-default", integrationInput())
+require.Equal(t, ReplyActionReplied, outcome.Action)
+```
+
 ## Example
 
 [`examples/support-reply`](examples/support-reply) is a runnable Dex Web
