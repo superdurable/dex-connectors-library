@@ -283,24 +283,25 @@ func newReplyHarness(t *testing.T, pickedFolderName string) *replyHarness {
 	require.NoError(t, err)
 	connection, err := outlookmail.NewConnection(providerClient, sdkgo.ConnectionRef{Provider: "microsoft", Name: ConnectionName})
 	require.NoError(t, err)
-	harness.startForConnection(t, connection, archiveFolder)
+	harness.startForFlow(t, NewFlow(connection, archiveFolder))
 	return harness
 }
 
-func newReplyHarnessForConnection(t *testing.T, connection outlookmail.Connection) *replyHarness {
+// newReplyHarnessForFlow starts a Worker for a Flow built on another connection, such as a connector mock.
+func newReplyHarnessForFlow(t *testing.T, flow *Flow) *replyHarness {
 	t.Helper()
 	harness := &replyHarness{serverAddress: environmentOr("DEX_FLOW_SERVICE_ADDRESS", "127.0.0.1:8801")}
-	harness.startForConnection(t, connection, ArchiveFolderSelection{})
+	harness.startForFlow(t, flow)
 	return harness
 }
 
-func (harness *replyHarness) startForConnection(t *testing.T, connection outlookmail.Connection, archiveFolder ArchiveFolderSelection) {
+func (harness *replyHarness) startForFlow(t *testing.T, flow *Flow) {
 	t.Helper()
 	var err error
 	harness.cache, err = blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
 	harness.workerAddress = net.JoinHostPort("127.0.0.1", availableIntegrationPort(t))
-	harness.registerFlowWithConnection(t, connection, archiveFolder)
+	harness.registerFlow(t, flow)
 	harness.startWorker(t)
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
@@ -319,9 +320,9 @@ func (harness *replyHarness) newDelegatedCredentials() *graphtest.CredentialHost
 	}, &expiresAt)
 }
 
-func (harness *replyHarness) registerFlowWithConnection(t *testing.T, connection outlookmail.Connection, archiveFolder ArchiveFolderSelection) {
+func (harness *replyHarness) registerFlow(t *testing.T, flow *Flow) {
 	t.Helper()
-	harness.flow = NewFlow(connection, archiveFolder)
+	harness.flow = flow
 	var err error
 	harness.registry, err = dex.NewRegistry([]dex.Flow{harness.flow})
 	require.NoError(t, err)

@@ -204,18 +204,69 @@ spec:
           pages:
             - folder: inbox
               messages:
-                - {id: AAMkAGI2MDEyMzQ1AAABC001, subject: Refund request, from: {name: Jane Example, address: jane@acme.example.com.au}, receivedAt: "2026-09-28T10:00:00Z", flagStatus: notFlagged}
+                - id: AAMkAGI2MDEyMzQ1AAABC001
+                  conversationId: AAQkAGI2MDEyMzQ1CONV001
+                  internetMessageId: "<refund-request@mail.acme.example.com.au>"
+                  folderId: AAMkAGI2MDEyMzQ1FOLDERINB
+                  subject: Refund request
+                  from: {name: Jane Example, address: jane@acme.example.com.au}
+                  sender: {name: Jane Example, address: jane@acme.example.com.au}
+                  to: [{name: Contoso Support, address: support@contoso.example}]
+                  receivedAt: "2026-09-28T10:00:00Z"
+                  sentAt: "2026-09-28T09:59:58Z"
+                  flagStatus: notFlagged
+                  importance: normal
+                  preview: Please refund my last order.
               hasMore: true
-              nextPageCursor: "https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages?$skiptoken=mock-page-2"
+              nextPageCursor: "https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages?$top=10&$skip=10"
             - folder: inbox
               messages:
-                - {id: AAMkAGI2MDEyMzQ1AAABC002, subject: Refund request for order 88213, from: {name: Jane Smith, address: jane@acme.example.com}, receivedAt: "2026-09-28T09:00:00Z", flagStatus: notFlagged, hasAttachments: true}
+                - id: AAMkAGI2MDEyMzQ1AAABC002
+                  conversationId: AAQkAGI2MDEyMzQ1CONV002
+                  internetMessageId: "<refund-88213@mail.acme.example.com>"
+                  folderId: AAMkAGI2MDEyMzQ1FOLDERINB
+                  subject: Refund request for order 88213
+                  from: {name: Jane Smith, address: jane@acme.example.com}
+                  sender: {name: Jane Smith, address: jane@acme.example.com}
+                  to: [{name: Contoso Support, address: support@contoso.example}]
+                  receivedAt: "2026-09-28T09:00:00Z"
+                  sentAt: "2026-09-28T08:59:57Z"
+                  flagStatus: notFlagged
+                  importance: normal
+                  hasAttachments: true
+                  preview: I was charged twice for order 88213.
               hasMore: true
-              nextPageCursor: "https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages?$skiptoken=mock-page-3"
+              nextPageCursor: "https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages?$top=10&$skip=20"
             - folder: inbox
               messages:
-                - {id: AAMkAGI2MDEyMzQ1AAABC002, subject: Refund request for order 88213, from: {name: Jane Smith, address: jane@acme.example.com}, receivedAt: "2026-09-28T09:00:00Z", flagStatus: notFlagged, hasAttachments: true}
-                - {id: AAMkAGI2MDEyMzQ1AAABC003, subject: Earlier refund question, from: {name: Jane Smith, address: jane@acme.example.com}, receivedAt: "2026-09-26T09:00:00Z", flagStatus: notFlagged}
+                - id: AAMkAGI2MDEyMzQ1AAABC002
+                  conversationId: AAQkAGI2MDEyMzQ1CONV002
+                  internetMessageId: "<refund-88213@mail.acme.example.com>"
+                  folderId: AAMkAGI2MDEyMzQ1FOLDERINB
+                  subject: Refund request for order 88213
+                  from: {name: Jane Smith, address: jane@acme.example.com}
+                  sender: {name: Jane Smith, address: jane@acme.example.com}
+                  to: [{name: Contoso Support, address: support@contoso.example}]
+                  receivedAt: "2026-09-28T09:00:00Z"
+                  sentAt: "2026-09-28T08:59:57Z"
+                  flagStatus: notFlagged
+                  importance: normal
+                  hasAttachments: true
+                  preview: I was charged twice for order 88213.
+                - id: AAMkAGI2MDEyMzQ1AAABC003
+                  conversationId: AAQkAGI2MDEyMzQ1CONV003
+                  internetMessageId: "<refund-question@mail.acme.example.com>"
+                  folderId: AAMkAGI2MDEyMzQ1FOLDERINB
+                  subject: Earlier refund question
+                  from: {name: Jane Smith, address: jane@acme.example.com}
+                  sender: {name: Jane Smith, address: jane@acme.example.com}
+                  to: [{name: Contoso Support, address: support@contoso.example}]
+                  receivedAt: "2026-09-26T09:00:00Z"
+                  sentAt: "2026-09-26T08:59:58Z"
+                  isRead: true
+                  flagStatus: notFlagged
+                  importance: normal
+                  preview: Can I get a refund for a duplicate charge?
         - name: searchRejected
           branch: providerRejected
           description: The mailbox search is not authorized.
@@ -242,13 +293,22 @@ spec:
           default: true
           output:
             id: AAMkAGI2MDEyMzQ1AAABC002
+            conversationId: AAQkAGI2MDEyMzQ1CONV002
+            internetMessageId: "<refund-88213@mail.acme.example.com>"
+            folderId: AAMkAGI2MDEyMzQ1FOLDERINB
             subject: Refund request for order 88213
             from: {name: Jane Smith, address: jane@acme.example.com}
+            sender: {name: Jane Smith, address: jane@acme.example.com}
+            to: [{name: Contoso Support, address: support@contoso.example}]
             receivedAt: "2026-09-28T09:00:00Z"
+            sentAt: "2026-09-28T08:59:57Z"
             flagStatus: notFlagged
+            importance: normal
             hasAttachments: true
+            preview: I was charged twice for order 88213.
             text: I was charged twice for order 88213.
             textSource: text
+            webLink: "https://outlook.office365.com/owa/?ItemID=AAMkAGI2MDEyMzQ1AAABC002&exvsurl=1&viewmodel=ReadMessageItem"
             attachments:
               - {id: AAMkAGI2MDEyMzQ1ATT0001, name: receipt.pdf, contentType: application/pdf, sizeBytes: 20480, kind: file}
         - name: messageMissing
@@ -285,9 +345,10 @@ spec:
           output:
             messageId: AAMkAGI2MDEyMzQ1AAABC010
             internetMessageId: "<mock-new-88213@contoso.example>"
+            conversationId: AAQkAGI2MDEyMzQ1CONV010
             subject: Your refund for order 88213
             recipients: [jane@acme.example.com]
-            idempotencyMarker: dex-mock-new-message
+            idempotencyMarker: dex-8f14e45f-ceea-5a7d-9b1c-2f6e3d4a5b60
         - name: sendRejected
           branch: providerRejected
           description: Microsoft Graph rejects an invalid recipient.
@@ -315,10 +376,10 @@ spec:
           output:
             messageId: AAMkAGI2MDEyMzQ1AAABC011
             internetMessageId: "<mock-reply-88213@contoso.example>"
-            conversationId: AAQkAGI2MDEyMzQ1CONV001
+            conversationId: AAQkAGI2MDEyMzQ1CONV002
             subject: "RE: Refund request for order 88213"
             recipients: [jane@acme.example.com]
-            idempotencyMarker: dex-mock-customer-reply
+            idempotencyMarker: dex-3c59dc04-8b2f-5e1a-a6d4-71b0c9e2f845
         - name: originalMessageMissing
           branch: notFound
           description: The original customer message was deleted before drafting the reply.
@@ -381,7 +442,7 @@ spec:
         - name: flaggedMessageMissing
           branch: notFound
           description: The message was removed before its flags changed.
-          failure: {kind: NOT_FOUND, message: Microsoft Graph could not find the message to mark read.}
+          failure: {kind: NOT_FOUND, message: Microsoft Graph could not find the message to update.}
         - name: flagsRejected
           branch: providerRejected
           description: Microsoft Graph denies a read-state update.

@@ -158,7 +158,9 @@ and `internal/graphtest`, which, like Graph, has no send idempotency key:
 - the customer's latest message gets one threaded reply, is marked read, and
   is archived under the same immutable ID, while an older message, a
   lookalike sender, and another customer stay untouched;
-- the default mock reaches the same reply and archive path without Graph setup;
+- the default mock reaches the same reply and archive path without Graph setup,
+  and its recorded calls show that the second search page was read and only
+  the customer's message was read, answered, marked read, and archived;
 - a folder picked in Dex Web receives the answered message;
 - a customer with only a lookalike's message gets one new message;
 - a reply and a new message whose send Graph holds for nine seconds, past
