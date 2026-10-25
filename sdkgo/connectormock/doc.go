@@ -8,7 +8,8 @@
 // operation's real definition. The SDK validates every scripted answer as it
 // validates a provider connector, so a Step factory accepts the mock and an
 // undeclared branch, an invalid failure, or a misplaced uncertain case still
-// selects the defect branch. Most tests use a connector's generated mock
+// selects the defect branch. Optional request and answer checks can enforce
+// connector-owned validation on scripted calls. Most tests use a connector's generated mock
 // package, such as llm/llmmock, which builds these mocks for every operation,
 // installs the manifest default, and returns a typed Connection. A generic
 // Step can use a mock directly, as in

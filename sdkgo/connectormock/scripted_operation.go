@@ -22,6 +22,9 @@ type scriptedOperation[IN, OUT any] struct {
 	operation        sdkgo.OperationRef
 	declaredBranches map[sdkgo.BranchID]bool
 	isMutation       bool
+	requestCheck     func(IN) *sdkgo.Failure
+	answerBranch     sdkgo.BranchID
+	answerCheck      func(IN, OUT) error
 	mu               sync.Mutex
 	unscopedScript   script[IN, OUT]
 	flowScripts      map[string]*FlowScript[IN, OUT]
@@ -134,15 +137,35 @@ func (scripted *scriptedOperation[IN, OUT]) answer(call sdkgo.Call, input IN, id
 	}
 	scripted.mu.Lock()
 	defer scripted.mu.Unlock()
-	resolved, isRemembered := scripted.terminalByKey[idempotencyKey]
+	var resolved resolvedCase[OUT]
+	if scripted.requestCheck != nil {
+		if failure := scripted.requestCheck(input); failure != nil {
+			resolved = resolvedCase[OUT]{kind: caseKindBranch, branch: sdkgo.DefectBranchID,
+				failure: scripted.completeFailure(failure), effectiveBranch: sdkgo.DefectBranchID}
+			return scripted.recordAnswer(call, input, flowID, resolved)
+		}
+	}
+	remembered, isRemembered := scripted.terminalByKey[idempotencyKey]
 	if idempotencyKey != "" && isRemembered {
+		resolved = remembered
 		resolved.isReplay = true
 	} else {
 		resolved = scripted.resolveScriptedCase(flowID, input)
+		if scripted.answerCheck != nil && resolved.kind == caseKindBranch &&
+			resolved.effectiveBranch == scripted.answerBranch {
+			if err := scripted.answerCheck(input, resolved.value); err != nil {
+				scripted.reportFailure(fmt.Sprintf("scripted answer for branch %q does not match request: %v", scripted.answerBranch, err))
+				resolved = scripted.defectCase("scripted connector mock answer does not match request: " + err.Error())
+			}
+		}
 		if idempotencyKey != "" && resolved.kind != caseKindRetry {
 			scripted.terminalByKey[idempotencyKey] = resolved
 		}
 	}
+	return scripted.recordAnswer(call, input, flowID, resolved)
+}
+
+func (scripted *scriptedOperation[IN, OUT]) recordAnswer(call sdkgo.Call, input IN, flowID string, resolved resolvedCase[OUT]) resolvedCase[OUT] {
 	recorded := Call[IN]{
 		FlowID: flowID, CallID: call.ID, IdempotencyKey: call.IdempotencyKey, Connection: call.Connection,
 		Input: input, Branch: resolved.effectiveBranch, IsRetry: resolved.kind == caseKindRetry,

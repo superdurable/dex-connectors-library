@@ -243,6 +243,24 @@ type Operation struct {
 	Pagination *Pagination `yaml:"pagination,omitempty" json:"pagination,omitempty"`
 	// Mocks are the maintained outcomes that the generated mock package offers to application tests.
 	Mocks []OperationMock `yaml:"mocks,omitempty" json:"mocks,omitempty"`
+	// MockChecks name connector functions that validate mock requests and scripted answers.
+	MockChecks *MockChecks `yaml:"mockChecks,omitempty" json:"mockChecks,omitempty"`
+}
+
+// MockChecks names exported functions in the connector package for generated mock validation.
+type MockChecks struct {
+	// RequestFunction takes the operation input and returns *sdkgo.Failure, or nil for a valid request.
+	RequestFunction string `yaml:"requestFunction,omitempty" json:"requestFunction,omitempty"`
+	// Answer checks an output on one branch against the operation input.
+	Answer *MockAnswerCheck `yaml:"answer,omitempty" json:"answer,omitempty"`
+}
+
+// MockAnswerCheck names a declared branch and connector function that checks its output.
+type MockAnswerCheck struct {
+	// Branch is the declared branch whose scripted output is checked.
+	Branch string `yaml:"branch" json:"branch"`
+	// Function names an exported connector function accepting the input and output.
+	Function string `yaml:"function" json:"function"`
 }
 
 type Trigger struct {
@@ -595,6 +613,17 @@ func (manifest Manifest) Validate() error {
 		}
 		if operation.Kind == "query" && branches["uncertain"] {
 			problems = append(problems, operation.Name+": query cannot declare uncertain")
+		}
+		if operation.MockChecks != nil {
+			if operation.MockChecks.RequestFunction != "" && !goNamePattern.MatchString(operation.MockChecks.RequestFunction) {
+				problems = append(problems, operation.Name+": mockChecks.requestFunction must name an exported connector function")
+			}
+			if operation.MockChecks.Answer != nil {
+				answer := operation.MockChecks.Answer
+				if !branches[answer.Branch] || !goNamePattern.MatchString(answer.Function) {
+					problems = append(problems, operation.Name+": mockChecks.answer requires a declared branch and exported connector function")
+				}
+			}
 		}
 		if operation.Authorization != "none" && operation.Authorization != "required" {
 			problems = append(problems, operation.Name+": authorization must be none or required")

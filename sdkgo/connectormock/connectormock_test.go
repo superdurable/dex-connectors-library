@@ -120,6 +120,88 @@ func TestQueryUnscriptedCallFailsTheTestAndSelectsDefect(t *testing.T) {
 	}}, recorded)
 }
 
+func TestQueryRequestCheckSelectsDefectWithoutFailingTheTest(t *testing.T) {
+	recorder := newRecordingT(t)
+	check := func(input widgetInput) *sdkgo.Failure {
+		if input.Name == "" {
+			return &sdkgo.Failure{Kind: sdkgo.FailureValidation, Message: "widget name is required"}
+		}
+		return nil
+	}
+	lookup := connectormock.NewQuery[widgetInput, widget](recorder, lookupDefinition,
+		connectormock.WithRequestCheck[widgetInput, widget](check))
+	lookup.Respond(connectormock.Branch(widgetFound, widget{ID: "gear"}, nil))
+	flowID := uniqueFlowID(t)
+
+	invalid := runQuery(t, lookup, flowID, 0, widgetInput{})
+	require.Equal(t, sdkgo.DefectBranchID, invalid.Branch)
+	require.Equal(t, &sdkgo.Failure{Kind: sdkgo.FailureValidation, Provider: "widgets", Operation: "lookupWidget", Message: "widget name is required"}, invalid.Failure)
+	require.Empty(t, recorder.failures)
+	require.Equal(t, sdkgo.DefectBranchID, lookup.Calls()[0].Branch)
+	require.False(t, lookup.Calls()[0].IsUnscripted)
+	require.Equal(t, widgetFound, runQuery(t, lookup, flowID, 1, widgetInput{Name: "gear"}).Branch,
+		"an invalid request must not consume a scripted answer")
+}
+
+func TestQueryAnswerCheckReportsMismatchAndSelectsDefect(t *testing.T) {
+	recorder := newRecordingT(t)
+	lookup := connectormock.NewQuery[widgetInput, widget](recorder, lookupDefinition,
+		connectormock.WithAnswerCheck[widgetInput, widget](widgetFound, func(input widgetInput, answer widget) error {
+			if answer.ID != input.Name {
+				return errors.New("widget ID differs from requested name")
+			}
+			return nil
+		}))
+	lookup.Respond(connectormock.Branch(widgetFound, widget{ID: "wrong"}, nil))
+	result := runQuery(t, lookup, uniqueFlowID(t), 0, widgetInput{Name: "gear"})
+
+	require.Equal(t, sdkgo.DefectBranchID, result.Branch)
+	require.Equal(t, sdkgo.FailureLocalDefect, result.Failure.Kind)
+	require.Equal(t, sdkgo.DefectBranchID, lookup.Calls()[0].Branch)
+	recorder.requireFailure(t, "widget ID differs from requested name")
+}
+
+func TestQueryAnswerCheckOnlyRunsOnItsBranch(t *testing.T) {
+	lookup := connectormock.NewQuery[widgetInput, widget](t, lookupDefinition,
+		connectormock.WithAnswerCheck[widgetInput, widget](widgetFound, func(widgetInput, widget) error {
+			return errors.New("the found answer is invalid")
+		}))
+	lookup.Respond(connectormock.Branch(widgetAbsent, widget{}, nil))
+
+	result := runQuery(t, lookup, uniqueFlowID(t), 0, widgetInput{Name: "missing"})
+	require.Equal(t, widgetAbsent, result.Branch)
+}
+
+func TestMutationChecksRequestAndScriptedAnswer(t *testing.T) {
+	recorder := newRecordingT(t)
+	mutation := connectormock.NewMutation[widgetInput, widget](recorder, createDefinition,
+		connectormock.WithRequestCheck[widgetInput, widget](func(input widgetInput) *sdkgo.Failure {
+			if input.Name == "" {
+				return &sdkgo.Failure{Kind: sdkgo.FailureValidation, Message: "widget name is required"}
+			}
+			return nil
+		}),
+		connectormock.WithAnswerCheck[widgetInput, widget](widgetCreated, func(input widgetInput, answer widget) error {
+			if answer.ID != input.Name {
+				return errors.New("created widget ID differs from requested name")
+			}
+			return nil
+		}))
+	mutation.Respond(connectormock.Branch(widgetCreated, widget{ID: "wrong"}, nil))
+	flowID := uniqueFlowID(t)
+
+	invalid, err := runMutation(t, mutation, flowID, "invalid", widgetInput{})
+	require.NoError(t, err)
+	require.Equal(t, sdkgo.DefectBranchID, invalid.Branch)
+	require.Equal(t, &sdkgo.Failure{Kind: sdkgo.FailureValidation, Provider: "widgets", Operation: "createWidget", Message: "widget name is required"}, invalid.Failure)
+	require.Empty(t, recorder.failures)
+	mismatch, err := runMutation(t, mutation, flowID, "mismatch", widgetInput{Name: "gear"})
+	require.NoError(t, err)
+	require.Equal(t, sdkgo.DefectBranchID, mismatch.Branch)
+	recorder.requireFailure(t, "created widget ID differs from requested name")
+	require.Equal(t, []sdkgo.BranchID{sdkgo.DefectBranchID, sdkgo.DefectBranchID}, []sdkgo.BranchID{mutation.Calls()[0].Branch, mutation.Calls()[1].Branch})
+}
+
 func TestStrictQueryIgnoresDefaults(t *testing.T) {
 	recorder := newRecordingT(t)
 	lookup := connectormock.NewQuery[widgetInput, widget](recorder, lookupDefinition)

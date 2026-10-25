@@ -62,6 +62,44 @@ func TestGenerateMockPackageDeclaresEveryConstructor(t *testing.T) {
 	require.Contains(t, text, `"tags":["metal","007"]`, "a quoted number stays a JSON string")
 }
 
+func TestGenerateMockPackageWiresOperationChecks(t *testing.T) {
+	manifest := loadMocksManifest(t)
+	manifest.Spec.Operations[0].MockChecks = &schema.MockChecks{
+		RequestFunction: "ValidateGetWidgetRequest",
+		Answer:          &schema.MockAnswerCheck{Branch: "found", Function: "ValidateGetWidgetAnswer"},
+	}
+	require.NoError(t, manifest.Validate())
+	connector, err := codegen.Generate(manifest)
+	require.NoError(t, err)
+	source, generatedTest, err := codegen.GenerateMockPackage(manifest, mocksModulePath)
+	require.NoError(t, err)
+	require.Contains(t, string(source), "connectormock.WithRequestCheck[mockfixture.GetWidgetInput, mockfixture.Widget](mockfixture.ValidateGetWidgetRequest)")
+	require.Contains(t, string(source), "connectormock.WithAnswerCheck[mockfixture.GetWidgetInput, mockfixture.Widget](mockfixture.GetWidgetBranchFound, mockfixture.ValidateGetWidgetAnswer)")
+	client, err := os.ReadFile(filepath.Join(mocksFixturePath, "client.go"))
+	require.NoError(t, err)
+	fixtureTest, err := os.ReadFile(filepath.Join(mocksFixturePath, "mock_test.go"))
+	require.NoError(t, err)
+	checks := []byte(`// Copyright (c) 2026 Super Durable
+// SPDX-License-Identifier: MIT
+
+package mockfixture
+
+import "github.com/superdurable/dex-connectors-library/sdkgo"
+
+// ValidateGetWidgetRequest accepts fixture requests.
+func ValidateGetWidgetRequest(GetWidgetInput) *sdkgo.Failure { return nil }
+
+// ValidateGetWidgetAnswer accepts fixture answers.
+func ValidateGetWidgetAnswer(GetWidgetInput, Widget) error { return nil }
+`)
+	output, err := runFixtureModuleTests(t, mocksModulePath, map[string][]byte{
+		codegen.OutputFile: connector, "client.go": client, "mock_checks.go": checks, "mock_test.go": fixtureTest,
+		filepath.Join("mockfixturemock", codegen.MockOutputFile):     source,
+		filepath.Join("mockfixturemock", codegen.MockTestOutputFile): generatedTest,
+	})
+	require.NoError(t, err, output)
+}
+
 func TestGenerateMockPackageCoversEveryFailureKind(t *testing.T) {
 	manifest := loadMocksManifest(t)
 	for _, kind := range schema.FailureKinds {

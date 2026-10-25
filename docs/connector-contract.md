@@ -330,6 +330,12 @@ the same factory, definition, branch routing, and Result Attribute as a real
 one. A connection from `NewConnectionWithOperations` serves operation Steps
 only: Trigger factories and the connection's webhook handlers and Trigger
 runners return an error for it, because it has no client. See [Connector mocks](manifest-authoring.md#connector-mocks).
+Operations may also declare connector-owned mock request and answer checks in
+`mockChecks`. A rejected request selects `defect` with the real check's Failure
+without failing the application test. A scripted answer that violates the
+request fails the test and selects `defect`. These checks cover
+provider-independent behavior; provider and model-specific validation still
+belongs to the real operation.
 
 ## Project connections
 

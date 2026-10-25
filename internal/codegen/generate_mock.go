@@ -83,8 +83,19 @@ func (mockGeneration *mockGenerator) generateSource(connectorImportPath string) 
 	generation.mustWrite("// manifest default answers.\n")
 	generation.mustWrite("func New(t testing.TB, connectionName string) *Mock {\n\tt.Helper()\n\tmock := &Mock{\n")
 	for _, operation := range manifest.Spec.Operations {
-		generation.mustWrite("\t\t%s: connectormock.New%s[%s.%s, %s.%s](t, %s.%sDefinition),\n", lowerFirst(operation.GoName), title(operation.Kind),
+		generation.mustWrite("\t\t%s: connectormock.New%s[%s.%s, %s.%s](t, %s.%sDefinition", lowerFirst(operation.GoName), title(operation.Kind),
 			connector, operation.InputType, connector, operation.OutputType, connector, operation.GoName)
+		if checks := operation.MockChecks; checks != nil {
+			optionType := fmt.Sprintf("%s.%s, %s.%s", connector, operation.InputType, connector, operation.OutputType)
+			if checks.RequestFunction != "" {
+				generation.mustWrite(", connectormock.WithRequestCheck[%s](%s.%s)", optionType, connector, checks.RequestFunction)
+			}
+			if checks.Answer != nil {
+				generation.mustWrite(", connectormock.WithAnswerCheck[%s](%s.%sBranch%s, %s.%s)", optionType,
+					connector, operation.GoName, branchGoName(operation, checks.Answer.Branch), connector, checks.Answer.Function)
+			}
+		}
+		generation.mustWrite("),\n")
 	}
 	generation.mustWrite("\t}\n")
 	for _, operation := range manifest.Spec.Operations {

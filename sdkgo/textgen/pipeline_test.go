@@ -573,6 +573,41 @@ func TestTextGenerationQueryValidatesStructuredOutput(t *testing.T) {
 	require.Equal(t, 10, schema["properties"].(map[string]any)["score"].(map[string]any)["maximum"], "the application schema is not modified")
 }
 
+func TestPortableRequestCheckMatchesRealAttempt(t *testing.T) {
+	test := newPipelineTest(t, nil)
+	test.provider.EnqueueReplies(doneReply("ordinary answer"))
+	test.requireBranch(t, userRequest(), textgen.GeneratedBranchID, "")
+
+	request := userRequest()
+	request.StructuredOutput = &textgen.StructuredOutput{Name: "answer", Schema: map[string]any{
+		"type": "object", "properties": map[string]any{}, "required": []string{},
+	}}
+	checked := textgen.ValidatePortableRequest(request)
+	require.NotNil(t, checked)
+	real := test.requireBranch(t, request, textgen.DefectBranchID, sdkgo.FailureValidation)
+	require.Equal(t, checked.Kind, real.Failure.Kind)
+	require.Equal(t, checked.Message, real.Failure.Message)
+	require.Equal(t, "test-lab", real.Failure.Provider)
+	require.Equal(t, textgen.TextGenerationOperationID, real.Failure.Operation)
+	require.Len(t, test.provider.Requests(), 1, "the invalid request is rejected before another HTTP call")
+}
+
+func TestStructuredAnswerCheckMatchesRealResponsePath(t *testing.T) {
+	request := userRequest()
+	request.StructuredOutput = &textgen.StructuredOutput{Name: "answer", Schema: map[string]any{
+		"type": "object", "additionalProperties": false, "required": []string{"status"},
+		"properties": map[string]any{"status": map[string]any{"type": "string", "const": "shipped"}},
+	}}
+	require.NoError(t, textgen.ValidateStructuredAnswer(request, "```json\n{\"status\":\"shipped\"}\n```"))
+	err := textgen.ValidateStructuredAnswer(request, `{"status":"pending"}`)
+	require.ErrorContains(t, err, "at /status: the value does not equal const")
+
+	test := newPipelineTest(t, nil)
+	test.provider.EnqueueReplies(doneReply(`{"status":"pending"}`))
+	result := test.requireBranch(t, request, textgen.InvalidResponseBranchID, sdkgo.FailureProtocol)
+	require.Equal(t, "structured output does not match its schema "+err.Error(), result.Failure.Message)
+}
+
 func TestTextGenerationQueryAddsTheJSONObjectInstruction(t *testing.T) {
 	test := newPipelineTest(t, func(config *textgen.TextGenerationQueryConfig) {
 		config.WireFormat.RulesForModel = func(string) textgen.ModelRequestRules {
