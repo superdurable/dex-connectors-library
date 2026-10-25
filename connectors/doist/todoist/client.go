@@ -225,7 +225,7 @@ func (operation UpdateTaskOperation) Invoke(call sdkgo.Call, input UpdateTaskInp
 	}
 	result := operation.client.exchangeTask(call, "updateTaskContent", http.MethodPost, input.TaskID, payload)
 	switch {
-	case result.failure == nil && !taskMatchesUpdate(result.task, input):
+	case result.status == http.StatusOK && (result.failure != nil || !taskMatchesUpdate(result.task, input)):
 		readBack := operation.client.exchangeTask(call, "updateTaskContent", http.MethodGet, input.TaskID, nil)
 		if readBack.failure == nil && taskMatchesUpdate(readBack.task, input) {
 			return sdkgo.NewMutationBranch(UpdateTaskBranchUpdated, readBack.task, nil, sdkgo.Receipt{})
@@ -233,10 +233,13 @@ func (operation UpdateTaskOperation) Invoke(call sdkgo.Call, input UpdateTaskInp
 		if readBack.failure != nil {
 			return sdkgo.NewMutationRetry[Task](*readBack.failure, readBack.retryAfter)
 		}
+		if result.failure != nil {
+			return sdkgo.NewMutationRetry[Task](*result.failure, result.retryAfter)
+		}
 		return sdkgo.NewMutationRetry[Task](*failure("updateTaskContent", sdkgo.FailureProtocol, "Todoist did not confirm the specified fields"), 0)
 	case result.failure == nil:
 		return sdkgo.NewMutationBranch(UpdateTaskBranchUpdated, result.task, nil, sdkgo.Receipt{})
-	case result.status == 0 || result.isAmbiguous || result.failure.Kind == sdkgo.FailureProtocol || result.failure.Kind == sdkgo.FailureResponseTooLarge || result.status == http.StatusTooManyRequests:
+	case result.status == 0 || result.isAmbiguous || result.status == http.StatusTooManyRequests:
 		return sdkgo.NewMutationRetry[Task](*result.failure, result.retryAfter)
 	case result.status == http.StatusNotFound:
 		return sdkgo.NewMutationBranch(UpdateTaskBranchNotFound, Task{}, result.failure, sdkgo.Receipt{})

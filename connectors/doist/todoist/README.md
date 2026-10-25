@@ -76,8 +76,7 @@ The existing get/update pair has the following contract:
 | HTTP 404 | `notFound` | `notFound` |
 | HTTP 429 | Retry, honoring `Retry-After` | Retry, honoring `Retry-After` |
 | HTTP 408, 5xx, transport failure | Retry | Retry |
-| Malformed or oversized HTTP 200 | `invalidResponse` | Retry |
-| Mismatched HTTP 200 | `invalidResponse` | Read by task ID; matching fields select `updated`, otherwise Retry |
+| Malformed, oversized, or mismatched HTTP 200 | `invalidResponse` | Read by task ID; matching fields select `updated`, otherwise Retry |
 | Interrupted HTTP 200 body | Retry | Retry |
 | Other status, including redirects | `providerRejected` | `providerRejected` |
 | Invalid input | `defect`, before dispatch | `defect`, before dispatch |

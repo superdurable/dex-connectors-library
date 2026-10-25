@@ -235,6 +235,31 @@ func TestUnconfirmedContentUsesMatchingReadBack(t *testing.T) {
 	require.Equal(t, int32(1), reads.Load())
 }
 
+func TestInvalidUpdateAnswerUsesMatchingReadBack(t *testing.T) {
+	for name, postBody := range map[string]string{
+		"wrong task ID": strings.Replace(taskJSON("Requested title"), "6XGgmFVcrG5RRjVr", "other-task", 1),
+		"malformed":     "{",
+	} {
+		t.Run(name, func(t *testing.T) {
+			var reads atomic.Int32
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+				body := postBody
+				if request.Method == http.MethodGet {
+					reads.Add(1)
+					body = taskJSON("Requested title")
+				}
+				_, err := io.WriteString(w, body)
+				require.NoError(t, err)
+			}))
+			defer server.Close()
+			result, err := updateTask(newTestClient(t, server.URL), "Requested title")
+			require.NoError(t, err)
+			require.Equal(t, UpdateTaskBranchUpdated, result.Branch)
+			require.Equal(t, int32(1), reads.Load())
+		})
+	}
+}
+
 func TestCredentialReplacementAppliesOnNextCall(t *testing.T) {
 	credentials := sdkgo.StaticCredentialProvider[Credentials]{testConnection: {APIToken: sdkgo.NewSecretString(testToken)}}
 	expectedToken := testToken
