@@ -45,7 +45,7 @@ change.
 
 ## Release baseline
 
-- HubSpot Connector `v0.22.0`
+- HubSpot Connector `v0.23.0`
 - dexcli `cli-v1.1.0` or a later stable release
 
 ## 1. Prepare a clean local test project
@@ -60,12 +60,12 @@ cd hubspot-lead-qualification-e2e
 mkdir -p flow build
 
 curl -fsSL \
-  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/hubspot/v0.22.0/connectors/hubspot/examples/lead-qualification/flow/workflow.go \
+  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/hubspot/v0.23.0/connectors/hubspot/examples/lead-qualification/flow/workflow.go \
   -o flow/workflow.go
 
 go mod init example.com/hubspot-lead-qualification-e2e
 go mod edit -go=1.24.0
-go get github.com/superdurable/dex-connectors-library/connectors/hubspot@v0.22.0
+go get github.com/superdurable/dex-connectors-library/connectors/hubspot@v0.23.0
 go mod tidy
 ```
 
@@ -138,7 +138,7 @@ connection.
 export DEX_FLOW_SERVICE_ADDRESS="127.0.0.1:8801"
 
 GOWORK=off go run \
-  github.com/superdurable/dex-connectors-library/connectors/hubspot/examples/lead-qualification@v0.22.0
+  github.com/superdurable/dex-connectors-library/connectors/hubspot/examples/lead-qualification@v0.23.0
 ```
 
 The Worker listens on `127.0.0.1:8841` by default. Set
@@ -178,8 +178,9 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 \
   GOWORK=off go test -tags=integration ./examples/lead-qualification/flow/... -count=1 -v
 ```
 
-The integration tests use a real Dex Server and a stateful local fake HubSpot
-API. They verify an existing lead whose open deal advances while a closed deal
+The integration tests use a real Dex Server with both an unscripted mock
+connection and a stateful local fake HubSpot API. They verify an existing
+lead whose open deal advances while a closed deal
 and another pipeline's deal stay untouched, a duplicate start with the same
 request ID, a new lead without an open deal, a rate-limited upsert that Dex
 retries after `Retry-After`, a rejected upsert that completes with a
@@ -190,8 +191,8 @@ upsert and the update after nine seconds, Dex's asynchronous fallback
 dispatches each one again, and the test proves one contact and the configured
 stage remain. That test takes about 35 seconds.
 
-Before `v0.22.0` is published, build a local release artifact with
+Before `v0.23.0` is published, build a local release artifact with
 `go run ./cmd/connectorctl release-artifact` from the repository root and pass
 its directory to `dexcli dev --connector-release-override hubspot=DIRECTORY`.
-The test project must still resolve `connectors/hubspot@v0.22.0` without a
+The test project must still resolve `connectors/hubspot@v0.23.0` without a
 `replace`, as the compatibility gate does with a local module proxy.
