@@ -24,7 +24,7 @@ Each replacement pair is persisted atomically in project storage; an
 Web also records the access-token expiry that refresh requires; do not
 hand-author rotating-token metadata. Enter the
 `xapp-` app-level token in the host-owned secret field; it is never sent to the
-Studio iframe. Since v1.0.0 `app_token` is optional: a connection without it
+Studio iframe. The `app_token` setting is optional: a connection without it
 receives its events from a host that relays them instead of through Socket
 Mode. Use Slack's standard OAuth flow with the host-owned client
 secret. Slack's localhost PKCE installation mode cannot request bot scopes.
