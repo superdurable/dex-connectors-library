@@ -55,8 +55,8 @@ effect without a restart. Configuration is captured at startup:
 | --- | --- | --- |
 | `model` | `gpt-6-sol` | Model that `createResponse` sends when its request names none. A request's `Model` overrides it. |
 | `endpoint` | `https://api.openai.com/v1` | Base URL each operation appends its path to, such as `/responses`. HTTPS is required except for loopback test servers. |
-| `maxResponseBytes` | `8388608` (8 MiB) | Largest response, counting every byte of a stream. Each streamed text delta carries about 260 bytes of event framing, so 8 MiB holds roughly 30,000 streamed output tokens. A larger `createResponse` response triggers read-back if its ID was observed, or `uncertain` otherwise; a larger `retrieveResponse` response selects `invalidResponse`. |
-| `maxSseEventBytes` | `1048576` (1 MiB) | Largest server-sent event. The final Responses event repeats the whole Response, so raise it for very long outputs. |
+| `maxResponseBytes` | `8388608` (8 MiB) | Largest response, counting every byte of a stream. Each streamed text delta carries about 260 bytes of event framing, so 8 MiB holds roughly 30,000 streamed output tokens. When a `createResponse` stream grows larger, the connector reads it to the end and reads the stored Response back if its ID was observed, or selects `uncertain` otherwise. A larger non-streamed `createResponse` response selects `uncertain`, and a larger `retrieveResponse` response selects `invalidResponse`. |
+| `maxSseEventBytes` | `1048576` (1 MiB) | Largest server-sent event. The final Responses event repeats the whole Response, so raise it for very long outputs. An oversized event is handled like an oversized stream. |
 
 OpenAI's [models page](https://developers.openai.com/api/docs/models)
 recommends [GPT-6 Sol](https://developers.openai.com/api/docs/models/gpt-6-sol)
@@ -107,9 +107,14 @@ func (flow *Flow) MapToCreateRequest(request SummaryRequest) openai.CreateReques
 
 The request maps to the documented `POST /responses` body: `model`,
 `input`, `instructions`, and, with `StructuredOutput`, `text.format`
-`json_schema` with its `strict` flag. The Call ID becomes the
-`Idempotency-Key` header, so a retried attempt of the same Step execution
-cannot store a second Response.
+`json_schema` with its `strict` flag. The Call ID, which every Receipt holds,
+is sent as the `X-Client-Request-Id` header that the
+[API reference](https://developers.openai.com/api/docs/api-reference/introduction)
+describes under *Debugging requests*: OpenAI records it, so a support request
+can name it when no `x-request-id` was received. The Responses API documents
+no deduplication of create requests, so the connector itself keeps a retried
+attempt from creating a second Response; see
+[Stored Responses](#stored-responses).
 
 ## Choose a model per Step
 
@@ -164,19 +169,34 @@ branch, while an ambiguous dispatched mutation uses `uncertain`.
 
 When a factory supplies progress or text Streams, `CreateResponse` sends
 `stream=true`. Its bounded SSE reader accepts lifecycle, text-delta, completed,
-failed, incomplete, and error events while ignoring unknown event types. The
-completed Response is authoritative for value and usage. Early EOF or a
-missing terminal event is reconciled by reading the stored response when its
-ID was observed. The connector checkpoints that ID in Dex before continuing,
-polls a response still in progress within the attempt, and resumes by GET on
-retry without sending another creation request.
+failed, incomplete, and error events while ignoring unknown and malformed
+events. The completed Response is authoritative for value and usage. OpenAI
+cancels a synchronous Response when its connection closes, so the reader never
+closes a healthy stream early: after a failed progress or text write it stops
+writing Streams and reads on, and after an `error` event or an oversized
+stream with a known Response ID it reads to the end. Early EOF, a missing
+terminal event, or a terminal event naming another Response is reconciled by
+reading the stored Response back.
+
+Retries are fenced by a checkpoint that the attempt records as Dex heartbeat
+details: a dispatch marker before the request, then the Response ID as soon as
+it is observed, or a permission to send again when the attempt proved that no
+Response exists. While the Response is queued or in progress, the attempt
+polls `GET /responses/{id}` until shortly before its Execute timeout, then
+returns Retry, and the next attempt reads the checkpointed Response back
+instead of creating another. A later attempt sends a new request only when the
+attempt immediately before it recorded that permission: after an unsent
+request, HTTP 429 or 503, or a `cancelled` Response. Dex may lose heartbeat
+details, for example when the Dex Server stops during an attempt. A lost or
+stale checkpoint never permits a new request; the next attempt selects
+`uncertain` instead.
 
 | Operation | Branch | Selected when |
 | --- | --- | --- |
 | `createResponse` | `completed` (required) | OpenAI completed the Response. |
-| `createResponse` | `failed` | OpenAI returned a terminal `failed` or `incomplete` Response, or a streaming `error` event without a known response ID. |
+| `createResponse` | `failed` | OpenAI returned a terminal `failed` or `incomplete` Response, streamed or not, or a streaming `error` event before any Response ID. |
 | `createResponse` | `providerRejected` | A conclusive 4xx refusal, such as 400, 401, 403, or 404. |
-| `createResponse` | `uncertain` | A dispatched request returned no response ID and its outcome cannot be confirmed. The Responses API does not document deduplication for `Idempotency-Key`. |
+| `createResponse` | `uncertain` | A request may have created a Response that cannot be confirmed: the request was sent but no Response ID was observed, an earlier attempt left no usable checkpoint, the Response has no recognized status, or reading it back returned 401, 403, 404, another 4xx, or an unreadable body. |
 | `createResponse` | `defect` | The input, the model, credentials, or connection configuration is invalid; nothing is sent. |
 | `retrieveResponse` | `found` (required) | The Response exists and was returned. |
 | `retrieveResponse` | `notFound` | OpenAI returned 404. |
@@ -185,14 +205,15 @@ retry without sending another creation request.
 | `retrieveResponse` | `defect` | The Response ID, credentials, or connection configuration is invalid. |
 
 HTTP 429 returns Retry for both operations, honoring a `Retry-After` in
-seconds. An unsent create request and HTTP 503 also retry. Other ambiguous
-dispatched create failures without a response ID select `uncertain`; an
-interrupted stream with a known ID uses `GET /responses/{id}` to confirm a
-completed or failed response. The connector sends the Call ID as
-`Idempotency-Key`, but [the Responses create reference](https://developers.openai.com/api/reference/resources/responses/methods/create)
-does not specify deduplication or key retention, so ambiguous creates are not
-retried solely because that header was sent. Receipts hold the `x-request-id` and copy OpenAI's
-`x-ratelimit-{limit,remaining,reset}-{requests,tokens}` headers.
+seconds. An unsent create request, HTTP 503, and a `cancelled` Response also
+retry `createResponse`, which then sends a new request. Other create
+failures after the request may have been sent, such as another 5xx, select
+`uncertain` when no Response ID is known. A read-back waits out HTTP 429,
+5xx, and transport failures within the attempt. The create request carries no
+`Idempotency-Key`: [the Responses create reference](https://developers.openai.com/api/reference/resources/responses/methods/create)
+documents no deduplication for it, and Go's `net/http` would resend a POST
+that carries it on a reused connection. Receipts hold the `x-request-id` and
+copy OpenAI's `x-ratelimit-{limit,remaining,reset}-{requests,tokens}` headers.
 
 ## Step defaults
 
@@ -200,6 +221,13 @@ retried solely because that header was sent. Receipts hold the `x-request-id` an
 | --- | --- | --- | --- |
 | `createResponse` | `sync` | 150 seconds | 2-second initial interval, backoff 2, 30-second maximum interval, 3 attempts, 5 minutes total |
 | `retrieveResponse` | `async` | 30 seconds | 1-second initial interval, backoff 2, 30-second maximum interval, 5 attempts, 2 minutes total |
+
+The `createResponse` Step must keep `sync` durability, and its Flow must record
+no heartbeats of its own in that Step. An async attempt that runs locally keeps
+no heartbeat details, so every retry after it selects `uncertain`. The Step
+records its checkpoint every 5 seconds, so the Dex default heartbeat timeout of
+one minute, or any override of at least 10 seconds, holds during a silent
+call.
 
 ## Migrate from generateText
 

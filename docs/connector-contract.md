@@ -209,10 +209,12 @@ write the resource.
 Manifest execution defaults generate `StepDefaults`: Execute timeout,
 optional heartbeat timeout, retry policy, and durability. HTTP defaults are
 30 seconds and a five-attempt/two-minute window. OpenAI response creation
-defaults are 150 seconds and a five-attempt/five-minute window. Execute
-durability is asynchronous unless the operation is very likely to run longer
-than seven seconds. Response creation uses synchronous durability. A response
-retrieval uses the asynchronous HTTP defaults. GitHub repository change
+defaults are 150 seconds and a three-attempt/five-minute window; within an
+attempt it polls a known response until five seconds before the Execute
+timeout. Execute durability is asynchronous unless the operation is very likely
+to run longer than seven seconds. Response creation uses synchronous
+durability, which its heartbeat checkpoint requires. A response retrieval uses
+the asynchronous HTTP defaults. GitHub repository change
 queries use a five-attempt/65-minute window, because Dex fails a Step whose
 provider delay does not fit in the remaining window and GitHub's primary rate
 limit resets hourly. Gemini content generation is a synchronous Query with a
