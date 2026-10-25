@@ -288,7 +288,7 @@ var UpdateTaskDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateTaskContent"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: UpdateTaskBranchUpdated, Description: "Todoist confirmed every specified field and returned the task."},
-		{ID: UpdateTaskBranchNotFound, Description: "Todoist reports that the task does not exist.", Optional: true},
+		{ID: UpdateTaskBranchNotFound, Description: "Todoist reports that the task does not exist, or the read-back after an unusable answer found no active task.", Optional: true},
 		{ID: UpdateTaskBranchProviderRejected, Description: "Todoist conclusively rejected the update.", Optional: true},
 		{ID: UpdateTaskBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
 	},
@@ -431,7 +431,7 @@ var CreateTaskDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateTaskBranchCreated, Description: "Todoist confirmed creation and returned the task ID."},
 		{ID: CreateTaskBranchProviderRejected, Description: "Todoist conclusively rejected creation.", Optional: true},
-		{ID: CreateTaskBranchUncertain, Description: "A dispatched creation may have applied, but Todoist returned no confirmable task and the request ID has no documented replay guarantee.", Optional: true},
+		{ID: CreateTaskBranchUncertain, Description: "A creation that may have been sent may have applied, but Todoist returned no usable task and the request ID has no documented replay guarantee.", Optional: true},
 		{ID: CreateTaskBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

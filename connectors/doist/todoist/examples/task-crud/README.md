@@ -6,7 +6,8 @@
   completes without any write. Supply the returned cursor in another list run
   to continue with unchanged filters.
 - `lifecycle` creates a new disposable task using `NewCreateTaskStep`, reads its
-  returned ID with `NewGetTaskStep`, updates selected title/description fields using
+  returned ID with `NewGetTaskStep`, checks that read against the task returned
+  by creation, updates selected title/description fields using
   `NewUpdateTaskStep`, reads the task back, locates the changed task through
   `NewListTasksStep`, deletes only that task using `NewDeleteTaskStep`, and
   confirms that `NewGetTaskStep` returns `notFound`.
@@ -118,7 +119,8 @@ rate-limited or unavailable create that retries with the same provider request i
 multi-page verification, deletion that applies before a 503 and then returns
 404 on retry, a lost create response that remains uncertain, invalid input,
 description-only updates, clearing a description, updating both fields,
-read/update retry, applied/unapplied update 503 responses, conclusive
+read/update retry, applied/unapplied update 503 responses, an unusable update
+answer whose read-back finds no active task (`notFound`), conclusive
 rejection/missing reads, and malformed reads.
 
 Current local CLI versions may save credentials to a local connection file

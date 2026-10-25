@@ -73,7 +73,7 @@ spec:
       authorization: required
       branches:
         - {id: updated, goName: Updated, description: Todoist confirmed every specified field and returned the task.}
-        - {id: notFound, goName: NotFound, description: Todoist reports that the task does not exist., optional: true}
+        - {id: notFound, goName: NotFound, description: "Todoist reports that the task does not exist, or the read-back after an unusable answer found no active task.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: Todoist conclusively rejected the update., optional: true}
         - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
       execution: *httpExecution
@@ -102,7 +102,7 @@ spec:
       branches:
         - {id: created, goName: Created, description: Todoist confirmed creation and returned the task ID.}
         - {id: providerRejected, goName: ProviderRejected, description: Todoist conclusively rejected creation., optional: true}
-        - {id: uncertain, goName: Uncertain, description: "A dispatched creation may have applied, but Todoist returned no confirmable task and the request ID has no documented replay guarantee.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "A creation that may have been sent may have applied, but Todoist returned no usable task and the request ID has no documented replay guarantee.", optional: true}
         - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
       execution: *httpExecution
     - name: deleteTask
