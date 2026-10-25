@@ -92,6 +92,14 @@ describe("loadLLMModels", () => {
     expect(listing.notices?.[0]?.message).toContain("Enter the model ID");
   });
 
+  it("offers manual gateway model entry without sending the key to a fixed host", async () => {
+    const {client, calls} = fakeStudioClient();
+    const listing = await loadLLMModels(client, savedConnection({provider: "openai-compatible", baseUrl: "https://example.com/v1"}));
+    expect(calls).toEqual([]);
+    expect(listing.models).toEqual([]);
+    expect(listing.notices?.[0]?.message).toContain("cannot call a model-list URL taken from connection configuration");
+  });
+
   it("runs no command before the connection saves a provider", async () => {
     for (const configuration of [{}, {provider: ""}, {provider: "llama"}, {provider: 1}]) {
       const {client, calls} = fakeStudioClient();

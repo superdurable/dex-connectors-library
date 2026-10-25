@@ -75,7 +75,7 @@ type manifestStudioCommand struct {
 
 // providerOrder is the provider enum in manifest order.
 var providerOrder = []Provider{
-	ProviderOpenai, ProviderAnthropic, ProviderGemini, ProviderQwen, ProviderDeepseek, ProviderMeta, ProviderMistral, ProviderKimi, ProviderXai,
+	ProviderOpenai, ProviderOpenaiCompatible, ProviderAnthropic, ProviderGemini, ProviderQwen, ProviderDeepseek, ProviderMeta, ProviderMistral, ProviderKimi, ProviderXai,
 }
 
 // listCommandProviders maps every Studio list command to the provider whose key it sends.
@@ -103,10 +103,18 @@ func TestManifestEnumsEqualTheServedProvidersAndRegions(t *testing.T) {
 		api, isServed := providerAPIs[provider]
 		require.True(t, isServed, provider)
 		require.Contains(t, api.regionBaseURLs, RegionGlobal, "%s serves the default region", provider)
-		require.NotEmpty(t, api.defaultModel, provider)
+		if provider == ProviderOpenaiCompatible {
+			require.Empty(t, api.defaultModel, "custom endpoints have no default model")
+		} else {
+			require.NotEmpty(t, api.defaultModel, provider)
+		}
 		require.Less(t, api.requestTimeout, GenerateTextDefinition.StepDefaults.ExecuteMethodTimeout, provider)
 		for region, baseURL := range api.regionBaseURLs {
 			servedRegions[region] = true
+			if provider == ProviderOpenaiCompatible {
+				require.Empty(t, baseURL, "the endpoint comes from baseUrl")
+				continue
+			}
 			parsed, err := url.Parse(baseURL)
 			require.NoError(t, err)
 			require.Equal(t, "https", parsed.Scheme, "%s %s", provider, region)
@@ -129,9 +137,8 @@ func TestConnectionFieldsGuideTheUser(t *testing.T) {
 	for _, field := range manifest.Spec.Configuration.Fields {
 		names = append(names, field.Name)
 		require.NotEmpty(t, field.Description, field.Name)
-		require.NotEqual(t, "url", field.Type, "provider hosts are fixed, so no URL field is shown")
 	}
-	require.Equal(t, []string{"provider", "model", "region", "anthropicWorkspaceId", "maxResponseBytes"}, names)
+	require.Equal(t, []string{"provider", "baseUrl", "model", "region", "anthropicWorkspaceId", "maxResponseBytes"}, names)
 	fields := readManifestFields(t)
 
 	provider := fields["provider"]
@@ -150,8 +157,17 @@ func TestConnectionFieldsGuideTheUser(t *testing.T) {
 	require.Equal(t, UIModelPickerPortModel, model.StudioUnit.Port)
 	require.Contains(t, model.Description, "never prefixed with the provider")
 	for _, provider := range providerOrder {
+		if provider == ProviderOpenaiCompatible {
+			continue
+		}
 		require.Contains(t, model.Description, fmt.Sprintf("%s for %s", providerAPIs[provider].defaultModel, provider))
 	}
+	require.Contains(t, model.Description, "Required for openai-compatible")
+	baseURL := fields["baseUrl"]
+	require.Equal(t, "string", baseURL.Type)
+	require.False(t, baseURL.Required, "existing connections stay valid")
+	require.Contains(t, baseURL.Description, "https://example.com/v1")
+	require.Contains(t, baseURL.Description, "A blank value is invalid for openai-compatible")
 
 	region := fields["region"]
 	require.Equal(t, "global", region.Default)

@@ -22,7 +22,7 @@ import { loadQwenModels, qwenHongKongModelLists, qwenSingaporeModelLists } from 
 import { loadXAIModels } from "./xai-model-list.js";
 
 /** LLMProvider is one value of the connection's provider field. */
-export type LLMProvider = "openai" | "anthropic" | "gemini" | "qwen" | "deepseek" | "meta" | "mistral" | "kimi" | "xai";
+export type LLMProvider = "openai" | "openai-compatible" | "anthropic" | "gemini" | "qwen" | "deepseek" | "meta" | "mistral" | "kimi" | "xai";
 
 /** LLMRegion is one value of the connection's region field; a blank region is global. */
 export type LLMRegion = "global" | "us" | "eu" | "china" | "hong-kong";
@@ -41,7 +41,7 @@ export interface LLMModelSource {
   load(client: ConnectorStudioClient, region: LLMRegion): Promise<ModelListing>;
 }
 
-const llmProviders: readonly LLMProvider[] = ["openai", "anthropic", "gemini", "qwen", "deepseek", "meta", "mistral", "kimi", "xai"];
+const llmProviders: readonly LLMProvider[] = ["openai", "openai-compatible", "anthropic", "gemini", "qwen", "deepseek", "meta", "mistral", "kimi", "xai"];
 const llmRegions: readonly LLMRegion[] = ["global", "us", "eu", "china", "hong-kong"];
 
 const unsavedProviderMessage =
@@ -53,6 +53,10 @@ const unreportedConfigurationMessage =
 const qwenChinaMessage =
   "Model Studio China (Beijing) has no model list here. Enter the model ID from the Model Studio console, such as qwen3.7-plus.";
 
+/** compatibleModelMessage explains why a custom endpoint needs manual model entry. */
+export const compatibleModelMessage =
+  "Enter the model ID from your gateway's API documentation; this provider has no default model. Studio setup commands cannot call a model-list URL taken from connection configuration, so no key is sent for model discovery.";
+
 /**
  * llmModelSources declares each provider's list. Each loader runs only its own
  * provider's manifest commands for the connection's region, so Dex Web sends
@@ -62,6 +66,11 @@ export const llmModelSources: Record<LLMProvider, LLMModelSource> = {
   openai: {
     label: "OpenAI",
     load: (client) => loadOpenAIModelListing(client, {capability: llmModelsListCapability, commandId: "listOpenAIModels"}),
+  },
+  // The host permits only manifest-declared command URLs, never the configured baseUrl.
+  "openai-compatible": {
+    label: "OpenAI-compatible gateway",
+    load: async () => ({models: [], notices: [{tone: "info", message: compatibleModelMessage}]}),
   },
   anthropic: {
     label: "Claude",

@@ -57,6 +57,7 @@ function LLMConnectionForm({client, ready, onSaved}: ConnectionSetupProps & {onS
   const [provider, setProvider] = useState<LLMProvider | "">(savedSetup?.provider ?? "");
   const [region, setRegion] = useState<LLMRegion>(readSavedRegion(saved.region));
   const [workspaceId, setWorkspaceId] = useState(typeof saved.anthropicWorkspaceId === "string" ? saved.anthropicWorkspaceId : "");
+  const [baseURL, setBaseURL] = useState(typeof saved.baseUrl === "string" ? saved.baseUrl : "");
   const [apiKey, setAPIKey] = useState("");
   const [listedKey, setListedKey] = useState("");
   const [model, setModel] = useState(typeof saved.model === "string" ? saved.model.trim() : "");
@@ -77,6 +78,11 @@ function LLMConnectionForm({client, ready, onSaved}: ConnectionSetupProps & {onS
   }, [typedKey]);
 
   useEffect(() => {
+    if (provider === "openai-compatible") {
+      // The host cannot run a setup command against the configured URL, so never send its key for model discovery.
+      loadProviderModels(client, provider, region).then((listing) => setListState({status: "loaded", listing}));
+      return undefined;
+    }
     if (provider === "" || (listedKey === "" && !canKeepSavedKey)) {
       setListState({status: "waitingForKey"});
       return undefined;
@@ -97,9 +103,11 @@ function LLMConnectionForm({client, ready, onSaved}: ConnectionSetupProps & {onS
   const hiddenModelCount = listedModels.filter((option) => option.isHiddenByDefault).length;
   const isModelListed = model === "" || listedModels.some((option) => option.id === model);
   const showsModelIDEntry = isEnteringModelID || (listState.status !== "loading" && !isModelListed);
-  const modelProblem = model === "" || isModelListed ? undefined : validateLLMModelID(model);
+  const modelProblem = model === "" && provider === "openai-compatible" ? "Enter a model ID from your gateway." :
+    model === "" || isModelListed ? undefined : validateLLMModelID(model);
+  const baseURLProblem = provider === "openai-compatible" ? validateCustomBaseURL(baseURL) : undefined;
   const keyProblem = provider !== "" && typedKey === "" && !canKeepSavedKey ? `Enter the ${setup?.label} API key.` : undefined;
-  const canSave = provider !== "" && keyProblem === undefined && modelProblem === undefined && saveState.status !== "saving";
+  const canSave = provider !== "" && keyProblem === undefined && modelProblem === undefined && baseURLProblem === undefined && saveState.status !== "saving";
 
   const chooseProvider = (next: string) => {
     const nextSetup = findLLMProviderSetup(next);
@@ -109,6 +117,7 @@ function LLMConnectionForm({client, ready, onSaved}: ConnectionSetupProps & {onS
     setProvider(nextSetup?.provider ?? "");
     setRegion(nextSetup?.provider === savedSetup?.provider ? readSavedRegion(saved.region) : "global");
     setModel(nextSetup?.provider === savedSetup?.provider && typeof saved.model === "string" ? saved.model.trim() : "");
+    setBaseURL(nextSetup?.provider === savedSetup?.provider && typeof saved.baseUrl === "string" ? saved.baseUrl : "");
     setEnteringModelID(false);
     setSaveState({status: "idle"});
   };
@@ -125,7 +134,7 @@ function LLMConnectionForm({client, ready, onSaved}: ConnectionSetupProps & {onS
     if (!setup) return;
     setSaveState({status: "saving"});
     saveConnectorConnection(client, {
-      configuration: connectionConfiguration(setup, region, model, workspaceId, saved),
+      configuration: connectionConfiguration(setup, region, model, workspaceId, baseURL, saved),
       credentials: typedKey === "" ? {} : {[apiKeyField]: typedKey},
       keepCredentialFields: typedKey === "" && canKeepSavedKey ? [apiKeyField] : [],
     }).then(
@@ -163,7 +172,14 @@ function LLMConnectionForm({client, ready, onSaved}: ConnectionSetupProps & {onS
       >
         <input onChange={(event) => setWorkspaceId(event.target.value)} placeholder="wrkspc_…" spellCheck={false} type="text" value={workspaceId}/>
       </StudioField>}
-      <StudioField hint={modelHint(setup)} label="Model">
+      {setup.provider === "openai-compatible" && <StudioField
+        hint="From your gateway's API documentation or administrator: enter the HTTPS API base URL ending in /v1, such as https://example.com/v1. Local loopback HTTP is allowed for testing. The connector appends /chat/completions. No key belongs in this URL; blank prevents saving."
+        label="Base URL"
+      >
+        <input onChange={(event) => setBaseURL(event.target.value)} placeholder="https://example.com/v1" spellCheck={false} type="url" value={baseURL}/>
+      </StudioField>}
+      {baseURLProblem !== undefined && <StudioNotice tone="attention">{baseURLProblem}</StudioNotice>}
+      {setup.provider !== "openai-compatible" && <StudioField hint={modelHint(setup)} label="Model">
         <select
           disabled={listState.status === "waitingForKey" || listState.status === "loading"}
           onChange={(event) => chooseModelOption(event.target.value)}
@@ -176,6 +192,7 @@ function LLMConnectionForm({client, ready, onSaved}: ConnectionSetupProps & {onS
           <option value={otherModelOption}>Another model ID…</option>
         </select>
       </StudioField>
+      }
       {listState.status === "waitingForKey" && <StudioNotice tone="info">Enter the API key to list {setup.label} models.</StudioNotice>}
       {listState.status === "loading" && <StudioNotice tone="info">Loading models from {setup.label}…</StudioNotice>}
       {listState.status === "failed" && <>
@@ -191,7 +208,11 @@ function LLMConnectionForm({client, ready, onSaved}: ConnectionSetupProps & {onS
         <input checked={isShowingAllModels} onChange={(event) => setShowingAllModels(event.target.checked)} type="checkbox"/>
         Show all models ({hiddenModelCount} hidden that may not generate text)
       </label>}
-      {showsModelIDEntry && <StudioField hint="Any model ID the provider serves, written exactly as the provider names it, without a provider prefix." label="Model ID">
+      {(setup.provider === "openai-compatible" || showsModelIDEntry) && <StudioField
+        hint={setup.provider === "openai-compatible"
+          ? "From your gateway's API documentation or administrator, enter an exact model ID such as qwen-example. It is not secret; blank prevents saving."
+          : "Any model ID the provider serves, written exactly as the provider names it, without a provider prefix."}
+        label="Model ID">
         <input onChange={(event) => setModel(event.target.value.trim())} placeholder="model-id" spellCheck={false} type="text" value={model}/>
       </StudioField>}
       {modelProblem !== undefined && <StudioNotice tone="attention">{modelProblem}</StudioNotice>}
@@ -206,20 +227,41 @@ function LLMConnectionForm({client, ready, onSaved}: ConnectionSetupProps & {onS
 
 /** connectionConfiguration is the complete configuration Save stores; a field it omits is cleared. */
 function connectionConfiguration(
-  setup: LLMProviderSetup, region: LLMRegion, model: string, workspaceId: string, saved: Record<string, unknown>,
+  setup: LLMProviderSetup, region: LLMRegion, model: string, workspaceId: string, baseURL: string, saved: Record<string, unknown>,
 ): Record<string, unknown> {
   const configuration: Record<string, unknown> = {provider: setup.provider};
   if (setup.regions.length > 1) configuration.region = region;
   if (model !== "") configuration.model = model;
   if (setup.provider === "anthropic" && workspaceId.trim() !== "") configuration.anthropicWorkspaceId = workspaceId.trim();
+  if (setup.provider === "openai-compatible") configuration.baseUrl = baseURL.trim();
   // maxResponseBytes has no field here; keep a value someone set for this provider.
   if (saved.provider === setup.provider && saved.maxResponseBytes !== undefined) configuration.maxResponseBytes = saved.maxResponseBytes;
   return configuration;
 }
 
 function apiKeyHint(setup: LLMProviderSetup, canKeepSavedKey: boolean): string {
+  if (setup.provider === "openai-compatible") {
+    const hint = "In your gateway administration page (for example https://example.com), open API keys and create an inference key in the format your gateway issues. It is secret, stored only in this connection, and sent as a bearer token only to baseUrl.";
+    return canKeepSavedKey ? `${hint} Leave blank to keep the saved key.` : hint;
+  }
   const hint = `Create ${setup.keyFormat} at ${setup.keyPage} (${setup.keyPagePath}). It is stored only as this connection's secret and sent only to ${setup.apiHost}.`;
   return canKeepSavedKey ? `${hint} Leave blank to keep the saved key.` : hint;
+}
+
+function validateCustomBaseURL(value: string): string | undefined {
+  if (value.trim() === "") return "Enter the gateway's API base URL ending in /v1.";
+  try {
+    const parsed = new URL(value.trim());
+    const isLoopback = parsed.hostname === "localhost" || /^127\.(?:\d{1,3}\.){2}\d{1,3}$/.test(parsed.hostname) || parsed.hostname === "[::1]";
+    if ((parsed.protocol !== "https:" && !(parsed.protocol === "http:" && isLoopback)) ||
+        parsed.username !== "" || parsed.password !== "" || parsed.search !== "" || parsed.hash !== "" ||
+        value.includes("?") || value.includes("#") || !parsed.pathname.replace(/\/+$/, "").endsWith("/v1")) {
+      return "Use an HTTPS API base URL ending in /v1, without credentials, a query, or a fragment; loopback HTTP is allowed for testing.";
+    }
+  } catch {
+    return "Enter an absolute HTTPS API base URL ending in /v1.";
+  }
+  return undefined;
 }
 
 function modelHint(setup: LLMProviderSetup): string {

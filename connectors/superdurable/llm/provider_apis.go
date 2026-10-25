@@ -26,9 +26,9 @@ const (
 
 // providerAPI is how the llm connector reaches one provider's text generation API.
 type providerAPI struct {
-	// defaultModel is the model a connection without a model uses.
+	// defaultModel is the model a connection without a model uses, when one exists.
 	defaultModel string
-	// regionBaseURLs maps each region the provider serves to its API base URL; every provider serves RegionGlobal.
+	// regionBaseURLs maps served regions to fixed URLs; custom global uses Config.BaseURL.
 	regionBaseURLs map[Region]string
 	// requestTimeout bounds one HTTP exchange when the caller's client sets no timeout.
 	requestTimeout time.Duration
@@ -44,6 +44,11 @@ var providerAPIs = map[Provider]providerAPI{
 		defaultModel: "gpt-6-sol", regionBaseURLs: map[Region]string{RegionGlobal: openAIAPIBaseURL},
 		requestTimeout: streamingRequestTimeout, defaultMaxResponseBytes: defaultMaxResponseBytes,
 		newWireFormat: newOpenAIResponsesWireFormat,
+	},
+	ProviderOpenaiCompatible: {
+		regionBaseURLs: map[Region]string{RegionGlobal: ""},
+		requestTimeout: streamingRequestTimeout, defaultMaxResponseBytes: defaultMaxResponseBytes,
+		newWireFormat: newOpenAICompatibleWireFormat,
 	},
 	ProviderAnthropic: {
 		defaultModel: "claude-sonnet-5", regionBaseURLs: map[Region]string{RegionGlobal: claudeAPIBaseURL},

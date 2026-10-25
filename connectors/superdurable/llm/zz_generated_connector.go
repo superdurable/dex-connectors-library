@@ -25,15 +25,16 @@ const (
 type Provider string
 
 const (
-	ProviderOpenai    Provider = "openai"
-	ProviderAnthropic Provider = "anthropic"
-	ProviderGemini    Provider = "gemini"
-	ProviderQwen      Provider = "qwen"
-	ProviderDeepseek  Provider = "deepseek"
-	ProviderMeta      Provider = "meta"
-	ProviderMistral   Provider = "mistral"
-	ProviderKimi      Provider = "kimi"
-	ProviderXai       Provider = "xai"
+	ProviderOpenai           Provider = "openai"
+	ProviderOpenaiCompatible Provider = "openai-compatible"
+	ProviderAnthropic        Provider = "anthropic"
+	ProviderGemini           Provider = "gemini"
+	ProviderQwen             Provider = "qwen"
+	ProviderDeepseek         Provider = "deepseek"
+	ProviderMeta             Provider = "meta"
+	ProviderMistral          Provider = "mistral"
+	ProviderKimi             Provider = "kimi"
+	ProviderXai              Provider = "xai"
 )
 
 type Region string
@@ -48,6 +49,7 @@ const (
 
 type Config struct {
 	Provider             Provider `json:"provider,omitempty" yaml:"provider,omitempty"`
+	BaseURL              string   `json:"baseUrl,omitempty" yaml:"baseUrl,omitempty"`
 	Model                string   `json:"model,omitempty" yaml:"model,omitempty"`
 	Region               Region   `json:"region,omitempty" yaml:"region,omitempty"`
 	AnthropicWorkspaceID string   `json:"anthropicWorkspaceId,omitempty" yaml:"anthropicWorkspaceId,omitempty"`
@@ -190,7 +192,7 @@ func (config Config) Validate() error {
 		return fmt.Errorf("configuration provider is required")
 	}
 	switch config.Provider {
-	case "", "openai", "anthropic", "gemini", "qwen", "deepseek", "meta", "mistral", "kimi", "xai":
+	case "", "openai", "openai-compatible", "anthropic", "gemini", "qwen", "deepseek", "meta", "mistral", "kimi", "xai":
 	default:
 		return fmt.Errorf("configuration provider is invalid")
 	}

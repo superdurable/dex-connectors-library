@@ -9,8 +9,8 @@ import { llmDefaultModelDescription, loadLLMModels, validateLLMModelID } from ".
 /**
  * llmModelPickerBundleConfig is the llm Studio bundle: the whole connection
  * setup where the host grants connection.write, and the modelPicker unit on
- * each Step and on the connection's model field, listing the live models of
- * the connection's provider.
+ * each Step and on the connection's model field. Fixed providers list live
+ * models; custom endpoints use manual model entry.
  */
 export const llmModelPickerBundleConfig: ModelPickerBundleConfig = {
   connectorId: "llm", providerName: "LLM", iconUrl: "./icon.svg",
