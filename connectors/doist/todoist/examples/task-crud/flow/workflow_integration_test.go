@@ -156,6 +156,7 @@ func TestTaskUpdateRecoveryWithRealDex(t *testing.T) {
 		{"invalid-response", "", dex.FlowFailed, 1, 0, 0, false},
 		{"post-update-read-missing", "notFound", dex.FlowCompleted, 2, 1, 0, false},
 		{"update-answer-inactive", "notFound", dex.FlowCompleted, 2, 1, 0, false},
+		{"update-read-back-forbidden", "providerRejected", dex.FlowCompleted, 2, 1, 0, false},
 		{"post-update-read-rejected", "providerRejected", dex.FlowCompleted, 2, 1, 0, false},
 	} {
 		t.Run(scenario.name, func(t *testing.T) {
@@ -178,8 +179,8 @@ func TestTaskUpdateRecoveryWithRealDex(t *testing.T) {
 					require.Equal(t, "updated", outcome.MutationBranch)
 					require.Empty(t, outcome.DeleteBranch)
 				}
-				if scenario.name == "update-answer-inactive" {
-					require.Equal(t, "notFound", outcome.MutationBranch)
+				if scenario.name == "update-answer-inactive" || scenario.name == "update-read-back-forbidden" {
+					require.Equal(t, scenario.status, outcome.MutationBranch)
 					require.Empty(t, outcome.DeleteBranch)
 				}
 				var display map[string]any
@@ -310,7 +311,7 @@ func (provider *crudProvider) serveHTTP(w http.ResponseWriter, request *http.Req
 			w.WriteHeader(404)
 			return
 		}
-		if provider.scenario == "post-update-read-rejected" && provider.reads == 2 {
+		if (provider.scenario == "post-update-read-rejected" || provider.scenario == "update-read-back-forbidden") && provider.reads == 2 {
 			w.WriteHeader(403)
 			return
 		}
@@ -355,7 +356,7 @@ func (provider *crudProvider) serveHTTP(w http.ResponseWriter, request *http.Req
 		if input.Description != nil {
 			provider.description = *input.Description
 		}
-		if provider.scenario == "update-answer-inactive" {
+		if provider.scenario == "update-answer-inactive" || provider.scenario == "update-read-back-forbidden" {
 			writeCRUDJSON(w, map[string]any{})
 			return
 		}

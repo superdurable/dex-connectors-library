@@ -693,6 +693,53 @@ func TestUpdateReadBackOfInactiveTaskSelectsNotFound(t *testing.T) {
 	}
 }
 
+func TestUpdateReadBackRejectionSelectsProviderRejected(t *testing.T) {
+	for _, scenario := range []struct {
+		status int
+		kind   sdkgo.FailureKind
+	}{
+		{http.StatusUnauthorized, sdkgo.FailureAuthentication},
+		{http.StatusForbidden, sdkgo.FailureAuthorization},
+		{http.StatusBadRequest, sdkgo.FailureValidation},
+		{http.StatusUnprocessableEntity, sdkgo.FailureValidation},
+		{http.StatusConflict, sdkgo.FailureConflict},
+		{http.StatusGone, sdkgo.FailureProviderRejection},
+		{http.StatusFound, sdkgo.FailureProviderRejection},
+		{http.StatusRequestTimeout, ""},
+		{http.StatusTooManyRequests, ""},
+		{http.StatusInternalServerError, ""},
+		{http.StatusServiceUnavailable, ""},
+	} {
+		t.Run(fmt.Sprint(scenario.status), func(t *testing.T) {
+			var posts, reads atomic.Int32
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+				if request.Method == http.MethodGet {
+					reads.Add(1)
+					w.Header().Set("Location", "/elsewhere")
+					w.WriteHeader(scenario.status)
+					return
+				}
+				posts.Add(1)
+				_, err := io.WriteString(w, "{")
+				require.NoError(t, err)
+			}))
+			defer server.Close()
+			result, err := updateTask(newTestClient(t, server.URL), "Requested title")
+			require.Equal(t, int32(1), posts.Load())
+			require.Equal(t, int32(1), reads.Load())
+			if scenario.kind == "" {
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, UpdateTaskBranchProviderRejected, result.Branch)
+			require.Equal(t, scenario.kind, result.Failure.Kind)
+			require.Equal(t, fmt.Sprintf("Todoist rejected the read-back with HTTP %d, so the update could not be confirmed; repeating it is safe because it sets absolute field values", scenario.status), result.Failure.Message)
+		})
+	}
+}
+
 type dropResponseTransport struct{}
 
 func (dropResponseTransport) RoundTrip(request *http.Request) (*http.Response, error) {

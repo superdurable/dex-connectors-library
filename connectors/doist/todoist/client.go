@@ -258,6 +258,7 @@ func (operation UpdateTaskOperation) Invoke(call sdkgo.Call, input UpdateTaskInp
 
 // confirmUpdate reads the task by ID after an unusable or mismatched HTTP 2xx. The replacement is absolute, so a retry
 // resends it safely. GET returns only active tasks: a 404 means the task was completed or deleted, which no retry changes.
+// Another definite rejection of the read, such as 401 or 403, is classified as the update's own would be.
 func (operation UpdateTaskOperation) confirmUpdate(call sdkgo.Call, input UpdateTaskInput, answer exchangeResult) sdkgo.MutationAttempt[Task] {
 	readBack := operation.client.exchangeTask(call, "updateTaskContent", http.MethodGet, input.TaskID, nil)
 	switch {
@@ -267,6 +268,8 @@ func (operation UpdateTaskOperation) confirmUpdate(call sdkgo.Call, input Update
 		return sdkgo.NewMutationBranch(UpdateTaskBranchDefect, Task{}, readBack.failure, sdkgo.Receipt{})
 	case readBack.status == http.StatusNotFound:
 		return sdkgo.NewMutationBranch(UpdateTaskBranchNotFound, Task{}, failure("updateTaskContent", sdkgo.FailureNotFound, "Todoist answered the update, but the task is no longer active; it may be completed or deleted, so the specified fields are unconfirmed"), sdkgo.Receipt{})
+	case readBack.status >= 300 && !readBack.isTransient && readBack.status != http.StatusTooManyRequests:
+		return sdkgo.NewMutationBranch(UpdateTaskBranchProviderRejected, Task{}, failure("updateTaskContent", readBack.failure.Kind, "Todoist rejected the read-back with HTTP "+strconv.Itoa(readBack.status)+", so the update could not be confirmed; repeating it is safe because it sets absolute field values"), sdkgo.Receipt{})
 	case readBack.failure != nil:
 		return sdkgo.NewMutationRetry[Task](*readBack.failure, readBack.retryAfter)
 	case answer.failure != nil:
