@@ -129,6 +129,10 @@ func TestHTTPOutcomesAndRetryAfter(t *testing.T) {
 				require.Equal(t, branch, update.Branch)
 				require.NotContains(t, update.Failure.Message, testToken)
 			}
+			if status == http.StatusConflict {
+				require.Equal(t, sdkgo.FailureConflict, read.Failure.Kind)
+				require.Equal(t, sdkgo.FailureConflict, update.Failure.Kind)
+			}
 		})
 	}
 }
@@ -504,7 +508,7 @@ func TestCreateTaskConflictAfterRetryRemainsUncertain(t *testing.T) {
 	result, err := createTask(client, input)
 	require.NoError(t, err)
 	require.Equal(t, CreateTaskBranchUncertain, result.Branch)
-	require.Equal(t, sdkgo.FailureProviderRejection, result.Failure.Kind)
+	require.Equal(t, sdkgo.FailureConflict, result.Failure.Kind)
 	require.Equal(t, 1, createdTasks)
 	require.Len(t, requestIDs, 2)
 	require.Equal(t, requestIDs[0], requestIDs[1])

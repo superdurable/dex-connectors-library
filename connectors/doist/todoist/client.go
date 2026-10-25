@@ -486,6 +486,8 @@ func classifyHTTPFailure(operation string, response *http.Response) exchangeResu
 		kind = sdkgo.FailureAuthorization
 	case http.StatusNotFound:
 		kind = sdkgo.FailureNotFound
+	case http.StatusConflict:
+		kind = sdkgo.FailureConflict
 	case http.StatusBadRequest, http.StatusUnprocessableEntity:
 		kind = sdkgo.FailureValidation
 	case http.StatusTooManyRequests:
