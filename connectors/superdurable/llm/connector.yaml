@@ -5,7 +5,7 @@ metadata:
   displayName: LLM
   description: "The text generation connector for applications: one generateText Step runs a model of the provider that the connection names, including an OpenAI-compatible custom endpoint, with that provider's API key and its own model IDs."
   company: Super Durable
-  version: v0.23.1
+  version: v0.24.0
 spec:
   provider: llm
   codegen:
@@ -224,6 +224,9 @@ spec:
         heartbeatTimeout: 60s
         durability: sync
         retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 4, totalDuration: 30m}
+      mockChecks:
+        requestFunction: ValidateGenerateTextRequest
+        answer: {branch: generated, function: ValidateGenerateTextAnswer}
       mocks:
         - name: shortSummary
           branch: generated
@@ -232,7 +235,7 @@ spec:
           output: {text: The connector shipped on time., requestedModel: mock-model, servedModel: mock-model-2026-01, responseId: resp-mock-1, finishReason: stop, usage: {inputTokens: 30, outputTokens: 7, totalTokens: 37}}
         - name: structuredAnswer
           branch: generated
-          description: The model returned JSON text that matches the request's structured output schema.
+          description: JSON text for the example schema with a string status and numeric confidence; script a fitting answer for other schemas.
           output: {text: '{"status":"shipped","confidence":0.9}', requestedModel: mock-model, servedModel: mock-model, responseId: resp-mock-2, finishReason: stop, usage: {inputTokens: 48, outputTokens: 12, totalTokens: 60}}
         - name: outputTokenLimit
           branch: truncated

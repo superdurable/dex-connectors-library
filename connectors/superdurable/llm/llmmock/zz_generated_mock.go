@@ -26,7 +26,7 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		generateText: connectormock.NewQuery[llm.GenerateTextRequest, llm.GenerateTextResponse](t, llm.GenerateTextDefinition),
+		generateText: connectormock.NewQuery[llm.GenerateTextRequest, llm.GenerateTextResponse](t, llm.GenerateTextDefinition, connectormock.WithRequestCheck[llm.GenerateTextRequest, llm.GenerateTextResponse](llm.ValidateGenerateTextRequest), connectormock.WithAnswerCheck[llm.GenerateTextRequest, llm.GenerateTextResponse](llm.GenerateTextBranchGenerated, llm.ValidateGenerateTextAnswer)),
 	}
 	mock.generateText.Default(GenerateTextDefault())
 	connection, err := llm.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "llm", Name: connectionName})
@@ -92,7 +92,7 @@ func GenerateTextShortSummary() connectormock.Case[llm.GenerateTextResponse] {
 	return connectormock.Branch(llm.GenerateTextBranchGenerated, value, nil)
 }
 
-// GenerateTextStructuredAnswer is the manifest mock structuredAnswer: The model returned JSON text that matches the request's structured output schema.
+// GenerateTextStructuredAnswer is the manifest mock structuredAnswer: JSON text for the example schema with a string status and numeric confidence; script a fitting answer for other schemas.
 func GenerateTextStructuredAnswer() connectormock.Case[llm.GenerateTextResponse] {
 	value := connectormock.MustDecodeOutput[llm.GenerateTextResponse](`{"text":"{\"status\":\"shipped\",\"confidence\":0.9}","requestedModel":"mock-model","servedModel":"mock-model","responseId":"resp-mock-2","finishReason":"stop","usage":{"inputTokens":48,"outputTokens":12,"totalTokens":60}}`)
 	return connectormock.Branch(llm.GenerateTextBranchGenerated, value, nil)
