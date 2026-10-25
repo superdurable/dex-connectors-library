@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -113,6 +114,7 @@ func TestCreateRefundSendsFormFieldsAndStableIdempotencyKey(t *testing.T) {
 	require.Equal(t, "2500", form.Get("amount"))
 	require.Equal(t, "requested_by_customer", form.Get("reason"))
 	require.Equal(t, "registration-123", form.Get("metadata[registration_id]"))
+	require.Equal(t, string(result.Receipt.CallID), form.Get("metadata[dex_call_id]"))
 }
 
 func TestCreateRefundProviderRejectionIncludesStripeCodeAndMessage(t *testing.T) {
@@ -136,6 +138,12 @@ func TestCreateRefundRejectsInvalidInputAndResponses(t *testing.T) {
 		func(input *stripe.CreateRefundInput) { input.PaymentIntentID = "ch_123" },
 		func(input *stripe.CreateRefundInput) { input.Amount = 0 },
 		func(input *stripe.CreateRefundInput) { input.Reason = "because" },
+		func(input *stripe.CreateRefundInput) { input.Metadata["dex_call_id"] = "caller-value" },
+		func(input *stripe.CreateRefundInput) {
+			for index := 0; index < 50; index++ {
+				input.Metadata["key_"+strconv.Itoa(index)] = "value"
+			}
+		},
 	} {
 		input := validRefundInput()
 		mutate(&input)

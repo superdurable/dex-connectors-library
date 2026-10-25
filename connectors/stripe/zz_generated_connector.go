@@ -278,6 +278,7 @@ func NewCheckoutSessionUpdatedTrigger(config CheckoutSessionUpdatedTriggerConfig
 
 const CreateCardCheckoutSessionBranchCreated sdkgo.BranchID = "created"
 const CreateCardCheckoutSessionBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateCardCheckoutSessionBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
 const CreateCardCheckoutSessionBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
 const CreateCardCheckoutSessionBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 
@@ -286,7 +287,8 @@ var CreateCardCheckoutSessionDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateCardCheckoutSessionBranchCreated, Description: "Stripe created the Checkout Session."},
 		{ID: CreateCardCheckoutSessionBranchProviderRejected, Description: "Stripe conclusively rejected the Checkout Session request.", Optional: true},
-		{ID: CreateCardCheckoutSessionBranchInvalidResponse, Description: "Stripe returned an invalid Checkout Session response.", Optional: true},
+		{ID: CreateCardCheckoutSessionBranchUncertain, Description: "A Stripe 500 or non-retryable server response left the Checkout Session outcome unconfirmed.", Optional: true},
+		{ID: CreateCardCheckoutSessionBranchInvalidResponse, Description: "Stripe returned an invalid or oversized Checkout Session response.", Optional: true},
 		{ID: CreateCardCheckoutSessionBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -309,6 +311,7 @@ type CreateCardCheckoutSessionStepConfig[IN any] struct {
 	MapToOperationInput               func(IN) CreateCardCheckoutSessionInput               `connector:"mapToOperationInput"`
 	Created                           sdkgo.Target[CreateCardCheckoutSessionResult]         `connector:"branch=created"`
 	ProviderRejected                  sdkgo.Target[CreateCardCheckoutSessionResult]         `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateCardCheckoutSessionResult]         `connector:"branch=uncertain,optional"`
 	InvalidResponse                   sdkgo.Target[CreateCardCheckoutSessionResult]         `connector:"branch=invalidResponse,optional"`
 	Defect                            sdkgo.Target[CreateCardCheckoutSessionResult]         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CheckoutSession]] `connector:"resultAttribute"`
@@ -327,12 +330,15 @@ func NewCreateCardCheckoutSessionStep[IN any](config CreateCardCheckoutSessionSt
 		Operation: config.Connection.operations.CreateCardCheckoutSession(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[CreateCardCheckoutSessionResult] {
-			branches := make([]sdkgo.BranchTarget[CreateCardCheckoutSessionResult], 0, 4)
+			branches := make([]sdkgo.BranchTarget[CreateCardCheckoutSessionResult], 0, 5)
 			if config.Created.HasStep() {
 				branches = append(branches, config.Created.BranchTarget(CreateCardCheckoutSessionBranchCreated))
 			}
 			if config.ProviderRejected.HasStep() {
 				branches = append(branches, config.ProviderRejected.BranchTarget(CreateCardCheckoutSessionBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateCardCheckoutSessionBranchUncertain))
 			}
 			if config.InvalidResponse.HasStep() {
 				branches = append(branches, config.InvalidResponse.BranchTarget(CreateCardCheckoutSessionBranchInvalidResponse))
@@ -349,6 +355,7 @@ func NewCreateCardCheckoutSessionStep[IN any](config CreateCardCheckoutSessionSt
 
 const CreateACHCheckoutSessionBranchCreated sdkgo.BranchID = "created"
 const CreateACHCheckoutSessionBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateACHCheckoutSessionBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
 const CreateACHCheckoutSessionBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
 const CreateACHCheckoutSessionBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 
@@ -357,7 +364,8 @@ var CreateACHCheckoutSessionDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateACHCheckoutSessionBranchCreated, Description: "Stripe created the Checkout Session."},
 		{ID: CreateACHCheckoutSessionBranchProviderRejected, Description: "Stripe conclusively rejected the Checkout Session request.", Optional: true},
-		{ID: CreateACHCheckoutSessionBranchInvalidResponse, Description: "Stripe returned an invalid Checkout Session response.", Optional: true},
+		{ID: CreateACHCheckoutSessionBranchUncertain, Description: "A Stripe 500 or non-retryable server response left the Checkout Session outcome unconfirmed.", Optional: true},
+		{ID: CreateACHCheckoutSessionBranchInvalidResponse, Description: "Stripe returned an invalid or oversized Checkout Session response.", Optional: true},
 		{ID: CreateACHCheckoutSessionBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -380,6 +388,7 @@ type CreateACHCheckoutSessionStepConfig[IN any] struct {
 	MapToOperationInput               func(IN) CreateACHCheckoutSessionInput                `connector:"mapToOperationInput"`
 	Created                           sdkgo.Target[CreateACHCheckoutSessionResult]          `connector:"branch=created"`
 	ProviderRejected                  sdkgo.Target[CreateACHCheckoutSessionResult]          `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateACHCheckoutSessionResult]          `connector:"branch=uncertain,optional"`
 	InvalidResponse                   sdkgo.Target[CreateACHCheckoutSessionResult]          `connector:"branch=invalidResponse,optional"`
 	Defect                            sdkgo.Target[CreateACHCheckoutSessionResult]          `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CheckoutSession]] `connector:"resultAttribute"`
@@ -398,12 +407,15 @@ func NewCreateACHCheckoutSessionStep[IN any](config CreateACHCheckoutSessionStep
 		Operation: config.Connection.operations.CreateACHCheckoutSession(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[CreateACHCheckoutSessionResult] {
-			branches := make([]sdkgo.BranchTarget[CreateACHCheckoutSessionResult], 0, 4)
+			branches := make([]sdkgo.BranchTarget[CreateACHCheckoutSessionResult], 0, 5)
 			if config.Created.HasStep() {
 				branches = append(branches, config.Created.BranchTarget(CreateACHCheckoutSessionBranchCreated))
 			}
 			if config.ProviderRejected.HasStep() {
 				branches = append(branches, config.ProviderRejected.BranchTarget(CreateACHCheckoutSessionBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateACHCheckoutSessionBranchUncertain))
 			}
 			if config.InvalidResponse.HasStep() {
 				branches = append(branches, config.InvalidResponse.BranchTarget(CreateACHCheckoutSessionBranchInvalidResponse))
@@ -574,6 +586,7 @@ func NewGetPaymentIntentStep[IN any](config GetPaymentIntentStepConfig[IN]) sdkg
 
 const CreateRefundBranchRefunded sdkgo.BranchID = "refunded"
 const CreateRefundBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateRefundBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
 const CreateRefundBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
 const CreateRefundBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 
@@ -582,7 +595,8 @@ var CreateRefundDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateRefundBranchRefunded, Description: "Stripe accepted the refund; read its status to tell succeeded from pending."},
 		{ID: CreateRefundBranchProviderRejected, Description: "Stripe conclusively rejected the refund with a 4xx error such as charge_already_refunded or an amount that is too large.", Optional: true},
-		{ID: CreateRefundBranchInvalidResponse, Description: "Stripe returned an invalid refund response.", Optional: true},
+		{ID: CreateRefundBranchUncertain, Description: "A non-retryable Stripe server response left the refund outcome unconfirmed after bounded read-back.", Optional: true},
+		{ID: CreateRefundBranchInvalidResponse, Description: "Stripe returned an invalid or oversized refund response.", Optional: true},
 		{ID: CreateRefundBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -605,6 +619,7 @@ type CreateRefundStepConfig[IN any] struct {
 	MapToOperationInput               func(IN) CreateRefundInput                   `connector:"mapToOperationInput"`
 	Refunded                          sdkgo.Target[CreateRefundResult]             `connector:"branch=refunded"`
 	ProviderRejected                  sdkgo.Target[CreateRefundResult]             `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateRefundResult]             `connector:"branch=uncertain,optional"`
 	InvalidResponse                   sdkgo.Target[CreateRefundResult]             `connector:"branch=invalidResponse,optional"`
 	Defect                            sdkgo.Target[CreateRefundResult]             `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Refund]] `connector:"resultAttribute"`
@@ -623,12 +638,15 @@ func NewCreateRefundStep[IN any](config CreateRefundStepConfig[IN]) sdkgo.Mutati
 		Operation: config.Connection.operations.CreateRefund(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[CreateRefundResult] {
-			branches := make([]sdkgo.BranchTarget[CreateRefundResult], 0, 4)
+			branches := make([]sdkgo.BranchTarget[CreateRefundResult], 0, 5)
 			if config.Refunded.HasStep() {
 				branches = append(branches, config.Refunded.BranchTarget(CreateRefundBranchRefunded))
 			}
 			if config.ProviderRejected.HasStep() {
 				branches = append(branches, config.ProviderRejected.BranchTarget(CreateRefundBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateRefundBranchUncertain))
 			}
 			if config.InvalidResponse.HasStep() {
 				branches = append(branches, config.InvalidResponse.BranchTarget(CreateRefundBranchInvalidResponse))

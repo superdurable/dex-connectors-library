@@ -4,6 +4,7 @@
 package stripe_test
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -18,41 +19,51 @@ import (
 )
 
 type stripeWriteCase struct {
-	name          string
-	path          string
-	objectID      string
-	responseBody  string
-	successBranch sdkgo.BranchID
-	invoke        func(*stripe.Client, *stripeDexContext) (sdkgo.BranchID, string, error)
+	name                  string
+	path                  string
+	objectID              string
+	responseBody          string
+	successBranch         sdkgo.BranchID
+	invalidResponseBranch sdkgo.BranchID
+	invoke                func(*stripe.Client, *stripeDexContext) (stripeWriteOutcome, error)
+}
+
+type stripeWriteOutcome struct {
+	branch   sdkgo.BranchID
+	objectID string
+	failure  *sdkgo.Failure
 }
 
 func stripeWriteCases() []stripeWriteCase {
 	return []stripeWriteCase{
 		{
 			name: "card checkout", path: "/checkout/sessions", objectID: "cs_test_card_replayed",
-			responseBody:  `{"id":"cs_test_card_replayed","object":"checkout.session","status":"open"}`,
-			successBranch: stripe.CreateCardCheckoutSessionBranchCreated,
-			invoke: func(client *stripe.Client, ctx *stripeDexContext) (sdkgo.BranchID, string, error) {
+			responseBody:          `{"id":"cs_test_card_replayed","object":"checkout.session","status":"open"}`,
+			successBranch:         stripe.CreateCardCheckoutSessionBranchCreated,
+			invalidResponseBranch: stripe.CreateCardCheckoutSessionBranchInvalidResponse,
+			invoke: func(client *stripe.Client, ctx *stripeDexContext) (stripeWriteOutcome, error) {
 				result, err := sdkgo.RunMutation(ctx, client.CreateCardCheckoutSession(), stripeConnection, stripe.CreateCardCheckoutSessionInput(validCreateInput()))
-				return result.Branch, result.Value.ID, err
+				return stripeWriteOutcome{result.Branch, result.Value.ID, result.Failure}, err
 			},
 		},
 		{
 			name: "ACH checkout", path: "/checkout/sessions", objectID: "cs_test_ach_replayed",
-			responseBody:  `{"id":"cs_test_ach_replayed","object":"checkout.session","status":"open"}`,
-			successBranch: stripe.CreateACHCheckoutSessionBranchCreated,
-			invoke: func(client *stripe.Client, ctx *stripeDexContext) (sdkgo.BranchID, string, error) {
+			responseBody:          `{"id":"cs_test_ach_replayed","object":"checkout.session","status":"open"}`,
+			successBranch:         stripe.CreateACHCheckoutSessionBranchCreated,
+			invalidResponseBranch: stripe.CreateACHCheckoutSessionBranchInvalidResponse,
+			invoke: func(client *stripe.Client, ctx *stripeDexContext) (stripeWriteOutcome, error) {
 				result, err := sdkgo.RunMutation(ctx, client.CreateACHCheckoutSession(), stripeConnection, validCreateInput())
-				return result.Branch, result.Value.ID, err
+				return stripeWriteOutcome{result.Branch, result.Value.ID, result.Failure}, err
 			},
 		},
 		{
 			name: "refund", path: "/refunds", objectID: "re_replayed",
-			responseBody:  `{"id":"re_replayed","object":"refund","status":"pending","amount":2500,"currency":"usd"}`,
-			successBranch: stripe.CreateRefundBranchRefunded,
-			invoke: func(client *stripe.Client, ctx *stripeDexContext) (sdkgo.BranchID, string, error) {
+			responseBody:          `{"id":"re_replayed","object":"refund","status":"pending","amount":2500,"currency":"usd"}`,
+			successBranch:         stripe.CreateRefundBranchRefunded,
+			invalidResponseBranch: stripe.CreateRefundBranchInvalidResponse,
+			invoke: func(client *stripe.Client, ctx *stripeDexContext) (stripeWriteOutcome, error) {
 				result, err := sdkgo.RunMutation(ctx, client.CreateRefund(), stripeConnection, validRefundInput())
-				return result.Branch, result.Value.RefundID, err
+				return stripeWriteOutcome{result.Branch, result.Value.RefundID, result.Failure}, err
 			},
 		},
 	}
@@ -63,7 +74,7 @@ func TestStripeKeyedWritesRetryBeforeDispatch(t *testing.T) {
 		t.Run(write.name, func(t *testing.T) {
 			transport := &stripeBeforeDispatchFailureTransport{}
 			client := newStripeClient(t, "http://127.0.0.1:1", stripe.Config{}, stripe.WithHTTPClient(&http.Client{Transport: transport}))
-			_, _, err := write.invoke(client, newStripeDexContext("before-dispatch"))
+			_, err := write.invoke(client, newStripeDexContext("before-dispatch"))
 			requireStripeRetry(t, err, sdkgo.FailureTransport)
 			require.Equal(t, 1, transport.calls)
 			require.NotEmpty(t, transport.key)
@@ -85,12 +96,12 @@ func TestStripeKeyedWritesRetryLostResponseWithOriginalObject(t *testing.T) {
 			transport := &stripeDropFirstResponseTransport{base: baseTransport}
 			client := newStripeClient(t, server.URL, stripe.Config{}, stripe.WithHTTPClient(&http.Client{Transport: transport}))
 			ctx := newStripeDexContext("lost-response")
-			_, _, err := write.invoke(client, ctx)
+			_, err := write.invoke(client, ctx)
 			requireStripeRetry(t, err, sdkgo.FailureTransport)
-			branch, objectID, err := write.invoke(client, ctx)
+			outcome, err := write.invoke(client, ctx)
 			require.NoError(t, err)
-			require.Equal(t, write.successBranch, branch)
-			require.Equal(t, write.objectID, objectID)
+			require.Equal(t, write.successBranch, outcome.branch)
+			require.Equal(t, write.objectID, outcome.objectID)
 			provider.mutex.Lock()
 			defer provider.mutex.Unlock()
 			require.Len(t, provider.keys, 2)
@@ -106,7 +117,7 @@ func TestStripeKeyedWritesRetryUnreadableResponsesAndServerFailures(t *testing.T
 		t.Run(write.name+" unreadable response", func(t *testing.T) {
 			transport := stripeUnreadableResponseTransport{}
 			client := newStripeClient(t, "http://127.0.0.1:1", stripe.Config{}, stripe.WithHTTPClient(&http.Client{Transport: transport}))
-			_, _, err := write.invoke(client, newStripeDexContext("unreadable-response"))
+			_, err := write.invoke(client, newStripeDexContext("unreadable-response"))
 			requireStripeRetry(t, err, sdkgo.FailureTransport)
 		})
 		t.Run(write.name+" 503", func(t *testing.T) {
@@ -117,13 +128,194 @@ func TestStripeKeyedWritesRetryUnreadableResponsesAndServerFailures(t *testing.T
 			}))
 			defer server.Close()
 			client := newStripeClient(t, server.URL, stripe.Config{})
-			_, _, err := write.invoke(client, newStripeDexContext("server-failure"))
+			_, err := write.invoke(client, newStripeDexContext("server-failure"))
 			requireStripeRetry(t, err, sdkgo.FailureAvailability)
 		})
 	}
 }
 
-func TestStripeKeyedWritesRetryOversizedResponses(t *testing.T) {
+func TestStripeCheckoutServerFailureHeaders(t *testing.T) {
+	testCases := []struct {
+		name    string
+		status  int
+		headers http.Header
+		isRetry bool
+	}{
+		{name: "500", status: 500},
+		{name: "500 with retry hint", status: 500, headers: http.Header{"Stripe-Should-Retry": {"true"}}},
+		{name: "503", status: 503, isRetry: true},
+		{name: "503 with retry hint", status: 503, headers: http.Header{"Stripe-Should-Retry": {"true"}}, isRetry: true},
+		{name: "503 with no retry hint", status: 503, headers: http.Header{"Stripe-Should-Retry": {"false"}}},
+		{name: "503 replayed", status: 503, headers: http.Header{"Idempotent-Replayed": {"true"}}},
+	}
+	for _, write := range stripeWriteCases()[:2] {
+		for _, testCase := range testCases {
+			t.Run(write.name+" "+testCase.name, func(t *testing.T) {
+				server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+					require.Equal(t, write.path, request.URL.Path)
+					for name, values := range testCase.headers {
+						response.Header().Set(name, values[0])
+					}
+					response.WriteHeader(testCase.status)
+				}))
+				defer server.Close()
+				client := newStripeClient(t, server.URL, stripe.Config{})
+				outcome, err := write.invoke(client, newStripeDexContext("server-headers"))
+				if testCase.isRetry {
+					requireStripeRetry(t, err, sdkgo.FailureAvailability)
+					return
+				}
+				require.NoError(t, err)
+				require.Equal(t, sdkgo.UncertainBranchID, outcome.branch)
+				require.Equal(t, sdkgo.FailureAvailability, outcome.failure.Kind)
+			})
+		}
+	}
+}
+
+func TestCreateRefundReadsBackIndeterminateServerFailure(t *testing.T) {
+	for _, testCase := range []struct {
+		name        string
+		status      int
+		headerName  string
+		headerValue string
+		found       bool
+		isRetry     bool
+	}{
+		{name: "500 found", status: 500, found: true},
+		{name: "500 absent", status: 500},
+		{name: "500 retry hint still reads back", status: 500, headerName: "Stripe-Should-Retry", headerValue: "true", found: true},
+		{name: "503 retry", status: 503, isRetry: true},
+		{name: "503 explicit retry", status: 503, headerName: "Stripe-Should-Retry", headerValue: "true", isRetry: true},
+		{name: "503 no retry", status: 503, headerName: "Stripe-Should-Retry", headerValue: "false", found: true},
+		{name: "503 replayed", status: 503, headerName: "Idempotent-Replayed", headerValue: "true", found: true},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			var callID string
+			readCount := 0
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+				require.Equal(t, "/refunds", request.URL.Path)
+				if request.Method == http.MethodPost {
+					require.NoError(t, request.ParseForm())
+					callID = request.Form.Get("metadata[dex_call_id]")
+					require.Equal(t, request.Header.Get("Idempotency-Key"), callID)
+					require.NotEmpty(t, callID)
+					if testCase.headerName != "" {
+						response.Header().Set(testCase.headerName, testCase.headerValue)
+					}
+					response.WriteHeader(testCase.status)
+					return
+				}
+				readCount++
+				require.Equal(t, http.MethodGet, request.Method)
+				require.Equal(t, "pi_123", request.URL.Query().Get("payment_intent"))
+				require.Equal(t, "100", request.URL.Query().Get("limit"))
+				require.Empty(t, request.Header.Get("Idempotency-Key"))
+				body := `{"object":"list","data":[],"has_more":false}`
+				if testCase.found {
+					body = fmt.Sprintf(`{"object":"list","data":[{"id":"re_found","object":"refund","status":"pending","amount":2500,"currency":"usd","metadata":{"dex_call_id":%q}}],"has_more":false}`, callID)
+				}
+				_, writeErr := io.WriteString(response, body)
+				require.NoError(t, writeErr)
+			}))
+			defer server.Close()
+			client := newStripeClient(t, server.URL, stripe.Config{})
+			outcome, err := stripeWriteCases()[2].invoke(client, newStripeDexContext("refund-readback"))
+			if testCase.isRetry {
+				requireStripeRetry(t, err, sdkgo.FailureAvailability)
+				require.Zero(t, readCount)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, 1, readCount)
+			if testCase.found {
+				require.Equal(t, stripe.CreateRefundBranchRefunded, outcome.branch)
+				require.Equal(t, "re_found", outcome.objectID)
+			} else {
+				require.Equal(t, sdkgo.UncertainBranchID, outcome.branch)
+				require.Equal(t, sdkgo.FailureAvailability, outcome.failure.Kind)
+			}
+		})
+	}
+}
+
+func TestCreateRefundReadbackPaginationIsBounded(t *testing.T) {
+	for _, testCase := range []struct {
+		name       string
+		findPage   int
+		wantReads  int
+		wantBranch sdkgo.BranchID
+	}{
+		{name: "found on second page", findPage: 2, wantReads: 2, wantBranch: stripe.CreateRefundBranchRefunded},
+		{name: "still more after bound", findPage: 0, wantReads: 3, wantBranch: sdkgo.UncertainBranchID},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			readCount := 0
+			callID := ""
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+				if request.Method == http.MethodPost {
+					require.NoError(t, request.ParseForm())
+					callID = request.Form.Get("metadata[dex_call_id]")
+					response.WriteHeader(http.StatusInternalServerError)
+					return
+				}
+				readCount++
+				require.LessOrEqual(t, readCount, 3)
+				if readCount > 1 {
+					require.Equal(t, fmt.Sprintf("re_page_%d", readCount-1), request.URL.Query().Get("starting_after"))
+				}
+				marker := "other-call"
+				if readCount == testCase.findPage {
+					marker = callID
+				}
+				_, writeErr := fmt.Fprintf(response, `{"object":"list","data":[{"id":"re_page_%d","object":"refund","status":"pending","amount":2500,"currency":"usd","metadata":{"dex_call_id":%q}}],"has_more":true}`, readCount, marker)
+				require.NoError(t, writeErr)
+			}))
+			defer server.Close()
+			client := newStripeClient(t, server.URL, stripe.Config{})
+			outcome, err := stripeWriteCases()[2].invoke(client, newStripeDexContext("refund-pages"))
+			require.NoError(t, err)
+			require.Equal(t, testCase.wantReads, readCount)
+			require.Equal(t, testCase.wantBranch, outcome.branch)
+		})
+	}
+}
+
+func TestCreateRefundReadbackFailure(t *testing.T) {
+	for _, testCase := range []struct {
+		name        string
+		readStatus  int
+		readBody    string
+		maxBytes    int64
+		shouldRetry bool
+	}{
+		{name: "temporary unavailability", readStatus: http.StatusServiceUnavailable, shouldRetry: true},
+		{name: "oversized list", readStatus: http.StatusOK, readBody: strings.Repeat("x", 65), maxBytes: 64},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+				if request.Method == http.MethodPost {
+					response.WriteHeader(http.StatusInternalServerError)
+					return
+				}
+				response.WriteHeader(testCase.readStatus)
+				_, writeErr := io.WriteString(response, testCase.readBody)
+				require.NoError(t, writeErr)
+			}))
+			defer server.Close()
+			client := newStripeClient(t, server.URL, stripe.Config{MaxResponseBytes: testCase.maxBytes})
+			outcome, err := stripeWriteCases()[2].invoke(client, newStripeDexContext("refund-readback-error"))
+			if testCase.shouldRetry {
+				requireStripeRetry(t, err, sdkgo.FailureAvailability)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, sdkgo.UncertainBranchID, outcome.branch)
+		})
+	}
+}
+
+func TestStripeKeyedWritesRejectOversizedResponses(t *testing.T) {
 	for _, write := range stripeWriteCases() {
 		t.Run(write.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
@@ -133,8 +325,10 @@ func TestStripeKeyedWritesRetryOversizedResponses(t *testing.T) {
 			}))
 			defer server.Close()
 			client := newStripeClient(t, server.URL, stripe.Config{MaxResponseBytes: 64})
-			_, _, err := write.invoke(client, newStripeDexContext("oversized-response"))
-			requireStripeRetry(t, err, sdkgo.FailureResponseTooLarge)
+			outcome, err := write.invoke(client, newStripeDexContext("oversized-response"))
+			require.NoError(t, err)
+			require.Equal(t, write.invalidResponseBranch, outcome.branch)
+			require.Equal(t, sdkgo.FailureResponseTooLarge, outcome.failure.Kind)
 		})
 	}
 }
@@ -146,7 +340,7 @@ func TestCreateRefundStillRetriesIdempotencyConflict(t *testing.T) {
 	}))
 	defer server.Close()
 	client := newStripeClient(t, server.URL, stripe.Config{})
-	_, _, err := stripeWriteCases()[2].invoke(client, newStripeDexContext("refund-conflict"))
+	_, err := stripeWriteCases()[2].invoke(client, newStripeDexContext("refund-conflict"))
 	requireStripeRetry(t, err, sdkgo.FailureConflict)
 }
 

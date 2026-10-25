@@ -22,7 +22,7 @@ spec:
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: Maximum complete Stripe API response in bytes; enter a positive integer only to change the safety limit. Oversized query responses select invalidResponse; keyed writes retry.
+        description: Maximum complete Stripe API response in bytes; enter a positive integer only to change the safety limit. Oversized responses select invalidResponse.
         required: false
         default: 1048576
       - name: webhookMaxBodyBytes
@@ -60,7 +60,7 @@ spec:
         guide:
           startURL: https://dashboard.stripe.com/apikeys
           steps:
-            - Choose Test mode or Live mode, open Developers > API keys, and create a restricted key with the permissions required by your operations or reveal the matching secret key.
+            - Choose Test mode or Live mode, open Developers > API keys, and create a restricted key with the permissions required by your operations (CreateRefund needs Refund read and write) or reveal the matching secret key.
             - Open Developers > Webhooks, create or select the endpoint that sends Checkout Session events to the application, then reveal and copy its whsec_ signing secret.
             - Keep the API key and webhook endpoint in the same Stripe mode; paste rk_/sk_ into secret_key and whsec_ into webhook_secret.
       - id: api-key-only
@@ -78,7 +78,7 @@ spec:
         guide:
           startURL: https://dashboard.stripe.com/apikeys
           steps:
-            - Choose Test mode or Live mode, open Developers > API keys, and create a restricted key with permissions for the selected API operations or reveal the matching secret key.
+            - Choose Test mode or Live mode, open Developers > API keys, and create a restricted key with permissions for the selected API operations (CreateRefund needs Refund read and write) or reveal the matching secret key.
             - Paste the key into secret_key. No webhook endpoint or signing secret is needed for API operations alone.
   triggers:
     - name: checkoutSessionUpdated
@@ -97,7 +97,8 @@ spec:
       branches:
         - {id: created, goName: Created, description: Stripe created the Checkout Session.}
         - {id: providerRejected, goName: ProviderRejected, description: Stripe conclusively rejected the Checkout Session request., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Stripe returned an invalid Checkout Session response., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A Stripe 500 or non-retryable server response left the Checkout Session outcome unconfirmed., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Stripe returned an invalid or oversized Checkout Session response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution: &stripeExecution
         executeMethodTimeout: 30s
@@ -113,6 +114,9 @@ spec:
           branch: providerRejected
           description: Stripe rejected the card Checkout Session parameters.
           failure: {kind: PROVIDER_REJECTION, message: Stripe rejected the request}
+        - name: unconfirmedCardSession
+          description: Stripe cached a 500 for the card request and the created Session cannot be confirmed.
+          uncertain: {failure: {kind: AVAILABILITY, message: Stripe Checkout Session outcome cannot be confirmed after a server error}}
         - name: malformedCardSession
           branch: invalidResponse
           description: Stripe returned a body that is not a Checkout Session.
@@ -131,7 +135,8 @@ spec:
       branches:
         - {id: created, goName: Created, description: Stripe created the Checkout Session.}
         - {id: providerRejected, goName: ProviderRejected, description: Stripe conclusively rejected the Checkout Session request., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Stripe returned an invalid Checkout Session response., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A Stripe 500 or non-retryable server response left the Checkout Session outcome unconfirmed., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Stripe returned an invalid or oversized Checkout Session response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution: *stripeExecution
       mocks:
@@ -144,6 +149,9 @@ spec:
           branch: providerRejected
           description: Stripe rejected the Checkout Session parameters.
           failure: {kind: PROVIDER_REJECTION, message: Stripe rejected the request}
+        - name: unconfirmedSession
+          description: Stripe cached a 500 for the bank payment request and the created Session cannot be confirmed.
+          uncertain: {failure: {kind: AVAILABILITY, message: Stripe Checkout Session outcome cannot be confirmed after a server error}}
         - name: malformedSession
           branch: invalidResponse
           description: Stripe returned a body that is not a Checkout Session.
@@ -234,7 +242,8 @@ spec:
       branches:
         - {id: refunded, goName: Refunded, description: Stripe accepted the refund; read its status to tell succeeded from pending.}
         - {id: providerRejected, goName: ProviderRejected, description: Stripe conclusively rejected the refund with a 4xx error such as charge_already_refunded or an amount that is too large., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Stripe returned an invalid refund response., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A non-retryable Stripe server response left the refund outcome unconfirmed after bounded read-back., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Stripe returned an invalid or oversized refund response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution: *stripeExecution
       mocks:
@@ -247,6 +256,9 @@ spec:
           branch: providerRejected
           description: Stripe rejected the refund because the charge is already fully refunded.
           failure: {kind: PROVIDER_REJECTION, message: "Stripe rejected the refund: charge_already_refunded: Charge ch_3Pabc123 has already been refunded."}
+        - name: unconfirmedRefund
+          description: Stripe cached a 500 and bounded refund read-back found no matching call ID.
+          uncertain: {failure: {kind: AVAILABILITY, message: Stripe refund outcome cannot be confirmed after a server error}}
         - name: malformedRefund
           branch: invalidResponse
           description: Stripe returned a body that is not a refund.
