@@ -170,6 +170,15 @@ branch. The concrete operation alone decides whether a fact is terminal or is
 safe to Retry. `Failure` never contains credentials, authorization headers,
 provider bodies, or arbitrary metadata.
 
+### How applications use branches
+
+Applications and examples wire only happy-path branches by default. Every
+other branch is optional; selecting one without a target fails the Flow. Wire
+another branch only when a requirement names a business reaction, such as
+handling one rejected recipient while processing many, and add a comment at
+that wiring naming the reaction. A branch is required only when the
+application must choose a continuation.
+
 ## Optional Result Attributes and atomic transition
 
 Every generated factory accepts an optional exact typed Attribute:
