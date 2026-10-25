@@ -2,8 +2,8 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package oauth2httpmock scripts the oauth2-http connector's operations in application tests. New returns a
-// Connection whose operations answer from connectormock scripts, with each query's manifest default installed.
+// Package oauth2httpmock scripts the oauth2-http connector's operations in application tests. New returns a Connection whose
+// Query and Mutation operations answer unscripted calls from their manifest defaults.
 package oauth2httpmock
 
 import (
@@ -21,8 +21,8 @@ type Mock struct {
 	sendRequest *connectormock.Mutation[oauth2http.SendRequestInput, oauth2http.SendRequestOutput]
 }
 
-// New returns a mock connection named connectionName. Unscripted calls fail t, except a query's call that its
-// manifest default answers.
+// New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
+// each operation's manifest default, so happy-path application tests need no scripting.
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{

@@ -112,7 +112,7 @@ func (mock OperationMock) IsBranchMock() bool {
 }
 
 // HasMocks reports whether any operation declares a mock. A connector with mocks generates a mock package and
-// must cover every operation and branch; see ValidateMockCoverage.
+// must provide one default for every operation; see ValidateMockCoverage.
 func (manifest Manifest) HasMocks() bool {
 	for _, operation := range manifest.Spec.Operations {
 		if len(operation.Mocks) > 0 {
@@ -122,24 +122,17 @@ func (manifest Manifest) HasMocks() bool {
 	return false
 }
 
-// ValidateMockCoverage checks that a connector with mocks covers its whole surface: every operation declares
-// mocks, every declared branch has one, every query has exactly one default, and a paginated query's default
-// serves at least MinimumPagedDefaultPages pages. A connector without mocks passes.
+// ValidateMockCoverage requires one default mock for every operation when a connector declares mocks.
+// Optional branches need no mock. A paginated default serves at least MinimumPagedDefaultPages pages,
+// and a connector without mocks passes. Validate checks the default's branch and failure shape.
 func (manifest Manifest) ValidateMockCoverage() error {
 	if !manifest.HasMocks() {
 		return nil
 	}
 	var problems []string
 	for _, operation := range manifest.Spec.Operations {
-		covered := make(map[string]bool, len(operation.Branches))
 		defaults := 0
 		for _, mock := range operation.Mocks {
-			switch {
-			case mock.Uncertain != nil:
-				covered["uncertain"] = true
-			case mock.IsBranchMock():
-				covered[mock.Branch] = true
-			}
 			if mock.Default {
 				defaults++
 				if operation.Pagination != nil && len(mock.Pages) < MinimumPagedDefaultPages {
@@ -147,13 +140,8 @@ func (manifest Manifest) ValidateMockCoverage() error {
 				}
 			}
 		}
-		for _, branch := range operation.Branches {
-			if !covered[branch.ID] {
-				problems = append(problems, operation.Name+": branch "+branch.ID+" needs a mock")
-			}
-		}
-		if operation.Kind == "query" && defaults != 1 {
-			problems = append(problems, operation.Name+": a query needs exactly one default mock")
+		if defaults != 1 {
+			problems = append(problems, operation.Name+": exactly one default mock is required")
 		}
 	}
 	if len(problems) > 0 {
@@ -196,10 +184,14 @@ func validateOperationMocks(operation Operation) []string {
 		}
 		if mock.Default {
 			defaults++
+			branch, isDeclared := branches[mock.Branch]
+			if !mock.IsBranchMock() || mock.Failure != nil || !isDeclared || branch.Optional {
+				problems = append(problems, mockPrefix+"a default mock answers a required branch without a failure")
+			}
 		}
 		switch {
 		case mock.Retry != nil:
-			if mock.Branch != "" || mock.Output != nil || mock.Pages != nil || mock.Failure != nil || mock.Uncertain != nil || mock.Default {
+			if mock.Branch != "" || mock.Output != nil || mock.Pages != nil || mock.Failure != nil || mock.Uncertain != nil {
 				problems = append(problems, mockPrefix+"a retry mock declares only retry")
 			}
 			problems = append(problems, validateMockFailure(mockPrefix+"retry ", mock.Retry.Failure)...)
@@ -212,7 +204,7 @@ func validateOperationMocks(operation Operation) []string {
 			if operation.Kind != "mutation" || branches["uncertain"].ID == "" {
 				problems = append(problems, mockPrefix+"an uncertain mock requires a mutation that declares uncertain")
 			}
-			if (mock.Branch != "" && mock.Branch != "uncertain") || mock.Output != nil || mock.Pages != nil || mock.Failure != nil || mock.Default {
+			if (mock.Branch != "" && mock.Branch != "uncertain") || mock.Output != nil || mock.Pages != nil || mock.Failure != nil {
 				problems = append(problems, mockPrefix+"an uncertain mock declares only uncertain")
 			}
 			problems = append(problems, validateMockFailure(mockPrefix+"uncertain ", mock.Uncertain.Failure)...)
@@ -242,9 +234,6 @@ func validateBranchMock(operation Operation, branches map[string]OperationBranch
 	}
 	if mock.Failure != nil {
 		problems = append(problems, validateMockFailure(prefix, *mock.Failure)...)
-	}
-	if mock.Default && (mock.Failure != nil || mock.Branch == "defect") {
-		problems = append(problems, prefix+"a default mock answers without a failure on a branch other than defect")
 	}
 	if mock.Pages != nil {
 		if operation.Pagination == nil {

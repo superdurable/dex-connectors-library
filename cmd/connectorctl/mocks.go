@@ -61,9 +61,7 @@ func mocksCommand(args []string, stderr io.Writer) error {
 	return scaffoldMocks(args[1], stderr)
 }
 
-// scaffoldMocks appends a failure fixture for every declared failure branch that has no mock, and an uncertain
-// fixture for a mutation's uncertain branch. It edits the manifest text in place, so the rest of the file keeps
-// its formatting, and reports the branches whose outputs a maintainer still writes by hand.
+// scaffoldMocks appends defaults and optional outcome cases while preserving manifest formatting.
 func scaffoldMocks(manifestPath string, stderr io.Writer) error {
 	manifest, err := load(manifestPath)
 	if err != nil {
@@ -142,11 +140,13 @@ func mockInsertionPoints(contents []byte) ([]mockInsertion, error) {
 func scaffoldOperationMocks(operation schema.Operation, insertion mockInsertion, stderr io.Writer) string {
 	covered := map[string]bool{}
 	names := map[string]bool{}
+	hasDefault := false
 	for _, mock := range operation.Mocks {
 		names[mock.Name] = true
-		if mock.Uncertain != nil {
-			covered["uncertain"] = true
-		} else if mock.IsBranchMock() {
+		if mock.Default {
+			hasDefault = true
+		}
+		if mock.IsBranchMock() {
 			covered[mock.Branch] = true
 		}
 	}
@@ -157,28 +157,43 @@ func scaffoldOperationMocks(operation schema.Operation, insertion mockInsertion,
 	}
 	itemIndent := keyIndent + "  "
 	scaffolded := 0
-	for _, branch := range operation.Branches {
-		if covered[branch.ID] {
-			continue
-		}
-		if !branch.Optional {
+	if !hasDefault {
+		for _, branch := range operation.Branches {
+			if branch.Optional {
+				continue
+			}
+			name := uniqueMockName(names, branch.ID+"DefaultAnswer")
+			output.WriteString(itemIndent + "- name: " + name + "\n")
+			output.WriteString(itemIndent + "  branch: " + branch.ID + "\n")
+			output.WriteString(itemIndent + "  description: " + yamlString(branch.Description) + "\n")
+			output.WriteString(itemIndent + "  default: true\n")
+			output.WriteString(itemIndent + "  # Replace the placeholder with realistic happy-path output.\n")
+			if operation.Pagination == nil {
+				output.WriteString(itemIndent + "  output: {}\n")
+			} else {
+				cursor := operation.Pagination.NextField
+				output.WriteString(itemIndent + "  pages:\n")
+				output.WriteString(itemIndent + "    - {" + cursor + ": 2}\n")
+				output.WriteString(itemIndent + "    - {" + cursor + ": 3}\n")
+				output.WriteString(itemIndent + "    - {" + cursor + ": 0}\n")
+			}
 			// The note is advisory; a failed write to stderr must not stop the scaffold.
-			_, _ = fmt.Fprintf(stderr, "%s: write the %s mock output by hand, and mark one query mock as the default\n", operation.Name, branch.ID)
+			_, _ = fmt.Fprintf(stderr, "%s: replace the %s default mock placeholder with realistic output\n", operation.Name, name)
+			scaffolded++
+			break
+		}
+	}
+	for _, branch := range operation.Branches {
+		// Optional branches other than defect and uncertain represent business reactions; generic platform failures need no scaffold.
+		if !branch.Optional || branch.ID == "defect" || branch.ID == "uncertain" || covered[branch.ID] {
 			continue
 		}
 		name := uniqueMockName(names, branch.ID+"Failure")
 		message := strings.TrimSpace(branch.Description)
-		if branch.ID == "uncertain" {
-			name = uniqueMockName(names, "lostResponse")
-			output.WriteString(itemIndent + "- name: " + name + "\n")
-			output.WriteString(itemIndent + "  description: " + yamlString("The connection closed after the request was sent, so the outcome is unknown.") + "\n")
-			output.WriteString(itemIndent + "  uncertain: {failure: {kind: TRANSPORT, message: " + yamlString(message) + "}}\n")
-		} else {
-			output.WriteString(itemIndent + "- name: " + name + "\n")
-			output.WriteString(itemIndent + "  branch: " + branch.ID + "\n")
-			output.WriteString(itemIndent + "  description: " + yamlString(message) + "\n")
-			output.WriteString(itemIndent + "  failure: {kind: " + scaffoldFailureKind(branch.ID) + ", message: " + yamlString(message) + "}\n")
-		}
+		output.WriteString(itemIndent + "- name: " + name + "\n")
+		output.WriteString(itemIndent + "  branch: " + branch.ID + "\n")
+		output.WriteString(itemIndent + "  description: " + yamlString(message) + "\n")
+		output.WriteString(itemIndent + "  failure: {kind: " + scaffoldFailureKind(branch.ID) + ", message: " + yamlString(message) + "}\n")
 		scaffolded++
 	}
 	if scaffolded == 0 {
@@ -190,8 +205,6 @@ func scaffoldOperationMocks(operation schema.Operation, insertion mockInsertion,
 // scaffoldFailureKind guesses the failure kind from the branch vocabulary the connectors share.
 func scaffoldFailureKind(branchID string) string {
 	switch branchID {
-	case "defect":
-		return "VALIDATION"
 	case "notFound":
 		return "NOT_FOUND"
 	case "insufficientScope", "forbidden", "permissionDenied":

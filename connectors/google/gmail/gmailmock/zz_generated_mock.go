@@ -2,8 +2,8 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package gmailmock scripts the gmail connector's operations in application tests. New returns a
-// Connection whose operations answer from connectormock scripts, with each query's manifest default installed.
+// Package gmailmock scripts the gmail connector's operations in application tests. New returns a Connection whose
+// Query and Mutation operations answer unscripted calls from their manifest defaults.
 package gmailmock
 
 import (
@@ -23,8 +23,8 @@ type Mock struct {
 	replyToMessage *connectormock.Mutation[gmail.ReplyToMessageInput, gmail.SendMessageOutput]
 }
 
-// New returns a mock connection named connectionName. Unscripted calls fail t, except a query's call that its
-// manifest default answers.
+// New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
+// each operation's manifest default, so happy-path application tests need no scripting.
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
@@ -33,6 +33,8 @@ func New(t testing.TB, connectionName string) *Mock {
 		replyToMessage: connectormock.NewMutation[gmail.ReplyToMessageInput, gmail.SendMessageOutput](t, gmail.ReplyToMessageDefinition),
 	}
 	mock.getMessage.Default(GetMessageDefault())
+	mock.sendMessage.Default(SendMessageDefault())
+	mock.replyToMessage.Default(ReplyToMessageDefault())
 	connection, err := gmail.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "google", Name: connectionName})
 	if err != nil {
 		t.Fatalf("gmail mock connection: %v", err)
@@ -193,6 +195,11 @@ func SendMessageUnavailable() connectormock.Case[gmail.SendMessageOutput] {
 	return connectormock.Retry[gmail.SendMessageOutput](sdkgo.Failure{Kind: sdkgo.FailureAvailability, Message: "Gmail is temporarily unavailable."}, time.Duration(0))
 }
 
+// SendMessageDefault is the manifest default, sentToCustomer, which New installs.
+func SendMessageDefault() connectormock.Case[gmail.SendMessageOutput] {
+	return SendMessageSentToCustomer()
+}
+
 // ReplyToMessageSent selects the sent branch: Gmail accepted the reply and returned its identity.
 func ReplyToMessageSent(value gmail.SendMessageOutput, failure *sdkgo.Failure) connectormock.Case[gmail.SendMessageOutput] {
 	return connectormock.Branch(gmail.ReplyToMessageBranchSent, value, failure)
@@ -251,4 +258,9 @@ func ReplyToMessageConnectionLost() connectormock.Case[gmail.SendMessageOutput] 
 func ReplyToMessageEmptyBody() connectormock.Case[gmail.SendMessageOutput] {
 	var value gmail.SendMessageOutput
 	return connectormock.Branch(gmail.ReplyToMessageBranchDefect, value, &sdkgo.Failure{Kind: sdkgo.FailureValidation, Message: "The reply body is required."})
+}
+
+// ReplyToMessageDefault is the manifest default, repliedInThread, which New installs.
+func ReplyToMessageDefault() connectormock.Case[gmail.SendMessageOutput] {
+	return ReplyToMessageRepliedInThread()
 }

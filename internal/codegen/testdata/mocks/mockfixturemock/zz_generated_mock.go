@@ -2,8 +2,8 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package mockfixturemock scripts the mock-fixture connector's operations in application tests. New returns a
-// Connection whose operations answer from connectormock scripts, with each query's manifest default installed.
+// Package mockfixturemock scripts the mock-fixture connector's operations in application tests. New returns a Connection whose
+// Query and Mutation operations answer unscripted calls from their manifest defaults.
 package mockfixturemock
 
 import (
@@ -23,8 +23,8 @@ type Mock struct {
 	createWidget *connectormock.Mutation[mockfixture.CreateWidgetInput, mockfixture.Widget]
 }
 
-// New returns a mock connection named connectionName. Unscripted calls fail t, except a query's call that its
-// manifest default answers.
+// New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
+// each operation's manifest default, so happy-path application tests need no scripting.
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
@@ -34,6 +34,7 @@ func New(t testing.TB, connectionName string) *Mock {
 	}
 	mock.getWidget.Default(GetWidgetDefault())
 	mock.listWidgets.Default(ListWidgetsDefault())
+	mock.createWidget.Default(CreateWidgetDefault())
 	connection, err := mockfixture.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "example", Name: connectionName})
 	if err != nil {
 		t.Fatalf("mock-fixture mock connection: %v", err)
@@ -190,3 +191,6 @@ func CreateWidgetEmptyName() connectormock.Case[mockfixture.Widget] {
 	var value mockfixture.Widget
 	return connectormock.Branch(mockfixture.CreateWidgetBranchDefect, value, &sdkgo.Failure{Kind: sdkgo.FailureValidation, Message: "The widget name is required."})
 }
+
+// CreateWidgetDefault is the manifest default, createdGear, which New installs.
+func CreateWidgetDefault() connectormock.Case[mockfixture.Widget] { return CreateWidgetCreatedGear() }

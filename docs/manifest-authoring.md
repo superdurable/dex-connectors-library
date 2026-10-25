@@ -826,7 +826,9 @@ mock of each shape:
 - A `failure` names a Connector SDK failure kind, such as `NOT_FOUND`, and a
   safe message. The mock fills the provider and operation.
 - `default: true` marks the mock that answers every call a test does not
-  script. A default selects a branch other than `defect` without a failure.
+  script. Every operation has exactly one default, selecting a required
+  happy-path branch without a failure. An unscripted Mutation call uses that
+  answer instead of failing the test.
 - Outputs are YAML written as the operation output's JSON. Quote a string
   that YAML would read as a number, a boolean, or a date, such as `"007"`.
 
@@ -861,23 +863,21 @@ plus one mock for each definite business-outcome branch an application may
 wire. Transient failures, `defect`, and `uncertain` need no mock. Additional
 cases may illustrate a specific application requirement.
 
-The current validator still requires a mock for every declared branch and
-exactly one default per query; mutation defaults are optional. That enforcement
-is in [`schema/mocks.go`](../schema/mocks.go), and
-[`connectorctl mocks scaffold`](../cmd/connectorctl/mocks.go) still adds mocks
-for optional failure and `uncertain` branches. A later code change must align
-them with the authoring rule above. Every manifest load also checks each
-mock's shape, names, failure kinds, retry delays, and page chain. The
-generated `zz_generated_mock_test.go` strictly decodes every output into the
-connector's Go type and, when the type has a `Validate() error` method, runs
-it; `go test` in the connector module runs that test.
+Once a connector declares mocks, `connectorctl validate` requires exactly one
+default on a required branch of every Query and Mutation. Optional-branch mocks
+remain allowed. Every manifest load also checks each mock's shape, names,
+failure kinds, retry delays, and page chain. The generated
+`zz_generated_mock_test.go` strictly decodes every output into the connector's
+Go type and, when the type has a `Validate() error` method, runs it; `go test`
+in the connector module runs that test.
 
-`connectorctl mocks scaffold connector.yaml` appends a failure mock for every
-optional branch that has none, with a failure kind chosen from the branch ID,
-and an `uncertain` mock for a mutation that declares the branch. It edits only
-the lines it inserts, prints the happy-path branches whose outputs a
-maintainer still writes by hand, and adds nothing on a second run. Review the
-scaffolded kinds and messages before committing them.
+`connectorctl mocks scaffold connector.yaml` appends a default for each
+operation without one and a failure mock for each optional branch other than
+`defect` and `uncertain` that has none. The default contains an output
+placeholder, or three placeholder pages for a paginated Query. Replace these
+with realistic answers before committing. The command edits only the lines it
+inserts, reports the placeholders, and adds nothing on a second run. Review
+the scaffolded failure kinds and messages before committing them.
 
 The generated package exposes `New(t, connectionName)`, `Connection()` for
 the connector's Step factories, one scripting accessor per operation, a

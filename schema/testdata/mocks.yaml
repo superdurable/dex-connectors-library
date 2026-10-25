@@ -88,6 +88,7 @@ spec:
         - name: createdGear
           branch: created
           description: The provider created the widget.
+          default: true
           output: {id: w-1, name: Gear}
         - name: connectionLost
           description: The connection closed after the request was sent.

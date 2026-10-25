@@ -5,7 +5,7 @@ metadata:
   displayName: Gmail
   description: Start and update Dex Flows from received Gmail messages, read messages, and send or reply to email.
   company: Google
-  version: v0.23.0
+  version: v0.23.1
 spec:
   provider: google
   codegen:
@@ -246,6 +246,7 @@ spec:
         - name: sentToCustomer
           branch: sent
           description: Gmail accepted the message and returned its identity.
+          default: true
           output: {sender: support@example.org, recipients: [ada@example.com], messageId: 18c0a1b2c3d4e600, threadId: 18c0a1b2c3d4e600}
         - name: invalidRecipient
           branch: providerRejected
@@ -282,6 +283,7 @@ spec:
         - name: repliedInThread
           branch: sent
           description: Gmail accepted the reply in the source message's thread.
+          default: true
           output: {sender: support@example.org, recipients: [ada.support@example.com], messageId: 18c0a1b2c3d4e700, threadId: 18c0a1b2c3d4e5f0}
         - name: sourceMissing
           branch: providerRejected
