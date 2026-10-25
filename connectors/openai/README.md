@@ -19,7 +19,7 @@ connection.
 Install a published component release:
 
 ```bash
-go get github.com/superdurable/dex-connectors-library/connectors/openai@v0.21.1
+go get github.com/superdurable/dex-connectors-library/connectors/openai@v0.22.0
 ```
 
 ## Connection
@@ -205,6 +205,22 @@ generation Step to the [llm connector](../superdurable/llm/README.md): save an
 `textgen` types. The `model` field now names the model `createResponse` sends
 when its request names none, where an empty request model selected `defect`
 before.
+
+## Test with openaimock
+
+The generated `openaimock` package answers both operations' happy paths by
+default. Pass its typed connection to the example Flow to test without an
+OpenAI API key or response scripts:
+
+```go
+mock := openaimock.New(t, ConnectionName)
+flow, client := startSummaryWorkerWithConnection(t, mock.Connection(), SummaryModelConfiguration{})
+```
+
+This snippet comes from
+[`workflow_mock_integration_test.go`](examples/summarize-text/flow/workflow_mock_integration_test.go).
+Named cases cover incomplete stored Responses, missing IDs, and conclusive
+provider refusals.
 
 ## Example
 
