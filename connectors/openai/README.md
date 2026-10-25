@@ -240,18 +240,21 @@ The mock runs two connector-owned checks on `createResponse`:
   judges the schema's content, so the mock does not.
 - A `completed` answer to a request with `StructuredOutput` must have
   `OutputText` that is exactly one JSON value: no Markdown fence and no text
-  around it. When the schema is in the portable subset that the llm connector
-  also enforces (every property in `required`, `additionalProperties: false`,
-  one type per node), the value must also match the schema. Other schemas are
-  checked for JSON syntax only. A mismatch fails the test and selects
-  `defect`.
+  around it. The check skips a Response whose `Status` is set and is not
+  `completed`, and a Response without `OutputText`, because an incomplete
+  Response carries truncated text and a refusal carries none. OpenAI guarantees schema adherence only with
+  `Strict: true`, so only then, and when the schema is in the portable subset
+  that the llm connector also enforces (every property in `required`,
+  `additionalProperties: false`, one type per node), must the value also match
+  the schema. Without `Strict`, or with another schema, the mock checks the
+  JSON syntax only. A mismatch fails the test and selects `defect`.
 
 The default answers are plain text, so a Flow whose `createResponse` request
 sets `StructuredOutput` needs a JSON answer. Script one with `Respond` for a
 single call, or with `Default` for every call, using the same
-`CreateResponseCompleted` case with JSON in `OutputText`, such as
-`{"status":"shipped"}`. Answers on the `failed` branch, such as the incomplete
-summary, carry partial text and are not checked.
+`CreateResponseCompleted` case with `Status: "completed"` and JSON in
+`OutputText`, such as `{"status":"shipped"}`. Answers on the `failed` branch,
+such as the incomplete summary, carry partial text and are not checked.
 
 ## Example
 

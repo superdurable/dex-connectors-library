@@ -91,9 +91,9 @@ func TestOpenAIMockRejectsTheDefaultAnswerForStructuredOutput(t *testing.T) {
 	require.Len(t, recorder.failures(), 1)
 	require.Contains(t, recorder.failures()[0], `scripted answer for branch "completed" does not match request`)
 	for _, message := range []string{result.Failure.Message, recorder.failures()[0]} {
-		require.Contains(t, message, "the request sets StructuredOutput, so outputText must be exactly one JSON value valid against its schema")
+		require.Contains(t, message, "the request sets StructuredOutput, so a completed answer's outputText must be exactly one JSON value")
 		require.Contains(t, message, "script JSON text with the mock's Default or Respond")
-		require.Contains(t, message, "the answer text is not exactly one JSON value")
+		require.Contains(t, message, "(the manifest default answers are plain text)")
 	}
 	require.NotContains(t, result.Failure.Message+recorder.failures()[0], "shipped", "the error omits the answer text")
 
@@ -149,7 +149,6 @@ func TestOpenAIMockRejectsAnswersThatBreakThePortableSchema(t *testing.T) {
 		"undeclared member":  `{"status":"shipped","extra":true}`,
 		"fenced Markdown":    "```json\n{\"status\":\"shipped\"}\n```",
 		"text after JSON":    `{"status":"shipped"} done`,
-		"empty text":         ``,
 		"plain text summary": `Shipped today.`,
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -161,6 +160,7 @@ func TestOpenAIMockRejectsAnswersThatBreakThePortableSchema(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, openai.CreateResponseBranchDefect, result.Branch)
 			require.Len(t, recorder.failures(), 1)
+			require.Contains(t, recorder.failures()[0], "the request sets StructuredOutput")
 			require.NotContains(t, result.Failure.Message+recorder.failures()[0], "shipped", "the error omits the answer text")
 		})
 	}
@@ -181,13 +181,84 @@ func TestOpenAIMockChecksOnlyJSONSyntaxWhenTheSchemaIsOutsideThePortableSubset(t
 	require.Equal(t, openai.CreateResponseBranchCompleted, result.Branch, "an optional property is valid for a schema that is not portable")
 	require.Empty(t, recorder.failures())
 
-	for index, text := range []string{"Shipped.", "```json\n{\"status\":\"shipped\"}\n```", `{"status":"shipped"} done`, ""} {
+	for index, text := range []string{"Shipped.", "```json\n{\"status\":\"shipped\"}\n```", `{"status":"shipped"} done`} {
 		mock.CreateResponse().Respond(openaimock.CreateResponseCompleted(openai.Response{ID: "resp_text", Status: "completed", OutputText: text}, nil))
 		result, err = sdkgo.RunMutation(testsupport.NewDexContext("flow-1", fmt.Sprintf("structured-text-%d", index)), mock.CreateResponse(), openAIConnection, request)
 		require.NoError(t, err)
 		require.Equal(t, openai.CreateResponseBranchDefect, result.Branch, "%q is not exactly one JSON value", text)
 		require.Len(t, recorder.failures(), index+1)
 	}
+}
+
+func TestOpenAIMockNamesTheSchemaWhenAStrictAnswerDoesNotMatchIt(t *testing.T) {
+	recorder := &recordingMockTB{TB: t}
+	mock := openaimock.New(recorder, openAIConnection.Name)
+	mock.CreateResponse().Respond(openaimock.CreateResponseCompleted(openai.Response{ID: "resp_bad", Status: "completed", OutputText: `{"status":123}`}, nil))
+
+	result, err := sdkgo.RunMutation(testsupport.NewDexContext("flow-1", "structured-strict"), mock.CreateResponse(), openAIConnection, structuredStatusRequest())
+	require.NoError(t, err)
+	require.Equal(t, openai.CreateResponseBranchDefect, result.Branch)
+	require.Contains(t, result.Failure.Message, "the request sets StructuredOutput with Strict, so a completed answer's outputText must match its schema")
+	require.Contains(t, result.Failure.Message, "script JSON text with the mock's Default or Respond")
+}
+
+func TestOpenAIMockChecksOnlyJSONSyntaxWithoutStrict(t *testing.T) {
+	request := structuredStatusRequest()
+	request.StructuredOutput.Strict = false
+	recorder := &recordingMockTB{TB: t}
+	mock := openaimock.New(recorder, openAIConnection.Name)
+	mock.CreateResponse().Respond(openaimock.CreateResponseCompleted(openai.Response{ID: "resp_loose", Status: "completed", OutputText: `{"status":123}`}, nil))
+
+	result, err := sdkgo.RunMutation(testsupport.NewDexContext("flow-1", "structured-loose"), mock.CreateResponse(), openAIConnection, request)
+	require.NoError(t, err)
+	require.Equal(t, openai.CreateResponseBranchCompleted, result.Branch, "OpenAI guarantees schema adherence only with Strict")
+	require.Empty(t, recorder.failures())
+
+	mock.CreateResponse().Respond(openaimock.CreateResponseCompleted(openai.Response{ID: "resp_text", Status: "completed", OutputText: "Shipped."}, nil))
+	result, err = sdkgo.RunMutation(testsupport.NewDexContext("flow-1", "structured-loose-text"), mock.CreateResponse(), openAIConnection, request)
+	require.NoError(t, err)
+	require.Equal(t, openai.CreateResponseBranchDefect, result.Branch, "plain text never fits structured output")
+	require.Len(t, recorder.failures(), 1)
+}
+
+// TestOpenAIMockDeliversWhatTheRealConnectorCompletesForStructuredOutput keeps the answer check from rejecting answers
+// that the real createResponse returns on the completed branch: a refusal without text and an incomplete Response.
+func TestOpenAIMockDeliversWhatTheRealConnectorCompletesForStructuredOutput(t *testing.T) {
+	bodies := map[string]string{
+		"refusal":    `{"id":"resp_refusal","model":"gpt-6-sol","status":"completed","output":[{"content":[{"type":"refusal","refusal":"I cannot help."}]}],"usage":{}}`,
+		"incomplete": `{"id":"resp_cut","model":"gpt-6-sol","status":"incomplete","output":[{"content":[{"type":"output_text","text":"{\"status\":\"shi"}]}],"usage":{}}`,
+	}
+	for name, body := range bodies {
+		t.Run(name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+				_, _ = response.Write([]byte(body))
+			}))
+			defer server.Close()
+			realResult, err := sdkgo.RunMutation(testsupport.NewDexContext("flow-real", "real-"+name), newClient(t, server.URL).CreateResponse(), openAIConnection, structuredStatusRequest())
+			require.NoError(t, err)
+			require.Equal(t, openai.CreateResponseBranchCompleted, realResult.Branch, "the real connector completes this Response")
+
+			recorder := &recordingMockTB{TB: t}
+			mock := openaimock.New(recorder, openAIConnection.Name)
+			mock.CreateResponse().Respond(openaimock.CreateResponseCompleted(realResult.Value, nil))
+			mockResult, err := sdkgo.RunMutation(testsupport.NewDexContext("flow-mock", "mock-"+name), mock.CreateResponse(), openAIConnection, structuredStatusRequest())
+			require.NoError(t, err)
+			require.Equal(t, openai.CreateResponseBranchCompleted, mockResult.Branch)
+			require.Equal(t, realResult.Value, mockResult.Value)
+			require.Empty(t, recorder.failures())
+		})
+	}
+}
+
+func TestOpenAIMockChecksAScriptedAnswerWithoutStatus(t *testing.T) {
+	recorder := &recordingMockTB{TB: t}
+	mock := openaimock.New(recorder, openAIConnection.Name)
+	mock.CreateResponse().Respond(openaimock.CreateResponseCompleted(openai.Response{OutputText: "Shipped."}, nil))
+
+	result, err := sdkgo.RunMutation(testsupport.NewDexContext("flow-1", "structured-no-status"), mock.CreateResponse(), openAIConnection, structuredStatusRequest())
+	require.NoError(t, err)
+	require.Equal(t, openai.CreateResponseBranchDefect, result.Branch, "a real Response always has a status, so an unset one is still checked")
+	require.Len(t, recorder.failures(), 1)
 }
 
 func TestOpenAIMockDoesNotCheckAnswersOnOtherBranches(t *testing.T) {

@@ -18,9 +18,8 @@ const (
 	invalidCreateInputMessage = "input and a model of printable ASCII without spaces are required"
 	notSerializableMessage    = "request is not JSON serializable"
 
-	structuredAnswerMismatch = "the request sets StructuredOutput, so outputText must be exactly one JSON value valid against its schema; " +
-		"script JSON text with the mock's Default or Respond, for example openaimock.CreateResponseCompleted(openai.Response{OutputText: `{...}`}, nil) " +
-		"(the manifest default answers are plain text): "
+	scriptStructuredAnswer = "script JSON text with the mock's Default or Respond, for example " +
+		"openaimock.CreateResponseCompleted(openai.Response{Status: \"completed\", OutputText: `{...}`}, nil)"
 )
 
 // checkCreateInput returns the defect Failure that createResponse selects
@@ -59,20 +58,28 @@ func ValidateCreateResponseRequest(request CreateRequest) *sdkgo.Failure {
 }
 
 // ValidateCreateResponseAnswer checks a completed answer against the request.
-// A plain request accepts any answer, because the real operation completes a
-// Response without output text. A structured output request needs outputText
-// that is exactly one JSON value, as OpenAI returns it: no Markdown fence and
-// no text around it. When the schema is in the portable JSON Schema subset of
+// A plain request accepts any answer. The real operation also delivers a
+// refusal with empty outputText and, today, an incomplete Response with
+// truncated text on the completed branch, so the structured output check runs
+// only for a Response whose Status is completed (or unset in a scripted
+// answer) and whose outputText is not empty. That answer needs outputText that
+// is exactly one JSON value, as OpenAI returns it: no Markdown fence and no
+// text around it. OpenAI guarantees schema adherence only with Strict, so
+// only then, and when the schema is in the portable JSON Schema subset of
 // textgen (every property required, no additional properties, one type per
-// node), the value must also match the schema; other schemas are checked for
-// JSON syntax only. Errors contain no answer text.
+// node), must the value also match the schema. Otherwise only the JSON syntax
+// is checked. Errors contain no answer text.
 func ValidateCreateResponseAnswer(request CreateRequest, answer Response) error {
 	output := request.StructuredOutput
-	if output == nil {
+	if output == nil || answer.OutputText == "" || (answer.Status != "" && answer.Status != "completed") {
 		return nil
 	}
 	if !json.Valid([]byte(answer.OutputText)) {
-		return errors.New(structuredAnswerMismatch + "the answer text is not exactly one JSON value")
+		return errors.New("the request sets StructuredOutput, so a completed answer's outputText must be exactly one JSON value, " +
+			"but it is plain text, fenced, or has text around the value; " + scriptStructuredAnswer + " (the manifest default answers are plain text)")
+	}
+	if !output.Strict {
+		return nil
 	}
 	portable := textgen.TextGenerationRequest{
 		Messages:         []textgen.Message{{Role: textgen.MessageRoleUser, Text: "check"}},
@@ -82,7 +89,8 @@ func ValidateCreateResponseAnswer(request CreateRequest, answer Response) error 
 		return nil
 	}
 	if _, err := textgen.ExtractStructuredAnswer(portable, answer.OutputText); err != nil {
-		return fmt.Errorf("%sthe answer text does not match the schema: %w", structuredAnswerMismatch, err)
+		return fmt.Errorf("the request sets StructuredOutput with Strict, so a completed answer's outputText must match its schema: %w; %s",
+			err, scriptStructuredAnswer)
 	}
 	return nil
 }
