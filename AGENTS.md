@@ -144,19 +144,20 @@ Every implementation plan includes Tests, Documentation, and UI/UX. Use
   guidance. This repository owns the connector-specific rules.
 - If the skill is unavailable, stop the Dex application-modeling portion and
   follow https://docs.superdurable.io/build-with-ai/dex-developer-skill.
-- Applications and examples wire only happy-path branches by default. Mark
-  every other branch `optional: true`; an unwired optional branch fails the
-  Flow when selected. Wire another branch only to show a required business
-  reaction, and put a comment at that wiring naming the reaction. Require a
-  non-happy-path branch only when the application must choose a continuation,
-  and explain why.
+- A connector manifest author marks every branch that is not a happy path
+  `optional: true`. Require a non-happy-path branch only when the application
+  must choose a continuation, and explain why.
+- Applications and examples wire only happy-path branches by default; an
+  unwired optional branch fails the Flow when selected. Wire another branch
+  only to show a required business reaction, and put a comment at that wiring
+  naming the reaction.
 - A connector selects a branch for a definite business outcome and retries
   every safe-to-repeat failure until the retry budget runs out, when the Flow
   fails. Declare Mutation `uncertain` only if the request may have reached the
   provider, no idempotency key, stable deduplication ID, absolute replacement,
-  upsert, or delete makes repetition safe, and read-back cannot confirm it.
-  Requests that never left the process, 429, and 503 return Retry; exhausted
-  retries never become uncertainty.
+  upsert, or delete makes repetition safe, and read-back cannot confirm it. A
+  transport failure before the request left the process, 429, and 503 return
+  Retry; exhausted retries never become uncertainty.
 - Execute durability defaults to async. Use sync only when the operation is very
   likely to exceed seven seconds. An LLM generation call may use sync. Do not
   choose sync merely because the Execute timeout ceiling is 30 seconds.

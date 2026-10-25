@@ -73,9 +73,12 @@ dex.DefineStep(slack.NewListThreadMessagesStep(slack.ListThreadMessagesStepConfi
 
 A Mutation changes provider state. It uses the same typed Step boundary, but
 its provider adapter also derives a stable idempotency key from the Dex call
-identity. A conclusive provider outcome selects a branch; an ambiguous
-post-dispatch outcome selects `uncertain` for reconciliation instead of being
-blindly resent.
+identity. A definite provider outcome selects a branch. A failure that is safe
+to repeat returns Retry, including a write that the same key deduplicates or a
+read-back can confirm. Only a write that may have reached the provider, cannot
+be repeated safely, and cannot be confirmed by read-back selects `uncertain`
+for reconciliation instead of being blindly resent. See
+[Branch-only Result and strict Attempt](docs/connector-contract.md#branch-only-result-and-strict-attempt).
 
 This Slack Mutation maps durable thread state into a reply and continues only
 after Slack confirms the `Sent` branch:

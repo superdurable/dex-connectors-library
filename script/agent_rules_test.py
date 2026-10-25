@@ -80,6 +80,21 @@ class AgentRulesTest(unittest.TestCase):
                 for fragment in required_fragments:
                     self.assertIn(fragment, contents)
 
+    def test_branch_wiring_and_uncertainty_rules_are_synchronized(self) -> None:
+        paths = (
+            ROOT / "AGENTS.md",
+            ROOT / ".cursor" / "rules" / "project-core.mdc",
+        )
+        required_fragments = (
+            "wire only happy-path branches",
+            "exhausted retries never become uncertainty",
+        )
+        for path in paths:
+            with self.subTest(path=path):
+                contents = " ".join(path.read_text(encoding="utf-8").split())
+                for fragment in required_fragments:
+                    self.assertIn(fragment, contents)
+
     def test_checked_in_example_is_the_end_to_end_verification_path(self) -> None:
         agents = " ".join((ROOT / "AGENTS.md").read_text(encoding="utf-8").split())
         acceptance = " ".join(

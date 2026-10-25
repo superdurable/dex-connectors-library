@@ -26,9 +26,9 @@ failures that are safe to repeat; the Step retries until its budget runs out,
 then the Flow fails for platform debugging. `uncertain` is limited to a write
 that may have reached the provider, has no safe repeat mechanism (a provider
 idempotency key, stable deduplication ID, absolute replacement, upsert, or
-delete), and cannot be confirmed by read-back. A request that never left the
-process, a 429, and a 503 return Retry. Exhausted retries never become
-uncertainty.
+delete), and cannot be confirmed by read-back. A transport failure before the
+request left the process, a 429, and a 503 return Retry. Exhausted retries
+never become uncertainty.
 
 `auth.oauth2.protocol` distinguishes plain OAuth 2.0 from OpenID Connect. It
 defaults to `oauth2` for existing manifests. An `oidc` manifest must also
