@@ -241,7 +241,7 @@ func (operation UpdateTaskOperation) Invoke(call sdkgo.Call, input UpdateTaskInp
 	}
 	result := operation.client.exchangeTask(call, "updateTaskContent", http.MethodPost, input.TaskID, payload)
 	switch {
-	case result.status == http.StatusOK && (result.failure != nil || !taskMatchesUpdate(result.task, input)):
+	case isSuccessStatus(result.status) && (result.failure != nil || !taskMatchesUpdate(result.task, input)):
 		return operation.confirmUpdate(call, input, result)
 	case result.failure == nil:
 		return sdkgo.NewMutationBranch(UpdateTaskBranchUpdated, result.task, nil, sdkgo.Receipt{})
@@ -256,7 +256,7 @@ func (operation UpdateTaskOperation) Invoke(call sdkgo.Call, input UpdateTaskInp
 	}
 }
 
-// confirmUpdate reads the task by ID after an unusable or mismatched HTTP 200. The replacement is absolute, so a retry
+// confirmUpdate reads the task by ID after an unusable or mismatched HTTP 2xx. The replacement is absolute, so a retry
 // resends it safely. GET returns only active tasks: a 404 means the task was completed or deleted, which no retry changes.
 func (operation UpdateTaskOperation) confirmUpdate(call sdkgo.Call, input UpdateTaskInput, answer exchangeResult) sdkgo.MutationAttempt[Task] {
 	readBack := operation.client.exchangeTask(call, "updateTaskContent", http.MethodGet, input.TaskID, nil)
@@ -378,7 +378,7 @@ func (operation CreateTaskOperation) Invoke(call sdkgo.Call, input CreateTaskInp
 			return sdkgo.NewMutationBranch(CreateTaskBranchProviderRejected, Task{}, result.failure, sdkgo.Receipt{})
 		}
 	}
-	// A valid task in HTTP 200 is the created task as Todoist stored it; its fields may differ from the request.
+	// A valid task in HTTP 2xx is the created task as Todoist stored it; its fields may differ from the request.
 	task, err := decodeTask(result.body)
 	if err != nil {
 		return sdkgo.NewMutationUncertain(Task{}, *failure("createTask", sdkgo.FailureProtocol, "Todoist answered the creation without a usable task"), sdkgo.Receipt{})
@@ -455,10 +455,11 @@ func (client *Client) exchange(call sdkgo.Call, operation, method, endpoint stri
 	}
 	// Closing a response is best effort and cannot alter the classified provider outcome.
 	defer func() { _ = response.Body.Close() }()
-	if method == http.MethodDelete && (response.StatusCode == http.StatusOK || response.StatusCode == http.StatusNoContent) {
+	// Every 2xx is an answer, never a rejection; DELETE needs no body.
+	if method == http.MethodDelete && isSuccessStatus(response.StatusCode) {
 		return exchangeResult{status: response.StatusCode}
 	}
-	if response.StatusCode != http.StatusOK {
+	if !isSuccessStatus(response.StatusCode) {
 		return classifyHTTPFailure(operation, response)
 	}
 	body, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
@@ -489,6 +490,8 @@ func decodeTask(body []byte) (Task, error) {
 	}
 	return Task{ID: task.ID, ProjectID: task.ProjectID, Content: *task.Content, Description: *task.Description, IsCompleted: *task.Checked}, nil
 }
+
+func isSuccessStatus(status int) bool { return status >= 200 && status < 300 }
 
 func classifyHTTPFailure(operation string, response *http.Response) exchangeResult {
 	result := exchangeResult{status: response.StatusCode}

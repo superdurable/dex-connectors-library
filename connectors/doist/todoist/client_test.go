@@ -486,7 +486,7 @@ func TestCreateAndDeleteHTTPOutcomes(t *testing.T) {
 			require.Equal(t, status == 429 || status == 503, createErr != nil)
 			if createErr == nil {
 				expected := CreateTaskBranchProviderRejected
-				if status == 200 || status == 408 || status == 409 || status == 500 {
+				if status == 200 || status == 204 || status == 408 || status == 409 || status == 500 {
 					expected = CreateTaskBranchUncertain
 				}
 				require.Equal(t, expected, created.Branch)
@@ -498,7 +498,7 @@ func TestCreateAndDeleteHTTPOutcomes(t *testing.T) {
 			require.Equal(t, status == 429 || status == 408 || status >= 500, listErr != nil)
 			if listErr == nil {
 				expected := ListTasksBranchProviderRejected
-				if status == 200 {
+				if status == 200 || status == 204 {
 					expected = ListTasksBranchInvalidResponse
 				}
 				require.Equal(t, expected, listed.Branch)
@@ -585,6 +585,47 @@ func TestRefusedConnectionRetriesEveryOperation(t *testing.T) {
 		require.ErrorAs(t, err, &retry)
 		require.Equal(t, sdkgo.FailureTransport, retry.Failure.Kind)
 		require.Equal(t, "Todoist could not be reached, so the request was not sent", retry.Failure.Message)
+	}
+}
+
+func TestOtherSuccessStatusesAreAnswers(t *testing.T) {
+	for _, scenario := range []struct {
+		status        int
+		body          string
+		createBranch  sdkgo.BranchID
+		readBranch    sdkgo.BranchID
+		updateRetries bool
+	}{
+		{http.StatusCreated, taskJSON("New"), CreateTaskBranchCreated, GetTaskBranchFound, false},
+		{http.StatusAccepted, taskJSON("New"), CreateTaskBranchCreated, GetTaskBranchFound, false},
+		{http.StatusCreated, "{", CreateTaskBranchUncertain, GetTaskBranchInvalidResponse, true},
+		{http.StatusNoContent, "", CreateTaskBranchUncertain, GetTaskBranchInvalidResponse, true},
+	} {
+		t.Run(fmt.Sprintf("%d %s", scenario.status, scenario.body), func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+				w.WriteHeader(scenario.status)
+				_, err := io.WriteString(w, scenario.body)
+				require.NoError(t, err)
+			}))
+			defer server.Close()
+			client := newTestClient(t, server.URL)
+			created, err := createTask(client, CreateTaskInput{Content: "New"})
+			require.NoError(t, err)
+			require.Equal(t, scenario.createBranch, created.Branch)
+			read, err := readTask(client)
+			require.NoError(t, err)
+			require.Equal(t, scenario.readBranch, read.Branch)
+			deleted, err := deleteTask(client)
+			require.NoError(t, err)
+			require.Equal(t, DeleteTaskBranchDeleted, deleted.Branch)
+			updated, err := updateTask(client, "New")
+			if scenario.updateRetries {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, UpdateTaskBranchUpdated, updated.Branch)
+		})
 	}
 }
 
