@@ -547,16 +547,39 @@ func TestRefusedConnectionRetriesEveryOperation(t *testing.T) {
 	}
 }
 
-func TestCreateTaskMismatchedAnswerRemainsUncertain(t *testing.T) {
+func TestCreateTaskReturnsStoredTaskWhenFieldsDiffer(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 		require.Equal(t, http.MethodPost, request.Method)
-		_, err := io.WriteString(w, taskJSON("Different title"))
+		_, err := io.WriteString(w, `{"id":"6XGgmFVcrG5RRjVr","project_id":"6XGgm6PHrGgMpCFX","content":"Requested title","description":"","checked":false}`)
 		require.NoError(t, err)
 	}))
 	defer server.Close()
-	result, err := createTask(newTestClient(t, server.URL), CreateTaskInput{Content: "Requested title", Description: "Details"})
+	result, err := createTask(newTestClient(t, server.URL), CreateTaskInput{Content: "Requested title ", Description: "Details", ProjectID: "2203306141"})
 	require.NoError(t, err)
-	require.Equal(t, CreateTaskBranchUncertain, result.Branch)
+	require.Equal(t, CreateTaskBranchCreated, result.Branch)
+	require.Equal(t, Task{ID: "6XGgmFVcrG5RRjVr", ProjectID: "6XGgm6PHrGgMpCFX", Content: "Requested title"}, result.Value)
+}
+
+func TestCreateTaskUnusableAnswerRemainsUncertain(t *testing.T) {
+	for name, body := range map[string]string{
+		"malformed":       "{",
+		"missing content": `{"id":"6XGgmFVcrG5RRjVr","project_id":"6XGgm6PHrGgMpCFX","description":"","checked":false}`,
+		"invalid task ID": strings.Replace(taskJSON("New"), "6XGgmFVcrG5RRjVr", "bad/id", 1),
+		"reflected token": taskJSON(testToken),
+	} {
+		t.Run(name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+				_, err := io.WriteString(w, body)
+				require.NoError(t, err)
+			}))
+			defer server.Close()
+			result, err := createTask(newTestClient(t, server.URL), CreateTaskInput{Content: "New"})
+			require.NoError(t, err)
+			require.Equal(t, CreateTaskBranchUncertain, result.Branch)
+			require.Equal(t, sdkgo.FailureProtocol, result.Failure.Kind)
+			require.Equal(t, Task{}, result.Value)
+		})
+	}
 }
 
 type dropResponseTransport struct{}

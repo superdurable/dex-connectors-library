@@ -283,13 +283,18 @@ type UpdateCreatedTask struct {
 	dex.StepDefaultsNoWaitFor[todoist.GetTaskResult]
 }
 
-// Execute verifies original fields and defaults to a title change only when neither update field was specified.
+// Execute compares the read with the task Todoist returned on creation, which may normalize requested fields, and
+// defaults to a title change only when neither update field was specified.
 func (UpdateCreatedTask) Execute(ctx dex.Context, result todoist.GetTaskResult) (*dex.StepDecision, error) {
 	request, err := requestAttribute.Get(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if result.Value.Content != request.Content || result.Value.Description != request.Description {
+	created, err := createdAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if result.Value.Content != created.Value.Content || result.Value.Description != created.Value.Description {
 		return dex.ForceFail("created fields did not match"), nil
 	}
 	input := todoist.UpdateTaskInput{TaskID: result.Value.ID, Content: request.UpdateContent, Description: request.UpdateDescription}

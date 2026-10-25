@@ -348,7 +348,7 @@ func (operation ListTasksOperation) Invoke(call sdkgo.Call, input ListTasksInput
 	return sdkgo.NewQueryBranch(ListTasksBranchListed, page, nil, sdkgo.Receipt{})
 }
 
-// Invoke creates one task. A possibly dispatched write with no confirmable result remains uncertain.
+// Invoke creates one task. A possibly dispatched write with no usable task in its answer remains uncertain.
 func (operation CreateTaskOperation) Invoke(call sdkgo.Call, input CreateTaskInput) sdkgo.MutationAttempt[Task] {
 	if !utf8.ValidString(input.Content) || strings.TrimSpace(input.Content) == "" || !utf8.ValidString(input.Description) || input.ProjectID != "" && !taskIDPattern.MatchString(input.ProjectID) || !requestIDPattern.MatchString(string(call.IdempotencyKey)) {
 		return sdkgo.NewMutationBranch(CreateTaskBranchDefect, Task{}, failure("createTask", sdkgo.FailureValidation, "valid content, description, projectId, and stable request identity are required"), sdkgo.Receipt{})
@@ -375,9 +375,10 @@ func (operation CreateTaskOperation) Invoke(call sdkgo.Call, input CreateTaskInp
 			return sdkgo.NewMutationBranch(CreateTaskBranchProviderRejected, Task{}, result.failure, sdkgo.Receipt{})
 		}
 	}
+	// A valid task in HTTP 200 is the created task as Todoist stored it; its fields may differ from the request.
 	task, err := decodeTask(result.body)
-	if err != nil || task.Content != input.Content || task.Description != input.Description || input.ProjectID != "" && task.ProjectID != input.ProjectID {
-		return sdkgo.NewMutationUncertain(Task{}, *failure("createTask", sdkgo.FailureProtocol, "Todoist did not confirm the requested task"), sdkgo.Receipt{})
+	if err != nil {
+		return sdkgo.NewMutationUncertain(Task{}, *failure("createTask", sdkgo.FailureProtocol, "Todoist answered the creation without a usable task"), sdkgo.Receipt{})
 	}
 	return sdkgo.NewMutationBranch(CreateTaskBranchCreated, task, nil, sdkgo.Receipt{})
 }
