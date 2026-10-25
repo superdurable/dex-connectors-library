@@ -692,6 +692,9 @@ the request and scripted output for one named branch. Its error reports a
 script mismatch with `t.Errorf` and selects `defect`. Operations without
 checks keep their existing behavior. Generated packages pass these options
 when the manifest declares `mockChecks`.
+For text generation operations, `textgen.ValidatePortableRequest` supplies
+the request check. `textgen.ExtractStructuredAnswer` checks and extracts JSON
+text; a connector answer check returns its error for the response's `Text`.
 
 A generic Step can take a mock as its operation, as
 [`integrationtest/connector_mock_integration_test.go`](integrationtest/connector_mock_integration_test.go)

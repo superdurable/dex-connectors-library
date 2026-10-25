@@ -776,7 +776,9 @@ functions free of provider calls and secret-bearing error text. For example:
 Operations without `mockChecks` retain the existing generated code and mock
 behavior. Use the real connector's provider-independent request and response
 checks where available; model and wire-format checks remain with the real
-operation.
+operation. For text generation, `textgen.ValidatePortableRequest` checks the
+input, while a connector answer function can return the error from
+`textgen.ExtractStructuredAnswer(request, response.Text)`.
 
 The fixture in
 [`schema/testdata/mocks.yaml`](../schema/testdata/mocks.yaml) declares one

@@ -312,7 +312,7 @@ func (attempt *textGenerationAttempt) completeResponse(
 		}
 		if validationRequest.StructuredOutput != nil {
 			var err error
-			generatedText, err = ValidateStructuredAnswer(validationRequest, generatedText)
+			generatedText, err = ExtractStructuredAnswer(validationRequest, generatedText)
 			if err != nil {
 				return attempt.branch(InvalidResponseBranchID, sdkgo.FailureProtocol, "structured output does not match its schema "+err.Error(), receipt)
 			}

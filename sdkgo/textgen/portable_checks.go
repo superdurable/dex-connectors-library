@@ -39,11 +39,11 @@ func ValidatePortableRequest(request TextGenerationRequest) *sdkgo.Failure {
 	return nil
 }
 
-// ValidateStructuredAnswer checks generated text against the request's
-// canonical structured output schema and returns the text without surrounding
-// whitespace or one JSON Markdown fence. Plain text requests return the
-// original text. Errors describe mismatches without including generated values.
-func ValidateStructuredAnswer(request TextGenerationRequest, generatedText string) (string, error) {
+// ExtractStructuredAnswer checks generated text against the request's
+// canonical structured output schema and returns the JSON text without
+// surrounding whitespace or one JSON Markdown fence. Plain text requests
+// return the original text. Errors omit generated values.
+func ExtractStructuredAnswer(request TextGenerationRequest, generatedText string) (string, error) {
 	if request.StructuredOutput == nil {
 		return generatedText, nil
 	}
