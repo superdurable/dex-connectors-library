@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -245,7 +246,128 @@ func TestUnwiredOptionalBranchFailsFlowAfterPersistingResult(t *testing.T) {
 	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{})
 	require.NoError(t, err)
 	require.Equal(t, dex.FlowFailed, result.Status)
-	require.Contains(t, result.ErrorMessage, `connector branch "defect" has no target`)
+	require.Contains(t, result.ErrorMessage, "fixture selectDefect selected branch defect with no target")
+}
+
+type unwiredMutationCompletedStep struct {
+	dex.StepDefaultsNoWaitFor[fixtureconnector.CreateWidgetResult]
+}
+
+func (unwiredMutationCompletedStep) Execute(dex.Context, fixtureconnector.CreateWidgetResult) (*dex.StepDecision, error) {
+	return dex.GracefulComplete(nil), nil
+}
+
+type unwiredMutationFlow struct {
+	dex.FlowDefaults
+	step sdkgo.MutationStep[string, fixtureconnector.CreateInput, fixtureconnector.Widget]
+}
+
+func (flow unwiredMutationFlow) GetSteps() []dex.StepDef {
+	return []dex.StepDef{dex.DefineStartStep(flow.step), dex.DefineStep(unwiredMutationCompletedStep{})}
+}
+
+func (unwiredMutationFlow) GetPersistenceSchema() dex.PersistenceSchema {
+	return dex.PersistenceSchema{}
+}
+
+func TestUnwiredOptionalMutationBranchNamesFixtureFailureWithRealDex(t *testing.T) {
+	connection, err := fixtureconnector.NewConnection(fixtureconnector.NewProvider(), "unwired-mutation", sdkgo.NewSecretString(""))
+	require.NoError(t, err)
+	step := fixtureconnector.NewCreateWidgetStep(fixtureconnector.CreateWidgetStepConfig[string]{
+		StepType:            "UnwiredCreateWidget",
+		Annotations:         sdkgo.StepAnnotations{GroupID: "fixture", GroupLabel: "Fixture", Explanation: "Create a widget with an unwired rejected branch."},
+		Connection:          connection,
+		MapToOperationInput: func(name string) fixtureconnector.CreateInput { return fixtureconnector.CreateInput{Name: name} },
+		Completed:           sdkgo.GoTo(unwiredMutationCompletedStep{}),
+	})
+	flow := unwiredMutationFlow{step: step}
+	harness := newDexHarness(t, []dex.Flow{flow})
+	harness.startWorker(t)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	flowID := fmt.Sprintf("unwired-mutation-%d", time.Now().UnixNano())
+	_, err = harness.client.StartFlow(ctx, flow, flowID, "alpha", dex.StartFlowOptions{})
+	require.NoError(t, err)
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "fixture createWidget selected branch rejected with no target: AUTHENTICATION: credentials unavailable")
+}
+
+type uncertainMutation struct {
+	message string
+}
+
+func (uncertainMutation) Definition() sdkgo.MutationDefinition {
+	return sdkgo.MutationDefinition{
+		Operation: sdkgo.OperationRef{ConnectorID: "fixture", OperationID: "selectUncertain"},
+		Branches: []sdkgo.BranchDefinition{
+			{ID: "completed", Description: "The mutation completed."},
+			{ID: sdkgo.UncertainBranchID, Description: "The outcome is unknown.", Optional: true},
+			{ID: sdkgo.DefectBranchID, Description: "The connector is defective.", Optional: true},
+		},
+		StepDefaults: sdkgo.StepDefaults{ExecuteMethodTimeout: 10 * time.Second, ExecuteDurability: dex.StepDurabilityAsync},
+	}
+}
+
+func (uncertainMutation) IdempotencyKey(callID sdkgo.CallID, _ string) sdkgo.IdempotencyKey {
+	return sdkgo.IdempotencyKey(callID)
+}
+
+func (operation uncertainMutation) Invoke(sdkgo.Call, string) sdkgo.MutationAttempt[string] {
+	return sdkgo.NewMutationUncertain("unknown", sdkgo.Failure{
+		Kind: sdkgo.FailureTransport, Provider: "reported-provider", Operation: "reportedOperation", Message: operation.message,
+	}, sdkgo.Receipt{})
+}
+
+type uncertainMutationCompletedStep struct {
+	dex.StepDefaultsNoWaitFor[sdkgo.MutationResult[string]]
+}
+
+func (uncertainMutationCompletedStep) Execute(dex.Context, sdkgo.MutationResult[string]) (*dex.StepDecision, error) {
+	return dex.GracefulComplete(nil), nil
+}
+
+type uncertainMutationFlow struct {
+	dex.FlowDefaults
+	step sdkgo.MutationStep[string, string, string]
+}
+
+func (flow uncertainMutationFlow) GetSteps() []dex.StepDef {
+	return []dex.StepDef{dex.DefineStartStep(flow.step), dex.DefineStep(uncertainMutationCompletedStep{})}
+}
+
+func (uncertainMutationFlow) GetPersistenceSchema() dex.PersistenceSchema {
+	return dex.PersistenceSchema{}
+}
+
+func TestUnwiredUncertainMutationBranchBoundsFailureMessageWithRealDex(t *testing.T) {
+	messagePrefix := strings.Repeat("a", 1023)
+	step := sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[string, string, string]{
+		StepType:            "UnwiredUncertainMutation",
+		Annotations:         sdkgo.StepAnnotations{GroupID: "fixture", GroupLabel: "Fixture", Explanation: "Select an unwired uncertain branch."},
+		Operation:           uncertainMutation{message: messagePrefix + "é" + "excluded"},
+		Connection:          sdkgo.ConnectionRef{Provider: "fixture", Name: "uncertain-mutation"},
+		MapToOperationInput: func(input string) string { return input },
+		Branches: []sdkgo.BranchTarget[sdkgo.MutationResult[string]]{
+			sdkgo.GoToBranch(sdkgo.BranchID("completed"), uncertainMutationCompletedStep{}),
+		},
+	})
+	flow := uncertainMutationFlow{step: step}
+	harness := newDexHarness(t, []dex.Flow{flow})
+	harness.startWorker(t)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	flowID := fmt.Sprintf("unwired-uncertain-%d", time.Now().UnixNano())
+	_, err := harness.client.StartFlow(ctx, flow, flowID, "input", dex.StartFlowOptions{})
+	require.NoError(t, err)
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "fixture selectUncertain selected branch uncertain with no target: TRANSPORT: "+messagePrefix)
+	require.NotContains(t, result.ErrorMessage, "reported-provider")
+	require.NotContains(t, result.ErrorMessage, "é")
+	require.NotContains(t, result.ErrorMessage, "excluded")
 }
 
 func TestConnectorModuleConsumesSDKFactoriesWithRealDex(t *testing.T) {

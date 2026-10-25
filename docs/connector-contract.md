@@ -141,7 +141,9 @@ Operation implementations cannot return an unclassified Go error. They return:
 Only Retry becomes a non-nil Go error and enters the Dex Execute retry policy.
 A positive provider delay becomes `dex.RetryAfter`; zero delay uses the Step
 policy. A branch or uncertainty returns `error == nil`. A required branch is
-routed by the Process. An unwired optional branch fails the Flow.
+routed by the Process. An unwired optional branch fails the Flow. The failure
+reason names the operation's connector and operation IDs, the selected branch,
+and, when present, the safe Failure kind and at most 1024 bytes of its message.
 
 Mutation uncertainty is not an ordinary caller-selected branch. After a
 request dispatch, a lost connection, truncated response, ambiguous server

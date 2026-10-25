@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -126,6 +127,7 @@ type QueryStep[STEP_IN, OP_IN, OUT any] struct {
 	annotations         StepAnnotations
 	configurationUI     ConnectorConfigurationUI
 	operation           Query[OP_IN, OUT]
+	operationRef        OperationRef
 	connection          ConnectionRef
 	mapToOperationInput func(STEP_IN) OP_IN
 	branches            map[BranchID]dex.Step[QueryResult[OUT]]
@@ -144,6 +146,7 @@ type MutationStep[STEP_IN, OP_IN, OUT any] struct {
 	annotations         StepAnnotations
 	configurationUI     ConnectorConfigurationUI
 	operation           Mutation[OP_IN, OUT]
+	operationRef        OperationRef
 	connection          ConnectionRef
 	mapToOperationInput func(STEP_IN) OP_IN
 	branches            map[BranchID]dex.Step[MutationResult[OUT]]
@@ -181,7 +184,8 @@ func NewQueryStep[STEP_IN, OP_IN, OUT any](config QueryStepConfig[STEP_IN, OP_IN
 	return QueryStep[STEP_IN, OP_IN, OUT]{
 		stepType: config.StepType, annotations: config.Annotations,
 		configurationUI: cloneConnectorConfigurationUI(config.ConfigurationUI), operation: config.Operation,
-		connection: config.Connection, mapToOperationInput: config.MapToOperationInput, branches: branches,
+		operationRef: definition.Operation, connection: config.Connection,
+		mapToOperationInput: config.MapToOperationInput, branches: branches,
 		optionalBranches: optionalBranches,
 		resultAttribute:  config.ResultAttribute, progressStream: config.ProgressStream,
 		textStream: config.TextStream, textOptions: append([]dex.BufferedTextStreamOption(nil), config.TextOptions...),
@@ -224,7 +228,8 @@ func NewMutationStep[STEP_IN, OP_IN, OUT any](config MutationStepConfig[STEP_IN,
 	return MutationStep[STEP_IN, OP_IN, OUT]{
 		stepType: config.StepType, annotations: config.Annotations,
 		configurationUI: cloneConnectorConfigurationUI(config.ConfigurationUI), operation: config.Operation,
-		connection: config.Connection, mapToOperationInput: config.MapToOperationInput, branches: branches,
+		operationRef: definition.Operation, connection: config.Connection,
+		mapToOperationInput: config.MapToOperationInput, branches: branches,
 		optionalBranches: optionalBranches,
 		resultAttribute:  config.ResultAttribute, progressStream: config.ProgressStream,
 		textStream: config.TextStream, textOptions: append([]dex.BufferedTextStreamOption(nil), config.TextOptions...),
@@ -270,7 +275,8 @@ func (step QueryStep[STEP_IN, OP_IN, OUT]) Execute(ctx dex.Context, input STEP_I
 			return nil, err
 		}
 	}
-	return routeBranch(step.branches, step.optionalBranches, result.Branch, result, "query")
+	return routeBranch(step.branches, step.optionalBranches, result.Branch, result,
+		result.Failure, step.operationRef, "query")
 }
 
 func (step QueryStep[STEP_IN, OP_IN, OUT]) runOptions() []RunOption {
@@ -308,7 +314,8 @@ func (step MutationStep[STEP_IN, OP_IN, OUT]) Execute(ctx dex.Context, input STE
 			return nil, err
 		}
 	}
-	return routeBranch(step.branches, step.optionalBranches, result.Branch, result, "mutation")
+	return routeBranch(step.branches, step.optionalBranches, result.Branch, result,
+		result.Failure, step.operationRef, "mutation")
 }
 
 func (step MutationStep[STEP_IN, OP_IN, OUT]) runOptions() []RunOption {
@@ -387,14 +394,34 @@ func validateBranchTargets[T any](definitions []BranchDefinition, targets []Bran
 	return resolved, optional, nil
 }
 
-func routeBranch[T any](branches map[BranchID]dex.Step[T], optional map[BranchID]bool, branch BranchID, result T, kind string) (*dex.StepDecision, error) {
+func routeBranch[T any](
+	branches map[BranchID]dex.Step[T], optional map[BranchID]bool, branch BranchID, result T,
+	failure *Failure, operation OperationRef, operationKind string,
+) (*dex.StepDecision, error) {
 	if target := branches[branch]; target != nil {
 		return dex.GoTo(target, result), nil
 	}
 	if optional[branch] {
-		return dex.ForceFail(fmt.Sprintf("connector branch %q has no target", branch)), nil
+		return dex.ForceFail(unwiredBranchFailureReason(operation, branch, failure)), nil
 	}
-	return nil, fmt.Errorf("%s result selected unconfigured branch %q", kind, branch)
+	return nil, fmt.Errorf("%s result selected unconfigured branch %q", operationKind, branch)
+}
+
+func unwiredBranchFailureReason(operation OperationRef, branch BranchID, failure *Failure) string {
+	reason := fmt.Sprintf("%s %s selected branch %s with no target", operation.ConnectorID, operation.OperationID, branch)
+	if failure == nil {
+		return reason
+	}
+	const maxFailureMessageBytes = 1024
+	message := failure.Message
+	if len(message) > maxFailureMessageBytes {
+		limit := maxFailureMessageBytes
+		for !utf8.RuneStart(message[limit]) {
+			limit--
+		}
+		message = message[:limit]
+	}
+	return fmt.Sprintf("%s: %s: %s", reason, failure.Kind, message)
 }
 
 func targetHasStep[T any](target dex.Step[T]) bool {
