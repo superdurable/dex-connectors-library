@@ -27,7 +27,10 @@ const (
 	maximumMetadataValRunes = 500
 )
 
-const stripeIdempotencyErrorType = "idempotency_error"
+const (
+	stripeIdempotencyErrorType = "idempotency_error"
+	maximumProviderRetryDelay  = time.Hour
+)
 
 var currencyPattern = regexp.MustCompile(`^[a-z]{3}$`)
 
@@ -513,10 +516,14 @@ func stripeFailurePointer(operation string, kind sdkgo.FailureKind, message stri
 	return &failure
 }
 
+// retryAfter caps the hint before converting it, so a huge value cannot overflow into a negative delay.
 func retryAfter(header http.Header) time.Duration {
-	seconds, err := strconv.Atoi(header.Get("Retry-After"))
+	seconds, err := strconv.ParseInt(header.Get("Retry-After"), 10, 64)
 	if err != nil || seconds < 1 {
 		return 0
+	}
+	if seconds >= int64(maximumProviderRetryDelay/time.Second) {
+		return maximumProviderRetryDelay
 	}
 	return time.Duration(seconds) * time.Second
 }

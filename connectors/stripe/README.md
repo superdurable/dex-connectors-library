@@ -157,7 +157,9 @@ The generated two-minute retry window stays far inside that limit. A
 `StepOptionsOverride` for `CreateCardCheckoutSession`,
 `CreateACHCheckoutSession`, or `CreateRefund` must set a nonzero
 `ExecuteRetry.TotalDuration` below 24 hours with a margin, at most 23 hours;
-the SDK does not reject a longer window.
+the SDK does not reject a longer window. A `Retry-After` hint delays the next
+attempt by at most one hour; Dex fails the Step when that delay does not fit
+the remaining retry window.
 
 `GetCheckoutSession` returns `found`, `notFound`, `providerRejected`,
 `invalidResponse`, or `defect`. Transport, rate-limit, and availability errors

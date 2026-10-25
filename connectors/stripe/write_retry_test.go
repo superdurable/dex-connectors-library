@@ -12,10 +12,12 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/stripe"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex/sdk-go/dex"
 )
 
 type stripeWriteCase struct {
@@ -432,6 +434,36 @@ func TestStripeKeyedWritesRetryKeyStillInUseWithSameKey(t *testing.T) {
 			require.Equal(t, provider.keys[0], provider.keys[1])
 			require.Len(t, provider.objectsByKey, 1)
 		})
+	}
+}
+
+func TestStripeKeyedWritesCapRetryAfterOnConflict(t *testing.T) {
+	testCases := []struct {
+		retryAfter string
+		wantDelay  time.Duration
+	}{
+		{retryAfter: "5", wantDelay: 5 * time.Second},
+		{retryAfter: "7200", wantDelay: time.Hour},
+		{retryAfter: "9223372036854775807", wantDelay: time.Hour},
+	}
+	for _, write := range stripeWriteCases() {
+		for _, testCase := range testCases {
+			t.Run(write.name+" "+testCase.retryAfter, func(t *testing.T) {
+				server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+					response.Header().Set("Retry-After", testCase.retryAfter)
+					response.WriteHeader(http.StatusConflict)
+					_, writeErr := io.WriteString(response, stripeKeyInUseBody)
+					require.NoError(t, writeErr)
+				}))
+				defer server.Close()
+				client := newStripeClient(t, server.URL, stripe.Config{})
+				_, err := write.invoke(client, newStripeDexContext("conflict-retry-after"))
+				requireStripeRetry(t, err, sdkgo.FailureConflict)
+				var delayedRetry *dex.RetryAfterError
+				require.ErrorAs(t, err, &delayedRetry)
+				require.Equal(t, testCase.wantDelay, delayedRetry.After)
+			})
+		}
 	}
 }
 
