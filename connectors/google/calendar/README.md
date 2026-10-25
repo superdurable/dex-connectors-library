@@ -196,10 +196,11 @@ flow, harness := newScheduleMeetingHarnessWithConnection(t, mock.Connection(), C
 This snippet comes from
 [`workflow_mock_integration_test.go`](examples/schedule-meeting/flow/workflow_mock_integration_test.go).
 The event-list default has three ordered pages, including a repeated event and
-a transparent event. The example conservatively completes as `conflict` when
-the first page has a continuation token, leaving the hold uninvited. Named
-cases cover missing or inaccessible events, a stable-ID conflict, and
-incomplete free/busy information.
+a transparent event. The example follows every page and schedules the meeting
+after confirming no opaque event blocks the slot. A separate test scripts the
+named `busyMeetingWindow` case to verify that a conflicting event leaves the
+hold uninvited. Other named cases cover missing or inaccessible events, a
+stable-ID conflict, and incomplete free/busy information.
 
 ## Example
 

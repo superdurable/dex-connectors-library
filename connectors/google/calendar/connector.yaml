@@ -204,6 +204,24 @@ spec:
               timeMax: "2026-02-20T15:00:00-08:00"
               timeZone: America/Los_Angeles
               events: []
+        - name: busyMeetingWindow
+          branch: listed
+          description: A new opaque event overlaps the hold and appears on two page boundaries.
+          pages:
+            - calendarId: primary
+              timeMin: "2026-02-20T14:00:00-08:00"
+              timeMax: "2026-02-20T15:00:00-08:00"
+              timeZone: America/Los_Angeles
+              events:
+                - {id: meetinghold0001, calendarId: primary, status: confirmed, summary: Meridian kickoff, start: {dateTime: "2026-02-20T14:00:00-08:00", timeZone: America/Los_Angeles}, end: {dateTime: "2026-02-20T15:00:00-08:00", timeZone: America/Los_Angeles}, transparency: opaque}
+                - {id: boardprep0001, calendarId: primary, status: confirmed, summary: Board preparation, start: {dateTime: "2026-02-20T14:30:00-08:00", timeZone: America/Los_Angeles}, end: {dateTime: "2026-02-20T15:30:00-08:00", timeZone: America/Los_Angeles}, transparency: opaque}
+              nextPageToken: busy-page-2
+            - calendarId: primary
+              timeMin: "2026-02-20T14:00:00-08:00"
+              timeMax: "2026-02-20T15:00:00-08:00"
+              timeZone: America/Los_Angeles
+              events:
+                - {id: boardprep0001, calendarId: primary, status: confirmed, summary: Board preparation, start: {dateTime: "2026-02-20T14:30:00-08:00", timeZone: America/Los_Angeles}, end: {dateTime: "2026-02-20T15:30:00-08:00", timeZone: America/Los_Angeles}, transparency: opaque}
         - name: calendarNotFound
           branch: notFound
           description: The calendar is absent or not visible to this connection.

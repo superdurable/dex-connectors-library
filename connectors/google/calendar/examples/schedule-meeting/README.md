@@ -14,9 +14,10 @@ every Google Calendar operation:
 4. `ReadBackMeetingHold` calls `calendar.NewGetEventStep`, and
    `VerifyMeetingHold` compares the stored start and end instants with the
    request;
-5. `ListMeetingWindowEvents` calls `calendar.NewListEventsStep`, and
-   `EvaluateMeetingWindow` completes as `conflict` when another busy event
-   appeared in the window after the free/busy check;
+5. `ListMeetingWindowEvents` calls `calendar.NewListEventsStep` for each page,
+   and `EvaluateMeetingWindow` follows the cursor until the window is complete.
+   It completes as `conflict` when another busy event appeared after the
+   free/busy check;
 6. `InviteMeetingAttendees` calls `calendar.NewUpdateEventStep` to add the
    guests with `sendUpdates: all`, and `CompleteMeetingBooking` completes as
    `scheduled`.
@@ -24,7 +25,9 @@ every Google Calendar operation:
 The conflict check compares instants, never text: an event whose description
 says "2:00 PM PST" but whose instant is 11:00 in Los Angeles does not conflict,
 and transparent and cancelled events are free. An all-day event is read in the
-calendar's zone from `ListEventsOutput.TimeZone`.
+calendar's zone from `ListEventsOutput.TimeZone`. Repeated event IDs across
+pages count once. The scan stops after ten pages or on a repeated cursor and
+fails the Flow instead of inviting guests from an incomplete window.
 
 Only the happy-path branches are wired. `incomplete` free/busy, provider
 rejection, invalid responses, a create `conflict`, a missing event, and local

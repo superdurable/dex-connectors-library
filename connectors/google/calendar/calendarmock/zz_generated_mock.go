@@ -136,6 +136,16 @@ func ListEventsMeetingWindow() connectormock.Case[calendar.ListEventsOutput] {
 	return connectormock.Paged(calendar.ListEventsBranchListed, pageNumber, pages...)
 }
 
+// ListEventsBusyMeetingWindow is the manifest mock busyMeetingWindow: A new opaque event overlaps the hold and appears on two page boundaries.
+func ListEventsBusyMeetingWindow() connectormock.Case[calendar.ListEventsOutput] {
+	pages := []calendar.ListEventsOutput{
+		connectormock.MustDecodeOutput[calendar.ListEventsOutput](`{"calendarId":"primary","timeMin":"2026-02-20T14:00:00-08:00","timeMax":"2026-02-20T15:00:00-08:00","timeZone":"America/Los_Angeles","events":[{"id":"meetinghold0001","calendarId":"primary","status":"confirmed","summary":"Meridian kickoff","start":{"dateTime":"2026-02-20T14:00:00-08:00","timeZone":"America/Los_Angeles"},"end":{"dateTime":"2026-02-20T15:00:00-08:00","timeZone":"America/Los_Angeles"},"transparency":"opaque"},{"id":"boardprep0001","calendarId":"primary","status":"confirmed","summary":"Board preparation","start":{"dateTime":"2026-02-20T14:30:00-08:00","timeZone":"America/Los_Angeles"},"end":{"dateTime":"2026-02-20T15:30:00-08:00","timeZone":"America/Los_Angeles"},"transparency":"opaque"}],"nextPageToken":"busy-page-2"}`),
+		connectormock.MustDecodeOutput[calendar.ListEventsOutput](`{"calendarId":"primary","timeMin":"2026-02-20T14:00:00-08:00","timeMax":"2026-02-20T15:00:00-08:00","timeZone":"America/Los_Angeles","events":[{"id":"boardprep0001","calendarId":"primary","status":"confirmed","summary":"Board preparation","start":{"dateTime":"2026-02-20T14:30:00-08:00","timeZone":"America/Los_Angeles"},"end":{"dateTime":"2026-02-20T15:30:00-08:00","timeZone":"America/Los_Angeles"},"transparency":"opaque"}]}`),
+	}
+	pageNumber := connectormock.CursorPageNumber[calendar.ListEventsInput]("pageToken", "nextPageToken", pages)
+	return connectormock.Paged(calendar.ListEventsBranchListed, pageNumber, pages...)
+}
+
 // ListEventsCalendarNotFound is the manifest mock calendarNotFound: The calendar is absent or not visible to this connection.
 func ListEventsCalendarNotFound() connectormock.Case[calendar.ListEventsOutput] {
 	var value calendar.ListEventsOutput

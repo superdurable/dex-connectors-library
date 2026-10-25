@@ -28,6 +28,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[calendar.ListEventsOutput](`{"calendarId":"primary","timeMin":"2026-02-20T14:00:00-08:00","timeMax":"2026-02-20T15:00:00-08:00","timeZone":"America/Los_Angeles","events":[]}`)
 			return err
 		}},
+		{name: "listEvents/busyMeetingWindow/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[calendar.ListEventsOutput](`{"calendarId":"primary","timeMin":"2026-02-20T14:00:00-08:00","timeMax":"2026-02-20T15:00:00-08:00","timeZone":"America/Los_Angeles","events":[{"id":"meetinghold0001","calendarId":"primary","status":"confirmed","summary":"Meridian kickoff","start":{"dateTime":"2026-02-20T14:00:00-08:00","timeZone":"America/Los_Angeles"},"end":{"dateTime":"2026-02-20T15:00:00-08:00","timeZone":"America/Los_Angeles"},"transparency":"opaque"},{"id":"boardprep0001","calendarId":"primary","status":"confirmed","summary":"Board preparation","start":{"dateTime":"2026-02-20T14:30:00-08:00","timeZone":"America/Los_Angeles"},"end":{"dateTime":"2026-02-20T15:30:00-08:00","timeZone":"America/Los_Angeles"},"transparency":"opaque"}],"nextPageToken":"busy-page-2"}`)
+			return err
+		}},
+		{name: "listEvents/busyMeetingWindow/2", decode: func() error {
+			_, err := connectormock.DecodeOutput[calendar.ListEventsOutput](`{"calendarId":"primary","timeMin":"2026-02-20T14:00:00-08:00","timeMax":"2026-02-20T15:00:00-08:00","timeZone":"America/Los_Angeles","events":[{"id":"boardprep0001","calendarId":"primary","status":"confirmed","summary":"Board preparation","start":{"dateTime":"2026-02-20T14:30:00-08:00","timeZone":"America/Los_Angeles"},"end":{"dateTime":"2026-02-20T15:30:00-08:00","timeZone":"America/Los_Angeles"},"transparency":"opaque"}]}`)
+			return err
+		}},
 		{name: "getEvent/meetingHold/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[calendar.Event](`{"id":"meetinghold0001","calendarId":"primary","status":"confirmed","summary":"Meridian kickoff","start":{"dateTime":"2026-02-20T14:00:00-08:00","timeZone":"America/Los_Angeles"},"end":{"dateTime":"2026-02-20T15:00:00-08:00","timeZone":"America/Los_Angeles"},"transparency":"opaque","etag":"\"mock-etag-1\""}`)
 			return err
