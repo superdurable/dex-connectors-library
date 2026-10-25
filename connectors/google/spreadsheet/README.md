@@ -31,6 +31,21 @@ retry instead of producing a branch.
 The `ui/` package builds the credential-safe Studio setup bundle published as
 `connector-ui.tgz` with the Connector release.
 
+## Test with spreadsheetmock
+
+The generated `spreadsheetmock` package answers every operation's happy path by
+default. Pass its typed connection to the example Flow to test without Google
+credentials or response scripts:
+
+```go
+mock := spreadsheetmock.New(t, ConnectionName)
+flow := NewFlow(mock.Connection())
+```
+
+This snippet comes from
+[`workflow_mock_integration_test.go`](examples/upsert-contact/flow/workflow_mock_integration_test.go).
+Named cases cover missing ranges or rows, duplicate keys, and provider refusals.
+
 ## Example
 
 [`examples/upsert-contact`](examples/upsert-contact) is a runnable Dex Web

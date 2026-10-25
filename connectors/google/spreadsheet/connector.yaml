@@ -5,7 +5,7 @@ metadata:
   displayName: Google Sheets
   description: Read ranges, find stable keyed rows, and idempotently upsert rows in Google Sheets.
   company: Google
-  version: v0.22.0
+  version: v0.23.0
 spec:
   provider: google
   codegen:
@@ -144,6 +144,26 @@ spec:
         executeMethodTimeout: 30s
         durability: async
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+      mocks:
+        - name: contactsRange
+          branch: read
+          description: A contact range with its header and two rows.
+          default: true
+          output:
+            range: Contacts!A1:C3
+            majorDimension: ROWS
+            values:
+              - [email, name, status]
+              - [ada@example.test, Ada Lovelace, active]
+              - [grace@example.test, Grace Hopper, pending]
+        - name: rangeNotFound
+          branch: notFound
+          description: The spreadsheet or range does not exist.
+          failure: {kind: NOT_FOUND, message: The spreadsheet or range was not found.}
+        - name: readRejected
+          branch: providerRejected
+          description: Google rejects a range read because the account lacks access.
+          failure: {kind: AUTHORIZATION, message: Google Sheets rejected the range read.}
     - name: findRow
       goName: FindRow
       inputType: FindRowInput
@@ -159,6 +179,27 @@ spec:
         - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized row response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution: *googleExecution
+      mocks:
+        - name: contactFound
+          branch: found
+          description: One contact row matches the requested email key.
+          default: true
+          output:
+            rowNumber: 2
+            values: {email: ada@example.test, name: Ada Lovelace, status: active}
+        - name: contactNotFound
+          branch: notFound
+          description: No contact has the requested email key.
+          failure: {kind: NOT_FOUND, message: No matching contact row exists.}
+        - name: duplicateContacts
+          branch: conflict
+          description: Two rows have the same contact email key.
+          output: {conflictingRows: [2, 4]}
+          failure: {kind: CONFLICT, message: More than one contact row has the requested email key.}
+        - name: findRejected
+          branch: providerRejected
+          description: Google rejects the row lookup because the account lacks access.
+          failure: {kind: AUTHORIZATION, message: Google Sheets rejected the row lookup.}
     - name: upsertRow
       goName: UpsertRow
       inputType: UpsertRowInput
@@ -174,3 +215,17 @@ spec:
         - {id: uncertain, goName: Uncertain, description: The dispatched write outcome cannot be confirmed., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution: *googleExecution
+      mocks:
+        - name: contactUpserted
+          branch: upserted
+          description: One contact is inserted into the Contacts tab.
+          default: true
+          output: {action: inserted, rowNumber: 2, updatedRange: "Contacts!A2:C2"}
+        - name: duplicateKey
+          branch: conflict
+          description: Existing duplicate email keys prevent a safe upsert.
+          failure: {kind: CONFLICT, message: More than one contact row has the requested email key.}
+        - name: writeRejected
+          branch: providerRejected
+          description: Google rejects the contact upsert because the account lacks edit access.
+          failure: {kind: AUTHORIZATION, message: Google Sheets rejected the contact upsert.}
