@@ -377,17 +377,23 @@ unscripted calls on their happy-path branches. The default Inbox search serves
 three newest-first pages with a lookalike sender, a repeated message across a
 page boundary, and an older message. Named cases cover missing messages and
 conclusive provider rejections. Send and reply defaults describe accepted
-messages; uncertain sends have no mock, so script one with
-`ReplyToMessageUncertain` or `SendMessageUncertain`.
+messages. An uncertain send has no default or named case; a test scripts one
+with `ReplyToMessageUncertain` or `SendMessageUncertain`.
 
 The [runnable integration test](examples/support-reply/flow/workflow_mock_integration_test.go)
-builds the example Flow on the mock, runs it on a real Dex Worker without
-Graph, and checks the inputs the Flow mapped from each call:
+builds the example Flow on the mock:
 
 ```go
 mock := outlookmailmock.New(t, ConnectionName)
 flow := NewFlow(mock.Connection(), ArchiveFolderSelection{})
-// Register flow on a Dex Worker, start it with input, and wait until it completes.
+input := integrationInput()
+```
+
+It registers `flow` on a real Dex Worker, starts it with `input` without
+Graph, waits until it completes, and checks the inputs the Flow mapped from
+each call:
+
+```go
 replies := mock.ReplyToMessage().Calls()
 require.Len(t, replies, 1)
 require.Equal(t, outlookmail.ReplyToMessageInput{MessageID: customerMessageID, Text: input.ReplyText}, replies[0].Input)

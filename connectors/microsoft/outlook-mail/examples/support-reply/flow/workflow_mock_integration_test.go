@@ -16,13 +16,13 @@ import (
 // TestSupportReplyUsesMockDefaultsWithRealDex runs the example on outlookmailmock defaults and checks every
 // operation input the Flow mapped.
 func TestSupportReplyUsesMockDefaultsWithRealDex(t *testing.T) {
-	// The default search serves a lookalike sender on page 1 and this customer message on page 2.
+	// The default search serves this customer message on page 2.
 	const customerMessageID = "AAMkAGI2MDEyMzQ1AAABC002"
 	const secondPageCursor = "https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages?$top=10&$skip=10"
-	input := integrationInput()
 
 	mock := outlookmailmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection(), ArchiveFolderSelection{})
+	input := integrationInput()
 	harness := newReplyHarnessForFlow(t, flow)
 	outcome := harness.runReply(t, "mock-default", input)
 
@@ -44,7 +44,8 @@ func TestSupportReplyUsesMockDefaultsWithRealDex(t *testing.T) {
 	for _, call := range mock.SearchMessages().Calls() {
 		searches = append(searches, call.Input)
 	}
-	require.Equal(t, []outlookmail.SearchMessagesInput{firstPage, secondPage}, searches, "page 1 has only the lookalike, so page 2 is read")
+	// Graph's exact From filter would drop page 1's lookalike; here it exercises the Flow's EqualFold recheck.
+	require.Equal(t, []outlookmail.SearchMessagesInput{firstPage, secondPage}, searches, "page 1 has no exact sender match, so page 2 is read")
 
 	reads := mock.GetMessage().Calls()
 	require.Len(t, reads, 1)
