@@ -41,30 +41,13 @@ func TestCreateCardCheckoutSessionUsesCardAndStableIdempotency(t *testing.T) {
 	require.Equal(t, string(result.Receipt.IdempotencyKey), idempotencyKey)
 }
 
-func TestCreateCardCheckoutSessionClassifiesInvalidAndUncertain(t *testing.T) {
+func TestCreateCardCheckoutSessionRejectsInvalidInput(t *testing.T) {
 	client := newStripeClient(t, "http://127.0.0.1:1", stripe.Config{})
 	input := stripe.CreateCardCheckoutSessionInput(validCreateInput())
 	input.Currency = "USD"
 	result, err := sdkgo.RunMutation(newStripeDexContext("invalid-card"), client.CreateCardCheckoutSession(), stripeConnection, input)
 	require.NoError(t, err)
 	require.Equal(t, stripe.CreateCardCheckoutSessionBranchDefect, result.Branch)
-	input.Currency = "usd"
-	result, err = sdkgo.RunMutation(newStripeDexContext("uncertain-card"), client.CreateCardCheckoutSession(), stripeConnection, input)
-	require.NoError(t, err)
-	require.Equal(t, stripe.CreateCardCheckoutSessionBranchUncertain, result.Branch)
-}
-
-func TestCreateCardCheckoutSessionTreatsServerFailureAsUncertain(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
-		response.WriteHeader(http.StatusInternalServerError)
-		_, _ = response.Write([]byte(`{"error":{"type":"api_error"}}`))
-	}))
-	defer server.Close()
-	client := newStripeClient(t, server.URL, stripe.Config{})
-	result, err := sdkgo.RunMutation(newStripeDexContext("server-failure-card"), client.CreateCardCheckoutSession(), stripeConnection, stripe.CreateCardCheckoutSessionInput(validCreateInput()))
-	require.NoError(t, err)
-	require.Equal(t, stripe.CreateCardCheckoutSessionBranchUncertain, result.Branch)
-	require.Equal(t, sdkgo.FailureAvailability, result.Failure.Kind)
 }
 
 func TestCreateCardCheckoutSessionRejectsProviderError(t *testing.T) {

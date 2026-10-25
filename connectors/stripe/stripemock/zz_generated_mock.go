@@ -105,12 +105,7 @@ func CreateCardCheckoutSessionProviderRejected(value stripe.CheckoutSession, fai
 	return connectormock.Branch(stripe.CreateCardCheckoutSessionBranchProviderRejected, value, failure)
 }
 
-// CreateCardCheckoutSessionUncertain returns an uncertain createCardCheckoutSession outcome.
-func CreateCardCheckoutSessionUncertain(value stripe.CheckoutSession, failure sdkgo.Failure) connectormock.Case[stripe.CheckoutSession] {
-	return connectormock.Uncertain(value, failure)
-}
-
-// CreateCardCheckoutSessionInvalidResponse selects the invalidResponse branch: Stripe returned an invalid or oversized Checkout Session response.
+// CreateCardCheckoutSessionInvalidResponse selects the invalidResponse branch: Stripe returned an invalid Checkout Session response.
 func CreateCardCheckoutSessionInvalidResponse(value stripe.CheckoutSession, failure *sdkgo.Failure) connectormock.Case[stripe.CheckoutSession] {
 	return connectormock.Branch(stripe.CreateCardCheckoutSessionBranchInvalidResponse, value, failure)
 }
@@ -135,12 +130,6 @@ func CreateCardCheckoutSessionCreatedCardSession() connectormock.Case[stripe.Che
 func CreateCardCheckoutSessionInvalidCardRequest() connectormock.Case[stripe.CheckoutSession] {
 	var value stripe.CheckoutSession
 	return connectormock.Branch(stripe.CreateCardCheckoutSessionBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "Stripe rejected the request"})
-}
-
-// CreateCardCheckoutSessionCardConnectionLost is the manifest mock cardConnectionLost: The connection closed after the card request was sent.
-func CreateCardCheckoutSessionCardConnectionLost() connectormock.Case[stripe.CheckoutSession] {
-	var value stripe.CheckoutSession
-	return connectormock.Uncertain(value, sdkgo.Failure{Kind: sdkgo.FailureTransport, Message: "Stripe Checkout Session outcome is unknown"})
 }
 
 // CreateCardCheckoutSessionMalformedCardSession is the manifest mock malformedCardSession: Stripe returned a body that is not a Checkout Session.
@@ -170,12 +159,7 @@ func CreateACHCheckoutSessionProviderRejected(value stripe.CheckoutSession, fail
 	return connectormock.Branch(stripe.CreateACHCheckoutSessionBranchProviderRejected, value, failure)
 }
 
-// CreateACHCheckoutSessionUncertain returns an uncertain createACHCheckoutSession outcome.
-func CreateACHCheckoutSessionUncertain(value stripe.CheckoutSession, failure sdkgo.Failure) connectormock.Case[stripe.CheckoutSession] {
-	return connectormock.Uncertain(value, failure)
-}
-
-// CreateACHCheckoutSessionInvalidResponse selects the invalidResponse branch: Stripe returned an invalid or oversized Checkout Session response.
+// CreateACHCheckoutSessionInvalidResponse selects the invalidResponse branch: Stripe returned an invalid Checkout Session response.
 func CreateACHCheckoutSessionInvalidResponse(value stripe.CheckoutSession, failure *sdkgo.Failure) connectormock.Case[stripe.CheckoutSession] {
 	return connectormock.Branch(stripe.CreateACHCheckoutSessionBranchInvalidResponse, value, failure)
 }
@@ -200,12 +184,6 @@ func CreateACHCheckoutSessionCreatedSession() connectormock.Case[stripe.Checkout
 func CreateACHCheckoutSessionInvalidRequest() connectormock.Case[stripe.CheckoutSession] {
 	var value stripe.CheckoutSession
 	return connectormock.Branch(stripe.CreateACHCheckoutSessionBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "Stripe rejected the request"})
-}
-
-// CreateACHCheckoutSessionConnectionLost is the manifest mock connectionLost: The connection closed after the request was sent.
-func CreateACHCheckoutSessionConnectionLost() connectormock.Case[stripe.CheckoutSession] {
-	var value stripe.CheckoutSession
-	return connectormock.Uncertain(value, sdkgo.Failure{Kind: sdkgo.FailureTransport, Message: "Stripe Checkout Session outcome is unknown"})
 }
 
 // CreateACHCheckoutSessionMalformedSession is the manifest mock malformedSession: Stripe returned a body that is not a Checkout Session.
@@ -365,12 +343,7 @@ func CreateRefundProviderRejected(value stripe.Refund, failure *sdkgo.Failure) c
 	return connectormock.Branch(stripe.CreateRefundBranchProviderRejected, value, failure)
 }
 
-// CreateRefundUncertain returns an uncertain createRefund outcome.
-func CreateRefundUncertain(value stripe.Refund, failure sdkgo.Failure) connectormock.Case[stripe.Refund] {
-	return connectormock.Uncertain(value, failure)
-}
-
-// CreateRefundInvalidResponse selects the invalidResponse branch: Stripe returned an invalid or oversized refund response.
+// CreateRefundInvalidResponse selects the invalidResponse branch: Stripe returned an invalid refund response.
 func CreateRefundInvalidResponse(value stripe.Refund, failure *sdkgo.Failure) connectormock.Case[stripe.Refund] {
 	return connectormock.Branch(stripe.CreateRefundBranchInvalidResponse, value, failure)
 }
@@ -395,12 +368,6 @@ func CreateRefundSucceededRefund() connectormock.Case[stripe.Refund] {
 func CreateRefundAlreadyRefunded() connectormock.Case[stripe.Refund] {
 	var value stripe.Refund
 	return connectormock.Branch(stripe.CreateRefundBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "Stripe rejected the refund: charge_already_refunded: Charge ch_3Pabc123 has already been refunded."})
-}
-
-// CreateRefundConnectionLost is the manifest mock connectionLost: The connection closed after the refund request was sent.
-func CreateRefundConnectionLost() connectormock.Case[stripe.Refund] {
-	var value stripe.Refund
-	return connectormock.Uncertain(value, sdkgo.Failure{Kind: sdkgo.FailureTransport, Message: "Stripe refund outcome is unknown"})
 }
 
 // CreateRefundMalformedRefund is the manifest mock malformedRefund: Stripe returned a body that is not a refund.

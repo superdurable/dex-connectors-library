@@ -36,8 +36,8 @@ Start `StripeCreateCheckoutSession` with a unique Flow ID:
 }
 ```
 
-Only `created` is wired. Provider rejection, an uncertain dispatch, an invalid
-response, and local defects fail the Flow. The webhook receiver remains a
+Only `created` is wired. Provider rejection, an invalid response, local defects,
+and exhausted keyed retries fail the Flow. The webhook receiver remains a
 separate example because delayed ACH settlement is a Trigger concern.
 
 ```bash

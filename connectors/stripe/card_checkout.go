@@ -58,26 +58,22 @@ func (operation CreateCardCheckoutSessionOperation) Invoke(call sdkgo.Call, inpu
 			return sdkgo.NewMutationBranch(CreateCardCheckoutSessionBranchDefect, CheckoutSession{}, stripeFailurePointer("createCardCheckoutSession", sdkgo.FailureLocalDefect, err.Error()), sdkgo.Receipt{})
 		}
 		if errors.Is(err, errStripeResponseTooLarge) {
-			return sdkgo.NewMutationBranch(CreateCardCheckoutSessionBranchInvalidResponse, CheckoutSession{}, stripeFailurePointer("createCardCheckoutSession", sdkgo.FailureResponseTooLarge, err.Error()), operation.client.receipt(call, response, ""))
+			return sdkgo.NewMutationRetry[CheckoutSession](stripeFailure("createCardCheckoutSession", sdkgo.FailureResponseTooLarge, err.Error()), retryAfter(response.header))
 		}
-		return sdkgo.NewMutationUncertain(CheckoutSession{}, stripeFailure("createCardCheckoutSession", sdkgo.FailureTransport, "Stripe Checkout Session outcome is unknown"), operation.client.receipt(call, response, ""))
+		return sdkgo.NewMutationRetry[CheckoutSession](stripeFailure("createCardCheckoutSession", sdkgo.FailureTransport, "Stripe Checkout Session response is unavailable"), retryAfter(response.header))
 	}
 	if response.statusCode == http.StatusTooManyRequests {
 		return sdkgo.NewMutationRetry[CheckoutSession](stripeFailure("createCardCheckoutSession", sdkgo.FailureRateLimit, "Stripe rate limited the Checkout Session request"), retryAfter(response.header))
 	}
 	if response.statusCode >= 500 {
-		return sdkgo.NewMutationUncertain(CheckoutSession{}, stripeFailure("createCardCheckoutSession", sdkgo.FailureAvailability, "Stripe Checkout Session outcome is unknown"), operation.client.receipt(call, response, ""))
+		return sdkgo.NewMutationRetry[CheckoutSession](stripeFailure("createCardCheckoutSession", sdkgo.FailureAvailability, "Stripe Checkout Session is temporarily unavailable"), retryAfter(response.header))
 	}
 	if response.statusCode < 200 || response.statusCode >= 300 {
 		return sdkgo.NewMutationBranch(CreateCardCheckoutSessionBranchProviderRejected, CheckoutSession{}, classifyStripeRejection("createCardCheckoutSession", response), operation.client.receipt(call, response, ""))
 	}
 	session, err := decodeCheckoutSession(response.body)
 	if err != nil {
-		kind := sdkgo.FailureProtocol
-		if errors.Is(err, errStripeResponseTooLarge) {
-			kind = sdkgo.FailureResponseTooLarge
-		}
-		return sdkgo.NewMutationBranch(CreateCardCheckoutSessionBranchInvalidResponse, CheckoutSession{}, stripeFailurePointer("createCardCheckoutSession", kind, err.Error()), operation.client.receipt(call, response, ""))
+		return sdkgo.NewMutationBranch(CreateCardCheckoutSessionBranchInvalidResponse, CheckoutSession{}, stripeFailurePointer("createCardCheckoutSession", sdkgo.FailureProtocol, err.Error()), operation.client.receipt(call, response, ""))
 	}
 	return sdkgo.NewMutationBranch(CreateCardCheckoutSessionBranchCreated, session, nil, operation.client.receipt(call, response, session.ID))
 }

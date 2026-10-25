@@ -130,24 +130,6 @@ func TestCreateRefundProviderRejectionIncludesStripeCodeAndMessage(t *testing.T)
 	require.Contains(t, result.Failure.Message, "has already been refunded")
 }
 
-func TestCreateRefundTreatsServerErrorsAndLostConnectionsAsUncertain(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
-		response.WriteHeader(http.StatusBadGateway)
-	}))
-	defer server.Close()
-	client := newStripeClient(t, server.URL, stripe.Config{})
-	result, err := sdkgo.RunMutation(newStripeDexContext("refund-5xx"), client.CreateRefund(), stripeConnection, validRefundInput())
-	require.NoError(t, err)
-	require.Equal(t, stripe.CreateRefundBranchUncertain, result.Branch)
-	require.Equal(t, sdkgo.FailureAvailability, result.Failure.Kind)
-
-	lost := newStripeClient(t, "http://127.0.0.1:1", stripe.Config{})
-	result, err = sdkgo.RunMutation(newStripeDexContext("refund-lost"), lost.CreateRefund(), stripeConnection, validRefundInput())
-	require.NoError(t, err)
-	require.Equal(t, stripe.CreateRefundBranchUncertain, result.Branch)
-	require.Equal(t, sdkgo.FailureTransport, result.Failure.Kind)
-}
-
 func TestCreateRefundRejectsInvalidInputAndResponses(t *testing.T) {
 	client := newStripeClient(t, "http://127.0.0.1:1", stripe.Config{})
 	for _, mutate := range []func(*stripe.CreateRefundInput){

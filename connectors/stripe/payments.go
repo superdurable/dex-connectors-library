@@ -154,7 +154,7 @@ func (CreateRefundOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateRefundI
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke creates one refund; a lost response is uncertain because Stripe may have created it.
+// Invoke creates one refund, retrying keyed requests when Stripe's response is unavailable.
 func (operation CreateRefundOperation) Invoke(call sdkgo.Call, input CreateRefundInput) sdkgo.MutationAttempt[Refund] {
 	if err := input.validate(); err != nil {
 		return sdkgo.NewMutationBranch(CreateRefundBranchDefect, Refund{}, stripeFailurePointer("createRefund", sdkgo.FailureValidation, err.Error()), sdkgo.Receipt{})
@@ -169,9 +169,9 @@ func (operation CreateRefundOperation) Invoke(call sdkgo.Call, input CreateRefun
 			return sdkgo.NewMutationBranch(CreateRefundBranchDefect, Refund{}, stripeFailurePointer("createRefund", sdkgo.FailureLocalDefect, err.Error()), sdkgo.Receipt{})
 		}
 		if errors.Is(err, errStripeResponseTooLarge) {
-			return sdkgo.NewMutationBranch(CreateRefundBranchInvalidResponse, Refund{}, stripeFailurePointer("createRefund", sdkgo.FailureResponseTooLarge, err.Error()), operation.client.receipt(call, response, ""))
+			return sdkgo.NewMutationRetry[Refund](stripeFailure("createRefund", sdkgo.FailureResponseTooLarge, err.Error()), retryAfter(response.header))
 		}
-		return sdkgo.NewMutationUncertain(Refund{}, stripeFailure("createRefund", sdkgo.FailureTransport, "Stripe refund outcome is unknown"), operation.client.receipt(call, response, ""))
+		return sdkgo.NewMutationRetry[Refund](stripeFailure("createRefund", sdkgo.FailureTransport, "Stripe refund response is unavailable"), retryAfter(response.header))
 	}
 	if response.statusCode == http.StatusTooManyRequests {
 		return sdkgo.NewMutationRetry[Refund](stripeFailure("createRefund", sdkgo.FailureRateLimit, "Stripe rate limited the refund request"), retryAfter(response.header))
@@ -180,7 +180,7 @@ func (operation CreateRefundOperation) Invoke(call sdkgo.Call, input CreateRefun
 		return sdkgo.NewMutationRetry[Refund](stripeFailure("createRefund", sdkgo.FailureConflict, "Stripe is still processing a request with this idempotency key"), retryAfter(response.header))
 	}
 	if response.statusCode >= 500 {
-		return sdkgo.NewMutationUncertain(Refund{}, stripeFailure("createRefund", sdkgo.FailureAvailability, "Stripe refund outcome is unknown"), operation.client.receipt(call, response, ""))
+		return sdkgo.NewMutationRetry[Refund](stripeFailure("createRefund", sdkgo.FailureAvailability, "Stripe refund is temporarily unavailable"), retryAfter(response.header))
 	}
 	if response.statusCode < 200 || response.statusCode >= 300 {
 		return sdkgo.NewMutationBranch(CreateRefundBranchProviderRejected, Refund{}, classifyRefundRejection(response), operation.client.receipt(call, response, ""))

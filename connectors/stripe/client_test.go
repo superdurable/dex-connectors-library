@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"strings"
 	"testing"
 	"time"
 
@@ -88,7 +87,7 @@ func TestGetCheckoutSessionClassifiesNotFoundAndAuthentication(t *testing.T) {
 	}
 }
 
-func TestCreateACHCheckoutSessionClassifiesValidationAndAmbiguousFailure(t *testing.T) {
+func TestCreateACHCheckoutSessionRejectsInvalidInput(t *testing.T) {
 	client := newStripeClient(t, "http://127.0.0.1:1", stripe.Config{})
 	invalid := validCreateInput()
 	invalid.Currency = "USD"
@@ -96,23 +95,6 @@ func TestCreateACHCheckoutSessionClassifiesValidationAndAmbiguousFailure(t *test
 	require.NoError(t, err)
 	require.Equal(t, stripe.CreateACHCheckoutSessionBranchDefect, result.Branch)
 	require.Equal(t, sdkgo.FailureValidation, result.Failure.Kind)
-
-	result, err = sdkgo.RunMutation(newStripeDexContext("ambiguous-checkout"), client.CreateACHCheckoutSession(), stripeConnection, validCreateInput())
-	require.NoError(t, err)
-	require.Equal(t, stripe.CreateACHCheckoutSessionBranchUncertain, result.Branch)
-	require.Equal(t, sdkgo.FailureTransport, result.Failure.Kind)
-}
-
-func TestCreateACHCheckoutSessionRejectsOversizedProviderResponse(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
-		_, _ = response.Write([]byte(strings.Repeat("x", 65)))
-	}))
-	defer server.Close()
-	client := newStripeClient(t, server.URL, stripe.Config{MaxResponseBytes: 64})
-	result, err := sdkgo.RunMutation(newStripeDexContext("oversized-checkout"), client.CreateACHCheckoutSession(), stripeConnection, validCreateInput())
-	require.NoError(t, err)
-	require.Equal(t, stripe.CreateACHCheckoutSessionBranchInvalidResponse, result.Branch)
-	require.Equal(t, sdkgo.FailureResponseTooLarge, result.Failure.Kind)
 }
 
 func TestCreateACHCheckoutSessionDoesNotFollowRedirectsWithCredentials(t *testing.T) {
@@ -140,12 +122,12 @@ func validCreateInput() stripe.CreateACHCheckoutSessionInput {
 	}
 }
 
-func newStripeClient(t *testing.T, endpoint string, config stripe.Config) *stripe.Client {
+func newStripeClient(t *testing.T, endpoint string, config stripe.Config, options ...stripe.Option) *stripe.Client {
 	t.Helper()
 	config.Endpoint = endpoint
 	client, err := stripe.New(config, sdkgo.StaticCredentialProvider[stripe.Credentials]{
 		stripeConnection: {SecretKey: sdkgo.NewSecretString("sk_test_example")},
-	})
+	}, options...)
 	require.NoError(t, err)
 	return client
 }

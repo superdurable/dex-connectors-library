@@ -135,10 +135,11 @@ The application supplies:
 
 Do not put personal, bank, card, or other sensitive data in Stripe metadata.
 
-Create branches are `created`, `providerRejected`, `uncertain`,
-`invalidResponse`, and `defect`. A transport or Stripe 5xx response after
-dispatch is `uncertain`; reconcile it instead of starting an unrelated second
-payment. Rate limits retry with the same idempotency key.
+Create branches are `created`, `providerRejected`, `invalidResponse`, and
+`defect`. Transport failures, unreadable responses, rate limits, and Stripe
+5xx responses retry with the same idempotency key. Stripe can replay a 500
+response for that key; if the retry budget runs out, the Flow fails without
+switching to a new key.
 
 `GetCheckoutSession` returns `found`, `notFound`, `providerRejected`,
 `invalidResponse`, or `defect`. Transport, rate-limit, and availability errors
@@ -159,14 +160,14 @@ Step's stable Call ID as Stripe's `Idempotency-Key`. Its `Refund` output has
 `refundId`, `status` (`succeeded`, `pending`, `failed`, `requires_action`, or
 `canceled`), `amount` and `currency`; read `status` on the `refunded` branch,
 because a refund can be accepted without having succeeded. Branches are
-`refunded`, `providerRejected`, `uncertain`, `invalidResponse`, and `defect`.
+`refunded`, `providerRejected`, `invalidResponse`, and `defect`.
 A Stripe 4xx error such as `charge_already_refunded` or an amount above the
 refundable balance is `providerRejected`, and its failure message carries
 Stripe's error code and message (never for 401 or 403, whose messages can echo
-part of the key). A network loss, timeout, or 5xx response after dispatch is
-`uncertain`: the refund may exist, so check `GetPaymentIntent.amountRefunded`
-before refunding again. Rate limits and a 409 for a key still in flight retry
-with the same key.
+part of the key). Network losses, unreadable responses, timeouts, 5xx responses,
+rate limits, and a 409 for a key still in flight retry with the same key. If
+the retry budget runs out, the Flow fails; reconcile the refund before starting
+a separate request with a new key.
 
 The key needs PaymentIntent and Charge read access and Refund write access in
 addition to the Checkout Session permissions.

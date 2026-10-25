@@ -5,7 +5,7 @@ metadata:
   displayName: Stripe
   description: Create and reconcile hosted card or ACH Checkout Sessions, read PaymentIntents, refund payments, and receive signed Checkout Session events.
   company: Stripe
-  version: v0.23.0
+  version: v0.24.0
 spec:
   provider: stripe
   codegen:
@@ -22,7 +22,7 @@ spec:
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: Maximum complete Stripe API response in bytes; enter a positive integer only to change the safety limit. Oversized responses select invalidResponse.
+        description: Maximum complete Stripe API response in bytes; enter a positive integer only to change the safety limit. Oversized query responses select invalidResponse; keyed writes retry.
         required: false
         default: 1048576
       - name: webhookMaxBodyBytes
@@ -97,8 +97,7 @@ spec:
       branches:
         - {id: created, goName: Created, description: Stripe created the Checkout Session.}
         - {id: providerRejected, goName: ProviderRejected, description: Stripe conclusively rejected the Checkout Session request., optional: true}
-        - {id: uncertain, goName: Uncertain, description: The dispatched Checkout Session outcome cannot be confirmed., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Stripe returned an invalid or oversized Checkout Session response., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Stripe returned an invalid Checkout Session response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution: &stripeExecution
         executeMethodTimeout: 30s
@@ -114,9 +113,6 @@ spec:
           branch: providerRejected
           description: Stripe rejected the card Checkout Session parameters.
           failure: {kind: PROVIDER_REJECTION, message: Stripe rejected the request}
-        - name: cardConnectionLost
-          description: The connection closed after the card request was sent.
-          uncertain: {failure: {kind: TRANSPORT, message: Stripe Checkout Session outcome is unknown}}
         - name: malformedCardSession
           branch: invalidResponse
           description: Stripe returned a body that is not a Checkout Session.
@@ -135,8 +131,7 @@ spec:
       branches:
         - {id: created, goName: Created, description: Stripe created the Checkout Session.}
         - {id: providerRejected, goName: ProviderRejected, description: Stripe conclusively rejected the Checkout Session request., optional: true}
-        - {id: uncertain, goName: Uncertain, description: The dispatched Checkout Session outcome cannot be confirmed., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Stripe returned an invalid or oversized Checkout Session response., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Stripe returned an invalid Checkout Session response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution: *stripeExecution
       mocks:
@@ -149,9 +144,6 @@ spec:
           branch: providerRejected
           description: Stripe rejected the Checkout Session parameters.
           failure: {kind: PROVIDER_REJECTION, message: Stripe rejected the request}
-        - name: connectionLost
-          description: The connection closed after the request was sent.
-          uncertain: {failure: {kind: TRANSPORT, message: Stripe Checkout Session outcome is unknown}}
         - name: malformedSession
           branch: invalidResponse
           description: Stripe returned a body that is not a Checkout Session.
@@ -242,8 +234,7 @@ spec:
       branches:
         - {id: refunded, goName: Refunded, description: Stripe accepted the refund; read its status to tell succeeded from pending.}
         - {id: providerRejected, goName: ProviderRejected, description: Stripe conclusively rejected the refund with a 4xx error such as charge_already_refunded or an amount that is too large., optional: true}
-        - {id: uncertain, goName: Uncertain, description: The dispatched refund outcome cannot be confirmed after a network loss or timeout or a Stripe 5xx response., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Stripe returned an invalid or oversized refund response., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Stripe returned an invalid refund response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution: *stripeExecution
       mocks:
@@ -256,9 +247,6 @@ spec:
           branch: providerRejected
           description: Stripe rejected the refund because the charge is already fully refunded.
           failure: {kind: PROVIDER_REJECTION, message: "Stripe rejected the refund: charge_already_refunded: Charge ch_3Pabc123 has already been refunded."}
-        - name: connectionLost
-          description: The connection closed after the refund request was sent.
-          uncertain: {failure: {kind: TRANSPORT, message: Stripe refund outcome is unknown}}
         - name: malformedRefund
           branch: invalidResponse
           description: Stripe returned a body that is not a refund.
