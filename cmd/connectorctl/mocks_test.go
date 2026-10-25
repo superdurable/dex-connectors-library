@@ -14,7 +14,7 @@ import (
 	"github.com/superdurable/dex-connectors-library/schema"
 )
 
-func TestScaffoldWritesFailureFixturesAndKeepsTheRestOfTheManifest(t *testing.T) {
+func TestScaffoldWritesDefaultsAndBusinessOutcomesAndKeepsTheRestOfTheManifest(t *testing.T) {
 	directory := t.TempDir()
 	manifestPath := writeMockFixtureConnector(t, directory)
 	source := removeAllMocks(t, manifestPath)
@@ -28,16 +28,18 @@ func TestScaffoldWritesFailureFixturesAndKeepsTheRestOfTheManifest(t *testing.T)
 	manifest, err := load(manifestPath)
 	require.NoError(t, err)
 	getWidget, createWidget := manifest.Spec.Operations[0], manifest.Spec.Operations[2]
-	require.Equal(t, []string{"notFoundFailure", "defectFailure"}, mockNames(getWidget))
-	require.Equal(t, "NOT_FOUND", getWidget.Mocks[0].Failure.Kind)
-	require.Equal(t, "The widget does not exist.", getWidget.Mocks[0].Failure.Message)
-	require.Equal(t, "VALIDATION", getWidget.Mocks[1].Failure.Kind)
-	require.Equal(t, []string{"defectFailure"}, mockNames(manifest.Spec.Operations[1]))
-	require.Equal(t, []string{"lostResponse", "defectFailure"}, mockNames(createWidget))
-	require.Equal(t, "TRANSPORT", createWidget.Mocks[0].Uncertain.Failure.Kind)
-	require.Contains(t, notes.String(), "getWidget: write the found mock output by hand")
-	require.Contains(t, notes.String(), "createWidget: write the created mock output by hand")
-	require.ErrorContains(t, manifest.ValidateMockCoverage(), "getWidget: branch found needs a mock")
+	require.Equal(t, []string{"foundDefaultAnswer", "notFoundFailure"}, mockNames(getWidget))
+	require.True(t, getWidget.Mocks[0].Default)
+	require.Equal(t, "{}", getWidget.Mocks[0].Output.JSON())
+	require.Equal(t, "NOT_FOUND", getWidget.Mocks[1].Failure.Kind)
+	require.Equal(t, "The widget does not exist.", getWidget.Mocks[1].Failure.Message)
+	require.Equal(t, []string{"listedDefaultAnswer"}, mockNames(manifest.Spec.Operations[1]))
+	require.Len(t, manifest.Spec.Operations[1].Mocks[0].Pages, 3)
+	require.Equal(t, []string{"createdDefaultAnswer"}, mockNames(createWidget))
+	require.True(t, createWidget.Mocks[0].Default)
+	require.Contains(t, notes.String(), "getWidget: replace the foundDefaultAnswer default mock placeholder")
+	require.Contains(t, notes.String(), "createWidget: replace the createdDefaultAnswer default mock placeholder")
+	require.NoError(t, manifest.ValidateMockCoverage())
 
 	notes.Reset()
 	require.NoError(t, scaffoldMocks(manifestPath, &notes))
@@ -58,7 +60,7 @@ func TestScaffoldAppendsToAnExistingMocksSequence(t *testing.T) {
 
 	manifest, err := load(manifestPath)
 	require.NoError(t, err)
-	require.Equal(t, []string{"threePages", "defectFailure"}, mockNames(manifest.Spec.Operations[1]))
+	require.Equal(t, []string{"threePages"}, mockNames(manifest.Spec.Operations[1]))
 	require.NoError(t, manifest.ValidateMockCoverage())
 }
 
@@ -103,7 +105,7 @@ func TestValidateRequiresMockCoverage(t *testing.T) {
 	incomplete := strings.Replace(string(contents), "          description: A widget with every field set.\n          default: true\n", "          description: A widget with every field set.\n", 1)
 	require.NoError(t, os.WriteFile(manifestPath, []byte(incomplete), 0o600))
 
-	require.ErrorContains(t, run([]string{"validate", manifestPath}), "getWidget: a query needs exactly one default mock")
+	require.ErrorContains(t, run([]string{"validate", manifestPath}), "getWidget: exactly one default mock is required")
 }
 
 func TestCatalogListsMocksAndTheMockPackage(t *testing.T) {

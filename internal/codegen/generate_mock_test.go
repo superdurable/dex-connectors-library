@@ -44,6 +44,7 @@ func TestGenerateMockPackageDeclaresEveryConstructor(t *testing.T) {
 		"func New(t testing.TB, connectionName string) *Mock {",
 		"mock.getWidget.Default(GetWidgetDefault())",
 		"mock.listWidgets.Default(ListWidgetsDefault())",
+		"mock.createWidget.Default(CreateWidgetDefault())",
 		"func (mock *Mock) CreateWidget() *connectormock.Mutation[mockfixture.CreateWidgetInput, mockfixture.Widget]",
 		"func GetWidgetNotFound(value mockfixture.Widget, failure *sdkgo.Failure) connectormock.Case[mockfixture.Widget]",
 		"func CreateWidgetUncertain(value mockfixture.Widget, failure sdkgo.Failure) connectormock.Case[mockfixture.Widget]",
@@ -53,11 +54,11 @@ func TestGenerateMockPackageDeclaresEveryConstructor(t *testing.T) {
 		"connectormock.Retry[mockfixture.Widget](sdkgo.Failure{Kind: sdkgo.FailureRateLimit, Message: \"Too many requests.\"}, time.Duration(2000000000))",
 		"connectormock.CursorPageNumber[mockfixture.ListWidgetsInput](\"page\", \"nextPage\", pages)",
 		"func GetWidgetDefault() connectormock.Case[mockfixture.Widget] { return GetWidgetGear() }",
+		"func CreateWidgetDefault() connectormock.Case[mockfixture.Widget] { return CreateWidgetCreatedGear() }",
 		`mockfixture.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "example", Name: connectionName})`,
 	} {
 		require.Contains(t, text, expected)
 	}
-	require.NotContains(t, text, "CreateWidgetDefault")
 	require.Contains(t, text, `"createdAt":"2026-01-02T03:04:05Z"`, "a quoted timestamp stays a JSON string")
 	require.Contains(t, text, `"tags":["metal","007"]`, "a quoted number stays a JSON string")
 }

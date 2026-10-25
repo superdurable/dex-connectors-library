@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 // Package githubmock scripts the github connector's operations in application tests. New returns a
-// Connection whose operations answer from connectormock scripts, with each query's manifest default installed.
+// Connection whose operations answer from connectormock scripts, with each operation's manifest default installed.
 package githubmock
 
 import (
@@ -26,8 +26,8 @@ type Mock struct {
 	listCommits             *connectormock.Query[github.ListCommitsInput, github.CommitPage]
 }
 
-// New returns a mock connection named connectionName. Unscripted calls fail t, except a query's call that its
-// manifest default answers.
+// New returns a mock connection named connectionName. Each operation's manifest default answers
+// unscripted calls.
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{

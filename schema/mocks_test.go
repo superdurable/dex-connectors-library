@@ -111,7 +111,11 @@ func TestRejectInvalidMocks(t *testing.T) {
 		},
 		"failing default": {
 			replacements: [][2]string{{"          default: true\n          output: {id: w-1", "          default: true\n          failure: {kind: NOT_FOUND, message: Gone.}\n          output: {id: w-1"}},
-			problem:      "getWidget: mock gear: a default mock answers without a failure on a branch other than defect",
+			problem:      "getWidget: mock gear: a default mock answers a required branch without a failure",
+		},
+		"optional branch as default": {
+			replacements: [][2]string{{"        - name: gear\n          branch: found\n", "        - name: gear\n          branch: notFound\n"}},
+			problem:      "getWidget: mock gear: a default mock answers a required branch without a failure",
 		},
 		"pagination on a mutation": {
 			replacements: [][2]string{{"      idempotency: required\n", "      idempotency: required\n      pagination: {inputField: page, nextField: nextPage}\n"}},
@@ -138,25 +142,17 @@ func TestValidateMockCoverage(t *testing.T) {
 		replacements [][2]string
 		problem      string
 	}{
-		"uncovered branch": {
-			replacements: [][2]string{{"        - name: invalidID\n          branch: defect\n          description: The widget ID is empty.\n          failure: {kind: VALIDATION, message: The widget ID is required.}\n", ""}},
-			problem:      "getWidget: branch defect needs a mock",
-		},
 		"query without a default": {
 			replacements: [][2]string{{"          description: A widget with every field set.\n          default: true\n", "          description: A widget with every field set.\n"}},
-			problem:      "getWidget: a query needs exactly one default mock",
+			problem:      "getWidget: exactly one default mock is required",
+		},
+		"mutation without a default": {
+			replacements: [][2]string{{"          description: The provider created the widget.\n          default: true\n", "          description: The provider created the widget.\n"}},
+			problem:      "createWidget: exactly one default mock is required",
 		},
 		"paged default with two pages": {
 			replacements: [][2]string{{"            - {widgets: [], nextPage: 0}\n", ""}, {"tags: [archived]}], nextPage: 3}", "tags: [archived]}], nextPage: 0}"}},
 			problem:      "listWidgets: paginated default mock threePages must serve at least 3 pages",
-		},
-		"mutation without an uncertain mock": {
-			replacements: [][2]string{{"        - name: connectionLost\n          description: The connection closed after the request was sent.\n          uncertain: {failure: {kind: TRANSPORT, message: The connection closed before the response.}}\n", ""}},
-			problem:      "createWidget: branch uncertain needs a mock",
-		},
-		"operation without mocks": {
-			replacements: [][2]string{{"        - name: invalidPage\n          branch: defect\n          description: The page number is negative.\n          failure: {kind: VALIDATION, message: The page must not be negative.}\n", ""}},
-			problem:      "listWidgets: branch defect needs a mock",
 		},
 	}
 	for name, testCase := range testCases {
@@ -166,6 +162,31 @@ func TestValidateMockCoverage(t *testing.T) {
 			require.ErrorContains(t, manifest.ValidateMockCoverage(), testCase.problem)
 		})
 	}
+}
+
+func TestValidateMockCoverageAllowsDefaultsOnlyAndOptionalBranchMocks(t *testing.T) {
+	manifest := decodeMocksFixture(t, nil)
+	for operationIndex := range manifest.Spec.Operations {
+		operation := &manifest.Spec.Operations[operationIndex]
+		var defaults []schema.OperationMock
+		for _, mock := range operation.Mocks {
+			if mock.Default {
+				defaults = append(defaults, mock)
+			}
+		}
+		operation.Mocks = defaults
+	}
+	require.NoError(t, manifest.ValidateMockCoverage(), "defect and uncertain mocks are optional")
+
+	optionalMock := decodeMocksFixture(t, nil).Spec.Operations[0].Mocks[1]
+	manifest.Spec.Operations[0].Mocks = append(manifest.Spec.Operations[0].Mocks, optionalMock)
+	require.NoError(t, manifest.ValidateMockCoverage(), "declared optional branch mocks remain allowed")
+	manifest.Spec.Operations[0].Mocks[0].Branch = "notFound"
+	require.ErrorContains(t, manifest.ValidateMockCoverage(), "getWidget: default mock gear must answer a required branch without a failure")
+	manifest.Spec.Operations[0].Mocks[0].Branch = "found"
+
+	manifest.Spec.Operations[1].Mocks = nil
+	require.ErrorContains(t, manifest.ValidateMockCoverage(), "listWidgets: exactly one default mock is required")
 }
 
 func TestValidateMockCoverageSkipsAConnectorWithoutMocks(t *testing.T) {
