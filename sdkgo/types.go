@@ -100,7 +100,7 @@ type BranchDefinition struct {
 type StepDefaults struct {
 	// ExecuteMethodTimeout sets the maximum Execute duration; zero uses the Dex default.
 	ExecuteMethodTimeout time.Duration `json:"executeMethodTimeout" yaml:"executeMethodTimeout"`
-	// HeartbeatTimeout sets the heartbeat timeout; zero disables heartbeats.
+	// HeartbeatTimeout sets the heartbeat timeout; zero uses the Dex default of one minute.
 	HeartbeatTimeout time.Duration `json:"heartbeatTimeout,omitempty" yaml:"heartbeatTimeout,omitempty"`
 	// ExecuteRetry sets the Dex Execute retry policy; nil uses the Dex default.
 	ExecuteRetry *dex.RetryPolicy `json:"executeRetry,omitempty" yaml:"executeRetry,omitempty"`
