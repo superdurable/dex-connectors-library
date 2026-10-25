@@ -2,8 +2,8 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package slackmock scripts the slack connector's operations in application tests. New returns a
-// Connection whose operations answer from connectormock scripts, with each query's manifest default installed.
+// Package slackmock scripts the slack connector's operations in application tests. New returns a Connection whose
+// Query and Mutation operations answer unscripted calls from their manifest defaults.
 package slackmock
 
 import (
@@ -24,8 +24,8 @@ type Mock struct {
 	postThreadReply    *connectormock.Mutation[slack.PostThreadReplyInput, slack.PostMessageOutput]
 }
 
-// New returns a mock connection named connectionName. Unscripted calls fail t, except a query's call that its
-// manifest default answers.
+// New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
+// each operation's manifest default, so happy-path application tests need no scripting.
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
