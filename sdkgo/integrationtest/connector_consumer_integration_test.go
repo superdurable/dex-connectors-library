@@ -246,7 +246,7 @@ func TestUnwiredOptionalBranchFailsFlowAfterPersistingResult(t *testing.T) {
 	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{})
 	require.NoError(t, err)
 	require.Equal(t, dex.FlowFailed, result.Status)
-	require.Contains(t, result.ErrorMessage, "fixture selectDefect selected branch defect with no target")
+	require.Contains(t, result.ErrorMessage, "fixture selectDefect (connection optional-defect) selected branch defect with no target")
 }
 
 type unwiredMutationCompletedStep struct {
@@ -291,7 +291,7 @@ func TestUnwiredOptionalMutationBranchNamesFixtureFailureWithRealDex(t *testing.
 	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{})
 	require.NoError(t, err)
 	require.Equal(t, dex.FlowFailed, result.Status)
-	require.Contains(t, result.ErrorMessage, "fixture createWidget selected branch rejected with no target: AUTHENTICATION: credentials unavailable")
+	require.Contains(t, result.ErrorMessage, "fixture createWidget (connection unwired-mutation) selected branch rejected with no target: AUTHENTICATION: credentials unavailable")
 }
 
 type uncertainMutation struct {
@@ -364,7 +364,7 @@ func TestUnwiredUncertainMutationBranchBoundsFailureMessageWithRealDex(t *testin
 	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{})
 	require.NoError(t, err)
 	require.Equal(t, dex.FlowFailed, result.Status)
-	require.Contains(t, result.ErrorMessage, "fixture selectUncertain selected branch uncertain with no target: TRANSPORT: "+messagePrefix)
+	require.Contains(t, result.ErrorMessage, "fixture selectUncertain (connection uncertain-mutation) selected branch uncertain with no target: TRANSPORT: "+messagePrefix+" (truncated)")
 	require.NotContains(t, result.ErrorMessage, "reported-provider")
 	require.NotContains(t, result.ErrorMessage, "é")
 	require.NotContains(t, result.ErrorMessage, "excluded")

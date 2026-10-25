@@ -209,7 +209,7 @@ func (run dexScenarioRun) testUnwiredOptionalBranch(t *testing.T) {
 	harness := newScenarioHarness(t, run.serverAddress, flow)
 	result := harness.runFlow(t, flow, uniqueFlowID("llmtest-unwired"))
 	require.Equal(t, dex.FlowFailed, result.Status)
-	require.Contains(t, result.ErrorMessage, fmt.Sprintf("%s %s selected branch truncated with no target: RESPONSE_TOO_LARGE: provider stopped at the output token limit", run.suite.ConnectorID, textgen.TextGenerationOperationID))
+	require.Contains(t, result.ErrorMessage, fmt.Sprintf("%s %s (connection %s) selected branch truncated with no target: RESPONSE_TOO_LARGE: provider stopped at the output token limit", run.suite.ConnectorID, textgen.TextGenerationOperationID, connection.Reference.Name))
 	require.Len(t, provider.Requests(), 1)
 }
 

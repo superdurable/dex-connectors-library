@@ -835,8 +835,8 @@ The `integrationtest/fixturellm` package is a fixture connector built on
 `textgen` and `openaichat`. Its exchange test runs with the ordinary suite, and the
 integration run adds the real-Dex text-generation scenarios: a generated
 result streamed in order, a rate limit retried after its `Retry-After`, an
-unwired optional branch whose Flow failure names the operation, branch, and
-safe failure kind and message, a Step's model pick overriding
+unwired optional branch whose Flow failure names the operation, connection,
+branch, and safe failure kind and message, a Step's model pick overriding
 the connection model, a provider that stays silent past Dex's minimum
 heartbeat timeout, a Worker lost mid-exchange whose call is repeated on a new
 Worker, and an interrupted stream whose partial text stays on the text Stream
