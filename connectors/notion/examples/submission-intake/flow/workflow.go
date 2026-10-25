@@ -58,6 +58,7 @@ const (
 	maximumMessageRunes                = 10000
 	searchPageSize                     = 20
 	duplicateDetectionPageSize         = 2
+	maximumScanPages                   = 100
 	readBackMaximumTextCharacters      = 10000
 	submissionRecordAttributeKey       = "notion-submission"
 	submissionIDMismatchFailureMessage = "Notion row %s reads back Submission ID %q, not the submitted ID"
@@ -119,6 +120,14 @@ type SubmissionRecord struct {
 	DataSourceID string `json:"dataSourceId,omitempty"`
 	// CandidateDataSourceIDs lists every data source with the title when the title is ambiguous.
 	CandidateDataSourceIDs []string `json:"candidateDataSourceIds,omitempty"`
+	// SearchCursor continues the bounded data source search.
+	SearchCursor string `json:"searchCursor,omitempty"`
+	// SearchPagesRead bounds the data source search.
+	SearchPagesRead int `json:"searchPagesRead,omitempty"`
+	// QueryCursor continues the bounded submission row query.
+	QueryCursor string `json:"queryCursor,omitempty"`
+	// QueryPagesRead bounds the submission row query.
+	QueryPagesRead int `json:"queryPagesRead,omitempty"`
 	// PageID is the row that holds the submission.
 	PageID string `json:"pageId,omitempty"`
 	// PageURL opens the row in Notion.
@@ -264,10 +273,10 @@ func (*Flow) GetDexDisplay(ctx dex.Context, _ dex.None) (*dex.RPCResult[map[stri
 
 // MapToFindSubmissionsDataSourceInput searches data sources whose title contains the database title.
 func MapToFindSubmissionsDataSourceInput(record SubmissionRecord) notion.SearchInput {
-	return notion.SearchInput{Query: record.Submission.DatabaseTitle, ObjectType: notion.SearchObjectDataSource, PageSize: searchPageSize}
+	return notion.SearchInput{Query: record.Submission.DatabaseTitle, ObjectType: notion.SearchObjectDataSource, PageSize: searchPageSize, StartCursor: record.SearchCursor}
 }
 
-// MapToFindSubmissionRowsInput reads up to two rows with the submission ID, enough to see a duplicate.
+// MapToFindSubmissionRowsInput reads up to two rows with the submission ID per page.
 func MapToFindSubmissionRowsInput(record SubmissionRecord) notion.QueryDatabaseInput {
 	return notion.QueryDatabaseInput{
 		DataSourceID: record.DataSourceID,
@@ -275,7 +284,7 @@ func MapToFindSubmissionRowsInput(record SubmissionRecord) notion.QueryDatabaseI
 			Property: SubmissionIDProperty, Type: notion.PropertyTypeRichText, Condition: notion.FilterEquals, Text: record.Submission.SubmissionID,
 		},
 		Sorts:    []notion.QuerySort{{Timestamp: notion.TimestampCreatedTime, Direction: notion.SortAscending}},
-		PageSize: duplicateDetectionPageSize,
+		PageSize: duplicateDetectionPageSize, StartCursor: record.QueryCursor,
 	}
 }
 
@@ -342,12 +351,30 @@ func (resolveSubmissionsDataSource) Execute(ctx dex.Context, result notion.Searc
 	if err != nil {
 		return nil, err
 	}
-	candidateIDs := exactTitleMatchIDs(result.Value.Matches, record.Submission.DatabaseTitle)
+	for _, id := range exactTitleMatchIDs(result.Value.Matches, record.Submission.DatabaseTitle) {
+		if !containsID(record.CandidateDataSourceIDs, id) {
+			record.CandidateDataSourceIDs = append(record.CandidateDataSourceIDs, id)
+		}
+	}
+	record.SearchPagesRead++
+	if cursor := result.Value.NextCursor; cursor != "" {
+		if cursor == record.SearchCursor || record.SearchPagesRead >= maximumScanPages {
+			return dex.ForceFail("Notion data source search did not finish within its page limit"), nil
+		}
+		record.SearchCursor = cursor
+		if err := submissionAttribute.Set(ctx, record); err != nil {
+			return nil, err
+		}
+		return dex.GoTo(sdkgo.StepRef[SubmissionRecord](findSubmissionsDataSourceStepType), record), nil
+	}
+	record.SearchCursor, record.SearchPagesRead = "", 0
+	candidateIDs := record.CandidateDataSourceIDs
 	switch len(candidateIDs) {
 	case 0:
 		record.Phase = PhaseDataSourceNotFound
 	case 1:
 		record.Phase, record.DataSourceID = PhaseDataSourceResolved, candidateIDs[0]
+		record.CandidateDataSourceIDs = nil
 	default:
 		record.Phase, record.CandidateDataSourceIDs = PhaseDataSourceAmbiguous, candidateIDs
 	}
@@ -371,6 +398,15 @@ func exactTitleMatchIDs(matches []notion.SearchMatch, title string) []string {
 	return ids
 }
 
+func containsID(ids []string, id string) bool {
+	for _, candidate := range ids {
+		if candidate == id {
+			return true
+		}
+	}
+	return false
+}
+
 // dex:group group-id:notion group-label:"Notion"
 // dex:explanation text:"Create a row when none holds the submission ID, update the one that does, or complete on duplicates."
 type routeSubmission struct {
@@ -384,14 +420,22 @@ func (routeSubmission) Execute(ctx dex.Context, result notion.QueryDatabaseResul
 	if err != nil {
 		return nil, err
 	}
-	pages := result.Value.Pages
-	switch len(pages) {
-	case 0:
+	if failure := collectSubmissionRows(&record, result.Value); failure != "" {
+		return dex.ForceFail(failure), nil
+	}
+	if record.QueryCursor != "" {
+		if err := submissionAttribute.Set(ctx, record); err != nil {
+			return nil, err
+		}
+		return dex.GoTo(sdkgo.StepRef[SubmissionRecord](findExistingSubmissionStepType), record), nil
+	}
+	switch {
+	case record.PageID == "":
 		record.Phase = PhaseCreateRequested
-	case 1:
-		record.Phase, record.PageID, record.PageURL, record.IsExistingRow = PhaseUpdateRequested, pages[0].ID, pages[0].URL, true
+	case len(record.DuplicatePageIDs) == 0:
+		record.Phase, record.IsExistingRow = PhaseUpdateRequested, true
 	default:
-		record.Phase, record.DuplicatePageIDs = PhaseDuplicateRows, pageIDs(pages)
+		record.Phase = PhaseDuplicateRows
 	}
 	if err := submissionAttribute.Set(ctx, record); err != nil {
 		return nil, err
@@ -462,19 +506,25 @@ func (routeReconciledSubmission) Execute(ctx dex.Context, result notion.QueryDat
 	if err != nil {
 		return nil, err
 	}
-	pages := result.Value.Pages
-	switch len(pages) {
-	case 0:
+	if failure := collectSubmissionRows(&record, result.Value); failure != "" {
+		return dex.ForceFail(failure), nil
+	}
+	if record.QueryCursor != "" {
+		if err := submissionAttribute.Set(ctx, record); err != nil {
+			return nil, err
+		}
+		return dex.GoTo(sdkgo.StepRef[SubmissionRecord](reconcileSubmissionStepType), record), nil
+	}
+	switch {
+	case record.PageID == "":
 		record.Phase = PhaseCreateUncertain
-	case 1:
-		record.PageID, record.PageURL = pages[0].ID, pages[0].URL
-	default:
-		record.Phase, record.DuplicatePageIDs = PhaseDuplicateRows, pageIDs(pages)
+	case len(record.DuplicatePageIDs) > 0:
+		record.Phase = PhaseDuplicateRows
 	}
 	if err := submissionAttribute.Set(ctx, record); err != nil {
 		return nil, err
 	}
-	if len(pages) != 1 {
+	if record.PageID == "" || len(record.DuplicatePageIDs) > 0 {
 		return dex.GracefulComplete(record), nil
 	}
 	return dex.GoTo(sdkgo.StepRef[SubmissionRecord](readBackSubmissionStepType), record), nil
@@ -573,12 +623,30 @@ func (recordRejectedUpdate) Execute(ctx dex.Context, result notion.UpdatePagePro
 	return dex.GracefulComplete(record), nil
 }
 
-func pageIDs(pages []notion.Page) []string {
-	ids := make([]string, 0, len(pages))
-	for _, page := range pages {
-		ids = append(ids, page.ID)
+func collectSubmissionRows(record *SubmissionRecord, output notion.QueryDatabaseOutput) string {
+	for _, page := range output.Pages {
+		if page.IsInTrash || page.IsArchived {
+			continue
+		}
+		if record.PageID == "" {
+			record.PageID, record.PageURL = page.ID, page.URL
+		} else if page.ID != record.PageID && !containsID(record.DuplicatePageIDs, page.ID) {
+			if len(record.DuplicatePageIDs) == 0 {
+				record.DuplicatePageIDs = append(record.DuplicatePageIDs, record.PageID)
+			}
+			record.DuplicatePageIDs = append(record.DuplicatePageIDs, page.ID)
+		}
 	}
-	return ids
+	record.QueryPagesRead++
+	if output.NextCursor != "" {
+		if output.NextCursor == record.QueryCursor || record.QueryPagesRead >= maximumScanPages {
+			return "Notion submission query did not finish within its page limit"
+		}
+		record.QueryCursor = output.NextCursor
+	} else {
+		record.QueryCursor, record.QueryPagesRead = "", 0
+	}
+	return ""
 }
 
 func validateSubmission(input Input) (Input, error) {

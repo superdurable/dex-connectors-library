@@ -3,13 +3,15 @@
 This operation-only example records one form submission as a row in a Notion
 database and reads it back. It uses every Notion operation:
 
-1. `search` finds the data source whose title equals `databaseTitle`. It
-   ignores trashed and partial matches, such as an archived twin or a
-   "Form submissions (2025)" database. With no match or several, the Flow
-   completes as `dataSourceNotFound` or `dataSourceAmbiguous` and writes
-   nothing.
-2. `queryDatabase` reads the rows whose **Submission ID** equals the
-   submission's ID.
+1. `search` follows up to 100 cursor pages to find the data source whose
+   title equals `databaseTitle`. It ignores trashed and partial matches,
+   such as an archived twin or a "Form submissions (2025)" database. With no
+   match or several, the Flow completes as `dataSourceNotFound` or
+   `dataSourceAmbiguous` and writes nothing.
+2. `queryDatabase` follows up to 100 cursor pages for rows whose
+   **Submission ID** equals the submission's ID. It ignores repeated,
+   trashed, and archived rows. A repeated cursor or exhausted page limit
+   fails the Flow instead of treating an incomplete scan as absence.
 3. With no row, `createPage` creates one. It sets the title, Submission ID,
    Email, and Submitted at, and writes the message as the page body. With one
    row, `updatePageProperties` sets that row's title, Email, and Submitted at
@@ -37,7 +39,7 @@ because Dex Web Start Flow invokes `WaitFor` on the start Step.
 
 ## Release baseline
 
-- Notion Connector `v0.21.1`
+- Notion Connector `v0.22.0`
 - dexcli `v1.1.0` or a later stable release
 
 ## 1. Prepare the Notion database
@@ -69,12 +71,12 @@ cd notion-submission-intake-e2e
 mkdir -p flow build
 
 curl -fsSL \
-  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/notion/v0.21.1/connectors/notion/examples/submission-intake/flow/workflow.go \
+  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/notion/v0.22.0/connectors/notion/examples/submission-intake/flow/workflow.go \
   -o flow/workflow.go
 
 go mod init example.com/notion-submission-intake-e2e
 go mod edit -go=1.24.0
-go get github.com/superdurable/dex-connectors-library/connectors/notion@v0.21.1
+go get github.com/superdurable/dex-connectors-library/connectors/notion@v0.22.0
 go mod tidy
 ```
 
@@ -125,7 +127,7 @@ describes:
 export DEX_FLOW_SERVICE_ADDRESS="127.0.0.1:8801"
 
 GOWORK=off go run \
-  github.com/superdurable/dex-connectors-library/connectors/notion/examples/submission-intake@v0.21.1
+  github.com/superdurable/dex-connectors-library/connectors/notion/examples/submission-intake@v0.22.0
 ```
 
 The Worker listens on `127.0.0.1:8851` by default. Set
@@ -168,6 +170,7 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 \
 The integration tests use a real Dex Server and a stateful fake Notion API.
 They verify:
 
+- an unscripted mock connection that completes the example's update path;
 - a created row;
 - an updated resubmission;
 - duplicate rows;
@@ -183,8 +186,8 @@ They verify:
 - an unwired optional branch;
 - invalid Start Flow input.
 
-Before `v0.21.1` is published, build a local release artifact with
+Before `v0.22.0` is published, build a local release artifact with
 `go run ./cmd/connectorctl release-artifact` from the repository root and pass
 its directory to `dexcli dev --connector-release-override notion=DIRECTORY`.
-The test project must still resolve `connectors/notion@v0.21.1` without a
+The test project must still resolve `connectors/notion@v0.22.0` without a
 `replace`, as the compatibility gate does with a local module proxy.
