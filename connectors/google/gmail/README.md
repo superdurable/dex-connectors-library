@@ -132,7 +132,9 @@ Gmail does not document immediate search visibility or deduplication by
 Message-ID, so a missing or unusable lookup leaves the outcome `uncertain`;
 the connector does not resend it. A request proven not to have left the process,
 a 429, and a 503 retry. A 503 first checks Sent Mail and returns `sent` if
-the message is visible. Applications route `uncertain` to operator recovery.
+the message is visible. An unwired `uncertain` branch fails the Flow with its
+safe failure reason. Wire it only when a requirement names a reaction, such as
+asking an operator to check Sent Mail.
 The [Gmail message-list API](https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.messages/list)
 supports `rfc822msgid` search, and the existing Gmail read scope permits it.
 
