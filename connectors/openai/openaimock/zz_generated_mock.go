@@ -27,7 +27,7 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		createResponse:   connectormock.NewMutation[openai.CreateRequest, openai.Response](t, openai.CreateResponseDefinition),
+		createResponse:   connectormock.NewMutation[openai.CreateRequest, openai.Response](t, openai.CreateResponseDefinition, connectormock.WithRequestCheck[openai.CreateRequest, openai.Response](openai.ValidateCreateResponseRequest), connectormock.WithAnswerCheck[openai.CreateRequest, openai.Response](openai.CreateResponseBranchCompleted, openai.ValidateCreateResponseAnswer)),
 		retrieveResponse: connectormock.NewQuery[openai.RetrieveRequest, openai.Response](t, openai.RetrieveResponseDefinition),
 	}
 	mock.createResponse.Default(CreateResponseDefault())

@@ -217,10 +217,41 @@ mock := openaimock.New(t, ConnectionName)
 flow, client := startSummaryWorkerWithConnection(t, mock.Connection(), SummaryModelConfiguration{})
 ```
 
-This snippet comes from
+To give one Flow another answer, script it by Flow ID before the Flow runs:
+
+```go
+mock.CreateResponse().ForFlow(flowID).Respond(openaimock.CreateResponseCompleted(openai.Response{
+	ID: "resp_scripted", Model: "gpt-6-luna", Status: "completed", OutputText: "Shipped on time.",
+}, nil))
+```
+
+These snippets come from
 [`workflow_mock_integration_test.go`](examples/summarize-text/flow/workflow_mock_integration_test.go).
 Named cases cover incomplete stored Responses, missing IDs, and conclusive
 provider refusals.
+
+The mock runs two connector-owned checks on `createResponse`:
+
+- A request that the real operation rejects locally selects `defect` with the
+  real operation's failure kind and message, without failing the test or
+  consuming a scripted answer: a missing `Input`, a `Model` that is not
+  printable ASCII without spaces, and an `Input` or `StructuredOutput` that is
+  not JSON serializable. A blank `Model` uses the connection's model. OpenAI
+  judges the schema's content, so the mock does not.
+- A `completed` answer to a request with `StructuredOutput` must have
+  `OutputText` that is exactly one JSON value: no Markdown fence and no text
+  around it. When the schema is in the portable subset that the llm connector
+  also enforces (every property in `required`, `additionalProperties: false`,
+  one type per node), the value must also match the schema. Other schemas are
+  checked for JSON syntax only. A mismatch fails the test and selects
+  `defect`.
+
+The default answers are plain text, so a Flow whose `createResponse` request
+sets `StructuredOutput` needs a JSON answer. Script one with `Respond` for a
+single call, or with `Default` for every call, using the same
+`CreateResponseCompleted` case with JSON in `OutputText`, such as
+`{"status":"shipped"}`. Answers on the `failed` branch, such as the incomplete
+summary, carry partial text and are not checked.
 
 ## Example
 

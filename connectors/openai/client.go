@@ -197,9 +197,8 @@ func (CreateResponseOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateReque
 // without a model sends the connection's model.
 func (operation CreateResponseOperation) Invoke(call sdkgo.Call, input CreateRequest) sdkgo.MutationAttempt[Response] {
 	model := cmp.Or(strings.TrimSpace(input.Model), operation.client.model)
-	if input.Input == nil || !isPrintableModelID(model) {
-		failure := openAIFailure(sdkgo.FailureValidation, "createResponse", "input and a model of printable ASCII without spaces are required")
-		return sdkgo.NewMutationBranch(CreateResponseBranchDefect, Response{}, &failure, sdkgo.Receipt{})
+	if failure := checkCreateInput(input.Input, model); failure != nil {
+		return sdkgo.NewMutationBranch(CreateResponseBranchDefect, Response{}, failure, sdkgo.Receipt{})
 	}
 	payload := map[string]any{"model": model, "input": input.Input}
 	if input.Instructions != "" {
@@ -296,7 +295,7 @@ func (client *Client) newRequest(call sdkgo.Call, method, path string, key sdkgo
 	if payload != nil {
 		encoded, encodeErr := json.Marshal(payload)
 		if encodeErr != nil {
-			return nil, &requestFailure{failure: openAIFailure(sdkgo.FailureValidation, call.Operation.OperationID, "request is not JSON serializable")}
+			return nil, &requestFailure{failure: openAIFailure(sdkgo.FailureValidation, call.Operation.OperationID, notSerializableMessage)}
 		}
 		body = bytes.NewReader(encoded)
 	}

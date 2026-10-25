@@ -93,6 +93,9 @@ spec:
         executeMethodTimeout: 150s
         durability: sync
         retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 5m}
+      mockChecks:
+        requestFunction: ValidateCreateResponseRequest
+        answer: {branch: completed, function: ValidateCreateResponseAnswer}
       mocks:
         - name: storedSummary
           branch: completed
