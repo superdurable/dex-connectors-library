@@ -19,6 +19,7 @@ import (
 	"sync/atomic"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -47,7 +48,8 @@ type SendEventOutput struct {
 //
 // Delivery is at least once. After a 5xx, a timeout, or a lost response the Step retries with the same
 // webhook-id, so the receiver may see one event more than once. The receiver must deduplicate by webhook-id
-// and answer 2xx for an id it already processed; a 409 for a repeated id is reported as rejected.
+// and answer 2xx for an id it already processed; a 409 for a repeated id is reported as rejected. Its check
+// and record of an id must be atomic, because repeats of one id can arrive concurrently.
 type SendEventOperation struct{ client *Client }
 
 // Definition returns the immutable sendEvent operation definition.
@@ -62,7 +64,8 @@ func (SendEventOperation) IdempotencyKey(callID sdkgo.CallID, _ SendEventInput) 
 
 // Invoke POSTs the payload once with webhook-id, webhook-timestamp, and webhook-signature headers. A 2xx
 // selects delivered, and a redirect or a 4xx other than 408 and 429 selects rejected. A 408, 429, 5xx,
-// timeout, or transport error returns Retry with the same webhook-id and a new timestamp and signature.
+// timeout, or transport error returns Retry with the same webhook-id and a new timestamp and signature, and
+// so does a credential broker that is temporarily unavailable, before anything is sent.
 // A 409 is never read as proof of an earlier delivery: an earlier attempt may not have reached the receiver.
 func (operation SendEventOperation) Invoke(call sdkgo.Call, input SendEventInput) sdkgo.MutationAttempt[SendEventOutput] {
 	client := operation.client
@@ -78,6 +81,10 @@ func (operation SendEventOperation) Invoke(call sdkgo.Call, input SendEventInput
 		return sendEventDefect(output, sdkgo.FailureValidation, "sendEvent payload exceeds the connection's maxBodyBytes")
 	}
 	credentials, err := client.credentials.Resolve(call)
+	if errors.Is(err, projectconfig.ErrCredentialBrokerUnavailable) {
+		return sdkgo.NewMutationRetry[SendEventOutput](sendEventFailure(sdkgo.FailureAvailability,
+			"the credential broker is temporarily unavailable, so nothing was sent"), 0)
+	}
 	if err != nil || credentials.SigningSecret.Reveal() == "" {
 		return sendEventDefect(output, sdkgo.FailureAuthentication, "the webhook signing secret is unavailable")
 	}

@@ -6,6 +6,7 @@ package webhook_test
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -22,6 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/superdurable/webhook"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -106,6 +108,22 @@ func newSendingClientWithClock(t *testing.T, deliveryURL string, secret string, 
 		webhook.WithClock(clock), webhook.WithHTTPClient(httpClient))
 	require.NoError(t, err)
 	return client
+}
+
+func newSendingClientWithCredentials(
+	t *testing.T, deliveryURL string, credentials sdkgo.CredentialProvider[webhook.Credentials], httpClient *http.Client,
+) *webhook.Client {
+	t.Helper()
+	client, err := webhook.New(webhook.Config{DeliveryURL: deliveryURL}, credentials, webhook.WithHTTPClient(httpClient))
+	require.NoError(t, err)
+	return client
+}
+
+// failingCredentials fails every resolution with err.
+type failingCredentials struct{ err error }
+
+func (provider failingCredentials) Resolve(sdkgo.Call) (webhook.Credentials, error) {
+	return webhook.Credentials{}, provider.err
 }
 
 // advancingClock moves one minute on every reading, so each attempt reads a later time than the one before.
@@ -202,18 +220,39 @@ func TestSendEventMapsReceiverStatusesToBranches(t *testing.T) {
 
 func TestSendEventRetriesReceiverFailuresWithTheSameWebhookID(t *testing.T) {
 	for _, statusCode := range []int{http.StatusInternalServerError, http.StatusBadGateway, http.StatusServiceUnavailable} {
-		t.Run(strconv.Itoa(statusCode), func(t *testing.T) {
-			receiver := newFakeReceiver(t, standardKey(t), statusCode)
-			receiver.retryAfter = "7"
-			_, err := sendEvent(t, newSendingClient(t, receiver.URL, standardSecret, receiver.Client()), "forward", forwardedPayload)
-			var retryAfter *dex.RetryAfterError
-			require.ErrorAs(t, err, &retryAfter)
-			require.Equal(t, 7*time.Second, retryAfter.After)
-			var retry *sdkgo.RetryError
-			require.ErrorAs(t, err, &retry)
-			require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
-			require.True(t, receiver.receivedDeliveries()[0].isSignatureValid)
-		})
+		for _, test := range []struct {
+			name          string
+			retryAfter    string
+			expectedDelay time.Duration
+		}{
+			{name: "with Retry-After", retryAfter: "7", expectedDelay: 7 * time.Second},
+			{name: "without Retry-After"},
+		} {
+			t.Run(strconv.Itoa(statusCode)+" "+test.name, func(t *testing.T) {
+				receiver := newFakeReceiver(t, standardKey(t), statusCode)
+				receiver.retryAfter = test.retryAfter
+				client := newSendingClient(t, receiver.URL, standardSecret, receiver.Client())
+				for range 2 {
+					_, err := sendEvent(t, client, "forward", forwardedPayload)
+					var retry *sdkgo.RetryError
+					require.ErrorAs(t, err, &retry)
+					require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+					var retryAfter *dex.RetryAfterError
+					if test.expectedDelay == 0 {
+						require.False(t, errors.As(err, &retryAfter), "without a Retry-After the Step's retry policy decides the delay")
+					} else {
+						require.ErrorAs(t, err, &retryAfter)
+						require.Equal(t, test.expectedDelay, retryAfter.After)
+					}
+				}
+				deliveries := receiver.receivedDeliveries()
+				require.Len(t, deliveries, 2)
+				require.Equal(t, deliveries[0].webhookID, deliveries[1].webhookID)
+				require.Equal(t, deliveries[0].body, deliveries[1].body)
+				require.True(t, deliveries[0].isSignatureValid)
+				require.True(t, deliveries[1].isSignatureValid)
+			})
+		}
 	}
 }
 
@@ -321,6 +360,17 @@ func TestSendEventReportsAReplayAnsweredWith409AsRejected(t *testing.T) {
 	require.Equal(t, deliveries[0].webhookID, deliveries[1].webhookID)
 }
 
+func TestSendEventRetriesWhenTheCredentialBrokerIsUnavailable(t *testing.T) {
+	receiver := newFakeReceiver(t, standardKey(t), http.StatusOK)
+	unavailable := failingCredentials{err: fmt.Errorf("read signing secret: %w", projectconfig.ErrCredentialBrokerUnavailable)}
+	_, err := sendEvent(t, newSendingClientWithCredentials(t, receiver.URL, unavailable, receiver.Client()), "forward", forwardedPayload)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "an unavailable broker is transient and nothing was sent")
+	require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+	require.NotContains(t, retry.Failure.Message, sentinelSecret)
+	require.Empty(t, receiver.receivedDeliveries())
+}
+
 func TestSendEventSelectsDefectWithoutSendingInvalidRequests(t *testing.T) {
 	receiver := newFakeReceiver(t, standardKey(t), http.StatusOK)
 	smallLimit, err := webhook.New(webhook.Config{DeliveryURL: receiver.URL, MaxBodyBytes: 16}, staticCredentials(standardSecret),
@@ -337,6 +387,15 @@ func TestSendEventSelectsDefectWithoutSendingInvalidRequests(t *testing.T) {
 		{name: "invalid payload", client: newSendingClient(t, receiver.URL, standardSecret, receiver.Client()), payload: `{"type":`, expectedReason: "valid JSON"},
 		{name: "oversized payload", client: smallLimit, payload: forwardedPayload, expectedReason: "maxBodyBytes"},
 		{name: "blank secret", client: newSendingClient(t, receiver.URL, "", receiver.Client()), payload: forwardedPayload, expectedReason: "signing secret"},
+		{
+			name: "connection without credentials", payload: forwardedPayload, expectedReason: "signing secret",
+			client: newSendingClientWithCredentials(t, receiver.URL, sdkgo.StaticCredentialProvider[webhook.Credentials]{}, receiver.Client()),
+		},
+		{
+			name: "credential broker rejection", payload: forwardedPayload, expectedReason: "signing secret",
+			client: newSendingClientWithCredentials(t, receiver.URL,
+				failingCredentials{err: fmt.Errorf("read signing secret: %w", projectconfig.ErrCredentialBrokerRejected)}, receiver.Client()),
+		},
 		{name: "invalid whsec_ secret", client: newSendingClient(t, receiver.URL, "whsec_not base64!", receiver.Client()), payload: forwardedPayload, expectedReason: "whsec_"},
 	} {
 		t.Run(test.name, func(t *testing.T) {

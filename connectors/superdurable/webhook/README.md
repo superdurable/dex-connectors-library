@@ -202,15 +202,20 @@ the project configuration that the application loads. `configuration` may be
 | `2xx` | `delivered`, with the status code |
 | `408` or `429` | Retry with the same `webhook-id`, after `Retry-After` when sent |
 | Connection refused, DNS or TLS failure before the request was written | Retry with the same `webhook-id` |
+| The project's credential broker is temporarily unavailable, so the signing secret cannot be read | Retry; nothing was sent |
 | A redirect or another `4xx`, including `409` | `rejected` (optional), with the status code |
 | `5xx`, timeout, or a lost connection after the request was written | Retry with the same `webhook-id`, after `Retry-After` when sent |
-| Blank `deliveryUrl`, unusable secret, or an invalid payload | `defect` (optional), before any request |
+| Blank `deliveryUrl`, a missing, blank, or unusable secret, or an invalid payload | `defect` (optional), before any request |
 
 `sendEvent` delivers at least once. After a `5xx`, a timeout, or a lost
 connection or response, the Step sends the event again with the same
 `webhook-id`, so a receiver that already applied the first request sees the
 event a second time. The receiver must deduplicate by `webhook-id` before it
-applies an event, and answer `2xx` for an id it has already processed.
+applies an event, and answer `2xx` for an id it has already processed. The
+receiver's check and record of an id must be atomic, such as one insert into a
+table with a unique `webhook-id`, because repeats of one id can arrive
+concurrently: a retry can start while the first request is still being
+processed.
 Standard Webhooks [recommends using this header as the idempotency key](https://github.com/standard-webhooks/standard-webhooks/blob/main/spec/standard-webhooks.md#verifying-signatures),
 keeps the ID the same across retries, and [counts only a `2xx` answer as a
 successful delivery](https://github.com/standard-webhooks/standard-webhooks/blob/main/spec/standard-webhooks.md#delivery-success-and-failure).
