@@ -20,9 +20,11 @@ var openAIConnection = sdkgo.ConnectionRef{Provider: "openai", Name: "default"}
 
 func TestCreateStructuredResponseCapturesUsageAndReceipt(t *testing.T) {
 	var requestBody map[string]any
+	var clientRequestID string
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		require.Equal(t, "Bearer test-key", request.Header.Get("Authorization"))
-		require.NotEmpty(t, request.Header.Get("Idempotency-Key"))
+		require.Empty(t, request.Header.Values("Idempotency-Key"), "net/http replays a POST that carries Idempotency-Key")
+		clientRequestID = request.Header.Get("X-Client-Request-Id")
 		require.NoError(t, json.NewDecoder(request.Body).Decode(&requestBody))
 		response.Header().Set("X-Request-Id", "req_123")
 		response.Header().Set("X-RateLimit-Remaining-Tokens", "900")
@@ -48,6 +50,7 @@ func TestCreateStructuredResponseCapturesUsageAndReceipt(t *testing.T) {
 	require.Equal(t, 2, result.Value.Usage.ReasoningOutputTokens)
 	require.Equal(t, "req_123", result.Receipt.ProviderRequestID)
 	require.NotEmpty(t, result.Receipt.IdempotencyKey)
+	require.Equal(t, string(result.Receipt.CallID), clientRequestID, "the Call ID is sent as X-Client-Request-Id")
 	require.Equal(t, "900", result.Receipt.Metadata["x-ratelimit-remaining-tokens"])
 	text, ok := requestBody["text"].(map[string]any)
 	require.True(t, ok)

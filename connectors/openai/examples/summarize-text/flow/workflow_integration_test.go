@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -81,7 +82,8 @@ func TestSummarizeTextExampleStoresOpenAIResponsesWithRealDex(t *testing.T) {
 		require.Equal(t, expectedModel, body.Model, "an empty pick sends the connection's model")
 		require.Equal(t, "The OpenAI connector shipped today.", body.Input)
 		require.True(t, body.Stream, "a text Stream makes createResponse stream")
-		require.NotEmpty(t, requests[index].Header.Get("Idempotency-Key"), "createResponse derives an idempotency key from the Call ID")
+		require.NotEmpty(t, requests[index].Header.Get("X-Client-Request-Id"), "createResponse sends the Call ID for OpenAI support lookups")
+		require.Empty(t, requests[index].Header.Values("Idempotency-Key"), "net/http replays a POST that carries Idempotency-Key")
 		require.Equal(t, "/responses", requests[index].Path)
 		require.True(t, requests[index].HasCredentialInSlot)
 		require.False(t, requests[index].HasCredentialOutsideSlot)
@@ -106,26 +108,90 @@ func TestSummarizeTextExampleConfirmsInterruptedStreamWithRealDex(t *testing.T) 
 	require.Equal(t, "/responses/resp_recovered", requests[1].Path)
 }
 
-func TestSummarizeTextExampleRetriesKnownResponseByReadingOnlyWithRealDex(t *testing.T) {
+// TestSummarizeTextExampleResumesByReadingAfterWorkerLossWithRealDex stops the
+// Worker while a Response streams; the next attempt, on a new Worker, reads the
+// checkpointed Response back instead of creating another.
+func TestSummarizeTextExampleResumesByReadingAfterWorkerLossWithRealDex(t *testing.T) {
 	provider := textgentest.NewFakeProvider(t, textgen.CredentialHeader{Name: "Authorization", Prefix: "Bearer "}, integrationAPIKey)
+	created := responsesEvent("response.created", map[string]any{"response": map[string]any{"id": "resp_resumed", "status": "in_progress"}})
+	delta := responsesEvent("response.output_text.delta", map[string]any{"item_id": "msg_1", "output_index": 0, "content_index": 0, "delta": "Partial "})
 	provider.EnqueueReplies(
-		textgentest.FakeReply{Header: http.Header{"Content-Type": {"text/event-stream"}}, Body: responsesEvent("response.created", map[string]any{"response": map[string]any{"id": "resp_retry", "status": "in_progress"}})},
-		textgentest.FakeReply{Body: `{"id":"resp_retry","status":"in_progress"}`},
-		textgentest.FakeReply{Body: `{"id":"resp_retry","status":"in_progress"}`},
-		textgentest.FakeReply{Body: `{"id":"resp_retry","status":"in_progress"}`},
-		textgentest.FakeReply{Body: `{"id":"resp_retry","model":"gpt-6-sol","status":"completed","output":[{"content":[{"type":"output_text","text":"Recovered after retry."}]}]}`},
+		textgentest.FakeReply{
+			Header: http.Header{"Content-Type": {"text/event-stream"}}, Body: created + delta,
+			StreamChunks: []textgentest.FakeStreamChunk{{Delay: time.Minute, Data: responsesEvent("response.completed", map[string]any{"response": map[string]any{"id": "resp_resumed", "status": "completed"}})}},
+		},
+		textgentest.FakeReply{Body: `{"id":"resp_resumed","model":"gpt-6-sol","status":"completed","output":[{"content":[{"type":"output_text","text":"Resumed summary."}]}]}`},
 	)
-	flow, client := startSummaryWorker(t, provider, SummaryModelConfiguration{})
-	outcome := runSummaryFlow(t, client, flow, fmt.Sprintf("openai-summary-retry-%d", time.Now().UnixNano()))
+	flow := newSummaryFlow(t, provider, SummaryModelConfiguration{})
+	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	require.NoError(t, err)
+	workerAddress := freeLocalAddress(t)
+	stopFirstWorker := runSummaryWorker(t, registry, workerAddress)
+	client := newSummaryClient(t, registry, workerAddress)
+	flowID := fmt.Sprintf("openai-summary-resumed-%d", time.Now().UnixNano())
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	_, err = client.StartFlow(ctx, flow, flowID, SummaryRequest{Text: "The OpenAI connector shipped today."}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	// The Worker writes the Response ID checkpoint before the text, and Dex keeps their order.
+	require.Eventually(t, func() bool {
+		var page dex.StreamMessagesPage[string]
+		err := client.ListStreamMessages(ctx, flowID, summaryTextStream, 100, "", &page)
+		return err == nil && len(page.Messages) > 0
+	}, 30*time.Second, 50*time.Millisecond)
+	stoppedContext, stopNow := context.WithCancel(context.Background())
+	stopNow()
+	require.ErrorIs(t, stopFirstWorker(stoppedContext), context.Canceled)
+	runSummaryWorker(t, registry, workerAddress)
+	outcome := waitForSummaryOutcome(t, ctx, client, flowID)
 	require.Equal(t, openai.CreateResponseBranchCompleted, outcome.Branch)
-	require.Equal(t, "resp_retry", outcome.ResponseID)
+	require.Equal(t, "resp_resumed", outcome.ResponseID)
+	require.Equal(t, "Resumed summary.", outcome.Summary)
 	requests := provider.Requests()
-	require.Len(t, requests, 5)
+	require.Len(t, requests, 2)
 	require.Equal(t, http.MethodPost, requests[0].Method)
-	for _, request := range requests[1:] {
-		require.Equal(t, http.MethodGet, request.Method, "retry must poll the checkpointed response instead of creating another billed response")
-		require.Equal(t, "/responses/resp_retry", request.Path)
+	require.Equal(t, http.MethodGet, requests[1].Method, "the next attempt must read the checkpointed Response instead of creating another billed one")
+	require.Equal(t, "/responses/resp_resumed", requests[1].Path)
+}
+
+// TestSummarizeTextExampleResendsOnlyAfterProvenNoResponseWithRealDex checks that
+// a checkpoint recorded after the first heartbeat of an attempt survives a
+// Retry: a 429 and a cancelled Response each let the next attempt send again.
+func TestSummarizeTextExampleResendsOnlyAfterProvenNoResponseWithRealDex(t *testing.T) {
+	provider := textgentest.NewFakeProvider(t, textgen.CredentialHeader{Name: "Authorization", Prefix: "Bearer "}, integrationAPIKey)
+
+	t.Run("a 429 retries with a new request", func(t *testing.T) {
+		provider.EnqueueReplies(
+			textgentest.FakeReply{StatusCode: http.StatusTooManyRequests, Body: `{"error":{"type":"rate_limit"}}`},
+			responsesStreamReply([]string{"After the limit."}, "completed", "gpt-6-sol"),
+		)
+		flow, client := startSummaryWorker(t, provider, SummaryModelConfiguration{})
+		outcome := runSummaryFlow(t, client, flow, fmt.Sprintf("openai-summary-rate-limited-%d", time.Now().UnixNano()))
+		require.Equal(t, openai.CreateResponseBranchCompleted, outcome.Branch)
+		require.Equal(t, "After the limit.", outcome.Summary)
+	})
+
+	t.Run("a cancelled Response retries with a new request", func(t *testing.T) {
+		provider.EnqueueReplies(
+			textgentest.FakeReply{Header: http.Header{"Content-Type": {"text/event-stream"}}, Body: responsesEvent("response.created", map[string]any{"response": map[string]any{"id": "resp_cancelled", "status": "in_progress"}})},
+			textgentest.FakeReply{Body: `{"id":"resp_cancelled","status":"cancelled"}`},
+			responsesStreamReply([]string{"After the cancellation."}, "completed", "gpt-6-sol"),
+		)
+		flow, client := startSummaryWorker(t, provider, SummaryModelConfiguration{})
+		outcome := runSummaryFlow(t, client, flow, fmt.Sprintf("openai-summary-cancelled-%d", time.Now().UnixNano()))
+		require.Equal(t, openai.CreateResponseBranchCompleted, outcome.Branch)
+		require.Equal(t, "After the cancellation.", outcome.Summary)
+	})
+
+	requests := provider.Requests()
+	methods := make([]string, 0, len(requests))
+	for _, request := range requests {
+		methods = append(methods, request.Method)
 	}
+	require.Equal(t, []string{http.MethodPost, http.MethodPost, http.MethodPost, http.MethodGet, http.MethodPost}, methods)
+	require.Equal(t, requests[0].Header.Get("X-Client-Request-Id"), requests[1].Header.Get("X-Client-Request-Id"), "retries of one Step execution share the Call ID")
+	require.Equal(t, requests[2].Header.Get("X-Client-Request-Id"), requests[4].Header.Get("X-Client-Request-Id"))
+	require.NotEqual(t, requests[0].Header.Get("X-Client-Request-Id"), requests[2].Header.Get("X-Client-Request-Id"))
 }
 
 // responsesStreamReply renders a Responses event stream whose deltas and terminal Response hold the same text.
@@ -166,38 +232,82 @@ func responsesEvent(eventType string, fields map[string]any) string {
 // at provider, runs the example Flow's Worker on a free local port, and returns a Client targeting it.
 func startSummaryWorker(t *testing.T, provider *textgentest.FakeProvider, summaryModel SummaryModelConfiguration) (*Flow, *dex.Client) {
 	t.Helper()
+	flow := newSummaryFlow(t, provider, summaryModel)
+	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	require.NoError(t, err)
+	workerAddress := freeLocalAddress(t)
+	runSummaryWorker(t, registry, workerAddress)
+	return flow, newSummaryClient(t, registry, workerAddress)
+}
+
+func newSummaryFlow(t *testing.T, provider *textgentest.FakeProvider, summaryModel SummaryModelConfiguration) *Flow {
+	t.Helper()
 	project := testsupport.NewLoadedProject(t, openai.ConnectorID, []testsupport.ProjectConnection{{
 		Name: ConnectionName, Configuration: map[string]any{"endpoint": provider.BaseURL()},
 		Credentials: map[string]any{"api_key": integrationAPIKey},
 	}}, nil)
 	connection, err := openai.NewProjectConnection(project, ConnectionName)
 	require.NoError(t, err)
-	flow := NewFlow(connection, summaryModel)
-	serverAddress := cmp.Or(os.Getenv(textgentest.DexFlowServiceAddressEnvironmentVariable), textgentest.DefaultDexFlowServiceAddress)
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
-	require.NoError(t, err)
-	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
-	require.NoError(t, err)
+	return NewFlow(connection, summaryModel)
+}
+
+func freeLocalAddress(t *testing.T) string {
+	t.Helper()
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
-	workerAddress := listener.Addr().String()
+	address := listener.Addr().String()
 	require.NoError(t, listener.Close())
+	return address
+}
+
+// runSummaryWorker starts a Worker on workerAddress and returns its stop
+// function, which a test calls at most once; a cancelled context stops the
+// Worker at once, like a lost Worker. A Worker left running stops at cleanup.
+func runSummaryWorker(t *testing.T, registry *dex.Registry, workerAddress string) func(context.Context) error {
+	t.Helper()
+	cache := newBlobCache(t)
 	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{
-		BindAddress: workerAddress, FlowServiceAddress: serverAddress, WorkerTarget: dex.WorkerTarget{Address: workerAddress},
+		BindAddress: workerAddress, FlowServiceAddress: dexServerAddress(), WorkerTarget: dex.WorkerTarget{Address: workerAddress},
 	})
 	require.NoError(t, err)
 	workerResult := make(chan error, 1)
 	go func() { workerResult <- worker.Start() }()
-	client, err := dex.NewClient(registry, cache, dex.ClientOptions{
-		FlowServiceAddress: serverAddress, WorkerTarget: &dex.WorkerTarget{Address: workerAddress},
-	})
-	require.NoError(t, err)
+	var isStopped atomic.Bool
+	stop := func(ctx context.Context) error {
+		isStopped.Store(true)
+		return errors.Join(worker.Stop(ctx), <-workerResult, cache.Close())
+	}
 	t.Cleanup(func() {
+		if isStopped.Load() {
+			return
+		}
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
-		require.NoError(t, errors.Join(worker.Stop(ctx), <-workerResult, client.Close(), cache.Close()))
+		require.NoError(t, stop(ctx))
 	})
-	return flow, client
+	return stop
+}
+
+func newSummaryClient(t *testing.T, registry *dex.Registry, workerAddress string) *dex.Client {
+	t.Helper()
+	cache := newBlobCache(t)
+	client, err := dex.NewClient(registry, cache, dex.ClientOptions{
+		FlowServiceAddress: dexServerAddress(), WorkerTarget: &dex.WorkerTarget{Address: workerAddress},
+	})
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, errors.Join(client.Close(), cache.Close())) })
+	return client
+}
+
+func newBlobCache(t *testing.T) *blobcache.Cache {
+	t.Helper()
+	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
+	require.NoError(t, err)
+	return cache
+}
+
+func dexServerAddress() string {
+	return cmp.Or(os.Getenv(textgentest.DexFlowServiceAddressEnvironmentVariable), textgentest.DefaultDexFlowServiceAddress)
 }
 
 // runSummaryFlow starts the Flow and waits, across server long-poll caps, for its completion output.
@@ -207,6 +317,12 @@ func runSummaryFlow(t *testing.T, client *dex.Client, flow *Flow, flowID string)
 	defer cancel()
 	_, err := client.StartFlow(ctx, flow, flowID, SummaryRequest{Text: "The OpenAI connector shipped today."}, dex.StartFlowOptions{})
 	require.NoError(t, err)
+	return waitForSummaryOutcome(t, ctx, client, flowID)
+}
+
+// waitForSummaryOutcome waits, across server long-poll caps, for the Flow's completion output.
+func waitForSummaryOutcome(t *testing.T, ctx context.Context, client *dex.Client, flowID string) SummaryOutcome {
+	t.Helper()
 	for {
 		result, err := client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
 		var longPollTimeout *dex.LongPollTimeoutError

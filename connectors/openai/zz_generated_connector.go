@@ -210,9 +210,9 @@ var CreateResponseDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createResponse"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateResponseBranchCompleted, Description: "OpenAI completed the response."},
-		{ID: CreateResponseBranchFailed, Description: "OpenAI returned a terminal failed or incomplete response.", Optional: true},
+		{ID: CreateResponseBranchFailed, Description: "OpenAI returned a terminal failed or incomplete response. A cancelled response is not failed: the next attempt creates a new one.", Optional: true},
 		{ID: CreateResponseBranchProviderRejected, Description: "OpenAI conclusively rejected the response request.", Optional: true},
-		{ID: CreateResponseBranchUncertain, Description: "A dispatched request returned no response ID and its outcome cannot be confirmed; Responses API idempotency is not documented.", Optional: true},
+		{ID: CreateResponseBranchUncertain, Description: "A request may have created a response that cannot be confirmed: no response ID was observed or checkpointed, or the stored response cannot be read back. The Responses API documents no deduplication of create requests.", Optional: true},
 		{ID: CreateResponseBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

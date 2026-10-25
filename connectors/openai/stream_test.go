@@ -4,10 +4,13 @@
 package openai
 
 import (
+	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/openai/internal/testsupport"
@@ -95,7 +98,8 @@ func TestOpenAIStreamEarlyEOFAndBoundsAreUnknown(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			attempt := CreateResponseOperation{client: test.client}.readStream(sdkgo.Call{Context: testsupport.NewDexContext("stream-flow", "stream-step")}, strings.NewReader(test.body), nil, "req_1")
+			call := sdkgo.Call{Context: testsupport.NewDexContext("stream-flow", "stream-step")}
+			attempt := CreateResponseOperation{client: test.client}.readStream(call, newTestHeartbeat(call), strings.NewReader(test.body), nil, "req_1")
 			result, err := sdkgo.RunMutation(
 				testsupport.NewDexContext("stream-flow", "stream-step"),
 				streamAttemptOperation{attempt: attempt}, sdkgo.ConnectionRef{Provider: "openai", Name: "default"}, struct{}{},
@@ -138,7 +142,7 @@ func TestOpenAIInterruptedStreamReadsKnownResponse(t *testing.T) {
 			if streamBody == "" {
 				streamBody = sse(`{"type":"response.created","response":{"id":"resp_known","status":"in_progress"}}`)
 			}
-			attempt := client.CreateResponse().readStream(call, strings.NewReader(streamBody), nil, "req_create")
+			attempt := client.CreateResponse().readStream(call, newTestHeartbeat(call), strings.NewReader(streamBody), nil, "req_create")
 			result, err := sdkgo.RunMutation(testsupport.NewDexContext("stream-flow", "result"), streamAttemptOperation{attempt: attempt}, call.Connection, struct{}{})
 			require.NoError(t, err)
 			require.Equal(t, test.wantBranch, result.Branch)
@@ -149,16 +153,102 @@ func TestOpenAIInterruptedStreamReadsKnownResponse(t *testing.T) {
 	}
 }
 
+func TestOpenAIStreamReadsPastEventsThatDoNotEndIt(t *testing.T) {
+	for _, test := range []struct {
+		name       string
+		events     []string
+		wantBranch sdkgo.BranchID
+		wantID     string
+	}{
+		{
+			name: "error event with a known ID",
+			events: []string{
+				`{"type":"response.created","response":{"id":"resp_1","status":"in_progress"}}`, `{"type":"error"}`,
+				`{"type":"response.failed","response":{"id":"resp_1","status":"failed"}}`,
+			},
+			wantBranch: CreateResponseBranchFailed, wantID: "resp_1",
+		},
+		{
+			name: "inconsistent later ID",
+			events: []string{
+				`{"type":"response.created","response":{"id":"resp_1","status":"in_progress"}}`,
+				`{"type":"response.in_progress","response":{"id":"resp other","status":"in_progress"}}`,
+				`{"type":"response.completed","response":{"id":"resp_1","status":"completed"}}`,
+			},
+			wantBranch: CreateResponseBranchCompleted, wantID: "resp_1",
+		},
+		{
+			name: "malformed event",
+			events: []string{
+				`{"type":"response.created","response":{"id":"resp_1","status":"in_progress"}}`, `{"type":`,
+				`{"type":"response.completed","response":{"id":"resp_1","status":"completed"}}`,
+			},
+			wantBranch: CreateResponseBranchCompleted, wantID: "resp_1",
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			result := runStreamAttempt(t, strings.NewReader(sse(test.events...)))
+			require.Equal(t, test.wantBranch, result.Branch)
+			require.Equal(t, test.wantID, result.Value.ID)
+		})
+	}
+}
+
+// drainObservingReader reports whether its reader reached EOF.
+type drainObservingReader struct {
+	reader  io.Reader
+	isAtEOF bool
+}
+
+func (reader *drainObservingReader) Read(buffer []byte) (int, error) {
+	count, err := reader.reader.Read(buffer)
+	if errors.Is(err, io.EOF) {
+		reader.isAtEOF = true
+	}
+	return count, err
+}
+
+func TestOpenAIOversizedStreamFinishesBeforeReadBack(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		require.Equal(t, "/responses/resp_long", request.URL.Path)
+		_, _ = response.Write([]byte(`{"id":"resp_long","status":"completed","output":[{"content":[{"type":"output_text","text":"long"}]}]}`))
+	}))
+	defer server.Close()
+	client, err := New(Config{Endpoint: server.URL, MaxResponseBytes: 512}, sdkgo.StaticCredentialProvider[Credentials]{
+		sdkgo.ConnectionRef{Provider: "openai", Name: "default"}: {APIKey: sdkgo.NewSecretString("test-key")},
+	})
+	require.NoError(t, err)
+	events := []string{`{"type":"response.created","response":{"id":"resp_long","status":"in_progress"}}`}
+	for range 20 {
+		events = append(events, `{"type":"response.output_text.delta","delta":"more text"}`)
+	}
+	events = append(events, `{"type":"response.completed","response":{"id":"resp_long","status":"completed"}}`)
+	body := &drainObservingReader{reader: strings.NewReader(sse(events...))}
+	call := sdkgo.Call{Context: testsupport.NewDexContext("stream-flow", "oversized"), Connection: sdkgo.ConnectionRef{Provider: "openai", Name: "default"}, Operation: CreateResponseDefinition.Operation}
+	attempt := client.CreateResponse().readStream(call, newTestHeartbeat(call), body, nil, "req_long")
+	require.True(t, body.isAtEOF, "closing an unfinished stream would cancel the response")
+	result, err := sdkgo.RunMutation(testsupport.NewDexContext("stream-flow", "result"), streamAttemptOperation{attempt: attempt}, call.Connection, struct{}{})
+	require.NoError(t, err)
+	require.Equal(t, CreateResponseBranchCompleted, result.Branch)
+	require.Equal(t, "long", result.Value.OutputText)
+}
+
 func runStreamAttempt(t *testing.T, body *strings.Reader) sdkgo.MutationResult[Response] {
 	t.Helper()
 	client := &Client{maxResponseBytes: 16 << 10, maxSSEEventBytes: 4 << 10}
-	attempt := CreateResponseOperation{client: client}.readStream(sdkgo.Call{Context: testsupport.NewDexContext("stream-flow", "stream-step")}, body, nil, "req_stream")
+	call := sdkgo.Call{Context: testsupport.NewDexContext("stream-flow", "stream-step")}
+	attempt := CreateResponseOperation{client: client}.readStream(call, newTestHeartbeat(call), body, nil, "req_stream")
 	result, err := sdkgo.RunMutation(
 		testsupport.NewDexContext("stream-flow", "stream-step"),
 		streamAttemptOperation{attempt: attempt}, sdkgo.ConnectionRef{Provider: "openai", Name: "default"}, struct{}{},
 	)
 	require.NoError(t, err)
 	return result
+}
+
+// newTestHeartbeat returns a heartbeat whose ticker never starts.
+func newTestHeartbeat(call sdkgo.Call) *createResponseHeartbeat {
+	return newCreateResponseHeartbeat(call, time.Hour)
 }
 
 func sse(events ...string) string {
