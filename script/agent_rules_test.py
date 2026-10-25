@@ -21,6 +21,21 @@ HOOKS = (
 )
 
 
+def top_level_bullets(path: Path) -> list[str]:
+    """Return each top-level Markdown bullet of a file with its whitespace collapsed."""
+    bullets: list[str] = []
+    is_inside_bullet = False
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if line.startswith("- "):
+            bullets.append(line[2:])
+            is_inside_bullet = True
+        elif is_inside_bullet and line.startswith("  ") and line.strip():
+            bullets[-1] += " " + line
+        else:
+            is_inside_bullet = False
+    return [" ".join(bullet.split()) for bullet in bullets]
+
+
 class AgentRulesTest(unittest.TestCase):
     def test_hook_json_is_valid(self) -> None:
         for path in (ROOT / ".codex" / "hooks.json", ROOT / ".cursor" / "hooks.json"):
@@ -80,20 +95,27 @@ class AgentRulesTest(unittest.TestCase):
                 for fragment in required_fragments:
                     self.assertIn(fragment, contents)
 
-    def test_branch_wiring_and_uncertainty_rules_are_synchronized(self) -> None:
-        paths = (
-            ROOT / "AGENTS.md",
-            ROOT / ".cursor" / "rules" / "project-core.mdc",
+    def test_branch_and_uncertainty_bullets_are_identical_in_agent_mirrors(self) -> None:
+        openings = (
+            "A connector manifest author marks every branch that is not a happy path",
+            "Applications and examples wire only happy-path branches by default",
+            "A connector selects a branch for a definite business outcome",
         )
-        required_fragments = (
-            "wire only happy-path branches",
-            "exhausted retries never become uncertainty",
-        )
-        for path in paths:
-            with self.subTest(path=path):
-                contents = " ".join(path.read_text(encoding="utf-8").split())
-                for fragment in required_fragments:
-                    self.assertIn(fragment, contents)
+        mirrored_rules = []
+        for path in (ROOT / "AGENTS.md", ROOT / ".cursor" / "rules" / "project-core.mdc"):
+            bullets = top_level_bullets(path)
+            mirrored_rules.append(
+                [
+                    [bullet for bullet in bullets if bullet.startswith(opening)]
+                    for opening in openings
+                ]
+            )
+        agents_rules, cursor_rules = mirrored_rules
+        self.assertEqual(agents_rules, cursor_rules)
+        self.assertEqual([1, 1, 1], [len(matches) for matches in agents_rules])
+        uncertainty_rule = agents_rules[2][0]
+        self.assertIn("A transport failure before the request left the process", uncertainty_rule)
+        self.assertIn("exhausted retries never become uncertainty", uncertainty_rule)
 
     def test_checked_in_example_is_the_end_to_end_verification_path(self) -> None:
         agents = " ".join((ROOT / "AGENTS.md").read_text(encoding="utf-8").split())

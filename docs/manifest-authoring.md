@@ -820,9 +820,10 @@ mock of each shape:
   both. A paginated query's branch mock may use `pages` instead of `output`.
 - A `retry` mock asks Dex to retry the Step, after `after` when it is set.
 - An `uncertain` mock represents a write that may have reached the provider,
-  cannot be repeated safely, and cannot be confirmed by read-back. A request
-  that never left the process, a 429, or a 503 returns Retry; exhausted retries
-  fail the Flow. Only a mutation declaring `uncertain` can mock it.
+  cannot be repeated safely, and cannot be confirmed by read-back. A transport
+  failure before the request left the process, a 429, or a 503 returns Retry;
+  exhausted retries fail the Flow. Only a mutation declaring `uncertain` can
+  mock it.
 - A `failure` names a Connector SDK failure kind, such as `NOT_FOUND`, and a
   safe message. The mock fills the provider and operation.
 - `default: true` marks the mock that answers every call a test does not

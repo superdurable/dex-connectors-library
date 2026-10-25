@@ -80,7 +80,8 @@ type BranchID string
 const (
 	// DefectBranchID is the standard route for local Connector defects.
 	DefectBranchID BranchID = "defect"
-	// UncertainBranchID is the optional route for dispatched mutations with unknown outcomes.
+	// UncertainBranchID is the optional route for a Mutation write that may have reached the
+	// provider, cannot be repeated safely, and cannot be confirmed by read-back.
 	UncertainBranchID BranchID = "uncertain"
 )
 
@@ -100,7 +101,7 @@ type BranchDefinition struct {
 type StepDefaults struct {
 	// ExecuteMethodTimeout sets the maximum Execute duration; zero uses the Dex default.
 	ExecuteMethodTimeout time.Duration `json:"executeMethodTimeout" yaml:"executeMethodTimeout"`
-	// HeartbeatTimeout sets the heartbeat timeout; zero disables heartbeats.
+	// HeartbeatTimeout sets the heartbeat timeout; zero uses the Dex default.
 	HeartbeatTimeout time.Duration `json:"heartbeatTimeout,omitempty" yaml:"heartbeatTimeout,omitempty"`
 	// ExecuteRetry sets the Dex Execute retry policy; nil uses the Dex default.
 	ExecuteRetry *dex.RetryPolicy `json:"executeRetry,omitempty" yaml:"executeRetry,omitempty"`
