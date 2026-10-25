@@ -306,6 +306,12 @@ func newNotionIntegrationHarness(t *testing.T, requestTimeout time.Duration) (*f
 	require.NoError(t, err)
 	connection, err := notion.NewConnection(providerClient, reference)
 	require.NoError(t, err)
+	flow, harness := newNotionIntegrationHarnessWithConnection(t, connection)
+	return provider, flow, harness
+}
+
+func newNotionIntegrationHarnessWithConnection(t *testing.T, connection notion.Connection) (*Flow, *notionIntegrationHarness) {
+	t.Helper()
 	flow := NewFlow(connection)
 	registry, err := dex.NewRegistry([]dex.Flow{flow})
 	require.NoError(t, err)
@@ -329,7 +335,7 @@ func newNotionIntegrationHarness(t *testing.T, requestTimeout time.Duration) (*f
 		defer cancel()
 		require.NoError(t, errors.Join(harness.worker.Stop(stopCtx), <-harness.workerResult, harness.client.Close(), harness.cache.Close()))
 	})
-	return provider, flow, harness
+	return flow, harness
 }
 
 func availableIntegrationPort(t *testing.T) string {

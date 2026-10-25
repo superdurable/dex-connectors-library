@@ -192,7 +192,7 @@ each row a business key and query for it before creating, as the example does
 with its Submission ID property:
 
 ```go
-// MapToFindSubmissionRowsInput reads up to two rows with the submission ID, enough to see a duplicate.
+// MapToFindSubmissionRowsInput reads up to two rows with the submission ID per page.
 func MapToFindSubmissionRowsInput(record SubmissionRecord) notion.QueryDatabaseInput {
 	return notion.QueryDatabaseInput{
 		DataSourceID: record.DataSourceID,
@@ -200,7 +200,7 @@ func MapToFindSubmissionRowsInput(record SubmissionRecord) notion.QueryDatabaseI
 			Property: SubmissionIDProperty, Type: notion.PropertyTypeRichText, Condition: notion.FilterEquals, Text: record.Submission.SubmissionID,
 		},
 		Sorts:    []notion.QuerySort{{Timestamp: notion.TimestampCreatedTime, Direction: notion.SortAscending}},
-		PageSize: duplicateDetectionPageSize,
+		PageSize: duplicateDetectionPageSize, StartCursor: record.QueryCursor,
 	}
 }
 ```
@@ -247,6 +247,25 @@ finds such a duplicate on the next run.
 - Nested block content, Notion's markdown endpoints, formula and rollup
   filters, page property pagination beyond Notion's 25-entry page values,
   trashing pages, and comments.
+
+## Connector mocks
+
+`notionmock.New` returns a typed connection with a default for every operation.
+Unscripted calls search three pages, find one saved submission row across three
+query pages, update it, and read it back. The pages include repeated results
+and a trashed row so application tests exercise cursor handling and filtering.
+Named cases cover definite missing and rejected outcomes; tests can script
+them when a business reaction needs that branch.
+
+The [runnable integration test](examples/submission-intake/flow/workflow_mock_integration_test.go)
+uses the defaults without provider credentials:
+
+```go
+mock := notionmock.New(t, ConnectionName)
+flow, harness := newNotionIntegrationHarnessWithConnection(t, mock.Connection())
+record := runSubmissionFlow(t, integrationContext(t), harness, flow, "mock-default", submissionInput("sub-new-1"))
+require.Equal(t, PhaseUpdated, record.Phase)
+```
 
 ## Example
 
