@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -179,16 +180,38 @@ func TestInvalidInputAndCredentialsDoNotDispatch(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, UpdateTaskBranchDefect, result.Branch)
 	}
+	missing, err := New(Config{BaseURL: server.URL}, sdkgo.StaticCredentialProvider[Credentials]{})
+	require.NoError(t, err)
+	requireCredentialDefects(t, missing)
 	for _, token := range []string{"", "unsafe\r\nheader", "Bearer value"} {
 		invalid, err := New(Config{BaseURL: server.URL}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: {APIToken: sdkgo.NewSecretString(token)}})
 		require.NoError(t, err)
-		result, err := readTask(invalid)
-		require.NoError(t, err)
-		require.Equal(t, GetTaskBranchDefect, result.Branch)
-		_, err = updateTask(invalid, "New")
-		require.Error(t, err)
+		requireCredentialDefects(t, invalid)
 	}
 	require.Zero(t, calls.Load())
+}
+
+// requireCredentialDefects checks that every operation selects defect for unusable local credentials.
+func requireCredentialDefects(t *testing.T, client *Client) {
+	t.Helper()
+	read, err := readTask(client)
+	require.NoError(t, err)
+	require.Equal(t, GetTaskBranchDefect, read.Branch)
+	require.Equal(t, sdkgo.FailureAuthentication, read.Failure.Kind)
+	update, err := updateTask(client, "New")
+	require.NoError(t, err)
+	require.Equal(t, UpdateTaskBranchDefect, update.Branch)
+	require.Equal(t, sdkgo.FailureAuthentication, update.Failure.Kind)
+	listed, err := listTasks(client, ListTasksInput{})
+	require.NoError(t, err)
+	require.Equal(t, ListTasksBranchDefect, listed.Branch)
+	created, err := createTask(client, CreateTaskInput{Content: "New"})
+	require.NoError(t, err)
+	require.Equal(t, CreateTaskBranchDefect, created.Branch)
+	require.Equal(t, sdkgo.FailureAuthentication, created.Failure.Kind)
+	deleted, err := deleteTask(client)
+	require.NoError(t, err)
+	require.Equal(t, DeleteTaskBranchDefect, deleted.Branch)
 }
 
 func TestRedirectDoesNotForwardCredentials(t *testing.T) {
@@ -487,16 +510,37 @@ func TestCreateTaskConflictAfterRetryRemainsUncertain(t *testing.T) {
 	require.Equal(t, requestIDs[0], requestIDs[1])
 }
 
-func TestCreateTaskPreDispatchFailureRetries(t *testing.T) {
+func TestCreateTaskInvalidCredentialsSelectDefect(t *testing.T) {
 	var calls atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { calls.Add(1) }))
 	defer server.Close()
 	client, err := New(Config{BaseURL: server.URL}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: {APIToken: sdkgo.NewSecretString("unsafe\ncredential")}})
 	require.NoError(t, err)
-	_, err = createTask(client, CreateTaskInput{Content: "New"})
-	require.Error(t, err)
-	require.NotContains(t, err.Error(), "unsafe")
+	result, err := createTask(client, CreateTaskInput{Content: "New"})
+	require.NoError(t, err)
+	require.Equal(t, CreateTaskBranchDefect, result.Branch)
+	require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
+	require.NotContains(t, result.Failure.Message, "unsafe")
 	require.Zero(t, calls.Load())
+}
+
+func TestRefusedConnectionRetriesEveryOperation(t *testing.T) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	closedEndpoint := "http://" + listener.Addr().String()
+	require.NoError(t, listener.Close())
+	client := newTestClient(t, closedEndpoint)
+	_, createErr := createTask(client, CreateTaskInput{Content: "New"})
+	_, readErr := readTask(client)
+	_, updateErr := updateTask(client, "New")
+	_, listErr := listTasks(client, ListTasksInput{})
+	_, deleteErr := deleteTask(client)
+	for _, err := range []error{createErr, readErr, updateErr, listErr, deleteErr} {
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry)
+		require.Equal(t, sdkgo.FailureTransport, retry.Failure.Kind)
+		require.Equal(t, "Todoist could not be reached, so the request was not sent", retry.Failure.Message)
+	}
 }
 
 func TestCreateTaskMismatchedAnswerRemainsUncertain(t *testing.T) {

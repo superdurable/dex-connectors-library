@@ -8,14 +8,17 @@ package todoist
 import (
 	"bytes"
 	"crypto/sha256"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"net/http/httptrace"
 	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -136,12 +139,24 @@ type wireTask struct {
 }
 
 type exchangeResult struct {
-	task        Task
-	body        []byte
-	status      int
-	failure     *sdkgo.Failure
-	retryAfter  time.Duration
-	isAmbiguous bool
+	task       Task
+	body       []byte
+	status     int
+	failure    *sdkgo.Failure
+	retryAfter time.Duration
+	// isLocalDefect marks credentials or a request rejected locally, before dispatch.
+	isLocalDefect bool
+	// isTransient marks a transport failure, an interrupted success body, or HTTP 408/5xx.
+	isTransient bool
+	// isUndispatched marks a transport failure with trace evidence that no request left the process.
+	isUndispatched bool
+}
+
+// dispatchObservation records whether a request could have reached Todoist.
+type dispatchObservation struct {
+	mutex                 sync.Mutex
+	hasObtainedConnection bool
+	hasFailedToConnect    bool
 }
 
 // New validates configuration without network access. Zero fields use manifest defaults.
@@ -196,9 +211,9 @@ func (operation GetTaskOperation) Invoke(call sdkgo.Call, input GetTaskInput) sd
 	switch {
 	case result.failure == nil:
 		return sdkgo.NewQueryBranch(GetTaskBranchFound, result.task, nil, sdkgo.Receipt{})
-	case result.status == 0 && !result.isAmbiguous:
+	case result.isLocalDefect:
 		return sdkgo.NewQueryBranch(GetTaskBranchDefect, Task{}, result.failure, sdkgo.Receipt{})
-	case result.isAmbiguous || result.status == http.StatusTooManyRequests:
+	case result.isTransient || result.status == http.StatusTooManyRequests:
 		return sdkgo.NewQueryRetry[Task](*result.failure, result.retryAfter)
 	case result.status == http.StatusNotFound:
 		return sdkgo.NewQueryBranch(GetTaskBranchNotFound, Task{}, result.failure, sdkgo.Receipt{})
@@ -226,25 +241,35 @@ func (operation UpdateTaskOperation) Invoke(call sdkgo.Call, input UpdateTaskInp
 	result := operation.client.exchangeTask(call, "updateTaskContent", http.MethodPost, input.TaskID, payload)
 	switch {
 	case result.status == http.StatusOK && (result.failure != nil || !taskMatchesUpdate(result.task, input)):
-		readBack := operation.client.exchangeTask(call, "updateTaskContent", http.MethodGet, input.TaskID, nil)
-		if readBack.failure == nil && taskMatchesUpdate(readBack.task, input) {
-			return sdkgo.NewMutationBranch(UpdateTaskBranchUpdated, readBack.task, nil, sdkgo.Receipt{})
-		}
-		if readBack.failure != nil {
-			return sdkgo.NewMutationRetry[Task](*readBack.failure, readBack.retryAfter)
-		}
-		if result.failure != nil {
-			return sdkgo.NewMutationRetry[Task](*result.failure, result.retryAfter)
-		}
-		return sdkgo.NewMutationRetry[Task](*failure("updateTaskContent", sdkgo.FailureProtocol, "Todoist did not confirm the specified fields"), 0)
+		return operation.confirmUpdate(call, input, result)
 	case result.failure == nil:
 		return sdkgo.NewMutationBranch(UpdateTaskBranchUpdated, result.task, nil, sdkgo.Receipt{})
-	case result.status == 0 || result.isAmbiguous || result.status == http.StatusTooManyRequests:
+	case result.isLocalDefect:
+		return sdkgo.NewMutationBranch(UpdateTaskBranchDefect, Task{}, result.failure, sdkgo.Receipt{})
+	case result.isTransient || result.status == http.StatusTooManyRequests:
 		return sdkgo.NewMutationRetry[Task](*result.failure, result.retryAfter)
 	case result.status == http.StatusNotFound:
 		return sdkgo.NewMutationBranch(UpdateTaskBranchNotFound, Task{}, result.failure, sdkgo.Receipt{})
 	default:
 		return sdkgo.NewMutationBranch(UpdateTaskBranchProviderRejected, Task{}, result.failure, sdkgo.Receipt{})
+	}
+}
+
+// confirmUpdate reads the task by ID after an unusable or mismatched HTTP 200. The replacement is absolute, so a retry
+// resends it safely.
+func (operation UpdateTaskOperation) confirmUpdate(call sdkgo.Call, input UpdateTaskInput, answer exchangeResult) sdkgo.MutationAttempt[Task] {
+	readBack := operation.client.exchangeTask(call, "updateTaskContent", http.MethodGet, input.TaskID, nil)
+	switch {
+	case readBack.failure == nil && taskMatchesUpdate(readBack.task, input):
+		return sdkgo.NewMutationBranch(UpdateTaskBranchUpdated, readBack.task, nil, sdkgo.Receipt{})
+	case readBack.isLocalDefect:
+		return sdkgo.NewMutationBranch(UpdateTaskBranchDefect, Task{}, readBack.failure, sdkgo.Receipt{})
+	case readBack.failure != nil:
+		return sdkgo.NewMutationRetry[Task](*readBack.failure, readBack.retryAfter)
+	case answer.failure != nil:
+		return sdkgo.NewMutationRetry[Task](*answer.failure, answer.retryAfter)
+	default:
+		return sdkgo.NewMutationRetry[Task](*failure("updateTaskContent", sdkgo.FailureProtocol, "Todoist did not confirm the specified fields"), 0)
 	}
 }
 
@@ -306,9 +331,9 @@ func (operation ListTasksOperation) Invoke(call sdkgo.Call, input ListTasksInput
 	result := operation.client.exchange(call, "listTasks", http.MethodGet, endpoint, nil, "")
 	if result.failure != nil {
 		switch {
-		case result.status == 0 && !result.isAmbiguous:
+		case result.isLocalDefect:
 			return sdkgo.NewQueryBranch(ListTasksBranchDefect, TaskPage{}, result.failure, sdkgo.Receipt{})
-		case result.isAmbiguous || result.status == 429:
+		case result.isTransient || result.status == 429:
 			return sdkgo.NewQueryRetry[TaskPage](*result.failure, result.retryAfter)
 		case result.failure.Kind == sdkgo.FailureProtocol || result.failure.Kind == sdkgo.FailureResponseTooLarge:
 			return sdkgo.NewQueryBranch(ListTasksBranchInvalidResponse, TaskPage{}, result.failure, sdkgo.Receipt{})
@@ -323,7 +348,7 @@ func (operation ListTasksOperation) Invoke(call sdkgo.Call, input ListTasksInput
 	return sdkgo.NewQueryBranch(ListTasksBranchListed, page, nil, sdkgo.Receipt{})
 }
 
-// Invoke creates one task. A dispatched write with no confirmable result remains uncertain.
+// Invoke creates one task. A possibly dispatched write with no confirmable result remains uncertain.
 func (operation CreateTaskOperation) Invoke(call sdkgo.Call, input CreateTaskInput) sdkgo.MutationAttempt[Task] {
 	if !utf8.ValidString(input.Content) || strings.TrimSpace(input.Content) == "" || !utf8.ValidString(input.Description) || input.ProjectID != "" && !taskIDPattern.MatchString(input.ProjectID) || !requestIDPattern.MatchString(string(call.IdempotencyKey)) {
 		return sdkgo.NewMutationBranch(CreateTaskBranchDefect, Task{}, failure("createTask", sdkgo.FailureValidation, "valid content, description, projectId, and stable request identity are required"), sdkgo.Receipt{})
@@ -339,11 +364,11 @@ func (operation CreateTaskOperation) Invoke(call sdkgo.Call, input CreateTaskInp
 	result := operation.client.exchange(call, "createTask", http.MethodPost, "/tasks", payload, string(call.IdempotencyKey))
 	if result.failure != nil {
 		switch {
-		case result.status == 0 && !result.isAmbiguous:
+		case result.isLocalDefect:
+			return sdkgo.NewMutationBranch(CreateTaskBranchDefect, Task{}, result.failure, sdkgo.Receipt{})
+		case result.isUndispatched || result.status == http.StatusTooManyRequests || result.status == http.StatusServiceUnavailable:
 			return sdkgo.NewMutationRetry[Task](*result.failure, result.retryAfter)
-		case result.status == http.StatusTooManyRequests || result.status == http.StatusServiceUnavailable:
-			return sdkgo.NewMutationRetry[Task](*result.failure, result.retryAfter)
-		case result.status == http.StatusConflict || result.isAmbiguous || result.failure.Kind == sdkgo.FailureProtocol || result.failure.Kind == sdkgo.FailureResponseTooLarge:
+		case result.status == http.StatusConflict || result.isTransient || result.failure.Kind == sdkgo.FailureProtocol || result.failure.Kind == sdkgo.FailureResponseTooLarge:
 			// Todoist does not document whether 409 means this request ID already created a task.
 			return sdkgo.NewMutationUncertain(Task{}, *result.failure, sdkgo.Receipt{})
 		default:
@@ -367,9 +392,9 @@ func (operation DeleteTaskOperation) Invoke(call sdkgo.Call, input DeleteTaskInp
 	switch {
 	case result.failure == nil:
 		return sdkgo.NewMutationBranch(DeleteTaskBranchDeleted, value, nil, sdkgo.Receipt{})
-	case result.status == 0 && !result.isAmbiguous:
+	case result.isLocalDefect:
 		return sdkgo.NewMutationBranch(DeleteTaskBranchDefect, DeleteTaskOutcome{}, result.failure, sdkgo.Receipt{})
-	case result.isAmbiguous || result.status == 429:
+	case result.isTransient || result.status == 429:
 		return sdkgo.NewMutationRetry[DeleteTaskOutcome](*result.failure, result.retryAfter)
 	case result.status == 404:
 		return sdkgo.NewMutationBranch(DeleteTaskBranchAlreadyAbsent, value, result.failure, sdkgo.Receipt{})
@@ -395,14 +420,16 @@ func (client *Client) exchangeTask(call sdkgo.Call, operation, method, taskID st
 func (client *Client) exchange(call sdkgo.Call, operation, method, endpoint string, payload []byte, requestID string) exchangeResult {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil {
-		return exchangeResult{failure: failure(operation, sdkgo.FailureAuthentication, "connection credentials are unavailable")}
+		return exchangeResult{isLocalDefect: true, failure: failure(operation, sdkgo.FailureAuthentication, "connection credentials are unavailable")}
 	}
 	if err := credentials.Validate(); err != nil || !providerhttp.IsHeaderSafeCredential(credentials.APIToken.Reveal()) {
-		return exchangeResult{failure: failure(operation, sdkgo.FailureAuthentication, "connection credentials are invalid")}
+		return exchangeResult{isLocalDefect: true, failure: failure(operation, sdkgo.FailureAuthentication, "connection credentials are invalid")}
 	}
-	request, err := http.NewRequestWithContext(call.Context, method, client.baseURL+endpoint, bytes.NewReader(payload))
+	observation := &dispatchObservation{}
+	requestContext := httptrace.WithClientTrace(call.Context, observation.clientTrace())
+	request, err := http.NewRequestWithContext(requestContext, method, client.baseURL+endpoint, bytes.NewReader(payload))
 	if err != nil {
-		return exchangeResult{failure: failure(operation, sdkgo.FailureLocalDefect, "Todoist request could not be built")}
+		return exchangeResult{isLocalDefect: true, failure: failure(operation, sdkgo.FailureLocalDefect, "Todoist request could not be built")}
 	}
 	request.Header.Set("Authorization", "Bearer "+credentials.APIToken.Reveal())
 	request.Header.Set("Accept", "application/json")
@@ -413,8 +440,11 @@ func (client *Client) exchange(call sdkgo.Call, operation, method, endpoint stri
 		request.Header.Set("X-Request-ID", requestID)
 	}
 	response, err := client.httpClient.Do(request)
+	if err != nil && observation.isProvablyUndispatched() {
+		return exchangeResult{isTransient: true, isUndispatched: true, failure: failure(operation, sdkgo.FailureTransport, "Todoist could not be reached, so the request was not sent")}
+	}
 	if err != nil {
-		return exchangeResult{isAmbiguous: true, failure: failure(operation, sdkgo.FailureTransport, "Todoist request did not return a complete response")}
+		return exchangeResult{isTransient: true, failure: failure(operation, sdkgo.FailureTransport, "Todoist request did not return a complete response")}
 	}
 	// Closing a response is best effort and cannot alter the classified provider outcome.
 	defer func() { _ = response.Body.Close() }()
@@ -430,7 +460,7 @@ func (client *Client) exchange(call sdkgo.Call, operation, method, endpoint stri
 		if errors.Is(err, providerhttp.ErrBodyTooLarge) {
 			kind = sdkgo.FailureResponseTooLarge
 		}
-		return exchangeResult{status: response.StatusCode, failure: failure(operation, kind, "Todoist response was interrupted or exceeded the response limit"), isAmbiguous: !errors.Is(err, providerhttp.ErrBodyTooLarge)}
+		return exchangeResult{status: response.StatusCode, failure: failure(operation, kind, "Todoist response was interrupted or exceeded the response limit"), isTransient: !errors.Is(err, providerhttp.ErrBodyTooLarge)}
 	}
 	if bytes.Contains(body, []byte(credentials.APIToken.Reveal())) {
 		return exchangeResult{status: response.StatusCode, failure: failure(operation, sdkgo.FailureProtocol, "Todoist returned credential material in the response")}
@@ -464,12 +494,59 @@ func classifyHTTPFailure(operation string, response *http.Response) exchangeResu
 	default:
 		if response.StatusCode == http.StatusRequestTimeout || response.StatusCode >= 500 {
 			kind = sdkgo.FailureAvailability
-			result.isAmbiguous = true
+			result.isTransient = true
 			result.retryAfter = providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
 		}
 	}
 	result.failure = failure(operation, kind, "Todoist returned HTTP "+strconv.Itoa(response.StatusCode))
 	return result
+}
+
+func (observation *dispatchObservation) clientTrace() *httptrace.ClientTrace {
+	return &httptrace.ClientTrace{
+		DNSDone:          observation.recordDNSDone,
+		ConnectDone:      observation.recordConnectDone,
+		TLSHandshakeDone: observation.recordTLSHandshakeDone,
+		GotConn:          observation.recordObtainedConnection,
+	}
+}
+
+// isProvablyUndispatched requires a traced DNS, connect, or TLS failure and no obtained connection.
+// A transport that reports no trace events, or one that obtained a connection, may have sent the request.
+func (observation *dispatchObservation) isProvablyUndispatched() bool {
+	observation.mutex.Lock()
+	defer observation.mutex.Unlock()
+	return observation.hasFailedToConnect && !observation.hasObtainedConnection
+}
+
+func (observation *dispatchObservation) recordDNSDone(info httptrace.DNSDoneInfo) {
+	if info.Err != nil {
+		observation.recordConnectionFailure()
+	}
+}
+
+func (observation *dispatchObservation) recordConnectDone(_ string, _ string, err error) {
+	if err != nil {
+		observation.recordConnectionFailure()
+	}
+}
+
+func (observation *dispatchObservation) recordTLSHandshakeDone(_ tls.ConnectionState, err error) {
+	if err != nil {
+		observation.recordConnectionFailure()
+	}
+}
+
+func (observation *dispatchObservation) recordObtainedConnection(httptrace.GotConnInfo) {
+	observation.mutex.Lock()
+	defer observation.mutex.Unlock()
+	observation.hasObtainedConnection = true
+}
+
+func (observation *dispatchObservation) recordConnectionFailure() {
+	observation.mutex.Lock()
+	defer observation.mutex.Unlock()
+	observation.hasFailedToConnect = true
 }
 
 func failure(operation string, kind sdkgo.FailureKind, message string) *sdkgo.Failure {
