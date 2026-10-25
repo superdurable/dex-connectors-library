@@ -192,7 +192,7 @@ each row a business key and query for it before creating, as the example does
 with its Submission ID property:
 
 ```go
-// MapToFindSubmissionRowsInput reads up to two rows with the submission ID per page.
+// MapToFindSubmissionRowsInput reads the rows with the submission ID in Notion's largest pages.
 func MapToFindSubmissionRowsInput(record SubmissionRecord) notion.QueryDatabaseInput {
 	return notion.QueryDatabaseInput{
 		DataSourceID: record.DataSourceID,
@@ -200,7 +200,7 @@ func MapToFindSubmissionRowsInput(record SubmissionRecord) notion.QueryDatabaseI
 			Property: SubmissionIDProperty, Type: notion.PropertyTypeRichText, Condition: notion.FilterEquals, Text: record.Submission.SubmissionID,
 		},
 		Sorts:    []notion.QuerySort{{Timestamp: notion.TimestampCreatedTime, Direction: notion.SortAscending}},
-		PageSize: duplicateDetectionPageSize, StartCursor: record.QueryCursor,
+		PageSize: queryPageSize, StartCursor: record.QueryCursor,
 	}
 }
 ```
@@ -251,11 +251,20 @@ finds such a duplicate on the next run.
 ## Connector mocks
 
 `notionmock.New` returns a typed connection with a default for every operation.
-Unscripted calls search three pages, find one saved submission row across three
-query pages, update it, and read it back. The pages include repeated results
-and a trashed row so application tests exercise cursor handling and filtering.
-Named cases cover definite missing and rejected outcomes; tests can script
-them when a business reaction needs that branch.
+The defaults match the database title `Form submissions` and the submission ID
+`sub-new-1`; a Flow that sends other values needs a script, because the default
+row reads back with Submission ID `sub-new-1`. Unscripted calls search three
+pages for the data source, find one saved submission row on the second of three
+query pages, update it, and read it back.
+
+The default pages are laid out so that a Flow fails its test when it reads too
+few pages, keeps trashed or archived results, or does not de-duplicate by ID.
+The search pages hold title decoys and a trashed match first, the data source on
+page 2, and the same data source again on page 3. The query pages hold only a
+trashed and an archived row first, the saved row on page 2, and the same row
+again on page 3. Named cases cover definite missing and rejected outcomes; tests
+can script them, and any other pages, when a business reaction needs that
+branch.
 
 The [runnable integration test](examples/submission-intake/flow/workflow_mock_integration_test.go)
 uses the defaults without provider credentials:

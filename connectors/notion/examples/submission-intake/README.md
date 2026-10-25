@@ -7,11 +7,14 @@ database and reads it back. It uses every Notion operation:
    title equals `databaseTitle`. It ignores trashed and partial matches,
    such as an archived twin or a "Form submissions (2025)" database. With no
    match or several, the Flow completes as `dataSourceNotFound` or
-   `dataSourceAmbiguous` and writes nothing.
-2. `queryDatabase` follows up to 100 cursor pages for rows whose
+   `dataSourceAmbiguous` and writes nothing. A repeated cursor or exhausted
+   page limit fails the Flow instead of treating an incomplete search as
+   absence.
+2. `queryDatabase` follows up to 100 cursor pages of 100 rows for rows whose
    **Submission ID** equals the submission's ID. It ignores repeated,
-   trashed, and archived rows. A repeated cursor or exhausted page limit
-   fails the Flow instead of treating an incomplete scan as absence.
+   trashed, and archived rows, and stops at the page that shows two different
+   rows. A repeated cursor or exhausted page limit fails the Flow instead of
+   treating an incomplete scan as absence.
 3. With no row, `createPage` creates one. It sets the title, Submission ID,
    Email, and Submitted at, and writes the message as the page body. With one
    row, `updatePageProperties` sets that row's title, Email, and Submitted at
@@ -170,7 +173,11 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 \
 The integration tests use a real Dex Server and a stateful fake Notion API.
 They verify:
 
-- an unscripted mock connection that completes the example's update path;
+- the mock defaults, which complete the update path after three search pages and
+  three query pages, with the exact Notion inputs the Flow sent;
+- scripted mock pages: duplicate rows and ambiguous data sources on different
+  pages, a repeated cursor and an exhausted page limit in both scans, and an
+  uncertain create reconciled across pages;
 - a created row;
 - an updated resubmission;
 - duplicate rows;

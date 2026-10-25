@@ -46,7 +46,7 @@ func TestMappersBuildTheSubmissionKeyedRequests(t *testing.T) {
 	query := MapToFindSubmissionRowsInput(record)
 	require.Equal(t, record.DataSourceID, query.DataSourceID)
 	require.Equal(t, &notion.QueryFilter{Property: SubmissionIDProperty, Type: notion.PropertyTypeRichText, Condition: notion.FilterEquals, Text: "sub-42"}, query.Filter)
-	require.Equal(t, 2, query.PageSize, "two rows are enough to see a duplicate")
+	require.Equal(t, notion.MaximumPageSize, query.PageSize, "one Step reads as many rows as Notion allows")
 
 	create := MapToCreateSubmissionRowInput(record)
 	require.Equal(t, map[string]notion.PropertyValue{
@@ -75,7 +75,7 @@ func TestSubmissionRowScanRejectsARepeatedCursorAfterSeveralPages(t *testing.T) 
 	for _, cursor := range []string{"page-a", "page-b"} {
 		require.Empty(t, collectSubmissionRows(&record, notion.QueryDatabaseOutput{NextCursor: cursor}))
 	}
-	require.Equal(t, "Notion submission query did not finish within its page limit",
+	require.Equal(t, queryRepeatedCursorFailure,
 		collectSubmissionRows(&record, notion.QueryDatabaseOutput{NextCursor: "page-a"}))
 }
 

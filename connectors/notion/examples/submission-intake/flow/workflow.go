@@ -57,11 +57,15 @@ const (
 	maximumEmailBytes                  = 200
 	maximumMessageRunes                = 10000
 	searchPageSize                     = 20
-	duplicateDetectionPageSize         = 2
+	queryPageSize                      = notion.MaximumPageSize
 	maximumScanPages                   = 100
 	readBackMaximumTextCharacters      = 10000
 	submissionRecordAttributeKey       = "notion-submission"
 	submissionIDMismatchFailureMessage = "Notion row %s reads back Submission ID %q, not the submitted ID"
+	searchRepeatedCursorFailure        = "Notion data source search repeated a page cursor"
+	searchPageLimitFailure             = "Notion data source search did not finish within its page limit"
+	queryRepeatedCursorFailure         = "Notion submission query repeated a page cursor"
+	queryPageLimitFailure              = "Notion submission query did not finish within its page limit"
 )
 
 var submissionAttribute = dex.DefineAttribute[SubmissionRecord](submissionRecordAttributeKey)
@@ -138,7 +142,7 @@ type SubmissionRecord struct {
 	PageURL string `json:"pageUrl,omitempty"`
 	// IsExistingRow reports that the row existed and was updated rather than created.
 	IsExistingRow bool `json:"existingRow"`
-	// DuplicatePageIDs lists the rows that already hold the submission ID when there are several.
+	// DuplicatePageIDs lists the rows that hold the submission ID once the scan has seen at least two; it stops there.
 	DuplicatePageIDs []string `json:"duplicatePageIds,omitempty"`
 	// StoredProperties is the plain text of every property read back from the row.
 	StoredProperties map[string]string `json:"storedProperties,omitempty"`
@@ -280,7 +284,7 @@ func MapToFindSubmissionsDataSourceInput(record SubmissionRecord) notion.SearchI
 	return notion.SearchInput{Query: record.Submission.DatabaseTitle, ObjectType: notion.SearchObjectDataSource, PageSize: searchPageSize, StartCursor: record.SearchCursor}
 }
 
-// MapToFindSubmissionRowsInput reads up to two rows with the submission ID per page.
+// MapToFindSubmissionRowsInput reads the rows with the submission ID in Notion's largest pages.
 func MapToFindSubmissionRowsInput(record SubmissionRecord) notion.QueryDatabaseInput {
 	return notion.QueryDatabaseInput{
 		DataSourceID: record.DataSourceID,
@@ -288,7 +292,7 @@ func MapToFindSubmissionRowsInput(record SubmissionRecord) notion.QueryDatabaseI
 			Property: SubmissionIDProperty, Type: notion.PropertyTypeRichText, Condition: notion.FilterEquals, Text: record.Submission.SubmissionID,
 		},
 		Sorts:    []notion.QuerySort{{Timestamp: notion.TimestampCreatedTime, Direction: notion.SortAscending}},
-		PageSize: duplicateDetectionPageSize, StartCursor: record.QueryCursor,
+		PageSize: queryPageSize, StartCursor: record.QueryCursor,
 	}
 }
 
@@ -362,8 +366,11 @@ func (resolveSubmissionsDataSource) Execute(ctx dex.Context, result notion.Searc
 	}
 	record.SearchPagesRead++
 	if cursor := result.Value.NextCursor; cursor != "" {
-		if containsID(record.SearchSeenCursors, cursor) || record.SearchPagesRead >= maximumScanPages {
-			return dex.ForceFail("Notion data source search did not finish within its page limit"), nil
+		if containsID(record.SearchSeenCursors, cursor) {
+			return dex.ForceFail(searchRepeatedCursorFailure), nil
+		}
+		if record.SearchPagesRead >= maximumScanPages {
+			return dex.ForceFail(searchPageLimitFailure), nil
 		}
 		record.SearchSeenCursors = append(record.SearchSeenCursors, cursor)
 		record.SearchCursor = cursor
@@ -643,14 +650,17 @@ func collectSubmissionRows(record *SubmissionRecord, output notion.QueryDatabase
 		}
 	}
 	record.QueryPagesRead++
-	if output.NextCursor != "" {
-		if containsID(record.QuerySeenCursors, output.NextCursor) || record.QueryPagesRead >= maximumScanPages {
-			return "Notion submission query did not finish within its page limit"
-		}
+	switch {
+	case output.NextCursor == "" || len(record.DuplicatePageIDs) > 0:
+		// The scan ends on the last page, or as soon as two rows make the duplicate certain.
+		record.QueryCursor, record.QueryPagesRead, record.QuerySeenCursors = "", 0, nil
+	case containsID(record.QuerySeenCursors, output.NextCursor):
+		return queryRepeatedCursorFailure
+	case record.QueryPagesRead >= maximumScanPages:
+		return queryPageLimitFailure
+	default:
 		record.QuerySeenCursors = append(record.QuerySeenCursors, output.NextCursor)
 		record.QueryCursor = output.NextCursor
-	} else {
-		record.QueryCursor, record.QueryPagesRead, record.QuerySeenCursors = "", 0, nil
 	}
 	return ""
 }

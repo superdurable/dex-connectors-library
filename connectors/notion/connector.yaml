@@ -64,7 +64,7 @@ spec:
       mocks:
         - name: submissionsSearch
           branch: searched
-          description: Three search pages with title decoys, a trashed match, and a repeated data source.
+          description: "Three search pages that fit database title Form submissions: decoys and a trashed match on page 1, the data source on page 2, and the same data source again on page 3. Script other titles."
           default: true
           pages:
             - matches:
@@ -106,21 +106,23 @@ spec:
       mocks:
         - name: existingSubmission
           branch: queried
-          description: Three pages of matching rows, including a repeated row and one trashed row to ignore.
+          description: "Three pages that fit submission ID sub-new-1: a trashed and an archived row on page 1, the saved row on page 2, and the same row again on page 3. Script other submission IDs."
           default: true
           pages:
             - dataSourceId: 2a4d6f80-1b3c-4d5e-8f70-112233445566
               pages:
-                -
-                  id: 2a4d6f80-1b3c-4d5e-8f70-112233445577
-                  url: https://www.notion.so/2a4d6f801b3c4d5e8f70112233445577
+                - id: 2a4d6f80-1b3c-4d5e-8f70-112233445588
                   title: Ada Lovelace
-                  parent: {type: data_source_id, id: 2a4d6f80-1b3c-4d5e-8f70-112233445566}
+                  parent: {type: data_source_id, id: 2a4d6f80-1b3c-4d5e-8f70-112233445566, databaseId: 2a4d6f80-1b3c-4d5e-8f70-112233445500}
+                  inTrash: true
                   properties:
-                    Name: {id: title, type: title, text: Ada Lovelace, plainText: Ada Lovelace}
                     Submission ID: {id: submission-id, type: rich_text, text: sub-new-1, plainText: sub-new-1}
-                    Email: {id: email, type: email, email: ada@example.com, plainText: ada@example.com}
-                    Submitted at: {id: submitted-at, type: date, plainText: "2026-10-25T00:00:00Z"}
+                - id: 2a4d6f80-1b3c-4d5e-8f70-112233445599
+                  title: Ada Lovelace
+                  parent: {type: data_source_id, id: 2a4d6f80-1b3c-4d5e-8f70-112233445566, databaseId: 2a4d6f80-1b3c-4d5e-8f70-112233445500}
+                  archived: true
+                  properties:
+                    Submission ID: {id: submission-id, type: rich_text, text: sub-new-1, plainText: sub-new-1}
               nextCursor: rows-page-2
               hasMore: true
             - dataSourceId: 2a4d6f80-1b3c-4d5e-8f70-112233445566
@@ -129,22 +131,26 @@ spec:
                   id: 2a4d6f80-1b3c-4d5e-8f70-112233445577
                   url: https://www.notion.so/2a4d6f801b3c4d5e8f70112233445577
                   title: Ada Lovelace
-                  parent: {type: data_source_id, id: 2a4d6f80-1b3c-4d5e-8f70-112233445566}
+                  parent: {type: data_source_id, id: 2a4d6f80-1b3c-4d5e-8f70-112233445566, databaseId: 2a4d6f80-1b3c-4d5e-8f70-112233445500}
                   properties:
                     Name: {id: title, type: title, text: Ada Lovelace, plainText: Ada Lovelace}
                     Submission ID: {id: submission-id, type: rich_text, text: sub-new-1, plainText: sub-new-1}
                     Email: {id: email, type: email, email: ada@example.com, plainText: ada@example.com}
-                    Submitted at: {id: submitted-at, type: date, plainText: "2026-10-25T00:00:00Z"}
-                - id: 2a4d6f80-1b3c-4d5e-8f70-112233445588
-                  title: Ada Lovelace
-                  parent: {type: data_source_id, id: 2a4d6f80-1b3c-4d5e-8f70-112233445566}
-                  inTrash: true
-                  properties:
-                    Submission ID: {id: submission-id, type: rich_text, text: sub-new-1, plainText: sub-new-1}
+                    Submitted at: {id: submitted-at, type: date, date: {start: "2026-10-25T00:00:00Z"}, plainText: "2026-10-25T00:00:00Z"}
               nextCursor: rows-page-3
               hasMore: true
             - dataSourceId: 2a4d6f80-1b3c-4d5e-8f70-112233445566
-              pages: []
+              pages:
+                -
+                  id: 2a4d6f80-1b3c-4d5e-8f70-112233445577
+                  url: https://www.notion.so/2a4d6f801b3c4d5e8f70112233445577
+                  title: Ada Lovelace
+                  parent: {type: data_source_id, id: 2a4d6f80-1b3c-4d5e-8f70-112233445566, databaseId: 2a4d6f80-1b3c-4d5e-8f70-112233445500}
+                  properties:
+                    Name: {id: title, type: title, text: Ada Lovelace, plainText: Ada Lovelace}
+                    Submission ID: {id: submission-id, type: rich_text, text: sub-new-1, plainText: sub-new-1}
+                    Email: {id: email, type: email, email: ada@example.com, plainText: ada@example.com}
+                    Submitted at: {id: submitted-at, type: date, date: {start: "2026-10-25T00:00:00Z"}, plainText: "2026-10-25T00:00:00Z"}
         - name: dataSourceMissing
           branch: notFound
           description: The data source is missing or not shared.
@@ -178,12 +184,12 @@ spec:
               id: 2a4d6f80-1b3c-4d5e-8f70-112233445577
               url: https://www.notion.so/2a4d6f801b3c4d5e8f70112233445577
               title: Ada Lovelace
-              parent: {type: data_source_id, id: 2a4d6f80-1b3c-4d5e-8f70-112233445566}
+              parent: {type: data_source_id, id: 2a4d6f80-1b3c-4d5e-8f70-112233445566, databaseId: 2a4d6f80-1b3c-4d5e-8f70-112233445500}
               properties:
                 Name: {id: title, type: title, text: Ada Lovelace, plainText: Ada Lovelace}
                 Submission ID: {id: submission-id, type: rich_text, text: sub-new-1, plainText: sub-new-1}
                 Email: {id: email, type: email, email: ada@example.com, plainText: ada@example.com}
-                Submitted at: {id: submitted-at, type: date, plainText: "2026-10-25T00:00:00Z"}
+                Submitted at: {id: submitted-at, type: date, date: {start: "2026-10-25T00:00:00Z"}, plainText: "2026-10-25T00:00:00Z"}
             content: {text: "Hello from the form.\nSecond paragraph.", blockCount: 2}
         - name: pageMissing
           branch: notFound
@@ -227,12 +233,12 @@ spec:
               id: 2a4d6f80-1b3c-4d5e-8f70-112233445577
               url: https://www.notion.so/2a4d6f801b3c4d5e8f70112233445577
               title: Ada Lovelace
-              parent: {type: data_source_id, id: 2a4d6f80-1b3c-4d5e-8f70-112233445566}
+              parent: {type: data_source_id, id: 2a4d6f80-1b3c-4d5e-8f70-112233445566, databaseId: 2a4d6f80-1b3c-4d5e-8f70-112233445500}
               properties:
                 Name: {id: title, type: title, text: Ada Lovelace, plainText: Ada Lovelace}
                 Submission ID: {id: submission-id, type: rich_text, text: sub-new-1, plainText: sub-new-1}
                 Email: {id: email, type: email, email: ada@example.com, plainText: ada@example.com}
-                Submitted at: {id: submitted-at, type: date, plainText: "2026-10-25T00:00:00Z"}
+                Submitted at: {id: submitted-at, type: date, date: {start: "2026-10-25T00:00:00Z"}, plainText: "2026-10-25T00:00:00Z"}
         - name: createSourceMissing
           branch: notFound
           description: The destination data source is unavailable.
@@ -270,12 +276,12 @@ spec:
               id: 2a4d6f80-1b3c-4d5e-8f70-112233445577
               url: https://www.notion.so/2a4d6f801b3c4d5e8f70112233445577
               title: Ada Lovelace
-              parent: {type: data_source_id, id: 2a4d6f80-1b3c-4d5e-8f70-112233445566}
+              parent: {type: data_source_id, id: 2a4d6f80-1b3c-4d5e-8f70-112233445566, databaseId: 2a4d6f80-1b3c-4d5e-8f70-112233445500}
               properties:
                 Name: {id: title, type: title, text: Ada Lovelace, plainText: Ada Lovelace}
                 Submission ID: {id: submission-id, type: rich_text, text: sub-new-1, plainText: sub-new-1}
                 Email: {id: email, type: email, email: ada@example.com, plainText: ada@example.com}
-                Submitted at: {id: submitted-at, type: date, plainText: "2026-10-25T00:00:00Z"}
+                Submitted at: {id: submitted-at, type: date, date: {start: "2026-10-25T00:00:00Z"}, plainText: "2026-10-25T00:00:00Z"}
         - name: updatePageMissing
           branch: notFound
           description: The submission row no longer exists.
