@@ -22,7 +22,7 @@ spec:
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: Maximum complete Stripe API response in bytes; enter a positive integer only to change the safety limit. Oversized query and successful write responses select invalidResponse.
+        description: Maximum complete Stripe API response in bytes; enter a positive integer only to change the safety limit. Oversized successful responses select invalidResponse; an oversized error response is classified by its status.
         required: false
         default: 1048576
       - name: webhookMaxBodyBytes

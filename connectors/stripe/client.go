@@ -286,10 +286,8 @@ func (operation GetCheckoutSessionOperation) Invoke(call sdkgo.Call, input GetCh
 		return sdkgo.NewQueryBranch(GetCheckoutSessionBranchDefect, CheckoutSession{}, failure, sdkgo.Receipt{})
 	}
 	response, err := operation.client.request(call, credentials.SecretKey.Reveal(), http.MethodGet, "checkout/sessions/"+url.PathEscape(sessionID), nil)
-	if err != nil {
-		if errors.Is(err, errStripeResponseTooLarge) {
-			return sdkgo.NewQueryBranch(GetCheckoutSessionBranchInvalidResponse, CheckoutSession{}, stripeFailurePointer("getCheckoutSession", sdkgo.FailureResponseTooLarge, err.Error()), operation.client.receipt(call, response, sessionID))
-		}
+	isResponseTooLarge := errors.Is(err, errStripeResponseTooLarge)
+	if err != nil && !isResponseTooLarge {
 		return sdkgo.NewQueryRetry[CheckoutSession](stripeFailure("getCheckoutSession", sdkgo.FailureAvailability, "Stripe Checkout Session is temporarily unavailable"), 0)
 	}
 	if response.statusCode == http.StatusTooManyRequests {
@@ -303,6 +301,9 @@ func (operation GetCheckoutSessionOperation) Invoke(call sdkgo.Call, input GetCh
 	}
 	if response.statusCode < 200 || response.statusCode >= 300 {
 		return sdkgo.NewQueryBranch(GetCheckoutSessionBranchProviderRejected, CheckoutSession{}, classifyStripeRejection("getCheckoutSession", response), operation.client.receipt(call, response, sessionID))
+	}
+	if isResponseTooLarge {
+		return sdkgo.NewQueryBranch(GetCheckoutSessionBranchInvalidResponse, CheckoutSession{}, stripeFailurePointer("getCheckoutSession", sdkgo.FailureResponseTooLarge, err.Error()), operation.client.receipt(call, response, sessionID))
 	}
 	session, err := decodeCheckoutSession(response.body)
 	if err != nil {

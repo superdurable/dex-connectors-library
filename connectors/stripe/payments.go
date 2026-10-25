@@ -126,10 +126,8 @@ func (operation GetPaymentIntentOperation) Invoke(call sdkgo.Call, input GetPaym
 	}
 	query := url.Values{"expand[]": {"latest_charge"}}
 	response, err := operation.client.request(call, credentials.SecretKey.Reveal(), http.MethodGet, "payment_intents/"+url.PathEscape(paymentIntentID), query)
-	if err != nil {
-		if errors.Is(err, errStripeResponseTooLarge) {
-			return sdkgo.NewQueryBranch(GetPaymentIntentBranchInvalidResponse, PaymentIntent{}, stripeFailurePointer("getPaymentIntent", sdkgo.FailureResponseTooLarge, err.Error()), operation.client.receipt(call, response, paymentIntentID))
-		}
+	isResponseTooLarge := errors.Is(err, errStripeResponseTooLarge)
+	if err != nil && !isResponseTooLarge {
 		return sdkgo.NewQueryRetry[PaymentIntent](stripeFailure("getPaymentIntent", sdkgo.FailureAvailability, "Stripe PaymentIntent is temporarily unavailable"), 0)
 	}
 	if response.statusCode == http.StatusTooManyRequests {
@@ -143,6 +141,9 @@ func (operation GetPaymentIntentOperation) Invoke(call sdkgo.Call, input GetPaym
 	}
 	if response.statusCode < 200 || response.statusCode >= 300 {
 		return sdkgo.NewQueryBranch(GetPaymentIntentBranchProviderRejected, PaymentIntent{}, classifyStripeRejection("getPaymentIntent", response), operation.client.receipt(call, response, paymentIntentID))
+	}
+	if isResponseTooLarge {
+		return sdkgo.NewQueryBranch(GetPaymentIntentBranchInvalidResponse, PaymentIntent{}, stripeFailurePointer("getPaymentIntent", sdkgo.FailureResponseTooLarge, err.Error()), operation.client.receipt(call, response, paymentIntentID))
 	}
 	paymentIntent, err := decodePaymentIntent(response.body)
 	if err != nil {

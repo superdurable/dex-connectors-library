@@ -6,9 +6,11 @@ package stripe_test
 import (
 	"context"
 	"encoding/base64"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -84,6 +86,71 @@ func TestGetCheckoutSessionClassifiesNotFoundAndAuthentication(t *testing.T) {
 		require.Equal(t, testCase.branch, result.Branch)
 		require.Equal(t, testCase.failure, result.Failure.Kind)
 		server.Close()
+	}
+}
+
+func TestStripeQueriesClassifyOversizedResponsesByStatus(t *testing.T) {
+	type queryOutcome struct {
+		branch  sdkgo.BranchID
+		failure *sdkgo.Failure
+	}
+	queries := []struct {
+		name                  string
+		notFoundBranch        sdkgo.BranchID
+		providerRejected      sdkgo.BranchID
+		invalidResponseBranch sdkgo.BranchID
+		invoke                func(*stripe.Client) (queryOutcome, error)
+	}{
+		{
+			name: "checkout session", notFoundBranch: stripe.GetCheckoutSessionBranchNotFound,
+			providerRejected: stripe.GetCheckoutSessionBranchProviderRejected, invalidResponseBranch: stripe.GetCheckoutSessionBranchInvalidResponse,
+			invoke: func(client *stripe.Client) (queryOutcome, error) {
+				result, err := sdkgo.RunQuery(newStripeDexContext("oversized-session"), client.GetCheckoutSession(), stripeConnection, stripe.GetCheckoutSessionInput{SessionID: "cs_test_123"})
+				return queryOutcome{result.Branch, result.Failure}, err
+			},
+		},
+		{
+			name: "payment intent", notFoundBranch: stripe.GetPaymentIntentBranchNotFound,
+			providerRejected: stripe.GetPaymentIntentBranchProviderRejected, invalidResponseBranch: stripe.GetPaymentIntentBranchInvalidResponse,
+			invoke: func(client *stripe.Client) (queryOutcome, error) {
+				result, err := sdkgo.RunQuery(newStripeDexContext("oversized-intent"), client.GetPaymentIntent(), stripeConnection, stripe.GetPaymentIntentInput{PaymentIntentID: "pi_123"})
+				return queryOutcome{result.Branch, result.Failure}, err
+			},
+		},
+	}
+	for _, query := range queries {
+		testCases := []struct {
+			name       string
+			status     int
+			wantBranch sdkgo.BranchID
+			wantKind   sdkgo.FailureKind
+			isRetry    bool
+		}{
+			{name: "429", status: http.StatusTooManyRequests, wantKind: sdkgo.FailureRateLimit, isRetry: true},
+			{name: "503", status: http.StatusServiceUnavailable, wantKind: sdkgo.FailureAvailability, isRetry: true},
+			{name: "404", status: http.StatusNotFound, wantBranch: query.notFoundBranch, wantKind: sdkgo.FailureNotFound},
+			{name: "401", status: http.StatusUnauthorized, wantBranch: query.providerRejected, wantKind: sdkgo.FailureAuthentication},
+			{name: "200", status: http.StatusOK, wantBranch: query.invalidResponseBranch, wantKind: sdkgo.FailureResponseTooLarge},
+		}
+		for _, testCase := range testCases {
+			t.Run(query.name+" "+testCase.name, func(t *testing.T) {
+				server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+					response.WriteHeader(testCase.status)
+					_, writeErr := io.WriteString(response, `{"error":{"type":"invalid_request_error"}}`+strings.Repeat(" ", 64))
+					require.NoError(t, writeErr)
+				}))
+				defer server.Close()
+				client := newStripeClient(t, server.URL, stripe.Config{MaxResponseBytes: 64})
+				outcome, err := query.invoke(client)
+				if testCase.isRetry {
+					requireStripeRetry(t, err, testCase.wantKind)
+					return
+				}
+				require.NoError(t, err)
+				require.Equal(t, testCase.wantBranch, outcome.branch)
+				require.Equal(t, testCase.wantKind, outcome.failure.Kind)
+			})
+		}
 	}
 }
 

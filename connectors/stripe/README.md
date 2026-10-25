@@ -161,7 +161,10 @@ the SDK does not reject a longer window.
 
 `GetCheckoutSession` returns `found`, `notFound`, `providerRejected`,
 `invalidResponse`, or `defect`. Transport, rate-limit, and availability errors
-retry under the generated Dex policy.
+retry under the generated Dex policy. `GetCheckoutSession` and
+`GetPaymentIntent` classify an oversized error response by its status, so an
+oversized 429 or 5xx retries; only an oversized successful response selects
+`invalidResponse`.
 
 `GetPaymentIntent` reads one PaymentIntent (`pi_...`) with its latest charge
 expanded and returns `id`, `amount` and `currency` (minor units),
