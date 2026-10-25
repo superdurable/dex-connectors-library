@@ -161,7 +161,7 @@ func GetObjectRetry(failure sdkgo.Failure, after time.Duration) connectormock.Ca
 	return connectormock.Retry[hubspot.CRMObject](failure, after)
 }
 
-// GetObjectQualifiedDeal is the manifest mock qualifiedDeal: The selected deal read back at stage qualifiedtobuy; it fits an application whose qualified stage is qualifiedtobuy, and any other stage needs a scripted answer.
+// GetObjectQualifiedDeal is the manifest mock qualifiedDeal: The selected deal read back at stage qualifiedtobuy; an application configured with another stage fails on it and needs a scripted answer.
 func GetObjectQualifiedDeal() connectormock.Case[hubspot.CRMObject] {
 	value := connectormock.MustDecodeOutput[hubspot.CRMObject](`{"objectType":"deals","id":"9001","properties":{"dealname":"Analytical Engines renewal","dealstage":"qualifiedtobuy","pipeline":"default","hs_object_id":"9001","createdate":"2026-10-01T09:00:00.000Z","hs_lastmodifieddate":"2026-10-25T10:05:00.000Z"},"createdAt":"2026-10-01T09:00:00Z","updatedAt":"2026-10-25T10:05:00Z"}`)
 	return connectormock.Branch(hubspot.GetObjectBranchFound, value, nil)
@@ -214,7 +214,7 @@ func UpsertObjectRetry(failure sdkgo.Failure, after time.Duration) connectormock
 
 // UpsertObjectUpsertedLead is the manifest mock upsertedLead: The lead contact was updated under its unique email.
 func UpsertObjectUpsertedLead() connectormock.Case[hubspot.UpsertedObject] {
-	value := connectormock.MustDecodeOutput[hubspot.UpsertedObject](`{"object":{"objectType":"contacts","id":"501","properties":{"email":"ada@example.com","firstname":"Ada","lastname":"Lovelace","company":"Analytical Engines","hubspot_owner_id":"77"}},"created":false}`)
+	value := connectormock.MustDecodeOutput[hubspot.UpsertedObject](`{"object":{"objectType":"contacts","id":"501","properties":{"email":"ada@example.com","firstname":"Ada","lastname":"Lovelace","company":"Analytical Engines","hubspot_owner_id":"77","hs_object_id":"501","createdate":"2026-09-15T08:00:00.000Z","lastmodifieddate":"2026-10-25T10:04:00.000Z"},"createdAt":"2026-09-15T08:00:00Z","updatedAt":"2026-10-25T10:04:00Z"},"created":false}`)
 	return connectormock.Branch(hubspot.UpsertObjectBranchUpserted, value, nil)
 }
 
@@ -270,7 +270,7 @@ func UpdateObjectRetry(failure sdkgo.Failure, after time.Duration) connectormock
 	return connectormock.Retry[hubspot.CRMObject](failure, after)
 }
 
-// UpdateObjectAdvancedDeal is the manifest mock advancedDeal: The selected deal now at stage qualifiedtobuy; it fits an application whose qualified stage is qualifiedtobuy, and any other stage needs a scripted answer.
+// UpdateObjectAdvancedDeal is the manifest mock advancedDeal: The selected deal now at stage qualifiedtobuy; script another stage when the application configures one.
 func UpdateObjectAdvancedDeal() connectormock.Case[hubspot.CRMObject] {
 	value := connectormock.MustDecodeOutput[hubspot.CRMObject](`{"objectType":"deals","id":"9001","properties":{"dealname":"Analytical Engines renewal","dealstage":"qualifiedtobuy","pipeline":"default","hs_object_id":"9001","createdate":"2026-10-01T09:00:00.000Z","hs_lastmodifieddate":"2026-10-25T10:05:00.000Z"},"createdAt":"2026-10-01T09:00:00Z","updatedAt":"2026-10-25T10:05:00Z"}`)
 	return connectormock.Branch(hubspot.UpdateObjectBranchUpdated, value, nil)

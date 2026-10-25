@@ -33,7 +33,7 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			return err
 		}},
 		{name: "upsertObject/upsertedLead/1", decode: func() error {
-			_, err := connectormock.DecodeOutput[hubspot.UpsertedObject](`{"object":{"objectType":"contacts","id":"501","properties":{"email":"ada@example.com","firstname":"Ada","lastname":"Lovelace","company":"Analytical Engines","hubspot_owner_id":"77"}},"created":false}`)
+			_, err := connectormock.DecodeOutput[hubspot.UpsertedObject](`{"object":{"objectType":"contacts","id":"501","properties":{"email":"ada@example.com","firstname":"Ada","lastname":"Lovelace","company":"Analytical Engines","hubspot_owner_id":"77","hs_object_id":"501","createdate":"2026-09-15T08:00:00.000Z","lastmodifieddate":"2026-10-25T10:04:00.000Z"},"createdAt":"2026-09-15T08:00:00Z","updatedAt":"2026-10-25T10:04:00Z"},"created":false}`)
 			return err
 		}},
 		{name: "updateObject/advancedDeal/1", decode: func() error {

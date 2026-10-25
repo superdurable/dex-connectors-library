@@ -194,7 +194,7 @@ spec:
       mocks:
         - name: qualifiedDeal
           branch: found
-          description: The selected deal read back at stage qualifiedtobuy; it fits an application whose qualified stage is qualifiedtobuy, and any other stage needs a scripted answer.
+          description: The selected deal read back at stage qualifiedtobuy; an application configured with another stage fails on it and needs a scripted answer.
           default: true
           output: {objectType: deals, id: "9001", properties: {dealname: Analytical Engines renewal, dealstage: qualifiedtobuy, pipeline: default, hs_object_id: "9001", createdate: "2026-10-01T09:00:00.000Z", hs_lastmodifieddate: "2026-10-25T10:05:00.000Z"}, createdAt: "2026-10-01T09:00:00Z", updatedAt: "2026-10-25T10:05:00Z"}
         - name: objectMissing
@@ -225,7 +225,7 @@ spec:
           description: The lead contact was updated under its unique email.
           default: true
           output:
-            object: {objectType: contacts, id: "501", properties: {email: ada@example.com, firstname: Ada, lastname: Lovelace, company: Analytical Engines, hubspot_owner_id: "77"}}
+            object: {objectType: contacts, id: "501", properties: {email: ada@example.com, firstname: Ada, lastname: Lovelace, company: Analytical Engines, hubspot_owner_id: "77", hs_object_id: "501", createdate: "2026-09-15T08:00:00.000Z", lastmodifieddate: "2026-10-25T10:04:00.000Z"}, createdAt: "2026-09-15T08:00:00Z", updatedAt: "2026-10-25T10:04:00Z"}
             created: false
         - name: upsertConflict
           branch: conflict
@@ -253,7 +253,7 @@ spec:
       mocks:
         - name: advancedDeal
           branch: updated
-          description: The selected deal now at stage qualifiedtobuy; it fits an application whose qualified stage is qualifiedtobuy, and any other stage needs a scripted answer.
+          description: The selected deal now at stage qualifiedtobuy; script another stage when the application configures one.
           default: true
           output: {objectType: deals, id: "9001", properties: {dealname: Analytical Engines renewal, dealstage: qualifiedtobuy, pipeline: default, hs_object_id: "9001", createdate: "2026-10-01T09:00:00.000Z", hs_lastmodifieddate: "2026-10-25T10:05:00.000Z"}, createdAt: "2026-10-01T09:00:00Z", updatedAt: "2026-10-25T10:05:00Z"}
         - name: dealMissing

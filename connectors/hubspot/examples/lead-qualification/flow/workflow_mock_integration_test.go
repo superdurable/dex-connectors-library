@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"github.com/superdurable/dex-connectors-library/connectors/hubspot"
 	"github.com/superdurable/dex-connectors-library/connectors/hubspot/hubspotmock"
 )
 
@@ -24,14 +25,34 @@ func TestLeadQualificationUsesMockDefaultsWithRealDex(t *testing.T) {
 
 	upsertCalls := mock.UpsertObject().Calls()
 	require.Len(t, upsertCalls, 1)
-	require.Equal(t, "email", upsertCalls[0].Input.IDProperty)
-	require.Equal(t, existingLeadEmail, upsertCalls[0].Input.IDValue)
+	require.Equal(t, hubspot.UpsertObjectInput{
+		ObjectType: hubspot.ObjectTypeContacts, IDProperty: "email", IDValue: existingLeadEmail,
+		Properties: map[string]string{
+			"firstname": "Ada", "lastname": "Lovelace", "company": "Analytical Engines", "hubspot_owner_id": integrationOwnerID,
+		},
+	}, upsertCalls[0].Input)
 	// The example reads only the top result on purpose, so it requests one page.
 	searchCalls := mock.SearchObjects().Calls()
 	require.Len(t, searchCalls, 1)
-	require.Equal(t, "501", searchCalls[0].Input.FilterGroups[0].Filters[0].Value, "the search filters on the contact the upsert answered")
+	require.Equal(t, hubspot.SearchObjectsInput{
+		ObjectType: hubspot.ObjectTypeDeals,
+		FilterGroups: []hubspot.SearchFilterGroup{{Filters: []hubspot.SearchFilter{
+			{PropertyName: "associations.contact", Operator: hubspot.FilterOperatorEqual, Value: "501"},
+			{PropertyName: "pipeline", Operator: hubspot.FilterOperatorEqual, Value: integrationPipelineID},
+			{PropertyName: "hs_is_closed", Operator: hubspot.FilterOperatorEqual, Value: "false"},
+		}}},
+		Sort:       &hubspot.SearchSort{PropertyName: "hs_lastmodifieddate", Direction: hubspot.SortDirectionDescending},
+		Properties: []string{"dealname", "dealstage", "pipeline"},
+		Limit:      1,
+	}, searchCalls[0].Input)
 	updateCalls := mock.UpdateObject().Calls()
 	require.Len(t, updateCalls, 1)
-	require.Equal(t, "9001", updateCalls[0].Input.ObjectID)
-	require.Equal(t, integrationStageID, updateCalls[0].Input.Properties["dealstage"])
+	require.Equal(t, hubspot.UpdateObjectInput{
+		ObjectType: hubspot.ObjectTypeDeals, ObjectID: "9001", Properties: map[string]string{"dealstage": integrationStageID},
+	}, updateCalls[0].Input)
+	getCalls := mock.GetObject().Calls()
+	require.Len(t, getCalls, 1)
+	require.Equal(t, hubspot.GetObjectInput{
+		ObjectType: hubspot.ObjectTypeDeals, ObjectID: "9001", Properties: []string{"dealname", "dealstage", "pipeline"},
+	}, getCalls[0].Input)
 }
