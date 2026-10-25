@@ -137,6 +137,22 @@ func TestRejectMockValuesThatAreNotJSON(t *testing.T) {
 	require.ErrorContains(t, err, "mock object keys must be strings")
 }
 
+func TestRejectDefaultOnRetryOrUncertainMockOnce(t *testing.T) {
+	testCases := map[string][2]string{
+		"retry":     {"          retry: {failure:", "          default: true\n          retry: {failure:"},
+		"uncertain": {"          uncertain: {failure:", "          default: true\n          uncertain: {failure:"},
+	}
+	for name, replacement := range testCases {
+		t.Run(name, func(t *testing.T) {
+			_, err := schema.Decode(strings.NewReader(mocksFixture(t, [][2]string{replacement})))
+			require.Error(t, err)
+			require.Equal(t, 1, strings.Count(err.Error(), "a default mock answers a required branch without a failure"))
+			require.NotContains(t, err.Error(), "declares only retry")
+			require.NotContains(t, err.Error(), "declares only uncertain")
+		})
+	}
+}
+
 func TestValidateMockCoverage(t *testing.T) {
 	testCases := map[string]struct {
 		replacements [][2]string
@@ -182,7 +198,10 @@ func TestValidateMockCoverageAllowsDefaultsOnlyAndOptionalBranchMocks(t *testing
 	manifest.Spec.Operations[0].Mocks = append(manifest.Spec.Operations[0].Mocks, optionalMock)
 	require.NoError(t, manifest.ValidateMockCoverage(), "declared optional branch mocks remain allowed")
 	manifest.Spec.Operations[0].Mocks[0].Branch = "notFound"
-	require.ErrorContains(t, manifest.ValidateMockCoverage(), "getWidget: default mock gear must answer a required branch without a failure")
+	require.NoError(t, manifest.ValidateMockCoverage(), "coverage only counts defaults")
+	err := manifest.Validate()
+	require.ErrorContains(t, err, "getWidget: mock gear: a default mock answers a required branch without a failure")
+	require.Equal(t, 1, strings.Count(err.Error(), "a default mock answers a required branch without a failure"))
 	manifest.Spec.Operations[0].Mocks[0].Branch = "found"
 
 	manifest.Spec.Operations[1].Mocks = nil

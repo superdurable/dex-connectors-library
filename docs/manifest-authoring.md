@@ -827,7 +827,8 @@ mock of each shape:
   safe message. The mock fills the provider and operation.
 - `default: true` marks the mock that answers every call a test does not
   script. Every operation has exactly one default, selecting a required
-  happy-path branch without a failure.
+  happy-path branch without a failure. An unscripted Mutation call uses that
+  answer instead of failing the test.
 - Outputs are YAML written as the operation output's JSON. Quote a string
   that YAML would read as a number, a boolean, or a date, such as `"007"`.
 

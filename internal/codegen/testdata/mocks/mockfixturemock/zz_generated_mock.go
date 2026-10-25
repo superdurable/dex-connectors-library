@@ -2,8 +2,8 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package mockfixturemock scripts the mock-fixture connector's operations in application tests. New returns a
-// Connection whose operations answer from connectormock scripts, with each operation's manifest default installed.
+// Package mockfixturemock scripts the mock-fixture connector's operations in application tests. New returns a Connection whose
+// Query and Mutation operations answer unscripted calls from their manifest defaults.
 package mockfixturemock
 
 import (
@@ -23,8 +23,8 @@ type Mock struct {
 	createWidget *connectormock.Mutation[mockfixture.CreateWidgetInput, mockfixture.Widget]
 }
 
-// New returns a mock connection named connectionName. Each operation's manifest default answers
-// unscripted calls.
+// New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
+// each operation's manifest default, so happy-path application tests need no scripting.
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
