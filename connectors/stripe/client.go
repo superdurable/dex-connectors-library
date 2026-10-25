@@ -27,6 +27,8 @@ const (
 	maximumMetadataValRunes = 500
 )
 
+const stripeIdempotencyKeyInUseCode = "idempotency_key_in_use"
+
 var currencyPattern = regexp.MustCompile(`^[a-z]{3}$`)
 
 // Option configures Client construction.
@@ -244,6 +246,9 @@ func (operation CreateACHCheckoutSessionOperation) Invoke(call sdkgo.Call, input
 	if response.statusCode == http.StatusTooManyRequests {
 		return sdkgo.NewMutationRetry[CheckoutSession](stripeFailure("createACHCheckoutSession", sdkgo.FailureRateLimit, "Stripe rate limited the Checkout Session request"), retryAfter(response.header))
 	}
+	if response.statusCode == http.StatusConflict && shouldRetryKeyedConflict(response) {
+		return sdkgo.NewMutationRetry[CheckoutSession](stripeFailure("createACHCheckoutSession", sdkgo.FailureConflict, "Stripe is still processing a Checkout Session request with this idempotency key"), retryAfter(response.header))
+	}
 	if response.statusCode >= 500 {
 		if shouldRetryKeyedServerFailure(response) {
 			return sdkgo.NewMutationRetry[CheckoutSession](stripeFailure("createACHCheckoutSession", sdkgo.FailureAvailability, "Stripe Checkout Session is temporarily unavailable"), retryAfter(response.header))
@@ -435,6 +440,15 @@ func shouldRetryKeyedServerFailure(response providerResponse) bool {
 		return false
 	}
 	return response.statusCode == http.StatusBadGateway || response.statusCode == http.StatusServiceUnavailable || response.statusCode == http.StatusGatewayTimeout
+}
+
+// shouldRetryKeyedConflict reports a 409 whose key's original request is still executing.
+// https://docs.stripe.com/error-low-level#content-errors
+func shouldRetryKeyedConflict(response providerResponse) bool {
+	if strings.EqualFold(response.header.Get("Stripe-Should-Retry"), "true") {
+		return true
+	}
+	return parseStripeAPIError(response.body).Code == stripeIdempotencyKeyInUseCode
 }
 
 func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Credentials, *sdkgo.Failure) {

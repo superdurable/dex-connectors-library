@@ -137,12 +137,24 @@ Do not put personal, bank, card, or other sensitive data in Stripe metadata.
 
 Create branches are `created`, `providerRejected`, `uncertain`,
 `invalidResponse`, and `defect`. Transport failures, unreadable responses,
-rate limits, 502/503/504 responses without a no-retry hint, and any 5xx with
-`Stripe-Should-Retry: true` retry with the same idempotency key. An unhinted
-500, a replayed 5xx, or a 5xx with `Stripe-Should-Retry: false` selects
-`uncertain` because the Session cannot be confirmed. An oversized response
-selects `invalidResponse`; increase `maxResponseBytes` if the expected provider
-response exceeds the limit.
+rate limits, a 409 `idempotency_key_in_use` for a key whose original request
+is still executing, 502/503/504 responses without a no-retry hint, and any 409
+or 5xx with `Stripe-Should-Retry: true` retry with the same idempotency key.
+Another 409, or an `idempotency_error` for a reused key with different
+parameters, selects `providerRejected`. An unhinted 500, a replayed 5xx, or a
+5xx with `Stripe-Should-Retry: false` selects `uncertain` because the Session
+cannot be confirmed. An oversized response selects `invalidResponse`; increase
+`maxResponseBytes` if the expected provider response exceeds the limit.
+
+Every retry of one Step execution reuses its idempotency key. Stripe keeps a
+key for at least 24 hours and can run a later request with a removed key as a
+new operation, so Stripe asks clients to retry an unresolved request only
+within [the first 24 hours](https://docs.stripe.com/error-low-level#post-requests).
+The generated two-minute retry window stays far inside that limit. A
+`StepOptionsOverride` for `CreateCardCheckoutSession`,
+`CreateACHCheckoutSession`, or `CreateRefund` must set a nonzero
+`ExecuteRetry.TotalDuration` of at most 24 hours; the SDK does not reject a
+longer window.
 
 `GetCheckoutSession` returns `found`, `notFound`, `providerRejected`,
 `invalidResponse`, or `defect`. Transport, rate-limit, and availability errors
@@ -170,15 +182,17 @@ A Stripe 4xx error such as `charge_already_refunded` or an amount above the
 refundable balance is `providerRejected`, and its failure message carries
 Stripe's error code and message (never for 401 or 403, whose messages can echo
 part of the key). Network losses, unreadable responses, timeouts, rate limits,
-a 409 for a key still in flight, 502/503/504 without a no-retry hint, and any
-5xx with `Stripe-Should-Retry: true` retry with the same key. An unhinted 500,
-a replayed 5xx, or a 5xx with `Stripe-Should-Retry: false` prompts a bounded
-refund list lookup filtered by PaymentIntent and matched on `dex_call_id`. A match
-returns `refunded`; no match or an inconclusive lookup selects `uncertain`.
-Transient read-back failures retry. An oversized refund creation response
-selects `invalidResponse`; increase `maxResponseBytes` when the expected
-response exceeds the limit. Reconcile uncertain outcomes before starting a
-separate request with a new key.
+a 409 `idempotency_key_in_use` for a key still in flight, 502/503/504 without a
+no-retry hint, and any 409 or 5xx with `Stripe-Should-Retry: true` retry with
+the same key; another 409 is `providerRejected`. An unhinted 500, a replayed
+5xx, or a 5xx with `Stripe-Should-Retry: false` prompts a bounded refund list
+lookup filtered by PaymentIntent and matched on `dex_call_id`. A match returns
+`refunded`; no match or an inconclusive lookup selects `uncertain`. A lookup
+that Stripe denies with 401 or 403 selects `uncertain` with a message that the
+key needs Refund read permission. Transient read-back failures retry. An
+oversized refund creation response selects `invalidResponse`; increase
+`maxResponseBytes` when the expected response exceeds the limit. Reconcile
+uncertain outcomes before starting a separate request with a new key.
 
 The key needs PaymentIntent and Charge read access plus Refund read and write
 access in addition to the Checkout Session permissions.

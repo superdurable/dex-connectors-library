@@ -184,7 +184,7 @@ func (operation CreateRefundOperation) Invoke(call sdkgo.Call, input CreateRefun
 	if response.statusCode == http.StatusTooManyRequests {
 		return sdkgo.NewMutationRetry[Refund](stripeFailure("createRefund", sdkgo.FailureRateLimit, "Stripe rate limited the refund request"), retryAfter(response.header))
 	}
-	if response.statusCode == http.StatusConflict {
+	if response.statusCode == http.StatusConflict && shouldRetryKeyedConflict(response) {
 		return sdkgo.NewMutationRetry[Refund](stripeFailure("createRefund", sdkgo.FailureConflict, "Stripe is still processing a request with this idempotency key"), retryAfter(response.header))
 	}
 	if response.statusCode >= 500 {
@@ -212,6 +212,9 @@ func (operation CreateRefundOperation) readBackRefund(call sdkgo.Call, secretKey
 		}
 		if err != nil || response.statusCode == http.StatusTooManyRequests || response.statusCode >= 500 {
 			return sdkgo.NewMutationRetry[Refund](stripeFailure("createRefund", sdkgo.FailureAvailability, "Stripe refund read-back is temporarily unavailable"), retryAfter(response.header))
+		}
+		if response.statusCode == http.StatusUnauthorized || response.statusCode == http.StatusForbidden {
+			return operation.deniedRefundReadback(call, originalResponse, response.statusCode)
 		}
 		if response.statusCode < 200 || response.statusCode >= 300 {
 			break
@@ -252,6 +255,15 @@ func (operation CreateRefundOperation) readBackRefund(call sdkgo.Call, secretKey
 
 func (operation CreateRefundOperation) uncertainRefund(call sdkgo.Call, response providerResponse) sdkgo.MutationAttempt[Refund] {
 	return sdkgo.NewMutationUncertain(Refund{}, stripeFailure("createRefund", sdkgo.FailureAvailability, "Stripe refund outcome cannot be confirmed after a server error"), operation.client.receipt(call, response, ""))
+}
+
+func (operation CreateRefundOperation) deniedRefundReadback(call sdkgo.Call, originalResponse providerResponse, readbackStatusCode int) sdkgo.MutationAttempt[Refund] {
+	kind := sdkgo.FailureAuthorization
+	if readbackStatusCode == http.StatusUnauthorized {
+		kind = sdkgo.FailureAuthentication
+	}
+	message := "Stripe refund outcome cannot be confirmed after a server error because Stripe denied the refund read-back; the API key needs Refund read permission"
+	return sdkgo.NewMutationUncertain(Refund{}, stripeFailure("createRefund", kind, message), operation.client.receipt(call, originalResponse, ""))
 }
 
 func validatePaymentIntentID(paymentIntentID string) error {

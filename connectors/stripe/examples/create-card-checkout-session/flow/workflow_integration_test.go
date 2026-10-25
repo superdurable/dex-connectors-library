@@ -29,6 +29,32 @@ import (
 
 func TestCardCheckoutRetriesLostResponseWithRealDex(t *testing.T) {
 	provider := &stripeCheckoutRetryProvider{objectsByKey: make(map[string]string)}
+	transport := runCardCheckoutWithRealDex(t, provider, "stripe-card-keyed-retry-")
+	require.True(t, transport.dropped.Load())
+	provider.mutex.Lock()
+	defer provider.mutex.Unlock()
+	require.Len(t, provider.keys, 2)
+	require.NotEmpty(t, provider.keys[0])
+	require.Equal(t, provider.keys[0], provider.keys[1])
+	require.Len(t, provider.objectsByKey, 1)
+}
+
+// The retry after a lost response can reach Stripe while the original request still executes.
+func TestCardCheckoutRetriesKeyStillInUseWithRealDex(t *testing.T) {
+	provider := &stripeCheckoutRetryProvider{objectsByKey: make(map[string]string), keyInUseRequest: 2}
+	transport := runCardCheckoutWithRealDex(t, provider, "stripe-card-key-in-use-")
+	require.True(t, transport.dropped.Load())
+	provider.mutex.Lock()
+	defer provider.mutex.Unlock()
+	require.Len(t, provider.keys, 3)
+	require.NotEmpty(t, provider.keys[0])
+	require.Equal(t, provider.keys[0], provider.keys[1])
+	require.Equal(t, provider.keys[0], provider.keys[2])
+	require.Len(t, provider.objectsByKey, 1)
+}
+
+func runCardCheckoutWithRealDex(t *testing.T, provider *stripeCheckoutRetryProvider, flowIDPrefix string) *lostStripeResponseTransport {
+	t.Helper()
 	server := httptest.NewServer(http.HandlerFunc(provider.serveHTTP))
 	t.Cleanup(server.Close)
 	baseTransport := http.DefaultTransport.(*http.Transport).Clone()
@@ -75,7 +101,7 @@ func TestCardCheckoutRetriesLostResponseWithRealDex(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
-	flowID := "stripe-card-keyed-retry-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	flowID := flowIDPrefix + strconv.FormatInt(time.Now().UnixNano(), 10)
 	_, err = client.StartFlow(ctx, flow, flowID, Input{
 		ClientReferenceID: "registration-123", CustomerEmail: "attendee@example.com",
 		SuccessURL: "https://events.example.com/success", CancelURL: "https://events.example.com/cancel",
@@ -88,19 +114,14 @@ func TestCardCheckoutRetriesLostResponseWithRealDex(t *testing.T) {
 	var session stripe.CheckoutSession
 	require.NoError(t, result.DecodeSingleOutput(&session))
 	require.Equal(t, "cs_test_replayed", session.ID)
-	require.True(t, transport.dropped.Load())
-	provider.mutex.Lock()
-	defer provider.mutex.Unlock()
-	require.Len(t, provider.keys, 2)
-	require.NotEmpty(t, provider.keys[0])
-	require.Equal(t, provider.keys[0], provider.keys[1])
-	require.Len(t, provider.objectsByKey, 1)
+	return transport
 }
 
 type stripeCheckoutRetryProvider struct {
-	mutex        sync.Mutex
-	keys         []string
-	objectsByKey map[string]string
+	mutex           sync.Mutex
+	keyInUseRequest int
+	keys            []string
+	objectsByKey    map[string]string
 }
 
 func (provider *stripeCheckoutRetryProvider) serveHTTP(response http.ResponseWriter, request *http.Request) {
@@ -114,9 +135,15 @@ func (provider *stripeCheckoutRetryProvider) serveHTTP(response http.ResponseWri
 	if _, exists := provider.objectsByKey[key]; !exists {
 		provider.objectsByKey[key] = "cs_test_replayed"
 	}
+	isKeyInUse := len(provider.keys) == provider.keyInUseRequest
 	provider.mutex.Unlock()
 	response.Header().Set("Content-Type", "application/json")
-	if _, err := io.WriteString(response, `{"id":"cs_test_replayed","object":"checkout.session","status":"open"}`); err != nil {
+	body := `{"id":"cs_test_replayed","object":"checkout.session","status":"open"}`
+	if isKeyInUse {
+		response.WriteHeader(http.StatusConflict)
+		body = `{"error":{"code":"idempotency_key_in_use","message":"There is currently another in-progress request using this idempotency key."}}`
+	}
+	if _, err := io.WriteString(response, body); err != nil {
 		panic(err)
 	}
 }
