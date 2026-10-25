@@ -19,6 +19,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -184,13 +185,53 @@ func TestInvalidInputAndCredentialsDoNotDispatch(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, UpdateTaskBranchDefect, result.Branch)
 	}
-	missing, err := New(Config{BaseURL: server.URL}, sdkgo.StaticCredentialProvider[Credentials]{})
-	require.NoError(t, err)
-	requireCredentialDefects(t, missing)
+	for _, terminal := range []error{projectconfig.ErrObjectNotFound, sdkgo.ErrReauthorizationRequired, projectconfig.ErrConnectionNotSelected, projectconfig.ErrCredentialBrokerRejected} {
+		failing, err := New(Config{BaseURL: server.URL}, failingCredentials{fmt.Errorf("resolve project credential: %w", terminal)})
+		require.NoError(t, err)
+		requireCredentialDefects(t, failing)
+	}
 	for _, token := range []string{"", "unsafe\r\nheader", "Bearer value"} {
 		invalid, err := New(Config{BaseURL: server.URL}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: {APIToken: sdkgo.NewSecretString(token)}})
 		require.NoError(t, err)
 		requireCredentialDefects(t, invalid)
+	}
+	require.Zero(t, calls.Load())
+}
+
+// failingCredentials is a credential source whose every resolution fails with err.
+type failingCredentials struct{ err error }
+
+func (source failingCredentials) Resolve(sdkgo.Call) (Credentials, error) {
+	return Credentials{}, source.err
+}
+
+func TestCredentialReadFailureRetriesEveryOperation(t *testing.T) {
+	var calls atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { calls.Add(1) }))
+	defer server.Close()
+	sources := map[string]CredentialSource{
+		"untyped store read": failingCredentials{errors.New("project object read failed")},
+		"timeout":            failingCredentials{fmt.Errorf("read credential: %w", context.DeadlineExceeded)},
+		"broker unavailable": failingCredentials{fmt.Errorf("read shared credential: %w", projectconfig.ErrCredentialBrokerUnavailable)},
+		// The static provider reports a missing connection with an untyped error, which cannot be told from a read failure.
+		"static provider without the connection": sdkgo.StaticCredentialProvider[Credentials]{},
+	}
+	for name, source := range sources {
+		t.Run(name, func(t *testing.T) {
+			client, err := New(Config{BaseURL: server.URL}, source)
+			require.NoError(t, err)
+			_, createErr := createTask(client, CreateTaskInput{Content: "New"})
+			_, readErr := readTask(client)
+			_, updateErr := updateTask(client, "New")
+			_, listErr := listTasks(client, ListTasksInput{})
+			_, deleteErr := deleteTask(client)
+			for _, err := range []error{createErr, readErr, updateErr, listErr, deleteErr} {
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry)
+				require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+				require.Equal(t, "connection credentials could not be read, so the request was not sent", retry.Failure.Message)
+			}
+		})
 	}
 	require.Zero(t, calls.Load())
 }

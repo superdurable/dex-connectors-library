@@ -23,6 +23,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -422,8 +423,11 @@ func (client *Client) exchangeTask(call sdkgo.Call, operation, method, taskID st
 
 func (client *Client) exchange(call sdkgo.Call, operation, method, endpoint string, payload []byte, requestID string) exchangeResult {
 	credentials, err := client.credentials.Resolve(call)
+	if err != nil && isTerminalCredentialError(err) {
+		return exchangeResult{isLocalDefect: true, failure: failure(operation, sdkgo.FailureAuthentication, "connection credentials are missing or need reauthorization")}
+	}
 	if err != nil {
-		return exchangeResult{isLocalDefect: true, failure: failure(operation, sdkgo.FailureAuthentication, "connection credentials are unavailable")}
+		return exchangeResult{isTransient: true, isUndispatched: true, failure: failure(operation, sdkgo.FailureAvailability, "connection credentials could not be read, so the request was not sent")}
 	}
 	if err := credentials.Validate(); err != nil || !providerhttp.IsHeaderSafeCredential(credentials.APIToken.Reveal()) {
 		return exchangeResult{isLocalDefect: true, failure: failure(operation, sdkgo.FailureAuthentication, "connection credentials are invalid")}
@@ -469,6 +473,13 @@ func (client *Client) exchange(call sdkgo.Call, operation, method, endpoint stri
 		return exchangeResult{status: response.StatusCode, failure: failure(operation, sdkgo.FailureProtocol, "Todoist returned credential material in the response")}
 	}
 	return exchangeResult{status: response.StatusCode, body: body}
+}
+
+// isTerminalCredentialError reports a resolution failure that no retry fixes: the connection was never saved, needs
+// reauthorization, or is not available to this scope. Any other failure, such as a failed store read, may pass.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, sdkgo.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrConnectionNotSelected) || errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 func decodeTask(body []byte) (Task, error) {

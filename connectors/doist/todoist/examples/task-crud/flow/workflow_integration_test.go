@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -198,6 +199,42 @@ func TestTaskUpdateRecoveryWithRealDex(t *testing.T) {
 			}
 		})
 	}
+}
+
+// flakyCredentials fails its first resolution as an unavailable credential store would, then returns the token.
+type flakyCredentials struct{ resolutions atomic.Int32 }
+
+func (source *flakyCredentials) Resolve(sdkgo.Call) (todoist.Credentials, error) {
+	if source.resolutions.Add(1) == 1 {
+		return todoist.Credentials{}, errors.New("project object read failed")
+	}
+	return todoist.Credentials{APIToken: sdkgo.NewSecretString(integrationToken)}, nil
+}
+
+func TestCredentialReadFailureRetriesWithRealDex(t *testing.T) {
+	provider := &crudProvider{}
+	server := httptest.NewServer(http.HandlerFunc(provider.serveHTTP))
+	defer server.Close()
+	credentials := &flakyCredentials{}
+	providerClient, err := todoist.New(todoist.Config{BaseURL: server.URL + "/api/v1"}, credentials)
+	require.NoError(t, err)
+	connection, err := todoist.NewConnection(providerClient, sdkgo.ConnectionRef{Provider: "todoist", Name: ConnectionName})
+	require.NoError(t, err)
+	flow, harness := newCRUDHarnessWithConnection(t, connection)
+	harness.startWorker(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	flowID := "todoist-crud-credential-read-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	result := harness.runFlow(t, ctx, flow, flowID, Request{Mode: "lifecycle", Content: "Original title"})
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var outcome Outcome
+	require.NoError(t, result.DecodeSingleOutput(&outcome))
+	require.Equal(t, "deletedAndVerified", outcome.Status)
+	provider.mutex.Lock()
+	defer provider.mutex.Unlock()
+	require.Equal(t, 1, provider.creates)
+	require.Equal(t, 1, provider.createdTasks)
+	require.Greater(t, credentials.resolutions.Load(), int32(1))
 }
 
 type crudProvider struct {
