@@ -57,9 +57,8 @@ func (SendEventOperation) IdempotencyKey(callID sdkgo.CallID, _ SendEventInput) 
 }
 
 // Invoke POSTs the payload once with webhook-id, webhook-timestamp, and webhook-signature headers. A 2xx
-// selects delivered, and a redirect or a 4xx other than 408 and 429 selects rejected. A 408 or 429, or a
-// request that never left this process, returns Retry with the same webhook-id. A 5xx, timeout, or lost
-// connection after the request was written selects uncertain, because the receiver may have accepted it.
+// selects delivered, and a redirect or a 4xx other than 408 and 429 selects rejected. A 408, 429, 5xx,
+// timeout, or transport error returns Retry with the same webhook-id.
 func (operation SendEventOperation) Invoke(call sdkgo.Call, input SendEventInput) sdkgo.MutationAttempt[SendEventOutput] {
 	client := operation.client
 	output := SendEventOutput{WebhookID: string(call.IdempotencyKey)}
@@ -90,8 +89,8 @@ func (operation SendEventOperation) Invoke(call sdkgo.Call, input SendEventInput
 		if !isDispatched.Load() {
 			return sdkgo.NewMutationRetry[SendEventOutput](sendEventFailure(sdkgo.FailureAvailability, "the delivery URL could not be reached"), 0)
 		}
-		return sdkgo.NewMutationUncertain(output, sendEventFailure(sdkgo.FailureTransport,
-			"the event was sent but the receiver did not answer"), operation.sendEventReceipt(output))
+		return sdkgo.NewMutationRetry[SendEventOutput](sendEventFailure(sdkgo.FailureTransport,
+			"the receiver did not answer the event"), 0)
 	}
 	defer drainAndClose(response.Body)
 	output.StatusCode = response.StatusCode
@@ -103,8 +102,8 @@ func (operation SendEventOperation) Invoke(call sdkgo.Call, input SendEventInput
 		return sdkgo.NewMutationRetry[SendEventOutput](sendEventFailure(sdkgo.FailureRateLimit,
 			fmt.Sprintf("the receiver answered HTTP %d", status)), providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), client.now()))
 	case status >= 500:
-		return sdkgo.NewMutationUncertain(output, sendEventFailure(sdkgo.FailureAvailability,
-			fmt.Sprintf("the receiver answered HTTP %d after the event was sent", status)), operation.sendEventReceipt(output))
+		return sdkgo.NewMutationRetry[SendEventOutput](sendEventFailure(sdkgo.FailureAvailability,
+			fmt.Sprintf("the receiver answered HTTP %d", status)), providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), client.now()))
 	default:
 		failure := sendEventFailure(rejectionFailureKind(status), fmt.Sprintf("the receiver answered HTTP %d", status))
 		return sdkgo.NewMutationBranch(SendEventBranchRejected, output, &failure, operation.sendEventReceipt(output))

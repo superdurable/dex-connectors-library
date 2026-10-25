@@ -189,8 +189,7 @@ the project configuration that the application loads. `configuration` may be
 `maxBodyBytes`, to `deliveryUrl` with `Content-Type: application/json` and:
 
 - `webhook-id`: `msg_` followed by the Step's 32-hex-digit call ID. Every
-  retry and duplicate dispatch of one Step execution sends the same ID, so a
-  receiver that deduplicates by `webhook-id` applies the event once;
+  retry and duplicate dispatch of one Step execution sends the same ID;
 - `webhook-timestamp`: the attempt's Unix time in seconds;
 - `webhook-signature`: `v1,` and the base64 HMAC-SHA256 of
   `webhook-id.webhook-timestamp.body`, keyed as the verification schemes
@@ -203,16 +202,15 @@ the project configuration that the application loads. `configuration` may be
 | `408` or `429` | Retry with the same `webhook-id`, after `Retry-After` when sent |
 | Connection refused, DNS or TLS failure before the request was written | Retry with the same `webhook-id` |
 | A redirect or another `4xx` | `rejected` (optional), with the status code |
-| `5xx`, timeout, or a lost connection after the request was written | `uncertain` (optional) |
+| `5xx`, timeout, or a lost connection after the request was written | Retry with the same `webhook-id`, after `Retry-After` when sent |
 | Blank `deliveryUrl`, unusable secret, or an invalid payload | `defect` (optional), before any request |
 
-`uncertain` means the receiver may already have applied the event: it can
-fail after committing it, or its answer can be lost. The connector does not
-retry it, because it cannot know whether this receiver deduplicates by
-`webhook-id`. Route `uncertain` to a Step that reconciles with the receiver,
-or accept a possible duplicate: sending again from a new Step execution uses
-a new `webhook-id`. Retries stop at the Step's retry policy, five attempts
-within two minutes, and then fail the Step.
+`sendEvent` delivers at least once. The receiver must deduplicate by
+`webhook-id` before applying an event, since a reply can be lost after the
+receiver commits it. [Standard Webhooks recommends using this header as the
+idempotency key](https://github.com/standard-webhooks/standard-webhooks/blob/main/spec/standard-webhooks.md#verifying-signatures)
+and requires a stable ID across retries. Retries stop at the Step's retry
+policy, five attempts within two minutes, and then fail the Flow.
 
 A blank `deliveryUrl` selects `defect` with the guidance to set it in Dex Web
 Connectors. Construction fails for a `deliveryUrl` that is not an absolute
@@ -243,18 +241,7 @@ with `sendEvent`.
 
 ## Verification
 
-The module pins `sdkgo v0.21.0`. Until it is published, run the checks in the
-repository workspace with a local `sdkgo` replacement in the ignored `go.work`:
-
-```bash
-make workspace
-go work edit -replace github.com/superdurable/dex-connectors-library/sdkgo@v0.21.0=./sdkgo
-cd connectors/superdurable/webhook
-go test -race ./...
-go vet ./...
-```
-
-After the release, run them standalone, as CI does:
+The module requires `sdkgo v0.30.0`. Run its checks standalone, as CI does:
 
 ```bash
 GOWORK=off go test -race ./...

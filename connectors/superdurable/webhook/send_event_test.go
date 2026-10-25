@@ -28,11 +28,13 @@ const forwardedPayload = `{"type":"form.submitted","data":{"email":"ada@example.
 // fakeReceiver is a TLS webhook receiver that verifies Standard Webhooks signatures with its own code.
 type fakeReceiver struct {
 	*httptest.Server
-	key        []byte
-	statusCode int
-	retryAfter string
-	mu         sync.Mutex
-	deliveries []receivedDelivery
+	key               []byte
+	statusCode        int
+	retryAfter        string
+	dropFirstResponse bool
+	mu                sync.Mutex
+	deliveries        []receivedDelivery
+	appliedWebhookIDs map[string]bool
 }
 
 type receivedDelivery struct {
@@ -45,7 +47,7 @@ type receivedDelivery struct {
 
 func newFakeReceiver(t *testing.T, key []byte, statusCode int) *fakeReceiver {
 	t.Helper()
-	receiver := &fakeReceiver{key: key, statusCode: statusCode}
+	receiver := &fakeReceiver{key: key, statusCode: statusCode, appliedWebhookIDs: make(map[string]bool)}
 	receiver.Server = httptest.NewTLSServer(http.HandlerFunc(receiver.receiveDelivery))
 	t.Cleanup(receiver.Close)
 	return receiver
@@ -64,7 +66,12 @@ func (receiver *fakeReceiver) receiveDelivery(response http.ResponseWriter, requ
 		webhookID: webhookID, timestamp: timestamp, isSignatureValid: request.Header.Get("webhook-signature") == expected,
 		contentType: request.Header.Get("Content-Type"), body: string(body),
 	})
+	receiver.appliedWebhookIDs[webhookID] = true
+	isFirstDelivery := len(receiver.deliveries) == 1
 	receiver.mu.Unlock()
+	if receiver.dropFirstResponse && isFirstDelivery {
+		panic(http.ErrAbortHandler)
+	}
 	if receiver.retryAfter != "" {
 		response.Header().Set("Retry-After", receiver.retryAfter)
 	}
@@ -76,6 +83,12 @@ func (receiver *fakeReceiver) receivedDeliveries() []receivedDelivery {
 	receiver.mu.Lock()
 	defer receiver.mu.Unlock()
 	return append([]receivedDelivery(nil), receiver.deliveries...)
+}
+
+func (receiver *fakeReceiver) appliedEventCount() int {
+	receiver.mu.Lock()
+	defer receiver.mu.Unlock()
+	return len(receiver.appliedWebhookIDs)
 }
 
 func newSendingClient(t *testing.T, deliveryURL string, secret string, httpClient *http.Client) *webhook.Client {
@@ -151,8 +164,6 @@ func TestSendEventMapsReceiverStatusesToBranches(t *testing.T) {
 		{http.StatusForbidden, webhook.SendEventBranchRejected, sdkgo.FailureAuthorization},
 		{http.StatusNotFound, webhook.SendEventBranchRejected, sdkgo.FailureNotFound},
 		{http.StatusConflict, webhook.SendEventBranchRejected, sdkgo.FailureConflict},
-		{http.StatusInternalServerError, webhook.SendEventBranchUncertain, sdkgo.FailureAvailability},
-		{http.StatusBadGateway, webhook.SendEventBranchUncertain, sdkgo.FailureAvailability},
 	} {
 		t.Run(strconv.Itoa(test.statusCode), func(t *testing.T) {
 			receiver := newFakeReceiver(t, standardKey(t), test.statusCode)
@@ -168,6 +179,23 @@ func TestSendEventMapsReceiverStatusesToBranches(t *testing.T) {
 				require.Contains(t, result.Failure.Message, strconv.Itoa(test.statusCode))
 			}
 			requireSecretFree(t, result)
+		})
+	}
+}
+
+func TestSendEventRetriesReceiverFailuresWithTheSameWebhookID(t *testing.T) {
+	for _, statusCode := range []int{http.StatusInternalServerError, http.StatusBadGateway, http.StatusServiceUnavailable} {
+		t.Run(strconv.Itoa(statusCode), func(t *testing.T) {
+			receiver := newFakeReceiver(t, standardKey(t), statusCode)
+			receiver.retryAfter = "7"
+			_, err := sendEvent(t, newSendingClient(t, receiver.URL, standardSecret, receiver.Client()), "forward", forwardedPayload)
+			var retryAfter *dex.RetryAfterError
+			require.ErrorAs(t, err, &retryAfter)
+			require.Equal(t, 7*time.Second, retryAfter.After)
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry)
+			require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+			require.True(t, receiver.receivedDeliveries()[0].isSignatureValid)
 		})
 	}
 }
@@ -188,7 +216,7 @@ func TestSendEventRetriesThrottledRequestsWithTheReceiversDelay(t *testing.T) {
 	}
 }
 
-func TestSendEventRetriesAnUndispatchedRequestAndReportsALostAnswerAsUncertain(t *testing.T) {
+func TestSendEventRetriesAnUndispatchedRequestAndALostAnswer(t *testing.T) {
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 	closedURL := "https://" + listener.Addr().String()
@@ -205,12 +233,31 @@ func TestSendEventRetriesAnUndispatchedRequestAndReportsALostAnswerAsUncertain(t
 	t.Cleanup(hanging.Close)
 	impatient := hanging.Client()
 	impatient.Timeout = 200 * time.Millisecond
-	result, err := sendEvent(t, newSendingClient(t, hanging.URL, standardSecret, impatient), "forward", forwardedPayload)
+	_, err = sendEvent(t, newSendingClient(t, hanging.URL, standardSecret, impatient), "forward", forwardedPayload)
+	require.ErrorAs(t, err, &retry, "the receiver read the event and may have accepted it")
+	require.Equal(t, sdkgo.FailureTransport, retry.Failure.Kind)
+}
+
+func TestSendEventRetriesALostResponseWithOneAppliedEvent(t *testing.T) {
+	receiver := newFakeReceiver(t, standardKey(t), http.StatusAccepted)
+	receiver.dropFirstResponse = true
+	client := newSendingClient(t, receiver.URL, standardSecret, receiver.Client())
+	_, err := sendEvent(t, client, "forward", forwardedPayload)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	require.Equal(t, sdkgo.FailureTransport, retry.Failure.Kind)
+
+	result, err := sendEvent(t, client, "forward", forwardedPayload)
 	require.NoError(t, err)
-	require.Equal(t, webhook.SendEventBranchUncertain, result.Branch, "the receiver read the event and may have accepted it")
-	require.Equal(t, sdkgo.FailureTransport, result.Failure.Kind)
-	require.Zero(t, result.Value.StatusCode)
-	require.NotEmpty(t, result.Value.WebhookID)
+	require.Equal(t, webhook.SendEventBranchDelivered, result.Branch)
+	deliveries := receiver.receivedDeliveries()
+	require.Len(t, deliveries, 2)
+	require.Equal(t, deliveries[0].webhookID, deliveries[1].webhookID)
+	require.Equal(t, deliveries[0].timestamp, deliveries[1].timestamp)
+	require.Equal(t, deliveries[0].body, deliveries[1].body)
+	require.True(t, deliveries[0].isSignatureValid)
+	require.True(t, deliveries[1].isSignatureValid)
+	require.Equal(t, 1, receiver.appliedEventCount(), "receiver applies a retried webhook-id once")
 }
 
 func TestSendEventSelectsDefectWithoutSendingInvalidRequests(t *testing.T) {

@@ -95,6 +95,31 @@ func TestSubmissionBeforeTheBindingRunsIsRetriedBySenderWithRealDex(t *testing.T
 	require.Len(t, receiver.deliveriesFor(eventID), 1)
 }
 
+func TestForwardSubmissionRetriesALostReceiverAnswerWithRealDex(t *testing.T) {
+	receiver := newForwardingReceiver(t)
+	receiver.dropFirstResponse = true
+	logs := newRecordedLogs(t)
+	connection := newExampleConnection(t, receiver.URL+"/forward", webhook.WithHTTPClient(receiver.Client()), webhook.WithLogger(logs.logger()))
+	flow := formsubmission.NewFlow(connection)
+	client := startWorkerAndClient(t, flow)
+	endpoint := newSubmissionEndpoint(t, connection, newSubmissionTarget(client, flow, logs.logger()))
+	endpoint.start(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	eventID := "evt_retry_" + strconv.FormatInt(time.Now().UnixNano(), 10)
+
+	require.Equal(t, http.StatusOK, endpoint.postSubmission(t, submissionBody(eventID, "form_response"), false))
+	outcome := waitForForwarded(t, ctx, client, eventID)
+	require.Equal(t, webhook.SendEventBranchDelivered, outcome.Branch)
+	deliveries := receiver.deliveriesFor(eventID)
+	require.Len(t, deliveries, 2)
+	require.Equal(t, outcome.WebhookID, deliveries[0].webhookID)
+	require.Equal(t, deliveries[0].webhookID, deliveries[1].webhookID)
+	require.True(t, deliveries[0].isSignatureValid)
+	require.True(t, deliveries[1].isSignatureValid)
+	require.Equal(t, 1, receiver.appliedEventCount(), "the receiver applies the webhook-id once")
+}
+
 func dexAddress() string {
 	return environmentOr("DEX_FLOW_SERVICE_ADDRESS", "127.0.0.1:8801")
 }
@@ -168,8 +193,10 @@ func startWorkerAndClient(t *testing.T, flow *formsubmission.Flow) *dex.Client {
 // forwardingReceiver is the downstream TLS service that verifies each forwarded submission.
 type forwardingReceiver struct {
 	*httptest.Server
-	mu         sync.Mutex
-	deliveries []forwardedDelivery
+	mu                sync.Mutex
+	deliveries        []forwardedDelivery
+	dropFirstResponse bool
+	appliedWebhookIDs map[string]bool
 }
 
 type forwardedDelivery struct {
@@ -180,7 +207,7 @@ type forwardedDelivery struct {
 
 func newForwardingReceiver(t *testing.T) *forwardingReceiver {
 	t.Helper()
-	receiver := &forwardingReceiver{}
+	receiver := &forwardingReceiver{appliedWebhookIDs: make(map[string]bool)}
 	receiver.Server = httptest.NewTLSServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		body, err := io.ReadAll(request.Body)
 		if err != nil {
@@ -200,7 +227,12 @@ func newForwardingReceiver(t *testing.T) *forwardingReceiver {
 			submissionID: event.SubmissionID, webhookID: webhookID,
 			isSignatureValid: request.Header.Get("webhook-signature") == "v1,"+base64.StdEncoding.EncodeToString(mac.Sum(nil)),
 		})
+		receiver.appliedWebhookIDs[webhookID] = true
+		isFirstDelivery := len(receiver.deliveries) == 1
 		receiver.mu.Unlock()
+		if receiver.dropFirstResponse && isFirstDelivery {
+			panic(http.ErrAbortHandler)
+		}
 		response.WriteHeader(http.StatusAccepted)
 	}))
 	t.Cleanup(receiver.Close)
@@ -217,4 +249,10 @@ func (receiver *forwardingReceiver) deliveriesFor(submissionID string) []forward
 		}
 	}
 	return matches
+}
+
+func (receiver *forwardingReceiver) appliedEventCount() int {
+	receiver.mu.Lock()
+	defer receiver.mu.Unlock()
+	return len(receiver.appliedWebhookIDs)
 }

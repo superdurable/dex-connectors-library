@@ -19,7 +19,7 @@ This example receives signed form submissions and starts one
    `form.submitted` event to the connection's `deliveryUrl`;
 6. `RecordForwarded` stores the `delivered` outcome in the
    `webhook-form-forwarding` Attribute and completes the Flow, and
-   `RecordForwardingFailure` stores a `rejected`, `uncertain`, or `defect`
+   `RecordForwardingFailure` stores a `rejected` or `defect`
    outcome with its safe message and fails the Flow.
 
 The connection is configured for Typeform-style signatures: HMAC-SHA256 of the
@@ -61,7 +61,7 @@ mkdir -p /tmp/webhook-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/superdurable/webhook/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/superdurable/webhook \
-  --version v0.21.1 --tag connectors/superdurable/webhook/v0.21.1 \
+  --version v0.22.0 --tag connectors/superdurable/webhook/v0.22.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/webhook-release/connector-release.json \
   --digest-output /tmp/webhook-release/connector-release.json.sha256
