@@ -114,8 +114,8 @@ execution for a second provider call or polling iteration.
 
 An operation declares stable branches in its manifest and generated
 definition. Every operation declares the standard `defect` branch. A Mutation
-declares the standard `uncertain` branch only when dispatch can produce an
-outcome that is unsafe to retry.
+declares the standard `uncertain` branch only for a possibly applied write
+that it cannot safely repeat or confirm.
 
 ```go
 type QueryResult[T any] struct {
@@ -138,17 +138,30 @@ Operation implementations cannot return an unclassified Go error. They return:
 - `NewQueryBranch` or `NewQueryRetry`;
 - `NewMutationBranch`, `NewMutationUncertain`, or `NewMutationRetry`.
 
+Connector outcomes have three kinds:
+
+- A definite business outcome selects a stable branch, such as `notFound` or
+  `providerRejected`, when the application may need to react.
+- A transient failure returns Retry. The Step retries every failure safe to
+  repeat until its retry budget runs out, then the Flow fails. A persistent
+  failure is an external-service problem or a bug for the platform to debug.
+- An uncertain write selects `uncertain` only under the conditions below.
+
 Only Retry becomes a non-nil Go error and enters the Dex Execute retry policy.
 A positive provider delay becomes `dex.RetryAfter`; zero delay uses the Step
 policy. A branch or uncertainty returns `error == nil`. A required branch is
 routed by the Process. An unwired optional branch fails the Flow.
 
-Mutation uncertainty is not an ordinary caller-selected branch. After a
-request dispatch, a lost connection, truncated response, ambiguous server
-error, or missing terminal event uses `NewMutationUncertain`; the SDK selects
-the standard `uncertain` branch. A Mutation that cannot produce uncertainty
-omits that branch and target. Invalid Attempts and local SDK defects fail closed
-to the standard `defect` branch.
+Mutation uncertainty is rare. Use `NewMutationUncertain` only when all three
+conditions hold: the request may have reached the provider; no idempotency key,
+stable deduplication ID, absolute replacement, upsert, or delete makes a repeat
+safe; and a read-back cannot confirm the outcome. A request that never left the
+process, a 429, and a 503 return Retry. A Mutation that can retry under the same
+key or read back before sending again returns Retry. Exhausting retries fails
+the Flow; it never turns into uncertainty. A Mutation that cannot produce
+uncertainty omits that branch and target. Invalid Attempts and local SDK
+defects fail closed to the standard `defect` branch. See the
+[uncertainty audit](uncertain-audit.md) for current declarations and fixes.
 
 `FailureKind` records a safe fact, not retry policy. Authentication,
 authorization, not-found, rate-limit, transport, protocol, provider rejection,

@@ -33,6 +33,13 @@ alwaysApply: true
 - Load the installed `dex-sdk` skill through the host's native skill mechanism
   before changing Step, retry, durability, Trigger, or Flow-example semantics,
   and follow its Core and Go guidance.
+- Select a branch for a definite business outcome and retry every safe-to-repeat
+  failure until the retry budget runs out, when the Flow fails. Declare Mutation
+  `uncertain` only if the request may have reached the provider, no idempotency
+  key, stable deduplication ID, absolute replacement, upsert, or delete makes
+  repetition safe, and read-back cannot confirm it. Requests that never left
+  the process, 429, and 503 return Retry; exhausted retries never become
+  uncertainty.
 - Every new connector or user-visible capability includes a checked-in runnable
   example; a behavioral fix extends the smallest example that proves the fix.
   Use that example as the primary end-to-end path on a real Dex stack. Exercise
