@@ -112,5 +112,6 @@ answers.
 The example wires only the happy-path branches. An unwired optional branch fails
 the Flow with its safe failure reason; wire one only when the application must
 react, such as asking an operator to check Sent Mail. A reply whose answer is
-lost completes when the search finds its Message-ID. An uncertain reply was not
-found and is not resent, since Gmail search visibility may lag.
+lost completes when the Sent Mail search finds its Message-ID. An uncertain
+reply was not found and is not resent, since Gmail search visibility may lag;
+a 503 whose search finds nothing is retried and sends the reply again.

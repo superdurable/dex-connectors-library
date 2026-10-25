@@ -124,19 +124,53 @@ time. `ReplyToMessage` reads the source metadata and sends with Gmail thread
 ID, `In-Reply-To`, and `References` preserved.
 
 The stable Connector idempotency key is written into the RFC `Message-ID` and
-safe correlation header. After a dispatched request loses its answer or gets an
-ambiguous 5xx or invalid success response, the connector searches Sent Mail for
-that Message-ID. A match confirms `sent` with Gmail's message and thread IDs.
-The search is bounded to ten results and the configured response limit.
-Gmail does not document immediate search visibility or deduplication by
-Message-ID, so a missing or unusable lookup leaves the outcome `uncertain`;
-the connector does not resend it. A request proven not to have left the process,
-a 429, and a 503 retry. A 503 first checks Sent Mail and returns `sent` if
-the message is visible. An unwired `uncertain` branch fails the Flow with its
-safe failure reason. Wire it only when a requirement names a reaction, such as
-asking an operator to check Sent Mail.
-The [Gmail message-list API](https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.messages/list)
-supports `rfc822msgid` search, and the existing Gmail read scope permits it.
+safe correlation header. Gmail documents no deduplication by `Message-ID`, so
+the connector does not rely on it and confirms possibly sent requests instead:
+
+- A 2xx with a Gmail message ID is `sent`, with no search. When Gmail omits the
+  thread ID, one read of the message supplies it; if that read fails, a reply
+  reports the requested thread and a new message an empty thread ID.
+- A request that may have reached Gmail but lost its answer, got a 5xx other
+  than 503, or got a 2xx without a message ID triggers one Sent Mail search,
+  `in:sent rfc822msgid:<Message-ID>` in Gmail's
+  [documented search syntax](https://support.google.com/mail/answer/7190).
+  Any match is `sent` with Gmail's message and thread IDs, also when a reply
+  landed in another thread. No match, or a search that fails, selects
+  `uncertain`, which is never resent.
+- Only a 429, a 503 whose search finds no message, and a failure that a traced
+  DNS, connect, or TLS error proves happened before a connection existed return
+  Retry.
+
+A 503 retry sends the message again under the same `Message-ID`. If Gmail
+accepted the request despite the 503 and the search could not see it yet, the
+recipient can receive two copies. Releases before v0.23.2 reported every
+ambiguous outcome, 503 included, as `uncertain` instead of retrying it.
+
+A request whose dispatch cannot be traced counts as possibly sent. That
+includes every failure through a `WithHTTPClient` transport that does not drive
+`net/http/httptrace`, so such a client turns would-be retries into searches and
+`uncertain`.
+
+Every attempt finishes its requests before the Step's Execute deadline, so the
+engine never times the attempt out and runs it again. The available time is
+the Step context deadline that Dex sets, or else the manifest's 30-second
+Execute timeout. The send ends by seven twelfths of it, the search and thread
+read by five sixths, and the rest covers the Result write. A reply's source
+read ends early enough to leave the send a tenth. A send that runs out of time
+becomes a search, never a resend; with less than a tenth left, the attempt
+returns Retry before sending.
+
+The search adds no scope: `gmail.readonly` permits
+[`messages.list`](https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.messages/list)
+with a query. Three Gmail behaviors are unverified without a live account:
+whether `messages.send` keeps the client-set `Message-ID` header, whether the
+documented query matches it, and how soon a sent message becomes searchable.
+If either of the first two fails, the search never matches, so ambiguous sends
+select `uncertain`, never a false `sent`. A search miss is not re-checked on a
+later attempt. An unwired
+`uncertain` branch fails the Flow with its safe failure reason. Wire it only
+when a requirement names a reaction, such as asking an operator to check Sent
+Mail.
 
 Every operation uses `defect` for invalid local input, connection configuration,
 or Connector contract violations. A conclusive Gmail API refusal uses
@@ -179,9 +213,11 @@ Deleting a stored credential does not itself revoke the Google grant.
 `gmailmock.New(t, connectionName)` returns a scripted connection that the
 operation Step factories accept, so a Flow runs on a real Worker without the
 Gmail API. Its connection serves operation Steps only; Trigger runners need a
-connection with a client. An unscripted `getMessage` call answers with the
-manifest default, `customerQuestion`; `sendMessage` and `replyToMessage` have
-no default, so a test scripts every send and an unscripted send fails it. The
+connection with a client. An unscripted call answers with its operation's
+manifest default: `customerQuestion` for `getMessage`, `sentToCustomer` for
+`sendMessage`, and `repliedInThread` for `replyToMessage`. An unexpected send
+therefore succeeds silently, so a test of a Flow that sends should assert the
+mutation's `Calls()`, or call `Strict()` to require a script for every call. The
 thread-reply example's
 [mock test](examples/thread-reply/flow/workflow_mock_integration_test.go)
 scripts one reply per Flow:

@@ -72,7 +72,8 @@ func TestThreadReplyExampleRunsOnTheGmailMockWithRealDex(t *testing.T) {
 	uncertainResult, err := harness.client.WaitForFlow(ctx, uncertainFlowID, dex.WaitForFlowOptions{})
 	require.NoError(t, err)
 	require.Equal(t, dex.FlowFailed, uncertainResult.Status, "the example leaves the optional uncertain branch unwired")
-	require.Contains(t, uncertainResult.ErrorMessage, `connector branch "uncertain" has no target`)
+	require.Contains(t, uncertainResult.ErrorMessage,
+		gmail.ConnectorID+" replyToMessage (connection "+ConnectionName+") selected branch uncertain with no target: TRANSPORT")
 
 	replies := map[string][]gmail.ReplyToMessageInput{}
 	for _, call := range mock.ReplyToMessage().Calls() {
