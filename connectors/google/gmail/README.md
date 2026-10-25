@@ -151,14 +151,18 @@ includes every failure through a `WithHTTPClient` transport that does not drive
 `net/http/httptrace`, so such a client turns would-be retries into searches and
 `uncertain`.
 
-Every attempt finishes its requests before the Step's Execute deadline, so the
-engine never times the attempt out and runs it again. The available time is
-the Step context deadline that Dex sets, or else the manifest's 30-second
-Execute timeout. The send ends by seven twelfths of it, the search and thread
-read by five sixths, and the rest covers the Result write. A reply's source
-read ends early enough to leave the send a tenth. A send that runs out of time
-becomes a search, never a resend; with less than a tenth left, the attempt
-returns Retry before sending.
+Every attempt finishes its requests before its Dex deadline, so the engine
+never times the attempt out and runs it again. The available time is the Step
+context deadline that Dex sets, or else the manifest's 30-second Execute
+timeout. The send ends by seven twelfths of it, the search and thread read by
+five sixths, and the rest covers the Result write. A reply's source read ends
+early enough to leave the send a tenth. A send that runs out of time becomes a
+search, never a resend; with less than a tenth left, the attempt returns Retry
+before sending. With the default async durability, Dex first runs the Step
+under a much shorter deadline, 7 seconds on the Temporal engine, so the send
+gets about 4 seconds and the search under 2. A slower send, such as a large
+message, is confirmed by that search and selects `uncertain` when Gmail has
+not indexed it yet.
 
 The search adds no scope: `gmail.readonly` permits
 [`messages.list`](https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.messages/list)

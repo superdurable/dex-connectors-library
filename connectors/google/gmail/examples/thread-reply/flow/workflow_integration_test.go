@@ -121,7 +121,7 @@ func TestThreadReplyConfirmsALostSendResponseWithRealDex(t *testing.T) {
 	require.Equal(t, 1, provider.searchCount(threadID))
 }
 
-// TestThreadReplyHangingSendReturnsInsideTheExecuteTimeoutWithRealDex keeps a hanging POST from an engine timeout and resend.
+// TestThreadReplyHangingSendReturnsInsideTheExecuteTimeoutWithRealDex keeps a hanging POST from an attempt timeout and resend.
 func TestThreadReplyHangingSendReturnsInsideTheExecuteTimeoutWithRealDex(t *testing.T) {
 	provider := newGmailProvider(t)
 	defer provider.Close()
@@ -130,7 +130,7 @@ func TestThreadReplyHangingSendReturnsInsideTheExecuteTimeoutWithRealDex(t *test
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	threadID := requireThreadReplyCompletesAfterReadBack(t, ctx, harness, flow, "hanging-"+strconv.FormatInt(time.Now().UnixNano(), 10))
-	require.Equal(t, 1, provider.sendCount(threadID), "the 30-second Execute timeout must not expire and resend the reply")
+	require.Equal(t, 1, provider.sendCount(threadID), "the attempt deadline must not expire and resend the reply")
 	require.Equal(t, 1, provider.searchCount(threadID))
 }
 
