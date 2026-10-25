@@ -3,9 +3,9 @@
 This operation-only example records one form submission as a row in a Notion
 database and reads it back. It uses every Notion operation:
 
-1. `search` follows up to 100 cursor pages to find the data source whose
-   title equals `databaseTitle`. It ignores trashed and partial matches,
-   such as an archived twin or a "Form submissions (2025)" database. With no
+1. `search` follows up to 100 cursor pages of 100 results to find the data
+   source whose title equals `databaseTitle`. It ignores trashed and partial
+   matches, such as an archived twin or a "Form submissions (2025)" database. With no
    match or several, the Flow completes as `dataSourceNotFound` or
    `dataSourceAmbiguous` and writes nothing. A repeated cursor or exhausted
    page limit fails the Flow instead of treating an incomplete search as

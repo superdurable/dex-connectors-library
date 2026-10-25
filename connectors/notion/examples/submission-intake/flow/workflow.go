@@ -56,7 +56,7 @@ const (
 	maximumNameRunes                   = 200
 	maximumEmailBytes                  = 200
 	maximumMessageRunes                = 10000
-	searchPageSize                     = 20
+	searchPageSize                     = notion.MaximumPageSize
 	queryPageSize                      = notion.MaximumPageSize
 	maximumScanPages                   = 100
 	readBackMaximumTextCharacters      = 10000

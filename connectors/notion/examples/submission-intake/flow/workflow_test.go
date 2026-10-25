@@ -43,6 +43,7 @@ func TestMappersBuildTheSubmissionKeyedRequests(t *testing.T) {
 	}
 	require.Equal(t, notion.SearchInput{Query: "Form submissions", ObjectType: notion.SearchObjectDataSource, PageSize: searchPageSize},
 		MapToFindSubmissionsDataSourceInput(record))
+	require.Equal(t, notion.MaximumPageSize, MapToFindSubmissionsDataSourceInput(record).PageSize, "one Step searches as many results as Notion allows")
 	query := MapToFindSubmissionRowsInput(record)
 	require.Equal(t, record.DataSourceID, query.DataSourceID)
 	require.Equal(t, &notion.QueryFilter{Property: SubmissionIDProperty, Type: notion.PropertyTypeRichText, Condition: notion.FilterEquals, Text: "sub-42"}, query.Filter)
