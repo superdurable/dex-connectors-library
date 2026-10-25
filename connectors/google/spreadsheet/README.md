@@ -34,8 +34,14 @@ The `ui/` package builds the credential-safe Studio setup bundle published as
 ## Test with spreadsheetmock
 
 The generated `spreadsheetmock` package answers every operation's happy path by
-default. Pass its typed connection to the example Flow to test without Google
-credentials or response scripts:
+default, and the defaults describe one sheet: a `Contacts` tab with the header
+`email`, `name`, `status`, Ada Lovelace (`ada@example.test`, active) on row 2
+and Grace Hopper (`grace@example.test`, pending) on row 3. `getValues` reads
+that range and `findRow` finds Ada on row 2, whatever range or key the request
+names. `upsertRow` answers `updated` on row 2 (`Contacts!A2:C2`) for any input,
+so a Flow that expects an `inserted` result, another row, or another sheet
+needs a script. Pass the typed connection to the example Flow to test without
+Google credentials or response scripts:
 
 ```go
 mock := spreadsheetmock.New(t, ConnectionName)

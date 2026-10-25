@@ -24,6 +24,7 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[spreadsheet.FindRowOutput](`{"rowNumber":2,"values":{"email":"ada@example.test","name":"Ada Lovelace","status":"active"}}`)
 			return err
 		}},
+		{name: "findRow/contactNotFound/1", decode: func() error { _, err := connectormock.DecodeOutput[spreadsheet.FindRowOutput](`{}`); return err }},
 		{name: "findRow/duplicateContacts/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[spreadsheet.FindRowOutput](`{"conflictingRows":[2,4]}`)
 			return err

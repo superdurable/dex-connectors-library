@@ -61,8 +61,8 @@ func TestUpsertContactExampleRunsOnSpreadsheetMockWithRealDex(t *testing.T) {
 	defer cancel()
 	flowID := "google-sheets-upsert-contact-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
 	request := Input{
-		SpreadsheetID: "1A2B3C4D5E6F7G8H9I0JkLmNoPqRsTuVwXyZ", SheetName: "Contacts",
-		Email: "ada@example.test", Name: "Ada Lovelace", Status: "active",
+		SpreadsheetID: " 1A2B3C4D5E6F7G8H9I0JkLmNoPqRsTuVwXyZ ", SheetName: " Contacts ",
+		Email: " ada@example.test ", Name: " Ada Lovelace ", Status: " active ",
 	}
 	_, err = client.StartFlow(ctx, flow, flowID, request, dex.StartFlowOptions{})
 	require.NoError(t, err)
@@ -75,5 +75,9 @@ func TestUpsertContactExampleRunsOnSpreadsheetMockWithRealDex(t *testing.T) {
 	calls := mock.UpsertRow().Calls()
 	require.Len(t, calls, 1)
 	require.Equal(t, flowID, calls[0].FlowID)
-	require.Equal(t, flow.MapToUpsertRowInput(request), calls[0].Input)
+	require.Equal(t, spreadsheet.UpsertRowInput{
+		SpreadsheetID: "1A2B3C4D5E6F7G8H9I0JkLmNoPqRsTuVwXyZ", SheetName: "Contacts",
+		KeyColumn: "email", KeyValue: "ada@example.test",
+		Values: map[string]string{"email": "ada@example.test", "name": "Ada Lovelace", "status": "active"},
+	}, calls[0].Input)
 }

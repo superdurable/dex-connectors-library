@@ -167,10 +167,10 @@ func FindRowContactFound() connectormock.Case[spreadsheet.FindRowOutput] {
 	return connectormock.Branch(spreadsheet.FindRowBranchFound, value, nil)
 }
 
-// FindRowContactNotFound is the manifest mock contactNotFound: No contact has the requested email key.
+// FindRowContactNotFound is the manifest mock contactNotFound: No contact row has the requested email key, and the answer carries no failure.
 func FindRowContactNotFound() connectormock.Case[spreadsheet.FindRowOutput] {
-	var value spreadsheet.FindRowOutput
-	return connectormock.Branch(spreadsheet.FindRowBranchNotFound, value, &sdkgo.Failure{Kind: sdkgo.FailureNotFound, Message: "No matching contact row exists."})
+	value := connectormock.MustDecodeOutput[spreadsheet.FindRowOutput](`{}`)
+	return connectormock.Branch(spreadsheet.FindRowBranchNotFound, value, nil)
 }
 
 // FindRowDuplicateContacts is the manifest mock duplicateContacts: Two rows have the same contact email key.

@@ -189,8 +189,8 @@ spec:
             values: {email: ada@example.test, name: Ada Lovelace, status: active}
         - name: contactNotFound
           branch: notFound
-          description: No contact has the requested email key.
-          failure: {kind: NOT_FOUND, message: No matching contact row exists.}
+          description: No contact row has the requested email key, and the answer carries no failure.
+          output: {}
         - name: duplicateContacts
           branch: conflict
           description: Two rows have the same contact email key.
