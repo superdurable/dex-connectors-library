@@ -4,6 +4,8 @@
 package llm
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"net/netip"
 	"testing"
 
@@ -34,4 +36,21 @@ func TestOpenAICompatibleAddressPolicy(t *testing.T) {
 			require.Equal(t, testCase.allowed, isAllowedOpenAICompatibleAddress(address, testCase.loopbackHost))
 		})
 	}
+}
+
+// TestOpenAICompatibleClientSpeaksHTTP2 keeps gateways that negotiate HTTP/2 through ALPN reachable.
+func TestOpenAICompatibleClientSpeaksHTTP2(t *testing.T) {
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		writer.WriteHeader(http.StatusOK)
+	}))
+	server.EnableHTTP2 = true
+	server.StartTLS()
+	t.Cleanup(server.Close)
+	client, err := newOpenAICompatibleHTTPClient(server.Client(), true)
+	require.NoError(t, err)
+	response, err := client.Get(server.URL + "/v1/models")
+	require.NoError(t, err)
+	require.NoError(t, response.Body.Close())
+	require.Equal(t, http.StatusOK, response.StatusCode)
+	require.Equal(t, 2, response.ProtoMajor)
 }

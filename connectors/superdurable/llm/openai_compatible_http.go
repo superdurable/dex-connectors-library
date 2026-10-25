@@ -5,7 +5,6 @@ package llm
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"net"
 	"net/http"
@@ -36,8 +35,6 @@ func newOpenAICompatibleHTTPClient(caller *http.Client, isLoopback bool) (*http.
 	}
 	transport.Proxy = nil
 	transport.Dial, transport.DialTLS, transport.DialTLSContext = nil, nil, nil
-	transport.TLSNextProto = map[string]func(string, *tls.Conn) http.RoundTripper{}
-	transport.ForceAttemptHTTP2 = false
 	transport.DialContext = func(ctx context.Context, network, address string) (net.Conn, error) {
 		host, port, err := net.SplitHostPort(address)
 		if err != nil {
