@@ -422,15 +422,17 @@ func (client *Client) request(call sdkgo.Call, secretKey string, method string, 
 }
 
 func shouldRetryKeyedServerFailure(response providerResponse) bool {
-	// Stripe caches 500 responses for a key, so replaying one cannot resolve its outcome.
-	// https://docs.stripe.com/api/idempotent_requests
-	if response.statusCode == http.StatusInternalServerError ||
-		strings.EqualFold(response.header.Get("Idempotent-Replayed"), "true") ||
+	if strings.EqualFold(response.header.Get("Idempotent-Replayed"), "true") ||
 		strings.EqualFold(response.header.Get("Stripe-Should-Retry"), "false") {
 		return false
 	}
 	if strings.EqualFold(response.header.Get("Stripe-Should-Retry"), "true") {
 		return true
+	}
+	// Stripe can cache a 500 for this key, making an unhinted retry unhelpful.
+	// https://docs.stripe.com/api/idempotent_requests
+	if response.statusCode == http.StatusInternalServerError {
+		return false
 	}
 	return response.statusCode == http.StatusBadGateway || response.statusCode == http.StatusServiceUnavailable || response.statusCode == http.StatusGatewayTimeout
 }

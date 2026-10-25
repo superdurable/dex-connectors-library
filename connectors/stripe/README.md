@@ -137,11 +137,12 @@ Do not put personal, bank, card, or other sensitive data in Stripe metadata.
 
 Create branches are `created`, `providerRejected`, `uncertain`,
 `invalidResponse`, and `defect`. Transport failures, unreadable responses,
-rate limits, and retryable 502/503/504 responses retry with the same
-idempotency key. Stripe caches a 500 response for that key; a 500 or a
-non-retryable or replayed 5xx selects `uncertain` because the Session cannot
-be confirmed. An oversized response selects `invalidResponse`; increase
-`maxResponseBytes` if the expected provider response exceeds the limit.
+rate limits, 502/503/504 responses without a no-retry hint, and any 5xx with
+`Stripe-Should-Retry: true` retry with the same idempotency key. An unhinted
+500, a replayed 5xx, or a 5xx with `Stripe-Should-Retry: false` selects
+`uncertain` because the Session cannot be confirmed. An oversized response
+selects `invalidResponse`; increase `maxResponseBytes` if the expected provider
+response exceeds the limit.
 
 `GetCheckoutSession` returns `found`, `notFound`, `providerRejected`,
 `invalidResponse`, or `defect`. Transport, rate-limit, and availability errors
@@ -169,9 +170,10 @@ A Stripe 4xx error such as `charge_already_refunded` or an amount above the
 refundable balance is `providerRejected`, and its failure message carries
 Stripe's error code and message (never for 401 or 403, whose messages can echo
 part of the key). Network losses, unreadable responses, timeouts, rate limits,
-a 409 for a key still in flight, and retryable 502/503/504 responses retry with
-the same key. A 500 or non-retryable or replayed 5xx prompts a bounded refund
-list lookup filtered by PaymentIntent and matched on `dex_call_id`. A match
+a 409 for a key still in flight, 502/503/504 without a no-retry hint, and any
+5xx with `Stripe-Should-Retry: true` retry with the same key. An unhinted 500,
+a replayed 5xx, or a 5xx with `Stripe-Should-Retry: false` prompts a bounded
+refund list lookup filtered by PaymentIntent and matched on `dex_call_id`. A match
 returns `refunded`; no match or an inconclusive lookup selects `uncertain`.
 Transient read-back failures retry. An oversized refund creation response
 selects `invalidResponse`; increase `maxResponseBytes` when the expected

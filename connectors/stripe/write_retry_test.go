@@ -142,7 +142,8 @@ func TestStripeCheckoutServerFailureHeaders(t *testing.T) {
 		isRetry bool
 	}{
 		{name: "500", status: 500},
-		{name: "500 with retry hint", status: 500, headers: http.Header{"Stripe-Should-Retry": {"true"}}},
+		{name: "500 with retry hint", status: 500, headers: http.Header{"Stripe-Should-Retry": {"true"}}, isRetry: true},
+		{name: "500 replayed with retry hint", status: 500, headers: http.Header{"Stripe-Should-Retry": {"true"}, "Idempotent-Replayed": {"true"}}},
 		{name: "503", status: 503, isRetry: true},
 		{name: "503 with retry hint", status: 503, headers: http.Header{"Stripe-Should-Retry": {"true"}}, isRetry: true},
 		{name: "503 with no retry hint", status: 503, headers: http.Header{"Stripe-Should-Retry": {"false"}}},
@@ -179,12 +180,14 @@ func TestCreateRefundReadsBackIndeterminateServerFailure(t *testing.T) {
 		status      int
 		headerName  string
 		headerValue string
+		replayed    bool
 		found       bool
 		isRetry     bool
 	}{
 		{name: "500 found", status: 500, found: true},
 		{name: "500 absent", status: 500},
-		{name: "500 retry hint still reads back", status: 500, headerName: "Stripe-Should-Retry", headerValue: "true", found: true},
+		{name: "500 retry hint", status: 500, headerName: "Stripe-Should-Retry", headerValue: "true", isRetry: true},
+		{name: "500 replayed with retry hint", status: 500, headerName: "Stripe-Should-Retry", headerValue: "true", replayed: true, found: true},
 		{name: "503 retry", status: 503, isRetry: true},
 		{name: "503 explicit retry", status: 503, headerName: "Stripe-Should-Retry", headerValue: "true", isRetry: true},
 		{name: "503 no retry", status: 503, headerName: "Stripe-Should-Retry", headerValue: "false", found: true},
@@ -202,6 +205,9 @@ func TestCreateRefundReadsBackIndeterminateServerFailure(t *testing.T) {
 					require.NotEmpty(t, callID)
 					if testCase.headerName != "" {
 						response.Header().Set(testCase.headerName, testCase.headerValue)
+					}
+					if testCase.replayed {
+						response.Header().Set("Idempotent-Replayed", "true")
 					}
 					response.WriteHeader(testCase.status)
 					return
