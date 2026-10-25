@@ -24,6 +24,7 @@ type streamEvent struct {
 type sseEventHandler func(streamEvent) (bool, sdkgo.MutationAttempt[Response])
 
 type responseStreamHandler struct {
+	operation  CreateResponseOperation
 	call       sdkgo.Call
 	header     http.Header
 	requestID  string
@@ -31,9 +32,12 @@ type responseStreamHandler struct {
 }
 
 func (operation CreateResponseOperation) readStream(call sdkgo.Call, body io.Reader, header http.Header, requestID string) sdkgo.MutationAttempt[Response] {
-	handler := &responseStreamHandler{call: call, header: header, requestID: requestID}
+	handler := &responseStreamHandler{operation: operation, call: call, header: header, requestID: requestID}
 	attempt, err := readSSE(body, operation.client.maxResponseBytes, operation.client.maxSSEEventBytes, handler.handle)
 	if err != nil {
+		if handler.responseID != "" {
+			return operation.readBackResponse(call, handler.responseID, header, requestID)
+		}
 		return sdkgo.NewMutationUncertain(Response{ID: handler.responseID}, openAIFailure(sdkgo.FailureProtocol, "createResponse", err.Error()), handler.receipt())
 	}
 	return attempt
@@ -41,27 +45,54 @@ func (operation CreateResponseOperation) readStream(call sdkgo.Call, body io.Rea
 
 func (handler *responseStreamHandler) handle(event streamEvent) (bool, sdkgo.MutationAttempt[Response]) {
 	if event.Response.ID != "" {
+		if !isSafeResponseID(event.Response.ID) {
+			if handler.responseID != "" {
+				return true, handler.operation.readBackResponse(handler.call, handler.responseID, handler.header, handler.requestID)
+			}
+			return true, sdkgo.NewMutationUncertain(Response{}, openAIFailure(sdkgo.FailureProtocol, "createResponse", "provider response ID is invalid"), handler.receipt())
+		}
+		if handler.responseID != "" && event.Response.ID != handler.responseID {
+			return true, handler.operation.readBackResponse(handler.call, handler.responseID, handler.header, handler.requestID)
+		}
 		handler.responseID = event.Response.ID
+		if err := handler.call.Context.RecordHeartbeat(createResponseCheckpoint{CallID: handler.call.ID, ResponseID: handler.responseID}); err != nil {
+			return true, sdkgo.NewMutationRetry[Response](openAIFailure(sdkgo.FailureAvailability, "createResponse", "response ID checkpoint could not be recorded"), 0)
+		}
 	}
 	switch event.Type {
 	case "response.created", "response.queued", "response.in_progress":
 		if err := handler.call.ReportProgress(sdkgo.Progress{
 			Phase: event.Type, Message: event.Response.Status, ProviderSequence: event.SequenceNumber,
 		}); err != nil {
+			if handler.responseID != "" {
+				return true, handler.operation.readBackResponse(handler.call, handler.responseID, handler.header, handler.requestID)
+			}
 			return true, sdkgo.NewMutationUncertain(Response{}, openAIFailure(sdkgo.FailureTransport, "createResponse", "progress delivery failed after dispatch"), handler.receipt())
 		}
 	case "response.output_text.delta":
 		if err := handler.call.WriteText(event.Delta); err != nil {
+			if handler.responseID != "" {
+				return true, handler.operation.readBackResponse(handler.call, handler.responseID, handler.header, handler.requestID)
+			}
 			return true, sdkgo.NewMutationUncertain(Response{}, openAIFailure(sdkgo.FailureTransport, "createResponse", "text progress delivery failed after dispatch"), handler.receipt())
 		}
 	case "response.completed":
 		result := convertResponse(event.Response)
+		if result.ID == "" {
+			if handler.responseID != "" {
+				return true, handler.operation.readBackResponse(handler.call, handler.responseID, handler.header, handler.requestID)
+			}
+			return true, sdkgo.NewMutationUncertain(Response{}, openAIFailure(sdkgo.FailureProtocol, "createResponse", "completed stream event has no response ID"), handler.receipt())
+		}
 		return true, sdkgo.NewMutationBranch(CreateResponseBranchCompleted, result, nil, responseReceipt(handler.call, handler.requestID, handler.header, result.ID))
 	case "response.failed", "response.incomplete":
 		result := convertResponse(event.Response)
 		failure := openAIFailure(sdkgo.FailureProviderRejection, "createResponse", "provider returned "+event.Type)
 		return true, sdkgo.NewMutationBranch(CreateResponseBranchFailed, result, &failure, responseReceipt(handler.call, handler.requestID, handler.header, result.ID))
 	case "error":
+		if handler.responseID != "" {
+			return true, handler.operation.readBackResponse(handler.call, handler.responseID, handler.header, handler.requestID)
+		}
 		failure := openAIFailure(sdkgo.FailureProviderRejection, "createResponse", "provider returned a streaming error")
 		return true, sdkgo.NewMutationBranch(CreateResponseBranchFailed, Response{ID: handler.responseID}, &failure, handler.receipt())
 	}

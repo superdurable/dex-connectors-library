@@ -88,6 +88,46 @@ func TestSummarizeTextExampleStoresOpenAIResponsesWithRealDex(t *testing.T) {
 	}
 }
 
+func TestSummarizeTextExampleConfirmsInterruptedStreamWithRealDex(t *testing.T) {
+	provider := textgentest.NewFakeProvider(t, textgen.CredentialHeader{Name: "Authorization", Prefix: "Bearer "}, integrationAPIKey)
+	provider.EnqueueReplies(
+		textgentest.FakeReply{Header: http.Header{"Content-Type": {"text/event-stream"}}, Body: responsesEvent("response.created", map[string]any{"response": map[string]any{"id": "resp_recovered", "status": "in_progress"}})},
+		textgentest.FakeReply{Body: `{"id":"resp_recovered","model":"gpt-6-sol","status":"completed","output":[{"content":[{"type":"output_text","text":"Recovered summary."}]}],"usage":{"input_tokens":3,"output_tokens":2,"total_tokens":5}}`},
+	)
+	flow, client := startSummaryWorker(t, provider, SummaryModelConfiguration{})
+	outcome := runSummaryFlow(t, client, flow, fmt.Sprintf("openai-summary-recovered-%d", time.Now().UnixNano()))
+	require.Equal(t, openai.CreateResponseBranchCompleted, outcome.Branch)
+	require.Equal(t, "resp_recovered", outcome.ResponseID)
+	require.Equal(t, "Recovered summary.", outcome.Summary)
+	requests := provider.Requests()
+	require.Len(t, requests, 2)
+	require.Equal(t, http.MethodPost, requests[0].Method)
+	require.Equal(t, http.MethodGet, requests[1].Method)
+	require.Equal(t, "/responses/resp_recovered", requests[1].Path)
+}
+
+func TestSummarizeTextExampleRetriesKnownResponseByReadingOnlyWithRealDex(t *testing.T) {
+	provider := textgentest.NewFakeProvider(t, textgen.CredentialHeader{Name: "Authorization", Prefix: "Bearer "}, integrationAPIKey)
+	provider.EnqueueReplies(
+		textgentest.FakeReply{Header: http.Header{"Content-Type": {"text/event-stream"}}, Body: responsesEvent("response.created", map[string]any{"response": map[string]any{"id": "resp_retry", "status": "in_progress"}})},
+		textgentest.FakeReply{Body: `{"id":"resp_retry","status":"in_progress"}`},
+		textgentest.FakeReply{Body: `{"id":"resp_retry","status":"in_progress"}`},
+		textgentest.FakeReply{Body: `{"id":"resp_retry","status":"in_progress"}`},
+		textgentest.FakeReply{Body: `{"id":"resp_retry","model":"gpt-6-sol","status":"completed","output":[{"content":[{"type":"output_text","text":"Recovered after retry."}]}]}`},
+	)
+	flow, client := startSummaryWorker(t, provider, SummaryModelConfiguration{})
+	outcome := runSummaryFlow(t, client, flow, fmt.Sprintf("openai-summary-retry-%d", time.Now().UnixNano()))
+	require.Equal(t, openai.CreateResponseBranchCompleted, outcome.Branch)
+	require.Equal(t, "resp_retry", outcome.ResponseID)
+	requests := provider.Requests()
+	require.Len(t, requests, 5)
+	require.Equal(t, http.MethodPost, requests[0].Method)
+	for _, request := range requests[1:] {
+		require.Equal(t, http.MethodGet, request.Method, "retry must poll the checkpointed response instead of creating another billed response")
+		require.Equal(t, "/responses/resp_retry", request.Path)
+	}
+}
+
 // responsesStreamReply renders a Responses event stream whose deltas and terminal Response hold the same text.
 func responsesStreamReply(deltas []string, status string, model string) textgentest.FakeReply {
 	text := ""

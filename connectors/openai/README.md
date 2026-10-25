@@ -4,7 +4,7 @@ The OpenAI Connector is an independent Go module for stored Responses of the
 [OpenAI Responses API](https://developers.openai.com/api/reference/resources/responses/methods/create).
 It provides:
 
-- `openai.NewCreateResponseStep` for idempotent creation of a stored
+- `openai.NewCreateResponseStep` for creation of a stored
   Response, with JSON Schema structured output, SSE text, progress, usage,
   and explicit uncertainty;
 - `openai.NewRetrieveResponseStep` for query-first reconciliation of a stored
@@ -19,7 +19,7 @@ connection.
 Install a published component release:
 
 ```bash
-go get github.com/superdurable/dex-connectors-library/connectors/openai@v0.21.1
+go get github.com/superdurable/dex-connectors-library/connectors/openai@v0.21.2
 ```
 
 ## Connection
@@ -55,7 +55,7 @@ effect without a restart. Configuration is captured at startup:
 | --- | --- | --- |
 | `model` | `gpt-6-sol` | Model that `createResponse` sends when its request names none. A request's `Model` overrides it. |
 | `endpoint` | `https://api.openai.com/v1` | Base URL each operation appends its path to, such as `/responses`. HTTPS is required except for loopback test servers. |
-| `maxResponseBytes` | `8388608` (8 MiB) | Largest response, counting every byte of a stream. Each streamed text delta carries about 260 bytes of event framing, so 8 MiB holds roughly 30,000 streamed output tokens. A larger `createResponse` response selects `uncertain`, and a larger `retrieveResponse` response selects `invalidResponse`. |
+| `maxResponseBytes` | `8388608` (8 MiB) | Largest response, counting every byte of a stream. Each streamed text delta carries about 260 bytes of event framing, so 8 MiB holds roughly 30,000 streamed output tokens. A larger `createResponse` response triggers read-back if its ID was observed, or `uncertain` otherwise; a larger `retrieveResponse` response selects `invalidResponse`. |
 | `maxSseEventBytes` | `1048576` (1 MiB) | Largest server-sent event. The final Responses event repeats the whole Response, so raise it for very long outputs. |
 
 OpenAI's [models page](https://developers.openai.com/api/docs/models)
@@ -166,15 +166,17 @@ When a factory supplies progress or text Streams, `CreateResponse` sends
 `stream=true`. Its bounded SSE reader accepts lifecycle, text-delta, completed,
 failed, incomplete, and error events while ignoring unknown event types. The
 completed Response is authoritative for value and usage. Early EOF or a
-missing terminal event is uncertain and can be reconciled with
-`RetrieveResponse`.
+missing terminal event is reconciled by reading the stored response when its
+ID was observed. The connector checkpoints that ID in Dex before continuing,
+polls a response still in progress within the attempt, and resumes by GET on
+retry without sending another creation request.
 
 | Operation | Branch | Selected when |
 | --- | --- | --- |
 | `createResponse` | `completed` (required) | OpenAI completed the Response. |
-| `createResponse` | `failed` | OpenAI returned a terminal `failed` or `incomplete` Response, or a streaming `error` event. |
+| `createResponse` | `failed` | OpenAI returned a terminal `failed` or `incomplete` Response, or a streaming `error` event without a known response ID. |
 | `createResponse` | `providerRejected` | A conclusive 4xx refusal, such as 400, 401, 403, or 404. |
-| `createResponse` | `uncertain` | The request was dispatched but its outcome cannot be confirmed: a transport failure, a 5xx, or a malformed, oversized, or interrupted response. |
+| `createResponse` | `uncertain` | A dispatched request returned no response ID and its outcome cannot be confirmed. The Responses API does not document deduplication for `Idempotency-Key`. |
 | `createResponse` | `defect` | The input, the model, credentials, or connection configuration is invalid; nothing is sent. |
 | `retrieveResponse` | `found` (required) | The Response exists and was returned. |
 | `retrieveResponse` | `notFound` | OpenAI returned 404. |
@@ -183,15 +185,20 @@ missing terminal event is uncertain and can be reconciled with
 | `retrieveResponse` | `defect` | The Response ID, credentials, or connection configuration is invalid. |
 
 HTTP 429 returns Retry for both operations, honoring a `Retry-After` in
-seconds; 5xx returns Retry for `retrieveResponse` and `uncertain` for
-`createResponse`. Receipts hold the `x-request-id` and copy OpenAI's
+seconds. An unsent create request and HTTP 503 also retry. Other ambiguous
+dispatched create failures without a response ID select `uncertain`; an
+interrupted stream with a known ID uses `GET /responses/{id}` to confirm a
+completed or failed response. The connector sends the Call ID as
+`Idempotency-Key`, but [the Responses create reference](https://developers.openai.com/api/reference/resources/responses/methods/create)
+does not specify deduplication or key retention, so ambiguous creates are not
+retried solely because that header was sent. Receipts hold the `x-request-id` and copy OpenAI's
 `x-ratelimit-{limit,remaining,reset}-{requests,tokens}` headers.
 
 ## Step defaults
 
 | Operation | Execute durability | Execute timeout | Retry |
 | --- | --- | --- | --- |
-| `createResponse` | `sync` | 150 seconds | 2-second initial interval, backoff 2, 30-second maximum interval, 5 attempts, 5 minutes total |
+| `createResponse` | `sync` | 150 seconds | 2-second initial interval, backoff 2, 30-second maximum interval, 3 attempts, 5 minutes total |
 | `retrieveResponse` | `async` | 30 seconds | 1-second initial interval, backoff 2, 30-second maximum interval, 5 attempts, 2 minutes total |
 
 ## Migrate from generateText

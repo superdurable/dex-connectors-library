@@ -212,12 +212,12 @@ var CreateResponseDefinition = sdkgo.MutationDefinition{
 		{ID: CreateResponseBranchCompleted, Description: "OpenAI completed the response."},
 		{ID: CreateResponseBranchFailed, Description: "OpenAI returned a terminal failed or incomplete response.", Optional: true},
 		{ID: CreateResponseBranchProviderRejected, Description: "OpenAI conclusively rejected the response request.", Optional: true},
-		{ID: CreateResponseBranchUncertain, Description: "The dispatched response outcome cannot be confirmed.", Optional: true},
+		{ID: CreateResponseBranchUncertain, Description: "A dispatched request returned no response ID and its outcome cannot be confirmed; Responses API idempotency is not documented.", Optional: true},
 		{ID: CreateResponseBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(150000000000), HeartbeatTimeout: time.Duration(0),
-		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(2000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(300000000000)},
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(2000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 3, TotalDuration: time.Duration(300000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
 }
