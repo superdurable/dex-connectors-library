@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	gmail "github.com/superdurable/dex-connectors-library/connectors/google/gmail"
@@ -194,6 +195,48 @@ func TestGmailRateLimitAndServiceUnavailableRetry(t *testing.T) {
 			var retry *sdkgo.RetryError
 			require.ErrorAs(t, err, &retry)
 			require.Equal(t, test.wantKind, retry.Failure.Kind)
+		})
+	}
+}
+
+func TestGmailServiceUnavailableReadBackReleasesTheWriteConnection(t *testing.T) {
+	for _, isReply := range []bool{false, true} {
+		name := "send"
+		if isReply {
+			name = "reply"
+		}
+		t.Run(name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+				switch {
+				case request.Method == http.MethodGet && request.URL.Path == "/users/me/messages/source-1":
+					_, _ = response.Write([]byte(gmailMessageJSON("source-1", "thread-1", true, "", "")))
+				case request.Method == http.MethodPost && request.URL.Path == "/users/me/messages/send":
+					response.WriteHeader(http.StatusServiceUnavailable)
+					_, _ = response.Write([]byte(`{"error":"temporarily unavailable"}`))
+				case request.Method == http.MethodGet && request.URL.Path == "/users/me/messages":
+					_, _ = response.Write([]byte(`{"messages":[{"id":"sent-1","threadId":"thread-1"}]}`))
+				default:
+					http.NotFound(response, request)
+				}
+			}))
+			t.Cleanup(server.Close)
+			transport := &http.Transport{MaxConnsPerHost: 1}
+			t.Cleanup(transport.CloseIdleConnections)
+			client, err := gmail.New(gmail.Config{Endpoint: server.URL}, sdkgo.StaticCredentialProvider[gmail.Credentials]{
+				gmailConnection: {AccessToken: sdkgo.NewSecretString("gmail-token"), PrimaryEmail: "owner@example.com"},
+			}, gmail.WithHTTPClient(&http.Client{Transport: transport, Timeout: 2 * time.Second}))
+			require.NoError(t, err)
+			if isReply {
+				result, err := sdkgo.RunMutation(newGmailDexContext(name), client.ReplyToMessage(), gmailConnection, gmail.ReplyToMessageInput{MessageID: "source-1", TextBody: "Update"})
+				require.NoError(t, err)
+				require.Equal(t, gmail.ReplyToMessageBranchSent, result.Branch)
+				require.Equal(t, "sent-1", result.Value.MessageID)
+			} else {
+				result, err := sdkgo.RunMutation(newGmailDexContext(name), client.SendMessage(), gmailConnection, gmail.SendMessageInput{To: []string{"customer@example.com"}, Subject: "Progress", TextBody: "Update"})
+				require.NoError(t, err)
+				require.Equal(t, gmail.SendMessageBranchSent, result.Branch)
+				require.Equal(t, "sent-1", result.Value.MessageID)
+			}
 		})
 	}
 }

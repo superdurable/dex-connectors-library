@@ -22,6 +22,11 @@ type sentMessageSearchResponse struct {
 	NextPageToken string         `json:"nextPageToken"`
 }
 
+func closeGmailResponseBeforeReadBack(response *http.Response) {
+	// Closing is best effort; the lookup must not wait for a held send connection.
+	_ = response.Body.Close()
+}
+
 func (client *Client) findSentMessageByCallID(
 	ctx context.Context, call sdkgo.Call, credentials Credentials,
 ) (sendResponse, error) {

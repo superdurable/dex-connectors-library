@@ -341,6 +341,7 @@ func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageI
 		return sdkgo.NewMutationRetry[SendMessageOutput](gmailFailure(sdkgo.FailureRateLimit, "Gmail temporarily rejected the send"), delay)
 	}
 	if response.StatusCode == http.StatusServiceUnavailable {
+		closeGmailResponseBeforeReadBack(response)
 		if confirmed, ok := operation.sentByReadBack(call, credential, recipients, receipt); ok {
 			return confirmed
 		}
@@ -352,10 +353,12 @@ func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageI
 	}
 	content, readErr := io.ReadAll(io.LimitReader(response.Body, operation.client.maxResponseBytes+1))
 	if readErr != nil || int64(len(content)) > operation.client.maxResponseBytes {
+		closeGmailResponseBeforeReadBack(response)
 		return operation.confirmOrReportUnknownSend(call, credential, recipients, sdkgo.FailureTransport,
 			"Gmail send response could not be confirmed", receipt)
 	}
 	if response.StatusCode >= 500 {
+		closeGmailResponseBeforeReadBack(response)
 		return operation.confirmOrReportUnknownSend(call, credential, recipients, sdkgo.FailureAvailability,
 			"Gmail send outcome is unknown", receipt)
 	}
@@ -364,6 +367,7 @@ func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageI
 	}
 	var sent sendResponse
 	if err := json.Unmarshal(content, &sent); err != nil || sent.ID == "" || sent.ThreadID == "" {
+		closeGmailResponseBeforeReadBack(response)
 		return operation.confirmOrReportUnknownSend(call, credential, recipients, sdkgo.FailureProtocol,
 			"Gmail returned an invalid send response", receipt)
 	}
