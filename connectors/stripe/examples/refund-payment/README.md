@@ -34,9 +34,10 @@ Start `StripeRefundPayment` with a unique Flow ID:
 ```
 
 Only `found` and `refunded` are wired. A missing PaymentIntent, a Stripe
-rejection, an invalid response, local defects, and exhausted keyed retries fail
-the Flow. Reconcile a refund after retry exhaustion before starting another
-request with a new key.
+rejection, an uncertain refund after bounded read-back, an invalid response,
+local defects, and exhausted keyed retries fail the Flow. Reconcile a refund
+after uncertainty or retry exhaustion before starting another request with a
+new key.
 
 ```bash
 GOWORK=off go test -race ./examples/refund-payment/...
