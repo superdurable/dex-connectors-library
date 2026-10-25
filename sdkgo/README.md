@@ -687,11 +687,14 @@ builds these mocks for every operation; applications normally use that package.
 `NewQuery` and `NewMutation` also accept sealed `WithRequestCheck` and
 `WithAnswerCheck` options. A request check returns `*sdkgo.Failure` or nil;
 the mock records a rejected call and selects `defect` with the same kind and
-message without failing the test or consuming a case. An answer check takes
-the request and scripted output for one named branch. Its error reports a
-script mismatch with `t.Errorf` and selects `defect`. Operations without
-checks keep their existing behavior. Generated packages pass these options
-when the manifest declares `mockChecks`.
+message without failing the test or consuming a case; a Failure that is
+invalid, such as one with an empty kind or message, fails the test. An answer
+check takes the request and the output of one named branch, whether a scripted
+case or the default produced it. Its error reports an answer mismatch, naming
+the default or a scripted case, with `t.Errorf` and selects `defect`. A mock
+takes one request check and one answer check, and a second of either panics.
+Operations without checks keep their existing behavior. Generated packages pass
+these options when the manifest declares `mockChecks`.
 For text generation operations, `textgen.ValidatePortableRequest` supplies
 the request check. `textgen.ExtractStructuredAnswer` checks and extracts JSON
 text; a connector answer check returns its error for the response's `Text`.
@@ -718,7 +721,12 @@ Scripting:
   value. The longest matching script answers first; a call it cannot answer
   falls through to the next matching script and then to the mock's own.
 - `Default(cases...)` answers calls that no `Respond` or `When` case answers,
-  in order, repeating the last. `Strict()` ignores every `Default`.
+  in order, repeating the last. `Strict()` ignores every `Default`. A
+  generated mock package installs the manifest default, so an unscripted
+  Mutation call is answered with the happy path instead of failing the test.
+  A test then notices an unexpected, repeated, or missing send only when it
+  asserts `Calls()` or makes the mock `Strict()`; assert `Calls()` in Mutation
+  tests.
 - A call that nothing answers fails the test with `t.Errorf` and selects
   `defect`. A case that cannot be valid, such as an undeclared branch, fails the
   test when it is scripted and selects `defect` when it answers. A mock stops

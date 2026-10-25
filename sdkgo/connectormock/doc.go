@@ -47,6 +47,9 @@
 // every Default. A call that nothing answers fails the test with t.Errorf and
 // selects the defect branch. Scripting mistakes, such as a branch the
 // operation does not declare, also fail the test when they are scripted.
+// A Default answers unscripted calls, so a generated mock package answers
+// every unscripted Mutation call with the manifest default; assert Calls, or
+// use Strict, to notice an unexpected or repeated send.
 //
 // # Cases
 //

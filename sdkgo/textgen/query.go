@@ -76,10 +76,13 @@ type TextGenerationQueryConfig struct {
 //
 //  1. Resolve the model: the trimmed request Model, else ConnectionModel; a
 //     blank or invalid model selects defect.
-//  2. Validate the request: declared features, messages, MaxOutputTokens,
-//     and the model's temperature and reasoning-effort rules.
-//  3. Check the structured-output schema against the portable subset, apply
-//     the model's transforms, and add the JSON instruction when the mode needs it.
+//  2. Validate the request in this order: messages, MaxOutputTokens, the
+//     structured-output name and its schema against the portable subset,
+//     the declared features, and the model's temperature and
+//     reasoning-effort rules.
+//  3. Apply the model's structured-output rules: reject a model without
+//     structured output, apply the model's transforms, and add the JSON
+//     instruction when the mode needs it.
 //  4. Resolve the credential and require it to be header-safe.
 //  5. Build the request through the wire format; the credential goes only in
 //     its CredentialHeader.
@@ -95,7 +98,8 @@ type TextGenerationQueryConfig struct {
 //  9. Return the branch with a Receipt holding the Call ID, provider, response
 //     ID, request ID, and the listed rate-limit headers.
 //
-// Steps 1 through 5 select defect without any provider request. Transport
+// Steps 1 through 5 select defect without any provider request. When a
+// request has several errors, the first in this order is reported. Transport
 // failures, a stall, an interrupted stream, and retryable statuses return
 // Retry. Failures, Receipts, and heartbeats never contain prompts, model
 // output, provider message text, or the credential.

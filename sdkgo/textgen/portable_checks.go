@@ -10,33 +10,40 @@ import "github.com/superdurable/dex-connectors-library/sdkgo"
 // kind and message as a real Invoke defect; the operation fills its Provider
 // and Operation fields. Model and wire format rules are checked by Invoke.
 func ValidatePortableRequest(request TextGenerationRequest) *sdkgo.Failure {
+	_, failure := checkPortableRequest(request)
+	return failure
+}
+
+// checkPortableRequest is ValidatePortableRequest that also returns the
+// canonical structured output schema, or nil for a plain text request.
+func checkPortableRequest(request TextGenerationRequest) (map[string]any, *sdkgo.Failure) {
 	validationFailure := func(message string) *sdkgo.Failure {
 		return &sdkgo.Failure{Kind: sdkgo.FailureValidation, Message: message}
 	}
 	if err := validateMessages(request.Messages); err != nil {
-		return validationFailure(err.Error())
+		return nil, validationFailure(err.Error())
 	}
 	if request.MaxOutputTokens < 0 {
-		return validationFailure("maxOutputTokens cannot be negative")
+		return nil, validationFailure("maxOutputTokens cannot be negative")
 	}
 	output := request.StructuredOutput
 	if output == nil {
-		return nil
+		return nil, nil
 	}
 	if !structuredOutputNamePattern.MatchString(output.Name) {
-		return validationFailure("structured output name must match " + structuredOutputNamePattern.String())
+		return nil, validationFailure("structured output name must match " + structuredOutputNamePattern.String())
 	}
 	if output.Schema == nil {
-		return validationFailure("structured output schema is required")
+		return nil, validationFailure("structured output schema is required")
 	}
 	canonical, err := canonicalizeSchema(output.Schema)
 	if err != nil {
-		return validationFailure("structured output " + err.Error())
+		return nil, validationFailure("structured output " + err.Error())
 	}
 	if err := checkPortableSchema(canonical); err != nil {
-		return validationFailure("structured output schema is not portable " + err.Error())
+		return nil, validationFailure("structured output schema is not portable " + err.Error())
 	}
-	return nil
+	return canonical, nil
 }
 
 // ExtractStructuredAnswer checks generated text against the request's
@@ -51,6 +58,11 @@ func ExtractStructuredAnswer(request TextGenerationRequest, generatedText string
 	if err != nil {
 		return "", err
 	}
+	return extractStructuredAnswer(canonical, generatedText)
+}
+
+// extractStructuredAnswer is ExtractStructuredAnswer for a schema that is already canonical.
+func extractStructuredAnswer(canonical map[string]any, generatedText string) (string, error) {
 	generatedText = stripJSONFence(generatedText)
 	if err := validateStructuredOutputText(generatedText, canonical); err != nil {
 		return "", err

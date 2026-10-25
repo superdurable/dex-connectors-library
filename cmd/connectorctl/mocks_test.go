@@ -35,6 +35,8 @@ func TestScaffoldWritesDefaultsAndBusinessOutcomesAndKeepsTheRestOfTheManifest(t
 	require.Equal(t, "The widget does not exist.", getWidget.Mocks[1].Failure.Message)
 	require.Equal(t, []string{"listedDefaultAnswer"}, mockNames(manifest.Spec.Operations[1]))
 	require.Len(t, manifest.Spec.Operations[1].Mocks[0].Pages, 3)
+	require.Equal(t, []string{`{"nextPage":2}`, `{"nextPage":3}`, `{"nextPage":0}`}, pageJSON(manifest.Spec.Operations[1].Mocks[0]),
+		"an integer cursor gets integer placeholders")
 	require.Equal(t, []string{"createdDefaultAnswer"}, mockNames(createWidget))
 	require.True(t, createWidget.Mocks[0].Default)
 	require.Contains(t, notes.String(), "getWidget: replace the foundDefaultAnswer default mock placeholder")
@@ -47,6 +49,75 @@ func TestScaffoldWritesDefaultsAndBusinessOutcomesAndKeepsTheRestOfTheManifest(t
 	require.NoError(t, err)
 	require.Equal(t, string(scaffolded), string(rescaffolded), "a second scaffold adds nothing")
 	require.Equal(t, source, strings.Join(removeScaffoldedLines(string(scaffolded)), ""), "scaffold edits only the lines it inserts")
+}
+
+func TestScaffoldWritesPlaceholdersOfTheDeclaredCursorType(t *testing.T) {
+	testCases := map[string]struct {
+		source string
+		pages  []string
+	}{
+		"string cursor": {
+			source: "type WidgetPage struct {\n\tNextPage string `json:\"nextPage\"`\n}\n",
+			pages:  []string{`{"nextPage":"page-2"}`, `{"nextPage":"page-3"}`, `{"nextPage":""}`},
+		},
+		"pointer to a string cursor": {
+			source: "type WidgetPage struct {\n\tNextPage *string `json:\"nextPage,omitempty\"`\n}\n",
+			pages:  []string{`{"nextPage":"page-2"}`, `{"nextPage":"page-3"}`, `{"nextPage":""}`},
+		},
+		"named string cursor": {
+			source: "type PageToken string\n\ntype WidgetPage struct {\n\tPageToken PageToken `json:\"nextPage\"`\n}\n",
+			pages:  []string{`{"nextPage":"page-2"}`, `{"nextPage":"page-3"}`, `{"nextPage":""}`},
+		},
+		"integer cursor": {
+			source: "type WidgetPage struct {\n\tNextPage int64 `json:\"nextPage\"`\n}\n",
+			pages:  []string{`{"nextPage":2}`, `{"nextPage":3}`, `{"nextPage":0}`},
+		},
+		"untagged cursor": {
+			source: "type WidgetPage struct {\n\tNextPage string\n}\n",
+			pages:  []string{`{"nextPage":"page-2"}`, `{"nextPage":"page-3"}`, `{"nextPage":""}`},
+		},
+	}
+	for name, testCase := range testCases {
+		t.Run(name, func(t *testing.T) {
+			manifestPath := writeMockFixtureConnector(t, t.TempDir())
+			writeWidgetPageSource(t, manifestPath, testCase.source)
+			require.NoError(t, os.WriteFile(manifestPath, []byte(removeAllMocks(t, manifestPath)), 0o600))
+
+			require.NoError(t, scaffoldMocks(manifestPath, &bytes.Buffer{}))
+
+			manifest, err := load(manifestPath)
+			require.NoError(t, err)
+			require.Equal(t, testCase.pages, pageJSON(manifest.Spec.Operations[1].Mocks[0]))
+			require.NoError(t, manifest.ValidateMockCoverage())
+		})
+	}
+}
+
+func TestScaffoldReportsACursorWhoseTypeItCannotRead(t *testing.T) {
+	testCases := map[string]string{
+		"no Go source":            "",
+		"missing output type":     "type Other struct{}\n",
+		"missing cursor field":    "type WidgetPage struct {\n\tNextToken string `json:\"nextToken\"`\n}\n",
+		"unsupported cursor type": "type WidgetPage struct {\n\tNextPage []string `json:\"nextPage\"`\n}\n",
+	}
+	for name, source := range testCases {
+		t.Run(name, func(t *testing.T) {
+			manifestPath := writeMockFixtureConnector(t, t.TempDir())
+			require.NoError(t, os.Remove(filepath.Join(filepath.Dir(manifestPath), "widget_page.go")))
+			if source != "" {
+				writeWidgetPageSource(t, manifestPath, source)
+			}
+			stripped := removeAllMocks(t, manifestPath)
+			require.NoError(t, os.WriteFile(manifestPath, []byte(stripped), 0o600))
+
+			err := scaffoldMocks(manifestPath, &bytes.Buffer{})
+
+			require.ErrorContains(t, err, "listWidgets: cannot tell whether the nextPage field of WidgetPage is a string or a number cursor")
+			current, readErr := os.ReadFile(manifestPath)
+			require.NoError(t, readErr)
+			require.Equal(t, stripped, string(current), "a failed scaffold leaves the manifest unchanged")
+		})
+	}
 }
 
 func TestScaffoldAppendsToAnExistingMocksSequence(t *testing.T) {
@@ -136,7 +207,23 @@ func writeMockFixtureConnector(t *testing.T, directory string) string {
 	manifestPath := filepath.Join(directory, "connector.yaml")
 	require.NoError(t, os.WriteFile(manifestPath, source, 0o600))
 	require.NoError(t, os.WriteFile(filepath.Join(directory, "go.mod"), []byte("module example.com/mockfixture\n\ngo 1.24\n"), 0o600))
+	writeWidgetPageSource(t, manifestPath, "type WidgetPage struct {\n\tNextPage int `json:\"nextPage\"`\n}\n")
 	return manifestPath
+}
+
+// writeWidgetPageSource writes the hand-written Go declarations that the fixture's paginated output type needs.
+func writeWidgetPageSource(t *testing.T, manifestPath, declarations string) {
+	t.Helper()
+	source := "package mockfixture\n\n" + declarations
+	require.NoError(t, os.WriteFile(filepath.Join(filepath.Dir(manifestPath), "widget_page.go"), []byte(source), 0o600))
+}
+
+func pageJSON(mock schema.OperationMock) []string {
+	pages := make([]string, 0, len(mock.Pages))
+	for _, page := range mock.Pages {
+		pages = append(pages, page.JSON())
+	}
+	return pages
 }
 
 func removeAllMocks(t *testing.T, manifestPath string) string {

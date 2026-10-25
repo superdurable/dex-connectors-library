@@ -159,6 +159,71 @@ func TestQueryAnswerCheckReportsMismatchAndSelectsDefect(t *testing.T) {
 	require.Equal(t, sdkgo.FailureLocalDefect, result.Failure.Kind)
 	require.Equal(t, sdkgo.DefectBranchID, lookup.Calls()[0].Branch)
 	recorder.requireFailure(t, "widget ID differs from requested name")
+	recorder.requireFailure(t, `scripted answer for branch "found" does not match request`)
+}
+
+func TestQueryAnswerCheckNamesTheDefaultAnswer(t *testing.T) {
+	recorder := newRecordingT(t)
+	lookup := connectormock.NewQuery[widgetInput, widget](recorder, lookupDefinition,
+		connectormock.WithAnswerCheck[widgetInput, widget](widgetFound, func(input widgetInput, answer widget) error {
+			if answer.ID != input.Name {
+				return errors.New("widget ID differs from requested name")
+			}
+			return nil
+		}))
+	lookup.Default(connectormock.Branch(widgetFound, widget{ID: "default"}, nil))
+
+	result := runQuery(t, lookup, uniqueFlowID(t), 0, widgetInput{Name: "gear"})
+
+	require.Equal(t, sdkgo.DefectBranchID, result.Branch)
+	recorder.requireFailure(t, `default answer for branch "found" does not match request: widget ID differs from requested name`)
+	require.Len(t, recorder.failures, 1)
+}
+
+func TestRequestCheckWithAnInvalidFailureFailsTheTest(t *testing.T) {
+	failures := map[string]*sdkgo.Failure{
+		"empty kind":    {Message: "widget name is required"},
+		"unknown kind":  {Kind: "WRONG", Message: "widget name is required"},
+		"empty message": {Kind: sdkgo.FailureValidation},
+	}
+	for name, failure := range failures {
+		t.Run(name, func(t *testing.T) {
+			recorder := newRecordingT(t)
+			lookup := connectormock.NewQuery[widgetInput, widget](recorder, lookupDefinition,
+				connectormock.WithRequestCheck[widgetInput, widget](func(widgetInput) *sdkgo.Failure { return failure }))
+			lookup.Respond(connectormock.Branch(widgetFound, widget{ID: "gear"}, nil))
+			flowID := uniqueFlowID(t)
+
+			result := runQuery(t, lookup, flowID, 0, widgetInput{})
+
+			require.Equal(t, sdkgo.DefectBranchID, result.Branch)
+			require.Equal(t, sdkgo.FailureLocalDefect, result.Failure.Kind)
+			require.Contains(t, result.Failure.Message, "request check returned an invalid failure")
+			recorder.requireFailure(t, "the request check returned an invalid failure")
+			require.Len(t, recorder.failures, 1)
+			require.Equal(t, sdkgo.DefectBranchID, lookup.Calls()[0].Branch)
+		})
+	}
+}
+
+func TestASecondCheckPanicsInsteadOfReplacingTheFirst(t *testing.T) {
+	requestCheck := connectormock.WithRequestCheck[widgetInput, widget](func(widgetInput) *sdkgo.Failure { return nil })
+	answerCheck := connectormock.WithAnswerCheck[widgetInput, widget](widgetFound, func(widgetInput, widget) error { return nil })
+	otherAnswerCheck := connectormock.WithAnswerCheck[widgetInput, widget](widgetAbsent, func(widgetInput, widget) error { return nil })
+	createAnswerCheck := connectormock.WithAnswerCheck[widgetInput, widget](widgetCreated, func(widgetInput, widget) error { return nil })
+
+	require.PanicsWithValue(t, "connector mock widgets.lookupWidget: a second request check would replace the first; pass one WithRequestCheck", func() {
+		connectormock.NewQuery[widgetInput, widget](t, lookupDefinition, requestCheck, requestCheck)
+	})
+	require.PanicsWithValue(t, "connector mock widgets.lookupWidget: a second answer check would replace the first; pass one WithAnswerCheck", func() {
+		connectormock.NewQuery[widgetInput, widget](t, lookupDefinition, answerCheck, otherAnswerCheck)
+	})
+	require.PanicsWithValue(t, "connector mock widgets.createWidget: a second answer check would replace the first; pass one WithAnswerCheck", func() {
+		connectormock.NewMutation[widgetInput, widget](t, createDefinition, createAnswerCheck, createAnswerCheck)
+	})
+	require.NotPanics(t, func() {
+		connectormock.NewQuery[widgetInput, widget](t, lookupDefinition, requestCheck, answerCheck)
+	})
 }
 
 func TestQueryAnswerCheckOnlyRunsOnItsBranch(t *testing.T) {

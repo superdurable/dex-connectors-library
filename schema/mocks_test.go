@@ -48,6 +48,15 @@ func TestDecodeMockChecksAndRejectInvalidNames(t *testing.T) {
 	require.ErrorContains(t, manifest.Validate(), "mockChecks requires a requestFunction or answer")
 }
 
+func TestRejectMockChecksWithoutMocks(t *testing.T) {
+	manifest := decodeMocksFixture(t, nil)
+	manifest.Spec.Operations[0].MockChecks = &schema.MockChecks{RequestFunction: "ValidateGetWidgetRequest"}
+	require.NoError(t, manifest.Validate())
+
+	manifest.Spec.Operations[0].Mocks = nil
+	require.ErrorContains(t, manifest.Validate(), "getWidget: mockChecks requires the operation to declare mocks")
+}
+
 func TestRejectInvalidMocks(t *testing.T) {
 	testCases := map[string]struct {
 		replacements [][2]string
@@ -116,6 +125,10 @@ func TestRejectInvalidMocks(t *testing.T) {
 		"optional branch as default": {
 			replacements: [][2]string{{"        - name: gear\n          branch: found\n", "        - name: gear\n          branch: notFound\n"}},
 			problem:      "getWidget: mock gear: a default mock answers a required branch without a failure",
+		},
+		"required defect branch": {
+			replacements: [][2]string{{"        - {id: defect, goName: Defect, description: The input is invalid., optional: true}\n", "        - {id: defect, goName: Defect, description: The input is invalid.}\n"}},
+			problem:      "getWidget: the defect branch must be optional",
 		},
 		"pagination on a mutation": {
 			replacements: [][2]string{{"      idempotency: required\n", "      idempotency: required\n      pagination: {inputField: page, nextField: nextPage}\n"}},

@@ -79,7 +79,10 @@ func scaffoldMocks(manifestPath string, stderr io.Writer) error {
 	for index := len(manifest.Spec.Operations) - 1; index >= 0; index-- {
 		operation := manifest.Spec.Operations[index]
 		insertion := insertions[index]
-		scaffolded := scaffoldOperationMocks(operation, insertion, stderr)
+		scaffolded, err := scaffoldOperationMocks(filepath.Dir(manifestPath), operation, insertion, stderr)
+		if err != nil {
+			return err
+		}
 		if scaffolded == "" {
 			continue
 		}
@@ -137,7 +140,7 @@ func mockInsertionPoints(contents []byte) ([]mockInsertion, error) {
 	return insertions, nil
 }
 
-func scaffoldOperationMocks(operation schema.Operation, insertion mockInsertion, stderr io.Writer) string {
+func scaffoldOperationMocks(connectorDirectory string, operation schema.Operation, insertion mockInsertion, stderr io.Writer) (string, error) {
 	covered := map[string]bool{}
 	names := map[string]bool{}
 	hasDefault := false
@@ -171,11 +174,15 @@ func scaffoldOperationMocks(operation schema.Operation, insertion mockInsertion,
 			if operation.Pagination == nil {
 				output.WriteString(itemIndent + "  output: {}\n")
 			} else {
+				cursors, err := scaffoldCursorPlaceholders(connectorDirectory, operation)
+				if err != nil {
+					return "", err
+				}
 				cursor := operation.Pagination.NextField
 				output.WriteString(itemIndent + "  pages:\n")
-				output.WriteString(itemIndent + "    - {" + cursor + ": 2}\n")
-				output.WriteString(itemIndent + "    - {" + cursor + ": 3}\n")
-				output.WriteString(itemIndent + "    - {" + cursor + ": 0}\n")
+				output.WriteString(itemIndent + "    - {" + cursor + ": " + cursors.firstNext + "}\n")
+				output.WriteString(itemIndent + "    - {" + cursor + ": " + cursors.secondNext + "}\n")
+				output.WriteString(itemIndent + "    - {" + cursor + ": " + cursors.last + "}\n")
 			}
 			// The note is advisory; a failed write to stderr must not stop the scaffold.
 			_, _ = fmt.Fprintf(stderr, "%s: replace the %s default mock placeholder with realistic output\n", operation.Name, name)
@@ -197,9 +204,9 @@ func scaffoldOperationMocks(operation schema.Operation, insertion mockInsertion,
 		scaffolded++
 	}
 	if scaffolded == 0 {
-		return ""
+		return "", nil
 	}
-	return output.String()
+	return output.String(), nil
 }
 
 // scaffoldFailureKind guesses the failure kind from the branch vocabulary the connectors share.

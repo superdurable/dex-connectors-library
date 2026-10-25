@@ -47,7 +47,7 @@ spec:
       idempotency: none
       branches:
         - {id: found, goName: Found, description: profile found}
-        - {id: defect, goName: Defect, description: local defect}
+        - {id: defect, goName: Defect, description: local defect, optional: true}
       execution: &execution
         executeMethodTimeout: 30s
         durability: sync
@@ -61,7 +61,7 @@ spec:
       idempotency: required
       branches:
         - {id: granted, goName: Granted, description: credit granted}
-        - {id: defect, goName: Defect, description: local defect}
+        - {id: defect, goName: Defect, description: local defect, optional: true}
       progress: [text, structured]
       execution: *execution
 `))
@@ -129,7 +129,7 @@ spec:
       description: get thing
       idempotency: none
       branches:
-        - {id: defect, goName: Defect, description: defect}
+        - {id: defect, goName: Defect, description: defect, optional: true}
       execution: {executeMethodTimeout: 30s, durability: sync, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}}
 `))
 	require.NoError(t, err)
@@ -426,7 +426,7 @@ spec:
       idempotency: none
       authorization: required
       branches:
-        - {id: defect, goName: Defect, description: defect}
+        - {id: defect, goName: Defect, description: defect, optional: true}
       execution: {executeMethodTimeout: 30s, durability: sync, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}}
 `))
 	require.ErrorContains(t, err, "required authorization needs connector auth")
@@ -465,7 +465,7 @@ spec:
       description: get thing
       idempotency: none
       branches:
-        - {id: defect, goName: Defect, description: defect}
+        - {id: defect, goName: Defect, description: defect, optional: true}
       execution: {executeMethodTimeout: 30s, durability: sync, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}}
 `))
 	require.NoError(t, err)
@@ -517,7 +517,7 @@ spec:
       description: get thing
       idempotency: none
       branches:
-        - {id: defect, goName: Defect, description: defect}
+        - {id: defect, goName: Defect, description: defect, optional: true}
       execution: {executeMethodTimeout: 30s, durability: sync, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}}
 `
 
@@ -653,7 +653,7 @@ spec:
       idempotency: provider
       branches:
         - {id: uncertain, goName: Uncertain, description: uncertain}
-        - {id: defect, goName: Defect, description: defect}
+        - {id: defect, goName: Defect, description: defect, optional: true}
       progress: [video]
       execution: {executeMethodTimeout: 30s, durability: sync, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}}
 `))
@@ -681,7 +681,7 @@ spec:
       idempotency: none
       branches:
         - {id: uncertain, goName: Uncertain, description: uncertain}
-        - {id: defect, goName: Defect, description: defect}
+        - {id: defect, goName: Defect, description: defect, optional: true}
       execution: {executeMethodTimeout: 30s, durability: sync, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}}
 `))
 	require.ErrorContains(t, err, "mutations must declare")
@@ -731,7 +731,7 @@ spec:
       description: get thing
       idempotency: none
       branches:
-        - {id: defect, goName: Defect, description: defect}
+        - {id: defect, goName: Defect, description: defect, optional: true}
       execution: {executeMethodTimeout: 30s, durability: sync, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}}
 `))
 	require.ErrorContains(t, err, "inputType and outputType")
@@ -954,7 +954,7 @@ spec:
       description: Read one thing.
       idempotency: none
       branches:
-        - {id: defect, goName: Defect, description: Local input is invalid.}
+        - {id: defect, goName: Defect, description: Local input is invalid., optional: true}
       execution: {executeMethodTimeout: 30s, durability: sync, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}}
 `
 	}
