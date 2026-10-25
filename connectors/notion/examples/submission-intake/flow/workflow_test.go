@@ -70,6 +70,15 @@ func TestExactTitleMatchIgnoresCaseTrashAndPartialTitles(t *testing.T) {
 	require.Equal(t, []string{"a"}, exactTitleMatchIDs(matches, "Form submissions"))
 }
 
+func TestSubmissionRowScanRejectsARepeatedCursorAfterSeveralPages(t *testing.T) {
+	record := SubmissionRecord{Submission: Input{SubmissionID: "sub-42"}}
+	for _, cursor := range []string{"page-a", "page-b"} {
+		require.Empty(t, collectSubmissionRows(&record, notion.QueryDatabaseOutput{NextCursor: cursor}))
+	}
+	require.Equal(t, "Notion submission query did not finish within its page limit",
+		collectSubmissionRows(&record, notion.QueryDatabaseOutput{NextCursor: "page-a"}))
+}
+
 func TestTheFlowRegistersEveryStepAndTheAttribute(t *testing.T) {
 	client, err := notion.New(notion.Config{Endpoint: "http://127.0.0.1:1"}, sdkgo.StaticCredentialProvider[notion.Credentials]{})
 	require.NoError(t, err)

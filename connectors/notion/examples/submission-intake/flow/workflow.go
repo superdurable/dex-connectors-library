@@ -124,10 +124,14 @@ type SubmissionRecord struct {
 	SearchCursor string `json:"searchCursor,omitempty"`
 	// SearchPagesRead bounds the data source search.
 	SearchPagesRead int `json:"searchPagesRead,omitempty"`
+	// SearchSeenCursors prevents a data source search from cycling through old pages.
+	SearchSeenCursors []string `json:"searchSeenCursors,omitempty"`
 	// QueryCursor continues the bounded submission row query.
 	QueryCursor string `json:"queryCursor,omitempty"`
 	// QueryPagesRead bounds the submission row query.
 	QueryPagesRead int `json:"queryPagesRead,omitempty"`
+	// QuerySeenCursors prevents a submission row query from cycling through old pages.
+	QuerySeenCursors []string `json:"querySeenCursors,omitempty"`
 	// PageID is the row that holds the submission.
 	PageID string `json:"pageId,omitempty"`
 	// PageURL opens the row in Notion.
@@ -358,16 +362,17 @@ func (resolveSubmissionsDataSource) Execute(ctx dex.Context, result notion.Searc
 	}
 	record.SearchPagesRead++
 	if cursor := result.Value.NextCursor; cursor != "" {
-		if cursor == record.SearchCursor || record.SearchPagesRead >= maximumScanPages {
+		if containsID(record.SearchSeenCursors, cursor) || record.SearchPagesRead >= maximumScanPages {
 			return dex.ForceFail("Notion data source search did not finish within its page limit"), nil
 		}
+		record.SearchSeenCursors = append(record.SearchSeenCursors, cursor)
 		record.SearchCursor = cursor
 		if err := submissionAttribute.Set(ctx, record); err != nil {
 			return nil, err
 		}
 		return dex.GoTo(sdkgo.StepRef[SubmissionRecord](findSubmissionsDataSourceStepType), record), nil
 	}
-	record.SearchCursor, record.SearchPagesRead = "", 0
+	record.SearchCursor, record.SearchPagesRead, record.SearchSeenCursors = "", 0, nil
 	candidateIDs := record.CandidateDataSourceIDs
 	switch len(candidateIDs) {
 	case 0:
@@ -639,12 +644,13 @@ func collectSubmissionRows(record *SubmissionRecord, output notion.QueryDatabase
 	}
 	record.QueryPagesRead++
 	if output.NextCursor != "" {
-		if output.NextCursor == record.QueryCursor || record.QueryPagesRead >= maximumScanPages {
+		if containsID(record.QuerySeenCursors, output.NextCursor) || record.QueryPagesRead >= maximumScanPages {
 			return "Notion submission query did not finish within its page limit"
 		}
+		record.QuerySeenCursors = append(record.QuerySeenCursors, output.NextCursor)
 		record.QueryCursor = output.NextCursor
 	} else {
-		record.QueryCursor, record.QueryPagesRead = "", 0
+		record.QueryCursor, record.QueryPagesRead, record.QuerySeenCursors = "", 0, nil
 	}
 	return ""
 }
