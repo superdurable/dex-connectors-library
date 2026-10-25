@@ -58,7 +58,7 @@ spec:
         - {id: notFound, goName: NotFound, description: The active task does not exist or is not accessible., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: Todoist conclusively rejected the read., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Todoist returned malformed or oversized task data., optional: true}
-        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+        - {id: defect, goName: Defect, description: "Local input is invalid, or the connection credentials are invalid, missing, or need reauthorization.", optional: true}
       execution: &httpExecution
         executeMethodTimeout: 30s
         durability: async
@@ -74,8 +74,8 @@ spec:
       branches:
         - {id: updated, goName: Updated, description: Todoist confirmed every specified field and returned the task.}
         - {id: notFound, goName: NotFound, description: "Todoist reports that the task does not exist, or the read-back after an unusable answer found no active task.", optional: true}
-        - {id: providerRejected, goName: ProviderRejected, description: Todoist conclusively rejected the update., optional: true}
-        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Todoist conclusively rejected the update, or rejected the read-back that would confirm an unusable answer.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input is invalid, or the connection credentials are invalid, missing, or need reauthorization.", optional: true}
       execution: *httpExecution
     - name: listTasks
       goName: ListTasks
@@ -89,7 +89,7 @@ spec:
         - {id: listed, goName: Listed, description: "Todoist returned a page of active tasks, possibly empty."}
         - {id: providerRejected, goName: ProviderRejected, description: Todoist conclusively rejected the list request., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Todoist returned malformed or oversized page data., optional: true}
-        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+        - {id: defect, goName: Defect, description: "Local input is invalid, or the connection credentials are invalid, missing, or need reauthorization.", optional: true}
       execution: *httpExecution
     - name: createTask
       goName: CreateTask
@@ -103,7 +103,7 @@ spec:
         - {id: created, goName: Created, description: Todoist confirmed creation and returned the task ID.}
         - {id: providerRejected, goName: ProviderRejected, description: Todoist conclusively rejected creation., optional: true}
         - {id: uncertain, goName: Uncertain, description: "A creation that may have been sent may have applied, but Todoist returned no usable task and the request ID has no documented replay guarantee.", optional: true}
-        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+        - {id: defect, goName: Defect, description: "Local input is invalid, or the connection credentials are invalid, missing, or need reauthorization.", optional: true}
       execution: *httpExecution
     - name: deleteTask
       goName: DeleteTask
@@ -117,5 +117,5 @@ spec:
         - {id: deleted, goName: Deleted, description: Todoist acknowledged the deletion.}
         - {id: alreadyAbsent, goName: AlreadyAbsent, description: "Todoist returned 404; the task is missing or inaccessible, possibly after an earlier successful attempt.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: Todoist conclusively rejected deletion., optional: true}
-        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+        - {id: defect, goName: Defect, description: "Local input is invalid, or the connection credentials are invalid, missing, or need reauthorization.", optional: true}
       execution: *httpExecution

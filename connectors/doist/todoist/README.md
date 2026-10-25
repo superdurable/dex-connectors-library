@@ -41,7 +41,9 @@ matching fields confirm `updated`; otherwise the absolute replacement retries.
 Todoist's GET returns only active tasks, so a 404 from that read means the task
 was completed or deleted after the update was sent. The connector then selects
 `notFound` instead of retrying, because no repetition can confirm the fields of
-an inactive task; repeating the same absolute replacement later stays safe.
+an inactive task. A read that Todoist rejects definitely, such as 401 or 403,
+selects `providerRejected` with the read's failure kind, for the same reason.
+In both cases repeating the same absolute replacement later stays safe.
 
 The runnable CRUD Flow accepts `updateContent` and `updateDescription` to
 exercise these semantics on its disposable task. If neither is specified,
@@ -76,16 +78,26 @@ The existing get/update pair has the following contract:
 
 | Response | GetTask | UpdateTask |
 | --- | --- | --- |
-| Valid HTTP 200 | `found` | `updated` when every specified field matches the returned task |
+| Valid HTTP 2xx | `found` | `updated` when every specified field matches the returned task |
 | HTTP 404 | `notFound` | `notFound` |
 | HTTP 409 | `providerRejected` with failure kind `CONFLICT` | `providerRejected` with failure kind `CONFLICT` |
 | HTTP 429 | Retry, honoring `Retry-After` | Retry, honoring `Retry-After` |
 | HTTP 408, 5xx, transport failure | Retry | Retry |
-| Malformed, oversized, or mismatched HTTP 200 | `invalidResponse` | Read by task ID; matching fields select `updated`, 404 selects `notFound`, otherwise Retry |
-| Interrupted HTTP 200 body | Retry | Read by task ID, as for a malformed answer |
+| Malformed, oversized, or mismatched HTTP 2xx | `invalidResponse` | Read by task ID; see below |
+| Interrupted HTTP 2xx body | Retry | Read by task ID, as for a malformed answer |
 | Other status, including redirects | `providerRejected` | `providerRejected` |
 | Invalid input | `defect`, before dispatch | `defect`, before dispatch |
-| Missing/invalid credentials | `defect`, before dispatch | `defect`, before dispatch |
+| Credentials missing from project storage, needing reauthorization, not selected for this scope, rejected by the credential broker, or invalid | `defect`, before dispatch | `defect`, before dispatch |
+| Any other credential resolution failure, such as a store read failure or broker timeout | Retry, before dispatch | Retry, before dispatch |
+
+The update's read by task ID is classified like the update's own answer:
+
+| Read-back answer | UpdateTask |
+| --- | --- |
+| Valid task whose specified fields match | `updated` |
+| HTTP 404 (completed or deleted task) | `notFound` |
+| HTTP 408, 429, 5xx, transport failure, or an unusable or mismatched 2xx | Retry the absolute replacement |
+| Any other status, such as 401, 403, 400, 409, or a redirect | `providerRejected` with the read's failure kind |
 
 The update Mutation's stable key is derived from the Dex Call ID. Replacing
 specified fields with the same absolute values is replayable; Todoist provider
@@ -112,11 +124,13 @@ shows the header in an example but does not specify deduplication retention,
 error caching, or the response to a repeated request. The [older REST v1
 reference](https://developer.todoist.com/rest/v1/) says a repeated ID discards a
 previously processed POST but does not provide those guarantees for API v1.
-HTTP 200 with a valid task selects `created` with the task as Todoist returned
-it. The API v1 reference documents no rule that the answer echoes the request,
-so the returned content, description, and project ID are the stored values and
-are not compared with the input. Invalid input and missing or invalid
-credentials select `defect` before dispatch. A transport failure with trace
+Any HTTP 2xx with a valid task selects `created` with the task as Todoist
+returned it. The API v1 reference documents no rule that the answer echoes the
+request, so the returned content, description, and project ID are the stored
+values and are not compared with the input. A 2xx without a usable task selects
+`uncertain`, because the task may exist and its ID is unknown. Invalid input and
+the credential failures above select `defect` before dispatch; any other
+credential resolution failure retries. A transport failure with trace
 evidence that the request never left the process (a DNS, connect, or TLS
 failure before any connection was obtained), HTTP 429, and HTTP 503 retry with
 the same identity. Any other transport failure, including a lost response or a
@@ -130,7 +144,7 @@ Do not reconcile ownership by title alone. Creating another Flow is another
 logical creation with another request ID.
 
 `DeleteTaskInput` requires an immutable `TaskID`. It deletes that task **and
-its subtasks**, as defined by Todoist. HTTP 200/204 selects `deleted`; 404 selects
+its subtasks**, as defined by Todoist. Any HTTP 2xx selects `deleted`; 404 selects
 `alreadyAbsent`, meaning missing or inaccessible, possibly after an earlier
 successful attempt. It does not prove this caller performed the original
 delete. Transport loss, 408/5xx, and 429 safely retry the same task ID. Other
@@ -175,11 +189,13 @@ GOWORK=off go vet ./...
 DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./... -count=1
 ```
 
-Provider tests cover request encoding, credentials, rejected and retryable
-responses, refused connections, ambiguous writes, malformed/oversized responses,
-validation, and redirect protection. Real Dex tests cover Attributes, result
-routing, retry, update replacement after applied/unapplied 503 responses, an
-unusable update answer for a task that is no longer active, retained Display RPCs,
+Provider tests cover request encoding, credentials and credential resolution
+failures, rejected and retryable responses, non-200 success statuses, refused
+connections, ambiguous writes, malformed/oversized responses, update read-back
+outcomes, validation, and redirect protection. Real Dex tests cover Attributes,
+result routing, retry, a credential read that fails once, update replacement
+after applied/unapplied 503 responses, an unusable update answer whose read-back
+finds no active task or is forbidden, retained Display RPCs,
 rejection, unwired failure branches, pagination, create request identity across
 rate-limit and 503 retries, and delete retry after an applied write. See the
 [CRUD example](examples/task-crud/README.md) and
