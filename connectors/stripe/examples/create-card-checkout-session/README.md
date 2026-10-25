@@ -34,9 +34,10 @@ Start `CardFlow` with a unique Flow ID:
 }
 ```
 
-Only `created` is wired. Provider rejection, an uncertain dispatch, an invalid
-response, and local defects fail the Flow. The returned safe Checkout summary
-contains the hosted URL for the customer to open.
+Only `created` is wired. Provider rejection, uncertainty after a Stripe 500,
+an invalid response, local defects, and exhausted keyed retries fail the Flow.
+The returned safe Checkout summary contains the hosted URL for the customer to
+open.
 
 ```bash
 GOWORK=off go test ./examples/create-card-checkout-session/...

@@ -108,7 +108,7 @@ func TestStripePaymentFactoriesRequireHappyPathsAndAllowOptionalBranches(t *test
 		stripe.NewCreateRefundStep(stripe.CreateRefundStepConfig[string]{
 			StepType: "CreateRefund", Annotations: annotations, Connection: connection, ConnectionName: "payments",
 			MapToOperationInput: func(string) stripe.CreateRefundInput { return validRefundInput() },
-			Uncertain:           sdkgo.GoTo(stripeRefundTarget{}),
+			ProviderRejected:    sdkgo.GoTo(stripeRefundTarget{}),
 		})
 	})
 }

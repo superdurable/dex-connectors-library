@@ -14,8 +14,8 @@ provider bodies, API keys, or webhook signing secrets.
 Choose **API key only** for applications that call Stripe operations without
 receiving webhooks. Create a restricted key in Stripe Dashboard > Developers >
 API keys with access to the operations the application uses. For
-`GetPaymentIntent` and `CreateRefund`, grant PaymentIntent and Charge read
-access and Refund write access. Store the `rk_test_` or `rk_live_` key as
+`GetPaymentIntent` and `CreateRefund`, grant PaymentIntent, Charge, and Refund
+read access plus Refund write access. Store the `rk_test_` or `rk_live_` key as
 `secret_key`; this method requires no webhook endpoint or signing secret.
 
 Choose **API key and webhook** when using `checkoutSessionUpdated`:
@@ -136,9 +136,13 @@ The application supplies:
 Do not put personal, bank, card, or other sensitive data in Stripe metadata.
 
 Create branches are `created`, `providerRejected`, `uncertain`,
-`invalidResponse`, and `defect`. A transport or Stripe 5xx response after
-dispatch is `uncertain`; reconcile it instead of starting an unrelated second
-payment. Rate limits retry with the same idempotency key.
+`invalidResponse`, and `defect`. Transport failures, unreadable responses,
+rate limits, 502/503/504 responses without a no-retry hint, and any 5xx with
+`Stripe-Should-Retry: true` retry with the same idempotency key. An unhinted
+500, a replayed 5xx, or a 5xx with `Stripe-Should-Retry: false` selects
+`uncertain` because the Session cannot be confirmed. An oversized response
+selects `invalidResponse`; increase `maxResponseBytes` if the expected provider
+response exceeds the limit.
 
 `GetCheckoutSession` returns `found`, `notFound`, `providerRejected`,
 `invalidResponse`, or `defect`. Transport, rate-limit, and availability errors
@@ -155,7 +159,9 @@ example `resource_missing`), `providerRejected`, `invalidResponse`, and
 `CreateRefund` posts `payment_intent`, `amount` (a positive minor-unit
 amount), an optional `reason` (`duplicate`, `fraudulent`, or
 `requested_by_customer`) and bounded `metadata` to `/v1/refunds`, with the
-Step's stable Call ID as Stripe's `Idempotency-Key`. Its `Refund` output has
+Step's stable Call ID as Stripe's `Idempotency-Key` and as the reserved
+`metadata[dex_call_id]` marker. Applications can supply at most 49 additional
+metadata fields and cannot use the `dex_call_id` key. Its `Refund` output has
 `refundId`, `status` (`succeeded`, `pending`, `failed`, `requires_action`, or
 `canceled`), `amount` and `currency`; read `status` on the `refunded` branch,
 because a refund can be accepted without having succeeded. Branches are
@@ -163,13 +169,19 @@ because a refund can be accepted without having succeeded. Branches are
 A Stripe 4xx error such as `charge_already_refunded` or an amount above the
 refundable balance is `providerRejected`, and its failure message carries
 Stripe's error code and message (never for 401 or 403, whose messages can echo
-part of the key). A network loss, timeout, or 5xx response after dispatch is
-`uncertain`: the refund may exist, so check `GetPaymentIntent.amountRefunded`
-before refunding again. Rate limits and a 409 for a key still in flight retry
-with the same key.
+part of the key). Network losses, unreadable responses, timeouts, rate limits,
+a 409 for a key still in flight, 502/503/504 without a no-retry hint, and any
+5xx with `Stripe-Should-Retry: true` retry with the same key. An unhinted 500,
+a replayed 5xx, or a 5xx with `Stripe-Should-Retry: false` prompts a bounded
+refund list lookup filtered by PaymentIntent and matched on `dex_call_id`. A match
+returns `refunded`; no match or an inconclusive lookup selects `uncertain`.
+Transient read-back failures retry. An oversized refund creation response
+selects `invalidResponse`; increase `maxResponseBytes` when the expected
+response exceeds the limit. Reconcile uncertain outcomes before starting a
+separate request with a new key.
 
-The key needs PaymentIntent and Charge read access and Refund write access in
-addition to the Checkout Session permissions.
+The key needs PaymentIntent and Charge read access plus Refund read and write
+access in addition to the Checkout Session permissions.
 
 The `stripemock` package, generated from the manifest, scripts every
 operation and branch in application tests without calling Stripe.

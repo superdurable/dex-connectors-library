@@ -36,9 +36,10 @@ Start `StripeCreateCheckoutSession` with a unique Flow ID:
 }
 ```
 
-Only `created` is wired. Provider rejection, an uncertain dispatch, an invalid
-response, and local defects fail the Flow. The webhook receiver remains a
-separate example because delayed ACH settlement is a Trigger concern.
+Only `created` is wired. Provider rejection, uncertainty after a Stripe 500,
+an invalid response, local defects, and exhausted keyed retries fail the Flow.
+The webhook receiver remains a separate example because delayed ACH settlement
+is a Trigger concern.
 
 ```bash
 GOWORK=off go test -race ./examples/create-checkout-session/...

@@ -60,13 +60,16 @@ func (operation CreateCardCheckoutSessionOperation) Invoke(call sdkgo.Call, inpu
 		if errors.Is(err, errStripeResponseTooLarge) {
 			return sdkgo.NewMutationBranch(CreateCardCheckoutSessionBranchInvalidResponse, CheckoutSession{}, stripeFailurePointer("createCardCheckoutSession", sdkgo.FailureResponseTooLarge, err.Error()), operation.client.receipt(call, response, ""))
 		}
-		return sdkgo.NewMutationUncertain(CheckoutSession{}, stripeFailure("createCardCheckoutSession", sdkgo.FailureTransport, "Stripe Checkout Session outcome is unknown"), operation.client.receipt(call, response, ""))
+		return sdkgo.NewMutationRetry[CheckoutSession](stripeFailure("createCardCheckoutSession", sdkgo.FailureTransport, "Stripe Checkout Session response is unavailable"), retryAfter(response.header))
 	}
 	if response.statusCode == http.StatusTooManyRequests {
 		return sdkgo.NewMutationRetry[CheckoutSession](stripeFailure("createCardCheckoutSession", sdkgo.FailureRateLimit, "Stripe rate limited the Checkout Session request"), retryAfter(response.header))
 	}
 	if response.statusCode >= 500 {
-		return sdkgo.NewMutationUncertain(CheckoutSession{}, stripeFailure("createCardCheckoutSession", sdkgo.FailureAvailability, "Stripe Checkout Session outcome is unknown"), operation.client.receipt(call, response, ""))
+		if shouldRetryKeyedServerFailure(response) {
+			return sdkgo.NewMutationRetry[CheckoutSession](stripeFailure("createCardCheckoutSession", sdkgo.FailureAvailability, "Stripe Checkout Session is temporarily unavailable"), retryAfter(response.header))
+		}
+		return sdkgo.NewMutationUncertain(CheckoutSession{}, stripeFailure("createCardCheckoutSession", sdkgo.FailureAvailability, "Stripe Checkout Session outcome cannot be confirmed after a server error"), operation.client.receipt(call, response, ""))
 	}
 	if response.statusCode < 200 || response.statusCode >= 300 {
 		return sdkgo.NewMutationBranch(CreateCardCheckoutSessionBranchProviderRejected, CheckoutSession{}, classifyStripeRejection("createCardCheckoutSession", response), operation.client.receipt(call, response, ""))

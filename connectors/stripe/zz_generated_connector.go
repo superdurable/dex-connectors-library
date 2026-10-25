@@ -287,7 +287,7 @@ var CreateCardCheckoutSessionDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateCardCheckoutSessionBranchCreated, Description: "Stripe created the Checkout Session."},
 		{ID: CreateCardCheckoutSessionBranchProviderRejected, Description: "Stripe conclusively rejected the Checkout Session request.", Optional: true},
-		{ID: CreateCardCheckoutSessionBranchUncertain, Description: "The dispatched Checkout Session outcome cannot be confirmed.", Optional: true},
+		{ID: CreateCardCheckoutSessionBranchUncertain, Description: "A Stripe 500 or non-retryable server response left the Checkout Session outcome unconfirmed.", Optional: true},
 		{ID: CreateCardCheckoutSessionBranchInvalidResponse, Description: "Stripe returned an invalid or oversized Checkout Session response.", Optional: true},
 		{ID: CreateCardCheckoutSessionBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
@@ -364,7 +364,7 @@ var CreateACHCheckoutSessionDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateACHCheckoutSessionBranchCreated, Description: "Stripe created the Checkout Session."},
 		{ID: CreateACHCheckoutSessionBranchProviderRejected, Description: "Stripe conclusively rejected the Checkout Session request.", Optional: true},
-		{ID: CreateACHCheckoutSessionBranchUncertain, Description: "The dispatched Checkout Session outcome cannot be confirmed.", Optional: true},
+		{ID: CreateACHCheckoutSessionBranchUncertain, Description: "A Stripe 500 or non-retryable server response left the Checkout Session outcome unconfirmed.", Optional: true},
 		{ID: CreateACHCheckoutSessionBranchInvalidResponse, Description: "Stripe returned an invalid or oversized Checkout Session response.", Optional: true},
 		{ID: CreateACHCheckoutSessionBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
@@ -595,7 +595,7 @@ var CreateRefundDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateRefundBranchRefunded, Description: "Stripe accepted the refund; read its status to tell succeeded from pending."},
 		{ID: CreateRefundBranchProviderRejected, Description: "Stripe conclusively rejected the refund with a 4xx error such as charge_already_refunded or an amount that is too large.", Optional: true},
-		{ID: CreateRefundBranchUncertain, Description: "The dispatched refund outcome cannot be confirmed after a network loss or timeout or a Stripe 5xx response.", Optional: true},
+		{ID: CreateRefundBranchUncertain, Description: "A non-retryable Stripe server response left the refund outcome unconfirmed after bounded read-back.", Optional: true},
 		{ID: CreateRefundBranchInvalidResponse, Description: "Stripe returned an invalid or oversized refund response.", Optional: true},
 		{ID: CreateRefundBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},

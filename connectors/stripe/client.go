@@ -239,13 +239,16 @@ func (operation CreateACHCheckoutSessionOperation) Invoke(call sdkgo.Call, input
 		if errors.Is(err, errStripeResponseTooLarge) {
 			return sdkgo.NewMutationBranch(CreateACHCheckoutSessionBranchInvalidResponse, CheckoutSession{}, stripeFailurePointer("createACHCheckoutSession", sdkgo.FailureResponseTooLarge, err.Error()), operation.client.receipt(call, response, ""))
 		}
-		return sdkgo.NewMutationUncertain(CheckoutSession{}, stripeFailure("createACHCheckoutSession", sdkgo.FailureTransport, "Stripe Checkout Session outcome is unknown"), operation.client.receipt(call, response, ""))
+		return sdkgo.NewMutationRetry[CheckoutSession](stripeFailure("createACHCheckoutSession", sdkgo.FailureTransport, "Stripe Checkout Session response is unavailable"), retryAfter(response.header))
 	}
 	if response.statusCode == http.StatusTooManyRequests {
 		return sdkgo.NewMutationRetry[CheckoutSession](stripeFailure("createACHCheckoutSession", sdkgo.FailureRateLimit, "Stripe rate limited the Checkout Session request"), retryAfter(response.header))
 	}
 	if response.statusCode >= 500 {
-		return sdkgo.NewMutationUncertain(CheckoutSession{}, stripeFailure("createACHCheckoutSession", sdkgo.FailureAvailability, "Stripe Checkout Session outcome is unknown"), operation.client.receipt(call, response, ""))
+		if shouldRetryKeyedServerFailure(response) {
+			return sdkgo.NewMutationRetry[CheckoutSession](stripeFailure("createACHCheckoutSession", sdkgo.FailureAvailability, "Stripe Checkout Session is temporarily unavailable"), retryAfter(response.header))
+		}
+		return sdkgo.NewMutationUncertain(CheckoutSession{}, stripeFailure("createACHCheckoutSession", sdkgo.FailureAvailability, "Stripe Checkout Session outcome cannot be confirmed after a server error"), operation.client.receipt(call, response, ""))
 	}
 	if response.statusCode < 200 || response.statusCode >= 300 {
 		return sdkgo.NewMutationBranch(CreateACHCheckoutSessionBranchProviderRejected, CheckoutSession{}, classifyStripeRejection("createACHCheckoutSession", response), operation.client.receipt(call, response, ""))
@@ -416,6 +419,22 @@ func (client *Client) request(call sdkgo.Call, secretKey string, method string, 
 		return result, errStripeResponseTooLarge
 	}
 	return result, nil
+}
+
+func shouldRetryKeyedServerFailure(response providerResponse) bool {
+	if strings.EqualFold(response.header.Get("Idempotent-Replayed"), "true") ||
+		strings.EqualFold(response.header.Get("Stripe-Should-Retry"), "false") {
+		return false
+	}
+	if strings.EqualFold(response.header.Get("Stripe-Should-Retry"), "true") {
+		return true
+	}
+	// Stripe can cache a 500 for this key, making an unhinted retry unhelpful.
+	// https://docs.stripe.com/api/idempotent_requests
+	if response.statusCode == http.StatusInternalServerError {
+		return false
+	}
+	return response.statusCode == http.StatusBadGateway || response.statusCode == http.StatusServiceUnavailable || response.statusCode == http.StatusGatewayTimeout
 }
 
 func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Credentials, *sdkgo.Failure) {

@@ -18,6 +18,12 @@ import (
 
 const maximumStripeErrorMessageRunes = 300
 
+const (
+	refundCallIDMetadataKey    = "dex_call_id"
+	refundReadbackPageSize     = 100
+	maximumRefundReadbackPages = 3
+)
+
 // GetPaymentIntentInput identifies one Stripe PaymentIntent.
 type GetPaymentIntentInput struct {
 	// PaymentIntentID is Stripe's PaymentIntent identifier, beginning with pi_.
@@ -154,7 +160,7 @@ func (CreateRefundOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateRefundI
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke creates one refund; a lost response is uncertain because Stripe may have created it.
+// Invoke creates one refund, retrying keyed requests when Stripe's response is unavailable.
 func (operation CreateRefundOperation) Invoke(call sdkgo.Call, input CreateRefundInput) sdkgo.MutationAttempt[Refund] {
 	if err := input.validate(); err != nil {
 		return sdkgo.NewMutationBranch(CreateRefundBranchDefect, Refund{}, stripeFailurePointer("createRefund", sdkgo.FailureValidation, err.Error()), sdkgo.Receipt{})
@@ -163,7 +169,9 @@ func (operation CreateRefundOperation) Invoke(call sdkgo.Call, input CreateRefun
 	if failure != nil {
 		return sdkgo.NewMutationBranch(CreateRefundBranchDefect, Refund{}, failure, sdkgo.Receipt{})
 	}
-	response, err := operation.client.request(call, credentials.SecretKey.Reveal(), http.MethodPost, "refunds", input.formValues())
+	values := input.formValues()
+	values.Set("metadata["+refundCallIDMetadataKey+"]", string(call.ID))
+	response, err := operation.client.request(call, credentials.SecretKey.Reveal(), http.MethodPost, "refunds", values)
 	if err != nil {
 		if errors.Is(err, errStripeRequestInvalid) {
 			return sdkgo.NewMutationBranch(CreateRefundBranchDefect, Refund{}, stripeFailurePointer("createRefund", sdkgo.FailureLocalDefect, err.Error()), sdkgo.Receipt{})
@@ -171,7 +179,7 @@ func (operation CreateRefundOperation) Invoke(call sdkgo.Call, input CreateRefun
 		if errors.Is(err, errStripeResponseTooLarge) {
 			return sdkgo.NewMutationBranch(CreateRefundBranchInvalidResponse, Refund{}, stripeFailurePointer("createRefund", sdkgo.FailureResponseTooLarge, err.Error()), operation.client.receipt(call, response, ""))
 		}
-		return sdkgo.NewMutationUncertain(Refund{}, stripeFailure("createRefund", sdkgo.FailureTransport, "Stripe refund outcome is unknown"), operation.client.receipt(call, response, ""))
+		return sdkgo.NewMutationRetry[Refund](stripeFailure("createRefund", sdkgo.FailureTransport, "Stripe refund response is unavailable"), retryAfter(response.header))
 	}
 	if response.statusCode == http.StatusTooManyRequests {
 		return sdkgo.NewMutationRetry[Refund](stripeFailure("createRefund", sdkgo.FailureRateLimit, "Stripe rate limited the refund request"), retryAfter(response.header))
@@ -180,7 +188,10 @@ func (operation CreateRefundOperation) Invoke(call sdkgo.Call, input CreateRefun
 		return sdkgo.NewMutationRetry[Refund](stripeFailure("createRefund", sdkgo.FailureConflict, "Stripe is still processing a request with this idempotency key"), retryAfter(response.header))
 	}
 	if response.statusCode >= 500 {
-		return sdkgo.NewMutationUncertain(Refund{}, stripeFailure("createRefund", sdkgo.FailureAvailability, "Stripe refund outcome is unknown"), operation.client.receipt(call, response, ""))
+		if shouldRetryKeyedServerFailure(response) {
+			return sdkgo.NewMutationRetry[Refund](stripeFailure("createRefund", sdkgo.FailureAvailability, "Stripe refund is temporarily unavailable"), retryAfter(response.header))
+		}
+		return operation.readBackRefund(call, credentials.SecretKey.Reveal(), input.PaymentIntentID, response)
 	}
 	if response.statusCode < 200 || response.statusCode >= 300 {
 		return sdkgo.NewMutationBranch(CreateRefundBranchProviderRejected, Refund{}, classifyRefundRejection(response), operation.client.receipt(call, response, ""))
@@ -190,6 +201,57 @@ func (operation CreateRefundOperation) Invoke(call sdkgo.Call, input CreateRefun
 		return sdkgo.NewMutationBranch(CreateRefundBranchInvalidResponse, Refund{}, stripeFailurePointer("createRefund", sdkgo.FailureProtocol, err.Error()), operation.client.receipt(call, response, ""))
 	}
 	return sdkgo.NewMutationBranch(CreateRefundBranchRefunded, refund, nil, operation.client.receipt(call, response, refund.RefundID))
+}
+
+func (operation CreateRefundOperation) readBackRefund(call sdkgo.Call, secretKey string, paymentIntentID string, originalResponse providerResponse) sdkgo.MutationAttempt[Refund] {
+	query := url.Values{"payment_intent": {paymentIntentID}, "limit": {strconv.Itoa(refundReadbackPageSize)}}
+	for page := 0; page < maximumRefundReadbackPages; page++ {
+		response, err := operation.client.request(call, secretKey, http.MethodGet, "refunds", query)
+		if errors.Is(err, errStripeResponseTooLarge) {
+			return operation.uncertainRefund(call, originalResponse)
+		}
+		if err != nil || response.statusCode == http.StatusTooManyRequests || response.statusCode >= 500 {
+			return sdkgo.NewMutationRetry[Refund](stripeFailure("createRefund", sdkgo.FailureAvailability, "Stripe refund read-back is temporarily unavailable"), retryAfter(response.header))
+		}
+		if response.statusCode < 200 || response.statusCode >= 300 {
+			break
+		}
+		var refunds struct {
+			Object  string            `json:"object"`
+			Data    []json.RawMessage `json:"data"`
+			HasMore *bool             `json:"has_more"`
+		}
+		if json.Unmarshal(response.body, &refunds) != nil || refunds.Object != "list" || refunds.Data == nil || refunds.HasMore == nil || len(refunds.Data) > refundReadbackPageSize {
+			break
+		}
+		lastRefundID := ""
+		for _, contents := range refunds.Data {
+			var candidate struct {
+				ID       string            `json:"id"`
+				Metadata map[string]string `json:"metadata"`
+			}
+			if json.Unmarshal(contents, &candidate) != nil || !strings.HasPrefix(candidate.ID, "re_") {
+				return operation.uncertainRefund(call, originalResponse)
+			}
+			lastRefundID = candidate.ID
+			if candidate.Metadata[refundCallIDMetadataKey] == string(call.ID) {
+				refund, decodeErr := decodeRefund(contents)
+				if decodeErr != nil {
+					return operation.uncertainRefund(call, originalResponse)
+				}
+				return sdkgo.NewMutationBranch(CreateRefundBranchRefunded, refund, nil, operation.client.receipt(call, response, refund.RefundID))
+			}
+		}
+		if !*refunds.HasMore || lastRefundID == "" {
+			break
+		}
+		query.Set("starting_after", lastRefundID)
+	}
+	return operation.uncertainRefund(call, originalResponse)
+}
+
+func (operation CreateRefundOperation) uncertainRefund(call sdkgo.Call, response providerResponse) sdkgo.MutationAttempt[Refund] {
+	return sdkgo.NewMutationUncertain(Refund{}, stripeFailure("createRefund", sdkgo.FailureAvailability, "Stripe refund outcome cannot be confirmed after a server error"), operation.client.receipt(call, response, ""))
 }
 
 func validatePaymentIntentID(paymentIntentID string) error {
@@ -210,6 +272,12 @@ func (input CreateRefundInput) validate() error {
 	case "", "duplicate", "fraudulent", "requested_by_customer":
 	default:
 		return fmt.Errorf("refund reason must be duplicate, fraudulent, or requested_by_customer")
+	}
+	if _, exists := input.Metadata[refundCallIDMetadataKey]; exists {
+		return fmt.Errorf("refund metadata key %q is reserved for call reconciliation", refundCallIDMetadataKey)
+	}
+	if len(input.Metadata) >= maximumMetadataFields {
+		return fmt.Errorf("refund metadata cannot contain more than %d application fields", maximumMetadataFields-1)
 	}
 	return validateMetadata(input.Metadata)
 }

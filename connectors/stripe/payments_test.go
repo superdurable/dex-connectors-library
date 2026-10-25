@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -113,6 +114,7 @@ func TestCreateRefundSendsFormFieldsAndStableIdempotencyKey(t *testing.T) {
 	require.Equal(t, "2500", form.Get("amount"))
 	require.Equal(t, "requested_by_customer", form.Get("reason"))
 	require.Equal(t, "registration-123", form.Get("metadata[registration_id]"))
+	require.Equal(t, string(result.Receipt.CallID), form.Get("metadata[dex_call_id]"))
 }
 
 func TestCreateRefundProviderRejectionIncludesStripeCodeAndMessage(t *testing.T) {
@@ -130,30 +132,18 @@ func TestCreateRefundProviderRejectionIncludesStripeCodeAndMessage(t *testing.T)
 	require.Contains(t, result.Failure.Message, "has already been refunded")
 }
 
-func TestCreateRefundTreatsServerErrorsAndLostConnectionsAsUncertain(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
-		response.WriteHeader(http.StatusBadGateway)
-	}))
-	defer server.Close()
-	client := newStripeClient(t, server.URL, stripe.Config{})
-	result, err := sdkgo.RunMutation(newStripeDexContext("refund-5xx"), client.CreateRefund(), stripeConnection, validRefundInput())
-	require.NoError(t, err)
-	require.Equal(t, stripe.CreateRefundBranchUncertain, result.Branch)
-	require.Equal(t, sdkgo.FailureAvailability, result.Failure.Kind)
-
-	lost := newStripeClient(t, "http://127.0.0.1:1", stripe.Config{})
-	result, err = sdkgo.RunMutation(newStripeDexContext("refund-lost"), lost.CreateRefund(), stripeConnection, validRefundInput())
-	require.NoError(t, err)
-	require.Equal(t, stripe.CreateRefundBranchUncertain, result.Branch)
-	require.Equal(t, sdkgo.FailureTransport, result.Failure.Kind)
-}
-
 func TestCreateRefundRejectsInvalidInputAndResponses(t *testing.T) {
 	client := newStripeClient(t, "http://127.0.0.1:1", stripe.Config{})
 	for _, mutate := range []func(*stripe.CreateRefundInput){
 		func(input *stripe.CreateRefundInput) { input.PaymentIntentID = "ch_123" },
 		func(input *stripe.CreateRefundInput) { input.Amount = 0 },
 		func(input *stripe.CreateRefundInput) { input.Reason = "because" },
+		func(input *stripe.CreateRefundInput) { input.Metadata["dex_call_id"] = "caller-value" },
+		func(input *stripe.CreateRefundInput) {
+			for index := 0; index < 50; index++ {
+				input.Metadata["key_"+strconv.Itoa(index)] = "value"
+			}
+		},
 	} {
 		input := validRefundInput()
 		mutate(&input)

@@ -137,10 +137,10 @@ func CreateCardCheckoutSessionInvalidCardRequest() connectormock.Case[stripe.Che
 	return connectormock.Branch(stripe.CreateCardCheckoutSessionBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "Stripe rejected the request"})
 }
 
-// CreateCardCheckoutSessionCardConnectionLost is the manifest mock cardConnectionLost: The connection closed after the card request was sent.
-func CreateCardCheckoutSessionCardConnectionLost() connectormock.Case[stripe.CheckoutSession] {
+// CreateCardCheckoutSessionUnconfirmedCardSession is the manifest mock unconfirmedCardSession: Stripe cached a 500 for the card request and the created Session cannot be confirmed.
+func CreateCardCheckoutSessionUnconfirmedCardSession() connectormock.Case[stripe.CheckoutSession] {
 	var value stripe.CheckoutSession
-	return connectormock.Uncertain(value, sdkgo.Failure{Kind: sdkgo.FailureTransport, Message: "Stripe Checkout Session outcome is unknown"})
+	return connectormock.Uncertain(value, sdkgo.Failure{Kind: sdkgo.FailureAvailability, Message: "Stripe Checkout Session outcome cannot be confirmed after a server error"})
 }
 
 // CreateCardCheckoutSessionMalformedCardSession is the manifest mock malformedCardSession: Stripe returned a body that is not a Checkout Session.
@@ -202,10 +202,10 @@ func CreateACHCheckoutSessionInvalidRequest() connectormock.Case[stripe.Checkout
 	return connectormock.Branch(stripe.CreateACHCheckoutSessionBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "Stripe rejected the request"})
 }
 
-// CreateACHCheckoutSessionConnectionLost is the manifest mock connectionLost: The connection closed after the request was sent.
-func CreateACHCheckoutSessionConnectionLost() connectormock.Case[stripe.CheckoutSession] {
+// CreateACHCheckoutSessionUnconfirmedSession is the manifest mock unconfirmedSession: Stripe cached a 500 for the bank payment request and the created Session cannot be confirmed.
+func CreateACHCheckoutSessionUnconfirmedSession() connectormock.Case[stripe.CheckoutSession] {
 	var value stripe.CheckoutSession
-	return connectormock.Uncertain(value, sdkgo.Failure{Kind: sdkgo.FailureTransport, Message: "Stripe Checkout Session outcome is unknown"})
+	return connectormock.Uncertain(value, sdkgo.Failure{Kind: sdkgo.FailureAvailability, Message: "Stripe Checkout Session outcome cannot be confirmed after a server error"})
 }
 
 // CreateACHCheckoutSessionMalformedSession is the manifest mock malformedSession: Stripe returned a body that is not a Checkout Session.
@@ -397,10 +397,10 @@ func CreateRefundAlreadyRefunded() connectormock.Case[stripe.Refund] {
 	return connectormock.Branch(stripe.CreateRefundBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "Stripe rejected the refund: charge_already_refunded: Charge ch_3Pabc123 has already been refunded."})
 }
 
-// CreateRefundConnectionLost is the manifest mock connectionLost: The connection closed after the refund request was sent.
-func CreateRefundConnectionLost() connectormock.Case[stripe.Refund] {
+// CreateRefundUnconfirmedRefund is the manifest mock unconfirmedRefund: Stripe cached a 500 and bounded refund read-back found no matching call ID.
+func CreateRefundUnconfirmedRefund() connectormock.Case[stripe.Refund] {
 	var value stripe.Refund
-	return connectormock.Uncertain(value, sdkgo.Failure{Kind: sdkgo.FailureTransport, Message: "Stripe refund outcome is unknown"})
+	return connectormock.Uncertain(value, sdkgo.Failure{Kind: sdkgo.FailureAvailability, Message: "Stripe refund outcome cannot be confirmed after a server error"})
 }
 
 // CreateRefundMalformedRefund is the manifest mock malformedRefund: Stripe returned a body that is not a refund.
