@@ -207,9 +207,12 @@ in `America/Los_Angeles`, with guests `priya@meridian.example.com` and
 `alice@example.com`. The example's read-back check compares the stored start
 and end from `getEvent` with the request, so a Flow for another meeting time
 fails on that default. The `createEvent` default holds the same times, and the
-`updateEvent` default returns those two guests whatever the request names.
-Script these operations for any other meeting with `Respond` or `When`, as
-described in
+`updateEvent` default returns those two guests whatever the request names. The
+`listEvents` default contains the hold `meetinghold0001`, which the Flow skips
+by ID, so scripting `createEvent` and `getEvent` with another hold ID for the
+same window makes the listing report `meetinghold0001` as an unexpected
+conflict. Script these operations, `listEvents` included, for any other
+meeting with `Respond` or `When`, as described in
 [`sdkgo/connectormock`](../../../sdkgo/README.md#connector-mocks).
 
 ## Example

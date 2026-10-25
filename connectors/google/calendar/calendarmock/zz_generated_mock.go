@@ -125,7 +125,7 @@ func ListEventsRetry(failure sdkgo.Failure, after time.Duration) connectormock.C
 	return connectormock.Retry[calendar.ListEventsOutput](failure, after)
 }
 
-// ListEventsMeetingWindow is the manifest mock meetingWindow: Three start-ordered pages for the 2026-02-20 14:00-15:00 America/Los_Angeles window, with a repeated transparent event and the meeting hold.
+// ListEventsMeetingWindow is the manifest mock meetingWindow: Three start-ordered pages for the 2026-02-20 14:00-15:00 America/Los_Angeles window, with a repeated transparent event and the meeting hold meetinghold0001.
 func ListEventsMeetingWindow() connectormock.Case[calendar.ListEventsOutput] {
 	pages := []calendar.ListEventsOutput{
 		connectormock.MustDecodeOutput[calendar.ListEventsOutput](`{"calendarId":"primary","timeMin":"2026-02-20T14:00:00-08:00","timeMax":"2026-02-20T15:00:00-08:00","timeZone":"America/Los_Angeles","events":[{"id":"meetinghold0001","calendarId":"primary","status":"confirmed","summary":"Meridian kickoff","start":{"dateTime":"2026-02-20T14:00:00-08:00","timeZone":"America/Los_Angeles"},"end":{"dateTime":"2026-02-20T15:00:00-08:00","timeZone":"America/Los_Angeles"},"transparency":"opaque","etag":"\"mock-etag-1\""},{"id":"focusblock0001","calendarId":"primary","status":"confirmed","summary":"Focus time","start":{"dateTime":"2026-02-20T14:15:00-08:00","timeZone":"America/Los_Angeles"},"end":{"dateTime":"2026-02-20T14:45:00-08:00","timeZone":"America/Los_Angeles"},"transparency":"transparent"}],"nextPageToken":"calendar-page-2"}`),

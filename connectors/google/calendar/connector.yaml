@@ -167,7 +167,7 @@ spec:
       mocks:
         - name: meetingWindow
           branch: listed
-          description: Three start-ordered pages for the 2026-02-20 14:00-15:00 America/Los_Angeles window, with a repeated transparent event and the meeting hold.
+          description: Three start-ordered pages for the 2026-02-20 14:00-15:00 America/Los_Angeles window, with a repeated transparent event and the meeting hold meetinghold0001.
           default: true
           pages:
             - calendarId: primary
