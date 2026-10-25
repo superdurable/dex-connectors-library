@@ -144,9 +144,12 @@ Every implementation plan includes Tests, Documentation, and UI/UX. Use
   guidance. This repository owns the connector-specific rules.
 - If the skill is unavailable, stop the Dex application-modeling portion and
   follow https://docs.superdurable.io/build-with-ai/dex-developer-skill.
-- Only a happy-path branch is required. Mark every other branch `optional: true`.
-  An unwired optional branch fails the Flow when selected. Require another
-  branch only when the application must choose a continuation, and explain why.
+- Applications and examples wire only happy-path branches by default. Mark
+  every other branch `optional: true`; an unwired optional branch fails the
+  Flow when selected. Wire another branch only to show a required business
+  reaction, and put a comment at that wiring naming the reaction. Require a
+  non-happy-path branch only when the application must choose a continuation,
+  and explain why.
 - A connector selects a branch for a definite business outcome and retries
   every safe-to-repeat failure until the retry budget runs out, when the Flow
   fails. Declare Mutation `uncertain` only if the request may have reached the

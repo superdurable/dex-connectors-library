@@ -163,6 +163,15 @@ uncertainty omits that branch and target. Invalid Attempts and local SDK
 defects fail closed to the standard `defect` branch. See the
 [uncertainty audit](uncertain-audit.md) for current declarations and fixes.
 
+### How applications use branches
+
+Applications and examples wire only happy-path branches by default. Every
+other branch is optional; selecting one without a target fails the Flow. Wire
+another branch only when a requirement names a business reaction, such as
+handling one rejected recipient while processing many, and add a comment at
+that wiring naming the reaction. A branch is required only when the
+application must choose a continuation.
+
 `FailureKind` records a safe fact, not retry policy. Authentication,
 authorization, not-found, rate-limit, transport, protocol, provider rejection,
 response limit, validation, availability, and local defect may accompany a

@@ -856,10 +856,17 @@ default serves at least three pages, and when the provider documents no order
 its items are unordered, include a duplicate across a page boundary, and
 include items the application is expected to filter out.
 
-Once a connector declares a mock, `connectorctl validate` requires the whole
-surface: at least one mock for every declared branch of every operation,
-including an `uncertain` mock where the branch exists, exactly one default per
-query, and at most one per mutation. Every manifest load also checks each
+Maintain one default mock per operation with a realistic happy-path answer,
+plus one mock for each definite business-outcome branch an application may
+wire. Transient failures, `defect`, and `uncertain` need no mock. Additional
+cases may illustrate a specific application requirement.
+
+The current validator still requires a mock for every declared branch and
+exactly one default per query; mutation defaults are optional. That enforcement
+is in [`schema/mocks.go`](../schema/mocks.go), and
+[`connectorctl mocks scaffold`](../cmd/connectorctl/mocks.go) still adds mocks
+for optional failure and `uncertain` branches. A later code change must align
+them with the authoring rule above. Every manifest load also checks each
 mock's shape, names, failure kinds, retry delays, and page chain. The
 generated `zz_generated_mock_test.go` strictly decodes every output into the
 connector's Go type and, when the type has a `Validate() error` method, runs
