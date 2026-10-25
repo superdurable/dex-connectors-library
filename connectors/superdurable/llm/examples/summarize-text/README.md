@@ -62,7 +62,7 @@ go run ./cmd/connectorctl ui-artifact \
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/superdurable/llm/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/superdurable/llm \
-  --version v0.22.1 --tag connectors/superdurable/llm/v0.22.1 \
+  --version v0.23.0 --tag connectors/superdurable/llm/v0.23.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/llm-release/connector-ui.tgz \
   --ui-digest /tmp/llm-release/connector-ui.tgz.sha256 \
@@ -83,6 +83,12 @@ Open the Dex Web URL that dexcli prints and select **Connectors**. Select
   Mistral or xAI regional inference, and `anthropicWorkspaceId` only for a
   Claude key that spans several workspaces;
 - leave `maxResponseBytes` blank, and save.
+
+For an OpenAI-compatible gateway, choose `openai-compatible`, enter its
+`baseUrl` ending in `/v1` (for example `https://example.com/v1`), its
+gateway-issued secret `api_key`, and a model ID supplied by that gateway.
+The same Flow then calls `/v1/chat/completions`; Studio offers manual model
+entry because its setup commands cannot list models at a configured URL.
 
 After the save, the connection's `model` field shows the model picker with
 the provider's live models. Pick the connection's default model and select

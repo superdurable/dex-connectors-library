@@ -116,6 +116,27 @@ function modelOptionValues(container: HTMLElement): string[] {
 }
 
 describe("the llm connection setup", () => {
+  it("requires a gateway URL and model, saves them, and never runs a model-list command", async () => {
+    const commands = answerHostCommands();
+    const container = await renderSetup(setupReady(connection({})));
+    await choose(fieldControl(container, "Provider", "select"), "openai-compatible");
+    expect(hasField(container, "Model")).toBe(false);
+    expect(hasField(container, "Model ID")).toBe(true);
+    expect(saveButton(container).disabled).toBe(true);
+    await type(fieldControl(container, "OpenAI-compatible gateway API key", "input"), "gateway-key");
+    await type(fieldControl(container, "Base URL", "input"), "http://example.com/v1");
+    await type(fieldControl(container, "Model ID", "input"), "qwen-example");
+    expect(saveButton(container).disabled).toBe(true);
+    await type(fieldControl(container, "Base URL", "input"), "https://example.com/v1");
+    expect(saveButton(container).disabled).toBe(false);
+    await act(async () => { saveButton(container).click(); });
+    expect(commands.filter((command) => command.command === "provider.command.execute")).toEqual([]);
+    expect(commands.filter((command) => command.command === "connection.save").map((command) => command.input)).toEqual([{
+      configuration: {provider: "openai-compatible", baseUrl: "https://example.com/v1", model: "qwen-example"},
+      credentials: {api_key: "gateway-key"}, keepCredentialFields: [],
+    }]);
+  });
+
   it("chooses a provider, lists its models with the typed key, and saves everything in one command", async () => {
     vi.useFakeTimers({shouldAdvanceTime: true});
     const commands = answerHostCommands();

@@ -4,13 +4,14 @@ The LLM Connector is the one text generation connector for Dex
 applications. Its provider-neutral `generateText` Query runs a model of the
 provider that the connection names, with that provider's API key and its own
 model IDs, and returns the six shared branches. It provides
-`llm.NewGenerateTextStep` and a Studio model picker that lists the
-connection's provider's live models. The Query follows
+`llm.NewGenerateTextStep` and a Studio model picker that lists fixed
+providers' live models. Custom endpoints use manual model entry. The Query follows
 [Text generation connectors](../../../docs/connector-contract.md#text-generation-connectors).
 
 | Provider | `provider` | API and wire format | Default model | Regions | Key |
 | --- | --- | --- | --- | --- | --- |
 | OpenAI | `openai` | Responses API, `POST https://api.openai.com/v1/responses` | `gpt-6-sol` | `global` | `sk-` project key |
+| OpenAI-compatible gateway | `openai-compatible` | Chat Completions, `baseUrl` ending in `/v1` | required, no default | `global` | gateway-issued key |
 | Claude | `anthropic` | Messages API, `POST https://api.anthropic.com/v1/messages` | `claude-sonnet-5` | `global` | `sk-ant-` key |
 | Gemini | `gemini` | `POST https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent` | `gemini-3.5-flash-lite` | `global` | `AIza` key |
 | Qwen | `qwen` | Model Studio Chat Completions, `https://dashscope-intl.aliyuncs.com/compatible-mode/v1` | `qwen3.7-plus` | `global` (Singapore), `hong-kong`, `china` (Beijing) | `sk-` key of the same region |
@@ -30,7 +31,7 @@ Gemini's `generateContent`.
 Install a published component release:
 
 ```bash
-go get github.com/superdurable/dex-connectors-library/connectors/superdurable/llm@v0.22.1
+go get github.com/superdurable/dex-connectors-library/connectors/superdurable/llm@v0.23.0
 ```
 
 The package name, `llm`, is the last element of the module path, so import
@@ -46,8 +47,8 @@ An application declares a named `llm` connection in `dex-app.yaml`. On a Dex
 Web that grants the Studio `connection.write` capability, the connector's own
 setup page configures it in one pass: choose the provider from a list, paste
 its API key, set the region or Claude workspace when the provider has them,
-pick a model from the provider's live list, which loads with the key you just
-typed, and Save once. A saved key stays when you leave the key blank, and
+pick a model from a fixed provider's live list, or enter a custom gateway's
+model ID manually, and Save once. A saved key stays when you leave the key blank, and
 switching provider asks for that provider's key. An older Dex Web renders the
 manifest form instead and offers the model picker after the first save. Either
 way, Dex Web saves the settings and the key in the project configuration, and
@@ -76,9 +77,10 @@ One connection names one provider and holds one key:
 
 | Field | Default | Meaning |
 | --- | --- | --- |
-| `provider` | required | `openai`, `anthropic`, `gemini`, `qwen`, `deepseek`, `meta`, `mistral`, `kimi`, or `xai`. Every Step on the connection calls this provider. Use one connection per provider. |
+| `provider` | required | `openai`, `openai-compatible`, `anthropic`, `gemini`, `qwen`, `deepseek`, `meta`, `mistral`, `kimi`, or `xai`. Every Step on the connection calls this provider. Use one connection per provider. |
 | `api_key` | required, secret | The provider's API key from its key page below. It is sent only to that provider's API host: in `x-goog-api-key` for Gemini and as an `Authorization` bearer token for every other provider. |
-| `model` | blank | The model for Steps that pick none, written as the provider names it, such as `claude-opus-5-5`. Blank uses the provider's default model in the table above. |
+| `baseUrl` | blank | Required only for `openai-compatible`: the gateway API root ending in `/v1`, such as `https://example.com/v1`. Every fixed provider rejects a value. The connector appends `/chat/completions`. |
+| `model` | blank | The model for Steps that pick none, written as the provider names it, such as `claude-opus-5-5`. Required for `openai-compatible`, which has no default; blank uses a fixed provider's default model in the table above. |
 | `region` | `global` | The regional API platform of the key; see [Regions](#regions). |
 | `anthropicWorkspaceId` | blank | Only for `anthropic` with a key that spans several workspaces: the `wrkspc_` ID from Claude Console > Settings > Workspaces, sent as `anthropic-workspace-id`. Any other provider with a value stops the Worker. |
 | `maxResponseBytes` | blank | The complete response limit in bytes, counting every byte of a stream. Blank uses 64 MiB for `deepseek`, whose streams carry keep-alive comments and reasoning chunks, and 8 MiB for every other provider. Larger responses select `invalidResponse`. |
@@ -90,6 +92,7 @@ authorization guide links every provider's key page:
 | Provider | Key page |
 | --- | --- |
 | OpenAI | [Platform > API keys](https://platform.openai.com/api-keys) |
+| OpenAI-compatible gateway | Your gateway's administration page and API keys path; [example.com](https://example.com) is a placeholder, never a key destination |
 | Claude | [Claude Console > Settings > API keys](https://platform.claude.com/settings/keys) |
 | Gemini | [Google AI Studio > API keys](https://aistudio.google.com/api-keys) |
 | Qwen | [Model Studio](https://bailian.console.aliyun.com/) > API Key, in the key's region |
@@ -103,7 +106,14 @@ authorization guide links every provider's key page:
 unknown provider, a region the provider does not serve, a model ID the
 provider's model-ID rule rejects, or an `anthropicWorkspaceId` on another
 provider is an error that never repeats the configured model or workspace
-ID. `New` makes no provider request.
+ID. For `openai-compatible`, it also requires `model` and `baseUrl`, checks
+the `/v1` suffix and rejects URL credentials, queries, fragments, insecure
+public HTTP, private IPs, link-local IPs, and metadata IPs. It resolves DNS
+at call time and dials only an allowed address, so the key stays on the
+configured host; redirects are not followed. Loopback HTTP is allowed for
+local testing. Custom endpoints ignore proxy settings and require a standard
+HTTP transport so the address check cannot be bypassed. `New` makes no
+provider request.
 
 ### Regions
 
@@ -130,7 +140,8 @@ A model is the provider's own model ID, such as `gpt-6-luna`,
 `claude-haiku-4-5`, or `qwen3.8-flash`. It is never prefixed with the
 provider: the connection's `provider` selects the API. The request's trimmed
 `Model` wins; a blank one uses the connection's `model`, and a blank
-connection model uses the provider's default model. An application builds
+connection model uses a fixed provider's default model. `openai-compatible`
+requires a connection model even when a Step picks one. An application builds
 the request `Model` from the Step's model pick and any code fallback.
 
 Every provider except Gemini accepts any model ID of 1 to 256 printable
@@ -298,6 +309,20 @@ Each provider keeps the wire format, model rules, and failure classification
 of the connector it replaces. Every streaming provider writes text deltas to
 the Step's text Stream as they arrive; Gemini, which does not stream, writes
 the whole text once.
+
+### OpenAI-compatible gateway (`openai-compatible`)
+
+Set `baseUrl` to the gateway's API root ending in `/v1`, for example
+`https://example.com/v1`. The connector sends a bearer key only to that
+host and appends `/chat/completions`. It reuses the shared OpenAI Chat
+Completions request, stream, structured JSON output, and error handling.
+The generic profile sends streamed requests, uses `max_tokens` for output
+limits, and asks for JSON object output with a schema instruction. Gateway
+specific reasoning controls and model rules are not assumed. Obtain a
+model ID and a secret key from the gateway's administration page and API
+documentation. Studio asks for the model manually because its host setup
+commands cannot call a model-list URL supplied by connection configuration.
+It never sends the key to a fixed provider's model-list host.
 
 ### OpenAI (`openai`)
 

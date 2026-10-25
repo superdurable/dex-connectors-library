@@ -120,6 +120,17 @@ function providerCommandIDs(commands: ConnectorStudioCommand[]): string[] {
 }
 
 describe("the llm Studio bundle on a Step", () => {
+  it("uses manual model entry for a gateway without issuing a provider command", async () => {
+    const commands = answerHostCommands();
+    const container = await renderBundle(hostReady(connection({
+      provider: "openai-compatible", baseUrl: "https://example.com/v1", model: "qwen-example",
+    }), summaryModelTarget()));
+    await waitForOptions(container, [""]);
+    expect(firstOptionLabel(container)).toBe("Connection default (qwen-example)");
+    expect(container.textContent).toContain("cannot call a model-list URL taken from connection configuration");
+    expect(providerCommandIDs(commands)).toEqual([]);
+  });
+
   it("lists the connection provider's models and names the connection's model in the first option", async () => {
     const commands = answerHostCommands();
     const container = await renderBundle(hostReady(connection({provider: "anthropic", model: "claude-opus-5-5"}), summaryModelTarget()));

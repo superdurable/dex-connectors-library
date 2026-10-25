@@ -39,6 +39,7 @@ func TestProjectConnectionNeedsAProviderAndTakesAnOptionalModel(t *testing.T) {
 		{"provider": "anthropic", "model": "claude-opus-5-5"},
 		{"provider": "openai"},
 		{"provider": "qwen", "region": "hong-kong"},
+		{"provider": "openai-compatible", "baseUrl": "https://example.com/v1", "model": "qwen-example"},
 	} {
 		project := projectWithConnection(t, configuration, map[string]any{"api_key": "sk-SENTINEL-llm-project-connection"})
 		connection, err := llm.NewProjectConnection(project, summarizetext.ConnectionName)

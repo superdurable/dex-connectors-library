@@ -49,10 +49,16 @@ func TestREADMEDescribesEveryServedProviderAndRegion(t *testing.T) {
 	for _, provider := range providerOrder {
 		api := providerAPIs[provider]
 		row := readmeProviderTableRow(t, readme, provider)
-		require.Contains(t, row, "`"+api.defaultModel+"`", "the provider table names %s's default model", provider)
+		if provider == ProviderOpenaiCompatible {
+			require.Contains(t, row, "required", "custom endpoints require a model")
+		} else {
+			require.Contains(t, row, "`"+api.defaultModel+"`", "the provider table names %s's default model", provider)
+		}
 		for region, baseURL := range api.regionBaseURLs {
 			require.Contains(t, row, "`"+string(region)+"`", "the provider table names %s region %s", provider, region)
-			require.Contains(t, readme, baseURL, "the README names %s's %s API", provider, region)
+			if baseURL != "" {
+				require.Contains(t, readme, baseURL, "the README names %s's %s API", provider, region)
+			}
 		}
 		require.Contains(t, readme, " (`"+string(provider)+"`)\n\n", "the provider reference has a section for %s", provider)
 	}

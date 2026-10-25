@@ -3,9 +3,9 @@ kind: Connector
 metadata:
   name: llm
   displayName: LLM
-  description: "The text generation connector for applications: one generateText Step runs a model of the provider that the connection names, OpenAI, Claude, Gemini, Qwen, DeepSeek, Meta, Mistral, Kimi, or xAI Grok, with that provider's API key and its own model IDs."
+  description: "The text generation connector for applications: one generateText Step runs a model of the provider that the connection names, including an OpenAI-compatible custom endpoint, with that provider's API key and its own model IDs."
   company: Super Durable
-  version: v0.22.1
+  version: v0.23.0
 spec:
   provider: llm
   codegen:
@@ -16,13 +16,18 @@ spec:
       - name: provider
         goName: Provider
         type: enum
-        enum: [openai, anthropic, gemini, qwen, deepseek, meta, mistral, kimi, xai]
-        description: "Model provider whose API serves every generateText Step of this connection and whose key api_key holds: openai (OpenAI Platform), anthropic (Claude Console), gemini (Google AI Studio), qwen (Alibaba Cloud Model Studio), deepseek (DeepSeek Platform), meta (Meta Model API), mistral (Mistral AI Studio), kimi (Moonshot AI Kimi Platform), or xai (xAI Console). The authorization guide links each provider's API key page. Required; use one connection per provider, and replace api_key and model when you change it."
+        enum: [openai, openai-compatible, anthropic, gemini, qwen, deepseek, meta, mistral, kimi, xai]
+        description: "Model provider whose API serves every generateText Step of this connection and whose key api_key holds: openai (OpenAI Platform), openai-compatible (your own OpenAI-compatible gateway), anthropic (Claude Console), gemini (Google AI Studio), qwen (Alibaba Cloud Model Studio), deepseek (DeepSeek Platform), meta (Meta Model API), mistral (Mistral AI Studio), kimi (Moonshot AI Kimi Platform), or xai (xAI Console). The authorization guide links each fixed provider's API key page. Required; use one connection per provider, and replace api_key, baseUrl, and model when you change it."
         required: true
+      - name: baseUrl
+        goName: BaseURL
+        type: string
+        description: "For openai-compatible only, enter your gateway's API base URL ending in /v1, such as https://example.com/v1; the connector appends /chat/completions. Obtain the URL from your gateway's API documentation or administrator. HTTPS is required except for loopback HTTP during local testing. No credentials belong in this URL. A blank value is invalid for openai-compatible; leave it blank for every fixed provider, where a value stops startup."
+        required: false
       - name: model
         goName: Model
         type: string
-        description: "Model ID for Steps that pick none, written exactly as the provider names it and never prefixed with the provider, such as gpt-6-sol or claude-opus-5-5. Blank uses the provider's default model: gpt-6-sol for openai, claude-sonnet-5 for anthropic, gemini-3.5-flash-lite for gemini, qwen3.7-plus for qwen, deepseek-flash for deepseek, muse-spark-1.3 for meta, mistral-large-2512 for mistral, kimi-k2.6 for kimi, and grok-4.3 for xai. Save the connection first to choose it from the provider's live model list. A Step pick or a request model overrides it."
+        description: "Model ID for Steps that pick none, written exactly as the provider names it and never prefixed with the provider, such as gpt-6-sol or claude-opus-5-5. Required for openai-compatible: enter a model ID supplied by your gateway; there is no default or live model list. Blank uses the provider's default model: gpt-6-sol for openai, claude-sonnet-5 for anthropic, gemini-3.5-flash-lite for gemini, qwen3.7-plus for qwen, deepseek-flash for deepseek, muse-spark-1.3 for meta, mistral-large-2512 for mistral, kimi-k2.6 for kimi, and grok-4.3 for xai. Save a fixed-provider connection first to choose it from the provider's live model list. A Step pick or a request model overrides it."
         required: false
         studioUnit: {unit: modelPicker, port: model}
       - name: region
@@ -49,15 +54,16 @@ spec:
       - name: api_key
         goName: APIKey
         type: secretString
-        description: "Secret API key of the provider chosen in provider, created on that provider's API key page that the guide lists: an sk- key for OpenAI, Qwen, DeepSeek, or Kimi, sk-ant- for Claude, AIza for Gemini, LLM|<id>|<secret> for Meta, an opaque key for Mistral, or xai- for xAI. It is stored only as this connection's secret and sent only to the chosen provider's API host, in x-goog-api-key for Gemini and as an Authorization bearer token for every other provider. Required."
+        description: "Secret API key of the provider chosen in provider, created on that provider's API key page that the guide lists, or issued by your OpenAI-compatible gateway administrator: an sk- key for OpenAI, Qwen, DeepSeek, or Kimi, sk-ant- for Claude, AIza for Gemini, LLM|<id>|<secret> for Meta, an opaque key for Mistral or a custom gateway, or xai- for xAI. It is stored only as this connection's secret and sent only to the chosen provider's API host, in x-goog-api-key for Gemini and as an Authorization bearer token for every other provider. Required."
         required: true
     guide:
       startURL: https://github.com/superdurable/dex-connectors-library/blob/main/connectors/superdurable/llm/README.md#connection
       steps:
         - "Choose the provider, then open its API key page: OpenAI https://platform.openai.com/api-keys, Claude https://platform.claude.com/settings/keys, Gemini https://aistudio.google.com/api-keys, Qwen https://bailian.console.aliyun.com/ (Model Studio > API Key), DeepSeek https://platform.deepseek.com/api_keys, Meta https://dev.meta.ai/ (API keys), Mistral https://console.mistral.ai/api-keys, Kimi https://platform.kimi.ai/ (Console > API Keys), or xAI https://console.x.ai/ (API Keys)."
+        - "For openai-compatible, start at your gateway's HTTPS administration page (for example https://example.com), open its API keys page, create an inference key, and obtain its API base URL ending in /v1 and an exact model ID from its API documentation or administrator. Enter the URL in baseUrl and the model ID in model; neither is secret. The API key is secret and may have any gateway-defined format. Never enter a key or token in baseUrl."
         - "Select the project, workspace, or team that should own usage and billing, choose the page's create-key action, limit the key to text generation where the page allows it, and copy the secret shown once into api_key."
         - "Set region only for a Qwen or Kimi key created in a China region, or for Mistral or xAI regional inference; for a Claude key that spans several workspaces, copy its wrkspc_ ID from Claude Console > Settings > Workspaces into anthropicWorkspaceId."
-        - "Leave model blank for the provider's default model, or save the connection and pick a model from the provider's live list."
+        - "For fixed providers, leave model blank for the provider's default model, or save the connection and pick a model from the provider's live list. For openai-compatible, enter a model ID manually because Studio setup commands cannot list models at a URL from connection configuration."
         - "To revoke access, delete the key on the same provider page; a replacement key saved here takes effect without restarting the application."
   studio:
     setup:

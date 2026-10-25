@@ -44,12 +44,33 @@ var (
 	kimiIntegrationDialect = openaichattest.NewProviderDialect(&openaichattest.ProviderDialectConfig{
 		ConnectionModel: "kimi-k2.6", AlternateModel: "kimi-k3", IsStreaming: true,
 	})
+	compatibleIntegrationDialect = openaichattest.NewProviderDialect(&openaichattest.ProviderDialectConfig{
+		ConnectionModel: "qwen-example", AlternateModel: "qwen-example-2", IsStreaming: true,
+	})
 	claudeIntegrationDialect = messagestest.NewProviderDialect("claude-sonnet-5", "claude-haiku-4-5")
 )
 
 // TestSummarizeTextExampleRunsOnTheConnectionsProviderWithRealDex uses the Dex Server at DEX_FLOW_SERVICE_ADDRESS.
 func TestSummarizeTextExampleRunsOnTheConnectionsProviderWithRealDex(t *testing.T) {
 	usage := textgen.Usage{InputTokens: 30, OutputTokens: 12, TotalTokens: 42}
+
+	t.Run("a configured OpenAI-compatible gateway generates the summary", func(t *testing.T) {
+		provider := textgentest.NewFakeProvider(t, compatibleIntegrationDialect.CredentialHeader, integrationAPIKey)
+		provider.EnqueueReplies(compatibleIntegrationDialect.GeneratedReply(textgentest.GeneratedReply{
+			Text: "The gateway summarized it.", ServedModel: "qwen-example", ResponseID: "chatcmpl-gateway-example", Usage: usage,
+		}))
+		flow, client := startSummaryWorker(t, provider, map[string]any{
+			"provider": "openai-compatible", "baseUrl": provider.BaseURL() + "/v1", "model": "qwen-example",
+		}, SummaryModelConfiguration{})
+		outcome := runSummaryFlowToCompletion(t, client, flow, fmt.Sprintf("llm-summary-gateway-%d", time.Now().UnixNano()))
+		require.Equal(t, llm.GenerateTextBranchGenerated, outcome.Branch)
+		require.Equal(t, "openai-compatible", outcome.Provider)
+		require.Equal(t, "qwen-example", outcome.Model)
+		require.Equal(t, "The gateway summarized it.", outcome.Summary)
+		require.Len(t, provider.Requests(), 1)
+		require.Equal(t, "/v1/chat/completions", provider.Requests()[0].Path)
+		requireOnlyKeyInItsSlot(t, provider)
+	})
 
 	t.Run("the provider's default model generates and streams the summary", func(t *testing.T) {
 		provider := textgentest.NewFakeProvider(t, deepSeekIntegrationDialect.CredentialHeader, integrationAPIKey)
@@ -173,7 +194,13 @@ func startSummaryWorker(
 	project := testsupport.NewLoadedProject(t, llm.ConnectorID, []testsupport.ProjectConnection{{
 		Name: ConnectionName, Configuration: configuration, Credentials: map[string]any{"api_key": integrationAPIKey},
 	}}, nil)
-	llmConnection, err := llm.NewProjectConnection(project, ConnectionName, llm.WithBaseURLForTest(provider.BaseURL()))
+	var llmConnection llm.Connection
+	var err error
+	if configuration["provider"] == "openai-compatible" {
+		llmConnection, err = llm.NewProjectConnection(project, ConnectionName)
+	} else {
+		llmConnection, err = llm.NewProjectConnection(project, ConnectionName, llm.WithBaseURLForTest(provider.BaseURL()))
+	}
 	require.NoError(t, err)
 	return startSummaryWorkerWithConnection(t, llmConnection, summaryModel)
 }

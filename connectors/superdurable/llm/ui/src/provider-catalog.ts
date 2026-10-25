@@ -36,6 +36,11 @@ export const llmProviderSetups: readonly LLMProviderSetup[] = [
     keyPagePath: "Platform > API keys", keyFormat: "an sk- project key", apiHost: "api.openai.com", regions: globalOnly,
   },
   {
+    provider: "openai-compatible", label: "OpenAI-compatible gateway", defaultModel: "", keyPage: "https://example.com",
+    keyPagePath: "your gateway administration page > API keys", keyFormat: "a gateway-issued key",
+    apiHost: "the host in baseUrl", regions: globalOnly,
+  },
+  {
     provider: "anthropic", label: "Claude", defaultModel: "claude-sonnet-5", keyPage: "https://platform.claude.com/settings/keys",
     keyPagePath: "Claude Console > Settings > API keys", keyFormat: "an sk-ant- key", apiHost: "api.anthropic.com", regions: globalOnly,
   },

@@ -10,8 +10,8 @@
 // request to that provider's API in its own wire format: the OpenAI Responses
 // API, the Claude Messages API, the Gemini generateContent method, or the
 // OpenAI-compatible Chat Completions API of Qwen, DeepSeek, Meta, Mistral,
-// Kimi, or xAI. Model IDs are the provider's own, such as claude-sonnet-5,
-// never prefixed with the provider.
+// Kimi, xAI, or a configured OpenAI-compatible endpoint. Model IDs are the
+// provider's own, such as claude-sonnet-5, never prefixed with the provider.
 //
 // Applications load the project configuration once at startup, open the
 // connection with NewProjectConnection, and wire NewGenerateTextStep into a
@@ -35,10 +35,12 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"strings"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"github.com/superdurable/dex-connectors-library/sdkgo/textgen"
 )
 
@@ -82,7 +84,9 @@ func (option baseURLForTestOption) applyClientOption(options *clientOptions) {
 // request timeout when the client sets none: 1170 seconds for deepseek and 870
 // seconds for every other provider. New rejects a client Timeout of 1200
 // seconds or more, because the Execute timeout must end after the exchange.
-// The caller keeps ownership of client.
+// An openai-compatible endpoint requires a nil or *http.Transport transport
+// so the connector can check resolved addresses before dialing. The caller
+// keeps ownership of client.
 func WithHTTPClient(client *http.Client) Option { return httpClientOption{httpClient: client} }
 
 // WithBaseURLForTest sends provider calls to a loopback test server, such as
@@ -105,15 +109,17 @@ type Client struct {
 // config.AnthropicWorkspaceID. A blank config.Model uses the provider's
 // default model, a blank config.Region uses global, and a zero
 // config.MaxResponseBytes uses 64 MiB for deepseek and 8 MiB for every other
-// provider.
+// provider. For openai-compatible, a model and a base URL ending in /v1 are
+// required; the base URL's address is checked on every call before the key is sent.
 //
 // New returns an error for a nil credential provider, a missing or unknown
 // provider, a region the provider does not serve, a model ID the provider's
 // model-ID rule rejects, an anthropicWorkspaceId on a provider other than
 // anthropic or one that is not a wrkspc_ workspace ID, a negative response
 // limit, a nil option, a WithHTTPClient client whose Timeout is 1200 seconds
-// or more, or a non-loopback WithBaseURLForTest URL. Credentials are resolved
-// again for every provider call, so a replaced key takes effect without a
+// or more, a non-loopback WithBaseURLForTest URL, or an invalid custom baseUrl
+// or missing custom model. Credentials are resolved again for every provider
+// call, so a replaced key takes effect without a
 // restart. New makes no provider request, and its errors never repeat a
 // configured model, workspace ID, or URL.
 func New(config Config, credentials CredentialSource, options ...Option) (*Client, error) {
@@ -122,6 +128,8 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	}
 	// Dex Web collects these values in free-text fields.
 	config.Model, config.AnthropicWorkspaceID = strings.TrimSpace(config.Model), strings.TrimSpace(config.AnthropicWorkspaceID)
+	hasConfiguredBaseURL := config.BaseURL != ""
+	config.BaseURL = strings.TrimSpace(config.BaseURL)
 	config = withConfigDefaults(config)
 	if err := config.Validate(); err != nil {
 		return nil, fmt.Errorf("llm: %w", err)
@@ -137,6 +145,17 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if config.AnthropicWorkspaceID != "" && config.Provider != ProviderAnthropic {
 		return nil, fmt.Errorf("llm: configuration anthropicWorkspaceId applies only to provider anthropic; clear it for provider %s", config.Provider)
 	}
+	if config.Provider == ProviderOpenaiCompatible {
+		if config.Model == "" {
+			return nil, fmt.Errorf("llm: configuration model is required for provider openai-compatible")
+		}
+		baseURL, err = validateOpenAICompatibleBaseURL(config.BaseURL)
+		if err != nil {
+			return nil, fmt.Errorf("llm: configuration baseUrl: %w", err)
+		}
+	} else if hasConfiguredBaseURL {
+		return nil, fmt.Errorf("llm: configuration baseUrl applies only to provider openai-compatible")
+	}
 	resolved := clientOptions{}
 	for _, option := range options {
 		if option == nil {
@@ -149,6 +168,12 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 			return nil, fmt.Errorf("llm test base URL must use a loopback host")
 		}
 		baseURL = resolved.baseURLForTest
+	}
+	if config.Provider == ProviderOpenaiCompatible {
+		resolved.httpClient, err = newOpenAICompatibleHTTPClient(resolved.httpClient, isLoopbackBaseURL(baseURL))
+		if err != nil {
+			return nil, fmt.Errorf("llm: openai-compatible HTTP client: %w", err)
+		}
 	}
 	wireFormat, err := api.newWireFormat(&config)
 	if err != nil {
@@ -185,9 +210,29 @@ func isLoopbackBaseURL(value string) bool {
 		return false
 	}
 	host := parsed.Hostname()
-	if host == "localhost" {
+	if strings.EqualFold(host, "localhost") {
 		return true
 	}
 	address := net.ParseIP(host)
 	return address != nil && address.IsLoopback()
+}
+
+// validateOpenAICompatibleBaseURL checks the configured API root without exposing its value in an error.
+func validateOpenAICompatibleBaseURL(value string) (string, error) {
+	baseURL, err := providerhttp.ValidateBaseURL(value)
+	if err != nil {
+		return "", err
+	}
+	parsed, err := url.Parse(baseURL)
+	if err != nil || !strings.HasSuffix(parsed.EscapedPath(), "/v1") {
+		return "", fmt.Errorf("base URL must end in /v1")
+	}
+	host := parsed.Hostname()
+	if address, err := netip.ParseAddr(host); err == nil {
+		address = address.Unmap()
+		if !isAllowedOpenAICompatibleAddress(address, address.IsLoopback()) {
+			return "", fmt.Errorf("base URL host must be public or loopback")
+		}
+	}
+	return baseURL, nil
 }
