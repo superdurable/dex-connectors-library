@@ -26,16 +26,20 @@ type Mutation[IN, OUT any] struct {
 // NewMutation returns an unscripted Mutation mock with the operation's real
 // definition, such as a connector's generated SendMessageDefinition. Scripting
 // mistakes and unscripted calls fail t; calls answered after t finished select
-// the defect branch without reporting.
-func NewMutation[IN, OUT any](t testing.TB, definition sdkgo.MutationDefinition) *Mutation[IN, OUT] {
+// the defect branch without reporting. Optional checks run on each call.
+func NewMutation[IN, OUT any](t testing.TB, definition sdkgo.MutationDefinition, options ...Option[IN, OUT]) *Mutation[IN, OUT] {
 	t.Helper()
 	if err := definition.Validate(); err != nil {
 		t.Fatalf("connector mock mutation definition: %v", err)
 	}
-	return &Mutation[IN, OUT]{
+	mutation := &Mutation[IN, OUT]{
 		definition: definition,
 		operation:  newScriptedOperation[IN, OUT](t, definition.Operation, definition.Branches, true),
 	}
+	for _, option := range options {
+		option.apply(mutation.operation)
+	}
+	return mutation
 }
 
 // Definition returns the real operation definition.

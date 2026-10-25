@@ -684,6 +684,17 @@ validates a provider connector: an undeclared branch, an invalid failure, or
 an uncertain case on a Query still selects `defect`. A connector whose manifest
 declares mocks also generates a mock package, such as `llm/llmmock`, that
 builds these mocks for every operation; applications normally use that package.
+`NewQuery` and `NewMutation` also accept sealed `WithRequestCheck` and
+`WithAnswerCheck` options. A request check returns `*sdkgo.Failure` or nil;
+the mock records a rejected call and selects `defect` with the same kind and
+message without failing the test or consuming a case. An answer check takes
+the request and scripted output for one named branch. Its error reports a
+script mismatch with `t.Errorf` and selects `defect`. Operations without
+checks keep their existing behavior. Generated packages pass these options
+when the manifest declares `mockChecks`.
+For text generation operations, `textgen.ValidatePortableRequest` supplies
+the request check. `textgen.ExtractStructuredAnswer` checks and extracts JSON
+text; a connector answer check returns its error for the response's `Text`.
 
 A generic Step can take a mock as its operation, as
 [`integrationtest/connector_mock_integration_test.go`](integrationtest/connector_mock_integration_test.go)

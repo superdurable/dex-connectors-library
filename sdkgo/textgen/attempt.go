@@ -35,9 +35,8 @@ type textGenerationAttempt struct {
 
 // preparedRequest is a validated request ready for the wire format.
 type preparedRequest struct {
-	encodeInput EncodeRequestInput
-	// originalSchema is the application's canonical schema, or nil without structured output.
-	originalSchema map[string]any
+	encodeInput       EncodeRequestInput
+	validationRequest TextGenerationRequest
 }
 
 func (attempt *textGenerationAttempt) run(request TextGenerationRequest) sdkgo.QueryAttempt[TextGenerationResponse] {
@@ -62,10 +61,11 @@ func (attempt *textGenerationAttempt) run(request TextGenerationRequest) sdkgo.Q
 	if (encoded.IsStreaming && wireFormat.DecodeStream == nil) || (!encoded.IsStreaming && wireFormat.DecodeResponse == nil) {
 		return attempt.defect(sdkgo.FailureLocalDefect, "the wire format cannot decode the response form it requested")
 	}
-	return attempt.exchange(encoded, prepared.originalSchema)
+	return attempt.exchange(encoded, prepared.validationRequest)
 }
 
 func (attempt *textGenerationAttempt) prepareRequest(request TextGenerationRequest) (preparedRequest, *sdkgo.Failure) {
+	portableFailure := ValidatePortableRequest(request)
 	query := attempt.query
 	model := ResolveModel(request.Model, query.connectionModel)
 	if model == "" {
@@ -76,14 +76,12 @@ func (attempt *textGenerationAttempt) prepareRequest(request TextGenerationReque
 		return preparedRequest{}, attempt.failurePointer(sdkgo.FailureValidation, err.Error())
 	}
 	attempt.response.RequestedModel = canonicalModel
+	// Preserve RequestedModel on rejected requests after model validation.
+	if portableFailure != nil {
+		return preparedRequest{}, attempt.failurePointer(portableFailure.Kind, portableFailure.Message)
+	}
 	if err := validateRequestFeatures(request, query.wireFormat.Features); err != nil {
 		return preparedRequest{}, attempt.failurePointer(sdkgo.FailureValidation, err.Error())
-	}
-	if err := validateMessages(request.Messages); err != nil {
-		return preparedRequest{}, attempt.failurePointer(sdkgo.FailureValidation, err.Error())
-	}
-	if request.MaxOutputTokens < 0 {
-		return preparedRequest{}, attempt.failurePointer(sdkgo.FailureValidation, "maxOutputTokens cannot be negative")
 	}
 	rules := query.wireFormat.RulesForModel(canonicalModel)
 	if request.Temperature != nil {
@@ -96,7 +94,7 @@ func (attempt *textGenerationAttempt) prepareRequest(request TextGenerationReque
 			return preparedRequest{}, attempt.failurePointer(sdkgo.FailureValidation, err.Error())
 		}
 	}
-	prepared := preparedRequest{encodeInput: EncodeRequestInput{Request: request, Rules: rules}}
+	prepared := preparedRequest{encodeInput: EncodeRequestInput{Request: request, Rules: rules}, validationRequest: request}
 	prepared.encodeInput.Request.Model = canonicalModel
 	if request.StructuredOutput != nil {
 		if failure := attempt.prepareStructuredOutput(&prepared, rules.StructuredOutput); failure != nil {
@@ -117,24 +115,15 @@ func (attempt *textGenerationAttempt) prepareStructuredOutput(prepared *prepared
 	if rules.Mode == StructuredOutputModeJSONObjectWithInstruction && !attempt.query.wireFormat.Features.SupportsInstructions {
 		return attempt.failurePointer(sdkgo.FailureLocalDefect, "the JSON object mode requires the Instructions feature")
 	}
-	if !structuredOutputNamePattern.MatchString(output.Name) {
-		return attempt.failurePointer(sdkgo.FailureValidation, "structured output name must match "+structuredOutputNamePattern.String())
-	}
-	if output.Schema == nil {
-		return attempt.failurePointer(sdkgo.FailureValidation, "structured output schema is required")
-	}
 	canonical, err := canonicalizeSchema(output.Schema)
 	if err != nil {
-		return attempt.failurePointer(sdkgo.FailureValidation, "structured output "+err.Error())
-	}
-	if err := checkPortableSchema(canonical); err != nil {
-		return attempt.failurePointer(sdkgo.FailureValidation, "structured output schema is not portable "+err.Error())
+		return attempt.failurePointer(sdkgo.FailureLocalDefect, "validated structured output schema could not be canonicalized: "+err.Error())
 	}
 	providerSchema, err := transformSchemaForProvider(canonical, rules)
 	if err != nil {
 		return attempt.failurePointer(sdkgo.FailureValidation, "structured output "+err.Error())
 	}
-	prepared.originalSchema = canonical
+	prepared.validationRequest.StructuredOutput = &StructuredOutput{Name: output.Name, Description: output.Description, Schema: canonical}
 	prepared.encodeInput.Request.StructuredOutput = &StructuredOutput{
 		Name: output.Name, Description: output.Description, Schema: providerSchema,
 	}
@@ -165,7 +154,7 @@ func (attempt *textGenerationAttempt) resolveCredential() *sdkgo.Failure {
 	return nil
 }
 
-func (attempt *textGenerationAttempt) exchange(encoded EncodedRequest, originalSchema map[string]any) sdkgo.QueryAttempt[TextGenerationResponse] {
+func (attempt *textGenerationAttempt) exchange(encoded EncodedRequest, validationRequest TextGenerationRequest) sdkgo.QueryAttempt[TextGenerationResponse] {
 	query := attempt.query
 	attemptContext, cancelAttempt := context.WithCancelCause(attempt.call.Context)
 	defer cancelAttempt(nil)
@@ -223,7 +212,7 @@ func (attempt *textGenerationAttempt) exchange(encoded EncodedRequest, originalS
 	if err != nil {
 		return attempt.classifyDecodeFailure(err, isEventStream, attemptContext, body, receipt)
 	}
-	return attempt.completeResponse(decoded, originalSchema, isEventStream, receipt)
+	return attempt.completeResponse(decoded, validationRequest, isEventStream, receipt)
 }
 
 func (attempt *textGenerationAttempt) classifyErrorStatus(response *http.Response, body io.Reader, receipt sdkgo.Receipt) sdkgo.QueryAttempt[TextGenerationResponse] {
@@ -277,7 +266,7 @@ func (attempt *textGenerationAttempt) classifyReportedError(reported *ProviderRe
 }
 
 func (attempt *textGenerationAttempt) completeResponse(
-	decoded DecodedResponse, originalSchema map[string]any, isStreaming bool, receipt sdkgo.Receipt,
+	decoded DecodedResponse, validationRequest TextGenerationRequest, isStreaming bool, receipt sdkgo.Receipt,
 ) sdkgo.QueryAttempt[TextGenerationResponse] {
 	if !isBoundedIdentifier(decoded.ServedModel) || !isBoundedIdentifier(decoded.ResponseID) ||
 		attempt.revealsCredential(decoded.ServedModel) || attempt.revealsCredential(decoded.ResponseID) {
@@ -321,9 +310,10 @@ func (attempt *textGenerationAttempt) completeResponse(
 		if generatedText == "" {
 			return attempt.branch(InvalidResponseBranchID, sdkgo.FailureProtocol, "provider finished without text", receipt)
 		}
-		if originalSchema != nil {
-			generatedText = stripJSONFence(generatedText)
-			if err := validateStructuredOutputText(generatedText, originalSchema); err != nil {
+		if validationRequest.StructuredOutput != nil {
+			var err error
+			generatedText, err = ExtractStructuredAnswer(validationRequest, generatedText)
+			if err != nil {
 				return attempt.branch(InvalidResponseBranchID, sdkgo.FailureProtocol, "structured output does not match its schema "+err.Error(), receipt)
 			}
 		}

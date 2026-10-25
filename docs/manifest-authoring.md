@@ -756,6 +756,30 @@ import path as `mocks` and `mockPackage`. Connector maintainers write the
 mocks; adding one is a minor change, changing its data a patch, and renaming
 or removing one a breaking change.
 
+An operation can declare `mockChecks` to run connector-owned checks on its
+generated mock. `requestFunction` names an exported function in the connector
+package with signature `func(Input) *sdkgo.Failure`. A non-nil Failure selects
+`defect` with its kind and message, and the mock fills empty Provider and
+Operation fields. It is a rejected application request, so it does not fail
+the test or consume a scripted answer. `answer` names a declared
+`branch` and an exported `function` with signature `func(Input, Output) error`.
+That function runs only for answers on that branch. An error reports a
+scripted-answer mismatch with `t.Errorf` and selects `defect`. Keep both
+functions free of provider calls and secret-bearing error text. For example:
+
+```yaml
+      mockChecks:
+        requestFunction: ValidateGenerateTextRequest
+        answer: {branch: generated, function: ValidateGenerateTextAnswer}
+```
+
+Operations without `mockChecks` retain the existing generated code and mock
+behavior. Use the real connector's provider-independent request and response
+checks where available; model and wire-format checks remain with the real
+operation. For text generation, `textgen.ValidatePortableRequest` checks the
+input, while a connector answer function can return the error from
+`textgen.ExtractStructuredAnswer(request, response.Text)`.
+
 The fixture in
 [`schema/testdata/mocks.yaml`](../schema/testdata/mocks.yaml) declares one
 mock of each shape:

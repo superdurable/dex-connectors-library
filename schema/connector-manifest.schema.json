@@ -750,7 +750,24 @@
             "nextField": { "type": "string", "pattern": "^[a-z][A-Za-z0-9_]*$" }
           }
         },
-        "mocks": { "type": "array", "items": { "$ref": "#/$defs/operationMock" } }
+        "mocks": { "type": "array", "items": { "$ref": "#/$defs/operationMock" } },
+        "mockChecks": {
+          "type": "object",
+          "additionalProperties": false,
+          "minProperties": 1,
+          "properties": {
+            "requestFunction": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
+            "answer": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["branch", "function"],
+              "properties": {
+                "branch": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]+$" },
+                "function": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" }
+              }
+            }
+          }
+        }
       },
       "allOf": [
         {

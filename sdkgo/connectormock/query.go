@@ -30,16 +30,20 @@ type Query[IN, OUT any] struct {
 // NewQuery returns an unscripted Query mock with the operation's real
 // definition, such as a connector's generated GenerateTextDefinition. Scripting
 // mistakes and unscripted calls fail t; calls answered after t finished
-// select the defect branch without reporting.
-func NewQuery[IN, OUT any](t testing.TB, definition sdkgo.QueryDefinition) *Query[IN, OUT] {
+// select the defect branch without reporting. Optional checks run on each call.
+func NewQuery[IN, OUT any](t testing.TB, definition sdkgo.QueryDefinition, options ...Option[IN, OUT]) *Query[IN, OUT] {
 	t.Helper()
 	if err := definition.Validate(); err != nil {
 		t.Fatalf("connector mock query definition: %v", err)
 	}
-	return &Query[IN, OUT]{
+	query := &Query[IN, OUT]{
 		definition: definition,
 		operation:  newScriptedOperation[IN, OUT](t, definition.Operation, definition.Branches, false),
 	}
+	for _, option := range options {
+		option.apply(query.operation)
+	}
+	return query
 }
 
 // Definition returns the real operation definition.

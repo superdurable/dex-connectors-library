@@ -30,6 +30,24 @@ func TestDecodeMocksManifestKeepsOutputsAsJSON(t *testing.T) {
 	require.Contains(t, string(encoded), `"output":{"id":"w-1","name":"Gear"`)
 }
 
+func TestDecodeMockChecksAndRejectInvalidNames(t *testing.T) {
+	manifest := decodeMocksFixture(t, [][2]string{{
+		"      mocks:\n", "      mockChecks:\n        requestFunction: ValidateGetWidgetRequest\n        answer: {branch: found, function: ValidateGetWidgetAnswer}\n      mocks:\n",
+	}})
+	require.Equal(t, &schema.MockChecks{RequestFunction: "ValidateGetWidgetRequest", Answer: &schema.MockAnswerCheck{
+		Branch: "found", Function: "ValidateGetWidgetAnswer",
+	}}, manifest.Spec.Operations[0].MockChecks)
+	require.NoError(t, manifest.Validate())
+
+	manifest.Spec.Operations[0].MockChecks.Answer.Branch = "missing"
+	require.ErrorContains(t, manifest.Validate(), "mockChecks.answer requires a declared branch")
+	manifest.Spec.Operations[0].MockChecks.Answer.Branch = "found"
+	manifest.Spec.Operations[0].MockChecks.RequestFunction = "unexported"
+	require.ErrorContains(t, manifest.Validate(), "mockChecks.requestFunction must name an exported connector function")
+	manifest.Spec.Operations[0].MockChecks = &schema.MockChecks{}
+	require.ErrorContains(t, manifest.Validate(), "mockChecks requires a requestFunction or answer")
+}
+
 func TestRejectInvalidMocks(t *testing.T) {
 	testCases := map[string]struct {
 		replacements [][2]string
