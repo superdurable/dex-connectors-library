@@ -31,7 +31,7 @@ Gemini's `generateContent`.
 Install a published component release:
 
 ```bash
-go get github.com/superdurable/dex-connectors-library/connectors/superdurable/llm@v0.23.0
+go get github.com/superdurable/dex-connectors-library/connectors/superdurable/llm@v0.23.1
 ```
 
 The package name, `llm`, is the last element of the module path, so import

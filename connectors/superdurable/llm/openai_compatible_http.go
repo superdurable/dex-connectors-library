@@ -35,6 +35,12 @@ func newOpenAICompatibleHTTPClient(caller *http.Client, isLoopback bool) (*http.
 	}
 	transport.Proxy = nil
 	transport.Dial, transport.DialTLS, transport.DialTLSContext = nil, nil, nil
+	// A cloned caller HTTP/2 handler would send requests through the caller's
+	// connection pool, past the address check, so HTTP/2 runs on this transport.
+	transport.TLSNextProto = nil
+	transport.Protocols = new(http.Protocols)
+	transport.Protocols.SetHTTP1(true)
+	transport.Protocols.SetHTTP2(true)
 	transport.DialContext = func(ctx context.Context, network, address string) (net.Conn, error) {
 		host, port, err := net.SplitHostPort(address)
 		if err != nil {
