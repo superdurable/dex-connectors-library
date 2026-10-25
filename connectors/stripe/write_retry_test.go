@@ -303,8 +303,9 @@ func TestCreateRefundReadbackFailure(t *testing.T) {
 	}{
 		{name: "temporary unavailability", readStatus: http.StatusServiceUnavailable, shouldRetry: true},
 		{name: "oversized list", readStatus: http.StatusOK, readBody: strings.Repeat("x", 65), maxBytes: 64, wantKind: sdkgo.FailureAvailability, wantMessage: "Stripe refund outcome cannot be confirmed after a server error"},
-		{name: "read-back forbidden", readStatus: http.StatusForbidden, readBody: `{"error":{"type":"invalid_request_error"}}`, wantKind: sdkgo.FailureAuthorization, wantMessage: stripeDeniedReadbackMessage},
-		{name: "read-back unauthenticated", readStatus: http.StatusUnauthorized, readBody: `{"error":{"type":"invalid_request_error"}}`, wantKind: sdkgo.FailureAuthentication, wantMessage: stripeDeniedReadbackMessage},
+		{name: "oversized temporary unavailability", readStatus: http.StatusServiceUnavailable, readBody: strings.Repeat("x", 65), maxBytes: 64, shouldRetry: true},
+		{name: "read-back forbidden", readStatus: http.StatusForbidden, readBody: `{"error":{"type":"invalid_request_error","message":"rk_test_secret"}}`, wantKind: sdkgo.FailureAuthorization, wantMessage: stripeForbiddenReadbackMessage},
+		{name: "read-back unauthenticated", readStatus: http.StatusUnauthorized, readBody: `{"error":{"type":"invalid_request_error","message":"rk_test_secret"}}`, wantKind: sdkgo.FailureAuthentication, wantMessage: stripeUnauthenticatedReadbackMessage},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
@@ -331,7 +332,61 @@ func TestCreateRefundReadbackFailure(t *testing.T) {
 	}
 }
 
-const stripeDeniedReadbackMessage = "Stripe refund outcome cannot be confirmed after a server error because Stripe denied the refund read-back; the API key needs Refund read permission"
+const (
+	stripeForbiddenReadbackMessage       = "Stripe refund outcome cannot be confirmed after a server error because the API key lacks permission for the refund read-back; grant it Refund read permission"
+	stripeUnauthenticatedReadbackMessage = "Stripe refund outcome cannot be confirmed after a server error because Stripe rejected the API key for the refund read-back; check that the key is still valid"
+)
+
+func TestStripeKeyedWritesClassifyOversizedFailuresByStatus(t *testing.T) {
+	oversizedIdempotencyError := `{"error":{"type":"idempotency_error"}}` + strings.Repeat(" ", 64)
+	testCases := []struct {
+		name     string
+		status   int
+		headers  http.Header
+		wantKind sdkgo.FailureKind
+		isRetry  bool
+		isReject bool
+	}{
+		{name: "409", status: http.StatusConflict, wantKind: sdkgo.FailureConflict, isRetry: true},
+		{name: "409 with no-retry hint", status: http.StatusConflict, headers: http.Header{"Stripe-Should-Retry": {"false"}}, wantKind: sdkgo.FailureConflict, isReject: true},
+		{name: "503", status: http.StatusServiceUnavailable, wantKind: sdkgo.FailureAvailability, isRetry: true},
+		{name: "500", status: http.StatusInternalServerError, wantKind: sdkgo.FailureAvailability},
+		{name: "400", status: http.StatusBadRequest, wantKind: sdkgo.FailureProviderRejection, isReject: true},
+	}
+	for _, write := range stripeWriteCases() {
+		for _, testCase := range testCases {
+			t.Run(write.name+" "+testCase.name, func(t *testing.T) {
+				server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+					if request.Method == http.MethodGet {
+						_, writeErr := io.WriteString(response, `{"object":"list","data":[],"has_more":false}`)
+						require.NoError(t, writeErr)
+						return
+					}
+					for name, values := range testCase.headers {
+						response.Header().Set(name, values[0])
+					}
+					response.WriteHeader(testCase.status)
+					_, writeErr := io.WriteString(response, oversizedIdempotencyError)
+					require.NoError(t, writeErr)
+				}))
+				defer server.Close()
+				client := newStripeClient(t, server.URL, stripe.Config{MaxResponseBytes: 64})
+				outcome, err := write.invoke(client, newStripeDexContext("oversized-failure"))
+				if testCase.isRetry {
+					requireStripeRetry(t, err, testCase.wantKind)
+					return
+				}
+				require.NoError(t, err)
+				wantBranch := sdkgo.UncertainBranchID
+				if testCase.isReject {
+					wantBranch = write.providerRejectedBranch
+				}
+				require.Equal(t, wantBranch, outcome.branch)
+				require.Equal(t, testCase.wantKind, outcome.failure.Kind)
+			})
+		}
+	}
+}
 
 func TestStripeKeyedWritesRejectOversizedResponses(t *testing.T) {
 	for _, write := range stripeWriteCases() {

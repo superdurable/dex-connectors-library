@@ -234,12 +234,10 @@ func (operation CreateACHCheckoutSessionOperation) Invoke(call sdkgo.Call, input
 	}
 	values := input.formValues()
 	response, err := operation.client.request(call, credentials.SecretKey.Reveal(), http.MethodPost, "checkout/sessions", values)
-	if err != nil {
+	isResponseTooLarge := errors.Is(err, errStripeResponseTooLarge)
+	if err != nil && !isResponseTooLarge {
 		if errors.Is(err, errStripeRequestInvalid) {
 			return sdkgo.NewMutationBranch(CreateACHCheckoutSessionBranchDefect, CheckoutSession{}, stripeFailurePointer("createACHCheckoutSession", sdkgo.FailureLocalDefect, err.Error()), sdkgo.Receipt{})
-		}
-		if errors.Is(err, errStripeResponseTooLarge) {
-			return sdkgo.NewMutationBranch(CreateACHCheckoutSessionBranchInvalidResponse, CheckoutSession{}, stripeFailurePointer("createACHCheckoutSession", sdkgo.FailureResponseTooLarge, err.Error()), operation.client.receipt(call, response, ""))
 		}
 		return sdkgo.NewMutationRetry[CheckoutSession](stripeFailure("createACHCheckoutSession", sdkgo.FailureTransport, "Stripe Checkout Session response is unavailable"), retryAfter(response.header))
 	}
@@ -257,6 +255,9 @@ func (operation CreateACHCheckoutSessionOperation) Invoke(call sdkgo.Call, input
 	}
 	if response.statusCode < 200 || response.statusCode >= 300 {
 		return sdkgo.NewMutationBranch(CreateACHCheckoutSessionBranchProviderRejected, CheckoutSession{}, classifyStripeRejection("createACHCheckoutSession", response), operation.client.receipt(call, response, ""))
+	}
+	if isResponseTooLarge {
+		return sdkgo.NewMutationBranch(CreateACHCheckoutSessionBranchInvalidResponse, CheckoutSession{}, stripeFailurePointer("createACHCheckoutSession", sdkgo.FailureResponseTooLarge, err.Error()), operation.client.receipt(call, response, ""))
 	}
 	session, err := decodeCheckoutSession(response.body)
 	if err != nil {
@@ -421,6 +422,8 @@ func (client *Client) request(call sdkgo.Call, secretKey string, method string, 
 		return result, err
 	}
 	if int64(len(result.body)) > client.maxResponseBytes {
+		// A truncated body must not classify the response; callers use status and headers.
+		result.body = nil
 		return result, errStripeResponseTooLarge
 	}
 	return result, nil

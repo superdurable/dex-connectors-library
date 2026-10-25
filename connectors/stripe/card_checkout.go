@@ -53,12 +53,10 @@ func (operation CreateCardCheckoutSessionOperation) Invoke(call sdkgo.Call, inpu
 		return sdkgo.NewMutationBranch(CreateCardCheckoutSessionBranchDefect, CheckoutSession{}, failure, sdkgo.Receipt{})
 	}
 	response, err := operation.client.request(call, credentials.SecretKey.Reveal(), http.MethodPost, "checkout/sessions", input.formValues())
-	if err != nil {
+	isResponseTooLarge := errors.Is(err, errStripeResponseTooLarge)
+	if err != nil && !isResponseTooLarge {
 		if errors.Is(err, errStripeRequestInvalid) {
 			return sdkgo.NewMutationBranch(CreateCardCheckoutSessionBranchDefect, CheckoutSession{}, stripeFailurePointer("createCardCheckoutSession", sdkgo.FailureLocalDefect, err.Error()), sdkgo.Receipt{})
-		}
-		if errors.Is(err, errStripeResponseTooLarge) {
-			return sdkgo.NewMutationBranch(CreateCardCheckoutSessionBranchInvalidResponse, CheckoutSession{}, stripeFailurePointer("createCardCheckoutSession", sdkgo.FailureResponseTooLarge, err.Error()), operation.client.receipt(call, response, ""))
 		}
 		return sdkgo.NewMutationRetry[CheckoutSession](stripeFailure("createCardCheckoutSession", sdkgo.FailureTransport, "Stripe Checkout Session response is unavailable"), retryAfter(response.header))
 	}
@@ -76,6 +74,9 @@ func (operation CreateCardCheckoutSessionOperation) Invoke(call sdkgo.Call, inpu
 	}
 	if response.statusCode < 200 || response.statusCode >= 300 {
 		return sdkgo.NewMutationBranch(CreateCardCheckoutSessionBranchProviderRejected, CheckoutSession{}, classifyStripeRejection("createCardCheckoutSession", response), operation.client.receipt(call, response, ""))
+	}
+	if isResponseTooLarge {
+		return sdkgo.NewMutationBranch(CreateCardCheckoutSessionBranchInvalidResponse, CheckoutSession{}, stripeFailurePointer("createCardCheckoutSession", sdkgo.FailureResponseTooLarge, err.Error()), operation.client.receipt(call, response, ""))
 	}
 	session, err := decodeCheckoutSession(response.body)
 	if err != nil {
