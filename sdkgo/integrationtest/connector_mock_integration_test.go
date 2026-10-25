@@ -208,7 +208,7 @@ func TestConnectorMockUnscriptedCallFailsTheTestAndTheFlowTakesDefect(t *testing
 	result := startAndWaitForMockedFlow(t, harness, flow, flowID, stockRequest{SKU: "sku-1"})
 
 	require.Equal(t, dex.FlowFailed, result.Status)
-	require.Contains(t, result.ErrorMessage, `connector branch "defect" has no target`)
+	require.Contains(t, result.ErrorMessage, "inventory checkStock (connection warehouse) selected branch defect with no target: LOCAL_DEFECT: unscripted connector mock call")
 	require.Contains(t, recorder.messages(), "unscripted call for Flow")
 	recorded := make([]connectormock.RecordedCall, 0, 1)
 	for _, call := range connectormock.RecordedCalls() {

@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -119,6 +120,11 @@ type MutationStepConfig[STEP_IN, OP_IN, OUT any] struct {
 	StepOptionsOverride *dex.StepOptions
 }
 
+type connectorStepIdentity struct {
+	operation  OperationRef
+	connection ConnectionRef
+}
+
 // QueryStep executes a query operation and routes its declared result branch.
 type QueryStep[STEP_IN, OP_IN, OUT any] struct {
 	dex.NoWaitFor[STEP_IN]
@@ -126,7 +132,7 @@ type QueryStep[STEP_IN, OP_IN, OUT any] struct {
 	annotations         StepAnnotations
 	configurationUI     ConnectorConfigurationUI
 	operation           Query[OP_IN, OUT]
-	connection          ConnectionRef
+	identity            connectorStepIdentity
 	mapToOperationInput func(STEP_IN) OP_IN
 	branches            map[BranchID]dex.Step[QueryResult[OUT]]
 	optionalBranches    map[BranchID]bool
@@ -144,7 +150,7 @@ type MutationStep[STEP_IN, OP_IN, OUT any] struct {
 	annotations         StepAnnotations
 	configurationUI     ConnectorConfigurationUI
 	operation           Mutation[OP_IN, OUT]
-	connection          ConnectionRef
+	identity            connectorStepIdentity
 	mapToOperationInput func(STEP_IN) OP_IN
 	branches            map[BranchID]dex.Step[MutationResult[OUT]]
 	optionalBranches    map[BranchID]bool
@@ -181,7 +187,8 @@ func NewQueryStep[STEP_IN, OP_IN, OUT any](config QueryStepConfig[STEP_IN, OP_IN
 	return QueryStep[STEP_IN, OP_IN, OUT]{
 		stepType: config.StepType, annotations: config.Annotations,
 		configurationUI: cloneConnectorConfigurationUI(config.ConfigurationUI), operation: config.Operation,
-		connection: config.Connection, mapToOperationInput: config.MapToOperationInput, branches: branches,
+		identity:            connectorStepIdentity{operation: definition.Operation, connection: config.Connection},
+		mapToOperationInput: config.MapToOperationInput, branches: branches,
 		optionalBranches: optionalBranches,
 		resultAttribute:  config.ResultAttribute, progressStream: config.ProgressStream,
 		textStream: config.TextStream, textOptions: append([]dex.BufferedTextStreamOption(nil), config.TextOptions...),
@@ -224,7 +231,8 @@ func NewMutationStep[STEP_IN, OP_IN, OUT any](config MutationStepConfig[STEP_IN,
 	return MutationStep[STEP_IN, OP_IN, OUT]{
 		stepType: config.StepType, annotations: config.Annotations,
 		configurationUI: cloneConnectorConfigurationUI(config.ConfigurationUI), operation: config.Operation,
-		connection: config.Connection, mapToOperationInput: config.MapToOperationInput, branches: branches,
+		identity:            connectorStepIdentity{operation: definition.Operation, connection: config.Connection},
+		mapToOperationInput: config.MapToOperationInput, branches: branches,
 		optionalBranches: optionalBranches,
 		resultAttribute:  config.ResultAttribute, progressStream: config.ProgressStream,
 		textStream: config.TextStream, textOptions: append([]dex.BufferedTextStreamOption(nil), config.TextOptions...),
@@ -261,7 +269,7 @@ func (step QueryStep[STEP_IN, OP_IN, OUT]) ConfigurationUI() ConnectorConfigurat
 // Execute invokes the connector operation, stores its result, and routes its branch.
 func (step QueryStep[STEP_IN, OP_IN, OUT]) Execute(ctx dex.Context, input STEP_IN) (*dex.StepDecision, error) {
 	operationInput := step.mapToOperationInput(input)
-	result, err := RunQuery(ctx, step.operation, step.connection, operationInput, step.runOptions()...)
+	result, err := RunQuery(ctx, step.operation, step.identity.connection, operationInput, step.runOptions()...)
 	if err != nil {
 		return nil, err
 	}
@@ -270,7 +278,7 @@ func (step QueryStep[STEP_IN, OP_IN, OUT]) Execute(ctx dex.Context, input STEP_I
 			return nil, err
 		}
 	}
-	return routeBranch(step.branches, step.optionalBranches, result.Branch, result, "query")
+	return routeBranch(step.branches, step.optionalBranches, result.Branch, result, result.Failure, step.identity, "query")
 }
 
 func (step QueryStep[STEP_IN, OP_IN, OUT]) runOptions() []RunOption {
@@ -299,7 +307,7 @@ func (step MutationStep[STEP_IN, OP_IN, OUT]) ConfigurationUI() ConnectorConfigu
 // Execute invokes the connector operation, stores its result, and routes its branch.
 func (step MutationStep[STEP_IN, OP_IN, OUT]) Execute(ctx dex.Context, input STEP_IN) (*dex.StepDecision, error) {
 	operationInput := step.mapToOperationInput(input)
-	result, err := RunMutation(ctx, step.operation, step.connection, operationInput, step.runOptions()...)
+	result, err := RunMutation(ctx, step.operation, step.identity.connection, operationInput, step.runOptions()...)
 	if err != nil {
 		return nil, err
 	}
@@ -308,7 +316,7 @@ func (step MutationStep[STEP_IN, OP_IN, OUT]) Execute(ctx dex.Context, input STE
 			return nil, err
 		}
 	}
-	return routeBranch(step.branches, step.optionalBranches, result.Branch, result, "mutation")
+	return routeBranch(step.branches, step.optionalBranches, result.Branch, result, result.Failure, step.identity, "mutation")
 }
 
 func (step MutationStep[STEP_IN, OP_IN, OUT]) runOptions() []RunOption {
@@ -387,14 +395,48 @@ func validateBranchTargets[T any](definitions []BranchDefinition, targets []Bran
 	return resolved, optional, nil
 }
 
-func routeBranch[T any](branches map[BranchID]dex.Step[T], optional map[BranchID]bool, branch BranchID, result T, kind string) (*dex.StepDecision, error) {
+func routeBranch[T any](
+	branches map[BranchID]dex.Step[T], optional map[BranchID]bool, branch BranchID, result T,
+	failure *Failure, identity connectorStepIdentity, operationKind string,
+) (*dex.StepDecision, error) {
 	if target := branches[branch]; target != nil {
 		return dex.GoTo(target, result), nil
 	}
 	if optional[branch] {
-		return dex.ForceFail(fmt.Sprintf("connector branch %q has no target", branch)), nil
+		return dex.ForceFail(unwiredBranchFailureReason(identity, branch, failure)), nil
 	}
-	return nil, fmt.Errorf("%s result selected unconfigured branch %q", kind, branch)
+	return nil, fmt.Errorf("%s result selected unconfigured branch %q", operationKind, branch)
+}
+
+func unwiredBranchFailureReason(identity connectorStepIdentity, branch BranchID, failure *Failure) string {
+	reason := fmt.Sprintf("%s %s (connection %s) selected branch %s with no target",
+		identity.operation.ConnectorID, identity.operation.OperationID, identity.connection.Name, branch)
+	if failure == nil {
+		return reason
+	}
+	message, isTruncated := boundedFailureMessage(failure.Message)
+	reason = fmt.Sprintf("%s: %s: %s", reason, failure.Kind, message)
+	if isTruncated {
+		reason += " (truncated)"
+	}
+	return reason
+}
+
+func boundedFailureMessage(message string) (string, bool) {
+	const maxFailureMessageBytes = 1024
+	if len(message) <= maxFailureMessageBytes && utf8.ValidString(message) {
+		return message, false
+	}
+	bounded := make([]byte, 0, min(len(message), maxFailureMessageBytes))
+	for len(message) > 0 {
+		runeValue, runeBytes := utf8.DecodeRuneInString(message)
+		if len(bounded)+utf8.RuneLen(runeValue) > maxFailureMessageBytes {
+			return string(bounded), true
+		}
+		bounded = utf8.AppendRune(bounded, runeValue)
+		message = message[runeBytes:]
+	}
+	return string(bounded), false
 }
 
 func targetHasStep[T any](target dex.Step[T]) bool {
