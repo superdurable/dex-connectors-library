@@ -520,7 +520,7 @@ var SendMessageDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: SendMessageBranchSent, Description: "Gmail accepted the message and returned its identity."},
 		{ID: SendMessageBranchProviderRejected, Description: "Gmail conclusively rejected the message.", Optional: true},
-		{ID: SendMessageBranchUncertain, Description: "The dispatched send outcome cannot be confirmed.", Optional: true},
+		{ID: SendMessageBranchUncertain, Description: "The dispatched send could not be found in sent-mail search; search indexing may lag, so delivery remains unknown.", Optional: true},
 		{ID: SendMessageBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -595,7 +595,7 @@ var ReplyToMessageDefinition = sdkgo.MutationDefinition{
 		{ID: ReplyToMessageBranchSent, Description: "Gmail accepted the reply and returned its identity."},
 		{ID: ReplyToMessageBranchProviderRejected, Description: "Gmail conclusively rejected the reply.", Optional: true},
 		{ID: ReplyToMessageBranchInvalidResponse, Description: "Gmail returned an invalid or oversized source message response before sending the reply.", Optional: true},
-		{ID: ReplyToMessageBranchUncertain, Description: "The dispatched reply outcome cannot be confirmed.", Optional: true},
+		{ID: ReplyToMessageBranchUncertain, Description: "The dispatched reply could not be found in sent-mail search; search indexing may lag, so delivery remains unknown.", Optional: true},
 		{ID: ReplyToMessageBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

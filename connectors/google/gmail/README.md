@@ -124,10 +124,17 @@ time. `ReplyToMessage` reads the source metadata and sends with Gmail thread
 ID, `In-Reply-To`, and `References` preserved.
 
 The stable Connector idempotency key is written into the RFC `Message-ID` and
-safe correlation header. Gmail does not promise server-side deduplication, so
-a timeout, connection loss, ambiguous 5xx, or invalid success response returns
-the `uncertain` branch and is never automatically resent. Applications must
-route that branch to explicit operator recovery.
+safe correlation header. After a dispatched request loses its answer or gets an
+ambiguous 5xx or invalid success response, the connector searches Sent Mail for
+that Message-ID. A match confirms `sent` with Gmail's message and thread IDs.
+The search is bounded to ten results and the configured response limit.
+Gmail does not document immediate search visibility or deduplication by
+Message-ID, so a missing or unusable lookup leaves the outcome `uncertain`;
+the connector does not resend it. A request proven not to have left the process,
+a 429, and a 503 retry. A 503 first checks Sent Mail and returns `sent` if
+the message is visible. Applications route `uncertain` to operator recovery.
+The [Gmail message-list API](https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.messages/list)
+supports `rfc822msgid` search, and the existing Gmail read scope permits it.
 
 Every operation uses `defect` for invalid local input, connection configuration,
 or Connector contract violations. A conclusive Gmail API refusal uses

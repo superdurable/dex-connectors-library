@@ -17,11 +17,13 @@ import (
 	"mime"
 	"mime/multipart"
 	"net/http"
+	"net/http/httptrace"
 	"net/mail"
 	"net/textproto"
 	"net/url"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
@@ -208,14 +210,41 @@ func (client *Client) doAuthenticatedRequest(
 	payload []byte,
 	contentType string,
 ) (*http.Response, Credentials, error) {
+	response, resolvedCredentials, _, err := client.doAuthenticatedRequestWithDispatch(
+		ctx, call, credentials, method, target, payload, contentType, false,
+	)
+	return response, resolvedCredentials, err
+}
+
+func (client *Client) doAuthenticatedRequestWithDispatch(
+	ctx context.Context,
+	call sdkgo.Call,
+	credentials Credentials,
+	method string,
+	target string,
+	payload []byte,
+	contentType string,
+	trackDispatch bool,
+) (*http.Response, Credentials, bool, error) {
 	for attempt := 0; attempt < 2; attempt++ {
+		var isDispatched atomic.Bool
+		requestContext := ctx
+		if trackDispatch {
+			requestContext = httptrace.WithClientTrace(ctx, &httptrace.ClientTrace{
+				WroteRequest: func(written httptrace.WroteRequestInfo) {
+					if written.Err == nil {
+						isDispatched.Store(true)
+					}
+				},
+			})
+		}
 		var body io.Reader
 		if payload != nil {
 			body = bytes.NewReader(payload)
 		}
-		request, err := http.NewRequestWithContext(ctx, method, target, body)
+		request, err := http.NewRequestWithContext(requestContext, method, target, body)
 		if err != nil {
-			return nil, Credentials{}, err
+			return nil, credentials, false, err
 		}
 		request.Header.Set("Authorization", "Bearer "+credentials.AccessToken.Reveal())
 		if contentType != "" {
@@ -223,25 +252,25 @@ func (client *Client) doAuthenticatedRequest(
 		}
 		response, err := client.httpClient.Do(request)
 		if err != nil {
-			return nil, Credentials{}, err
+			return nil, credentials, isDispatched.Load(), err
 		}
 		if response.StatusCode != http.StatusUnauthorized || attempt != 0 {
-			return response, credentials, nil
+			return response, credentials, isDispatched.Load(), nil
 		}
 		if _, ok := client.credentials.(sdkgo.RejectedCredentialRefreshingProvider[Credentials]); !ok {
-			return response, credentials, nil
+			return response, credentials, isDispatched.Load(), nil
 		}
 		// A 401 proves Gmail did not serve the request. When the one refresh is refused or fails, the
 		// caller classifies the 401 itself instead of treating the request as possibly sent.
 		refreshed, err := sdkgo.ResolveCredentialAfterRejection(ctx, client.credentials, call, client.refreshDriver)
 		if err != nil || validateResolvedCredentials(refreshed) != nil {
-			return response, credentials, nil
+			return response, credentials, isDispatched.Load(), nil
 		}
 		_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, client.maxResponseBytes))
 		_ = response.Body.Close()
 		credentials = refreshed
 	}
-	return nil, Credentials{}, fmt.Errorf("Gmail authenticated request retry was exhausted")
+	return nil, credentials, false, fmt.Errorf("Gmail authenticated request retry was exhausted")
 }
 
 func validateResolvedCredentials(credentials Credentials) error {
@@ -290,19 +319,20 @@ func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageI
 		return sdkgo.NewMutationBranch(SendMessageBranchDefect, SendMessageOutput{}, gmailFailurePointer(sdkgo.FailureLocalDefect, "message request could not be encoded"), sdkgo.Receipt{})
 	}
 	target := strings.TrimRight(operation.client.endpoint.String(), "/") + "/users/me/messages/send"
-	response, credential, err := operation.client.doAuthenticatedRequest(
+	response, credential, isDispatched, err := operation.client.doAuthenticatedRequestWithDispatch(
 		call.Context, call, credential, http.MethodPost, target, payload, "application/json",
+		true,
 	)
 	if err != nil {
-		return sdkgo.NewMutationUncertain(SendMessageOutput{}, gmailFailure(sdkgo.FailureTransport, "Gmail send outcome is unknown"), operation.client.receipt(call, "", ""))
+		if !isDispatched {
+			return sdkgo.NewMutationRetry[SendMessageOutput](gmailFailure(sdkgo.FailureTransport, "Gmail send request was not dispatched"), 0)
+		}
+		return operation.confirmOrReportUnknownSend(call, credential, recipients, sdkgo.FailureTransport,
+			"Gmail send outcome is unknown", operation.client.receipt(call, "", ""))
 	}
 	defer response.Body.Close()
 	requestID := googleRequestID(response.Header)
 	receipt := operation.client.receipt(call, requestID, "")
-	content, readErr := io.ReadAll(io.LimitReader(response.Body, operation.client.maxResponseBytes+1))
-	if readErr != nil || int64(len(content)) > operation.client.maxResponseBytes {
-		return sdkgo.NewMutationUncertain(SendMessageOutput{}, gmailFailure(sdkgo.FailureTransport, "Gmail send response could not be confirmed"), receipt)
-	}
 	if response.StatusCode == http.StatusTooManyRequests {
 		delay, err := retryAfter(response.Header)
 		if err != nil {
@@ -310,18 +340,57 @@ func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageI
 		}
 		return sdkgo.NewMutationRetry[SendMessageOutput](gmailFailure(sdkgo.FailureRateLimit, "Gmail temporarily rejected the send"), delay)
 	}
+	if response.StatusCode == http.StatusServiceUnavailable {
+		if confirmed, ok := operation.sentByReadBack(call, credential, recipients, receipt); ok {
+			return confirmed
+		}
+		delay, err := retryAfter(response.Header)
+		if err != nil {
+			return sdkgo.NewMutationRetry[SendMessageOutput](gmailFailure(sdkgo.FailureProtocol, "Gmail returned an invalid Retry-After header"), 0)
+		}
+		return sdkgo.NewMutationRetry[SendMessageOutput](gmailFailure(sdkgo.FailureAvailability, "Gmail send is temporarily unavailable"), delay)
+	}
+	content, readErr := io.ReadAll(io.LimitReader(response.Body, operation.client.maxResponseBytes+1))
+	if readErr != nil || int64(len(content)) > operation.client.maxResponseBytes {
+		return operation.confirmOrReportUnknownSend(call, credential, recipients, sdkgo.FailureTransport,
+			"Gmail send response could not be confirmed", receipt)
+	}
 	if response.StatusCode >= 500 {
-		return sdkgo.NewMutationUncertain(SendMessageOutput{}, gmailFailure(sdkgo.FailureAvailability, "Gmail send outcome is unknown"), receipt)
+		return operation.confirmOrReportUnknownSend(call, credential, recipients, sdkgo.FailureAvailability,
+			"Gmail send outcome is unknown", receipt)
 	}
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		return sdkgo.NewMutationBranch(SendMessageBranchProviderRejected, SendMessageOutput{}, gmailFailurePointer(statusFailureKind(response.StatusCode), "Gmail rejected the message"), receipt)
 	}
 	var sent sendResponse
-	if err := json.Unmarshal(content, &sent); err != nil || sent.ID == "" {
-		return sdkgo.NewMutationUncertain(SendMessageOutput{}, gmailFailure(sdkgo.FailureProtocol, "Gmail returned an invalid send response"), receipt)
+	if err := json.Unmarshal(content, &sent); err != nil || sent.ID == "" || sent.ThreadID == "" {
+		return operation.confirmOrReportUnknownSend(call, credential, recipients, sdkgo.FailureProtocol,
+			"Gmail returned an invalid send response", receipt)
 	}
 	receipt.ProviderObjectID = sent.ID
 	return sdkgo.NewMutationBranch(SendMessageBranchSent, SendMessageOutput{Sender: credential.PrimaryEmail, Recipients: recipients, MessageID: sent.ID, ThreadID: sent.ThreadID}, nil, receipt)
+}
+
+func (operation SendMessageOperation) confirmOrReportUnknownSend(
+	call sdkgo.Call, credentials Credentials, recipients []string, kind sdkgo.FailureKind, message string, receipt sdkgo.Receipt,
+) sdkgo.MutationAttempt[SendMessageOutput] {
+	if confirmed, ok := operation.sentByReadBack(call, credentials, recipients, receipt); ok {
+		return confirmed
+	}
+	return sdkgo.NewMutationUncertain(SendMessageOutput{}, gmailFailure(kind, message), receipt)
+}
+
+func (operation SendMessageOperation) sentByReadBack(
+	call sdkgo.Call, credentials Credentials, recipients []string, receipt sdkgo.Receipt,
+) (sdkgo.MutationAttempt[SendMessageOutput], bool) {
+	sent, err := operation.client.findSentMessageByCallID(call.Context, call, credentials)
+	if err != nil || sent.ID == "" {
+		return sdkgo.MutationAttempt[SendMessageOutput]{}, false
+	}
+	receipt.ProviderObjectID = sent.ID
+	return sdkgo.NewMutationBranch(SendMessageBranchSent, SendMessageOutput{
+		Sender: credentials.PrimaryEmail, Recipients: recipients, MessageID: sent.ID, ThreadID: sent.ThreadID,
+	}, nil, receipt), true
 }
 
 func validateSendInput(input SendMessageInput, sender string) ([]string, *sdkgo.Failure) {

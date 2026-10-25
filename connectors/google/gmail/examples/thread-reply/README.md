@@ -110,4 +110,6 @@ grows to 30 seconds, and starts the Worker and the Gmail runner once Dex
 answers.
 
 The example wires only the happy-path branches. An unwired optional branch fails
-the Flow. An uncertain reply is not resent.
+the Flow. A reply whose answer is lost completes when Sent Mail search finds
+its Message-ID. An uncertain reply was not found and is not resent, since Gmail
+search visibility may lag.

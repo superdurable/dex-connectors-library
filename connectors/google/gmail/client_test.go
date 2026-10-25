@@ -118,9 +118,14 @@ func TestSendMessageDoesNotLoopWhenReplacementCredentialIsUnauthorized(t *testin
 }
 
 func TestServerFailureIsUncertainAndNeverAutomaticRetry(t *testing.T) {
-	requests := 0
-	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
-		requests++
+	sends, searches := 0, 0
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		if request.Method == http.MethodGet {
+			searches++
+			_, _ = response.Write([]byte(`{"messages":[]}`))
+			return
+		}
+		sends++
 		response.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer server.Close()
@@ -128,7 +133,8 @@ func TestServerFailureIsUncertainAndNeverAutomaticRetry(t *testing.T) {
 	result, err := sdkgo.RunMutation(newGmailDexContext("send-unknown"), client.SendMessage(), gmailConnection, gmail.SendMessageInput{To: []string{"customer@example.com"}, Subject: "Progress", TextBody: "Update"})
 	require.NoError(t, err)
 	require.Equal(t, gmail.SendMessageBranchUncertain, result.Branch)
-	require.Equal(t, 1, requests)
+	require.Equal(t, 1, sends)
+	require.Equal(t, 1, searches)
 }
 
 func TestRateLimitIsTheOnlyAutomaticRetryPath(t *testing.T) {

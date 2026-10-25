@@ -106,6 +106,44 @@ func TestThreadReplyExampleCompletesOnceAndFailsUnwiredUncertainOutcomeWithRealD
 	require.Equal(t, 1, provider.sendCount(uncertainThreadID))
 }
 
+func TestThreadReplyConfirmsALostSendResponseWithRealDex(t *testing.T) {
+	provider := newGmailProvider(t)
+	defer provider.Close()
+	flow, harness := newGmailIntegrationHarness(t, provider.URL)
+	harness.startWorker(t)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	runID := strconv.FormatInt(time.Now().UnixNano(), 10)
+	threadID := "thread-confirmed-" + runID
+	root := gmail.MessageEvent{
+		PrimaryEmail: "owner@example.com", MessageID: "root-confirmed-" + runID, ThreadID: threadID,
+		From: "sender@example.com", Subject: "Approval request", Snippet: "request approval",
+	}
+	flowID := startGmailThreadFlow(t, ctx, harness.client, flow, "root-confirmed-"+runID, root)
+	waitForGmailStatus(t, ctx, harness.client, flow, flowID, StatusWaitingForReply)
+	reply := sdkgo.TriggerEvent[gmail.MessageEvent]{
+		ID: "reply-confirmed-" + runID, OccurredAt: time.Now().UTC(),
+		Payload: gmail.MessageEvent{
+			PrimaryEmail: "owner@example.com", MessageID: "reply-confirmed-" + runID, ThreadID: threadID,
+			From: "sender@example.com", Subject: "Re: Approval request", Snippet: "approved", IsReply: true,
+		},
+	}
+	replyFilter, err := NewReplyTriggerFilter(gmail.ReplyReceivedTriggerConfiguration{
+		ReplyMatcher: gmail.MessageMatcher{MessageContains: "approved", SenderEmails: []string{"sender@example.com"}},
+	})
+	require.NoError(t, err)
+	replyTarget := sdkgo.NewDexRPCTriggerTarget(harness.client, flow.ReceiveEmailReply, replyFilter, ResolveFlowID, MapToReceiveEmailReplyInput)
+	require.NoError(t, replyTarget.HandleTrigger(ctx, reply))
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var state ThreadState
+	require.NoError(t, result.DecodeSingleOutput(&state))
+	require.Equal(t, StatusCompleted, state.Status)
+	require.Equal(t, 1, provider.sendCount(threadID))
+	require.Equal(t, 1, provider.searchCount(threadID))
+}
+
 func startGmailThreadFlow(
 	t *testing.T,
 	ctx context.Context,
@@ -145,19 +183,41 @@ func waitForGmailStatus(
 
 type gmailProvider struct {
 	*httptest.Server
-	mutex         sync.Mutex
-	sendsByThread map[string]int
+	mutex              sync.Mutex
+	sendsByThread      map[string]int
+	searchesByThread   map[string]int
+	sentByRFCMessageID map[string]struct{ ID, ThreadID string }
 }
 
 func newGmailProvider(t *testing.T) *gmailProvider {
 	t.Helper()
-	provider := &gmailProvider{sendsByThread: map[string]int{}}
+	provider := &gmailProvider{
+		sendsByThread: map[string]int{}, searchesByThread: map[string]int{},
+		sentByRFCMessageID: map[string]struct{ ID, ThreadID string }{},
+	}
 	provider.Server = httptest.NewServer(http.HandlerFunc(provider.serveHTTP))
 	return provider
 }
 
 func (provider *gmailProvider) serveHTTP(response http.ResponseWriter, request *http.Request) {
 	switch {
+	case request.Method == http.MethodGet && request.URL.Path == "/users/me/messages":
+		query := request.URL.Query().Get("q")
+		provider.mutex.Lock()
+		var found struct{ ID, ThreadID string }
+		for messageID, sent := range provider.sentByRFCMessageID {
+			if strings.Contains(query, "rfc822msgid:"+messageID) {
+				found = sent
+				provider.searchesByThread[sent.ThreadID]++
+				break
+			}
+		}
+		provider.mutex.Unlock()
+		if found.ID == "" {
+			writeGmailProviderResponse(response, `{"messages":[]}`)
+			return
+		}
+		writeGmailProviderResponse(response, `{"messages":[{"id":`+strconv.Quote(found.ID)+`,"threadId":`+strconv.Quote(found.ThreadID)+`}]}`)
 	case request.Method == http.MethodGet && strings.HasPrefix(request.URL.Path, "/users/me/messages/"):
 		messageID := strings.TrimPrefix(request.URL.Path, "/users/me/messages/")
 		isReply := strings.HasPrefix(messageID, "reply-")
@@ -174,8 +234,23 @@ func (provider *gmailProvider) serveHTTP(response http.ResponseWriter, request *
 		threadID := payload["threadId"]
 		provider.mutex.Lock()
 		provider.sendsByThread[threadID]++
+		if strings.HasPrefix(threadID, "thread-confirmed-") {
+			raw, err := base64.RawURLEncoding.DecodeString(payload["raw"])
+			if err != nil {
+				provider.mutex.Unlock()
+				panic(err)
+			}
+			for _, line := range strings.Split(string(raw), "\r\n") {
+				if strings.HasPrefix(line, "Message-ID: ") {
+					provider.sentByRFCMessageID[strings.TrimPrefix(line, "Message-ID: ")] = struct{ ID, ThreadID string }{"sent-confirmed", threadID}
+				}
+			}
+		}
 		provider.mutex.Unlock()
 		response.Header().Set("Content-Type", "application/json")
+		if strings.HasPrefix(threadID, "thread-confirmed-") {
+			panic(http.ErrAbortHandler)
+		}
 		if strings.HasPrefix(threadID, "thread-uncertain-") {
 			response.WriteHeader(http.StatusInternalServerError)
 			writeGmailProviderResponse(response, `{"error":{"message":"unavailable"}}`)
@@ -197,6 +272,12 @@ func (provider *gmailProvider) sendCount(threadID string) int {
 	provider.mutex.Lock()
 	defer provider.mutex.Unlock()
 	return provider.sendsByThread[threadID]
+}
+
+func (provider *gmailProvider) searchCount(threadID string) int {
+	provider.mutex.Lock()
+	defer provider.mutex.Unlock()
+	return provider.searchesByThread[threadID]
 }
 
 func gmailIntegrationMessageJSON(messageID string, threadID string, isReply bool) string {
