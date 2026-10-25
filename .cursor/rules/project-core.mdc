@@ -34,8 +34,8 @@ alwaysApply: true
   before changing Step, retry, durability, Trigger, or Flow-example semantics,
   and follow its Core and Go guidance.
 - A connector manifest author marks every branch that is not a happy path
-  `optional: true`. Require a non-happy-path branch only when the application
-  must choose a continuation, and explain why.
+  `optional: true`. Only the happy-path branch is required; every other branch
+  is optional.
 - Applications and examples wire only happy-path branches by default; an
   unwired optional branch fails the Flow when selected. Wire another branch
   only to show a required business reaction, and put a comment at that wiring

@@ -177,11 +177,11 @@ provider bodies, or arbitrary metadata.
 ### How applications use branches
 
 Applications and examples wire only happy-path branches by default. Every
-other branch is normally optional; selecting one without a target fails the
-Flow. Wire another branch only when a requirement names a business reaction,
-such as handling one rejected recipient while processing many, and add a
-comment at that wiring naming the reaction. A branch is required only when the
-application must choose a continuation.
+other branch is optional; selecting one without a target fails the Flow. Wire
+another branch only when a requirement names a business reaction, such as
+handling one rejected recipient while processing many, and add a comment at
+that wiring naming the reaction. Only the happy-path branch is required, so an
+application is never forced to wire another branch.
 
 ## Optional Result Attributes and atomic transition
 

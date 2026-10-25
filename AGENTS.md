@@ -145,8 +145,8 @@ Every implementation plan includes Tests, Documentation, and UI/UX. Use
 - If the skill is unavailable, stop the Dex application-modeling portion and
   follow https://docs.superdurable.io/build-with-ai/dex-developer-skill.
 - A connector manifest author marks every branch that is not a happy path
-  `optional: true`. Require a non-happy-path branch only when the application
-  must choose a continuation, and explain why.
+  `optional: true`. Only the happy-path branch is required; every other branch
+  is optional.
 - Applications and examples wire only happy-path branches by default; an
   unwired optional branch fails the Flow when selected. Wire another branch
   only to show a required business reaction, and put a comment at that wiring
