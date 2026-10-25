@@ -381,6 +381,11 @@ func newScheduleMeetingHarness(t *testing.T, endpoint string, selection Calendar
 	require.NoError(t, err)
 	connection, err := calendar.NewConnection(providerClient, reference)
 	require.NoError(t, err)
+	return newScheduleMeetingHarnessWithConnection(t, connection, selection)
+}
+
+func newScheduleMeetingHarnessWithConnection(t *testing.T, connection calendar.Connection, selection CalendarSelection) (*Flow, *scheduleMeetingHarness) {
+	t.Helper()
 	flow := NewFlow(connection, selection)
 	registry, err := dex.NewRegistry([]dex.Flow{flow})
 	require.NoError(t, err)

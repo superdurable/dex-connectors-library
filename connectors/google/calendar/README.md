@@ -182,6 +182,25 @@ Set the same `ConnectionName` beside the typed `Connection` in each operation:
 a Step whose `ConnectionName` is empty or differs from its connection's name
 panics at construction.
 
+## Test with calendarmock
+
+The generated `calendarmock` package answers every operation's required branch
+by default. Pass its typed connection to the example Flow to test without
+Google credentials or response scripts:
+
+```go
+mock := calendarmock.New(t, ConnectionName)
+flow, harness := newScheduleMeetingHarnessWithConnection(t, mock.Connection(), CalendarSelection{})
+```
+
+This snippet comes from
+[`workflow_mock_integration_test.go`](examples/schedule-meeting/flow/workflow_mock_integration_test.go).
+The event-list default has three ordered pages, including a repeated event and
+a transparent event. The example conservatively completes as `conflict` when
+the first page has a continuation token, leaving the hold uninvited. Named
+cases cover missing or inaccessible events, a stable-ID conflict, and
+incomplete free/busy information.
+
 ## Example
 
 [`examples/schedule-meeting`](examples/schedule-meeting) is a runnable Dex Web
