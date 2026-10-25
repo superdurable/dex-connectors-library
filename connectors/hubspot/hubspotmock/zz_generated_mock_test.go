@@ -17,19 +17,19 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		decode func() error
 	}{
 		{name: "searchObjects/recentOpenDeals/1", decode: func() error {
-			_, err := connectormock.DecodeOutput[hubspot.ObjectPage](`{"objectType":"deals","total":2,"objects":[{"objectType":"deals","id":"9001","properties":{"dealname":"Analytical Engines renewal","dealstage":"appointmentscheduled","pipeline":"default"},"updatedAt":"2026-10-25T10:00:00Z"}],"nextAfter":"1"}`)
+			_, err := connectormock.DecodeOutput[hubspot.ObjectPage](`{"objectType":"deals","total":2,"objects":[{"objectType":"deals","id":"9001","properties":{"dealname":"Analytical Engines renewal","dealstage":"appointmentscheduled","pipeline":"default","hs_object_id":"9001","createdate":"2026-10-01T09:00:00.000Z","hs_lastmodifieddate":"2026-10-25T10:00:00.000Z"},"createdAt":"2026-10-01T09:00:00Z","updatedAt":"2026-10-25T10:00:00Z"}],"nextAfter":"1"}`)
 			return err
 		}},
 		{name: "searchObjects/recentOpenDeals/2", decode: func() error {
-			_, err := connectormock.DecodeOutput[hubspot.ObjectPage](`{"objectType":"deals","total":2,"objects":[{"objectType":"deals","id":"9001","properties":{"dealname":"Analytical Engines renewal","dealstage":"appointmentscheduled","pipeline":"default"},"updatedAt":"2026-10-25T10:00:00Z"}],"nextAfter":"2"}`)
+			_, err := connectormock.DecodeOutput[hubspot.ObjectPage](`{"objectType":"deals","total":2,"objects":[{"objectType":"deals","id":"9001","properties":{"dealname":"Analytical Engines renewal","dealstage":"appointmentscheduled","pipeline":"default","hs_object_id":"9001","createdate":"2026-10-01T09:00:00.000Z","hs_lastmodifieddate":"2026-10-25T10:00:00.000Z"},"createdAt":"2026-10-01T09:00:00Z","updatedAt":"2026-10-25T10:00:00Z"}],"nextAfter":"2"}`)
 			return err
 		}},
 		{name: "searchObjects/recentOpenDeals/3", decode: func() error {
-			_, err := connectormock.DecodeOutput[hubspot.ObjectPage](`{"objectType":"deals","total":2,"objects":[{"objectType":"deals","id":"9004","properties":{"dealname":"Earlier consultation","dealstage":"appointmentscheduled","pipeline":"default"},"updatedAt":"2026-10-20T10:00:00Z"}]}`)
+			_, err := connectormock.DecodeOutput[hubspot.ObjectPage](`{"objectType":"deals","total":2,"objects":[{"objectType":"deals","id":"9004","properties":{"dealname":"Earlier consultation","dealstage":"appointmentscheduled","pipeline":"default","hs_object_id":"9004","createdate":"2026-10-10T09:00:00.000Z","hs_lastmodifieddate":"2026-10-20T10:00:00.000Z"},"createdAt":"2026-10-10T09:00:00Z","updatedAt":"2026-10-20T10:00:00Z"}]}`)
 			return err
 		}},
 		{name: "getObject/qualifiedDeal/1", decode: func() error {
-			_, err := connectormock.DecodeOutput[hubspot.CRMObject](`{"objectType":"deals","id":"9001","properties":{"dealname":"Analytical Engines renewal","dealstage":"qualifiedtobuy","pipeline":"default"},"updatedAt":"2026-10-25T10:00:00Z"}`)
+			_, err := connectormock.DecodeOutput[hubspot.CRMObject](`{"objectType":"deals","id":"9001","properties":{"dealname":"Analytical Engines renewal","dealstage":"qualifiedtobuy","pipeline":"default","hs_object_id":"9001","createdate":"2026-10-01T09:00:00.000Z","hs_lastmodifieddate":"2026-10-25T10:05:00.000Z"},"createdAt":"2026-10-01T09:00:00Z","updatedAt":"2026-10-25T10:05:00Z"}`)
 			return err
 		}},
 		{name: "upsertObject/upsertedLead/1", decode: func() error {
@@ -37,7 +37,7 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			return err
 		}},
 		{name: "updateObject/advancedDeal/1", decode: func() error {
-			_, err := connectormock.DecodeOutput[hubspot.CRMObject](`{"objectType":"deals","id":"9001","properties":{"dealname":"Analytical Engines renewal","dealstage":"qualifiedtobuy","pipeline":"default"},"updatedAt":"2026-10-25T10:00:00Z"}`)
+			_, err := connectormock.DecodeOutput[hubspot.CRMObject](`{"objectType":"deals","id":"9001","properties":{"dealname":"Analytical Engines renewal","dealstage":"qualifiedtobuy","pipeline":"default","hs_object_id":"9001","createdate":"2026-10-01T09:00:00.000Z","hs_lastmodifieddate":"2026-10-25T10:05:00.000Z"},"createdAt":"2026-10-01T09:00:00Z","updatedAt":"2026-10-25T10:05:00Z"}`)
 			return err
 		}},
 	}

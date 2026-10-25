@@ -195,6 +195,17 @@ the newest open deal, a repeated result at the page boundary, and an older
 deal that the example leaves untouched. Named cases cover missing records,
 conflicts, and conclusive provider rejections.
 
+The defaults answer every request with one CRM: contact `501`
+(`ada@example.com`) and the open deal `9001` in the `default` pipeline. The
+`updateObject` and `getObject` answers report that deal at stage
+`qualifiedtobuy`, so they match an application whose qualified stage is
+`qualifiedtobuy`, as in the example's settings. The example fails a deal whose
+read-back stage differs from its configured one, so an application configured
+with another stage or another record needs a script that replaces both
+answers, for example `mock.UpdateObject().Default(...)` and
+`mock.GetObject().Default(...)`. See
+[`sdkgo/connectormock`](../../sdkgo/README.md#connector-mocks).
+
 The [runnable integration test](examples/lead-qualification/flow/workflow_mock_integration_test.go)
 uses these defaults on a real Dex Worker without provider credentials:
 

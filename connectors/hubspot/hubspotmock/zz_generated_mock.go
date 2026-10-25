@@ -112,9 +112,9 @@ func SearchObjectsRetry(failure sdkgo.Failure, after time.Duration) connectormoc
 // SearchObjectsRecentOpenDeals is the manifest mock recentOpenDeals: Three sorted pages with a repeated newest deal and an older open deal.
 func SearchObjectsRecentOpenDeals() connectormock.Case[hubspot.ObjectPage] {
 	pages := []hubspot.ObjectPage{
-		connectormock.MustDecodeOutput[hubspot.ObjectPage](`{"objectType":"deals","total":2,"objects":[{"objectType":"deals","id":"9001","properties":{"dealname":"Analytical Engines renewal","dealstage":"appointmentscheduled","pipeline":"default"},"updatedAt":"2026-10-25T10:00:00Z"}],"nextAfter":"1"}`),
-		connectormock.MustDecodeOutput[hubspot.ObjectPage](`{"objectType":"deals","total":2,"objects":[{"objectType":"deals","id":"9001","properties":{"dealname":"Analytical Engines renewal","dealstage":"appointmentscheduled","pipeline":"default"},"updatedAt":"2026-10-25T10:00:00Z"}],"nextAfter":"2"}`),
-		connectormock.MustDecodeOutput[hubspot.ObjectPage](`{"objectType":"deals","total":2,"objects":[{"objectType":"deals","id":"9004","properties":{"dealname":"Earlier consultation","dealstage":"appointmentscheduled","pipeline":"default"},"updatedAt":"2026-10-20T10:00:00Z"}]}`),
+		connectormock.MustDecodeOutput[hubspot.ObjectPage](`{"objectType":"deals","total":2,"objects":[{"objectType":"deals","id":"9001","properties":{"dealname":"Analytical Engines renewal","dealstage":"appointmentscheduled","pipeline":"default","hs_object_id":"9001","createdate":"2026-10-01T09:00:00.000Z","hs_lastmodifieddate":"2026-10-25T10:00:00.000Z"},"createdAt":"2026-10-01T09:00:00Z","updatedAt":"2026-10-25T10:00:00Z"}],"nextAfter":"1"}`),
+		connectormock.MustDecodeOutput[hubspot.ObjectPage](`{"objectType":"deals","total":2,"objects":[{"objectType":"deals","id":"9001","properties":{"dealname":"Analytical Engines renewal","dealstage":"appointmentscheduled","pipeline":"default","hs_object_id":"9001","createdate":"2026-10-01T09:00:00.000Z","hs_lastmodifieddate":"2026-10-25T10:00:00.000Z"},"createdAt":"2026-10-01T09:00:00Z","updatedAt":"2026-10-25T10:00:00Z"}],"nextAfter":"2"}`),
+		connectormock.MustDecodeOutput[hubspot.ObjectPage](`{"objectType":"deals","total":2,"objects":[{"objectType":"deals","id":"9004","properties":{"dealname":"Earlier consultation","dealstage":"appointmentscheduled","pipeline":"default","hs_object_id":"9004","createdate":"2026-10-10T09:00:00.000Z","hs_lastmodifieddate":"2026-10-20T10:00:00.000Z"},"createdAt":"2026-10-10T09:00:00Z","updatedAt":"2026-10-20T10:00:00Z"}]}`),
 	}
 	pageNumber := connectormock.CursorPageNumber[hubspot.SearchObjectsInput]("after", "nextAfter", pages)
 	return connectormock.Paged(hubspot.SearchObjectsBranchSearched, pageNumber, pages...)
@@ -161,9 +161,9 @@ func GetObjectRetry(failure sdkgo.Failure, after time.Duration) connectormock.Ca
 	return connectormock.Retry[hubspot.CRMObject](failure, after)
 }
 
-// GetObjectQualifiedDeal is the manifest mock qualifiedDeal: The selected deal after its stage was advanced.
+// GetObjectQualifiedDeal is the manifest mock qualifiedDeal: The selected deal read back at stage qualifiedtobuy; it fits an application whose qualified stage is qualifiedtobuy, and any other stage needs a scripted answer.
 func GetObjectQualifiedDeal() connectormock.Case[hubspot.CRMObject] {
-	value := connectormock.MustDecodeOutput[hubspot.CRMObject](`{"objectType":"deals","id":"9001","properties":{"dealname":"Analytical Engines renewal","dealstage":"qualifiedtobuy","pipeline":"default"},"updatedAt":"2026-10-25T10:00:00Z"}`)
+	value := connectormock.MustDecodeOutput[hubspot.CRMObject](`{"objectType":"deals","id":"9001","properties":{"dealname":"Analytical Engines renewal","dealstage":"qualifiedtobuy","pipeline":"default","hs_object_id":"9001","createdate":"2026-10-01T09:00:00.000Z","hs_lastmodifieddate":"2026-10-25T10:05:00.000Z"},"createdAt":"2026-10-01T09:00:00Z","updatedAt":"2026-10-25T10:05:00Z"}`)
 	return connectormock.Branch(hubspot.GetObjectBranchFound, value, nil)
 }
 
@@ -270,9 +270,9 @@ func UpdateObjectRetry(failure sdkgo.Failure, after time.Duration) connectormock
 	return connectormock.Retry[hubspot.CRMObject](failure, after)
 }
 
-// UpdateObjectAdvancedDeal is the manifest mock advancedDeal: The selected deal now has the qualified stage.
+// UpdateObjectAdvancedDeal is the manifest mock advancedDeal: The selected deal now at stage qualifiedtobuy; it fits an application whose qualified stage is qualifiedtobuy, and any other stage needs a scripted answer.
 func UpdateObjectAdvancedDeal() connectormock.Case[hubspot.CRMObject] {
-	value := connectormock.MustDecodeOutput[hubspot.CRMObject](`{"objectType":"deals","id":"9001","properties":{"dealname":"Analytical Engines renewal","dealstage":"qualifiedtobuy","pipeline":"default"},"updatedAt":"2026-10-25T10:00:00Z"}`)
+	value := connectormock.MustDecodeOutput[hubspot.CRMObject](`{"objectType":"deals","id":"9001","properties":{"dealname":"Analytical Engines renewal","dealstage":"qualifiedtobuy","pipeline":"default","hs_object_id":"9001","createdate":"2026-10-01T09:00:00.000Z","hs_lastmodifieddate":"2026-10-25T10:05:00.000Z"},"createdAt":"2026-10-01T09:00:00Z","updatedAt":"2026-10-25T10:05:00Z"}`)
 	return connectormock.Branch(hubspot.UpdateObjectBranchUpdated, value, nil)
 }
 

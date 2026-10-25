@@ -162,17 +162,17 @@ spec:
             - objectType: deals
               total: 2
               objects:
-                - {objectType: deals, id: "9001", properties: {dealname: Analytical Engines renewal, dealstage: appointmentscheduled, pipeline: default}, updatedAt: "2026-10-25T10:00:00Z"}
+                - {objectType: deals, id: "9001", properties: {dealname: Analytical Engines renewal, dealstage: appointmentscheduled, pipeline: default, hs_object_id: "9001", createdate: "2026-10-01T09:00:00.000Z", hs_lastmodifieddate: "2026-10-25T10:00:00.000Z"}, createdAt: "2026-10-01T09:00:00Z", updatedAt: "2026-10-25T10:00:00Z"}
               nextAfter: "1"
             - objectType: deals
               total: 2
               objects:
-                - {objectType: deals, id: "9001", properties: {dealname: Analytical Engines renewal, dealstage: appointmentscheduled, pipeline: default}, updatedAt: "2026-10-25T10:00:00Z"}
+                - {objectType: deals, id: "9001", properties: {dealname: Analytical Engines renewal, dealstage: appointmentscheduled, pipeline: default, hs_object_id: "9001", createdate: "2026-10-01T09:00:00.000Z", hs_lastmodifieddate: "2026-10-25T10:00:00.000Z"}, createdAt: "2026-10-01T09:00:00Z", updatedAt: "2026-10-25T10:00:00Z"}
               nextAfter: "2"
             - objectType: deals
               total: 2
               objects:
-                - {objectType: deals, id: "9004", properties: {dealname: Earlier consultation, dealstage: appointmentscheduled, pipeline: default}, updatedAt: "2026-10-20T10:00:00Z"}
+                - {objectType: deals, id: "9004", properties: {dealname: Earlier consultation, dealstage: appointmentscheduled, pipeline: default, hs_object_id: "9004", createdate: "2026-10-10T09:00:00.000Z", hs_lastmodifieddate: "2026-10-20T10:00:00.000Z"}, createdAt: "2026-10-10T09:00:00Z", updatedAt: "2026-10-20T10:00:00Z"}
         - name: searchRejected
           branch: providerRejected
           description: HubSpot rejects an unavailable CRM property filter.
@@ -194,9 +194,9 @@ spec:
       mocks:
         - name: qualifiedDeal
           branch: found
-          description: The selected deal after its stage was advanced.
+          description: The selected deal read back at stage qualifiedtobuy; it fits an application whose qualified stage is qualifiedtobuy, and any other stage needs a scripted answer.
           default: true
-          output: {objectType: deals, id: "9001", properties: {dealname: Analytical Engines renewal, dealstage: qualifiedtobuy, pipeline: default}, updatedAt: "2026-10-25T10:00:00Z"}
+          output: {objectType: deals, id: "9001", properties: {dealname: Analytical Engines renewal, dealstage: qualifiedtobuy, pipeline: default, hs_object_id: "9001", createdate: "2026-10-01T09:00:00.000Z", hs_lastmodifieddate: "2026-10-25T10:05:00.000Z"}, createdAt: "2026-10-01T09:00:00Z", updatedAt: "2026-10-25T10:05:00Z"}
         - name: objectMissing
           branch: notFound
           description: The requested CRM record was deleted or is unavailable.
@@ -253,9 +253,9 @@ spec:
       mocks:
         - name: advancedDeal
           branch: updated
-          description: The selected deal now has the qualified stage.
+          description: The selected deal now at stage qualifiedtobuy; it fits an application whose qualified stage is qualifiedtobuy, and any other stage needs a scripted answer.
           default: true
-          output: {objectType: deals, id: "9001", properties: {dealname: Analytical Engines renewal, dealstage: qualifiedtobuy, pipeline: default}, updatedAt: "2026-10-25T10:00:00Z"}
+          output: {objectType: deals, id: "9001", properties: {dealname: Analytical Engines renewal, dealstage: qualifiedtobuy, pipeline: default, hs_object_id: "9001", createdate: "2026-10-01T09:00:00.000Z", hs_lastmodifieddate: "2026-10-25T10:05:00.000Z"}, createdAt: "2026-10-01T09:00:00Z", updatedAt: "2026-10-25T10:05:00Z"}
         - name: dealMissing
           branch: notFound
           description: The selected deal was removed before its stage update.
