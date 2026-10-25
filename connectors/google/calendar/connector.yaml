@@ -167,7 +167,7 @@ spec:
       mocks:
         - name: meetingWindow
           branch: listed
-          description: Three start-ordered pages with a repeated transparent event and the meeting hold.
+          description: Three start-ordered pages for the 2026-02-20 14:00-15:00 America/Los_Angeles window, with a repeated transparent event and the meeting hold.
           default: true
           pages:
             - calendarId: primary
@@ -206,7 +206,7 @@ spec:
               events: []
         - name: busyMeetingWindow
           branch: listed
-          description: A new opaque event overlaps the hold and appears on two page boundaries.
+          description: A new opaque event overlaps the hold and repeats across the boundary between two pages.
           pages:
             - calendarId: primary
               timeMin: "2026-02-20T14:00:00-08:00"
@@ -247,7 +247,7 @@ spec:
       mocks:
         - name: meetingHold
           branch: found
-          description: The uninvited meeting hold is available for read-back.
+          description: The uninvited hold of the 2026-02-20 14:00-15:00 America/Los_Angeles meeting is available for read-back; a Flow that verifies another time needs a script.
           default: true
           output:
             id: meetinghold0001
@@ -283,7 +283,7 @@ spec:
       mocks:
         - name: holdCreated
           branch: created
-          description: Google creates the uninvited meeting hold under a stable event ID.
+          description: Google creates the uninvited hold of the 2026-02-20 14:00-15:00 America/Los_Angeles meeting under a stable event ID; another meeting needs a script.
           default: true
           output:
             event:
@@ -321,7 +321,7 @@ spec:
       mocks:
         - name: attendeesInvited
           branch: updated
-          description: The confirmed meeting now includes its invited attendees.
+          description: The confirmed 2026-02-20 14:00-15:00 America/Los_Angeles meeting now includes priya@meridian.example.com and alice@example.com; other guests need a script.
           default: true
           output:
             event:
@@ -361,7 +361,7 @@ spec:
       mocks:
         - name: calendarFree
           branch: queried
-          description: The primary calendar has no busy time in the requested meeting window.
+          description: The primary calendar has no busy time in the 2026-02-20 14:00-15:00 America/Los_Angeles meeting window.
           default: true
           output:
             timeMin: "2026-02-20T14:00:00-08:00"

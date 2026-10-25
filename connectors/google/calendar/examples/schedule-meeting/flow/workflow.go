@@ -90,7 +90,17 @@ type MeetingRequest struct {
 	Attendees []string `json:"attendees"`
 	// RequestConference attaches a Google Meet conference to the hold.
 	RequestConference bool `json:"requestConference,omitempty"`
-	// PageToken carries the next event-list cursor between Steps; the initial request leaves it blank.
+}
+
+// MeetingWindowPage names one page of the meeting window for the event-list Step.
+type MeetingWindowPage struct {
+	// CalendarID is the calendar to list.
+	CalendarID string `json:"calendarId"`
+	// Start is the inclusive start of the window.
+	Start calendar.EventDateTime `json:"start"`
+	// End is the exclusive end of the window.
+	End calendar.EventDateTime `json:"end"`
+	// PageToken is the cursor of the page to read; the first page leaves it blank.
 	PageToken string `json:"pageToken,omitempty"`
 }
 
@@ -134,8 +144,6 @@ type MeetingOutcome struct {
 	Busy []calendar.BusyInterval `json:"busy,omitempty"`
 	// ConflictingEventIDs lists other events that block the meeting window.
 	ConflictingEventIDs []string `json:"conflictingEventIds,omitempty"`
-	// IsWindowTruncated is retained for older result readers; bounded scans fail instead of returning a truncated result.
-	IsWindowTruncated bool `json:"isWindowTruncated,omitempty"`
 }
 
 // Flow schedules one meeting on one Google Calendar.
@@ -207,7 +215,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Found: sdkgo.GoTo(verifyMeetingHold{}),
 		})),
 		dex.DefineStep(verifyMeetingHold{}),
-		dex.DefineStep(calendar.NewListEventsStep(calendar.ListEventsStepConfig[MeetingRequest]{
+		dex.DefineStep(calendar.NewListEventsStep(calendar.ListEventsStepConfig[MeetingWindowPage]{
 			StepType: listMeetingWindowEventsStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
 				GroupID: "google-calendar", GroupLabel: "Google Calendar",
@@ -297,11 +305,15 @@ func MapToGetEventInput(result calendar.CreateEventResult) calendar.GetEventInpu
 }
 
 // MapToListEventsInput lists one bounded page of the meeting window.
-func MapToListEventsInput(request MeetingRequest) calendar.ListEventsInput {
+func MapToListEventsInput(page MeetingWindowPage) calendar.ListEventsInput {
 	return calendar.ListEventsInput{
-		CalendarID: request.CalendarID, TimeMin: request.Start.DateTime, TimeMax: request.End.DateTime,
-		PageSize: maximumListedWindowEvents, PageToken: request.PageToken, TimeZone: request.Start.TimeZone,
+		CalendarID: page.CalendarID, TimeMin: page.Start.DateTime, TimeMax: page.End.DateTime,
+		PageSize: maximumListedWindowEvents, PageToken: page.PageToken, TimeZone: page.Start.TimeZone,
 	}
+}
+
+func meetingWindowPage(request MeetingRequest, pageToken string) MeetingWindowPage {
+	return MeetingWindowPage{CalendarID: request.CalendarID, Start: request.Start, End: request.End, PageToken: pageToken}
 }
 
 // MapToUpdateEventInput replaces the hold's guest list and asks Google to email every guest.
@@ -467,7 +479,7 @@ func (verifyMeetingHold) Execute(ctx dex.Context, result calendar.GetEventResult
 	if err := meetingWindowScanAttribute.Set(ctx, meetingWindowScan{}); err != nil {
 		return nil, err
 	}
-	return dex.GoTo(sdkgo.StepRef[MeetingRequest](listMeetingWindowEventsStepType), request), nil
+	return dex.GoTo(sdkgo.StepRef[MeetingWindowPage](listMeetingWindowEventsStepType), meetingWindowPage(request, "")), nil
 }
 
 func verifyHoldMatchesRequest(hold calendar.Event, request MeetingRequest) error {
@@ -553,8 +565,7 @@ func (evaluateMeetingWindow) Execute(ctx dex.Context, result calendar.ListEvents
 		if err := meetingWindowScanAttribute.Set(ctx, scan); err != nil {
 			return nil, err
 		}
-		request.PageToken = nextPageToken
-		return dex.GoTo(sdkgo.StepRef[MeetingRequest](listMeetingWindowEventsStepType), request), nil
+		return dex.GoTo(sdkgo.StepRef[MeetingWindowPage](listMeetingWindowEventsStepType), meetingWindowPage(request, nextPageToken)), nil
 	}
 	if len(scan.ConflictingEventIDs) != 0 {
 		outcome := MeetingOutcome{

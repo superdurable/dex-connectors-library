@@ -125,7 +125,7 @@ func ListEventsRetry(failure sdkgo.Failure, after time.Duration) connectormock.C
 	return connectormock.Retry[calendar.ListEventsOutput](failure, after)
 }
 
-// ListEventsMeetingWindow is the manifest mock meetingWindow: Three start-ordered pages with a repeated transparent event and the meeting hold.
+// ListEventsMeetingWindow is the manifest mock meetingWindow: Three start-ordered pages for the 2026-02-20 14:00-15:00 America/Los_Angeles window, with a repeated transparent event and the meeting hold.
 func ListEventsMeetingWindow() connectormock.Case[calendar.ListEventsOutput] {
 	pages := []calendar.ListEventsOutput{
 		connectormock.MustDecodeOutput[calendar.ListEventsOutput](`{"calendarId":"primary","timeMin":"2026-02-20T14:00:00-08:00","timeMax":"2026-02-20T15:00:00-08:00","timeZone":"America/Los_Angeles","events":[{"id":"meetinghold0001","calendarId":"primary","status":"confirmed","summary":"Meridian kickoff","start":{"dateTime":"2026-02-20T14:00:00-08:00","timeZone":"America/Los_Angeles"},"end":{"dateTime":"2026-02-20T15:00:00-08:00","timeZone":"America/Los_Angeles"},"transparency":"opaque","etag":"\"mock-etag-1\""},{"id":"focusblock0001","calendarId":"primary","status":"confirmed","summary":"Focus time","start":{"dateTime":"2026-02-20T14:15:00-08:00","timeZone":"America/Los_Angeles"},"end":{"dateTime":"2026-02-20T14:45:00-08:00","timeZone":"America/Los_Angeles"},"transparency":"transparent"}],"nextPageToken":"calendar-page-2"}`),
@@ -136,7 +136,7 @@ func ListEventsMeetingWindow() connectormock.Case[calendar.ListEventsOutput] {
 	return connectormock.Paged(calendar.ListEventsBranchListed, pageNumber, pages...)
 }
 
-// ListEventsBusyMeetingWindow is the manifest mock busyMeetingWindow: A new opaque event overlaps the hold and appears on two page boundaries.
+// ListEventsBusyMeetingWindow is the manifest mock busyMeetingWindow: A new opaque event overlaps the hold and repeats across the boundary between two pages.
 func ListEventsBusyMeetingWindow() connectormock.Case[calendar.ListEventsOutput] {
 	pages := []calendar.ListEventsOutput{
 		connectormock.MustDecodeOutput[calendar.ListEventsOutput](`{"calendarId":"primary","timeMin":"2026-02-20T14:00:00-08:00","timeMax":"2026-02-20T15:00:00-08:00","timeZone":"America/Los_Angeles","events":[{"id":"meetinghold0001","calendarId":"primary","status":"confirmed","summary":"Meridian kickoff","start":{"dateTime":"2026-02-20T14:00:00-08:00","timeZone":"America/Los_Angeles"},"end":{"dateTime":"2026-02-20T15:00:00-08:00","timeZone":"America/Los_Angeles"},"transparency":"opaque"},{"id":"boardprep0001","calendarId":"primary","status":"confirmed","summary":"Board preparation","start":{"dateTime":"2026-02-20T14:30:00-08:00","timeZone":"America/Los_Angeles"},"end":{"dateTime":"2026-02-20T15:30:00-08:00","timeZone":"America/Los_Angeles"},"transparency":"opaque"}],"nextPageToken":"busy-page-2"}`),
@@ -193,7 +193,7 @@ func GetEventRetry(failure sdkgo.Failure, after time.Duration) connectormock.Cas
 	return connectormock.Retry[calendar.Event](failure, after)
 }
 
-// GetEventMeetingHold is the manifest mock meetingHold: The uninvited meeting hold is available for read-back.
+// GetEventMeetingHold is the manifest mock meetingHold: The uninvited hold of the 2026-02-20 14:00-15:00 America/Los_Angeles meeting is available for read-back; a Flow that verifies another time needs a script.
 func GetEventMeetingHold() connectormock.Case[calendar.Event] {
 	value := connectormock.MustDecodeOutput[calendar.Event](`{"id":"meetinghold0001","calendarId":"primary","status":"confirmed","summary":"Meridian kickoff","start":{"dateTime":"2026-02-20T14:00:00-08:00","timeZone":"America/Los_Angeles"},"end":{"dateTime":"2026-02-20T15:00:00-08:00","timeZone":"America/Los_Angeles"},"transparency":"opaque","etag":"\"mock-etag-1\""}`)
 	return connectormock.Branch(calendar.GetEventBranchFound, value, nil)
@@ -244,7 +244,7 @@ func CreateEventRetry(failure sdkgo.Failure, after time.Duration) connectormock.
 	return connectormock.Retry[calendar.CreateEventOutput](failure, after)
 }
 
-// CreateEventHoldCreated is the manifest mock holdCreated: Google creates the uninvited meeting hold under a stable event ID.
+// CreateEventHoldCreated is the manifest mock holdCreated: Google creates the uninvited hold of the 2026-02-20 14:00-15:00 America/Los_Angeles meeting under a stable event ID; another meeting needs a script.
 func CreateEventHoldCreated() connectormock.Case[calendar.CreateEventOutput] {
 	value := connectormock.MustDecodeOutput[calendar.CreateEventOutput](`{"event":{"id":"meetinghold0001","calendarId":"primary","status":"confirmed","summary":"Meridian kickoff","start":{"dateTime":"2026-02-20T14:00:00-08:00","timeZone":"America/Los_Angeles"},"end":{"dateTime":"2026-02-20T15:00:00-08:00","timeZone":"America/Los_Angeles"},"transparency":"opaque","etag":"\"mock-etag-1\""},"wasAlreadyCreated":false}`)
 	return connectormock.Branch(calendar.CreateEventBranchCreated, value, nil)
@@ -297,7 +297,7 @@ func UpdateEventRetry(failure sdkgo.Failure, after time.Duration) connectormock.
 	return connectormock.Retry[calendar.UpdateEventOutput](failure, after)
 }
 
-// UpdateEventAttendeesInvited is the manifest mock attendeesInvited: The confirmed meeting now includes its invited attendees.
+// UpdateEventAttendeesInvited is the manifest mock attendeesInvited: The confirmed 2026-02-20 14:00-15:00 America/Los_Angeles meeting now includes priya@meridian.example.com and alice@example.com; other guests need a script.
 func UpdateEventAttendeesInvited() connectormock.Case[calendar.UpdateEventOutput] {
 	value := connectormock.MustDecodeOutput[calendar.UpdateEventOutput](`{"event":{"id":"meetinghold0001","calendarId":"primary","status":"confirmed","summary":"Meridian kickoff","start":{"dateTime":"2026-02-20T14:00:00-08:00","timeZone":"America/Los_Angeles"},"end":{"dateTime":"2026-02-20T15:00:00-08:00","timeZone":"America/Los_Angeles"},"transparency":"opaque","etag":"\"mock-etag-2\"","attendees":[{"email":"priya@meridian.example.com","responseStatus":"needsAction"},{"email":"alice@example.com","responseStatus":"needsAction"}]}}`)
 	return connectormock.Branch(calendar.UpdateEventBranchUpdated, value, nil)
@@ -350,7 +350,7 @@ func QueryFreeBusyRetry(failure sdkgo.Failure, after time.Duration) connectormoc
 	return connectormock.Retry[calendar.QueryFreeBusyOutput](failure, after)
 }
 
-// QueryFreeBusyCalendarFree is the manifest mock calendarFree: The primary calendar has no busy time in the requested meeting window.
+// QueryFreeBusyCalendarFree is the manifest mock calendarFree: The primary calendar has no busy time in the 2026-02-20 14:00-15:00 America/Los_Angeles meeting window.
 func QueryFreeBusyCalendarFree() connectormock.Case[calendar.QueryFreeBusyOutput] {
 	value := connectormock.MustDecodeOutput[calendar.QueryFreeBusyOutput](`{"timeMin":"2026-02-20T14:00:00-08:00","timeMax":"2026-02-20T15:00:00-08:00","timeZone":"America/Los_Angeles","calendars":[{"calendarId":"primary","busy":[]}]}`)
 	return connectormock.Branch(calendar.QueryFreeBusyBranchQueried, value, nil)
