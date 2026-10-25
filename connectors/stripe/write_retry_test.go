@@ -390,7 +390,9 @@ func TestStripeKeyedWritesClassifyConflicts(t *testing.T) {
 	}{
 		{name: "409 key in use", status: http.StatusConflict, body: stripeKeyInUseBody, isRetry: true},
 		{name: "409 with retry hint", status: http.StatusConflict, headers: http.Header{"Stripe-Should-Retry": {"true"}}, body: `{"error":{"type":"invalid_request_error"}}`, isRetry: true},
-		{name: "409 without code", status: http.StatusConflict},
+		{name: "409 without body", status: http.StatusConflict, isRetry: true},
+		{name: "409 other code", status: http.StatusConflict, body: `{"error":{"type":"invalid_request_error","code":"resource_conflict"}}`, isRetry: true},
+		{name: "409 with no-retry hint", status: http.StatusConflict, headers: http.Header{"Stripe-Should-Retry": {"false"}}, body: stripeKeyInUseBody},
 		{name: "409 idempotency mismatch", status: http.StatusConflict, body: `{"error":{"type":"idempotency_error","message":"Keys for idempotent requests can only be used with the same parameters they were first used with."}}`},
 		{name: "400 idempotency mismatch", status: http.StatusBadRequest, body: `{"error":{"type":"idempotency_error","message":"Keys for idempotent requests can only be used with the same parameters they were first used with."}}`},
 	}

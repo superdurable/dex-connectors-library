@@ -27,7 +27,7 @@ const (
 	maximumMetadataValRunes = 500
 )
 
-const stripeIdempotencyKeyInUseCode = "idempotency_key_in_use"
+const stripeIdempotencyErrorType = "idempotency_error"
 
 var currencyPattern = regexp.MustCompile(`^[a-z]{3}$`)
 
@@ -247,7 +247,7 @@ func (operation CreateACHCheckoutSessionOperation) Invoke(call sdkgo.Call, input
 		return sdkgo.NewMutationRetry[CheckoutSession](stripeFailure("createACHCheckoutSession", sdkgo.FailureRateLimit, "Stripe rate limited the Checkout Session request"), retryAfter(response.header))
 	}
 	if response.statusCode == http.StatusConflict && shouldRetryKeyedConflict(response) {
-		return sdkgo.NewMutationRetry[CheckoutSession](stripeFailure("createACHCheckoutSession", sdkgo.FailureConflict, "Stripe is still processing a Checkout Session request with this idempotency key"), retryAfter(response.header))
+		return sdkgo.NewMutationRetry[CheckoutSession](stripeFailure("createACHCheckoutSession", sdkgo.FailureConflict, "Stripe reported a conflicting Checkout Session request with this idempotency key"), retryAfter(response.header))
 	}
 	if response.statusCode >= 500 {
 		if shouldRetryKeyedServerFailure(response) {
@@ -442,13 +442,13 @@ func shouldRetryKeyedServerFailure(response providerResponse) bool {
 	return response.statusCode == http.StatusBadGateway || response.statusCode == http.StatusServiceUnavailable || response.statusCode == http.StatusGatewayTimeout
 }
 
-// shouldRetryKeyedConflict reports a 409 whose key's original request is still executing.
+// shouldRetryKeyedConflict follows Stripe's SDKs: retry a 409 unless Stripe says not to or the key's parameters differ.
 // https://docs.stripe.com/error-low-level#content-errors
 func shouldRetryKeyedConflict(response providerResponse) bool {
-	if strings.EqualFold(response.header.Get("Stripe-Should-Retry"), "true") {
-		return true
+	if strings.EqualFold(response.header.Get("Stripe-Should-Retry"), "false") {
+		return false
 	}
-	return parseStripeAPIError(response.body).Code == stripeIdempotencyKeyInUseCode
+	return parseStripeAPIError(response.body).Type != stripeIdempotencyErrorType
 }
 
 func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Credentials, *sdkgo.Failure) {

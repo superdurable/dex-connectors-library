@@ -66,7 +66,7 @@ func (operation CreateCardCheckoutSessionOperation) Invoke(call sdkgo.Call, inpu
 		return sdkgo.NewMutationRetry[CheckoutSession](stripeFailure("createCardCheckoutSession", sdkgo.FailureRateLimit, "Stripe rate limited the Checkout Session request"), retryAfter(response.header))
 	}
 	if response.statusCode == http.StatusConflict && shouldRetryKeyedConflict(response) {
-		return sdkgo.NewMutationRetry[CheckoutSession](stripeFailure("createCardCheckoutSession", sdkgo.FailureConflict, "Stripe is still processing a Checkout Session request with this idempotency key"), retryAfter(response.header))
+		return sdkgo.NewMutationRetry[CheckoutSession](stripeFailure("createCardCheckoutSession", sdkgo.FailureConflict, "Stripe reported a conflicting Checkout Session request with this idempotency key"), retryAfter(response.header))
 	}
 	if response.statusCode >= 500 {
 		if shouldRetryKeyedServerFailure(response) {

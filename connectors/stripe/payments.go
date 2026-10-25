@@ -104,6 +104,7 @@ type stripeRefund struct {
 }
 
 type stripeAPIError struct {
+	Type    string
 	Code    string
 	Message string
 }
@@ -402,6 +403,7 @@ func describeStripeRejection(summary string, response providerResponse) string {
 func parseStripeAPIError(contents []byte) stripeAPIError {
 	var decoded struct {
 		Error struct {
+			Type    string `json:"type"`
 			Code    string `json:"code"`
 			Message string `json:"message"`
 		} `json:"error"`
@@ -409,5 +411,5 @@ func parseStripeAPIError(contents []byte) stripeAPIError {
 	if err := json.Unmarshal(contents, &decoded); err != nil {
 		return stripeAPIError{}
 	}
-	return stripeAPIError{Code: decoded.Error.Code, Message: decoded.Error.Message}
+	return stripeAPIError{Type: decoded.Error.Type, Code: decoded.Error.Code, Message: decoded.Error.Message}
 }
