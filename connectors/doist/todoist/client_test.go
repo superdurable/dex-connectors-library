@@ -582,6 +582,35 @@ func TestCreateTaskUnusableAnswerRemainsUncertain(t *testing.T) {
 	}
 }
 
+func TestUpdateReadBackOfInactiveTaskSelectsNotFound(t *testing.T) {
+	for name, postBody := range map[string]string{
+		"malformed answer":  "{",
+		"mismatched answer": taskJSON("A concurrent edit"),
+	} {
+		t.Run(name, func(t *testing.T) {
+			var posts, reads atomic.Int32
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+				if request.Method == http.MethodGet {
+					reads.Add(1)
+					w.WriteHeader(http.StatusNotFound)
+					return
+				}
+				posts.Add(1)
+				_, err := io.WriteString(w, postBody)
+				require.NoError(t, err)
+			}))
+			defer server.Close()
+			result, err := updateTask(newTestClient(t, server.URL), "Requested title")
+			require.NoError(t, err)
+			require.Equal(t, UpdateTaskBranchNotFound, result.Branch)
+			require.Equal(t, sdkgo.FailureNotFound, result.Failure.Kind)
+			require.Contains(t, result.Failure.Message, "no longer active")
+			require.Equal(t, int32(1), posts.Load())
+			require.Equal(t, int32(1), reads.Load())
+		})
+	}
+}
+
 type dropResponseTransport struct{}
 
 func (dropResponseTransport) RoundTrip(request *http.Request) (*http.Response, error) {

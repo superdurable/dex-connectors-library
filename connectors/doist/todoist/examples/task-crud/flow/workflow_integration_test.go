@@ -154,6 +154,7 @@ func TestTaskUpdateRecoveryWithRealDex(t *testing.T) {
 		{"missing", "notFound", dex.FlowCompleted, 1, 0, 0, false},
 		{"invalid-response", "", dex.FlowFailed, 1, 0, 0, false},
 		{"post-update-read-missing", "notFound", dex.FlowCompleted, 2, 1, 0, false},
+		{"update-answer-inactive", "notFound", dex.FlowCompleted, 2, 1, 0, false},
 		{"post-update-read-rejected", "providerRejected", dex.FlowCompleted, 2, 1, 0, false},
 	} {
 		t.Run(scenario.name, func(t *testing.T) {
@@ -174,6 +175,10 @@ func TestTaskUpdateRecoveryWithRealDex(t *testing.T) {
 				require.Equal(t, scenario.matches, outcome.MatchesRequestedFields)
 				if scenario.name == "post-update-read-missing" || scenario.name == "post-update-read-rejected" {
 					require.Equal(t, "updated", outcome.MutationBranch)
+					require.Empty(t, outcome.DeleteBranch)
+				}
+				if scenario.name == "update-answer-inactive" {
+					require.Equal(t, "notFound", outcome.MutationBranch)
 					require.Empty(t, outcome.DeleteBranch)
 				}
 				var display map[string]any
@@ -264,7 +269,7 @@ func (provider *crudProvider) serveHTTP(w http.ResponseWriter, request *http.Req
 			w.WriteHeader(503)
 			return
 		}
-		if provider.scenario == "missing" || provider.scenario == "post-update-read-missing" && provider.reads == 2 {
+		if provider.scenario == "missing" || (provider.scenario == "post-update-read-missing" || provider.scenario == "update-answer-inactive") && provider.reads == 2 {
 			w.WriteHeader(404)
 			return
 		}
@@ -312,6 +317,10 @@ func (provider *crudProvider) serveHTTP(w http.ResponseWriter, request *http.Req
 		}
 		if input.Description != nil {
 			provider.description = *input.Description
+		}
+		if provider.scenario == "update-answer-inactive" {
+			writeCRUDJSON(w, map[string]any{})
+			return
 		}
 		if provider.scenario == "write-applied-503" && provider.updates == 1 {
 			w.WriteHeader(503)
