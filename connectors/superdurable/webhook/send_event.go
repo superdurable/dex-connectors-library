@@ -44,6 +44,10 @@ type SendEventOutput struct {
 }
 
 // SendEventOperation implements the sendEvent Mutation. Build it with Client.SendEvent.
+//
+// Delivery is at least once. After a 5xx, a timeout, or a lost response the Step retries with the same
+// webhook-id, so the receiver may see one event more than once. The receiver must deduplicate by webhook-id
+// and answer 2xx for an id it already processed; a 409 for a repeated id is reported as rejected.
 type SendEventOperation struct{ client *Client }
 
 // Definition returns the immutable sendEvent operation definition.
@@ -58,7 +62,8 @@ func (SendEventOperation) IdempotencyKey(callID sdkgo.CallID, _ SendEventInput) 
 
 // Invoke POSTs the payload once with webhook-id, webhook-timestamp, and webhook-signature headers. A 2xx
 // selects delivered, and a redirect or a 4xx other than 408 and 429 selects rejected. A 408, 429, 5xx,
-// timeout, or transport error returns Retry with the same webhook-id.
+// timeout, or transport error returns Retry with the same webhook-id and a new timestamp and signature.
+// A 409 is never read as proof of an earlier delivery: an earlier attempt may not have reached the receiver.
 func (operation SendEventOperation) Invoke(call sdkgo.Call, input SendEventInput) sdkgo.MutationAttempt[SendEventOutput] {
 	client := operation.client
 	output := SendEventOutput{WebhookID: string(call.IdempotencyKey)}
@@ -105,7 +110,7 @@ func (operation SendEventOperation) Invoke(call sdkgo.Call, input SendEventInput
 		return sdkgo.NewMutationRetry[SendEventOutput](sendEventFailure(sdkgo.FailureAvailability,
 			fmt.Sprintf("the receiver answered HTTP %d", status)), providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), client.now()))
 	default:
-		failure := sendEventFailure(rejectionFailureKind(status), fmt.Sprintf("the receiver answered HTTP %d", status))
+		failure := sendEventFailure(rejectionFailureKind(status), rejectionMessage(status))
 		return sdkgo.NewMutationBranch(SendEventBranchRejected, output, &failure, operation.sendEventReceipt(output))
 	}
 }
@@ -172,6 +177,15 @@ func rejectionFailureKind(status int) sdkgo.FailureKind {
 	default:
 		return sdkgo.FailureProviderRejection
 	}
+}
+
+// rejectionMessage names the status and, for a 409, the contract a deduplicating receiver must follow.
+func rejectionMessage(status int) string {
+	message := fmt.Sprintf("the receiver answered HTTP %d", status)
+	if status == http.StatusConflict {
+		message += "; a receiver must answer 2xx for a webhook-id it already processed"
+	}
+	return message
 }
 
 func sendEventDefect(output SendEventOutput, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[SendEventOutput] {

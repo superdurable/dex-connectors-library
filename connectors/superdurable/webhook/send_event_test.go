@@ -13,7 +13,9 @@ import (
 	"net/http/httptest"
 	"regexp"
 	"strconv"
+	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -32,14 +34,17 @@ type fakeReceiver struct {
 	statusCode        int
 	retryAfter        string
 	dropFirstResponse bool
-	mu                sync.Mutex
-	deliveries        []receivedDelivery
-	appliedWebhookIDs map[string]bool
+	// replayStatusCode, when set, is the answer for a webhook-id that arrived before, as a deduplicating receiver gives.
+	replayStatusCode int
+	mu               sync.Mutex
+	deliveries       []receivedDelivery
+	seenWebhookIDs   map[string]bool
 }
 
 type receivedDelivery struct {
 	webhookID        string
 	timestamp        string
+	signature        string
 	isSignatureValid bool
 	contentType      string
 	body             string
@@ -47,7 +52,7 @@ type receivedDelivery struct {
 
 func newFakeReceiver(t *testing.T, key []byte, statusCode int) *fakeReceiver {
 	t.Helper()
-	receiver := &fakeReceiver{key: key, statusCode: statusCode, appliedWebhookIDs: make(map[string]bool)}
+	receiver := &fakeReceiver{key: key, statusCode: statusCode, seenWebhookIDs: make(map[string]bool)}
 	receiver.Server = httptest.NewTLSServer(http.HandlerFunc(receiver.receiveDelivery))
 	t.Cleanup(receiver.Close)
 	return receiver
@@ -62,11 +67,16 @@ func (receiver *fakeReceiver) receiveDelivery(response http.ResponseWriter, requ
 	webhookID, timestamp := request.Header.Get("webhook-id"), request.Header.Get("webhook-timestamp")
 	expected := "v1," + base64.StdEncoding.EncodeToString(hmacSHA256(receiver.key, webhookID+"."+timestamp+"."+string(body)))
 	receiver.mu.Lock()
+	signature := request.Header.Get("webhook-signature")
 	receiver.deliveries = append(receiver.deliveries, receivedDelivery{
-		webhookID: webhookID, timestamp: timestamp, isSignatureValid: request.Header.Get("webhook-signature") == expected,
+		webhookID: webhookID, timestamp: timestamp, signature: signature, isSignatureValid: signature == expected,
 		contentType: request.Header.Get("Content-Type"), body: string(body),
 	})
-	receiver.appliedWebhookIDs[webhookID] = true
+	statusCode := receiver.statusCode
+	if receiver.seenWebhookIDs[webhookID] && receiver.replayStatusCode != 0 {
+		statusCode = receiver.replayStatusCode
+	}
+	receiver.seenWebhookIDs[webhookID] = true
 	isFirstDelivery := len(receiver.deliveries) == 1
 	receiver.mu.Unlock()
 	if receiver.dropFirstResponse && isFirstDelivery {
@@ -75,7 +85,7 @@ func (receiver *fakeReceiver) receiveDelivery(response http.ResponseWriter, requ
 	if receiver.retryAfter != "" {
 		response.Header().Set("Retry-After", receiver.retryAfter)
 	}
-	response.WriteHeader(receiver.statusCode)
+	response.WriteHeader(statusCode)
 	_, _ = fmt.Fprint(response, `{"echo":"`+sentinelSecret+`"}`) // A response body must never reach the Result.
 }
 
@@ -85,18 +95,23 @@ func (receiver *fakeReceiver) receivedDeliveries() []receivedDelivery {
 	return append([]receivedDelivery(nil), receiver.deliveries...)
 }
 
-func (receiver *fakeReceiver) appliedEventCount() int {
-	receiver.mu.Lock()
-	defer receiver.mu.Unlock()
-	return len(receiver.appliedWebhookIDs)
-}
-
 func newSendingClient(t *testing.T, deliveryURL string, secret string, httpClient *http.Client) *webhook.Client {
 	t.Helper()
+	return newSendingClientWithClock(t, deliveryURL, secret, httpClient, func() time.Time { return fixedNow })
+}
+
+func newSendingClientWithClock(t *testing.T, deliveryURL string, secret string, httpClient *http.Client, clock func() time.Time) *webhook.Client {
+	t.Helper()
 	client, err := webhook.New(webhook.Config{DeliveryURL: deliveryURL}, staticCredentials(secret),
-		webhook.WithClock(func() time.Time { return fixedNow }), webhook.WithHTTPClient(httpClient))
+		webhook.WithClock(clock), webhook.WithHTTPClient(httpClient))
 	require.NoError(t, err)
 	return client
+}
+
+// advancingClock moves one minute on every reading, so each attempt reads a later time than the one before.
+func advancingClock() func() time.Time {
+	var readings atomic.Int64
+	return func() time.Time { return fixedNow.Add(time.Duration(readings.Add(1)) * time.Minute) }
 }
 
 func sendEvent(t *testing.T, client *webhook.Client, step string, payload string) (webhook.SendEventResult, error) {
@@ -177,6 +192,8 @@ func TestSendEventMapsReceiverStatusesToBranches(t *testing.T) {
 			} else {
 				require.Equal(t, test.expectedKind, result.Failure.Kind)
 				require.Contains(t, result.Failure.Message, strconv.Itoa(test.statusCode))
+				require.Equal(t, test.statusCode == http.StatusConflict, strings.Contains(result.Failure.Message, "must answer 2xx"),
+					"only a 409 carries the deduplication guidance")
 			}
 			requireSecretFree(t, result)
 		})
@@ -238,9 +255,10 @@ func TestSendEventRetriesAnUndispatchedRequestAndALostAnswer(t *testing.T) {
 	require.Equal(t, sdkgo.FailureTransport, retry.Failure.Kind)
 }
 
-func TestSendEventRetriesALostResponseWithOneAppliedEvent(t *testing.T) {
+func TestSendEventRetriesALostResponseWithTheSameWebhookID(t *testing.T) {
 	receiver := newFakeReceiver(t, standardKey(t), http.StatusAccepted)
 	receiver.dropFirstResponse = true
+	receiver.replayStatusCode = http.StatusOK // a deduplicating receiver acknowledges a repeated id with 2xx
 	client := newSendingClient(t, receiver.URL, standardSecret, receiver.Client())
 	_, err := sendEvent(t, client, "forward", forwardedPayload)
 	var retry *sdkgo.RetryError
@@ -250,14 +268,57 @@ func TestSendEventRetriesALostResponseWithOneAppliedEvent(t *testing.T) {
 	result, err := sendEvent(t, client, "forward", forwardedPayload)
 	require.NoError(t, err)
 	require.Equal(t, webhook.SendEventBranchDelivered, result.Branch)
+	require.Equal(t, http.StatusOK, result.Value.StatusCode)
 	deliveries := receiver.receivedDeliveries()
 	require.Len(t, deliveries, 2)
 	require.Equal(t, deliveries[0].webhookID, deliveries[1].webhookID)
-	require.Equal(t, deliveries[0].timestamp, deliveries[1].timestamp)
 	require.Equal(t, deliveries[0].body, deliveries[1].body)
 	require.True(t, deliveries[0].isSignatureValid)
 	require.True(t, deliveries[1].isSignatureValid)
-	require.Equal(t, 1, receiver.appliedEventCount(), "receiver applies a retried webhook-id once")
+}
+
+func TestSendEventSignsEveryAttemptWithItsOwnTimestamp(t *testing.T) {
+	receiver := newFakeReceiver(t, standardKey(t), http.StatusServiceUnavailable)
+	client := newSendingClientWithClock(t, receiver.URL, standardSecret, receiver.Client(), advancingClock())
+	for range 2 {
+		_, err := sendEvent(t, client, "forward", forwardedPayload)
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry)
+	}
+
+	deliveries := receiver.receivedDeliveries()
+	require.Len(t, deliveries, 2)
+	require.Equal(t, deliveries[0].webhookID, deliveries[1].webhookID)
+	require.Equal(t, deliveries[0].body, deliveries[1].body)
+	firstTimestamp, err := strconv.ParseInt(deliveries[0].timestamp, 10, 64)
+	require.NoError(t, err)
+	secondTimestamp, err := strconv.ParseInt(deliveries[1].timestamp, 10, 64)
+	require.NoError(t, err)
+	require.Greater(t, secondTimestamp, firstTimestamp, "a retry reads the clock again instead of reusing the first timestamp")
+	require.NotEqual(t, deliveries[0].signature, deliveries[1].signature, "the signature covers the new timestamp")
+	require.True(t, deliveries[0].isSignatureValid)
+	require.True(t, deliveries[1].isSignatureValid)
+}
+
+func TestSendEventReportsAReplayAnsweredWith409AsRejected(t *testing.T) {
+	receiver := newFakeReceiver(t, standardKey(t), http.StatusAccepted)
+	receiver.dropFirstResponse = true
+	receiver.replayStatusCode = http.StatusConflict // a receiver that deduplicates but answers a repeated id with 409
+	client := newSendingClient(t, receiver.URL, standardSecret, receiver.Client())
+	_, err := sendEvent(t, client, "forward", forwardedPayload)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "the first answer was lost")
+
+	result, err := sendEvent(t, client, "forward", forwardedPayload)
+	require.NoError(t, err)
+	require.Equal(t, webhook.SendEventBranchRejected, result.Branch, "the connector does not guess that the lost attempt delivered the event")
+	require.Equal(t, sdkgo.FailureConflict, result.Failure.Kind)
+	require.Equal(t, http.StatusConflict, result.Value.StatusCode)
+	require.Contains(t, result.Failure.Message, "must answer 2xx for a webhook-id it already processed")
+	deliveries := receiver.receivedDeliveries()
+	require.Len(t, deliveries, 2)
+	require.Equal(t, deliveries[0].webhookID, result.Value.WebhookID)
+	require.Equal(t, deliveries[0].webhookID, deliveries[1].webhookID)
 }
 
 func TestSendEventSelectsDefectWithoutSendingInvalidRequests(t *testing.T) {

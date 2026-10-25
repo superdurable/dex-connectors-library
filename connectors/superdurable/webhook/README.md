@@ -190,7 +190,8 @@ the project configuration that the application loads. `configuration` may be
 
 - `webhook-id`: `msg_` followed by the Step's 32-hex-digit call ID. Every
   retry and duplicate dispatch of one Step execution sends the same ID;
-- `webhook-timestamp`: the attempt's Unix time in seconds;
+- `webhook-timestamp`: the attempt's Unix time in seconds. Every retry is
+  signed again with its own timestamp, as the specification describes;
 - `webhook-signature`: `v1,` and the base64 HMAC-SHA256 of
   `webhook-id.webhook-timestamp.body`, keyed as the verification schemes
   describe. Any Standard Webhooks library verifies it with the same `whsec_`
@@ -201,16 +202,28 @@ the project configuration that the application loads. `configuration` may be
 | `2xx` | `delivered`, with the status code |
 | `408` or `429` | Retry with the same `webhook-id`, after `Retry-After` when sent |
 | Connection refused, DNS or TLS failure before the request was written | Retry with the same `webhook-id` |
-| A redirect or another `4xx` | `rejected` (optional), with the status code |
+| A redirect or another `4xx`, including `409` | `rejected` (optional), with the status code |
 | `5xx`, timeout, or a lost connection after the request was written | Retry with the same `webhook-id`, after `Retry-After` when sent |
 | Blank `deliveryUrl`, unusable secret, or an invalid payload | `defect` (optional), before any request |
 
-`sendEvent` delivers at least once. The receiver must deduplicate by
-`webhook-id` before applying an event, since a reply can be lost after the
-receiver commits it. [Standard Webhooks recommends using this header as the
-idempotency key](https://github.com/standard-webhooks/standard-webhooks/blob/main/spec/standard-webhooks.md#verifying-signatures)
-and requires a stable ID across retries. Retries stop at the Step's retry
-policy, five attempts within two minutes, and then fail the Flow.
+`sendEvent` delivers at least once. After a `5xx`, a timeout, or a lost
+connection or response, the Step sends the event again with the same
+`webhook-id`, so a receiver that already applied the first request sees the
+event a second time. The receiver must deduplicate by `webhook-id` before it
+applies an event, and answer `2xx` for an id it has already processed.
+Standard Webhooks [recommends using this header as the idempotency key](https://github.com/standard-webhooks/standard-webhooks/blob/main/spec/standard-webhooks.md#verifying-signatures),
+keeps the ID the same across retries, and [counts only a `2xx` answer as a
+successful delivery](https://github.com/standard-webhooks/standard-webhooks/blob/main/spec/standard-webhooks.md#delivery-success-and-failure).
+Retries stop at the Step's retry policy, five attempts within two minutes, and
+then fail the Flow.
+
+The connector cannot tell a `409` for a repeated `webhook-id` from a real
+conflict, and an earlier attempt may not have reached the receiver, so it
+never reads a `409` as an earlier delivery. A receiver that answers a repeated
+id with `409` therefore makes `sendEvent` select `rejected` (or fail the Flow
+when the branch is unwired) although the event was applied. The failure
+message states this contract, and the Result carries the `webhookId` and
+`statusCode`.
 
 A blank `deliveryUrl` selects `defect` with the guidance to set it in Dex Web
 Connectors. Construction fails for a `deliveryUrl` that is not an absolute

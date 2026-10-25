@@ -83,8 +83,12 @@ Open the Dex Web URL that dexcli prints, select **Connectors**, and select
   `signatureEncoding`: `base64`;
 - `eventIdPointer`: `/event_id`;
 - `deliveryUrl`: the HTTPS URL of the service that receives forwarded
-  submissions, such as an HTTPS request inspector you control. Leave it blank
-  to see `ForwardSubmission` select `defect` and fail the Flow with guidance;
+  submissions, such as an HTTPS request inspector you control. A forwarded
+  submission can arrive more than once with the same `webhook-id` after a
+  `5xx`, a timeout, or a lost response, so the receiver deduplicates by
+  `webhook-id` and answers `2xx` for an id it already processed. Leave it
+  blank to see `ForwardSubmission` select `defect` and fail the Flow with
+  guidance;
 - leave the other fields at their defaults, and save.
 
 Dex Web lists the `requestReceived` binding `form-submission-received` but has

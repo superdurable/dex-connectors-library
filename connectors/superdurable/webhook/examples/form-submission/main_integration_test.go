@@ -117,7 +117,6 @@ func TestForwardSubmissionRetriesALostReceiverAnswerWithRealDex(t *testing.T) {
 	require.Equal(t, deliveries[0].webhookID, deliveries[1].webhookID)
 	require.True(t, deliveries[0].isSignatureValid)
 	require.True(t, deliveries[1].isSignatureValid)
-	require.Equal(t, 1, receiver.appliedEventCount(), "the receiver applies the webhook-id once")
 }
 
 func dexAddress() string {
@@ -196,7 +195,6 @@ type forwardingReceiver struct {
 	mu                sync.Mutex
 	deliveries        []forwardedDelivery
 	dropFirstResponse bool
-	appliedWebhookIDs map[string]bool
 }
 
 type forwardedDelivery struct {
@@ -207,7 +205,7 @@ type forwardedDelivery struct {
 
 func newForwardingReceiver(t *testing.T) *forwardingReceiver {
 	t.Helper()
-	receiver := &forwardingReceiver{appliedWebhookIDs: make(map[string]bool)}
+	receiver := &forwardingReceiver{}
 	receiver.Server = httptest.NewTLSServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		body, err := io.ReadAll(request.Body)
 		if err != nil {
@@ -227,7 +225,6 @@ func newForwardingReceiver(t *testing.T) *forwardingReceiver {
 			submissionID: event.SubmissionID, webhookID: webhookID,
 			isSignatureValid: request.Header.Get("webhook-signature") == "v1,"+base64.StdEncoding.EncodeToString(mac.Sum(nil)),
 		})
-		receiver.appliedWebhookIDs[webhookID] = true
 		isFirstDelivery := len(receiver.deliveries) == 1
 		receiver.mu.Unlock()
 		if receiver.dropFirstResponse && isFirstDelivery {
@@ -249,10 +246,4 @@ func (receiver *forwardingReceiver) deliveriesFor(submissionID string) []forward
 		}
 	}
 	return matches
-}
-
-func (receiver *forwardingReceiver) appliedEventCount() int {
-	receiver.mu.Lock()
-	defer receiver.mu.Unlock()
-	return len(receiver.appliedWebhookIDs)
 }

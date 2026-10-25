@@ -283,7 +283,7 @@ var SendEventDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "sendEvent"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: SendEventBranchDelivered, Description: "The receiver answered 2xx and accepted the event."},
-		{ID: SendEventBranchRejected, Description: "The receiver answered a redirect or a 4xx other than 408 and 429, so it refused the event; the Result carries the status code.", Optional: true},
+		{ID: SendEventBranchRejected, Description: "The receiver answered a redirect or a 4xx other than 408 and 429, so it refused the event; the Result carries the status code. A receiver that answers 409 for a repeated webhook-id lands here although it applied the event, so it must answer 2xx instead.", Optional: true},
 		{ID: SendEventBranchDefect, Description: "The connection has no valid deliveryUrl or signing secret, or the payload is not one JSON value within maxBodyBytes.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

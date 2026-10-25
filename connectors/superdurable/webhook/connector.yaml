@@ -74,7 +74,7 @@ spec:
       - name: deliveryUrl
         goName: DeliveryURL
         type: url
-        description: "HTTPS URL that sendEvent POSTs to, copied from the receiving service's webhook or endpoint settings, such as https://hooks.example.com/dex. It is stored as non-secret configuration, so keep tokens out of it; every request is signed with signing_secret instead. Blank makes sendEvent select defect; receiving requests does not need it."
+        description: "HTTPS URL that sendEvent POSTs to, copied from the receiving service's webhook or endpoint settings, such as https://hooks.example.com/dex. It is stored as non-secret configuration, so keep tokens out of it; every request is signed with signing_secret instead. sendEvent delivers at least once: after a 5xx, a timeout, or a lost response it sends the same webhook-id again, so the receiver must deduplicate by webhook-id and answer 2xx for an id it already processed; a 409 for a repeated id is reported as rejected. Blank makes sendEvent select defect; receiving requests does not need it."
         required: false
   auth:
     type: apiKey
@@ -104,11 +104,11 @@ spec:
       inputType: SendEventInput
       outputType: SendEventOutput
       kind: mutation
-      description: POST one JSON event to the connection's HTTPS delivery URL with at-least-once delivery, signed with the Standard Webhooks scheme and a webhook-id stable across retries; the receiver must deduplicate by webhook-id.
+      description: "POST one JSON event to the connection's HTTPS delivery URL, signed with the Standard Webhooks scheme. Delivery is at least once: after a 5xx, a timeout, or a lost response the same webhook-id is sent again with a fresh timestamp and signature, so the receiver must deduplicate by webhook-id and answer 2xx for an id it already processed."
       idempotency: required
       branches:
         - {id: delivered, goName: Delivered, description: The receiver answered 2xx and accepted the event.}
-        - {id: rejected, goName: Rejected, description: "The receiver answered a redirect or a 4xx other than 408 and 429, so it refused the event; the Result carries the status code.", optional: true}
+        - {id: rejected, goName: Rejected, description: "The receiver answered a redirect or a 4xx other than 408 and 429, so it refused the event; the Result carries the status code. A receiver that answers 409 for a repeated webhook-id lands here although it applied the event, so it must answer 2xx instead.", optional: true}
         - {id: defect, goName: Defect, description: "The connection has no valid deliveryUrl or signing secret, or the payload is not one JSON value within maxBodyBytes.", optional: true}
       execution:
         executeMethodTimeout: 30s
