@@ -110,9 +110,10 @@ previously processed POST but does not provide those guarantees for API v1.
 HTTP 200 must contain a valid matching task before selecting `created`.
 Requests rejected before dispatch, HTTP 429, and HTTP 503 retry with the same
 identity. A dispatched lost response, HTTP 408/500 or another ambiguous server
-error, and malformed or oversized success data select `uncertain` because the
-task ID cannot be confirmed without changing user-visible task fields. HTTP
-409 and other definite rejections select `providerRejected`. No exactly-once
+error, malformed or oversized success data, and HTTP 409 select `uncertain`
+because the task ID cannot be confirmed without changing user-visible task
+fields. Todoist does not document whether 409 means a request ID was already
+processed. Other definite rejections select `providerRejected`. No exactly-once
 guarantee is made.
 Do not reconcile ownership by title alone. Creating another Flow is another
 logical creation with another request ID.

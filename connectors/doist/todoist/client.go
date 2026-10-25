@@ -343,7 +343,8 @@ func (operation CreateTaskOperation) Invoke(call sdkgo.Call, input CreateTaskInp
 			return sdkgo.NewMutationRetry[Task](*result.failure, result.retryAfter)
 		case result.status == http.StatusTooManyRequests || result.status == http.StatusServiceUnavailable:
 			return sdkgo.NewMutationRetry[Task](*result.failure, result.retryAfter)
-		case result.isAmbiguous || result.failure.Kind == sdkgo.FailureProtocol || result.failure.Kind == sdkgo.FailureResponseTooLarge:
+		case result.status == http.StatusConflict || result.isAmbiguous || result.failure.Kind == sdkgo.FailureProtocol || result.failure.Kind == sdkgo.FailureResponseTooLarge:
+			// Todoist does not document whether 409 means this request ID already created a task.
 			return sdkgo.NewMutationUncertain(Task{}, *result.failure, sdkgo.Receipt{})
 		default:
 			return sdkgo.NewMutationBranch(CreateTaskBranchProviderRejected, Task{}, result.failure, sdkgo.Receipt{})

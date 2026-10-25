@@ -418,7 +418,7 @@ func TestCreateAndDeleteHTTPOutcomes(t *testing.T) {
 			require.Equal(t, status == 429 || status == 503, createErr != nil)
 			if createErr == nil {
 				expected := CreateTaskBranchProviderRejected
-				if status == 200 || status == 408 || status == 500 {
+				if status == 200 || status == 408 || status == 409 || status == 500 {
 					expected = CreateTaskBranchUncertain
 				}
 				require.Equal(t, expected, created.Branch)
@@ -457,6 +457,34 @@ func TestCreateAndDeleteHTTPOutcomes(t *testing.T) {
 	_, err = deleteTask(client)
 	require.Error(t, err)
 	require.NotContains(t, err.Error(), testToken)
+}
+
+func TestCreateTaskConflictAfterRetryRemainsUncertain(t *testing.T) {
+	var requestIDs []string
+	createdTasks := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		require.Equal(t, http.MethodPost, request.Method)
+		requestIDs = append(requestIDs, request.Header.Get("X-Request-ID"))
+		require.Regexp(t, requestIDPattern, requestIDs[len(requestIDs)-1])
+		if len(requestIDs) == 1 {
+			createdTasks++
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		w.WriteHeader(http.StatusConflict)
+	}))
+	defer server.Close()
+	client := newTestClient(t, server.URL)
+	input := CreateTaskInput{Content: "New"}
+	_, err := createTask(client, input)
+	require.Error(t, err)
+	result, err := createTask(client, input)
+	require.NoError(t, err)
+	require.Equal(t, CreateTaskBranchUncertain, result.Branch)
+	require.Equal(t, sdkgo.FailureProviderRejection, result.Failure.Kind)
+	require.Equal(t, 1, createdTasks)
+	require.Len(t, requestIDs, 2)
+	require.Equal(t, requestIDs[0], requestIDs[1])
 }
 
 func TestCreateTaskPreDispatchFailureRetries(t *testing.T) {
