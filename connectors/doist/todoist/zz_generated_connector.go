@@ -282,7 +282,6 @@ func NewGetTaskStep[IN any](config GetTaskStepConfig[IN]) sdkgo.QueryStep[IN, Ge
 const UpdateTaskBranchUpdated sdkgo.BranchID = "updated"
 const UpdateTaskBranchNotFound sdkgo.BranchID = "notFound"
 const UpdateTaskBranchProviderRejected sdkgo.BranchID = "providerRejected"
-const UpdateTaskBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
 const UpdateTaskBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 
 var UpdateTaskDefinition = sdkgo.MutationDefinition{
@@ -291,7 +290,6 @@ var UpdateTaskDefinition = sdkgo.MutationDefinition{
 		{ID: UpdateTaskBranchUpdated, Description: "Todoist confirmed every specified field and returned the task."},
 		{ID: UpdateTaskBranchNotFound, Description: "Todoist reports that the task does not exist.", Optional: true},
 		{ID: UpdateTaskBranchProviderRejected, Description: "Todoist conclusively rejected the update.", Optional: true},
-		{ID: UpdateTaskBranchUncertain, Description: "The update may have been applied but its result could not be confirmed; read the task before deciding what to do next.", Optional: true},
 		{ID: UpdateTaskBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -315,7 +313,6 @@ type UpdateTaskStepConfig[IN any] struct {
 	Updated                           sdkgo.Target[UpdateTaskResult]             `connector:"branch=updated"`
 	NotFound                          sdkgo.Target[UpdateTaskResult]             `connector:"branch=notFound,optional"`
 	ProviderRejected                  sdkgo.Target[UpdateTaskResult]             `connector:"branch=providerRejected,optional"`
-	Uncertain                         sdkgo.Target[UpdateTaskResult]             `connector:"branch=uncertain,optional"`
 	Defect                            sdkgo.Target[UpdateTaskResult]             `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Task]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                           `connector:"stepOptionsOverride"`
@@ -333,7 +330,7 @@ func NewUpdateTaskStep[IN any](config UpdateTaskStepConfig[IN]) sdkgo.MutationSt
 		Operation: config.Connection.operations.UpdateTask(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[UpdateTaskResult] {
-			branches := make([]sdkgo.BranchTarget[UpdateTaskResult], 0, 5)
+			branches := make([]sdkgo.BranchTarget[UpdateTaskResult], 0, 4)
 			if config.Updated.HasStep() {
 				branches = append(branches, config.Updated.BranchTarget(UpdateTaskBranchUpdated))
 			}
@@ -342,9 +339,6 @@ func NewUpdateTaskStep[IN any](config UpdateTaskStepConfig[IN]) sdkgo.MutationSt
 			}
 			if config.ProviderRejected.HasStep() {
 				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateTaskBranchProviderRejected))
-			}
-			if config.Uncertain.HasStep() {
-				branches = append(branches, config.Uncertain.BranchTarget(UpdateTaskBranchUncertain))
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(UpdateTaskBranchDefect))
@@ -437,7 +431,7 @@ var CreateTaskDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateTaskBranchCreated, Description: "Todoist confirmed creation and returned the task ID."},
 		{ID: CreateTaskBranchProviderRejected, Description: "Todoist conclusively rejected creation.", Optional: true},
-		{ID: CreateTaskBranchUncertain, Description: "Creation may have occurred but no valid task result was confirmed; do not create again with a new identity.", Optional: true},
+		{ID: CreateTaskBranchUncertain, Description: "A dispatched creation may have applied, but Todoist returned no confirmable task and the request ID has no documented replay guarantee.", Optional: true},
 		{ID: CreateTaskBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

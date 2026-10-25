@@ -102,7 +102,8 @@ func TestHTTPOutcomesAndRetryAfter(t *testing.T) {
 			update, updateErr := updateTask(client, "New")
 			isQueryRetry := status == 429 || status == 408 || status >= 500
 			require.Equal(t, isQueryRetry, readErr != nil)
-			require.Equal(t, status == 429, updateErr != nil)
+			isUpdateRetry := status == 429 || status == 408 || status >= 500
+			require.Equal(t, isUpdateRetry, updateErr != nil)
 			if isQueryRetry {
 				require.NotContains(t, readErr.Error(), testToken)
 			} else {
@@ -117,13 +118,12 @@ func TestHTTPOutcomesAndRetryAfter(t *testing.T) {
 				var delay *dex.RetryAfterError
 				require.ErrorAs(t, updateErr, &delay)
 				require.Equal(t, 2*time.Second, delay.After)
+			} else if isUpdateRetry {
+				require.NotContains(t, updateErr.Error(), testToken)
 			} else {
 				branch := UpdateTaskBranchProviderRejected
 				if status == 404 {
 					branch = UpdateTaskBranchNotFound
-				}
-				if status == 408 || status >= 500 {
-					branch = UpdateTaskBranchUncertain
 				}
 				require.Equal(t, branch, update.Branch)
 				require.NotContains(t, update.Failure.Message, testToken)
@@ -142,12 +142,9 @@ func TestMalformedOversizedMismatchedAndSecretReflectingResponses(t *testing.T) 
 		read, err := readTask(client)
 		require.NoError(t, err)
 		require.Equal(t, GetTaskBranchInvalidResponse, read.Branch)
-		update, err := updateTask(client, "New")
-		require.NoError(t, err)
-		require.Equal(t, UpdateTaskBranchUncertain, update.Branch)
-		encoded, err := json.Marshal(update)
-		require.NoError(t, err)
-		require.NotContains(t, string(encoded), testToken)
+		_, err = updateTask(client, "New")
+		require.Error(t, err)
+		require.NotContains(t, err.Error(), testToken)
 		server.Close()
 	}
 }
@@ -157,15 +154,14 @@ type failingTransport struct{}
 func (failingTransport) RoundTrip(*http.Request) (*http.Response, error) {
 	return nil, errors.New(testToken + " transport details")
 }
-func TestTransportFailureDoesNotExposeErrorsAndMutationIsUncertain(t *testing.T) {
+func TestTransportFailureDoesNotExposeErrorsAndUpdateRetries(t *testing.T) {
 	client := newTestClient(t, "https://api.todoist.com/api/v1", WithHTTPClient(&http.Client{Transport: failingTransport{}}))
 	_, err := readTask(client)
 	require.Error(t, err)
 	require.NotContains(t, err.Error(), testToken)
-	update, err := updateTask(client, "New")
-	require.NoError(t, err)
-	require.Equal(t, UpdateTaskBranchUncertain, update.Branch)
-	require.NotContains(t, update.Failure.Message, testToken)
+	_, err = updateTask(client, "New")
+	require.Error(t, err)
+	require.NotContains(t, err.Error(), testToken)
 }
 
 func TestInvalidInputAndCredentialsDoNotDispatch(t *testing.T) {
@@ -189,6 +185,8 @@ func TestInvalidInputAndCredentialsDoNotDispatch(t *testing.T) {
 		result, err := readTask(invalid)
 		require.NoError(t, err)
 		require.Equal(t, GetTaskBranchDefect, result.Branch)
+		_, err = updateTask(invalid, "New")
+		require.Error(t, err)
 	}
 	require.Zero(t, calls.Load())
 }
@@ -208,15 +206,33 @@ func TestRedirectDoesNotForwardCredentials(t *testing.T) {
 	require.Zero(t, forwarded.Load())
 }
 
-func TestUnconfirmedContentSelectsUncertain(t *testing.T) {
+func TestUnconfirmedContentRetriesAfterMismatchedReadBack(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, err := io.WriteString(w, taskJSON("A concurrent edit"))
 		require.NoError(t, err)
 	}))
 	defer server.Close()
+	_, err := updateTask(newTestClient(t, server.URL), "Requested title")
+	require.Error(t, err)
+}
+
+func TestUnconfirmedContentUsesMatchingReadBack(t *testing.T) {
+	var reads atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		content := "A concurrent edit"
+		if request.Method == http.MethodGet {
+			reads.Add(1)
+			content = "Requested title"
+		}
+		_, err := io.WriteString(w, taskJSON(content))
+		require.NoError(t, err)
+	}))
+	defer server.Close()
 	result, err := updateTask(newTestClient(t, server.URL), "Requested title")
 	require.NoError(t, err)
-	require.Equal(t, UpdateTaskBranchUncertain, result.Branch)
+	require.Equal(t, UpdateTaskBranchUpdated, result.Branch)
+	require.Equal(t, "Requested title", result.Value.Content)
+	require.Equal(t, int32(1), reads.Load())
 }
 
 func TestCredentialReplacementAppliesOnNextCall(t *testing.T) {
@@ -286,16 +302,15 @@ func TestUpdateTaskRejectsEmptyPatchAndInvalidDescriptionBeforeDispatch(t *testi
 	require.Zero(t, calls.Load())
 }
 
-func TestUpdateTaskUnconfirmedDescriptionIsUncertain(t *testing.T) {
+func TestUpdateTaskUnconfirmedDescriptionRetries(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 		_, err := io.WriteString(w, taskJSON("Original title"))
 		require.NoError(t, err)
 	}))
 	defer server.Close()
 	description := "New description"
-	result, err := sdkgo.RunMutation(providerContext{}, newTestClient(t, server.URL).UpdateTask(), testConnection, UpdateTaskInput{TaskID: "6XGgmFVcrG5RRjVr", Description: &description})
-	require.NoError(t, err)
-	require.Equal(t, UpdateTaskBranchUncertain, result.Branch)
+	_, err := sdkgo.RunMutation(providerContext{}, newTestClient(t, server.URL).UpdateTask(), testConnection, UpdateTaskInput{TaskID: "6XGgmFVcrG5RRjVr", Description: &description})
+	require.Error(t, err)
 }
 
 func listTasks(client *Client, input ListTasksInput) (ListTasksResult, error) {
@@ -375,10 +390,10 @@ func TestCreateAndDeleteHTTPOutcomes(t *testing.T) {
 			defer server.Close()
 			client := newTestClient(t, server.URL)
 			created, createErr := createTask(client, CreateTaskInput{Content: "New"})
-			require.Equal(t, status == 429, createErr != nil)
+			require.Equal(t, status == 429 || status == 503, createErr != nil)
 			if createErr == nil {
 				expected := CreateTaskBranchProviderRejected
-				if status == 200 || status == 408 || status == 409 || status >= 500 {
+				if status == 200 || status == 408 || status == 500 {
 					expected = CreateTaskBranchUncertain
 				}
 				require.Equal(t, expected, created.Branch)
@@ -417,6 +432,59 @@ func TestCreateAndDeleteHTTPOutcomes(t *testing.T) {
 	_, err = deleteTask(client)
 	require.Error(t, err)
 	require.NotContains(t, err.Error(), testToken)
+}
+
+func TestCreateTaskPreDispatchFailureRetries(t *testing.T) {
+	var calls atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { calls.Add(1) }))
+	defer server.Close()
+	client, err := New(Config{BaseURL: server.URL}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: {APIToken: sdkgo.NewSecretString("unsafe\ncredential")}})
+	require.NoError(t, err)
+	_, err = createTask(client, CreateTaskInput{Content: "New"})
+	require.Error(t, err)
+	require.NotContains(t, err.Error(), "unsafe")
+	require.Zero(t, calls.Load())
+}
+
+func TestCreateTaskMismatchedAnswerRemainsUncertain(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		require.Equal(t, http.MethodPost, request.Method)
+		_, err := io.WriteString(w, taskJSON("Different title"))
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+	result, err := createTask(newTestClient(t, server.URL), CreateTaskInput{Content: "Requested title", Description: "Details"})
+	require.NoError(t, err)
+	require.Equal(t, CreateTaskBranchUncertain, result.Branch)
+}
+
+type dropResponseTransport struct{}
+
+func (dropResponseTransport) RoundTrip(request *http.Request) (*http.Response, error) {
+	response, err := http.DefaultTransport.RoundTrip(request)
+	if err != nil {
+		return nil, err
+	}
+	if err := response.Body.Close(); err != nil {
+		return nil, err
+	}
+	return nil, errors.New("response lost")
+}
+
+func TestCreateTaskLostResponseKeepsOneUncertainTask(t *testing.T) {
+	var calls atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		calls.Add(1)
+		require.Regexp(t, requestIDPattern, request.Header.Get("X-Request-ID"))
+		_, err := io.WriteString(w, taskJSON("New"))
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+	client := newTestClient(t, server.URL, WithHTTPClient(&http.Client{Transport: dropResponseTransport{}}))
+	result, err := createTask(client, CreateTaskInput{Content: "New", Description: "Details"})
+	require.NoError(t, err)
+	require.Equal(t, CreateTaskBranchUncertain, result.Branch)
+	require.Equal(t, int32(1), calls.Load())
 }
 
 func TestListRejectsMalformedPages(t *testing.T) {

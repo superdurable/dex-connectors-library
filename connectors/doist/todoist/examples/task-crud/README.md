@@ -17,19 +17,14 @@ Attributes. Retained summary/Display RPCs read persisted state only. The
 lifecycle list path follows at most fifty pages. It never chooses mutation
 or deletion targets by title and never modifies unrelated listed tasks.
 
-Both `updated` and `uncertain` update branches read the known task ID with
-`GetUpdatedLifecycleTask`. The read compares only requested replacement fields.
-Confirmed matching updates continue to list and delete. Uncertain updates
-complete with `status: uncertain`, the original `mutationBranch`, the original
-created task, the observed `after` task, and `matchesRequestedFields`. A matching
-read never proves this request caused the change. Uncertain runs do not resend
-the update or automatically delete the task: inspect the retained facts before
-reconciliation or cleanup.
+The `updated` branch reads the known task ID with `GetUpdatedLifecycleTask`.
+The read compares only requested replacement fields. Matching updates continue
+to list and delete. Safe update failures retry the same absolute replacement;
+exhausted retries fail the Flow.
 
 Conclusive missing/rejected reads or updates complete with their status and
-retain creation and mutation facts. An uncertain mutation stays recorded even
-if its subsequent read is missing or rejected. Unwired invalid-response,
-defect, or uncertain-creation branches fail the Flow and retain available
+retain creation and mutation facts. Unwired invalid-response, defect, or
+uncertain-creation branches fail the Flow and retain available
 results; a failed lifecycle may leave its created task. Display exposes created,
 update, read-back, and completion Attributes without calling Todoist. A 404
 delete result is wired as `alreadyAbsent`, followed by the final lookup.
@@ -53,7 +48,7 @@ mkdir -p /tmp/todoist-release
 GOWORK=off go run ./cmd/connectorctl release-artifact \
   --manifest connectors/doist/todoist/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/doist/todoist \
-  --version v0.1.0 --tag connectors/doist/todoist/v0.1.0 \
+  --version v0.2.0 --tag connectors/doist/todoist/v0.2.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/todoist-release/connector-release.json \
   --digest-output /tmp/todoist-release/connector-release.json.sha256
@@ -119,9 +114,12 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./e
 ```
 
 It verifies read-only listing makes no writes, the complete lifecycle, a
-rate-limited create that retries with the same provider request identity,
+rate-limited or unavailable create that retries with the same provider request identity,
 multi-page verification, deletion that applies before a 503 and then returns
-404 on retry, uncertain creation that is not blindly retried, invalid input, description-only updates, clearing a description, updating both fields, read/update retry, uncertain applied/unapplied writes without resend or deletion, conclusive rejection/missing reads, malformed reads, and failed read-back after uncertainty.
+404 on retry, a lost create response that remains uncertain, invalid input,
+description-only updates, clearing a description, updating both fields,
+read/update retry, applied/unapplied update 503 responses, conclusive
+rejection/missing reads, and malformed reads.
 
 Current local CLI versions may save credentials to a local connection file
 while the production Worker uses project storage. The

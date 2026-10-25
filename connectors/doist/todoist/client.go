@@ -209,8 +209,7 @@ func (operation GetTaskOperation) Invoke(call sdkgo.Call, input GetTaskInput) sd
 	}
 }
 
-// Invoke updates only specified fields. A lost response or ambiguous server failure selects uncertain, never a blind retry.
-// A confirmed rate-limit rejection is retried. Another Step execution can read back uncertain results.
+// Invoke replaces only specified fields. A mismatched response is checked by task ID before retrying the replacement.
 func (operation UpdateTaskOperation) Invoke(call sdkgo.Call, input UpdateTaskInput) sdkgo.MutationAttempt[Task] {
 	if !taskIDPattern.MatchString(input.TaskID) || input.Content == nil && input.Description == nil ||
 		input.Content != nil && (!utf8.ValidString(*input.Content) || strings.TrimSpace(*input.Content) == "") ||
@@ -226,21 +225,29 @@ func (operation UpdateTaskOperation) Invoke(call sdkgo.Call, input UpdateTaskInp
 	}
 	result := operation.client.exchangeTask(call, "updateTaskContent", http.MethodPost, input.TaskID, payload)
 	switch {
-	case result.failure == nil && (input.Content != nil && result.task.Content != *input.Content || input.Description != nil && result.task.Description != *input.Description):
-		return sdkgo.NewMutationUncertain(Task{}, *failure("updateTaskContent", sdkgo.FailureProtocol, "Todoist did not confirm the specified fields"), sdkgo.Receipt{})
+	case result.failure == nil && !taskMatchesUpdate(result.task, input):
+		readBack := operation.client.exchangeTask(call, "updateTaskContent", http.MethodGet, input.TaskID, nil)
+		if readBack.failure == nil && taskMatchesUpdate(readBack.task, input) {
+			return sdkgo.NewMutationBranch(UpdateTaskBranchUpdated, readBack.task, nil, sdkgo.Receipt{})
+		}
+		if readBack.failure != nil {
+			return sdkgo.NewMutationRetry[Task](*readBack.failure, readBack.retryAfter)
+		}
+		return sdkgo.NewMutationRetry[Task](*failure("updateTaskContent", sdkgo.FailureProtocol, "Todoist did not confirm the specified fields"), 0)
 	case result.failure == nil:
 		return sdkgo.NewMutationBranch(UpdateTaskBranchUpdated, result.task, nil, sdkgo.Receipt{})
-	case result.status == 0 && !result.isAmbiguous:
-		return sdkgo.NewMutationBranch(UpdateTaskBranchDefect, Task{}, result.failure, sdkgo.Receipt{})
-	case result.isAmbiguous || result.failure.Kind == sdkgo.FailureProtocol || result.failure.Kind == sdkgo.FailureResponseTooLarge:
-		return sdkgo.NewMutationUncertain(Task{}, *result.failure, sdkgo.Receipt{})
-	case result.status == http.StatusTooManyRequests:
+	case result.status == 0 || result.isAmbiguous || result.failure.Kind == sdkgo.FailureProtocol || result.failure.Kind == sdkgo.FailureResponseTooLarge || result.status == http.StatusTooManyRequests:
 		return sdkgo.NewMutationRetry[Task](*result.failure, result.retryAfter)
 	case result.status == http.StatusNotFound:
 		return sdkgo.NewMutationBranch(UpdateTaskBranchNotFound, Task{}, result.failure, sdkgo.Receipt{})
 	default:
 		return sdkgo.NewMutationBranch(UpdateTaskBranchProviderRejected, Task{}, result.failure, sdkgo.Receipt{})
 	}
+}
+
+func taskMatchesUpdate(task Task, input UpdateTaskInput) bool {
+	return (input.Content == nil || task.Content == *input.Content) &&
+		(input.Description == nil || task.Description == *input.Description)
 }
 
 // ListTasks returns this client's paginated Query.
@@ -313,7 +320,7 @@ func (operation ListTasksOperation) Invoke(call sdkgo.Call, input ListTasksInput
 	return sdkgo.NewQueryBranch(ListTasksBranchListed, page, nil, sdkgo.Receipt{})
 }
 
-// Invoke creates one task. Ambiguous outcomes remain uncertain even with the provider request ID.
+// Invoke creates one task. A dispatched write with no confirmable result remains uncertain.
 func (operation CreateTaskOperation) Invoke(call sdkgo.Call, input CreateTaskInput) sdkgo.MutationAttempt[Task] {
 	if !utf8.ValidString(input.Content) || strings.TrimSpace(input.Content) == "" || !utf8.ValidString(input.Description) || input.ProjectID != "" && !taskIDPattern.MatchString(input.ProjectID) || !requestIDPattern.MatchString(string(call.IdempotencyKey)) {
 		return sdkgo.NewMutationBranch(CreateTaskBranchDefect, Task{}, failure("createTask", sdkgo.FailureValidation, "valid content, description, projectId, and stable request identity are required"), sdkgo.Receipt{})
@@ -330,11 +337,11 @@ func (operation CreateTaskOperation) Invoke(call sdkgo.Call, input CreateTaskInp
 	if result.failure != nil {
 		switch {
 		case result.status == 0 && !result.isAmbiguous:
-			return sdkgo.NewMutationBranch(CreateTaskBranchDefect, Task{}, result.failure, sdkgo.Receipt{})
-		case result.isAmbiguous || result.status == 409 || result.failure.Kind == sdkgo.FailureProtocol || result.failure.Kind == sdkgo.FailureResponseTooLarge:
-			return sdkgo.NewMutationUncertain(Task{}, *result.failure, sdkgo.Receipt{})
-		case result.status == 429:
 			return sdkgo.NewMutationRetry[Task](*result.failure, result.retryAfter)
+		case result.status == http.StatusTooManyRequests || result.status == http.StatusServiceUnavailable:
+			return sdkgo.NewMutationRetry[Task](*result.failure, result.retryAfter)
+		case result.isAmbiguous || result.failure.Kind == sdkgo.FailureProtocol || result.failure.Kind == sdkgo.FailureResponseTooLarge:
+			return sdkgo.NewMutationUncertain(Task{}, *result.failure, sdkgo.Receipt{})
 		default:
 			return sdkgo.NewMutationBranch(CreateTaskBranchProviderRejected, Task{}, result.failure, sdkgo.Receipt{})
 		}

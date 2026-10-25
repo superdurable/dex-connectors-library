@@ -5,7 +5,7 @@ metadata:
   displayName: Todoist
   description: List, read, create, update, and delete Todoist tasks through typed Dex Steps.
   company: Doist
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: todoist
   codegen:
@@ -75,7 +75,6 @@ spec:
         - {id: updated, goName: Updated, description: Todoist confirmed every specified field and returned the task.}
         - {id: notFound, goName: NotFound, description: Todoist reports that the task does not exist., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: Todoist conclusively rejected the update., optional: true}
-        - {id: uncertain, goName: Uncertain, description: The update may have been applied but its result could not be confirmed; read the task before deciding what to do next., optional: true}
         - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
       execution: *httpExecution
     - name: listTasks
@@ -103,7 +102,7 @@ spec:
       branches:
         - {id: created, goName: Created, description: Todoist confirmed creation and returned the task ID.}
         - {id: providerRejected, goName: ProviderRejected, description: Todoist conclusively rejected creation., optional: true}
-        - {id: uncertain, goName: Uncertain, description: Creation may have occurred but no valid task result was confirmed; do not create again with a new identity., optional: true}
+        - {id: uncertain, goName: Uncertain, description: "A dispatched creation may have applied, but Todoist returned no confirmable task and the request ID has no documented replay guarantee.", optional: true}
         - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
       execution: *httpExecution
     - name: deleteTask
