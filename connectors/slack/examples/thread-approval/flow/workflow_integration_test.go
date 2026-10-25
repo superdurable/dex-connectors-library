@@ -217,6 +217,11 @@ func newSlackIntegrationHarness(t *testing.T, endpoint string) (*Flow, *slackInt
 	require.NoError(t, err)
 	connection, err := slack.NewConnection(providerClient, reference)
 	require.NoError(t, err)
+	return newSlackIntegrationHarnessWithConnection(t, connection)
+}
+
+func newSlackIntegrationHarnessWithConnection(t *testing.T, connection slack.Connection) (*Flow, *slackIntegrationHarness) {
+	t.Helper()
 	flow := NewFlow(connection, sdkgo.ConnectorLoadedConfiguration[PostCompletionConfiguration]{
 		Reference: PostCompletionConfigurationRef(), Value: PostCompletionConfiguration{Text: "Integration complete."},
 	})

@@ -253,6 +253,23 @@ or Connector contract violations. A conclusive Slack API refusal uses
 limits use `invalidResponse`. Safe query transport, rate-limit, and availability
 failures retry instead of producing a branch.
 
+## Test with slackmock
+
+The generated `slackmock` package answers each operation's happy path by
+default. Pass its typed connection to the example Flow to test without Slack
+credentials or response scripts:
+
+```go
+mock := slackmock.New(t, ConnectionName)
+flow, harness := newSlackIntegrationHarnessWithConnection(t, mock.Connection())
+harness.startWorker(t)
+```
+
+This snippet comes from
+[`workflow_mock_integration_test.go`](examples/thread-approval/flow/workflow_mock_integration_test.go).
+The mock also provides named cases for provider refusals, missing replies,
+invalid responses, and uncertain post outcomes.
+
 ## Example
 
 [`examples/thread-approval`](examples/thread-approval) combines both Triggers,

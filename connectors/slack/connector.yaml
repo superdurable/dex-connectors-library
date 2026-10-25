@@ -5,7 +5,7 @@ metadata:
   displayName: Slack
   description: Start and update Dex Flows from Slack threads and exchange thread messages.
   company: Slack
-  version: v1.0.0
+  version: v1.1.0
 spec:
   provider: slack
   codegen:
@@ -176,6 +176,35 @@ spec:
         executeMethodTimeout: 30s
         durability: async
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+      pagination: {inputField: cursor, nextField: nextCursor}
+      mocks:
+        - name: approvalThread
+          branch: read
+          description: Three pages of a channel thread with a repeated reply across page boundaries.
+          default: true
+          pages:
+            - messages:
+                - {channelId: C0123456789, timestamp: "1710000000.000100", userId: U0123456789, text: "Request approval for order 1042."}
+                - {channelId: C0123456789, timestamp: "1710000001.000200", threadTimestamp: "1710000000.000100", userId: U0234567890, text: "Can you confirm the delivery date?"}
+              nextCursor: cursor-page-2
+            - messages:
+                - {channelId: C0123456789, timestamp: "1710000001.000200", threadTimestamp: "1710000000.000100", userId: U0234567890, text: "Can you confirm the delivery date?"}
+                - {channelId: C0123456789, timestamp: "1710000002.000300", threadTimestamp: "1710000000.000100", userId: U0345678901, text: "Delivery is scheduled for Thursday."}
+              nextCursor: cursor-page-3
+            - messages:
+                - {channelId: C0123456789, timestamp: "1710000003.000400", threadTimestamp: "1710000000.000100", userId: U0456789012, text: "Approved for dispatch."}
+        - name: readRejected
+          branch: providerRejected
+          description: Slack rejects the thread read because the app is not in the private channel.
+          failure: {kind: AUTHORIZATION, message: Slack rejected the thread read because the app is not in the channel.}
+        - name: malformedThread
+          branch: invalidResponse
+          description: Slack returns an invalid thread response.
+          failure: {kind: PROTOCOL, message: Slack returned an invalid thread response.}
+        - name: missingThreadTimestamp
+          branch: defect
+          description: The thread timestamp is missing, so no request is sent.
+          failure: {kind: VALIDATION, message: The thread timestamp is required.}
     - name: getThreadReply
       goName: GetThreadReply
       inputType: GetThreadReplyInput
@@ -190,6 +219,29 @@ spec:
         - {id: invalidResponse, goName: InvalidResponse, description: Slack returned an invalid or oversized reply response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution: *slackQueryExecution
+      mocks:
+        - name: approvalReply
+          branch: found
+          description: A human approval reply in an existing channel thread.
+          default: true
+          output:
+            message: {channelId: C0123456789, timestamp: "1710000003.000400", threadTimestamp: "1710000000.000100", userId: U0456789012, text: "Approved for dispatch."}
+        - name: replyMissing
+          branch: notFound
+          description: The requested reply was deleted or never existed.
+          failure: {kind: NOT_FOUND, message: The Slack thread reply does not exist.}
+        - name: replyRejected
+          branch: providerRejected
+          description: Slack rejects the reply read because the app lacks channel access.
+          failure: {kind: AUTHORIZATION, message: Slack rejected the reply read because the app cannot access the channel.}
+        - name: malformedReply
+          branch: invalidResponse
+          description: Slack returns an invalid reply response.
+          failure: {kind: PROTOCOL, message: Slack returned an invalid reply response.}
+        - name: missingReplyTimestamp
+          branch: defect
+          description: The reply timestamp is missing, so no request is sent.
+          failure: {kind: VALIDATION, message: The reply timestamp is required.}
     - name: postChannelMessage
       goName: PostChannelMessage
       inputType: PostChannelMessageInput
@@ -206,6 +258,24 @@ spec:
         executeMethodTimeout: 30s
         durability: async
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+      mocks:
+        - name: messageSent
+          branch: sent
+          description: Slack accepts a new top-level channel message.
+          default: true
+          output:
+            message: {channelId: C0123456789, timestamp: "1710000010.000500", userId: U0BOT123456, text: "Order 1042 is ready for review."}
+        - name: channelRejected
+          branch: providerRejected
+          description: Slack rejects the post because the bot cannot write to the channel.
+          failure: {kind: AUTHORIZATION, message: Slack rejected the channel post because the bot cannot write to the channel.}
+        - name: postOutcomeUnknown
+          description: The connection closes after dispatch, so Slack acceptance cannot be confirmed.
+          uncertain: {failure: {kind: TRANSPORT, message: The connection closed before Slack confirmed the channel post.}}
+        - name: missingMessageText
+          branch: defect
+          description: The message text is empty, so no request is sent.
+          failure: {kind: VALIDATION, message: The channel message text is required.}
     - name: postThreadReply
       goName: PostThreadReply
       inputType: PostThreadReplyInput
@@ -215,3 +285,21 @@ spec:
       idempotency: required
       branches: *postBranches
       execution: *slackMutationExecution
+      mocks:
+        - name: replySent
+          branch: sent
+          description: Slack accepts a reply in the existing channel thread.
+          default: true
+          output:
+            message: {channelId: C0123456789, timestamp: "1710000011.000600", threadTimestamp: "1710000000.000100", userId: U0BOT123456, text: "Processing complete."}
+        - name: threadRejected
+          branch: providerRejected
+          description: Slack rejects the reply because the thread is unavailable.
+          failure: {kind: NOT_FOUND, message: Slack could not find the channel thread for this reply.}
+        - name: replyOutcomeUnknown
+          description: The connection closes after dispatch, so Slack acceptance cannot be confirmed.
+          uncertain: {failure: {kind: TRANSPORT, message: The connection closed before Slack confirmed the thread reply.}}
+        - name: missingReplyText
+          branch: defect
+          description: The reply text is empty, so no request is sent.
+          failure: {kind: VALIDATION, message: The thread reply text is required.}
