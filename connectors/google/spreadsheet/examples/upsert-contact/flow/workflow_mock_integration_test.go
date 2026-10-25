@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"github.com/superdurable/dex-connectors-library/connectors/google/spreadsheet"
 	"github.com/superdurable/dex-connectors-library/connectors/google/spreadsheet/spreadsheetmock"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
@@ -68,6 +69,9 @@ func TestUpsertContactExampleRunsOnSpreadsheetMockWithRealDex(t *testing.T) {
 	result, err := client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
 	require.NoError(t, err)
 	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var output spreadsheet.UpsertRowOutput
+	require.NoError(t, result.DecodeSingleOutput(&output))
+	require.Equal(t, spreadsheet.UpsertRowOutput{Action: "updated", RowNumber: 2, UpdatedRange: "Contacts!A2:C2"}, output)
 	calls := mock.UpsertRow().Calls()
 	require.Len(t, calls, 1)
 	require.Equal(t, flowID, calls[0].FlowID)

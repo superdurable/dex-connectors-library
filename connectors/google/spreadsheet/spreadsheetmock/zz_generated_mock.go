@@ -223,9 +223,9 @@ func UpsertRowRetry(failure sdkgo.Failure, after time.Duration) connectormock.Ca
 	return connectormock.Retry[spreadsheet.UpsertRowOutput](failure, after)
 }
 
-// UpsertRowContactUpserted is the manifest mock contactUpserted: One contact is inserted into the Contacts tab.
+// UpsertRowContactUpserted is the manifest mock contactUpserted: The contact already on row 2 of the Contacts tab is updated in place.
 func UpsertRowContactUpserted() connectormock.Case[spreadsheet.UpsertRowOutput] {
-	value := connectormock.MustDecodeOutput[spreadsheet.UpsertRowOutput](`{"action":"inserted","rowNumber":2,"updatedRange":"Contacts!A2:C2"}`)
+	value := connectormock.MustDecodeOutput[spreadsheet.UpsertRowOutput](`{"action":"updated","rowNumber":2,"updatedRange":"Contacts!A2:C2"}`)
 	return connectormock.Branch(spreadsheet.UpsertRowBranchUpserted, value, nil)
 }
 

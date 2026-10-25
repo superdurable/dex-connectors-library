@@ -218,9 +218,9 @@ spec:
       mocks:
         - name: contactUpserted
           branch: upserted
-          description: One contact is inserted into the Contacts tab.
+          description: The contact already on row 2 of the Contacts tab is updated in place.
           default: true
-          output: {action: inserted, rowNumber: 2, updatedRange: "Contacts!A2:C2"}
+          output: {action: updated, rowNumber: 2, updatedRange: "Contacts!A2:C2"}
         - name: duplicateKey
           branch: conflict
           description: Existing duplicate email keys prevent a safe upsert.

@@ -29,7 +29,7 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			return err
 		}},
 		{name: "upsertRow/contactUpserted/1", decode: func() error {
-			_, err := connectormock.DecodeOutput[spreadsheet.UpsertRowOutput](`{"action":"inserted","rowNumber":2,"updatedRange":"Contacts!A2:C2"}`)
+			_, err := connectormock.DecodeOutput[spreadsheet.UpsertRowOutput](`{"action":"updated","rowNumber":2,"updatedRange":"Contacts!A2:C2"}`)
 			return err
 		}},
 	}
