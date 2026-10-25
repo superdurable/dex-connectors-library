@@ -76,6 +76,7 @@ func (attempt *textGenerationAttempt) prepareRequest(request TextGenerationReque
 		return preparedRequest{}, attempt.failurePointer(sdkgo.FailureValidation, err.Error())
 	}
 	attempt.response.RequestedModel = canonicalModel
+	// Preserve RequestedModel on rejected requests after model validation.
 	if portableFailure != nil {
 		return preparedRequest{}, attempt.failurePointer(portableFailure.Kind, portableFailure.Message)
 	}
@@ -310,8 +311,9 @@ func (attempt *textGenerationAttempt) completeResponse(
 			return attempt.branch(InvalidResponseBranchID, sdkgo.FailureProtocol, "provider finished without text", receipt)
 		}
 		if validationRequest.StructuredOutput != nil {
-			generatedText = stripJSONFence(generatedText)
-			if err := ValidateStructuredAnswer(validationRequest, generatedText); err != nil {
+			var err error
+			generatedText, err = ValidateStructuredAnswer(validationRequest, generatedText)
+			if err != nil {
 				return attempt.branch(InvalidResponseBranchID, sdkgo.FailureProtocol, "structured output does not match its schema "+err.Error(), receipt)
 			}
 		}

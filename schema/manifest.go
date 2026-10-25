@@ -615,6 +615,9 @@ func (manifest Manifest) Validate() error {
 			problems = append(problems, operation.Name+": query cannot declare uncertain")
 		}
 		if operation.MockChecks != nil {
+			if operation.MockChecks.RequestFunction == "" && operation.MockChecks.Answer == nil {
+				problems = append(problems, operation.Name+": mockChecks requires a requestFunction or answer")
+			}
 			if operation.MockChecks.RequestFunction != "" && !goNamePattern.MatchString(operation.MockChecks.RequestFunction) {
 				problems = append(problems, operation.Name+": mockChecks.requestFunction must name an exported connector function")
 			}

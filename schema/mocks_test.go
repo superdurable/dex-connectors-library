@@ -44,6 +44,8 @@ func TestDecodeMockChecksAndRejectInvalidNames(t *testing.T) {
 	manifest.Spec.Operations[0].MockChecks.Answer.Branch = "found"
 	manifest.Spec.Operations[0].MockChecks.RequestFunction = "unexported"
 	require.ErrorContains(t, manifest.Validate(), "mockChecks.requestFunction must name an exported connector function")
+	manifest.Spec.Operations[0].MockChecks = &schema.MockChecks{}
+	require.ErrorContains(t, manifest.Validate(), "mockChecks requires a requestFunction or answer")
 }
 
 func TestRejectInvalidMocks(t *testing.T) {

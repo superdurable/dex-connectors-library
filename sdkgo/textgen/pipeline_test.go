@@ -593,13 +593,19 @@ func TestPortableRequestCheckMatchesRealAttempt(t *testing.T) {
 }
 
 func TestStructuredAnswerCheckMatchesRealResponsePath(t *testing.T) {
+	plainText, err := textgen.ValidateStructuredAnswer(userRequest(), " plain answer ")
+	require.NoError(t, err)
+	require.Equal(t, " plain answer ", plainText)
+
 	request := userRequest()
 	request.StructuredOutput = &textgen.StructuredOutput{Name: "answer", Schema: map[string]any{
 		"type": "object", "additionalProperties": false, "required": []string{"status"},
 		"properties": map[string]any{"status": map[string]any{"type": "string", "const": "shipped"}},
 	}}
-	require.NoError(t, textgen.ValidateStructuredAnswer(request, "```json\n{\"status\":\"shipped\"}\n```"))
-	err := textgen.ValidateStructuredAnswer(request, `{"status":"pending"}`)
+	generatedText, err := textgen.ValidateStructuredAnswer(request, "```json\n{\"status\":\"shipped\"}\n```")
+	require.NoError(t, err)
+	require.Equal(t, `{"status":"shipped"}`, generatedText)
+	_, err = textgen.ValidateStructuredAnswer(request, `{"status":"pending"}`)
 	require.ErrorContains(t, err, "at /status: the value does not equal const")
 
 	test := newPipelineTest(t, nil)

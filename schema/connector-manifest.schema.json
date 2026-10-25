@@ -754,6 +754,7 @@
         "mockChecks": {
           "type": "object",
           "additionalProperties": false,
+          "minProperties": 1,
           "properties": {
             "requestFunction": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
             "answer": {

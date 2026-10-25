@@ -40,17 +40,20 @@ func ValidatePortableRequest(request TextGenerationRequest) *sdkgo.Failure {
 }
 
 // ValidateStructuredAnswer checks generated text against the request's
-// canonical structured output schema. Plain text requests return nil.
-// Surrounding whitespace and one JSON Markdown fence are accepted, as in
-// the real response path. The error describes a schema mismatch without
-// including generated values.
-func ValidateStructuredAnswer(request TextGenerationRequest, generatedText string) error {
+// canonical structured output schema and returns the text without surrounding
+// whitespace or one JSON Markdown fence. Plain text requests return the
+// original text. Errors describe mismatches without including generated values.
+func ValidateStructuredAnswer(request TextGenerationRequest, generatedText string) (string, error) {
 	if request.StructuredOutput == nil {
-		return nil
+		return generatedText, nil
 	}
 	canonical, err := canonicalizeSchema(request.StructuredOutput.Schema)
 	if err != nil {
-		return err
+		return "", err
 	}
-	return validateStructuredOutputText(stripJSONFence(generatedText), canonical)
+	generatedText = stripJSONFence(generatedText)
+	if err := validateStructuredOutputText(generatedText, canonical); err != nil {
+		return "", err
+	}
+	return generatedText, nil
 }
