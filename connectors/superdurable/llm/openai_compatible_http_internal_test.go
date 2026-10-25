@@ -57,6 +57,21 @@ func TestOpenAICompatibleClientSpeaksHTTP2(t *testing.T) {
 	require.Equal(t, 2, response.ProtoMajor)
 }
 
+// TestOpenAICompatibleClientSpeaksHTTP1 keeps gateways that offer only HTTP/1.1 over TLS reachable.
+func TestOpenAICompatibleClientSpeaksHTTP1(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		writer.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(server.Close)
+	client, err := newOpenAICompatibleHTTPClient(server.Client(), true)
+	require.NoError(t, err)
+	response, err := client.Get(server.URL + "/v1/models")
+	require.NoError(t, err)
+	require.NoError(t, response.Body.Close())
+	require.Equal(t, http.StatusOK, response.StatusCode)
+	require.Equal(t, 1, response.ProtoMajor)
+}
+
 // TestOpenAICompatibleClientOwnsHTTP2WithCallerTransport keeps a caller transport's
 // HTTP/2 handler and pool out of the guarded client, and still speaks HTTP/2.
 func TestOpenAICompatibleClientOwnsHTTP2WithCallerTransport(t *testing.T) {
