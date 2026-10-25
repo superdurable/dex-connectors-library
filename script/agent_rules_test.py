@@ -113,9 +113,13 @@ class AgentRulesTest(unittest.TestCase):
         agents_rules, cursor_rules = mirrored_rules
         self.assertEqual(agents_rules, cursor_rules)
         self.assertEqual([1, 1, 1], [len(matches) for matches in agents_rules])
-        uncertainty_rule = agents_rules[2][0]
+        manifest_rule, wiring_rule, uncertainty_rule = (matches[0] for matches in agents_rules)
+        self.assertIn("Only the happy-path branch is required", manifest_rule)
+        self.assertIn("an unwired optional branch fails the Flow when selected", wiring_rule)
         self.assertIn("A transport failure before the request left the process", uncertainty_rule)
         self.assertIn("exhausted retries never become uncertainty", uncertainty_rule)
+        for rule in (manifest_rule, wiring_rule, uncertainty_rule):
+            self.assertNotIn("choose a continuation", rule)
 
     def test_checked_in_example_is_the_end_to_end_verification_path(self) -> None:
         agents = " ".join((ROOT / "AGENTS.md").read_text(encoding="utf-8").split())
