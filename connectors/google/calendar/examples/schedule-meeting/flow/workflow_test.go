@@ -73,7 +73,8 @@ func TestOperationMappingsUseTheRecordedCalendarAndExactWindow(t *testing.T) {
 	require.Equal(t, calendar.ListEventsInput{
 		CalendarID: "primary", TimeMin: "2026-02-24T14:00:00-08:00", TimeMax: "2026-02-24T15:00:00-08:00",
 		PageSize: 250, TimeZone: "America/Los_Angeles",
-	}, MapToListEventsInput(request))
+	}, MapToListEventsInput(meetingWindowPage(request, "")))
+	require.Equal(t, "page-2", MapToListEventsInput(meetingWindowPage(request, "page-2")).PageToken, "later pages carry the cursor")
 	require.Equal(t, calendar.GetEventInput{CalendarID: "primary", EventID: "holdevent01"}, MapToGetEventInput(calendar.CreateEventResult{
 		Value: calendar.CreateEventOutput{Event: calendar.Event{ID: "holdevent01", CalendarID: "primary"}},
 	}))

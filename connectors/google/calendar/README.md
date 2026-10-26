@@ -182,6 +182,39 @@ Set the same `ConnectionName` beside the typed `Connection` in each operation:
 a Step whose `ConnectionName` is empty or differs from its connection's name
 panics at construction.
 
+## Test with calendarmock
+
+The generated `calendarmock` package answers every operation's required branch
+by default. Pass its typed connection to the example Flow to test without
+Google credentials:
+
+```go
+mock := calendarmock.New(t, ConnectionName)
+flow, harness := newScheduleMeetingHarnessWithConnection(t, mock.Connection(), CalendarSelection{})
+```
+
+This snippet comes from
+[`workflow_mock_integration_test.go`](examples/schedule-meeting/flow/workflow_mock_integration_test.go).
+The event-list default has three ordered pages, including a repeated event and
+a transparent event. The example follows every page and schedules the meeting
+after confirming no opaque event blocks the slot. A separate test scripts the
+named `busyMeetingWindow` case to verify that a conflicting event leaves the
+hold uninvited. Other named cases cover missing or inaccessible events, a
+stable-ID conflict, and incomplete free/busy information.
+
+The defaults answer one meeting: calendar `primary`, 2026-02-20 14:00 to 15:00
+in `America/Los_Angeles`, with guests `priya@meridian.example.com` and
+`alice@example.com`. The example's read-back check compares the stored start
+and end from `getEvent` with the request, so a Flow for another meeting time
+fails on that default. The `createEvent` default holds the same times, and the
+`updateEvent` default returns those two guests whatever the request names. The
+`listEvents` default contains the hold `meetinghold0001`, which the Flow skips
+by ID, so scripting `createEvent` and `getEvent` with another hold ID for the
+same window makes the listing report `meetinghold0001` as an unexpected
+conflict. Script these operations, `listEvents` included, for any other
+meeting with `Respond` or `When`, as described in
+[`sdkgo/connectormock`](../../../sdkgo/README.md#connector-mocks).
+
 ## Example
 
 [`examples/schedule-meeting`](examples/schedule-meeting) is a runnable Dex Web

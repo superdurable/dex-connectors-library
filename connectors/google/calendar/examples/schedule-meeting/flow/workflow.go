@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"net/mail"
+	"slices"
 	"strings"
 	"time"
 
@@ -38,12 +39,14 @@ const (
 	completeMeetingBookingStepType      = "CompleteMeetingBooking"
 
 	maximumListedWindowEvents = 250
+	maximumMeetingWindowPages = 10
 )
 
 var (
-	meetingRequestAttribute = dex.DefineAttribute[MeetingRequest]("google-calendar-meeting-request")
-	meetingHoldAttribute    = dex.DefineAttribute[calendar.Event]("google-calendar-meeting-hold")
-	meetingOutcomeAttribute = dex.DefineAttribute[MeetingOutcome]("google-calendar-meeting-outcome")
+	meetingRequestAttribute    = dex.DefineAttribute[MeetingRequest]("google-calendar-meeting-request")
+	meetingHoldAttribute       = dex.DefineAttribute[calendar.Event]("google-calendar-meeting-hold")
+	meetingOutcomeAttribute    = dex.DefineAttribute[MeetingOutcome]("google-calendar-meeting-outcome")
+	meetingWindowScanAttribute = dex.DefineAttribute[meetingWindowScan]("google-calendar-meeting-window-scan")
 )
 
 // Input is the meeting entered in Dex Web Start Flow. Start and End are timed
@@ -89,6 +92,18 @@ type MeetingRequest struct {
 	RequestConference bool `json:"requestConference,omitempty"`
 }
 
+// MeetingWindowPage names one page of the meeting window for the event-list Step.
+type MeetingWindowPage struct {
+	// CalendarID is the calendar to list.
+	CalendarID string `json:"calendarId"`
+	// Start is the inclusive start of the window.
+	Start calendar.EventDateTime `json:"start"`
+	// End is the exclusive end of the window.
+	End calendar.EventDateTime `json:"end"`
+	// PageToken is the cursor of the page to read; the first page leaves it blank.
+	PageToken string `json:"pageToken,omitempty"`
+}
+
 // MeetingInvitation identifies the confirmed hold and the guests to add to it.
 type MeetingInvitation struct {
 	// CalendarID is the calendar that holds the event.
@@ -97,6 +112,12 @@ type MeetingInvitation struct {
 	EventID string `json:"eventId"`
 	// Attendees lists the guests to invite.
 	Attendees []string `json:"attendees"`
+}
+
+type meetingWindowScan struct {
+	PagesRead           int      `json:"pagesRead"`
+	PageTokens          []string `json:"pageTokens,omitempty"`
+	ConflictingEventIDs []string `json:"conflictingEventIds,omitempty"`
 }
 
 // MeetingStatus is the Flow's terminal business outcome.
@@ -123,8 +144,6 @@ type MeetingOutcome struct {
 	Busy []calendar.BusyInterval `json:"busy,omitempty"`
 	// ConflictingEventIDs lists other events that block the meeting window.
 	ConflictingEventIDs []string `json:"conflictingEventIds,omitempty"`
-	// IsWindowTruncated reports that the window held more events than one page, which counts as a conflict.
-	IsWindowTruncated bool `json:"isWindowTruncated,omitempty"`
 }
 
 // Flow schedules one meeting on one Google Calendar.
@@ -196,7 +215,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Found: sdkgo.GoTo(verifyMeetingHold{}),
 		})),
 		dex.DefineStep(verifyMeetingHold{}),
-		dex.DefineStep(calendar.NewListEventsStep(calendar.ListEventsStepConfig[MeetingRequest]{
+		dex.DefineStep(calendar.NewListEventsStep(calendar.ListEventsStepConfig[MeetingWindowPage]{
 			StepType: listMeetingWindowEventsStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
 				GroupID: "google-calendar", GroupLabel: "Google Calendar",
@@ -227,9 +246,9 @@ func (flow *Flow) GetRPCs() []dex.RPCDef {
 	}
 }
 
-// GetPersistenceSchema registers the request, hold, and outcome Attributes.
+// GetPersistenceSchema registers the request, hold, window scan, and outcome Attributes.
 func (*Flow) GetPersistenceSchema() dex.PersistenceSchema {
-	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{meetingRequestAttribute, meetingHoldAttribute, meetingOutcomeAttribute}}
+	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{meetingRequestAttribute, meetingHoldAttribute, meetingOutcomeAttribute, meetingWindowScanAttribute}}
 }
 
 // GetDexSummary returns the meeting request and outcome.
@@ -286,11 +305,15 @@ func MapToGetEventInput(result calendar.CreateEventResult) calendar.GetEventInpu
 }
 
 // MapToListEventsInput lists one bounded page of the meeting window.
-func MapToListEventsInput(request MeetingRequest) calendar.ListEventsInput {
+func MapToListEventsInput(page MeetingWindowPage) calendar.ListEventsInput {
 	return calendar.ListEventsInput{
-		CalendarID: request.CalendarID, TimeMin: request.Start.DateTime, TimeMax: request.End.DateTime,
-		PageSize: maximumListedWindowEvents, TimeZone: request.Start.TimeZone,
+		CalendarID: page.CalendarID, TimeMin: page.Start.DateTime, TimeMax: page.End.DateTime,
+		PageSize: maximumListedWindowEvents, PageToken: page.PageToken, TimeZone: page.Start.TimeZone,
 	}
+}
+
+func meetingWindowPage(request MeetingRequest, pageToken string) MeetingWindowPage {
+	return MeetingWindowPage{CalendarID: request.CalendarID, Start: request.Start, End: request.End, PageToken: pageToken}
 }
 
 // MapToUpdateEventInput replaces the hold's guest list and asks Google to email every guest.
@@ -453,7 +476,10 @@ func (verifyMeetingHold) Execute(ctx dex.Context, result calendar.GetEventResult
 	if err := meetingHoldAttribute.Set(ctx, hold); err != nil {
 		return nil, err
 	}
-	return dex.GoTo(sdkgo.StepRef[MeetingRequest](listMeetingWindowEventsStepType), request), nil
+	if err := meetingWindowScanAttribute.Set(ctx, meetingWindowScan{}); err != nil {
+		return nil, err
+	}
+	return dex.GoTo(sdkgo.StepRef[MeetingWindowPage](listMeetingWindowEventsStepType), meetingWindowPage(request, "")), nil
 }
 
 func verifyHoldMatchesRequest(hold calendar.Event, request MeetingRequest) error {
@@ -481,7 +507,7 @@ func verifyHoldMatchesRequest(hold calendar.Event, request MeetingRequest) error
 }
 
 // dex:group group-id:meeting group-label:"Meeting"
-// dex:explanation text:"Complete as a conflict when another busy event overlaps the hold, otherwise invite."
+// dex:explanation text:"List the next page while the window has one, then complete as a conflict when another busy event overlaps the hold, otherwise invite."
 type evaluateMeetingWindow struct {
 	dex.StepDefaultsNoWaitFor[calendar.ListEventsResult]
 }
@@ -496,6 +522,13 @@ func (evaluateMeetingWindow) Execute(ctx dex.Context, result calendar.ListEvents
 	hold, err := meetingHoldAttribute.Get(ctx)
 	if err != nil {
 		return nil, err
+	}
+	scan, err := meetingWindowScanAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if len(result.Value.Events) > maximumListedWindowEvents {
+		return dex.ForceFail("calendar event page exceeds the listing limit"), nil
 	}
 	allDayLocation := time.UTC
 	if result.Value.TimeZone != "" {
@@ -515,11 +548,29 @@ func (evaluateMeetingWindow) Execute(ctx dex.Context, result calendar.ListEvents
 	if err != nil {
 		return dex.ForceFail(err.Error()), nil
 	}
-	isWindowTruncated := result.Value.NextPageToken != ""
-	if len(conflicting) != 0 || isWindowTruncated {
+	for _, eventID := range conflicting {
+		if !slices.Contains(scan.ConflictingEventIDs, eventID) {
+			scan.ConflictingEventIDs = append(scan.ConflictingEventIDs, eventID)
+		}
+	}
+	scan.PagesRead++
+	if nextPageToken := result.Value.NextPageToken; nextPageToken != "" {
+		if scan.PagesRead >= maximumMeetingWindowPages {
+			return dex.ForceFail("calendar event listing exceeds the page limit"), nil
+		}
+		if slices.Contains(scan.PageTokens, nextPageToken) {
+			return dex.ForceFail("calendar event listing repeated a page token"), nil
+		}
+		scan.PageTokens = append(scan.PageTokens, nextPageToken)
+		if err := meetingWindowScanAttribute.Set(ctx, scan); err != nil {
+			return nil, err
+		}
+		return dex.GoTo(sdkgo.StepRef[MeetingWindowPage](listMeetingWindowEventsStepType), meetingWindowPage(request, nextPageToken)), nil
+	}
+	if len(scan.ConflictingEventIDs) != 0 {
 		outcome := MeetingOutcome{
 			Status: MeetingConflict, CalendarID: request.CalendarID, Event: &hold,
-			ConflictingEventIDs: conflicting, IsWindowTruncated: isWindowTruncated,
+			ConflictingEventIDs: scan.ConflictingEventIDs,
 		}
 		if err := meetingOutcomeAttribute.Set(ctx, outcome); err != nil {
 			return nil, err

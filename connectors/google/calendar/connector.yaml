@@ -5,7 +5,7 @@ metadata:
   displayName: Google Calendar
   description: List and read events in a bounded window, create and update events idempotently, and query free/busy intervals in Google Calendar.
   company: Google
-  version: v0.22.0
+  version: v0.23.0
 spec:
   provider: google
   codegen:
@@ -163,6 +163,73 @@ spec:
         executeMethodTimeout: 30s
         durability: async
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+      pagination: {inputField: pageToken, nextField: nextPageToken}
+      mocks:
+        - name: meetingWindow
+          branch: listed
+          description: Three start-ordered pages for the 2026-02-20 14:00-15:00 America/Los_Angeles window, with a repeated transparent event and the meeting hold meetinghold0001.
+          default: true
+          pages:
+            - calendarId: primary
+              timeMin: "2026-02-20T14:00:00-08:00"
+              timeMax: "2026-02-20T15:00:00-08:00"
+              timeZone: America/Los_Angeles
+              events:
+                - id: meetinghold0001
+                  calendarId: primary
+                  status: confirmed
+                  summary: Meridian kickoff
+                  start: {dateTime: "2026-02-20T14:00:00-08:00", timeZone: America/Los_Angeles}
+                  end: {dateTime: "2026-02-20T15:00:00-08:00", timeZone: America/Los_Angeles}
+                  transparency: opaque
+                  etag: '"mock-etag-1"'
+                - id: focusblock0001
+                  calendarId: primary
+                  status: confirmed
+                  summary: Focus time
+                  start: {dateTime: "2026-02-20T14:15:00-08:00", timeZone: America/Los_Angeles}
+                  end: {dateTime: "2026-02-20T14:45:00-08:00", timeZone: America/Los_Angeles}
+                  transparency: transparent
+              nextPageToken: calendar-page-2
+            - calendarId: primary
+              timeMin: "2026-02-20T14:00:00-08:00"
+              timeMax: "2026-02-20T15:00:00-08:00"
+              timeZone: America/Los_Angeles
+              events:
+                - {id: focusblock0001, calendarId: primary, status: confirmed, summary: Focus time, start: {dateTime: "2026-02-20T14:15:00-08:00", timeZone: America/Los_Angeles}, end: {dateTime: "2026-02-20T14:45:00-08:00", timeZone: America/Los_Angeles}, transparency: transparent}
+                - {id: focusblock0002, calendarId: primary, status: confirmed, summary: Private focus, start: {dateTime: "2026-02-20T14:30:00-08:00", timeZone: America/Los_Angeles}, end: {dateTime: "2026-02-20T14:50:00-08:00", timeZone: America/Los_Angeles}, transparency: transparent}
+              nextPageToken: calendar-page-3
+            - calendarId: primary
+              timeMin: "2026-02-20T14:00:00-08:00"
+              timeMax: "2026-02-20T15:00:00-08:00"
+              timeZone: America/Los_Angeles
+              events: []
+        - name: busyMeetingWindow
+          branch: listed
+          description: A new opaque event overlaps the hold and repeats across the boundary between two pages.
+          pages:
+            - calendarId: primary
+              timeMin: "2026-02-20T14:00:00-08:00"
+              timeMax: "2026-02-20T15:00:00-08:00"
+              timeZone: America/Los_Angeles
+              events:
+                - {id: meetinghold0001, calendarId: primary, status: confirmed, summary: Meridian kickoff, start: {dateTime: "2026-02-20T14:00:00-08:00", timeZone: America/Los_Angeles}, end: {dateTime: "2026-02-20T15:00:00-08:00", timeZone: America/Los_Angeles}, transparency: opaque}
+                - {id: boardprep0001, calendarId: primary, status: confirmed, summary: Board preparation, start: {dateTime: "2026-02-20T14:30:00-08:00", timeZone: America/Los_Angeles}, end: {dateTime: "2026-02-20T15:30:00-08:00", timeZone: America/Los_Angeles}, transparency: opaque}
+              nextPageToken: busy-page-2
+            - calendarId: primary
+              timeMin: "2026-02-20T14:00:00-08:00"
+              timeMax: "2026-02-20T15:00:00-08:00"
+              timeZone: America/Los_Angeles
+              events:
+                - {id: boardprep0001, calendarId: primary, status: confirmed, summary: Board preparation, start: {dateTime: "2026-02-20T14:30:00-08:00", timeZone: America/Los_Angeles}, end: {dateTime: "2026-02-20T15:30:00-08:00", timeZone: America/Los_Angeles}, transparency: opaque}
+        - name: calendarNotFound
+          branch: notFound
+          description: The calendar is absent or not visible to this connection.
+          failure: {kind: NOT_FOUND, message: The requested calendar was not found.}
+        - name: listRejected
+          branch: providerRejected
+          description: Google rejects an event listing for this calendar.
+          failure: {kind: AUTHORIZATION, message: Google Calendar rejected the event listing.}
     - name: getEvent
       goName: GetEvent
       inputType: GetEventInput
@@ -177,6 +244,28 @@ spec:
         - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized event., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution: *googleCalendarExecution
+      mocks:
+        - name: meetingHold
+          branch: found
+          description: The uninvited hold of the 2026-02-20 14:00-15:00 America/Los_Angeles meeting is available for read-back; a Flow that verifies another time needs a script.
+          default: true
+          output:
+            id: meetinghold0001
+            calendarId: primary
+            status: confirmed
+            summary: Meridian kickoff
+            start: {dateTime: "2026-02-20T14:00:00-08:00", timeZone: America/Los_Angeles}
+            end: {dateTime: "2026-02-20T15:00:00-08:00", timeZone: America/Los_Angeles}
+            transparency: opaque
+            etag: '"mock-etag-1"'
+        - name: eventNotFound
+          branch: notFound
+          description: The requested event is absent or not visible.
+          failure: {kind: NOT_FOUND, message: The requested event was not found.}
+        - name: readRejected
+          branch: providerRejected
+          description: Google rejects the event read.
+          failure: {kind: AUTHORIZATION, message: Google Calendar rejected the event read.}
     - name: createEvent
       goName: CreateEvent
       inputType: CreateEventInput
@@ -191,6 +280,30 @@ spec:
         - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized event response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution: *googleCalendarExecution
+      mocks:
+        - name: holdCreated
+          branch: created
+          description: Google creates the uninvited hold of the 2026-02-20 14:00-15:00 America/Los_Angeles meeting under a stable event ID; another meeting needs a script.
+          default: true
+          output:
+            event:
+              id: meetinghold0001
+              calendarId: primary
+              status: confirmed
+              summary: Meridian kickoff
+              start: {dateTime: "2026-02-20T14:00:00-08:00", timeZone: America/Los_Angeles}
+              end: {dateTime: "2026-02-20T15:00:00-08:00", timeZone: America/Los_Angeles}
+              transparency: opaque
+              etag: '"mock-etag-1"'
+            wasAlreadyCreated: false
+        - name: eventIDConflict
+          branch: conflict
+          description: A deleted or inaccessible event already owns the stable event ID.
+          failure: {kind: CONFLICT, message: The stable event ID cannot be reused.}
+        - name: createRejected
+          branch: providerRejected
+          description: Google rejects an event creation on a read-only calendar.
+          failure: {kind: AUTHORIZATION, message: Google Calendar rejected the event creation.}
     - name: updateEvent
       goName: UpdateEvent
       inputType: UpdateEventInput
@@ -205,6 +318,32 @@ spec:
         - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized event response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution: *googleCalendarExecution
+      mocks:
+        - name: attendeesInvited
+          branch: updated
+          description: The confirmed 2026-02-20 14:00-15:00 America/Los_Angeles meeting now includes priya@meridian.example.com and alice@example.com; other guests need a script.
+          default: true
+          output:
+            event:
+              id: meetinghold0001
+              calendarId: primary
+              status: confirmed
+              summary: Meridian kickoff
+              start: {dateTime: "2026-02-20T14:00:00-08:00", timeZone: America/Los_Angeles}
+              end: {dateTime: "2026-02-20T15:00:00-08:00", timeZone: America/Los_Angeles}
+              transparency: opaque
+              etag: '"mock-etag-2"'
+              attendees:
+                - {email: priya@meridian.example.com, responseStatus: needsAction}
+                - {email: alice@example.com, responseStatus: needsAction}
+        - name: updateEventNotFound
+          branch: notFound
+          description: The event was removed before the guest update.
+          failure: {kind: NOT_FOUND, message: The event was not found for update.}
+        - name: updateRejected
+          branch: providerRejected
+          description: Google rejects the guest update on a read-only calendar.
+          failure: {kind: AUTHORIZATION, message: Google Calendar rejected the event update.}
     - name: queryFreeBusy
       goName: QueryFreeBusy
       inputType: QueryFreeBusyInput
@@ -219,3 +358,26 @@ spec:
         - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized free/busy response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution: *googleCalendarExecution
+      mocks:
+        - name: calendarFree
+          branch: queried
+          description: The primary calendar has no busy time in the 2026-02-20 14:00-15:00 America/Los_Angeles meeting window.
+          default: true
+          output:
+            timeMin: "2026-02-20T14:00:00-08:00"
+            timeMax: "2026-02-20T15:00:00-08:00"
+            timeZone: America/Los_Angeles
+            calendars: [{calendarId: primary, busy: []}]
+        - name: availabilityIncomplete
+          branch: incomplete
+          description: Google cannot report availability for one requested calendar.
+          output:
+            timeMin: "2026-02-20T14:00:00-08:00"
+            timeMax: "2026-02-20T15:00:00-08:00"
+            timeZone: America/Los_Angeles
+            calendars: [{calendarId: primary, busy: [], errors: [{domain: global, reason: notFound}]}]
+          failure: {kind: PROVIDER_REJECTION, message: Google Calendar could not report availability for every calendar.}
+        - name: freeBusyRejected
+          branch: providerRejected
+          description: Google rejects the free/busy query.
+          failure: {kind: AUTHORIZATION, message: Google Calendar rejected the free/busy query.}
