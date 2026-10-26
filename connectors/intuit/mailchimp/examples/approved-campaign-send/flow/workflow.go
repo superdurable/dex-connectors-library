@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"net/mail"
 	"strings"
-	"time"
 
 	"github.com/superdurable/dex-connectors-library/connectors/intuit/mailchimp"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
@@ -40,8 +39,6 @@ const (
 	awaitSendApprovalStepType       = "AwaitSendApproval"
 	sendLaunchCampaignStepType      = "SendLaunchCampaign"
 	recordCampaignSentStepType      = "RecordCampaignSent"
-	recordCampaignNotSentStepType   = "RecordCampaignNotSent"
-	recordUncertainSendStepType     = "RecordUncertainSend"
 	recordDeclinedSendStepType      = "RecordDeclinedSend"
 
 	maximumTagBytes = 100
@@ -57,12 +54,6 @@ const (
 	PhaseSending = "sending"
 	// PhaseSent means Mailchimp accepted this Flow's send.
 	PhaseSent = "sent"
-	// PhaseAlreadySent means Mailchimp showed the campaign sending or sent, so this Flow sent nothing more.
-	PhaseAlreadySent = "alreadySent"
-	// PhaseNotSent means the campaign could not be sent: not a draft, another audience, missing, or rejected.
-	PhaseNotSent = "notSent"
-	// PhaseNeedsReview means the send was dispatched with an unknown outcome; a person checks Mailchimp.
-	PhaseNeedsReview = "needsReview"
 	// PhaseDeclined means a person declined the send.
 	PhaseDeclined = "declined"
 )
@@ -167,7 +158,7 @@ type CampaignSend struct {
 	ListID string `json:"listId"`
 }
 
-// SendDecision records who approved, declined, or rechecked the send.
+// SendDecision records who approved or declined the send.
 type SendDecision struct {
 	// DecidedBy names the person.
 	DecidedBy string `json:"decidedBy"`
@@ -191,18 +182,6 @@ type ContactOutcome struct {
 	FailureMessage string `json:"failureMessage,omitempty"`
 }
 
-// UncertainSend records a dispatched send whose outcome Mailchimp did not confirm.
-type UncertainSend struct {
-	// CallID is the connector call identity of the uncertain send.
-	CallID string `json:"callId"`
-	// ObservedAt is when the connector observed the unknown outcome.
-	ObservedAt time.Time `json:"observedAt"`
-	// FailureKind is the safe connector failure category, such as TRANSPORT.
-	FailureKind sdkgo.FailureKind `json:"failureKind,omitempty"`
-	// FailureMessage is the connector's safe description, which never holds Mailchimp text.
-	FailureMessage string `json:"failureMessage,omitempty"`
-}
-
 // CampaignLaunch is the Flow's durable record of one launch.
 type CampaignLaunch struct {
 	// Request is the validated launch.
@@ -221,17 +200,13 @@ type CampaignLaunch struct {
 	Approval *SendDecision `json:"approval,omitempty"`
 	// Decline names who declined the send.
 	Decline *SendDecision `json:"decline,omitempty"`
-	// SendExecutions counts sendCampaign Step executions: the approved send plus each recheck.
+	// SendExecutions counts approved sendCampaign Step executions.
 	SendExecutions int `json:"sendExecutions"`
 	// Campaign is the campaign as sendCampaign read it.
 	Campaign *mailchimp.Campaign `json:"campaign,omitempty"`
-	// NotSentReason is the connector's safe reason for a campaign that was not sent.
-	NotSentReason string `json:"notSentReason,omitempty"`
-	// UncertainSend describes the latest uncertain send while review is pending.
-	UncertainSend *UncertainSend `json:"uncertainSend,omitempty"`
 }
 
-// SendDecisionInput is the form of the approve, decline, and recheck Actions.
+// SendDecisionInput is the form of the approve and decline Actions.
 type SendDecisionInput struct {
 	// DecidedBy names the person acting.
 	DecidedBy string `json:"decidedBy"`
@@ -264,7 +239,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Read the contact by the MD5 hash of its lowercased address to see whether it unsubscribed.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToGetMemberInput,
-			Found:    sdkgo.GoTo(planLaunchContact{}),
+			Found: sdkgo.GoTo(planLaunchContact{}),
+			// Enroll a new contact before campaign approval when Mailchimp finds no member.
 			NotFound: sdkgo.GoTo(planLaunchContact{}),
 		})),
 		dex.DefineStep(planLaunchContact{}),
@@ -275,7 +251,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Add or update the contact with statusIfNew only, so an existing contact keeps its status; a repeated PUT writes the same values.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToUpsertMemberInput,
-			Upserted:         sdkgo.GoTo(recordUpsertedContact{}),
+			Upserted: sdkgo.GoTo(recordUpsertedContact{}),
+			// Skip a compliance-rejected contact and continue enrolling the other recipients.
 			ProviderRejected: sdkgo.GoTo(recordRejectedContact{}),
 		})),
 		dex.DefineStep(recordUpsertedContact{}),
@@ -307,21 +284,14 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Read the approved campaign and send it only if it is still a draft for this audience, at most once.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToSendCampaignInput,
-			Sent:             sdkgo.GoTo(recordCampaignSent{}),
-			AlreadySent:      sdkgo.GoTo(recordCampaignSent{}),
-			NotSendable:      sdkgo.GoTo(recordCampaignNotSent{}),
-			NotFound:         sdkgo.GoTo(recordCampaignNotSent{}),
-			ProviderRejected: sdkgo.GoTo(recordCampaignNotSent{}),
-			Uncertain:        sdkgo.GoTo(recordUncertainSend{}),
+			Sent: sdkgo.GoTo(recordCampaignSent{}),
 		})),
 		dex.DefineStep(recordCampaignSent{}),
-		dex.DefineStep(recordCampaignNotSent{}),
-		dex.DefineStep(recordUncertainSend{}),
 		dex.DefineStep(recordDeclinedSend{}),
 	}
 }
 
-// GetRPCs returns the approval and review Actions, the record read RPC, and the Dex Web views.
+// GetRPCs returns the approval Actions, the record read RPC, and the Dex Web views.
 func (flow *Flow) GetRPCs() []dex.RPCDef {
 	return []dex.RPCDef{
 		dex.DefineRPC(flow.ApproveCampaignSend, &dex.RPCOptions{
@@ -336,14 +306,6 @@ func (flow *Flow) GetRPCs() []dex.RPCDef {
 			Action: dex.DefineAction(
 				"Decline campaign send",
 				dex.WhenAttributeMatches(campaignLaunchPhaseAttribute, dex.AttributeMatchEqual(PhaseAwaitingApproval)),
-				dex.ActionRequiresPermission(SendCampaignPermission),
-			),
-			LockAttributes: launchLocks,
-		}),
-		dex.DefineRPC(flow.RecheckCampaignSend, &dex.RPCOptions{
-			Action: dex.DefineAction(
-				"Recheck campaign and send if still a draft",
-				dex.WhenAttributeMatches(campaignLaunchPhaseAttribute, dex.AttributeMatchEqual(PhaseNeedsReview)),
 				dex.ActionRequiresPermission(SendCampaignPermission),
 			),
 			LockAttributes: launchLocks,
@@ -457,36 +419,6 @@ func (*Flow) DeclineCampaignSend(ctx dex.Context, input SendDecisionInput) (*dex
 	}
 	return &dex.RPCResult[dex.None]{
 		NextSteps: []dex.StepMovement{dex.MovementOf(sdkgo.StepRef[SendDecision](recordDeclinedSendStepType), decision)},
-	}, nil
-}
-
-// RecheckCampaignSend runs sendCampaign again as a new Step execution after an uncertain send. Its
-// read selects alreadySent while Mailchimp shows the campaign sending or sent, so use it only after
-// Mailchimp's Campaigns page shows the campaign still as a draft or as sent.
-//
-// dex:input field-name:decidedBy value-type:string source:user required:true description:"Name of the person who checked the campaign in Mailchimp"
-// dex:input field-name:note value-type:string source:user required:false description:"What Mailchimp showed"
-func (*Flow) RecheckCampaignSend(ctx dex.Context, input SendDecisionInput) (*dex.RPCResult[dex.None], error) {
-	record, err := campaignLaunchAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if record.Phase != PhaseNeedsReview {
-		return &dex.RPCResult[dex.None]{}, nil
-	}
-	if _, err := BuildSendDecision(input); err != nil {
-		return nil, err
-	}
-	record.Phase, record.UncertainSend = PhaseSending, nil
-	record.SendExecutions++
-	if err := campaignLaunchPhaseAttribute.Set(ctx, record.Phase); err != nil {
-		return nil, err
-	}
-	if err := campaignLaunchAttribute.Set(ctx, record); err != nil {
-		return nil, err
-	}
-	return &dex.RPCResult[dex.None]{
-		NextSteps: []dex.StepMovement{dex.MovementOf(sdkgo.StepRef[CampaignSend](sendLaunchCampaignStepType), newCampaignSend(record))},
 	}, nil
 }
 
@@ -782,7 +714,7 @@ func (awaitSendApproval) Execute(ctx dex.Context, result mailchimp.ListMembersRe
 }
 
 // dex:group group-id:send group-label:"Campaign send"
-// dex:explanation text:"Record the send Mailchimp accepted, or that the campaign was already sending or sent, and complete."
+// dex:explanation text:"Record the send Mailchimp accepted and complete."
 type recordCampaignSent struct {
 	dex.StepDefaultsNoWaitFor[mailchimp.SendCampaignResult]
 }
@@ -799,9 +731,6 @@ func (recordCampaignSent) Execute(ctx dex.Context, result mailchimp.SendCampaign
 		return nil, err
 	}
 	record.Phase, record.Campaign = PhaseSent, &result.Value.Campaign
-	if result.Branch == mailchimp.SendCampaignBranchAlreadySent {
-		record.Phase = PhaseAlreadySent
-	}
 	if err := campaignLaunchPhaseAttribute.Set(ctx, record.Phase); err != nil {
 		return nil, err
 	}
@@ -809,70 +738,6 @@ func (recordCampaignSent) Execute(ctx dex.Context, result mailchimp.SendCampaign
 		return nil, err
 	}
 	return dex.GracefulComplete(record), nil
-}
-
-// dex:group group-id:send group-label:"Campaign send"
-// dex:explanation text:"Complete without a send when the campaign is not a draft for this audience, is missing, or Mailchimp rejected it."
-type recordCampaignNotSent struct {
-	dex.StepDefaultsNoWaitFor[mailchimp.SendCampaignResult]
-}
-
-func (recordCampaignNotSent) GetStepType() string { return recordCampaignNotSentStepType }
-
-func (recordCampaignNotSent) GetStepOptions() *dex.StepOptions {
-	return &dex.StepOptions{ExecuteLockAttributes: launchLocks}
-}
-
-func (recordCampaignNotSent) Execute(ctx dex.Context, result mailchimp.SendCampaignResult) (*dex.StepDecision, error) {
-	record, err := campaignLaunchAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	record.Phase, record.NotSentReason = PhaseNotSent, string(result.Branch)+": "+failureMessage(result.Failure)
-	if result.Value.Campaign.ID != "" {
-		record.Campaign = &result.Value.Campaign
-	}
-	if err := campaignLaunchPhaseAttribute.Set(ctx, record.Phase); err != nil {
-		return nil, err
-	}
-	if err := campaignLaunchAttribute.Set(ctx, record); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(record), nil
-}
-
-// dex:group group-id:review group-label:"Review"
-// dex:explanation text:"Park an unknown send for a person instead of sending the campaign again."
-type recordUncertainSend struct {
-	dex.StepDefaultsNoWaitFor[mailchimp.SendCampaignResult]
-}
-
-func (recordUncertainSend) GetStepType() string { return recordUncertainSendStepType }
-
-func (recordUncertainSend) GetStepOptions() *dex.StepOptions {
-	return &dex.StepOptions{ExecuteLockAttributes: launchLocks}
-}
-
-func (recordUncertainSend) Execute(ctx dex.Context, result mailchimp.SendCampaignResult) (*dex.StepDecision, error) {
-	record, err := campaignLaunchAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	record.Phase = PhaseNeedsReview
-	record.UncertainSend = &UncertainSend{CallID: string(result.Receipt.CallID), ObservedAt: result.Receipt.ObservedAt}
-	if result.Failure != nil {
-		record.UncertainSend.FailureKind, record.UncertainSend.FailureMessage = result.Failure.Kind, result.Failure.Message
-	}
-	if result.Value.Campaign.ID != "" {
-		record.Campaign = &result.Value.Campaign
-	}
-	if err := campaignLaunchPhaseAttribute.Set(ctx, record.Phase); err != nil {
-		return nil, err
-	}
-	if err := campaignLaunchAttribute.Set(ctx, record); err != nil {
-		return nil, err
-	}
-	return dex.DeadEnd(), nil
 }
 
 // dex:group group-id:approval group-label:"Approval"
@@ -936,7 +801,6 @@ func isMailchimpID(value string) bool {
 var _ dex.Flow = (*Flow)(nil)
 var _ dex.RPC[SendDecisionInput, dex.None] = (*Flow)(nil).ApproveCampaignSend
 var _ dex.RPC[SendDecisionInput, dex.None] = (*Flow)(nil).DeclineCampaignSend
-var _ dex.RPC[SendDecisionInput, dex.None] = (*Flow)(nil).RecheckCampaignSend
 var _ dex.RPC[dex.None, CampaignLaunch] = (*Flow)(nil).GetCampaignLaunch
 var _ dex.RPC[dex.None, map[string]any] = (*Flow)(nil).GetDexSummary
 var _ dex.RPC[dex.None, map[string]any] = (*Flow)(nil).GetDexDisplay

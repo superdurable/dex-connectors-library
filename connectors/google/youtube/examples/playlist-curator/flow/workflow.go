@@ -57,8 +57,6 @@ const (
 	StatusAdded Status = "added"
 	// StatusNoMatch means the channel has no video matching the query.
 	StatusNoMatch Status = "noMatch"
-	// StatusChannelNotFound means no channel has the handle or ID.
-	StatusChannelNotFound Status = "channelNotFound"
 )
 
 // CurationOutcome is the Flow completion output. Titles are untrusted provider text.
@@ -99,7 +97,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Resolve the channel handle or ID to a YouTube channel.",
 			},
 			Connection: flow.readConnection, MapToOperationInput: MapToGetChannelInput,
-			Found: sdkgo.GoTo(channelResolved{}), NotFound: sdkgo.GoTo(channelNotFound{}),
+			Found: sdkgo.GoTo(channelResolved{}),
 		})),
 		dex.DefineStep(channelResolved{}),
 		dex.DefineStep(youtube.NewSearchVideosStep(youtube.SearchVideosStepConfig[CurationRequest]{
@@ -132,7 +130,6 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Listed: sdkgo.GoTo(curationConfirmed{}),
 		})),
 		dex.DefineStep(curationConfirmed{}),
-		dex.DefineStep(channelNotFound{}),
 	}
 }
 
@@ -342,26 +339,6 @@ func (curationConfirmed) Execute(ctx dex.Context, result youtube.ListPlaylistIte
 	}
 	outcome.Status = StatusAdded
 	outcome.IsConfirmed = len(result.Value.Items) > 0 && result.Value.Items[0].VideoID == outcome.VideoID
-	if err := curationOutcomeAttribute.Set(ctx, outcome); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(outcome), nil
-}
-
-// dex:group group-id:curation-missing-channel group-label:"Missing channel"
-// dex:explanation text:"Complete without changes because no channel has the handle or ID."
-type channelNotFound struct {
-	dex.StepDefaultsNoWaitFor[youtube.GetChannelResult]
-}
-
-func (channelNotFound) GetStepType() string { return "ChannelNotFound" }
-
-func (channelNotFound) Execute(ctx dex.Context, _ youtube.GetChannelResult) (*dex.StepDecision, error) {
-	request, err := curationRequestAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	outcome := CurationOutcome{Status: StatusChannelNotFound, PlaylistID: request.PlaylistID}
 	if err := curationOutcomeAttribute.Set(ctx, outcome); err != nil {
 		return nil, err
 	}

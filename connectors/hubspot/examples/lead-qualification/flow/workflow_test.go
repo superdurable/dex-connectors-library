@@ -80,7 +80,6 @@ func TestStartFlowIdentitiesMatchTheFlowDefinition(t *testing.T) {
 	require.Equal(t, routeOpenDealStepType, dex.GetFinalStepType[hubspot.SearchObjectsResult](routeOpenDeal{}))
 	require.Equal(t, recordAdvancedDealStepType, dex.GetFinalStepType[hubspot.UpdateObjectResult](recordAdvancedDeal{}))
 	require.Equal(t, completeLeadQualificationStepType, dex.GetFinalStepType[hubspot.GetObjectResult](completeLeadQualification{}))
-	require.Equal(t, recordRejectedLeadStepType, dex.GetFinalStepType[hubspot.UpsertObjectResult](recordRejectedLead{}))
 	wait, err := recordLead{}.WaitFor(nil, Input{})
 	require.NoError(t, err)
 	require.Equal(t, dex.SkipWaitImmediately(), wait)

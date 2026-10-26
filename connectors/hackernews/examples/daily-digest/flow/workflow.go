@@ -122,14 +122,18 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			StepType: "ReadStory", ConnectionName: ConnectionName, Connection: flow.connection,
 			MapToOperationInput: func(input hackernews.GetItemInput) hackernews.GetItemInput { return input },
 			Annotations:         sdkgo.StepAnnotations{GroupID: "collect", GroupLabel: "Collect", Explanation: "Read a story and skip removed items."},
-			Found:               sdkgo.GoTo(recordStory{}), NotFound: sdkgo.GoTo(recordStory{}),
+			Found:               sdkgo.GoTo(recordStory{}),
+			// Skip removed stories so the digest can continue with the next candidate.
+			NotFound: sdkgo.GoTo(recordStory{}),
 		})),
 		dex.DefineStep(recordStory{}), dex.DefineStep(finishSample{}), dex.DefineStep(waitForSample{}),
 		dex.DefineStep(hackernews.NewGetItemStep(hackernews.GetItemStepConfig[hackernews.GetItemInput]{
 			StepType: "ReadComment", ConnectionName: ConnectionName, Connection: flow.connection,
 			MapToOperationInput: func(input hackernews.GetItemInput) hackernews.GetItemInput { return input },
 			Annotations:         sdkgo.StepAnnotations{GroupID: "digest", GroupLabel: "Digest", Explanation: "Read up to three ranked top-level comments per candidate before summarizing."},
-			Found:               sdkgo.GoTo(recordComment{}), NotFound: sdkgo.GoTo(recordComment{}),
+			Found:               sdkgo.GoTo(recordComment{}),
+			// Skip removed comments while collecting context for a story.
+			NotFound: sdkgo.GoTo(recordComment{}),
 		})),
 		dex.DefineStep(recordComment{}), dex.DefineStep(writeDigest{summarize: flow.summarize}),
 	}

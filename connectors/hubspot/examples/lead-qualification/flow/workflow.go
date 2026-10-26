@@ -33,7 +33,6 @@ const (
 	recordAdvancedDealStepType        = "RecordAdvancedHubSpotDeal"
 	readBackDealStepType              = "ReadBackHubSpotDeal"
 	completeLeadQualificationStepType = "CompleteHubSpotLeadQualification"
-	recordRejectedLeadStepType        = "RecordRejectedHubSpotLead"
 
 	maximumEmailLength = 254
 	maximumNameLength  = 200
@@ -55,8 +54,6 @@ const (
 	PhaseDealAdvanced Phase = "dealAdvanced"
 	// PhaseNoOpenDeal means the contact has no open deal in the configured pipeline.
 	PhaseNoOpenDeal Phase = "noOpenDeal"
-	// PhaseRejected means HubSpot rejected the contact upsert.
-	PhaseRejected Phase = "rejected"
 )
 
 // Input contains the lead fields entered in Dex Web Start Flow.
@@ -89,8 +86,6 @@ type LeadQualification struct {
 	PreviousDealStageID string `json:"previousDealStageId,omitempty"`
 	// DealStageID is the deal stage HubSpot reported after the update.
 	DealStageID string `json:"dealStageId,omitempty"`
-	// Rejection is HubSpot's secret-safe rejection when the upsert was rejected.
-	Rejection *sdkgo.Failure `json:"rejection,omitempty"`
 }
 
 // LeadOwnerConfiguration is the owner pick Dex Web saves for the upsert Step.
@@ -169,8 +164,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Bindings:    []sdkgo.ConnectorUIBinding{{Port: hubspot.UIOwnerPickerPortOwnerID, JSONPointer: "/ownerId"}},
 			}}},
 			Connection: flow.connection, MapToOperationInput: flow.MapToUpsertLeadContactInput,
-			Upserted:         sdkgo.GoTo(recordLeadContact{}),
-			ProviderRejected: sdkgo.GoTo(recordRejectedLead{}),
+			Upserted: sdkgo.GoTo(recordLeadContact{}),
 		})),
 		dex.DefineStep(recordLeadContact{}),
 		dex.DefineStep(hubspot.NewSearchObjectsStep(hubspot.SearchObjectsStepConfig[LeadQualification]{
@@ -211,7 +205,6 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Found: sdkgo.GoTo(completeLeadQualification{settings: &flow.settings}),
 		})),
 		dex.DefineStep(completeLeadQualification{settings: &flow.settings}),
-		dex.DefineStep(recordRejectedLead{}),
 	}
 }
 
@@ -423,27 +416,6 @@ func (step completeLeadQualification) Execute(ctx dex.Context, result hubspot.Ge
 	}
 	qualification.Phase = PhaseDealAdvanced
 	qualification.DealStageID = storedStageID
-	if err := qualificationAttribute.Set(ctx, qualification); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(qualification), nil
-}
-
-// dex:group group-id:hubspot group-label:"HubSpot"
-// dex:explanation text:"Record HubSpot's secret-safe rejection of the contact and complete."
-type recordRejectedLead struct {
-	dex.StepDefaultsNoWaitFor[hubspot.UpsertObjectResult]
-}
-
-func (recordRejectedLead) GetStepType() string { return recordRejectedLeadStepType }
-
-func (recordRejectedLead) Execute(ctx dex.Context, result hubspot.UpsertObjectResult) (*dex.StepDecision, error) {
-	qualification, err := qualificationAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	qualification.Phase = PhaseRejected
-	qualification.Rejection = result.Failure
 	if err := qualificationAttribute.Set(ctx, qualification); err != nil {
 		return nil, err
 	}

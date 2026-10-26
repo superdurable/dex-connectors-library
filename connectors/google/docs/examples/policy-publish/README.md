@@ -22,12 +22,11 @@ operation:
 10. `ReadBackPolicy` calls `docs.NewGetDocumentTextStep` on the result;
 11. `CompletePublication` completes as `published` with the read-back Markdown.
 
-`createDocument`'s `uncertain` branch completes as `creationUncertain`, so a
-person checks Drive instead of the Flow creating a second document.
-`replaceDocumentText`'s `placeholderNotFound` branch completes as
-`placeholderMissing` with the missing placeholders and nothing filled. Every
-other non-happy branch, including `revisionChanged` when someone edits the new
-document between Steps, fails the Flow.
+Only happy-path connector branches are wired. An unconfirmed create fails the
+Flow without a second create. A missing placeholder fails without filling
+anything. Other optional outcomes, including `revisionChanged` when someone
+edits the new document between Steps, also fail the Flow with the connector's
+safe branch reason.
 
 ## Configure
 
@@ -96,8 +95,8 @@ revision. They prove that:
   sync;
 - a create applied before a lost response is found again by its app property;
 - an unconfirmed create, and a Worker lost while the create is in flight,
-  complete as `creationUncertain` without a second create;
+  fail on the unwired `uncertain` branch without a second create;
 - a fill or stamp that answers after nine seconds is dispatched again by Dex
   and still applied once, and a delayed fill that reaches Google after the
   backup dispatch's fill is rejected for its stale revision;
-- a missing placeholder writes nothing, and an invalid request calls nothing.
+- a missing placeholder fails without writing anything, and an invalid request calls nothing.

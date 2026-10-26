@@ -29,30 +29,23 @@ const (
 	// MaxSearchPages bounds how many pages of the customer's tickets the Flow reads.
 	MaxSearchPages = 5
 
-	recordCustomerIssueStepType           = "RecordCustomerIssue"
-	findRequesterStepType                 = "FindRequester"
-	chooseRequesterRouteStepType          = "ChooseRequesterRoute"
-	findOpenIssueTicketStepType           = "FindOpenIssueTicket"
-	chooseIssueTicketStepType             = "ChooseIssueTicket"
-	readCandidateTicketStepType           = "ReadCandidateTicket"
-	confirmCandidateTicketStepType        = "ConfirmCandidateTicket"
-	prioritizeIssueTicketStepType         = "PrioritizeIssueTicket"
-	recordPrioritizedTicketStepType       = "RecordPrioritizedTicket"
-	openIssueTicketStepType               = "OpenIssueTicket"
-	recordOpenedTicketStepType            = "RecordOpenedTicket"
-	recordUncertainTicketStepType         = "RecordUncertainTicket"
-	addTriageNoteStepType                 = "AddTriageNote"
-	recordTriageNoteStepType              = "RecordTriageNote"
-	recordUncertainNoteStepType           = "RecordUncertainNote"
-	acknowledgeCustomerStepType           = "AcknowledgeCustomer"
-	completeTriageStepType                = "CompleteTriage"
-	recordUncertainAcknowledgmentStepType = "RecordUncertainAcknowledgment"
+	recordCustomerIssueStepType     = "RecordCustomerIssue"
+	findRequesterStepType           = "FindRequester"
+	chooseRequesterRouteStepType    = "ChooseRequesterRoute"
+	findOpenIssueTicketStepType     = "FindOpenIssueTicket"
+	chooseIssueTicketStepType       = "ChooseIssueTicket"
+	readCandidateTicketStepType     = "ReadCandidateTicket"
+	confirmCandidateTicketStepType  = "ConfirmCandidateTicket"
+	prioritizeIssueTicketStepType   = "PrioritizeIssueTicket"
+	recordPrioritizedTicketStepType = "RecordPrioritizedTicket"
+	openIssueTicketStepType         = "OpenIssueTicket"
+	recordOpenedTicketStepType      = "RecordOpenedTicket"
+	addTriageNoteStepType           = "AddTriageNote"
+	recordTriageNoteStepType        = "RecordTriageNote"
+	acknowledgeCustomerStepType     = "AcknowledgeCustomer"
+	completeTriageStepType          = "CompleteTriage"
 
 	candidateMessageLimit = 5
-
-	openIssueTicketReviewReason     = "createTicket"
-	addTriageNoteReviewReason       = "addNote"
-	acknowledgeCustomerReviewReason = "addNote:publicReply"
 )
 
 var (
@@ -143,8 +136,6 @@ const (
 	TriageTicketOpened TriageAction = "opened"
 	// TriageTicketFollowedUp means the customer's open ticket was reprioritized and tagged.
 	TriageTicketFollowedUp TriageAction = "followedUp"
-	// TriageTicketCreationUncertain means the create request was sent but Gorgias did not confirm a ticket for it.
-	TriageTicketCreationUncertain TriageAction = "creationUncertain"
 )
 
 // TriageOutcome is the Flow result and the value of its outcome Attribute.
@@ -164,13 +155,6 @@ type TriageOutcome struct {
 	NoteID int64 `json:"noteId,omitempty"`
 	// AcknowledgementID is the public reply Gorgias added; Gorgias emails it asynchronously.
 	AcknowledgementID int64 `json:"acknowledgementId,omitempty"`
-	// NeedsReview reports that a write was sent with an unknown outcome, so a person must check
-	// Gorgias; the Flow never resends it.
-	NeedsReview bool `json:"needsReview,omitempty"`
-	// ReviewReason names the uncertain write: createTicket, addNote, or addNote:publicReply.
-	ReviewReason string `json:"reviewReason,omitempty"`
-	// ReviewDetail is the connector's credential-free explanation of why the outcome is unknown.
-	ReviewDetail string `json:"reviewDetail,omitempty"`
 }
 
 // Flow triages one customer issue in Gorgias.
@@ -198,7 +182,9 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Find the Gorgias customer whose primary email address is the requester's.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToFindCustomerByEmailInput,
-			Found: sdkgo.GoTo(chooseRequesterRoute{}), NotFound: sdkgo.GoTo(chooseRequesterRoute{}),
+			Found: sdkgo.GoTo(chooseRequesterRoute{}),
+			// Open a ticket without a customer ID when Gorgias does not know the requester.
+			NotFound: sdkgo.GoTo(chooseRequesterRoute{}),
 		})),
 		dex.DefineStep(chooseRequesterRoute{}),
 		dex.DefineStep(gorgias.NewSearchTicketsStep(gorgias.SearchTicketsStepConfig[IssueTicketSearch]{
@@ -238,10 +224,9 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Open a ticket with the customer's message and priority; a retry looks an unconfirmed ticket up instead of resending.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToCreateTicketInput,
-			Created: sdkgo.GoTo(recordOpenedTicket{}), Uncertain: sdkgo.GoTo(recordUncertainTicket{}),
+			Created: sdkgo.GoTo(recordOpenedTicket{}),
 		})),
 		dex.DefineStep(recordOpenedTicket{}),
-		dex.DefineStep(recordUncertainTicket{}),
 		dex.DefineStep(gorgias.NewAddNoteStep(gorgias.AddNoteStepConfig[TicketNote]{
 			StepType: addTriageNoteStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
@@ -249,10 +234,9 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Add one internal triage note; a retry looks an unconfirmed note up instead of resending.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToInternalNoteInput,
-			Added: sdkgo.GoTo(recordTriageNote{}), Uncertain: sdkgo.GoTo(recordUncertainNote{}),
+			Added: sdkgo.GoTo(recordTriageNote{}),
 		})),
 		dex.DefineStep(recordTriageNote{}),
-		dex.DefineStep(recordUncertainNote{}),
 		dex.DefineStep(gorgias.NewAddNoteStep(gorgias.AddNoteStepConfig[TicketNote]{
 			StepType: acknowledgeCustomerStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
@@ -260,10 +244,9 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Email one public acknowledgement to the customer; a retry looks an unconfirmed reply up instead of resending.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToPublicReplyInput,
-			Added: sdkgo.GoTo(completeTriage{}), Uncertain: sdkgo.GoTo(recordUncertainAcknowledgment{}),
+			Added: sdkgo.GoTo(completeTriage{}),
 		})),
 		dex.DefineStep(completeTriage{}),
-		dex.DefineStep(recordUncertainAcknowledgment{}),
 	}
 }
 
@@ -432,13 +415,6 @@ func optionalAttribute[T any](ctx dex.Context, attribute dex.Attribute[T]) (T, e
 	return value, err
 }
 
-func failureMessage(failure *sdkgo.Failure) string {
-	if failure == nil {
-		return ""
-	}
-	return failure.Message
-}
-
 func isAttributeNotFound(err error) bool {
 	var missingAttribute *dex.AttributeNotFoundError
 	return errors.As(err, &missingAttribute)
@@ -592,29 +568,6 @@ func (recordOpenedTicket) Execute(ctx dex.Context, result gorgias.CreateTicketRe
 	return dex.GoTo(sdkgo.StepRef[TicketNote](addTriageNoteStepType), TicketNote{TicketID: outcome.Ticket.ID, Body: BuildOpenedTicketNote(issue)}), nil
 }
 
-// dex:group group-id:review group-label:"Needs review"
-// dex:explanation text:"The create request was sent and Gorgias did not confirm a ticket for it; complete for a person to check Gorgias instead of resending it."
-type recordUncertainTicket struct {
-	dex.StepDefaultsNoWaitFor[gorgias.CreateTicketResult]
-}
-
-func (recordUncertainTicket) GetStepType() string { return recordUncertainTicketStepType }
-
-func (recordUncertainTicket) Execute(ctx dex.Context, result gorgias.CreateTicketResult) (*dex.StepDecision, error) {
-	previous, err := optionalAttribute(ctx, triageOutcomeAttribute)
-	if err != nil {
-		return nil, err
-	}
-	outcome := TriageOutcome{
-		Action: TriageTicketCreationUncertain, SkippedTicketID: previous.SkippedTicketID, NeedsReview: true,
-		ReviewReason: openIssueTicketReviewReason, ReviewDetail: failureMessage(result.Failure),
-	}
-	if err := triageOutcomeAttribute.Set(ctx, outcome); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(outcome), nil
-}
-
 // dex:group group-id:issue group-label:"Customer issue"
 // dex:explanation text:"Record the triage note, then acknowledge a followed-up customer when the issue carries an acknowledgement."
 type recordTriageNote struct {
@@ -642,26 +595,6 @@ func (recordTriageNote) Execute(ctx dex.Context, result gorgias.AddNoteResult) (
 	return dex.GracefulComplete(outcome), nil
 }
 
-// dex:group group-id:review group-label:"Needs review"
-// dex:explanation text:"The note request was sent and Gorgias did not confirm a note for it; complete for a person to check Gorgias instead of resending it."
-type recordUncertainNote struct {
-	dex.StepDefaultsNoWaitFor[gorgias.AddNoteResult]
-}
-
-func (recordUncertainNote) GetStepType() string { return recordUncertainNoteStepType }
-
-func (recordUncertainNote) Execute(ctx dex.Context, result gorgias.AddNoteResult) (*dex.StepDecision, error) {
-	outcome, err := triageOutcomeAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	outcome.NeedsReview, outcome.ReviewReason, outcome.ReviewDetail = true, addTriageNoteReviewReason, failureMessage(result.Failure)
-	if err := triageOutcomeAttribute.Set(ctx, outcome); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(outcome), nil
-}
-
 // dex:group group-id:issue group-label:"Customer issue"
 // dex:explanation text:"Record the public acknowledgement Gorgias will email and complete the Flow."
 type completeTriage struct {
@@ -676,28 +609,6 @@ func (completeTriage) Execute(ctx dex.Context, result gorgias.AddNoteResult) (*d
 		return nil, err
 	}
 	outcome.AcknowledgementID = result.Value.Message.ID
-	if err := triageOutcomeAttribute.Set(ctx, outcome); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(outcome), nil
-}
-
-// dex:group group-id:review group-label:"Needs review"
-// dex:explanation text:"The reply request was sent and Gorgias did not confirm a reply for it; complete for a person to check Gorgias instead of emailing the customer twice."
-type recordUncertainAcknowledgment struct {
-	dex.StepDefaultsNoWaitFor[gorgias.AddNoteResult]
-}
-
-func (recordUncertainAcknowledgment) GetStepType() string {
-	return recordUncertainAcknowledgmentStepType
-}
-
-func (recordUncertainAcknowledgment) Execute(ctx dex.Context, result gorgias.AddNoteResult) (*dex.StepDecision, error) {
-	outcome, err := triageOutcomeAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	outcome.NeedsReview, outcome.ReviewReason, outcome.ReviewDetail = true, acknowledgeCustomerReviewReason, failureMessage(result.Failure)
 	if err := triageOutcomeAttribute.Set(ctx, outcome); err != nil {
 		return nil, err
 	}

@@ -36,12 +36,10 @@ const (
 	readInboundConversationStepType    = "ReadInboundConversation"
 	chooseCustomerEmailStepType        = "ChooseCustomerEmail"
 	findCustomerContactsStepType       = "FindCustomerContacts"
-	completeWithoutContactStepType     = "CompleteWithoutContact"
 	searchEarlierConversationsStepType = "SearchEarlierConversations"
 	chooseEarlierConversationStepType  = "ChooseEarlierConversation"
 	replyToDuplicateStepType           = "ReplyToDuplicate"
 	recordDuplicateReplyStepType       = "RecordDuplicateReply"
-	recordReplyNeedsReviewStepType     = "RecordReplyNeedsReview"
 	closeDuplicateStepType             = "CloseDuplicate"
 	completeAnsweredDuplicateStepType  = "CompleteAnsweredDuplicate"
 
@@ -125,8 +123,6 @@ const (
 	OutcomeLeftOpen OutcomeAction = "leftOpen"
 	// OutcomeSkipped means the conversation was no longer waiting for a first answer, so nothing was written.
 	OutcomeSkipped OutcomeAction = "skipped"
-	// OutcomeNeedsReview means the reply's outcome could not be confirmed; a teammate checks the conversation.
-	OutcomeNeedsReview OutcomeAction = "needsReview"
 )
 
 // DuplicateConversationOutcome is the Flow result and the value of its outcome Attribute.
@@ -147,8 +143,6 @@ type DuplicateConversationOutcome struct {
 	WasCloseAlreadyApplied bool `json:"wasCloseAlreadyApplied,omitempty"`
 	// ConversationState is the inbound conversation's Intercom state at the end.
 	ConversationState intercom.ConversationState `json:"conversationState,omitempty"`
-	// ReviewDetail is the connector's safe failure message for needsReview.
-	ReviewDetail string `json:"reviewDetail,omitempty"`
 }
 
 // Flow answers and closes one duplicate inbound conversation.
@@ -196,10 +190,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Find every user and lead with the sender's email, such as a lead and a user for one person.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToFindContactByEmailInput,
-			Found:    sdkgo.GoTo(sdkgo.StepRef[intercom.FindContactByEmailResult](searchEarlierConversationsStepType)),
-			NotFound: sdkgo.GoTo(completeWithoutContact{}),
+			Found: sdkgo.GoTo(sdkgo.StepRef[intercom.FindContactByEmailResult](searchEarlierConversationsStepType)),
 		})),
-		dex.DefineStep(completeWithoutContact{}),
 		dex.DefineStep(intercom.NewSearchConversationsStep(intercom.SearchConversationsStepConfig[intercom.FindContactByEmailResult]{
 			StepType: searchEarlierConversationsStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
@@ -224,10 +216,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Connection:          flow.connection,
 			MapToOperationInput: flow.mapToReplyToConversationInput,
 			Replied:             sdkgo.GoTo(recordDuplicateReply{}),
-			Uncertain:           sdkgo.GoTo(recordReplyNeedsReview{}),
 		})),
 		dex.DefineStep(recordDuplicateReply{}),
-		dex.DefineStep(recordReplyNeedsReview{}),
 		dex.DefineStep(intercom.NewUpdateConversationStateStep(intercom.UpdateConversationStateStepConfig[DuplicateConversation]{
 			StepType: closeDuplicateStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
@@ -474,29 +464,6 @@ func (chooseCustomerEmail) Execute(ctx dex.Context, result intercom.GetConversat
 }
 
 // dex:group group-id:inbound group-label:"Inbound conversation"
-// dex:explanation text:"Leave the conversation open when Intercom has no contact with the sender's email yet."
-type completeWithoutContact struct {
-	dex.StepDefaultsNoWaitFor[intercom.FindContactByEmailResult]
-}
-
-func (completeWithoutContact) GetStepType() string { return completeWithoutContactStepType }
-
-func (completeWithoutContact) Execute(ctx dex.Context, _ intercom.FindContactByEmailResult) (*dex.StepDecision, error) {
-	inbound, err := inboundConversationAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	outcome := DuplicateConversationOutcome{
-		Action: OutcomeLeftOpen, Reason: "noContact", ConversationID: inbound.Input.ConversationID,
-		ConversationState: intercom.ConversationStateOpen,
-	}
-	if err := outcomeAttribute.Set(ctx, outcome); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(outcome), nil
-}
-
-// dex:group group-id:inbound group-label:"Inbound conversation"
 // dex:explanation text:"Answer only when the customer has an earlier open or snoozed conversation; otherwise leave this one open."
 type chooseEarlierConversation struct {
 	dex.StepDefaultsNoWaitFor[intercom.SearchConversationsResult]
@@ -549,32 +516,6 @@ func (recordDuplicateReply) Execute(ctx dex.Context, result intercom.ReplyToConv
 	return dex.GoTo(sdkgo.StepRef[DuplicateConversation](closeDuplicateStepType), DuplicateConversation{
 		ConversationID: inbound.Input.ConversationID, EarlierConversationID: inbound.EarlierConversationID,
 	}), nil
-}
-
-// dex:group group-id:outcome group-label:"Outcome"
-// dex:explanation text:"Record an unconfirmed reply for a teammate to check and complete without closing the conversation."
-type recordReplyNeedsReview struct {
-	dex.StepDefaultsNoWaitFor[intercom.ReplyToConversationResult]
-}
-
-func (recordReplyNeedsReview) GetStepType() string { return recordReplyNeedsReviewStepType }
-
-func (recordReplyNeedsReview) Execute(ctx dex.Context, result intercom.ReplyToConversationResult) (*dex.StepDecision, error) {
-	inbound, err := inboundConversationAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	outcome := DuplicateConversationOutcome{
-		Action: OutcomeNeedsReview, Reason: "replyUncertain", ConversationID: inbound.Input.ConversationID,
-		EarlierConversationID: inbound.EarlierConversationID, ConversationState: result.Value.ConversationState,
-	}
-	if result.Failure != nil {
-		outcome.ReviewDetail = result.Failure.Message
-	}
-	if err := outcomeAttribute.Set(ctx, outcome); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(outcome), nil
 }
 
 // dex:group group-id:outcome group-label:"Outcome"

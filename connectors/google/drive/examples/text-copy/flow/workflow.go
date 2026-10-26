@@ -24,7 +24,6 @@ const (
 	recordRequestStepType    = "RecordTextCopyRequest"
 	findSourceStepType       = "FindSourceFile"
 	selectSourceStepType     = "SelectSourceFile"
-	reportNotFoundStepType   = "ReportSourceNotFound"
 	readSourceStepType       = "ReadSourceText"
 	prepareCopyStepType      = "PrepareTextCopy"
 	uploadCopyStepType       = "UploadTextCopy"
@@ -61,8 +60,6 @@ type Status string
 const (
 	// StatusCopied means the source text was uploaded and read back.
 	StatusCopied Status = "copied"
-	// StatusSourceNotFound means no non-trashed file has the requested name.
-	StatusSourceNotFound Status = "sourceNotFound"
 	// StatusSourceAmbiguous means more than one file has the requested name, so nothing was copied.
 	StatusSourceAmbiguous Status = "sourceAmbiguous"
 )
@@ -154,11 +151,9 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				},
 			}}},
 			Connection: flow.connection, MapToOperationInput: flow.MapToSearchFilesInput,
-			Found:    sdkgo.GoTo(selectSourceFile{}),
-			NotFound: sdkgo.GoTo(reportSourceNotFound{}),
+			Found: sdkgo.GoTo(selectSourceFile{}),
 		})),
 		dex.DefineStep(selectSourceFile{}),
-		dex.DefineStep(reportSourceNotFound{}),
 		dex.DefineStep(drive.NewReadFileTextStep(drive.ReadFileTextStepConfig[drive.FileSummary]{
 			StepType: readSourceStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
@@ -340,22 +335,6 @@ func (selectSourceFile) Execute(ctx dex.Context, result drive.SearchFilesResult)
 		return nil, err
 	}
 	return dex.GoTo(sdkgo.StepRef[drive.FileSummary](readSourceStepType), source), nil
-}
-
-// dex:group group-id:text-copy group-label:"Text copy"
-// dex:explanation text:"Complete with sourceNotFound when no non-trashed file has the name."
-type reportSourceNotFound struct {
-	dex.StepDefaultsNoWaitFor[drive.SearchFilesResult]
-}
-
-func (reportSourceNotFound) GetStepType() string { return reportNotFoundStepType }
-
-func (reportSourceNotFound) Execute(ctx dex.Context, result drive.SearchFilesResult) (*dex.StepDecision, error) {
-	outcome := Outcome{Status: StatusSourceNotFound, IsIncompleteSearch: result.Value.IsIncompleteSearch}
-	if err := outcomeAttribute.Set(ctx, outcome); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(outcome), nil
 }
 
 // dex:group group-id:text-copy group-label:"Text copy"

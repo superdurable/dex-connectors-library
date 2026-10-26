@@ -138,14 +138,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			},
 			MapToOperationInput: MapToGetConversationInput,
 			Found:               sdkgo.GoTo(inspectConversation{}),
-			Merged:              sdkgo.GoTo(recordConversationReadFailure{}),
-			NotFound:            sdkgo.GoTo(recordConversationReadFailure{}),
-			ProviderRejected:    sdkgo.GoTo(recordConversationReadFailure{}),
-			InvalidResponse:     sdkgo.GoTo(recordConversationReadFailure{}),
-			Defect:              sdkgo.GoTo(recordConversationReadFailure{}),
 		})),
 		dex.DefineStep(inspectConversation{}),
-		dex.DefineStep(recordConversationReadFailure{}),
 		dex.DefineStep(helpscout.NewFindCustomerByEmailStep(helpscout.FindCustomerByEmailStepConfig[TriageContext]{
 			StepType: findCustomerProfilesStepType, ConnectionName: ConnectionName, Connection: flow.connection,
 			Annotations: sdkgo.StepAnnotations{
@@ -154,13 +148,10 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			},
 			MapToOperationInput: MapToFindCustomerByEmailInput,
 			Found:               sdkgo.GoTo(recordCustomerProfiles{}),
-			NotFound:            sdkgo.GoTo(recordCustomerProfiles{}),
-			ProviderRejected:    sdkgo.GoTo(recordCustomerLookupFailure{}),
-			InvalidResponse:     sdkgo.GoTo(recordCustomerLookupFailure{}),
-			Defect:              sdkgo.GoTo(recordCustomerLookupFailure{}),
+			// A customer without a Help Scout profile still needs conversation triage.
+			NotFound: sdkgo.GoTo(recordCustomerProfiles{}),
 		})),
 		dex.DefineStep(recordCustomerProfiles{}),
-		dex.DefineStep(recordCustomerLookupFailure{}),
 		dex.DefineStep(helpscout.NewSearchConversationsStep(helpscout.SearchConversationsStepConfig[TriageContext]{
 			StepType: searchActiveConversationsStep, ConnectionName: ConnectionName, Connection: flow.connection,
 			Annotations: sdkgo.StepAnnotations{
@@ -169,12 +160,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			},
 			MapToOperationInput: MapToSearchConversationsInput,
 			Searched:            sdkgo.GoTo(recordActiveConversations{}),
-			ProviderRejected:    sdkgo.GoTo(recordConversationSearchFailure{}),
-			InvalidResponse:     sdkgo.GoTo(recordConversationSearchFailure{}),
-			Defect:              sdkgo.GoTo(recordConversationSearchFailure{}),
 		})),
 		dex.DefineStep(recordActiveConversations{}),
-		dex.DefineStep(recordConversationSearchFailure{}),
 		dex.DefineStep(helpscout.NewReplyToConversationStep(helpscout.ReplyToConversationStepConfig[TriageNote]{
 			StepType: addTriageNoteStepType, ConnectionName: ConnectionName, Connection: flow.connection,
 			Annotations: sdkgo.StepAnnotations{
@@ -183,13 +170,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			},
 			MapToOperationInput: MapToReplyToConversationInput,
 			Replied:             sdkgo.GoTo(recordTriageNote{}),
-			NotFound:            sdkgo.GoTo(recordTriageNoteFailure{}),
-			ProviderRejected:    sdkgo.GoTo(recordTriageNoteFailure{}),
-			Uncertain:           sdkgo.GoTo(recordTriageNoteFailure{}),
-			Defect:              sdkgo.GoTo(recordTriageNoteFailure{}),
 		})),
 		dex.DefineStep(recordTriageNote{}),
-		dex.DefineStep(recordTriageNoteFailure{}),
 		dex.DefineStep(helpscout.NewUpdateConversationStep(helpscout.UpdateConversationStepConfig[TriageContext]{
 			StepType: tagTriagedConversationStepType, ConnectionName: ConnectionName, Connection: flow.connection,
 			Annotations: sdkgo.StepAnnotations{
@@ -198,13 +180,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			},
 			MapToOperationInput: MapToUpdateConversationInput,
 			Updated:             sdkgo.GoTo(completeTriage{}),
-			NotFound:            sdkgo.GoTo(recordTaggingFailure{}),
-			ProviderRejected:    sdkgo.GoTo(recordTaggingFailure{}),
-			InvalidResponse:     sdkgo.GoTo(recordTaggingFailure{}),
-			Defect:              sdkgo.GoTo(recordTaggingFailure{}),
 		})),
 		dex.DefineStep(completeTriage{}),
-		dex.DefineStep(recordTaggingFailure{}),
 	}
 }
 
@@ -423,26 +400,6 @@ func (inspectConversation) Execute(ctx dex.Context, result helpscout.GetConversa
 	}), nil
 }
 
-// dex:group group-id:triage-failures group-label:"Triage failures"
-// dex:explanation text:"Persist the merged, notFound, providerRejected, invalidResponse, or defect read outcome and fail the Flow."
-type recordConversationReadFailure struct {
-	dex.StepDefaultsNoWaitFor[helpscout.GetConversationResult]
-}
-
-func (recordConversationReadFailure) GetStepType() string { return "RecordConversationReadFailure" }
-
-func (recordConversationReadFailure) Execute(ctx dex.Context, result helpscout.GetConversationResult) (*dex.StepDecision, error) {
-	triage, err := triageAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	failed, message := describeTriageFailure(triage, readConversationStepType, result.Branch, result.Failure)
-	if err := triageAttribute.Set(ctx, failed); err != nil {
-		return nil, err
-	}
-	return dex.ForceFail(message), nil
-}
-
 // dex:group group-id:triage group-label:"Triage"
 // dex:explanation text:"Record the matching customer profile IDs, none for notFound, and search the customer's active conversations."
 type recordCustomerProfiles struct {
@@ -470,26 +427,6 @@ func (recordCustomerProfiles) Execute(ctx dex.Context, result helpscout.FindCust
 	return dex.GoTo(sdkgo.StepRef[TriageContext](searchActiveConversationsStep), TriageContext{
 		ConversationID: request.ConversationID, MailboxID: request.MailboxID, CustomerEmail: triage.CustomerEmail,
 	}), nil
-}
-
-// dex:group group-id:triage-failures group-label:"Triage failures"
-// dex:explanation text:"Persist the providerRejected, invalidResponse, or defect customer lookup outcome and fail the Flow."
-type recordCustomerLookupFailure struct {
-	dex.StepDefaultsNoWaitFor[helpscout.FindCustomerByEmailResult]
-}
-
-func (recordCustomerLookupFailure) GetStepType() string { return "RecordCustomerLookupFailure" }
-
-func (recordCustomerLookupFailure) Execute(ctx dex.Context, result helpscout.FindCustomerByEmailResult) (*dex.StepDecision, error) {
-	triage, err := triageAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	failed, message := describeTriageFailure(triage, findCustomerProfilesStepType, result.Branch, result.Failure)
-	if err := triageAttribute.Set(ctx, failed); err != nil {
-		return nil, err
-	}
-	return dex.ForceFail(message), nil
 }
 
 // dex:group group-id:triage group-label:"Triage"
@@ -524,26 +461,6 @@ func (recordActiveConversations) Execute(ctx dex.Context, result helpscout.Searc
 	}), nil
 }
 
-// dex:group group-id:triage-failures group-label:"Triage failures"
-// dex:explanation text:"Persist the providerRejected, invalidResponse, or defect search outcome and fail the Flow."
-type recordConversationSearchFailure struct {
-	dex.StepDefaultsNoWaitFor[helpscout.SearchConversationsResult]
-}
-
-func (recordConversationSearchFailure) GetStepType() string { return "RecordConversationSearchFailure" }
-
-func (recordConversationSearchFailure) Execute(ctx dex.Context, result helpscout.SearchConversationsResult) (*dex.StepDecision, error) {
-	triage, err := triageAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	failed, message := describeTriageFailure(triage, searchActiveConversationsStep, result.Branch, result.Failure)
-	if err := triageAttribute.Set(ctx, failed); err != nil {
-		return nil, err
-	}
-	return dex.ForceFail(message), nil
-}
-
 // dex:group group-id:triage group-label:"Triage"
 // dex:explanation text:"Record the note's thread ID and tag the conversation."
 type recordTriageNote struct {
@@ -571,26 +488,6 @@ func (recordTriageNote) Execute(ctx dex.Context, result helpscout.ReplyToConvers
 	}), nil
 }
 
-// dex:group group-id:triage-failures group-label:"Triage failures"
-// dex:explanation text:"Persist the uncertain, notFound, providerRejected, or defect note outcome and fail the Flow without sending the note again."
-type recordTriageNoteFailure struct {
-	dex.StepDefaultsNoWaitFor[helpscout.ReplyToConversationResult]
-}
-
-func (recordTriageNoteFailure) GetStepType() string { return "RecordTriageNoteFailure" }
-
-func (recordTriageNoteFailure) Execute(ctx dex.Context, result helpscout.ReplyToConversationResult) (*dex.StepDecision, error) {
-	triage, err := triageAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	failed, message := describeTriageFailure(triage, addTriageNoteStepType, result.Branch, result.Failure)
-	if err := triageAttribute.Set(ctx, failed); err != nil {
-		return nil, err
-	}
-	return dex.ForceFail(message), nil
-}
-
 // dex:group group-id:triage group-label:"Triage"
 // dex:explanation text:"Record the conversation's tags after tagging and complete the Flow with the triage record."
 type completeTriage struct {
@@ -609,26 +506,6 @@ func (completeTriage) Execute(ctx dex.Context, result helpscout.UpdateConversati
 		return nil, err
 	}
 	return dex.GracefulComplete(triage), nil
-}
-
-// dex:group group-id:triage-failures group-label:"Triage failures"
-// dex:explanation text:"Persist the notFound, providerRejected, invalidResponse, or defect tagging outcome and fail the Flow."
-type recordTaggingFailure struct {
-	dex.StepDefaultsNoWaitFor[helpscout.UpdateConversationResult]
-}
-
-func (recordTaggingFailure) GetStepType() string { return "RecordTaggingFailure" }
-
-func (recordTaggingFailure) Execute(ctx dex.Context, result helpscout.UpdateConversationResult) (*dex.StepDecision, error) {
-	triage, err := triageAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	failed, message := describeTriageFailure(triage, tagTriagedConversationStepType, result.Branch, result.Failure)
-	if err := triageAttribute.Set(ctx, failed); err != nil {
-		return nil, err
-	}
-	return dex.ForceFail(message), nil
 }
 
 var _ dex.Flow = (*Flow)(nil)

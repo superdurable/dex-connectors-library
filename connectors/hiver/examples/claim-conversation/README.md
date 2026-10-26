@@ -27,11 +27,9 @@ user:
    conversation's last listed message, for the assignee to review and send;
    `CompleteClaim` completes with the outcome.
 
-The `uncertain` branches of the note and the draft are wired: a request that
-was sent but whose outcome is unknown completes the Flow with
-`needsReview: true`, the `reviewReason`, and the connector's `reviewDetail`, so
-a person checks Hiver instead of the Flow sending a possible duplicate. Every
-other optional branch is unwired and fails the Flow, such as an assignee or tag
+Only happy-path branches are wired. An unconfirmed note or draft fails the
+Flow with the connector's safe reason and is never resent. Other optional
+branches also fail the Flow, such as an assignee or tag
 the inbox does not have, a missing conversation, an invalid response, or a
 local defect.
 
@@ -114,8 +112,7 @@ none, and leave out `replyDraft` to create no draft.
 
 The Flow result and the `hiver-claim-outcome` Attribute hold the action
 (`claimed`, `nothingToClaim`, or `claimedElsewhere`), the inbox ID, the pages
-read, the conversation as read back, the note and draft IDs, and the review
-state.
+read, the conversation as read back, and the note and draft IDs.
 
 ## Test
 
@@ -140,10 +137,10 @@ close together:
   attempts send the same change without duplicating the tag;
 - a note held for nine seconds, past Dex's async local phase, is sent exactly
   once, because the Step is sync;
-- a lost note response completes as `needsReview` and is never resent;
+- a lost note response fails on the unwired `uncertain` branch and is never resent;
 - a rate-limited note waits for `Retry-After` and adds one note;
 - a Worker lost while Hiver holds the draft is replaced, and the new attempt
-  finds the dispatch checkpoint and sends nothing; a Worker lost before Dex
+  finds the dispatch checkpoint, fails the Flow, and sends nothing; a Worker lost before Dex
   stored the checkpoint could still send twice, as
   [Duplicate safety](../../README.md#duplicate-safety) explains;
 - an assignee who is not an inbox user fails the Flow through the unwired

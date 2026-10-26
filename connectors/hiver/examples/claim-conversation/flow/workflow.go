@@ -35,10 +35,8 @@ const (
 	recordClaimedConversationStepType  = "RecordClaimedConversation"
 	addClaimNoteStepType               = "AddClaimNote"
 	recordClaimNoteStepType            = "RecordClaimNote"
-	recordUncertainNoteStepType        = "RecordUncertainNote"
 	draftCustomerReplyStepType         = "DraftCustomerReply"
 	completeClaimStepType              = "CompleteClaim"
-	recordUncertainDraftStepType       = "RecordUncertainDraft"
 
 	// MaximumInboxPages bounds the inbox search to 500 shared inboxes.
 	MaximumInboxPages = 5
@@ -48,9 +46,6 @@ const (
 
 	maximumNoteBytes  = 8192
 	maximumDraftBytes = 32768
-
-	addClaimNoteReviewReason       = "addNote"
-	draftCustomerReplyReviewReason = "createSharedDraft"
 )
 
 var (
@@ -173,13 +168,6 @@ type ClaimOutcome struct {
 	NoteID string `json:"noteId,omitempty"`
 	// SharedDraftID is the shared reply draft Hiver created.
 	SharedDraftID string `json:"sharedDraftId,omitempty"`
-	// NeedsReview reports that a note or draft was sent with an unknown outcome, so a person must
-	// check Hiver; the Flow never resends it.
-	NeedsReview bool `json:"needsReview,omitempty"`
-	// ReviewReason names the uncertain write: addNote or createSharedDraft.
-	ReviewReason string `json:"reviewReason,omitempty"`
-	// ReviewDetail is the connector's credential-free explanation of why the outcome is unknown.
-	ReviewDetail string `json:"reviewDetail,omitempty"`
 }
 
 // Flow claims one conversation of a Hiver shared inbox.
@@ -235,18 +223,16 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			StepType: addClaimNoteStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{GroupID: "hiver", GroupLabel: "Hiver", Explanation: "Add one internal note; a retry that finds the dispatch checkpoint selects uncertain instead of resending."},
 			Connection:  flow.connection, MapToOperationInput: MapToAddNoteInput,
-			Added: sdkgo.GoTo(recordClaimNote{}), Uncertain: sdkgo.GoTo(recordUncertainNote{}),
+			Added: sdkgo.GoTo(recordClaimNote{}),
 		})),
 		dex.DefineStep(recordClaimNote{}),
-		dex.DefineStep(recordUncertainNote{}),
 		dex.DefineStep(hiver.NewCreateSharedDraftStep(hiver.CreateSharedDraftStepConfig[ReplyDraft]{
 			StepType: draftCustomerReplyStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{GroupID: "hiver", GroupLabel: "Hiver", Explanation: "Create one shared reply draft for the assignee; a retry that finds the dispatch checkpoint selects uncertain instead of resending."},
 			Connection:  flow.connection, MapToOperationInput: MapToCreateSharedDraftInput,
-			Created: sdkgo.GoTo(completeClaim{}), Uncertain: sdkgo.GoTo(recordUncertainDraft{}),
+			Created: sdkgo.GoTo(completeClaim{}),
 		})),
 		dex.DefineStep(completeClaim{}),
-		dex.DefineStep(recordUncertainDraft{}),
 	}
 }
 
@@ -577,26 +563,6 @@ func replyGmailMessageID(message hiver.ConversationMessage) string {
 	return message.GmailMessageID
 }
 
-// dex:group group-id:review group-label:"Needs review"
-// dex:explanation text:"The note was sent with an unknown outcome; complete for a person to check Hiver instead of resending it."
-type recordUncertainNote struct {
-	dex.StepDefaultsNoWaitFor[hiver.AddNoteResult]
-}
-
-func (recordUncertainNote) GetStepType() string { return recordUncertainNoteStepType }
-
-func (recordUncertainNote) Execute(ctx dex.Context, result hiver.AddNoteResult) (*dex.StepDecision, error) {
-	outcome, err := claimOutcomeAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	outcome.NeedsReview, outcome.ReviewReason, outcome.ReviewDetail = true, addClaimNoteReviewReason, failureMessage(result.Failure)
-	if err := claimOutcomeAttribute.Set(ctx, outcome); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(outcome), nil
-}
-
 // dex:group group-id:claim group-label:"Claim"
 // dex:explanation text:"Record the shared reply draft and complete the Flow."
 type completeClaim struct {
@@ -611,26 +577,6 @@ func (completeClaim) Execute(ctx dex.Context, result hiver.CreateSharedDraftResu
 		return nil, err
 	}
 	outcome.SharedDraftID = result.Value.ID
-	if err := claimOutcomeAttribute.Set(ctx, outcome); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(outcome), nil
-}
-
-// dex:group group-id:review group-label:"Needs review"
-// dex:explanation text:"The draft was sent with an unknown outcome; complete for a person to check Hiver instead of resending it."
-type recordUncertainDraft struct {
-	dex.StepDefaultsNoWaitFor[hiver.CreateSharedDraftResult]
-}
-
-func (recordUncertainDraft) GetStepType() string { return recordUncertainDraftStepType }
-
-func (recordUncertainDraft) Execute(ctx dex.Context, result hiver.CreateSharedDraftResult) (*dex.StepDecision, error) {
-	outcome, err := claimOutcomeAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	outcome.NeedsReview, outcome.ReviewReason, outcome.ReviewDetail = true, draftCustomerReplyReviewReason, failureMessage(result.Failure)
 	if err := claimOutcomeAttribute.Set(ctx, outcome); err != nil {
 		return nil, err
 	}
@@ -661,13 +607,6 @@ func optionalAttribute[T any](ctx dex.Context, attribute dex.Attribute[T]) (T, e
 func isAttributeNotFound(err error) bool {
 	var missingAttribute *dex.AttributeNotFoundError
 	return errors.As(err, &missingAttribute)
-}
-
-func failureMessage(failure *sdkgo.Failure) string {
-	if failure == nil {
-		return ""
-	}
-	return failure.Message
 }
 
 var _ dex.Flow = (*Flow)(nil)

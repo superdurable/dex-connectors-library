@@ -58,7 +58,6 @@ func TestClaimAssignsTagsNotesAndDraftsAtHiversRequestRateWithRealDex(t *testing
 
 	outcome := harness.runClaim(t, "claim", integrationClaimInput())
 	require.Equal(t, ClaimActionClaimed, outcome.Action)
-	require.False(t, outcome.NeedsReview)
 	require.Equal(t, integrationInboxID, outcome.InboxID)
 	require.Equal(t, 2, outcome.InboxPagesRead)
 	require.Equal(t, 2, outcome.ConversationPagesRead)
@@ -139,25 +138,22 @@ func TestSlowNoteIsSentOnceWithRealDex(t *testing.T) {
 	outcome := harness.runClaim(t, "slow-note", integrationClaimInput())
 	require.GreaterOrEqual(t, time.Since(startedAt), slowResponseDelay)
 	require.Equal(t, ClaimActionClaimed, outcome.Action)
-	require.False(t, outcome.NeedsReview)
 	provider.waitForDelayedRequests(t)
 	require.Equal(t, 1, provider.count("note"), "no second dispatch while the first was in flight")
 	require.Len(t, provider.conversation(target).notes, 1)
 }
 
-func TestLostNoteResponseSelectsUncertainAndIsNeverResentWithRealDex(t *testing.T) {
+func TestLostNoteResponseFailsAndIsNeverResentWithRealDex(t *testing.T) {
 	provider := newFakeHiver(t, fastRequestInterval)
 	provider.seedStandardInbox()
 	target := provider.seedConversation(integrationInboxID, "open", "", nil)
 	provider.losesFirstNoteResponse = true
 	harness := newClaimHarness(t, provider, fastRequestInterval, defaultRequestTimeout)
 
-	outcome := harness.runClaim(t, "lost-note", integrationClaimInput())
-	require.Equal(t, ClaimActionClaimed, outcome.Action)
-	require.True(t, outcome.NeedsReview)
-	require.Equal(t, "addNote", outcome.ReviewReason)
-	require.Equal(t, "Hiver request failed before a response arrived", outcome.ReviewDetail)
-	require.Empty(t, outcome.NoteID)
+	flowID := harness.startClaim(t, "lost-note", integrationClaimInput())
+	result := harness.waitForFlow(t, flowID)
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "hiver addNote (connection hiver-account) selected branch uncertain with no target: TRANSPORT: Hiver request failed before a response arrived")
 	require.Equal(t, 1, provider.count("note"), "an unconfirmed note is never resent")
 	require.Len(t, provider.conversation(target).notes, 1, "Hiver did add the note, which a person must now find")
 	require.Zero(t, provider.count("draft"), "the Flow stops for review before drafting")
@@ -172,15 +168,14 @@ func TestRateLimitedNoteWaitsAndAddsOneNoteWithRealDex(t *testing.T) {
 
 	outcome := harness.runClaim(t, "rate-limited", integrationClaimInput())
 	require.Equal(t, ClaimActionClaimed, outcome.Action, "a 429 clears the dispatch marker, so the retry may send")
-	require.False(t, outcome.NeedsReview)
 	times := provider.requestTimes("note")
 	require.Len(t, times, 2)
 	require.GreaterOrEqual(t, times[1].Sub(times[0]), time.Second, "the retry waited for Retry-After")
 	require.Len(t, provider.conversation(target).notes, 1)
 }
 
-// TestLostWorkerDuringDraftSelectsUncertainWithoutResendingWithRealDex replaces the Worker while Hiver holds the draft.
-func TestLostWorkerDuringDraftSelectsUncertainWithoutResendingWithRealDex(t *testing.T) {
+// TestLostWorkerDuringDraftFailsWithoutResendingWithRealDex replaces the Worker while Hiver holds the draft.
+func TestLostWorkerDuringDraftFailsWithoutResendingWithRealDex(t *testing.T) {
 	provider := newFakeHiver(t, fastRequestInterval)
 	provider.seedStandardInbox()
 	target := provider.seedConversation(integrationInboxID, "open", "", nil)
@@ -193,14 +188,8 @@ func TestLostWorkerDuringDraftSelectsUncertainWithoutResendingWithRealDex(t *tes
 
 	result := harness.waitForFlow(t, flowID)
 	close(provider.holdsFirstDraft)
-	require.Equal(t, dex.FlowCompleted, result.Status, "Flow %s: %s", flowID, result.ErrorMessage)
-	var outcome ClaimOutcome
-	require.NoError(t, result.DecodeSingleOutput(&outcome))
-	require.Equal(t, ClaimActionClaimed, outcome.Action)
-	require.True(t, outcome.NeedsReview)
-	require.Equal(t, "createSharedDraft", outcome.ReviewReason)
-	require.Equal(t, "an earlier attempt of this Step may have sent the request, so it is not sent again", outcome.ReviewDetail,
-		"the new Worker's attempt found the dispatch marker the lost attempt recorded")
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "hiver createSharedDraft (connection hiver-account) selected branch uncertain with no target: TRANSPORT: an earlier attempt of this Step may have sent the request, so it is not sent again")
 	provider.waitForDelayedRequests(t)
 	require.Equal(t, 1, provider.count("draft"), "the attempt on the new Worker did not resend the draft")
 	require.Len(t, provider.conversation(target).drafts, 1)

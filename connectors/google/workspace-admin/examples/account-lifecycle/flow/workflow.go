@@ -28,7 +28,6 @@ const (
 	recordAccountRequestStepType       = "RecordAccountRequest"
 	createWorkspaceAccountStepType     = "CreateWorkspaceAccount"
 	recordCreatedAccountStepType       = "RecordCreatedAccount"
-	recordAddressTakenHandOffStepType  = "RecordAddressTakenHandOff"
 	reinstateWorkspaceAccountStepType  = "ReinstateWorkspaceAccount"
 	recordReinstatedAccountStepType    = "RecordReinstatedAccount"
 	addAccountToTeamGroupStepType      = "AddAccountToTeamGroup"
@@ -45,8 +44,6 @@ const (
 		"If the person no longer knows the password, an administrator resets it in Admin console > Directory > Users > Reset password."
 	offboardedAccountHandOff = "Sign-in is blocked and the account's data is kept. Transfer its files and delete or archive the account " +
 		"in Admin console > Directory > Users when your retention policy allows."
-	addressTakenHandOff = "The address already belongs to another account, alias, or group, so nothing was created. " +
-		"Confirm with IT whether it is this person's account; if it is, start the reinstate action, otherwise choose another address."
 )
 
 var (
@@ -141,8 +138,6 @@ const (
 	HandOffReinstated HandOffStatus = "reinstated"
 	// HandOffOffboarded means the account is suspended and no longer a direct team group member.
 	HandOffOffboarded HandOffStatus = "offboarded"
-	// HandOffAddressTaken means the address belongs to something else, so nothing was created.
-	HandOffAddressTaken HandOffStatus = "addressTaken"
 )
 
 // AccountHandOff is the Flow result and the record the next owner acts on.
@@ -151,7 +146,7 @@ type AccountHandOff struct {
 	Status HandOffStatus `json:"status"`
 	// PrimaryEmail is the requested address.
 	PrimaryEmail string `json:"primaryEmail"`
-	// UserID is the account's unique user ID; for addressTaken it is the conflicting account's ID, when Google returns one.
+	// UserID is the account's unique user ID.
 	UserID string `json:"userId,omitempty"`
 	// OrgUnitPath is the account's organizational unit as Google reports it.
 	OrgUnitPath string `json:"orgUnitPath,omitempty"`
@@ -198,10 +193,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Connection: flow.connection, MapToOperationInput: MapToCreateUserInput,
 			ResultAttribute: &accountCreationAttribute,
 			Created:         sdkgo.GoTo(recordCreatedAccount{}),
-			AlreadyExists:   sdkgo.GoTo(recordAddressTakenHandOff{}),
 		})),
 		dex.DefineStep(recordCreatedAccount{}),
-		dex.DefineStep(recordAddressTakenHandOff{}),
 		dex.DefineStep(workspaceadmin.NewUnsuspendUserStep(workspaceadmin.UnsuspendUserStepConfig[AccountRequest]{
 			StepType: reinstateWorkspaceAccountStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
@@ -515,30 +508,6 @@ func (recordOnboardingHandOff) Execute(ctx dex.Context, result workspaceadmin.Ge
 		}
 		handOff.Status, handOff.NextStep = HandOffOnboarded, newAccountSignInHandOff
 		handOff.WasAlreadyCreated = creation.Value.WasAlreadyCreated
-	}
-	if err := accountHandOffAttribute.Set(ctx, handOff); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(handOff), nil
-}
-
-// dex:group group-id:account group-label:"Account"
-// dex:explanation text:"Record that the address belongs to something else and hand the decision to IT without creating anything."
-type recordAddressTakenHandOff struct {
-	dex.StepDefaultsNoWaitFor[workspaceadmin.CreateUserResult]
-}
-
-func (recordAddressTakenHandOff) GetStepType() string { return recordAddressTakenHandOffStepType }
-
-func (recordAddressTakenHandOff) Execute(ctx dex.Context, result workspaceadmin.CreateUserResult) (*dex.StepDecision, error) {
-	request, err := accountRequestAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	existing := result.Value.User
-	handOff := AccountHandOff{
-		Status: HandOffAddressTaken, PrimaryEmail: request.PrimaryEmail, UserID: existing.ID, OrgUnitPath: existing.OrgUnitPath,
-		IsSuspended: existing.IsSuspended, GroupEmail: request.GroupEmail, NextStep: addressTakenHandOff,
 	}
 	if err := accountHandOffAttribute.Set(ctx, handOff); err != nil {
 		return nil, err

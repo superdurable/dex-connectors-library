@@ -200,7 +200,7 @@ func TestSlowSendIsSentOnceWithRealDex(t *testing.T) {
 	require.Equal(t, 1, provider.count("campaign"))
 }
 
-func TestLostSendResponseNeedsReviewAndARecheckFindsItSentWithRealDex(t *testing.T) {
+func TestLostSendResponseFailsWithoutResendingWithRealDex(t *testing.T) {
 	provider := newFakeMailchimp(t)
 	provider.losesFirstSendResponse = true
 	harness := newLaunchHarness(t, provider, defaultRequestTimeout)
@@ -208,24 +208,15 @@ func TestLostSendResponseNeedsReviewAndARecheckFindsItSentWithRealDex(t *testing
 	harness.waitForPhase(t, flowID, PhaseAwaitingApproval)
 	require.NoError(t, harness.client.InvokeRPC(integrationContext(t), flowID, harness.flow.ApproveCampaignSend, approval(), nil))
 
-	review := harness.waitForPhase(t, flowID, PhaseNeedsReview)
-	require.NotNil(t, review.UncertainSend)
-	require.NotEmpty(t, review.UncertainSend.CallID)
-	require.Equal(t, sdkgo.FailureTransport, review.UncertainSend.FailureKind)
-	require.Equal(t, "Mailchimp request failed before a response arrived", review.UncertainSend.FailureMessage)
+	result := harness.waitForFlow(t, flowID)
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "mailchimp sendCampaign (connection mailchimp-audience) selected branch uncertain with no target: TRANSPORT: Mailchimp request failed before a response arrived")
 	require.Equal(t, 1, provider.count("send"), "an unconfirmed send is never resent")
-
-	require.NoError(t, harness.client.InvokeRPC(integrationContext(t), flowID, harness.flow.RecheckCampaignSend, SendDecisionInput{DecidedBy: "Grace Hopper"}, nil))
-	record := harness.waitForFlowOutput(t, flowID)
-	require.Equal(t, PhaseAlreadySent, record.Phase, "the recheck read Mailchimp's sending status and sent nothing")
-	require.Equal(t, mailchimp.CampaignStatusSending, record.Campaign.Status)
-	require.Equal(t, 2, record.SendExecutions)
-	require.Equal(t, 1, provider.count("send"))
 	require.Equal(t, 1, provider.appliedSendCount())
 }
 
-// TestLostWorkerDuringSendReportsAlreadySentWithoutResendingWithRealDex replaces the Worker mid-send.
-func TestLostWorkerDuringSendReportsAlreadySentWithoutResendingWithRealDex(t *testing.T) {
+// TestLostWorkerDuringSendFailsWithoutResendingWithRealDex replaces the Worker mid-send.
+func TestLostWorkerDuringSendFailsWithoutResendingWithRealDex(t *testing.T) {
 	provider := newFakeMailchimp(t)
 	provider.holdsFirstSend = make(chan struct{})
 	harness := newLaunchHarness(t, provider, slowRequestTimeout)
@@ -236,10 +227,10 @@ func TestLostWorkerDuringSendReportsAlreadySentWithoutResendingWithRealDex(t *te
 		"the first attempt must reach Mailchimp")
 	harness.replaceWorker(t)
 
-	record := harness.waitForFlowOutput(t, flowID)
+	result := harness.waitForFlow(t, flowID)
 	close(provider.holdsFirstSend)
-	require.Equal(t, PhaseAlreadySent, record.Phase, "the new Worker's attempt found the checkpoint and Mailchimp's sending status")
-	require.Equal(t, 1, record.SendExecutions)
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "mailchimp sendCampaign (connection mailchimp-audience) selected branch alreadySent with no target")
 	provider.waitForDelayedRequests(t)
 	require.Equal(t, 1, provider.count("send"), "the attempt on the new Worker did not resend the campaign")
 	require.Equal(t, 2, provider.count("campaign"), "one read before the send and one read by the replayed attempt")
@@ -266,11 +257,11 @@ func TestCampaignAlreadySentOrForAnotherAudienceIsNeverSentWithRealDex(t *testin
 		name   string
 		status string
 		listID string
-		phase  string
+		branch string
 	}{
-		{name: "already-sent", status: "sent", listID: integrationListID, phase: PhaseAlreadySent},
-		{name: "another-audience", status: "save", listID: "b1c2d3e4f5", phase: PhaseNotSent},
-		{name: "scheduled", status: "schedule", listID: integrationListID, phase: PhaseNotSent},
+		{name: "already-sent", status: "sent", listID: integrationListID, branch: "alreadySent"},
+		{name: "another-audience", status: "save", listID: "b1c2d3e4f5", branch: "notSendable"},
+		{name: "scheduled", status: "schedule", listID: integrationListID, branch: "notSendable"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			provider := newFakeMailchimp(t)
@@ -280,11 +271,12 @@ func TestCampaignAlreadySentOrForAnotherAudienceIsNeverSentWithRealDex(t *testin
 			harness.waitForPhase(t, flowID, PhaseAwaitingApproval)
 			require.NoError(t, harness.client.InvokeRPC(integrationContext(t), flowID, harness.flow.ApproveCampaignSend, approval(), nil))
 
-			record := harness.waitForFlowOutput(t, flowID)
-			require.Equal(t, test.phase, record.Phase)
+			result := harness.waitForFlow(t, flowID)
+			require.Equal(t, dex.FlowFailed, result.Status)
+			require.Contains(t, result.ErrorMessage, "mailchimp sendCampaign (connection mailchimp-audience) selected branch "+test.branch+" with no target")
 			require.Zero(t, provider.count("send"))
-			if test.phase == PhaseNotSent {
-				require.True(t, strings.HasPrefix(record.NotSentReason, "notSendable: "), record.NotSentReason)
+			if test.branch == "notSendable" {
+				require.Contains(t, result.ErrorMessage, ": CONFLICT: ")
 			}
 		})
 	}

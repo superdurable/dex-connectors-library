@@ -77,7 +77,6 @@ func TestStartFlowIdentitiesMatchTheFlowDefinition(t *testing.T) {
 	require.Equal(t, "GeminiGenerateSummary", dex.GetFinalFlowType(NewFlow(gemini.Connection{}, SummaryModelConfiguration{})))
 	require.Equal(t, "RecordSummaryRequest", dex.GetFinalStepType[SummaryRequest](recordSummaryRequest{}))
 	require.Equal(t, "SummaryGenerated", dex.GetFinalStepType[gemini.GenerateContentResult](summaryGenerated{}))
-	require.Equal(t, "SummaryNotGenerated", dex.GetFinalStepType[gemini.GenerateContentResult](summaryNotGenerated{}))
 	// Dex Web Start Flow invokes the start Step's WaitFor, so it must be a real, immediate WaitFor.
 	wait, err := recordSummaryRequest{}.WaitFor(nil, SummaryRequest{Text: "x"})
 	require.NoError(t, err)

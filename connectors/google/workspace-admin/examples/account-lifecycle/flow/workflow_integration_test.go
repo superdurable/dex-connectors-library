@@ -102,20 +102,18 @@ func TestOnboardingSurvivesALostInsertResponseAndAccountPropagationWithRealDex(t
 	requireNoPasswordInFlow(t, ctx, harness.client, flow, flowID, provider)
 }
 
-func TestOnboardingHandsOffAnAddressThatBelongsToAnotherAccountWithRealDex(t *testing.T) {
+func TestOnboardingFailsOnAnAddressThatBelongsToAnotherAccountWithRealDex(t *testing.T) {
 	provider := newFakeDirectory(t)
 	provider.seedGroup("engineering@example.com")
-	existingID := provider.seedUser("ada.lovelace@example.com", true)
+	provider.seedUser("ada.lovelace@example.com", true)
 	flow, harness := newAccountLifecycleHarness(t, provider.URL)
 	ctx := integrationContext(t)
 
 	flowID := startAccountLifecycle(t, ctx, harness.client, flow, "address-taken", onboardingInput())
-	handOff := waitForCompletedHandOff(t, ctx, harness.client, flowID)
-
-	require.Equal(t, HandOffAddressTaken, handOff.Status)
-	require.Equal(t, existingID, handOff.UserID)
-	require.True(t, handOff.IsSuspended)
-	require.Equal(t, addressTakenHandOff, handOff.NextStep)
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "google-workspace-admin createUser (connection google-workspace-admin) selected branch alreadyExists with no target: CONFLICT: address belongs to an account this Step did not create")
 	require.Equal(t, 1, provider.userCount())
 	require.Zero(t, provider.count("memberInsert"), "nothing is built for an address this Flow did not create")
 }

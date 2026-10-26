@@ -54,10 +54,6 @@ type Status string
 const (
 	// StatusGenerated means Gemini returned a summary that matches the schema.
 	StatusGenerated Status = "generated"
-	// StatusTruncated means Gemini stopped at the output token limit.
-	StatusTruncated Status = "truncated"
-	// StatusBlocked means Gemini blocked the prompt or the candidate.
-	StatusBlocked Status = "blocked"
 )
 
 // SummaryOutcome is the Flow completion output.
@@ -119,11 +115,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Connection:          flow.connection,
 			MapToOperationInput: flow.MapToGenerateContentRequest,
 			Generated:           sdkgo.GoTo(summaryGenerated{}),
-			Truncated:           sdkgo.GoTo(summaryNotGenerated{}),
-			Blocked:             sdkgo.GoTo(summaryNotGenerated{}),
 		})),
 		dex.DefineStep(summaryGenerated{}),
-		dex.DefineStep(summaryNotGenerated{}),
 	}
 }
 
@@ -259,30 +252,6 @@ func (summaryGenerated) Execute(ctx dex.Context, result gemini.GenerateContentRe
 	}
 	outcome := outcomeFor(StatusGenerated, request, result)
 	outcome.Summary = &summary
-	if err := summaryOutcomeAttribute.Set(ctx, outcome); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(outcome), nil
-}
-
-// dex:group group-id:summary group-label:"Summary"
-// dex:explanation text:"Complete without a summary when Gemini truncated or blocked the candidate."
-type summaryNotGenerated struct {
-	dex.StepDefaultsNoWaitFor[gemini.GenerateContentResult]
-}
-
-func (summaryNotGenerated) GetStepType() string { return "SummaryNotGenerated" }
-
-func (summaryNotGenerated) Execute(ctx dex.Context, result gemini.GenerateContentResult) (*dex.StepDecision, error) {
-	request, err := summaryRequestAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	status := StatusBlocked
-	if result.Branch == gemini.GenerateContentBranchTruncated {
-		status = StatusTruncated
-	}
-	outcome := outcomeFor(status, request, result)
 	if err := summaryOutcomeAttribute.Set(ctx, outcome); err != nil {
 		return nil, err
 	}

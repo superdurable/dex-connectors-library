@@ -14,15 +14,15 @@ four HubSpot operations:
 4. `ReadBackHubSpotDeal` runs `getObject` and completes only when HubSpot
    returns the configured stage.
 
-The Flow completes with `phase` `dealAdvanced`, `noOpenDeal` when the contact
-has no open deal in the pipeline, or `rejected` with HubSpot's secret-safe
-`VALIDATION` failure when HubSpot rejects the contact. Application Steps store
+The Flow completes with `phase` `dealAdvanced` or `noOpenDeal` when the contact
+has no open deal in the pipeline. A rejected contact upsert fails the Flow
+with HubSpot's secret-safe `VALIDATION` reason. Application Steps store
 the progress in the `hubspot-lead-qualification` Attribute, which the summary
 and display RPCs read, because a Connector branch target receives only the
 current operation Result.
 
-The example wires the happy branch of every operation and `providerRejected`
-of the upsert. Every other optional branch, such as `notFound` when a deal is
+The example wires only the happy branch of every operation. Optional branches,
+such as `notFound` when a deal is
 deleted between the search and the update, fails the Flow. Both writes are
 idempotent at HubSpot, so a Dex retry or a repeated dispatch of a slow write
 converges on one contact and one stage value.
@@ -183,8 +183,8 @@ connection and a stateful local fake HubSpot API. They verify an existing
 lead whose open deal advances while a closed deal
 and another pipeline's deal stay untouched, a duplicate start with the same
 request ID, a new lead without an open deal, a rate-limited upsert that Dex
-retries after `Retry-After`, a rejected upsert that completes with a
-secret-safe failure, a Flow failure for the unwired `notFound` branch, an
+retries after `Retry-After`, a rejected upsert that fails with a
+secret-safe reason, a Flow failure for the unwired `notFound` branch, an
 expired OAuth connection that refreshes before the first call, and slow
 writes. For the slow writes, HubSpot answers the
 upsert and the update after nine seconds, Dex's asynchronous fallback

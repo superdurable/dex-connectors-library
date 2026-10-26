@@ -92,8 +92,6 @@ dex.DefineStep(gemini.NewGenerateContentStep(gemini.GenerateContentStepConfig[Su
 	Connection:          flow.connection,
 	MapToOperationInput: flow.MapToGenerateContentRequest,
 	Generated:           sdkgo.GoTo(summaryGenerated{}),
-	Truncated:           sdkgo.GoTo(summaryNotGenerated{}),
-	Blocked:             sdkgo.GoTo(summaryNotGenerated{}),
 })),
 ```
 

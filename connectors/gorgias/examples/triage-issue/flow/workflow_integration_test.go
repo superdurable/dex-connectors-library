@@ -62,7 +62,6 @@ func TestNewCustomerOpensOneTicketAndAddsOneInternalNoteWithRealDex(t *testing.T
 
 	outcome := harness.runTriage(t, "new-customer", integrationIssueInput())
 	require.Equal(t, TriageTicketOpened, outcome.Action)
-	require.False(t, outcome.NeedsReview)
 	require.False(t, outcome.WasTicketCreatedByEarlierAttempt)
 	require.Equal(t, gorgias.TicketPriorityHigh, outcome.Ticket.Priority)
 	require.Equal(t, gorgias.TicketStatusOpen, outcome.Ticket.Status)
@@ -209,7 +208,6 @@ func TestLostCreateResponseIsFoundByExternalIDAndNeverResentWithRealDex(t *testi
 
 	outcome := harness.runTriage(t, "lost-create", integrationIssueInput())
 	require.Equal(t, TriageTicketOpened, outcome.Action)
-	require.False(t, outcome.NeedsReview)
 	require.True(t, outcome.WasTicketCreatedByEarlierAttempt, "the retry found the ticket by its external ID")
 	require.Equal(t, 1, provider.count("create"), "an unconfirmed create is never resent")
 	require.Equal(t, 1, provider.count("lookup"))
@@ -217,16 +215,15 @@ func TestLostCreateResponseIsFoundByExternalIDAndNeverResentWithRealDex(t *testi
 	require.Len(t, provider.ticket(outcome.Ticket.ID).messagesOn(gorgias.MessageChannelInternalNote), 1)
 }
 
-func TestFailedCreateThatGorgiasDoesNotShowNeedsReviewWithRealDex(t *testing.T) {
+func TestFailedCreateThatGorgiasDoesNotShowFailsWithoutResendingWithRealDex(t *testing.T) {
 	provider := newFakeGorgias(t)
 	provider.failsFirstCreateWithoutStoring = true
 	harness := newTriageHarness(t, provider, defaultRequestTimeout)
 
-	outcome := harness.runTriage(t, "failed-create", integrationIssueInput())
-	require.Equal(t, TriageTicketCreationUncertain, outcome.Action)
-	require.True(t, outcome.NeedsReview)
-	require.Equal(t, "createTicket", outcome.ReviewReason)
-	require.Equal(t, "an earlier attempt of this Step sent the request and Gorgias shows no ticket with its external ID, so it is not sent again", outcome.ReviewDetail)
+	flowID := harness.startTriage(t, "failed-create", integrationIssueInput())
+	result := harness.waitForFlow(t, flowID)
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "gorgias createTicket (connection gorgias-helpdesk) selected branch uncertain with no target: TRANSPORT: an earlier attempt of this Step sent the request and Gorgias shows no ticket with its external ID, so it is not sent again")
 	require.Equal(t, 1, provider.count("create"), "a create Gorgias may still apply is never resent")
 	require.Equal(t, 3, provider.count("lookup"), "the read-only lookup was repeated within its budget before uncertain")
 	require.Zero(t, provider.ticketCount())
@@ -243,7 +240,6 @@ func TestLostReplyResponseIsFoundByExternalIDAndNeverResentWithRealDex(t *testin
 
 	outcome := harness.runTriage(t, "lost-reply", input)
 	require.Equal(t, TriageTicketFollowedUp, outcome.Action)
-	require.False(t, outcome.NeedsReview)
 	require.Equal(t, 1, provider.count("reply"), "a second reply would be a second email to the customer")
 	replies := provider.ticket(outcome.Ticket.ID).agentEmails()
 	require.Len(t, replies, 1)

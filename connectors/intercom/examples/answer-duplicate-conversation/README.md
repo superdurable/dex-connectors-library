@@ -20,22 +20,21 @@ Flow per new conversation, and the Flow uses every Intercom operation:
    an admin already answered, or that no contact started, and otherwise looks
    up the sender's email;
 6. `FindCustomerContacts` calls `findContactByEmail`, which can return a lead
-   and a user for the same person. `CompleteWithoutContact` leaves the
-   conversation open when there is none yet;
+   and a user for the same person. Without a matching contact, the unwired
+   `notFound` branch fails the Flow and leaves the conversation untouched;
 7. `SearchEarlierConversations` calls `searchConversations` for those
    contacts' open and snoozed conversations, and `ChooseEarlierConversation`
    picks the oldest one created before the new conversation. Without one, the
    Flow completes as `leftOpen` and writes nothing;
 8. `ReplyToDuplicate` calls `replyToConversation` once, as the admin chosen
    with the `adminPicker`, pointing the customer to the earlier conversation.
-   `RecordDuplicateReply` records the reply, and `RecordReplyNeedsReview`
-   completes as `needsReview` when the reply's outcome cannot be confirmed;
+   `RecordDuplicateReply` records the reply. An unconfirmed reply fails the
+   Flow without resending;
 9. `CloseDuplicate` calls `updateConversationState` to close the new
    conversation as the same admin, and `CompleteAnsweredDuplicate` completes
    as `answeredAndClosed`.
 
-Only the happy-path branches, `notFound` of `findContactByEmail`, and
-`uncertain` of `replyToConversation` are wired. A missing conversation, a
+Only happy-path branches are wired. A missing conversation or contact, an uncertain reply, a
 rejected request, an invalid response, and a local defect fail the Flow.
 
 ## 1. Generate the Flow Definition
@@ -53,7 +52,7 @@ dexcli visualize ./examples/answer-duplicate-conversation/flow/workflow.go \
   --out ./build/answer-duplicate-conversation
 ```
 
-The command must report `valid: true` with the twelve Steps and the
+The command must report `valid: true` with the eleven Steps and the
 `inbound-conversation` binding. Inside this repository it also warns
 `connector_release_required` and `connector_trigger_release_required`, because
 a local module is not a published release.
@@ -216,10 +215,10 @@ bearer token and `Intercom-Version: 2.16`:
   test);
 - a reply whose response was lost is found in the conversation and never
   resent;
-- a reply answered 503 without being applied completes as `needsReview` and is
-  never resent;
+- a reply answered 503 without being applied fails on the unwired `uncertain`
+  branch and is never resent;
 - a Worker lost while Intercom holds the reply leaves the next attempt to read
-  the conversation instead of resending;
+  the conversation, then fail on `uncertain` without resending;
 - a close held past the local phase is dispatched again and converges on
   `closed`, whether Intercom accepts or rejects the redundant close;
 - a rate-limited search waits for `X-RateLimit-Reset`;
