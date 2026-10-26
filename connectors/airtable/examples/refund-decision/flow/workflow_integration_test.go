@@ -549,6 +549,11 @@ func newRefundDecisionHarness(t *testing.T) (*fakeAirtable, *refundDecisionHarne
 	require.NoError(t, err)
 	connection, err := airtable.NewConnection(client, reference)
 	require.NoError(t, err)
+	return provider, newRefundDecisionHarnessWithConnection(t, connection)
+}
+
+func newRefundDecisionHarnessWithConnection(t *testing.T, connection airtable.Connection) *refundDecisionHarness {
+	t.Helper()
 	flow, err := NewFlow(connection, &integrationSettings)
 	require.NoError(t, err)
 	registry, err := dex.NewRegistry([]dex.Flow{flow})
@@ -573,7 +578,7 @@ func newRefundDecisionHarness(t *testing.T) (*fakeAirtable, *refundDecisionHarne
 		defer cancel()
 		require.NoError(t, errors.Join(harness.worker.Stop(stopCtx), <-harness.workerResult, harness.client.Close(), harness.cache.Close()))
 	})
-	return provider, harness
+	return harness
 }
 
 func availableIntegrationPort(t *testing.T) string {

@@ -63,6 +63,11 @@ func newQueueConsumerHarness(t *testing.T, providerClient *sqs.Client) (*Flow, *
 	t.Helper()
 	connection, err := sqs.NewConnection(providerClient, exampleConnection)
 	require.NoError(t, err)
+	return newQueueConsumerHarnessWithConnection(t, connection)
+}
+
+func newQueueConsumerHarnessWithConnection(t *testing.T, connection sqs.Connection) (*Flow, *queueConsumerHarness) {
+	t.Helper()
 	flow := NewFlow(connection)
 	registry, err := dex.NewRegistry([]dex.Flow{flow})
 	require.NoError(t, err)

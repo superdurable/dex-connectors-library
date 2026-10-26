@@ -29,6 +29,22 @@ an Atlassian Connect app descriptor, and neither the v1 nor the v2 REST API has
 a webhook endpoint an OAuth 2.0 (3LO) connection could call, so a connection
 cannot subscribe to page events. Poll with `searchPages` instead.
 
+## Mocks
+
+The generated [`confluencemock`](confluencemock) package models a Remote work
+policy in OPS across search, create, read, update, and comment operations.
+Its search default has three cursor pages. Other cases cover missing pages,
+title and version conflicts, and permission denials. The [runnable integration test](examples/publish-policy/flow/workflow_mock_integration_test.go)
+uses the example Flow:
+
+```go
+	mock := confluencemock.New(t, ConnectionName)
+	flow, harness := newConfluenceIntegrationHarnessWithConnection(t, mock.Connection())
+```
+
+Script a case for a different title or edit and inspect `Calls()` to verify
+each operation input and call count. Mock answers make no Atlassian requests.
+
 ## Atlassian setup
 
 Create one OAuth 2.0 (3LO) app at

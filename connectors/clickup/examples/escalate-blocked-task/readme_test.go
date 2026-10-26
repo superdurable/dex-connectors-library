@@ -51,12 +51,13 @@ func TestREADMESamplesMatchTheExample(t *testing.T) {
 	}
 }
 
-// TestConnectorREADMESamplesAreTheExampleCode keeps the connector README's record and Go snippet runnable.
+// TestConnectorREADMESamplesAreTheExampleCode keeps the connector README's record and Go snippets runnable.
 func TestConnectorREADMESamplesAreTheExampleCode(t *testing.T) {
 	readme := readFile(t, filepath.Join("..", "..", "README.md"))
 	snippets := fencedBlocks(readme, "go")
-	require.Len(t, snippets, 1)
-	require.Contains(t, readFile(t, "main.go"), snippets[0])
+	require.Len(t, snippets, 2)
+	require.Contains(t, readFile(t, "workflow_mock_integration_test.go"), snippets[0])
+	require.Contains(t, readFile(t, "main.go"), snippets[1])
 
 	records := fencedBlocks(readme, "json")
 	require.Len(t, records, 2)

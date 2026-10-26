@@ -21,6 +21,23 @@ webhooks through ClickUp API v2, `https://api.clickup.com/api/v2`:
 The `taskEvent` Trigger receives ClickUp's task webhook events, verified with
 their `X-Signature`.
 
+## Mocks
+
+The generated [`clickupmock`](clickupmock) package models a blocked SSO task,
+its escalation manager, three pages of unrelated escalation tasks, and the
+subsequent create, tag, assignment, and comment. Other cases cover missing
+resources and permission denials. The [runnable integration test](examples/escalate-blocked-task/workflow_mock_integration_test.go)
+uses the same Flow as the webhook example:
+
+```go
+	mock := clickupmock.New(t, escalateblocked.ConnectionName)
+	harness := newEscalationHarnessWithConnection(t, mock.Connection(), exampleSettings)
+	outcome := harness.runEscalation(t, "mock-default", "86b2x1")
+```
+
+Inspect each operation's `Calls()` to check exact inputs and call counts.
+Mock answers make no ClickUp requests.
+
 ## Vocabulary
 
 ClickUp's hierarchy is Workspace > Space > Folder > List > task. The API calls a

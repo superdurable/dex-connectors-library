@@ -21,6 +21,26 @@ never reports an empty listing as success. The connector does not delete, copy,
 or tag objects, and this release has no Triggers and no Studio pickers; see
 [Not in this release](#not-in-this-release).
 
+## Mocks
+
+The generated [`s3mock`](s3mock) package models one archived Ops weekly report
+across the store, metadata, text read, and three ordered listing pages. It also
+offers cases for missing objects, unsupported or oversized text, create-only
+conflicts, and permission denials. The [runnable integration test](examples/report-archive/flow/workflow_mock_integration_test.go)
+uses the example Flow and checks its generated report and read-back decision:
+
+```go
+	mock := s3mock.New(t, ConnectionName)
+	flow, harness := newReportArchiveHarnessWithConnection(t, mock.Connection())
+	result := runReportArchive(t, integrationContext(t), harness.client, flow,
+		"mock-report-"+strconv.FormatInt(time.Now().UnixNano(), 10), Input{
+			ReportID: "ops-weekly", Title: "Ops weekly", Highlights: []string{"Refunds above 500 need approval."},
+		})
+```
+
+Inspect `Calls()` on each operation to verify the Flow's inputs and call
+counts. Mock answers do not perform S3 requests.
+
 ## Authentication
 
 A connection holds an access key ID, a secret access key, and, for temporary
@@ -110,7 +130,7 @@ the connection's `defaultBucket`.
 The connector depends only on the core module `github.com/aws/aws-sdk-go-v2`
 v1.43.0, whose `go.mod` declares `go 1.24` and requires only
 `github.com/aws/smithy-go`. Both modules are already in the module graph of
-`sdkgo` v0.21.0, so a consuming application downloads nothing new. Signing,
+`sdkgo` v0.32.0, so a consuming application downloads nothing new. Signing,
 the subtle part, comes from the SDK's own `aws/signer/v4`, and the tests
 reproduce the three worked signatures (GET Object, PUT Object of
 `test$file.text`, and list objects) from the Amazon S3 API Reference page

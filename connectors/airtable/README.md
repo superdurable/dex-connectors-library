@@ -26,6 +26,24 @@ empty fields from every record it returns, so a missing key means an empty
 field. A write rejects the zero `CellValue`, so a forgotten value never clears
 a field.
 
+## Mocks
+
+The generated [`airtablemock`](airtablemock) package supplies one refund policy
+and its approved decision log across listing, upsert, update, and read-back
+operations. The listing default has three cursor pages; the example Flow reads
+only the first. Cases also cover expired offsets, missing rows, and denied
+operations. The [runnable integration test](examples/refund-decision/flow/workflow_mock_integration_test.go)
+uses the example Flow:
+
+```go
+	mock := airtablemock.New(t, ConnectionName)
+	harness := newRefundDecisionHarnessWithConnection(t, mock.Connection())
+	ctx := integrationContext(t, time.Minute)
+```
+
+Inspect each operation's `Calls()` to verify the Flow's inputs and call count.
+Mock answers do not perform Airtable requests.
+
 ## Authentication
 
 A connection uses one Airtable personal access token (`airtable-personal-access-token`)

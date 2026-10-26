@@ -26,13 +26,14 @@ func TestREADMEGoSnippetsComeFromTheRunnableExample(t *testing.T) {
 	for _, path := range []string{
 		filepath.Join("examples", "refund-decision", "main.go"),
 		filepath.Join("examples", "refund-decision", "flow", "workflow.go"),
+		filepath.Join("examples", "refund-decision", "flow", "workflow_mock_integration_test.go"),
 	} {
 		source, err := os.ReadFile(path)
 		require.NoError(t, err)
 		exampleSources = append(exampleSources, string(source))
 	}
 	snippets := readmeGoSnippets(string(readme))
-	require.Len(t, snippets, 4)
+	require.Len(t, snippets, 5)
 	for _, snippet := range snippets {
 		require.Truef(t, isIndentedSnippetInSources(snippet, exampleSources), "README Go snippet is not copied from the example:\n%s", snippet)
 	}
