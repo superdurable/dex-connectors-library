@@ -58,11 +58,12 @@ expire, so a token without a recorded expiry is refreshed
 (`RefreshWhenExpiryMissing`). `invalid_grant`, `invalid_client`,
 `unauthorized_client`, missing refresh material, an invalid service-account
 key or delegated user, and a returned scope list without both Drive scopes
-require reauthorization. A Google 5xx is always retryable. If Google omits a new
-refresh token, the prior value is kept. After a 401 the connector asks once for
-a refresh, which the project connection performs only when the stored expiry
-has passed, and then resends once; otherwise the 401 selects
-`providerRejected`. There is never a refresh loop.
+require reauthorization. A Google 5xx on a read is retryable; an ambiguous
+upload 5xx requires read-back. If Google omits a new refresh token, the prior
+value is kept. After a read 401 the connector asks once for a refresh and
+resends once. After an upload 401, it forces a refresh and retries the Step on
+the next attempt; if refresh cannot help, the 401 selects `providerRejected`.
+There is never a refresh loop.
 
 The driver never owns persistence. The project connection that
 `NewProjectConnection` opens admits one refresh per credential generation
@@ -149,39 +150,45 @@ type. A shortcut's target ID is available from `getFile`.
 
 ## Duplicate-safe uploads
 
-Drive has no idempotency-key header, so `uploadFile` records the SDK's
-idempotency key as a private app property, `dexIdempotencyKey`, on the file it
-creates. The key is derived from the stable Call ID, so every attempt of one
-Step execution shares it and a new Step execution gets a new one. Every attempt:
+Drive's [file creation API](https://developers.google.com/workspace/drive/api/reference/rest/v3/files/create)
+does not document an idempotency key. `uploadFile` records the SDK's stable
+Call ID as a private app property, `dexIdempotencyKey`, and uses the shared
+single-dispatch fence. Each attempt reads the prior heartbeat checkpoint before
+credentials or provider lookups. Sync Execute durability makes the checkpoint
+visible to later attempts. Applications must not override `uploadFile` Execute
+durability to async. The operation:
 
-1. looks for a file, trashed or not, that already carries the key, and returns
-   the earliest one as `uploaded` with `isFromEarlierAttempt: true`;
-2. otherwise sends one multipart upload with the name, MIME type, optional
-   parent, key, and content.
+1. reads a checkpointed provider file ID directly when present, or
+   [searches by the private app property](https://developers.google.com/workspace/drive/api/guides/search-files)
+   for a file from an earlier attempt or an ambiguous accepted upload;
+2. sends a multipart upload only when the fence permits a send and the lookup
+   finds no file;
+3. reads back an ambiguous sent upload before selecting `uncertain`.
 
-A retry after a lost Worker, an Execute timeout, or a rate limit therefore
-returns the file the earlier attempt created. A lookup failure never uploads: a
-retryable lookup error, or a lookup that Drive reports as incomplete, returns
-Retry, and a rejected or invalid lookup selects `providerRejected` or
-`invalidResponse`. An upload that Google rejects with 429
-or a 403 rate-limit reason returns Retry, because no file was created. A
-timeout, dropped connection, 5xx, or invalid success response selects
-`uncertain` and is never sent again automatically; route that branch to
-operator recovery or read the key back in a later Step.
+An accepted 2xx response with a valid file ID completes and checkpoints that
+ID. An unusable 2xx body, dropped response, other 5xx, or 409 triggers
+read-back. A confirmed file completes without resending. A transient read-back
+failure retries the Step; a conclusive read-back that cannot confirm the
+upload selects `uncertain`. A 429, 503, or documented 403 rate-limit response
+records a resend checkpoint and retries with the same key. The next attempt
+looks up the key before sending. A missing or stale checkpoint never permits a
+resend. Read requests reserve up to one second before the observed Step
+deadline; the fenced upload uses its shorter write window. These response
+classifications follow Google's [Drive error guidance](https://developers.google.com/workspace/drive/api/guides/handle-errors);
+the exact write-acceptance timing of a 503 remains unverified against a live
+Drive account.
 
 Limits of this design:
 
 - App properties are private to the OAuth client or service account that wrote
   them, so the lookup finds only files created through the same connection.
-- Drive search is eventually consistent. A retry that starts within moments of
-  an applied upload may not see it yet; the ambiguous cases above therefore
-  select `uncertain` instead of retrying.
-- Uploads use async Execute durability like the other operations, because a
-  bounded upload is not expected to take seven seconds. An upload that
-  outlasts the local phase is sent again by the next attempt, and the lookup
-  finds the first file only if Google has already created and indexed it.
-  Applications that upload multi-megabyte content over slow links can set
-  `StepOptionsOverride` durability to sync.
+- Google documents `incompleteSearch` but does not promise immediate indexing
+  of app properties after creation. A stale lookup after a 503 is an unverified
+  duplicate risk; the fence prevents resends after claimed, missing, or stale
+  checkpoints.
+- The prior async release had no fence. Existing in-flight calls should be
+  reconciled before moving them to this version; a missing old heartbeat
+  cannot authorize a resend.
 - The content must be at most `maxUploadBytes`, which cannot exceed Google's
   5 MiB multipart limit. Google Workspace MIME types are rejected, so Drive
   never converts an upload.
@@ -191,6 +198,27 @@ document whether creating a file inside an existing folder that this client
 did not create needs more than `drive.file` plus `drive.readonly`. If Google
 rejects such an upload, the rejection selects `providerRejected` and nothing
 is created; this is not yet verified against a live account.
+
+## Mocks
+
+`drivemock.New` provides one happy-path default per operation, plus
+`notFound`, `providerRejected`, `invalidResponse`, `unsupportedContent`,
+and `tooLarge` cases where those branches apply. The broad search default
+has three pages with an unordered duplicate; the text-copy example scripts a
+single exact source. This snippet is from
+[`workflow_mock_integration_test.go`](examples/text-copy/flow/workflow_mock_integration_test.go):
+
+```go
+mock := drivemock.New(t, ConnectionName)
+mock.SearchFiles().Respond(drivemock.SearchFilesFound(drive.SearchFilesOutput{
+	Files: []drive.FileSummary{{ID: "file_policy", Name: "Ops Policy", MimeType: "application/vnd.google-apps.document"}},
+}, nil))
+flow, harness := newDriveIntegrationHarnessForConnection(t, mock.Connection())
+harness.startWorker(t)
+```
+
+The real-Dex test asserts all four call inputs and counts, including the
+upload input derived from the source text.
 
 ## Branches
 
@@ -204,7 +232,8 @@ hour. Error responses are read with their own 64 KiB bound and classified by
 status, so a small `maxTextBytes` never turns a 404 or 503 into `tooLarge`.
 Failures carry only a safe message and kind, never provider error text, file
 content, or credentials. A credential that cannot be resolved or refreshed
-selects `defect`, as in the other Google connectors. Only each operation's
+selects `defect` on reads; `uploadFile` records a not-sent checkpoint and
+retries credential resolution. Only each operation's
 happy-path branch is required; every other branch is optional and fails the
 Flow when unwired.
 
