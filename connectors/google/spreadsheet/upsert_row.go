@@ -55,11 +55,22 @@ func (operation UpsertRowOperation) Invoke(call sdkgo.Call, input UpsertRowInput
 	if decision.Kind == singledispatch.FailClosed {
 		return uncertainUpsert(call, operation.client, requestResult{}, "prior dispatch checkpoint cannot be trusted")
 	}
-	credential, credentialFailure := operation.client.resolveCredential(call, "upsertRow")
+	credential, credentialFailure, needsReauthorization := operation.client.resolveCredential(call, "upsertRow")
 	if credentialFailure != nil {
+		if needsReauthorization {
+			if decision.Kind == singledispatch.SendAllowed {
+				if err := fence.RecordNotSent(); err != nil {
+					return sdkgo.NewMutationRetry[UpsertRowOutput](sheetFailure(sdkgo.FailureAvailability, "upsertRow", "credential checkpoint failed"), 0)
+				}
+			}
+			return sdkgo.NewMutationBranch(UpsertRowBranchDefect, UpsertRowOutput{}, credentialFailure, sdkgo.Receipt{})
+		}
 		return retryBeforeUpsertWrite(fence, decision.Kind, *credentialFailure, 0)
 	}
-	lookup, err := operation.client.getValues(call, credential, input.SpreadsheetID, quoteSheet(input.SheetName))
+	lookupContext, cancelLookup := boundedUpsertContext(call.Context)
+	lookup, usedCredential, err := operation.client.getValues(lookupContext, call, credential, input.SpreadsheetID, quoteSheet(input.SheetName))
+	cancelLookup()
+	credential = usedCredential
 	if err != nil {
 		if requestFailure, ok := err.(*providerRequestError); ok {
 			switch requestFailure.kind {
@@ -101,15 +112,21 @@ func (operation UpsertRowOperation) Invoke(call sdkgo.Call, input UpsertRowInput
 		return sdkgo.NewMutationBranch(UpsertRowBranchConflict, UpsertRowOutput{}, findFailure, lookupReceipt)
 	}
 	if branch != FindRowBranchFound && branch != FindRowBranchNotFound {
+		if decision.Kind == singledispatch.ReadBackRequired && decision.Marker.State == singledispatch.StateClaimed {
+			return uncertainUpsert(call, operation.client, lookup, "prior append cannot be checked against the row key")
+		}
 		return sdkgo.NewMutationBranch(UpsertRowBranchDefect, UpsertRowOutput{}, findFailure, lookupReceipt)
 	}
 	row, buildFailure := buildRow(rows, input)
 	if buildFailure != nil {
+		if decision.Kind == singledispatch.ReadBackRequired && decision.Marker.State == singledispatch.StateClaimed {
+			return uncertainUpsert(call, operation.client, lookup, "prior append cannot be checked against the row schema")
+		}
 		return sdkgo.NewMutationBranch(UpsertRowBranchDefect, UpsertRowOutput{}, buildFailure, lookupReceipt)
 	}
-	if branch == FindRowBranchFound && rowMatchesInput(match, input) {
+	if branch == FindRowBranchFound && isRowMatchingInput(match, input) {
 		action := "updated"
-		if decision.Kind == singledispatch.ReadBackRequired && decision.Marker.State == singledispatch.StateClaimed {
+		if decision.Kind == singledispatch.ReadBackRequired || decision.Marker.State == singledispatch.StateCanResend {
 			action = "inserted"
 		}
 		return sdkgo.NewMutationBranch(UpsertRowBranchUpserted, upsertOutput(action, match.RowNumber, input.SheetName, len(row)), nil, lookupReceipt)
@@ -142,7 +159,23 @@ func (operation UpsertRowOperation) replaceRow(call sdkgo.Call, credential Crede
 	}
 	requestContext, cancel := context.WithDeadline(call.Context, requestDeadline)
 	defer cancel()
-	result, err := operation.client.writeRequest(requestContext, call, credential, http.MethodPut, input.SpreadsheetID, "/values/"+url.PathEscape(targetRange), url.Values{"valueInputOption": {"RAW"}}, payload)
+	var result requestResult
+	var err error
+	for writeAttempt := 0; writeAttempt < 2; writeAttempt++ {
+		result, err = operation.client.writeRequest(requestContext, call, credential, http.MethodPut, input.SpreadsheetID, "/values/"+url.PathEscape(targetRange), url.Values{"valueInputOption": {"RAW"}}, payload)
+		if result.status != http.StatusUnauthorized || writeAttempt != 0 {
+			break
+		}
+		refreshedCredential, refreshed := operation.client.refreshRejectedWriteCredential(requestContext, call, credential)
+		if !refreshed {
+			break
+		}
+		credential = refreshedCredential
+	}
+	var requestFailure *providerRequestError
+	if errors.As(err, &requestFailure) && requestFailure.kind == sdkgo.FailureLocalDefect {
+		return sdkgo.NewMutationBranch(UpsertRowBranchDefect, UpsertRowOutput{}, failurePointer(requestFailure.kind, "upsertRow", requestFailure.message), sdkgo.Receipt{})
+	}
 	if result.status == 0 {
 		return sdkgo.NewMutationRetry[UpsertRowOutput](sheetFailure(sdkgo.FailureTransport, "upsertRow", "row replacement response is unavailable"), 0)
 	}
@@ -184,11 +217,22 @@ func (operation UpsertRowOperation) appendRow(call sdkgo.Call, credential Creden
 		return uncertainUpsert(call, operation.client, attempt.result, "single-dispatch permission is unavailable")
 	}
 	result := attempt.result
+	var requestFailure *providerRequestError
+	if errors.As(err, &requestFailure) && requestFailure.kind == sdkgo.FailureLocalDefect {
+		return sdkgo.NewMutationBranch(UpsertRowBranchDefect, UpsertRowOutput{}, failurePointer(requestFailure.kind, "upsertRow", requestFailure.message), sdkgo.Receipt{})
+	}
+	if result.status == http.StatusUnauthorized {
+		refreshContext, cancelRefresh := boundedUpsertContext(call.Context)
+		_, refreshed := operation.client.refreshRejectedWriteCredential(refreshContext, call, credential)
+		cancelRefresh()
+		if refreshed {
+			return retryAfterRejectedAppend(fence, result)
+		}
+	}
 	if result.status == http.StatusTooManyRequests || result.status == http.StatusServiceUnavailable || result.status == http.StatusConflict {
 		return retryAfterRejectedAppend(fence, result)
 	}
 	if result.status == 0 {
-		var requestFailure *providerRequestError
 		if errors.As(err, &requestFailure) && requestFailure.undispatched {
 			return retryAfterRejectedAppend(fence, result)
 		}
@@ -207,7 +251,7 @@ func (operation UpsertRowOperation) appendRow(call sdkgo.Call, credential Creden
 			updatedRange := response.Updates.UpdatedRange
 			if rowNumber, hasRow := firstRowNumber(updatedRange); hasRow {
 				// The range is a provider locator for later read-back, not a deduplication key.
-				_ = fence.RecordProviderID(updatedRange)
+				_ = fence.RecordProviderID(updatedRange) // Acceptance is known even if this locator checkpoint fails.
 				return sdkgo.NewMutationBranch(UpsertRowBranchUpserted, UpsertRowOutput{Action: "inserted", RowNumber: rowNumber, UpdatedRange: updatedRange}, nil, operation.client.receipt(call, result, updatedRange))
 			}
 		}
@@ -222,7 +266,9 @@ func (attempt *upsertWriteAttempt) send(ctx context.Context) error {
 }
 
 func (operation UpsertRowOperation) reconcileAppend(call sdkgo.Call, credential Credentials, input UpsertRowInput, row []string) sdkgo.MutationAttempt[UpsertRowOutput] {
-	result, err := operation.client.getValues(call, credential, input.SpreadsheetID, quoteSheet(input.SheetName))
+	readBackContext, cancelReadBack := boundedUpsertContext(call.Context)
+	result, _, err := operation.client.getValues(readBackContext, call, credential, input.SpreadsheetID, quoteSheet(input.SheetName))
+	cancelReadBack()
 	if err != nil {
 		return sdkgo.NewMutationRetry[UpsertRowOutput](sheetFailure(sdkgo.FailureAvailability, "upsertRow", "append read-back is unavailable"), 0)
 	}
@@ -244,7 +290,7 @@ func (operation UpsertRowOperation) reconcileAppend(call sdkgo.Call, credential 
 	if branch == FindRowBranchConflict {
 		return sdkgo.NewMutationBranch(UpsertRowBranchConflict, UpsertRowOutput{}, findFailure, operation.client.receipt(call, result, ""))
 	}
-	if branch != FindRowBranchFound || !rowMatchesInput(match, input) {
+	if branch != FindRowBranchFound || !isRowMatchingInput(match, input) {
 		return uncertainUpsert(call, operation.client, result, "append cannot be confirmed by the row key")
 	}
 	return sdkgo.NewMutationBranch(UpsertRowBranchUpserted, upsertOutput("inserted", match.RowNumber, input.SheetName, len(row)), nil, operation.client.receipt(call, result, ""))
@@ -278,7 +324,18 @@ func uncertainUpsert(call sdkgo.Call, client *Client, result requestResult, mess
 	return sdkgo.NewMutationUncertain(UpsertRowOutput{}, sheetFailure(sdkgo.FailureTransport, "upsertRow", message), client.receipt(call, result, ""))
 }
 
-func rowMatchesInput(found FindRowOutput, input UpsertRowInput) bool {
+func boundedUpsertContext(ctx context.Context) (context.Context, context.CancelFunc) {
+	executeTimeout := UpsertRowDefinition.StepDefaults.ExecuteMethodTimeout
+	startedAt := time.Now()
+	requestDeadline := startedAt.Add(executeTimeout - executeTimeout/10)
+	if stepDeadline, hasDeadline := ctx.Deadline(); hasDeadline && stepDeadline.Before(startedAt.Add(executeTimeout)) {
+		remaining := max(stepDeadline.Sub(startedAt), 0)
+		requestDeadline = stepDeadline.Add(-remaining / 10)
+	}
+	return context.WithDeadline(ctx, requestDeadline)
+}
+
+func isRowMatchingInput(found FindRowOutput, input UpsertRowInput) bool {
 	if found.Values[input.KeyColumn] != input.KeyValue {
 		return false
 	}
@@ -305,10 +362,11 @@ func columnName(columnNumber int) string {
 }
 
 func firstRowNumber(updatedRange string) (int64, bool) {
-	_, cellRange, hasSheet := strings.Cut(updatedRange, "!")
-	if !hasSheet {
+	separator := strings.LastIndex(updatedRange, "!")
+	if separator < 0 {
 		return 0, false
 	}
+	cellRange := updatedRange[separator+1:]
 	start := strings.IndexFunc(cellRange, func(character rune) bool { return character >= '0' && character <= '9' })
 	if start < 0 {
 		return 0, false

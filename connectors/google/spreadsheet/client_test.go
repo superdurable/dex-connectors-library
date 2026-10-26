@@ -22,10 +22,17 @@ var sheetsConnection = sdkgo.ConnectionRef{Provider: "google", Name: "customer-s
 
 type rejectionRefreshingCredentialProvider struct {
 	forcedRefreshes int
+	currentToken    string
+	refreshError    error
+	keepRejected    bool
 }
 
-func (*rejectionRefreshingCredentialProvider) Resolve(sdkgo.Call) (spreadsheet.Credentials, error) {
-	return spreadsheet.Credentials{AccessToken: sdkgo.NewSecretString("rejected-token")}, nil
+func (provider *rejectionRefreshingCredentialProvider) Resolve(sdkgo.Call) (spreadsheet.Credentials, error) {
+	token := provider.currentToken
+	if token == "" {
+		token = "rejected-token"
+	}
+	return spreadsheet.Credentials{AccessToken: sdkgo.NewSecretString(token)}, nil
 }
 
 // ResolveWithRefresh returns the stored credential unchanged: its expiry has not passed.
@@ -43,7 +50,13 @@ func (provider *rejectionRefreshingCredentialProvider) ResolveAfterRejection(
 	sdkgo.CredentialRefreshDriver[spreadsheet.Credentials],
 ) (spreadsheet.Credentials, error) {
 	provider.forcedRefreshes++
-	return spreadsheet.Credentials{AccessToken: sdkgo.NewSecretString("replacement-token")}, nil
+	if provider.refreshError != nil {
+		return spreadsheet.Credentials{}, provider.refreshError
+	}
+	if !provider.keepRejected {
+		provider.currentToken = "replacement-token"
+	}
+	return provider.Resolve(sdkgo.Call{})
 }
 
 func TestFindRowDistinguishesMissingAndDuplicateKeys(t *testing.T) {

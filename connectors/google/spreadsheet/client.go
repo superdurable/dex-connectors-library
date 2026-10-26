@@ -213,11 +213,11 @@ func (operation GetValuesOperation) Invoke(call sdkgo.Call, input GetValuesInput
 	if strings.TrimSpace(input.SpreadsheetID) == "" || strings.TrimSpace(input.Range) == "" {
 		return sdkgo.NewQueryBranch(GetValuesBranchDefect, GetValuesOutput{}, failurePointer(sdkgo.FailureValidation, "getValues", "spreadsheet ID and range are required"), sdkgo.Receipt{})
 	}
-	credential, failure := operation.client.resolveCredential(call, "getValues")
+	credential, failure, _ := operation.client.resolveCredential(call, "getValues")
 	if failure != nil {
 		return sdkgo.NewQueryBranch(GetValuesBranchDefect, GetValuesOutput{}, failure, sdkgo.Receipt{})
 	}
-	result, err := operation.client.getValues(call, credential, input.SpreadsheetID, input.Range)
+	result, _, err := operation.client.getValues(call.Context, call, credential, input.SpreadsheetID, input.Range)
 	if err != nil {
 		if requestFailure, ok := err.(*providerRequestError); ok {
 			switch requestFailure.kind {
@@ -258,11 +258,11 @@ func (operation FindRowOperation) Invoke(call sdkgo.Call, input FindRowInput) sd
 	if err := validateFindInput(input); err != nil {
 		return sdkgo.NewQueryBranch(FindRowBranchDefect, FindRowOutput{}, failurePointer(sdkgo.FailureValidation, "findRow", err.Error()), sdkgo.Receipt{})
 	}
-	credential, failure := operation.client.resolveCredential(call, "findRow")
+	credential, failure, _ := operation.client.resolveCredential(call, "findRow")
 	if failure != nil {
 		return sdkgo.NewQueryBranch(FindRowBranchDefect, FindRowOutput{}, failure, sdkgo.Receipt{})
 	}
-	result, err := operation.client.getValues(call, credential, input.SpreadsheetID, quoteSheet(input.SheetName))
+	result, _, err := operation.client.getValues(call.Context, call, credential, input.SpreadsheetID, quoteSheet(input.SheetName))
 	if err != nil {
 		if requestFailure, ok := err.(*providerRequestError); ok {
 			switch requestFailure.kind {
@@ -296,24 +296,38 @@ func (operation FindRowOperation) Invoke(call sdkgo.Call, input FindRowInput) sd
 	return sdkgo.NewQueryBranch(branch, found, findFailure, receipt)
 }
 
-func (client *Client) resolveCredential(call sdkgo.Call, operation string) (Credentials, *sdkgo.Failure) {
+func (client *Client) resolveCredential(call sdkgo.Call, operation string) (Credentials, *sdkgo.Failure, bool) {
 	credential, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
-	if err != nil || validateResolvedCredentials(credential) != nil {
-		return Credentials{}, failurePointer(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable")
+	if err != nil {
+		return Credentials{}, failurePointer(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable"), sdkgo.IsReauthorizationRequired(err)
 	}
-	return credential, nil
+	if validateResolvedCredentials(credential) != nil {
+		return Credentials{}, failurePointer(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable"), true
+	}
+	return credential, nil, false
 }
 
-func (client *Client) getValues(call sdkgo.Call, credential Credentials, spreadsheetID string, valueRange string) (requestResult, error) {
-	return client.request(call, credential, http.MethodGet, spreadsheetID, "/values/"+url.PathEscape(valueRange), url.Values{"majorDimension": {"ROWS"}, "valueRenderOption": {"FORMATTED_VALUE"}}, nil)
+func (client *Client) refreshRejectedWriteCredential(ctx context.Context, call sdkgo.Call, rejected Credentials) (Credentials, bool) {
+	if _, supportsRefresh := client.credentials.(sdkgo.RejectedCredentialRefreshingProvider[Credentials]); !supportsRefresh {
+		return Credentials{}, false
+	}
+	credential, err := sdkgo.ResolveCredentialAfterRejection(ctx, client.credentials, call, client.refreshDriver)
+	if err != nil || validateResolvedCredentials(credential) != nil || credential.AccessToken.Reveal() == rejected.AccessToken.Reveal() {
+		return Credentials{}, false
+	}
+	return credential, true
 }
 
-func (client *Client) request(call sdkgo.Call, credential Credentials, method, spreadsheetID, suffix string, query url.Values, payload any) (requestResult, error) {
+func (client *Client) getValues(ctx context.Context, call sdkgo.Call, credential Credentials, spreadsheetID string, valueRange string) (requestResult, Credentials, error) {
+	return client.request(ctx, call, credential, http.MethodGet, spreadsheetID, "/values/"+url.PathEscape(valueRange), url.Values{"majorDimension": {"ROWS"}, "valueRenderOption": {"FORMATTED_VALUE"}}, nil)
+}
+
+func (client *Client) request(ctx context.Context, call sdkgo.Call, credential Credentials, method, spreadsheetID, suffix string, query url.Values, payload any) (requestResult, Credentials, error) {
 	var encodedPayload []byte
 	if payload != nil {
 		encoded, err := json.Marshal(payload)
 		if err != nil {
-			return requestResult{}, &providerRequestError{kind: sdkgo.FailureLocalDefect, message: "provider request could not be encoded"}
+			return requestResult{}, credential, &providerRequestError{kind: sdkgo.FailureLocalDefect, message: "provider request could not be encoded"}
 		}
 		encodedPayload = encoded
 	}
@@ -323,9 +337,9 @@ func (client *Client) request(call sdkgo.Call, credential Credentials, method, s
 		if encodedPayload != nil {
 			body = bytes.NewReader(encodedPayload)
 		}
-		request, err := http.NewRequestWithContext(call.Context, method, target, body)
+		request, err := http.NewRequestWithContext(ctx, method, target, body)
 		if err != nil {
-			return requestResult{}, &providerRequestError{kind: sdkgo.FailureLocalDefect, message: "provider request could not be built"}
+			return requestResult{}, credential, &providerRequestError{kind: sdkgo.FailureLocalDefect, message: "provider request could not be built"}
 		}
 		request.URL.RawQuery = query.Encode()
 		request.Header.Set("Authorization", "Bearer "+credential.AccessToken.Reveal())
@@ -334,30 +348,31 @@ func (client *Client) request(call sdkgo.Call, credential Credentials, method, s
 		}
 		response, err := client.httpClient.Do(request)
 		if err != nil {
-			return requestResult{}, &providerRequestError{kind: sdkgo.FailureTransport, message: "provider request failed"}
+			return requestResult{}, credential, &providerRequestError{kind: sdkgo.FailureTransport, message: "provider request failed"}
 		}
 		content, readErr := io.ReadAll(io.LimitReader(response.Body, client.maxResponseBytes+1))
 		closeErr := response.Body.Close()
 		if readErr != nil || closeErr != nil {
-			return requestResult{}, &providerRequestError{kind: sdkgo.FailureTransport, message: "provider response could not be read"}
+			return requestResult{}, credential, &providerRequestError{kind: sdkgo.FailureTransport, message: "provider response could not be read"}
 		}
 		result := requestResult{status: response.StatusCode, header: response.Header, body: content, requestID: googleRequestID(response.Header)}
 		if int64(len(content)) > client.maxResponseBytes {
 			result.body = nil
-			return result, &providerRequestError{kind: sdkgo.FailureResponseTooLarge, message: "provider response exceeds configured limit"}
+			return result, credential, &providerRequestError{kind: sdkgo.FailureResponseTooLarge, message: "provider response exceeds configured limit"}
 		}
 		if response.StatusCode != http.StatusUnauthorized || attempt != 0 {
-			return result, nil
+			return result, credential, nil
 		}
 		if _, ok := client.credentials.(sdkgo.RejectedCredentialRefreshingProvider[Credentials]); !ok {
-			return result, nil
+			return result, credential, nil
 		}
-		credential, err = sdkgo.ResolveCredentialAfterRejection(call.Context, client.credentials, call, client.refreshDriver)
-		if err != nil || validateResolvedCredentials(credential) != nil {
-			return result, nil
+		refreshedCredential, err := sdkgo.ResolveCredentialAfterRejection(ctx, client.credentials, call, client.refreshDriver)
+		if err != nil || validateResolvedCredentials(refreshedCredential) != nil {
+			return result, credential, nil
 		}
+		credential = refreshedCredential
 	}
-	return requestResult{}, &providerRequestError{kind: sdkgo.FailureLocalDefect, message: "authenticated request retry was exhausted"}
+	return requestResult{}, credential, &providerRequestError{kind: sdkgo.FailureLocalDefect, message: "authenticated request retry was exhausted"}
 }
 
 func (client *Client) writeRequest(ctx context.Context, call sdkgo.Call, credential Credentials, method, spreadsheetID, suffix string, query url.Values, payload any) (requestResult, error) {

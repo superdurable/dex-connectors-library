@@ -20,6 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 	spreadsheet "github.com/superdurable/dex-connectors-library/connectors/google/spreadsheet"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
 
@@ -70,6 +71,120 @@ func TestUpsertRejectedAppendRetriesWithOneSendPerAttempt(t *testing.T) {
 			require.Equal(t, keys[0], keys[1])
 		})
 	}
+}
+
+func TestUpsertUsesCredentialRefreshedByLookupForWrite(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		rows     [][]string
+		method   string
+		response string
+	}{
+		{name: "append", rows: [][]string{{"accountId", "name"}}, method: http.MethodPost, response: `{"updates":{"updatedRange":"'Customers'!A2:B2"}}`},
+		{name: "replacement", rows: [][]string{{"accountId", "name"}, {"a-1", "Old"}}, method: http.MethodPut, response: `{"updatedRange":"'Customers'!A2:B2"}`},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var writes int
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+				if request.Method == http.MethodGet {
+					if request.Header.Get("Authorization") == "Bearer rejected-token" {
+						response.WriteHeader(http.StatusUnauthorized)
+						return
+					}
+					require.Equal(t, "Bearer replacement-token", request.Header.Get("Authorization"))
+					require.NoError(t, json.NewEncoder(response).Encode(map[string]any{"values": test.rows}))
+					return
+				}
+				writes++
+				require.Equal(t, test.method, request.Method)
+				require.Equal(t, "Bearer replacement-token", request.Header.Get("Authorization"))
+				_, _ = response.Write([]byte(test.response))
+			}))
+			t.Cleanup(server.Close)
+			provider := &rejectionRefreshingCredentialProvider{}
+			client, err := spreadsheet.New(spreadsheet.Config{Endpoint: server.URL}, provider)
+			require.NoError(t, err)
+			result, err := sdkgo.RunMutation(singledispatchtest.NewContext("sheet-flow", "lookup-refresh-"+test.name), client.UpsertRow(), sheetsConnection, upsertInput)
+			require.NoError(t, err)
+			require.Equal(t, spreadsheet.UpsertRowBranchUpserted, result.Branch)
+			require.Equal(t, 1, provider.forcedRefreshes)
+			require.Equal(t, 1, writes)
+		})
+	}
+}
+
+func TestUpsertWriteUnauthorizedRefreshesWithoutUnsafeAppendResend(t *testing.T) {
+	for _, test := range []struct {
+		name       string
+		rows       [][]string
+		method     string
+		wantWrites int
+	}{
+		{name: "append", rows: [][]string{{"accountId", "name"}}, method: http.MethodPost, wantWrites: 2},
+		{name: "replacement", rows: [][]string{{"accountId", "name"}, {"a-1", "Old"}}, method: http.MethodPut, wantWrites: 2},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var writes int
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+				if request.Method == http.MethodGet {
+					require.NoError(t, json.NewEncoder(response).Encode(map[string]any{"values": test.rows}))
+					return
+				}
+				writes++
+				require.Equal(t, test.method, request.Method)
+				if writes == 1 {
+					require.Equal(t, "Bearer rejected-token", request.Header.Get("Authorization"))
+					response.WriteHeader(http.StatusUnauthorized)
+					return
+				}
+				require.Equal(t, "Bearer replacement-token", request.Header.Get("Authorization"))
+				if test.method == http.MethodPost {
+					_, _ = response.Write([]byte(`{"updates":{"updatedRange":"'Customers'!A2:B2"}}`))
+				} else {
+					_, _ = response.Write([]byte(`{"updatedRange":"'Customers'!A2:B2"}`))
+				}
+			}))
+			t.Cleanup(server.Close)
+			provider := &rejectionRefreshingCredentialProvider{}
+			client, err := spreadsheet.New(spreadsheet.Config{Endpoint: server.URL}, provider)
+			require.NoError(t, err)
+			ctx := singledispatchtest.NewContext("sheet-flow", "write-refresh-"+test.name)
+			result, err := sdkgo.RunMutation(ctx, client.UpsertRow(), sheetsConnection, upsertInput)
+			if test.method == http.MethodPost {
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry)
+				require.Equal(t, 1, writes)
+				ctx.AdvanceAttempt()
+				result, err = sdkgo.RunMutation(ctx, client.UpsertRow(), sheetsConnection, upsertInput)
+			}
+			require.NoError(t, err)
+			require.Equal(t, spreadsheet.UpsertRowBranchUpserted, result.Branch)
+			require.Equal(t, 1, provider.forcedRefreshes)
+			require.Equal(t, test.wantWrites, writes)
+		})
+	}
+}
+
+func TestUpsertAppendUnauthorizedWithoutNewCredentialIsRejected(t *testing.T) {
+	rows := [][]string{{"accountId", "name"}}
+	writes := 0
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		if request.Method == http.MethodGet {
+			require.NoError(t, json.NewEncoder(response).Encode(map[string]any{"values": rows}))
+			return
+		}
+		writes++
+		response.WriteHeader(http.StatusUnauthorized)
+	}))
+	t.Cleanup(server.Close)
+	provider := &rejectionRefreshingCredentialProvider{keepRejected: true}
+	client, err := spreadsheet.New(spreadsheet.Config{Endpoint: server.URL}, provider)
+	require.NoError(t, err)
+	result, err := sdkgo.RunMutation(singledispatchtest.NewContext("sheet-flow", "unchanged-token"), client.UpsertRow(), sheetsConnection, upsertInput)
+	require.NoError(t, err)
+	require.Equal(t, spreadsheet.UpsertRowBranchProviderRejected, result.Branch)
+	require.Equal(t, 1, provider.forcedRefreshes)
+	require.Equal(t, 1, writes)
 }
 
 func TestUpsertAcceptedAppendReadBackNeverResends(t *testing.T) {
@@ -133,6 +248,85 @@ func TestUpsertAcceptedAppendReadBackNeverResends(t *testing.T) {
 	}
 }
 
+func TestUpsertClaimedAppendWithMismatchedRowIsUncertain(t *testing.T) {
+	rows := [][]string{{"accountId", "name"}}
+	writes := 0
+	server := sheetServer(t, &rows, func(response http.ResponseWriter, _ *http.Request) bool {
+		writes++
+		rows = append(rows, []string{"a-1", "Different"})
+		response.WriteHeader(http.StatusInternalServerError)
+		return true
+	})
+	t.Cleanup(server.Close)
+	client := newSheetsClient(t, server.URL)
+	ctx := singledispatchtest.NewContext("sheet-flow", "claimed-mismatch")
+	first, err := sdkgo.RunMutation(ctx, client.UpsertRow(), sheetsConnection, upsertInput)
+	require.NoError(t, err)
+	require.Equal(t, spreadsheet.UpsertRowBranchUncertain, first.Branch)
+	ctx.AdvanceAttempt()
+	second, err := sdkgo.RunMutation(ctx, client.UpsertRow(), sheetsConnection, upsertInput)
+	require.NoError(t, err)
+	require.Equal(t, spreadsheet.UpsertRowBranchUncertain, second.Branch)
+	require.Equal(t, 1, writes)
+}
+
+func TestUpsertClaimedAppendWithChangedSchemaIsUncertain(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		rows [][]string
+	}{
+		{name: "missing key", rows: [][]string{{"name"}, {"Ada"}}},
+		{name: "missing input column", rows: [][]string{{"accountId"}, {"a-1"}}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			reads := 0
+			writes := 0
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+				if request.Method == http.MethodGet {
+					reads++
+					rows := [][]string{{"accountId", "name"}}
+					if reads > 2 {
+						rows = test.rows
+					}
+					require.NoError(t, json.NewEncoder(response).Encode(map[string]any{"values": rows}))
+					return
+				}
+				writes++
+				response.WriteHeader(http.StatusInternalServerError)
+			}))
+			t.Cleanup(server.Close)
+			client := newSheetsClient(t, server.URL)
+			ctx := singledispatchtest.NewContext("sheet-flow", "changed-schema-"+test.name)
+			first, err := sdkgo.RunMutation(ctx, client.UpsertRow(), sheetsConnection, upsertInput)
+			require.NoError(t, err)
+			require.Equal(t, spreadsheet.UpsertRowBranchUncertain, first.Branch)
+			ctx.AdvanceAttempt()
+			second, err := sdkgo.RunMutation(ctx, client.UpsertRow(), sheetsConnection, upsertInput)
+			require.NoError(t, err)
+			require.Equal(t, spreadsheet.UpsertRowBranchUncertain, second.Branch)
+			require.Equal(t, 1, writes)
+		})
+	}
+}
+
+func TestUpsertAppendRangeWithExclamationInSheetName(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		if request.Method == http.MethodGet {
+			_, _ = response.Write([]byte(`{"values":[["accountId","name"]]}`))
+			return
+		}
+		_, _ = response.Write([]byte(`{"updates":{"updatedRange":"'Q1!2024'!A5:B5"}}`))
+	}))
+	t.Cleanup(server.Close)
+	client := newSheetsClient(t, server.URL)
+	input := upsertInput
+	input.SheetName = "Q1!2024"
+	result, err := sdkgo.RunMutation(singledispatchtest.NewContext("sheet-flow", "quoted-range"), client.UpsertRow(), sheetsConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, spreadsheet.UpsertRowBranchUpserted, result.Branch)
+	require.Equal(t, int64(5), result.Value.RowNumber)
+}
+
 func TestUpsertClaimLossFailsClosedWithoutSecondAppend(t *testing.T) {
 	rows := [][]string{{"accountId", "name"}}
 	writes := 0
@@ -193,6 +387,117 @@ func TestUpsertCredentialFailureRecordsNotSentBeforeRetry(t *testing.T) {
 	require.Equal(t, 1, writes)
 }
 
+type terminalCredentialSource struct{}
+
+func (terminalCredentialSource) Resolve(sdkgo.Call) (spreadsheet.Credentials, error) {
+	return spreadsheet.Credentials{}, sdkgo.NewReauthorizationRequiredError(errors.New("reauthorization required"))
+}
+
+func (source terminalCredentialSource) ResolveWithRefresh(_ context.Context, call sdkgo.Call, _ sdkgo.CredentialRefreshDriver[spreadsheet.Credentials]) (spreadsheet.Credentials, error) {
+	return source.Resolve(call)
+}
+
+func TestUpsertTerminalCredentialFailureRecordsNotSentThenDefect(t *testing.T) {
+	client, err := spreadsheet.New(spreadsheet.Config{}, terminalCredentialSource{})
+	require.NoError(t, err)
+	ctx := singledispatchtest.NewContext("sheet-flow", "terminal-credential")
+	result, err := sdkgo.RunMutation(ctx, client.UpsertRow(), sheetsConnection, upsertInput)
+	require.NoError(t, err)
+	require.Equal(t, spreadsheet.UpsertRowBranchDefect, result.Branch)
+	frames := ctx.Heartbeats()
+	require.Len(t, frames, 1)
+	var marker singledispatch.Marker
+	require.NoError(t, json.Unmarshal(frames[0], &marker))
+	require.Equal(t, singledispatch.StateNotSent, marker.State)
+}
+
+func TestUpsertLookupFailureRecordsNotSentBeforeNextAttempt(t *testing.T) {
+	rows := [][]string{{"accountId", "name"}}
+	lookups := 0
+	writes := 0
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		if request.Method == http.MethodGet {
+			lookups++
+			if lookups == 1 {
+				response.WriteHeader(http.StatusServiceUnavailable)
+				return
+			}
+			require.NoError(t, json.NewEncoder(response).Encode(map[string]any{"values": rows}))
+			return
+		}
+		writes++
+		_, _ = response.Write([]byte(`{"updates":{"updatedRange":"'Customers'!A2:B2"}}`))
+	}))
+	t.Cleanup(server.Close)
+	client := newSheetsClient(t, server.URL)
+	ctx := singledispatchtest.NewContext("sheet-flow", "lookup-retry")
+	_, err := sdkgo.RunMutation(ctx, client.UpsertRow(), sheetsConnection, upsertInput)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	require.Equal(t, 0, writes)
+	ctx.AdvanceAttempt()
+	result, err := sdkgo.RunMutation(ctx, client.UpsertRow(), sheetsConnection, upsertInput)
+	require.NoError(t, err)
+	require.Equal(t, spreadsheet.UpsertRowBranchUpserted, result.Branch)
+	require.Equal(t, 1, writes)
+}
+
+func TestUpsertFailClosedOnHeartbeatReadError(t *testing.T) {
+	rows := [][]string{{"accountId", "name"}}
+	writes := 0
+	server := sheetServer(t, &rows, func(response http.ResponseWriter, _ *http.Request) bool {
+		writes++
+		return true
+	})
+	t.Cleanup(server.Close)
+	ctx := singledispatchtest.NewContext("sheet-flow", "read-error")
+	ctx.SetReadError(errors.New("heartbeat unavailable"))
+	result, err := sdkgo.RunMutation(ctx, newSheetsClient(t, server.URL).UpsertRow(), sheetsConnection, upsertInput)
+	require.NoError(t, err)
+	require.Equal(t, spreadsheet.UpsertRowBranchUncertain, result.Branch)
+	require.Equal(t, 0, writes)
+}
+
+func TestUpsertRetrySeesRowInsertedBeforeSecondAttempt(t *testing.T) {
+	rows := [][]string{{"accountId", "name"}}
+	writes := 0
+	server := sheetServer(t, &rows, func(response http.ResponseWriter, _ *http.Request) bool {
+		writes++
+		rows = append(rows, []string{"a-1", "Ada"})
+		response.WriteHeader(http.StatusServiceUnavailable)
+		return true
+	})
+	t.Cleanup(server.Close)
+	ctx := singledispatchtest.NewContext("sheet-flow", "delayed-row")
+	client := newSheetsClient(t, server.URL)
+	_, err := sdkgo.RunMutation(ctx, client.UpsertRow(), sheetsConnection, upsertInput)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	ctx.AdvanceAttempt()
+	result, err := sdkgo.RunMutation(ctx, client.UpsertRow(), sheetsConnection, upsertInput)
+	require.NoError(t, err)
+	require.Equal(t, spreadsheet.UpsertRowBranchUpserted, result.Branch)
+	require.Equal(t, "inserted", result.Value.Action)
+	require.Equal(t, 1, writes)
+}
+
+func TestUpsertReadBackWithoutMarkerReportsFoundRowAsInserted(t *testing.T) {
+	rows := [][]string{{"accountId", "name"}, {"a-1", "Ada"}}
+	writes := 0
+	server := sheetServer(t, &rows, func(response http.ResponseWriter, _ *http.Request) bool {
+		writes++
+		return true
+	})
+	t.Cleanup(server.Close)
+	ctx := singledispatchtest.NewContext("sheet-flow", "missing-marker")
+	ctx.AdvanceAttempt()
+	result, err := sdkgo.RunMutation(ctx, newSheetsClient(t, server.URL).UpsertRow(), sheetsConnection, upsertInput)
+	require.NoError(t, err)
+	require.Equal(t, spreadsheet.UpsertRowBranchUpserted, result.Branch)
+	require.Equal(t, "inserted", result.Value.Action)
+	require.Equal(t, 0, writes)
+}
+
 func TestUpsertCheckpointFailureBeforeSendRetries(t *testing.T) {
 	rows := [][]string{{"accountId", "name"}}
 	writes := 0
@@ -222,12 +527,14 @@ func (interruptedWriteBody) Read([]byte) (int, error) { return 0, errors.New("in
 
 func TestUpsertTracedConnectFailureAllowsRetry(t *testing.T) {
 	rows := [][]string{{"accountId", "name"}}
+	var posts atomic.Int32
 	server := sheetServer(t, &rows, nil)
 	t.Cleanup(server.Close)
 	client, err := spreadsheet.New(spreadsheet.Config{Endpoint: server.URL}, sdkgo.StaticCredentialProvider[spreadsheet.Credentials]{
 		sheetsConnection: {AccessToken: sdkgo.NewSecretString("sheets-token")},
 	}, spreadsheet.WithHTTPClient(&http.Client{Transport: sheetRoundTripperFunc(func(request *http.Request) (*http.Response, error) {
 		if request.Method == http.MethodPost {
+			posts.Add(1)
 			if trace := httptrace.ContextClientTrace(request.Context()); trace != nil && trace.ConnectDone != nil {
 				trace.ConnectDone("tcp", "unreachable", errors.New("connect refused"))
 			}
@@ -240,9 +547,11 @@ func TestUpsertTracedConnectFailureAllowsRetry(t *testing.T) {
 	_, err = sdkgo.RunMutation(ctx, client.UpsertRow(), sheetsConnection, upsertInput)
 	var retry *sdkgo.RetryError
 	require.ErrorAs(t, err, &retry)
+	require.Equal(t, int32(1), posts.Load())
 	ctx.AdvanceAttempt()
 	_, err = sdkgo.RunMutation(ctx, client.UpsertRow(), sheetsConnection, upsertInput)
 	require.ErrorAs(t, err, &retry)
+	require.Equal(t, int32(2), posts.Load())
 }
 
 func TestUpsertInterruptedSuccessBodyUsesReadBackWithoutResend(t *testing.T) {
@@ -306,7 +615,7 @@ func TestUpsertDroppedReplyOnReusedConnectionIsNotReplayed(t *testing.T) {
 	require.Equal(t, 1, writes)
 }
 
-func TestUpsertDeadlineCutsAppendAndReadBackFailureIsUncertain(t *testing.T) {
+func TestUpsertDeadlineCutsAppendAndReadBackMissIsUncertain(t *testing.T) {
 	var writes atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		if request.Method == http.MethodGet {
@@ -328,6 +637,61 @@ func TestUpsertDeadlineCutsAppendAndReadBackFailureIsUncertain(t *testing.T) {
 	require.Equal(t, spreadsheet.UpsertRowBranchUncertain, result.Branch)
 	require.Equal(t, int32(1), writes.Load())
 	require.Less(t, time.Since(started), time.Second)
+}
+
+func TestUpsertBoundsLookupAndReadBackBeforeStepDeadline(t *testing.T) {
+	reads := 0
+	writes := 0
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		if request.Method == http.MethodGet {
+			reads++
+			if reads == 2 {
+				response.WriteHeader(http.StatusServiceUnavailable)
+				return
+			}
+			rows := [][]string{{"accountId", "name"}}
+			if reads == 3 {
+				rows = append(rows, []string{"a-1", "Ada"})
+			}
+			require.NoError(t, json.NewEncoder(response).Encode(map[string]any{"values": rows}))
+			return
+		}
+		writes++
+		response.WriteHeader(http.StatusInternalServerError)
+	}))
+	t.Cleanup(server.Close)
+	var requestDeadlines []time.Time
+	client, err := spreadsheet.New(spreadsheet.Config{Endpoint: server.URL}, sdkgo.StaticCredentialProvider[spreadsheet.Credentials]{
+		sheetsConnection: {AccessToken: sdkgo.NewSecretString("sheets-token")},
+	}, spreadsheet.WithHTTPClient(&http.Client{Transport: sheetRoundTripperFunc(func(request *http.Request) (*http.Response, error) {
+		if request.Method == http.MethodGet {
+			deadline, hasDeadline := request.Context().Deadline()
+			require.True(t, hasDeadline)
+			requestDeadlines = append(requestDeadlines, deadline)
+		}
+		return http.DefaultTransport.RoundTrip(request)
+	})}))
+	require.NoError(t, err)
+	ctx := singledispatchtest.NewContext("sheet-flow", "bounded-readback")
+	stepDeadline := time.Now().Add(2 * time.Second)
+	cancel := ctx.SetDeadline(stepDeadline)
+	defer cancel()
+	_, err = sdkgo.RunMutation(ctx, client.UpsertRow(), sheetsConnection, upsertInput)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	require.Equal(t, 1, writes)
+	require.Len(t, requestDeadlines, 2)
+	for _, requestDeadline := range requestDeadlines {
+		require.Greater(t, stepDeadline.Sub(requestDeadline), 100*time.Millisecond)
+	}
+	ctx.AdvanceAttempt()
+	cancelNext := ctx.SetDeadline(time.Now().Add(2 * time.Second))
+	defer cancelNext()
+	result, err := sdkgo.RunMutation(ctx, client.UpsertRow(), sheetsConnection, upsertInput)
+	require.NoError(t, err)
+	require.Equal(t, spreadsheet.UpsertRowBranchUpserted, result.Branch)
+	require.Equal(t, "inserted", result.Value.Action)
+	require.Equal(t, 1, writes)
 }
 
 func TestUpsertInvalidReadBackFailsUncertainWithoutResend(t *testing.T) {
