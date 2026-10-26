@@ -146,7 +146,7 @@ conversations the customer follows:
 - a lost note response is reconciled by its `origin_id`;
 - a rate-limited create waits for `Retry-After` and creates one conversation;
 - a 503 create retries with the same dispatch key and creates one conversation;
-- the mock-backed Flow asserts its mapped call inputs, counts, and output;
+- the mock-backed Flow filters decoys across three search pages and asserts its mapped call inputs, counts, and outcome;
 - a Worker lost while Re:amaze holds the create is replaced, and the new
   attempt finds the dispatch checkpoint, reads back, and sends nothing;
 - a rejected conversation fails the Flow through the unwired

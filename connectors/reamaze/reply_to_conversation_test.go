@@ -146,8 +146,9 @@ func TestReplyToConversationTerminalOutcomes(t *testing.T) {
 		require.Equal(t, want, result.Branch)
 		require.NotContains(t, result.Failure.Message, "SENTINEL")
 	}
-	_, err := sdkgo.RunMutation(newReamazeDexContext("note-accepted-invalid"), client.ReplyToConversation(), reamazeConnection, input)
-	require.Error(t, err, "an accepted write with an invalid body retries for read-back")
+	result, err := sdkgo.RunMutation(newReamazeDexContext("note-accepted-invalid"), client.ReplyToConversation(), reamazeConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, reamaze.ReplyToConversationBranchUncertain, result.Branch, "an unconfirmed accepted write resolves in this attempt")
 	for _, invalid := range []reamaze.ReplyToConversationInput{
 		{ConversationID: "../x", Text: "Note."},
 		{ConversationID: "double-charge", Text: " "},
@@ -156,5 +157,5 @@ func TestReplyToConversationTerminalOutcomes(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, reamaze.ReplyToConversationBranchDefect, result.Branch)
 	}
-	require.Equal(t, 3, provider.requestCount())
+	require.Equal(t, 4, provider.requestCount())
 }

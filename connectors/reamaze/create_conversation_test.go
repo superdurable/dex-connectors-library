@@ -88,9 +88,6 @@ func TestCreateConversationReconcilesAnUnconfirmedAttemptWithoutResending(t *tes
 		{name: "server error, nothing created", firstReply: func(response http.ResponseWriter) {
 			writeJSON(t, response, http.StatusBadGateway, `{"error":"SENTINEL"}`)
 		}, wantBranch: reamaze.CreateConversationBranchUncertain, wantFailure: sdkgo.FailureTransport, wantRequests: 2},
-		{name: "accepted without conversation ID", firstReply: func(response http.ResponseWriter) {
-			writeJSON(t, response, http.StatusCreated, `{"subject":"accepted"}`)
-		}, wantBranch: reamaze.CreateConversationBranchUncertain, wantFailure: sdkgo.FailureTransport, wantRequests: 2},
 		{name: "conflict needs read-back", firstReply: func(response http.ResponseWriter) {
 			writeJSON(t, response, http.StatusConflict, `{"error":"SENTINEL"}`)
 		}, wantBranch: reamaze.CreateConversationBranchUncertain, wantFailure: sdkgo.FailureTransport, wantRequests: 2},
@@ -266,8 +263,9 @@ func TestCreateConversationTerminalOutcomes(t *testing.T) {
 	require.Equal(t, sdkgo.FailureValidation, result.Failure.Kind)
 	require.NotContains(t, result.Failure.Message, "SENTINEL")
 
-	_, err = sdkgo.RunMutation(newReamazeDexContext("create-malformed"), client.CreateConversation(), reamazeConnection, validCreateConversationInput())
-	require.Error(t, err, "an accepted write with no usable ID retries for read-back")
+	result, err = sdkgo.RunMutation(newReamazeDexContext("create-malformed"), client.CreateConversation(), reamazeConnection, validCreateConversationInput())
+	require.NoError(t, err)
+	require.Equal(t, reamaze.CreateConversationBranchUncertain, result.Branch, "an unconfirmed accepted write resolves in this attempt")
 }
 
 func TestCreateConversationSendsNothingWithoutAMarkerOrValidInput(t *testing.T) {

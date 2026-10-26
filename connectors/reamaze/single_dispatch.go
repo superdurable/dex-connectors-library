@@ -13,6 +13,7 @@ import (
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
+// uncertainNotFoundMessage explains a reconciliation that found no trace of the earlier dispatch.
 const uncertainNotFoundMessage = "an earlier attempt may have sent the request without a confirmed outcome, and Re:amaze shows no record with its key"
 
 type fencedReamazeSend struct {
@@ -31,11 +32,16 @@ func (send *fencedReamazeSend) dispatch(requestContext context.Context) error {
 	return nil
 }
 
-func newReamazeFence(call sdkgo.Call) (*singledispatch.Fence, error) {
-	return singledispatch.NewFence(call, 30*time.Second)
+func newReamazeFence(call sdkgo.Call, executeTimeout time.Duration) (*singledispatch.Fence, error) {
+	return singledispatch.NewFence(call, executeTimeout)
 }
 
-func fencedCredentialAttempt[OUT any](fence *singledispatch.Fence, operation string, value OUT, err error) sdkgo.MutationAttempt[OUT] {
+func fencedCredentialAttempt[OUT any](fence *singledispatch.Fence, operation string, defect sdkgo.BranchID, err error) sdkgo.MutationAttempt[OUT] {
+	if !errors.Is(err, errReamazeCredentialsUnavailable) {
+		var zero OUT
+		return sdkgo.NewMutationBranch(defect, zero, reamazeFailurePointer(sdkgo.FailureAuthentication, operation,
+			"Re:amaze connection credentials are unusable; reconnect the connection in Dex Web"), sdkgo.Receipt{})
+	}
 	if checkpointErr := fence.RecordNotSent(); checkpointErr != nil {
 		return sdkgo.NewMutationRetry[OUT](reamazeFailure(sdkgo.FailureAvailability, operation,
 			errors.Join(err, checkpointErr).Error()), 0)
@@ -73,13 +79,13 @@ func fencedWriteResult[OUT any](fence *singledispatch.Fence, result reamazeExcha
 		return sdkgo.MutationAttempt[OUT]{}, false
 	case exchangeRateLimited, exchangeNotSent:
 		if err := fence.RecordCanResend(); err != nil {
-			return sdkgo.NewMutationRetry[OUT](reamazeFailure(sdkgo.FailureAvailability, result.failure.Operation, "retry checkpoint could not be recorded"), 0), true
+			return sdkgo.NewMutationRetry[OUT](reamazeFailure(sdkgo.FailureAvailability, result.failure.Operation, "retry checkpoint could not be recorded"), result.retryAfter), true
 		}
 		return sdkgo.NewMutationRetry[OUT](result.failure, result.retryAfter), true
 	case exchangeUnavailable:
 		if result.response.statusCode == http.StatusServiceUnavailable {
 			if err := fence.RecordCanResend(); err != nil {
-				return sdkgo.NewMutationRetry[OUT](reamazeFailure(sdkgo.FailureAvailability, result.failure.Operation, "retry checkpoint could not be recorded"), 0), true
+				return sdkgo.NewMutationRetry[OUT](reamazeFailure(sdkgo.FailureAvailability, result.failure.Operation, "retry checkpoint could not be recorded"), result.retryAfter), true
 			}
 		}
 		return sdkgo.NewMutationRetry[OUT](result.failure, result.retryAfter), true
@@ -89,8 +95,7 @@ func fencedWriteResult[OUT any](fence *singledispatch.Fence, result reamazeExcha
 		}
 		return sdkgo.NewMutationBranch(branches.providerRejected, zero, &result.failure, receipt), true
 	case exchangeInvalid:
-		// A 2xx response may have accepted the write; the next attempt reads back.
-		return sdkgo.NewMutationRetry[OUT](result.failure, 0), true
+		return sdkgo.NewMutationUncertain(zero, result.failure, receipt), true
 	case exchangeNotFound:
 		if branches.notFound != "" {
 			return sdkgo.NewMutationBranch(branches.notFound, zero, &result.failure, receipt), true
@@ -116,10 +121,23 @@ func fencedReconciliationRead[OUT any](result reamazeExchange, receipt sdkgo.Rec
 	}
 }
 
+// dispatchKey is the Re:amaze-visible identity of one Step execution's write, derived from its idempotency key.
 func dispatchKey(call sdkgo.Call) string {
 	key := string(call.IdempotencyKey)
 	if key == "" {
 		key = string(call.ID)
 	}
 	return "dex-" + key
+}
+
+func hasUnusableAcceptedWrite(result reamazeExchange) bool {
+	return result.response.statusCode >= http.StatusOK && result.response.statusCode < http.StatusMultipleChoices && result.outcome != exchangeSucceeded
+}
+
+func reconciliationContext(call sdkgo.Call) (context.Context, context.CancelFunc) {
+	deadline, hasDeadline := call.Context.Deadline()
+	if !hasDeadline {
+		return context.WithCancel(call.Context)
+	}
+	return context.WithDeadline(call.Context, deadline.Add(-time.Second))
 }

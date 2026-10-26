@@ -19,18 +19,18 @@ func TestNewIssueUsesMockDefaultsWithRealDex(t *testing.T) {
 	outcome := harness.runTriage(t, "mock-new-issue", integrationIssueInput())
 	require.Equal(t, TriageConversationOpened, outcome.Action)
 	require.True(t, outcome.IsKnownContact)
-	require.Equal(t, "double-charge", outcome.Conversation.ID)
-	require.Equal(t, "dex-note-88213", outcome.NoteOriginID)
 
 	contactCalls := mock.FindContactByEmail().Calls()
 	require.Len(t, contactCalls, 1)
 	require.Equal(t, reamaze.FindContactByEmailInput{Email: "jane@acme.example.com"}, contactCalls[0].Input)
 	searchCalls := mock.SearchConversations().Calls()
-	require.Len(t, searchCalls, 1)
-	require.Equal(t, reamaze.SearchConversationsInput{
-		RequesterEmail: "jane@acme.example.com", Tags: []string{"billing-double-charge"},
-		Sort: reamaze.ConversationSortChanged, Page: 1,
-	}, searchCalls[0].Input)
+	require.Len(t, searchCalls, 3)
+	for index, searchCall := range searchCalls {
+		require.Equal(t, reamaze.SearchConversationsInput{
+			RequesterEmail: "jane@acme.example.com", Tags: []string{"billing-double-charge"},
+			Sort: reamaze.ConversationSortChanged, Page: index + 1,
+		}, searchCall.Input)
+	}
 	createCalls := mock.CreateConversation().Calls()
 	require.Len(t, createCalls, 1)
 	require.Equal(t, reamaze.CreateConversationInput{

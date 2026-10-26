@@ -17,7 +17,15 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		decode func() error
 	}{
 		{name: "searchConversations/searchedDefaultAnswer/1", decode: func() error {
-			_, err := connectormock.DecodeOutput[reamaze.SearchConversationsOutput](`{"conversations":[],"totalCount":0,"pageCount":1}`)
+			_, err := connectormock.DecodeOutput[reamaze.SearchConversationsOutput](`{"conversations":[{"id":"resolved-billing","status":2,"tags":["billing-double-charge"],"channel":{"slug":"support","name":"Support","type":1},"requester":{"name":"Jane Smith","email":"jane@acme.example.com"},"createdAt":"2026-01-20T12:00:00Z"}],"totalCount":3,"pageCount":3,"nextPage":2}`)
+			return err
+		}},
+		{name: "searchConversations/searchedDefaultAnswer/2", decode: func() error {
+			_, err := connectormock.DecodeOutput[reamaze.SearchConversationsOutput](`{"conversations":[{"id":"other-tag","status":0,"tags":["shipping"],"channel":{"slug":"support","name":"Support","type":1},"requester":{"name":"Jane Smith","email":"jane@acme.example.com"},"createdAt":"2026-01-21T12:00:00Z"}],"totalCount":3,"pageCount":3,"nextPage":3}`)
+			return err
+		}},
+		{name: "searchConversations/searchedDefaultAnswer/3", decode: func() error {
+			_, err := connectormock.DecodeOutput[reamaze.SearchConversationsOutput](`{"conversations":[{"id":"other-requester","status":0,"tags":["billing-double-charge"],"channel":{"slug":"support","name":"Support","type":1},"requester":{"name":"Alex Reed","email":"alex@acme.example.com"},"createdAt":"2026-01-22T12:00:00Z"}],"totalCount":3,"pageCount":3,"nextPage":0}`)
 			return err
 		}},
 		{name: "getConversation/foundDefaultAnswer/1", decode: func() error {

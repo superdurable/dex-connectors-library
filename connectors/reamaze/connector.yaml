@@ -54,6 +54,7 @@ spec:
       kind: query
       description: "List one page of up to 30 conversations of the brand, filtered by Re:amaze view, requester email, tags, channel, and latest customer message time, with the next page number."
       idempotency: none
+      pagination: {inputField: page, nextField: nextPage}
       branches:
         - {id: searched, goName: Searched, description: "Re:amaze returned one page of matching conversations; it may be empty."}
         - {id: providerRejected, goName: ProviderRejected, description: "Re:amaze conclusively rejected the search, such as invalid credentials, an unknown brand, or a missing permission.", optional: true}
@@ -65,16 +66,19 @@ spec:
       mocks:
         - name: searchedDefaultAnswer
           branch: searched
-          description: "A search for Jane’s new billing issue has no matching conversation on this page."
+          description: "A search for requesterEmail jane@acme.example.com and tag billing-double-charge spans three pages; resolved, wrong-tag, and wrong-requester conversations are decoys."
           default: true
-          output: {conversations: [], totalCount: 0, pageCount: 1}
+          pages:
+            - {conversations: [{id: resolved-billing, status: 2, tags: [billing-double-charge], channel: {slug: support, name: Support, type: 1}, requester: {name: Jane Smith, email: jane@acme.example.com}, createdAt: "2026-01-20T12:00:00Z"}], totalCount: 3, pageCount: 3, nextPage: 2}
+            - {conversations: [{id: other-tag, status: 0, tags: [shipping], channel: {slug: support, name: Support, type: 1}, requester: {name: Jane Smith, email: jane@acme.example.com}, createdAt: "2026-01-21T12:00:00Z"}], totalCount: 3, pageCount: 3, nextPage: 3}
+            - {conversations: [{id: other-requester, status: 0, tags: [billing-double-charge], channel: {slug: support, name: Support, type: 1}, requester: {name: Alex Reed, email: alex@acme.example.com}, createdAt: "2026-01-22T12:00:00Z"}], totalCount: 3, pageCount: 3, nextPage: 0}
         - name: providerRejectedFailure
           branch: providerRejected
-          description: "Re:amaze rejects an invalid search filter with HTTP 400."
-          failure: {kind: VALIDATION, message: "Re:amaze rejected the search filter (HTTP 400)."}
+          description: "For requesterEmail jane@acme.example.com, a revoked API token returns HTTP 401."
+          failure: {kind: AUTHENTICATION, message: "Re:amaze rejected the search (HTTP 401)."}
         - name: invalidResponseFailure
           branch: invalidResponse
-          description: "Re:amaze returned a malformed JSON response for this searchConversations request."
+          description: "For requesterEmail jane@acme.example.com, Re:amaze returns a malformed conversation page."
           failure: {kind: PROTOCOL, message: "Re:amaze returned a malformed JSON response."}
     - name: getConversation
       goName: GetConversation
@@ -100,22 +104,22 @@ spec:
           output: {conversation: {id: double-charge, subject: Double charge on order 88213, status: 0, tags: [billing-double-charge], channel: {slug: support, name: Support, type: 1}, requester: {name: Jane Smith, email: jane@acme.example.com}, firstMessage: I was charged twice., createdAt: "2026-01-26T22:02:00Z"}, messages: [{body: I was charged twice., visibility: 0, isInternalNote: false, origin: 7, originId: customer-88213, createdAt: "2026-01-26T22:02:00Z"}]}
         - name: notFoundFailure
           branch: notFound
-          description: "The conversation does not exist in the brand or is not visible to the connection's user."
+          description: "For conversationId missing-conversation, Re:amaze returns HTTP 404."
           failure: {kind: NOT_FOUND, message: "The conversation does not exist in the brand or is not visible to the connection's user."}
         - name: providerRejectedFailure
           branch: providerRejected
-          description: "Re:amaze rejects an invalid conversation request with HTTP 400."
-          failure: {kind: VALIDATION, message: "Re:amaze rejected the conversation request (HTTP 400)."}
+          description: "For conversationId double-charge, a revoked API token returns HTTP 401."
+          failure: {kind: AUTHENTICATION, message: "Re:amaze rejected the conversation read (HTTP 401)."}
         - name: invalidResponseFailure
           branch: invalidResponse
-          description: "Re:amaze returned a malformed JSON response for this getConversation request."
+          description: "For conversationId double-charge, Re:amaze returns a malformed conversation object."
           failure: {kind: PROTOCOL, message: "Re:amaze returned a malformed JSON response."}
     - name: createConversation
       goName: CreateConversation
       inputType: CreateConversationInput
       outputType: CreateConversationOutput
       kind: mutation
-      description: "Create one conversation on behalf of a customer in one channel. Re:amaze has no idempotency key, so the Step runs with sync durability, sends the request once per Step execution, and reconciles an unconfirmed attempt by finding the conversation whose data attribute holds the Step's key. A shared single-dispatch fence requires sync durability so retry attempts see its heartbeat checkpoint and do not resend a possibly accepted write."
+      description: "Create one conversation on behalf of a customer in one channel. Re:amaze has no idempotency key, so the Step runs with sync durability, resends only after a confirmed 429, 503, or provably unsent request, and reconciles an unconfirmed attempt by finding the conversation whose data attribute holds the Step's key. A shared single-dispatch fence requires sync durability so retry attempts see its heartbeat checkpoint and do not resend a possibly accepted write."
       idempotency: required
       branches:
         - {id: created, goName: Created, description: "The conversation exists; a retried attempt that found the conversation an earlier attempt created reports it instead of sending again."}
@@ -126,7 +130,7 @@ spec:
         executeMethodTimeout: 30s
         durability: sync
         dispatchFence: true
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "A conversation without confirmed read-back may be a duplicate if manually repeated; limit attempts while waiting for reconciliation."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "Re:amaze has no provider idempotency key, and an absent read-back cannot prove a resend is safe."}}
       mocks:
         - name: createdDefaultAnswer
           branch: created
@@ -135,7 +139,7 @@ spec:
           output: {conversation: {id: double-charge, subject: Double charge on order 88213, status: 0, tags: [billing-double-charge], channel: {slug: support, name: Support, type: 1}, requester: {name: Jane Smith, email: jane@acme.example.com}, firstMessage: I was charged twice., createdAt: "2026-01-26T22:02:00Z"}}
         - name: providerRejectedFailure
           branch: providerRejected
-          description: "Re:amaze rejects an unknown channel with HTTP 422."
+          description: "For channel retired-channel, Re:amaze rejects the create with HTTP 422."
           failure: {kind: VALIDATION, message: "Re:amaze rejected the channel (HTTP 422)."}
     - name: updateConversation
       goName: UpdateConversation
@@ -161,7 +165,7 @@ spec:
           output: {conversation: {id: double-charge, subject: Double charge on order 88213, status: 0, tags: [billing-double-charge], channel: {slug: support, name: Support, type: 1}, requester: {name: Jane Smith, email: jane@acme.example.com}, firstMessage: I was charged twice., createdAt: "2026-01-26T22:02:00Z"}}
         - name: notFoundFailure
           branch: notFound
-          description: "The conversation does not exist in the brand or is not visible to the connection's user."
+          description: "For conversationId missing-conversation, Re:amaze returns HTTP 404."
           failure: {kind: NOT_FOUND, message: "The conversation does not exist in the brand or is not visible to the connection's user."}
         - name: providerRejectedFailure
           branch: providerRejected
@@ -169,7 +173,7 @@ spec:
           failure: {kind: VALIDATION, message: "Re:amaze rejected the assignee (HTTP 422)."}
         - name: invalidResponseFailure
           branch: invalidResponse
-          description: "Re:amaze returned a malformed JSON response for this updateConversation request."
+          description: "For conversationId double-charge, Re:amaze returns a malformed updated conversation."
           failure: {kind: PROTOCOL, message: "Re:amaze returned a malformed JSON response."}
     - name: replyToConversation
       goName: ReplyToConversation
@@ -188,7 +192,7 @@ spec:
         executeMethodTimeout: 30s
         durability: sync
         dispatchFence: true
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "Reamaze does not guarantee origin-ID deduplication, so an unconfirmed reply cannot safely be sent again."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "Re:amaze does not document enforced origin-ID deduplication, so an unconfirmed reply cannot safely be sent again."}}
       mocks:
         - name: repliedDefaultAnswer
           branch: replied
@@ -197,12 +201,12 @@ spec:
           output: {conversationId: double-charge, message: {body: Triage note for order 88213., visibility: 1, isInternalNote: true, origin: 7, originId: dex-note-88213, createdAt: "2026-01-27T20:00:00Z"}}
         - name: notFoundFailure
           branch: notFound
-          description: "The conversation does not exist in the brand or is not visible to the connection's user; nothing was added."
+          description: "For conversationId missing-conversation, Re:amaze returns HTTP 404 and adds no message."
           failure: {kind: NOT_FOUND, message: "The conversation does not exist in the brand or is not visible to the connection's user; nothing was added."}
         - name: providerRejectedFailure
           branch: providerRejected
-          description: "Re:amaze rejects an invalid message with HTTP 422."
-          failure: {kind: VALIDATION, message: "Re:amaze rejected the message (HTTP 422)."}
+          description: "For conversationId double-charge and text Note., a revoked API token returns HTTP 401."
+          failure: {kind: AUTHENTICATION, message: "Re:amaze rejected the message (HTTP 401)."}
     - name: findContactByEmail
       goName: FindContactByEmail
       inputType: FindContactByEmailInput
@@ -227,13 +231,13 @@ spec:
           output: {contacts: [{name: Jane Smith, email: jane@acme.example.com, friendlyName: Jane}]}
         - name: notFoundNoMatch
           branch: notFound
-          description: "Jane's email has no exact match on the first contact search page."
+          description: "For email missing@acme.example.com, no exact contact matches on the first search page."
           output: {contacts: [], hasMoreCandidates: false}
         - name: providerRejectedFailure
           branch: providerRejected
-          description: "Re:amaze rejects an invalid contact search with HTTP 400."
-          failure: {kind: VALIDATION, message: "Re:amaze rejected the contact search (HTTP 400)."}
+          description: "For email jane@acme.example.com, a revoked API token returns HTTP 401."
+          failure: {kind: AUTHENTICATION, message: "Re:amaze rejected the contact search (HTTP 401)."}
         - name: invalidResponseFailure
           branch: invalidResponse
-          description: "Re:amaze returned a malformed JSON response for this findContactByEmail request."
+          description: "For email jane@acme.example.com, Re:amaze returns a malformed contact search page."
           failure: {kind: PROTOCOL, message: "Re:amaze returned a malformed JSON response."}

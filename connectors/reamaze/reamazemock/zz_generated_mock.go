@@ -131,19 +131,24 @@ func SearchConversationsRetry(failure sdkgo.Failure, after time.Duration) connec
 	return connectormock.Retry[reamaze.SearchConversationsOutput](failure, after)
 }
 
-// SearchConversationsSearchedDefaultAnswer is the manifest mock searchedDefaultAnswer: A search for Jane’s new billing issue has no matching conversation on this page.
+// SearchConversationsSearchedDefaultAnswer is the manifest mock searchedDefaultAnswer: A search for requesterEmail jane@acme.example.com and tag billing-double-charge spans three pages; resolved, wrong-tag, and wrong-requester conversations are decoys.
 func SearchConversationsSearchedDefaultAnswer() connectormock.Case[reamaze.SearchConversationsOutput] {
-	value := connectormock.MustDecodeOutput[reamaze.SearchConversationsOutput](`{"conversations":[],"totalCount":0,"pageCount":1}`)
-	return connectormock.Branch(reamaze.SearchConversationsBranchSearched, value, nil)
+	pages := []reamaze.SearchConversationsOutput{
+		connectormock.MustDecodeOutput[reamaze.SearchConversationsOutput](`{"conversations":[{"id":"resolved-billing","status":2,"tags":["billing-double-charge"],"channel":{"slug":"support","name":"Support","type":1},"requester":{"name":"Jane Smith","email":"jane@acme.example.com"},"createdAt":"2026-01-20T12:00:00Z"}],"totalCount":3,"pageCount":3,"nextPage":2}`),
+		connectormock.MustDecodeOutput[reamaze.SearchConversationsOutput](`{"conversations":[{"id":"other-tag","status":0,"tags":["shipping"],"channel":{"slug":"support","name":"Support","type":1},"requester":{"name":"Jane Smith","email":"jane@acme.example.com"},"createdAt":"2026-01-21T12:00:00Z"}],"totalCount":3,"pageCount":3,"nextPage":3}`),
+		connectormock.MustDecodeOutput[reamaze.SearchConversationsOutput](`{"conversations":[{"id":"other-requester","status":0,"tags":["billing-double-charge"],"channel":{"slug":"support","name":"Support","type":1},"requester":{"name":"Alex Reed","email":"alex@acme.example.com"},"createdAt":"2026-01-22T12:00:00Z"}],"totalCount":3,"pageCount":3,"nextPage":0}`),
+	}
+	pageNumber := connectormock.CursorPageNumber[reamaze.SearchConversationsInput]("page", "nextPage", pages)
+	return connectormock.Paged(reamaze.SearchConversationsBranchSearched, pageNumber, pages...)
 }
 
-// SearchConversationsProviderRejectedFailure is the manifest mock providerRejectedFailure: Re:amaze rejects an invalid search filter with HTTP 400.
+// SearchConversationsProviderRejectedFailure is the manifest mock providerRejectedFailure: For requesterEmail jane@acme.example.com, a revoked API token returns HTTP 401.
 func SearchConversationsProviderRejectedFailure() connectormock.Case[reamaze.SearchConversationsOutput] {
 	var value reamaze.SearchConversationsOutput
-	return connectormock.Branch(reamaze.SearchConversationsBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureValidation, Message: "Re:amaze rejected the search filter (HTTP 400)."})
+	return connectormock.Branch(reamaze.SearchConversationsBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthentication, Message: "Re:amaze rejected the search (HTTP 401)."})
 }
 
-// SearchConversationsInvalidResponseFailure is the manifest mock invalidResponseFailure: Re:amaze returned a malformed JSON response for this searchConversations request.
+// SearchConversationsInvalidResponseFailure is the manifest mock invalidResponseFailure: For requesterEmail jane@acme.example.com, Re:amaze returns a malformed conversation page.
 func SearchConversationsInvalidResponseFailure() connectormock.Case[reamaze.SearchConversationsOutput] {
 	var value reamaze.SearchConversationsOutput
 	return connectormock.Branch(reamaze.SearchConversationsBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "Re:amaze returned a malformed JSON response."})
@@ -190,19 +195,19 @@ func GetConversationFoundDefaultAnswer() connectormock.Case[reamaze.Conversation
 	return connectormock.Branch(reamaze.GetConversationBranchFound, value, nil)
 }
 
-// GetConversationNotFoundFailure is the manifest mock notFoundFailure: The conversation does not exist in the brand or is not visible to the connection's user.
+// GetConversationNotFoundFailure is the manifest mock notFoundFailure: For conversationId missing-conversation, Re:amaze returns HTTP 404.
 func GetConversationNotFoundFailure() connectormock.Case[reamaze.ConversationDetails] {
 	var value reamaze.ConversationDetails
 	return connectormock.Branch(reamaze.GetConversationBranchNotFound, value, &sdkgo.Failure{Kind: sdkgo.FailureNotFound, Message: "The conversation does not exist in the brand or is not visible to the connection's user."})
 }
 
-// GetConversationProviderRejectedFailure is the manifest mock providerRejectedFailure: Re:amaze rejects an invalid conversation request with HTTP 400.
+// GetConversationProviderRejectedFailure is the manifest mock providerRejectedFailure: For conversationId double-charge, a revoked API token returns HTTP 401.
 func GetConversationProviderRejectedFailure() connectormock.Case[reamaze.ConversationDetails] {
 	var value reamaze.ConversationDetails
-	return connectormock.Branch(reamaze.GetConversationBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureValidation, Message: "Re:amaze rejected the conversation request (HTTP 400)."})
+	return connectormock.Branch(reamaze.GetConversationBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthentication, Message: "Re:amaze rejected the conversation read (HTTP 401)."})
 }
 
-// GetConversationInvalidResponseFailure is the manifest mock invalidResponseFailure: Re:amaze returned a malformed JSON response for this getConversation request.
+// GetConversationInvalidResponseFailure is the manifest mock invalidResponseFailure: For conversationId double-charge, Re:amaze returns a malformed conversation object.
 func GetConversationInvalidResponseFailure() connectormock.Case[reamaze.ConversationDetails] {
 	var value reamaze.ConversationDetails
 	return connectormock.Branch(reamaze.GetConversationBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "Re:amaze returned a malformed JSON response."})
@@ -244,7 +249,7 @@ func CreateConversationCreatedDefaultAnswer() connectormock.Case[reamaze.CreateC
 	return connectormock.Branch(reamaze.CreateConversationBranchCreated, value, nil)
 }
 
-// CreateConversationProviderRejectedFailure is the manifest mock providerRejectedFailure: Re:amaze rejects an unknown channel with HTTP 422.
+// CreateConversationProviderRejectedFailure is the manifest mock providerRejectedFailure: For channel retired-channel, Re:amaze rejects the create with HTTP 422.
 func CreateConversationProviderRejectedFailure() connectormock.Case[reamaze.CreateConversationOutput] {
 	var value reamaze.CreateConversationOutput
 	return connectormock.Branch(reamaze.CreateConversationBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureValidation, Message: "Re:amaze rejected the channel (HTTP 422)."})
@@ -291,7 +296,7 @@ func UpdateConversationUpdatedDefaultAnswer() connectormock.Case[reamaze.UpdateC
 	return connectormock.Branch(reamaze.UpdateConversationBranchUpdated, value, nil)
 }
 
-// UpdateConversationNotFoundFailure is the manifest mock notFoundFailure: The conversation does not exist in the brand or is not visible to the connection's user.
+// UpdateConversationNotFoundFailure is the manifest mock notFoundFailure: For conversationId missing-conversation, Re:amaze returns HTTP 404.
 func UpdateConversationNotFoundFailure() connectormock.Case[reamaze.UpdateConversationOutput] {
 	var value reamaze.UpdateConversationOutput
 	return connectormock.Branch(reamaze.UpdateConversationBranchNotFound, value, &sdkgo.Failure{Kind: sdkgo.FailureNotFound, Message: "The conversation does not exist in the brand or is not visible to the connection's user."})
@@ -303,7 +308,7 @@ func UpdateConversationProviderRejectedFailure() connectormock.Case[reamaze.Upda
 	return connectormock.Branch(reamaze.UpdateConversationBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureValidation, Message: "Re:amaze rejected the assignee (HTTP 422)."})
 }
 
-// UpdateConversationInvalidResponseFailure is the manifest mock invalidResponseFailure: Re:amaze returned a malformed JSON response for this updateConversation request.
+// UpdateConversationInvalidResponseFailure is the manifest mock invalidResponseFailure: For conversationId double-charge, Re:amaze returns a malformed updated conversation.
 func UpdateConversationInvalidResponseFailure() connectormock.Case[reamaze.UpdateConversationOutput] {
 	var value reamaze.UpdateConversationOutput
 	return connectormock.Branch(reamaze.UpdateConversationBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "Re:amaze returned a malformed JSON response."})
@@ -350,16 +355,16 @@ func ReplyToConversationRepliedDefaultAnswer() connectormock.Case[reamaze.Conver
 	return connectormock.Branch(reamaze.ReplyToConversationBranchReplied, value, nil)
 }
 
-// ReplyToConversationNotFoundFailure is the manifest mock notFoundFailure: The conversation does not exist in the brand or is not visible to the connection's user; nothing was added.
+// ReplyToConversationNotFoundFailure is the manifest mock notFoundFailure: For conversationId missing-conversation, Re:amaze returns HTTP 404 and adds no message.
 func ReplyToConversationNotFoundFailure() connectormock.Case[reamaze.ConversationReply] {
 	var value reamaze.ConversationReply
 	return connectormock.Branch(reamaze.ReplyToConversationBranchNotFound, value, &sdkgo.Failure{Kind: sdkgo.FailureNotFound, Message: "The conversation does not exist in the brand or is not visible to the connection's user; nothing was added."})
 }
 
-// ReplyToConversationProviderRejectedFailure is the manifest mock providerRejectedFailure: Re:amaze rejects an invalid message with HTTP 422.
+// ReplyToConversationProviderRejectedFailure is the manifest mock providerRejectedFailure: For conversationId double-charge and text Note., a revoked API token returns HTTP 401.
 func ReplyToConversationProviderRejectedFailure() connectormock.Case[reamaze.ConversationReply] {
 	var value reamaze.ConversationReply
-	return connectormock.Branch(reamaze.ReplyToConversationBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureValidation, Message: "Re:amaze rejected the message (HTTP 422)."})
+	return connectormock.Branch(reamaze.ReplyToConversationBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthentication, Message: "Re:amaze rejected the message (HTTP 401)."})
 }
 
 // ReplyToConversationDefault is the manifest default, repliedDefaultAnswer, which New installs.
@@ -403,19 +408,19 @@ func FindContactByEmailFoundDefaultAnswer() connectormock.Case[reamaze.FindConta
 	return connectormock.Branch(reamaze.FindContactByEmailBranchFound, value, nil)
 }
 
-// FindContactByEmailNotFoundNoMatch is the manifest mock notFoundNoMatch: Jane's email has no exact match on the first contact search page.
+// FindContactByEmailNotFoundNoMatch is the manifest mock notFoundNoMatch: For email missing@acme.example.com, no exact contact matches on the first search page.
 func FindContactByEmailNotFoundNoMatch() connectormock.Case[reamaze.FindContactByEmailOutput] {
 	value := connectormock.MustDecodeOutput[reamaze.FindContactByEmailOutput](`{"contacts":[],"hasMoreCandidates":false}`)
 	return connectormock.Branch(reamaze.FindContactByEmailBranchNotFound, value, nil)
 }
 
-// FindContactByEmailProviderRejectedFailure is the manifest mock providerRejectedFailure: Re:amaze rejects an invalid contact search with HTTP 400.
+// FindContactByEmailProviderRejectedFailure is the manifest mock providerRejectedFailure: For email jane@acme.example.com, a revoked API token returns HTTP 401.
 func FindContactByEmailProviderRejectedFailure() connectormock.Case[reamaze.FindContactByEmailOutput] {
 	var value reamaze.FindContactByEmailOutput
-	return connectormock.Branch(reamaze.FindContactByEmailBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureValidation, Message: "Re:amaze rejected the contact search (HTTP 400)."})
+	return connectormock.Branch(reamaze.FindContactByEmailBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthentication, Message: "Re:amaze rejected the contact search (HTTP 401)."})
 }
 
-// FindContactByEmailInvalidResponseFailure is the manifest mock invalidResponseFailure: Re:amaze returned a malformed JSON response for this findContactByEmail request.
+// FindContactByEmailInvalidResponseFailure is the manifest mock invalidResponseFailure: For email jane@acme.example.com, Re:amaze returns a malformed contact search page.
 func FindContactByEmailInvalidResponseFailure() connectormock.Case[reamaze.FindContactByEmailOutput] {
 	var value reamaze.FindContactByEmailOutput
 	return connectormock.Branch(reamaze.FindContactByEmailBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "Re:amaze returned a malformed JSON response."})

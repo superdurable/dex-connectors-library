@@ -195,8 +195,9 @@ documents as a unique message identifier that helps prevent duplicates.
 
 `reamazemock` supplies one default happy outcome and the definite business
 branches for each of the six operations. Its defaults describe Jane's new
-billing issue: a known contact, no matching conversation, one created support
-conversation, and one internal triage note. The runnable Flow's real Dex mock
+billing issue: a known contact, three conversation pages containing resolved,
+wrong-tag, and wrong-requester decoys, one created support conversation, and
+one internal triage note. The runnable Flow's real Dex mock
 test records calls and checks application behavior:
 
 ```go
@@ -215,14 +216,16 @@ credentials are loaded, claims the write, bounds its HTTP request inside the
 Step deadline, and permits one send per attempt. A missing, stale, foreign,
 or claimed checkpoint never authorizes a resend. A 429, 503, or provably
 undispatched connection permits one retry; a 409 triggers read-back. A 2xx
-with an unusable body also triggers read-back without another POST.
+with an unusable body triggers read-back in the same attempt without another
+POST. A transient read-back failure retries as a read, while an absent record
+selects `uncertain`.
 
 The create request stores the Step's key in conversation `data`, then a later
 attempt searches for that key and confirms it on the conversation detail when
 the list omits `data`. The reply stores the key as `origin_id` and reads the
 newest message page. If these reads cannot confirm an earlier write, the
 operation selects `uncertain`; a transient read failure retries. Re:amaze
-[documents `origin_id` as a duplicate prevention aid](https://support.reamaze.com/api/get_messages),
+[documents `origin_id` as a duplicate prevention aid](https://www.reamaze.com/api/post_messages),
 but does not specify an enforced deduplication window or conflict behavior.
 That guarantee remains unverified, so a possibly accepted reply is never
 resent. Re:amaze [documents conversation data filters](https://www.reamaze.com/api/get_conversations),
@@ -233,6 +236,12 @@ A heartbeat frame can be lost between the Worker and Dex storage. The shared
 fence fails closed when the claim is missing on a later attempt, so no second
 POST follows that ambiguity. Keep these two Steps sync; async local-phase
 heartbeats are not visible to later attempts.
+
+Before upgrading an in-flight v0.21.2 create or reply, reconcile it in
+Re:amaze by its conversation data key or message `origin_id`. The shared fence
+cannot read legacy dispatch markers; a v0.21.2 marker or a heartbeat cleared
+after 429 fails closed to `uncertain` on the next attempt, even when the
+provider did not apply the request.
 
 ## Errors
 
@@ -245,6 +254,7 @@ the HTTP status, such as `Re:amaze rejected the request (HTTP 422)`.
 | 400, 422 | `providerRejected`, `VALIDATION` | `providerRejected`, `VALIDATION` |
 | 401, 403 | `providerRejected`, `AUTHENTICATION` or `AUTHORIZATION` | same |
 | 404 | `notFound` where declared, otherwise `providerRejected` | same |
+| 404 during reply read-back | N/A | `uncertain`: the conversation may have been removed after accepting the reply |
 | 409 | `providerRejected`, `CONFLICT` | Retry as a read-back, never a resend |
 | other 4xx | `providerRejected` | `providerRejected` |
 | 3xx | `providerRejected`, `PROTOCOL`; redirects are never followed | same |
@@ -252,10 +262,10 @@ the HTTP status, such as `Re:amaze rejected the request (HTTP 422)`.
 | connection refused before sending | Retry | Retry, then send |
 | 503 | Retry, after `Retry-After` when present | Retry with the next attempt’s fence marker |
 | 408, other 5xx, lost or unreadable response | Retry, after `Retry-After` when present | Retry as a read-back, never a resend |
-| oversized or credential-reflecting 2xx | `invalidResponse` | Retry as a read-back |
-| malformed 2xx | `invalidResponse` | Retry as a read-back, then `uncertain` if unconfirmed |
+| oversized, interrupted, or credential-reflecting 2xx | `invalidResponse` or Retry for a read | Read back in the same attempt; `uncertain` if no record confirms acceptance |
+| malformed 2xx | `invalidResponse` | Read back in the same attempt; `uncertain` if unconfirmed |
 | connection credentials that cannot be read yet, such as a storage outage | Retry, with no request | Retry, with no request |
-| invalid input or unusable connection credentials | `defect`, with no request | Invalid input selects `defect`; credential failure before send retries, or selects `uncertain` after a possible send |
+| invalid input or unusable connection credentials | `defect`, with no request | `defect`, `AUTHENTICATION` with a reconnect hint for unusable credentials before send; `uncertain` after a possible send |
 
 The Receipt carries the Call ID, the conversation slug, and an `X-Request-Id`
 header when Re:amaze sends one.
