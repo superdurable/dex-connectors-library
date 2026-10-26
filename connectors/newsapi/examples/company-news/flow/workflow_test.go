@@ -53,7 +53,6 @@ func TestStartFlowIdentitiesMatchTheFlowDefinition(t *testing.T) {
 	require.Equal(t, "NewsAPICompanyNews", dex.GetFinalFlowType(NewFlow(newsapi.Connection{})))
 	require.Equal(t, "RecordCompanyNewsRequest", dex.GetFinalStepType[CompanyNewsRequest](recordCompanyNewsRequest{}))
 	require.Equal(t, "CompanyArticlesFound", dex.GetFinalStepType[newsapi.SearchArticlesResult](companyArticlesFound{}))
-	require.Equal(t, "CompanyNewsRejected", dex.GetFinalStepType[newsapi.SearchArticlesResult](companyNewsRejected{}))
 	wait, err := recordCompanyNewsRequest{}.WaitFor(nil, CompanyNewsRequest{Company: "Acme"})
 	require.NoError(t, err)
 	require.Equal(t, dex.SkipWaitImmediately(), wait)

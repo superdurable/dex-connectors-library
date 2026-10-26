@@ -25,19 +25,16 @@ const (
 	// ConnectionName is the static Dex Web connection for Microsoft Teams.
 	ConnectionName = "microsoft-teams"
 
-	recordIncidentUpdateStepType    = "RecordIncidentUpdate"
-	postIncidentUpdateStepType      = "PostIncidentUpdate"
-	recordIncidentPostStepType      = "RecordIncidentPost"
-	recordRejectedPostStepType      = "RecordRejectedPost"
-	recordUncertainPostStepType     = "RecordUncertainPost"
-	postStatusReplyStepType         = "PostStatusReply"
-	recordStatusReplyStepType       = "RecordStatusReply"
-	waitForAcknowledgementStepType  = "WaitForAcknowledgement"
-	readThreadRepliesStepType       = "ReadThreadReplies"
-	checkAcknowledgementStepType    = "CheckAcknowledgement"
-	recordUnreadableRepliesStepType = "RecordUnreadableReplies"
-	escalateToChatStepType          = "EscalateToChat"
-	recordEscalationStepType        = "RecordEscalation"
+	recordIncidentUpdateStepType   = "RecordIncidentUpdate"
+	postIncidentUpdateStepType     = "PostIncidentUpdate"
+	recordIncidentPostStepType     = "RecordIncidentPost"
+	postStatusReplyStepType        = "PostStatusReply"
+	recordStatusReplyStepType      = "RecordStatusReply"
+	waitForAcknowledgementStepType = "WaitForAcknowledgement"
+	readThreadRepliesStepType      = "ReadThreadReplies"
+	checkAcknowledgementStepType   = "CheckAcknowledgement"
+	escalateToChatStepType         = "EscalateToChat"
+	recordEscalationStepType       = "RecordEscalation"
 
 	defaultAcknowledgementPhrase = "ack"
 	maximumPhraseCharacters      = 64
@@ -60,12 +57,6 @@ const (
 	PhaseEscalated = "escalated"
 	// PhaseUnacknowledged means nobody acknowledged and no escalation chat was picked.
 	PhaseUnacknowledged = "unacknowledged"
-	// PhaseRejected means Microsoft Teams refused the channel post; nothing was posted.
-	PhaseRejected = "rejected"
-	// PhasePostOutcomeUnknown means the channel post may or may not exist; it is never re-sent.
-	PhasePostOutcomeUnknown = "postOutcomeUnknown"
-	// PhaseRepliesUnreadable means the thread's replies cannot be read, for example without administrator consent.
-	PhaseRepliesUnreadable = "repliesUnreadable"
 )
 
 var (
@@ -210,9 +201,7 @@ type IncidentAcknowledgement struct {
 	EscalationChatID string `json:"escalationChatId,omitempty"`
 	// EscalationMessageID is the escalation chat message, when Teams confirmed it.
 	EscalationMessageID string `json:"escalationMessageId,omitempty"`
-	// IsEscalationOutcomeUnknown reports an escalation Teams may or may not have stored; it is never re-sent.
-	IsEscalationOutcomeUnknown bool `json:"isEscalationOutcomeUnknown,omitempty"`
-	// FailureKind is the safe failure category of a refused post, a refused escalation, or unreadable replies.
+	// FailureKind is the safe failure category of a refused status reply.
 	FailureKind sdkgo.FailureKind `json:"failureKind,omitempty"`
 }
 
@@ -285,13 +274,9 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				},
 			}},
 			Connection: flow.connection, MapToOperationInput: flow.MapToPostChannelMessageInput,
-			Sent:             sdkgo.GoTo(recordIncidentPost{}),
-			ProviderRejected: sdkgo.GoTo(recordRejectedPost{}),
-			Uncertain:        sdkgo.GoTo(recordUncertainPost{}),
+			Sent: sdkgo.GoTo(recordIncidentPost{}),
 		})),
 		dex.DefineStep(recordIncidentPost{}),
-		dex.DefineStep(recordRejectedPost{}),
-		dex.DefineStep(recordUncertainPost{}),
 		dex.DefineStep(teams.NewPostThreadReplyStep(teams.PostThreadReplyStepConfig[StatusReplyRequest]{
 			StepType: postStatusReplyStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
@@ -299,9 +284,11 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Reply in the incident thread with the status and how to acknowledge, once.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToPostThreadReplyInput,
-			Sent:             sdkgo.GoTo(recordStatusReply{}),
+			Sent: sdkgo.GoTo(recordStatusReply{}),
+			// Keep watching the incident thread for an acknowledgement even if the status reply was refused.
 			ProviderRejected: sdkgo.GoTo(recordStatusReply{}),
-			Uncertain:        sdkgo.GoTo(recordStatusReply{}),
+			// Keep watching the thread while the status reply's delivery remains unconfirmed.
+			Uncertain: sdkgo.GoTo(recordStatusReply{}),
 		})),
 		dex.DefineStep(recordStatusReply{}),
 		dex.DefineStep(waitForAcknowledgement{checkInterval: flow.policy.CheckInterval}),
@@ -312,13 +299,9 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Read the newest 50 replies in the incident thread.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToListThreadRepliesInput,
-			Read:             sdkgo.GoTo(checkAcknowledgement{maximumChecks: flow.policy.MaximumChecks, escalationChatID: flow.escalation.ChatID}),
-			NotFound:         sdkgo.GoTo(recordUnreadableReplies{}),
-			ProviderRejected: sdkgo.GoTo(recordUnreadableReplies{}),
-			InvalidResponse:  sdkgo.GoTo(recordUnreadableReplies{}),
+			Read: sdkgo.GoTo(checkAcknowledgement{maximumChecks: flow.policy.MaximumChecks, escalationChatID: flow.escalation.ChatID}),
 		})),
 		dex.DefineStep(checkAcknowledgement{maximumChecks: flow.policy.MaximumChecks, escalationChatID: flow.escalation.ChatID}),
-		dex.DefineStep(recordUnreadableReplies{}),
 		dex.DefineStep(teams.NewPostChatMessageStep(teams.PostChatMessageStepConfig[EscalationRequest]{
 			StepType: escalateToChatStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
@@ -334,9 +317,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				},
 			}}},
 			Connection: flow.connection, MapToOperationInput: MapToPostChatMessageInput,
-			Sent:             sdkgo.GoTo(recordEscalation{}),
-			ProviderRejected: sdkgo.GoTo(recordEscalation{}),
-			Uncertain:        sdkgo.GoTo(recordEscalation{}),
+			Sent: sdkgo.GoTo(recordEscalation{}),
 		})),
 		dex.DefineStep(recordEscalation{}),
 	}
@@ -579,62 +560,6 @@ func (recordIncidentPost) Execute(ctx dex.Context, result teams.PostChannelMessa
 }
 
 // dex:group group-id:posting group-label:"Posting"
-// dex:explanation text:"Complete as rejected; Teams refused the post and nothing was posted."
-type recordRejectedPost struct {
-	dex.StepDefaultsNoWaitFor[teams.PostChannelMessageResult]
-}
-
-func (recordRejectedPost) GetStepType() string { return recordRejectedPostStepType }
-
-func (recordRejectedPost) GetStepOptions() *dex.StepOptions {
-	return &dex.StepOptions{ExecuteLockAttributes: incidentLocks()}
-}
-
-func (recordRejectedPost) Execute(ctx dex.Context, result teams.PostChannelMessageResult) (*dex.StepDecision, error) {
-	record, err := incidentAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	record.TeamID, record.ChannelID = result.Value.TeamID, result.Value.ChannelID
-	record.Phase, record.FailureKind = PhaseRejected, failureKindOf(result.Failure)
-	if err := incidentPhaseAttribute.Set(ctx, record.Phase); err != nil {
-		return nil, err
-	}
-	if err := incidentAttribute.Set(ctx, record); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(record), nil
-}
-
-// dex:group group-id:posting group-label:"Posting"
-// dex:explanation text:"Complete without re-sending; the post's outcome is unknown and must be checked in Teams."
-type recordUncertainPost struct {
-	dex.StepDefaultsNoWaitFor[teams.PostChannelMessageResult]
-}
-
-func (recordUncertainPost) GetStepType() string { return recordUncertainPostStepType }
-
-func (recordUncertainPost) GetStepOptions() *dex.StepOptions {
-	return &dex.StepOptions{ExecuteLockAttributes: incidentLocks()}
-}
-
-func (recordUncertainPost) Execute(ctx dex.Context, result teams.PostChannelMessageResult) (*dex.StepDecision, error) {
-	record, err := incidentAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	record.TeamID, record.ChannelID = result.Value.TeamID, result.Value.ChannelID
-	record.Phase, record.FailureKind = PhasePostOutcomeUnknown, failureKindOf(result.Failure)
-	if err := incidentPhaseAttribute.Set(ctx, record.Phase); err != nil {
-		return nil, err
-	}
-	if err := incidentAttribute.Set(ctx, record); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(record), nil
-}
-
-// dex:group group-id:posting group-label:"Posting"
 // dex:explanation text:"Record the status reply's outcome, then wait for an acknowledgement in the thread."
 type recordStatusReply struct {
 	dex.StepDefaultsNoWaitFor[teams.PostThreadReplyResult]
@@ -736,33 +661,6 @@ func (step checkAcknowledgement) Execute(ctx dex.Context, result teams.ListThrea
 	}
 }
 
-// dex:group group-id:acknowledgement group-label:"Acknowledgement"
-// dex:explanation text:"Complete as repliesUnreadable, for example without administrator consent for reading replies."
-type recordUnreadableReplies struct {
-	dex.StepDefaultsNoWaitFor[teams.ListThreadRepliesResult]
-}
-
-func (recordUnreadableReplies) GetStepType() string { return recordUnreadableRepliesStepType }
-
-func (recordUnreadableReplies) GetStepOptions() *dex.StepOptions {
-	return &dex.StepOptions{ExecuteLockAttributes: incidentLocks()}
-}
-
-func (recordUnreadableReplies) Execute(ctx dex.Context, result teams.ListThreadRepliesResult) (*dex.StepDecision, error) {
-	record, err := incidentAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	record.Phase, record.FailureKind = PhaseRepliesUnreadable, failureKindOf(result.Failure)
-	if err := incidentPhaseAttribute.Set(ctx, record.Phase); err != nil {
-		return nil, err
-	}
-	if err := incidentAttribute.Set(ctx, record); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(record), nil
-}
-
 // dex:group group-id:escalation group-label:"Escalation"
 // dex:explanation text:"Record the escalation chat message's outcome and complete as escalated."
 type recordEscalation struct {
@@ -780,14 +678,7 @@ func (recordEscalation) Execute(ctx dex.Context, result teams.PostChatMessageRes
 	if err != nil {
 		return nil, err
 	}
-	switch result.Branch {
-	case teams.PostChatMessageBranchSent:
-		record.EscalationMessageID = result.Value.MessageID
-	case teams.PostChatMessageBranchUncertain:
-		record.IsEscalationOutcomeUnknown = true
-	default:
-		record.FailureKind = failureKindOf(result.Failure)
-	}
+	record.EscalationMessageID = result.Value.MessageID
 	record.Phase = PhaseEscalated
 	if err := incidentPhaseAttribute.Set(ctx, record.Phase); err != nil {
 		return nil, err

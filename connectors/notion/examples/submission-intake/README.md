@@ -5,9 +5,10 @@ database and reads it back. It uses every Notion operation:
 
 1. `search` follows up to 100 cursor pages of 100 results to find the data
    source whose title equals `databaseTitle`. It ignores trashed and partial
-   matches, such as an archived twin or a "Form submissions (2025)" database. With no
-   match or several, the Flow completes as `dataSourceNotFound` or
-   `dataSourceAmbiguous` and writes nothing. A repeated cursor or exhausted
+   matches, such as an archived twin or a "Form submissions (2025)" database. With an
+   empty first page, the unwired `noMatch` branch fails the Flow. Pages with
+   results but no exact match complete as `dataSourceNotFound`; several exact
+   matches complete as `dataSourceAmbiguous`. A repeated cursor or exhausted
    page limit fails the Flow instead of treating an incomplete search as
    absence.
 2. `queryDatabase` follows up to 100 cursor pages of 100 rows for rows whose
@@ -30,10 +31,10 @@ row the uncertain create saved, or completes as `createUncertain`. Re-run the
 Flow with the same Submission ID after checking Notion. The re-run updates a
 row that appeared in the meantime and creates one otherwise.
 
-A rejected create or update completes as `rejected` with Notion's
-secret-safe failure. Every other optional branch is unwired and fails the
-Flow, such as a `queryDatabase` rejection for a data source without the
-Submission ID property.
+A rejected create or update fails the Flow through its unwired
+`providerRejected` branch with Notion's safe reason. Other optional branches
+are unwired too, including a `queryDatabase` rejection for a data source
+without the Submission ID property.
 
 The Flow sets its type to `NotionSubmissionIntake` and names each Step
 explicitly, because Dex Web **Start Flow** uses the Flow and Step types in the

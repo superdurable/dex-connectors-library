@@ -57,19 +57,15 @@ type Status string
 const (
 	// StatusFound means NewsAPI returned a page of matching articles, possibly empty.
 	StatusFound Status = "found"
-	// StatusRejected means NewsAPI conclusively rejected the search, such as an exhausted key.
-	StatusRejected Status = "rejected"
 )
 
 // CompanyNewsOutcome is the Flow completion output.
 type CompanyNewsOutcome struct {
-	Status         Status            `json:"status"`
-	Company        string            `json:"company"`
-	From           string            `json:"from"`
-	TotalResults   int               `json:"totalResults"`
-	Articles       []newsapi.Article `json:"articles"`
-	FailureKind    string            `json:"failureKind,omitempty"`
-	FailureMessage string            `json:"failureMessage,omitempty"`
+	Status       Status            `json:"status"`
+	Company      string            `json:"company"`
+	From         string            `json:"from"`
+	TotalResults int               `json:"totalResults"`
+	Articles     []newsapi.Article `json:"articles"`
 }
 
 // Flow searches NewsAPI once for recent articles about one company.
@@ -95,10 +91,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Connection:          flow.connection,
 			MapToOperationInput: MapToSearchArticlesInput,
 			Searched:            sdkgo.GoTo(companyArticlesFound{}),
-			ProviderRejected:    sdkgo.GoTo(companyNewsRejected{}),
 		})),
 		dex.DefineStep(companyArticlesFound{}),
-		dex.DefineStep(companyNewsRejected{}),
 	}
 }
 
@@ -234,29 +228,6 @@ func (companyArticlesFound) Execute(ctx dex.Context, result newsapi.SearchArticl
 	outcome := CompanyNewsOutcome{
 		Status: StatusFound, Company: request.Company, From: request.From,
 		TotalResults: result.Value.TotalResults, Articles: result.Value.Articles,
-	}
-	if err := companyNewsOutcomeAttribute.Set(ctx, outcome); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(outcome), nil
-}
-
-// dex:group group-id:company-news group-label:"Company news"
-// dex:explanation text:"Record NewsAPI's rejection, such as an exhausted key, and complete without articles."
-type companyNewsRejected struct {
-	dex.StepDefaultsNoWaitFor[newsapi.SearchArticlesResult]
-}
-
-func (companyNewsRejected) GetStepType() string { return "CompanyNewsRejected" }
-
-func (companyNewsRejected) Execute(ctx dex.Context, result newsapi.SearchArticlesResult) (*dex.StepDecision, error) {
-	request, err := companyNewsRequestAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	outcome := CompanyNewsOutcome{Status: StatusRejected, Company: request.Company, From: request.From, Articles: []newsapi.Article{}}
-	if result.Failure != nil {
-		outcome.FailureKind, outcome.FailureMessage = string(result.Failure.Kind), result.Failure.Message
 	}
 	if err := companyNewsOutcomeAttribute.Set(ctx, outcome); err != nil {
 		return nil, err

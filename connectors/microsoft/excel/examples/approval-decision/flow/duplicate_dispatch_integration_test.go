@@ -56,15 +56,16 @@ func TestApprovalDecisionAppendAppliedBeforeAGatewayTimeoutIsFoundNotResentWithR
 	require.Len(t, decisionRows(provider), 1)
 }
 
-func TestApprovalDecisionUnconfirmedAppendCompletesUncertainWithoutResendingWithRealDex(t *testing.T) {
+func TestApprovalDecisionUnconfirmedAppendFailsWithoutResendingWithRealDex(t *testing.T) {
 	provider := newApprovalProvider(t)
 	provider.QueueAppendBehaviors(fakeexcel.AppendBehavior{StatusAfterApplying: http.StatusBadGateway, IsHiddenFromKeyReads: true})
 	harness := newApprovalHarness(t, provider)
 
-	decision := harness.runDecision(t, "unconfirmed", travelRequest("REQ-2004", 50))
-	require.Equal(t, PhaseLogUncertain, decision.Phase)
-	require.Contains(t, decision.ReviewDetail, "earlier attempt")
-	require.NotContains(t, decision.ReviewDetail, "SENTINEL")
+	result := harness.waitForFlow(t, harness.startDecision(t, "unconfirmed", travelRequest("REQ-2004", 50)))
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "uncertain")
+	require.Contains(t, result.ErrorMessage, "no target")
+	require.NotContains(t, result.ErrorMessage, "SENTINEL")
 	require.Equal(t, 1, provider.Count(fakeexcel.CountAppendsReceived))
 	require.Zero(t, provider.Count(fakeexcel.CountRangeUpdatesReceived), "the summary is not written for an uncertain log row")
 }
@@ -82,10 +83,9 @@ func TestApprovalDecisionLostWorkerDuringTheAppendIsNeverResentWithRealDex(t *te
 
 	result := harness.waitForFlow(t, flowID)
 	close(hold)
-	require.Equal(t, dex.FlowCompleted, result.Status, "Flow failed: %s", result.ErrorMessage)
-	var decision ApprovalDecision
-	require.NoError(t, result.DecodeSingleOutput(&decision))
-	require.Equal(t, PhaseLogUncertain, decision.Phase, "the new Worker's attempt found the lost attempt's heartbeat checkpoint")
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "uncertain")
+	require.Contains(t, result.ErrorMessage, "no target")
 	provider.WaitForDelayedRequests(t, 2*slowProviderDelay)
 	require.Equal(t, 1, provider.Count(fakeexcel.CountAppendsReceived), "the attempt on the new Worker did not resend the append")
 }

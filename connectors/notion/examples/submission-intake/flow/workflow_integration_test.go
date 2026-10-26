@@ -107,14 +107,17 @@ func TestDuplicateRowsCompleteWithoutWritingWithRealDex(t *testing.T) {
 	require.Empty(t, provider.patchBodies(first))
 }
 
-func TestMissingAndAmbiguousDatabasesCompleteWithoutWritingWithRealDex(t *testing.T) {
+func TestMissingDatabaseFailsAndAmbiguousDatabaseCompletesWithoutWritingWithRealDex(t *testing.T) {
 	provider, flow, harness := newNotionIntegrationHarness(t, shortRequestTimeout)
 	ctx := integrationContext(t)
 
 	missingInput := submissionInput("sub-missing")
 	missingInput.DatabaseTitle = "Acount Hierarchy"
-	missing := runSubmissionFlow(t, ctx, harness, flow, "missing-database", missingInput)
-	require.Equal(t, PhaseDataSourceNotFound, missing.Phase, "search's noMatch branch is routed")
+	missingID := startSubmissionFlow(t, ctx, harness, flow, "missing-database", missingInput)
+	missing, err := harness.client.WaitForFlow(ctx, missingID, dex.WaitForFlowOptions{})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowFailed, missing.Status)
+	require.Contains(t, missing.ErrorMessage, "notion search (connection notion-workspace) selected branch noMatch with no target: NOT_FOUND:")
 
 	ambiguousInput := submissionInput("sub-ambiguous")
 	ambiguousInput.DatabaseTitle = opsLogTitle
@@ -124,17 +127,18 @@ func TestMissingAndAmbiguousDatabasesCompleteWithoutWritingWithRealDex(t *testin
 	require.Zero(t, provider.totalCreates())
 }
 
-func TestRejectedCreateCompletesWithNotionsCodeWithRealDex(t *testing.T) {
+func TestRejectedCreateFailsWithNotionsSafeCodeWithRealDex(t *testing.T) {
 	provider, flow, harness := newNotionIntegrationHarness(t, shortRequestTimeout)
 	ctx := integrationContext(t)
 
 	submissionID := markerReject + " sub-1"
-	record := runSubmissionFlow(t, ctx, harness, flow, "rejected", submissionInput(submissionID))
-	require.Equal(t, PhaseRejected, record.Phase)
-	require.NotNil(t, record.Rejection)
-	require.Equal(t, sdkgo.FailureValidation, record.Rejection.Kind)
-	require.Contains(t, record.Rejection.Message, "validation_error")
-	require.NotContains(t, record.Rejection.Message, "SENTINEL")
+	flowID := startSubmissionFlow(t, ctx, harness, flow, "rejected", submissionInput(submissionID))
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "notion createPage (connection notion-workspace) selected branch providerRejected with no target: VALIDATION:")
+	require.Contains(t, result.ErrorMessage, "validation_error")
+	require.NotContains(t, result.ErrorMessage, "SENTINEL")
 	require.Equal(t, 1, provider.createCount(submissionID))
 	require.Zero(t, provider.rowCount(submissionID))
 }

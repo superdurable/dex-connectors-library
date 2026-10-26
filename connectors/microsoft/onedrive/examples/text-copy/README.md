@@ -7,8 +7,7 @@ every OneDrive and SharePoint operation:
    copy names;
 2. `FindSourceFile` calls `onedrive.NewSearchFilesStep` with the exact source
    name in the saved source folder, which Graph reads by path;
-3. `SelectSourceFile` records the found file; `ReportSourceNotFound` completes
-   as `sourceNotFound` when the folder has no item with the name;
+3. `SelectSourceFile` records the found file;
 4. `EnsureCopyFolder` calls `onedrive.NewCreateFolderStep` in the saved
    destination folder, reusing a folder that already has the name, and
    `RecordCopyFolder` records it;
@@ -16,14 +15,13 @@ every OneDrive and SharePoint operation:
 6. `PrepareTextCopy` records the text size and chooses `fail`, or `replace`
    when `shouldReplaceExisting` is true;
 7. `UploadTextCopy` calls `onedrive.NewUploadFileStep` into the copy folder and
-   keeps its Result in an Attribute; `ReportCopyAlreadyExists` completes as
-   `copyAlreadyExists` when a different item already has the copy's name;
+   keeps its Result in an Attribute;
 8. `ReadBackTextCopy` calls `onedrive.NewGetFileStep` on the copy;
 9. `CompleteTextCopy` completes as `copied` with the read-back metadata.
 
-Only the happy-path branches, `searchFiles`'s `notFound`, and `uploadFile`'s
-`alreadyExists` are wired. Unsupported, oversized, rejected, invalid, and
-defect outcomes fail the Flow. A source name that names a folder also fails it.
+Only happy-path branches are wired. A missing source, an existing different
+copy, unsupported or oversized content, rejection, invalid response, and local
+defect fail the Flow. A source name that names a folder also fails it.
 
 ## Configure
 

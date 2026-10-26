@@ -11,8 +11,7 @@ handle an issue request:
    requested title and whose state type is `triage`, `backlog`, `unstarted`, or `started`.
    `ChooseOpenIssue` reuses the first such issue, or goes on to create one;
 4. `CreateRequestedIssue` calls `linear.NewCreateIssueStep` with the title, description, and resolved
-   assignee. Its `providerRejected` branch goes to `RecordRejectedIssue`, which records the connector's
-   credential-free reason and fails the Flow;
+   assignee; an unwired `providerRejected` branch fails the Flow with an error naming the branch with no target;
 5. `ListTeamStates` calls `linear.NewListWorkflowStatesStep`, and `ChooseTargetState` picks the state named
    `stateName`, or the team's first `unstarted` state, failing with the available names when none matches;
 6. `MoveIssue` calls `linear.NewUpdateIssueStep` to set the state and the resolved assignee;
@@ -124,7 +123,7 @@ a stateful fake Linear that stores client-supplied IDs and refuses to store one 
 - a Worker lost while Linear holds the create is replaced, and the new Worker's attempt sends the same UUID and
   reads back the first issue;
 - a search answered with Linear's HTTP 400 `RATELIMITED` and `Retry-After: 1` is retried;
-- a rejected create fails the Flow through `RecordRejectedIssue` without Linear's message text, after one
+- a rejected create fails the Flow through the unwired `providerRejected` branch without Linear's message text, after one
   read-back that finds no issue;
 - a request without a team fails before any Linear request.
 

@@ -153,9 +153,9 @@ func TestLostPostWithoutAMatchIsNeverResentWithRealDex(t *testing.T) {
 	harness := newIncidentHarness(t, provider, shortRequestTimeout, EscalationChatSelection{})
 	ctx := integrationContext(t)
 
-	record := harness.waitForFlowOutput(t, ctx, harness.startIncident(t, ctx, "uncertain", incidentInput()))
-	require.Equal(t, PhasePostOutcomeUnknown, record.Phase)
-	require.Equal(t, sdkgo.FailureTransport, record.FailureKind)
+	result := harness.waitForFailedFlow(t, ctx, harness.startIncident(t, ctx, "uncertain", incidentInput()))
+	require.Contains(t, result.ErrorMessage, "uncertain")
+	require.Contains(t, result.ErrorMessage, "no target")
 	require.Equal(t, 1, provider.rootPostCount())
 	require.Zero(t, provider.replyPostCount())
 }
@@ -201,28 +201,27 @@ func TestUnacknowledgedIncidentEscalatesOnceToTheChatWithRealDex(t *testing.T) {
 	require.Contains(t, provider.chatMessage(t, 0), "Nobody has acknowledged SEV2 incident INC-1042")
 }
 
-func TestRepliesWithoutAdministratorConsentCompleteAsUnreadableWithRealDex(t *testing.T) {
+func TestRepliesWithoutAdministratorConsentFailTheFlowWithRealDex(t *testing.T) {
 	provider := newFakeTeams(t)
 	provider.setRepliesForbidden()
 	harness := newIncidentHarness(t, provider, shortRequestTimeout, EscalationChatSelection{})
 	ctx := integrationContext(t)
 
-	record := harness.waitForFlowOutput(t, ctx, harness.startIncident(t, ctx, "no-consent", incidentInput()))
-	require.Equal(t, PhaseRepliesUnreadable, record.Phase)
-	require.Equal(t, sdkgo.FailureAuthorization, record.FailureKind)
+	result := harness.waitForFailedFlow(t, ctx, harness.startIncident(t, ctx, "no-consent", incidentInput()))
+	require.Contains(t, result.ErrorMessage, "providerRejected")
+	require.Contains(t, result.ErrorMessage, "no target")
 	require.Equal(t, 1, provider.rootPostCount())
 }
 
-func TestRejectedChannelPostCompletesAsRejectedWithRealDex(t *testing.T) {
+func TestRejectedChannelPostFailsTheFlowWithRealDex(t *testing.T) {
 	provider := newFakeTeams(t)
 	provider.setRootPostBehavior(rootPostForbidden)
 	harness := newIncidentHarness(t, provider, shortRequestTimeout, EscalationChatSelection{})
 	ctx := integrationContext(t)
 
-	record := harness.waitForFlowOutput(t, ctx, harness.startIncident(t, ctx, "rejected", incidentInput()))
-	require.Equal(t, PhaseRejected, record.Phase)
-	require.Equal(t, sdkgo.FailureAuthorization, record.FailureKind)
-	require.Empty(t, record.RootMessageID)
+	result := harness.waitForFailedFlow(t, ctx, harness.startIncident(t, ctx, "rejected", incidentInput()))
+	require.Contains(t, result.ErrorMessage, "providerRejected")
+	require.Contains(t, result.ErrorMessage, "no target")
 	require.Zero(t, provider.replyPostCount())
 }
 
@@ -350,6 +349,14 @@ func (harness *incidentHarness) waitForFlowOutput(t *testing.T, ctx context.Cont
 	return record
 }
 
+func (harness *incidentHarness) waitForFailedFlow(t *testing.T, ctx context.Context, flowID string) dex.FlowResult {
+	t.Helper()
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowFailed, result.Status)
+	return result
+}
+
 // waitForRecord polls until the record is expected; a record that reached a terminal phase first fails at once.
 func (harness *incidentHarness) waitForRecord(t *testing.T, ctx context.Context, flowID string, isExpected func(IncidentAcknowledgement) bool) IncidentAcknowledgement {
 	t.Helper()
@@ -365,7 +372,7 @@ func (harness *incidentHarness) waitForRecord(t *testing.T, ctx context.Context,
 
 func isTerminalPhase(phase string) bool {
 	switch phase {
-	case PhaseAcknowledged, PhaseEscalated, PhaseUnacknowledged, PhaseRejected, PhasePostOutcomeUnknown, PhaseRepliesUnreadable:
+	case PhaseAcknowledged, PhaseEscalated, PhaseUnacknowledged:
 		return true
 	default:
 		return false

@@ -80,16 +80,13 @@ func TestCompanyNewsExampleRoutesNewsAPIOutcomesWithRealDex(t *testing.T) {
 		require.Len(t, provider.requestsFor(company), 2, "the first attempt saw HTTP 503")
 	})
 
-	t.Run("a wired rejection completes without articles and without a retry", func(t *testing.T) {
+	t.Run("an unwired rejection fails without a retry", func(t *testing.T) {
 		company := "Exhausted " + testRunID
 		result := harness.runFlow(t, ctx, flow, "newsapi-company-news-exhausted-"+testRunID, CompanyNewsRequest{Company: company})
-		require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
-		var outcome CompanyNewsOutcome
-		require.NoError(t, result.DecodeSingleOutput(&outcome))
-		require.Equal(t, StatusRejected, outcome.Status)
-		require.Equal(t, string(sdkgo.FailureQuotaExhausted), outcome.FailureKind)
-		require.NotContains(t, outcome.FailureMessage, "SENTINEL")
-		require.Empty(t, outcome.Articles)
+		require.Equal(t, dex.FlowFailed, result.Status)
+		require.Contains(t, result.ErrorMessage, "providerRejected")
+		require.Contains(t, result.ErrorMessage, "no target")
+		require.NotContains(t, result.ErrorMessage, "SENTINEL")
 		require.Len(t, provider.requestsFor(company), 1)
 	})
 

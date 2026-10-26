@@ -27,7 +27,6 @@ func TestSupportReplyUsesMockDefaultsWithRealDex(t *testing.T) {
 	outcome := harness.runReply(t, "mock-default", input)
 
 	require.Equal(t, ReplyActionReplied, outcome.Action)
-	require.False(t, outcome.NeedsReview)
 	require.Equal(t, customerMessageID, outcome.CustomerMessageID)
 	require.Equal(t, 1, outcome.AttachmentCount)
 	require.Equal(t, "RE: Refund request for order 88213", outcome.Sent.Subject)

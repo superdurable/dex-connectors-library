@@ -162,11 +162,10 @@ func TestLostDealCreateResponseSelectsUncertainAndIsNeverResentWithRealDex(t *te
 	provider.losesFirstDealCreateResponse = true
 	harness := newIntakeHarness(t, provider, defaultRequestTimeout)
 
-	intake := harness.runIntake(t, "lost-deal", integrationLead())
-	require.Equal(t, PhaseNeedsReview, intake.Phase)
-	require.Equal(t, createDealStepType, intake.ReviewStep)
-	require.Equal(t, sdkgo.UncertainBranchID, intake.ReviewBranch)
-	require.Equal(t, "Pipedrive request failed before a response arrived", intake.ReviewDetail.Message)
+	result := harness.waitForFlow(t, harness.startIntake(t, "lost-deal", integrationLead()))
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "uncertain")
+	require.Contains(t, result.ErrorMessage, "no target")
 	require.Equal(t, 1, provider.count("dealCreate"), "an unconfirmed create is never resent")
 	require.Equal(t, 1, provider.dealCount(), "Pipedrive did create the deal, which a person must now find")
 }
@@ -198,13 +197,9 @@ func TestLostWorkerDuringDealCreateSelectsUncertainWithoutResendingWithRealDex(t
 
 	result := harness.waitForFlow(t, flowID)
 	close(provider.holdsFirstDealCreate)
-	require.Equal(t, dex.FlowCompleted, result.Status, "Flow %s: %s", flowID, result.ErrorMessage)
-	var intake DealIntake
-	require.NoError(t, result.DecodeSingleOutput(&intake))
-	require.Equal(t, PhaseNeedsReview, intake.Phase)
-	require.Equal(t, sdkgo.UncertainBranchID, intake.ReviewBranch)
-	require.Equal(t, "an earlier attempt of this Step may have sent the create, so it is not sent again", intake.ReviewDetail.Message,
-		"the new Worker's attempt found the checkpoint the lost attempt recorded")
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "uncertain")
+	require.Contains(t, result.ErrorMessage, "no target")
 	provider.waitForDelayedRequests(t)
 	require.Equal(t, 1, provider.count("dealCreate"), "the attempt on the new Worker did not resend the create")
 }
@@ -222,33 +217,32 @@ func TestBurstLimitedDealCreateWaitsAndCreatesOneDealWithRealDex(t *testing.T) {
 	require.Equal(t, 1, provider.dealCount())
 }
 
-func TestSharedEmailCompletesForReviewWithoutWritingWithRealDex(t *testing.T) {
+func TestSharedEmailFailsWithoutWritingWithRealDex(t *testing.T) {
 	provider := newFakePipedrive(t)
 	first := provider.seedPerson("Jane Smith", integrationEmail, 0)
 	second := provider.seedPerson("Jane S.", "JANE@acme.example.com", 0)
 	harness := newIntakeHarness(t, provider, defaultRequestTimeout)
 
-	intake := harness.runIntake(t, "shared-email", integrationLead())
-	require.Equal(t, PhaseNeedsReview, intake.Phase)
-	require.Equal(t, upsertLeadPersonStepType, intake.ReviewStep)
-	require.Equal(t, pipedrive.UpsertObjectBranchMultipleMatches, intake.ReviewBranch)
-	require.Equal(t, sdkgo.FailureConflict, intake.ReviewDetail.Kind)
+	result := harness.waitForFlow(t, harness.startIntake(t, "shared-email", integrationLead()))
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "multipleMatches")
+	require.Contains(t, result.ErrorMessage, "no target")
 	require.Zero(t, provider.count("personCreate")+provider.count("personUpdate"))
 	require.Zero(t, provider.count("dealList"))
 	require.Equal(t, "Jane S.", provider.person(second).name)
 	require.Equal(t, "Jane Smith", provider.person(first).name)
 }
 
-func TestRejectedDealCompletesForReviewWithoutPipedriveTextWithRealDex(t *testing.T) {
+func TestRejectedDealFailsWithoutPipedriveTextWithRealDex(t *testing.T) {
 	provider := newFakePipedrive(t)
 	provider.rejectsDealCreate = true
 	harness := newIntakeHarness(t, provider, defaultRequestTimeout)
 
-	intake := harness.runIntake(t, "rejected-deal", integrationLead())
-	require.Equal(t, PhaseNeedsReview, intake.Phase)
-	require.Equal(t, pipedrive.CreateObjectBranchProviderRejected, intake.ReviewBranch)
-	require.Equal(t, sdkgo.FailureValidation, intake.ReviewDetail.Kind)
-	require.NotContains(t, intake.ReviewDetail.Message, "SENTINEL")
+	result := harness.waitForFlow(t, harness.startIntake(t, "rejected-deal", integrationLead()))
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "providerRejected")
+	require.Contains(t, result.ErrorMessage, "no target")
+	require.NotContains(t, result.ErrorMessage, "SENTINEL")
 	require.Zero(t, provider.dealCount())
 }
 

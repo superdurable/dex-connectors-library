@@ -64,7 +64,6 @@ func TestNewCustomerOpensOneConversationAndAddsOneInternalNoteWithRealDex(t *tes
 	outcome := harness.runTriage(t, "new-customer", integrationIssueInput())
 	require.Equal(t, TriageConversationOpened, outcome.Action)
 	require.False(t, outcome.IsKnownContact)
-	require.False(t, outcome.NeedsReview)
 	require.False(t, outcome.WasAlreadyApplied)
 	require.Equal(t, 1, provider.conversationCount())
 	require.Equal(t, 1, provider.count("create"))
@@ -203,7 +202,6 @@ func TestLostCreateResponseIsReconciledWithoutResendingWithRealDex(t *testing.T)
 	outcome := harness.runTriage(t, "lost-create", integrationIssueInput())
 	require.Equal(t, TriageConversationOpened, outcome.Action)
 	require.True(t, outcome.WasAlreadyApplied, "the retried attempt found the conversation by its dispatch key")
-	require.False(t, outcome.NeedsReview)
 	require.Equal(t, 1, provider.count("create"), "an unconfirmed create is never resent")
 	require.Equal(t, 1, provider.count("reconcile"))
 	require.Equal(t, 1, provider.count("read"), "the listed candidate's key is confirmed by a single conversation read")
@@ -211,16 +209,15 @@ func TestLostCreateResponseIsReconciledWithoutResendingWithRealDex(t *testing.T)
 	require.Len(t, provider.conversation(outcome.Conversation.ID).messages, 2, "the Flow continued to the note")
 }
 
-func TestUnappliedCreateWithAnUnknownOutcomeCompletesAsNeedsReviewWithRealDex(t *testing.T) {
+func TestUnappliedCreateWithAnUnknownOutcomeFailsWithRealDex(t *testing.T) {
 	provider := newFakeReamaze(t)
 	provider.failsFirstCreateWithoutApplying = true
 	harness := newTriageHarness(t, provider, defaultRequestTimeout)
 
-	outcome := harness.runTriage(t, "unknown-create", integrationIssueInput())
-	require.Equal(t, TriageConversationCreationUncertain, outcome.Action)
-	require.True(t, outcome.NeedsReview)
-	require.Equal(t, "createConversation", outcome.ReviewReason)
-	require.Contains(t, outcome.ReviewDetail, "shows no record with its key")
+	result := harness.waitForFlow(t, harness.startTriage(t, "unknown-create", integrationIssueInput()))
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "uncertain")
+	require.Contains(t, result.ErrorMessage, "no target")
 	require.Equal(t, 1, provider.count("create"), "a 502 is never resent, because Re:amaze may still apply it")
 	require.Equal(t, 1, provider.count("reconcile"))
 	require.Zero(t, provider.conversationCount())
@@ -234,7 +231,6 @@ func TestLostNoteResponseIsReconciledByOriginIDWithRealDex(t *testing.T) {
 
 	outcome := harness.runTriage(t, "lost-note", integrationIssueInput())
 	require.Equal(t, TriageConversationOpened, outcome.Action)
-	require.False(t, outcome.NeedsReview)
 	require.True(t, outcome.NoteWasAlreadyApplied, "the retried attempt found its note by origin_id")
 	require.Equal(t, 1, provider.count("note"), "an unconfirmed note is never resent")
 	require.Equal(t, 1, provider.count("messages"), "one read reconciled the note")
@@ -269,13 +265,9 @@ func TestLostWorkerDuringCreateSelectsUncertainWithoutResendingWithRealDex(t *te
 
 	result := harness.waitForFlow(t, flowID)
 	close(provider.holdsFirstCreate)
-	require.Equal(t, dex.FlowCompleted, result.Status, "Flow %s: %s", flowID, result.ErrorMessage)
-	var outcome TriageOutcome
-	require.NoError(t, result.DecodeSingleOutput(&outcome))
-	require.Equal(t, TriageConversationCreationUncertain, outcome.Action)
-	require.True(t, outcome.NeedsReview)
-	require.Contains(t, outcome.ReviewDetail, "shows no record with its key",
-		"the new Worker's attempt found the lost attempt's marker and reconciled instead of sending")
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "uncertain")
+	require.Contains(t, result.ErrorMessage, "no target")
 	provider.waitForDelayedRequests(t)
 	require.Equal(t, 1, provider.count("create"), "the attempt on the new Worker did not resend the create")
 	require.Equal(t, 1, provider.conversationCount(), "the held create still landed, which a person must now find")

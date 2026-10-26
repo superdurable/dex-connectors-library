@@ -131,7 +131,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Connection:          flow.connection,
 			MapToOperationInput: flow.MapToInsertRefundInput,
 			Completed:           sdkgo.GoTo(completeRefundRecording{}),
-			Uncertain:           sdkgo.GoTo(sdkgo.StepRef[postgresql.ExecuteStatementResult](findRefundByIdempotencyKeyStepType)),
+			// Read back an uncertain commit by its idempotency key before completing the refund.
+			Uncertain: sdkgo.GoTo(sdkgo.StepRef[postgresql.ExecuteStatementResult](findRefundByIdempotencyKeyStepType)),
 		})),
 		dex.DefineStep(completeRefundRecording{}),
 		dex.DefineStep(postgresql.NewQueryRowsStep(postgresql.QueryRowsStepConfig[postgresql.ExecuteStatementResult]{

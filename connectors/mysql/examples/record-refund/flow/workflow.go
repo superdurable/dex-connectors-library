@@ -136,8 +136,9 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Connection:          flow.connection,
 			MapToOperationInput: flow.MapToInsertRefundInput,
 			Completed:           sdkgo.GoTo(sdkgo.StepRef[mysql.ExecuteStatementResult](findInsertedRefundStepType)),
-			Uncertain:           sdkgo.GoTo(sdkgo.StepRef[mysql.ExecuteStatementResult](findInsertedRefundStepType)),
-			ResultAttribute:     &refundInsertResultAttribute,
+			// Read back an uncertain commit by its idempotency key before completing the refund.
+			Uncertain:       sdkgo.GoTo(sdkgo.StepRef[mysql.ExecuteStatementResult](findInsertedRefundStepType)),
+			ResultAttribute: &refundInsertResultAttribute,
 		})),
 		dex.DefineStep(mysql.NewQueryRowsStep(mysql.QueryRowsStepConfig[mysql.ExecuteStatementResult]{
 			StepType: findInsertedRefundStepType, ConnectionName: ConnectionName,

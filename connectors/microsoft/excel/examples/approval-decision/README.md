@@ -21,9 +21,8 @@ every Microsoft Excel operation:
    range, and `CompleteExcelApprovalDecision` completes as `completed` with
    `summaryConfirmed`.
 
-`appendTableRows`'s `uncertain` branch completes as `logUncertain` through
-`ReportExcelDecisionUncertain`, so a person checks the decision log instead of
-the Flow appending again. Every other non-happy branch fails the Flow.
+`appendTableRows`'s `uncertain` branch is unwired and fails the Flow with an
+error naming the branch with no target. No non-happy branch routes to another Step.
 
 ## Prepare the workbook
 
@@ -139,7 +138,7 @@ bearer token and stores typed input as Excel does. They prove that:
 - an append applied before a 504 is found in the key column instead of being
   resent;
 - an unconfirmed append, and a Worker lost while the append is in flight,
-  complete as `logUncertain` without a second append;
+  fail through the unwired `uncertain` branch without a second append;
 - a throttled append is retried after `Retry-After` and applied once;
 - a summary write that answers after nine seconds is dispatched again by async
   Dex and leaves the same values;

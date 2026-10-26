@@ -107,20 +107,17 @@ func TestOnboardingSurvivesALostCreateResponseAndReplicationLagWithRealDex(t *te
 	requireNoPasswordInFlow(t, ctx, harness.client, flow, flowID, graph)
 }
 
-func TestOnboardingHandsOffANameThatBelongsToAnotherAccountWithRealDex(t *testing.T) {
+func TestOnboardingFailsWhenTheNameBelongsToAnotherAccountWithRealDex(t *testing.T) {
 	graph := graphfake.New(t.Cleanup)
 	graph.SeedGroup(testGroupID)
-	existingID := graph.SeedUser("ada.lovelace@contoso.com", false, nil)
+	graph.SeedUser("ada.lovelace@contoso.com", false, nil)
 	flow, harness := newAccountLifecycleHarness(t, graph)
 	ctx := integrationContext(t)
 
 	flowID := startAccountLifecycle(t, ctx, harness.client, flow, "address-taken", onboardingInput())
-	handOff := waitForCompletedHandOff(t, ctx, harness.client, flowID)
-
-	require.Equal(t, HandOffAddressTaken, handOff.Status)
-	require.Equal(t, existingID, handOff.UserID)
-	require.False(t, handOff.IsAccountEnabled)
-	require.Equal(t, addressTakenHandOff, handOff.NextStep)
+	result := waitForFailedFlow(t, ctx, harness.client, flowID)
+	require.Contains(t, result.ErrorMessage, "alreadyExists")
+	require.Contains(t, result.ErrorMessage, "no target")
 	require.Equal(t, 1, graph.UserCount())
 	require.Zero(t, graph.Count(http.MethodPost, "/members/$ref"), "nothing is built for a name this Flow did not create")
 }

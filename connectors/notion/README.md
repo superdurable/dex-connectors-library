@@ -216,9 +216,9 @@ dex.DefineStep(notion.NewCreatePageStep(notion.CreatePageStepConfig[SubmissionRe
 		Explanation: "Create the submission row with its properties and the message as the page body.",
 	},
 	Connection: flow.connection, MapToOperationInput: MapToCreateSubmissionRowInput,
-	Created:          sdkgo.GoTo(recordCreatedSubmission{}),
-	Uncertain:        sdkgo.GoTo(recordUncertainSubmission{}),
-	ProviderRejected: sdkgo.GoTo(recordRejectedCreate{}),
+	Created: sdkgo.GoTo(recordCreatedSubmission{}),
+	// Query the submission ID again after an uncertain create before deciding whether to update the row.
+	Uncertain: sdkgo.GoTo(recordUncertainSubmission{}),
 })),
 ```
 

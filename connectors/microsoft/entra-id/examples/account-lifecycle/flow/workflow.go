@@ -30,7 +30,6 @@ const (
 	recordAccountRequestStepType       = "RecordAccountRequest"
 	createEntraAccountStepType         = "CreateEntraAccount"
 	recordCreatedAccountStepType       = "RecordCreatedAccount"
-	recordAddressTakenHandOffStepType  = "RecordAddressTakenHandOff"
 	enableEntraAccountStepType         = "EnableEntraAccount"
 	recordReinstatedAccountStepType    = "RecordReinstatedAccount"
 	addAccountToTeamGroupStepType      = "AddAccountToTeamGroup"
@@ -50,8 +49,6 @@ const (
 		"knows the password, an administrator resets it in Microsoft Entra admin center > Users > the user > Reset password."
 	offboardedAccountHandOff = "Sign-in is blocked and existing sessions are revoked; Microsoft notes that tokens can keep working for a few " +
 		"minutes. The account's data is kept: remove its licenses, transfer its files and mailbox, and delete it when your retention policy allows."
-	addressTakenHandOff = "The user principal name already belongs to another account, or to a deleted one, so nothing was created. " +
-		"Confirm with IT whether it is this person's account; if it is, start the reinstate action, otherwise choose another name."
 )
 
 var (
@@ -142,8 +139,6 @@ const (
 	HandOffReinstated HandOffStatus = "reinstated"
 	// HandOffOffboarded means the account is disabled, its sessions are revoked, and it is no longer a direct team group member.
 	HandOffOffboarded HandOffStatus = "offboarded"
-	// HandOffAddressTaken means the user principal name belongs to something else, so nothing was created.
-	HandOffAddressTaken HandOffStatus = "addressTaken"
 )
 
 // AccountHandOff is the Flow result and the record the next owner acts on.
@@ -152,7 +147,7 @@ type AccountHandOff struct {
 	Status HandOffStatus `json:"status"`
 	// UserPrincipalName is the requested sign-in name.
 	UserPrincipalName string `json:"userPrincipalName"`
-	// UserID is the account's object ID; for addressTaken it is the conflicting account's ID, when Microsoft returns one.
+	// UserID is the account's object ID.
 	UserID string `json:"userId,omitempty"`
 	// IsAccountEnabled reports the account's final sign-in state.
 	IsAccountEnabled bool `json:"isAccountEnabled"`
@@ -192,11 +187,9 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			StepType: createEntraAccountStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{GroupID: "microsoft-entra-id", GroupLabel: "Microsoft Entra ID", Explanation: "Create the account with a password nobody receives, tagged so a repeated Step finds it instead of creating a second one."},
 			Connection:  flow.connection, MapToOperationInput: MapToCreateUserInput, ResultAttribute: &accountCreationAttribute,
-			Created:       sdkgo.GoTo(recordCreatedAccount{}),
-			AlreadyExists: sdkgo.GoTo(recordAddressTakenHandOff{}),
+			Created: sdkgo.GoTo(recordCreatedAccount{}),
 		})),
 		dex.DefineStep(recordCreatedAccount{}),
-		dex.DefineStep(recordAddressTakenHandOff{}),
 		dex.DefineStep(entraid.NewEnableUserStep(entraid.EnableUserStepConfig[AccountRequest]{
 			StepType: enableEntraAccountStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{GroupID: "microsoft-entra-id", GroupLabel: "Microsoft Entra ID", Explanation: "Enable the returning person's existing account instead of creating another."},
@@ -436,30 +429,6 @@ func (recordCreatedAccount) Execute(ctx dex.Context, result entraid.CreateUserRe
 		return nil, err
 	}
 	return dex.GoTo(sdkgo.StepRef[TeamGroupMembership](addAccountToTeamGroupStepType), BuildTeamGroupMembership(request, result.Value.User)), nil
-}
-
-// dex:group group-id:account group-label:"Account"
-// dex:explanation text:"Record that the name belongs to something else and hand the decision to IT without creating anything."
-type recordAddressTakenHandOff struct {
-	dex.StepDefaultsNoWaitFor[entraid.CreateUserResult]
-}
-
-func (recordAddressTakenHandOff) GetStepType() string { return recordAddressTakenHandOffStepType }
-
-func (recordAddressTakenHandOff) Execute(ctx dex.Context, result entraid.CreateUserResult) (*dex.StepDecision, error) {
-	request, err := accountRequestAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	existing := result.Value.User
-	handOff := AccountHandOff{
-		Status: HandOffAddressTaken, UserPrincipalName: request.UserPrincipalName, UserID: existing.ID,
-		IsAccountEnabled: existing.IsAccountEnabled, GroupID: request.GroupID, NextStep: addressTakenHandOff,
-	}
-	if err := accountHandOffAttribute.Set(ctx, handOff); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(handOff), nil
 }
 
 // dex:group group-id:account group-label:"Account"

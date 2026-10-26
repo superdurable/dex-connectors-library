@@ -7,12 +7,12 @@ This example runs one operation-only Flow from Dex Web **Start Flow**:
 2. `SummarizeText` calls `openai.NewCreateResponseStep`, which stores one
    OpenAI Response and streams the summary to the `openai-summary-text`
    Stream as the model writes it;
-3. `RecordSummaryOutcome` persists the `completed` or `failed` Response, with
+3. `RecordSummaryOutcome` persists the completed Response, with
    its ID, status, and usage, in the `openai-summary-outcome` Attribute and
    completes the Flow.
 
 The summary and display RPCs show the request and the outcome in Dex Web.
-The example leaves `providerRejected`, `uncertain`, and `defect` unwired, so
+The example leaves `failed`, `providerRejected`, `uncertain`, and `defect` unwired, so
 those outcomes fail the Flow. For example, a project without credits gets
 HTTP 429, which `createResponse` retries until its retry policy ends. An
 `uncertain` outcome means OpenAI may have stored the Response; reconcile it
@@ -137,7 +137,7 @@ The real Dex test opens the connection from project configuration and
 in-memory project storage, as the Worker does, and starts the Flow through
 the Dex Client against a local fake Responses API. It covers a completed
 Response with its streamed text and the connection's model, and an
-incomplete Response for the Step's pick that completes as `failed`, and
+incomplete Response for the Step's pick that fails the Flow, and
 checks the idempotency key on every request:
 
 ```bash

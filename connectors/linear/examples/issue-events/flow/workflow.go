@@ -49,16 +49,12 @@ type CreatedIssueEvent struct {
 	CreatedAt time.Time `json:"createdAt"`
 }
 
-// RecordedIssue is the getIssue outcome the Flow stores; it completes the Flow when found.
+// RecordedIssue is the found getIssue outcome the Flow stores.
 type RecordedIssue struct {
-	// Branch is the getIssue branch: found, notFound, providerRejected, invalidResponse, or defect.
+	// Branch is the found getIssue branch.
 	Branch sdkgo.BranchID `json:"branch"`
 	// Issue is the issue Linear returned on the found branch.
 	Issue *linear.Issue `json:"issue,omitempty"`
-	// FailureKind is the safe failure category of a branch other than found.
-	FailureKind sdkgo.FailureKind `json:"failureKind,omitempty"`
-	// FailureMessage is the safe failure message, which never holds keys or Linear response text.
-	FailureMessage string `json:"failureMessage,omitempty"`
 }
 
 // Flow records one created issue and reads it back.
@@ -88,13 +84,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Connection:          flow.connection,
 			MapToOperationInput: MapToGetIssueInput,
 			Found:               sdkgo.GoTo(recordIssueRead{}),
-			NotFound:            sdkgo.GoTo(recordReadFailure{}),
-			ProviderRejected:    sdkgo.GoTo(recordReadFailure{}),
-			InvalidResponse:     sdkgo.GoTo(recordReadFailure{}),
-			Defect:              sdkgo.GoTo(recordReadFailure{}),
 		})),
 		dex.DefineStep(recordIssueRead{}),
-		dex.DefineStep(recordReadFailure{}),
 	}
 }
 
@@ -228,27 +219,6 @@ func (recordIssueRead) Execute(ctx dex.Context, result linear.GetIssueResult) (*
 		return nil, err
 	}
 	return dex.GracefulComplete(recorded), nil
-}
-
-// dex:group group-id:linear group-label:"Linear"
-// dex:explanation text:"Persist the notFound, providerRejected, invalidResponse, or defect outcome with its safe message and fail the Flow."
-type recordReadFailure struct {
-	dex.StepDefaultsNoWaitFor[linear.GetIssueResult]
-}
-
-func (recordReadFailure) GetStepType() string { return "RecordReadFailure" }
-
-func (recordReadFailure) Execute(ctx dex.Context, result linear.GetIssueResult) (*dex.StepDecision, error) {
-	recorded := RecordedIssue{Branch: result.Branch}
-	message := "reading the issue selected " + string(result.Branch)
-	if result.Failure != nil {
-		recorded.FailureKind, recorded.FailureMessage = result.Failure.Kind, result.Failure.Message
-		message += ": " + result.Failure.Message
-	}
-	if err := issueReadAttribute.Set(ctx, recorded); err != nil {
-		return nil, err
-	}
-	return dex.ForceFail(message), nil
 }
 
 var _ dex.Flow = (*Flow)(nil)
