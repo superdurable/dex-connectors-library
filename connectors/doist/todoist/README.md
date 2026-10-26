@@ -75,6 +75,18 @@ async durability, a 30-second Execute timeout, and at most five attempts within
 two minutes. Backoff starts at one second and caps at 30 seconds.
 An unwired optional branch fails the Flow.
 
+Every request ends before the attempt's Execute deadline, so Dex records the
+operation's own result instead of timing out the attempt and running it again.
+The attempt time is the 30-second Execute timeout, or less when the Step
+context's deadline is earlier; an async Step's first attempt may get only about
+seven seconds. A create or update POST must finish within seven twelfths of
+that time, and every request, including a read-back, within five sixths; the
+rest covers recording the result. These limits also cut a longer `Timeout` or
+caller-supplied `http.Client.Timeout`. A request with less than a tenth of the
+attempt time left is not sent: the attempt retries, except that a skipped
+create read-back selects `uncertain`. A create POST cut off by its limit
+therefore selects `uncertain`, and an update cut off by its limit retries.
+
 The existing get/update pair has the following contract:
 
 | Response | GetTask | UpdateTask |
@@ -128,23 +140,28 @@ previously processed POST but does not provide those guarantees for API v1.
 Any HTTP 2xx with a valid task selects `created` with the task as Todoist
 returned it. The API v1 reference documents no rule that the answer echoes the
 request, so the returned content, description, and project ID are the stored
-values and are not compared with the input. A 2xx with a valid task ID but
-other missing or malformed fields is confirmed by GET `/tasks/{task_id}`, never
-by resending the creation: a valid task selects `created`, and any other read
-answer, including 404, 429, 5xx, or a transport failure, selects `uncertain`,
-because a retry would create again. A 2xx without a valid task ID selects
-`uncertain`, because the task may exist and its ID is unknown. Invalid input and
+values and are not compared with the input. A 2xx without a valid task ID
+selects `uncertain`, because the task may exist and its ID is unknown. Invalid input and
 the credential failures above select `defect` before dispatch; any other
 credential resolution failure retries. A transport failure with trace
 evidence that the request never left the process (a DNS, connect, or TLS
 failure before any connection was obtained), HTTP 429, and HTTP 503 retry with
 the same identity. Any other transport failure, including a lost response or a
 custom transport that reports no connection trace, HTTP 408/500 or another
-ambiguous server error, unconfirmed success data, and HTTP 409 select `uncertain`
-because the task ID cannot be confirmed without changing user-visible task
-fields. Todoist does not document whether 409 means a request ID was already
-processed; its failure kind is `CONFLICT`. Other definite rejections select
-`providerRejected`. No exactly-once guarantee is made.
+ambiguous server error, and HTTP 409 select `uncertain`. None of these answers
+carries a task ID, and a task cannot be found by request without changing
+user-visible task fields. Todoist does not document whether 409 means a request
+ID was already processed; its failure kind is `CONFLICT`. Other definite
+rejections select `providerRejected`. No exactly-once guarantee is made.
+
+A 2xx with a valid task ID but other missing or malformed fields is different:
+the task was accepted and its ID is known. The connector confirms it by GET
+`/tasks/{task_id}` in the same attempt, never by resending the creation. A
+valid task with that ID selects `created`. Any other read answer, including
+404, 403, 429, 5xx, a transport failure, an unusable body, or no time left in
+the attempt, selects `uncertain`, because a retry would create again. The
+`uncertain` result carries no `Task`; the task ID appears only in its safe
+failure message, so treat it as unconfirmed rather than as a readable ID.
 Do not reconcile ownership by title alone. Creating another Flow is another
 logical creation with another request ID.
 
@@ -197,7 +214,8 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./.
 Provider tests cover request encoding, credentials and credential resolution
 failures, rejected and retryable responses, non-200 success statuses, refused
 connections, ambiguous writes, malformed/oversized responses, update read-back
-outcomes, create confirmation by task ID, validation, and redirect protection.
+outcomes, create confirmation by task ID, attempt deadlines, validation, and
+redirect protection.
 Real Dex tests cover Attributes, result routing, retry, a create answer
 confirmed by task ID, a credential read that fails once, update replacement
 after applied/unapplied 503 responses, an unusable update answer whose read-back

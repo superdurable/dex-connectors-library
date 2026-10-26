@@ -898,3 +898,169 @@ func TestCRUDInvalidInputDoesNotDispatch(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, DeleteTaskBranchDefect, result.Branch)
 }
+
+// deadlineProviderContext carries a real attempt deadline, as the Dex Step context does.
+type deadlineProviderContext struct {
+	providerContext
+	stepContext context.Context
+}
+
+func (providerContext deadlineProviderContext) Deadline() (time.Time, bool) {
+	return providerContext.stepContext.Deadline()
+}
+func (providerContext deadlineProviderContext) Done() <-chan struct{} {
+	return providerContext.stepContext.Done()
+}
+func (providerContext deadlineProviderContext) Err() error { return providerContext.stepContext.Err() }
+func (providerContext deadlineProviderContext) Value(key any) any {
+	return providerContext.stepContext.Value(key)
+}
+
+func TestCreateTaskStalledRequestsReturnBeforeTheExecuteDeadline(t *testing.T) {
+	for _, scenario := range []struct {
+		name                 string
+		isPostStalled        bool
+		callerClient         *http.Client
+		wantPosts, wantReads int32
+	}{
+		{name: "stalled read-back", wantPosts: 1, wantReads: 1},
+		{name: "stalled read-back with a long caller timeout", callerClient: &http.Client{Timeout: time.Hour}, wantPosts: 1, wantReads: 1},
+		{name: "stalled creation", isPostStalled: true, wantPosts: 1},
+	} {
+		t.Run(scenario.name, func(t *testing.T) {
+			t.Parallel()
+			var posts, reads atomic.Int32
+			releaseStalledRequests := make(chan struct{})
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+				if request.Method == http.MethodGet {
+					reads.Add(1)
+					<-releaseStalledRequests
+					return
+				}
+				posts.Add(1)
+				if scenario.isPostStalled {
+					<-releaseStalledRequests
+					return
+				}
+				_, err := io.WriteString(w, `{"id":"6XGgmFVcrG5RRjVr"}`)
+				require.NoError(t, err)
+			}))
+			defer server.Close()
+			defer close(releaseStalledRequests)
+			var options []Option
+			if scenario.callerClient != nil {
+				options = append(options, WithHTTPClient(scenario.callerClient))
+			}
+			stepContext, cancel := context.WithTimeout(context.Background(), 4*time.Second)
+			defer cancel()
+			stepDeadline, _ := stepContext.Deadline()
+			result, err := sdkgo.RunMutation(deadlineProviderContext{stepContext: stepContext}, newTestClient(t, server.URL, options...).CreateTask(), testConnection, CreateTaskInput{Content: "New"})
+			require.True(t, time.Now().Before(stepDeadline.Add(-500*time.Millisecond)), "Invoke must return before the Execute deadline")
+			require.NoError(t, err)
+			require.Equal(t, CreateTaskBranchUncertain, result.Branch)
+			require.Equal(t, scenario.wantPosts, posts.Load())
+			require.Equal(t, scenario.wantReads, reads.Load())
+		})
+	}
+}
+
+func TestUpdateTaskStalledReadBackRetriesBeforeTheExecuteDeadline(t *testing.T) {
+	t.Parallel()
+	var posts, reads atomic.Int32
+	releaseStalledRead := make(chan struct{})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		if request.Method == http.MethodGet {
+			reads.Add(1)
+			<-releaseStalledRead
+			return
+		}
+		posts.Add(1)
+		_, err := io.WriteString(w, "{")
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+	defer close(releaseStalledRead)
+	stepContext, cancel := context.WithTimeout(context.Background(), 4*time.Second)
+	defer cancel()
+	stepDeadline, _ := stepContext.Deadline()
+	content := "New"
+	_, err := sdkgo.RunMutation(deadlineProviderContext{stepContext: stepContext}, newTestClient(t, server.URL).UpdateTask(), testConnection, UpdateTaskInput{TaskID: "6XGgmFVcrG5RRjVr", Content: &content})
+	require.True(t, time.Now().Before(stepDeadline.Add(-500*time.Millisecond)), "Invoke must return before the Execute deadline")
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	require.Equal(t, int32(1), posts.Load())
+	require.Equal(t, int32(1), reads.Load())
+}
+
+func TestExpiredAttemptRetriesWithoutSending(t *testing.T) {
+	var requests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		requests.Add(1)
+		_, err := io.WriteString(w, taskJSON("New"))
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+	client := newTestClient(t, server.URL)
+	content := "New"
+	for name, invoke := range map[string]func(dex.Context) error{
+		"createTask": func(stepContext dex.Context) error {
+			_, err := sdkgo.RunMutation(stepContext, client.CreateTask(), testConnection, CreateTaskInput{Content: content})
+			return err
+		},
+		"updateTaskContent": func(stepContext dex.Context) error {
+			_, err := sdkgo.RunMutation(stepContext, client.UpdateTask(), testConnection, UpdateTaskInput{TaskID: "6XGgmFVcrG5RRjVr", Content: &content})
+			return err
+		},
+		"deleteTask": func(stepContext dex.Context) error {
+			_, err := sdkgo.RunMutation(stepContext, client.DeleteTask(), testConnection, DeleteTaskInput{TaskID: "6XGgmFVcrG5RRjVr"})
+			return err
+		},
+		"getTask": func(stepContext dex.Context) error {
+			_, err := sdkgo.RunQuery(stepContext, client.GetTask(), testConnection, GetTaskInput{TaskID: "6XGgmFVcrG5RRjVr"})
+			return err
+		},
+		"listTasks": func(stepContext dex.Context) error {
+			_, err := sdkgo.RunQuery(stepContext, client.ListTasks(), testConnection, ListTasksInput{})
+			return err
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			stepContext, cancel := context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
+			defer cancel()
+			err := invoke(deadlineProviderContext{stepContext: stepContext})
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry)
+			require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+			require.Contains(t, retry.Failure.Message, "request was not sent")
+			require.Zero(t, requests.Load())
+		})
+	}
+}
+
+func TestCreatedTaskReadBackWithoutTimeLeftStaysUncertain(t *testing.T) {
+	var requests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		requests.Add(1)
+		_, err := io.WriteString(w, taskJSON("New"))
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+	budget := attemptBudget{stepContext: context.Background(), attemptDeadline: time.Now().Add(time.Second), minimumRequestTime: time.Minute}
+	call := sdkgo.Call{Context: providerContext{}, Connection: testConnection}
+	attempt := newTestClient(t, server.URL).CreateTask().readCreatedTask(call, budget, "6XGgmFVcrG5RRjVr")
+	require.Equal(t, sdkgo.NewMutationUncertain(Task{}, *failure("createTask", sdkgo.FailureProtocol, "Todoist accepted the creation of task 6XGgmFVcrG5RRjVr but it could not be read back in this attempt, so the task is unconfirmed"), sdkgo.Receipt{}), attempt)
+	require.Zero(t, requests.Load())
+}
+
+func TestAttemptBudgetUsesTheShorterStepDeadline(t *testing.T) {
+	stepContext, cancel := context.WithTimeout(context.Background(), 12*time.Second)
+	defer cancel()
+	before := time.Now()
+	budget := newAttemptBudget(stepContext, 30*time.Second)
+	require.WithinDuration(t, before.Add(7*time.Second), budget.writeDeadline, 500*time.Millisecond)
+	require.WithinDuration(t, before.Add(10*time.Second), budget.attemptDeadline, 500*time.Millisecond)
+	require.InDelta(t, float64(1200*time.Millisecond), float64(budget.minimumRequestTime), float64(50*time.Millisecond))
+	unbounded := newAttemptBudget(context.Background(), 30*time.Second)
+	require.Equal(t, 3*time.Second, unbounded.minimumRequestTime)
+	require.WithinDuration(t, time.Now().Add(25*time.Second), unbounded.attemptDeadline, 500*time.Millisecond)
+}

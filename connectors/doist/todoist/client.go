@@ -7,6 +7,7 @@ package todoist
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"crypto/tls"
 	"encoding/json"
@@ -79,7 +80,8 @@ type Task struct {
 // GetTaskOperation reads one task in one HTTP request.
 type GetTaskOperation struct{ client *Client }
 
-// UpdateTaskOperation patches specified title and description fields in one HTTP request.
+// UpdateTaskOperation patches specified title and description fields in one HTTP request. An unusable or
+// mismatched answer is confirmed by one more read of the task by ID within the same attempt.
 type UpdateTaskOperation struct{ client *Client }
 
 // ListTasksInput selects one page; retain identical filters when following NextCursor.
@@ -153,6 +155,23 @@ type exchangeResult struct {
 	isUndispatched bool
 }
 
+// attemptBudget ends each request early enough for Invoke to return before the Execute deadline.
+type attemptBudget struct {
+	stepContext context.Context
+	// writeDeadline ends a write at seven twelfths of the attempt, leaving a quarter for its read-back.
+	writeDeadline time.Time
+	// attemptDeadline ends every request at five sixths, leaving the rest to record the result.
+	attemptDeadline    time.Time
+	minimumRequestTime time.Duration
+}
+
+// requestWindow bounds one request; with less than minimumTime left, the request is not sent.
+type requestWindow struct {
+	parent      context.Context
+	deadline    time.Time
+	minimumTime time.Duration
+}
+
 // dispatchObservation records whether a request could have reached Todoist.
 type dispatchObservation struct {
 	mutex                 sync.Mutex
@@ -208,7 +227,8 @@ func (operation GetTaskOperation) Invoke(call sdkgo.Call, input GetTaskInput) sd
 	if !taskIDPattern.MatchString(input.TaskID) {
 		return sdkgo.NewQueryBranch(GetTaskBranchDefect, Task{}, failure("getTask", sdkgo.FailureValidation, "taskId must be a non-empty opaque task ID"), sdkgo.Receipt{})
 	}
-	result := operation.client.exchangeTask(call, "getTask", http.MethodGet, input.TaskID, nil)
+	budget := newAttemptBudget(call.Context, GetTaskDefinition.StepDefaults.ExecuteMethodTimeout)
+	result := operation.client.exchangeTask(call, budget.remainingWindow(), "getTask", http.MethodGet, input.TaskID, nil)
 	switch {
 	case result.failure == nil:
 		return sdkgo.NewQueryBranch(GetTaskBranchFound, result.task, nil, sdkgo.Receipt{})
@@ -239,10 +259,11 @@ func (operation UpdateTaskOperation) Invoke(call sdkgo.Call, input UpdateTaskInp
 	if err != nil || len(payload) > 1<<20 {
 		return sdkgo.NewMutationBranch(UpdateTaskBranchDefect, Task{}, failure("updateTaskContent", sdkgo.FailureValidation, "encoded fields exceed Todoist's 1 MiB request limit"), sdkgo.Receipt{})
 	}
-	result := operation.client.exchangeTask(call, "updateTaskContent", http.MethodPost, input.TaskID, payload)
+	budget := newAttemptBudget(call.Context, UpdateTaskDefinition.StepDefaults.ExecuteMethodTimeout)
+	result := operation.client.exchangeTask(call, budget.writeWindow(), "updateTaskContent", http.MethodPost, input.TaskID, payload)
 	switch {
 	case isSuccessStatus(result.status) && (result.failure != nil || !taskMatchesUpdate(result.task, input)):
-		return operation.confirmUpdate(call, input, result)
+		return operation.confirmUpdate(call, budget, input, result)
 	case result.failure == nil:
 		return sdkgo.NewMutationBranch(UpdateTaskBranchUpdated, result.task, nil, sdkgo.Receipt{})
 	case result.isLocalDefect:
@@ -257,8 +278,8 @@ func (operation UpdateTaskOperation) Invoke(call sdkgo.Call, input UpdateTaskInp
 }
 
 // confirmUpdate reads back an unconfirmed 2xx. GET returns only active tasks, so 404 means completed or deleted.
-func (operation UpdateTaskOperation) confirmUpdate(call sdkgo.Call, input UpdateTaskInput, answer exchangeResult) sdkgo.MutationAttempt[Task] {
-	readBack := operation.client.exchangeTask(call, "updateTaskContent", http.MethodGet, input.TaskID, nil)
+func (operation UpdateTaskOperation) confirmUpdate(call sdkgo.Call, budget attemptBudget, input UpdateTaskInput, answer exchangeResult) sdkgo.MutationAttempt[Task] {
+	readBack := operation.client.exchangeTask(call, budget.remainingWindow(), "updateTaskContent", http.MethodGet, input.TaskID, nil)
 	switch {
 	case readBack.failure == nil && taskMatchesUpdate(readBack.task, input):
 		return sdkgo.NewMutationBranch(UpdateTaskBranchUpdated, readBack.task, nil, sdkgo.Receipt{})
@@ -332,7 +353,8 @@ func (operation ListTasksOperation) Invoke(call sdkgo.Call, input ListTasksInput
 	if len(query) > 0 {
 		endpoint += "?" + query.Encode()
 	}
-	result := operation.client.exchange(call, "listTasks", http.MethodGet, endpoint, nil, "")
+	budget := newAttemptBudget(call.Context, ListTasksDefinition.StepDefaults.ExecuteMethodTimeout)
+	result := operation.client.exchange(call, budget.remainingWindow(), "listTasks", http.MethodGet, endpoint, nil, "")
 	if result.failure != nil {
 		switch {
 		case result.isLocalDefect:
@@ -366,7 +388,8 @@ func (operation CreateTaskOperation) Invoke(call sdkgo.Call, input CreateTaskInp
 	if err != nil || len(payload) > 1<<20 {
 		return sdkgo.NewMutationBranch(CreateTaskBranchDefect, Task{}, failure("createTask", sdkgo.FailureValidation, "encoded task exceeds Todoist's 1 MiB request limit"), sdkgo.Receipt{})
 	}
-	result := operation.client.exchange(call, "createTask", http.MethodPost, "/tasks", payload, string(call.IdempotencyKey))
+	budget := newAttemptBudget(call.Context, CreateTaskDefinition.StepDefaults.ExecuteMethodTimeout)
+	result := operation.client.exchange(call, budget.writeWindow(), "createTask", http.MethodPost, "/tasks", payload, string(call.IdempotencyKey))
 	if result.failure != nil {
 		switch {
 		case result.isLocalDefect:
@@ -388,16 +411,16 @@ func (operation CreateTaskOperation) Invoke(call sdkgo.Call, input CreateTaskInp
 	if !hasTaskID {
 		return sdkgo.NewMutationUncertain(Task{}, *failure("createTask", sdkgo.FailureProtocol, "Todoist answered the creation without a usable task"), sdkgo.Receipt{})
 	}
-	return operation.readCreatedTask(call, taskID)
+	return operation.readCreatedTask(call, budget, taskID)
 }
 
-// readCreatedTask confirms an accepted creation. Any unusable read stays uncertain because a retry would create again.
-func (operation CreateTaskOperation) readCreatedTask(call sdkgo.Call, taskID string) sdkgo.MutationAttempt[Task] {
-	readBack := operation.client.exchangeTask(call, "createTask", http.MethodGet, taskID, nil)
+// readCreatedTask confirms an accepted creation. Any unusable or skipped read stays uncertain; a retry would create again.
+func (operation CreateTaskOperation) readCreatedTask(call sdkgo.Call, budget attemptBudget, taskID string) sdkgo.MutationAttempt[Task] {
+	readBack := operation.client.exchangeTask(call, budget.remainingWindow(), "createTask", http.MethodGet, taskID, nil)
 	if readBack.failure == nil {
 		return sdkgo.NewMutationBranch(CreateTaskBranchCreated, readBack.task, nil, sdkgo.Receipt{})
 	}
-	return sdkgo.NewMutationUncertain(Task{}, *failure("createTask", sdkgo.FailureProtocol, "Todoist accepted the creation of task "+taskID+" but did not return it on read-back, so the task is unconfirmed"), sdkgo.Receipt{})
+	return sdkgo.NewMutationUncertain(Task{}, *failure("createTask", sdkgo.FailureProtocol, "Todoist accepted the creation of task "+taskID+" but it could not be read back in this attempt, so the task is unconfirmed"), sdkgo.Receipt{})
 }
 
 func decodeCreatedTaskID(body []byte) (string, bool) {
@@ -415,7 +438,8 @@ func (operation DeleteTaskOperation) Invoke(call sdkgo.Call, input DeleteTaskInp
 	if !taskIDPattern.MatchString(input.TaskID) {
 		return sdkgo.NewMutationBranch(DeleteTaskBranchDefect, DeleteTaskOutcome{}, failure("deleteTask", sdkgo.FailureValidation, "taskId must be a non-empty opaque task ID"), sdkgo.Receipt{})
 	}
-	result := operation.client.exchange(call, "deleteTask", http.MethodDelete, "/tasks/"+input.TaskID, nil, "")
+	budget := newAttemptBudget(call.Context, DeleteTaskDefinition.StepDefaults.ExecuteMethodTimeout)
+	result := operation.client.exchange(call, budget.remainingWindow(), "deleteTask", http.MethodDelete, "/tasks/"+input.TaskID, nil, "")
 	value := DeleteTaskOutcome{TaskID: input.TaskID}
 	switch {
 	case result.failure == nil:
@@ -431,8 +455,8 @@ func (operation DeleteTaskOperation) Invoke(call sdkgo.Call, input DeleteTaskInp
 	}
 }
 
-func (client *Client) exchangeTask(call sdkgo.Call, operation, method, taskID string, payload []byte) exchangeResult {
-	result := client.exchange(call, operation, method, "/tasks/"+taskID, payload, "")
+func (client *Client) exchangeTask(call sdkgo.Call, window requestWindow, operation, method, taskID string, payload []byte) exchangeResult {
+	result := client.exchange(call, window, operation, method, "/tasks/"+taskID, payload, "")
 	if result.failure != nil {
 		return result
 	}
@@ -445,7 +469,7 @@ func (client *Client) exchangeTask(call sdkgo.Call, operation, method, taskID st
 	return result
 }
 
-func (client *Client) exchange(call sdkgo.Call, operation, method, endpoint string, payload []byte, requestID string) exchangeResult {
+func (client *Client) exchange(call sdkgo.Call, window requestWindow, operation, method, endpoint string, payload []byte, requestID string) exchangeResult {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil && isTerminalCredentialError(err) {
 		return exchangeResult{isLocalDefect: true, failure: failure(operation, sdkgo.FailureAuthentication, "connection credentials are missing or need reauthorization")}
@@ -456,8 +480,14 @@ func (client *Client) exchange(call sdkgo.Call, operation, method, endpoint stri
 	if err := credentials.Validate(); err != nil || !providerhttp.IsHeaderSafeCredential(credentials.APIToken.Reveal()) {
 		return exchangeResult{isLocalDefect: true, failure: failure(operation, sdkgo.FailureAuthentication, "connection credentials are invalid")}
 	}
+	if !window.hasTimeToStart() {
+		return exchangeResult{isTransient: true, isUndispatched: true, failure: failure(operation, sdkgo.FailureAvailability, "too little attempt time remained, so the request was not sent")}
+	}
+	// The window deadline also cuts a longer caller-supplied http.Client.Timeout.
+	windowContext, cancelWindow := context.WithDeadline(window.parent, window.deadline)
+	defer cancelWindow()
 	observation := &dispatchObservation{}
-	requestContext := httptrace.WithClientTrace(call.Context, observation.clientTrace())
+	requestContext := httptrace.WithClientTrace(windowContext, observation.clientTrace())
 	request, err := http.NewRequestWithContext(requestContext, method, client.baseURL+endpoint, bytes.NewReader(payload))
 	if err != nil {
 		return exchangeResult{isLocalDefect: true, failure: failure(operation, sdkgo.FailureLocalDefect, "Todoist request could not be built")}
@@ -504,6 +534,34 @@ func (client *Client) exchange(call sdkgo.Call, operation, method, endpoint stri
 func isTerminalCredentialError(err error) bool {
 	return errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, sdkgo.ErrReauthorizationRequired) ||
 		errors.Is(err, projectconfig.ErrConnectionNotSelected) || errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
+}
+
+// newAttemptBudget uses the Execute timeout, shortened by the Step deadline; an async first attempt may get seven seconds.
+func newAttemptBudget(stepContext context.Context, executeTimeout time.Duration) attemptBudget {
+	start := time.Now()
+	available := executeTimeout
+	if stepDeadline, hasDeadline := stepContext.Deadline(); hasDeadline {
+		available = min(available, stepDeadline.Sub(start))
+	}
+	available = max(available, 0)
+	return attemptBudget{
+		stepContext:        stepContext,
+		writeDeadline:      start.Add(available * 7 / 12),
+		attemptDeadline:    start.Add(available * 5 / 6),
+		minimumRequestTime: available / 10,
+	}
+}
+
+func (budget attemptBudget) writeWindow() requestWindow {
+	return requestWindow{parent: budget.stepContext, deadline: budget.writeDeadline, minimumTime: budget.minimumRequestTime}
+}
+
+func (budget attemptBudget) remainingWindow() requestWindow {
+	return requestWindow{parent: budget.stepContext, deadline: budget.attemptDeadline, minimumTime: budget.minimumRequestTime}
+}
+
+func (window requestWindow) hasTimeToStart() bool {
+	return window.minimumTime > 0 && time.Until(window.deadline) >= window.minimumTime
 }
 
 func decodeTask(body []byte) (Task, error) {
