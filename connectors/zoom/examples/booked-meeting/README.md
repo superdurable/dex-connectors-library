@@ -17,9 +17,10 @@ attendance, using every Zoom operation:
    Zoom fails the Flow on the unwired `notFound` branch.
 6. At the attendance time, `ListMeetingParticipants`
    (`listPastMeetingParticipants`) and `RecordMeetingAttendance` complete as
-   `attended` when anyone other than the host joined, `noShow` when nobody did,
-   or `attendanceUnknown` when a participant page is incomplete. A missing
-   ended instance or rejected listing fails the Flow.
+   `attended` when anyone other than the host joined, `noShow` when nobody did
+   or Zoom has no ended instance, or `attendanceUnknown` when the first
+   participant page lists only the host and more pages remain. A rejected
+   listing, such as on a free account, fails the Flow.
 
 On `providerRejected`, the unwired branch fails the Flow; nothing was
 created. On `uncertain`, `RecordUncertainMeeting` records the

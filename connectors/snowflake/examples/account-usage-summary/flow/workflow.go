@@ -96,7 +96,7 @@ type UsageSummaryRecord struct {
 	StatusReads int `json:"statusReads"`
 	// Usage is the aggregate once the statement completed.
 	Usage *AccountUsage `json:"usage,omitempty"`
-	// IsCancellationAccepted reports that Snowflake accepted the cancel after the wait budget ran out.
+	// IsCancellationAccepted reports whether Snowflake accepted the cancel after the wait budget ran out.
 	IsCancellationAccepted bool `json:"isCancellationAccepted,omitempty"`
 }
 
