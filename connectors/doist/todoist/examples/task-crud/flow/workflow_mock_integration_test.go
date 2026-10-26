@@ -35,28 +35,30 @@ func TestTaskLifecycleUsesMockPagesAndVerifiesDeletionWithRealDex(t *testing.T) 
 	require.NoError(t, result.DecodeSingleOutput(&outcome))
 	require.Equal(t, "deletedAndVerified", outcome.Status)
 	require.True(t, outcome.MatchesRequestedFields)
-	require.Equal(t, request.Content+" - updated", outcome.Updated.Content)
-	require.Equal(t, outcome.Created.ID, outcome.Updated.ID)
+	require.Equal(t, "created-task", outcome.Created.ID)
+	require.Equal(t, "inbox-project", outcome.Created.ProjectID)
+	require.Equal(t, "Original title - updated", outcome.Updated.Content)
+	require.Equal(t, "created-task", outcome.Updated.ID)
 	require.Equal(t, "deleted", outcome.DeleteBranch)
 
 	createCalls := mock.CreateTask().Calls()
 	require.Len(t, createCalls, 1)
-	require.Equal(t, todoist.CreateTaskInput{Content: request.Content, Description: request.Description}, createCalls[0].Input)
+	require.Equal(t, todoist.CreateTaskInput{Content: "Original title", Description: "Original description"}, createCalls[0].Input)
 	getCalls := mock.GetTask().Calls()
 	require.Len(t, getCalls, 3)
 	for _, call := range getCalls {
-		require.Equal(t, todoist.GetTaskInput{TaskID: outcome.Created.ID}, call.Input)
+		require.Equal(t, todoist.GetTaskInput{TaskID: "created-task"}, call.Input)
 	}
 	updateCalls := mock.UpdateTask().Calls()
 	require.Len(t, updateCalls, 1)
-	require.Equal(t, todoist.UpdateTaskInput{TaskID: outcome.Created.ID, Content: &outcome.Updated.Content}, updateCalls[0].Input)
+	updatedTitle := "Original title - updated"
+	require.Equal(t, todoist.UpdateTaskInput{TaskID: "created-task", Content: &updatedTitle}, updateCalls[0].Input)
 	listCalls := mock.ListTasks().Calls()
 	require.Len(t, listCalls, 3)
-	require.Equal(t, []string{"", "inbox-page-2", "inbox-page-3"}, []string{listCalls[0].Input.Cursor, listCalls[1].Input.Cursor, listCalls[2].Input.Cursor})
-	for _, call := range listCalls {
-		require.Equal(t, todoist.ListTasksInput{ProjectID: outcome.Created.ProjectID, Limit: 200, Cursor: call.Input.Cursor}, call.Input)
+	for index, call := range listCalls {
+		require.Equal(t, todoist.ListTasksInput{ProjectID: "inbox-project", Limit: 200, Cursor: []string{"", "inbox-page-2", "inbox-page-3"}[index]}, call.Input)
 	}
 	deleteCalls := mock.DeleteTask().Calls()
 	require.Len(t, deleteCalls, 1)
-	require.Equal(t, todoist.DeleteTaskInput{TaskID: outcome.Created.ID}, deleteCalls[0].Input)
+	require.Equal(t, todoist.DeleteTaskInput{TaskID: "created-task"}, deleteCalls[0].Input)
 }
