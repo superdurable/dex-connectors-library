@@ -23,6 +23,9 @@ uses a 30-second Execute timeout. Reads and `updateEmployee` use the one-hour de
 durability because BambooHR has no idempotency key; see
 [Duplicate safety](#duplicate-safety).
 
+Install this connector release with `go get github.com/superdurable/dex-connectors-library/connectors/bamboohr@v0.22.0`.
+The module requires Connector Go SDK v0.33.0 for the shared single-dispatch fence.
+
 This release has no Triggers, no Studio pickers, and no OAuth; see
 [Not in this release](#not-in-this-release).
 
@@ -207,8 +210,11 @@ returns 409, which selects `providerRejected`.
 which BambooHR requires, and optional preferred name, work and home email,
 hire date, and up to 50 other writable fields, such as `department` or
 `employmentHistoryStatus` for the first employment status record. The new ID
-comes from the response's `id`, or from the `Location` header BambooHR
-documents. BambooHR rejects an email another employee already holds with 409.
+comes from the response's `id`, or from a usable `Location` header. The current
+[Create Employee reference](https://documentation.bamboohr.com/reference/create-employee)
+documents 201 but does not document the response body or `Location` format;
+their live formats remain unverified. BambooHR rejects an email another
+employee already holds with 409.
 
 ## Duplicate safety
 
@@ -222,26 +228,25 @@ take these positions:
   second dispatch sends the same values or finds them applied. It keeps async
   durability, and every unconfirmed outcome, including a 5xx or a lost
   response, is retried.
-- **addEmployee** runs with sync durability, so Dex never sends a second
-  attempt while the first is in flight. Before sending, the operation records
-  a Dex heartbeat checkpoint naming the Step's Call ID. A later attempt of the
-  same Step execution that finds the checkpoint, after a lost Worker or an
-  Execute timeout, selects `uncertain` without sending.
-- Only an outcome that proves BambooHR did not apply the add is retried: a 429
-  with `Retry-After`, which BambooHR sends for its rate limit instead of
-  processing the request, and a connection that failed before it opened. The
-  checkpoint is cleared first. A 429 without `Retry-After` is BambooHR's
-  employee limit and selects `providerRejected` with `QUOTA_EXHAUSTED`.
-- A 5xx, a 408, a lost or unreadable response, and an invalid 2xx select
-  `uncertain`: the employee may exist, and the connector never resends the
-  add. The application decides; the onboarding example looks the hire up by
-  personal email and continues with the employee it finds. A missing or
-  ambiguous reconciliation fails the Flow.
+- **addEmployee** uses the shared single-dispatch fence with sync durability.
+  Its attempt-numbered heartbeat allows another send only after the immediately
+  prior attempt recorded `notSent` or `canResend`. A missing, stale, or legacy
+  checkpoint fails closed. An accepted 2xx with an employee ID saves that ID;
+  a later attempt reads `GET /employees/{id}` instead of posting again.
+- A 429, 503, or connection failure proven to occur before a connection opened
+  records `canResend` and returns Retry. BambooHR's
+  [technical overview](https://documentation.bamboohr.com/docs/api-details)
+  describes 429 as throttling and 503 as endpoint unavailability. A 429 without
+  `Retry-After` also retries; the provider says the header should be present,
+  so the missing-header case has not been verified live.
+- A 500, 408, ambiguous transport failure, or accepted 2xx without a usable
+  employee ID selects `uncertain`. The connector cannot associate an email or
+  name lookup with its specific POST. The onboarding example looks up the hire
+  by personal email; a missing or ambiguous result fails the Flow.
 
-Keep `addEmployee` sync. An application override to async durability lets
-Dex dispatch a second add after seven seconds. A checkpoint lost before Dex
-stored it, or a crash before the request left, can make an attempt report
-`uncertain` for an add BambooHR never received; that direction is safe.
+Keep `addEmployee` sync. Async local-phase heartbeats are not visible to later
+attempts. A checkpoint lost before Dex stored it, or a crash before the
+request left, can produce `uncertain` for an add BambooHR never received.
 
 The reads are safe to repeat. Two Flows that add the same person concurrently
 are not deduplicated by the connector; give each hire a stable Flow ID so Dex
@@ -263,16 +268,33 @@ the API key is dropped.
 | 409, other 4xx | `providerRejected` | `providerRejected` |
 | 3xx | `providerRejected`, `PROTOCOL`; redirects are never followed | same |
 | 429 with `Retry-After` | Retry after `Retry-After` | Retry after `Retry-After` |
-| 429 without `Retry-After` | Retry | `providerRejected`, `QUOTA_EXHAUSTED` |
+| 429 without `Retry-After` | Retry | Retry |
 | connection refused before sending | Retry | Retry |
-| 408, 5xx, lost or unreadable response | Retry, after `Retry-After` when present | `uncertain` |
+| 503 | Retry, after `Retry-After` when present | Retry |
+| 408, other 5xx, lost or unreadable response | Retry, after `Retry-After` when present | `uncertain` |
 | oversized, malformed, or credential-reflecting 2xx | `invalidResponse` | `uncertain` |
-| invalid input or connection credentials | `defect`, with no request | `defect`, with no request |
+| invalid input | `defect`, with no request | `defect`, with no request |
+| connection credentials unavailable | `defect`, with no request | Retry after a `notSent` checkpoint |
 
 BambooHR returned 503 for rate limiting until September 16, 2026, and returns
 429 with `Retry-After` since; 503 now means the API is unavailable. The
 Receipt carries the Call ID and the employee ID; BambooHR documents no
 request ID header.
+
+## Mocks
+
+`bamboohrmock` provides one consistent default world: Ava Nguyen is employee
+140, while adding Sam Park creates employee 142. Each operation has a happy
+default and named definite business outcomes. Script the result that matters
+to an application test; the real-Dex onboarding test contains this setup:
+
+```go
+mock := bamboohrmock.New(t, ConnectionName)
+mock.FindEmployeeByEmail().Respond(bamboohrmock.FindEmployeeByEmailNotFoundFailure())
+```
+
+The complete runnable test is
+[`examples/new-hire-onboarding/flow/workflow_mock_integration_test.go`](examples/new-hire-onboarding/flow/workflow_mock_integration_test.go).
 
 ## Not in this release
 

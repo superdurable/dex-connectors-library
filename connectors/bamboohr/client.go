@@ -16,6 +16,7 @@ package bamboohr
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -28,6 +29,7 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 const (
@@ -100,10 +102,8 @@ type exchangeOutcome uint8
 const (
 	exchangeSucceeded exchangeOutcome = iota + 1
 	exchangeNotFound
-	// exchangeRateLimited is a 429 with Retry-After, which BambooHR sends instead of processing the request.
+	// exchangeRateLimited is a 429; Retry-After is honored when BambooHR supplies it.
 	exchangeRateLimited
-	// exchangeLimitExceeded is a 429 without Retry-After, BambooHR's documented employee limit.
-	exchangeLimitExceeded
 	// exchangeNotSent is a connection that failed before any request byte reached BambooHR.
 	exchangeNotSent
 	// exchangeUnavailable is a 5xx, a 408, or a transport failure after connecting; a write may have been applied.
@@ -197,9 +197,18 @@ func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Cre
 
 // exchange sends one authenticated request and classifies its response without deciding retry policy.
 func (client *Client) exchange(call sdkgo.Call, credentials Credentials, operation string, request bambooHRRequest) bambooHRExchange {
-	httpRequest, err := client.buildRequest(call, credentials, request)
+	return client.exchangeWithContext(call.Context, credentials, operation, request, false)
+}
+
+func (client *Client) exchangeWithContext(ctx context.Context, credentials Credentials, operation string, request bambooHRRequest, isFencedWrite bool) bambooHRExchange {
+	httpRequest, err := client.buildRequest(ctx, credentials, request)
 	if err != nil {
 		return bambooHRExchange{outcome: exchangeDefect, failure: bambooHRFailure(sdkgo.FailureLocalDefect, operation, err.Error())}
+	}
+	if isFencedWrite {
+		if err := singledispatch.PrepareHTTPWrite(httpRequest); err != nil {
+			return bambooHRExchange{outcome: exchangeNotSent, failure: bambooHRFailure(sdkgo.FailureLocalDefect, operation, "BambooHR write could not be prepared")}
+		}
 	}
 	httpResponse, err := client.httpClient.Do(httpRequest)
 	if err != nil {
@@ -229,7 +238,7 @@ func (client *Client) exchange(call sdkgo.Call, credentials Credentials, operati
 	return client.classifyFailureStatus(response, credentials, operation)
 }
 
-func (client *Client) buildRequest(call sdkgo.Call, credentials Credentials, request bambooHRRequest) (*http.Request, error) {
+func (client *Client) buildRequest(ctx context.Context, credentials Credentials, request bambooHRRequest) (*http.Request, error) {
 	target := client.apiBaseURL + request.path
 	if len(request.query) != 0 {
 		target += "?" + request.query.Encode()
@@ -241,9 +250,9 @@ func (client *Client) buildRequest(call sdkgo.Call, credentials Credentials, req
 		if encodeErr != nil {
 			return nil, errBambooHRRequestNotBuilt
 		}
-		httpRequest, err = http.NewRequestWithContext(call.Context, request.method, target, bytes.NewReader(encoded))
+		httpRequest, err = http.NewRequestWithContext(ctx, request.method, target, bytes.NewReader(encoded))
 	} else {
-		httpRequest, err = http.NewRequestWithContext(call.Context, request.method, target, nil)
+		httpRequest, err = http.NewRequestWithContext(ctx, request.method, target, nil)
 	}
 	if err != nil {
 		return nil, errBambooHRRequestNotBuilt
@@ -265,12 +274,9 @@ func (client *Client) classifyFailureStatus(response bambooHRResponse, credentia
 	retryAfterHeader := response.header.Get("Retry-After")
 	retryAfter := providerhttp.ParseRetryAfter(retryAfterHeader, client.now())
 	switch status := response.statusCode; {
-	case status == http.StatusTooManyRequests && retryAfterHeader != "":
+	case status == http.StatusTooManyRequests:
 		return bambooHRExchange{outcome: exchangeRateLimited, response: response, retryAfter: retryAfter,
 			failure: bambooHRFailure(sdkgo.FailureRateLimit, operation, withErrorCode("BambooHR rate limited the request (HTTP 429)", errorCode))}
-	case status == http.StatusTooManyRequests:
-		return bambooHRExchange{outcome: exchangeLimitExceeded, response: response,
-			failure: bambooHRFailure(sdkgo.FailureQuotaExhausted, operation, withErrorCode("BambooHR reported a limit exceeded without Retry-After (HTTP 429)", errorCode))}
 	case status == http.StatusRequestTimeout || status >= 500:
 		return bambooHRExchange{outcome: exchangeUnavailable, response: response, retryAfter: retryAfter,
 			failure: bambooHRFailure(sdkgo.FailureAvailability, operation, withErrorCode(fmt.Sprintf("BambooHR could not complete the request (HTTP %d)", status), errorCode))}

@@ -41,8 +41,7 @@ func TestAddEmployeeSendsOneRequestAfterRecordingTheDispatchMarker(t *testing.T)
 	require.Empty(t, request.header.Get("Idempotency-Key"), "BambooHR documents no key, and Go would retry a keyed POST on its own")
 	require.JSONEq(t, `{"firstName":"Ava","lastName":"Nguyen","homeEmail":"ava@personal.example.com","hireDate":"2026-10-13",
 		"department":"Engineering","employmentHistoryStatus":"Full-Time"}`, request.body)
-	require.JSONEq(t, `{"bamboohrDispatchedCallId":"`+string(result.Receipt.CallID)+`"}`, string(ctx.recordedHeartbeat),
-		"the dispatch marker is recorded before the request")
+	require.JSONEq(t, `{"callId":"`+string(result.Receipt.CallID)+`","attempt":1,"state":"claimed","providerId":"140"}`, string(ctx.recordedHeartbeat))
 }
 
 func TestAddEmployeeReadsTheIDFromTheLocationHeaderWhenTheBodyLacksIt(t *testing.T) {
@@ -68,10 +67,6 @@ func TestAddEmployeeNeverResendsARequestWhoseOutcomeIsUnknown(t *testing.T) {
 		{name: "server error", reply: func(response http.ResponseWriter) {
 			writeBambooHRError(t, response, http.StatusInternalServerError, `SENTINEL`)
 		}, branch: bamboohr.AddEmployeeBranchUncertain, kind: sdkgo.FailureAvailability},
-		{name: "unavailable", reply: func(response http.ResponseWriter) {
-			response.Header().Set("Retry-After", "5")
-			writeBambooHRError(t, response, http.StatusServiceUnavailable, ``)
-		}, branch: bamboohr.AddEmployeeBranchUncertain, kind: sdkgo.FailureAvailability},
 		{name: "lost response", reply: func(response http.ResponseWriter) { dropConnection(t, response) },
 			branch: bamboohr.AddEmployeeBranchUncertain, kind: sdkgo.FailureTransport},
 		{name: "no employee id", reply: func(response http.ResponseWriter) {
@@ -83,9 +78,6 @@ func TestAddEmployeeNeverResendsARequestWhoseOutcomeIsUnknown(t *testing.T) {
 		{name: "duplicate email", reply: func(response http.ResponseWriter) {
 			writeBambooHRError(t, response, http.StatusConflict, ``)
 		}, branch: bamboohr.AddEmployeeBranchProviderRejected, kind: sdkgo.FailureConflict},
-		{name: "employee limit", reply: func(response http.ResponseWriter) {
-			writeBambooHRError(t, response, http.StatusTooManyRequests, ``)
-		}, branch: bamboohr.AddEmployeeBranchProviderRejected, kind: sdkgo.FailureQuotaExhausted},
 		{name: "not permitted", reply: func(response http.ResponseWriter) {
 			writeBambooHRError(t, response, http.StatusForbidden, ``)
 		}, branch: bamboohr.AddEmployeeBranchProviderRejected, kind: sdkgo.FailureAuthorization},
@@ -117,14 +109,14 @@ func TestAddEmployeeRetriesOnlyWhatBambooHRProvablyDidNotApply(t *testing.T) {
 	var retryAfter *dex.RetryAfterError
 	require.ErrorAs(t, err, &retryAfter)
 	require.Equal(t, 34*time.Second, retryAfter.After)
-	require.Nil(t, ctx.recordedHeartbeat, "a rate-limited 429 clears the marker so the retry may send")
+	require.Contains(t, string(ctx.recordedHeartbeat), `"state":"canResend"`)
 	require.Equal(t, 2, ctx.heartbeatCount)
 
 	refused := newBambooHRDexContext("add-refused")
 	_, err = sdkgo.RunMutation(refused, newBambooHRClient(t, closedLoopbackURL(t)).AddEmployee(), bambooHRConnection, validAddEmployeeInput())
 	require.ErrorAs(t, err, &retry)
 	require.Equal(t, sdkgo.FailureTransport, retry.Failure.Kind)
-	require.Nil(t, refused.recordedHeartbeat, "a refused connection sent nothing")
+	require.Contains(t, string(refused.recordedHeartbeat), `"state":"canResend"`)
 
 	next := ctx.nextAttempt()
 	created := newRecordingBambooHR(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
@@ -142,7 +134,7 @@ func TestAddEmployeeAfterAnEarlierDispatchSendsNothing(t *testing.T) {
 	result, err := sdkgo.RunMutation(first.nextAttempt(), newBambooHRClient(t, provider.URL).AddEmployee(), bambooHRConnection, validAddEmployeeInput())
 	require.NoError(t, err)
 	require.Equal(t, bamboohr.AddEmployeeBranchUncertain, result.Branch)
-	require.Equal(t, "an earlier attempt of this Step may have sent the request, so it is not sent again", result.Failure.Message)
+	require.Equal(t, "the dispatch checkpoint is unavailable or untrusted; the request is not sent again", result.Failure.Message)
 
 	rejecting := newBambooHRDexContext("add-heartbeat-closed")
 	rejecting.rejectsHeartbeat = true

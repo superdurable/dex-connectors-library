@@ -4,20 +4,24 @@
 package bamboohr
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 	"unicode"
 	"unicode/utf8"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 const (
-	addEmployeeOperation = "addEmployee"
+	addEmployeeOperation      = "addEmployee"
+	addEmployeeExecuteTimeout = 30 * time.Second
 
 	maxNameBytes = 255
 )
@@ -60,57 +64,119 @@ type AddEmployeeOperation struct {
 	client *Client
 }
 
+type addEmployeeSendAttempt struct {
+	client      *Client
+	credentials Credentials
+	input       AddEmployeeInput
+	result      bambooHRExchange
+}
+
+func (attempt *addEmployeeSendAttempt) send(ctx context.Context) error {
+	attempt.result = attempt.client.exchangeWithContext(ctx, attempt.credentials, addEmployeeOperation, bambooHRRequest{
+		method: http.MethodPost, path: "/employees", payload: buildAddEmployeeRequest(attempt.input),
+	}, true)
+	return nil
+}
+
 // Definition returns the immutable connector operation definition.
 func (AddEmployeeOperation) Definition() sdkgo.MutationDefinition { return AddEmployeeDefinition }
 
 // IdempotencyKey uses the stable connector Call ID. BambooHR documents no idempotency key, so the
-// key only correlates the Receipt; single dispatch comes from a Dex heartbeat checkpoint instead.
+// key only correlates the Receipt; the shared single-dispatch fence owns the retry checkpoint.
 func (AddEmployeeOperation) IdempotencyKey(callID sdkgo.CallID, _ AddEmployeeInput) sdkgo.IdempotencyKey {
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke sends POST /api/v1/employees at most once per Step execution. Only a rate-limited 429 or
-// a connection that never opened is retried; any other unconfirmed outcome selects uncertain
-// without resending.
+// Invoke sends POST /api/v1/employees only when the shared fence allows it.
 func (operation AddEmployeeOperation) Invoke(call sdkgo.Call, input AddEmployeeInput) sdkgo.MutationAttempt[AddEmployeeOutput] {
 	if err := validateAddEmployeeInput(input); err != nil {
 		return sdkgo.NewMutationBranch(AddEmployeeBranchDefect, AddEmployeeOutput{}, bambooHRFailurePointer(sdkgo.FailureValidation, addEmployeeOperation, err.Error()), sdkgo.Receipt{})
 	}
-	credentials, failure := operation.client.resolveCredentials(call, addEmployeeOperation)
-	if failure != nil {
-		return sdkgo.NewMutationBranch(AddEmployeeBranchDefect, AddEmployeeOutput{}, failure, sdkgo.Receipt{})
+	fence, err := singledispatch.NewFence(call, addEmployeeExecuteTimeout)
+	if err != nil {
+		return sdkgo.NewMutationBranch(AddEmployeeBranchDefect, AddEmployeeOutput{}, bambooHRFailurePointer(sdkgo.FailureLocalDefect, addEmployeeOperation, err.Error()), sdkgo.Receipt{})
 	}
 	receipt := operation.client.receipt(call, "")
-	switch claimSingleDispatch(call) {
-	case singleDispatchGranted:
-	case singleDispatchNotRecorded:
-		return sdkgo.NewMutationRetry[AddEmployeeOutput](bambooHRFailure(sdkgo.FailureAvailability, addEmployeeOperation, "Dex did not record the dispatch checkpoint; nothing was sent"), 0)
-	default:
-		return sdkgo.NewMutationUncertain(AddEmployeeOutput{}, bambooHRFailure(sdkgo.FailureTransport, addEmployeeOperation,
-			"an earlier attempt of this Step may have sent the request, so it is not sent again"), receipt)
+	switch decision := fence.Decide(); decision.Kind {
+	case singledispatch.FailClosed:
+		return addEmployeeUncertain(receipt, sdkgo.FailureTransport, "the dispatch checkpoint is unavailable or untrusted; the request is not sent again")
+	case singledispatch.ReadBackRequired:
+		if decision.Marker.CallID != call.ID || decision.Marker.ProviderID == "" {
+			return addEmployeeUncertain(receipt, sdkgo.FailureTransport, "an earlier attempt may have sent the request; no employee ID is available for read-back")
+		}
+		return operation.readBackAddedEmployee(call, decision.Marker.ProviderID)
 	}
-	result := operation.client.exchange(call, credentials, addEmployeeOperation, bambooHRRequest{
-		method: http.MethodPost, path: "/employees", payload: buildAddEmployeeRequest(input),
-	})
+	credentials, failure := operation.client.resolveCredentials(call, addEmployeeOperation)
+	if failure != nil {
+		if err := fence.RecordNotSent(); err != nil {
+			return sdkgo.NewMutationRetry[AddEmployeeOutput](bambooHRFailure(sdkgo.FailureAvailability, addEmployeeOperation, "credentials and not-sent checkpoint are unavailable"), 0)
+		}
+		return sdkgo.NewMutationRetry[AddEmployeeOutput](*failure, 0)
+	}
+	attempt := &addEmployeeSendAttempt{client: operation.client, credentials: credentials, input: input}
+	if err := fence.Dispatch(attempt.send); err != nil {
+		if errors.Is(err, singledispatch.ErrCheckpoint) || errors.Is(err, singledispatch.ErrInsufficientTime) {
+			return sdkgo.NewMutationRetry[AddEmployeeOutput](bambooHRFailure(sdkgo.FailureAvailability, addEmployeeOperation, "dispatch checkpoint or attempt time is unavailable; nothing was sent"), 0)
+		}
+		return addEmployeeUncertain(receipt, sdkgo.FailureTransport, "the dispatch outcome is unavailable")
+	}
+	result := attempt.result
+	if result.response.statusCode >= 200 && result.response.statusCode < 300 {
+		employeeID, err := addedEmployeeID(result.response)
+		if err != nil {
+			return addEmployeeUncertain(receipt, sdkgo.FailureProtocol, "BambooHR accepted the employee but returned no usable employee ID")
+		}
+		// A failed identity checkpoint cannot authorize another POST.
+		_ = fence.RecordProviderID(employeeID)
+		return sdkgo.NewMutationBranch(AddEmployeeBranchCreated, AddEmployeeOutput{EmployeeID: employeeID}, nil, operation.client.receipt(call, employeeID))
+	}
+	if result.response.statusCode == http.StatusTooManyRequests || result.response.statusCode == http.StatusServiceUnavailable {
+		if err := fence.RecordCanResend(); err != nil {
+			return sdkgo.NewMutationRetry[AddEmployeeOutput](bambooHRFailure(sdkgo.FailureAvailability, addEmployeeOperation, "BambooHR did not process the request, but the resend checkpoint failed"), result.retryAfter)
+		}
+		return sdkgo.NewMutationRetry[AddEmployeeOutput](result.failure, result.retryAfter)
+	}
 	switch result.outcome {
-	case exchangeSucceeded:
-	case exchangeRateLimited, exchangeNotSent:
-		releaseSingleDispatch(call)
+	case exchangeNotSent:
+		if err := fence.RecordCanResend(); err != nil {
+			return sdkgo.NewMutationRetry[AddEmployeeOutput](bambooHRFailure(sdkgo.FailureAvailability, addEmployeeOperation, "BambooHR did not process the request, but the resend checkpoint failed"), result.retryAfter)
+		}
 		return sdkgo.NewMutationRetry[AddEmployeeOutput](result.failure, result.retryAfter)
 	case exchangeUnavailable, exchangeInvalid:
 		return sdkgo.NewMutationUncertain(AddEmployeeOutput{}, result.failure, receipt)
 	case exchangeDefect:
-		releaseSingleDispatch(call)
 		return sdkgo.NewMutationBranch(AddEmployeeBranchDefect, AddEmployeeOutput{}, &result.failure, receipt)
 	default:
 		return sdkgo.NewMutationBranch(AddEmployeeBranchProviderRejected, AddEmployeeOutput{}, &result.failure, receipt)
 	}
-	employeeID, err := addedEmployeeID(result.response)
-	if err != nil {
-		return sdkgo.NewMutationUncertain(AddEmployeeOutput{}, bambooHRFailure(sdkgo.FailureProtocol, addEmployeeOperation,
-			"BambooHR accepted the employee but "+err.Error()), receipt)
+}
+
+func (operation AddEmployeeOperation) readBackAddedEmployee(call sdkgo.Call, employeeID string) sdkgo.MutationAttempt[AddEmployeeOutput] {
+	receipt := operation.client.receipt(call, employeeID)
+	credentials, failure := operation.client.resolveCredentials(call, addEmployeeOperation)
+	if failure != nil {
+		return sdkgo.NewMutationRetry[AddEmployeeOutput](*failure, 0)
 	}
-	return sdkgo.NewMutationBranch(AddEmployeeBranchCreated, AddEmployeeOutput{EmployeeID: employeeID}, nil, operation.client.receipt(call, employeeID))
+	result := operation.client.exchange(call, credentials, addEmployeeOperation, bambooHRRequest{
+		method: http.MethodGet, path: "/employees/" + employeeID,
+	})
+	if result.outcome == exchangeSucceeded {
+		var record struct {
+			ID string `json:"id"`
+		}
+		if json.Unmarshal(result.response.body, &record) == nil && record.ID == employeeID {
+			return sdkgo.NewMutationBranch(AddEmployeeBranchCreated, AddEmployeeOutput{EmployeeID: employeeID}, nil, receipt)
+		}
+		return addEmployeeUncertain(receipt, sdkgo.FailureProtocol, "the created employee ID could not be confirmed")
+	}
+	if result.outcome == exchangeNotFound || result.outcome == exchangeRejected {
+		return addEmployeeUncertain(receipt, result.failure.Kind, "the created employee could not be confirmed")
+	}
+	return sdkgo.NewMutationRetry[AddEmployeeOutput](result.failure, result.retryAfter)
+}
+
+func addEmployeeUncertain(receipt sdkgo.Receipt, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[AddEmployeeOutput] {
+	return sdkgo.NewMutationUncertain(AddEmployeeOutput{}, bambooHRFailure(kind, addEmployeeOperation, message), receipt)
 }
 
 func validateAddEmployeeInput(input AddEmployeeInput) error {
