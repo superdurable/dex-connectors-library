@@ -276,7 +276,7 @@ spec:
           default: true
           pages:
             - {objectType: deals, objects: [{objectType: deals, id: "301", name: Acme renewal, personId: "101", organizationId: "201", stageId: "3", status: open}], nextCursor: page-two}
-            - {objectType: deals, objects: [{objectType: deals, id: "302", name: Acme expansion, personId: "101", organizationId: "201", stageId: "3", status: open}, {objectType: deals, id: "301", name: Acme renewal, status: open}], nextCursor: page-three}
+            - {objectType: deals, objects: [{objectType: deals, id: "302", name: Acme expansion, personId: "101", organizationId: "201", stageId: "3", status: open}, {objectType: deals, id: "301", name: Acme renewal, personId: "101", organizationId: "201", stageId: "3", status: open}], nextCursor: page-three}
             - {objectType: deals, objects: [], nextCursor: ""}
         - name: providerRejectedFailure
           branch: providerRejected
@@ -291,7 +291,7 @@ spec:
       inputType: UpsertObjectInput
       outputType: UpsertedObject
       kind: mutation
-      description: Create or update one Pipedrive person identified by email, or one organization identified by name. Pipedrive has no idempotency key, so sync durability lets the shared single-dispatch fence persists a claim before a create; a later attempt searches the identity again and updates the record it finds or reports uncertain, and a missing or stale claim fails closed while identity read-back checks for a previously created record.
+      description: Create or update one Pipedrive person identified by email, or one organization identified by name. Pipedrive has no idempotency key, so sync durability lets the shared single-dispatch fence persist a claim before a create; a later attempt searches the identity again and updates the record it finds or reports uncertain, and a missing or stale claim fails closed while identity read-back checks for a previously created record.
       idempotency: required
       authorization: required
       branches:
@@ -299,7 +299,7 @@ spec:
         - {id: multipleMatches, goName: MultipleMatches, description: "More than one record carries the identity value, so the connector changed nothing; the Result lists their IDs.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Pipedrive conclusively rejected the search or the write, such as an invalid field value, a revoked token, or a missing scope; nothing was created.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "Pipedrive returned an invalid or oversized search page or updated record.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "An earlier attempt sent a create whose outcome was never confirmed, and a search by the identity value finds no record or this attempt's search or update failed without a retry, so the record may exist; the connector does not create it again.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "A create sent in this or an earlier attempt was not confirmed, and identity read-back finds no record or cannot complete; the record may exist, so the connector does not create it again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
@@ -329,7 +329,7 @@ spec:
       inputType: CreateObjectInput
       outputType: CRMObject
       kind: mutation
-      description: Create one Pipedrive person, organization, or deal. Pipedrive has no idempotency key, so sync durability persists the shared single-dispatch fence claim across retries; later attempts read back a known ID or report uncertain without resending.
+      description: Create one Pipedrive person, organization, or deal. Pipedrive has no idempotency key, so sync durability persists the shared single-dispatch fence claim across retries; a later attempt may resend after a definite refusal or proven unsent request, read back a known ID, or report uncertain.
       idempotency: required
       authorization: required
       branches:

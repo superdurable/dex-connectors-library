@@ -37,7 +37,7 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			return err
 		}},
 		{name: "listObjects/listedDefaultAnswer/2", decode: func() error {
-			_, err := connectormock.DecodeOutput[pipedrive.ObjectPage](`{"objectType":"deals","objects":[{"objectType":"deals","id":"302","name":"Acme expansion","personId":"101","organizationId":"201","stageId":"3","status":"open"},{"objectType":"deals","id":"301","name":"Acme renewal","status":"open"}],"nextCursor":"page-three"}`)
+			_, err := connectormock.DecodeOutput[pipedrive.ObjectPage](`{"objectType":"deals","objects":[{"objectType":"deals","id":"302","name":"Acme expansion","personId":"101","organizationId":"201","stageId":"3","status":"open"},{"objectType":"deals","id":"301","name":"Acme renewal","personId":"101","organizationId":"201","stageId":"3","status":"open"}],"nextCursor":"page-three"}`)
 			return err
 		}},
 		{name: "listObjects/listedDefaultAnswer/3", decode: func() error {

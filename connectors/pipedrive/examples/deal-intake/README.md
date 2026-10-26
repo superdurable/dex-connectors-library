@@ -94,7 +94,7 @@ GOWORK=off go test ./...
 DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./flow/... -count=1 -v
 ```
 
-The integration suite runs 13 scenarios on a real Dex Server against a stateful
+The integration suite runs 14 scenarios on a real Dex Server against a stateful
 fake Pipedrive: a new lead, a repeat lead with decoy deals, a person create and
 a deal create that each take nine seconds and are sent once under sync
 durability, a nine-second update that async Dex sends twice with the same

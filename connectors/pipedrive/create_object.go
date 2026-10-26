@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
@@ -44,7 +43,7 @@ func (CreateObjectOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateObjectI
 // Invoke creates a record once, retrying only when the provider did not process the request.
 func (operation CreateObjectOperation) Invoke(call sdkgo.Call, input CreateObjectInput) sdkgo.MutationAttempt[CRMObject] {
 	const operationID = "createObject"
-	fence, err := singledispatch.NewFence(call, 30*time.Second)
+	fence, err := singledispatch.NewFence(call, CreateObjectDefinition.StepDefaults.ExecuteMethodTimeout)
 	if err != nil {
 		return sdkgo.NewMutationBranch(CreateObjectBranchDefect, CRMObject{}, providerFailurePointer(operationID, sdkgo.FailureLocalDefect, "single-dispatch fence could not be built"), sdkgo.Receipt{})
 	}
@@ -80,10 +79,10 @@ func (operation CreateObjectOperation) Invoke(call sdkgo.Call, input CreateObjec
 		if err := fence.RecordNotSent(); err != nil {
 			return singleDispatchRetry[CRMObject](operationID)
 		}
-		return sdkgo.NewMutationRetry[CRMObject](failure.failure, 0)
+		return mutationAttemptForSession[CRMObject](failure, operationBranches{rejected: CreateObjectBranchProviderRejected, defect: CreateObjectBranchDefect})
 	}
 	defer cancel()
-	send := &createObjectSend{client: operation.client, session: session, request: providerRequest{method: http.MethodPost, path: collectionPath(input.ObjectType), body: body, singleDispatch: true}}
+	send := &createObjectSend{client: operation.client, session: session, request: providerRequest{method: http.MethodPost, path: collectionPath(input.ObjectType), body: body, isSingleDispatch: true}}
 	err = fence.Dispatch(send.execute)
 	if errors.Is(err, singledispatch.ErrCheckpoint) || errors.Is(err, singledispatch.ErrInsufficientTime) {
 		return singleDispatchRetry[CRMObject](operationID)
@@ -93,6 +92,12 @@ func (operation CreateObjectOperation) Invoke(call sdkgo.Call, input CreateObjec
 	}
 	result := send.result
 	receipt := operation.client.receipt(call, result.response, "")
+	if result.response.statusCode == http.StatusUnauthorized && session.credentials.AuthMethodID == OAuthAuthMethodID && operation.client.refreshCredentialAfterRejection(session) {
+		if err := fence.RecordCanResend(); err != nil {
+			return singleDispatchRetry[CRMObject](operationID)
+		}
+		return sdkgo.NewMutationRetry[CRMObject](result.failure, 0)
+	}
 	switch result.outcome {
 	case exchangeSucceeded:
 	case exchangeNotSent, exchangeRateLimited:
@@ -121,6 +126,7 @@ func (operation CreateObjectOperation) Invoke(call sdkgo.Call, input CreateObjec
 			"Pipedrive accepted the create but returned an invalid record"), receipt)
 	}
 	receipt.ProviderObjectID = object.ID
+	// The accepted result remains known if its extra read-back checkpoint is lost.
 	_ = fence.RecordProviderID(object.ID)
 	return sdkgo.NewMutationBranch(CreateObjectBranchCreated, object, nil, receipt)
 }

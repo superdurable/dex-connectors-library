@@ -551,7 +551,7 @@ var UpsertObjectDefinition = sdkgo.MutationDefinition{
 		{ID: UpsertObjectBranchMultipleMatches, Description: "More than one record carries the identity value, so the connector changed nothing; the Result lists their IDs.", Optional: true},
 		{ID: UpsertObjectBranchProviderRejected, Description: "Pipedrive conclusively rejected the search or the write, such as an invalid field value, a revoked token, or a missing scope; nothing was created.", Optional: true},
 		{ID: UpsertObjectBranchInvalidResponse, Description: "Pipedrive returned an invalid or oversized search page or updated record.", Optional: true},
-		{ID: UpsertObjectBranchUncertain, Description: "An earlier attempt sent a create whose outcome was never confirmed, and a search by the identity value finds no record or this attempt's search or update failed without a retry, so the record may exist; the connector does not create it again.", Optional: true},
+		{ID: UpsertObjectBranchUncertain, Description: "A create sent in this or an earlier attempt was not confirmed, and identity read-back finds no record or cannot complete; the record may exist, so the connector does not create it again.", Optional: true},
 		{ID: UpsertObjectBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

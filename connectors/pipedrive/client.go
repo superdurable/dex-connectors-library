@@ -171,12 +171,12 @@ func (client *Client) UpdateObject() UpdateObjectOperation {
 
 // providerRequest is one Pipedrive request; path starts with /api/ below the connection's base URL.
 type providerRequest struct {
-	method         string
-	path           string
-	query          url.Values
-	body           []byte
-	context        context.Context
-	singleDispatch bool
+	method           string
+	path             string
+	query            url.Values
+	body             []byte
+	context          context.Context
+	isSingleDispatch bool
 }
 
 type providerResponse struct {
@@ -275,19 +275,26 @@ func (client *Client) exchange(session *operationSession, request providerReques
 	if result.response.statusCode != http.StatusUnauthorized || session.credentials.AuthMethodID != OAuthAuthMethodID {
 		return result
 	}
-	if _, supportsRejection := client.credentials.(sdkgo.RejectedCredentialRefreshingProvider[Credentials]); !supportsRejection {
+	if !client.refreshCredentialAfterRejection(session) {
 		return result
+	}
+	return client.exchangeOnce(session, request)
+}
+
+func (client *Client) refreshCredentialAfterRejection(session *operationSession) bool {
+	if _, supportsRejection := client.credentials.(sdkgo.RejectedCredentialRefreshingProvider[Credentials]); !supportsRejection {
+		return false
 	}
 	replacement, err := sdkgo.ResolveCredentialAfterRejection(session.context, client.credentials, session.call, client.refreshDriver)
 	if err != nil || validateResolvedCredentials(replacement) != nil || replacement.AuthMethodID != OAuthAuthMethodID {
-		return result
+		return false
 	}
 	baseURL, err := client.baseURLFor(replacement)
 	if err != nil {
-		return result
+		return false
 	}
 	session.credentials, session.baseURL = replacement, baseURL
-	return client.exchangeOnce(session, request)
+	return true
 }
 
 func (client *Client) exchangeOnce(session *operationSession, request providerRequest) pipedriveExchange {
@@ -322,7 +329,7 @@ func (client *Client) exchangeOnce(session *operationSession, request providerRe
 	if request.body != nil {
 		httpRequest.Header.Set("Content-Type", "application/json")
 	}
-	if request.singleDispatch {
+	if request.isSingleDispatch {
 		if err := singledispatch.PrepareHTTPWrite(httpRequest); err != nil {
 			return pipedriveExchange{outcome: exchangeDefect, failure: providerFailure(operation, sdkgo.FailureLocalDefect, "Pipedrive write request could not be prepared")}
 		}
@@ -388,8 +395,7 @@ func (client *Client) classifyErrorResponse(operation string, response providerR
 	result := pipedriveExchange{response: response}
 	switch {
 	case status == http.StatusTooManyRequests && isDailyTokenBudgetExhausted(response.header):
-		result.outcome, result.failure = exchangeRateLimited, providerFailure(operation, sdkgo.FailureQuotaExhausted, "Pipedrive's daily API token budget is exhausted until it resets at midnight in Pipedrive's server time zone")
-		result.retryAfter = retryAfter
+		result.outcome, result.failure = exchangeRejected, providerFailure(operation, sdkgo.FailureQuotaExhausted, "Pipedrive's daily API token budget is exhausted until it resets at midnight in Pipedrive's server time zone")
 	case status == http.StatusTooManyRequests:
 		result.outcome, result.failure = exchangeRateLimited, providerFailure(operation, sdkgo.FailureRateLimit, "Pipedrive's burst rate limit rejected the request")
 		result.retryAfter = max(retryAfter, burstLimitDelay(response.header))

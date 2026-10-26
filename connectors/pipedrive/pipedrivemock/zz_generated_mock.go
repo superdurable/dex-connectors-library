@@ -245,7 +245,7 @@ func ListObjectsRetry(failure sdkgo.Failure, after time.Duration) connectormock.
 func ListObjectsListedDefaultAnswer() connectormock.Case[pipedrive.ObjectPage] {
 	pages := []pipedrive.ObjectPage{
 		connectormock.MustDecodeOutput[pipedrive.ObjectPage](`{"objectType":"deals","objects":[{"objectType":"deals","id":"301","name":"Acme renewal","personId":"101","organizationId":"201","stageId":"3","status":"open"}],"nextCursor":"page-two"}`),
-		connectormock.MustDecodeOutput[pipedrive.ObjectPage](`{"objectType":"deals","objects":[{"objectType":"deals","id":"302","name":"Acme expansion","personId":"101","organizationId":"201","stageId":"3","status":"open"},{"objectType":"deals","id":"301","name":"Acme renewal","status":"open"}],"nextCursor":"page-three"}`),
+		connectormock.MustDecodeOutput[pipedrive.ObjectPage](`{"objectType":"deals","objects":[{"objectType":"deals","id":"302","name":"Acme expansion","personId":"101","organizationId":"201","stageId":"3","status":"open"},{"objectType":"deals","id":"301","name":"Acme renewal","personId":"101","organizationId":"201","stageId":"3","status":"open"}],"nextCursor":"page-three"}`),
 		connectormock.MustDecodeOutput[pipedrive.ObjectPage](`{"objectType":"deals","objects":[],"nextCursor":""}`),
 	}
 	pageNumber := connectormock.CursorPageNumber[pipedrive.ListObjectsInput]("cursor", "nextCursor", pages)
