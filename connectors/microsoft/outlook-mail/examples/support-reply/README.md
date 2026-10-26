@@ -71,7 +71,7 @@ go run ./cmd/connectorctl ui-artifact \
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/microsoft/outlook-mail/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-mail \
-  --version v0.22.0 --tag connectors/microsoft/outlook-mail/v0.22.0 \
+  --version v0.23.0 --tag connectors/microsoft/outlook-mail/v0.23.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/outlook-mail-reply/release/connector-ui.tgz \
   --ui-digest /tmp/outlook-mail-reply/release/connector-ui.tgz.sha256 \
@@ -152,12 +152,15 @@ GOWORK=off go test -race ./examples/support-reply/...
 ```
 
 With the latest Dex development server running, the integration tests drive
-the Flow on a real Worker against `internal/graphtest`, which, like Graph, has
-no send idempotency key:
+the Flow on a real Worker against both unscripted `outlookmailmock` defaults
+and `internal/graphtest`, which, like Graph, has no send idempotency key:
 
 - the customer's latest message gets one threaded reply, is marked read, and
   is archived under the same immutable ID, while an older message, a
   lookalike sender, and another customer stay untouched;
+- the default mock reaches the same reply and archive path without Graph setup,
+  and its recorded calls show that the second search page was read and only
+  the customer's message was read, answered, marked read, and archived;
 - a folder picked in Dex Web receives the answered message;
 - a customer with only a lookalike's message gets one new message;
 - a reply and a new message whose send Graph holds for nine seconds, past

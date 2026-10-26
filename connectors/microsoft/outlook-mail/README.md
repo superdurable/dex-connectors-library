@@ -370,6 +370,50 @@ shared mailboxes for a delegated connection), searching subfolders or every
 folder, `$search` (KQL), personal Microsoft accounts, certificate credentials
 for app-only, national clouds, and the archive mailbox are not supported.
 
+## Connector mocks
+
+`outlookmailmock.New` returns a typed connection whose six operations answer
+unscripted calls on their happy-path branches. The default Inbox search serves
+three newest-first pages with a lookalike sender, a repeated message across a
+page boundary, and an older message. Named cases cover missing messages and
+conclusive provider rejections. Send and reply defaults describe accepted
+messages. An uncertain send has no default or named case; a test scripts one
+with `ReplyToMessageUncertain` or `SendMessageUncertain`.
+
+The defaults describe the Inbox of `jane@acme.example.com`. The search fits
+`From: jane@acme.example.com` in folder `inbox`, the send default answers a
+message to Jane with subject "Your refund for order 88213", and the reply
+default answers a reply to her message `AAMkAGI2MDEyMzQ1AAABC002`. They
+answer the same way whatever the request names, so a test for another
+customer, subject, or message scripts `SearchMessages`, `SendMessage`, or
+`ReplyToMessage`.
+
+The [runnable integration test](examples/support-reply/flow/workflow_mock_integration_test.go)
+builds the example Flow on the mock:
+
+```go
+mock := outlookmailmock.New(t, ConnectionName)
+flow := NewFlow(mock.Connection(), ArchiveFolderSelection{})
+input := integrationInput()
+```
+
+It registers `flow` on a real Dex Worker, starts it with `input` without
+Graph, waits until it completes, and checks the inputs the Flow mapped from
+each call:
+
+```go
+replies := mock.ReplyToMessage().Calls()
+require.Len(t, replies, 1)
+require.Equal(t, outlookmail.ReplyToMessageInput{MessageID: customerMessageID, Text: input.ReplyText}, replies[0].Input)
+```
+
+`customerMessageID` is the default customer message, `AAMkAGI2MDEyMzQ1AAABC002`,
+which the search returns on page 2 after the lookalike. To script another
+outcome, queue a named case, such as
+`mock.GetMessage().Respond(outlookmailmock.GetMessageMessageMissing())`.
+Scripting is described in
+[`sdkgo/connectormock`](../../../sdkgo/README.md#connector-mocks).
+
 ## Example
 
 [`examples/support-reply`](examples/support-reply) is a runnable Dex Web
