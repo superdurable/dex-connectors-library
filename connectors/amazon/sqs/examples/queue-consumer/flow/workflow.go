@@ -87,8 +87,6 @@ type ReceivedMessageSummary struct {
 type Status string
 
 const (
-	// StatusNoMessage means no message arrived within the connection's receive wait.
-	StatusNoMessage Status = "noMessage"
 	// StatusProcessed means the message was a valid order event and the Flow acknowledged it.
 	StatusProcessed Status = "processed"
 	// StatusRejected means the message was not a valid order event and the Flow released it to the queue.
@@ -105,8 +103,7 @@ type Outcome struct {
 	OrderEvent *OrderEvent `json:"orderEvent,omitempty"`
 	// RejectionReason explains why the message was not a valid order event.
 	RejectionReason string `json:"rejectionReason,omitempty"`
-	// IsAcknowledgementConfirmed reports that SQS accepted the deletion or release. False means the receipt
-	// handle had expired, so SQS may deliver the message again and processing must tolerate the repeat.
+	// IsAcknowledgementConfirmed reports that SQS accepted the deletion or release.
 	IsAcknowledgementConfirmed bool `json:"isAcknowledgementConfirmed"`
 }
 
@@ -136,7 +133,6 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			},
 			Connection: flow.connection, MapToOperationInput: MapToReceiveMessagesInput,
 			Received: sdkgo.GoTo(inspectOrderEvent{}),
-			Empty:    sdkgo.GoTo(inspectOrderEvent{}),
 		})),
 		dex.DefineStep(inspectOrderEvent{}),
 		dex.DefineStep(sqs.NewDeleteMessageStep(sqs.DeleteMessageStepConfig[MessageReceipt]{
@@ -146,8 +142,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Acknowledge the processed order event by deleting it, so SQS never delivers it again.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToDeleteMessageInput,
-			Deleted:              sdkgo.GoTo(recordAcknowledgedOrderEvent{}),
-			ReceiptHandleInvalid: sdkgo.GoTo(recordAcknowledgedOrderEvent{}),
+			Deleted: sdkgo.GoTo(recordAcknowledgedOrderEvent{}),
 		})),
 		dex.DefineStep(recordAcknowledgedOrderEvent{}),
 		dex.DefineStep(sqs.NewChangeMessageVisibilityStep(sqs.ChangeMessageVisibilityStepConfig[MessageReceipt]{
@@ -157,8 +152,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Release the invalid message to the queue at once, so its redrive policy can move it to a dead-letter queue.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToReleaseMessageInput,
-			Changed:              sdkgo.GoTo(recordReleasedOrderEvent{}),
-			ReceiptHandleInvalid: sdkgo.GoTo(recordReleasedOrderEvent{}),
+			Changed: sdkgo.GoTo(recordReleasedOrderEvent{}),
 		})),
 		dex.DefineStep(recordReleasedOrderEvent{}),
 	}
@@ -292,13 +286,6 @@ type inspectOrderEvent struct {
 func (inspectOrderEvent) GetStepType() string { return inspectOrderEventStepType }
 
 func (inspectOrderEvent) Execute(ctx dex.Context, result sqs.ReceiveMessagesResult) (*dex.StepDecision, error) {
-	if result.Branch == sqs.ReceiveMessagesBranchEmpty {
-		outcome := Outcome{Status: StatusNoMessage}
-		if err := outcomeAttribute.Set(ctx, outcome); err != nil {
-			return nil, err
-		}
-		return dex.GracefulComplete(outcome), nil
-	}
 	message := result.Value.Messages[0]
 	receipt := MessageReceipt{QueueURL: result.Value.QueueURL, MessageID: message.MessageID, ReceiptHandle: message.ReceiptHandle}
 	outcome := Outcome{Message: &ReceivedMessageSummary{MessageID: message.MessageID, ReceiveCount: message.ReceiveCount, SentAt: message.SentAt}}
@@ -326,7 +313,7 @@ type recordAcknowledgedOrderEvent struct {
 func (recordAcknowledgedOrderEvent) GetStepType() string { return recordAcknowledgedStepType }
 
 func (recordAcknowledgedOrderEvent) Execute(ctx dex.Context, result sqs.DeleteMessageResult) (*dex.StepDecision, error) {
-	outcome, err := recordAcknowledgement(ctx, result.Branch == sqs.DeleteMessageBranchDeleted)
+	outcome, err := recordConfirmedAcknowledgement(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -342,20 +329,20 @@ type recordReleasedOrderEvent struct {
 func (recordReleasedOrderEvent) GetStepType() string { return recordReleasedEventStepType }
 
 func (recordReleasedOrderEvent) Execute(ctx dex.Context, result sqs.ChangeMessageVisibilityResult) (*dex.StepDecision, error) {
-	outcome, err := recordAcknowledgement(ctx, result.Branch == sqs.ChangeMessageVisibilityBranchChanged)
+	outcome, err := recordConfirmedAcknowledgement(ctx)
 	if err != nil {
 		return nil, err
 	}
 	return dex.GracefulComplete(outcome), nil
 }
 
-// recordAcknowledgement stores whether SQS accepted the deletion or release and returns the final outcome.
-func recordAcknowledgement(ctx dex.Context, isConfirmed bool) (Outcome, error) {
+// recordConfirmedAcknowledgement stores the accepted deletion or release and returns the final outcome.
+func recordConfirmedAcknowledgement(ctx dex.Context) (Outcome, error) {
 	outcome, err := outcomeAttribute.Get(ctx)
 	if err != nil {
 		return Outcome{}, err
 	}
-	outcome.IsAcknowledgementConfirmed = isConfirmed
+	outcome.IsAcknowledgementConfirmed = true
 	return outcome, outcomeAttribute.Set(ctx, outcome)
 }
 

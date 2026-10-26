@@ -26,8 +26,9 @@ import (
 var exampleConnection = sdkgo.ConnectionRef{Provider: "amazon-sqs", Name: ConnectionName}
 
 type queueConsumerRun struct {
-	status  dex.FlowStatus
-	outcome Outcome
+	status       dex.FlowStatus
+	errorMessage string
+	outcome      Outcome
 }
 
 func runQueueConsumer(t *testing.T, ctx context.Context, client *dex.Client, flow *Flow, flowID string, input Input) queueConsumerRun {
@@ -36,7 +37,7 @@ func runQueueConsumer(t *testing.T, ctx context.Context, client *dex.Client, flo
 	require.NoError(t, err)
 	result, err := client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
 	require.NoError(t, err)
-	run := queueConsumerRun{status: result.Status}
+	run := queueConsumerRun{status: result.Status, errorMessage: result.ErrorMessage}
 	if result.Status == dex.FlowCompleted {
 		require.NoError(t, result.DecodeSingleOutput(&run.outcome))
 	}

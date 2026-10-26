@@ -30,14 +30,12 @@ const (
 	evaluateOpenRequestTasksStepType  = "EvaluateOpenRequestTasks"
 	createRequestTaskStepType         = "CreateRequestTask"
 	recordCreatedTaskStepType         = "RecordCreatedTask"
-	recordRejectedTaskStepType        = "RecordRejectedTask"
 	recordUncertainTaskStepType       = "RecordUncertainTask"
 	readReportedTaskStepType          = "ReadReportedTask"
 	verifyReportedTaskStepType        = "VerifyReportedTask"
 	recordMissingReportedTaskStepType = "RecordMissingReportedTask"
 	assignRequestTaskStepType         = "AssignRequestTask"
 	recordAssignedTaskStepType        = "RecordAssignedTask"
-	recordRejectedAssignmentStepType  = "RecordRejectedAssignment"
 	commentOnRequestTaskStepType      = "CommentOnRequestTask"
 	recordApprovalCommentStepType     = "RecordApprovalComment"
 
@@ -59,10 +57,6 @@ const (
 	PhaseCommenting = "commenting"
 	// PhaseReady means the task exists, is assigned and in its section, and carries the approval comment.
 	PhaseReady = "ready"
-	// PhaseRejected means Asana conclusively rejected the create and nothing was created.
-	PhaseRejected = "rejected"
-	// PhaseAssignmentRejected means the task exists but Asana rejected the assignee, due date, or section.
-	PhaseAssignmentRejected = "assignmentRejected"
 	// PhaseNeedsReconciliation means the create outcome is unknown and an operator must confirm or retry.
 	PhaseNeedsReconciliation = "needsReconciliation"
 	// PhaseVerifyingReportedTask means the Flow is reading the task an operator reported.
@@ -204,8 +198,6 @@ type RequestTask struct {
 	Task *asana.Task `json:"task,omitempty"`
 	// CommentID is the approval comment's story gid once Asana confirmed it.
 	CommentID string `json:"commentId,omitempty"`
-	// IsCommentOutcomeUnknown reports a comment Asana may or may not have stored; it is never re-sent.
-	IsCommentOutcomeUnknown bool `json:"isCommentOutcomeUnknown,omitempty"`
 	// UncertainCreate describes the latest uncertain create while reconciliation is pending.
 	UncertainCreate *UncertainCreate `json:"uncertainCreate,omitempty"`
 	// ReconciliationNote explains why a reported task ID was not adopted.
@@ -276,12 +268,11 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				},
 			}}},
 			Connection: flow.connection, MapToOperationInput: MapToCreateTaskInput,
-			Created:          sdkgo.GoTo(recordCreatedTask{}),
-			ProviderRejected: sdkgo.GoTo(recordRejectedTask{}),
-			Uncertain:        sdkgo.GoTo(recordUncertainTask{}),
+			Created: sdkgo.GoTo(recordCreatedTask{}),
+			// An ambiguous create requires operator reconciliation before another task can be created.
+			Uncertain: sdkgo.GoTo(recordUncertainTask{}),
 		})),
 		dex.DefineStep(recordCreatedTask{}),
-		dex.DefineStep(recordRejectedTask{}),
 		dex.DefineStep(recordUncertainTask{}),
 		dex.DefineStep(asana.NewGetTaskStep(asana.GetTaskStepConfig[TaskReference]{
 			StepType: readReportedTaskStepType, ConnectionName: ConnectionName,
@@ -290,7 +281,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Read the task an operator reported to confirm its project and request ID.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToGetTaskInput,
-			Found:    sdkgo.GoTo(verifyReportedTask{}),
+			Found: sdkgo.GoTo(verifyReportedTask{}),
+			// A missing reported ID lets the operator try another ID.
 			NotFound: sdkgo.GoTo(recordMissingReportedTask{}),
 		})),
 		dex.DefineStep(verifyReportedTask{}),
@@ -302,20 +294,17 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Assign the task, set its due date, and move it to the request section; a repeated update leaves the same task.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToUpdateTaskInput,
-			Updated:          sdkgo.GoTo(recordAssignedTask{}),
-			ProviderRejected: sdkgo.GoTo(recordRejectedAssignment{}),
+			Updated: sdkgo.GoTo(recordAssignedTask{}),
 		})),
 		dex.DefineStep(recordAssignedTask{}),
-		dex.DefineStep(recordRejectedAssignment{}),
 		dex.DefineStep(asana.NewAddCommentStep(asana.AddCommentStepConfig[CommentRequest]{
 			StepType: commentOnRequestTaskStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
 				GroupID: "asana", GroupLabel: "Asana",
-				Explanation: "Add the approval comment once; an unknown outcome is recorded, never re-sent.",
+				Explanation: "Add the approval comment once; an unknown outcome fails the Flow without resending.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToAddCommentInput,
-			Added:     sdkgo.GoTo(recordApprovalComment{}),
-			Uncertain: sdkgo.GoTo(recordApprovalComment{}),
+			Added: sdkgo.GoTo(recordApprovalComment{}),
 		})),
 		dex.DefineStep(recordApprovalComment{}),
 	}
@@ -655,33 +644,6 @@ func (recordCreatedTask) Execute(ctx dex.Context, result asana.CreateTaskResult)
 	return dex.GoTo(sdkgo.StepRef[TaskAssignment](assignRequestTaskStepType), newTaskAssignment(record)), nil
 }
 
-// dex:group group-id:request group-label:"Request"
-// dex:explanation text:"Complete as rejected after Asana conclusively refused the create."
-type recordRejectedTask struct {
-	dex.StepDefaultsNoWaitFor[asana.CreateTaskResult]
-}
-
-func (recordRejectedTask) GetStepType() string { return recordRejectedTaskStepType }
-
-func (recordRejectedTask) GetStepOptions() *dex.StepOptions {
-	return &dex.StepOptions{ExecuteLockAttributes: []dex.AttributeLock{dex.LockAttribute(requestTaskPhaseAttribute), dex.LockAttribute(requestTaskAttribute)}}
-}
-
-func (recordRejectedTask) Execute(ctx dex.Context, _ asana.CreateTaskResult) (*dex.StepDecision, error) {
-	record, err := requestTaskAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	record.Phase = PhaseRejected
-	if err := requestTaskPhaseAttribute.Set(ctx, record.Phase); err != nil {
-		return nil, err
-	}
-	if err := requestTaskAttribute.Set(ctx, record); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(record), nil
-}
-
 // dex:group group-id:reconciliation group-label:"Reconciliation"
 // dex:explanation text:"Park an unknown create for an operator instead of creating the task again."
 type recordUncertainTask struct {
@@ -806,33 +768,6 @@ func (recordAssignedTask) Execute(ctx dex.Context, result asana.UpdateTaskResult
 }
 
 // dex:group group-id:request group-label:"Request"
-// dex:explanation text:"Complete with the existing task when Asana rejected its assignee, due date, or section."
-type recordRejectedAssignment struct {
-	dex.StepDefaultsNoWaitFor[asana.UpdateTaskResult]
-}
-
-func (recordRejectedAssignment) GetStepType() string { return recordRejectedAssignmentStepType }
-
-func (recordRejectedAssignment) GetStepOptions() *dex.StepOptions {
-	return &dex.StepOptions{ExecuteLockAttributes: []dex.AttributeLock{dex.LockAttribute(requestTaskPhaseAttribute), dex.LockAttribute(requestTaskAttribute)}}
-}
-
-func (recordRejectedAssignment) Execute(ctx dex.Context, _ asana.UpdateTaskResult) (*dex.StepDecision, error) {
-	record, err := requestTaskAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	record.Phase = PhaseAssignmentRejected
-	if err := requestTaskPhaseAttribute.Set(ctx, record.Phase); err != nil {
-		return nil, err
-	}
-	if err := requestTaskAttribute.Set(ctx, record); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(record), nil
-}
-
-// dex:group group-id:request group-label:"Request"
 // dex:explanation text:"Record the approval comment ID, or that its outcome is unknown, and complete without re-sending."
 type recordApprovalComment struct {
 	dex.StepDefaultsNoWaitFor[asana.AddCommentResult]
@@ -851,7 +786,6 @@ func (recordApprovalComment) Execute(ctx dex.Context, result asana.AddCommentRes
 	}
 	record.Phase = PhaseReady
 	record.CommentID = result.Value.CommentID
-	record.IsCommentOutcomeUnknown = result.Branch == asana.AddCommentBranchUncertain
 	if err := requestTaskPhaseAttribute.Set(ctx, record.Phase); err != nil {
 		return nil, err
 	}

@@ -76,30 +76,20 @@ func TestCustomersOpenRequestWithTheSameSummaryIsReusedWithRealDex(t *testing.T)
 	require.Equal(t, []bool{false, true}, provider.request(openDuplicateKey).commentVisibilities())
 }
 
-func TestUnknownRequesterCompletesWithoutRaisingARequestWithRealDex(t *testing.T) {
+func TestUnknownRequesterFailsWithoutRaisingARequestWithRealDex(t *testing.T) {
 	provider, flow, harness := newSupportIntegrationHarness(t, integrationCloudID, shortRequestTimeout)
 	ctx := integrationContext(t)
 
 	input := supportInput("Monitor flickers")
 	input.RequesterEmail = "jane@acme.example"
-	record := runSupportFlow(t, ctx, harness, flow, "unknown-requester", input)
-	require.Equal(t, PhaseRequesterNotFound, record.Phase)
-	require.Empty(t, record.RequesterAccountID)
+	flowID := startSupportFlow(t, ctx, harness, flow, "unknown-requester", input)
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "notFound")
+	require.Contains(t, result.ErrorMessage, "no target")
 	require.Zero(t, provider.createCount("Monitor flickers"))
 	require.Empty(t, provider.searchQueries())
-}
-
-func TestRejectedCreateCompletesWithTheFieldsAndErrorKeyWithRealDex(t *testing.T) {
-	provider, flow, harness := newSupportIntegrationHarness(t, integrationCloudID, shortRequestTimeout)
-	ctx := integrationContext(t)
-
-	summary := markerReject + " Laptop will not boot"
-	record := runSupportFlow(t, ctx, harness, flow, "rejected", supportInput(summary))
-	require.Equal(t, PhaseRejected, record.Phase)
-	require.Equal(t, []string{"customfield_10050"}, record.RejectedFieldIDs)
-	require.Equal(t, "sd.request.create.field.required", record.ProviderErrorKey)
-	require.Nil(t, record.Ticket)
-	require.Equal(t, 1, provider.createCount(summary))
 }
 
 func TestRateLimitedCreateIsRetriedAfterRetryAfterWithRealDex(t *testing.T) {
@@ -213,31 +203,34 @@ func TestSlowTransitionBackupAttemptMovesTheRequestOnceWithRealDex(t *testing.T)
 	require.Equal(t, 1, provider.transitionPostCount(provider.keyForSummary(summary)), "Jira saw one transition request")
 }
 
-func TestUnavailableTransitionCompletesWithTheOfferedTransitionsWithRealDex(t *testing.T) {
+func TestUnavailableTransitionFailsWithoutMovingRequestWithRealDex(t *testing.T) {
 	provider, flow, harness := newSupportIntegrationHarness(t, integrationCloudID, shortRequestTimeout)
 	ctx := integrationContext(t)
 
 	input := supportInput("Headset crackles")
 	input.DestinationStatusName = "Closed"
-	record := runSupportFlow(t, ctx, harness, flow, "unavailable", input)
-	require.Equal(t, PhaseTransitionUnavailable, record.Phase)
-	require.Equal(t, "Waiting for support", record.Status.Name)
-	require.Equal(t, []string{"Start work -> In progress", "Resolve this issue -> Resolved"}, record.AvailableTransitionNames)
-	require.Zero(t, provider.transitionPostCount(record.Ticket.Key))
+	flowID := startSupportFlow(t, ctx, harness, flow, "unavailable", input)
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "transitionUnavailable")
+	require.Contains(t, result.ErrorMessage, "no target")
+	require.Zero(t, provider.transitionPostCount(provider.keyForSummary(input.Summary)))
 }
 
-func TestInternalNoteTimeoutIsRecordedAndNeverResentWithRealDex(t *testing.T) {
+func TestInternalNoteTimeoutFailsWithoutResendingWithRealDex(t *testing.T) {
 	provider, flow, harness := newSupportIntegrationHarness(t, integrationCloudID, shortRequestTimeout)
 	ctx := integrationContext(t)
 
 	summary := markerNoteTimeout + " Printer offline"
-	record := runSupportFlow(t, ctx, harness, flow, "note-timeout", supportInput(summary))
-	require.Equal(t, PhaseHandled, record.Phase)
-	require.True(t, record.InternalNote.IsOutcomeUnknown)
-	require.Empty(t, record.InternalNote.CommentID)
-	require.Equal(t, []bool{false, true}, provider.request(provider.keyForSummary(summary)).commentVisibilities(),
-		"the uncertain internal note is never re-sent, and the public reply still follows")
-	require.Equal(t, integrationDestination, record.Status.Name)
+	flowID := startSupportFlow(t, ctx, harness, flow, "note-timeout", supportInput(summary))
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "uncertain")
+	require.Contains(t, result.ErrorMessage, "no target")
+	require.Equal(t, []bool{false}, provider.request(provider.keyForSummary(summary)).commentVisibilities(),
+		"the uncertain internal note is never re-sent, and the public reply does not follow")
 }
 
 func TestBlankCloudIDUsesTheOnlyGrantedSiteWithRealDex(t *testing.T) {

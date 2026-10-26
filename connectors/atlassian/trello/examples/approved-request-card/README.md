@@ -17,21 +17,18 @@ status, so a request card that already exists is moved, not created again:
    duplicate check, never the retry-safety mechanism;
 3. `CreateRequestCard` calls `trello.NewCreateCardStep` with sync durability,
    creating the card at the top of the approved list with its description, due
-   date, labels, and members. `created` records the card ID,
-   `providerRejected` completes as `rejected`, and `uncertain` parks the Flow
-   for an operator;
+   date, labels, and members. `created` records the card ID, and `uncertain`
+   parks the Flow for operator reconciliation before any second create;
 4. `MoveRequestCard` calls `trello.NewUpdateCardStep` for a reused or
    reconciled card: it reopens the card, moves it to the approved list, sets the
    due date, and adds the request labels without removing the card's own. The
-   update is repeatable, so it keeps async durability. `providerRejected`, such
-   as an unknown label, completes as `moveRejected`;
+   update is repeatable, so it keeps async durability;
 5. `CommentOnRequestCard` calls `trello.NewAddCommentStep` with
-   `Approved by <approver>.` and the approval note. Both `added` and
-   `uncertain` complete as `ready`; an uncertain comment is recorded and never
-   re-sent.
+   `Approved by <approver>.` and the approval note. Only `added` completes as
+   `ready`.
 
-Unwired optional branches, such as a missing board or an invalid card page,
-fail the Flow.
+Unwired optional branches, such as a rejected create, a missing card, a rejected
+move, or an uncertain comment, fail the Flow with the safe failure reason.
 
 ## Reconciling an uncertain create
 
@@ -114,13 +111,12 @@ Flow on a real Worker against a stateful fake Trello that requires the `OAuth`
 header: a new card created once after a second page beside a near-duplicate, a
 mention, and an archived card, then commented; an open card with the request ID
 moved to the approved list and labeled without losing its own label; a full
-duplicate check that stops without creating; a rejected create; a rate-limited
+duplicate check that stops without creating; a rate-limited
 create retried after `Retry-After`; a create timeout reconciled by confirming a
 missing, a mismatched, and then the real card ID without a second create; a 5xx
 create created again only after operator approval; a nine-second create and a
 nine-second comment each sent once under sync durability; a nine-second move
-whose backup attempt resends the same body and leaves the same card; a comment
-timeout recorded without a resend; a Worker lost during the create, whose
+whose backup attempt resends the same body and leaves the same card; a comment timeout that fails without a resend; a Worker lost during the create, whose
 replacement finds the heartbeat checkpoint and sends nothing; and a move
 Trello rejects.
 

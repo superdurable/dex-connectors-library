@@ -107,7 +107,7 @@ func TestTaskCRUDWithRealDex(t *testing.T) {
 			}
 			if scenario.name == "create-uncertain" {
 				require.Contains(t, result.ErrorMessage, "uncertain")
-				require.Contains(t, result.ErrorMessage, "Todoist request did not return a complete response")
+				require.Contains(t, result.ErrorMessage, "no target")
 				require.Zero(t, provider.reads)
 				require.Zero(t, provider.updates)
 				require.Equal(t, 1, provider.createdTasks)
@@ -146,19 +146,20 @@ func TestTaskUpdateRecoveryWithRealDex(t *testing.T) {
 		terminal                dex.FlowStatus
 		reads, updates, deletes int
 		matches                 bool
+		failureBranch           string
 	}{
-		{"read-retry", "deletedAndVerified", dex.FlowCompleted, 4, 1, 1, true},
-		{"write-retry", "deletedAndVerified", dex.FlowCompleted, 3, 2, 1, true},
-		{"write-applied-503", "deletedAndVerified", dex.FlowCompleted, 3, 2, 1, true},
-		{"write-unapplied-503", "deletedAndVerified", dex.FlowCompleted, 3, 2, 1, true},
-		{"write-lost-response", "deletedAndVerified", dex.FlowCompleted, 3, 2, 1, true},
-		{"rejected", "providerRejected", dex.FlowCompleted, 1, 1, 0, false},
-		{"missing", "notFound", dex.FlowCompleted, 1, 0, 0, false},
-		{"invalid-response", "", dex.FlowFailed, 1, 0, 0, false},
-		{"post-update-read-missing", "notFound", dex.FlowCompleted, 2, 1, 0, false},
-		{"update-answer-inactive", "notFound", dex.FlowCompleted, 2, 1, 0, false},
-		{"update-read-back-forbidden", "providerRejected", dex.FlowCompleted, 2, 1, 0, false},
-		{"post-update-read-rejected", "providerRejected", dex.FlowCompleted, 2, 1, 0, false},
+		{"read-retry", "deletedAndVerified", dex.FlowCompleted, 4, 1, 1, true, ""},
+		{"write-retry", "deletedAndVerified", dex.FlowCompleted, 3, 2, 1, true, ""},
+		{"write-applied-503", "deletedAndVerified", dex.FlowCompleted, 3, 2, 1, true, ""},
+		{"write-unapplied-503", "deletedAndVerified", dex.FlowCompleted, 3, 2, 1, true, ""},
+		{"write-lost-response", "deletedAndVerified", dex.FlowCompleted, 3, 2, 1, true, ""},
+		{"rejected", "", dex.FlowFailed, 1, 1, 0, false, "providerRejected"},
+		{"missing", "", dex.FlowFailed, 1, 0, 0, false, "notFound"},
+		{"invalid-response", "", dex.FlowFailed, 1, 0, 0, false, "invalidResponse"},
+		{"post-update-read-missing", "", dex.FlowFailed, 2, 1, 0, false, "notFound"},
+		{"update-answer-inactive", "", dex.FlowFailed, 2, 1, 0, false, "notFound"},
+		{"update-read-back-forbidden", "", dex.FlowFailed, 2, 1, 0, false, "providerRejected"},
+		{"post-update-read-rejected", "", dex.FlowFailed, 2, 1, 0, false, "providerRejected"},
 	} {
 		t.Run(scenario.name, func(t *testing.T) {
 			provider := &crudProvider{scenario: scenario.name}
@@ -176,19 +177,14 @@ func TestTaskUpdateRecoveryWithRealDex(t *testing.T) {
 				require.NoError(t, result.DecodeSingleOutput(&outcome))
 				require.Equal(t, scenario.status, outcome.Status)
 				require.Equal(t, scenario.matches, outcome.MatchesRequestedFields)
-				if scenario.name == "post-update-read-missing" || scenario.name == "post-update-read-rejected" {
-					require.Equal(t, "updated", outcome.MutationBranch)
-					require.Empty(t, outcome.DeleteBranch)
-				}
-				if scenario.name == "update-answer-inactive" || scenario.name == "update-read-back-forbidden" {
-					require.Equal(t, scenario.status, outcome.MutationBranch)
-					require.Empty(t, outcome.DeleteBranch)
-				}
 				var display map[string]any
 				require.NoError(t, harness.client.InvokeRPC(ctx, flowID, flow.GetDexDisplay, nil, &display))
 				encoded, err := json.Marshal(display)
 				require.NoError(t, err)
 				require.NotContains(t, string(encoded), integrationToken)
+			} else if scenario.failureBranch != "" {
+				require.Contains(t, result.ErrorMessage, scenario.failureBranch)
+				require.Contains(t, result.ErrorMessage, "no target")
 			}
 			provider.mutex.Lock()
 			defer provider.mutex.Unlock()

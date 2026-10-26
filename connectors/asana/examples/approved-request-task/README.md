@@ -16,18 +16,17 @@ approval, using every Asana operation:
    duplicate check, never the retry-safety mechanism;
 3. `CreateRequestTask` calls `asana.NewCreateTaskStep` with sync durability,
    creating the task in the picked section with its notes and due date.
-   `created` records the task gid, `providerRejected` completes as `rejected`,
-   and `uncertain` parks the Flow for an operator;
+   `created` records the task gid. `uncertain` parks the Flow for operator
+   reconciliation before any second create;
 4. `AssignRequestTask` calls `asana.NewUpdateTaskStep` to assign the task, set
    its due date, and move a reused task into the picked section; the update is
-   repeatable, so it keeps async durability. `providerRejected`, such as an
-   assignee outside the workspace, completes as `assignmentRejected`;
+   repeatable, so it keeps async durability;
 5. `CommentOnRequestTask` calls `asana.NewAddCommentStep` with
-   `Approved by <approver>.` and the approval note. Both `added` and `uncertain`
-   complete as `ready`; an uncertain comment is recorded and never re-sent.
+   `Approved by <approver>.` and the approval note. Only `added` completes as
+   `ready`.
 
-Unwired optional branches, such as a rejected list or a missing task during
-assignment, fail the Flow.
+Unwired optional branches, such as a rejected create, a missing task during
+assignment, or an uncertain comment, fail the Flow with the safe failure reason.
 
 ## Reconciling an uncertain create
 
@@ -108,13 +107,13 @@ With the latest Dex development server running, the integration test drives the
 Flow on a real Worker against a stateful fake Asana: a new task created once on
 the second page beside a near-duplicate, a mention, and a completed task, then
 assigned, moved, and commented; an open task with the request ID reused and
-moved out of intake; a rejected create; a rate-limited create retried after
+moved out of intake; a rate-limited create retried after
 `Retry-After`; a create timeout reconciled by confirming a missing, a
 mismatched, and then the real task gid without a second create; a 5xx create
 created again only after operator approval; a nine-second create and a
 nine-second comment each sent once under sync durability; a nine-second update
 whose backup attempt resends the same move and `PUT` and leaves the same task; a
-comment timeout recorded without a resend; and an assignee Asana rejects.
+comment timeout that fails without a resend; and an assignee Asana rejects before an approval comment.
 
 ```bash
 DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./examples/approved-request-task/... -count=1 -v

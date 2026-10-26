@@ -199,12 +199,8 @@ func (flow *EnvelopeSigningFlow) GetSteps() []dex.StepDef {
 			},
 			MapToOperationInput: MapToCreateEnvelopeInput,
 			Created:             sdkgo.GoTo(RecordEnvelopeSent{policy: flow.policy}),
-			ProviderRejected:    sdkgo.GoTo(RecordSendFailure{}),
-			Uncertain:           sdkgo.GoTo(RecordSendFailure{}),
-			Defect:              sdkgo.GoTo(RecordSendFailure{}),
 		})),
 		dex.DefineStep(RecordEnvelopeSent{policy: flow.policy}),
-		dex.DefineStep(RecordSendFailure{}),
 		dex.DefineStep(AwaitEnvelopeOutcome{}),
 		dex.DefineStep(docusign.NewGetEnvelopeStep(docusign.GetEnvelopeStepConfig[EnvelopeWait]{
 			StepType: checkEnvelopeStatusStepType, ConnectionName: ConnectionName, Connection: flow.connection,
@@ -213,10 +209,6 @@ func (flow *EnvelopeSigningFlow) GetSteps() []dex.StepDef {
 			},
 			MapToOperationInput: MapToGetEnvelopeInput,
 			Found:               sdkgo.GoTo(RecordEnvelopeStatus{policy: flow.policy}),
-			NotFound:            sdkgo.GoTo(RecordEnvelopeStatus{policy: flow.policy}),
-			ProviderRejected:    sdkgo.GoTo(RecordEnvelopeStatus{policy: flow.policy}),
-			InvalidResponse:     sdkgo.GoTo(RecordEnvelopeStatus{policy: flow.policy}),
-			Defect:              sdkgo.GoTo(RecordEnvelopeStatus{policy: flow.policy}),
 		})),
 		dex.DefineStep(RecordEnvelopeStatus{policy: flow.policy}),
 		dex.DefineStep(docusign.NewDownloadCombinedDocumentStep(docusign.DownloadCombinedDocumentStepConfig[EnvelopeWait]{
@@ -226,14 +218,8 @@ func (flow *EnvelopeSigningFlow) GetSteps() []dex.StepDef {
 			},
 			MapToOperationInput: MapToDownloadCombinedDocumentInput,
 			Downloaded:          sdkgo.GoTo(RecordSignedDocument{}),
-			NotFound:            sdkgo.GoTo(RecordDocumentFailure{}),
-			TooLarge:            sdkgo.GoTo(RecordDocumentFailure{}),
-			ProviderRejected:    sdkgo.GoTo(RecordDocumentFailure{}),
-			InvalidResponse:     sdkgo.GoTo(RecordDocumentFailure{}),
-			Defect:              sdkgo.GoTo(RecordDocumentFailure{}),
 		})),
 		dex.DefineStep(RecordSignedDocument{}),
-		dex.DefineStep(RecordDocumentFailure{}),
 		dex.DefineStep(RecordEnvelopeClosed{}),
 		dex.DefineStep(docusign.NewVoidEnvelopeStep(docusign.VoidEnvelopeStepConfig[EnvelopeWait]{
 			StepType: voidExpiredEnvelopeStepType, ConnectionName: ConnectionName, Connection: flow.connection,
@@ -244,11 +230,8 @@ func (flow *EnvelopeSigningFlow) GetSteps() []dex.StepDef {
 				return docusign.VoidEnvelopeInput{EnvelopeID: wait.EnvelopeID, VoidedReason: flow.policy.VoidReason}
 			},
 			Voided:           sdkgo.GoTo(RecordEnvelopeExpired{}),
+			// A signer finishing at the deadline requires a final status check.
 			NotVoidable:      sdkgo.GoTo(RecordVoidRefusal{}),
-			NotFound:         sdkgo.GoTo(RecordVoidRefusal{}),
-			ProviderRejected: sdkgo.GoTo(RecordVoidRefusal{}),
-			InvalidResponse:  sdkgo.GoTo(RecordVoidRefusal{}),
-			Defect:           sdkgo.GoTo(RecordVoidRefusal{}),
 		})),
 		dex.DefineStep(RecordEnvelopeExpired{}),
 		dex.DefineStep(RecordVoidRefusal{}),
@@ -423,32 +406,6 @@ func (step RecordEnvelopeSent) Execute(ctx dex.Context, result docusign.CreateEn
 }
 
 // dex:group group-id:signing group-label:"Signing"
-// dex:explanation text:"Persist why DocuSign rejected the envelope or why its creation is uncertain, and fail the Flow."
-type RecordSendFailure struct {
-	dex.StepDefaultsNoWaitFor[docusign.CreateEnvelopeFromTemplateResult]
-}
-
-// GetStepOptions locks the signing state against a concurrent Connect event.
-func (RecordSendFailure) GetStepOptions() *dex.StepOptions { return signingStateStepOptions() }
-
-// Execute fails the Flow; an uncertain create asks the operator to look for the envelope first.
-func (RecordSendFailure) Execute(ctx dex.Context, result docusign.CreateEnvelopeFromTemplateResult) (*dex.StepDecision, error) {
-	state, err := signingStateAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	state.Status = StatusFailed
-	state.FailureMessage = describeFailure("creating the envelope", result.Branch, result.Failure)
-	if result.Branch == docusign.CreateEnvelopeFromTemplateBranchUncertain {
-		state.FailureMessage += "; search DocuSign for an envelope with custom field " + CorrelationCustomFieldName + " before sending again"
-	}
-	if err := signingStateAttribute.Set(ctx, state); err != nil {
-		return nil, err
-	}
-	return dex.ForceFail(state.FailureMessage), nil
-}
-
-// dex:group group-id:signing group-label:"Signing"
 // dex:explanation text:"Wait durably for a Connect envelope event or the fallback status poll time."
 type AwaitEnvelopeOutcome struct {
 	dex.StepDefaults
@@ -502,7 +459,7 @@ type RecordEnvelopeStatus struct {
 // GetStepOptions locks the signing state against a concurrent Connect event.
 func (RecordEnvelopeStatus) GetStepOptions() *dex.StepOptions { return signingStateStepOptions() }
 
-// Execute treats a failed read as no news: the Flow keeps waiting until the deadline.
+// Execute routes a found envelope status to the next signing action.
 func (step RecordEnvelopeStatus) Execute(ctx dex.Context, result docusign.GetEnvelopeResult) (*dex.StepDecision, error) {
 	state, err := signingStateAttribute.Get(ctx)
 	if err != nil {
@@ -511,17 +468,15 @@ func (step RecordEnvelopeStatus) Execute(ctx dex.Context, result docusign.GetEnv
 	state.StatusPollCount++
 	now := time.Now().UTC()
 	wait := nextEnvelopeWait(state, step.policy, now)
-	if result.Branch == docusign.GetEnvelopeBranchFound {
-		state.EnvelopeStatus = result.Value.Status
-	}
+	state.EnvelopeStatus = result.Value.Status
 	switch {
-	case result.Branch == docusign.GetEnvelopeBranchFound && result.Value.Status == docusign.EnvelopeStatusCompleted:
+	case result.Value.Status == docusign.EnvelopeStatusCompleted:
 		state.Status, state.ResumedBy = StatusDownloadingDocument, "statusPoll"
 		if err := signingStateAttribute.Set(ctx, state); err != nil {
 			return nil, err
 		}
 		return dex.GoTo(sdkgo.StepRef[EnvelopeWait](downloadSignedDocumentStepType), wait), nil
-	case result.Branch == docusign.GetEnvelopeBranchFound && result.Value.Status.IsTerminal():
+	case result.Value.Status.IsTerminal():
 		if err := signingStateAttribute.Set(ctx, state); err != nil {
 			return nil, err
 		}
@@ -562,29 +517,6 @@ func (RecordSignedDocument) Execute(ctx dex.Context, result docusign.DownloadCom
 		return nil, err
 	}
 	return dex.GracefulComplete(state), nil
-}
-
-// dex:group group-id:outcome group-label:"Outcome"
-// dex:explanation text:"Persist why the signed document could not be downloaded or stored, and fail the Flow."
-type RecordDocumentFailure struct {
-	dex.StepDefaultsNoWaitFor[docusign.DownloadCombinedDocumentResult]
-}
-
-// GetStepOptions locks the signing state against a concurrent Connect event.
-func (RecordDocumentFailure) GetStepOptions() *dex.StepOptions { return signingStateStepOptions() }
-
-// Execute fails the Flow; the envelope stays completed in DocuSign.
-func (RecordDocumentFailure) Execute(ctx dex.Context, result docusign.DownloadCombinedDocumentResult) (*dex.StepDecision, error) {
-	state, err := signingStateAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	state.Status = StatusFailed
-	state.FailureMessage = describeFailure("downloading the signed document", result.Branch, result.Failure)
-	if err := signingStateAttribute.Set(ctx, state); err != nil {
-		return nil, err
-	}
-	return dex.ForceFail(state.FailureMessage), nil
 }
 
 // dex:group group-id:outcome group-label:"Outcome"

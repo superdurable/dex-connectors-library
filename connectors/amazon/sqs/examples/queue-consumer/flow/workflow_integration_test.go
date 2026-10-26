@@ -70,13 +70,13 @@ func TestQueueConsumerReleasesAnInvalidMessageForRedeliveryWithRealDex(t *testin
 	require.Equal(t, 2, again.outcome.Message.ReceiveCount, "the redrive policy counts each delivery")
 }
 
-func TestQueueConsumerCompletesWithNoMessageWhenTheQueueIsEmptyWithRealDex(t *testing.T) {
+func TestQueueConsumerFailsWhenTheQueueIsEmptyWithRealDex(t *testing.T) {
 	queues := newIntegrationQueues(t)
 	flow, harness := newQueueConsumerHarness(t, newFakeQueueClient(t, queues, 1))
 	result := runQueueConsumer(t, integrationContext(t), harness.client, flow, "empty-"+uniqueSuffix(), Input{})
-	require.Equal(t, dex.FlowCompleted, result.status)
-	require.Equal(t, StatusNoMessage, result.outcome.Status)
-	require.Nil(t, result.outcome.Message)
+	require.Equal(t, dex.FlowFailed, result.status)
+	require.Contains(t, result.errorMessage, "empty")
+	require.Contains(t, result.errorMessage, "no target")
 }
 
 // TestQueueConsumerLongPollPastTheAsyncPhaseReceivesOnceWithRealDex: sync durability keeps one receive in flight.

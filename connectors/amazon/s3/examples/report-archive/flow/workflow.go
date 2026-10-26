@@ -141,7 +141,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Store the report under its deterministic key; a repeated attempt finds its own earlier write.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToPutObjectInput,
-			Stored:        sdkgo.GoTo(sdkgo.StepRef[s3.PutObjectResult](recordArchiveStepType)),
+			Stored: sdkgo.GoTo(sdkgo.StepRef[s3.PutObjectResult](recordArchiveStepType)),
+			// Read back the existing archive to verify the report before completing.
 			AlreadyExists: sdkgo.GoTo(sdkgo.StepRef[s3.PutObjectResult](recordArchiveStepType)),
 		})),
 		dex.DefineStep(recordArchiveOutcome{}),

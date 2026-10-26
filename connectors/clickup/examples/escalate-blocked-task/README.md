@@ -18,27 +18,22 @@ change, and the Flow uses every ClickUp operation:
    `ReadBlockedTask` calls `getTask`;
 5. `ChooseEscalation` skips a task that is no longer blocked, and
    `FindEscalationManager` calls `findMemberByEmail`.
-   `CompleteWithoutManager` completes as `skipped` when no Workspace member has
-   the manager's email;
+   A missing Workspace manager fails the Flow before any escalation write;
 6. `SearchExistingEscalation` calls `searchTasks` for the escalation List's
    tasks tagged `escalation`, open or closed, and `ChooseExistingEscalation`
    reuses the one whose name ends with `[<task ID>]`, searches the next page (at
    most five), or asks for a new one;
 7. `CreateEscalationTask` calls `createTask`, assigned to the manager
-   with urgent priority. `RecordEscalationTask` records it, and
-   `RecordCreateNeedsReview` completes as `needsReview` when the create's
-   outcome cannot be confirmed;
+   with urgent priority. `RecordEscalationTask` records it;
 8. `TagBlockedTask` calls `updateTaskTags` to add `escalated`,
    `AssignManagerToBlockedTask` calls `updateTask` to add the manager as an
    assignee and set urgent priority, and `CommentOnBlockedTask` calls
-   `addComment` with the escalation task's link;
-   `RecordCommentNeedsReview` completes as `needsReview` when the comment's
-   outcome cannot be confirmed, and `CompleteEscalated` completes as
-   `escalated`.
+   `addComment` with the escalation task's link, and `CompleteEscalated`
+   completes as `escalated`.
 
-Only the happy-path branches, `notFound` of `findMemberByEmail`, and
-`uncertain` of `createTask` and `addComment` are wired. A missing task, a
-rejected request, an invalid response, and a local defect fail the Flow.
+Only happy-path branches are wired. An uncertain create or comment, a missing
+manager or task, a rejected request, an invalid response, and a local defect
+fail the Flow with the connector's safe reason.
 
 ## 1. Generate the Flow Definition
 
@@ -207,8 +202,8 @@ Flow on a real Worker against a stateful fake ClickUp that requires the raw
 - a create held past Dex's async local phase is sent once (the
   duplicate-dispatch test), and so is a comment;
 - a create whose response was lost is found in the List and never resent;
-- a create answered 503 without being applied completes as `needsReview` and
-  is never resent;
+- a create answered 503 without being applied fails the Flow and is never
+  resent;
 - a Worker lost while ClickUp holds the create leaves the next attempt to read
   the List instead of resending;
 - an update held past the local phase is dispatched again and converges on one

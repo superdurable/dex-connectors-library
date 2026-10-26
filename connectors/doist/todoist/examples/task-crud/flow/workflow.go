@@ -109,8 +109,6 @@ func (flow *TodoistTaskCRUDFlow) GetSteps() []dex.StepDef {
 			Annotations:         sdkgo.StepAnnotations{GroupID: "todoist", GroupLabel: "Todoist", Explanation: "Read the exact task created by this Flow."},
 			MapToOperationInput: func(input todoist.GetTaskInput) todoist.GetTaskInput { return input },
 			Found:               sdkgo.GoTo(UpdateCreatedTask{}),
-			NotFound:            sdkgo.GoTo(CompleteReadFailure{}),
-			ProviderRejected:    sdkgo.GoTo(CompleteReadFailure{}),
 		})),
 		dex.DefineStep(UpdateCreatedTask{}),
 		dex.DefineStep(todoist.NewUpdateTaskStep(todoist.UpdateTaskStepConfig[todoist.UpdateTaskInput]{
@@ -121,8 +119,6 @@ func (flow *TodoistTaskCRUDFlow) GetSteps() []dex.StepDef {
 			MapToOperationInput: func(input todoist.UpdateTaskInput) todoist.UpdateTaskInput { return input },
 			ResultAttribute:     &updatedAttribute,
 			Updated:             sdkgo.GoTo(ReadUpdatedTask{}),
-			NotFound:            sdkgo.GoTo(CompleteMutationFailure{}),
-			ProviderRejected:    sdkgo.GoTo(CompleteMutationFailure{}),
 		})),
 		dex.DefineStep(ReadUpdatedTask{}),
 		dex.DefineStep(todoist.NewGetTaskStep(todoist.GetTaskStepConfig[todoist.GetTaskInput]{
@@ -133,12 +129,8 @@ func (flow *TodoistTaskCRUDFlow) GetSteps() []dex.StepDef {
 			MapToOperationInput: func(input todoist.GetTaskInput) todoist.GetTaskInput { return input },
 			ResultAttribute:     &readBackAttribute,
 			Found:               sdkgo.GoTo(CheckTaskReadBack{}),
-			NotFound:            sdkgo.GoTo(CompleteReadFailure{}),
-			ProviderRejected:    sdkgo.GoTo(CompleteReadFailure{}),
 		})),
 		dex.DefineStep(CheckTaskReadBack{}),
-		dex.DefineStep(CompleteReadFailure{}),
-		dex.DefineStep(CompleteMutationFailure{}),
 		dex.DefineStep(ListCreatedTaskProject{}),
 		dex.DefineStep(todoist.NewListTasksStep(todoist.ListTasksStepConfig[todoist.ListTasksInput]{
 			StepType:            "ListLifecycleProject",
@@ -157,7 +149,8 @@ func (flow *TodoistTaskCRUDFlow) GetSteps() []dex.StepDef {
 			MapToOperationInput: func(input todoist.DeleteTaskInput) todoist.DeleteTaskInput { return input },
 			ResultAttribute:     &deletedAttribute,
 			Deleted:             sdkgo.GoTo(VerifyDeletedTask{}),
-			AlreadyAbsent:       sdkgo.GoTo(VerifyDeletedTask{}),
+			// An already absent task satisfies deletion; final read-back still verifies it.
+			AlreadyAbsent: sdkgo.GoTo(VerifyDeletedTask{}),
 		})),
 		dex.DefineStep(VerifyDeletedTask{}),
 		dex.DefineStep(todoist.NewGetTaskStep(todoist.GetTaskStepConfig[todoist.GetTaskInput]{
@@ -166,10 +159,13 @@ func (flow *TodoistTaskCRUDFlow) GetSteps() []dex.StepDef {
 			Connection:          flow.connection,
 			Annotations:         sdkgo.StepAnnotations{GroupID: "todoist", GroupLabel: "Todoist", Explanation: "Confirm the created task is no longer retrievable."},
 			MapToOperationInput: func(input todoist.GetTaskInput) todoist.GetTaskInput { return input },
-			Found:               sdkgo.GoTo(FailDeletionVerification{}),
-			NotFound:            sdkgo.GoTo(CompleteTaskLifecycle{}),
+			// A still retrievable task must fail deletion verification.
+			Found: sdkgo.GoTo(FailDeletionVerification{}),
+			// A missing task after deletion confirms the disposable lifecycle completed.
+			NotFound: sdkgo.GoTo(CompleteTaskLifecycle{}),
 		})),
-		dex.DefineStep(FailDeletionVerification{}), dex.DefineStep(CompleteTaskLifecycle{}),
+		dex.DefineStep(FailDeletionVerification{}),
+		dex.DefineStep(CompleteTaskLifecycle{}),
 	}
 }
 
@@ -343,50 +339,6 @@ func (CheckTaskReadBack) Execute(ctx dex.Context, result todoist.GetTaskResult) 
 		return dex.ForceFail("read-back fields did not match the confirmed update"), nil
 	}
 	return dex.GoTo(ListCreatedTaskProject{}, mutation), nil
-}
-
-// CompleteReadFailure retains a conclusive read failure and any earlier mutation outcome.
-// dex:group group-id:crud group-label:"Task CRUD"
-// dex:explanation text:"Report missing or rejected reads without resending writes or deleting a task."
-type CompleteReadFailure struct {
-	dex.StepDefaultsNoWaitFor[todoist.GetTaskResult]
-}
-
-// Execute completes with known creation and mutation facts, without claiming successful reconciliation.
-func (CompleteReadFailure) Execute(ctx dex.Context, result todoist.GetTaskResult) (*dex.StepDecision, error) {
-	created, err := createdAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	mutation, err := optionalAttribute(ctx, updatedAttribute)
-	if err != nil {
-		return nil, err
-	}
-	outcome := Outcome{Status: string(result.Branch), Created: created.Value, MutationBranch: string(mutation.Branch)}
-	if err := outcomeAttribute.Set(ctx, outcome); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(outcome), nil
-}
-
-// CompleteMutationFailure retains a conclusive update rejection without claiming a side effect.
-// dex:group group-id:crud group-label:"Task CRUD"
-// dex:explanation text:"Report rejected or missing update targets and retain the known created task."
-type CompleteMutationFailure struct {
-	dex.StepDefaultsNoWaitFor[todoist.UpdateTaskResult]
-}
-
-// Execute completes without continuing to list or delete.
-func (CompleteMutationFailure) Execute(ctx dex.Context, result todoist.UpdateTaskResult) (*dex.StepDecision, error) {
-	created, err := createdAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	outcome := Outcome{Status: string(result.Branch), Created: created.Value, MutationBranch: string(result.Branch)}
-	if err := outcomeAttribute.Set(ctx, outcome); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(outcome), nil
 }
 
 // ListCreatedTaskProject schedules the first page in the created task's project.

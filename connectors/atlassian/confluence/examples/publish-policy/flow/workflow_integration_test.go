@@ -147,18 +147,6 @@ func TestRateLimitedCreateIsRetriedAfterRetryAfterWithRealDex(t *testing.T) {
 	require.Equal(t, 1, provider.pageCount(title))
 }
 
-func TestRejectedCreateCompletesAsRejectedWithRealDex(t *testing.T) {
-	provider, flow, harness := newConfluenceIntegrationHarness(t, integrationCloudID, shortRequestTimeout)
-	ctx := integrationContext(t)
-
-	title := markerReject + " Badge policy"
-	publication := runPublicationFlow(t, ctx, harness, flow, "rejected", publicationInput(title))
-	require.Equal(t, PhaseRejected, publication.Phase)
-	require.Equal(t, sdkgo.FailureValidation, publication.RejectionKind)
-	require.Empty(t, publication.PageID)
-	require.Zero(t, provider.pageCount(title))
-}
-
 func TestConcurrentEditIsParkedAndPublishedOverOnlyAfterReviewWithRealDex(t *testing.T) {
 	provider, flow, harness := newConfluenceIntegrationHarness(t, integrationCloudID, shortRequestTimeout)
 	ctx := integrationContext(t)
@@ -199,7 +187,6 @@ func TestCommentTimeoutIsConfirmedByReadBackWithoutAResendWithRealDex(t *testing
 	input.PublicationComment = markerCommentTimeout + " Published for review."
 	publication := runPublicationFlow(t, ctx, harness, flow, "comment-timeout", input)
 	require.Equal(t, PhasePublished, publication.Phase)
-	require.False(t, publication.IsCommentOutcomeUnknown)
 	require.NotEmpty(t, publication.CommentID, "the next attempt found the stored comment")
 	require.Equal(t, 1, provider.commentCount(publication.PageID), "an unconfirmed comment is never re-sent")
 }

@@ -24,12 +24,10 @@ every Freshdesk operation to triage a new customer issue:
    note naming the priority as Freshdesk's label and integer, such as
    `High (3)`, and `CompleteTriage` completes with the outcome.
 
-The `uncertain` branches of the create and the note are wired: a request that
-was sent but whose outcome is unknown completes the Flow with
-`needsReview: true`, the `reviewReason`, and the connector's `reviewDetail`, so
-a person checks Freshdesk instead of the Flow sending a possible duplicate.
-Every other optional branch is unwired and fails the Flow, such as a rejected
-ticket, a missing ticket, an invalid response, or a local defect.
+Only happy-path branches are wired. An uncertain create or note fails the Flow
+with the connector's safe reason and is never resent automatically. Other
+optional branches, such as a rejected ticket, a missing ticket, an invalid
+response, or a local defect, fail the Flow.
 
 ## Generate the Flow Definition
 
@@ -109,10 +107,9 @@ choose the Worker at `127.0.0.1:8832`, enter a unique Flow ID, and submit.
 }
 ```
 
-Omit `groupId` to leave routing of a new ticket to Freshdesk. The Flow result
-and the `freshdesk-triage-outcome` Attribute hold the action (`opened`,
-`followedUp`, or `creationUncertain`), the ticket, the note ID, and the review
-state.
+Omit `groupId` to leave routing of a new ticket to Freshdesk. Completed Flow
+results and the `freshdesk-triage-outcome` Attribute hold the action (`opened`
+or `followedUp`), the ticket, and the note ID.
 
 ## Test
 
@@ -136,7 +133,7 @@ Freshdesk, has no idempotency key and omits tags from search results:
 - an update held for nine seconds is dispatched again by async Dex, and both
   attempts write the same values without duplicating a tag;
 - a lost update response is retried and finds the values applied;
-- a lost create or note response completes as `needsReview` and is never resent;
+- a lost create or note response fails the Flow and is never resent;
 - a rate-limited create waits for `Retry-After` and creates one ticket;
 - a Worker lost while Freshdesk holds the create is replaced, and the new
   attempt finds the dispatch checkpoint and sends nothing;

@@ -21,17 +21,15 @@ conversation ID, and it uses every Front operation:
 6. `AddTriageComment` calls `replyToConversation` once with `isInternalNote`
    set, writing a comment only teammates see that names the contact and up to
    ten other open conversations, with "at least" before the count when Front
-   has another search page. `RecordCommentNeedsReview` completes as
-   `needsReview`, without routing, when the comment's outcome is unknown;
+   has another search page. An uncertain comment fails the Flow without routing;
 7. `AssignAndTagConversation` calls `updateConversation` to add the tag chosen
    with the `tagPicker` and assign the teammate chosen with the
    `teammatePicker`, and `CompleteTriage` completes with the triage record.
 
-Only the happy-path branches, `notFound` of `findContactByEmail`, and
-`uncertain` of `replyToConversation` are wired. A missing or merged
-conversation, a rejected request, an invalid response, and a local defect
-fail the Flow with the connector's safe message. The Flow never writes to the
-customer.
+Happy-path branches and `notFound` of `findContactByEmail` are wired; the
+missing contact still permits triage. An uncertain comment, a missing or merged
+conversation, a rejected request, an invalid response, and a local defect fail
+the Flow with the connector's safe message. The Flow never writes to the customer.
 
 ## 1. Generate the Flow Definition
 
@@ -179,7 +177,7 @@ token:
 - a comment held past Dex's async local phase is sent once (the
   duplicate-dispatch test);
 - a Worker lost while Front holds the comment leaves the next attempt to
-  complete as `needsReview` without sending again. The dispatch checkpoint
+  fail the Flow without sending again. The dispatch checkpoint
   narrows but does not close this window: a Worker lost before Dex stores the
   checkpoint can still send the comment twice;
 - a tag write held past the local phase is dispatched again and converges on

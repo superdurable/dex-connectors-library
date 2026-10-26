@@ -10,8 +10,7 @@ the hire's accounts:
 2. `FindNewHire` calls `bamboohr.NewFindEmployeeByEmailStep` on the personal
    email, BambooHR's `homeEmail`, before anything is added, so a re-run finds
    the hire instead of adding a second record. `AdoptExistingEmployee` uses the
-   one match; `RecordAmbiguousHire` completes for review when several
-   employees share the address.
+   one match. Several matches fail the Flow with the connector's safe reason.
 3. When nobody has the address, `PrepareNewHireRecord` and `AddNewHire`
    (`bamboohr.NewAddEmployeeStep`) add the hire with name, personal email, and
    hire date, and `AdoptAddedEmployee` records the new employee ID.
@@ -34,10 +33,10 @@ the hire's accounts:
 The `uncertain` branch of the add is wired: `RecordUncertainHire` records why
 the outcome is unknown, `ReconcileUncertainHire` looks the hire up by personal
 email, and `AdoptReconciledEmployee` continues with the one employee it finds.
-When it finds none or several, `RecordUnreconciledHire` completes with
-`needsReview: true`; the Flow never adds the hire a second time. Every other
-optional branch is unwired and fails the Flow, such as a rejected add, a
-missing employee, an invalid response, or a local defect.
+When it finds none or several, the unwired branch fails the Flow; the Flow
+never adds the hire a second time. Every other optional branch is unwired and
+fails the Flow, such as a rejected add, a missing employee, an invalid
+response, or a local defect.
 
 In production, start one Flow per hire with a stable Flow ID such as
 `onboarding-{personal email}` and the Dex ID reuse policy that fits your
@@ -162,13 +161,13 @@ BambooHR, has no idempotency key and matches emails by substring:
   finds the dispatch checkpoint, sends nothing, and adopts the hire it finds
   by personal email;
 - a lost add response is reconciled the same way and never resent;
-- an add that fails with 500 without being applied completes as
-  `needsReview` and is never resent;
+- an add that fails with 500 without being applied fails the Flow and is never
+  resent;
 - a rate-limited add waits for `Retry-After` and adds one employee;
 - a rejected add fails the Flow through the unwired `providerRejected` branch
   without BambooHR's message text;
-- two employees sharing the personal email, and an unknown hand-off field,
-  complete as `needsReview` without writing;
+- two employees sharing the personal email fail the Flow without writing; an
+  unknown hand-off field completes as `needsReview` without writing;
 - an invalid hire date fails the Flow before any BambooHR request.
 
 ```bash

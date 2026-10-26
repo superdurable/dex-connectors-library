@@ -97,16 +97,18 @@ func TestTaskNoLongerBlockedIsSkippedWithRealDex(t *testing.T) {
 	require.Equal(t, 1, provider.totalRequests(), "only the task was read")
 }
 
-func TestUnknownManagerIsSkippedWithRealDex(t *testing.T) {
+func TestUnknownManagerFailsBeforeEscalationWithRealDex(t *testing.T) {
 	provider := newFakeClickUp(t)
 	blockedID := provider.seedTask(blockedTaskName, "blocked", fakeEngineeringID)
 	settings := exampleSettings
 	settings.ManagerEmail = "contractor@vendor.example.com"
 	harness := newEscalationHarness(t, provider, defaultRequestTimeout, settings)
 
-	outcome := harness.runEscalation(t, "no-manager", blockedID)
-	require.Equal(t, escalateblocked.OutcomeSkipped, outcome.Action)
-	require.Equal(t, "managerNotFound", outcome.Reason)
+	flowID := harness.startEscalation(t, "no-manager", blockedID)
+	result := harness.waitForFlow(t, flowID)
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "notFound")
+	require.Contains(t, result.ErrorMessage, "no target")
 	require.Zero(t, provider.count("search"))
 	require.Zero(t, provider.count("create"))
 }
@@ -144,17 +146,17 @@ func TestLostCreateResponseIsFoundInTheListWithoutResendingWithRealDex(t *testin
 	require.Equal(t, escalations[0].id, outcome.EscalationTaskID)
 }
 
-func TestUnconfirmedCreateWithoutATaskNeedsReviewWithRealDex(t *testing.T) {
+func TestUnconfirmedCreateWithoutATaskFailsWithoutResendingWithRealDex(t *testing.T) {
 	provider := newFakeClickUp(t)
 	blockedID := provider.seedTask(blockedTaskName, "blocked", fakeEngineeringID)
 	provider.failsFirstCreateBeforeApplying = true
 	harness := newEscalationHarness(t, provider, defaultRequestTimeout, exampleSettings)
 
-	outcome := harness.runEscalation(t, "unconfirmed-create", blockedID)
-	require.Equal(t, escalateblocked.OutcomeNeedsReview, outcome.Action)
-	require.Equal(t, "createUncertain", outcome.Reason)
-	require.Equal(t, "an earlier attempt of this Step sent the create without a confirmed outcome, and the List shows 0 tasks with the name created since, so it is not sent again",
-		outcome.ReviewDetail)
+	flowID := harness.startEscalation(t, "unconfirmed-create", blockedID)
+	result := harness.waitForFlow(t, flowID)
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "uncertain")
+	require.Contains(t, result.ErrorMessage, "no target")
 	require.Equal(t, 1, provider.count("create"), "an unconfirmed create is never resent")
 	require.Zero(t, provider.count("tag")+provider.count("update")+provider.count("comment"), "the blocked task is untouched")
 }
@@ -173,10 +175,9 @@ func TestLostWorkerDuringCreateReconcilesWithoutResendingWithRealDex(t *testing.
 
 	result := harness.waitForFlow(t, flowID)
 	close(provider.holdsFirstCreate)
-	require.Equal(t, dex.FlowCompleted, result.Status, "Flow %s: %s", flowID, result.ErrorMessage)
-	var outcome escalateblocked.EscalationOutcome
-	require.NoError(t, result.DecodeSingleOutput(&outcome))
-	require.Equal(t, escalateblocked.OutcomeNeedsReview, outcome.Action, "ClickUp had not applied the held create when the new attempt read the List")
+	require.Equal(t, dex.FlowFailed, result.Status, "Flow %s: %s", flowID, result.ErrorMessage)
+	require.Contains(t, result.ErrorMessage, "uncertain")
+	require.Contains(t, result.ErrorMessage, "no target")
 	provider.waitForDelayedRequests(t)
 	require.Equal(t, 1, provider.count("create"), "the attempt on the new Worker did not resend the create")
 	require.GreaterOrEqual(t, provider.count("listRead"), 1, "the new attempt read the List back")

@@ -196,16 +196,16 @@ func TestLostAddResponseIsReconciledByPersonalEmailWithRealDex(t *testing.T) {
 	require.Equal(t, 2, provider.count("find"), "the hire was looked up before and after the add")
 }
 
-func TestUnappliedAddWithUnknownOutcomeNeedsReviewWithRealDex(t *testing.T) {
+func TestUnappliedAddWithUnknownOutcomeFailsWithoutResendingWithRealDex(t *testing.T) {
 	provider := newFakeBambooHR(t)
 	provider.failsFirstAddWithoutApplying = true
 	harness := newOnboardingHarness(t, provider, defaultRequestTimeout)
 
-	outcome := harness.runOnboarding(t, "unknown-add", integrationInput())
-	require.Equal(t, OnboardingNeedsReview, outcome.Action)
-	require.True(t, outcome.NeedsReview)
-	require.Equal(t, "additionUncertain", outcome.ReviewReason)
-	require.Equal(t, "BambooHR could not complete the request (HTTP 500)", outcome.ReviewDetail)
+	flowID := harness.startOnboarding(t, "unknown-add", integrationInput())
+	result := harness.waitForFlow(t, flowID)
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "notFound")
+	require.Contains(t, result.ErrorMessage, "no target")
 	require.Equal(t, 1, provider.count("add"), "a 500 might have been applied, so the add is never resent")
 	require.Zero(t, provider.employeeCount())
 }
@@ -239,16 +239,17 @@ func TestRejectedAddFailsTheFlowWithoutBambooHRTextWithRealDex(t *testing.T) {
 	t.Logf("rejected add failure: %s", result.ErrorMessage)
 }
 
-func TestSharedPersonalEmailNeedsReviewAndWritesNothingWithRealDex(t *testing.T) {
+func TestSharedPersonalEmailFailsAndWritesNothingWithRealDex(t *testing.T) {
 	provider := newFakeBambooHR(t)
 	provider.seedEmployee(completeRecord())
 	provider.seedEmployee(map[string]string{"firstName": "Ava", "lastName": "Ng", "homeEmail": "AVA.NGUYEN@personal.example.com", "status": "Inactive"})
 	harness := newOnboardingHarness(t, provider, defaultRequestTimeout)
 
-	outcome := harness.runOnboarding(t, "ambiguous", integrationInput())
-	require.Equal(t, OnboardingNeedsReview, outcome.Action)
-	require.Equal(t, "ambiguousHire", outcome.ReviewReason)
-	require.Equal(t, "2 employees contain this personal email; exact matches: [1, 2]", outcome.ReviewDetail)
+	flowID := harness.startOnboarding(t, "ambiguous", integrationInput())
+	result := harness.waitForFlow(t, flowID)
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "ambiguous")
+	require.Contains(t, result.ErrorMessage, "no target")
 	require.Zero(t, provider.count("add"))
 	require.Zero(t, provider.count("update"))
 }

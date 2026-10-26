@@ -26,29 +26,26 @@ const (
 	// ReconcileSupportRequestPermission is required by both reconciliation Actions.
 	ReconcileSupportRequestPermission = "jsm-support-request.reconcile"
 
-	recordSupportRequestStepType        = "RecordSupportRequest"
-	findRequesterStepType               = "FindRequester"
-	evaluateRequesterStepType           = "EvaluateRequester"
-	recordUnknownRequesterStepType      = "RecordUnknownRequester"
-	findOpenDuplicateTicketsStepType    = "FindOpenDuplicateTickets"
-	evaluateDuplicateTicketsStepType    = "EvaluateDuplicateTickets"
-	createSupportTicketStepType         = "CreateSupportTicket"
-	recordCreatedTicketStepType         = "RecordCreatedTicket"
-	recordRejectedTicketStepType        = "RecordRejectedTicket"
-	recordUncertainTicketStepType       = "RecordUncertainTicket"
-	readBackSupportTicketStepType       = "ReadBackSupportTicket"
-	verifySupportTicketStepType         = "VerifySupportTicket"
-	recordMissingSupportTicketStepType  = "RecordMissingSupportTicket"
-	planNextSupportActionStepType       = "PlanNextSupportAction"
-	labelSupportTicketStepType          = "LabelSupportTicket"
-	recordTicketLabelsStepType          = "RecordTicketLabels"
-	addInternalNoteStepType             = "AddInternalNote"
-	recordInternalNoteStepType          = "RecordInternalNote"
-	sendPublicReplyStepType             = "SendPublicReply"
-	recordPublicReplyStepType           = "RecordPublicReply"
-	moveSupportTicketStepType           = "MoveSupportTicket"
-	recordUnavailableTransitionStepType = "RecordUnavailableTransition"
-	completeSupportRequestStepType      = "CompleteSupportRequest"
+	recordSupportRequestStepType       = "RecordSupportRequest"
+	findRequesterStepType              = "FindRequester"
+	evaluateRequesterStepType          = "EvaluateRequester"
+	findOpenDuplicateTicketsStepType   = "FindOpenDuplicateTickets"
+	evaluateDuplicateTicketsStepType   = "EvaluateDuplicateTickets"
+	createSupportTicketStepType        = "CreateSupportTicket"
+	recordCreatedTicketStepType        = "RecordCreatedTicket"
+	recordUncertainTicketStepType      = "RecordUncertainTicket"
+	readBackSupportTicketStepType      = "ReadBackSupportTicket"
+	verifySupportTicketStepType        = "VerifySupportTicket"
+	recordMissingSupportTicketStepType = "RecordMissingSupportTicket"
+	planNextSupportActionStepType      = "PlanNextSupportAction"
+	labelSupportTicketStepType         = "LabelSupportTicket"
+	recordTicketLabelsStepType         = "RecordTicketLabels"
+	addInternalNoteStepType            = "AddInternalNote"
+	recordInternalNoteStepType         = "RecordInternalNote"
+	sendPublicReplyStepType            = "SendPublicReply"
+	recordPublicReplyStepType          = "RecordPublicReply"
+	moveSupportTicketStepType          = "MoveSupportTicket"
+	completeSupportRequestStepType     = "CompleteSupportRequest"
 
 	maximumDuplicateCandidates = 20
 )
@@ -79,10 +76,6 @@ const (
 	PhaseTransitioning = "transitioning"
 	// PhaseHandled means every requested action finished.
 	PhaseHandled = "handled"
-	// PhaseTransitionUnavailable means the workflow offers no transition to the destination status.
-	PhaseTransitionUnavailable = "transitionUnavailable"
-	// PhaseRejected means Jira Service Management conclusively rejected the create and nothing was raised.
-	PhaseRejected = "rejected"
 )
 
 // Reconciliation notes explain why a reported request key was not adopted.
@@ -230,8 +223,6 @@ type CommentOutcome struct {
 	CommentID string `json:"commentId,omitempty"`
 	// IsPublic is the comment's visibility.
 	IsPublic bool `json:"isPublic"`
-	// IsOutcomeUnknown reports a comment that may or may not exist; it is never re-sent.
-	IsOutcomeUnknown bool `json:"isOutcomeUnknown,omitempty"`
 }
 
 // SupportRequest is the Flow's durable record of one handled support request.
@@ -260,12 +251,6 @@ type SupportRequest struct {
 	PublicReply *CommentOutcome `json:"publicReply,omitempty"`
 	// Status is the request's status after the transition Step.
 	Status *jiraservicemanagement.TicketStatus `json:"status,omitempty"`
-	// AvailableTransitionNames lists the transitions offered when none reached the destination.
-	AvailableTransitionNames []string `json:"availableTransitionNames,omitempty"`
-	// RejectedFieldIDs lists the fields named when the create was rejected.
-	RejectedFieldIDs []string `json:"rejectedFieldIds,omitempty"`
-	// ProviderErrorKey is the machine-readable key of a rejected create.
-	ProviderErrorKey string `json:"providerErrorKey,omitempty"`
 	// UncertainCreate describes the latest uncertain create while reconciliation is pending.
 	UncertainCreate *UncertainCreate `json:"uncertainCreate,omitempty"`
 	// ReconciliationNote explains why a reported request key was not adopted.
@@ -337,11 +322,9 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				},
 			}}},
 			Connection: flow.connection, MapToOperationInput: MapToFindCustomerByEmailInput,
-			Found:    sdkgo.GoTo(evaluateRequester{}),
-			NotFound: sdkgo.GoTo(recordUnknownRequester{}),
+			Found: sdkgo.GoTo(evaluateRequester{}),
 		})),
 		dex.DefineStep(evaluateRequester{}),
-		dex.DefineStep(recordUnknownRequester{}),
 		dex.DefineStep(jiraservicemanagement.NewSearchTicketsStep(jiraservicemanagement.SearchTicketsStepConfig[DuplicateSearch]{
 			StepType: findOpenDuplicateTicketsStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{GroupID: "jsm", GroupLabel: "Jira Service Management", Explanation: "Search the desk for the customer's open requests whose summary contains the requested summary."},
@@ -362,18 +345,18 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				},
 			}}},
 			Connection: flow.connection, MapToOperationInput: MapToCreateTicketInput,
-			Created:          sdkgo.GoTo(recordCreatedTicket{}),
-			ProviderRejected: sdkgo.GoTo(recordRejectedTicket{}),
-			Uncertain:        sdkgo.GoTo(recordUncertainTicket{}),
+			Created: sdkgo.GoTo(recordCreatedTicket{}),
+			// An ambiguous create requires operator reconciliation before another ticket can be raised.
+			Uncertain: sdkgo.GoTo(recordUncertainTicket{}),
 		})),
 		dex.DefineStep(recordCreatedTicket{}),
-		dex.DefineStep(recordRejectedTicket{}),
 		dex.DefineStep(recordUncertainTicket{}),
 		dex.DefineStep(jiraservicemanagement.NewGetTicketStep(jiraservicemanagement.GetTicketStepConfig[TicketReference]{
 			StepType: readBackSupportTicketStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{GroupID: "jsm", GroupLabel: "Jira Service Management", Explanation: "Read the request back with its comments and SLAs to confirm its desk, customer, and summary."},
 			Connection:  flow.connection, MapToOperationInput: MapToGetTicketInput,
-			Found:    sdkgo.GoTo(verifySupportTicket{}),
+			Found: sdkgo.GoTo(verifySupportTicket{}),
+			// A missing reported ID lets the operator try another ID.
 			NotFound: sdkgo.GoTo(recordMissingSupportTicket{}),
 		})),
 		dex.DefineStep(verifySupportTicket{}),
@@ -388,28 +371,24 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 		dex.DefineStep(recordTicketLabels{}),
 		dex.DefineStep(jiraservicemanagement.NewAddCommentStep(jiraservicemanagement.AddCommentStepConfig[CommentRequest]{
 			StepType: addInternalNoteStepType, ConnectionName: ConnectionName,
-			Annotations: sdkgo.StepAnnotations{GroupID: "jsm", GroupLabel: "Jira Service Management", Explanation: "Add the internal note once; an unknown outcome is recorded, never re-sent."},
+			Annotations: sdkgo.StepAnnotations{GroupID: "jsm", GroupLabel: "Jira Service Management", Explanation: "Add the internal note once; an unknown outcome fails the Flow without resending."},
 			Connection:  flow.connection, MapToOperationInput: MapToInternalNoteInput,
-			Added:     sdkgo.GoTo(recordInternalNote{}),
-			Uncertain: sdkgo.GoTo(recordInternalNote{}),
+			Added: sdkgo.GoTo(recordInternalNote{}),
 		})),
 		dex.DefineStep(recordInternalNote{}),
 		dex.DefineStep(jiraservicemanagement.NewAddCommentStep(jiraservicemanagement.AddCommentStepConfig[CommentRequest]{
 			StepType: sendPublicReplyStepType, ConnectionName: ConnectionName,
-			Annotations: sdkgo.StepAnnotations{GroupID: "jsm", GroupLabel: "Jira Service Management", Explanation: "Send the public reply to the customer once; an unknown outcome is recorded, never re-sent."},
+			Annotations: sdkgo.StepAnnotations{GroupID: "jsm", GroupLabel: "Jira Service Management", Explanation: "Send the public reply to the customer once; an unknown outcome fails the Flow without resending."},
 			Connection:  flow.connection, MapToOperationInput: MapToPublicReplyInput,
-			Added:     sdkgo.GoTo(recordPublicReply{}),
-			Uncertain: sdkgo.GoTo(recordPublicReply{}),
+			Added: sdkgo.GoTo(recordPublicReply{}),
 		})),
 		dex.DefineStep(recordPublicReply{}),
 		dex.DefineStep(jiraservicemanagement.NewTransitionTicketStep(jiraservicemanagement.TransitionTicketStepConfig[StatusChangeRequest]{
 			StepType: moveSupportTicketStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{GroupID: "jsm", GroupLabel: "Jira Service Management", Explanation: "Move the request to the destination status, skipping a move Jira already made."},
 			Connection:  flow.connection, MapToOperationInput: MapToTransitionTicketInput,
-			Transitioned:          sdkgo.GoTo(completeSupportRequest{}),
-			TransitionUnavailable: sdkgo.GoTo(recordUnavailableTransition{}),
+			Transitioned: sdkgo.GoTo(completeSupportRequest{}),
 		})),
-		dex.DefineStep(recordUnavailableTransition{}),
 		dex.DefineStep(completeSupportRequest{}),
 	}
 }
@@ -713,33 +692,6 @@ func (evaluateRequester) Execute(ctx dex.Context, result jiraservicemanagement.F
 	}), nil
 }
 
-// dex:group group-id:requester group-label:"Requester"
-// dex:explanation text:"Complete without raising a request when the service desk has no customer with the email address."
-type recordUnknownRequester struct {
-	dex.StepDefaultsNoWaitFor[jiraservicemanagement.FindCustomerByEmailResult]
-}
-
-func (recordUnknownRequester) GetStepType() string { return recordUnknownRequesterStepType }
-
-func (recordUnknownRequester) GetStepOptions() *dex.StepOptions {
-	return &dex.StepOptions{ExecuteLockAttributes: []dex.AttributeLock{dex.LockAttribute(supportPhaseAttribute), dex.LockAttribute(supportRequestAttribute)}}
-}
-
-func (recordUnknownRequester) Execute(ctx dex.Context, _ jiraservicemanagement.FindCustomerByEmailResult) (*dex.StepDecision, error) {
-	record, err := supportRequestAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	record.Phase = PhaseRequesterNotFound
-	if err := supportPhaseAttribute.Set(ctx, record.Phase); err != nil {
-		return nil, err
-	}
-	if err := supportRequestAttribute.Set(ctx, record); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(record), nil
-}
-
 // dex:group group-id:request group-label:"Request"
 // dex:explanation text:"Reuse the customer's open request with exactly the same summary, otherwise raise a new one."
 type evaluateDuplicateTickets struct {
@@ -804,34 +756,6 @@ func (recordCreatedTicket) Execute(ctx dex.Context, result jiraservicemanagement
 		return nil, err
 	}
 	return dex.GoTo(sdkgo.StepRef[TicketReference](readBackSupportTicketStepType), TicketReference{IssueKey: result.Value.IssueKey}), nil
-}
-
-// dex:group group-id:request group-label:"Request"
-// dex:explanation text:"Complete with the rejected field IDs and error key after Jira Service Management conclusively refused the create."
-type recordRejectedTicket struct {
-	dex.StepDefaultsNoWaitFor[jiraservicemanagement.CreateTicketResult]
-}
-
-func (recordRejectedTicket) GetStepType() string { return recordRejectedTicketStepType }
-
-func (recordRejectedTicket) GetStepOptions() *dex.StepOptions {
-	return &dex.StepOptions{ExecuteLockAttributes: []dex.AttributeLock{dex.LockAttribute(supportPhaseAttribute), dex.LockAttribute(supportRequestAttribute)}}
-}
-
-func (recordRejectedTicket) Execute(ctx dex.Context, result jiraservicemanagement.CreateTicketResult) (*dex.StepDecision, error) {
-	record, err := supportRequestAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	record.Phase = PhaseRejected
-	record.RejectedFieldIDs, record.ProviderErrorKey = result.Value.RejectedFieldIDs, result.Value.ProviderErrorKey
-	if err := supportPhaseAttribute.Set(ctx, record.Phase); err != nil {
-		return nil, err
-	}
-	if err := supportRequestAttribute.Set(ctx, record); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(record), nil
 }
 
 // dex:group group-id:reconciliation group-label:"Reconciliation"
@@ -1079,7 +1003,7 @@ func (recordInternalNote) Execute(ctx dex.Context, result jiraservicemanagement.
 		return nil, err
 	}
 	record.InternalNote = &CommentOutcome{
-		CommentID: result.Value.CommentID, IsPublic: result.Value.IsPublic, IsOutcomeUnknown: result.Branch == jiraservicemanagement.AddCommentBranchUncertain,
+		CommentID: result.Value.CommentID, IsPublic: result.Value.IsPublic,
 	}
 	if err := supportPhaseAttribute.Set(ctx, record.Phase); err != nil {
 		return nil, err
@@ -1108,7 +1032,7 @@ func (recordPublicReply) Execute(ctx dex.Context, result jiraservicemanagement.A
 		return nil, err
 	}
 	record.PublicReply = &CommentOutcome{
-		CommentID: result.Value.CommentID, IsPublic: result.Value.IsPublic, IsOutcomeUnknown: result.Branch == jiraservicemanagement.AddCommentBranchUncertain,
+		CommentID: result.Value.CommentID, IsPublic: result.Value.IsPublic,
 	}
 	if err := supportPhaseAttribute.Set(ctx, record.Phase); err != nil {
 		return nil, err
@@ -1117,39 +1041,6 @@ func (recordPublicReply) Execute(ctx dex.Context, result jiraservicemanagement.A
 		return nil, err
 	}
 	return dex.GoTo(planNextSupportAction{}, TicketReference{IssueKey: result.Value.IssueIDOrKey}), nil
-}
-
-// dex:group group-id:actions group-label:"Actions"
-// dex:explanation text:"Complete with the offered transitions when none reaches the destination status."
-type recordUnavailableTransition struct {
-	dex.StepDefaultsNoWaitFor[jiraservicemanagement.TransitionTicketResult]
-}
-
-func (recordUnavailableTransition) GetStepType() string { return recordUnavailableTransitionStepType }
-
-func (recordUnavailableTransition) GetStepOptions() *dex.StepOptions {
-	return &dex.StepOptions{ExecuteLockAttributes: []dex.AttributeLock{dex.LockAttribute(supportPhaseAttribute), dex.LockAttribute(supportRequestAttribute)}}
-}
-
-func (recordUnavailableTransition) Execute(ctx dex.Context, result jiraservicemanagement.TransitionTicketResult) (*dex.StepDecision, error) {
-	record, err := supportRequestAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	record.Phase = PhaseTransitionUnavailable
-	status := result.Value.Status
-	record.Status = &status
-	record.AvailableTransitionNames = nil
-	for _, transition := range result.Value.AvailableTransitions {
-		record.AvailableTransitionNames = append(record.AvailableTransitionNames, transition.Name+" -> "+transition.DestinationStatus.Name)
-	}
-	if err := supportPhaseAttribute.Set(ctx, record.Phase); err != nil {
-		return nil, err
-	}
-	if err := supportRequestAttribute.Set(ctx, record); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(record), nil
 }
 
 // dex:group group-id:actions group-label:"Actions"
