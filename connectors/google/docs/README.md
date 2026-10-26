@@ -136,16 +136,28 @@ supports queries on that property.
 
 The shared single-dispatch fence reads the previous Dex heartbeat before
 credentials or Drive lookup. Sync durability makes that heartbeat visible to
-later attempts. An attempt first searches for a tagged file; if found, it
+later attempts. **Keep the Step sync:** overriding it to async durability can
+let Dex send a second create after about seven seconds while the first is
+still in flight. An attempt first searches for a tagged file; if found, it
 returns that document without another create. The fence permits a send only on
 the first attempt or after the immediately prior attempt proved that no create
-was sent or Drive returned a 429 or 503 and read-back found no matching file.
+was sent, Drive returned a 429 or 503, or a 401 credential was refreshed.
+After a 429 or 503, the connector searches once for the tagged file. If that
+lookup cannot confirm creation, it records permission for the next attempt to
+retry; that attempt searches again before sending. A 401 forces credential
+refresh and retries in the next attempt only when refresh succeeds.
 A missing, stale, or claimed heartbeat cannot authorize another send. A 2xx
 reply with an invalid or interrupted body is treated as accepted and searched
 by app property. A found file completes `created`; inconclusive read-back
 selects `uncertain`, and the example leaves that branch unwired for manual
 reconciliation. HTTP writes use a bounded fraction of the Step deadline and
 disable Go's transparent request replay.
+
+When upgrading from v0.22.1, an in-flight `createDocument` Step can carry a
+legacy `googleDocsDispatchedCallId` heartbeat. The new fence fails closed for
+that marker: it searches Drive by `dexIdempotencyKey` without sending a create.
+A found document completes `created`; a temporary lookup failure retries; an
+unconfirmed outcome selects `uncertain` for manual reconciliation.
 
 [Google's Drive error guide](https://developers.google.com/workspace/drive/api/guides/handle-errors)
 recommends backoff for 429 and 503. It describes a 503 as an error during

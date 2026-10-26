@@ -277,10 +277,10 @@ func ReplaceDocumentTextProviderRejectedFailure() connectormock.Case[docs.Replac
 	return connectormock.Branch(docs.ReplaceDocumentTextBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthorization, Message: "The connection cannot edit the document."})
 }
 
-// ReplaceDocumentTextInvalidResponseFailure is the manifest mock invalidResponseFailure: Google returned an invalid or oversized document response.
+// ReplaceDocumentTextInvalidResponseFailure is the manifest mock invalidResponseFailure: Google returned a malformed document response.
 func ReplaceDocumentTextInvalidResponseFailure() connectormock.Case[docs.ReplaceDocumentTextOutput] {
 	var value docs.ReplaceDocumentTextOutput
-	return connectormock.Branch(docs.ReplaceDocumentTextBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "Google returned an invalid or oversized document response."})
+	return connectormock.Branch(docs.ReplaceDocumentTextBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "Google returned a malformed document response."})
 }
 
 // ReplaceDocumentTextDefault is the manifest default, filledPolicyDraft, which New installs.
@@ -347,10 +347,10 @@ func AppendTextProviderRejectedFailure() connectormock.Case[docs.AppendTextOutpu
 	return connectormock.Branch(docs.AppendTextBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthorization, Message: "The connection cannot edit the document."})
 }
 
-// AppendTextInvalidResponseFailure is the manifest mock invalidResponseFailure: Google returned an invalid or oversized document response.
+// AppendTextInvalidResponseFailure is the manifest mock invalidResponseFailure: Google returned a malformed document response.
 func AppendTextInvalidResponseFailure() connectormock.Case[docs.AppendTextOutput] {
 	var value docs.AppendTextOutput
-	return connectormock.Branch(docs.AppendTextBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "Google returned an invalid or oversized document response."})
+	return connectormock.Branch(docs.AppendTextBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "Google returned a malformed document response."})
 }
 
 // AppendTextDefault is the manifest default, stampedPolicyDraft, which New installs.

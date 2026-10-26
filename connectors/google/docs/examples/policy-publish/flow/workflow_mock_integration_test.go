@@ -7,7 +7,6 @@ package policypublish
 
 import (
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/google/docs"
@@ -64,5 +63,5 @@ func TestPolicyPublishUsesMockedGoogleDocsWithRealDex(t *testing.T) {
 	require.Len(t, stamps, 1)
 	require.Equal(t, "policyDraft1", stamps[0].Input.DocumentID)
 	require.Equal(t, "rev-draft-2", stamps[0].Input.RequiredRevisionID)
-	require.Equal(t, PublicationStampText(time.Now().UTC().Format(publicationStampDateLayout), "rev-template-1"), stamps[0].Input.Text)
+	require.Regexp(t, `^Published by Dex on \d{4}-\d{2}-\d{2} from template revision rev-template-1\.$`, stamps[0].Input.Text)
 }

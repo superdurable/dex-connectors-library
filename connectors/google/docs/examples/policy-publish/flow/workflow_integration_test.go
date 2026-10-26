@@ -95,7 +95,7 @@ func TestPolicyPublishSlowCreateIsSentOnceWithRealDex(t *testing.T) {
 	require.Len(t, provider.CreatedDocumentIDs(), 1)
 }
 
-func TestPolicyPublishRetriedCreateReusesTheDocumentAnEarlierAttemptCreatedWithRealDex(t *testing.T) {
+func TestPolicyPublishRateLimitReadBackFindsTheDocumentInTheSameAttemptWithRealDex(t *testing.T) {
 	provider := newPolicyProvider(t)
 	provider.QueueCreateResponses(fakegoogledocs.CreateResponseCreatedThenRateLimited)
 	harness := newPublishHarness(t, provider)

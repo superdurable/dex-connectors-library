@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: google-docs
   displayName: Google Docs
-  description: Read Google Docs as bounded Markdown or plain text with their revision, create documents in a Drive folder with a single-dispatch fence and read-back, and replace or append text only at the revision a Flow read.
+  description: Read Google Docs as bounded Markdown or plain text with their revision, create documents in a Drive folder with duplicate-aware recovery, and replace or append text only at the revision a Flow read.
   company: Google
   version: v0.23.0
 spec:
@@ -299,8 +299,8 @@ spec:
           failure: {kind: AUTHORIZATION, message: The connection cannot edit the document.}
         - name: invalidResponseFailure
           branch: invalidResponse
-          description: "Google returned an invalid or oversized document response."
-          failure: {kind: PROTOCOL, message: "Google returned an invalid or oversized document response."}
+          description: "Google returned a malformed document response."
+          failure: {kind: PROTOCOL, message: "Google returned a malformed document response."}
     - name: appendText
       goName: AppendText
       inputType: AppendTextInput
@@ -338,5 +338,5 @@ spec:
           failure: {kind: AUTHORIZATION, message: The connection cannot edit the document.}
         - name: invalidResponseFailure
           branch: invalidResponse
-          description: "Google returned an invalid or oversized document response."
-          failure: {kind: PROTOCOL, message: "Google returned an invalid or oversized document response."}
+          description: "Google returned a malformed document response."
+          failure: {kind: PROTOCOL, message: "Google returned a malformed document response."}

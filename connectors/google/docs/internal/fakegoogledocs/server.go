@@ -40,6 +40,7 @@ const (
 	CountBatchUpdatesApplied   = "documents.batchUpdate.applied"
 	CountStaleRevisionRejected = "documents.batchUpdate.staleRevision"
 	CountDuplicateLookups      = "drive.files.lookup"
+	CountFileReads             = "drive.files.get"
 	CountCreatesReceived       = "drive.files.create"
 )
 
@@ -287,6 +288,8 @@ func (server *Server) serveHTTP(response http.ResponseWriter, request *http.Requ
 		server.batchUpdate(response, strings.TrimSuffix(strings.TrimPrefix(path, "/v1/documents/"), ":batchUpdate"), body)
 	case request.Method == http.MethodGet && path == "/drive/v3/files":
 		server.lookUpEarlierDocument(response, request.URL.Query().Get("q"))
+	case request.Method == http.MethodGet && strings.HasPrefix(path, "/drive/v3/files/"):
+		server.getDriveFile(response, strings.TrimPrefix(path, "/drive/v3/files/"))
 	case request.Method == http.MethodPost && path == "/drive/v3/files":
 		server.createDocument(response, body, "", nil)
 	case request.Method == http.MethodPost && path == "/upload/drive/v3/files":
@@ -401,6 +404,19 @@ func (server *Server) lookUpEarlierDocument(response http.ResponseWriter, query 
 		}
 	}
 	writeJSON(response, http.StatusOK, map[string]any{"files": files, "incompleteSearch": false})
+}
+
+func (server *Server) getDriveFile(response http.ResponseWriter, id string) {
+	server.mutex.Lock()
+	defer server.mutex.Unlock()
+	server.counts[CountFileReads]++
+	for _, file := range server.files {
+		if file.id == id {
+			writeJSON(response, http.StatusOK, file.resource())
+			return
+		}
+	}
+	writeJSON(response, http.StatusNotFound, errorBody(http.StatusNotFound, "NOT_FOUND"))
 }
 
 func (server *Server) createUploadedDocument(response http.ResponseWriter, request *http.Request, body []byte) {
