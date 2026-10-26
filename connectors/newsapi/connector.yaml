@@ -5,7 +5,7 @@ metadata:
   displayName: NewsAPI
   description: Search recent news articles from the publishers NewsAPI indexes by keyword, title or body fields, sources, domains, language, and publication window.
   company: NewsAPI
-  version: v0.21.2
+  version: v0.22.0
 spec:
   provider: newsapi
   codegen:
@@ -61,3 +61,13 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: searchedDefaultAnswer
+          branch: searched
+          description: "Searching title matches for Meridian returns two recent articles on page one."
+          default: true
+          output: {"totalResults":2,"page":1,"hasMore":false,"articles":[{"source":{"id":"meridian-news","name":"Meridian News"},"author":"A. Rivera","title":"Meridian opens a research lab","description":"The company opens a new lab.","url":"https://news.example.test/meridian-lab","publishedAt":"2026-10-26T12:00:00Z","content":"Meridian opened its newest research lab."},{"source":{"id":"meridian-news","name":"Meridian News"},"author":null,"title":"Meridian reports quarterly results","description":null,"url":"https://news.example.test/meridian-results","publishedAt":"2026-10-25T12:00:00Z","content":null}]}
+        - name: invalidKey
+          branch: providerRejected
+          description: "Searching with an invalid NewsAPI key is rejected."
+          failure: {"kind":"AUTHENTICATION","message":"Searching with an invalid NewsAPI key is rejected."}

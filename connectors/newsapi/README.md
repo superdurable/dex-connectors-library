@@ -110,3 +110,14 @@ with `AUTHENTICATION`, and one three-article title search:
 ```bash
 NEWSAPI_CONNECTOR_TEST_API_KEY=... GOWORK=off go test -tags=live -run TestLive ./...
 ```
+
+## Mocks
+
+`newsapimock` answers an unscripted `searchArticles` call with two Meridian articles dated October 25 and 26, 2026; `invalidKey` selects the provider rejection for an invalid API key. The [company news example](examples/company-news/flow/workflow_mock_integration_test.go) runs the default through a real Dex Worker and checks the mapped search input.
+
+```go
+mock := newsapimock.New(t, ConnectionName)
+flow, harness := newCompanyNewsIntegrationHarnessWithConnection(t, mock.Connection())
+```
+
+Install this release with `go get github.com/superdurable/dex-connectors-library/connectors/newsapi@v0.22.0`.

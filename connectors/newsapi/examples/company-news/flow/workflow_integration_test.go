@@ -203,6 +203,11 @@ func newCompanyNewsIntegrationHarness(t *testing.T, providerURL string) (*Flow, 
 	require.NoError(t, err)
 	connection, err := newsapi.NewConnection(providerClient, reference)
 	require.NoError(t, err)
+	return newCompanyNewsIntegrationHarnessWithConnection(t, connection)
+}
+
+func newCompanyNewsIntegrationHarnessWithConnection(t *testing.T, connection newsapi.Connection) (*Flow, *companyNewsIntegrationHarness) {
+	t.Helper()
 	flow := NewFlow(connection)
 	registry, err := dex.NewRegistry([]dex.Flow{flow})
 	require.NoError(t, err)
