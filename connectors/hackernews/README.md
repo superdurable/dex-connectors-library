@@ -35,6 +35,21 @@ Use the generated factories in [the runnable Flow](examples/daily-digest/flow/wo
 connection for tests. `WithHTTPClient` supplies a transport for tests or
 application networking.
 
+## Mocks
+
+The generated `hackernewsmock` package supplies a public compiler story for
+the feed and item reads. Script another item when the requested ID differs.
+The [real-Dex example test](examples/daily-digest/flow/workflow_mock_integration_test.go)
+uses the mock connection and checks the five feed inputs and one item read:
+
+```go
+mock := hackernewsmock.New(t, ConnectionName)
+```
+
+`ListStoryIDsFeedRejected`, `GetItemItemMissing`, and `GetItemItemRejected`
+cover definite provider outcomes. The default item represents one fixed
+snapshot; the example test scripts a current publication timestamp.
+
 ## Execution contract
 
 Both operations are read-only queries. Each Execute attempt makes one HTTP
