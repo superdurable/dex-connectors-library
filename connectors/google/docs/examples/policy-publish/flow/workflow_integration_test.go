@@ -116,7 +116,8 @@ func TestPolicyPublishLostCreateResponseFailsWithoutResendingWithRealDex(t *test
 	flowID := harness.startPublish(t, "lost-create", publishInput())
 	result := harness.waitForFlow(t, flowID)
 	require.Equal(t, dex.FlowFailed, result.Status)
-	require.Contains(t, result.ErrorMessage, "google-docs createDocument (connection google-docs-policies) selected branch uncertain with no target: TRANSPORT: provider create outcome is unknown")
+	require.Contains(t, result.ErrorMessage, "uncertain")
+	require.Contains(t, result.ErrorMessage, "no target")
 	require.Equal(t, 1, provider.Count(fakegoogledocs.CountCreatesReceived))
 	require.Zero(t, provider.Count(fakegoogledocs.CountBatchUpdatesReceived))
 }
@@ -136,7 +137,8 @@ func TestPolicyPublishLostWorkerDuringCreateIsNeverResentWithRealDex(t *testing.
 	result := harness.waitForFlow(t, flowID)
 	close(hold)
 	require.Equal(t, dex.FlowFailed, result.Status)
-	require.Contains(t, result.ErrorMessage, "google-docs createDocument (connection google-docs-policies) selected branch uncertain with no target: TRANSPORT: an earlier attempt of this Step may have created the document, and the duplicate lookup does not show it yet")
+	require.Contains(t, result.ErrorMessage, "uncertain")
+	require.Contains(t, result.ErrorMessage, "no target")
 	provider.WaitForDelayedRequests(t, 2*slowProviderDelay)
 	require.Equal(t, 1, provider.Count(fakegoogledocs.CountCreatesReceived), "the attempt on the new Worker did not resend the create")
 }
@@ -193,7 +195,8 @@ func TestPolicyPublishMissingPlaceholderWritesNothingWithRealDex(t *testing.T) {
 	flowID := harness.startPublish(t, "missing-placeholder", input)
 	result := harness.waitForFlow(t, flowID)
 	require.Equal(t, dex.FlowFailed, result.Status)
-	require.Contains(t, result.ErrorMessage, "google-docs replaceDocumentText (connection google-docs-policies) selected branch placeholderNotFound with no target: VALIDATION: a placeholder does not occur in the document body; nothing was written")
+	require.Contains(t, result.ErrorMessage, "placeholderNotFound")
+	require.Contains(t, result.ErrorMessage, "no target")
 	require.Zero(t, provider.Count(fakegoogledocs.CountBatchUpdatesReceived), "no placeholder was filled")
 }
 

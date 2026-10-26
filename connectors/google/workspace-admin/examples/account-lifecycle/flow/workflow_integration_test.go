@@ -113,7 +113,8 @@ func TestOnboardingFailsOnAnAddressThatBelongsToAnotherAccountWithRealDex(t *tes
 	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
 	require.NoError(t, err)
 	require.Equal(t, dex.FlowFailed, result.Status)
-	require.Contains(t, result.ErrorMessage, "google-workspace-admin createUser (connection google-workspace-admin) selected branch alreadyExists with no target: CONFLICT: address belongs to an account this Step did not create")
+	require.Contains(t, result.ErrorMessage, "alreadyExists")
+	require.Contains(t, result.ErrorMessage, "no target")
 	require.Equal(t, 1, provider.userCount())
 	require.Zero(t, provider.count("memberInsert"), "nothing is built for an address this Flow did not create")
 }

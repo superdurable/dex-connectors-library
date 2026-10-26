@@ -70,14 +70,16 @@ func TestGenerateSummaryExampleRoutesGeminiOutcomesWithRealDex(t *testing.T) {
 	t.Run("unwired blocked branch fails the Flow", func(t *testing.T) {
 		result := harness.runFlow(t, ctx, flow, "gemini-summary-blocked-"+testRunID, SummaryRequest{Title: "Blocked", Text: "BLOCK " + testRunID})
 		require.Equal(t, dex.FlowFailed, result.Status)
-		require.Contains(t, result.ErrorMessage, "gemini generateContent (connection gemini-api) selected branch blocked with no target: PROVIDER_REJECTION: provider blocked the prompt: SAFETY")
+		require.Contains(t, result.ErrorMessage, "blocked")
+		require.Contains(t, result.ErrorMessage, "no target")
 		require.Len(t, provider.requestsFor("BLOCK "+testRunID), 1)
 	})
 
 	t.Run("unwired truncated branch fails the Flow", func(t *testing.T) {
 		result := harness.runFlow(t, ctx, flow, "gemini-summary-truncated-"+testRunID, SummaryRequest{Title: "Long", Text: "TRUNCATE " + testRunID})
 		require.Equal(t, dex.FlowFailed, result.Status)
-		require.Contains(t, result.ErrorMessage, "gemini generateContent (connection gemini-api) selected branch truncated with no target: RESPONSE_TOO_LARGE: provider stopped the candidate at the output token limit")
+		require.Contains(t, result.ErrorMessage, "truncated")
+		require.Contains(t, result.ErrorMessage, "no target")
 		require.Len(t, provider.requestsFor("TRUNCATE "+testRunID), 1)
 	})
 

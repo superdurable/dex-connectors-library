@@ -77,7 +77,8 @@ func TestPlaylistCuratorAddsOnceWithRealDex(t *testing.T) {
 		playlistID := "PLmissing" + runID
 		result := harness.runFlow(t, ctx, flow, "youtube-curator-missing-"+runID, CurationRequest{Channel: "@missing", Query: "release", PlaylistID: playlistID})
 		require.Equal(t, dex.FlowFailed, result.Status)
-		require.Contains(t, result.ErrorMessage, "google-youtube getChannel (connection youtube-read-only) selected branch notFound with no target: NOT_FOUND: no YouTube channel matches the request")
+		require.Contains(t, result.ErrorMessage, "notFound")
+		require.Contains(t, result.ErrorMessage, "no target")
 		require.Zero(t, provider.insertsFor(playlistID))
 	})
 

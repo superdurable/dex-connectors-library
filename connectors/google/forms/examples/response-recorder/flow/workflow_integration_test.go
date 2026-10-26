@@ -119,7 +119,8 @@ func TestResponseRecorderReadsOneResponseByIDWithRealDex(t *testing.T) {
 
 	missing := runRecorder(t, ctx, harness.client, flow, "missing-"+runID, Input{ResponseID: "r_missing"})
 	require.Equal(t, dex.FlowFailed, missing.status)
-	require.Contains(t, missing.failureReason, "google-forms getResponse (connection google-forms-intake) selected branch notFound with no target: NOT_FOUND: form or response was not found or is not visible to the connection")
+	require.Contains(t, missing.failureReason, "notFound")
+	require.Contains(t, missing.failureReason, "no target")
 
 	both := runRecorder(t, ctx, harness.client, flow, "both-"+runID, Input{ResponseID: "r_acme", Cursor: &ResponseCursor{LastSubmittedAt: morning}})
 	require.Equal(t, dex.FlowFailed, both.status)

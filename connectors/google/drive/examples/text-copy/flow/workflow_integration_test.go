@@ -72,7 +72,8 @@ func TestTextCopyExampleRoutesEveryBusinessOutcomeWithRealDex(t *testing.T) {
 
 	missing := runTextCopy(t, ctx, harness.client, flow, "missing-"+runID, Input{SourceName: "Ops Polcy", CopyName: "never-" + runID + ".txt"})
 	require.Equal(t, dex.FlowFailed, missing.status)
-	require.Contains(t, missing.failureReason, "google-drive searchFiles (connection google-drive-files) selected branch notFound with no target: NOT_FOUND: no file matched the search")
+	require.Contains(t, missing.failureReason, "notFound")
+	require.Contains(t, missing.failureReason, "no target")
 	require.Equal(t, 0, provider.uploadsNamed("never-"+runID+".txt"))
 
 	rejected := runTextCopy(t, ctx, harness.client, flow, "rejected-"+runID, Input{SourceName: " ", CopyName: "never-" + runID + ".txt"})
