@@ -340,6 +340,23 @@ IDs stay operation input.
 - Public replies use the email channel only, routed from the customer's newest
   email message, and need a helpdesk address the connector can identify.
 
+## Mocks
+
+The generated `gorgiasmock` package models Ada's open billing ticket, a
+three-page listing with a repeated ticket, an internal follow-up note, and a
+separate new customer's refund ticket. The
+[real-Dex example test](examples/triage-issue/flow/workflow_mock_integration_test.go)
+uses that world to assert both the follow-up and new-ticket routes:
+
+```go
+mock := gorgiasmock.New(t, ConnectionName)
+```
+
+The mock package also supplies definite `notFound` and `providerRejected`
+outcomes where each operation declares them. `findCustomerByEmail` reports
+absence with an empty customer list, matching the real classifier. Script
+other tickets, customers, and notes for different requests.
+
 ## Example
 
 [`examples/triage-issue`](examples/triage-issue) is a runnable Dex Web
