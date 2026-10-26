@@ -51,7 +51,7 @@ type ConversationReply struct {
 	ThreadID int64 `json:"threadId,omitempty"`
 	// IsInternalNote reports that the thread is a note rather than a customer reply.
 	IsInternalNote bool `json:"isInternalNote,omitempty"`
-	// CustomerID is the customer a reply was sent to; zero for a note.
+	// CustomerID is the customer a reply was sent to; zero for a note or when read-back cannot identify the customer.
 	CustomerID int64 `json:"customerId,omitempty"`
 }
 
@@ -292,10 +292,11 @@ func (client *Client) readBackReply(call sdkgo.Call, output ConversationReply, m
 			if thread.ID == threadID {
 				output.ThreadID = threadID
 				if !output.IsInternalNote && output.CustomerID == 0 {
-					if thread.Customer == nil || thread.Customer.ID <= 0 {
-						return client.uncertainReply(call, output, "Help Scout confirmed the reply but did not name its customer")
+					if thread.Customer != nil && thread.Customer.ID > 0 {
+						output.CustomerID = thread.Customer.ID
+					} else {
+						output.CustomerID = client.readBackPrimaryCustomerID(call, &credentials, output.ConversationID)
 					}
-					output.CustomerID = thread.Customer.ID
 				}
 				return sdkgo.NewMutationBranch(ReplyToConversationBranchReplied, output, nil, client.receipt(call, threadID, ""))
 			}
@@ -305,6 +306,23 @@ func (client *Client) readBackReply(call sdkgo.Call, output ConversationReply, m
 		}
 	}
 	return client.uncertainReply(call, output, "Help Scout did not confirm the accepted thread in its thread pages")
+}
+
+func (client *Client) readBackPrimaryCustomerID(call sdkgo.Call, credentials *Credentials, conversationID int64) int64 {
+	readContext, cancel, canRead := boundedReplyReadContext(call.Context)
+	defer cancel()
+	if !canRead {
+		return 0
+	}
+	response, err := client.send(readContext, call, credentials, helpScoutRequest{method: http.MethodGet, path: conversationPath(conversationID)})
+	if err != nil || response.statusCode != http.StatusOK {
+		return 0
+	}
+	conversation, err := decodeConversationBody(response.body, conversationID)
+	if err != nil || conversation.PrimaryCustomer == nil {
+		return 0
+	}
+	return conversation.PrimaryCustomer.ID
 }
 
 func boundedReplyReadContext(stepContext context.Context) (context.Context, context.CancelFunc, bool) {

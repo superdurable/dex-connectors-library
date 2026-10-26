@@ -37,8 +37,7 @@ func TestConversationTriageUsesHelpScoutMocksWithRealDex(t *testing.T) {
 	require.Equal(t, "completed", triage.Stage)
 	require.Equal(t, []string{"customer"}, triage.NewestThreadTypes)
 	require.Equal(t, []int64{238604}, triage.CustomerProfileIDs)
-	// The Flow reads page 1; conversation 503 on mock page 3 is outside this example's result.
-	require.Equal(t, []int64{502}, triage.OtherActiveConversationIDs)
+	require.Equal(t, []int64{502, 503}, triage.OtherActiveConversationIDs)
 
 	reads := mock.GetConversation().Calls()
 	require.Len(t, reads, 1)
@@ -47,13 +46,17 @@ func TestConversationTriageUsesHelpScoutMocksWithRealDex(t *testing.T) {
 	require.Len(t, customers, 1)
 	require.Equal(t, helpscout.FindCustomerByEmailInput{Email: "jane@acme.example.com"}, customers[0].Input)
 	searches := mock.SearchConversations().Calls()
-	require.Len(t, searches, 1)
+	require.Len(t, searches, 3)
 	require.Equal(t, helpscout.SearchConversationsInput{MailboxID: 123, Status: helpscout.ConversationStatusActive,
 		CustomerEmail: "jane@acme.example.com"}, searches[0].Input)
+	require.Equal(t, helpscout.SearchConversationsInput{MailboxID: 123, Status: helpscout.ConversationStatusActive,
+		CustomerEmail: "jane@acme.example.com", Page: 2}, searches[1].Input)
+	require.Equal(t, helpscout.SearchConversationsInput{MailboxID: 123, Status: helpscout.ConversationStatusActive,
+		CustomerEmail: "jane@acme.example.com", Page: 3}, searches[2].Input)
 	notes := mock.ReplyToConversation().Calls()
 	require.Len(t, notes, 1)
 	require.Equal(t, helpscout.ReplyToConversationInput{ConversationID: 501, IsInternalNote: true,
-		Text: "Dex triage: 1 Help Scout customer profile matches jane@acme.example.com; the customer has 1 other active conversation in this inbox: 502."}, notes[0].Input)
+		Text: "Dex triage: 1 Help Scout customer profile matches jane@acme.example.com; the customer has 2 other active conversations in this inbox: 502, 503."}, notes[0].Input)
 	updates := mock.UpdateConversation().Calls()
 	require.Len(t, updates, 1)
 	require.Equal(t, helpscout.UpdateConversationInput{ConversationID: 501,

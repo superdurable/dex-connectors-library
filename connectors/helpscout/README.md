@@ -132,10 +132,6 @@ new thread's ID in `Resource-Id`.
 Help Scout documents no idempotency key or client-supplied thread marker. The
 operation uses the Connector SDK's single-dispatch fence with sync durability:
 
-Do not override this Step's Execute durability to async. Async local-phase
-heartbeats are not visible to later attempts, so the fence cannot prevent a
-second send after a Worker loss.
-
 - the fence reads the prior Dex heartbeat before credentials or a provider
   lookup and permits a send only on attempt one or immediately after a
   checkpoint proving the preceding attempt did not apply;
@@ -153,6 +149,13 @@ second send after a Worker loss.
 - a `404` or `410`, including a merged conversation, selects `notFound`;
   terminal `4xx` such as `412` for a conversation locked at 100 threads or
   by age selects `providerRejected`. Nothing was added.
+
+Do not override this Step's Execute durability to async. Async local-phase
+heartbeats are not visible to later attempts, so the fence cannot prevent a
+second send after a Worker loss. A confirmed reply read-back gets its customer
+ID from the thread, or from a conversation GET when the thread omits it. If
+neither read identifies the customer, `replied` returns `customerId: 0` with
+the confirmed thread ID; no second reply is sent.
 
 The real-Dex tests in `mutation_dispatch_integration_test.go` cover a slow
 reply, a `503` followed by success, and an accepted reply read back after a

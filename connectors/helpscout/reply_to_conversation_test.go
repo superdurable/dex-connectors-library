@@ -306,6 +306,63 @@ func TestReplyFenceReadBackResolvesThePrimaryReplyCustomerWithoutResending(t *te
 	require.Len(t, fake.requestsTo(http.MethodGet, "/v2/conversations/501/threads"), 1)
 }
 
+func TestReplyFenceReadBackUsesConversationWhenConfirmedThreadOmitsCustomer(t *testing.T) {
+	var conversationReads atomic.Int32
+	fake := newFakeHelpScout(t, map[string]http.HandlerFunc{
+		"GET /v2/conversations/501": func(response http.ResponseWriter, request *http.Request) {
+			conversationReads.Add(1)
+			respondJSON(http.StatusOK, conversationJSON(501, "active", 123))(response, request)
+		},
+		"POST /v2/conversations/501/reply": createdThread("568"),
+		"GET /v2/conversations/501/threads": respondJSON(http.StatusOK,
+			threadPageJSON([]string{`{"id":568,"type":"reply"}`}, false)),
+	})
+	client := newFakeBackedClient(t, fake)
+	step := singledispatchtest.NewContext("helpscout-test-flow", "reply")
+	input := helpscout.ReplyToConversationInput{ConversationID: 501, Text: "Response to Jane"}
+	first, err := replyToConversation(t, client, step, input)
+	require.NoError(t, err)
+	require.Equal(t, helpscout.ReplyToConversationBranchReplied, first.Branch)
+	step.AdvanceAttempt()
+	second, err := replyToConversation(t, client, step, input)
+	require.NoError(t, err)
+	require.Equal(t, helpscout.ReplyToConversationBranchReplied, second.Branch)
+	require.Equal(t, helpscout.ConversationReply{ConversationID: 501, ThreadID: 568, CustomerID: 238604}, second.Value)
+	require.EqualValues(t, 2, conversationReads.Load())
+	require.Len(t, fake.requestsTo(http.MethodPost, "/v2/conversations/501/reply"), 1)
+	require.Len(t, fake.requestsTo(http.MethodGet, "/v2/conversations/501/threads"), 1)
+}
+
+func TestReplyFenceReadBackReturnsConfirmedThreadWithUnknownCustomer(t *testing.T) {
+	var conversationReads atomic.Int32
+	fake := newFakeHelpScout(t, map[string]http.HandlerFunc{
+		"GET /v2/conversations/501": func(response http.ResponseWriter, request *http.Request) {
+			if conversationReads.Add(1) == 1 {
+				respondJSON(http.StatusOK, conversationJSON(501, "active", 123))(response, request)
+				return
+			}
+			response.WriteHeader(http.StatusServiceUnavailable)
+		},
+		"POST /v2/conversations/501/reply": createdThread("568"),
+		"GET /v2/conversations/501/threads": respondJSON(http.StatusOK,
+			threadPageJSON([]string{`{"id":568,"type":"reply"}`}, false)),
+	})
+	client := newFakeBackedClient(t, fake)
+	step := singledispatchtest.NewContext("helpscout-test-flow", "reply")
+	input := helpscout.ReplyToConversationInput{ConversationID: 501, Text: "Response to Jane"}
+	first, err := replyToConversation(t, client, step, input)
+	require.NoError(t, err)
+	require.Equal(t, helpscout.ReplyToConversationBranchReplied, first.Branch)
+	step.AdvanceAttempt()
+	second, err := replyToConversation(t, client, step, input)
+	require.NoError(t, err)
+	require.Equal(t, helpscout.ReplyToConversationBranchReplied, second.Branch)
+	require.Equal(t, helpscout.ConversationReply{ConversationID: 501, ThreadID: 568}, second.Value)
+	require.EqualValues(t, 2, conversationReads.Load())
+	require.Len(t, fake.requestsTo(http.MethodPost, "/v2/conversations/501/reply"), 1)
+	require.Len(t, fake.requestsTo(http.MethodGet, "/v2/conversations/501/threads"), 1)
+}
+
 func TestReplyFenceTerminalCredentialsSelectDefectWithoutSending(t *testing.T) {
 	fake := newFakeHelpScout(t, map[string]http.HandlerFunc{
 		"POST /v2/oauth2/token": respondJSON(http.StatusUnauthorized, `{"error":"invalid_client"}`),

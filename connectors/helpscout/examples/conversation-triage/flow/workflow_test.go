@@ -42,6 +42,8 @@ func TestMappingsReadTheCustomerAndWriteOnlyAnInternalNoteAndTags(t *testing.T) 
 	require.Equal(t, helpscout.FindCustomerByEmailInput{Email: "jane@acme.example.com"}, MapToFindCustomerByEmailInput(triageContext))
 	require.Equal(t, helpscout.SearchConversationsInput{MailboxID: 123, Status: helpscout.ConversationStatusActive, CustomerEmail: "jane@acme.example.com"},
 		MapToSearchConversationsInput(triageContext))
+	triageContext.SearchPage = 3
+	require.Equal(t, 3, MapToSearchConversationsInput(triageContext).Page)
 	require.Equal(t, helpscout.ReplyToConversationInput{ConversationID: 501, Text: "note", IsInternalNote: true},
 		MapToReplyToConversationInput(TriageNote{ConversationID: 501, Text: "note"}), "the Flow never emails the customer")
 	require.Equal(t, helpscout.UpdateConversationInput{ConversationID: 501, AddTags: []string{TriagedTag}}, MapToUpdateConversationInput(triageContext))
@@ -54,6 +56,8 @@ func TestBuildTriageNoteNamesProfilesAndOtherConversations(t *testing.T) {
 		BuildTriageNote("jane@acme.example.com", []int64{1001}, nil))
 	require.Equal(t, "Dex triage: 2 Help Scout customer profiles match jane@acme.example.com; the customer has 1 other active conversation in this inbox: 502.",
 		BuildTriageNote("jane@acme.example.com", []int64{1001, 1002}, []int64{502}))
+	require.Equal(t, "Dex triage: 1 Help Scout customer profile matches jane@acme.example.com; the customer has 2 other active conversations in this inbox: 502, 503.",
+		BuildTriageNote("jane@acme.example.com", []int64{238604}, []int64{502, 503}))
 	require.Equal(t, "Dex triage: 0 Help Scout customer profiles match jane@acme.example.com; the customer has no other active conversation in this inbox.",
 		BuildTriageNote("jane@acme.example.com", nil, nil))
 	many := make([]int64, 12)
