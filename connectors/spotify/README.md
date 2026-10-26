@@ -48,6 +48,26 @@ Playlist pagination is not a snapshot: edits between calls can move items.
 Applications that need another page should persist their business context and
 invoke another Connector Step with the returned `nextOffset`.
 
+## Mocks
+
+`spotifymock.New` supplies a typed connection. Its default describes playlist
+`3cEYpjA9oz9GiPac4AsH4n` with five items across three offset pages of size
+two. Each page has one available track; the first two also skip an unavailable
+item. Script other playlist IDs, offsets, or page sizes explicitly. Named cases model a
+revoked grant, inaccessible or missing playlist, and rejected query.
+
+The [runnable mock integration test](examples/playlist-tracks/flow/workflow_mock_integration_test.go)
+uses the connection on a real Dex Worker:
+
+```go
+mock := spotifymock.New(t, ConnectionName)
+flow := NewFlow(mock.Connection())
+client := startPlaylistWorker(t, flow)
+input := Input{PlaylistID: "3cEYpjA9oz9GiPac4AsH4n", Limit: 2}
+result := runPlaylistFlow(t, client, flow, fmt.Sprintf("spotify-playlist-mock-%d", time.Now().UnixNano()), input)
+require.Equal(t, dex.FlowCompleted, result.Status, "Flow failed: %s", result.ErrorMessage)
+```
+
 The result deliberately excludes preview audio and artwork. Track, artist, and
 album metadata includes Spotify URLs for attribution. Applications displaying
 the data must follow Spotify's
