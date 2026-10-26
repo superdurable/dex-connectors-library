@@ -28,7 +28,7 @@ spec:
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: "Largest complete QuickBooks API response, in bytes, that one call reads. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when invoices carry hundreds of lines. An oversized read selects invalidResponse, and an oversized answer to an accepted write selects uncertain."
+        description: "Largest complete QuickBooks API response, in bytes, that one call reads. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when invoices carry hundreds of lines. An oversized read selects invalidResponse; an oversized accepted write is confirmed by ID when possible, otherwise it selects uncertain."
         required: false
         default: 4194304
   auth:
@@ -126,7 +126,7 @@ spec:
         - name: providerRejectedFailure
           branch: providerRejected
           description: "Looking up accounts@cityagency.example.com with a revoked connection is rejected."
-          failure: {kind: PROVIDER_REJECTION, message: "QuickBooks conclusively rejected the query, such as a revoked connection or a company the app can no longer reach."}
+          failure: {kind: AUTHENTICATION, message: "QuickBooks authorization must be renewed before looking up the customer."}
         - name: invalidResponseFailure
           branch: invalidResponse
           description: "Looking up accounts@cityagency.example.com receives an unusable customer list."
@@ -136,14 +136,14 @@ spec:
       inputType: CreateCustomerInput
       outputType: CreateCustomerOutput
       kind: mutation
-      description: "Create one customer with a unique display name, email address, names, company, phone, and currency; every attempt of the Step sends the same QuickBooks requestid, so a repeated dispatch returns the first customer instead of creating another."
+      description: "Create one customer with a unique display name, email address, names, company, phone, and currency; every attempt of the Step sends the same QuickBooks requestid to request replay of an earlier result."
       idempotency: required
       authorization: required
       branches:
         - {id: created, goName: Created, description: "QuickBooks created the customer, or returned the customer this Step already created."}
-        - {id: nameConflict, goName: NameConflict, description: "Another customer, vendor, or employee already uses the display name (QuickBooks error 6240); nothing was created, so resolve it with findCustomer by display name.", optional: true}
+        - {id: nameConflict, goName: NameConflict, description: "A customer, vendor, or employee already uses the display name (QuickBooks error 6240); resolve it with findCustomer by display name, including a possible earlier attempt.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "QuickBooks conclusively rejected the customer, such as an invalid field or a revoked connection; nothing was created.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "QuickBooks accepted the request but returned an unusable customer; look it up with findCustomer before creating again.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "QuickBooks accepted the request but returned an unusable customer that read-back could not confirm; look it up with findCustomer before creating again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
@@ -161,7 +161,7 @@ spec:
         - name: providerRejectedFailure
           branch: providerRejected
           description: "Creating City Agency with a revoked connection is rejected before creation."
-          failure: {kind: PROVIDER_REJECTION, message: "QuickBooks conclusively rejected the customer, such as an invalid field or a revoked connection; nothing was created."}
+          failure: {kind: AUTHENTICATION, message: "QuickBooks authorization must be renewed before creating the customer; nothing was created."}
     - name: createInvoice
       goName: CreateInvoice
       inputType: CreateInvoiceInput
@@ -173,7 +173,7 @@ spec:
       branches:
         - {id: created, goName: Created, description: "QuickBooks created the invoice, or returned the invoice this Step already created, with its number, total, and balance."}
         - {id: providerRejected, goName: ProviderRejected, description: "QuickBooks conclusively rejected the invoice, such as an unknown or inactive customer or item, a duplicate document number, a closed period, or a revoked connection; nothing was created.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "QuickBooks accepted the request but returned an unusable invoice; look it up by document number before creating again.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "QuickBooks accepted the request but returned an unusable invoice that read-back could not confirm; look it up by document number before creating again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
@@ -187,8 +187,8 @@ spec:
           output: {docNumber: ORDER-2048, invoice: {invoiceId: "131", docNumber: ORDER-2048, customerId: "59", lines: [{detailType: SalesItemLineDetail, itemId: "1", quantity: "1", unitPrice: "75.00", amount: "75.00"}], totalAmount: "75.00", balance: "75.00", emailStatus: NotSet, billEmail: newbuyer@example.com}}
         - name: providerRejectedFailure
           branch: providerRejected
-          description: "Creating ORDER-1042 with an unknown item ID is rejected before creation."
-          failure: {kind: PROVIDER_REJECTION, message: "QuickBooks conclusively rejected the invoice, such as an unknown or inactive customer or item, a duplicate document number, a closed period, or a revoked connection; nothing was created."}
+          description: "Creating ORDER-9999 with an unknown item ID returns Object Not Found (Fault 610) before creation."
+          failure: {kind: NOT_FOUND, message: "QuickBooks found no such invoice item; nothing was created."}
     - name: getInvoice
       goName: GetInvoice
       inputType: GetInvoiceInput
@@ -219,7 +219,7 @@ spec:
         - name: providerRejectedFailure
           branch: providerRejected
           description: "Reading invoice ID 130 with a revoked connection is rejected."
-          failure: {kind: PROVIDER_REJECTION, message: "QuickBooks conclusively rejected the read, such as a revoked connection."}
+          failure: {kind: AUTHENTICATION, message: "QuickBooks authorization must be renewed before reading the invoice."}
         - name: invalidResponseFailure
           branch: invalidResponse
           description: "Reading invoice ID 130 receives an unusable invoice body."
@@ -249,7 +249,7 @@ spec:
         - name: providerRejectedFailure
           branch: providerRejected
           description: "Listing customer 58's invoices with a revoked connection is rejected."
-          failure: {kind: PROVIDER_REJECTION, message: "QuickBooks conclusively rejected the query, such as a revoked connection."}
+          failure: {kind: AUTHENTICATION, message: "QuickBooks authorization must be renewed before listing invoices."}
         - name: invalidResponseFailure
           branch: invalidResponse
           description: "Listing customer 58's invoices receives an unusable page."
@@ -265,7 +265,7 @@ spec:
       branches:
         - {id: sent, goName: Sent, description: "QuickBooks emailed the invoice, or returned the delivery this Step already made, with EmailStatus EmailSent."}
         - {id: providerRejected, goName: ProviderRejected, description: "QuickBooks conclusively rejected the delivery, such as an invoice without an address, a deleted invoice, or a revoked connection; nothing was sent.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "QuickBooks accepted the request but returned an unusable invoice; read it back with getInvoice and check its EmailStatus before sending again.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "QuickBooks accepted the request but returned an unusable invoice that read-back could not confirm; check its EmailStatus with getInvoice before sending again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
@@ -276,11 +276,11 @@ spec:
           branch: sent
           description: "Sending invoice 130 to accounts@cityagency.example.com returns EmailSent."
           default: true
-          output: {invoiceId: "130", docNumber: ORDER-1042, customerId: "58", lines: [{detailType: SalesItemLineDetail, itemId: "1", quantity: "2", unitPrice: "49.95", amount: "99.90"}, {detailType: SalesItemLineDetail, itemId: "2", quantity: "1", unitPrice: "12.5", amount: "12.50"}], totalAmount: "112.40", balance: "0", emailStatus: EmailSent, billEmail: accounts@cityagency.example.com}
+          output: {invoiceId: "130", docNumber: ORDER-1042, customerId: "58", lines: [{detailType: SalesItemLineDetail, itemId: "1", quantity: "2", unitPrice: "49.95", amount: "99.90"}, {detailType: SalesItemLineDetail, itemId: "2", quantity: "1", unitPrice: "12.5", amount: "12.50"}], totalAmount: "112.40", balance: "0", emailStatus: EmailSent, billEmail: accounts@cityagency.example.com, linkedPaymentIds: ["186"]}
         - name: providerRejectedFailure
           branch: providerRejected
-          description: "Sending invoice 130 without a billing or sendTo address is rejected before delivery."
-          failure: {kind: PROVIDER_REJECTION, message: "QuickBooks conclusively rejected the delivery, such as an invoice without an address, a deleted invoice, or a revoked connection; nothing was sent."}
+          description: "Sending invoice 132, which has no billing address, without sendTo is rejected before delivery."
+          failure: {kind: VALIDATION, message: "QuickBooks rejected delivery because invoice 132 has no recipient address; nothing was sent."}
     - name: recordPayment
       goName: RecordPayment
       inputType: RecordPaymentInput
@@ -292,7 +292,7 @@ spec:
       branches:
         - {id: recorded, goName: Recorded, description: "QuickBooks recorded the payment, or returned the payment this Step already recorded, with the invoices it applies to."}
         - {id: providerRejected, goName: ProviderRejected, description: "QuickBooks conclusively rejected the payment, such as an invoice of another customer, an amount above the balance, an invalid deposit account, a closed period, or a revoked connection; nothing was recorded.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "QuickBooks accepted the request but returned an unusable payment; read the invoice back before paying again.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "QuickBooks accepted the request but returned an unusable payment that read-back could not confirm; inspect the invoice before paying again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
@@ -307,4 +307,4 @@ spec:
         - name: providerRejectedFailure
           branch: providerRejected
           description: "Recording 112.40 against another customer's invoice is rejected before payment."
-          failure: {kind: PROVIDER_REJECTION, message: "QuickBooks conclusively rejected the payment, such as an invoice of another customer, an amount above the balance, an invalid deposit account, a closed period, or a revoked connection; nothing was recorded."}
+          failure: {kind: VALIDATION, message: "QuickBooks rejected payment against another customer's invoice; nothing was recorded."}

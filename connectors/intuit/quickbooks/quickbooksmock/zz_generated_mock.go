@@ -173,7 +173,7 @@ func FindCustomerSharedEmail() connectormock.Case[quickbooks.FindCustomerOutput]
 // FindCustomerProviderRejectedFailure is the manifest mock providerRejectedFailure: Looking up accounts@cityagency.example.com with a revoked connection is rejected.
 func FindCustomerProviderRejectedFailure() connectormock.Case[quickbooks.FindCustomerOutput] {
 	var value quickbooks.FindCustomerOutput
-	return connectormock.Branch(quickbooks.FindCustomerBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "QuickBooks conclusively rejected the query, such as a revoked connection or a company the app can no longer reach."})
+	return connectormock.Branch(quickbooks.FindCustomerBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthentication, Message: "QuickBooks authorization must be renewed before looking up the customer."})
 }
 
 // FindCustomerInvalidResponseFailure is the manifest mock invalidResponseFailure: Looking up accounts@cityagency.example.com receives an unusable customer list.
@@ -192,7 +192,7 @@ func CreateCustomerCreated(value quickbooks.CreateCustomerOutput, failure *sdkgo
 	return connectormock.Branch(quickbooks.CreateCustomerBranchCreated, value, failure)
 }
 
-// CreateCustomerNameConflict selects the nameConflict branch: Another customer, vendor, or employee already uses the display name (QuickBooks error 6240); nothing was created, so resolve it with findCustomer by display name.
+// CreateCustomerNameConflict selects the nameConflict branch: A customer, vendor, or employee already uses the display name (QuickBooks error 6240); resolve it with findCustomer by display name, including a possible earlier attempt.
 func CreateCustomerNameConflict(value quickbooks.CreateCustomerOutput, failure *sdkgo.Failure) connectormock.Case[quickbooks.CreateCustomerOutput] {
 	return connectormock.Branch(quickbooks.CreateCustomerBranchNameConflict, value, failure)
 }
@@ -232,7 +232,7 @@ func CreateCustomerNameConflictFailure() connectormock.Case[quickbooks.CreateCus
 // CreateCustomerProviderRejectedFailure is the manifest mock providerRejectedFailure: Creating City Agency with a revoked connection is rejected before creation.
 func CreateCustomerProviderRejectedFailure() connectormock.Case[quickbooks.CreateCustomerOutput] {
 	var value quickbooks.CreateCustomerOutput
-	return connectormock.Branch(quickbooks.CreateCustomerBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "QuickBooks conclusively rejected the customer, such as an invalid field or a revoked connection; nothing was created."})
+	return connectormock.Branch(quickbooks.CreateCustomerBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthentication, Message: "QuickBooks authorization must be renewed before creating the customer; nothing was created."})
 }
 
 // CreateCustomerDefault is the manifest default, newBuyerCustomer, which New installs.
@@ -271,10 +271,10 @@ func CreateInvoiceNewBuyerOrderInvoice() connectormock.Case[quickbooks.CreateInv
 	return connectormock.Branch(quickbooks.CreateInvoiceBranchCreated, value, nil)
 }
 
-// CreateInvoiceProviderRejectedFailure is the manifest mock providerRejectedFailure: Creating ORDER-1042 with an unknown item ID is rejected before creation.
+// CreateInvoiceProviderRejectedFailure is the manifest mock providerRejectedFailure: Creating ORDER-9999 with an unknown item ID returns Object Not Found (Fault 610) before creation.
 func CreateInvoiceProviderRejectedFailure() connectormock.Case[quickbooks.CreateInvoiceOutput] {
 	var value quickbooks.CreateInvoiceOutput
-	return connectormock.Branch(quickbooks.CreateInvoiceBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "QuickBooks conclusively rejected the invoice, such as an unknown or inactive customer or item, a duplicate document number, a closed period, or a revoked connection; nothing was created."})
+	return connectormock.Branch(quickbooks.CreateInvoiceBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureNotFound, Message: "QuickBooks found no such invoice item; nothing was created."})
 }
 
 // CreateInvoiceDefault is the manifest default, newBuyerOrderInvoice, which New installs.
@@ -327,7 +327,7 @@ func GetInvoiceNotFoundFailure() connectormock.Case[quickbooks.Invoice] {
 // GetInvoiceProviderRejectedFailure is the manifest mock providerRejectedFailure: Reading invoice ID 130 with a revoked connection is rejected.
 func GetInvoiceProviderRejectedFailure() connectormock.Case[quickbooks.Invoice] {
 	var value quickbooks.Invoice
-	return connectormock.Branch(quickbooks.GetInvoiceBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "QuickBooks conclusively rejected the read, such as a revoked connection."})
+	return connectormock.Branch(quickbooks.GetInvoiceBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthentication, Message: "QuickBooks authorization must be renewed before reading the invoice."})
 }
 
 // GetInvoiceInvalidResponseFailure is the manifest mock invalidResponseFailure: Reading invoice ID 130 receives an unusable invoice body.
@@ -375,7 +375,7 @@ func ListInvoicesCityAgencyOpenInvoice() connectormock.Case[quickbooks.InvoicePa
 // ListInvoicesProviderRejectedFailure is the manifest mock providerRejectedFailure: Listing customer 58's invoices with a revoked connection is rejected.
 func ListInvoicesProviderRejectedFailure() connectormock.Case[quickbooks.InvoicePage] {
 	var value quickbooks.InvoicePage
-	return connectormock.Branch(quickbooks.ListInvoicesBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "QuickBooks conclusively rejected the query, such as a revoked connection."})
+	return connectormock.Branch(quickbooks.ListInvoicesBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthentication, Message: "QuickBooks authorization must be renewed before listing invoices."})
 }
 
 // ListInvoicesInvalidResponseFailure is the manifest mock invalidResponseFailure: Listing customer 58's invoices receives an unusable page.
@@ -416,14 +416,14 @@ func SendInvoiceRetry(failure sdkgo.Failure, after time.Duration) connectormock.
 
 // SendInvoiceCityAgencyInvoiceDelivery is the manifest mock cityAgencyInvoiceDelivery: Sending invoice 130 to accounts@cityagency.example.com returns EmailSent.
 func SendInvoiceCityAgencyInvoiceDelivery() connectormock.Case[quickbooks.Invoice] {
-	value := connectormock.MustDecodeOutput[quickbooks.Invoice](`{"invoiceId":"130","docNumber":"ORDER-1042","customerId":"58","lines":[{"detailType":"SalesItemLineDetail","itemId":"1","quantity":"2","unitPrice":"49.95","amount":"99.90"},{"detailType":"SalesItemLineDetail","itemId":"2","quantity":"1","unitPrice":"12.5","amount":"12.50"}],"totalAmount":"112.40","balance":"0","emailStatus":"EmailSent","billEmail":"accounts@cityagency.example.com"}`)
+	value := connectormock.MustDecodeOutput[quickbooks.Invoice](`{"invoiceId":"130","docNumber":"ORDER-1042","customerId":"58","lines":[{"detailType":"SalesItemLineDetail","itemId":"1","quantity":"2","unitPrice":"49.95","amount":"99.90"},{"detailType":"SalesItemLineDetail","itemId":"2","quantity":"1","unitPrice":"12.5","amount":"12.50"}],"totalAmount":"112.40","balance":"0","emailStatus":"EmailSent","billEmail":"accounts@cityagency.example.com","linkedPaymentIds":["186"]}`)
 	return connectormock.Branch(quickbooks.SendInvoiceBranchSent, value, nil)
 }
 
-// SendInvoiceProviderRejectedFailure is the manifest mock providerRejectedFailure: Sending invoice 130 without a billing or sendTo address is rejected before delivery.
+// SendInvoiceProviderRejectedFailure is the manifest mock providerRejectedFailure: Sending invoice 132, which has no billing address, without sendTo is rejected before delivery.
 func SendInvoiceProviderRejectedFailure() connectormock.Case[quickbooks.Invoice] {
 	var value quickbooks.Invoice
-	return connectormock.Branch(quickbooks.SendInvoiceBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "QuickBooks conclusively rejected the delivery, such as an invoice without an address, a deleted invoice, or a revoked connection; nothing was sent."})
+	return connectormock.Branch(quickbooks.SendInvoiceBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureValidation, Message: "QuickBooks rejected delivery because invoice 132 has no recipient address; nothing was sent."})
 }
 
 // SendInvoiceDefault is the manifest default, cityAgencyInvoiceDelivery, which New installs.
@@ -465,7 +465,7 @@ func RecordPaymentCityAgencyOrderPayment() connectormock.Case[quickbooks.Payment
 // RecordPaymentProviderRejectedFailure is the manifest mock providerRejectedFailure: Recording 112.40 against another customer's invoice is rejected before payment.
 func RecordPaymentProviderRejectedFailure() connectormock.Case[quickbooks.Payment] {
 	var value quickbooks.Payment
-	return connectormock.Branch(quickbooks.RecordPaymentBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "QuickBooks conclusively rejected the payment, such as an invoice of another customer, an amount above the balance, an invalid deposit account, a closed period, or a revoked connection; nothing was recorded."})
+	return connectormock.Branch(quickbooks.RecordPaymentBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureValidation, Message: "QuickBooks rejected payment against another customer's invoice; nothing was recorded."})
 }
 
 // RecordPaymentDefault is the manifest default, cityAgencyOrderPayment, which New installs.

@@ -63,6 +63,7 @@ type fakeQuickBooks struct {
 	delaysFirstCreateInvoice        bool
 	delaysFirstPayment              bool
 	losesFirstCreateInvoiceResponse bool
+	unavailableFirstCreateInvoice   bool
 	garblesFirstSendInvoiceResponse bool
 	holdsFirstPayment               chan struct{}
 	throttlesFirstCustomerLookup    bool
@@ -303,6 +304,10 @@ func (provider *fakeQuickBooks) getInvoice(response http.ResponseWriter, request
 func (provider *fakeQuickBooks) runIdempotent(response http.ResponseWriter, request *http.Request, realmID string, body []byte, name string,
 	execute func(attempt int, request *http.Request, body []byte) (int, string)) {
 	attempt := provider.record(name, request, realmID, body)
+	if name == "createInvoice" && provider.unavailableFirstCreateInvoice && attempt == 1 {
+		provider.writeFault(response, http.StatusServiceUnavailable, "SystemFault", "500", "temporarily unavailable")
+		return
+	}
 	requestID := request.URL.Query().Get("requestid")
 	if requestID == "" || len(requestID) > 50 {
 		provider.writeFault(response, http.StatusBadRequest, "ValidationFault", "2130", "the fake requires a requestid")

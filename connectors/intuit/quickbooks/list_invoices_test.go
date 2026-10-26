@@ -91,7 +91,9 @@ func TestListInvoicesRejectsAQueryResponseWithoutItsEnvelope(t *testing.T) {
 func TestSendInvoicePostsAnEmptyOctetStreamAndRequiresEmailSent(t *testing.T) {
 	provider := newRecordingQuickBooks(t, func(response http.ResponseWriter, _ recordedRequest, index int) {
 		invoice := invoiceJSON()
-		if index >= 1 {
+		if index == 0 {
+			invoice["BillEmail"] = map[string]any{"Address": "ACCOUNTS@CITYAGENCY.EXAMPLE.COM"}
+		} else {
 			invoice["EmailStatus"] = "NeedToSend"
 		}
 		writeValue(t, response, http.StatusOK, map[string]any{"Invoice": invoice})

@@ -69,6 +69,8 @@ const (
 	exchangeNotFound
 	// exchangeRetry is safe for reads and, under the Step's requestid, for every mutation.
 	exchangeRetry
+	// exchangeInterrupted preserves an accepted 2xx for write read-back while reads retry.
+	exchangeInterrupted
 	exchangeRejected
 	// exchangeNameConflict is Fault code 6240, which createCustomer reports on its own branch.
 	exchangeNameConflict
@@ -135,7 +137,7 @@ func classifyHTTPResponse(operation string, httpResponse *http.Response, secret 
 		return quickbooksExchange{outcome: exchangeInvalid, response: response,
 			failure: quickbooksFailure(sdkgo.FailureResponseTooLarge, operation, "QuickBooks response exceeds the configured maxResponseBytes limit")}
 	case err != nil:
-		return quickbooksExchange{outcome: exchangeRetry, response: response,
+		return quickbooksExchange{outcome: exchangeInterrupted, response: response,
 			failure: quickbooksFailure(sdkgo.FailureTransport, operation, "QuickBooks response was interrupted")}
 	case secret != "" && bytes.Contains(body, []byte(secret)):
 		return quickbooksExchange{outcome: exchangeInvalid, response: response,
@@ -176,7 +178,7 @@ func classifyFailedStatus(operation string, response quickbooksResponse, summary
 	case status == http.StatusBadRequest:
 		return classifyFault(classification)
 	case status == http.StatusConflict:
-		return classification.classifiedExchange(exchangeRetry, sdkgo.FailureConflict, "QuickBooks has an in-progress request with this requestid")
+		return classification.classifiedExchange(exchangeRetry, sdkgo.FailureConflict, "QuickBooks returned a conflict; retrying the same requestid")
 	case status >= 300 && status < 400:
 		return classification.classifiedExchange(exchangeRejected, sdkgo.FailureProtocol, "QuickBooks redirected the request")
 	default:

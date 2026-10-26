@@ -260,7 +260,7 @@ replay on a new Worker, sends the same request:
   when it sends 600 rather than the replay; the connector treats it as a
   repeat that arrived while the first request still ran, then retries under
   the same ID;
-- an accepted 2xx that cannot be decoded, or that names another customer,
+- an accepted 2xx whose body is interrupted, cannot be decoded, or names another customer,
   invoice, or invoice application, is never resent. When the reply contains a
   valid entity ID, the connector reads that customer, invoice, or payment by
   ID and selects success only when the read-back matches the request.
@@ -416,7 +416,8 @@ unverified: the Dex Web code exchange and its storage of `id_token`; whether
 Intuit returns `realmid` in the ID token for every consent and an `id_token`
 on refresh; whether the token response carries `scope`; how long QuickBooks
 keeps a `requestid` and whether `/send` honors it; when QuickBooks answers
-600 instead of replaying; the HTTP status of a missing invoice and of
+600 instead of replaying; the meaning of HTTP 409 for a repeated requestid;
+the HTTP status of a missing invoice and of
 error 5010; whether 429 carries `Retry-After`; the `PrimaryEmailAddr`
 filter syntax; the ordering of invoices created in the same second; decimal
 precision of `Qty`, `UnitPrice`, and `TotalAmt`, and the length limit of

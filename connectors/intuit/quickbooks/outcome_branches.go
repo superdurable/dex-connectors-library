@@ -28,7 +28,7 @@ func queryAttemptForExchange[OUT any](result quickbooksExchange, requested OUT, 
 	switch result.outcome {
 	case exchangeSucceeded:
 		return sdkgo.QueryAttempt[OUT]{}, false
-	case exchangeRetry:
+	case exchangeRetry, exchangeInterrupted:
 		return sdkgo.NewQueryRetry[OUT](result.failure, result.retryAfter), true
 	case exchangeNotFound:
 		if branches.notFound != "" {
@@ -58,7 +58,7 @@ func mutationAttemptForExchange[OUT any](result quickbooksExchange, requested OU
 		return sdkgo.MutationAttempt[OUT]{}, false
 	case exchangeRetry:
 		return sdkgo.NewMutationRetry[OUT](result.failure, result.retryAfter), true
-	case exchangeInvalid:
+	case exchangeInvalid, exchangeInterrupted:
 		return sdkgo.MutationAttempt[OUT]{}, false
 	case exchangeNameConflict:
 		if branches.nameConflict != "" {

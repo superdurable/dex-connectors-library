@@ -105,7 +105,7 @@ func (operation RecordPaymentOperation) Invoke(call sdkgo.Call, input RecordPaym
 		if paymentID := acceptedEntityID(result.response.body, "Payment"); paymentID != "" {
 			if body, isFound := readAcceptedEntity(client, call, recordPaymentOperationID, "payment", paymentID); isFound {
 				if readWire, readErr := decodeEntity[paymentWire](body, "Payment"); readErr == nil {
-					if readPayment, decodeErr := decodePayment(readWire); decodeErr == nil && readPayment.PaymentID == paymentID && readPayment.CustomerID == payload.CustomerRef.Value && readPayment.TotalAmount == input.Amount && appliesToInvoice(readPayment, payload.Line[0].LinkedTxn[0].TxnID) {
+					if readPayment, decodeErr := decodePayment(readWire); decodeErr == nil && readPayment.PaymentID == paymentID && readPayment.CustomerID == payload.CustomerRef.Value && areDecimalsNumericallyEqual(readPayment.TotalAmount, input.Amount) && appliesToInvoice(readPayment, payload.Line[0].LinkedTxn[0].TxnID) {
 						receipt.ProviderObjectID = paymentID
 						return sdkgo.NewMutationBranch(RecordPaymentBranchRecorded, readPayment, nil, receipt)
 					}

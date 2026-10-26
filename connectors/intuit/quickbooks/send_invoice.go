@@ -73,13 +73,13 @@ func (operation SendInvoiceOperation) Invoke(call sdkgo.Call, input SendInvoiceI
 	if err == nil && invoice.EmailStatus != EmailStatusEmailSent {
 		err = errors.New("the returned invoice is not marked EmailSent")
 	}
-	if err == nil && sendTo != "" && invoice.BillEmail != sendTo {
+	if err == nil && sendTo != "" && !strings.EqualFold(invoice.BillEmail, sendTo) {
 		err = errors.New("the returned invoice has another billing address")
 	}
 	if err != nil {
 		if body, isFound := readAcceptedEntity(client, call, sendInvoiceOperationID, "invoice", invoiceID); isFound {
 			if readWire, readErr := decodeEntity[invoiceWire](body, "Invoice"); readErr == nil {
-				if readInvoice, decodeErr := decodeInvoice(readWire); decodeErr == nil && readInvoice.InvoiceID == invoiceID && readInvoice.EmailStatus == EmailStatusEmailSent && (sendTo == "" || readInvoice.BillEmail == sendTo) {
+				if readInvoice, decodeErr := decodeInvoice(readWire); decodeErr == nil && readInvoice.InvoiceID == invoiceID && readInvoice.EmailStatus == EmailStatusEmailSent && (sendTo == "" || strings.EqualFold(readInvoice.BillEmail, sendTo)) {
 					return sdkgo.NewMutationBranch(SendInvoiceBranchSent, readInvoice, nil, receipt)
 				}
 			}

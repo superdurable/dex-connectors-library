@@ -181,6 +181,19 @@ func TestLostInvoiceResponseIsReplayedUnderTheSameRequestIDWithRealDex(t *testin
 	require.Len(t, provider.distinctRequestIDs("createInvoice"), 1)
 }
 
+func TestUnavailableInvoiceCreateRetriesWithTheSameRequestIDWithRealDex(t *testing.T) {
+	provider := newFakeQuickBooks(t)
+	provider.unavailableFirstCreateInvoice = true
+	harness := newOrderHarness(t, provider, unexpiredAccessToken, defaultRequestTimeout)
+
+	outcome := harness.runOrder(t, "unavailable-create", integrationOrder())
+	require.Equal(t, OrderInvoicedAndPaid, outcome.Action)
+	require.Equal(t, 2, provider.count("createInvoice"))
+	require.Len(t, provider.distinctRequestIDs("createInvoice"), 1)
+	require.Equal(t, 1, provider.count("appliedCreateInvoice"))
+	require.Equal(t, 1, provider.invoiceCount())
+}
+
 // TestLostWorkerDuringPaymentRecordsOnePaymentWithRealDex shows the requestid surviving a Worker lost mid-payment.
 func TestLostWorkerDuringPaymentRecordsOnePaymentWithRealDex(t *testing.T) {
 	provider := newFakeQuickBooks(t)

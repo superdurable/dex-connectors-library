@@ -41,7 +41,7 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			return err
 		}},
 		{name: "sendInvoice/cityAgencyInvoiceDelivery/1", decode: func() error {
-			_, err := connectormock.DecodeOutput[quickbooks.Invoice](`{"invoiceId":"130","docNumber":"ORDER-1042","customerId":"58","lines":[{"detailType":"SalesItemLineDetail","itemId":"1","quantity":"2","unitPrice":"49.95","amount":"99.90"},{"detailType":"SalesItemLineDetail","itemId":"2","quantity":"1","unitPrice":"12.5","amount":"12.50"}],"totalAmount":"112.40","balance":"0","emailStatus":"EmailSent","billEmail":"accounts@cityagency.example.com"}`)
+			_, err := connectormock.DecodeOutput[quickbooks.Invoice](`{"invoiceId":"130","docNumber":"ORDER-1042","customerId":"58","lines":[{"detailType":"SalesItemLineDetail","itemId":"1","quantity":"2","unitPrice":"49.95","amount":"99.90"},{"detailType":"SalesItemLineDetail","itemId":"2","quantity":"1","unitPrice":"12.5","amount":"12.50"}],"totalAmount":"112.40","balance":"0","emailStatus":"EmailSent","billEmail":"accounts@cityagency.example.com","linkedPaymentIds":["186"]}`)
 			return err
 		}},
 		{name: "recordPayment/cityAgencyOrderPayment/1", decode: func() error {
