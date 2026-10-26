@@ -579,10 +579,12 @@ func (client *Client) resolveAuthorizationAfterRejection(call sdkgo.Call) (basic
 
 type twilioCredentialRefreshDriver struct{}
 
+// RefreshRequired reports false because Twilio credentials are rotated manually.
 func (twilioCredentialRefreshDriver) RefreshRequired(sdkgo.CredentialRefreshState[Credentials]) bool {
 	return false
 }
 
+// Refresh rejects automatic rotation because Twilio supplies no refresh operation for these credentials.
 func (twilioCredentialRefreshDriver) Refresh(context.Context, sdkgo.CredentialRefreshState[Credentials]) (sdkgo.CredentialRefreshResult[Credentials], error) {
 	return sdkgo.CredentialRefreshResult[Credentials]{}, errors.New("Twilio credentials require manual rotation")
 }
