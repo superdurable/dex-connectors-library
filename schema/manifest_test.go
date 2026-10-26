@@ -127,6 +127,19 @@ func TestExecutionRetryPolicyValidation(t *testing.T) {
 	}
 }
 
+func TestDispatchFenceRequiresSyncDurability(t *testing.T) {
+	file, err := os.Open("testdata/api-key-methods.yaml")
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, file.Close()) })
+	manifest, err := schema.Decode(file)
+	require.NoError(t, err)
+	manifest.Spec.Operations[0].Execution.DispatchFence = true
+	manifest.Spec.Operations[0].Execution.Durability = "async"
+	require.ErrorContains(t, manifest.Validate(), "dispatchFence requires sync execution durability")
+	manifest.Spec.Operations[0].Execution.Durability = "sync"
+	require.NoError(t, manifest.Validate())
+}
+
 func TestDecodeOAuthUserScopesAndCredentialMappings(t *testing.T) {
 	manifest, err := schema.Decode(strings.NewReader(`
 apiVersion: connectors.dex.dev/v1alpha1

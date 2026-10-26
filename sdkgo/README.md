@@ -455,6 +455,135 @@ with limited attempts or less than one hour requires `reason.kind` to be
 `billedOperation`, `personWaiting`, or `duplicateWriteRisk`, and a specific
 sentence in `reason.explanation`.
 
+### Single-dispatch fence
+
+Use `singledispatch.Fence` for a non-idempotent write that has no provider
+deduplication guarantee. The operation's manifest declares
+`execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true}`.
+Call `Decide` before credential resolution or provider lookups. Only
+`SendAllowed` may call `Dispatch`; `ReadBackRequired` may reconcile a saved
+provider ID, and otherwise selects uncertainty when no reliable read-back is
+available. Record `notSent` before a pre-send Retry and `canResend` before a
+Retry after a definite 429, 503, or proven undispatched request. A lost marker
+never authorizes a second write. The fence owns all heartbeats for this Step;
+do not record a nil heartbeat or allow another writer to replace its marker.
+Record a send-permitting marker only when the attempt has decided to return
+Retry; `RecordNotSent` ends the send path for that attempt.
+For an HTTP write, call `singledispatch.PrepareHTTPWrite(request)` after
+constructing the request and before `http.Client.Do` inside `Dispatch`'s send
+callback. Go's HTTP transport may otherwise transparently replay a request
+with `Idempotency-Key` or `X-Idempotency-Key` when `GetBody` is present. The
+helper clears `GetBody` and supplies a non-replayable empty body when needed.
+An HTTP request used by the fence is single-use.
+
+The complete runnable connector example is
+[`examples/single-dispatch/main.go`](examples/single-dispatch/main.go). It uses a
+fake Dex context and provider; the real-Dex checkpoint test runs in CI.
+
+```go
+// Copyright (c) 2026 Super Durable
+// SPDX-License-Identifier: MIT
+
+package main
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"time"
+
+	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
+)
+
+var errRetry = errors.New("retry the Step")
+var errUncertain = errors.New("write outcome needs operator reconciliation")
+
+type noteConnector struct{}
+
+func (noteConnector) resolveCredential() (string, error) { return "example-token", nil }
+func (noteConnector) send(_ context.Context, _ string) (int, string, error) {
+	return 201, "note-1", nil
+}
+func (noteConnector) readBack(_ context.Context, providerID string) (bool, error) {
+	return providerID == "note-1", nil
+}
+
+type noteSendAttempt struct {
+	connector  noteConnector
+	credential string
+	status     int
+	providerID string
+}
+
+func (attempt *noteSendAttempt) send(ctx context.Context) error {
+	var err error
+	attempt.status, attempt.providerID, err = attempt.connector.send(ctx, attempt.credential)
+	return err
+}
+
+func (connector noteConnector) createNote(call sdkgo.Call) (string, error) {
+	fence, err := singledispatch.NewFence(call, 30*time.Second)
+	if err != nil {
+		return "", err
+	}
+	switch decision := fence.Decide(); decision.Kind {
+	case singledispatch.FailClosed:
+		return "", errUncertain
+	case singledispatch.ReadBackRequired:
+		if decision.Marker.ProviderID == "" {
+			return "", errUncertain
+		}
+		found, err := connector.readBack(call.Context, decision.Marker.ProviderID)
+		if err != nil {
+			return "", errRetry
+		}
+		if !found {
+			return "", errUncertain
+		}
+		return decision.Marker.ProviderID, nil
+	}
+	credential, err := connector.resolveCredential()
+	if err != nil {
+		if checkpointErr := fence.RecordNotSent(); checkpointErr != nil {
+			return "", checkpointErr
+		}
+		return "", errRetry
+	}
+	attempt := &noteSendAttempt{connector: connector, credential: credential}
+	if err := fence.Dispatch(attempt.send); err != nil {
+		if errors.Is(err, singledispatch.ErrCheckpoint) || errors.Is(err, singledispatch.ErrInsufficientTime) {
+			return "", errRetry
+		}
+		return "", errUncertain
+	}
+	if attempt.status == 503 || attempt.status == 429 {
+		if err := fence.RecordCanResend(); err != nil {
+			return "", errRetry
+		}
+		return "", errRetry
+	}
+	if attempt.status != 201 || attempt.providerID == "" {
+		return "", errUncertain
+	}
+	// The accepted result is known even if its extra read-back checkpoint is lost.
+	if err := fence.RecordProviderID(attempt.providerID); err != nil {
+		return attempt.providerID, nil
+	}
+	return attempt.providerID, nil
+}
+
+func main() {
+	ctx := singledispatchtest.NewContext("example-flow", "create-note")
+	providerID, err := (noteConnector{}).createNote(sdkgo.Call{Context: ctx, ID: "example-call"})
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(providerID)
+}
+```
+
 ## Text generation connectors
 
 The llm connector exposes one `generateText` Query for every provider, built on

@@ -241,6 +241,43 @@ content generation is a synchronous Query with a
 300-second Execute timeout, a matching heartbeat timeout because the call does
 not stream, and a three-attempt/ten-minute window.
 
+### Single-dispatch fence guarantee
+
+An operation using `sdkgo/singledispatch` declares `execution.dispatchFence:
+true` and `durability: sync`. Manifest validation rejects the fence flag with
+async durability. An application must not override that Step's Execute
+durability to async. Sync durability makes its heartbeat checkpoints visible
+across regular retries; async local-phase heartbeats cannot provide this
+guarantee.
+
+The fence reads the last checkpoint before credentials or provider lookups. It
+permits one send only on attempt one with no marker, or after the immediately
+preceding attempt recorded `notSent` or `canResend` for the same Call ID. A
+missing, foreign, stale, or claimed marker never authorizes another write.
+The connector reads back a saved provider identity when possible; an
+unconfirmable possibly sent write selects `uncertain`. `notSent` is recorded
+before a pre-send Retry; `canResend` requires positive evidence that the
+provider did not process the request. The claim is the first heartbeat of the
+send path. The request deadline leaves margin within the Execute attempt, and
+the fence declines a send when less than a tenth of its initial budget remains.
+Do not record `notSent` before a credential or lookup operation that might
+later proceed to a send. If the attempt dies before deciding whether to send,
+the next attempt fails closed; a slow credential refresh does not change that.
+Before `http.Client.Do`, a fenced HTTP write calls
+`singledispatch.PrepareHTTPWrite` on its request. Go's transport treats an
+`Idempotency-Key` or `X-Idempotency-Key` header with `GetBody` as replayable
+on a reused connection. Clearing `GetBody` prevents a transparent second POST
+outside the fence; bodyless writes receive a non-replayable empty body.
+
+`RecordHeartbeat` waits for a Worker frame, not backend persistence. If the
+claim frame is lost before persistence, the provider accepts the write, and
+the Worker dies, the next attempt sees no current claim. It fails closed to
+read-back or uncertainty and never resends. If an attempt times out, Dex may
+retain its latest persisted marker or no marker. A persisted `notSent` or
+`canResend` can authorize only the next attempt; a claim or missing marker
+cannot. The fence does not guarantee exactly-once delivery or confirmation of
+an accepted write when the provider exposes no reliable read-back.
+
 `StepOptionsOverride` overlays non-zero Execute fields and can add
 `dex.ProceedToOnExecuteFailure`. That recovery target accepts the original
 `STEP_IN`, whereas Connector branch targets accept the factory output
