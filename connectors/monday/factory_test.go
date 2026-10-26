@@ -77,7 +77,7 @@ func TestFactoriesRequireOnlyTheHappyPathBranch(t *testing.T) {
 	}, "the static ConnectionName must match the runtime connection")
 }
 
-func TestDefinitionsDeclareOptionalBranchesAndKeyedAsyncDurability(t *testing.T) {
+func TestDefinitionsDeclareOptionalBranchesAndMutationDurability(t *testing.T) {
 	require.Equal(t, map[sdkgo.BranchID]bool{"listed": false, "notFound": true, "providerRejected": true, "invalidResponse": true, "defect": true},
 		branchOptionality(monday.ListItemsDefinition.Branches))
 	require.Equal(t, map[sdkgo.BranchID]bool{"found": false, "notFound": true, "providerRejected": true, "invalidResponse": true, "defect": true},
@@ -93,12 +93,17 @@ func TestDefinitionsDeclareOptionalBranchesAndKeyedAsyncDurability(t *testing.T)
 		"createItem": monday.CreateItemDefinition.StepDefaults, "updateItemColumnValues": monday.UpdateItemColumnValuesDefinition.StepDefaults,
 		"addUpdate": monday.AddUpdateDefinition.StepDefaults,
 	} {
-		require.Equal(t, dex.StepDurabilityAsync, defaults.ExecuteDurability, "%s: a duplicate dispatch replays under the idempotency key", name)
+		if name == "createItem" || name == "addUpdate" {
+			require.Equal(t, dex.StepDurabilitySync, defaults.ExecuteDurability, name)
+			require.Equal(t, 20*time.Second, defaults.HeartbeatTimeout, name)
+		} else {
+			require.Equal(t, dex.StepDurabilityAsync, defaults.ExecuteDurability, name)
+		}
 		require.Equal(t, 30*time.Second, defaults.ExecuteMethodTimeout, name)
 		require.GreaterOrEqual(t, defaults.ExecuteRetry.TotalDuration, 2*time.Minute, "%s: a one-minute complexity reset fits in the window", name)
 		if name == "createItem" || name == "addUpdate" {
 			require.Less(t, defaults.ExecuteRetry.TotalDuration, mondayIdempotencyCacheDuration,
-				"%s: every retry must reach monday.com while it still caches the first attempt's result", name)
+				"%s: the retry window must stay within the documented cache duration, subject to provider exceptions", name)
 		} else {
 			require.Equal(t, &dex.RetryPolicy{InitialInterval: time.Second, BackoffCoefficient: 2, MaximumInterval: 5 * time.Minute, MaximumAttempts: 0, TotalDuration: time.Hour}, defaults.ExecuteRetry, name)
 		}

@@ -67,8 +67,7 @@ func (AddUpdateOperation) IdempotencyKey(callID sdkgo.CallID, _ AddUpdateInput) 
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke adds one update. Rate limits, an idempotency conflict, 5xx, and transport failures are
-// retried under the same key, so monday.com replays the first result instead of posting a second update.
+// Invoke adds one update. Confirmed retryable failures reuse the key; ambiguous sent failures select uncertain.
 func (operation AddUpdateOperation) Invoke(call sdkgo.Call, input AddUpdateInput) sdkgo.MutationAttempt[AddUpdateOutput] {
 	client := operation.client
 	requested := AddUpdateOutput{ItemID: strings.TrimSpace(input.ItemID)}
@@ -81,7 +80,7 @@ func (operation AddUpdateOperation) Invoke(call sdkgo.Call, input AddUpdateInput
 		return sdkgo.NewMutationBranch(AddUpdateBranchDefect, requested, mondayFailurePointer(sdkgo.FailureValidation, addUpdateOperationID, err.Error()), sdkgo.Receipt{})
 	}
 	result := client.exchange(call, addUpdateOperationID, graphQLRequest{
-		document: addUpdateDocument, variables: map[string]any{"itemId": itemID, "body": body}, isMutation: true,
+		document: addUpdateDocument, variables: map[string]any{"itemId": itemID, "body": body}, isMutation: true, requiresDispatchCheckpoint: true,
 	})
 	receipt := client.receipt(call, result.response, "")
 	if update, isAdded := decodeCreatedUpdate(result.response.data, itemID); isAdded {

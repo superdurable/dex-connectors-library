@@ -144,11 +144,16 @@ func itemJSON(id string, name string) map[string]any {
 // mondayDexContext is a minimal dex.Context for running one operation outside a Worker.
 type mondayDexContext struct {
 	context.Context
-	step string
+	step      string
+	mutex     sync.Mutex
+	heartbeat json.RawMessage
+	attemptNo int32
+	recordErr error
+	readErr   error
 }
 
 func newMondayDexContext(step string) *mondayDexContext {
-	return &mondayDexContext{Context: context.Background(), step: step}
+	return &mondayDexContext{Context: context.Background(), step: step, attemptNo: 1}
 }
 
 func (*mondayDexContext) FlowID() string                          { return "monday-flow" }
@@ -158,7 +163,7 @@ func (context *mondayDexContext) StepExecutionID() string         { return conte
 func (*mondayDexContext) FromStepExecutionID() string             { return "" }
 func (*mondayDexContext) RecoveryError() *dex.RecoveryErrorInfo   { return nil }
 func (*mondayDexContext) FirstAttemptAt() time.Time               { return time.Unix(1, 0) }
-func (*mondayDexContext) Attempt() int32                          { return 1 }
+func (context *mondayDexContext) Attempt() int32                  { return context.attemptNo }
 func (*mondayDexContext) HasTimerFired() bool                     { return false }
 func (*mondayDexContext) HasTimerFiredByIndex(int) bool           { return false }
 func (*mondayDexContext) WaitForMethodFailed() bool               { return false }
@@ -166,8 +171,30 @@ func (*mondayDexContext) SetStepExecutionLocal(string, any) error { return nil }
 func (*mondayDexContext) GetStepExecutionLocal(string, any) (bool, error) {
 	return false, nil
 }
-func (*mondayDexContext) RecordEvent(string, any) error           { return nil }
-func (*mondayDexContext) RecordHeartbeat(any) error               { return nil }
-func (*mondayDexContext) GetLastHeartbeatValue(any) (bool, error) { return false, nil }
+func (*mondayDexContext) RecordEvent(string, any) error { return nil }
+func (context *mondayDexContext) RecordHeartbeat(value any) error {
+	context.mutex.Lock()
+	defer context.mutex.Unlock()
+	if context.recordErr != nil {
+		return context.recordErr
+	}
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	context.heartbeat = encoded
+	return nil
+}
+func (context *mondayDexContext) GetLastHeartbeatValue(target any) (bool, error) {
+	context.mutex.Lock()
+	defer context.mutex.Unlock()
+	if context.readErr != nil {
+		return false, context.readErr
+	}
+	if len(context.heartbeat) == 0 {
+		return false, nil
+	}
+	return true, json.Unmarshal(context.heartbeat, target)
+}
 
 var _ dex.Context = (*mondayDexContext)(nil)

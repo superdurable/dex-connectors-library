@@ -66,8 +66,7 @@ func (CreateItemOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateItemInput
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke creates one item. Rate limits, an idempotency conflict, 5xx, and transport failures are
-// retried under the same key, so monday.com replays the first result instead of creating a second item.
+// Invoke creates one item. Confirmed retryable failures reuse the key; ambiguous sent failures select uncertain.
 func (operation CreateItemOperation) Invoke(call sdkgo.Call, input CreateItemInput) sdkgo.MutationAttempt[CreateItemOutput] {
 	client := operation.client
 	request, requested, err := buildCreateItemRequest(input)
@@ -117,7 +116,7 @@ func buildCreateItemRequest(input CreateItemInput) (graphQLRequest, CreateItemOu
 		}
 		variables["columnValues"] = columnValues
 	}
-	return graphQLRequest{document: createItemDocument, variables: variables, isMutation: true}, requested, nil
+	return graphQLRequest{document: createItemDocument, variables: variables, isMutation: true, requiresDispatchCheckpoint: true}, requested, nil
 }
 
 // validateItemName checks a one-line item name within monday.com's 255-character limit.

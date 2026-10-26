@@ -113,9 +113,7 @@ func TestSecondPageIsReadWhenTheFirstHoldsOnlyCompletedItemsWithRealDex(t *testi
 	require.Equal(t, 1, provider.count("listNext"), "the cursor page carries the first page's filter")
 }
 
-// TestSlowCreateIsDispatchedAgainAndCreatesOneItemWithRealDex is the duplicate-dispatch test: the shared key
-// turns Dex's second dispatch into a 409 and a replay.
-func TestSlowCreateIsDispatchedAgainAndCreatesOneItemWithRealDex(t *testing.T) {
+func TestSlowCreateCompletesWithOneSyncDispatchWithRealDex(t *testing.T) {
 	provider := newFakeMonday(t)
 	provider.delaysFirstCreate = true
 	harness := newWorkHarness(t, provider, slowRequestTimeout)
@@ -125,13 +123,11 @@ func TestSlowCreateIsDispatchedAgainAndCreatesOneItemWithRealDex(t *testing.T) {
 	require.GreaterOrEqual(t, time.Since(startedAt), slowResponseDelay)
 	require.Equal(t, WorkItemCreated, outcome.Action)
 	provider.waitForDelayedRequests(t)
-	require.GreaterOrEqual(t, provider.count("create"), 2, "Dex dispatched the create again past its local phase")
+	require.Equal(t, 1, provider.count("create"), "sync durability waits for the slow attempt")
 	require.Equal(t, 1, provider.count("appliedCreate"), "only the first request ran")
 	require.Equal(t, 1, provider.itemCount(), "the repeated dispatch did not create a second item")
 	require.Len(t, provider.distinctIdempotencyKeys("create"), 1, "every attempt sent the same key")
 	require.Len(t, provider.item(outcome.ItemID).updates, 1)
-	t.Logf("slow create: requests=%d conflicts=%d replays=%d replayedOutcome=%v",
-		provider.count("create"), provider.count("conflict"), provider.count("replay"), outcome.WasCreateReplayed)
 }
 
 // TestSlowScheduleIsSafeToRepeatWithRealDex lets async Dex dispatch the column update again; the key and the absolute values both hold.
@@ -151,7 +147,7 @@ func TestSlowScheduleIsSafeToRepeatWithRealDex(t *testing.T) {
 	require.Len(t, item.updates, 1, "exactly one update")
 }
 
-func TestSlowUpdateIsPostedOnceWithRealDex(t *testing.T) {
+func TestSlowUpdateCompletesWithOneSyncDispatchWithRealDex(t *testing.T) {
 	provider := newFakeMonday(t)
 	provider.delaysFirstUpdate = true
 	harness := newWorkHarness(t, provider, slowRequestTimeout)
@@ -159,26 +155,24 @@ func TestSlowUpdateIsPostedOnceWithRealDex(t *testing.T) {
 	outcome := harness.runWorkRequest(t, "slow-update", integrationInput())
 	require.Equal(t, WorkItemCreated, outcome.Action)
 	provider.waitForDelayedRequests(t)
-	require.GreaterOrEqual(t, provider.count("update"), 2, "Dex dispatched the update again past its local phase")
+	require.Equal(t, 1, provider.count("update"))
 	require.Len(t, provider.item(outcome.ItemID).updates, 1, "the repeated dispatch did not post a second update")
 	require.Len(t, provider.distinctIdempotencyKeys("update"), 1)
 }
 
-func TestLostCreateResponseIsReplayedAndCreatesOneItemWithRealDex(t *testing.T) {
+func TestLostCreateResponseFailsClosedWithRealDex(t *testing.T) {
 	provider := newFakeMonday(t)
 	provider.losesFirstCreateResponse = true
 	harness := newWorkHarness(t, provider, defaultRequestTimeout)
 
-	outcome := harness.runWorkRequest(t, "lost-create", integrationInput())
-	require.Equal(t, WorkItemCreated, outcome.Action)
-	require.True(t, outcome.WasCreateReplayed, "the retry received monday.com's cached result")
-	require.Equal(t, 2, provider.count("create"))
-	require.Equal(t, 1, provider.count("replay"))
+	result := harness.waitForFlow(t, harness.startWorkRequest(t, "lost-create", integrationInput()))
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "uncertain")
+	require.Equal(t, 1, provider.count("create"))
 	require.Equal(t, 1, provider.itemCount())
 }
 
-// TestLostWorkerDuringCreateCreatesOneItemWithRealDex shows the key surviving a Worker lost mid-create.
-func TestLostWorkerDuringCreateCreatesOneItemWithRealDex(t *testing.T) {
+func TestLostWorkerDuringCreateFailsClosedWithRealDex(t *testing.T) {
 	provider := newFakeMonday(t)
 	provider.holdsFirstCreate = make(chan struct{})
 	harness := newWorkHarness(t, provider, slowRequestTimeout)
@@ -186,18 +180,14 @@ func TestLostWorkerDuringCreateCreatesOneItemWithRealDex(t *testing.T) {
 	require.Eventually(t, func() bool { return provider.count("create") == 1 }, 30*time.Second, 50*time.Millisecond,
 		"the first attempt must reach monday.com")
 	harness.replaceWorker(t)
-	require.Eventually(t, func() bool { return provider.count("create") >= 2 }, time.Minute, 50*time.Millisecond,
-		"an attempt on the new Worker must reach monday.com")
 	close(provider.holdsFirstCreate)
 
 	result := harness.waitForFlow(t, flowID)
-	require.Equal(t, dex.FlowCompleted, result.Status, "Flow %s: %s", flowID, result.ErrorMessage)
-	var outcome WorkRequestOutcome
-	require.NoError(t, result.DecodeSingleOutput(&outcome))
-	require.Equal(t, WorkItemCreated, outcome.Action)
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "uncertain")
 	provider.waitForDelayedRequests(t)
 	require.Equal(t, 1, provider.itemCount(), "the attempt on the new Worker did not create a second item")
-	require.Len(t, provider.distinctIdempotencyKeys("create"), 1, "the key survives Worker replacement")
+	require.Equal(t, 1, provider.count("create"), "the next attempt must not resend a dispatched write")
 }
 
 func TestRateLimitedCreateWaitsForMondaysDelayWithRealDex(t *testing.T) {
@@ -211,6 +201,19 @@ func TestRateLimitedCreateWaitsForMondaysDelayWithRealDex(t *testing.T) {
 	require.Len(t, times, 2)
 	require.GreaterOrEqual(t, times[1].Sub(times[0]), time.Second, "the retry waited for retry_in_seconds")
 	require.Equal(t, 1, provider.itemCount())
+	require.Len(t, provider.distinctIdempotencyKeys("create"), 1, "both attempts use the same key")
+}
+
+func TestTemporarilyBlockedCreateRetriesWithRealDex(t *testing.T) {
+	provider := newFakeMonday(t)
+	provider.temporarilyBlocksFirstCreate = true
+	harness := newWorkHarness(t, provider, defaultRequestTimeout)
+
+	outcome := harness.runWorkRequest(t, "temporarily-blocked", integrationInput())
+	require.Equal(t, WorkItemCreated, outcome.Action)
+	require.Equal(t, 2, provider.count("create"))
+	require.Equal(t, 1, provider.itemCount())
+	require.Len(t, provider.distinctIdempotencyKeys("create"), 1)
 }
 
 func TestUnusableCreateAnswerFailsWithoutResendingWithRealDex(t *testing.T) {
@@ -271,14 +274,15 @@ type fakeMonday struct {
 	counts       map[string]int
 	requests     map[string][]fakeRecordedRequest
 
-	delaysFirstCreate        bool
-	delaysFirstSchedule      bool
-	delaysFirstUpdate        bool
-	losesFirstCreateResponse bool
-	rateLimitsFirstCreate    bool
-	rejectsCreate            bool
-	answersCreateUnusably    bool
-	holdsFirstCreate         chan struct{}
+	delaysFirstCreate            bool
+	delaysFirstSchedule          bool
+	delaysFirstUpdate            bool
+	losesFirstCreateResponse     bool
+	rateLimitsFirstCreate        bool
+	temporarilyBlocksFirstCreate bool
+	rejectsCreate                bool
+	answersCreateUnusably        bool
+	holdsFirstCreate             chan struct{}
 }
 
 type fakeItem struct {
@@ -503,6 +507,9 @@ func (provider *fakeMonday) createItem(variables map[string]any, attempt int) fa
 	}
 	if provider.rateLimitsFirstCreate && attempt == 1 {
 		return fakeResponse{status: http.StatusTooManyRequests, body: `{"errors":[{"message":"Complexity budget exhausted","extensions":{"code":"COMPLEXITY_BUDGET_EXHAUSTED","retry_in_seconds":1,"status_code":429}}]}`}
+	}
+	if provider.temporarilyBlocksFirstCreate && attempt == 1 {
+		return fakeResponse{status: http.StatusOK, body: `{"errors":[{"extensions":{"code":"API_TEMPORARILY_BLOCKED"}}]}`}
 	}
 	if attempt == 1 && (provider.delaysFirstCreate || provider.holdsFirstCreate != nil) {
 		provider.delayedRequests.Add(1)
@@ -800,6 +807,12 @@ func newWorkHarness(t *testing.T, provider *fakeMonday, requestTimeout time.Dura
 	require.NoError(t, err)
 	connection, err := monday.NewConnection(providerClient, reference)
 	require.NoError(t, err)
+	return newWorkHarnessForConnection(t, connection)
+}
+
+func newWorkHarnessForConnection(t *testing.T, connection monday.Connection) *workHarness {
+	t.Helper()
+	var err error
 	harness := &workHarness{flow: NewFlow(connection), serverAddress: environmentOr("DEX_FLOW_SERVICE_ADDRESS", "127.0.0.1:8801")}
 	harness.registry, err = dex.NewRegistry([]dex.Flow{harness.flow})
 	require.NoError(t, err)
