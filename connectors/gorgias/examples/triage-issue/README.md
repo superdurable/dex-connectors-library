@@ -58,7 +58,7 @@ mkdir -p /tmp/gorgias-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/gorgias/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/gorgias \
-  --version v0.21.1 --tag connectors/gorgias/v0.21.1 \
+  --version v0.21.2 --tag connectors/gorgias/v0.21.2 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/gorgias-release/connector-release.json \
   --digest-output /tmp/gorgias-release/connector-release.json.sha256

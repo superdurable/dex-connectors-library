@@ -5,7 +5,7 @@ metadata:
   displayName: Twilio Messaging
   description: Send SMS, MMS, and WhatsApp messages through Twilio Programmable Messaging and read their delivery status.
   company: Twilio
-  version: v0.21.1
+  version: v0.21.2
 spec:
   provider: twilio
   codegen:
@@ -98,7 +98,7 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "If Dex repeats send message after an unconfirmed dispatch, the provider cannot durably deduplicate the write; cap retries at 5 attempts within 2m."}}
     - name: getMessage
       goName: GetMessage
       inputType: GetMessageInput
@@ -115,4 +115,3 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}

@@ -18,7 +18,7 @@ It exposes these operation-specific Dex Step factories:
 
 Only the happy-path branch of each operation is required; every other branch
 is optional, and an unwired optional branch fails the Flow. Every operation
-uses a 30-second Execute timeout and a retry window of five minutes, and keeps
+uses a 30-second Execute timeout. Reads and `updateTicket` use the one-hour default retry budget; `createTicket` and `addComment` keep five attempts within five minutes. Each attempt keeps
 all of its requests, including a token refresh, inside a 25-second deadline:
 each Zoho Desk request times out after 10 seconds and each token request after
 8, unless `WithHTTPClient` supplies a client with its own `Timeout`.
@@ -323,7 +323,7 @@ A body that contains the access token is dropped.
 Zoho Desk meters API credits per day and concurrent calls per edition. It sends
 `Retry-After` only when the daily credits are exhausted, often hours ahead;
 `Retry-After` is capped at one hour, and a delay that does not fit the
-five-minute retry window fails the Step. The Receipt carries the Call ID, the
+remaining Step retry window fails the Step. The Receipt carries the Call ID, the
 ticket or comment ID, and Zoho Desk's `X-Rate-Limit-Request-Weight-v3` and
 `X-Rate-Limit-Remaining-v3` headers as `requestCredits` and
 `remainingCredits` when present.

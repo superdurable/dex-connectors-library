@@ -21,8 +21,7 @@ stage or create it.
 
 `ObjectType` is `persons`, `organizations`, or `deals`. Only each operation's
 happy branch is required; an unwired optional branch fails the Flow when
-selected. Every operation uses a 30-second Execute timeout and five attempts
-within two minutes, and keeps all of an attempt's requests, including a token
+selected. Every operation uses a 30-second Execute timeout. `createObject` and `upsertObject` keep five attempts within two minutes; reads and `updateObject` use the one-hour default retry budget. The connector keeps all of an attempt's requests, including a token
 refresh, inside a 25-second deadline; one request times out after 20 seconds
 unless `WithHTTPClient` supplies a client with its own `Timeout`. This release
 has no Triggers; see [Triggers](#triggers).

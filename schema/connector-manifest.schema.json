@@ -661,7 +661,7 @@
     "execution": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["executeMethodTimeout", "durability", "retry"],
+      "required": ["executeMethodTimeout", "durability"],
       "properties": {
         "executeMethodTimeout": { "type": "string", "minLength": 1 },
         "heartbeatTimeout": { "type": "string", "minLength": 1 },
@@ -669,13 +669,22 @@
         "retry": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["initialInterval", "backoffCoefficient", "maximumInterval", "maximumAttempts", "totalDuration"],
+          "required": ["initialInterval", "backoffCoefficient", "maximumInterval", "totalDuration"],
           "properties": {
             "initialInterval": { "type": "string", "minLength": 1 },
             "backoffCoefficient": { "type": "number", "minimum": 1 },
             "maximumInterval": { "type": "string", "minLength": 1 },
-            "maximumAttempts": { "type": "integer", "minimum": 1 },
-            "totalDuration": { "type": "string", "minLength": 1 }
+            "maximumAttempts": { "type": "integer", "minimum": 0 },
+            "totalDuration": { "type": "string", "minLength": 1 },
+            "reason": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["kind", "explanation"],
+              "properties": {
+                "kind": { "enum": ["billedOperation", "personWaiting", "duplicateWriteRisk"] },
+                "explanation": { "type": "string", "pattern": "\\S.*[.!?]$" }
+              }
+            }
           }
         }
       }

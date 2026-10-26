@@ -163,7 +163,7 @@ several causes, so every 400 reads the name back with `GET /users/{upn}`:
   400 selects `providerRejected`.
 
 `createUser`, `disableUser`, `enableUser`, and `addUserToGroup` use eight
-attempts over at most five minutes, so the last attempt starts after that
+the one-hour default retry budget, which permits attempts after that
 window. Set `provisioningKey` to deduplicate across Step executions or Flow
 runs; without it, a new Step execution that finds the earlier account selects
 `alreadyExists`. The attribute stays on the account and is visible to

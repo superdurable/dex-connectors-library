@@ -5,7 +5,7 @@ metadata:
   displayName: Confluence
   description: Search Confluence Cloud pages with bounded CQL, read a page as Markdown or plain text, publish and update pages without duplicates, and add footer comments.
   company: Atlassian
-  version: v0.22.0
+  version: v0.22.1
 spec:
   provider: atlassian
   codegen:
@@ -132,10 +132,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Confluence conclusively rejected the search, such as unparsable CQL, an expired cursor, or missing permission.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Confluence returned an invalid or oversized search page., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &confluenceReadExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
     - name: getPage
       goName: GetPage
       inputType: GetPageInput
@@ -150,7 +149,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Confluence conclusively rejected the page read., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Confluence returned an invalid or oversized page., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *confluenceReadExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: createPage
       goName: CreatePage
       inputType: CreatePageInput
@@ -166,10 +167,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Confluence conclusively rejected the page, such as an invalid body or missing Add page permission; nothing was created.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       # Sync: an async fallback attempt would send a second create while the first is in flight.
-      execution: &confluenceSingleDispatchExecution
+      execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
     - name: updatePage
       goName: UpdatePage
       inputType: UpdatePageInput
@@ -184,7 +184,9 @@ spec:
         - {id: notFound, goName: NotFound, description: The page does not exist or the connection cannot view it; nothing was changed., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Confluence conclusively rejected the update, such as an invalid body, missing Edit permission, or a space that requires approval before publishing; nothing was changed.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *confluenceReadExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: addComment
       goName: AddComment
       inputType: AddCommentInput
@@ -199,4 +201,7 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Confluence conclusively rejected the comment, such as an invalid body or missing Add comments permission; nothing was added.", optional: true}
         - {id: uncertain, goName: Uncertain, description: "An earlier attempt sent the comment and the page's comments do not confirm it; Confluence has no idempotency key, so it is never sent again automatically.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *confluenceSingleDispatchExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "If Dex repeats add comment after an unconfirmed dispatch, the provider cannot durably deduplicate the write; cap retries at 5 attempts within 2m."}}

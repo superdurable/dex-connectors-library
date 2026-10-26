@@ -222,7 +222,7 @@ keeps the message text, which can repeat record values.
 
 `REQUEST_LIMIT_EXCEEDED` covers both the concurrent long-request limit, which
 clears in seconds, and the org's 24-hour API allocation, which does not; the
-second exhausts the two-minute retry window and fails the Step. Applications
+second may exhaust the remaining one-hour default retry budget and fail the Step. Applications
 that expect to reach the daily allocation can widen the window with
 `StepOptionsOverride` or add `ProceedToOnExecuteFailure`. Invalid input and
 credentials that cannot be used select `defect` before any request. Only each

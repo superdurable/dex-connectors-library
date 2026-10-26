@@ -449,9 +449,11 @@ replaces the entire policy; zero fields use Dex server defaults. Start with
 `DefaultConnectorStepExecuteRetryPolicy()` and change the fields needed for
 the override.
 
-A later manifest change will let authors omit `retry` and require a validated
-reason for a shorter policy: `billedOperation`, `personWaiting`, or
-`duplicateWriteRisk`. Until then, manifests must still declare `retry`.
+Omitting manifest `execution.retry` generates this default as a literal, so
+connectors remain compatible with their pinned SDK releases. A shorter
+manifest policy requires a validated sentence under `reason.kind`:
+`billedOperation`, `personWaiting`, or `duplicateWriteRisk`. Applications can
+replace either policy for one Step with `StepOptionsOverride.ExecuteRetry`.
 
 ## Text generation connectors
 

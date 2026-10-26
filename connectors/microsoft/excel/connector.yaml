@@ -5,7 +5,7 @@ metadata:
   displayName: Microsoft Excel
   description: Read Excel tables as rows keyed by column name, read and write bounded ranges, and append table rows without duplicates in workbooks stored in OneDrive for work or school and SharePoint, through Microsoft Graph.
   company: Microsoft
-  version: v0.22.0
+  version: v0.22.1
 spec:
   provider: microsoft
   codegen:
@@ -174,10 +174,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Microsoft conclusively rejected the read, such as a revoked grant, a missing permission, or a workbook Excel cannot open.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Microsoft returned an invalid table response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &excelReadExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
     - name: getValues
       goName: GetValues
       inputType: GetValuesInput
@@ -192,7 +191,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Microsoft conclusively rejected the read, such as a revoked grant, a missing permission, or an address Excel rejects.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Microsoft returned an invalid range response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *excelReadExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: updateValues
       goName: UpdateValues
       inputType: UpdateValuesInput
@@ -205,7 +206,9 @@ spec:
         - {id: notFound, goName: NotFound, description: "The workbook, or the worksheet in it, does not exist or the connection cannot see it.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Microsoft conclusively rejected the write, such as a protected worksheet, merged cells, or a missing permission.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *excelReadExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: appendTableRows
       goName: AppendTableRows
       inputType: AppendTableRowsInput
@@ -224,4 +227,4 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "If Dex repeats append table rows after an unconfirmed dispatch, the provider cannot durably deduplicate the write; cap retries at 5 attempts within 5m."}}

@@ -51,7 +51,7 @@ spec:
       execution: &execution
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: Explicit test policy bounds duplicate writes.}}
     - name: grantCredit
       goName: GrantCredit
       inputType: GrantCreditInput
@@ -71,6 +71,48 @@ spec:
 	require.Equal(t, []string{"structured", "text"}, manifest.Spec.Operations[1].Progress)
 	require.Equal(t, "messageCreated", manifest.Spec.Triggers[0].Name)
 	require.Equal(t, "MessageCreatedEvent", manifest.Spec.Triggers[0].EventType)
+}
+
+func TestExecutionRetryPolicyValidation(t *testing.T) {
+	file, err := os.Open("testdata/api-key-methods.yaml")
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, file.Close()) })
+	manifest, err := schema.Decode(file)
+	require.NoError(t, err)
+	baseline := *manifest.Spec.Operations[0].Execution.Retry
+	for _, test := range []struct {
+		name    string
+		policy  *schema.Retry
+		problem string
+	}{
+		{name: "omitted policy"},
+		{name: "unlimited attempts", policy: &schema.Retry{InitialInterval: "1s", BackoffCoefficient: 2, MaximumInterval: "5m", TotalDuration: "1h"}},
+		{name: "longer policy", policy: &schema.Retry{InitialInterval: "1s", BackoffCoefficient: 2, MaximumInterval: "5m", TotalDuration: "65m"}},
+		{name: "billed attempts", policy: &schema.Retry{InitialInterval: "1s", BackoffCoefficient: 2, MaximumInterval: "5m", MaximumAttempts: 3, TotalDuration: "1h", Reason: &schema.RetryReason{Kind: "billedOperation", Explanation: "Every provider call is billed."}}},
+		{name: "person waiting", policy: &schema.Retry{InitialInterval: "1s", BackoffCoefficient: 2, MaximumInterval: "5m", TotalDuration: "5m", Reason: &schema.RetryReason{Kind: "personWaiting", Explanation: "A person awaits this result."}}},
+		{name: "duplicate write", policy: &baseline},
+		{name: "missing reason", policy: &schema.Retry{InitialInterval: "1s", BackoffCoefficient: 2, MaximumInterval: "5m", MaximumAttempts: 3, TotalDuration: "1h"}, problem: "getThing: shorter retry policy requires reason.kind: billedOperation, personWaiting, or duplicateWriteRisk"},
+		{name: "stale reason", policy: &schema.Retry{InitialInterval: "1s", BackoffCoefficient: 2, MaximumInterval: "5m", TotalDuration: "1h", Reason: &schema.RetryReason{Kind: "personWaiting", Explanation: "A person awaits this result."}}, problem: "getThing: retry reason requires a shorter policy"},
+		{name: "unknown reason", policy: &schema.Retry{InitialInterval: "1s", BackoffCoefficient: 2, MaximumInterval: "5m", MaximumAttempts: 3, TotalDuration: "1h", Reason: &schema.RetryReason{Kind: "other", Explanation: "Every provider call is billed."}}, problem: "getThing: retry reason.kind must be billedOperation, personWaiting, or duplicateWriteRisk"},
+		{name: "empty explanation", policy: &schema.Retry{InitialInterval: "1s", BackoffCoefficient: 2, MaximumInterval: "5m", MaximumAttempts: 3, TotalDuration: "1h", Reason: &schema.RetryReason{Kind: "billedOperation"}}, problem: "getThing: retry reason.explanation must be a non-empty sentence"},
+		{name: "zero duration", policy: &schema.Retry{InitialInterval: "1s", BackoffCoefficient: 2, MaximumInterval: "5m", TotalDuration: "0"}, problem: "getThing: retry totalDuration must be a positive duration"},
+		{name: "negative attempts", policy: &schema.Retry{InitialInterval: "1s", BackoffCoefficient: 2, MaximumInterval: "5m", MaximumAttempts: -1, TotalDuration: "1h"}, problem: "getThing: retry maximumAttempts must be non-negative"},
+		{name: "small backoff", policy: &schema.Retry{InitialInterval: "1s", BackoffCoefficient: 0.5, MaximumInterval: "5m", TotalDuration: "1h"}, problem: "getThing: retry backoffCoefficient must be at least 1"},
+		{name: "missing initial interval", policy: &schema.Retry{BackoffCoefficient: 2, MaximumInterval: "5m", TotalDuration: "1h"}, problem: "getThing: retry initialInterval must be a positive duration"},
+		{name: "missing maximum interval", policy: &schema.Retry{InitialInterval: "1s", BackoffCoefficient: 2, TotalDuration: "1h"}, problem: "getThing: retry maximumInterval must be a positive duration"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			candidate := manifest
+			candidate.Spec.Operations = append([]schema.Operation(nil), manifest.Spec.Operations...)
+			candidate.Spec.Operations[0].Execution.Retry = test.policy
+			err := candidate.Validate()
+			if test.problem == "" {
+				require.NoError(t, err)
+			} else {
+				require.ErrorContains(t, err, test.problem)
+			}
+		})
+	}
 }
 
 func TestDecodeOAuthUserScopesAndCredentialMappings(t *testing.T) {
@@ -130,7 +172,7 @@ spec:
       idempotency: none
       branches:
         - {id: defect, goName: Defect, description: defect, optional: true}
-      execution: {executeMethodTimeout: 30s, durability: sync, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}}
+      execution: {executeMethodTimeout: 30s, durability: sync, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: Explicit test policy bounds duplicate writes.}}}
 `))
 	require.NoError(t, err)
 	require.Equal(t, []string{"channels:history"}, manifest.Spec.Auth.OAuth2.UserScopes)
@@ -427,7 +469,7 @@ spec:
       authorization: required
       branches:
         - {id: defect, goName: Defect, description: defect, optional: true}
-      execution: {executeMethodTimeout: 30s, durability: sync, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}}
+      execution: {executeMethodTimeout: 30s, durability: sync, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: Explicit test policy bounds duplicate writes.}}}
 `))
 	require.ErrorContains(t, err, "required authorization needs connector auth")
 }
@@ -466,7 +508,7 @@ spec:
       idempotency: none
       branches:
         - {id: defect, goName: Defect, description: defect, optional: true}
-      execution: {executeMethodTimeout: 30s, durability: sync, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}}
+      execution: {executeMethodTimeout: 30s, durability: sync, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: Explicit test policy bounds duplicate writes.}}}
 `))
 	require.NoError(t, err)
 	require.NotNil(t, manifest.Spec.Studio)
@@ -518,7 +560,7 @@ spec:
       idempotency: none
       branches:
         - {id: defect, goName: Defect, description: defect, optional: true}
-      execution: {executeMethodTimeout: 30s, durability: sync, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}}
+      execution: {executeMethodTimeout: 30s, durability: sync, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: Explicit test policy bounds duplicate writes.}}}
 `
 
 func decodeStudioCommandManifest(credential string, fixedHeaders string) (schema.Manifest, error) {
@@ -655,7 +697,7 @@ spec:
         - {id: uncertain, goName: Uncertain, description: uncertain}
         - {id: defect, goName: Defect, description: defect, optional: true}
       progress: [video]
-      execution: {executeMethodTimeout: 30s, durability: sync, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}}
+      execution: {executeMethodTimeout: 30s, durability: sync, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: Explicit test policy bounds duplicate writes.}}}
 `))
 	require.ErrorContains(t, err, "invalid idempotency")
 	require.ErrorContains(t, err, "progress must contain only")
@@ -682,7 +724,7 @@ spec:
       branches:
         - {id: uncertain, goName: Uncertain, description: uncertain}
         - {id: defect, goName: Defect, description: defect, optional: true}
-      execution: {executeMethodTimeout: 30s, durability: sync, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}}
+      execution: {executeMethodTimeout: 30s, durability: sync, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: Explicit test policy bounds duplicate writes.}}}
 `))
 	require.ErrorContains(t, err, "mutations must declare")
 }
@@ -732,7 +774,7 @@ spec:
       idempotency: none
       branches:
         - {id: defect, goName: Defect, description: defect, optional: true}
-      execution: {executeMethodTimeout: 30s, durability: sync, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}}
+      execution: {executeMethodTimeout: 30s, durability: sync, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: Explicit test policy bounds duplicate writes.}}}
 `))
 	require.ErrorContains(t, err, "inputType and outputType")
 }
@@ -955,7 +997,7 @@ spec:
       idempotency: none
       branches:
         - {id: defect, goName: Defect, description: Local input is invalid., optional: true}
-      execution: {executeMethodTimeout: 30s, durability: sync, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}}
+      execution: {executeMethodTimeout: 30s, durability: sync, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: Explicit test policy bounds duplicate writes.}}}
 `
 	}
 

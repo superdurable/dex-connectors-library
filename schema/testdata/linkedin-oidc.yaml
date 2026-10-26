@@ -66,3 +66,4 @@ spec:
           maximumInterval: 30s
           maximumAttempts: 5
           totalDuration: 2m
+          reason: {kind: duplicateWriteRisk, explanation: Explicit test policy bounds duplicate writes.}

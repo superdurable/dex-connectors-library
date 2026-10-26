@@ -5,7 +5,7 @@ metadata:
   displayName: DocuSign eSignature
   description: "Send DocuSign eSignature envelopes from templates, guarded against duplicates on retry, read envelope and recipient status, void an envelope as compensation, record the signed combined PDF's digest outside Dex payloads, and receive HMAC-verified Connect envelope-completed, envelope-declined, and envelope-voided events."
   company: DocuSign
-  version: v0.22.0
+  version: v0.22.1
 spec:
   provider: docusign
   codegen:
@@ -146,7 +146,7 @@ spec:
       execution:
         executeMethodTimeout: 60s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 65m}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 65m, reason: {kind: duplicateWriteRisk, explanation: "If Dex repeats create envelope from template after an unconfirmed dispatch, the provider cannot durably deduplicate the write; cap retries at 6 attempts within 65m."}}
     - name: getEnvelope
       goName: GetEnvelope
       inputType: GetEnvelopeInput
@@ -161,10 +161,10 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "DocuSign conclusively rejected the read, such as a revoked consent or a user without access to the account.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "DocuSign returned a malformed or oversized response.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &docusignQueryExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 65m}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 0, totalDuration: 65m}
     - name: listEnvelopeRecipients
       goName: ListEnvelopeRecipients
       inputType: ListEnvelopeRecipientsInput
@@ -179,7 +179,10 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "DocuSign conclusively rejected the read, such as a revoked consent or a user without access to the account.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "DocuSign returned a malformed or oversized response.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *docusignQueryExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 0, totalDuration: 65m}
     - name: voidEnvelope
       goName: VoidEnvelope
       inputType: VoidEnvelopeInput
@@ -195,7 +198,10 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "DocuSign conclusively rejected the void, such as a user who is not the sender or lacks permission.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "DocuSign returned a malformed or oversized response.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *docusignQueryExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 0, totalDuration: 65m}
     - name: downloadCombinedDocument
       goName: DownloadCombinedDocument
       inputType: DownloadCombinedDocumentInput
@@ -215,4 +221,4 @@ spec:
         executeMethodTimeout: 120s
         heartbeatTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 65m}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 0, totalDuration: 65m}

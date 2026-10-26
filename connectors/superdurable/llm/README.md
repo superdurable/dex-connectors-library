@@ -31,7 +31,7 @@ Gemini's `generateContent`.
 Install a published component release:
 
 ```bash
-go get github.com/superdurable/dex-connectors-library/connectors/superdurable/llm@v0.24.0
+go get github.com/superdurable/dex-connectors-library/connectors/superdurable/llm@v0.24.1
 ```
 
 The package name, `llm`, is the last element of the module path, so import
@@ -575,7 +575,7 @@ attempt; the Result's `Text` is the only authoritative text.
 | Execute durability | `sync` |
 | Execute timeout | 1200 seconds; one HTTP exchange is bounded at 1170 seconds for DeepSeek, which queues requests for up to 10 minutes, and 870 seconds for every other provider |
 | Heartbeat timeout | 60 seconds; the pipeline heartbeats every 5 seconds while a call is in flight |
-| Retry | 2-second initial interval, backoff 2, 60-second maximum interval, 4 attempts, 30 minutes total |
+| Retry | 2-second initial interval, backoff 2, 60-second maximum interval, 3 attempts, 1 hour total |
 
 `llm.WithHTTPClient` supplies a transport, such as a proxy; the connector uses
 a copy that never follows redirects, and `New` rejects a client `Timeout` of

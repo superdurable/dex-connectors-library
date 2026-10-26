@@ -5,7 +5,7 @@ metadata:
   displayName: Re:amaze
   description: Search, read, create, and update Re:amaze conversations, add public replies or internal notes, and find contacts by email, keeping Re:amaze's own integer statuses.
   company: Re:amaze
-  version: v0.21.1
+  version: v0.21.2
 spec:
   provider: reamaze
   codegen:
@@ -59,10 +59,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Re:amaze conclusively rejected the search, such as invalid credentials, an unknown brand, or a missing permission.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Re:amaze returned an invalid or oversized conversation page., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &reamazeReadExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
     - name: getConversation
       goName: GetConversation
       inputType: GetConversationInput
@@ -76,7 +75,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Re:amaze conclusively rejected the conversation read., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Re:amaze returned an invalid or oversized conversation or message page., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *reamazeReadExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: createConversation
       goName: CreateConversation
       inputType: CreateConversationInput
@@ -89,10 +90,10 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Re:amaze conclusively rejected the conversation, such as an unknown channel or an invalid status; no conversation was created.", optional: true}
         - {id: uncertain, goName: Uncertain, description: "The request was sent but its outcome cannot be confirmed and no conversation carries the Step's key, so it may still appear; the connector never resends it.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &reamazeSingleDispatchExecution
+      execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "If Dex repeats create conversation after an unconfirmed dispatch, the provider cannot durably deduplicate the write; cap retries at 5 attempts within 5m."}}
     - name: updateConversation
       goName: UpdateConversation
       inputType: UpdateConversationInput
@@ -106,7 +107,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Re:amaze conclusively rejected the change, such as an assignee email that is not a staff user.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "Re:amaze returned an invalid or oversized conversation, so the change may have been applied.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *reamazeReadExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: replyToConversation
       goName: ReplyToConversation
       inputType: ReplyToConversationInput
@@ -120,7 +123,10 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Re:amaze conclusively rejected the message; nothing was added.", optional: true}
         - {id: uncertain, goName: Uncertain, description: "The message was sent but its outcome cannot be confirmed and the conversation shows no message with its origin_id, so it may still appear; the connector never resends it.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *reamazeSingleDispatchExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "If Dex repeats reply to conversation after an unconfirmed dispatch, the provider cannot durably deduplicate the write; cap retries at 5 attempts within 5m."}}
     - name: findContactByEmail
       goName: FindContactByEmail
       inputType: FindContactByEmailInput
@@ -134,4 +140,6 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Re:amaze conclusively rejected the contact search., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Re:amaze returned an invalid or oversized contact page., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *reamazeReadExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async

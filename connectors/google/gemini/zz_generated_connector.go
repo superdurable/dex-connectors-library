@@ -207,7 +207,7 @@ var GenerateContentDefinition = sdkgo.QueryDefinition{
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(300000000000), HeartbeatTimeout: time.Duration(300000000000),
-		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(2000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 5, TotalDuration: time.Duration(600000000000)},
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(2000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 3, TotalDuration: time.Duration(600000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
 }

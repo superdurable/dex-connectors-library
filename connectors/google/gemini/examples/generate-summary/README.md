@@ -62,7 +62,7 @@ go run ./cmd/connectorctl ui-artifact \
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/google/gemini/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/google/gemini \
-  --version v0.21.1 --tag connectors/google/gemini/v0.21.1 \
+  --version v0.21.2 --tag connectors/google/gemini/v0.21.2 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/gemini-release/connector-ui.tgz \
   --ui-digest /tmp/gemini-release/connector-ui.tgz.sha256 \

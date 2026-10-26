@@ -141,8 +141,7 @@ address back with `users.get`:
   reference names as a 409 cause.
 
 An unusable success response is retried for the same reason. `createUser` and
-`addUserToGroup` use eight attempts over at most five minutes, so the last
-attempt starts after that one-minute window. Set `provisioningKey` to
+`addUserToGroup` use the one-hour default retry budget, which permits attempts after that one-minute window. Set `provisioningKey` to
 deduplicate across Step executions or Flow runs; without it, a new Step
 execution that finds the earlier account selects `alreadyExists`. The external
 ID stays on the account and is visible to administrators through the API.

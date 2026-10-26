@@ -47,8 +47,7 @@ func TestDefinitionsDeclareOneHappyPathAndTheStandardBranches(t *testing.T) {
 	for _, defaults := range []sdkgo.StepDefaults{mysql.QueryRowsDefinition.StepDefaults, mysql.ExecuteStatementDefinition.StepDefaults} {
 		require.Equal(t, dex.StepDurabilityAsync, defaults.ExecuteDurability)
 		require.Equal(t, 30*time.Second, defaults.ExecuteMethodTimeout)
-		require.Equal(t, int32(5), defaults.ExecuteRetry.MaximumAttempts)
-		require.Equal(t, 2*time.Minute, defaults.ExecuteRetry.TotalDuration)
+		require.Equal(t, &dex.RetryPolicy{InitialInterval: time.Second, BackoffCoefficient: 2, MaximumInterval: 5 * time.Minute, MaximumAttempts: 0, TotalDuration: time.Hour}, defaults.ExecuteRetry)
 	}
 	config := mysql.DefaultConfig()
 	require.Less(t, config.ConnectTimeout+config.StatementTimeout+5*time.Second, mysql.ExecuteStatementDefinition.StepDefaults.ExecuteMethodTimeout,

@@ -5,7 +5,7 @@ metadata:
   displayName: Asana
   description: List and read Asana tasks by project or section, create tasks and comments without silent duplicates, and complete, assign, reschedule, or move tasks between sections.
   company: Asana
-  version: v0.21.1
+  version: v0.21.2
 spec:
   provider: asana
   codegen:
@@ -110,10 +110,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Asana conclusively rejected the list, such as an expired offset token, missing permission, or a result set too large to page.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Asana returned an invalid or oversized task page., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &asanaRepeatableExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
     - name: getTask
       goName: GetTask
       inputType: GetTaskInput
@@ -128,7 +127,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Asana conclusively rejected the task read., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Asana returned an invalid or oversized task., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *asanaRepeatableExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: createTask
       goName: CreateTask
       inputType: CreateTaskInput
@@ -143,10 +144,10 @@ spec:
         - {id: uncertain, goName: Uncertain, description: "The request was dispatched but its outcome cannot be confirmed; Asana has no idempotency key, so the task may exist and must not be created again automatically.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       # Sync: an async fallback attempt re-sends a slow create, and Asana has no idempotency key.
-      execution: &asanaUnkeyedWriteExecution
+      execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "If Dex repeats create task after an unconfirmed dispatch, the provider cannot durably deduplicate the write; cap retries at 5 attempts within 2m."}}
     - name: updateTask
       goName: UpdateTask
       inputType: UpdateTaskInput
@@ -161,7 +162,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Asana conclusively rejected a change, such as an unknown assignee, a section of a project the task is not in, or missing permission.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Asana returned an invalid or oversized task after the update., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *asanaRepeatableExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: addComment
       goName: AddComment
       inputType: AddCommentInput
@@ -176,4 +179,7 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Asana conclusively rejected the comment, such as missing permission or invalid text; nothing was added.", optional: true}
         - {id: uncertain, goName: Uncertain, description: "The request was dispatched but its outcome cannot be confirmed; Asana has no idempotency key, so the comment may exist and must not be added again automatically.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *asanaUnkeyedWriteExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "If Dex repeats add comment after an unconfirmed dispatch, the provider cannot durably deduplicate the write; cap retries at 5 attempts within 2m."}}

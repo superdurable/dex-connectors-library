@@ -5,7 +5,7 @@ metadata:
   displayName: PostgreSQL
   description: Run one parameterized read-only query, or one transactional write statement, against a PostgreSQL database.
   company: PostgreSQL
-  version: v0.21.1
+  version: v0.21.2
 spec:
   provider: postgresql
   codegen:
@@ -95,10 +95,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "PostgreSQL conclusively refused the connection or statement, such as bad credentials, a syntax error, a missing table, a permission error, a write inside the read-only transaction, or statementTimeout.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "PostgreSQL returned a value the connector cannot decode under its documented type mapping.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &postgresqlExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
     - name: execute
       goName: ExecuteStatement
       inputType: ExecuteStatementInput
@@ -113,4 +112,6 @@ spec:
         - {id: uncertain, goName: Uncertain, description: "The connection failed after COMMIT was sent, so whether PostgreSQL committed the write is unknown.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "PostgreSQL returned a value the connector cannot decode under its documented type mapping; the connector rolled back and nothing was written.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *postgresqlExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async

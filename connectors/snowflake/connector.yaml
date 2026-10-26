@@ -5,7 +5,7 @@ metadata:
   displayName: Snowflake
   description: Submit one parameterized SQL statement to a Snowflake warehouse through the SQL API, read its status and result partitions, and cancel it.
   company: Snowflake
-  version: v0.21.1
+  version: v0.21.2
 spec:
   provider: snowflake
   codegen:
@@ -115,10 +115,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Snowflake conclusively refused the request or the statement, such as bad credentials, a missing warehouse or privilege, a SQL compilation error, or a binding mismatch; nothing ran.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, credentials, or connector definition is invalid.", optional: true}
       # Async: the request returns as soon as Snowflake queues the statement, and requestId with retry=true makes a duplicate dispatch return the same statement.
-      execution: &snowflakeExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
     - name: getStatementResult
       goName: GetStatementResult
       inputType: GetStatementResultInput
@@ -133,7 +132,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "The statement failed, was canceled, or exceeded statementTimeoutSeconds, or Snowflake refused the request, such as bad credentials or an unknown statement handle; the Receipt carries Snowflake's code and SQLSTATE.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "Snowflake returned a response or value the connector cannot decode under its documented type mapping.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, credentials, or connector definition is invalid.", optional: true}
-      execution: *snowflakeExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: cancelStatement
       goName: CancelStatement
       inputType: CancelStatementInput
@@ -145,4 +146,6 @@ spec:
         - {id: canceled, goName: Canceled, description: "Snowflake accepted the cancellation; reading the statement afterwards reports it as canceled unless it had already finished."}
         - {id: providerRejected, goName: ProviderRejected, description: "Snowflake refused the cancellation, such as an unknown statement handle, a statement that already finished, or bad credentials; the Receipt carries Snowflake's code and SQLSTATE.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, credentials, or connector definition is invalid.", optional: true}
-      execution: *snowflakeExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async

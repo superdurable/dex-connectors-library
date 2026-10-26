@@ -5,7 +5,7 @@ metadata:
   displayName: ClickUp
   description: "Search a ClickUp Workspace's tasks by List, status, assignee, tag, and update time, read one task with its custom fields, create tasks and comments without silent duplicates, change a task's status, priority, due date, and assignees, add or remove tags, find a member by email, and receive signed task webhooks."
   company: ClickUp
-  version: v0.21.1
+  version: v0.21.2
 spec:
   provider: clickup
   codegen:
@@ -80,10 +80,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "ClickUp conclusively rejected the search, such as an invalid filter or an invalid token.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: ClickUp returned an invalid or oversized page of tasks., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &clickupExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
     - name: getTask
       goName: GetTask
       inputType: GetTaskInput
@@ -98,7 +97,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: ClickUp conclusively rejected the task read., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: ClickUp returned an invalid or oversized task., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *clickupExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: createTask
       goName: CreateTask
       inputType: CreateTaskInput
@@ -114,10 +115,10 @@ spec:
         - {id: uncertain, goName: Uncertain, description: "An earlier attempt sent the create but its outcome cannot be confirmed and the List shows no single matching task, so the task may exist; the connector never sends it again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       # Sync: ClickUp has no idempotency key, and an async backup attempt would send a slow create twice.
-      execution: &clickupUnkeyedWriteExecution
+      execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "If Dex repeats create task after an unconfirmed dispatch, the provider cannot durably deduplicate the write; cap retries at 5 attempts within 5m."}}
     - name: updateTask
       goName: UpdateTask
       inputType: UpdateTaskInput
@@ -132,7 +133,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "ClickUp conclusively rejected the change, such as a status that is not in the task's List or missing permission.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "ClickUp returned an invalid or oversized task after the update, so the change may have been applied.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *clickupExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: updateTaskTags
       goName: UpdateTaskTags
       inputType: UpdateTaskTagsInput
@@ -147,7 +150,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "ClickUp conclusively rejected a tag change, such as missing permission; earlier changes in the same Step may have been applied.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "ClickUp returned an invalid or oversized task when its tags were read back; the tag changes were applied.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *clickupExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: addComment
       goName: AddComment
       inputType: AddCommentInput
@@ -162,7 +167,10 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "ClickUp conclusively rejected the comment, such as missing permission; nothing was added.", optional: true}
         - {id: uncertain, goName: Uncertain, description: "An earlier attempt sent the comment but its outcome cannot be confirmed and the task shows no matching comment, so the comment may exist; the connector never sends it again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *clickupUnkeyedWriteExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "If Dex repeats add comment after an unconfirmed dispatch, the provider cannot durably deduplicate the write; cap retries at 5 attempts within 5m."}}
     - name: findMemberByEmail
       goName: FindMemberByEmail
       inputType: FindMemberByEmailInput
@@ -177,4 +185,6 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: ClickUp conclusively rejected the Workspace read., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: ClickUp returned an invalid or oversized list of Workspaces., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *clickupExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async

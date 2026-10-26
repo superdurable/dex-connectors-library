@@ -5,7 +5,7 @@ metadata:
   displayName: Microsoft Outlook Mail
   description: "Search, read, flag, categorize, and move messages in a Microsoft 365 (Exchange Online) mailbox through Microsoft Graph, and send new messages or threaded replies through drafts marked with the Step's idempotency key, so a retried Step never sends twice."
   company: Microsoft
-  version: v0.23.0
+  version: v0.23.1
 spec:
   provider: microsoft
   codegen:
@@ -191,10 +191,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively rejected the search, such as a revoked authorization, a folder that does not exist, a mailbox the app may not read, or a filter it does not accept.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "Microsoft Graph returned a malformed or oversized page, or a next-page link outside graph.microsoft.com.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &outlookReadExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
       pagination: {inputField: pageCursor, nextField: nextPageCursor}
       mocks:
         - name: customerInbox
@@ -285,7 +284,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively rejected the read, such as a revoked authorization or a mailbox the app may not read.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Graph returned a malformed or oversized message or attachment list., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *outlookReadExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
       mocks:
         - name: customerMessage
           branch: found
@@ -332,11 +333,11 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively refused the draft or the send, such as a revoked authorization, a mailbox without send permission, or an invalid recipient, so nothing was sent.", optional: true}
         - {id: uncertain, goName: Uncertain, description: "The send was dispatched but its answer was lost and the draft has not appeared as sent, so the message may have been sent; the connector never sends it again, and the Result names the draft to inspect.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &outlookSendExecution
+      execution:
         executeMethodTimeout: 90s
         heartbeatTimeout: 90s
         durability: sync
-        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 8, totalDuration: 10m}
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 8, totalDuration: 10m, reason: {kind: duplicateWriteRisk, explanation: "Graph has no mail-send idempotency key, and an unconfirmed draft can be sent again after a Sent Items miss, so bound confirmation and resend attempts."}}
       mocks:
         - name: newMessageSent
           branch: sent
@@ -367,7 +368,11 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively refused the reply draft or the send, such as a revoked authorization, a mailbox without send permission, or an original without a usable reply address, so nothing was sent.", optional: true}
         - {id: uncertain, goName: Uncertain, description: "The send was dispatched but its answer was lost and the draft has not appeared as sent, so the reply may have been sent; the connector never sends it again, and the Result names the draft to inspect.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *outlookSendExecution
+      execution:
+        executeMethodTimeout: 90s
+        heartbeatTimeout: 90s
+        durability: sync
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 8, totalDuration: 10m, reason: {kind: duplicateWriteRisk, explanation: "Graph has no reply idempotency key, and an unconfirmed reply draft can be sent again after a Sent Items miss, so bound confirmation and resend attempts."}}
       mocks:
         - name: customerReplySent
           branch: sent
@@ -401,10 +406,9 @@ spec:
         - {id: notFound, goName: NotFound, description: "No message with the ID exists in the mailbox.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively refused the move, such as a destination folder that does not exist, a revoked authorization, or a read-only mailbox.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &outlookUpdateExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
       mocks:
         - name: customerMessageArchived
           branch: moved
@@ -432,7 +436,9 @@ spec:
         - {id: notFound, goName: NotFound, description: "No message with the ID exists in the mailbox.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively refused the change, such as a revoked authorization or a read-only mailbox.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *outlookUpdateExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
       mocks:
         - name: customerMessageRead
           branch: updated

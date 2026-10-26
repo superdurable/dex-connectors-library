@@ -56,7 +56,7 @@ mkdir -p /tmp/xero-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/xero/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/xero \
-  --version v0.22.0 --tag connectors/xero/v0.22.0 \
+  --version v0.22.1 --tag connectors/xero/v0.22.1 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/xero-release/connector-release.json \
   --digest-output /tmp/xero-release/connector-release.json.sha256

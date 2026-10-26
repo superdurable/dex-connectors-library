@@ -71,7 +71,7 @@ go run ./cmd/connectorctl ui-artifact \
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/helpscout/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/helpscout \
-  --version v0.22.0 --tag connectors/helpscout/v0.22.0 \
+  --version v0.22.1 --tag connectors/helpscout/v0.22.1 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/helpscout-release/connector-ui.tgz \
   --ui-digest /tmp/helpscout-release/connector-ui.tgz.sha256 \

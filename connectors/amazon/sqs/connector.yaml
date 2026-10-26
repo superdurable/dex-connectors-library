@@ -5,7 +5,7 @@ metadata:
   displayName: Amazon SQS
   description: Consume messages from an Amazon SQS standard or FIFO queue, or an SQS-compatible queue such as ElasticMQ, with long-polling receive, acknowledgement by delete, and visibility changes that release or extend a message.
   company: Amazon
-  version: v0.1.0
+  version: v0.1.1
 spec:
   provider: amazon-sqs
   codegen:
@@ -93,7 +93,7 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A lost receive response may have hidden messages already; FIFO deduplicates its attempt ID for only five minutes and standard queues do not, so bound retries to two minutes."}}
     - name: deleteMessage
       goName: DeleteMessage
       inputType: DeleteMessageInput
@@ -107,10 +107,9 @@ spec:
         - {id: receiptHandleInvalid, goName: ReceiptHandleInvalid, description: "SQS no longer accepts the receipt handle, such as an expired FIFO receipt handle or a malformed one, or, on a compatible server such as ElasticMQ, a handle whose message an earlier attempt already deleted; the message may be delivered again.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "SQS conclusively rejected the deletion, such as a missing queue, a wrong Region, invalid credentials, or missing sqs:DeleteMessage permission.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &sqsAcknowledgementExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
     - name: changeMessageVisibility
       goName: ChangeMessageVisibility
       inputType: ChangeMessageVisibilityInput
@@ -124,4 +123,7 @@ spec:
         - {id: receiptHandleInvalid, goName: ReceiptHandleInvalid, description: "SQS no longer accepts the receipt handle, because the message is no longer in flight, was deleted, or the handle is expired or malformed.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "SQS conclusively rejected the change, such as a missing queue, a wrong Region, invalid credentials, missing sqs:ChangeMessageVisibility permission, or a timeout above the 12-hour limit.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *sqsAcknowledgementExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Each repeated visibility change starts the timeout again, so bound retries that can extend a message lease after a lost response."}}

@@ -21,8 +21,7 @@ operation-specific Dex Step factories:
 Only the happy-path branch of each operation is required; every other branch
 is optional, and an unwired optional branch fails the Flow. Reads, `addNote`,
 and `createSharedDraft` use a 30-second Execute timeout; `updateConversation`,
-which may make up to eight spaced requests, uses 60 seconds. Every retry window
-is at least five minutes. `addNote` and `createSharedDraft` use sync durability
+which may make up to eight spaced requests, uses 60 seconds. Reads and `updateConversation` use the one-hour default retry budget; `addNote` and `createSharedDraft` keep five attempts within five minutes and use sync durability
 because Hiver has no idempotency key; see [Duplicate safety](#duplicate-safety).
 
 This release has no Triggers and no Studio pickers; see

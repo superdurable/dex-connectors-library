@@ -61,7 +61,7 @@ mkdir -p /tmp/quickbooks-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/intuit/quickbooks/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/intuit/quickbooks \
-  --version v0.22.0 --tag connectors/intuit/quickbooks/v0.22.0 \
+  --version v0.22.1 --tag connectors/intuit/quickbooks/v0.22.1 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/quickbooks-release/connector-release.json \
   --digest-output /tmp/quickbooks-release/connector-release.json.sha256

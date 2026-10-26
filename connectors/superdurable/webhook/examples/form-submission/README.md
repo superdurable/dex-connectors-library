@@ -60,7 +60,7 @@ mkdir -p /tmp/webhook-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/superdurable/webhook/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/superdurable/webhook \
-  --version v0.22.0 --tag connectors/superdurable/webhook/v0.22.0 \
+  --version v0.22.1 --tag connectors/superdurable/webhook/v0.22.1 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/webhook-release/connector-release.json \
   --digest-output /tmp/webhook-release/connector-release.json.sha256

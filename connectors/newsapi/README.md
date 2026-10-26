@@ -47,8 +47,7 @@ connection for tests, and `WithHTTPClient` supplies a transport.
 ## Execution contract
 
 `searchArticles` is a read-only Query with async durability, a 30-second Execute
-timeout, and three attempts within two minutes, with exponential backoff from 1
-second to 30 seconds. Each attempt makes one HTTP request. Redirects are not
+timeout, and unlimited attempts within one hour, with exponential backoff from 1 second to five minutes. Each attempt makes one HTTP request. Redirects are not
 followed.
 
 | NewsAPI response | Outcome | Failure kind |
@@ -70,7 +69,7 @@ fails the Flow. The connector has no Mutation, idempotency key, or Trigger.
 
 The free Developer plan allows 100 requests a day for development only, delays
 articles by 24 hours, and searches about one month back. A daily-quota
-`rateLimited` response retries within the two-minute window and then fails the
+`rateLimited` response retries within the one-hour window and then fails the
 Step, so route Execute failure when a Flow must record that outcome.
 
 | Configuration | Default | Meaning |

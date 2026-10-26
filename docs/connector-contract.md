@@ -210,33 +210,35 @@ write the resource.
 ## Step defaults and overrides
 
 Manifest execution defaults generate `StepDefaults`: Execute timeout,
-optional heartbeat timeout, retry policy, and durability. A nil
-`StepDefaults.ExecuteRetry` uses the Connector SDK policy: one-second initial
-delay, coefficient 2, five-minute maximum delay, unlimited attempts, and a
-one-hour total duration. An explicit definition policy takes precedence;
+optional heartbeat timeout, retry policy, and durability. Omitting manifest
+`execution.retry` generates the Connector SDK policy as a literal: one-second
+initial delay, coefficient 2, five-minute maximum delay, unlimited attempts,
+and a one-hour total duration. An explicit definition policy takes precedence;
 applications may replace it per Step with `StepOptionsOverride.ExecuteRetry`.
 The override replaces the entire policy, with zero fields taking Dex server
 defaults; start from `DefaultConnectorStepExecuteRetryPolicy()` and change the
 needed fields. Total duration also bounds the first attempt through
 ScheduleToClose, so an Execute timeout over one hour needs an explicit policy.
 When retries exhaust the duration, the Flow fails unless `ExecuteFailure`
-routes to a recovery Step. A later manifest change is
-planned to allow omission of `retry` and require a validated reason for a
-shorter policy: `billedOperation`, `personWaiting`, or `duplicateWriteRisk`.
+routes to a recovery Step. An explicit policy requires positive intervals and
+total duration, a coefficient of at least 1, and non-negative attempts (zero
+means unlimited). A policy with limited attempts or a total duration below one
+hour requires a sentence explaining `billedOperation`, `personWaiting`, or
+`duplicateWriteRisk`. A longer policy has no reason.
 
-Manifest-declared policies take precedence over the SDK fallback. HTTP defaults
-are 30 seconds and a five-attempt/two-minute window. OpenAI response creation
-defaults are 150 seconds and a three-attempt/five-minute window; within an
+Manifest-declared policies take precedence over the generated one-hour default.
+Most HTTP operations use a 30-second Execute timeout and unlimited attempts
+within one hour. OpenAI response creation defaults are 150 seconds and a
+three-attempt/five-minute window; within an
 attempt it polls a known response until five seconds before the Execute
 timeout. Execute durability is asynchronous unless the operation is very likely
 to run longer than seven seconds. Response creation uses synchronous
 durability, which its heartbeat checkpoint requires. A response retrieval uses
-the asynchronous HTTP defaults. GitHub repository change
-queries use a five-attempt/65-minute window, because Dex fails a Step whose
-provider delay does not fit in the remaining window and GitHub's primary rate
-limit resets hourly. Gemini content generation is a synchronous Query with a
+the asynchronous HTTP defaults. GitHub repository change queries use unlimited
+attempts within 65 minutes so an hourly rate-limit reset can fit. Gemini
+content generation is a synchronous Query with a
 300-second Execute timeout, a matching heartbeat timeout because the call does
-not stream, and a five-attempt/ten-minute window.
+not stream, and a three-attempt/ten-minute window.
 
 `StepOptionsOverride` overlays non-zero Execute fields and can add
 `dex.ProceedToOnExecuteFailure`. That recovery target accepts the original
@@ -624,8 +626,8 @@ provider progresses, so the request timeout bounds a hung provider: 870
 seconds, or 1170 seconds for DeepSeek, which queues requests for up to 10
 minutes and retries a stream that sends no byte for 5 minutes. The Step
 defaults are an `executeMethodTimeout` of 1200 seconds and a retry policy of 2
-seconds initial interval, coefficient 2, 60 seconds maximum interval, 4
-attempts, and 30 minutes total.
+seconds initial interval, coefficient 2, 60 seconds maximum interval, 3
+attempts, and one hour total.
 
 A nil heartbeat carries no checkpoint, and Dex clears any persisted heartbeat
 details when it receives one, so a business Step that calls `sdkgo.RunQuery`

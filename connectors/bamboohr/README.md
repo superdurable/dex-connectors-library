@@ -19,8 +19,7 @@ factories:
 
 Only the happy-path branch of each operation is required; every other branch
 is optional, and an unwired optional branch fails the Flow. Every operation
-uses a 30-second Execute timeout and a five-minute retry window, which fits
-BambooHR's `Retry-After` on a rate-limited request. `addEmployee` uses sync
+uses a 30-second Execute timeout. Reads and `updateEmployee` use the one-hour default retry budget; `addEmployee` keeps five attempts within five minutes and uses sync
 durability because BambooHR has no idempotency key; see
 [Duplicate safety](#duplicate-safety).
 

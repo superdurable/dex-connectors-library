@@ -5,7 +5,7 @@ metadata:
   displayName: Google Docs
   description: Read Google Docs as bounded Markdown or plain text with their revision, create documents in a Drive folder without duplicates on retry, and replace or append text only at the revision a Flow read.
   company: Google
-  version: v0.22.0
+  version: v0.22.1
 spec:
   provider: google
   codegen:
@@ -200,10 +200,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Google conclusively rejected the read, such as a revoked grant or a missing permission.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid document response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &docsExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
     - name: createDocument
       goName: CreateDocument
       inputType: CreateDocumentInput
@@ -220,7 +219,7 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "If Dex repeats create document after an unconfirmed dispatch, the provider cannot durably deduplicate the write; cap retries at 5 attempts within 5m."}}
     - name: replaceDocumentText
       goName: ReplaceDocumentText
       inputType: ReplaceDocumentTextInput
@@ -236,7 +235,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Google conclusively rejected the change, such as a connection without edit access.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized document response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *docsExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: appendText
       goName: AppendText
       inputType: AppendTextInput
@@ -251,4 +252,6 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Google conclusively rejected the change, such as a connection without edit access.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized document response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *docsExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async

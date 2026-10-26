@@ -5,7 +5,7 @@ metadata:
   displayName: GitHub
   description: Read an authenticated GitHub profile, verified primary email, bounded public repositories, releases, and repository changes.
   company: GitHub
-  version: v0.23.0
+  version: v0.23.1
 spec:
   provider: github
   codegen:
@@ -130,10 +130,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: GitHub conclusively rejected the profile query., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: GitHub returned an invalid or oversized profile response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &githubQueryExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
       mocks:
         - name: octocatProfile
           branch: profileLoaded
@@ -187,7 +186,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: GitHub conclusively rejected the repository query., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: GitHub returned an invalid or oversized repository response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *githubQueryExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
       mocks:
         - name: mixedRepositories
           branch: repositoriesLoaded
@@ -241,10 +242,10 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "GitHub conclusively rejected the search, including a repository it cannot search.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: GitHub returned an invalid or oversized search response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &githubChangeQueryExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 65m}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 0, totalDuration: 65m}
       pagination: {inputField: page, nextField: nextPage}
       mocks:
         - name: threeUnorderedPages
@@ -306,7 +307,10 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: GitHub conclusively rejected the changed-file query., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: GitHub returned an invalid or oversized changed-file response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *githubChangeQueryExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 0, totalDuration: 65m}
       pagination: {inputField: page, nextField: nextPage}
       mocks:
         - name: threePagesOfChanges
@@ -360,7 +364,10 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: GitHub conclusively rejected the releases query., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: GitHub returned an invalid or oversized releases response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *githubChangeQueryExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 0, totalDuration: 65m}
       pagination: {inputField: page, nextField: nextPage}
       mocks:
         - name: threeUnorderedPages
@@ -418,7 +425,10 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: GitHub conclusively rejected the commit query., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: GitHub returned an invalid or oversized commit response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *githubChangeQueryExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 0, totalDuration: 65m}
       pagination: {inputField: page, nextField: nextPage}
       mocks:
         - name: threePagesNewestFirst

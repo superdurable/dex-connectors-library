@@ -5,7 +5,7 @@ metadata:
   displayName: Airtable
   description: List, read, idempotently upsert, and update typed Airtable records, with base and table pickers.
   company: Airtable
-  version: v0.21.1
+  version: v0.21.2
 spec:
   provider: airtable
   codegen:
@@ -97,11 +97,10 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Airtable conclusively rejected the list, such as an unknown base, table, view, or field, an invalid formula, a missing scope, or a rejected token.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Airtable returned an invalid or oversized list response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &airtableAsyncExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
         # Airtable asks a rate-limited client to wait 30 seconds, so the window fits several such waits.
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 3m}
     - name: getRecord
       goName: GetRecord
       inputType: GetRecordInput
@@ -115,7 +114,10 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Airtable conclusively rejected the read, such as an unknown base or table, a missing scope, or a rejected token.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Airtable returned an invalid or oversized record response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *airtableAsyncExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        # Airtable asks a rate-limited client to wait 30 seconds, so the window fits several such waits.
     - name: upsertRecords
       goName: UpsertRecords
       inputType: UpsertRecordsInput
@@ -132,7 +134,6 @@ spec:
         executeMethodTimeout: 30s
         # Without a unique merge key, concurrent duplicate upserts could both create; sync never overlaps attempts.
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 3m}
     - name: updateRecords
       goName: UpdateRecords
       inputType: UpdateRecordsInput
@@ -146,4 +147,7 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Airtable conclusively rejected the update, such as an invalid cell value, a computed field, a missing scope, or a rejected token.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Airtable applied or rejected the update but returned an invalid or oversized response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *airtableAsyncExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        # Airtable asks a rate-limited client to wait 30 seconds, so the window fits several such waits.

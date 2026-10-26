@@ -27,7 +27,7 @@ in one Flow, `PipedriveDealIntake`:
 
 ## Release baseline
 
-- Pipedrive Connector `v0.22.0`
+- Pipedrive Connector `v0.22.1`
 - dexcli `cli-v1.5.0` or a later stable release
 
 ## Generate the Flow Definition Graph
@@ -42,12 +42,12 @@ cd pipedrive-deal-intake-e2e
 mkdir -p flow build
 
 curl -fsSL \
-  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/pipedrive/v0.22.0/connectors/pipedrive/examples/deal-intake/flow/workflow.go \
+  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/pipedrive/v0.22.1/connectors/pipedrive/examples/deal-intake/flow/workflow.go \
   -o flow/workflow.go
 
 go mod init example.com/pipedrive-deal-intake-e2e
 go mod edit -go=1.24.0
-go get github.com/superdurable/dex-connectors-library/connectors/pipedrive@v0.22.0
+go get github.com/superdurable/dex-connectors-library/connectors/pipedrive@v0.22.1
 go mod tidy
 
 dexcli visualize ./flow/workflow.go \

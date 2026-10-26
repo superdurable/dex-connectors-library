@@ -5,7 +5,7 @@ metadata:
   displayName: YouTube
   description: Search YouTube videos, read videos, channels, and playlist pages, and add a video to a playlist once through the YouTube Data API v3.
   company: Google
-  version: v0.1.0
+  version: v0.1.1
 spec:
   provider: google
   codegen:
@@ -137,10 +137,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "YouTube conclusively rejected the search, such as an invalid parameter, a missing scope, or a revoked grant.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: YouTube returned an invalid or oversized search response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or credentials are invalid.", optional: true}
-      execution: &youtubeAsyncExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
     - name: getVideo
       goName: GetVideo
       inputType: GetVideoInput
@@ -156,7 +155,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "YouTube conclusively rejected the read, such as a missing scope or a revoked grant.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: YouTube returned an invalid or oversized video response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or credentials are invalid.", optional: true}
-      execution: *youtubeAsyncExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: getChannel
       goName: GetChannel
       inputType: GetChannelInput
@@ -172,7 +173,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "YouTube conclusively rejected the read, such as a missing scope or a revoked grant.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: YouTube returned an invalid or oversized channel response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or credentials are invalid.", optional: true}
-      execution: *youtubeAsyncExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: listPlaylistItems
       goName: ListPlaylistItems
       inputType: ListPlaylistItemsInput
@@ -188,7 +191,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "YouTube conclusively rejected the listing, such as a private playlist of another account or a revoked grant.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: YouTube returned an invalid or oversized playlist page., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or credentials are invalid.", optional: true}
-      execution: *youtubeAsyncExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: addPlaylistItem
       goName: AddPlaylistItem
       inputType: AddPlaylistItemInput
@@ -208,4 +213,4 @@ spec:
         executeMethodTimeout: 30s
         # Check-then-insert is repeat-safe only when two attempts never overlap, so the Step uses sync durability.
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A retry can insert again when the preceding playlist item is not yet visible to the pre-insert list, so bound addPlaylistItem retries."}}

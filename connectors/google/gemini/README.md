@@ -15,7 +15,7 @@ by changing only the connection.
 Install a published component release:
 
 ```bash
-go get github.com/superdurable/dex-connectors-library/connectors/google/gemini@v0.21.1
+go get github.com/superdurable/dex-connectors-library/connectors/google/gemini@v0.21.2
 ```
 
 ## Connection
@@ -223,7 +223,7 @@ it until its retry policy ends.
 | Execute durability | `sync` |
 | Execute timeout | 300 seconds; each exchange is bounded at 270 seconds |
 | Heartbeat timeout | 300 seconds |
-| Retry | 2-second initial interval, backoff 2, 60-second maximum interval, 5 attempts, 10 minutes total |
+| Retry | 2-second initial interval, backoff 2, 60-second maximum interval, 3 attempts, 10 minutes total |
 
 A long-form generation usually exceeds the seven-second ASYNC local phase, and
 an async fallback attempt would call Gemini again, so Execute uses `sync`.

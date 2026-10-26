@@ -5,7 +5,7 @@ metadata:
   displayName: Jira Service Management
   description: Raise, read, label, comment on, and move Jira Service Management customer requests as tickets, with public replies and internal notes, SLA cycles, and customers found by email, never sending a request or comment twice.
   company: Atlassian
-  version: v0.22.0
+  version: v0.22.1
 spec:
   provider: atlassian
   codegen:
@@ -154,10 +154,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Jira Service Management conclusively rejected the lookup, such as an unknown service desk or an account that cannot view its customers.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Jira Service Management returned an invalid or oversized customer page., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &jsmReadExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
     - name: searchTickets
       goName: SearchTickets
       inputType: SearchTicketsInput
@@ -171,7 +170,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Jira conclusively rejected the search, such as an unknown project or status, an expired page token, or missing permission.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Jira returned an invalid or oversized search page., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *jsmReadExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: getTicket
       goName: GetTicket
       inputType: GetTicketInput
@@ -186,7 +187,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Jira Service Management conclusively rejected a read, such as an SLA read by an account that is not an agent of the desk.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "Jira returned an invalid or oversized request, comment page, or SLA page.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *jsmReadExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: createTicket
       goName: CreateTicket
       inputType: CreateTicketInput
@@ -201,10 +204,10 @@ spec:
         - {id: uncertain, goName: Uncertain, description: "The request was sent but its outcome cannot be confirmed, so the customer request may exist; the connector never resends it.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       # Sync: an async fallback attempt re-sends a slow create, and the provider has no idempotency key.
-      execution: &jsmSingleDispatchExecution
+      execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "If Dex repeats create ticket after an unconfirmed dispatch, the provider cannot durably deduplicate the write; cap retries at 5 attempts within 2m."}}
     - name: updateTicket
       goName: UpdateTicket
       inputType: UpdateTicketInput
@@ -219,7 +222,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Jira conclusively rejected the change, such as an unknown priority, a field missing from the edit screen, or missing Edit Issues permission.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Jira returned an invalid or oversized issue., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *jsmReadExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: transitionTicket
       goName: TransitionTicket
       inputType: TransitionTicketInput
@@ -235,7 +240,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Jira conclusively rejected the transition, such as a required transition screen field or missing permission.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Jira returned an invalid or oversized issue or transition list., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *jsmReadExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: addComment
       goName: AddComment
       inputType: AddCommentInput
@@ -250,4 +257,7 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Jira Service Management conclusively rejected the comment, such as missing Add Comments permission; nothing was added.", optional: true}
         - {id: uncertain, goName: Uncertain, description: "The comment was sent but its outcome cannot be confirmed, so it may exist; the connector never resends it.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *jsmSingleDispatchExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "If Dex repeats add comment after an unconfirmed dispatch, the provider cannot durably deduplicate the write; cap retries at 5 attempts within 2m."}}

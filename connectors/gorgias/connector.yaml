@@ -5,7 +5,7 @@ metadata:
   displayName: Gorgias
   description: "Search, read, create, and update Gorgias tickets, find customers by email, and add internal notes or public email replies, keeping Gorgias's own open and closed statuses and priorities; a retried create or message first looks for the earlier write by its external ID."
   company: Gorgias
-  version: v0.21.1
+  version: v0.21.2
 spec:
   provider: gorgias
   codegen:
@@ -59,10 +59,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Gorgias conclusively rejected the list, such as invalid credentials, a missing permission, an unknown view, or an expired cursor.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Gorgias returned an invalid or oversized customer or ticket page., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &gorgiasReadExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
     - name: getTicket
       goName: GetTicket
       inputType: GetTicketInput
@@ -76,7 +75,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Gorgias conclusively rejected the ticket read, such as for a merged ticket.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Gorgias returned an invalid or oversized ticket or message page., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *gorgiasReadExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: findCustomerByEmail
       goName: FindCustomerByEmail
       inputType: FindCustomerByEmailInput
@@ -90,7 +91,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Gorgias conclusively rejected the customer lookup., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Gorgias returned an invalid or oversized customer page., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *gorgiasReadExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: createTicket
       goName: CreateTicket
       inputType: CreateTicketInput
@@ -103,10 +106,10 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Gorgias conclusively rejected the ticket, such as an unknown assignee or an over-long subject; no ticket was created.", optional: true}
         - {id: uncertain, goName: Uncertain, description: "The request was sent but Gorgias did not confirm a ticket for it, so the ticket may still appear; the connector never resends it.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &gorgiasSingleDispatchExecution
+      execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "If Dex repeats create ticket after an unconfirmed dispatch, the provider cannot durably deduplicate the write; cap retries at 5 attempts within 5m."}}
     - name: updateTicket
       goName: UpdateTicket
       inputType: UpdateTicketInput
@@ -123,7 +126,6 @@ spec:
       execution:
         executeMethodTimeout: 45s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
     - name: addNote
       goName: AddNote
       inputType: AddNoteInput
@@ -137,4 +139,7 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Gorgias conclusively rejected the note or reply, or a reply's ticket could not be read, has no customer email to answer, or shows no address known to be the helpdesk's; nothing was added.", optional: true}
         - {id: uncertain, goName: Uncertain, description: "The request was sent but Gorgias did not confirm a message for it, so the note or reply may still appear; the connector never resends it.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *gorgiasSingleDispatchExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "If Dex repeats add note after an unconfirmed dispatch, the provider cannot durably deduplicate the write; cap retries at 5 attempts within 5m."}}

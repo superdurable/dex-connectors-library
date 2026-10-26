@@ -125,6 +125,10 @@ func requireExecutionDefaults(t *testing.T, options *dex.StepOptions, durability
 	t.Helper()
 	require.Equal(t, durability, options.ExecuteDurability)
 	require.Equal(t, 30*time.Second, options.ExecuteMethodTimeout)
-	require.Equal(t, int32(5), options.ExecuteRetry.MaximumAttempts)
-	require.Equal(t, 2*time.Minute, options.ExecuteRetry.TotalDuration)
+	if durability == dex.StepDurabilitySync {
+		require.Equal(t, int32(5), options.ExecuteRetry.MaximumAttempts)
+		require.Equal(t, 2*time.Minute, options.ExecuteRetry.TotalDuration)
+	} else {
+		require.Equal(t, &dex.RetryPolicy{InitialInterval: time.Second, BackoffCoefficient: 2, MaximumInterval: 5 * time.Minute, MaximumAttempts: 0, TotalDuration: time.Hour}, options.ExecuteRetry)
+	}
 }

@@ -266,8 +266,7 @@ that sum under the Step's Execute timeout.
 
 ## Retries, uncertainty, and idempotency
 
-Both operations return Retry, which Dex retries with the Step's policy of five attempts within two
-minutes, for connection refusal and connect timeouts, a connection lost before `COMMIT` was sent,
+Both operations return Retry, which Dex retries with the Step's one-hour default retry budget, for connection refusal and connect timeouts, a connection lost before `COMMIT` was sent,
 deadlocks (1205), lock timeouts (1222), snapshot update conflicts (3960, 3961), resource and
 availability errors (701, 1101, 1105, 6005, 8628, 8645, 8651, 9002, 10922), the Azure SQL transient
 errors Microsoft lists (615, 926, 4221, 10928, 10929, 10936, 40197, 40501, 40613, 49918, 49919,

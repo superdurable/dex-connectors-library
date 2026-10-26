@@ -29,8 +29,8 @@ IMAP's `\Seen`, `\Flagged`, and `\Answered`.
 
 Only the happy-path branch of each operation is required; every other branch
 is optional, and an unwired optional branch fails the Flow. Reads, moves, and
-flag changes use a 30-second Execute timeout and six attempts within five
-minutes. The two sends use sync durability, a 90-second Execute timeout with a
+flag changes use a 30-second Execute timeout and unlimited attempts within one
+hour. The two sends use sync durability, a 90-second Execute timeout with a
 matching heartbeat timeout, and eight attempts within ten minutes; see
 [Duplicate safety](#duplicate-safety).
 

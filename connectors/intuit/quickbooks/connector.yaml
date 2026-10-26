@@ -5,7 +5,7 @@ metadata:
   displayName: QuickBooks Online
   description: "Find or create QuickBooks Online customers, raise invoices with exact decimal amounts, list and read them page by page, email them, and record payments against them, with every write sent under a QuickBooks requestid derived from the Step."
   company: Intuit
-  version: v0.22.0
+  version: v0.22.1
 spec:
   provider: quickbooks
   codegen:
@@ -106,10 +106,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "QuickBooks conclusively rejected the query, such as a revoked connection or a company the app can no longer reach.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: QuickBooks returned an invalid or oversized customer list., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &quickbooksReadExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
     - name: createCustomer
       goName: CreateCustomer
       inputType: CreateCustomerInput
@@ -124,10 +123,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "QuickBooks conclusively rejected the customer, such as an invalid field or a revoked connection; nothing was created.", optional: true}
         - {id: uncertain, goName: Uncertain, description: "QuickBooks accepted the request but returned an unusable customer; look it up with findCustomer before creating again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &quickbooksKeyedWriteExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
     - name: createInvoice
       goName: CreateInvoice
       inputType: CreateInvoiceInput
@@ -141,7 +139,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "QuickBooks conclusively rejected the invoice, such as an unknown or inactive customer or item, a duplicate document number, a closed period, or a revoked connection; nothing was created.", optional: true}
         - {id: uncertain, goName: Uncertain, description: "QuickBooks accepted the request but returned an unusable invoice; look it up by document number before creating again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *quickbooksKeyedWriteExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: getInvoice
       goName: GetInvoice
       inputType: GetInvoiceInput
@@ -156,7 +156,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "QuickBooks conclusively rejected the read, such as a revoked connection.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: QuickBooks returned an invalid or oversized invoice., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *quickbooksReadExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: listInvoices
       goName: ListInvoices
       inputType: ListInvoicesInput
@@ -170,7 +172,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "QuickBooks conclusively rejected the query, such as a revoked connection.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: QuickBooks returned an invalid or oversized page of invoices., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *quickbooksReadExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: sendInvoice
       goName: SendInvoice
       inputType: SendInvoiceInput
@@ -184,7 +188,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "QuickBooks conclusively rejected the delivery, such as an invoice without an address, a deleted invoice, or a revoked connection; nothing was sent.", optional: true}
         - {id: uncertain, goName: Uncertain, description: "QuickBooks accepted the request but returned an unusable invoice; read it back with getInvoice and check its EmailStatus before sending again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *quickbooksKeyedWriteExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: recordPayment
       goName: RecordPayment
       inputType: RecordPaymentInput
@@ -198,4 +204,6 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "QuickBooks conclusively rejected the payment, such as an invoice of another customer, an amount above the balance, an invalid deposit account, a closed period, or a revoked connection; nothing was recorded.", optional: true}
         - {id: uncertain, goName: Uncertain, description: "QuickBooks accepted the request but returned an unusable payment; read the invoice back before paying again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *quickbooksKeyedWriteExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async

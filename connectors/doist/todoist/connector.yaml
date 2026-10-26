@@ -5,7 +5,7 @@ metadata:
   displayName: Todoist
   description: List, read, create, update, and delete Todoist tasks through typed Dex Steps.
   company: Doist
-  version: v0.2.0
+  version: v0.2.1
 spec:
   provider: todoist
   codegen:
@@ -59,10 +59,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Todoist conclusively rejected the read., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Todoist returned malformed or oversized task data., optional: true}
         - {id: defect, goName: Defect, description: "Local input is invalid, or the connection credentials are invalid, missing, or need reauthorization.", optional: true}
-      execution: &httpExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
     - name: updateTaskContent
       goName: UpdateTask
       inputType: UpdateTaskInput
@@ -76,7 +75,9 @@ spec:
         - {id: notFound, goName: NotFound, description: "Todoist reports that the task does not exist, or the read-back after an unusable answer found no active task.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Todoist conclusively rejected the update, or rejected the read-back that would confirm an unusable answer.", optional: true}
         - {id: defect, goName: Defect, description: "Local input is invalid, or the connection credentials are invalid, missing, or need reauthorization.", optional: true}
-      execution: *httpExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: listTasks
       goName: ListTasks
       inputType: ListTasksInput
@@ -90,7 +91,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Todoist conclusively rejected the list request., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Todoist returned malformed or oversized page data., optional: true}
         - {id: defect, goName: Defect, description: "Local input is invalid, or the connection credentials are invalid, missing, or need reauthorization.", optional: true}
-      execution: *httpExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: createTask
       goName: CreateTask
       inputType: CreateTaskInput
@@ -104,7 +107,10 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Todoist conclusively rejected creation., optional: true}
         - {id: uncertain, goName: Uncertain, description: "A creation that may have been sent may have applied, but Todoist returned no usable task and the request ID has no documented replay guarantee.", optional: true}
         - {id: defect, goName: Defect, description: "Local input is invalid, or the connection credentials are invalid, missing, or need reauthorization.", optional: true}
-      execution: *httpExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Todoist does not state how long it deduplicates X-Request-ID, so bound createTask retries while that provider guarantee is unknown."}}
     - name: deleteTask
       goName: DeleteTask
       inputType: DeleteTaskInput
@@ -118,4 +124,6 @@ spec:
         - {id: alreadyAbsent, goName: AlreadyAbsent, description: "Todoist returned 404; the task is missing or inaccessible, possibly after an earlier successful attempt.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: Todoist conclusively rejected deletion., optional: true}
         - {id: defect, goName: Defect, description: "Local input is invalid, or the connection credentials are invalid, missing, or need reauthorization.", optional: true}
-      execution: *httpExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async

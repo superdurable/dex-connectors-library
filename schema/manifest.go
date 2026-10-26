@@ -282,15 +282,26 @@ type Execution struct {
 	ExecuteMethodTimeout string `yaml:"executeMethodTimeout" json:"executeMethodTimeout"`
 	HeartbeatTimeout     string `yaml:"heartbeatTimeout,omitempty" json:"heartbeatTimeout,omitempty"`
 	Durability           string `yaml:"durability" json:"durability"`
-	Retry                Retry  `yaml:"retry" json:"retry"`
+	Retry                *Retry `yaml:"retry,omitempty" json:"retry,omitempty"`
 }
 
+// Retry declares a Connector Step Execute retry policy.
 type Retry struct {
-	InitialInterval    string  `yaml:"initialInterval" json:"initialInterval"`
-	BackoffCoefficient float64 `yaml:"backoffCoefficient" json:"backoffCoefficient"`
-	MaximumInterval    string  `yaml:"maximumInterval" json:"maximumInterval"`
-	MaximumAttempts    int32   `yaml:"maximumAttempts" json:"maximumAttempts"`
-	TotalDuration      string  `yaml:"totalDuration" json:"totalDuration"`
+	InitialInterval    string       `yaml:"initialInterval" json:"initialInterval"`
+	BackoffCoefficient float64      `yaml:"backoffCoefficient" json:"backoffCoefficient"`
+	MaximumInterval    string       `yaml:"maximumInterval" json:"maximumInterval"`
+	MaximumAttempts    int32        `yaml:"maximumAttempts" json:"maximumAttempts"`
+	TotalDuration      string       `yaml:"totalDuration" json:"totalDuration"`
+	// Reason is required when attempts are bounded or total duration is under one hour.
+	Reason             *RetryReason `yaml:"reason,omitempty" json:"reason,omitempty"`
+}
+
+// RetryReason explains a policy that limits attempts or runs for less than one hour.
+type RetryReason struct {
+	// Kind is billedOperation, personWaiting, or duplicateWriteRisk.
+	Kind        string `yaml:"kind" json:"kind"`
+	// Explanation is a sentence specific to the operation's shorter policy.
+	Explanation string `yaml:"explanation" json:"explanation"`
 }
 
 var (
@@ -661,17 +672,41 @@ func (manifest Manifest) Validate() error {
 		if operation.Execution.Durability != "sync" && operation.Execution.Durability != "async" {
 			problems = append(problems, operation.Name+": execution durability must be sync or async")
 		}
-		if _, err := time.ParseDuration(operation.Execution.Retry.InitialInterval); err != nil {
-			problems = append(problems, operation.Name+": retry initialInterval must be a duration")
-		}
-		if _, err := time.ParseDuration(operation.Execution.Retry.MaximumInterval); err != nil {
-			problems = append(problems, operation.Name+": retry maximumInterval must be a duration")
-		}
-		if _, err := time.ParseDuration(operation.Execution.Retry.TotalDuration); err != nil {
-			problems = append(problems, operation.Name+": retry totalDuration must be a duration")
-		}
-		if operation.Execution.Retry.MaximumAttempts < 1 || operation.Execution.Retry.BackoffCoefficient < 1 {
-			problems = append(problems, operation.Name+": retry attempts and backoff must be positive")
+		if retry := operation.Execution.Retry; retry != nil {
+			if initialInterval, err := time.ParseDuration(retry.InitialInterval); err != nil || initialInterval <= 0 {
+				problems = append(problems, operation.Name+": retry initialInterval must be a positive duration")
+			}
+			if maximumInterval, err := time.ParseDuration(retry.MaximumInterval); err != nil || maximumInterval <= 0 {
+				problems = append(problems, operation.Name+": retry maximumInterval must be a positive duration")
+			}
+			totalDuration, durationError := time.ParseDuration(retry.TotalDuration)
+			if durationError != nil || totalDuration <= 0 {
+				problems = append(problems, operation.Name+": retry totalDuration must be a positive duration")
+			}
+			if retry.MaximumAttempts < 0 {
+				problems = append(problems, operation.Name+": retry maximumAttempts must be non-negative (zero means unlimited)")
+			}
+			if retry.BackoffCoefficient < 1 {
+				problems = append(problems, operation.Name+": retry backoffCoefficient must be at least 1")
+			}
+			isShorter := retry.MaximumAttempts > 0 || durationError == nil && totalDuration > 0 && totalDuration < time.Hour
+			if isShorter && retry.Reason == nil {
+				problems = append(problems, operation.Name+": shorter retry policy requires reason.kind: billedOperation, personWaiting, or duplicateWriteRisk")
+			}
+			if retry.Reason != nil {
+				if !isShorter {
+					problems = append(problems, operation.Name+": retry reason requires a shorter policy")
+				}
+				switch retry.Reason.Kind {
+				case "billedOperation", "personWaiting", "duplicateWriteRisk":
+				default:
+					problems = append(problems, operation.Name+": retry reason.kind must be billedOperation, personWaiting, or duplicateWriteRisk")
+				}
+				explanation := strings.TrimSpace(retry.Reason.Explanation)
+				if len(strings.Fields(explanation)) < 2 || !strings.ContainsAny(explanation[len(explanation)-1:], ".!?") {
+					problems = append(problems, operation.Name+": retry reason.explanation must be a non-empty sentence")
+				}
+			}
 		}
 		problems = append(problems, validateOperationMocks(operation)...)
 	}

@@ -22,7 +22,7 @@ deal forward. It exposes these operation-specific Dex Step factories:
 Only the happy-path branch of each operation is required; every other branch
 is optional, and an unwired optional branch fails the Flow. Every operation is
 safe to repeat, so every Step uses async durability, a 30-second Execute
-timeout, and six attempts within five minutes, and keeps all of its requests,
+timeout, and unlimited attempts within one hour, and keeps all of its requests,
 including a token refresh, inside a 25-second deadline: each Zoho CRM request
 times out after 10 seconds and each token request after 8, unless
 `WithHTTPClient` supplies a client with its own `Timeout`. There are no
@@ -353,7 +353,7 @@ contains the access token is dropped.
 Zoho CRM meters API credits per rolling 24 hours by edition and limits
 concurrent calls per organization and app; it answers 429 for either. Zoho
 documents no `Retry-After` for them, so a 429 is retried under the Step policy,
-and a delay that does not fit the five-minute retry window fails the Step. A
+and a delay that does not fit the remaining one-hour retry budget fails the Step. A
 COQL page of up to 200 records and every other call cost one credit; an upsert
 or update of one record costs one. The Receipt carries the Call ID, the record
 ID, and `X-API-CREDITS-REMAINING` as `remainingCredits` when Zoho sends it,

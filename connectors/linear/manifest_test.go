@@ -98,7 +98,7 @@ func readLinearManifest(t *testing.T) linearManifest {
 func TestConnectionFormFieldsCarryGuidance(t *testing.T) {
 	manifest := readLinearManifest(t)
 	require.Equal(t, "Linear", manifest.Metadata.Company)
-	require.Equal(t, "v0.22.0", manifest.Metadata.Version)
+	require.Equal(t, "v0.22.1", manifest.Metadata.Version)
 	require.True(t, manifest.Spec.Auth.Refreshable, "OAuth access tokens expire after 24 hours")
 	require.Equal(t, linear.PersonalAPIKeyAuthMethodID, manifest.Spec.Auth.DefaultMethod)
 	visibleFields := map[string][]string{}

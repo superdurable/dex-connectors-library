@@ -47,6 +47,11 @@ alwaysApply: true
   upsert, or delete makes repetition safe, and read-back cannot confirm it. A
   transport failure before the request left the process, 429, and 503 return
   Retry; exhausted retries never become uncertainty.
+- Omitted manifest `execution.retry` uses one-second initial delay, coefficient
+  2, five-minute maximum interval, unlimited attempts, and one-hour total
+  duration. A shorter policy requires a sentence explaining `billedOperation`,
+  `personWaiting`, or `duplicateWriteRisk`; applications override per Step with
+  `StepOptionsOverride.ExecuteRetry`.
 - Every new connector or user-visible capability includes a checked-in runnable
   example; a behavioral fix extends the smallest example that proves the fix.
   Use that example as the primary end-to-end path on a real Dex stack. Exercise

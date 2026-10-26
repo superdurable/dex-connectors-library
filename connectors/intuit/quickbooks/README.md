@@ -21,7 +21,7 @@ factories:
 Only the happy-path branch of each operation is required; every other branch
 is optional, and an unwired optional branch fails the Flow. Every operation
 uses async Execute durability, a 30-second Execute timeout, and a
-five-minute retry window, which fits QuickBooks's documented one-minute wait
+one-hour default retry budget, which fits QuickBooks's documented one-minute wait
 after a throttled request.
 
 This release has no Triggers and no Studio pickers; see

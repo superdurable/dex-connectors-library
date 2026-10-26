@@ -5,7 +5,7 @@ metadata:
   displayName: Spotify
   description: List bounded pages of tracks from playlists owned by or shared with the authenticated Spotify user.
   company: Spotify
-  version: v0.22.0
+  version: v0.22.1
 spec:
   provider: spotify
   codegen:
@@ -96,4 +96,3 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}

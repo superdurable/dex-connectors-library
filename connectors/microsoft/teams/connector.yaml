@@ -5,7 +5,7 @@ metadata:
   displayName: Microsoft Teams
   description: Post Microsoft Teams channel messages, thread replies, and chat messages as the signed-in user, each at most once per Step execution, and read a channel message's replies so a Flow can wait for a person's answer.
   company: Microsoft
-  version: v0.22.0
+  version: v0.22.1
 spec:
   provider: microsoft
   codegen:
@@ -153,7 +153,6 @@ spec:
         executeMethodTimeout: 30s
         durability: async
         # Teams allows about one read per second per channel, so the window fits several Retry-After waits.
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 3m}
     - name: postChannelMessage
       goName: PostChannelMessage
       inputType: PostChannelMessageInput
@@ -168,10 +167,10 @@ spec:
         - {id: uncertain, goName: Uncertain, description: "An attempt sent the message and neither its response nor a read-back confirms it; it is never sent again automatically.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       # Sync: Graph has no idempotency key and an async backup attempt cannot see the dispatch checkpoint.
-      execution: &singleDispatchExecution
+      execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "If Dex repeats post channel message after an unconfirmed dispatch, the provider cannot durably deduplicate the write; cap retries at 5 attempts within 2m."}}
     - name: postThreadReply
       goName: PostThreadReply
       inputType: PostThreadReplyInput
@@ -181,7 +180,10 @@ spec:
       idempotency: required
       authorization: required
       branches: *channelPostBranches
-      execution: *singleDispatchExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "If Dex repeats post thread reply after an unconfirmed dispatch, the provider cannot durably deduplicate the write; cap retries at 5 attempts within 2m."}}
     - name: postChatMessage
       goName: PostChatMessage
       inputType: PostChatMessageInput
@@ -195,4 +197,7 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively rejected the message, such as an unknown chat, an account that left it, or invalid HTML; nothing was sent.", optional: true}
         - {id: uncertain, goName: Uncertain, description: "An attempt sent the message and its response does not confirm it; the connection cannot read chats, so it is never sent again automatically.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *singleDispatchExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "If Dex repeats post chat message after an unconfirmed dispatch, the provider cannot durably deduplicate the write; cap retries at 5 attempts within 2m."}}

@@ -20,7 +20,7 @@ Only the happy-path branch of each operation is required; every other branch
 is optional, and an unwired optional branch fails the Flow. Every operation
 uses a 30-second Execute timeout. `replyToConversation` uses sync durability
 and a five-attempt, five-minute retry window; the others use async durability
-and a six-attempt, five-minute window, which fits Intercom's 10-second
+and the one-hour default retry budget, which fits Intercom's 10-second
 rate-limit windows.
 
 The `conversationEvent` Trigger receives Intercom conversation webhook

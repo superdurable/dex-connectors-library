@@ -5,7 +5,7 @@ metadata:
   displayName: Google Drive
   description: Find Google Drive files by name, read metadata and bounded text, and upload files without creating duplicates on retry.
   company: Google
-  version: v0.22.0
+  version: v0.22.1
 spec:
   provider: google
   codegen:
@@ -182,10 +182,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Google conclusively rejected the search, such as a revoked grant or an expired page token.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized search response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &driveExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
     - name: getFile
       goName: GetFile
       inputType: GetFileInput
@@ -199,7 +198,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Google conclusively rejected the metadata read., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized metadata response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *driveExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: readFileText
       goName: ReadFileText
       inputType: ReadFileTextInput
@@ -215,7 +216,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Google conclusively rejected the metadata read or content download., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized metadata response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *driveExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: uploadFile
       goName: UploadFile
       inputType: UploadFileInput
@@ -229,4 +232,7 @@ spec:
         - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized duplicate-lookup response before any upload was sent., optional: true}
         - {id: uncertain, goName: Uncertain, description: The dispatched upload outcome cannot be confirmed., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *driveExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Drive does not enforce the stored application idempotency property, so a stale duplicate lookup can permit another upload POST."}}

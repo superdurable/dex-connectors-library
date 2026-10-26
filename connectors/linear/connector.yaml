@@ -5,7 +5,7 @@ metadata:
   displayName: Linear
   description: "Search and read Linear issues, create issues and comments under client-supplied IDs that every repeated attempt reuses and reads back, move issues through their team's workflow states, assign and label them, find users by email, and receive signed Issue webhooks."
   company: Linear
-  version: v0.22.0
+  version: v0.22.1
 spec:
   provider: linear
   codegen:
@@ -157,10 +157,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Linear conclusively rejected the search, such as an invalid cursor, missing team access, or a rejected credential.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Linear returned an invalid or oversized page of issues., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &linearExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
     - name: getIssue
       goName: GetIssue
       inputType: GetIssueInput
@@ -175,7 +174,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Linear conclusively rejected the issue read., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Linear returned an invalid or oversized issue., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *linearExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: createIssue
       goName: CreateIssue
       inputType: CreateIssueInput
@@ -189,7 +190,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Linear conclusively rejected the issue, such as an unknown team, a workflow state or label of another team, or missing permission; unless Linear rejected the credential or permission, a read-back by the Step's UUID found no issue.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       # Async: the client-supplied UUID makes a re-dispatched or retried create converge on one issue.
-      execution: *linearExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: updateIssue
       goName: UpdateIssue
       inputType: UpdateIssueInput
@@ -204,7 +207,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Linear conclusively rejected the change, such as a workflow state or label of another team, an unknown assignee, or missing permission.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "Linear returned an invalid or oversized issue, so the change may have been applied; repeating the Step is safe.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *linearExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: addComment
       goName: AddComment
       inputType: AddCommentInput
@@ -218,7 +223,9 @@ spec:
         - {id: notFound, goName: NotFound, description: "The issue does not exist, was deleted, or the connection cannot see its team; nothing was added.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Linear conclusively rejected the comment, such as missing permission; unless Linear rejected the credential or permission, a read-back by the Step's UUID found no comment.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *linearExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: findUserByEmail
       goName: FindUserByEmail
       inputType: FindUserByEmailInput
@@ -233,7 +240,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Linear conclusively rejected the user lookup., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Linear returned an invalid or oversized user list., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *linearExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: listWorkflowStates
       goName: ListWorkflowStates
       inputType: ListWorkflowStatesInput
@@ -248,4 +257,6 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Linear conclusively rejected the read., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Linear returned an invalid or oversized list of workflow states., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *linearExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async

@@ -5,7 +5,7 @@ metadata:
   displayName: Hiver
   description: "List Hiver shared inboxes and their conversations, read one conversation, set its status, assignee, and tags, add internal notes, and create shared reply drafts, keeping Hiver's own open, pending, and closed statuses."
   company: Hiver
-  version: v0.21.1
+  version: v0.21.2
 spec:
   provider: hiver
   codegen:
@@ -55,10 +55,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Hiver conclusively rejected the request, such as an invalid or disabled API key or an account without API access.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "Hiver returned a malformed or oversized page.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &hiverReadExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
     - name: listConversations
       goName: ListConversations
       inputType: ListConversationsInput
@@ -72,7 +71,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Hiver conclusively rejected the request, such as an invalid API key or an expired page token.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "Hiver returned a malformed or oversized page.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *hiverReadExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: getConversation
       goName: GetConversation
       inputType: GetConversationInput
@@ -86,7 +87,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Hiver conclusively rejected the read, such as an invalid API key.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "Hiver returned a malformed or oversized conversation.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *hiverReadExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: updateConversation
       goName: UpdateConversation
       inputType: UpdateConversationInput
@@ -103,7 +106,6 @@ spec:
       execution:
         executeMethodTimeout: 60s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
     - name: addNote
       goName: AddNote
       inputType: AddNoteInput
@@ -117,10 +119,10 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Hiver conclusively rejected the note; nothing was added.", optional: true}
         - {id: uncertain, goName: Uncertain, description: "The note may exist: Hiver's answer was lost, a server error, or unreadable, or an earlier attempt of this Step may have sent it. The Step does not send it again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &hiverSingleDispatchExecution
+      execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "If Dex repeats add note after an unconfirmed dispatch, the provider cannot durably deduplicate the write; cap retries at 5 attempts within 5m."}}
     - name: createSharedDraft
       goName: CreateSharedDraft
       inputType: CreateSharedDraftInput
@@ -134,4 +136,7 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Hiver conclusively rejected the draft; no draft was created.", optional: true}
         - {id: uncertain, goName: Uncertain, description: "The draft may exist: Hiver's answer was lost, a server error, or unreadable, or an earlier attempt of this Step may have sent it. The Step does not send it again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *hiverSingleDispatchExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "If Dex repeats create shared draft after an unconfirmed dispatch, the provider cannot durably deduplicate the write; cap retries at 5 attempts within 5m."}}

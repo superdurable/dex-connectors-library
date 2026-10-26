@@ -5,7 +5,7 @@ metadata:
   displayName: Discord
   description: Read Discord channels and bounded pages of channel messages, send nonce-deduplicated bot messages, and add reactions.
   company: Discord
-  version: v0.1.0
+  version: v0.1.1
 spec:
   provider: discord
   codegen:
@@ -57,10 +57,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Discord conclusively rejected the read, such as a channel the bot cannot view or a rejected token.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Discord returned an invalid or oversized channel response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or credentials are invalid.", optional: true}
-      execution: &discordAsyncExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
     - name: listChannelMessages
       goName: ListChannelMessages
       inputType: ListChannelMessagesInput
@@ -75,7 +74,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Discord conclusively rejected the listing, such as a missing Read Message History permission or a rejected token.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Discord returned an invalid or oversized message page., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or credentials are invalid.", optional: true}
-      execution: *discordAsyncExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: createMessage
       goName: CreateMessage
       inputType: CreateMessageInput
@@ -94,7 +95,7 @@ spec:
         executeMethodTimeout: 30s
         durability: async
         # Discord enforces a nonce for only a few minutes, so every retry must fit that window.
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Discord enforces the message nonce for only a few minutes, so stop createMessage retries within two minutes before that deduplication expires."}}
     - name: addReaction
       goName: AddReaction
       inputType: AddReactionInput
@@ -108,4 +109,6 @@ spec:
         - {id: notFound, goName: NotFound, description: "Discord knows no such channel, message, or custom emoji.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Discord conclusively rejected the reaction, such as a missing Add Reactions permission, a reaction limit, or a rejected token.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or credentials are invalid.", optional: true}
-      execution: *discordAsyncExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async

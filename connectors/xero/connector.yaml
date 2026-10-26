@@ -5,7 +5,7 @@ metadata:
   displayName: Xero
   description: "Find Xero contacts by email, list and read invoices, raise invoices with exact decimal amounts in any enabled currency, and record payments against them, with every write sent under a Xero Idempotency-Key derived from the Step."
   company: Xero
-  version: v0.22.0
+  version: v0.22.1
 spec:
   provider: xero
   codegen:
@@ -132,10 +132,9 @@ spec:
         - {id: dailyLimitReached, goName: DailyLimitReached, description: "Xero's daily API limit for the organisation is exhausted; the Receipt carries retryAfterSeconds until it resets.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Xero returned an invalid or oversized page of contacts., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &xeroReadExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
     - name: findContactByEmail
       goName: FindContactByEmail
       inputType: FindContactByEmailInput
@@ -152,7 +151,9 @@ spec:
         - {id: dailyLimitReached, goName: DailyLimitReached, description: "Xero's daily API limit for the organisation is exhausted; the Receipt carries retryAfterSeconds until it resets.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Xero returned an invalid or oversized contact list., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *xeroReadExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: getInvoice
       goName: GetInvoice
       inputType: GetInvoiceInput
@@ -168,7 +169,9 @@ spec:
         - {id: dailyLimitReached, goName: DailyLimitReached, description: "Xero's daily API limit for the organisation is exhausted; the Receipt carries retryAfterSeconds until it resets.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Xero returned an invalid or oversized invoice., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *xeroReadExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: listInvoices
       goName: ListInvoices
       inputType: ListInvoicesInput
@@ -183,7 +186,9 @@ spec:
         - {id: dailyLimitReached, goName: DailyLimitReached, description: "Xero's daily API limit for the organisation is exhausted; the Receipt carries retryAfterSeconds until it resets.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Xero returned an invalid or oversized page of invoices., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *xeroReadExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: createInvoice
       goName: CreateInvoice
       inputType: CreateInvoiceInput
@@ -199,10 +204,10 @@ spec:
         - {id: uncertain, goName: Uncertain, description: "Xero may have created the invoice but answered with an internal error, which it caches under the key, or with an unusable invoice; read it back by reference before creating again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       # Async: every attempt carries the Step's Idempotency-Key, and four minutes keeps every retry inside Xero's six-minute key lifetime.
-      execution: &xeroKeyedWriteExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 4m}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 4m, reason: {kind: duplicateWriteRisk, explanation: "Xero retains the invoice Idempotency-Key for six minutes, so stop createInvoice retries within four minutes before replay can make another invoice."}}
     - name: recordPayment
       goName: RecordPayment
       inputType: RecordPaymentInput
@@ -217,4 +222,7 @@ spec:
         - {id: dailyLimitReached, goName: DailyLimitReached, description: "Xero's daily API limit for the organisation is exhausted before the request ran, so nothing was recorded; the Receipt carries retryAfterSeconds.", optional: true}
         - {id: uncertain, goName: Uncertain, description: "Xero may have recorded the payment but answered with an internal error, which it caches under the key, or with an unusable payment; read the invoice back before paying again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *xeroKeyedWriteExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 4m, reason: {kind: duplicateWriteRisk, explanation: "Xero retains the payment Idempotency-Key for six minutes, so stop recordPayment retries within four minutes before replay can record another payment."}}

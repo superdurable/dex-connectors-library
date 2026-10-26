@@ -5,7 +5,7 @@ metadata:
   displayName: Freshdesk
   description: Search, read, create, and update Freshdesk tickets and add private notes or public replies, keeping Freshdesk's own integer statuses and priorities.
   company: Freshworks
-  version: v0.21.1
+  version: v0.21.2
 spec:
   provider: freshdesk
   codegen:
@@ -54,10 +54,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Freshdesk conclusively rejected the search, such as invalid credentials, a missing permission, or an unknown status.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Freshdesk returned an invalid or oversized contact list or search page., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &freshdeskReadExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
     - name: getTicket
       goName: GetTicket
       inputType: GetTicketInput
@@ -71,7 +70,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Freshdesk conclusively rejected the ticket read., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Freshdesk returned an invalid or oversized ticket or conversation page., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *freshdeskReadExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: createTicket
       goName: CreateTicket
       inputType: CreateTicketInput
@@ -84,10 +85,10 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Freshdesk conclusively rejected the ticket, such as an unknown status, group, or agent; no ticket was created.", optional: true}
         - {id: uncertain, goName: Uncertain, description: "The request was sent but its outcome cannot be confirmed, so the ticket may exist; the connector never resends it.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &freshdeskSingleDispatchExecution
+      execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "If Dex repeats create ticket after an unconfirmed dispatch, the provider cannot durably deduplicate the write; cap retries at 5 attempts within 5m."}}
     - name: updateTicket
       goName: UpdateTicket
       inputType: UpdateTicketInput
@@ -101,7 +102,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Freshdesk conclusively rejected the change, such as an unknown status, a missing required field, or a spam or deleted ticket.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "Freshdesk returned an invalid or oversized ticket, so the change may have been applied.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *freshdeskReadExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: addNote
       goName: AddNote
       inputType: AddNoteInput
@@ -115,4 +118,7 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Freshdesk conclusively rejected the note or reply; nothing was added.", optional: true}
         - {id: uncertain, goName: Uncertain, description: "The request was sent but its outcome cannot be confirmed, so the note or reply may exist; the connector never resends it.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *freshdeskSingleDispatchExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "If Dex repeats add note after an unconfirmed dispatch, the provider cannot durably deduplicate the write; cap retries at 5 attempts within 5m."}}

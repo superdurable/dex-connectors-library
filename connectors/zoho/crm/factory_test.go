@@ -98,7 +98,7 @@ func TestDefinitionsDeclareOptionalBranchesAndAsyncDurability(t *testing.T) {
 	} {
 		require.Equal(t, dex.StepDurabilityAsync, defaults.ExecuteDurability, "every operation is safe to dispatch twice")
 		require.Equal(t, 30*time.Second, defaults.ExecuteMethodTimeout, "the 25-second operation deadline fits inside it")
-		require.Equal(t, 5*time.Minute, defaults.ExecuteRetry.TotalDuration)
+		require.Equal(t, &dex.RetryPolicy{InitialInterval: time.Second, BackoffCoefficient: 2, MaximumInterval: 5 * time.Minute, MaximumAttempts: 0, TotalDuration: time.Hour}, defaults.ExecuteRetry)
 	}
 }
 

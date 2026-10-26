@@ -70,7 +70,7 @@ func TestGenerateContentFactoryAppliesLongGenerationDefaults(t *testing.T) {
 	require.Equal(t, dex.StepDurabilitySync, options.ExecuteDurability)
 	require.Equal(t, &dex.RetryPolicy{
 		InitialInterval: 2 * time.Second, BackoffCoefficient: 2, MaximumInterval: time.Minute,
-		MaximumAttempts: 5, TotalDuration: 10 * time.Minute,
+		MaximumAttempts: 3, TotalDuration: 10 * time.Minute,
 	}, options.ExecuteRetry)
 }
 

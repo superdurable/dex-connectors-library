@@ -115,6 +115,6 @@ func TestDefinitionsAreAsyncWithOnlyTheHappyPathRequired(t *testing.T) {
 		require.Equal(t, 1, required, operation)
 		require.Equal(t, dex.StepDurabilityAsync, definition.defaults.ExecuteDurability, operation)
 		require.Equal(t, 30*time.Second, definition.defaults.ExecuteMethodTimeout, operation)
-		require.Equal(t, 5*time.Minute, definition.defaults.ExecuteRetry.TotalDuration, operation)
+		require.Equal(t, &dex.RetryPolicy{InitialInterval: time.Second, BackoffCoefficient: 2, MaximumInterval: 5 * time.Minute, MaximumAttempts: 0, TotalDuration: time.Hour}, definition.defaults.ExecuteRetry, operation)
 	}
 }

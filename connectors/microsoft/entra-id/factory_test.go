@@ -111,9 +111,9 @@ func TestDefinitionsDeclareOptionalBranchesAndAsyncDurability(t *testing.T) {
 		require.Equal(t, 30*time.Second, defaults.ExecuteMethodTimeout, name)
 	}
 	for name, defaults := range propagationDefaults {
-		require.Equal(t, int32(8), defaults.ExecuteRetry.MaximumAttempts, name)
-		require.Greater(t, retryScheduleBeforeLastAttempt(defaults.ExecuteRetry), time.Minute,
-			"%s: the last attempt starts after the one-minute propagation window", name)
+		require.Equal(t, &dex.RetryPolicy{InitialInterval: time.Second, BackoffCoefficient: 2, MaximumInterval: 5 * time.Minute, MaximumAttempts: 0, TotalDuration: time.Hour}, defaults.ExecuteRetry, name)
+		require.True(t, hasRetryAfter(defaults.ExecuteRetry, time.Minute),
+			"%s: a retry remains after the one-minute propagation window", name)
 	}
 }
 
@@ -133,14 +133,16 @@ func TestConnectionAndCredentialsNeverRevealSecrets(t *testing.T) {
 	require.Error(t, err)
 }
 
-// retryScheduleBeforeLastAttempt sums the backoff intervals before the final attempt.
-func retryScheduleBeforeLastAttempt(policy *dex.RetryPolicy) time.Duration {
-	total, interval := time.Duration(0), policy.InitialInterval
-	for attempt := int32(1); attempt < policy.MaximumAttempts; attempt++ {
-		total += interval
+func hasRetryAfter(policy *dex.RetryPolicy, elapsed time.Duration) bool {
+	nextAttempt, interval := time.Duration(0), policy.InitialInterval
+	for attempt := int32(1); policy.MaximumAttempts == 0 || attempt < policy.MaximumAttempts; attempt++ {
+		nextAttempt += interval
+		if nextAttempt > elapsed {
+			return nextAttempt < policy.TotalDuration
+		}
 		interval = min(time.Duration(float64(interval)*policy.BackoffCoefficient), policy.MaximumInterval)
 	}
-	return total
+	return false
 }
 
 func branchOptionality(definitions []sdkgo.BranchDefinition) map[sdkgo.BranchID]bool {

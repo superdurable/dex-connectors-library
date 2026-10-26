@@ -5,7 +5,9 @@ package codegen_test
 
 import (
 	"bytes"
+	"encoding/json"
 	"flag"
+	"fmt"
 	"go/parser"
 	"go/token"
 	"os"
@@ -18,6 +20,40 @@ import (
 	"github.com/superdurable/dex-connectors-library/internal/codegen"
 	"github.com/superdurable/dex-connectors-library/schema"
 )
+
+func TestOmittedRetryEmitsLiteralMatchingSDKDefault(t *testing.T) {
+	file, err := os.Open(apiKeyMethodsManifestPath)
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, file.Close()) })
+	manifest, err := schema.Decode(file)
+	require.NoError(t, err)
+	manifest.Spec.Operations[0].Execution.Retry = nil
+	generated, err := codegen.Generate(manifest)
+	require.NoError(t, err)
+	probe := filepath.Join(t.TempDir(), "retry_policy.go")
+	require.NoError(t, os.WriteFile(probe, []byte(`// Copyright (c) 2026 Super Durable
+// SPDX-License-Identifier: MIT
+package main
+import ("encoding/json"; "os"; "github.com/superdurable/dex-connectors-library/sdkgo")
+func main() { if err := json.NewEncoder(os.Stdout).Encode(sdkgo.DefaultConnectorStepExecuteRetryPolicy()); err != nil { panic(err) } }
+`), 0600))
+	command := exec.Command("go", "run", probe)
+	command.Dir = "../../sdkgo"
+	command.Env = append(os.Environ(), "GOWORK=off")
+	output, err := command.Output()
+	require.NoError(t, err)
+	var policy struct {
+		InitialInterval    int64
+		BackoffCoefficient float64
+		MaximumInterval    int64
+		MaximumAttempts    int32
+		TotalDuration      int64
+	}
+	require.NoError(t, json.Unmarshal(output, &policy))
+	literal := fmt.Sprintf("&dex.RetryPolicy{InitialInterval: time.Duration(%d), BackoffCoefficient: %g, MaximumInterval: time.Duration(%d), MaximumAttempts: %d, TotalDuration: time.Duration(%d)}", policy.InitialInterval, policy.BackoffCoefficient, policy.MaximumInterval, policy.MaximumAttempts, policy.TotalDuration)
+	require.Contains(t, string(generated), literal)
+	require.NotContains(t, string(generated), "sdkgo.DefaultConnectorStepExecuteRetryPolicy()")
+}
 
 var shouldUpdateGoldenFiles = flag.Bool("update-golden", false, "rewrite code generation golden files")
 
@@ -251,7 +287,7 @@ spec:
       branches:
         - {id: read, goName: Read, description: The message was read.}
         - {id: defect, goName: Defect, description: Invalid input., optional: true}
-      execution: {executeMethodTimeout: 30s, durability: sync, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}}
+      execution: {executeMethodTimeout: 30s, durability: sync, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: Explicit test policy bounds duplicate writes.}}}
 `))
 	require.NoError(t, err)
 	generated, err := codegen.Generate(manifest)

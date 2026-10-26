@@ -441,7 +441,7 @@ var GetEnvelopeDefinition = sdkgo.QueryDefinition{
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
-		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 6, TotalDuration: time.Duration(3900000000000)},
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3900000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
 }
@@ -518,7 +518,7 @@ var ListEnvelopeRecipientsDefinition = sdkgo.QueryDefinition{
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
-		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 6, TotalDuration: time.Duration(3900000000000)},
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3900000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
 }
@@ -597,7 +597,7 @@ var VoidEnvelopeDefinition = sdkgo.MutationDefinition{
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
-		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 6, TotalDuration: time.Duration(3900000000000)},
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3900000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
 }
@@ -680,7 +680,7 @@ var DownloadCombinedDocumentDefinition = sdkgo.QueryDefinition{
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(120000000000), HeartbeatTimeout: time.Duration(30000000000),
-		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 6, TotalDuration: time.Duration(3900000000000)},
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3900000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
 }

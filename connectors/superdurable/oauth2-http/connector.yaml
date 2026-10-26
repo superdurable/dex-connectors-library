@@ -5,7 +5,7 @@ metadata:
   displayName: OAuth 2.0 HTTP
   description: "Call any HTTP API that an OAuth 2.0 authorization server protects, such as a Keycloak realm or an internal service: the connection names the server's endpoints and scopes, the host authorizes it with PKCE, and the connector refreshes the access token before it expires."
   company: Super Durable
-  version: v0.1.0
+  version: v0.1.1
 spec:
   provider: oauth2-http
   codegen:
@@ -114,7 +114,7 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "sendRequest permits POST without a provider deduplication header, so bound retries that can repeat a write after a transient response."}}
       mocks:
         - name: userProfile
           branch: completed

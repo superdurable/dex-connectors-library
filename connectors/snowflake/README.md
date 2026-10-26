@@ -187,7 +187,7 @@ SQLSTATE. Receipts carry the statement handle as `ProviderObjectID` and the code
 ## Retries, duplicates, and durability
 
 Every operation keeps the repository's async Execute durability with a 30-second Execute timeout
-and five attempts within two minutes. Each HTTP request is bounded by 20 seconds. No request waits
+and unlimited attempts within one hour. Each HTTP request is bounded by 20 seconds. No request waits
 for a statement: `async=true` returns as soon as Snowflake queues it.
 
 Dex can dispatch one Step execution more than once: after a Worker is lost, and when an async Step
