@@ -28,6 +28,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[jira.CreateIssueOutput](`{"issueId":"10004","issueKey":"OPS-4","projectKey":"OPS","summary":"Loading dock light out"}`)
 			return err
 		}},
+		{name: "createIssue/providerRejectedFailure/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[jira.CreateIssueOutput](`{"projectKey":"OPS","summary":"Loading dock light out","rejectedFieldIds":["issuetype"]}`)
+			return err
+		}},
 		{name: "transitionIssue/transitionedDefaultAnswer/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[jira.TransitionIssueOutput](`{"issueId":"10004","issueKey":"OPS-4","previousStatus":{"id":"1","name":"To Do","categoryKey":"new"},"status":{"id":"3","name":"In Progress","categoryKey":"indeterminate"},"transition":{"id":"11","name":"Start Progress","destinationStatus":{"id":"3","name":"In Progress","categoryKey":"indeterminate"}}}`)
 			return err

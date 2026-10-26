@@ -177,17 +177,26 @@ and an optional `AssigneeAccountID`. The description is converted to a minimal
 Atlassian Document Format document: blank lines separate paragraphs, other line
 breaks become `hardBreak` nodes, and the text is never read as markup.
 
-Jira has no idempotency key, so the connector retries only when Jira cannot have
-created anything:
+Jira has no idempotency key. The shared single-dispatch fence checkpoints each
+POST and permits a later send only after the preceding attempt recorded
+`notSent` or `canResend`:
 
 | Outcome | Result |
 | --- | --- |
 | 201 with an issue ID and key | `created` |
-| 400, 401, 403, 404, 409, 413, 422, or another 4xx except 408 and 429 | `providerRejected`, with `RejectedFieldIDs` |
-| 429 | Retry, after `Retry-After` |
+| 400, 403, 404, 413, 422, or another definite 4xx except 401, 409, and 429 | `providerRejected`, with `RejectedFieldIDs` |
+| 401 with a refreshable credential | Refresh the credential, checkpoint `canResend`, then Retry |
+| 401 without a usable refresh | `providerRejected` with authentication failure |
+| 409 | Read back by the Call ID property; confirmed creation selects `created`, otherwise `uncertain` |
+| 429 | Checkpoint `canResend`, then Retry after `Retry-After` |
 | DNS, connect, or TLS failure before any connection opened | Retry |
-| Timeout, dropped connection, 408, 3xx, or 5xx after dispatch | `uncertain` |
-| 2xx whose body is oversized, unreadable, unusable, or reflects the token | `uncertain` |
+| 503 | Read back first; when absent, checkpoint `canResend` and Retry |
+| Timeout, dropped connection, 408, 3xx, or another 5xx after dispatch | Read back; confirmed creation selects `created`, otherwise `uncertain` |
+| 2xx whose body is oversized, unreadable, unusable, or reflects the token | Read back; confirmed creation selects `created`, otherwise `uncertain` |
+
+A transient 429, 5xx, transport error, or interrupted read-back returns Retry.
+The next attempt reads back again without another POST. If the retry budget is
+exhausted, the Flow fails.
 
 On `providerRejected` and `uncertain`, the Value echoes the requested project
 and summary without an issue key.
@@ -242,27 +251,27 @@ the issue, found it in the destination status, and sent nothing;
 `TestSlowTransitionBackupAttemptMovesTheIssueOnceWithRealDex` guards this.
 
 Each create and comment includes a non-secret hash of the stable Call ID in a
-Jira entity property. Before a POST, the Worker records a Dex heartbeat
-dispatch marker. On an ambiguous response or a later Step attempt, it searches
-Jira for that property and returns the found issue or comment without another
-POST. A missing, stale, or unreadable heartbeat marker on a later attempt does
-not authorize a resend. The marker is not an Atlassian idempotency key, and
-Dex does not acknowledge persistence of a heartbeat before the request leaves.
-This leaves a crash window; the connector fails closed with `uncertain` when
-read-back cannot confirm the result. Jira search is eventually consistent and
-read-back scans a bounded page, so absence does not prove the write failed.
+Jira entity property. The released `sdkgo/singledispatch` fence owns the Dex
+heartbeat claim and send window. A missing, foreign, stale, or unreadable
+checkpoint never permits another POST. When a response supplies a resource ID,
+the fence saves it for direct read-back; otherwise the connector searches a
+bounded page for the property. A transient lookup retries without sending.
+The property is not an Atlassian idempotency key. Dex does not acknowledge
+heartbeat persistence before the POST, so a crash may still leave a write that
+the bounded read-back cannot confirm. That outcome selects `uncertain`.
 
 A traced DNS, connect, or TLS failure before any connection is obtained, HTTP
-429, and HTTP 503 select Retry. For 503, the connector checks for the marker
-first and returns success when found; a miss remains eligible for retry under
-the provider's transient failure rule. Every HTTP request ends before the Dex
-Step deadline with a margin reserved for read-back and result recording.
+429, and HTTP 503 select Retry after the fence records permission for the next
+attempt. For 503, the connector first checks the provider property and returns
+success when found. The fence reserves part of the 30-second Execute budget for
+read-back and classification. A 409 also reads back before choosing a result.
 An application handles unresolved `uncertain` without creating again; the
 [`triage-issue`](examples/triage-issue) example parks the create for an
 operator, who confirms the issue found in the project or approves a new create.
 
 Atlassian documents issue and comment entity properties and their read APIs:
 [Create issue](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issues/),
+[Enhanced issue search](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-search/),
 [Get issue property](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-properties/),
 [Add and list comments](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-comments/),
 and [Get comment property](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-comment-properties/).

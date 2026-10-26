@@ -47,7 +47,11 @@ func TestAddCommentOutcomes(t *testing.T) {
 		{name: "server error", status: http.StatusBadGateway, branch: jira.AddCommentBranchUncertain, kind: sdkgo.FailureAvailability},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			provider := newRecordingJira(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+			provider := newRecordingJira(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+				if request.Method == http.MethodGet {
+					writeJSON(t, response, http.StatusOK, `{"comments":[]}`)
+					return
+				}
 				writeJSON(t, response, test.status, `{"errorMessages":["SENTINEL"]}`)
 			})
 			client := newJiraClient(t, provider.URL)

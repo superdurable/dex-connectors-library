@@ -28,7 +28,7 @@ spec:
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: "Maximum complete Jira API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it. An oversized read selects invalidResponse. An oversized response to an accepted createIssue or addComment is checked against Jira's write marker before selecting success or uncertain."
+        description: "Maximum complete Jira API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it. An oversized read selects invalidResponse. An oversized response to an accepted createIssue or addComment is checked against Jira's Call ID property before selecting success or uncertain."
         required: false
         default: 4194304
   auth:
@@ -146,7 +146,7 @@ spec:
         - name: providerRejectedFailure
           branch: providerRejected
           description: "Matches an invalid JQL search rejected before any issues are returned."
-          failure: {kind: PROVIDER_REJECTION, message: "Jira rejected the search query."}
+          failure: {kind: VALIDATION, message: "Jira rejected the search query."}
         - name: invalidResponseFailure
           branch: invalidResponse
           description: "Matches a search whose response cannot be decoded safely."
@@ -181,7 +181,7 @@ spec:
         - name: providerRejectedFailure
           branch: providerRejected
           description: "Matches an issue read denied by Jira project permissions."
-          failure: {kind: PROVIDER_REJECTION, message: "Jira rejected the issue read."}
+          failure: {kind: AUTHORIZATION, message: "Jira rejected the issue read."}
         - name: invalidResponseFailure
           branch: invalidResponse
           description: "Matches an issue read with an invalid provider response."
@@ -191,7 +191,7 @@ spec:
       inputType: CreateIssueInput
       outputType: CreateIssueOutput
       kind: mutation
-      description: Create one issue in a project with a summary, a plain-text description converted to Atlassian Document Format, labels, and an optional assignee.
+      description: Create one issue in a project with a summary, a plain-text description converted to Atlassian Document Format, labels, and an optional assignee. A synchronous single-dispatch fence prevents a lost Step result from resending a possibly accepted issue.
       idempotency: required
       authorization: required
       branches:
@@ -199,10 +199,11 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Jira conclusively rejected the issue, such as a missing required field, an unknown project or issue type, or missing permission; nothing was created.", optional: true}
         - {id: uncertain, goName: Uncertain, description: "The request may have reached Jira, but bounded issue-property read-back did not confirm it; the issue may exist and must not be created again automatically.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      # Sync: an async fallback attempt re-sends a slow create, and Jira has no idempotency key.
+      # Jira has no idempotency key; the shared fence needs durable sync heartbeats before dispatch.
       execution:
         executeMethodTimeout: 30s
         durability: sync
+        dispatchFence: true
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Jira has no idempotency key, and bounded issue-property read-back can miss a write until search indexes it."}}
       mocks:
         - name: createdDefaultAnswer
@@ -213,7 +214,8 @@ spec:
         - name: providerRejectedFailure
           branch: providerRejected
           description: "Matches creation with an issue type unavailable in OPS."
-          failure: {kind: PROVIDER_REJECTION, message: "Jira rejected the issue type."}
+          output: {projectKey: OPS, summary: "Loading dock light out", rejectedFieldIds: [issuetype]}
+          failure: {kind: VALIDATION, message: "Jira rejected the issue type."}
     - name: transitionIssue
       goName: TransitionIssue
       inputType: TransitionIssueInput
@@ -245,11 +247,11 @@ spec:
         - name: transitionUnavailableFailure
           branch: transitionUnavailable
           description: "Matches a transition request with no route to the requested status."
-          failure: {kind: PROVIDER_REJECTION, message: "Jira transition is unavailable."}
+          failure: {kind: CONFLICT, message: "Jira transition is unavailable."}
         - name: providerRejectedFailure
           branch: providerRejected
           description: "Matches a transition Jira rejects for a required screen field."
-          failure: {kind: PROVIDER_REJECTION, message: "Jira rejected the transition."}
+          failure: {kind: VALIDATION, message: "Jira rejected the transition."}
         - name: invalidResponseFailure
           branch: invalidResponse
           description: "Matches a transition read with an invalid provider response."
@@ -259,7 +261,7 @@ spec:
       inputType: AddCommentInput
       outputType: AddCommentOutput
       kind: mutation
-      description: Add one plain-text comment, converted to Atlassian Document Format, to an issue.
+      description: Add one plain-text comment, converted to Atlassian Document Format, to an issue. A synchronous single-dispatch fence prevents a lost Step result from resending a possibly accepted comment.
       idempotency: required
       authorization: required
       branches:
@@ -271,6 +273,7 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
+        dispatchFence: true
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Jira has no idempotency key, and bounded comment-property read-back can miss an accepted comment."}}
       mocks:
         - name: addedDefaultAnswer
@@ -285,4 +288,4 @@ spec:
         - name: providerRejectedFailure
           branch: providerRejected
           description: "Matches a comment denied by Jira Add comments permission."
-          failure: {kind: PROVIDER_REJECTION, message: "Jira rejected the comment."}
+          failure: {kind: AUTHORIZATION, message: "Jira rejected the comment."}

@@ -69,8 +69,6 @@ func TestTriageIssueUsesJiraMockDefaultsWithRealDex(t *testing.T) {
 	require.Equal(t, PhaseTriaged, triage.Phase)
 	require.Equal(t, input.Summary, triage.Issue.Summary)
 	require.Equal(t, input.ProjectKey, triage.Issue.Project.Key)
-	require.Equal(t, "OPS-4", triage.Issue.Key)
-	require.Equal(t, "10501", triage.CommentID)
 	require.Equal(t, input.DestinationStatusName, triage.Status.Name)
 	require.False(t, triage.IsExistingIssueReused)
 

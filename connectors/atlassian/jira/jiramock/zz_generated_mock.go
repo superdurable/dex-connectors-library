@@ -129,7 +129,7 @@ func SearchIssuesSearchedDefaultAnswer() connectormock.Case[jira.SearchIssuesOut
 // SearchIssuesProviderRejectedFailure is the manifest mock providerRejectedFailure: Matches an invalid JQL search rejected before any issues are returned.
 func SearchIssuesProviderRejectedFailure() connectormock.Case[jira.SearchIssuesOutput] {
 	var value jira.SearchIssuesOutput
-	return connectormock.Branch(jira.SearchIssuesBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "Jira rejected the search query."})
+	return connectormock.Branch(jira.SearchIssuesBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureValidation, Message: "Jira rejected the search query."})
 }
 
 // SearchIssuesInvalidResponseFailure is the manifest mock invalidResponseFailure: Matches a search whose response cannot be decoded safely.
@@ -188,7 +188,7 @@ func GetIssueNotFoundFailure() connectormock.Case[jira.Issue] {
 // GetIssueProviderRejectedFailure is the manifest mock providerRejectedFailure: Matches an issue read denied by Jira project permissions.
 func GetIssueProviderRejectedFailure() connectormock.Case[jira.Issue] {
 	var value jira.Issue
-	return connectormock.Branch(jira.GetIssueBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "Jira rejected the issue read."})
+	return connectormock.Branch(jira.GetIssueBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthorization, Message: "Jira rejected the issue read."})
 }
 
 // GetIssueInvalidResponseFailure is the manifest mock invalidResponseFailure: Matches an issue read with an invalid provider response.
@@ -233,8 +233,8 @@ func CreateIssueCreatedDefaultAnswer() connectormock.Case[jira.CreateIssueOutput
 
 // CreateIssueProviderRejectedFailure is the manifest mock providerRejectedFailure: Matches creation with an issue type unavailable in OPS.
 func CreateIssueProviderRejectedFailure() connectormock.Case[jira.CreateIssueOutput] {
-	var value jira.CreateIssueOutput
-	return connectormock.Branch(jira.CreateIssueBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "Jira rejected the issue type."})
+	value := connectormock.MustDecodeOutput[jira.CreateIssueOutput](`{"projectKey":"OPS","summary":"Loading dock light out","rejectedFieldIds":["issuetype"]}`)
+	return connectormock.Branch(jira.CreateIssueBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureValidation, Message: "Jira rejected the issue type."})
 }
 
 // CreateIssueDefault is the manifest default, createdDefaultAnswer, which New installs.
@@ -292,13 +292,13 @@ func TransitionIssueNotFoundFailure() connectormock.Case[jira.TransitionIssueOut
 // TransitionIssueTransitionUnavailableFailure is the manifest mock transitionUnavailableFailure: Matches a transition request with no route to the requested status.
 func TransitionIssueTransitionUnavailableFailure() connectormock.Case[jira.TransitionIssueOutput] {
 	var value jira.TransitionIssueOutput
-	return connectormock.Branch(jira.TransitionIssueBranchTransitionUnavailable, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "Jira transition is unavailable."})
+	return connectormock.Branch(jira.TransitionIssueBranchTransitionUnavailable, value, &sdkgo.Failure{Kind: sdkgo.FailureConflict, Message: "Jira transition is unavailable."})
 }
 
 // TransitionIssueProviderRejectedFailure is the manifest mock providerRejectedFailure: Matches a transition Jira rejects for a required screen field.
 func TransitionIssueProviderRejectedFailure() connectormock.Case[jira.TransitionIssueOutput] {
 	var value jira.TransitionIssueOutput
-	return connectormock.Branch(jira.TransitionIssueBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "Jira rejected the transition."})
+	return connectormock.Branch(jira.TransitionIssueBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureValidation, Message: "Jira rejected the transition."})
 }
 
 // TransitionIssueInvalidResponseFailure is the manifest mock invalidResponseFailure: Matches a transition read with an invalid provider response.
@@ -357,7 +357,7 @@ func AddCommentNotFoundFailure() connectormock.Case[jira.AddCommentOutput] {
 // AddCommentProviderRejectedFailure is the manifest mock providerRejectedFailure: Matches a comment denied by Jira Add comments permission.
 func AddCommentProviderRejectedFailure() connectormock.Case[jira.AddCommentOutput] {
 	var value jira.AddCommentOutput
-	return connectormock.Branch(jira.AddCommentBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "Jira rejected the comment."})
+	return connectormock.Branch(jira.AddCommentBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthorization, Message: "Jira rejected the comment."})
 }
 
 // AddCommentDefault is the manifest default, addedDefaultAnswer, which New installs.

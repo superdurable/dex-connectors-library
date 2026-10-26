@@ -79,7 +79,11 @@ func TestCreateIssueNeverResendsARequestJiraMayHaveReceived(t *testing.T) {
 		{name: "unusable created body", status: http.StatusCreated, body: `{"id":"SENTINEL","key":"not a key"}`, branch: jira.CreateIssueBranchUncertain, kind: sdkgo.FailureProtocol},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			provider := newRecordingJira(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+			provider := newRecordingJira(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+				if request.URL.Path == testSitePrefix+"/search/jql" {
+					writeJSON(t, response, http.StatusOK, `{"issues":[]}`)
+					return
+				}
 				writeJSON(t, response, test.status, test.body)
 			})
 			client := newJiraClient(t, provider.URL)
@@ -101,15 +105,13 @@ func TestCreateIssueNeverResendsARequestJiraMayHaveReceived(t *testing.T) {
 	}
 }
 
-func TestCreateIssueTimeoutAfterDispatchIsUncertain(t *testing.T) {
+func TestCreateIssueTimeoutWithTransientReadbackRetries(t *testing.T) {
 	provider := newRecordingJira(t, func(_ http.ResponseWriter, request *http.Request, _ int) {
 		<-request.Context().Done()
 	})
 	client := newJiraClient(t, provider.URL, jira.WithHTTPClient(&http.Client{Timeout: 200 * time.Millisecond}))
-	result, err := sdkgo.RunMutation(newJiraDexContext("create-timeout"), client.CreateIssue(), jiraConnection, validCreateIssueInput())
-	require.NoError(t, err)
-	require.Equal(t, jira.CreateIssueBranchUncertain, result.Branch)
-	require.Equal(t, sdkgo.FailureTransport, result.Failure.Kind)
+	_, err := sdkgo.RunMutation(newJiraDexContext("create-timeout"), client.CreateIssue(), jiraConnection, validCreateIssueInput())
+	requireRetry(t, err, sdkgo.FailureAvailability)
 	require.Equal(t, 1, provider.requestCountFor(http.MethodPost, testSitePrefix+"/issue"))
 }
 

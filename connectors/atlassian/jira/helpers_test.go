@@ -174,9 +174,13 @@ func requireRetry(t *testing.T, err error, kind sdkgo.FailureKind) *sdkgo.RetryE
 // rejectionRefreshingCredentialProvider hands out a replacement token after a provider rejection.
 type rejectionRefreshingCredentialProvider struct {
 	forcedRefreshes int
+	isRefreshed     bool
 }
 
-func (*rejectionRefreshingCredentialProvider) Resolve(sdkgo.Call) (jira.Credentials, error) {
+func (provider *rejectionRefreshingCredentialProvider) Resolve(sdkgo.Call) (jira.Credentials, error) {
+	if provider.isRefreshed {
+		return jira.Credentials{AccessToken: sdkgo.NewSecretString("replacement-token")}, nil
+	}
 	return jira.Credentials{AccessToken: sdkgo.NewSecretString("rejected-token")}, nil
 }
 
@@ -195,6 +199,7 @@ func (provider *rejectionRefreshingCredentialProvider) ResolveAfterRejection(
 	sdkgo.CredentialRefreshDriver[jira.Credentials],
 ) (jira.Credentials, error) {
 	provider.forcedRefreshes++
+	provider.isRefreshed = true
 	return jira.Credentials{AccessToken: sdkgo.NewSecretString("replacement-token")}, nil
 }
 
