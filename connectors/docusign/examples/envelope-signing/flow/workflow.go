@@ -229,9 +229,9 @@ func (flow *EnvelopeSigningFlow) GetSteps() []dex.StepDef {
 			MapToOperationInput: func(wait EnvelopeWait) docusign.VoidEnvelopeInput {
 				return docusign.VoidEnvelopeInput{EnvelopeID: wait.EnvelopeID, VoidedReason: flow.policy.VoidReason}
 			},
-			Voided:           sdkgo.GoTo(RecordEnvelopeExpired{}),
+			Voided: sdkgo.GoTo(RecordEnvelopeExpired{}),
 			// A signer finishing at the deadline requires a final status check.
-			NotVoidable:      sdkgo.GoTo(RecordVoidRefusal{}),
+			NotVoidable: sdkgo.GoTo(RecordVoidRefusal{}),
 		})),
 		dex.DefineStep(RecordEnvelopeExpired{}),
 		dex.DefineStep(RecordVoidRefusal{}),
@@ -583,15 +583,14 @@ func (RecordVoidRefusal) Execute(ctx dex.Context, result docusign.VoidEnvelopeRe
 		return nil, err
 	}
 	wait := EnvelopeWait{EnvelopeID: state.EnvelopeID, PollAt: time.Now().UTC()}
-	isNotVoidable := result.Branch == docusign.VoidEnvelopeBranchNotVoidable
 	switch {
-	case isNotVoidable && result.Value.Status == docusign.EnvelopeStatusCompleted:
+	case result.Value.Status == docusign.EnvelopeStatusCompleted:
 		state.Status, state.EnvelopeStatus, state.ResumedBy = StatusDownloadingDocument, docusign.EnvelopeStatusCompleted, "statusPoll"
 		if err := signingStateAttribute.Set(ctx, state); err != nil {
 			return nil, err
 		}
 		return dex.GoTo(sdkgo.StepRef[EnvelopeWait](downloadSignedDocumentStepType), wait), nil
-	case isNotVoidable && result.Value.Status == docusign.EnvelopeStatusDeclined:
+	case result.Value.Status == docusign.EnvelopeStatusDeclined:
 		return dex.GoTo(RecordEnvelopeClosed{}, EnvelopeClosure{Status: StatusDeclined, ResumedBy: "statusPoll"}), nil
 	}
 	state.Status = StatusFailed

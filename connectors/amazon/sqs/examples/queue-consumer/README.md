@@ -16,10 +16,12 @@ every Amazon SQS operation:
    `rejected`, so the queue's redrive policy can move the message to a
    dead-letter queue after its maximum receives.
 
-Only `received`, `deleted`, and `changed` are wired. An empty poll or invalid
-receipt handle fails the Flow with the connector's safe reason; SQS may deliver
-the message again. Rejected, invalid, and defect outcomes fail without acknowledging, and
-the message reappears when its visibility timeout ends.
+`receiveMessages` wires `received` and `empty`; an empty poll completes as
+`noMessage`. Both acknowledgement Steps wire their happy branch and
+`receiptHandleInvalid`, which completes with `isAcknowledgementConfirmed: false`
+because SQS may deliver the message again. Rejected, invalid, and defect
+outcomes fail without acknowledging, and the message reappears when its
+visibility timeout ends.
 
 ## Configure
 
@@ -66,9 +68,9 @@ GOWORK=off go test -tags=integration ./examples/queue-consumer/... -count=1 -v
 
 The integration tests run the Flow on a real Dex Server against the
 SigV4-verifying fake in `internal/sqsfake`: a processed and acknowledged event,
-a rejected message that returns with `receiveCount` 2, an empty queue that
-fails the Flow, and an
-unwired rejection that acknowledges nothing. One test delays the deletion's
+a rejected message that returns with `receiveCount` 2, an empty queue, an
+invalid receipt on either acknowledgement path, and an unwired rejection that
+acknowledges nothing. One test delays the deletion's
 response by nine seconds, past the async local phase, so Dex dispatches the
 acknowledgement again; both attempts send the same handle and the Flow
 completes `processed`. Another sends the message nine seconds into a 20-second

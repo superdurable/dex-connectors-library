@@ -84,6 +84,20 @@ func TestOpenIssueWithTheSameSummaryIsReusedWithRealDex(t *testing.T) {
 	require.Equal(t, integrationDestination, triage.Status.Name)
 }
 
+func TestRejectedCreateFailsWithoutResendingWithRealDex(t *testing.T) {
+	provider, flow, harness := newJiraIntegrationHarness(t, integrationCloudID, shortRequestTimeout)
+	ctx := integrationContext(t)
+
+	summary := markerReject + " Fire panel wiring"
+	flowID := startTriageFlow(t, ctx, harness, flow, "rejected", triageInput(summary))
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "providerRejected")
+	require.Contains(t, result.ErrorMessage, "no target")
+	require.Equal(t, 1, provider.createCount(summary), "a conclusive rejection is not resent")
+}
+
 func TestRateLimitedCreateIsRetriedAfterRetryAfterWithRealDex(t *testing.T) {
 	provider, flow, harness := newJiraIntegrationHarness(t, integrationCloudID, shortRequestTimeout)
 	ctx := integrationContext(t)

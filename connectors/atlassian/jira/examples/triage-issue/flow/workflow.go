@@ -715,7 +715,7 @@ func (recordMissingTriageIssue) Execute(ctx dex.Context, _ jira.GetIssueResult) 
 }
 
 // dex:group group-id:triage group-label:"Triage"
-// dex:explanation text:"Record the comment ID, or that its outcome is unknown, then continue without re-sending."
+// dex:explanation text:"Record the comment ID and continue triage."
 type recordTriageComment struct {
 	dex.StepDefaultsNoWaitFor[jira.AddCommentResult]
 }

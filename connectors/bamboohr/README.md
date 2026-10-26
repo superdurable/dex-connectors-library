@@ -236,8 +236,8 @@ take these positions:
 - A 5xx, a 408, a lost or unreadable response, and an invalid 2xx select
   `uncertain`: the employee may exist, and the connector never resends the
   add. The application decides; the onboarding example looks the hire up by
-  personal email and continues with the employee it finds, or stops for a
-  person.
+  personal email and continues with the employee it finds. A missing or
+  ambiguous reconciliation fails the Flow.
 
 Keep `addEmployee` sync. An application override to async durability lets
 Dex dispatch a second add after seven seconds. A checkpoint lost before Dex

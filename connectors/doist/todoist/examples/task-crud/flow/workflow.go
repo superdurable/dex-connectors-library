@@ -38,7 +38,7 @@ type Request struct {
 
 // Outcome contains the returned list page or facts from the completed disposable lifecycle.
 type Outcome struct {
-	// Status is listed, deletedAndVerified, notFound, or providerRejected.
+	// Status is listed or deletedAndVerified; optional failure branches fail the Flow.
 	Status string `json:"status"`
 	// Page contains one page in list mode.
 	Page todoist.TaskPage `json:"page"`

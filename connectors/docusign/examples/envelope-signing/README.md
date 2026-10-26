@@ -28,13 +28,13 @@ signature request:
    `RecordVoidRefusal` downloads an envelope that completed just as the
    deadline passed and closes one that was declined.
 
-Unwired status-read and document-download failure branches fail the Flow with
-the connector's safe failure reason.
+A failed status poll ends the Flow, and Dex Web shows the connector's safe
+failure reason. Document-download failure branches also fail the Flow.
 
 Every Step that changes the state locks the Attribute, so a Connect event
 cannot interleave with a transition; an event that meets the held lock is
-retried by the Trigger delivery until the Step commits. The Flow output and `GetSigningState`
-return the same record.
+retried by the Trigger delivery until the Step commits. The Flow output and
+`GetSigningState` return the same record.
 
 ## 1. Generate the Flow Definition
 

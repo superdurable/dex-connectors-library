@@ -175,7 +175,7 @@ type OnboardingOutcome struct {
 	NeedsReview bool `json:"needsReview,omitempty"`
 	// ReviewReason names the hand-off review reason after completion.
 	ReviewReason string `json:"reviewReason,omitempty"`
-	// ReviewDetail is the connector's credential-free explanation or the candidate employee IDs;
+	// ReviewDetail is the connector's credential-free explanation;
 	// after a reconciled add it keeps why the add's outcome was unknown.
 	ReviewDetail string `json:"reviewDetail,omitempty"`
 }
@@ -206,7 +206,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			},
 			Connection: flow.connection, MapToOperationInput: MapToFindEmployeeByEmailInput,
 			Found: sdkgo.GoTo(adoptExistingEmployee{}),
-			// No existing hire permits creation; reconciliation without a match requires review.
+			// No existing hire permits creation.
 			NotFound: sdkgo.GoTo(prepareNewHireRecord{}),
 		})),
 		dex.DefineStep(adoptExistingEmployee{}),
@@ -445,14 +445,6 @@ func failureMessage(failure *sdkgo.Failure) string {
 		return ""
 	}
 	return failure.Message
-}
-
-func matchedEmployeeIDs(result bamboohr.FindEmployeeByEmailResult) string {
-	var employeeIDs []string
-	for _, match := range result.Value.Matches {
-		employeeIDs = append(employeeIDs, match.EmployeeID)
-	}
-	return fmt.Sprintf("%d employees contain this personal email; exact matches: [%s]", result.Value.CandidateCount, strings.Join(employeeIDs, ", "))
 }
 
 // dex:group group-id:hire group-label:"New hire"

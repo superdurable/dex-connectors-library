@@ -298,7 +298,7 @@ execution:
    select `providerRejected`.
 
 An application handles `uncertain` without adding the comment again
-automatically; the example records the comment as unknown and completes.
+automatically; the example leaves that branch unwired, so the Flow fails.
 
 ## Duplicate dispatch
 

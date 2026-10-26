@@ -657,7 +657,7 @@ func (verifyPublishedPolicy) Execute(ctx dex.Context, result confluence.GetPageR
 }
 
 // dex:group group-id:publication group-label:"Publication"
-// dex:explanation text:"Record the comment ID, or that its outcome is unknown, and complete without re-sending."
+// dex:explanation text:"Record the comment ID and complete the publication."
 type completePublication struct {
 	dex.StepDefaultsNoWaitFor[confluence.AddCommentResult]
 }

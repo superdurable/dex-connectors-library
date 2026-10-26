@@ -106,19 +106,20 @@ URL, the card read back after a move, and the comment's action ID.
 GOWORK=off go test -race ./examples/approved-request-card/...
 ```
 
-With the latest Dex development server running, the integration test drives the
-Flow on a real Worker against a stateful fake Trello that requires the `OAuth`
-header: a new card created once after a second page beside a near-duplicate, a
-mention, and an archived card, then commented; an open card with the request ID
-moved to the approved list and labeled without losing its own label; a full
-duplicate check that stops without creating; a rate-limited
-create retried after `Retry-After`; a create timeout reconciled by confirming a
-missing, a mismatched, and then the real card ID without a second create; a 5xx
-create created again only after operator approval; a nine-second create and a
-nine-second comment each sent once under sync durability; a nine-second move
-whose backup attempt resends the same body and leaves the same card; a comment timeout that fails without a resend; a Worker lost during the create, whose
-replacement finds the heartbeat checkpoint and sends nothing; and a move
-Trello rejects.
+With the latest Dex development server running, the integration test drives
+the Flow on a real Worker against a stateful fake Trello that requires the
+`OAuth` header: a new card created once after a second page beside a
+near-duplicate, a mention, and an archived card, then commented; an open card
+with the request ID moved to the approved list and labeled without losing its
+own label; a full duplicate check that stops without creating; a rejected
+create sent once; a rate-limited create retried after `Retry-After`; a create
+timeout reconciled by confirming a missing, a mismatched, and then the real
+card ID without a second create; a 5xx create created again only after
+operator approval; a nine-second create and a nine-second comment each sent
+once under sync durability; a nine-second move whose backup attempt resends
+the same body and leaves the same card; a comment timeout that fails without a
+resend; a Worker lost during the create, whose replacement finds the heartbeat
+checkpoint and sends nothing; and a move Trello rejects.
 
 ```bash
 DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./examples/approved-request-card/... -count=1 -v

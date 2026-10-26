@@ -758,7 +758,7 @@ func (recordMovedCard) Execute(ctx dex.Context, result trello.UpdateCardResult) 
 }
 
 // dex:group group-id:request group-label:"Request"
-// dex:explanation text:"Record the approval comment ID, or that its outcome is unknown, and complete without re-sending."
+// dex:explanation text:"Record the approval comment ID and complete the request."
 type recordApprovalComment struct {
 	dex.StepDefaultsNoWaitFor[trello.AddCommentResult]
 }

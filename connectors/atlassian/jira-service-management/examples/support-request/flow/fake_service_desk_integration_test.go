@@ -147,6 +147,9 @@ func (provider *fakeServiceDesk) listCustomers(response http.ResponseWriter, req
 			values = append(values, fmt.Sprintf(`{"accountId":%q,"displayName":%q,"emailAddress":%q,"active":true}`, customer.accountID, customer.displayName, customer.email))
 		}
 	}
+	if query == "inactive@acme.example.com" {
+		values = append(values, `{"accountId":"qm:inactive","displayName":"Inactive customer","emailAddress":"inactive@acme.example.com","active":false}`)
+	}
 	provider.writeJSON(response, http.StatusOK, `{"start":0,"limit":50,"size":`+strconv.Itoa(len(values))+`,"isLastPage":true,"values":[`+strings.Join(values, ",")+`]}`)
 }
 

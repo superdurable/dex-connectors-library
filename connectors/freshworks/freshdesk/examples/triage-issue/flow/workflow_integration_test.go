@@ -261,6 +261,7 @@ func TestLostNoteResponseFailsWithoutResendingWithRealDex(t *testing.T) {
 	require.Contains(t, result.ErrorMessage, "uncertain")
 	require.Contains(t, result.ErrorMessage, "no target")
 	require.Equal(t, 1, provider.count("note"), "an unconfirmed note is never resent")
+	require.Equal(t, 1, provider.totalConversationCount(), "the note reached Freshdesk once")
 }
 
 func TestRejectedTicketFailsTheFlowWithoutFreshdeskTextWithRealDex(t *testing.T) {
@@ -791,6 +792,16 @@ func (provider *fakeFreshdesk) ticketCount() int {
 	provider.mutex.Lock()
 	defer provider.mutex.Unlock()
 	return len(provider.tickets)
+}
+
+func (provider *fakeFreshdesk) totalConversationCount() int {
+	provider.mutex.Lock()
+	defer provider.mutex.Unlock()
+	total := 0
+	for _, ticket := range provider.tickets {
+		total += len(ticket.conversations)
+	}
+	return total
 }
 
 func (provider *fakeFreshdesk) ticket(ticketID int64) fakeTicket {

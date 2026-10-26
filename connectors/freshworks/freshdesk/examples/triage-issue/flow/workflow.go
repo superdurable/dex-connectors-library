@@ -40,7 +40,6 @@ const (
 	completeTriageStepType            = "CompleteTriage"
 
 	candidateConversationLimit = 5
-
 )
 
 var (
@@ -370,13 +369,6 @@ func optionalAttribute[T any](ctx dex.Context, attribute dex.Attribute[T]) (T, e
 		return zero, nil
 	}
 	return value, err
-}
-
-func failureMessage(failure *sdkgo.Failure) string {
-	if failure == nil {
-		return ""
-	}
-	return failure.Message
 }
 
 func isAttributeNotFound(err error) bool {

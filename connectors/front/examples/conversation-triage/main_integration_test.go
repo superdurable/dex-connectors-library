@@ -127,7 +127,7 @@ func TestLostWorkerDuringCommentFailsWithoutResendingWithRealDex(t *testing.T) {
 	require.Contains(t, result.ErrorMessage, "no target")
 	provider.waitForDelayedRequests(t)
 	require.Equal(t, 1, provider.count("comment"), "the attempt on the new Worker did not send the comment again")
-	require.Len(t, provider.conversation(scenario.triagedID).comments, 1, "the held comment exists, which is why the outcome needs review")
+	require.Len(t, provider.conversation(scenario.triagedID).comments, 1, "the held comment exists once")
 	require.Zero(t, provider.count("tagAdd"), "an unconfirmed comment is not followed by routing")
 }
 

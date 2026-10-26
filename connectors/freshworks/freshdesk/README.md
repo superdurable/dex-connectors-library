@@ -213,8 +213,8 @@ these positions:
   connection that failed before it opened. The checkpoint is cleared first.
 - A 5xx, a 408, a lost or unreadable response, and an invalid or oversized
   2xx select `uncertain`: the ticket or note may exist, and the connector never
-  resends it. The application decides, for example by asking a person to check
-  Freshdesk, as the example does.
+  resends it. The example leaves `uncertain` unwired, so the Flow fails;
+  an operator can inspect Freshdesk before deciding what to do next.
 
 Keep these two Steps sync. An application override to async durability lets
 Dex dispatch a second request after seven seconds. A checkpoint lost before

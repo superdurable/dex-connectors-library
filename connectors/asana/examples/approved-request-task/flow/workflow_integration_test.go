@@ -106,6 +106,20 @@ func TestOpenTaskWithTheRequestIDIsReusedWithRealDex(t *testing.T) {
 	require.Equal(t, 1, len(provider.commentTexts(existingTaskID)))
 }
 
+func TestRejectedCreateFailsWithoutResendingWithRealDex(t *testing.T) {
+	provider, flow, harness := newAsanaIntegrationHarness(t, shortRequestTimeout)
+	ctx := integrationContext(t)
+
+	taskName := "[REQ-3001] " + markerReject + " Paint the lobby"
+	flowID := startRequestFlow(t, ctx, harness, flow, "rejected", requestInput("REQ-3001", markerReject+" Paint the lobby"))
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "providerRejected")
+	require.Contains(t, result.ErrorMessage, "no target")
+	require.Equal(t, 1, provider.createCount(taskName), "a conclusive rejection is not resent")
+}
+
 func TestRateLimitedCreateIsRetriedAfterRetryAfterWithRealDex(t *testing.T) {
 	provider, flow, harness := newAsanaIntegrationHarness(t, shortRequestTimeout)
 	ctx := integrationContext(t)

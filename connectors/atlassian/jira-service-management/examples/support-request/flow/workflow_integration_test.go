@@ -76,20 +76,41 @@ func TestCustomersOpenRequestWithTheSameSummaryIsReusedWithRealDex(t *testing.T)
 	require.Equal(t, []bool{false, true}, provider.request(openDuplicateKey).commentVisibilities())
 }
 
-func TestUnknownRequesterFailsWithoutRaisingARequestWithRealDex(t *testing.T) {
+func TestUnknownRequesterCompletesWithoutRaisingARequestWithRealDex(t *testing.T) {
+	for _, requester := range []struct {
+		name  string
+		email string
+	}{
+		{name: "missing", email: "missing@acme.example.com"},
+		{name: "inactive", email: "inactive@acme.example.com"},
+	} {
+		t.Run(requester.name, func(t *testing.T) {
+			provider, flow, harness := newSupportIntegrationHarness(t, integrationCloudID, shortRequestTimeout)
+			ctx := integrationContext(t)
+
+			input := supportInput("Monitor flickers")
+			input.RequesterEmail = requester.email
+			record := runSupportFlow(t, ctx, harness, flow, "unknown-"+requester.name, input)
+			require.Equal(t, PhaseRequesterNotFound, record.Phase)
+			require.Empty(t, record.RequesterAccountID)
+			require.Zero(t, provider.createCount(input.Summary))
+			require.Empty(t, provider.searchQueries())
+		})
+	}
+}
+
+func TestRejectedCreateFailsWithoutResendingWithRealDex(t *testing.T) {
 	provider, flow, harness := newSupportIntegrationHarness(t, integrationCloudID, shortRequestTimeout)
 	ctx := integrationContext(t)
 
-	input := supportInput("Monitor flickers")
-	input.RequesterEmail = "jane@acme.example"
-	flowID := startSupportFlow(t, ctx, harness, flow, "unknown-requester", input)
+	summary := markerReject + " Laptop will not boot"
+	flowID := startSupportFlow(t, ctx, harness, flow, "rejected", supportInput(summary))
 	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
 	require.NoError(t, err)
 	require.Equal(t, dex.FlowFailed, result.Status)
-	require.Contains(t, result.ErrorMessage, "notFound")
+	require.Contains(t, result.ErrorMessage, "providerRejected")
 	require.Contains(t, result.ErrorMessage, "no target")
-	require.Zero(t, provider.createCount("Monitor flickers"))
-	require.Empty(t, provider.searchQueries())
+	require.Equal(t, 1, provider.createCount(summary), "a conclusive rejection is not resent")
 }
 
 func TestRateLimitedCreateIsRetriedAfterRetryAfterWithRealDex(t *testing.T) {

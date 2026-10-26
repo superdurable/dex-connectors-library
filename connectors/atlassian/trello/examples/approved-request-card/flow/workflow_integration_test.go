@@ -126,6 +126,16 @@ func TestFullDuplicateCheckStopsAsIncompleteWithoutCreatingWithRealDex(t *testin
 	require.Zero(t, provider.totalCreateCount(), "an incomplete duplicate check never creates")
 }
 
+func TestRejectedCreateFailsWithoutResendingWithRealDex(t *testing.T) {
+	provider := newFakeTrello(t)
+	harness := newTrelloHarness(t, provider, shortRequestTimeout, DuplicateCheck{PageSize: fakePageSize})
+
+	cardName := "[REQ-3001] " + markerReject + " Paint the lobby"
+	flowID := harness.startRequestFlow(t, "rejected", requestInput("REQ-3001", markerReject+" Paint the lobby"))
+	harness.waitForFailedBranch(t, flowID, "providerRejected")
+	require.Equal(t, 1, provider.createCount(cardName), "a conclusive rejection is not resent")
+}
+
 func TestRateLimitedCreateIsRetriedAfterRetryAfterWithRealDex(t *testing.T) {
 	provider := newFakeTrello(t)
 	harness := newTrelloHarness(t, provider, shortRequestTimeout, DuplicateCheck{PageSize: fakePageSize})

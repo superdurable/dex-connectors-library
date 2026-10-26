@@ -103,17 +103,18 @@ the task read back after assignment, and the comment's story gid.
 GOWORK=off go test -race ./examples/approved-request-task/...
 ```
 
-With the latest Dex development server running, the integration test drives the
-Flow on a real Worker against a stateful fake Asana: a new task created once on
-the second page beside a near-duplicate, a mention, and a completed task, then
-assigned, moved, and commented; an open task with the request ID reused and
-moved out of intake; a rate-limited create retried after
+With the latest Dex development server running, the integration test drives
+the Flow on a real Worker against a stateful fake Asana: a new task created
+once on the second page beside a near-duplicate, a mention, and a completed
+task, then assigned, moved, and commented; an open task with the request ID
+reused and moved out of intake; a rate-limited create retried after
 `Retry-After`; a create timeout reconciled by confirming a missing, a
 mismatched, and then the real task gid without a second create; a 5xx create
 created again only after operator approval; a nine-second create and a
 nine-second comment each sent once under sync durability; a nine-second update
-whose backup attempt resends the same move and `PUT` and leaves the same task; a
-comment timeout that fails without a resend; and an assignee Asana rejects before an approval comment.
+whose backup attempt resends the same move and `PUT` and leaves the same task;
+a comment timeout that fails without a resend; a rejected create sent once;
+and an assignee Asana rejects before an approval comment.
 
 ```bash
 DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./examples/approved-request-task/... -count=1 -v

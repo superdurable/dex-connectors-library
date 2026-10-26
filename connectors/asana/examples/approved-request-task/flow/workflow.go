@@ -768,7 +768,7 @@ func (recordAssignedTask) Execute(ctx dex.Context, result asana.UpdateTaskResult
 }
 
 // dex:group group-id:request group-label:"Request"
-// dex:explanation text:"Record the approval comment ID, or that its outcome is unknown, and complete without re-sending."
+// dex:explanation text:"Record the approval comment ID and complete the request."
 type recordApprovalComment struct {
 	dex.StepDefaultsNoWaitFor[asana.AddCommentResult]
 }

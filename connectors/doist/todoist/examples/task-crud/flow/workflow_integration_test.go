@@ -108,6 +108,8 @@ func TestTaskCRUDWithRealDex(t *testing.T) {
 			if scenario.name == "create-uncertain" {
 				require.Contains(t, result.ErrorMessage, "uncertain")
 				require.Contains(t, result.ErrorMessage, "no target")
+				require.Contains(t, result.ErrorMessage, "Todoist request did not return a complete response")
+				require.NotContains(t, result.ErrorMessage, integrationToken)
 				require.Zero(t, provider.reads)
 				require.Zero(t, provider.updates)
 				require.Equal(t, 1, provider.createdTasks)
@@ -185,6 +187,7 @@ func TestTaskUpdateRecoveryWithRealDex(t *testing.T) {
 			} else if scenario.failureBranch != "" {
 				require.Contains(t, result.ErrorMessage, scenario.failureBranch)
 				require.Contains(t, result.ErrorMessage, "no target")
+				require.NotContains(t, result.ErrorMessage, integrationToken)
 			}
 			provider.mutex.Lock()
 			defer provider.mutex.Unlock()

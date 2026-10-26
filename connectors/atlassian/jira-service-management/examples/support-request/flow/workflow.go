@@ -323,6 +323,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			}}},
 			Connection: flow.connection, MapToOperationInput: MapToFindCustomerByEmailInput,
 			Found: sdkgo.GoTo(evaluateRequester{}),
+			// Unknown requesters are routine help-desk traffic, including inactive matches.
+			NotFound: sdkgo.GoTo(evaluateRequester{}),
 		})),
 		dex.DefineStep(evaluateRequester{}),
 		dex.DefineStep(jiraservicemanagement.NewSearchTicketsStep(jiraservicemanagement.SearchTicketsStepConfig[DuplicateSearch]{
@@ -986,7 +988,7 @@ func (recordTicketLabels) Execute(ctx dex.Context, result jiraservicemanagement.
 }
 
 // dex:group group-id:actions group-label:"Actions"
-// dex:explanation text:"Record the internal note ID, or that its outcome is unknown, then plan the next action without re-sending."
+// dex:explanation text:"Record the internal note ID and plan the next action."
 type recordInternalNote struct {
 	dex.StepDefaultsNoWaitFor[jiraservicemanagement.AddCommentResult]
 }
@@ -1015,7 +1017,7 @@ func (recordInternalNote) Execute(ctx dex.Context, result jiraservicemanagement.
 }
 
 // dex:group group-id:actions group-label:"Actions"
-// dex:explanation text:"Record the public reply ID, or that its outcome is unknown, then plan the next action without re-sending."
+// dex:explanation text:"Record the public reply ID and plan the next action."
 type recordPublicReply struct {
 	dex.StepDefaultsNoWaitFor[jiraservicemanagement.AddCommentResult]
 }
