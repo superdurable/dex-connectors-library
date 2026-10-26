@@ -5,7 +5,7 @@ metadata:
   displayName: Typeform
   description: "Receive signed Typeform form_response webhooks as typed, field-keyed answers, list and read forms, list responses, and create or update a form's webhook."
   company: Typeform
-  version: v0.21.2
+  version: v0.22.0
 spec:
   provider: typeform
   codegen:
@@ -115,6 +115,16 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: signupForms
+          branch: listed
+          description: "Listing all forms returns form f_signup_1 for customer signup."
+          default: true
+          output: {forms: [{id: f_signup_1, title: Customer signup, isPublic: true, displayUrl: "https://form.typeform.com/to/f_signup_1"}], page: 1, pageCount: 1, totalItems: 1}
+        - name: formsReadDenied
+          branch: providerRejected
+          description: "Listing forms without forms:read returns HTTP 403."
+          failure: {kind: AUTHORIZATION, message: Typeform denied the form listing.}
     - name: getForm
       goName: GetForm
       inputType: GetFormInput
@@ -131,6 +141,26 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: signupForm
+          branch: found
+          description: "Reading form f_signup_1 returns its name and email questions."
+          default: true
+          output:
+            id: f_signup_1
+            title: Customer signup
+            language: en
+            fields: [{id: field_name, ref: customer_name, title: Your name, type: short_text}, {id: field_email, ref: customer_email, title: Email address, type: email}]
+            hiddenFields: [campaign]
+            displayUrl: "https://form.typeform.com/to/f_signup_1"
+        - name: formMissing
+          branch: notFound
+          description: "Reading nonexistent form f_missing_1 returns HTTP 404."
+          failure: {kind: NOT_FOUND, message: The Typeform form was not found.}
+        - name: formReadDenied
+          branch: providerRejected
+          description: "Reading form f_signup_1 without forms:read returns HTTP 403."
+          failure: {kind: AUTHORIZATION, message: Typeform denied the form read.}
     - name: listResponses
       goName: ListResponses
       inputType: ListResponsesInput
@@ -147,6 +177,28 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: signupResponses
+          branch: listed
+          description: "Listing responses for form f_signup_1 returns Ada's signup."
+          default: true
+          output:
+            formId: f_signup_1
+            responses:
+              - token: response_ada_1
+                submittedAt: "2026-10-26T12:00:00Z"
+                answers: [{fieldId: field_name, fieldType: short_text, type: text, text: Ada Lovelace}, {fieldId: field_email, fieldType: email, type: email, email: ada@example.test}]
+                hiddenFields: {campaign: autumn}
+            totalItems: 1
+            pageCount: 1
+        - name: responsesFormMissing
+          branch: notFound
+          description: "Listing responses for nonexistent form f_missing_1 returns HTTP 404."
+          failure: {kind: NOT_FOUND, message: The Typeform form was not found.}
+        - name: responsesReadDenied
+          branch: providerRejected
+          description: "Listing responses without responses:read returns HTTP 403."
+          failure: {kind: AUTHORIZATION, message: Typeform denied the response listing.}
     - name: upsertWebhook
       goName: UpsertWebhook
       inputType: UpsertWebhookInput
@@ -163,3 +215,17 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: signupWebhook
+          branch: upserted
+          description: "Upserting the dex-response-recorder webhook for form f_signup_1 stores the HTTPS callback."
+          default: true
+          output: {id: webhook_signup_1, formId: f_signup_1, tag: dex-response-recorder, url: "https://example.test/webhooks/typeform", isEnabled: true, eventTypes: [form_response], createdAt: "2026-10-26T12:00:00Z", updatedAt: "2026-10-26T12:00:00Z"}
+        - name: webhookFormMissing
+          branch: notFound
+          description: "Upserting a webhook for nonexistent form f_missing_1 returns HTTP 404."
+          failure: {kind: NOT_FOUND, message: The Typeform form was not found.}
+        - name: webhookWriteDenied
+          branch: providerRejected
+          description: "Upserting the webhook without webhooks:write returns HTTP 403."
+          failure: {kind: AUTHORIZATION, message: Typeform denied the webhook upsert.}

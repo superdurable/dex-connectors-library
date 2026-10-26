@@ -72,8 +72,9 @@ func TestREADMESamplesMatchTheExample(t *testing.T) {
 // TestConnectorREADMESnippetIsTheExampleCode keeps the connector README's Go snippet runnable.
 func TestConnectorREADMESnippetIsTheExampleCode(t *testing.T) {
 	snippets := fencedBlocks(readFile(t, filepath.Join("..", "..", "README.md")), "go")
-	require.Len(t, snippets, 1)
-	require.Contains(t, readFile(t, "main.go"), snippets[0])
+	require.Len(t, snippets, 2)
+	require.Contains(t, readFile(t, filepath.Join("flow", "workflow_mock_integration_test.go")), "\t"+strings.ReplaceAll(snippets[0], "\n", "\n\t"))
+	require.Contains(t, readFile(t, "main.go"), snippets[1])
 }
 
 // decodeThroughTheEndpoint signs body as Typeform does and returns the event the binding receives.

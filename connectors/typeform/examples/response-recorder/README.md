@@ -66,7 +66,7 @@ go run ./cmd/connectorctl ui-artifact \
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/typeform/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/typeform \
-  --version v0.21.2 --tag connectors/typeform/v0.21.2 \
+  --version v0.22.0 --tag connectors/typeform/v0.22.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/typeform-release/connector-ui.tgz \
   --ui-digest /tmp/typeform-release/connector-ui.tgz.sha256 \
