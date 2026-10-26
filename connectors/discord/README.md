@@ -100,6 +100,28 @@ which is left for a later release.
 | `endpoint` | `https://discord.com/api/v10` | API base URL including the version; HTTPS, or HTTP for a loopback test server |
 | `maxResponseBytes` | `4194304` | Maximum response body size in bytes |
 
+## Mocks
+
+`discordmock` provides one default answer per operation for a single announcement in channel
+`100000000000000001`. The create and list defaults share message `300000000000000001`,
+so the runnable Flow confirms its own post. Script a different case when the input
+names another channel, message, or text. Optional cases cover unknown resources
+and permission denials. See [connector mocks](../../sdkgo/README.md#connector-mocks).
+
+The [runnable real-Dex test](examples/channel-announcement/flow/workflow_mock_integration_test.go)
+uses the defaults without Discord credentials:
+
+```go
+mock := discordmock.New(t, ConnectionName)
+flow, harness := newAnnouncementIntegrationHarnessWithConnection(t, mock.Connection())
+harness.startWorker(t)
+ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+defer cancel()
+request := AnnouncementRequest{ChannelID: "100000000000000001", Text: "Release today @everyone"}
+result := harness.runFlow(t, ctx, flow, "discord-mock-"+strconv.FormatInt(time.Now().UnixNano(), 10), request)
+require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+```
+
 ## Security
 
 The bot token is a `secretString` credential resolved for every call, so a
