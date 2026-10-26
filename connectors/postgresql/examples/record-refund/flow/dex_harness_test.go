@@ -39,6 +39,11 @@ func startTestWorker(t *testing.T, config postgresql.Config, password string) *t
 	require.NoError(t, err)
 	connection, err := postgresql.NewConnection(client, sdkgo.ConnectionRef{Provider: "postgresql", Name: ConnectionName})
 	require.NoError(t, err)
+	return startTestWorkerForConnection(t, connection)
+}
+
+func startTestWorkerForConnection(t *testing.T, connection postgresql.Connection) *testWorker {
+	t.Helper()
 	flow := NewFlow(connection)
 	registry, err := dex.NewRegistry([]dex.Flow{flow})
 	require.NoError(t, err)
