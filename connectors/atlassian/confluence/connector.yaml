@@ -5,7 +5,7 @@ metadata:
   displayName: Confluence
   description: Search Confluence Cloud pages with bounded CQL, read a page as Markdown or plain text, publish and update pages without duplicates, and add footer comments.
   company: Atlassian
-  version: v0.22.1
+  version: v0.23.0
 spec:
   provider: atlassian
   codegen:
@@ -127,6 +127,7 @@ spec:
       description: Search one bounded page of Confluence pages with a typed, connector-escaped CQL filter for space, title, label, and modification time plus an optional bounded CQL clause, continuing with the search cursor.
       idempotency: none
       authorization: required
+      pagination: {inputField: cursor, nextField: nextCursor}
       branches:
         - {id: searched, goName: Searched, description: "One page of matching pages was read; Confluence search is eventually consistent, so a page created or changed seconds ago can be missing."}
         - {id: providerRejected, goName: ProviderRejected, description: "Confluence conclusively rejected the search, such as unparsable CQL, an expired cursor, or missing permission.", optional: true}
@@ -135,6 +136,26 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: relatedRemoteWorkPolicies
+          branch: searched
+          description: Searching OPS for Remote work policy returns a related draft and two further cursor pages.
+          default: true
+          pages:
+            - cql: 'type = page AND space in ("OPS") AND title ~ "\"Remote work policy\"" ORDER BY lastmodified DESC'
+              pages: [{id: "600001", title: Remote work policy (2019 draft), status: current, spaceId: "98306", spaceKey: OPS, versionNumber: 2, lastModifiedAt: "2026-09-01T09:00:00Z"}]
+              nextCursor: related-page-2
+            - cql: 'type = page AND space in ("OPS") AND title ~ "\"Remote work policy\"" ORDER BY lastmodified DESC'
+              pages: [{id: "600001", title: Remote work policy (2019 draft), status: current, spaceId: "98306", spaceKey: OPS, versionNumber: 2, lastModifiedAt: "2026-09-01T09:00:00Z"}]
+              nextCursor: related-page-3
+            - cql: 'type = page AND space in ("OPS") AND title ~ "\"Remote work policy\"" ORDER BY lastmodified DESC'
+              pages: []
+              nextCursor: ""
+        - name: searchDenied
+          branch: providerRejected
+          description: Searching OPS for Remote work policy when Confluence returns HTTP 403 is forbidden.
+          output: {cql: 'type = page AND space in ("OPS") AND title ~ "\"Remote work policy\"" ORDER BY lastmodified DESC', pages: []}
+          failure: {kind: AUTHORIZATION, message: Confluence denied the page search.}
     - name: getPage
       goName: GetPage
       inputType: GetPageInput
@@ -152,6 +173,30 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: publishedRemoteWorkPage
+          branch: found
+          description: Reading page 600002 returns the published Remote work policy in Markdown at version 1.
+          default: true
+          output:
+            id: "600002"
+            title: Remote work policy
+            status: current
+            spaceId: "98306"
+            parentPageId: "65537"
+            createdAt: "2026-10-25T09:00:00Z"
+            version: {number: 1, createdAt: "2026-10-25T09:00:00Z"}
+            body: "# Remote work\n\nStaff may work **remotely** two days a week.\n\n- Ask your manager\n- Log the days"
+            bodyFormat: markdown
+            webUrl: https://ops.atlassian.net/wiki/spaces/OPS/pages/600002
+        - name: missingRemoteWorkPage
+          branch: notFound
+          description: Reading page 699999 finds no visible page.
+          failure: {kind: NOT_FOUND, message: Confluence page was not found.}
+        - name: pageReadDenied
+          branch: providerRejected
+          description: Reading page 600002 when Confluence returns HTTP 403 is forbidden.
+          failure: {kind: AUTHORIZATION, message: Confluence denied the page read.}
     - name: createPage
       goName: CreatePage
       inputType: CreatePageInput
@@ -170,6 +215,27 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
+      mocks:
+        - name: createdRemoteWorkPolicy
+          branch: created
+          description: Creating Remote work policy in OPS publishes page 600002 at version 1.
+          default: true
+          output: {pageId: "600002", title: Remote work policy, spaceId: "98306", spaceKey: OPS, parentPageId: "65537", versionNumber: 1, webUrl: https://ops.atlassian.net/wiki/spaces/OPS/pages/600002}
+        - name: titleTaken
+          branch: titleConflict
+          description: Creating Remote work policy when page 600003 already has that title returns its current version.
+          output: {pageId: "600003", title: Remote work policy, spaceId: "98306", spaceKey: OPS, parentPageId: "65537", versionNumber: 3, webUrl: https://ops.atlassian.net/wiki/spaces/OPS/pages/600003}
+          failure: {kind: CONFLICT, message: Another page already has this title.}
+        - name: spaceMissing
+          branch: notFound
+          description: Creating Remote work policy in an unknown OPS space finds no target space.
+          output: {title: Remote work policy, spaceKey: OPS}
+          failure: {kind: NOT_FOUND, message: Confluence space was not found.}
+        - name: createDenied
+          branch: providerRejected
+          description: Creating Remote work policy without Add page permission in OPS returns HTTP 403.
+          output: {title: Remote work policy, spaceId: "98306", spaceKey: OPS}
+          failure: {kind: AUTHORIZATION, message: Confluence denied the page create.}
     - name: updatePage
       goName: UpdatePage
       inputType: UpdatePageInput
@@ -187,6 +253,27 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: updatedRemoteWorkPolicy
+          branch: updated
+          description: Updating page 600002 to version 2 saves the revised Remote work policy.
+          default: true
+          output: {pageId: "600002", title: Remote work policy, versionNumber: 2, webUrl: https://ops.atlassian.net/wiki/spaces/OPS/pages/600002}
+        - name: competingEdit
+          branch: versionConflict
+          description: Updating page 600002 to version 2 after another editor saved version 2 finds version 2 current.
+          output: {pageId: "600002", title: Remote work policy, versionNumber: 2, webUrl: https://ops.atlassian.net/wiki/spaces/OPS/pages/600002}
+          failure: {kind: CONFLICT, message: Another editor saved the requested version first.}
+        - name: updateMissingPage
+          branch: notFound
+          description: Updating page 699999 finds no visible page to change.
+          output: {pageId: "699999", title: Remote work policy}
+          failure: {kind: NOT_FOUND, message: Confluence page was not found.}
+        - name: updateDenied
+          branch: providerRejected
+          description: Updating page 600002 without Edit permission in OPS returns HTTP 403.
+          output: {pageId: "600002", title: Remote work policy}
+          failure: {kind: AUTHORIZATION, message: Confluence denied the page update.}
     - name: addComment
       goName: AddComment
       inputType: AddCommentInput
@@ -205,3 +292,19 @@ spec:
         executeMethodTimeout: 30s
         durability: sync
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A lost dispatch checkpoint could add another comment because Confluence has no comment key and the next attempt sends without read-back."}}
+      mocks:
+        - name: publicationComment
+          branch: added
+          description: Adding the Q4 review footer comment to page 600002 creates comment 700001.
+          default: true
+          output: {pageId: "600002", commentId: "700001", createdAt: "2026-10-25T09:01:00Z"}
+        - name: commentPageMissing
+          branch: notFound
+          description: Adding a footer comment to page 699999 finds no visible page.
+          output: {pageId: "699999"}
+          failure: {kind: NOT_FOUND, message: Confluence page was not found.}
+        - name: commentDenied
+          branch: providerRejected
+          description: Adding a footer comment to page 600002 without Add comments permission returns HTTP 403.
+          output: {pageId: "600002"}
+          failure: {kind: AUTHORIZATION, message: Confluence denied the comment.}

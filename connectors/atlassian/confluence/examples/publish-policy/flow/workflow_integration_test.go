@@ -680,6 +680,12 @@ func newConfluenceIntegrationHarness(t *testing.T, cloudID string, requestTimeou
 	require.NoError(t, err)
 	connection, err := confluence.NewConnection(providerClient, reference)
 	require.NoError(t, err)
+	flow, harness := newConfluenceIntegrationHarnessWithConnection(t, connection)
+	return provider, flow, harness
+}
+
+func newConfluenceIntegrationHarnessWithConnection(t *testing.T, connection confluence.Connection) (*Flow, *confluenceIntegrationHarness) {
+	t.Helper()
 	flow := NewFlow(connection, SpaceSelection{})
 	registry, err := dex.NewRegistry([]dex.Flow{flow})
 	require.NoError(t, err)
@@ -706,7 +712,7 @@ func newConfluenceIntegrationHarness(t *testing.T, cloudID string, requestTimeou
 		defer cancel()
 		require.NoError(t, errors.Join(harness.worker.Stop(stopCtx), <-harness.workerResult, harness.client.Close(), harness.cache.Close()))
 	})
-	return provider, flow, harness
+	return flow, harness
 }
 
 func availableIntegrationPort(t *testing.T) string {
