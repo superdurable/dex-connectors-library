@@ -304,10 +304,12 @@ func (client *Client) classifyRejectedReplyCredential(call sdkgo.Call, output Co
 
 type frontCredentialRefreshDriver struct{}
 
+// RefreshRequired reports that Front API tokens have no expiry-based refresh.
 func (frontCredentialRefreshDriver) RefreshRequired(sdkgo.CredentialRefreshState[Credentials]) bool {
 	return false
 }
 
+// Refresh rejects provider-side renewal because Front API tokens require reconnection.
 func (frontCredentialRefreshDriver) Refresh(context.Context, sdkgo.CredentialRefreshState[Credentials]) (sdkgo.CredentialRefreshResult[Credentials], error) {
 	return sdkgo.CredentialRefreshResult[Credentials]{}, sdkgo.ErrReauthorizationRequired
 }
