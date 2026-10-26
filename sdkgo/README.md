@@ -423,9 +423,13 @@ nobody has saved the Step's configuration yet, the error is
 `projectconfig.ErrObjectNotFound`. Test for it with `errors.Is` to fall back to
 a default; every other error means the saved value is invalid.
 
-Every operation declares the standard `defect` branch. Mutations declare the
-standard `uncertain` branch only when a dispatched provider call can have an
-unknown outcome; otherwise generated factories do not require that target.
+Every operation declares the standard `defect` branch. A Mutation declares the
+standard `uncertain` branch only when all three conditions hold: the request
+may have reached the provider; no idempotency key, stable deduplication ID,
+absolute replacement, upsert, or delete makes a repeat safe; and a read-back
+cannot confirm the outcome. A Mutation that cannot produce uncertainty omits
+that branch and target. See
+[Branch-only Result and strict Attempt](../docs/connector-contract.md#branch-only-result-and-strict-attempt).
 
 ## Text generation connectors
 

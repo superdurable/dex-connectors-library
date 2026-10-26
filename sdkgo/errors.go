@@ -156,7 +156,11 @@ func NewMutationBranch[T any](branch BranchID, value T, failure *Failure, receip
 	return attempt
 }
 
-// NewMutationUncertain records that a dispatched mutation's outcome cannot be confirmed.
+// NewMutationUncertain records a write whose outcome cannot be confirmed. Use it only when
+// the request may have reached the provider; no idempotency key, stable deduplication ID,
+// absolute replacement, upsert, or delete makes a repeat safe; and a read-back cannot
+// confirm the outcome. Otherwise, when the outcome is unknown but a repeat is safe, return
+// NewMutationRetry.
 func NewMutationUncertain[T any](value T, failure Failure, receipt Receipt) MutationAttempt[T] {
 	return MutationAttempt[T]{
 		kind: mutationAttemptUncertain, value: value, failure: failure, receipt: receipt, hasFailure: true,

@@ -159,12 +159,12 @@ character. A cut message ends with `(truncated)`.
 Mutation uncertainty is rare. Use `NewMutationUncertain` only when all three
 conditions hold: the request may have reached the provider; no idempotency key,
 stable deduplication ID, absolute replacement, upsert, or delete makes a repeat
-safe; and a read-back cannot confirm the outcome. A request that never left the
-process, a 429, and a 503 return Retry. A Mutation that can retry under the same
-key or read back before sending again returns Retry. Exhausting retries fails
-the Flow; it never turns into uncertainty. A Mutation that cannot produce
-uncertainty omits that branch and target. Invalid Attempts and local SDK
-defects fail closed to the standard `defect` branch. See the
+safe; and a read-back cannot confirm the outcome. A transport failure before the
+request left the process, a 429, and a 503 return Retry. A Mutation that can
+retry under the same key or read back before sending again returns Retry.
+Exhausting retries fails the Flow; it never turns into uncertainty. A Mutation
+that cannot produce uncertainty omits that branch and target. Invalid Attempts
+and local SDK defects fail closed to the standard `defect` branch. See the
 [uncertainty audit](uncertain-audit.md) for current declarations and fixes.
 
 `FailureKind` records a safe fact, not retry policy. Authentication,
@@ -180,8 +180,8 @@ Applications and examples wire only happy-path branches by default. Every
 other branch is optional; selecting one without a target fails the Flow. Wire
 another branch only when a requirement names a business reaction, such as
 handling one rejected recipient while processing many, and add a comment at
-that wiring naming the reaction. A branch is required only when the
-application must choose a continuation.
+that wiring naming the reaction. Only the happy-path branch is required, so an
+application is never forced to wire another branch.
 
 ## Optional Result Attributes and atomic transition
 

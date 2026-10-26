@@ -33,18 +33,20 @@ alwaysApply: true
 - Load the installed `dex-sdk` skill through the host's native skill mechanism
   before changing Step, retry, durability, Trigger, or Flow-example semantics,
   and follow its Core and Go guidance.
-- Applications and examples wire only happy-path branches by default. Mark
-  every other branch `optional: true`; an unwired optional branch fails the
-  Flow when selected. Wire another branch only to show a required business
-  reaction, with a comment at that wiring naming it. Require another branch
-  only when the application must choose a continuation, and explain why.
-- Select a branch for a definite business outcome and retry every safe-to-repeat
-  failure until the retry budget runs out, when the Flow fails. Declare Mutation
-  `uncertain` only if the request may have reached the provider, no idempotency
-  key, stable deduplication ID, absolute replacement, upsert, or delete makes
-  repetition safe, and read-back cannot confirm it. Requests that never left
-  the process, 429, and 503 return Retry; exhausted retries never become
-  uncertainty.
+- A connector manifest author marks every branch that is not a happy path
+  `optional: true`. Only the happy-path branch is required; every other branch
+  is optional.
+- Applications and examples wire only happy-path branches by default; an
+  unwired optional branch fails the Flow when selected. Wire another branch
+  only to show a required business reaction, and put a comment at that wiring
+  naming the reaction.
+- A connector selects a branch for a definite business outcome and retries
+  every safe-to-repeat failure until the retry budget runs out, when the Flow
+  fails. Declare Mutation `uncertain` only if the request may have reached the
+  provider, no idempotency key, stable deduplication ID, absolute replacement,
+  upsert, or delete makes repetition safe, and read-back cannot confirm it. A
+  transport failure before the request left the process, 429, and 503 return
+  Retry; exhausted retries never become uncertainty.
 - Every new connector or user-visible capability includes a checked-in runnable
   example; a behavioral fix extends the smallest example that proves the fix.
   Use that example as the primary end-to-end path on a real Dex stack. Exercise
