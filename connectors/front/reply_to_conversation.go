@@ -16,16 +16,13 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 const (
 	// MaxReplyTextBytes bounds the text of one reply or comment; it is the connector's limit, not Front's.
 	MaxReplyTextBytes = 64 << 10
-
-	// replyDeadlineMargin leaves time to return uncertain before the Execute deadline.
-	replyDeadlineMargin = 3 * time.Second
-	// minimumReplyRequestTime is the least request time worth sending the reply with.
-	minimumReplyRequestTime = 5 * time.Second
 )
 
 var messageUIDPattern = regexp.MustCompile(`^[A-Za-z0-9]{1,64}$`)
@@ -69,9 +66,12 @@ type ConversationReply struct {
 // Client.ReplyToConversation.
 type ReplyToConversationOperation struct{ client *Client }
 
-// replyDispatchCheckpoint is recorded before the request leaves; RecordHeartbeat does not wait for Dex to persist it.
-type replyDispatchCheckpoint struct {
-	IsDispatched bool `json:"isFrontReplyDispatched"`
+type replySendAttempt struct {
+	client      *Client
+	credentials Credentials
+	operationID string
+	request     frontRequest
+	result      frontExchange
 }
 
 type replyMessageWire struct {
@@ -94,65 +94,165 @@ func (ReplyToConversationOperation) Definition() sdkgo.MutationDefinition {
 }
 
 // IdempotencyKey returns the call ID, recorded in the Receipt only. Front documents no idempotency key,
-// and messages and comments carry no client-supplied ID a later attempt could find, which is why the
-// operation relies on a Dex dispatch checkpoint instead. The checkpoint narrows but does not close the
-// duplicate window: Dex accepts it when the Worker writes it to its stream, so a Worker lost before Dex
-// stores it can still send the reply or comment twice.
+// and messages and comments carry no client-supplied ID a later attempt could find. A single-dispatch
+// fence prevents another send when the prior outcome may have reached Front.
 func (ReplyToConversationOperation) IdempotencyKey(callID sdkgo.CallID, _ ReplyToConversationInput) sdkgo.IdempotencyKey {
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke records a Dex heartbeat checkpoint and then sends the reply or comment once. A later attempt of
-// the same Step execution that finds the checkpoint selects uncertain without sending. Only a 429 or a
-// connection that provably never opened returns Retry and clears the checkpoint. A 408, 5xx, timeout,
-// or any other transport failure selects uncertain. The request must answer three seconds before the
-// attempt's deadline, so a slow Front selects uncertain rather than a Dex retry.
+// Invoke fences the reply or comment. A later attempt reads an accepted provider ID or fails closed;
+// only a 429, 503, or provably undispatched failure permits another send.
 func (operation ReplyToConversationOperation) Invoke(call sdkgo.Call, input ReplyToConversationInput) sdkgo.MutationAttempt[ConversationReply] {
-	attemptStart := time.Now()
 	operationID := ReplyToConversationDefinition.Operation.OperationID
 	client := operation.client
 	output := ConversationReply{ConversationID: input.ConversationID, IsInternalNote: input.IsInternalNote, AuthorID: input.AuthorID}
 	if err := validateReplyToConversationInput(input); err != nil {
 		return sdkgo.NewMutationBranch(ReplyToConversationBranchDefect, output, frontFailurePointer(sdkgo.FailureValidation, operationID, err.Error()), sdkgo.Receipt{})
 	}
-	if hasEarlierReplyDispatch(call) {
-		return sdkgo.NewMutationUncertain(output, frontFailure(sdkgo.FailureTransport, operationID,
-			"an earlier attempt of this Step may have sent the reply or comment, so it is not sent again"), client.receipt(call, input.ConversationID))
+	fence, err := singledispatch.NewFence(call, ReplyToConversationDefinition.StepDefaults.ExecuteMethodTimeout)
+	if err != nil {
+		return sdkgo.NewMutationBranch(ReplyToConversationBranchDefect, output, frontFailurePointer(sdkgo.FailureLocalDefect, operationID, err.Error()), sdkgo.Receipt{})
 	}
-	credentials, failure := client.resolveCredentials(call, operationID)
+	switch decision := fence.Decide(); decision.Kind {
+	case singledispatch.FailClosed:
+		return client.uncertainReply(call, output, sdkgo.FailureAvailability, "the dispatch checkpoint could not be trusted; the reply or comment is not sent again")
+	case singledispatch.ReadBackRequired:
+		return client.readBackReply(call, input, output, decision.Marker)
+	}
+	credentials, failure, credentialError := client.resolveCredentialsWithCause(call, operationID)
 	if failure != nil {
-		return sdkgo.NewMutationBranch(ReplyToConversationBranchDefect, output, failure, sdkgo.Receipt{})
-	}
-	requestContext, cancel, isStartable := newReplyRequestContext(call.Context, attemptStart)
-	defer cancel()
-	if !isStartable {
+		if err := fence.RecordNotSent(); err != nil {
+			return sdkgo.NewMutationRetry[ConversationReply](frontFailure(sdkgo.FailureAvailability, operationID,
+				"Front credentials were temporarily unavailable and the not-sent checkpoint failed"), 0)
+		}
+		if isTerminalCredentialFailure(credentialError) {
+			return sdkgo.NewMutationBranch(ReplyToConversationBranchDefect, output,
+				frontFailurePointer(sdkgo.FailureAuthentication, operationID, "Reconnect the Front connection before sending the reply or comment"), sdkgo.Receipt{})
+		}
 		return sdkgo.NewMutationRetry[ConversationReply](frontFailure(sdkgo.FailureAvailability, operationID,
-			"too little of the Execute timeout remained to send the reply; nothing was sent"), 0)
+			"Front credentials were temporarily unavailable"), 0)
 	}
-	if err := call.Context.RecordHeartbeat(replyDispatchCheckpoint{IsDispatched: true}); err != nil {
+	attempt := &replySendAttempt{client: client, credentials: credentials, operationID: operationID, request: buildReplyRequest(input)}
+	if err := fence.Dispatch(attempt.send); err != nil {
+		if errors.Is(err, singledispatch.ErrCheckpoint) || errors.Is(err, singledispatch.ErrInsufficientTime) {
+			return sdkgo.NewMutationRetry[ConversationReply](frontFailure(sdkgo.FailureAvailability, operationID,
+				"the reply was not dispatched; retry after the checkpoint or attempt budget recovers"), 0)
+		}
+		return client.uncertainReply(call, output, sdkgo.FailureTransport, "the fenced reply outcome could not be determined")
+	}
+	return client.classifyReplyExchange(call, output, attempt.result, credentials, fence)
+}
+
+func (attempt *replySendAttempt) send(requestContext context.Context) error {
+	attempt.result = attempt.client.exchangeFencedWrite(requestContext, attempt.credentials, attempt.operationID, attempt.request)
+	return nil
+}
+
+func (client *Client) readBackReply(
+	call sdkgo.Call, input ReplyToConversationInput, output ConversationReply, marker singledispatch.Marker,
+) sdkgo.MutationAttempt[ConversationReply] {
+	providerIDPattern := messageUIDPattern
+	if input.IsInternalNote {
+		providerIDPattern = commentIDPattern
+	}
+	if marker.CallID != call.ID {
+		return client.uncertainReply(call, output, sdkgo.FailureAvailability, "an earlier attempt has no trusted dispatch checkpoint")
+	}
+	if marker.ProviderID == "" {
+		if marker.State == singledispatch.StateClaimed {
+			return client.uncertainReply(call, output, sdkgo.FailureTransport, "an earlier attempt may have sent the reply or comment without a provider ID")
+		}
+		return client.uncertainReply(call, output, sdkgo.FailureAvailability, "a stale checkpoint cannot establish whether the reply or comment was sent")
+	}
+	if !providerIDPattern.MatchString(marker.ProviderID) {
+		return client.uncertainReply(call, output, sdkgo.FailureProtocol, "an earlier attempt stored an invalid provider ID")
+	}
+	operationID := ReplyToConversationDefinition.Operation.OperationID
+	credentials, failure, credentialError := client.resolveCredentialsWithCause(call, operationID)
+	if failure != nil {
+		if isTerminalCredentialFailure(credentialError) {
+			return sdkgo.NewMutationUncertain(output, frontFailure(sdkgo.FailureAuthentication, operationID,
+				"Front accepted an earlier reply or comment, but its connection needs reconnection before read-back; verify the saved provider ID before retrying manually"),
+				client.receipt(call, marker.ProviderID))
+		}
 		return sdkgo.NewMutationRetry[ConversationReply](frontFailure(sdkgo.FailureAvailability, operationID,
-			"Dex did not record the dispatch checkpoint, so nothing was sent to Front"), 0)
+			"Front credentials were temporarily unavailable during read-back"), 0)
 	}
-	result := client.exchange(requestContext, credentials, operationID, buildReplyRequest(input))
-	return client.classifyReplyExchange(call, output, result)
+	path := "/messages/alt:uid:" + marker.ProviderID
+	if input.IsInternalNote {
+		path = "/comments/" + marker.ProviderID
+	}
+	result := client.exchange(call.Context, credentials, operationID, frontRequest{method: http.MethodGet, path: path})
+	if result.outcome == exchangeSucceeded {
+		if input.IsInternalNote {
+			output.CommentID = marker.ProviderID
+		} else {
+			output.MessageUID = marker.ProviderID
+		}
+		receipt := client.receipt(call, marker.ProviderID)
+		return sdkgo.NewMutationBranch(ReplyToConversationBranchReplied, output, nil, receipt)
+	}
+	if result.isRetryable() {
+		return sdkgo.NewMutationRetry[ConversationReply](result.failure, result.retryAfter)
+	}
+	if result.outcome == exchangeNotFound && !input.IsInternalNote {
+		// Front may return 404 before an accepted message_uid becomes readable; live timing is unverified.
+		return sdkgo.NewMutationRetry[ConversationReply](result.failure, result.retryAfter)
+	}
+	message := "Front could not confirm an earlier accepted reply or comment"
+	if result.failure.Kind == sdkgo.FailureAuthentication {
+		message = "Front rejected credentials during accepted-write read-back; reconnect and verify the saved provider ID before retrying manually"
+	}
+	return sdkgo.NewMutationUncertain(output, frontFailure(result.failure.Kind, operationID, message), client.receipt(call, marker.ProviderID))
+}
+
+func isTerminalCredentialFailure(err error) bool {
+	return err == nil || errors.Is(err, sdkgo.ErrReauthorizationRequired)
+}
+
+func (client *Client) uncertainReply(call sdkgo.Call, output ConversationReply, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[ConversationReply] {
+	return sdkgo.NewMutationUncertain(output, frontFailure(kind,
+		ReplyToConversationDefinition.Operation.OperationID, message), client.receipt(call, output.ConversationID))
 }
 
 // classifyReplyExchange maps the sent request: only a provable non-application is retried.
-func (client *Client) classifyReplyExchange(call sdkgo.Call, output ConversationReply, result frontExchange) sdkgo.MutationAttempt[ConversationReply] {
+func (client *Client) classifyReplyExchange(call sdkgo.Call, output ConversationReply, result frontExchange, credentials Credentials, fence *singledispatch.Fence) sdkgo.MutationAttempt[ConversationReply] {
 	receipt := client.receipt(call, output.ConversationID)
 	if result.response.statusCode >= 200 && result.response.statusCode < 300 {
-		// Front created the comment or accepted the reply; an unreadable answer only loses its ID.
+		// Front accepted the write even when its body was interrupted or unusable.
 		output.MessageUID, output.CommentID = decodeReplyIdentity(result.response.body, output.IsInternalNote)
-		receipt.ProviderObjectID = cmp.Or(output.CommentID, output.MessageUID, output.ConversationID)
+		providerID := cmp.Or(output.CommentID, output.MessageUID)
+		if providerID == "" {
+			kind := result.failure.Kind
+			if kind == "" {
+				kind = sdkgo.FailureProtocol
+			}
+			return client.uncertainReply(call, output, kind, "Front accepted the reply or comment, but its answer has no usable provider ID; do not resend")
+		}
+		_ = fence.RecordProviderID(providerID) // Acceptance is already known if this extra checkpoint fails.
+		receipt.ProviderObjectID = providerID
 		return sdkgo.NewMutationBranch(ReplyToConversationBranchReplied, output, nil, receipt)
 	}
 	switch result.outcome {
 	case exchangeDefect:
-		clearReplyDispatch(call)
 		return sdkgo.NewMutationBranch(ReplyToConversationBranchDefect, output, &result.failure, sdkgo.Receipt{})
 	case exchangeNotSent, exchangeRateLimited:
-		clearReplyDispatch(call)
+		if err := fence.RecordCanResend(); err != nil {
+			return sdkgo.NewMutationRetry[ConversationReply](frontFailure(sdkgo.FailureAvailability,
+				ReplyToConversationDefinition.Operation.OperationID, "the resend checkpoint failed"), 0)
+		}
 		return sdkgo.NewMutationRetry[ConversationReply](result.failure, result.retryAfter)
+	case exchangeUnconfirmed:
+		if result.response.statusCode == http.StatusServiceUnavailable {
+			if err := fence.RecordCanResend(); err != nil {
+				return sdkgo.NewMutationRetry[ConversationReply](frontFailure(sdkgo.FailureAvailability,
+					ReplyToConversationDefinition.Operation.OperationID, "the resend checkpoint failed"), 0)
+			}
+			return sdkgo.NewMutationRetry[ConversationReply](result.failure, result.retryAfter)
+		}
+		failure := result.failure
+		failure.Message += "; the reply or comment may exist"
+		return sdkgo.NewMutationUncertain(output, failure, receipt)
 	case exchangeNotFound:
 		return sdkgo.NewMutationBranch(ReplyToConversationBranchNotFound, output, &result.failure, receipt)
 	case exchangeMerged:
@@ -162,12 +262,56 @@ func (client *Client) classifyReplyExchange(call sdkgo.Call, output Conversation
 		}
 		return sdkgo.NewMutationBranch(ReplyToConversationBranchNotFound, output, &failure, receipt)
 	case exchangeRejected:
+		if result.response.statusCode == http.StatusUnauthorized {
+			return client.classifyRejectedReplyCredential(call, output, credentials, fence)
+		}
+		if result.response.statusCode == http.StatusConflict {
+			return client.uncertainReply(call, output, sdkgo.FailureConflict, "Front returned a conflict without a key or unique value for read-back")
+		}
 		return sdkgo.NewMutationBranch(ReplyToConversationBranchProviderRejected, output, &result.failure, receipt)
 	default:
-		failure := result.failure
-		failure.Message += "; the reply or comment may exist"
-		return sdkgo.NewMutationUncertain(output, failure, receipt)
+		return client.uncertainReply(call, output, result.failure.Kind, "the reply or comment may exist")
 	}
+}
+
+func (client *Client) classifyRejectedReplyCredential(call sdkgo.Call, output ConversationReply, rejected Credentials, fence *singledispatch.Fence) sdkgo.MutationAttempt[ConversationReply] {
+	operationID := ReplyToConversationDefinition.Operation.OperationID
+	if _, supportsRefresh := client.credentials.(sdkgo.RejectedCredentialRefreshingProvider[Credentials]); !supportsRefresh {
+		return sdkgo.NewMutationBranch(ReplyToConversationBranchProviderRejected, output,
+			frontFailurePointer(sdkgo.FailureAuthentication, operationID, "Front rejected the API token (HTTP 401); reconnect the Front connection"), client.receipt(call, output.ConversationID))
+	}
+	var refreshContext context.Context = call.Context
+	if deadline, hasDeadline := refreshContext.Deadline(); hasDeadline {
+		var cancel context.CancelFunc
+		refreshContext, cancel = context.WithDeadline(refreshContext, deadline.Add(-100*time.Millisecond))
+		defer cancel()
+	}
+	replacement, err := sdkgo.ResolveCredentialAfterRejection(refreshContext, client.credentials, call, frontCredentialRefreshDriver{})
+	if err == nil && replacement.Validate() == nil && providerhttp.IsHeaderSafeCredential(replacement.APIToken.Reveal()) &&
+		replacement.APIToken.Reveal() != rejected.APIToken.Reveal() {
+		if err := fence.RecordCanResend(); err != nil {
+			return sdkgo.NewMutationRetry[ConversationReply](frontFailure(sdkgo.FailureAvailability, operationID, "the credential resend checkpoint failed"), 0)
+		}
+		return sdkgo.NewMutationRetry[ConversationReply](frontFailure(sdkgo.FailureAuthentication, operationID, "Front rejected the prior API token; retry with its replacement"), 0)
+	}
+	message := "Front rejected the API token (HTTP 401); reconnect the Front connection"
+	if err != nil && !errors.Is(err, sdkgo.ErrReauthorizationRequired) {
+		message = "Front rejected the API token (HTTP 401); credential refresh is temporarily unavailable"
+	}
+	return sdkgo.NewMutationBranch(ReplyToConversationBranchProviderRejected, output,
+		frontFailurePointer(sdkgo.FailureAuthentication, operationID, message), client.receipt(call, output.ConversationID))
+}
+
+type frontCredentialRefreshDriver struct{}
+
+// RefreshRequired reports that Front API tokens have no expiry-based refresh.
+func (frontCredentialRefreshDriver) RefreshRequired(sdkgo.CredentialRefreshState[Credentials]) bool {
+	return false
+}
+
+// Refresh rejects provider-side renewal because Front API tokens require reconnection.
+func (frontCredentialRefreshDriver) Refresh(context.Context, sdkgo.CredentialRefreshState[Credentials]) (sdkgo.CredentialRefreshResult[Credentials], error) {
+	return sdkgo.CredentialRefreshResult[Credentials]{}, sdkgo.ErrReauthorizationRequired
 }
 
 func buildReplyRequest(input ReplyToConversationInput) frontRequest {
@@ -229,34 +373,4 @@ func validateReplyToConversationInput(input ReplyToConversationInput) error {
 		return validateResourceID("authorId", input.AuthorID, teammateIDPattern, "tea_2thf")
 	}
 	return nil
-}
-
-// newReplyRequestContext ends the request before the attempt's deadline; false means too little time is left.
-func newReplyRequestContext(stepContext context.Context, attemptStart time.Time) (context.Context, context.CancelFunc, bool) {
-	if stepContext == nil {
-		stepContext = context.Background()
-	}
-	deadline := attemptStart.Add(ReplyToConversationDefinition.StepDefaults.ExecuteMethodTimeout)
-	if contextDeadline, hasDeadline := stepContext.Deadline(); hasDeadline && contextDeadline.Before(deadline) {
-		deadline = contextDeadline
-	}
-	requestDeadline := deadline.Add(-replyDeadlineMargin)
-	if time.Until(requestDeadline) < minimumReplyRequestTime {
-		return stepContext, func() {}, false
-	}
-	requestContext, cancel := context.WithDeadline(stepContext, requestDeadline)
-	return requestContext, cancel, true
-}
-
-// hasEarlierReplyDispatch reports an earlier attempt's checkpoint; an unreadable one counts, avoiding a duplicate.
-func hasEarlierReplyDispatch(call sdkgo.Call) bool {
-	var checkpoint replyDispatchCheckpoint
-	isFound, err := call.Context.GetLastHeartbeatValue(&checkpoint)
-	return err != nil || (isFound && checkpoint.IsDispatched)
-}
-
-// clearReplyDispatch removes the checkpoint after Front provably added nothing.
-func clearReplyDispatch(call sdkgo.Call) {
-	// A lost clear leaves the checkpoint set, so the next attempt reports uncertain instead of sending twice.
-	_ = call.Context.RecordHeartbeat(nil)
 }

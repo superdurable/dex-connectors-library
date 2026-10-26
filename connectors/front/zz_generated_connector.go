@@ -361,8 +361,8 @@ var ReplyToConversationDefinition = sdkgo.MutationDefinition{
 		{ID: ReplyToConversationBranchReplied, Description: "Front accepted the reply for delivery or created the comment."},
 		{ID: ReplyToConversationBranchNotFound, Description: "The conversation does not exist, was merged, or is not visible to the API token; nothing was sent.", Optional: true},
 		{ID: ReplyToConversationBranchProviderRejected, Description: "Front conclusively rejected the reply or comment, such as a token without send permission or an unknown author; nothing was sent.", Optional: true},
-		{ID: ReplyToConversationBranchUncertain, Description: "The request may have reached Front, but its answer was lost, was a server error, or arrived too late, so the reply or comment may exist; the connector never sends it again.", Optional: true},
-		{ID: ReplyToConversationBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
+		{ID: ReplyToConversationBranchUncertain, Description: "The reply or comment may exist after a lost answer, ambiguous server error, late answer, 409 conflict, or terminal credential failure during accepted-write read-back; an accepted comment may have been deleted before read-back. The connector never resends without proof of non-application.", Optional: true},
+		{ID: ReplyToConversationBranchDefect, Description: "Local input, connection credentials that require reauthorization or are unusable before sending, or the connector definition is invalid; transient credential failures Retry.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),

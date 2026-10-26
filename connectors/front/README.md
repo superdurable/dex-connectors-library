@@ -11,7 +11,7 @@ The Front connector connects a Dex application to the
 | --- | --- | --- | --- |
 | `searchConversations` | Query | One page of up to 100 conversations by text, inbox, tag, status filters, recipient email, assignee, and recent activity | `searched` |
 | `getConversation` | Query | One conversation with up to 25 of its newest messages and 25 newest internal comments | `found` |
-| `replyToConversation` | Mutation | One reply that Front delivers to the recipients, or one internal comment, sent behind a dispatch checkpoint that narrows but does not close the duplicate window | `replied` |
+| `replyToConversation` | Mutation | One reply that Front delivers to the recipients, or one internal comment, protected by the shared single-dispatch fence | `replied` |
 | `updateConversation` | Mutation | Sets the status or ticket status and the assignee and adds or removes tags; safe to repeat | `updated` |
 | `findContactByEmail` | Query | The contact whose email handle equals one address | `found` |
 
@@ -199,38 +199,77 @@ as `messageUid`; `GET /messages/alt:uid:{uid}` reads the message once Front
 has created it, and a channel can still fail to deliver it later. A comment
 answers `201`, and the Result returns its `commentId`.
 
-Front documents no idempotency key, and messages and comments carry no
-client-supplied ID that a later attempt could find, so the operation is
-single-dispatch:
+Front's [reply](https://dev.frontapp.com/reference/create-message-reply) and
+[comment](https://dev.frontapp.com/reference/add-comment) request fields have
+no documented idempotency key or client-supplied lookup value. A lost answer
+therefore cannot be matched to one write by listing the conversation's messages
+or comments. The shared `singledispatch.Fence` records an attempt-scoped claim
+under sync durability before one POST. A missing, stale, or unreadable claim
+fails closed. A `429`, `503`, or traced DNS/connect/TLS failure before a
+connection was obtained records `canResend` and permits only the next attempt
+to retry; Front's non-application of a `503` remains **unverified against a live
+Front account**. Other ambiguous sent failures, including `408`, other `5xx`,
+and transport loss, select `uncertain`. A `409` also selects `uncertain` because
+no key or unique value can confirm the conflicting write. A `404` or
+merged-conversation `301` selects `notFound`; other definite `4xx` rejections
+select `providerRejected`.
 
-- it runs with sync durability, so Dex does not dispatch the Step a second
-  time while a slow Front answers;
-- it records a Dex heartbeat checkpoint before the request leaves the Worker.
-  A later attempt of the same Step execution that finds the checkpoint selects
-  `uncertain` without sending;
-- the request must answer three seconds before the attempt's deadline, at
-  most the 30-second Execute timeout, and it is not sent when less than five
-  seconds would remain;
-- only a `429`, which Front answers before applying the request, or a
-  connection that provably never opened, a failed DNS lookup, connect, or TLS
-  handshake with no connection obtained, returns Retry and clears the
-  checkpoint. A `5xx`, a `408`, a timeout, or any other transport failure
-  selects `uncertain`, so an HTTP client whose transport drops the request's
-  trace cannot turn a lost answer into a second send;
-- a `404`, or a `301` for a merged conversation, selects `notFound`, and any
-  other `4xx` selects `providerRejected`. Nothing was added.
+The fence bounds each request to 7/12 of the smaller of the 30-second Execute
+timeout and the remaining Step deadline, and refuses a send without one tenth
+of the initial budget remaining before its request deadline. Any 2xx answer
+is accepted and never resent. An unreadable body or missing provider ID
+selects `uncertain`; a returned ID can be read back. An accepted reply's
+`message_uid` can be read at
+`GET /messages/alt:uid:{uid}` as [Front documents](https://dev.frontapp.com/reference/messages),
+and an accepted comment's ID can be read at
+[`GET /comments/{id}`](https://dev.frontapp.com/reference/get-comment).
+If that ID was checkpointed and a later Dex attempt occurs, the connector
+reads the resource before reporting `replied`; a transient read failure
+retries the read without another POST. A comment read-back `404` selects
+`uncertain`, because the comment may have been deleted after acceptance.
+If credential resolution fails during this read-back, a reauthorization
+requirement or unusable resolved token selects `uncertain` with the saved
+provider ID in its receipt and a reconnect hint; another credential error
+retries the read without another POST.
+A reply `message_uid` read-back `404` retries the GET without another POST:
+Front may not have created the accepted message yet, although this timing
+remains unverified with a live Front account. If that `404` persists, the
+five-attempt/five-minute retry budget expires and the Flow fails without
+another POST. A lost answer without an ID remains
+`uncertain` because content and author are not unique identifiers.
 
-The checkpoint narrows the duplicate window but does not close it. Dex accepts
-the checkpoint when the Worker writes it to its stream, before the request
-leaves; a Worker lost in that instant, before Dex stored the checkpoint, could
-still send twice, and a crash after the checkpoint but before the request left
-reports `uncertain` for a request Front never received.
+Every in-flight reply retry from v0.21.x fails closed to `uncertain` at
+attempt 2 or later and never resends, including retries whose old
+`isFrontReplyDispatched` checkpoint was cleared after a `429` or unsent
+failure. Reconcile those Flows manually after this upgrade.
 
 The real-Dex tests in
 [`examples/conversation-triage`](examples/conversation-triage/main_integration_test.go)
-prove it with a fake Front that answers after nine seconds, one comment POST
-under sync, and with a Worker lost while Front holds the comment: the attempt
-on the new Worker selects `uncertain` without a second POST.
+cover a fake Front that answers after nine seconds, a `503` then acceptance
+with two comment POSTs, and a Worker lost while Front holds the comment: the
+new Worker selects `uncertain` without a second POST.
+
+## Mocks
+
+`frontmock` supplies one consistent default world for all five operations:
+Jane's `cnv_100` conversation has an inbound message, `crd_100` is her
+contact, search includes `cnv_200` as another open conversation, the triage
+comment becomes `com_100`, and routing assigns `tea_leela` and adds
+`tag_triaged`. Each optional business branch also has a named mock. The
+[real-Dex mock test](examples/conversation-triage/workflow_mock_integration_test.go)
+starts the runnable Flow with this connection:
+
+```go
+	mock := frontmock.New(t, conversationtriage.ConnectionName)
+	harness := newTriageHarnessForConnection(t, mock.Connection(), conversationtriage.RoutingConfiguration{
+		AssigneeID: "tea_leela", TagID: "tag_triaged",
+	})
+	triage := harness.runTriage(t, "mock-default", "cnv_100")
+```
+
+The test checks the Flow's derived triage record and every operation's call
+count and literal input, especially the comment text built from the read and
+search results. Its integration build tag leaves execution to CI.
 
 ### updateConversation
 
@@ -322,16 +361,18 @@ Failure names only the HTTP status.
 | Answer | Result |
 | --- | --- |
 | 400, 413, 422 | `providerRejected`, `VALIDATION` |
-| 401 | `providerRejected`, `AUTHENTICATION`, such as a deleted token |
+| 401 | `providerRejected`, `AUTHENTICATION`; `replyToConversation` attempts forced credential refresh when the credential source supports refresh after rejection and permits one fenced Retry with a changed valid token |
 | 403 | `providerRejected`, `AUTHORIZATION`, such as a token without the namespace or permission |
 | 404, 410 | `notFound` where declared, otherwise `providerRejected`; `providerRejected` on an `updateConversation` write after its read found the conversation |
-| 409 | `providerRejected`, `CONFLICT` |
+| 409 | `uncertain`, `CONFLICT` for `replyToConversation`; `providerRejected`, `CONFLICT` for other operations |
 | 301 | `merged` for `getConversation`, `notFound` for the Mutations, naming the absorbing conversation |
 | other 3xx | `providerRejected`, `PROTOCOL`; redirects are never followed |
 | 429 | Retry after `Retry-After` seconds, capped at an hour; without it, at the `X-Ratelimit-Reset` second, one second to a minute later |
-| 408, 5xx, transport failure | Retry, except `uncertain` for a sent reply or comment |
-| oversized, malformed, or credential-reflecting 2xx | `invalidResponse` |
-| invalid input or credentials | `defect`, with no request |
+| 408, 5xx, transport failure | Retry for reads and repeat-safe writes; `replyToConversation` Retries a 503 or provably unsent failure and selects `uncertain` for other ambiguous sends |
+| oversized, malformed, or credential-reflecting 2xx | `uncertain` for `replyToConversation`; `invalidResponse` for other operations |
+| invalid input | `defect`, with no request |
+| transient credential resolution failure | Before sending, `replyToConversation` records not-sent and Retries; during accepted-write read-back, it Retries without another POST. Other operations select `defect` |
+| reauthorization required or unusable resolved token | Before sending, `replyToConversation` records not-sent and selects `defect`; during accepted-write read-back, it selects `uncertain` with the saved provider ID and reconnect guidance. Other operations select `defect` |
 
 Front's rate limit is per company: 50, 100, or 200 requests a minute on the
 Starter, Professional, and Enterprise plans, plus a burst allowance. Per
@@ -346,7 +387,8 @@ second, and so do the tag writes. `getConversation` sends three requests and
 - The connector sends the token only to `https://api2.frontapp.com`, never
   follows a redirect or a next-page link, and reads at most
   `maxResponseBytes`; an answer that reflects the token selects
-  `invalidResponse`.
+  `invalidResponse` for reads and repeat-safe writes, or `uncertain` for
+  `replyToConversation` after Front accepted the write.
 - Failure messages are written by the connector from status codes; Front's
   message text is never read.
 
@@ -372,8 +414,10 @@ description fetched that day, not on a live account:
   tag, or ticket status; its reference documents only `204`, `301`, and `400`;
 - whether a reply with an API token and no `author_id` is accepted, and on
   which channel Front sends it;
-- whether a `5xx` on a reply or comment ever leaves it created, which the
-  connector assumes;
+- whether Front never applies a reply or comment that it answers with `503`;
+  the connector resends after `503`, which could duplicate a customer reply;
+- whether `GET /messages/alt:uid:{uid}` returns `404` before an accepted reply
+  is created; the connector retries only that GET;
 - whether `alt:email:` matches an address in another letter case;
 - every answer to a valid token, including whether `Retry-After` accompanies
   every `429`;

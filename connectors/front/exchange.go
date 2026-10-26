@@ -6,7 +6,6 @@ package front
 import (
 	"crypto/tls"
 	"errors"
-	"net"
 	"net/http"
 	"net/http/httptrace"
 	"net/url"
@@ -118,12 +117,6 @@ func (observation *dispatchObservation) recordConnectionFailure() {
 	observation.mutex.Lock()
 	defer observation.mutex.Unlock()
 	observation.hasFailedToConnect = true
-}
-
-// isConnectionNeverEstablished reports a dial failure, after which Front cannot have received the request.
-func isConnectionNeverEstablished(err error) bool {
-	var operationError *net.OpError
-	return errors.As(err, &operationError) && operationError.Op == "dial"
 }
 
 func rejectionFailureKind(status int) sdkgo.FailureKind {
