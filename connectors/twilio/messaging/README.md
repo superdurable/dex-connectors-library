@@ -170,9 +170,9 @@ dex.DefineStep(messaging.NewSendMessageStep(messaging.SendMessageStepConfig[Inpu
 		Explanation: "Send the text once; an unknown outcome is reconciled, never resent automatically.",
 	},
 	Connection: flow.connection, MapToOperationInput: flow.MapToSendMessageInput,
-	Accepted:         sdkgo.GoTo(recordAcceptedTextMessage{}),
-	ProviderRejected: sdkgo.GoTo(recordRejectedTextMessage{}),
-	Uncertain:        sdkgo.GoTo(recordUncertainTextMessage{}),
+	Accepted: sdkgo.GoTo(recordAcceptedTextMessage{}),
+	// An uncertain send continues through operator reconciliation before any resend.
+	Uncertain: sdkgo.GoTo(recordUncertainTextMessage{}),
 })),
 ```
 

@@ -28,12 +28,10 @@ const (
 	recordUsageRequestStepType        = "RecordUsageRequest"
 	submitUsageQueryStepType          = "SubmitUsageQuery"
 	recordSubmittedQueryStepType      = "RecordSubmittedQuery"
-	recordRejectedQueryStepType       = "RecordRejectedQuery"
 	waitForUsageQueryStepType         = "WaitForUsageQuery"
 	readUsageResultStepType           = "ReadUsageResult"
 	recordRunningQueryStepType        = "RecordRunningQuery"
 	completeUsageSummaryStepType      = "CompleteUsageSummary"
-	recordFailedQueryStepType         = "RecordFailedQuery"
 	cancelUsageQueryStepType          = "CancelUsageQuery"
 	recordWaitBudgetExhaustedStepType = "RecordWaitBudgetExhausted"
 
@@ -53,10 +51,6 @@ const (
 	PhaseRunning = "running"
 	// PhaseCompleted means the statement finished and the usage summary is recorded.
 	PhaseCompleted = "completed"
-	// PhaseFailed means the statement failed, was canceled, or exceeded statementTimeout in Snowflake.
-	PhaseFailed = "failed"
-	// PhaseRejected means Snowflake refused the submission, so nothing ran.
-	PhaseRejected = "rejected"
 	// PhaseWaitBudgetExhausted means the statement outlasted the Flow's status reads and was canceled.
 	PhaseWaitBudgetExhausted = "waitBudgetExhausted"
 )
@@ -102,13 +96,7 @@ type UsageSummaryRecord struct {
 	StatusReads int `json:"statusReads"`
 	// Usage is the aggregate once the statement completed.
 	Usage *AccountUsage `json:"usage,omitempty"`
-	// SnowflakeCode is Snowflake's six-digit failure code, never its message text.
-	SnowflakeCode string `json:"snowflakeCode,omitempty"`
-	// SQLState is the failure's SQLSTATE.
-	SQLState string `json:"sqlState,omitempty"`
-	// FailureKind is the connector's safe failure category.
-	FailureKind sdkgo.FailureKind `json:"failureKind,omitempty"`
-	// IsCancellationAccepted reports whether Snowflake accepted the cancel after the wait budget ran out.
+	// IsCancellationAccepted reports that Snowflake accepted the cancel after the wait budget ran out.
 	IsCancellationAccepted bool `json:"isCancellationAccepted,omitempty"`
 }
 
@@ -157,10 +145,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Connection:          flow.connection,
 			MapToOperationInput: flow.MapToSubmitUsageQueryInput,
 			Submitted:           sdkgo.GoTo(recordSubmittedQuery{}),
-			ProviderRejected:    sdkgo.GoTo(recordRejectedQuery{}),
 		})),
 		dex.DefineStep(recordSubmittedQuery{}),
-		dex.DefineStep(recordRejectedQuery{}),
 		dex.DefineStep(waitForUsageQuery{checkInterval: flow.policy.CheckInterval}),
 		dex.DefineStep(snowflake.NewGetStatementResultStep(snowflake.GetStatementResultStepConfig[StatementCheck]{
 			StepType: readUsageResultStepType, ConnectionName: ConnectionName,
@@ -171,12 +157,11 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Connection:          flow.connection,
 			MapToOperationInput: flow.MapToReadUsageResultInput,
 			Completed:           sdkgo.GoTo(completeUsageSummary{}),
-			Running:             sdkgo.GoTo(recordRunningQuery{maximumRunningReads: flow.policy.MaximumRunningReads}),
-			ProviderRejected:    sdkgo.GoTo(recordFailedQuery{}),
+			// A running statement continues through the status Timer.
+			Running: sdkgo.GoTo(recordRunningQuery{maximumRunningReads: flow.policy.MaximumRunningReads}),
 		})),
 		dex.DefineStep(recordRunningQuery{maximumRunningReads: flow.policy.MaximumRunningReads}),
 		dex.DefineStep(completeUsageSummary{}),
-		dex.DefineStep(recordFailedQuery{}),
 		dex.DefineStep(snowflake.NewCancelStatementStep(snowflake.CancelStatementStepConfig[StatementCheck]{
 			StepType: cancelUsageQueryStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
@@ -186,7 +171,6 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Connection:          flow.connection,
 			MapToOperationInput: flow.MapToCancelUsageQueryInput,
 			Canceled:            sdkgo.GoTo(recordWaitBudgetExhausted{}),
-			ProviderRejected:    sdkgo.GoTo(recordWaitBudgetExhausted{}),
 		})),
 		dex.DefineStep(recordWaitBudgetExhausted{}),
 	}
@@ -333,30 +317,6 @@ func (recordSubmittedQuery) Execute(ctx dex.Context, result snowflake.SubmitStat
 	return dex.GoTo(waitForUsageQuery{}, StatementCheck{StatementHandle: result.Value.StatementHandle}), nil
 }
 
-// dex:group group-id:snowflake group-label:"Snowflake"
-// dex:explanation text:"Complete with Snowflake's code and SQLSTATE after a refused submission; nothing ran."
-type recordRejectedQuery struct {
-	dex.StepDefaultsNoWaitFor[snowflake.SubmitStatementResult]
-}
-
-func (recordRejectedQuery) GetStepType() string { return recordRejectedQueryStepType }
-
-func (recordRejectedQuery) Execute(ctx dex.Context, result snowflake.SubmitStatementResult) (*dex.StepDecision, error) {
-	record, err := usageRecordAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	record.Phase = PhaseRejected
-	recordFailure(&record, result.Receipt, result.Failure)
-	if err := usagePhaseAttribute.Set(ctx, record.Phase); err != nil {
-		return nil, err
-	}
-	if err := usageRecordAttribute.Set(ctx, record); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(record), nil
-}
-
 // dex:group group-id:wait group-label:"Wait"
 // dex:explanation text:"Wait on a durable Timer before reading the statement again; no Worker is held."
 type waitForUsageQuery struct {
@@ -429,49 +389,21 @@ func (completeUsageSummary) Execute(ctx dex.Context, result snowflake.GetStateme
 	return dex.GracefulComplete(record), nil
 }
 
-// dex:group group-id:snowflake group-label:"Snowflake"
-// dex:explanation text:"Complete with Snowflake's code and SQLSTATE after the statement failed or was canceled."
-type recordFailedQuery struct {
-	dex.StepDefaultsNoWaitFor[snowflake.GetStatementResultResult]
-}
-
-func (recordFailedQuery) GetStepType() string { return recordFailedQueryStepType }
-
-func (recordFailedQuery) Execute(ctx dex.Context, result snowflake.GetStatementResultResult) (*dex.StepDecision, error) {
-	record, err := usageRecordAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	record.Phase = PhaseFailed
-	recordFailure(&record, result.Receipt, result.Failure)
-	if err := usagePhaseAttribute.Set(ctx, record.Phase); err != nil {
-		return nil, err
-	}
-	if err := usageRecordAttribute.Set(ctx, record); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(record), nil
-}
-
 // dex:group group-id:wait group-label:"Wait"
-// dex:explanation text:"Complete as waitBudgetExhausted, recording whether Snowflake accepted the cancel."
+// dex:explanation text:"Complete as waitBudgetExhausted after Snowflake accepts the cancel."
 type recordWaitBudgetExhausted struct {
 	dex.StepDefaultsNoWaitFor[snowflake.CancelStatementResult]
 }
 
 func (recordWaitBudgetExhausted) GetStepType() string { return recordWaitBudgetExhaustedStepType }
 
-// Execute completes either way; a rejected cancel usually means the statement finished meanwhile.
-func (recordWaitBudgetExhausted) Execute(ctx dex.Context, result snowflake.CancelStatementResult) (*dex.StepDecision, error) {
+func (recordWaitBudgetExhausted) Execute(ctx dex.Context, _ snowflake.CancelStatementResult) (*dex.StepDecision, error) {
 	record, err := usageRecordAttribute.Get(ctx)
 	if err != nil {
 		return nil, err
 	}
 	record.Phase = PhaseWaitBudgetExhausted
-	record.IsCancellationAccepted = result.Branch == snowflake.CancelStatementBranchCanceled
-	if !record.IsCancellationAccepted {
-		recordFailure(&record, result.Receipt, result.Failure)
-	}
+	record.IsCancellationAccepted = true
 	if err := usagePhaseAttribute.Set(ctx, record.Phase); err != nil {
 		return nil, err
 	}
@@ -479,14 +411,6 @@ func (recordWaitBudgetExhausted) Execute(ctx dex.Context, result snowflake.Cance
 		return nil, err
 	}
 	return dex.GracefulComplete(record), nil
-}
-
-// recordFailure copies only Snowflake's code, SQLSTATE, and the safe failure kind into the record.
-func recordFailure(record *UsageSummaryRecord, receipt sdkgo.Receipt, failure *sdkgo.Failure) {
-	record.SnowflakeCode, record.SQLState = receipt.Metadata["code"], receipt.Metadata["sqlState"]
-	if failure != nil {
-		record.FailureKind = failure.Kind
-	}
 }
 
 // decodeAccountUsage reads the aggregate row; a small NUMBER precision would arrive as a JSON number.

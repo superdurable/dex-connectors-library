@@ -31,7 +31,6 @@ const (
 	recordBookingStepType              = "RecordBooking"
 	createBookedMeetingStepType        = "CreateBookedMeeting"
 	recordScheduledMeetingStepType     = "RecordScheduledMeeting"
-	recordRejectedMeetingStepType      = "RecordRejectedMeeting"
 	recordUncertainMeetingStepType     = "RecordUncertainMeeting"
 	findUncertainMeetingStepType       = "FindUncertainMeeting"
 	evaluateUncertainMeetingStepType   = "EvaluateUncertainMeeting"
@@ -39,7 +38,6 @@ const (
 	moveBookedMeetingStepType          = "MoveBookedMeeting"
 	readBackRescheduledMeetingStepType = "ReadBackRescheduledMeeting"
 	recordRescheduledMeetingStepType   = "RecordRescheduledMeeting"
-	recordCancelledMeetingStepType     = "RecordCancelledMeeting"
 	listMeetingParticipantsStepType    = "ListMeetingParticipants"
 	recordMeetingAttendanceStepType    = "RecordMeetingAttendance"
 
@@ -67,10 +65,6 @@ const (
 	PhaseNoShow = "noShow"
 	// PhaseAttendanceUnknown means Zoom refused the participant listing, such as on a free account.
 	PhaseAttendanceUnknown = "attendanceUnknown"
-	// PhaseCancelled means the meeting was deleted in Zoom before it ended.
-	PhaseCancelled = "cancelled"
-	// PhaseRejected means Zoom conclusively refused to create the meeting; nothing was created.
-	PhaseRejected = "rejected"
 	// PhaseNeedsReconciliation means the meeting may exist but could not be identified; it was not created again.
 	PhaseNeedsReconciliation = "needsReconciliation"
 )
@@ -143,14 +137,6 @@ type UncertainCreate struct {
 	FailureKind sdkgo.FailureKind `json:"failureKind"`
 }
 
-// ZoomRefusal is the safe reason Zoom gave for refusing a request.
-type ZoomRefusal struct {
-	// FailureKind is the safe connector failure category.
-	FailureKind sdkgo.FailureKind `json:"failureKind"`
-	// ZoomErrorCode is Zoom's numeric error code, such as 3161 for a user who cannot host.
-	ZoomErrorCode string `json:"zoomErrorCode,omitempty"`
-}
-
 // BookedMeeting is the Flow's durable record of one booked consultation.
 type BookedMeeting struct {
 	// Booking is the validated Start Flow input.
@@ -177,8 +163,6 @@ type BookedMeeting struct {
 	PendingReschedule *RescheduleBookedMeetingInput `json:"pendingReschedule,omitempty"`
 	// UncertainCreate describes an unknown create outcome being, or that was, reconciled.
 	UncertainCreate *UncertainCreate `json:"uncertainCreate,omitempty"`
-	// Refusal is Zoom's reason after a rejected create or attendance listing.
-	Refusal *ZoomRefusal `json:"refusal,omitempty"`
 	// GuestJoins counts joins by participants other than the host.
 	GuestJoins int `json:"guestJoins"`
 	// Note explains a reconciliation or attendance outcome.
@@ -227,12 +211,11 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Create the meeting once; an unknown outcome is reconciled, never created again automatically.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToCreateMeetingInput,
-			Created:          sdkgo.GoTo(recordScheduledMeeting{}),
-			ProviderRejected: sdkgo.GoTo(recordRejectedMeeting{}),
-			Uncertain:        sdkgo.GoTo(recordUncertainMeeting{}),
+			Created: sdkgo.GoTo(recordScheduledMeeting{}),
+			// An uncertain create continues through meeting read-back and adoption.
+			Uncertain: sdkgo.GoTo(recordUncertainMeeting{}),
 		})),
 		dex.DefineStep(recordScheduledMeeting{attendanceCheckDelay: flow.policy.CheckDelay}),
-		dex.DefineStep(recordRejectedMeeting{}),
 		dex.DefineStep(recordUncertainMeeting{}),
 		dex.DefineStep(zoom.NewListMeetingsStep(zoom.ListMeetingsStepConfig[UncertainCreate]{
 			StepType: findUncertainMeetingStepType, ConnectionName: ConnectionName,
@@ -252,8 +235,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Move the meeting to the requested slot; the patch sets absolute values, so a repeat is safe.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToUpdateMeetingInput,
-			Updated:  sdkgo.GoTo(sdkgo.StepRef[zoom.UpdateMeetingResult](readBackRescheduledMeetingStepType)),
-			NotFound: sdkgo.GoTo(recordCancelledMeeting{}),
+			Updated: sdkgo.GoTo(sdkgo.StepRef[zoom.UpdateMeetingResult](readBackRescheduledMeetingStepType)),
 		})),
 		dex.DefineStep(zoom.NewGetMeetingStep(zoom.GetMeetingStepConfig[zoom.UpdateMeetingResult]{
 			StepType: readBackRescheduledMeetingStepType, ConnectionName: ConnectionName,
@@ -265,7 +247,6 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Found: sdkgo.GoTo(recordRescheduledMeeting{attendanceCheckDelay: flow.policy.CheckDelay}),
 		})),
 		dex.DefineStep(recordRescheduledMeeting{attendanceCheckDelay: flow.policy.CheckDelay}),
-		dex.DefineStep(recordCancelledMeeting{}),
 		dex.DefineStep(zoom.NewListPastMeetingParticipantsStep(zoom.ListPastMeetingParticipantsStepConfig[AttendanceCheck]{
 			StepType: listMeetingParticipantsStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
@@ -273,9 +254,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "List who joined the ended meeting, up to Zoom's largest page.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToListPastMeetingParticipantsInput,
-			Listed:           sdkgo.GoTo(recordMeetingAttendance{}),
-			NotFound:         sdkgo.GoTo(recordMeetingAttendance{}),
-			ProviderRejected: sdkgo.GoTo(recordMeetingAttendance{}),
+			Listed: sdkgo.GoTo(recordMeetingAttendance{}),
 		})),
 		dex.DefineStep(recordMeetingAttendance{}),
 	}
@@ -553,32 +532,6 @@ func (step recordScheduledMeeting) Execute(ctx dex.Context, result zoom.CreateMe
 	return dex.GoTo(awaitBookedMeeting{}, MeetingWait{MeetingID: record.MeetingID, AttendanceCheckAt: attendanceCheckTime(record, step.attendanceCheckDelay)}), nil
 }
 
-// dex:group group-id:booking group-label:"Booking"
-// dex:explanation text:"Complete with Zoom's error code after a conclusive rejection; nothing was created."
-type recordRejectedMeeting struct {
-	dex.StepDefaultsNoWaitFor[zoom.CreateMeetingResult]
-}
-
-func (recordRejectedMeeting) GetStepType() string { return recordRejectedMeetingStepType }
-
-func (recordRejectedMeeting) GetStepOptions() *dex.StepOptions { return bookingLockedStepOptions() }
-
-func (recordRejectedMeeting) Execute(ctx dex.Context, result zoom.CreateMeetingResult) (*dex.StepDecision, error) {
-	record, err := bookedMeetingAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	record.Phase = PhaseRejected
-	record.Refusal = refusalFrom(result.Failure, result.Receipt)
-	if err := bookingPhaseAttribute.Set(ctx, record.Phase); err != nil {
-		return nil, err
-	}
-	if err := bookedMeetingAttribute.Set(ctx, record); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(record), nil
-}
-
 // dex:group group-id:reconciliation group-label:"Reconciliation"
 // dex:explanation text:"Record the unknown create and search Zoom instead of creating the meeting again."
 type recordUncertainMeeting struct {
@@ -740,35 +693,8 @@ func (step recordRescheduledMeeting) Execute(ctx dex.Context, result zoom.GetMee
 	return dex.GoTo(awaitBookedMeeting{}, MeetingWait{MeetingID: record.MeetingID, AttendanceCheckAt: attendanceCheckTime(record, step.attendanceCheckDelay)}), nil
 }
 
-// dex:group group-id:booking group-label:"Booking"
-// dex:explanation text:"Complete as cancelled when the meeting was deleted in Zoom before it ended."
-type recordCancelledMeeting struct {
-	dex.StepDefaultsNoWaitFor[zoom.UpdateMeetingResult]
-}
-
-func (recordCancelledMeeting) GetStepType() string { return recordCancelledMeetingStepType }
-
-func (recordCancelledMeeting) GetStepOptions() *dex.StepOptions { return bookingLockedStepOptions() }
-
-func (recordCancelledMeeting) Execute(ctx dex.Context, _ zoom.UpdateMeetingResult) (*dex.StepDecision, error) {
-	record, err := bookedMeetingAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	record.Phase = PhaseCancelled
-	record.PendingReschedule = nil
-	record.Note = "Zoom no longer has the meeting, so it was deleted before the reschedule"
-	if err := bookingPhaseAttribute.Set(ctx, record.Phase); err != nil {
-		return nil, err
-	}
-	if err := bookedMeetingAttribute.Set(ctx, record); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(record), nil
-}
-
 // dex:group group-id:attendance group-label:"Attendance"
-// dex:explanation text:"Complete as attended, no-show, or unknown from Zoom's participant list."
+// dex:explanation text:"Complete as attended, no-show, or unknown from Zoom's listed participants."
 type recordMeetingAttendance struct {
 	dex.StepDefaultsNoWaitFor[zoom.ListPastMeetingParticipantsResult]
 }
@@ -782,24 +708,15 @@ func (recordMeetingAttendance) Execute(ctx dex.Context, result zoom.ListPastMeet
 	if err != nil {
 		return nil, err
 	}
-	switch result.Branch {
-	case zoom.ListPastMeetingParticipantsBranchListed:
-		record.GuestJoins = CountGuestJoins(result.Value.Participants, record.HostID)
-		switch {
-		case record.GuestJoins > 0:
-			record.Phase = PhaseAttended
-		case result.Value.NextPageToken != "":
-			record.Phase = PhaseAttendanceUnknown
-			record.Note = "the first participant page lists only the host"
-		default:
-			record.Phase = PhaseNoShow
-		}
-	case zoom.ListPastMeetingParticipantsBranchNotFound:
-		record.Phase = PhaseNoShow
-		record.Note = "Zoom has no ended instance of the meeting, so nobody joined"
-	default:
+	record.GuestJoins = CountGuestJoins(result.Value.Participants, record.HostID)
+	switch {
+	case record.GuestJoins > 0:
+		record.Phase = PhaseAttended
+	case result.Value.NextPageToken != "":
 		record.Phase = PhaseAttendanceUnknown
-		record.Refusal = refusalFrom(result.Failure, result.Receipt)
+		record.Note = "the first participant page lists only the host"
+	default:
+		record.Phase = PhaseNoShow
 	}
 	if err := bookingPhaseAttribute.Set(ctx, record.Phase); err != nil {
 		return nil, err
@@ -882,14 +799,6 @@ func validateDurationMinutes(durationMinutes int) error {
 		return errors.New("durationMinutes must be between 1 and 1440")
 	}
 	return nil
-}
-
-func refusalFrom(failure *sdkgo.Failure, receipt sdkgo.Receipt) *ZoomRefusal {
-	refusal := &ZoomRefusal{ZoomErrorCode: receipt.Metadata["zoomErrorCode"]}
-	if failure != nil {
-		refusal.FailureKind = failure.Kind
-	}
-	return refusal
 }
 
 func bookingLockedStepOptions() *dex.StepOptions {

@@ -26,13 +26,11 @@ This example answers one customer by email in a Flow started from Dex Web
 8. A customer without a message gets one new message from
    `SendNewCustomerMessage`, which calls `email.NewSendMessageStep`.
 
-The `uncertain` branches of the reply and the new message are wired to
-`RecordUncertainDelivery`: a submission whose answer was lost completes the
-Flow with `needsReview: true`, the connector's `reviewDetail`, and the
-Message-ID to look for, so a person checks the Sent mailbox or the recipient
-instead of the Flow sending a possible duplicate. Every other optional branch
-is unwired and fails the Flow, such as a refused login, a rejected recipient,
-a missing message, or a local defect.
+Only `sent` is wired for the reply and new message. An `uncertain` submission
+fails the Flow without resending; the operator can inspect the Sent mailbox
+or recipient before taking further action. Other optional branches also fail
+the Flow, including a refused login, rejected recipient, missing message, or
+local defect.
 
 ## Generate the Flow Definition
 
@@ -109,9 +107,9 @@ choose the Worker at `127.0.0.1:8834`, enter a unique Flow ID, and submit:
 ```
 
 Omit `archiveMailbox` to leave the answered message in INBOX. The Flow result
-and the `email-customer-reply-outcome` Attribute hold the action (`replied`,
-`sentNewMessage`, or `deliveryUncertain`), the answered message, the sent
-Message-ID, the flags, the archive location, and the review state.
+and the `email-customer-reply-outcome` Attribute hold the action (`replied` or
+`sentNewMessage`), the answered message, the sent Message-ID, the flags, and
+the archive location.
 
 ## Test
 

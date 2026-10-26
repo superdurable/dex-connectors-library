@@ -32,7 +32,6 @@ func TestStartFlowIdentitiesMatchTheFlowDefinition(t *testing.T) {
 	require.Equal(t, "LLMSummarizeText", dex.GetFinalFlowType(NewFlow(llm.Connection{}, SummaryModelConfiguration{})))
 	require.Equal(t, "RecordSummaryRequest", dex.GetFinalStepType[SummaryRequest](recordSummaryRequest{}))
 	require.Equal(t, "RecordSummaryOutcome", dex.GetFinalStepType[llm.GenerateTextResult](recordSummaryOutcome{}))
-	require.Equal(t, "RecordSummaryFailure", dex.GetFinalStepType[llm.GenerateTextResult](recordSummaryFailure{}))
 	require.Equal(t, sdkgo.ConnectorConfigurationRef{
 		ConnectorID: "llm", ConnectionName: "llm", OperationID: "generateText",
 		FlowType: "LLMSummarizeText", StepType: "SummarizeText",

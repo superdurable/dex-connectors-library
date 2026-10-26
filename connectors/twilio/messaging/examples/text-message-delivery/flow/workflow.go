@@ -28,7 +28,6 @@ const (
 	recordTextMessageRequestStepType   = "RecordTextMessageRequest"
 	sendTextMessageStepType            = "SendTextMessage"
 	recordAcceptedTextMessageStepType  = "RecordAcceptedTextMessage"
-	recordRejectedTextMessageStepType  = "RecordRejectedTextMessage"
 	recordUncertainTextMessageStepType = "RecordUncertainTextMessage"
 	waitForDeliveryStatusStepType      = "WaitForDeliveryStatus"
 	getTextMessageStepType             = "GetTextMessage"
@@ -50,8 +49,6 @@ const (
 	PhaseFinished = "finished"
 	// PhaseDeliveryStatusUnconfirmed means every allowed status read returned a non-final status.
 	PhaseDeliveryStatusUnconfirmed = "deliveryStatusUnconfirmed"
-	// PhaseRejected means Twilio conclusively rejected the message and sent nothing.
-	PhaseRejected = "rejected"
 )
 
 var (
@@ -154,12 +151,11 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Send the text once; an unknown outcome is reconciled, never resent automatically.",
 			},
 			Connection: flow.connection, MapToOperationInput: flow.MapToSendMessageInput,
-			Accepted:         sdkgo.GoTo(recordAcceptedTextMessage{}),
-			ProviderRejected: sdkgo.GoTo(recordRejectedTextMessage{}),
-			Uncertain:        sdkgo.GoTo(recordUncertainTextMessage{}),
+			Accepted: sdkgo.GoTo(recordAcceptedTextMessage{}),
+			// An uncertain send continues through operator reconciliation Actions.
+			Uncertain: sdkgo.GoTo(recordUncertainTextMessage{}),
 		})),
 		dex.DefineStep(recordAcceptedTextMessage{}),
-		dex.DefineStep(recordRejectedTextMessage{}),
 		dex.DefineStep(recordUncertainTextMessage{}),
 		dex.DefineStep(waitForDeliveryStatus{checkInterval: flow.policy.CheckInterval}),
 		dex.DefineStep(messaging.NewGetMessageStep(messaging.GetMessageStepConfig[DeliveryStatusCheck]{
@@ -169,7 +165,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Read the message's current Twilio delivery status and error code.",
 			},
 			Connection: flow.connection, MapToOperationInput: flow.MapToGetMessageInput,
-			Found:    sdkgo.GoTo(recordDeliveryStatus{}),
+			Found: sdkgo.GoTo(recordDeliveryStatus{}),
+			// A missing reported SID returns to operator reconciliation.
 			NotFound: sdkgo.GoTo(recordMissingTextMessage{}),
 		})),
 		dex.DefineStep(recordDeliveryStatus{maximumChecks: flow.policy.MaximumChecks}),
@@ -388,34 +385,6 @@ func (recordAcceptedTextMessage) Execute(ctx dex.Context, result messaging.SendM
 		return nil, err
 	}
 	return dex.GoTo(waitForDeliveryStatus{}, DeliveryStatusCheck{MessageSID: result.Value.SID}), nil
-}
-
-// dex:group group-id:twilio group-label:"Twilio"
-// dex:explanation text:"Complete with the Twilio error code after a conclusive rejection; nothing was sent."
-type recordRejectedTextMessage struct {
-	dex.StepDefaultsNoWaitFor[messaging.SendMessageResult]
-}
-
-func (recordRejectedTextMessage) GetStepType() string { return recordRejectedTextMessageStepType }
-
-func (recordRejectedTextMessage) GetStepOptions() *dex.StepOptions {
-	return &dex.StepOptions{ExecuteLockAttributes: []dex.AttributeLock{dex.LockAttribute(deliveryPhaseAttribute), dex.LockAttribute(deliveryAttribute)}}
-}
-
-func (recordRejectedTextMessage) Execute(ctx dex.Context, result messaging.SendMessageResult) (*dex.StepDecision, error) {
-	delivery, err := deliveryAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	delivery.Phase = PhaseRejected
-	delivery.Message = result.Value
-	if err := deliveryPhaseAttribute.Set(ctx, delivery.Phase); err != nil {
-		return nil, err
-	}
-	if err := deliveryAttribute.Set(ctx, delivery); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(delivery), nil
 }
 
 // dex:group group-id:reconciliation group-label:"Reconciliation"

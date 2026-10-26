@@ -10,8 +10,7 @@ Flow**, then follows it to a final delivery status:
    `delivered`, `read`, `undelivered`, `failed`, or `canceled`, and completes
    as `deliveryStatusUnconfirmed` after the last allowed read. The Worker
    reads every 15 seconds, at most 8 times.
-4. On `providerRejected`, the Flow completes as `rejected` with Twilio's error
-   code, such as 21608 for an unverified trial recipient.
+4. On `providerRejected`, the unwired branch fails the Flow without retry.
 5. On `uncertain`, the Flow records the Call ID and waits for an operator.
    It never sends the text again on its own.
 

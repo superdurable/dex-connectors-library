@@ -60,7 +60,6 @@ func TestNewIssueOpensOneTicketAndAddsOnePrivateCommentWithRealDex(t *testing.T)
 
 	outcome := harness.runTriage(t, "new-issue", integrationIssueInput())
 	require.Equal(t, TriageTicketOpened, outcome.Action)
-	require.False(t, outcome.NeedsReview)
 	require.Equal(t, desk.TicketPriorityHigh, outcome.Ticket.Priority)
 	require.Equal(t, desk.TicketStatusOpen, outcome.Ticket.Status)
 	require.Equal(t, 1, provider.ticketCount())
@@ -199,18 +198,17 @@ func TestLostUpdateResponseIsRetriedAndWritesNothingTwiceWithRealDex(t *testing.
 	require.Len(t, provider.ticket(existing).comments, 1)
 }
 
-func TestLostCreateResponseSelectsUncertainAndIsNeverResentWithRealDex(t *testing.T) {
+func TestLostCreateResponseFailsUncertainAndIsNeverResentWithRealDex(t *testing.T) {
 	provider := newFakeZohoDesk(t)
 	provider.losesFirstCreateResponse = true
 	harness := newTriageHarness(t, provider, defaultRequestTimeout)
 
-	outcome := harness.runTriage(t, "lost-create", integrationIssueInput())
-	require.Equal(t, TriageTicketCreationUncertain, outcome.Action)
-	require.True(t, outcome.NeedsReview)
-	require.Equal(t, "createTicket", outcome.ReviewReason)
-	require.Equal(t, "Zoho Desk request failed before a response arrived", outcome.ReviewDetail)
+	result := harness.waitForFlow(t, harness.startTriage(t, "lost-create", integrationIssueInput()))
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "uncertain")
+	require.Contains(t, result.ErrorMessage, "no target")
 	require.Equal(t, 1, provider.count("create"), "an unconfirmed create is never resent")
-	require.Equal(t, 1, provider.ticketCount(), "Zoho Desk did create the ticket, which a person must now find")
+	require.Equal(t, 1, provider.ticketCount(), "Zoho Desk did create the ticket")
 	require.Zero(t, provider.count("comment"))
 }
 
@@ -221,16 +219,15 @@ func TestRateLimitedCreateWaitsAndCreatesOneTicketWithRealDex(t *testing.T) {
 
 	outcome := harness.runTriage(t, "rate-limited", integrationIssueInput())
 	require.Equal(t, TriageTicketOpened, outcome.Action, "a 429 clears the dispatch marker, so the retry may send")
-	require.False(t, outcome.NeedsReview)
 	times := provider.requestTimes("create")
 	require.Len(t, times, 2)
 	require.GreaterOrEqual(t, times[1].Sub(times[0]), time.Second, "the retry waited for Retry-After")
 	require.Equal(t, 1, provider.ticketCount())
 }
 
-// TestLostWorkerDuringCreateSelectsUncertainWithoutResendingWithRealDex replaces the Worker while
+// TestLostWorkerDuringCreateFailsUncertainWithoutResendingWithRealDex replaces the Worker while
 // Zoho Desk holds the create; the next attempt finds the dispatch marker and sends nothing.
-func TestLostWorkerDuringCreateSelectsUncertainWithoutResendingWithRealDex(t *testing.T) {
+func TestLostWorkerDuringCreateFailsUncertainWithoutResendingWithRealDex(t *testing.T) {
 	provider := newFakeZohoDesk(t)
 	provider.holdsFirstCreate = make(chan struct{})
 	harness := newTriageHarness(t, provider, slowRequestTimeout)
@@ -241,29 +238,24 @@ func TestLostWorkerDuringCreateSelectsUncertainWithoutResendingWithRealDex(t *te
 
 	result := harness.waitForFlow(t, flowID)
 	close(provider.holdsFirstCreate)
-	require.Equal(t, dex.FlowCompleted, result.Status, "Flow %s: %s", flowID, result.ErrorMessage)
-	var outcome TriageOutcome
-	require.NoError(t, result.DecodeSingleOutput(&outcome))
-	require.Equal(t, TriageTicketCreationUncertain, outcome.Action)
-	require.True(t, outcome.NeedsReview)
-	require.Equal(t, "an earlier attempt of this Step may have sent the request, so it is not sent again", outcome.ReviewDetail,
-		"the new Worker's attempt found the dispatch marker the lost attempt recorded")
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "uncertain")
+	require.Contains(t, result.ErrorMessage, "no target")
 	provider.waitForDelayedRequests(t)
 	require.Equal(t, 1, provider.count("create"), "the attempt on the new Worker did not resend the create")
 }
 
-func TestLostCommentResponseSelectsUncertainAndIsNeverResentWithRealDex(t *testing.T) {
+func TestLostCommentResponseFailsUncertainAndIsNeverResentWithRealDex(t *testing.T) {
 	provider := newFakeZohoDesk(t)
 	provider.losesFirstCommentResponse = true
 	harness := newTriageHarness(t, provider, defaultRequestTimeout)
 
-	outcome := harness.runTriage(t, "lost-comment", integrationIssueInput())
-	require.Equal(t, TriageTicketOpened, outcome.Action)
-	require.True(t, outcome.NeedsReview)
-	require.Equal(t, "addComment", outcome.ReviewReason)
-	require.Empty(t, outcome.CommentID)
+	result := harness.waitForFlow(t, harness.startTriage(t, "lost-comment", integrationIssueInput()))
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "uncertain")
+	require.Contains(t, result.ErrorMessage, "no target")
 	require.Equal(t, 1, provider.count("comment"), "an unconfirmed comment is never resent")
-	require.Len(t, provider.ticket(outcome.Ticket.ID).comments, 1)
+	require.Len(t, provider.ticketsNewestFirst()[0].comments, 1)
 }
 
 // TestRevokedAccessTokenIsRefreshedOnceAndTheCreateIsSentOnceWithRealDex runs a refreshing credential

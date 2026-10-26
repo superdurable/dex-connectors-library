@@ -116,57 +116,44 @@ func TestSummarizeTextExampleRunsOnTheConnectionsProviderWithRealDex(t *testing.
 		requireOnlyKeyInItsSlot(t, provider)
 	})
 
-	t.Run("a Claude Step pick completes as blocked without text", func(t *testing.T) {
+	t.Run("a Claude Step pick selects an unwired blocked branch", func(t *testing.T) {
 		provider := textgentest.NewFakeProvider(t, claudeIntegrationDialect.CredentialHeader, integrationAPIKey)
 		provider.EnqueueReplies(messagestest.StreamReply(textgentest.GeneratedReply{
 			ServedModel: "claude-haiku-4-5", ResponseID: "msg_llm_example", Usage: usage,
 		}, "refusal"))
 		flow, client := startSummaryWorker(t, provider, map[string]any{"provider": "anthropic"},
 			SummaryModelConfiguration{Model: "claude-haiku-4-5"})
-		outcome := runSummaryFlowToCompletion(t, client, flow, fmt.Sprintf("llm-summary-blocked-%d", time.Now().UnixNano()))
-		require.Equal(t, llm.GenerateTextBranchBlocked, outcome.Branch)
-		require.Equal(t, textgen.FinishReasonRefusal, outcome.FinishReason)
-		require.Equal(t, "anthropic", outcome.Provider)
-		require.Equal(t, "claude-haiku-4-5", outcome.Model)
-		require.Empty(t, outcome.Summary)
+		result := runSummaryFlow(t, client, flow, fmt.Sprintf("llm-summary-blocked-%d", time.Now().UnixNano()))
+		require.Equal(t, dex.FlowFailed, result.Status)
+		require.Contains(t, result.ErrorMessage,
+			"llm generateText (connection llm) selected branch blocked with no target: PROVIDER_REJECTION: the model refused the request")
 		requireOnlyKeyInItsSlot(t, provider)
 	})
 
-	t.Run("a rejected key records the failure and fails the Flow", func(t *testing.T) {
+	t.Run("a rejected key selects an unwired branch", func(t *testing.T) {
 		provider := textgentest.NewFakeProvider(t, kimiIntegrationDialect.CredentialHeader, integrationAPIKey)
 		provider.EnqueueReplies(kimiIntegrationDialect.ErrorReply(http.StatusUnauthorized, "Incorrect API key."))
 		flow, client := startSummaryWorker(t, provider, map[string]any{"provider": "kimi"}, SummaryModelConfiguration{Model: "kimi-k3"})
 		flowID := fmt.Sprintf("llm-summary-rejected-%d", time.Now().UnixNano())
 		result := runSummaryFlow(t, client, flow, flowID)
 		require.Equal(t, dex.FlowFailed, result.Status)
-		require.Contains(t, result.ErrorMessage, "summary generation selected providerRejected")
+		require.Contains(t, result.ErrorMessage,
+			"llm generateText (connection llm) selected branch providerRejected with no target: AUTHENTICATION: provider returned HTTP 401 llmtest_http_401 llmtest_http_401")
 		require.NotContains(t, result.ErrorMessage, "Incorrect API key", "a Failure never carries provider message text")
 		requireNoIntegrationKey(t, result.ErrorMessage)
-		var display map[string]any
-		require.NoError(t, client.InvokeRPC(context.Background(), flowID, flow.GetDexDisplay, nil, &display))
-		encodedFailure, err := json.Marshal(display["llm-summary-failure"])
-		require.NoError(t, err)
-		require.JSONEq(t, `{"branch":"providerRejected","provider":"kimi","kind":"AUTHENTICATION","message":"`+
-			result.ErrorMessage[len("summary generation selected providerRejected: "):]+`"}`,
-			string(encodedFailure), "the failure is persisted before the Flow fails")
 		requireOnlyKeyInItsSlot(t, provider)
 	})
 
-	t.Run("a Step pick the provider's model rule rejects records a defect without a request", func(t *testing.T) {
+	t.Run("a Step pick the provider's model rule rejects selects an unwired defect", func(t *testing.T) {
 		provider := textgentest.NewFakeProvider(t, claudeIntegrationDialect.CredentialHeader, integrationAPIKey)
 		flow, client := startSummaryWorker(t, provider, map[string]any{"provider": "anthropic"},
 			SummaryModelConfiguration{Model: "claude sonnet 5"})
 		flowID := fmt.Sprintf("llm-summary-defect-%d", time.Now().UnixNano())
 		result := runSummaryFlow(t, client, flow, flowID)
 		require.Equal(t, dex.FlowFailed, result.Status)
-		require.Contains(t, result.ErrorMessage, "summary generation selected defect")
+		require.Contains(t, result.ErrorMessage,
+			"llm generateText (connection llm) selected branch defect with no target: VALIDATION: model ID must be 1 to 256 printable ASCII characters without spaces")
 		require.NotContains(t, result.ErrorMessage, "claude sonnet 5", "a Failure never repeats the model value")
-		var display map[string]any
-		require.NoError(t, client.InvokeRPC(context.Background(), flowID, flow.GetDexDisplay, nil, &display))
-		encodedFailure, err := json.Marshal(display["llm-summary-failure"])
-		require.NoError(t, err)
-		require.Contains(t, string(encodedFailure), `"provider":"anthropic"`)
-		require.Contains(t, string(encodedFailure), `"branch":"defect"`)
 		require.Empty(t, provider.Requests(), "a defect selected before dispatch sends nothing")
 	})
 }

@@ -6,13 +6,11 @@
 package accountusagesummary
 
 import (
-	"encoding/json"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/snowflake/internal/fakesnowflake"
-	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -59,35 +57,30 @@ func TestAccountUsageSummaryWaitsDurablyUntilTheStatementCompletesWithRealDex(t 
 	require.True(t, submissions[0].IsAsync && submissions[0].IsRetry)
 }
 
-func TestAccountUsageSummaryRecordsAFailedStatementWithoutItsMessageWithRealDex(t *testing.T) {
+func TestAccountUsageSummaryFailsOnFailedStatementWithRealDex(t *testing.T) {
 	provider := newUsageProvider(t, func(fakesnowflake.SubmittedStatement) fakesnowflake.StatementScript {
 		return fakesnowflake.StatementScript{RunningReads: 1, Failure: &fakesnowflake.StatementFailure{Code: "100038", SQLState: "22018"}}
 	})
 	harness := newUsageHarness(t, provider, 5)
 
-	record := harness.runSummary(t, "failed", request)
-	require.Equal(t, PhaseFailed, record.Phase)
-	require.Equal(t, "100038", record.SnowflakeCode)
-	require.Equal(t, "22018", record.SQLState)
-	require.Equal(t, sdkgo.FailureValidation, record.FailureKind)
-	require.Nil(t, record.Usage)
-	encoded, err := json.Marshal(record)
-	require.NoError(t, err)
-	require.NotContains(t, string(encoded), "SENTINEL")
-	require.NotContains(t, string(encoded), integrationAccessToken)
+	result := harness.waitForFlow(t, harness.startSummary(t, "failed", request))
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "providerRejected")
+	require.Contains(t, result.ErrorMessage, "no target")
+	require.NotContains(t, result.ErrorMessage, "SENTINEL")
+	require.Equal(t, 1, provider.ExecutionCount())
 }
 
-func TestAccountUsageSummaryRecordsARejectedSubmissionWithRealDex(t *testing.T) {
+func TestAccountUsageSummaryFailsOnRejectedSubmissionWithRealDex(t *testing.T) {
 	provider := newUsageProvider(t, func(fakesnowflake.SubmittedStatement) fakesnowflake.StatementScript {
 		return fakesnowflake.StatementScript{RejectSubmission: &fakesnowflake.StatementFailure{Code: "002003", SQLState: "02000"}}
 	})
 	harness := newUsageHarness(t, provider, 5)
 
-	record := harness.runSummary(t, "rejected", request)
-	require.Equal(t, PhaseRejected, record.Phase)
-	require.Equal(t, "002003", record.SnowflakeCode)
-	require.Equal(t, sdkgo.FailureNotFound, record.FailureKind)
-	require.Empty(t, record.StatementHandle)
+	result := harness.waitForFlow(t, harness.startSummary(t, "rejected", request))
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "providerRejected")
+	require.Contains(t, result.ErrorMessage, "no target")
 	require.Zero(t, provider.ExecutionCount())
 }
 

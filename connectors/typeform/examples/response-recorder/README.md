@@ -18,10 +18,9 @@ This example receives signed Typeform webhooks and starts one
 6. `RecordQuestions` pairs every question of the form, in form order, with
    its answer by field ID, stores them in the `typeform-questions` Attribute,
    and completes the Flow; a skipped question has no answer, and an answer to a
-   question the form no longer has is kept in `unmatchedAnswers`.
-   `RecordReadFailure` stores a `notFound`, `providerRejected`,
-   `invalidResponse`, or `defect` outcome with its safe message and fails the
-   Flow.
+   question the form no longer has is kept in `unmatchedAnswers`. An unwired
+   `notFound`, `providerRejected`, `invalidResponse`, or `defect` branch fails
+   the Flow.
 
 Each submission costs one `getForm` call, and Typeform allows two API requests
 per second per account; a form with more submissions than that should record
@@ -42,8 +41,8 @@ dexcli visualize ./examples/response-recorder/flow/workflow.go \
   --out ./build/response-recorder
 ```
 
-The command must report `valid: true` with the four Steps, all five `getForm`
-branches routed, and the `response-submitted` binding with its `formPicker`
+The command must report `valid: true` with the four Steps, only the `found`
+branch wired, and the `response-submitted` binding with its `formPicker`
 unit. Inside this repository it also warns `connector_release_required` and
 `connector_trigger_release_required`, because a local module is not a
 published release.

@@ -286,8 +286,8 @@ positions:
   checkpoint is cleared first.
 - A 5xx, a 408, a lost or unreadable response, and an invalid, oversized, or
   credential-reflecting 2xx select `uncertain`: the ticket or comment may
-  exist, and the connector never resends it. The application decides, for
-  example by asking a person to check Zoho Desk, as the example does.
+  exist, and the connector never resends it. The example leaves the branch
+  unwired, so the Flow fails and a person can check Zoho Desk before another run.
 
 Keep these two Steps sync. An application override to async durability with
 `StepOptionsOverride` lets Dex dispatch a second request after seven seconds,

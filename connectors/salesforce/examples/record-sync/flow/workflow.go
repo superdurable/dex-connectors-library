@@ -31,8 +31,6 @@ const (
 	createRecordStepType           = "CreateRecordByExternalId"
 	prepareLinkedReadBackStepType  = "PrepareLinkedReadBack"
 	prepareCreatedReadBackStepType = "PrepareCreatedReadBack"
-	reportLinkRejectedStepType     = "ReportLinkRejected"
-	reportCreateRejectedStepType   = "ReportCreateRejected"
 	readBackStepType               = "ReadBackRecord"
 	completeStepType               = "CompleteRecordSync"
 
@@ -87,8 +85,6 @@ const (
 	StatusAmbiguousMatch Status = "ambiguousMatch"
 	// StatusConflictingExternalID means the one match already carries a different external ID, so nothing was written.
 	StatusConflictingExternalID Status = "conflictingExternalId"
-	// StatusRejected means Salesforce rejected the field values; ProviderErrors says why.
-	StatusRejected Status = "rejected"
 )
 
 // Outcome is the durable result of the Flow and its completion output.
@@ -101,8 +97,6 @@ type Outcome struct {
 	RecordID string `json:"recordId,omitempty"`
 	// CandidateRecordIDs lists the records that made the match ambiguous or conflicting.
 	CandidateRecordIDs []string `json:"candidateRecordIds,omitempty"`
-	// ProviderErrors lists Salesforce's error codes and fields when it rejected the values.
-	ProviderErrors []salesforce.ProviderError `json:"providerErrors,omitempty"`
 	// Record is the record read back after the write.
 	Record *salesforce.Record `json:"record,omitempty"`
 }
@@ -184,7 +178,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				},
 			}},
 			Connection: flow.connection, MapToOperationInput: flow.MapToQueryRecordsInput,
-			Found:    sdkgo.GoTo(reviewMatchingRecords{configuration: flow.configuration}),
+			Found: sdkgo.GoTo(reviewMatchingRecords{configuration: flow.configuration}),
+			// A missing match continues to create the record by external ID.
 			NotFound: sdkgo.GoTo(reviewMatchingRecords{configuration: flow.configuration}),
 		})),
 		dex.DefineStep(reviewMatchingRecords{configuration: flow.configuration}),
@@ -195,8 +190,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Write the fields and the external ID to the one matching record by its ID.",
 			},
 			Connection: flow.connection, MapToOperationInput: flow.MapToUpdateRecordInput,
-			Updated:        sdkgo.GoTo(prepareLinkedReadBack{configuration: flow.configuration}),
-			RecordRejected: sdkgo.GoTo(reportLinkRejected{}),
+			Updated: sdkgo.GoTo(prepareLinkedReadBack{configuration: flow.configuration}),
 		})),
 		dex.DefineStep(salesforce.NewUpsertRecordByExternalIDStep(salesforce.UpsertRecordByExternalIDStepConfig[WriteRequest]{
 			StepType: createRecordStepType, ConnectionName: ConnectionName,
@@ -205,13 +199,10 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Create the record by its external ID, so a retried attempt updates the same record instead of adding one.",
 			},
 			Connection: flow.connection, MapToOperationInput: flow.MapToUpsertRecordByExternalIDInput,
-			Upserted:       sdkgo.GoTo(prepareCreatedReadBack{configuration: flow.configuration}),
-			RecordRejected: sdkgo.GoTo(reportCreateRejected{}),
+			Upserted: sdkgo.GoTo(prepareCreatedReadBack{configuration: flow.configuration}),
 		})),
 		dex.DefineStep(prepareLinkedReadBack{configuration: flow.configuration}),
 		dex.DefineStep(prepareCreatedReadBack{configuration: flow.configuration}),
-		dex.DefineStep(reportLinkRejected{}),
-		dex.DefineStep(reportCreateRejected{}),
 		dex.DefineStep(salesforce.NewGetRecordStep(salesforce.GetRecordStepConfig[ReadBackRequest]{
 			StepType: readBackStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
@@ -430,38 +421,6 @@ func (step prepareCreatedReadBack) Execute(ctx dex.Context, result salesforce.Up
 		return nil, err
 	}
 	return dex.GoTo(sdkgo.StepRef[ReadBackRequest](readBackStepType), step.configuration.readBackRequest(outcome.RecordID, request)), nil
-}
-
-// dex:group group-id:record-sync group-label:"Record sync"
-// dex:explanation text:"Complete as rejected with Salesforce's error codes when it refuses the link."
-type reportLinkRejected struct {
-	dex.StepDefaultsNoWaitFor[salesforce.UpdateRecordResult]
-}
-
-func (reportLinkRejected) GetStepType() string { return reportLinkRejectedStepType }
-
-func (reportLinkRejected) Execute(ctx dex.Context, result salesforce.UpdateRecordResult) (*dex.StepDecision, error) {
-	outcome := Outcome{Status: StatusRejected, ProviderErrors: result.Value.ProviderErrors}
-	if err := outcomeAttribute.Set(ctx, outcome); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(outcome), nil
-}
-
-// dex:group group-id:record-sync group-label:"Record sync"
-// dex:explanation text:"Complete as rejected with Salesforce's error codes when it refuses the create."
-type reportCreateRejected struct {
-	dex.StepDefaultsNoWaitFor[salesforce.UpsertRecordByExternalIDResult]
-}
-
-func (reportCreateRejected) GetStepType() string { return reportCreateRejectedStepType }
-
-func (reportCreateRejected) Execute(ctx dex.Context, result salesforce.UpsertRecordByExternalIDResult) (*dex.StepDecision, error) {
-	outcome := Outcome{Status: StatusRejected, ProviderErrors: result.Value.ProviderErrors}
-	if err := outcomeAttribute.Set(ctx, outcome); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(outcome), nil
 }
 
 // dex:group group-id:record-sync group-label:"Record sync"

@@ -21,7 +21,6 @@ func TestStartFlowIdentitiesMatchTheFlowDefinition(t *testing.T) {
 	require.Equal(t, chooseZohoAccountStepType, dex.GetFinalStepType[crm.FindRecordsResult](chooseZohoAccount{}))
 	require.Equal(t, recordZohoAccountStepType, dex.GetFinalStepType[crm.UpsertRecordResult](recordZohoAccount{}))
 	require.Equal(t, recordZohoContactStepType, dex.GetFinalStepType[crm.UpsertRecordResult](recordZohoContact{}))
-	require.Equal(t, reportZohoContactRejectedStepType, dex.GetFinalStepType[crm.UpsertRecordResult](reportZohoContactRejected{}))
 	require.Equal(t, chooseZohoOpenDealStepType, dex.GetFinalStepType[crm.FindRecordsResult](chooseZohoOpenDeal{}))
 	require.Equal(t, completeLeadQualificationStepType, dex.GetFinalStepType[crm.GetRecordResult](completeLeadQualification{}))
 	wait, err := recordLeadQualification{}.WaitFor(nil, Input{})

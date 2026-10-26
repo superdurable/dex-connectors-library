@@ -12,16 +12,14 @@ records the answer:
 
 1. `SendRequest` sends a `GET` for the requested path with the connection's
    access token, refreshing the token first when it is about to expire;
-2. `recordResponse` stores a 2xx answer, and `recordRejection` stores a
-   redirect or a 4xx such as a 404, so a missing resource completes the Flow
-   with status `rejected` instead of failing it.
+2. `recordResponse` stores a 2xx answer and completes the Flow.
 
 Application Steps store the report in the `oauth2-http-request-report`
 Attribute, because a Connector branch target receives only the current
 operation Result. The summary and display RPCs read that Attribute for Dex
-Web. The example wires the `completed` and `rejected` branches only: the
-optional `defect` branch, such as a path without a leading slash, fails the
-Flow, and a throttled request is retried after the API's `Retry-After`.
+Web. The example wires only `completed`. An API rejection or local `defect`, such
+as a path without a leading slash, fails the Flow with the selected branch.
+A throttled request is retried after the API's `Retry-After`.
 
 The Flow sets its type to `OAuth2HTTPRequest` and names each application Step
 explicitly. Dex Web **Start Flow** starts the Flow and Step types written in the
@@ -132,8 +130,7 @@ Keycloak realm whose base URL is its origin, the UserInfo endpoint is:
 ```
 
 Open the run and follow it to **Completed**. The display shows the status code
-and body. A path that does not exist completes with status `rejected` and the
-API's status code.
+and body. A path that does not exist fails the Flow on the unwired `rejected` branch.
 
 ## Verify from the repository
 
@@ -147,7 +144,7 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 \
 
 The integration tests use a real Dex Server and a local plain-http
 authorization server. They verify a completed request after a token refresh
-and a duplicate start with the same request ID, a 404 recorded as `rejected`, a
+and a duplicate start with the same request ID, a 404 that fails on the unwired `rejected` branch, a
 throttled request that Dex retries after the server's `Retry-After` delay, and
 a Flow failure for an unwired `defect` branch. A mock test runs the same Flow on
 an `oauth2httpmock` connection, as an application test does.

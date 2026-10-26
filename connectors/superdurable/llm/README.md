@@ -192,11 +192,6 @@ dex.DefineStep(llm.NewGenerateTextStep(llm.GenerateTextStepConfig[SummaryRequest
 	MapToOperationInput: flow.MapToGenerateTextRequest,
 	TextStream:          &summaryTextStream,
 	Generated:           sdkgo.GoTo(recordSummaryOutcome{}),
-	Truncated:           sdkgo.GoTo(recordSummaryOutcome{}),
-	Blocked:             sdkgo.GoTo(recordSummaryOutcome{}),
-	ProviderRejected:    sdkgo.GoTo(recordSummaryFailure{}),
-	InvalidResponse:     sdkgo.GoTo(recordSummaryFailure{}),
-	Defect:              sdkgo.GoTo(recordSummaryFailure{}),
 })),
 ```
 
@@ -720,8 +715,7 @@ shows a mismatch that the real connector would also hit:
 The [summarize-text example](examples/summarize-text/README.md) runs one Flow
 from Dex Web **Start Flow**: it persists the request, asks the picked model
 of the connection's provider for a summary while streaming it, and completes
-with a generated, truncated, or blocked outcome, or records a rejected,
-invalid, or defect outcome and fails.
+with a generated outcome. Every other branch is unwired and fails the Flow.
 
 ## Verify
 

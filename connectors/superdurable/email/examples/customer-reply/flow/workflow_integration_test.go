@@ -68,7 +68,6 @@ func TestLatestCustomerMessageGetsOneThreadedReplyWithRealDex(t *testing.T) {
 
 	outcome := harness.runReply(t, "threaded-reply", integrationInput())
 	require.Equal(t, ReplyActionReplied, outcome.Action)
-	require.False(t, outcome.NeedsReview)
 	require.Equal(t, &latest, outcome.CustomerMessage, "the lookalike sender's newer message is skipped")
 	require.Equal(t, "latest@acme.example.com", outcome.CustomerMessageID)
 	require.Equal(t, "Re: Refund request for order 88213", outcome.Sent.Subject)
@@ -167,30 +166,28 @@ func TestSlowSMTPNewMessageIsSubmittedOnceWithRealDex(t *testing.T) {
 	require.Equal(t, 1, harness.smtp.MailCount())
 }
 
-func TestLostSMTPAnswerCompletesForReviewAndIsNeverResentWithRealDex(t *testing.T) {
+func TestLostSMTPAnswerFailsTheFlowAndIsNeverResentWithRealDex(t *testing.T) {
 	harness := newReplyHarness(t)
-	latest := seedCustomerThread(t, harness)
+	seedCustomerThread(t, harness)
 	harness.smtp.DropNextEndOfDataReply()
 
-	outcome := harness.runReply(t, "lost-answer", integrationInput())
-	require.Equal(t, ReplyActionDeliveryUncertain, outcome.Action)
-	require.True(t, outcome.NeedsReview)
-	require.Equal(t, "the message was submitted but the SMTP server's answer did not arrive, so it may have been sent; it is not submitted again",
-		outcome.ReviewDetail)
-	require.Equal(t, &latest, outcome.CustomerMessage)
+	result := harness.waitForFlow(t, harness.startReply(t, "lost-answer", integrationInput()))
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "uncertain")
+	require.Contains(t, result.ErrorMessage, "no target")
 	submissions := harness.smtp.Submissions()
-	require.Len(t, submissions, 1, "the server did accept the reply, which a person must now find")
+	require.Len(t, submissions, 1, "the server accepted the reply, but the Flow must not resend it")
 	header, _ := readSubmission(t, submissions[0])
 	messageID, err := header.MessageID()
 	require.NoError(t, err)
-	require.Equal(t, outcome.Sent.MessageID, messageID, "the review names the Message-ID that was submitted")
-	require.Equal(t, 1, harness.smtp.MailCount(), "an unconfirmed reply is never resent")
+	require.NotEmpty(t, messageID)
+	require.Equal(t, 1, harness.smtp.MailCount())
 	require.Empty(t, harness.imap.Messages(t, "INBOX")[1].Flags, "an uncertain reply does not mark the message answered")
 }
 
-// TestLostWorkerDuringSMTPSubmissionReportsUncertainWithoutResendingWithRealDex replaces the Worker while the SMTP
+// TestLostWorkerDuringSMTPSubmissionFailsUncertainWithoutResendingWithRealDex replaces the Worker while the SMTP
 // server holds its answer; the next attempt finds the submission checkpoint and submits nothing.
-func TestLostWorkerDuringSMTPSubmissionReportsUncertainWithoutResendingWithRealDex(t *testing.T) {
+func TestLostWorkerDuringSMTPSubmissionFailsUncertainWithoutResendingWithRealDex(t *testing.T) {
 	harness := newReplyHarness(t)
 	seedCustomerThread(t, harness)
 	release := make(chan struct{})
@@ -202,12 +199,9 @@ func TestLostWorkerDuringSMTPSubmissionReportsUncertainWithoutResendingWithRealD
 
 	result := harness.waitForFlow(t, flowID)
 	close(release)
-	require.Equal(t, dex.FlowCompleted, result.Status, "Flow %s: %s", flowID, result.ErrorMessage)
-	var outcome ReplyOutcome
-	require.NoError(t, result.DecodeSingleOutput(&outcome))
-	require.Equal(t, ReplyActionDeliveryUncertain, outcome.Action)
-	require.Equal(t, "an earlier attempt of this Step may have submitted the message, so it is not submitted again", outcome.ReviewDetail,
-		"the new Worker's attempt found the checkpoint the lost attempt recorded")
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "uncertain")
+	require.Contains(t, result.ErrorMessage, "no target")
 	harness.smtp.WaitForHeldReplies()
 	require.Equal(t, 1, harness.smtp.MailCount(), "the attempt on the new Worker did not resend the reply")
 	require.Equal(t, 1, harness.smtp.DataCount())

@@ -37,7 +37,6 @@ const (
 	recordOrderPaymentStepType        = "RecordOrderPayment"
 	readBackPaidInvoiceStepType       = "ReadBackPaidInvoice"
 	completeInvoicedOrderStepType     = "CompleteInvoicedOrder"
-	completeWithoutContactStepType    = "CompleteWithoutContact"
 
 	// orderInvoiceSearchPageSize bounds the invoices read for one order reference.
 	orderInvoiceSearchPageSize = 10
@@ -133,8 +132,6 @@ const (
 	OrderExistingInvoicePaid InvoicedOrderAction = "existingInvoicePaid"
 	// OrderAlreadySettled means a paid invoice for the order existed, so the Flow wrote nothing.
 	OrderAlreadySettled InvoicedOrderAction = "alreadySettled"
-	// OrderContactMissing means no Xero contact has the customer's email, so the Flow wrote nothing.
-	OrderContactMissing InvoicedOrderAction = "contactMissing"
 )
 
 // InvoicedOrderOutcome is the Flow result and the value of its outcome Attribute.
@@ -188,8 +185,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Find the customer's Xero contact by the order's email address.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToFindContactByEmailInput,
-			Found:    sdkgo.GoTo(prepareOrderInvoiceLookup{}),
-			NotFound: sdkgo.GoTo(completeWithoutContact{}),
+			Found: sdkgo.GoTo(prepareOrderInvoiceLookup{}),
 		})),
 		dex.DefineStep(prepareOrderInvoiceLookup{}),
 		dex.DefineStep(xero.NewListInvoicesStep(xero.ListInvoicesStepConfig[OrderInvoiceLookup]{
@@ -233,7 +229,6 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Found: sdkgo.GoTo(completeInvoicedOrder{}),
 		})),
 		dex.DefineStep(completeInvoicedOrder{}),
-		dex.DefineStep(completeWithoutContact{}),
 	}
 }
 
@@ -543,26 +538,6 @@ func (completeInvoicedOrder) Execute(ctx dex.Context, result xero.GetInvoiceResu
 		Total: invoice.Total, AmountDue: invoice.AmountDue, PaymentID: payment.Value.Payment.PaymentID,
 		IsFullyPaid: invoice.Status == xero.InvoiceStatusPaid && invoice.AmountDue.IsZero(),
 	}
-	if err := orderOutcomeAttribute.Set(ctx, outcome); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(outcome), nil
-}
-
-// dex:group group-id:order group-label:"Approved order"
-// dex:explanation text:"Complete without writing when no Xero contact has the customer's email."
-type completeWithoutContact struct {
-	dex.StepDefaultsNoWaitFor[xero.FindContactByEmailResult]
-}
-
-func (completeWithoutContact) GetStepType() string { return completeWithoutContactStepType }
-
-func (completeWithoutContact) Execute(ctx dex.Context, _ xero.FindContactByEmailResult) (*dex.StepDecision, error) {
-	order, err := approvedOrderAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	outcome := InvoicedOrderOutcome{Action: OrderContactMissing, OrderID: order.OrderID}
 	if err := orderOutcomeAttribute.Set(ctx, outcome); err != nil {
 		return nil, err
 	}

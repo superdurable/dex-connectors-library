@@ -21,12 +21,10 @@ every Zoho Desk operation to triage a new customer issue:
 6. `AddTriageComment` calls `desk.NewAddCommentStep` to add one private
    comment, and `CompleteTriage` completes with the outcome.
 
-The `uncertain` branches of the create and the comment are wired: a request
-that was sent but whose outcome is unknown completes the Flow with
-`needsReview: true`, the `reviewReason`, and the connector's `reviewDetail`, so
-a person checks Zoho Desk instead of the Flow sending a possible duplicate.
-Every other optional branch is unwired and fails the Flow, such as a rejected
-ticket, a missing ticket, an invalid response, or a local defect.
+Only happy-path connector branches are wired. An uncertain create or comment
+fails the Flow without resending, so a person can inspect Zoho Desk before
+taking further action. Other optional branches also fail the Flow, including
+a rejected ticket, missing ticket, invalid response, or local defect.
 
 ## Generate the Flow Definition
 
@@ -118,8 +116,7 @@ Start Flow offers the defaults High, Medium, and Low.
 ```
 
 The Flow result and the `zoho-desk-triage-outcome` Attribute hold the action
-(`opened`, `followedUp`, or `creationUncertain`), the ticket, the comment ID,
-and the review state.
+(`opened` or `followedUp`), the ticket and the comment ID.
 
 ## Test
 

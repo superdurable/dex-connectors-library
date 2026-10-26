@@ -95,9 +95,9 @@ func TestRecordSyncRoutesEveryBusinessOutcomeWithRealDex(t *testing.T) {
 	rejected := runRecordSync(t, ctx, harness.client, flow, "rejected-"+runID, Input{
 		MatchValue: "no.last.name@example.com", ExternalID: "ERP-5005", Fields: map[string]string{"FirstName": "Nomen"},
 	})
-	require.Equal(t, dex.FlowCompleted, rejected.status)
-	require.Equal(t, StatusRejected, rejected.outcome.Status)
-	require.Equal(t, []salesforce.ProviderError{{ErrorCode: "REQUIRED_FIELD_MISSING", Fields: []string{"LastName"}}}, rejected.outcome.ProviderErrors)
+	require.Equal(t, dex.FlowFailed, rejected.status)
+	require.Contains(t, rejected.errorMessage, "recordRejected")
+	require.Contains(t, rejected.errorMessage, "no target")
 	require.Empty(t, provider.contactIDsWithExternalID("ERP-5005"))
 
 	invalid := runRecordSync(t, ctx, harness.client, flow, "invalid-"+runID, Input{MatchValue: " ", ExternalID: "ERP-6006"})
@@ -138,8 +138,9 @@ func TestRecordSyncSlowUpsertSentTwiceKeepsOneRecordWithRealDex(t *testing.T) {
 }
 
 type recordSyncRun struct {
-	status  dex.FlowStatus
-	outcome Outcome
+	status       dex.FlowStatus
+	errorMessage string
+	outcome      Outcome
 }
 
 func runRecordSync(t *testing.T, ctx context.Context, client *dex.Client, flow *Flow, flowID string, input Input) recordSyncRun {
@@ -148,7 +149,7 @@ func runRecordSync(t *testing.T, ctx context.Context, client *dex.Client, flow *
 	require.NoError(t, err)
 	result, err := client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
 	require.NoError(t, err)
-	run := recordSyncRun{status: result.Status}
+	run := recordSyncRun{status: result.Status, errorMessage: result.ErrorMessage}
 	if result.Status == dex.FlowCompleted {
 		require.NoError(t, result.DecodeSingleOutput(&run.outcome))
 	}

@@ -223,14 +223,16 @@ func TestApprovedInvoiceForTheOrderIsPaidWithoutRaisingAnotherWithRealDex(t *tes
 	require.Equal(t, 1, provider.paymentCount())
 }
 
-func TestMissingContactCompletesWithoutWritingWithRealDex(t *testing.T) {
+func TestMissingContactFailsWithoutWritingWithRealDex(t *testing.T) {
 	provider := newFakeXero(t)
 	harness := newOrderHarness(t, provider, customConnection, defaultRequestTimeout)
 	order := integrationOrder()
 	order.CustomerEmail = "nobody@unknown.example.com"
 
-	outcome := harness.runOrder(t, "missing-contact", order)
-	require.Equal(t, OrderContactMissing, outcome.Action)
+	result := harness.waitForFlow(t, harness.startOrder(t, "missing-contact", order))
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "notFound")
+	require.Contains(t, result.ErrorMessage, "no target")
 	require.Zero(t, provider.count("listInvoices"))
 	require.Zero(t, provider.count("createInvoice"))
 }

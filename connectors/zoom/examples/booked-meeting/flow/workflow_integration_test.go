@@ -114,14 +114,17 @@ func TestUnknownCreateWithoutAMatchStopsForAnOperatorWithRealDex(t *testing.T) {
 	require.Equal(t, 1, provider.createCount(topicServerError), "a 5xx after dispatch is never retried")
 }
 
-func TestRejectedCreateCompletesWithZoomsErrorCodeWithRealDex(t *testing.T) {
+func TestRejectedCreateFailsWithoutRetryWithRealDex(t *testing.T) {
 	provider, harness := newBookedMeetingHarness(t, providerRequestTimeout, &AttendancePolicy{})
 	ctx := integrationContext(t)
 
 	flowID := harness.startBookedMeeting(t, ctx, "rejected", futureBooking(topicRejected, time.Hour))
-	record := harness.waitForFlowOutput(t, ctx, flowID)
-	require.Equal(t, PhaseRejected, record.Phase)
-	require.Equal(t, &ZoomRefusal{FailureKind: sdkgo.FailureProviderRejection, ZoomErrorCode: "3161"}, record.Refusal)
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "providerRejected")
+	require.Contains(t, result.ErrorMessage, "no target")
+	require.NotContains(t, result.ErrorMessage, "SENTINEL")
 	require.Equal(t, 1, provider.createCount(topicRejected))
 }
 
@@ -174,7 +177,7 @@ func TestSlowRescheduleIsSafeToRepeatWithRealDex(t *testing.T) {
 	t.Logf("a %s patch was dispatched %d times", slowProviderDelay, len(patches))
 }
 
-func TestRescheduleOfADeletedMeetingCompletesAsCancelledWithRealDex(t *testing.T) {
+func TestRescheduleOfADeletedMeetingFailsOnNotFoundWithRealDex(t *testing.T) {
 	provider, harness := newBookedMeetingHarness(t, providerRequestTimeout, &AttendancePolicy{CheckDelay: time.Hour})
 	ctx := integrationContext(t)
 	flowID := harness.startBookedMeeting(t, ctx, "deleted", futureBooking(topicDeletedMeeting, time.Hour))
@@ -183,23 +186,25 @@ func TestRescheduleOfADeletedMeetingCompletesAsCancelledWithRealDex(t *testing.T
 
 	moved := RescheduleBookedMeetingInput{StartTime: futureStart(2 * time.Hour).Format(time.RFC3339), TimeZone: "America/Los_Angeles", DurationMinutes: 30}
 	require.NoError(t, harness.client.InvokeRPC(ctx, flowID, harness.flow.RescheduleBookedMeeting, moved, nil))
-	record := harness.waitForFlowOutput(t, ctx, flowID)
-	require.Equal(t, PhaseCancelled, record.Phase)
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "notFound")
+	require.Contains(t, result.ErrorMessage, "no target")
 }
 
-func TestMeetingWithoutAnEndedInstanceIsANoShowWithRealDex(t *testing.T) {
+func TestMeetingWithoutAnEndedInstanceFailsOnNotFoundWithRealDex(t *testing.T) {
 	_, harness := newBookedMeetingHarness(t, providerRequestTimeout, &AttendancePolicy{CheckDelay: time.Hour})
 	ctx := integrationContext(t)
 	flowID := harness.startBookedMeeting(t, ctx, "no-show", futureBooking(topicNoShow, time.Hour))
 	harness.waitForPhase(t, ctx, flowID, PhaseScheduled)
 
 	require.NoError(t, harness.client.InvokeRPC(ctx, flowID, harness.flow.CheckBookedMeetingAttendance, nil, nil))
-	record := harness.waitForFlowOutput(t, ctx, flowID)
-	require.Equal(t, PhaseNoShow, record.Phase)
-	require.Contains(t, record.Note, "no ended instance")
-	require.Error(t, harness.client.InvokeRPC(ctx, flowID, harness.flow.RescheduleBookedMeeting,
-		RescheduleBookedMeetingInput{StartTime: futureStart(time.Hour).Format(time.RFC3339), TimeZone: "UTC", DurationMinutes: 30}, nil),
-		"a completed booking cannot be rescheduled")
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "notFound")
+	require.Contains(t, result.ErrorMessage, "no target")
 }
 
 // TestAttendanceTimerFiresAfterTheScheduledEndWithRealDex waits for the shortest Zoom meeting, one minute, to end.
@@ -675,7 +680,7 @@ func (harness *bookedMeetingHarness) waitForRecord(t *testing.T, ctx context.Con
 
 func isTerminalPhase(phase string) bool {
 	switch phase {
-	case PhaseAttended, PhaseNoShow, PhaseAttendanceUnknown, PhaseCancelled, PhaseRejected, PhaseNeedsReconciliation:
+	case PhaseAttended, PhaseNoShow, PhaseAttendanceUnknown, PhaseNeedsReconciliation:
 		return true
 	default:
 		return false

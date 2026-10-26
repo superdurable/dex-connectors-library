@@ -19,8 +19,7 @@ five Zoho CRM operations to qualify one lead:
    which links the contact to it;
 6. `FindZohoOpenDeal` calls `crm.NewFindRecordsStep` for the contact's most
    recently modified deal whose `Contact_Name` is the contact and whose stage
-   is not one of `ClosedDealStages`, and `ChooseZohoOpenDeal` completes as
-   `noOpenDeal` when there is none;
+   is not one of `ClosedDealStages`, and `ChooseZohoOpenDeal` advances a found deal or completes as `noOpenDeal` when none exists;
 7. `AdvanceZohoOpenDeal` calls `crm.NewUpdateRecordStep` to set the deal's
    `Stage`, and its `Owner` when `ownerId` is set;
 8. `ReadBackZohoDeal` calls `crm.NewGetRecordStep`, and
@@ -28,10 +27,10 @@ five Zoho CRM operations to qualify one lead:
    back with the stage and owner, or `stageNotApplied` when an automation
    changed them.
 
-`ReportZohoContactRejected` completes as `contactRejected` with Zoho CRM's
-error codes and field names when it rejects the contact's values. Every other
-optional branch is unwired and fails the Flow, such as a locked deal, a missing
-record, an invalid response, or a local defect. Both writes are safe to repeat:
+A missing account continues to an upsert; a missing open deal completes as
+`noOpenDeal` because there is nothing to advance. A rejected contact, locked
+deal, invalid response, or local defect selects an unwired branch and fails
+the Flow. Both writes are safe to repeat:
 a Dex retry, or a repeated dispatch that reaches Zoho CRM after the slow write
 was applied, converges on one account, one contact, and one stage value. Zoho
 does not document whether two upserts by `Account_Name` or `Email` that arrive
@@ -124,8 +123,7 @@ ID, as a record's `Owner` lookup shows it, or blank to keep the deal's owner.
 
 The Flow result and the `zoho-crm-lead-qualification` Attribute hold the
 `phase`, the account, contact, and deal IDs, whether the account and contact
-were created, the deal's stage and owner as read back, and Zoho CRM's error
-codes for a rejected contact.
+were created, the deal's stage and owner as read back.
 
 ## Test
 
@@ -141,8 +139,8 @@ ID of a lookup in COQL, reports times in the organization's offset, matches
 upserts by duplicate-check field without regard to case, requires `Last_Name`
 for a new contact, and enforces the Deals `Stage` picklist:
 
-- a new lead creates the account and a contact linked to it, and completes as
-  `noOpenDeal`;
+- a new lead creates the account and a contact linked to it, then completes
+  as `noOpenDeal` when no open deal exists;
 - a repeat lead matches the contact by an email in another letter case and
   advances the contact's newest open deal and owner, leaving an older open
   deal, a newer closed deal, and another contact's deal untouched;
@@ -155,8 +153,7 @@ for a new contact, and enforces the Deals `Stage` picklist:
   set the same values;
 - a lost update response is retried;
 - a rate-limited query waits for `Retry-After`;
-- a rejected contact completes as `contactRejected` with
-  `INVALID_DATA` on `Email` and no Zoho message text;
+- a rejected contact fails the Flow on `recordRejected` without Zoho message text;
 - a locked deal fails the Flow through the unwired `recordRejected` branch
   without Zoho message text;
 - an account name with an apostrophe fails the Flow before any request;

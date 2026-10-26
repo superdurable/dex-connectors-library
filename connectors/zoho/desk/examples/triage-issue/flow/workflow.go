@@ -33,19 +33,14 @@ const (
 	recordPrioritizedTicketStepType   = "RecordPrioritizedTicket"
 	openIssueTicketStepType           = "OpenIssueTicket"
 	recordOpenedTicketStepType        = "RecordOpenedTicket"
-	recordUncertainTicketStepType     = "RecordUncertainTicket"
 	addTriageCommentStepType          = "AddTriageComment"
 	completeTriageStepType            = "CompleteTriage"
-	recordUncertainCommentStepType    = "RecordUncertainComment"
 
 	// SearchPageLimit is the number of tickets one search page reads.
 	SearchPageLimit           = 25
 	candidateThreadLimit      = 3
 	candidateCommentLimit     = 5
 	maximumPriorityNameLength = 120
-
-	openIssueTicketReviewReason  = "createTicket"
-	addTriageCommentReviewReason = "addComment"
 )
 
 var (
@@ -136,8 +131,6 @@ const (
 	TriageTicketOpened TriageAction = "opened"
 	// TriageTicketFollowedUp means the contact's unresolved ticket was reopened and reprioritized.
 	TriageTicketFollowedUp TriageAction = "followedUp"
-	// TriageTicketCreationUncertain means the create request was sent but its outcome is unknown.
-	TriageTicketCreationUncertain TriageAction = "creationUncertain"
 )
 
 // TriageOutcome is the Flow result and the value of its outcome Attribute.
@@ -153,13 +146,6 @@ type TriageOutcome struct {
 	SkippedTicketID string `json:"skippedTicketId,omitempty"`
 	// CommentID is the private triage comment Zoho Desk added.
 	CommentID string `json:"commentId,omitempty"`
-	// NeedsReview reports that a write was sent with an unknown outcome, so a person must check
-	// Zoho Desk; the Flow never resends it.
-	NeedsReview bool `json:"needsReview,omitempty"`
-	// ReviewReason names the uncertain write: createTicket or addComment.
-	ReviewReason string `json:"reviewReason,omitempty"`
-	// ReviewDetail is the connector's credential-free explanation of why the outcome is unknown.
-	ReviewDetail string `json:"reviewDetail,omitempty"`
 }
 
 // Flow triages one customer issue in Zoho Desk.
@@ -217,11 +203,9 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Open a ticket with the customer's message and priority, sending the request at most once.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToCreateTicketInput,
-			Created:   sdkgo.GoTo(recordOpenedTicket{}),
-			Uncertain: sdkgo.GoTo(recordUncertainTicket{}),
+			Created: sdkgo.GoTo(recordOpenedTicket{}),
 		})),
 		dex.DefineStep(recordOpenedTicket{}),
-		dex.DefineStep(recordUncertainTicket{}),
 		dex.DefineStep(desk.NewAddCommentStep(desk.AddCommentStepConfig[TriageComment]{
 			StepType: addTriageCommentStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
@@ -229,11 +213,9 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Add one private triage comment, sending the request at most once.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToAddCommentInput,
-			Added:     sdkgo.GoTo(completeTriage{}),
-			Uncertain: sdkgo.GoTo(recordUncertainComment{}),
+			Added: sdkgo.GoTo(completeTriage{}),
 		})),
 		dex.DefineStep(completeTriage{}),
-		dex.DefineStep(recordUncertainComment{}),
 	}
 }
 
@@ -367,13 +349,6 @@ func optionalAttribute[T any](ctx dex.Context, attribute dex.Attribute[T]) (T, e
 		return zero, nil
 	}
 	return value, err
-}
-
-func failureMessage(failure *sdkgo.Failure) string {
-	if failure == nil {
-		return ""
-	}
-	return failure.Message
 }
 
 func isAttributeNotFound(err error) bool {
@@ -521,29 +496,6 @@ func (recordOpenedTicket) Execute(ctx dex.Context, result desk.CreateTicketResul
 	return dex.GoTo(sdkgo.StepRef[TriageComment](addTriageCommentStepType), TriageComment{TicketID: outcome.Ticket.ID, Content: BuildOpenedTicketComment(issue)}), nil
 }
 
-// dex:group group-id:review group-label:"Needs review"
-// dex:explanation text:"The create request was sent with an unknown outcome; complete for a person to check Zoho Desk instead of resending it."
-type recordUncertainTicket struct {
-	dex.StepDefaultsNoWaitFor[desk.CreateTicketResult]
-}
-
-func (recordUncertainTicket) GetStepType() string { return recordUncertainTicketStepType }
-
-func (recordUncertainTicket) Execute(ctx dex.Context, result desk.CreateTicketResult) (*dex.StepDecision, error) {
-	previous, err := triageOutcomeAttribute.Get(ctx)
-	if err != nil && !isAttributeNotFound(err) {
-		return nil, err
-	}
-	outcome := TriageOutcome{
-		Action: TriageTicketCreationUncertain, SkippedTicketID: previous.SkippedTicketID, NeedsReview: true,
-		ReviewReason: openIssueTicketReviewReason, ReviewDetail: failureMessage(result.Failure),
-	}
-	if err := triageOutcomeAttribute.Set(ctx, outcome); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(outcome), nil
-}
-
 // dex:group group-id:issue group-label:"Customer issue"
 // dex:explanation text:"Record the private triage comment and complete the Flow."
 type completeTriage struct {
@@ -558,26 +510,6 @@ func (completeTriage) Execute(ctx dex.Context, result desk.AddCommentResult) (*d
 		return nil, err
 	}
 	outcome.CommentID = result.Value.Comment.ID
-	if err := triageOutcomeAttribute.Set(ctx, outcome); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(outcome), nil
-}
-
-// dex:group group-id:review group-label:"Needs review"
-// dex:explanation text:"The comment request was sent with an unknown outcome; complete for a person to check Zoho Desk instead of resending it."
-type recordUncertainComment struct {
-	dex.StepDefaultsNoWaitFor[desk.AddCommentResult]
-}
-
-func (recordUncertainComment) GetStepType() string { return recordUncertainCommentStepType }
-
-func (recordUncertainComment) Execute(ctx dex.Context, result desk.AddCommentResult) (*dex.StepDecision, error) {
-	outcome, err := triageOutcomeAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	outcome.NeedsReview, outcome.ReviewReason, outcome.ReviewDetail = true, addTriageCommentReviewReason, failureMessage(result.Failure)
 	if err := triageOutcomeAttribute.Set(ctx, outcome); err != nil {
 		return nil, err
 	}

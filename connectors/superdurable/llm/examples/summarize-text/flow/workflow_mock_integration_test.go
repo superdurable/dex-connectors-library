@@ -37,24 +37,26 @@ func TestSummarizeTextExampleRunsOnTheLLMMockWithRealDex(t *testing.T) {
 		}, outcome)
 	})
 
-	t.Run("a scripted quota failure records the failure and fails the Flow", func(t *testing.T) {
+	t.Run("a scripted quota failure selects an unwired branch", func(t *testing.T) {
 		flowID := fmt.Sprintf("llm-summary-mock-quota-%d", runID)
 		mock.GenerateText().ForFlow(flowID).Respond(llmmock.GenerateTextQuotaExhausted())
 
 		result := runSummaryFlow(t, client, flow, flowID)
 
 		require.Equal(t, dex.FlowFailed, result.Status)
-		require.Contains(t, result.ErrorMessage, "summary generation selected providerRejected: The provider account has exhausted its quota.")
+		require.Contains(t, result.ErrorMessage,
+			"llm generateText (connection llm) selected branch providerRejected with no target: QUOTA_EXHAUSTED: The provider account has exhausted its quota.")
 	})
 
 	t.Run("a rate limit is retried and the next case answers", func(t *testing.T) {
 		flowID := fmt.Sprintf("llm-summary-mock-retry-%d", runID)
 		mock.GenerateText().ForFlow(flowID).Respond(llmmock.GenerateTextRateLimited(), llmmock.GenerateTextOutputTokenLimit())
 
-		outcome := runSummaryFlowToCompletion(t, client, flow, flowID)
+		result := runSummaryFlow(t, client, flow, flowID)
 
-		require.Equal(t, llm.GenerateTextBranchTruncated, outcome.Branch)
-		require.Equal(t, "The connector shipped on", outcome.Summary)
+		require.Equal(t, dex.FlowFailed, result.Status)
+		require.Contains(t, result.ErrorMessage,
+			"llm generateText (connection llm) selected branch truncated with no target: RESPONSE_TOO_LARGE: The model stopped at the output token limit.")
 	})
 
 	requests := make(map[string]llm.GenerateTextRequest)

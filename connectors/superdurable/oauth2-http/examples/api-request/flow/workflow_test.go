@@ -17,9 +17,8 @@ func TestRegisteredTypesMatchTheFlowDefinitionGraph(t *testing.T) {
 		t.Fatalf("Flow type = %q", flowType)
 	}
 	for got, want := range map[string]string{
-		dex.GetFinalStepType[Input](startRequest{}):                           "startRequest",
-		dex.GetFinalStepType[oauth2http.SendRequestResult](recordResponse{}):  "recordResponse",
-		dex.GetFinalStepType[oauth2http.SendRequestResult](recordRejection{}): "recordRejection",
+		dex.GetFinalStepType[Input](startRequest{}):                          "startRequest",
+		dex.GetFinalStepType[oauth2http.SendRequestResult](recordResponse{}): "recordResponse",
 	} {
 		if got != want {
 			t.Fatalf("Step type = %q, want %q", got, want)
