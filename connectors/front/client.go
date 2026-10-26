@@ -141,12 +141,17 @@ func (client *Client) FindContactByEmail() FindContactByEmailOperation {
 
 // resolveCredentials returns a header-safe API token, or a safe defect Failure.
 func (client *Client) resolveCredentials(call sdkgo.Call, operationID string) (Credentials, *sdkgo.Failure) {
+	credentials, failure, _ := client.resolveCredentialsWithCause(call, operationID)
+	return credentials, failure
+}
+
+func (client *Client) resolveCredentialsWithCause(call sdkgo.Call, operationID string) (Credentials, *sdkgo.Failure, error) {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil || !providerhttp.IsHeaderSafeCredential(credentials.APIToken.Reveal()) {
 		return Credentials{}, frontFailurePointer(sdkgo.FailureAuthentication, operationID,
-			"the Front API token is unavailable, blank, or contains characters a header cannot carry")
+			"the Front API token is unavailable, blank, or contains characters a header cannot carry"), err
 	}
-	return credentials, nil
+	return credentials, nil, nil
 }
 
 // exchange sends one authenticated request within requestContext and classifies the answer.

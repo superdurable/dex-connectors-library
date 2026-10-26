@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
@@ -117,13 +118,17 @@ func (operation ReplyToConversationOperation) Invoke(call sdkgo.Call, input Repl
 	case singledispatch.ReadBackRequired:
 		return client.readBackReply(call, input, output, decision.Marker)
 	}
-	credentials, failure := client.resolveCredentials(call, operationID)
+	credentials, failure, credentialError := client.resolveCredentialsWithCause(call, operationID)
 	if failure != nil {
+		if !isTransientCredentialFailure(credentialError) {
+			return sdkgo.NewMutationBranch(ReplyToConversationBranchDefect, output, failure, sdkgo.Receipt{})
+		}
 		if err := fence.RecordNotSent(); err != nil {
 			return sdkgo.NewMutationRetry[ConversationReply](frontFailure(sdkgo.FailureAvailability, operationID,
-				"Front credentials were unavailable and the not-sent checkpoint failed"), 0)
+				"Front credentials were temporarily unavailable and the not-sent checkpoint failed"), 0)
 		}
-		return sdkgo.NewMutationRetry[ConversationReply](*failure, 0)
+		return sdkgo.NewMutationRetry[ConversationReply](frontFailure(sdkgo.FailureAvailability, operationID,
+			"Front credentials were temporarily unavailable"), 0)
 	}
 	attempt := &replySendAttempt{client: client, credentials: credentials, operationID: operationID, request: buildReplyRequest(input)}
 	if err := fence.Dispatch(attempt.send); err != nil {
@@ -148,13 +153,26 @@ func (client *Client) readBackReply(
 	if input.IsInternalNote {
 		providerIDPattern = commentIDPattern
 	}
-	if marker.CallID != call.ID || !providerIDPattern.MatchString(marker.ProviderID) {
-		return client.uncertainReply(call, output, sdkgo.FailureProtocol, "an earlier attempt may have sent the reply or comment; no usable provider ID can confirm it")
+	if marker.CallID != call.ID {
+		return client.uncertainReply(call, output, sdkgo.FailureAvailability, "an earlier attempt has no trusted dispatch checkpoint")
+	}
+	if marker.ProviderID == "" {
+		if marker.State == singledispatch.StateClaimed {
+			return client.uncertainReply(call, output, sdkgo.FailureTransport, "an earlier attempt may have sent the reply or comment without a provider ID")
+		}
+		return client.uncertainReply(call, output, sdkgo.FailureAvailability, "a stale checkpoint cannot establish whether the reply or comment was sent")
+	}
+	if !providerIDPattern.MatchString(marker.ProviderID) {
+		return client.uncertainReply(call, output, sdkgo.FailureProtocol, "an earlier attempt stored an invalid provider ID")
 	}
 	operationID := ReplyToConversationDefinition.Operation.OperationID
-	credentials, failure := client.resolveCredentials(call, operationID)
+	credentials, failure, credentialError := client.resolveCredentialsWithCause(call, operationID)
 	if failure != nil {
-		return sdkgo.NewMutationRetry[ConversationReply](*failure, 0)
+		if !isTransientCredentialFailure(credentialError) {
+			return sdkgo.NewMutationBranch(ReplyToConversationBranchDefect, output, failure, sdkgo.Receipt{})
+		}
+		return sdkgo.NewMutationRetry[ConversationReply](frontFailure(sdkgo.FailureAvailability, operationID,
+			"Front credentials were temporarily unavailable during read-back"), 0)
 	}
 	path := "/messages/alt:uid:" + marker.ProviderID
 	if input.IsInternalNote {
@@ -178,6 +196,10 @@ func (client *Client) readBackReply(
 		return sdkgo.NewMutationRetry[ConversationReply](result.failure, result.retryAfter)
 	}
 	return client.uncertainReply(call, output, result.failure.Kind, "Front could not confirm an earlier accepted reply or comment")
+}
+
+func isTransientCredentialFailure(err error) bool {
+	return errors.Is(err, projectconfig.ErrCredentialBrokerUnavailable) || errors.Is(err, context.DeadlineExceeded)
 }
 
 func (client *Client) uncertainReply(call sdkgo.Call, output ConversationReply, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[ConversationReply] {

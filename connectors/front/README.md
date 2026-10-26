@@ -229,7 +229,9 @@ retries the read without another POST. A comment read-back `404` selects
 `uncertain`, because the comment may have been deleted after acceptance.
 A reply `message_uid` read-back `404` retries the GET without another POST:
 Front may not have created the accepted message yet, although this timing
-remains unverified with a live Front account. A lost answer without an ID remains
+remains unverified with a live Front account. If that `404` persists, the
+five-attempt/five-minute retry budget expires and the Flow fails without
+another POST. A lost answer without an ID remains
 `uncertain` because content and author are not unique identifiers.
 
 Every in-flight reply retry from v0.21.x fails closed to `uncertain` at
@@ -365,7 +367,8 @@ Failure names only the HTTP status.
 | 408, 5xx, transport failure | Retry for reads and repeat-safe writes; `replyToConversation` Retries a 503 or provably unsent failure and selects `uncertain` for other ambiguous sends |
 | oversized, malformed, or credential-reflecting 2xx | `uncertain` for `replyToConversation`; `invalidResponse` for other operations |
 | invalid input | `defect`, with no request |
-| unavailable or invalid credentials | `replyToConversation` records not-sent and Retries; other operations select `defect`, with no request |
+| transient credential broker failure | `replyToConversation` records not-sent and Retries; no Front request |
+| reauthorization required, missing connection, or unusable token | `defect` for `replyToConversation` and other operations; no Front request |
 
 Front's rate limit is per company: 50, 100, or 200 requests a minute on the
 Starter, Professional, and Enterprise plans, plus a burst allowance. Per
@@ -380,7 +383,8 @@ second, and so do the tag writes. `getConversation` sends three requests and
 - The connector sends the token only to `https://api2.frontapp.com`, never
   follows a redirect or a next-page link, and reads at most
   `maxResponseBytes`; an answer that reflects the token selects
-  `invalidResponse`.
+  `invalidResponse` for reads and repeat-safe writes, or `uncertain` for
+  `replyToConversation` after Front accepted the write.
 - Failure messages are written by the connector from status codes; Front's
   message text is never read.
 
@@ -406,8 +410,10 @@ description fetched that day, not on a live account:
   tag, or ticket status; its reference documents only `204`, `301`, and `400`;
 - whether a reply with an API token and no `author_id` is accepted, and on
   which channel Front sends it;
-- whether a `5xx` on a reply or comment ever leaves it created, which the
-  connector assumes;
+- whether Front never applies a reply or comment that it answers with `503`;
+  the connector resends after `503`, which could duplicate a customer reply;
+- whether `GET /messages/alt:uid:{uid}` returns `404` before an accepted reply
+  is created; the connector retries only that GET;
 - whether `alt:email:` matches an address in another letter case;
 - every answer to a valid token, including whether `Retry-After` accompanies
   every `429`;

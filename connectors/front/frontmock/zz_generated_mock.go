@@ -233,7 +233,7 @@ func ReplyToConversationUncertain(value front.ConversationReply, failure sdkgo.F
 	return connectormock.Uncertain(value, failure)
 }
 
-// ReplyToConversationDefect selects the defect branch: Local input, connection configuration, or connector definition is invalid.
+// ReplyToConversationDefect selects the defect branch: Local input, connection credentials that require reauthorization or are unusable, or the connector definition is invalid; transient credential failures Retry.
 func ReplyToConversationDefect(value front.ConversationReply, failure *sdkgo.Failure) connectormock.Case[front.ConversationReply] {
 	return connectormock.Branch(front.ReplyToConversationBranchDefect, value, failure)
 }
