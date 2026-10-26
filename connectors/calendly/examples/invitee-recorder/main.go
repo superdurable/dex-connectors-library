@@ -23,6 +23,7 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/connectors/calendly"
 	inviteerecorder "github.com/superdurable/dex-connectors-library/connectors/calendly/examples/invitee-recorder/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/calendly/examples/invitee-recorder/linkflow"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
@@ -69,7 +70,7 @@ func run(ctx context.Context, logger *slog.Logger, connectionOptions ...calendly
 		return err
 	}
 	flow := inviteerecorder.NewFlow(connection)
-	registry, err := dex.NewRegistry([]dex.Flow{flow, inviteerecorder.NewSchedulingLinkFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{flow, linkflow.NewSchedulingLinkFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register invitee recorder Flow: %w", err)
 	}

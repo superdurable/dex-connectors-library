@@ -1,10 +1,11 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-package inviteerecorder
+package linkflow
 
 import (
 	"github.com/superdurable/dex-connectors-library/connectors/calendly"
+	inviteerecorder "github.com/superdurable/dex-connectors-library/connectors/calendly/examples/invitee-recorder/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -30,7 +31,7 @@ func (*SchedulingLinkFlow) GetFlowType() string { return SchedulingLinkFlowType 
 func (flow *SchedulingLinkFlow) GetSteps() []dex.StepDef {
 	return []dex.StepDef{
 		dex.DefineStartStep(calendly.NewCreateSchedulingLinkStep(calendly.CreateSchedulingLinkStepConfig[calendly.CreateSchedulingLinkInput]{
-			StepType: "CreateSchedulingLink", ConnectionName: ConnectionName, Connection: flow.connection,
+			StepType: "CreateSchedulingLink", ConnectionName: inviteerecorder.ConnectionName, Connection: flow.connection,
 			Annotations:         sdkgo.StepAnnotations{GroupID: "calendly", GroupLabel: "Calendly", Explanation: "Create one single-use booking link with a durable dispatch fence."},
 			MapToOperationInput: useSchedulingLinkInput,
 			Created:             sdkgo.GoTo(completeSchedulingLink{}),

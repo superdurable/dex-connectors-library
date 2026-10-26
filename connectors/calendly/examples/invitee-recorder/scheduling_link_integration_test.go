@@ -18,7 +18,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/calendly"
-	inviteerecorder "github.com/superdurable/dex-connectors-library/connectors/calendly/examples/invitee-recorder/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/calendly/examples/invitee-recorder/linkflow"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -56,7 +56,7 @@ func TestSchedulingLinkExampleRetries503WithRealDex(t *testing.T) {
 		redirected.URL.Scheme, redirected.URL.Host, redirected.Host = target.Scheme, target.Host, target.Host
 		return base.RoundTrip(redirected)
 	})}))
-	flow := inviteerecorder.NewSchedulingLinkFlow(connection)
+	flow := linkflow.NewSchedulingLinkFlow(connection)
 	client := startWorkerAndClient(t, flow)
 	input := calendly.CreateSchedulingLinkInput{EventTypeURI: bookedEventTypeURI}
 	flowID := fmt.Sprintf("calendly-link-retry-%d", time.Now().UnixNano())

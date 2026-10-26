@@ -40,7 +40,7 @@ dexcli visualize ./examples/invitee-recorder/flow/workflow.go \
   --schema-version 2.0 \
   --json \
   --out ./build/invitee-recorder
-dexcli visualize ./examples/invitee-recorder/flow/scheduling_link_workflow.go \
+dexcli visualize ./examples/invitee-recorder/linkflow/workflow.go \
   --schema-version 2.0 \
   --json \
   --out ./build/scheduling-link
