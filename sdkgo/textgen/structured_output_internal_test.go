@@ -99,11 +99,10 @@ func TestTransformSchemaForProviderLeavesTheOriginalIntact(t *testing.T) {
 		"when": map[string]any{"type": "string", "format": "date", "description": "The day.", "title": "When"},
 		"list": map[string]any{"type": "array", "items": map[string]any{"type": "integer", "maximum": 9}, "maxItems": 3},
 	}))
-	transformed, err := transformSchemaForProvider(original, StructuredOutputRules{
+	transformed := transformSchemaForProvider(original, StructuredOutputRules{
 		KeywordsMovedToDescription: []string{"format", "maximum", "maxItems", "format"},
 		KeywordsRemoved:            []string{"title", "additionalProperties"},
 	})
-	require.NoError(t, err)
 	properties := transformed["properties"].(map[string]any)
 	require.Equal(t, map[string]any{"type": "string", "description": `The day. (format: "date")`}, properties["when"])
 	require.Equal(t, "(maxItems: 3)", properties["list"].(map[string]any)["description"])
@@ -112,9 +111,7 @@ func TestTransformSchemaForProviderLeavesTheOriginalIntact(t *testing.T) {
 	require.Equal(t, "date", original["properties"].(map[string]any)["when"].(map[string]any)["format"])
 	require.Equal(t, false, original["additionalProperties"])
 
-	unchanged, err := transformSchemaForProvider(original, StructuredOutputRules{})
-	require.NoError(t, err)
-	require.Equal(t, original, unchanged)
+	require.Equal(t, original, transformSchemaForProvider(original, StructuredOutputRules{}))
 	require.Error(t, StructuredOutputRules{KeywordsMovedToDescription: []string{"type"}}.Validate())
 	require.Error(t, StructuredOutputRules{KeywordsRemoved: []string{"properties"}}.Validate())
 	require.Error(t, StructuredOutputRules{Mode: "xml"}.Validate())

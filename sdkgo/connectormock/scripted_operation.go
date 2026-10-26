@@ -55,6 +55,8 @@ type resolvedCase[OUT any] struct {
 	retryAfter   time.Duration
 	isUnscripted bool
 	isReplay     bool
+	// isDefault marks an outcome produced by a Default case.
+	isDefault bool
 	// effectiveBranch is the branch the SDK selects after validating the outcome, or empty for a Retry.
 	effectiveBranch sdkgo.BranchID
 }
@@ -140,9 +142,7 @@ func (scripted *scriptedOperation[IN, OUT]) answer(call sdkgo.Call, input IN, id
 	var resolved resolvedCase[OUT]
 	if scripted.requestCheck != nil {
 		if failure := scripted.requestCheck(input); failure != nil {
-			resolved = resolvedCase[OUT]{kind: caseKindBranch, branch: sdkgo.DefectBranchID,
-				failure: scripted.completeFailure(failure), effectiveBranch: sdkgo.DefectBranchID}
-			return scripted.recordAnswer(call, input, flowID, resolved)
+			return scripted.recordAnswer(call, input, flowID, scripted.requestCheckDefect(failure))
 		}
 	}
 	remembered, isRemembered := scripted.terminalByKey[idempotencyKey]
@@ -154,8 +154,12 @@ func (scripted *scriptedOperation[IN, OUT]) answer(call sdkgo.Call, input IN, id
 		if scripted.answerCheck != nil && resolved.kind == caseKindBranch &&
 			resolved.effectiveBranch == scripted.answerBranch {
 			if err := scripted.answerCheck(input, resolved.value); err != nil {
-				scripted.reportFailure(fmt.Sprintf("scripted answer for branch %q does not match request: %v", scripted.answerBranch, err))
-				resolved = scripted.defectCase("scripted connector mock answer does not match request: " + err.Error())
+				source := "scripted"
+				if resolved.isDefault {
+					source = "default"
+				}
+				scripted.reportFailure(fmt.Sprintf("%s answer for branch %q does not match request: %v", source, scripted.answerBranch, err))
+				resolved = scripted.defectCase("connector mock answer does not match request: " + err.Error())
 			}
 		}
 		if idempotencyKey != "" && resolved.kind != caseKindRetry {
@@ -163,6 +167,16 @@ func (scripted *scriptedOperation[IN, OUT]) answer(call sdkgo.Call, input IN, id
 		}
 	}
 	return scripted.recordAnswer(call, input, flowID, resolved)
+}
+
+// requestCheckDefect fails the test for an invalid check Failure, which the SDK would silently replace.
+func (scripted *scriptedOperation[IN, OUT]) requestCheckDefect(failure *sdkgo.Failure) resolvedCase[OUT] {
+	completed := scripted.completeFailure(failure)
+	if err := completed.Validate(); err != nil {
+		scripted.reportFailure(fmt.Sprintf("the request check returned an invalid failure: %v", err))
+		return scripted.defectCase("connector mock request check returned an invalid failure: " + err.Error())
+	}
+	return resolvedCase[OUT]{kind: caseKindBranch, branch: sdkgo.DefectBranchID, failure: completed, effectiveBranch: sdkgo.DefectBranchID}
 }
 
 func (scripted *scriptedOperation[IN, OUT]) recordAnswer(call sdkgo.Call, input IN, flowID string, resolved resolvedCase[OUT]) resolvedCase[OUT] {
@@ -198,7 +212,9 @@ func (scripted *scriptedOperation[IN, OUT]) resolveScriptedCase(flowID string, i
 	if !scripted.isStrict {
 		for _, candidate := range scripts {
 			if response, found := candidate.defaultCase(); found {
-				return scripted.resolveCase(response, input)
+				resolved := scripted.resolveCase(response, input)
+				resolved.isDefault = true
+				return resolved
 			}
 		}
 	}

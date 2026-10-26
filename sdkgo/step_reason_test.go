@@ -35,3 +35,27 @@ func TestUnwiredBranchFailureReasonBoundsInvalidUTF8(t *testing.T) {
 		})
 	}
 }
+
+func TestUnwiredBranchFailureReasonReplacesInvalidUTF8(t *testing.T) {
+	identity := connectorStepIdentity{
+		operation:  OperationRef{ConnectorID: "fixture", OperationID: "selectDefect"},
+		connection: ConnectionRef{Provider: "fixture", Name: "test-connection"},
+	}
+	prefix := "fixture selectDefect (connection test-connection) selected branch defect with no target: PROTOCOL: "
+	tests := map[string]struct {
+		message  string
+		expected string
+	}{
+		"stray byte":         {message: "a\xffb", expected: "a�b"},
+		"truncated sequence": {message: "ok\xc3", expected: "ok�"},
+		"valid text":         {message: "café", expected: "café"},
+	}
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			reason := unwiredBranchFailureReason(identity, DefectBranchID, &Failure{Kind: FailureProtocol, Message: test.message})
+
+			require.Equal(t, prefix+test.expected, reason, "a message within the bound is not marked truncated")
+			require.True(t, utf8.ValidString(reason))
+		})
+	}
+}

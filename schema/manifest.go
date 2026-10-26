@@ -607,6 +607,9 @@ func (manifest Manifest) Validate() error {
 			}
 			branches[branch.ID] = true
 			branchGoNames[branch.GoName] = true
+			if branch.ID == "defect" && !branch.Optional {
+				problems = append(problems, operation.Name+": the defect branch must be optional")
+			}
 		}
 		if len(branches) == 0 || !branches["defect"] {
 			problems = append(problems, operation.Name+": branches must declare defect")
@@ -615,6 +618,9 @@ func (manifest Manifest) Validate() error {
 			problems = append(problems, operation.Name+": query cannot declare uncertain")
 		}
 		if operation.MockChecks != nil {
+			if len(operation.Mocks) == 0 {
+				problems = append(problems, operation.Name+": mockChecks requires the operation to declare mocks, because only the generated mock package runs them")
+			}
 			if operation.MockChecks.RequestFunction == "" && operation.MockChecks.Answer == nil {
 				problems = append(problems, operation.Name+": mockChecks requires a requestFunction or answer")
 			}

@@ -113,9 +113,9 @@ execution for a second provider call or polling iteration.
 ## Branch-only Result and strict Attempt
 
 An operation declares stable branches in its manifest and generated
-definition. Every operation declares the standard `defect` branch. A Mutation
-declares the standard `uncertain` branch only for a possibly applied write
-that it cannot safely repeat or confirm.
+definition. Every operation declares the standard `defect` branch, always
+optional. A Mutation declares the standard `uncertain` branch only for a
+possibly applied write that it cannot safely repeat or confirm.
 
 ```go
 type QueryResult[T any] struct {
@@ -358,8 +358,8 @@ only: Trigger factories and the connection's webhook handlers and Trigger
 runners return an error for it, because it has no client. See [Connector mocks](manifest-authoring.md#connector-mocks).
 Operations may also declare connector-owned mock request and answer checks in
 `mockChecks`. A rejected request selects `defect` with the real check's Failure
-without failing the application test. A scripted answer that violates the
-request fails the test and selects `defect`. These checks cover
+without failing the application test. An answer, scripted or the default, that
+violates the request fails the test and selects `defect`. These checks cover
 provider-independent behavior; provider and model-specific validation still
 belongs to the real operation.
 

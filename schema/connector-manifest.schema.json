@@ -654,7 +654,9 @@
         "goName": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
         "description": { "type": "string", "minLength": 1 },
         "optional": { "type": "boolean" }
-      }
+      },
+      "if": { "properties": { "id": { "const": "defect" } }, "required": ["id"] },
+      "then": { "required": ["optional"], "properties": { "optional": { "const": true } } }
     },
     "execution": {
       "type": "object",
@@ -767,6 +769,12 @@
               }
             }
           }
+        }
+      },
+      "dependentSchemas": {
+        "mockChecks": {
+          "required": ["mocks"],
+          "properties": { "mocks": { "minItems": 1 } }
         }
       },
       "allOf": [

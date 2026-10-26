@@ -14,7 +14,8 @@ An operation declares:
 - every stable branch, including defect and Mutation uncertainty only when the
   request may have reached the provider, a repeat is unsafe, and read-back
   cannot confirm the outcome;
-- `optional: true` on every branch that is not a happy path;
+- `optional: true` on every branch that is not a happy path; `defect` is always
+  optional, and `connectorctl validate` rejects a required one;
 - progress capabilities used to generate typed Stream fields;
 - `authorization: required` for operations that require an authorized
   connection, or `none` for public operations;
@@ -775,9 +776,15 @@ package with signature `func(Input) *sdkgo.Failure`. A non-nil Failure selects
 Operation fields. It is a rejected application request, so it does not fail
 the test or consume a scripted answer. `answer` names a declared
 `branch` and an exported `function` with signature `func(Input, Output) error`.
-That function runs only for answers on that branch. An error reports a
-scripted-answer mismatch with `t.Errorf` and selects `defect`. Keep both
-functions free of provider calls and secret-bearing error text. For example:
+That function runs only for answers on that branch, whether a scripted case or
+the default produced them. An error reports an answer mismatch with
+`t.Errorf`, naming the default or a scripted case, and selects `defect`. A
+request function whose Failure is invalid, such as one with an empty kind or
+message, also fails the test. Keep both functions free of provider calls and
+secret-bearing error text. An operation takes one request function and one
+answer branch, and only an operation that declares `mocks` can declare
+`mockChecks`, because the generated mock package is the only place the checks
+run; `connectorctl validate` rejects `mockChecks` without `mocks`. For example:
 
 ```yaml
       mockChecks:
@@ -829,7 +836,9 @@ mock of each shape:
 - `default: true` marks the mock that answers every call a test does not
   script. Every operation has exactly one default, selecting a required
   happy-path branch without a failure. An unscripted Mutation call uses that
-  answer instead of failing the test.
+  answer instead of failing the test. `Strict()` catches unscripted extra calls;
+  it cannot detect a missing call. Assert `Calls()` in every Mutation test to
+  detect missing calls and verify the count, each input, and each branch.
 - Outputs are YAML written as the operation output's JSON. Quote a string
   that YAML would read as a number, a boolean, or a date, such as `"007"`.
 
@@ -875,10 +884,19 @@ in the connector module runs that test.
 `connectorctl mocks scaffold connector.yaml` appends a default for each
 operation without one and a failure mock for each optional branch other than
 `defect` and `uncertain` that has none. The default contains an output
-placeholder, or three placeholder pages for a paginated Query. Replace these
-with realistic answers before committing. The command edits only the lines it
-inserts, reports the placeholders, and adds nothing on a second run. Review
-the scaffolded failure kinds and messages before committing them.
+placeholder, or three placeholder pages for a paginated Query. The pages'
+cursor placeholders follow the type that the output's Go struct declares for
+the cursor field in the active Go files beside the manifest: a string cursor
+gets strings and a number cursor gets numbers. The command rejects a cursor
+with the `json:",string"` option because `CursorPageNumber` cannot page it;
+remove the option before scaffolding. The command stops without editing the
+manifest when it cannot read the type or finds duplicate active declarations;
+then write the paginated default by hand.
+Replace the placeholders with realistic answers before committing; they decode
+strictly into the output type but need not pass its
+`Validate` method. The command edits only the lines it inserts, reports the
+placeholders, and adds nothing on a second run. Review the scaffolded failure
+kinds and messages before committing them.
 
 The generated package exposes `New(t, connectionName)`, `Connection()` for
 the connector's Step factories, one scripting accessor per operation, a

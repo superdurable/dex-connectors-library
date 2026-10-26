@@ -66,7 +66,7 @@ spec:
       branches:
         - {id: appended, goName: Appended, description: Rows were appended.}
         - {id: uncertain, goName: Uncertain, description: Append outcome is unknown.}
-        - {id: defect, goName: Defect, description: Local input is invalid.}
+        - {id: defect, goName: Defect, description: Local input is invalid., optional: true}
       authorization: required
       execution:
         executeMethodTimeout: 30s

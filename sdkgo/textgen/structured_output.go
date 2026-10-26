@@ -308,18 +308,33 @@ func readSchemaType(node map[string]any, pointer string) (string, bool, error) {
 
 // transformSchemaForProvider returns a copy of a checked canonical schema with
 // the rules' keywords moved into descriptions or removed.
-func transformSchemaForProvider(canonical map[string]any, rules StructuredOutputRules) (map[string]any, error) {
+func transformSchemaForProvider(canonical map[string]any, rules StructuredOutputRules) map[string]any {
 	if len(rules.KeywordsMovedToDescription) == 0 && len(rules.KeywordsRemoved) == 0 {
-		return canonical, nil
+		return canonical
 	}
-	providerSchema, err := canonicalizeSchema(canonical)
-	if err != nil {
-		return nil, err
+	providerSchema := copyJSONValue(canonical).(map[string]any)
+	doTransformSchemaNode(providerSchema, sortedUnique(rules.KeywordsMovedToDescription), sortedUnique(rules.KeywordsRemoved))
+	return providerSchema
+}
+
+// copyJSONValue deep-copies a value that holds only decoded JSON maps, slices, and scalars.
+func copyJSONValue(value any) any {
+	switch typed := value.(type) {
+	case map[string]any:
+		copied := make(map[string]any, len(typed))
+		for key, item := range typed {
+			copied[key] = copyJSONValue(item)
+		}
+		return copied
+	case []any:
+		copied := make([]any, len(typed))
+		for index, item := range typed {
+			copied[index] = copyJSONValue(item)
+		}
+		return copied
+	default:
+		return typed
 	}
-	moved := sortedUnique(rules.KeywordsMovedToDescription)
-	removed := sortedUnique(rules.KeywordsRemoved)
-	doTransformSchemaNode(providerSchema, moved, removed)
-	return providerSchema, nil
 }
 
 func doTransformSchemaNode(node map[string]any, moved []string, removed []string) {

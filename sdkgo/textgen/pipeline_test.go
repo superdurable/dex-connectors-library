@@ -50,6 +50,18 @@ type testResponse struct {
 	Error     json.RawMessage `json:"error,omitempty"`
 }
 
+type singleUseSchemaMarshaler struct {
+	callCount *int
+}
+
+func (marshaler singleUseSchemaMarshaler) MarshalJSON() ([]byte, error) {
+	*marshaler.callCount = *marshaler.callCount + 1
+	if *marshaler.callCount > 1 {
+		return nil, errors.New("schema value was marshaled more than once")
+	}
+	return []byte(`"shipped"`), nil
+}
+
 // newTestWireFormat declares every feature and sends the validated request as JSON to /generate.
 func newTestWireFormat(isStreaming bool) textgen.WireFormat {
 	return textgen.WireFormat{
@@ -353,6 +365,45 @@ func TestTextGenerationQuerySelectsDefectWithoutARequest(t *testing.T) {
 	}
 }
 
+func TestTextGenerationQueryReportsTheFirstRequestErrorInDocumentedOrder(t *testing.T) {
+	outOfRange := 1.5
+	test := newPipelineTest(t, func(config *textgen.TextGenerationQueryConfig) {
+		config.WireFormat.Features.SupportsInstructions = false
+		config.WireFormat.RulesForModel = func(string) textgen.ModelRequestRules {
+			return textgen.ModelRequestRules{
+				Temperature:      textgen.TemperatureRange(0, 1),
+				ReasoningEfforts: map[textgen.ReasoningEffort]string{textgen.ReasoningEffortLow: "wire-low"},
+			}
+		}
+	})
+	request := textgen.TextGenerationRequest{
+		MaxOutputTokens: -1, Instructions: "Be brief.", Temperature: &outOfRange, ReasoningEffort: "ultra",
+		StructuredOutput: &textgen.StructuredOutput{Name: "bad name", Schema: map[string]any{"type": "array"}},
+	}
+	steps := []struct {
+		message string
+		fix     func(*textgen.TextGenerationRequest)
+	}{
+		{"at least one message", func(request *textgen.TextGenerationRequest) { request.Messages = userRequest().Messages }},
+		{"maxOutputTokens", func(request *textgen.TextGenerationRequest) { request.MaxOutputTokens = 0 }},
+		{"structured output name must match", func(request *textgen.TextGenerationRequest) { request.StructuredOutput.Name = "answer" }},
+		{"structured output schema is not portable", func(request *textgen.TextGenerationRequest) {
+			request.StructuredOutput.Schema = map[string]any{"type": "object", "additionalProperties": false, "properties": map[string]any{}, "required": []string{}}
+		}},
+		{"does not send Instructions", func(request *textgen.TextGenerationRequest) { request.Instructions = "" }},
+		{"from 0 through 1", func(request *textgen.TextGenerationRequest) { request.Temperature = nil }},
+		{"must be none", func(request *textgen.TextGenerationRequest) { request.ReasoningEffort = "" }},
+		{"does not support structured output", func(request *textgen.TextGenerationRequest) { request.StructuredOutput = nil }},
+	}
+	for _, step := range steps {
+		result := test.requireBranch(t, request, textgen.DefectBranchID, sdkgo.FailureValidation)
+		require.Contains(t, result.Failure.Message, step.message)
+		step.fix(&request)
+	}
+	test.provider.EnqueueReplies(doneReply("ordinary answer"))
+	test.requireBranch(t, request, textgen.GeneratedBranchID, "")
+}
+
 func TestTextGenerationQueryClassifiesErrorStatuses(t *testing.T) {
 	errorBody := func(code string) map[string]any {
 		return map[string]any{"error": map[string]any{"code": code, "message": "secret provider text"}}
@@ -612,6 +663,25 @@ func TestStructuredAnswerCheckMatchesRealResponsePath(t *testing.T) {
 	test.provider.EnqueueReplies(doneReply(`{"status":"pending"}`))
 	result := test.requireBranch(t, request, textgen.InvalidResponseBranchID, sdkgo.FailureProtocol)
 	require.Equal(t, "structured output does not match its schema "+err.Error(), result.Failure.Message)
+}
+
+func TestTextGenerationQueryCanonicalizesStructuredSchemaOnce(t *testing.T) {
+	test := newPipelineTest(t, nil)
+	test.provider.EnqueueReplies(doneReply(`{"status":"shipped"}`))
+	request := userRequest()
+	marshalCallCount := 0
+	request.StructuredOutput = &textgen.StructuredOutput{Name: "answer", Schema: map[string]any{
+		"type": "object", "additionalProperties": false, "required": []string{"status"},
+		"properties": map[string]any{"status": map[string]any{
+			"type": "string", "const": singleUseSchemaMarshaler{callCount: &marshalCallCount},
+		}},
+	}}
+
+	result := test.requireBranch(t, request, textgen.GeneratedBranchID, "")
+
+	require.Equal(t, `{"status":"shipped"}`, result.Value.Text)
+	require.Equal(t, 1, marshalCallCount)
+	require.Len(t, test.provider.Requests(), 1)
 }
 
 func TestTextGenerationQueryAddsTheJSONObjectInstruction(t *testing.T) {
