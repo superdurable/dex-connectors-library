@@ -102,6 +102,35 @@ func TestSharedFenceBodyErrorsDoNotAuthorizeNon2xxResend(t *testing.T) {
 	}
 }
 
+func TestSharedFenceCredentialBodyRequires2xxRefusal(t *testing.T) {
+	for _, testCase := range []struct {
+		name       string
+		statusCode int
+		body       string
+		branch     sdkgo.BranchID
+	}{
+		{name: "server_error", statusCode: http.StatusInternalServerError, body: `{"ok":false,"error":"token_expired"}`, branch: slack.PostChannelMessageBranchUncertain},
+		{name: "client_error", statusCode: http.StatusBadRequest, body: `{"ok":false,"error":"token_expired"}`, branch: slack.PostChannelMessageBranchProviderRejected},
+		{name: "ok_true", statusCode: http.StatusOK, body: `{"ok":true,"error":"invalid_auth","channel":"C123","ts":"2.0"}`, branch: slack.PostChannelMessageBranchSent},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			posts := 0
+			provider := &rejectionRefreshingCredentialProvider{}
+			client, err := slack.New(slack.Config{}, provider, slack.WithHTTPClient(&http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+				posts++
+				return slackTestResponse(testCase.statusCode, testCase.body), nil
+			})}))
+			require.NoError(t, err)
+			ctx := singledispatchtest.NewContext("shared-fence-credential-status", "post")
+			result, err := sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, slack.PostChannelMessageInput{ChannelID: "C123", Text: "hello"})
+			require.NoError(t, err)
+			require.Equal(t, testCase.branch, result.Branch)
+			require.Equal(t, 1, posts)
+			require.Zero(t, provider.forcedRefreshes)
+		})
+	}
+}
+
 func TestSharedFenceCredentialFailureRecordsNotSent(t *testing.T) {
 	var posts atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {

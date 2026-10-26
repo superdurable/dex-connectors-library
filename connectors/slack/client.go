@@ -470,7 +470,8 @@ func (client *Client) postMessage(call sdkgo.Call, operationName string, channel
 		}
 		return sdkgo.NewMutationRetry[PostMessageOutput](slackFailure(operationName, failureKind, failureMessage), retryAfter(response.header))
 	}
-	if slackCredentialRejected(response) {
+	if response.statusCode == http.StatusUnauthorized ||
+		(response.statusCode >= 200 && response.statusCode < 300 && !response.decoded.OK && slackCredentialRejected(response)) {
 		replacement, refreshErr := sdkgo.ResolveCredentialAfterRejection(call.Context, client.credentials, call, client.refreshDriver)
 		if refreshErr != nil || validateResolvedCredentialToken(replacement, botCredentialToken) != nil {
 			return sdkgo.NewMutationBranch(providerRejected, PostMessageOutput{}, slackFailurePointer(operationName, sdkgo.FailureAuthentication, "Slack rejected the connection credential"), client.receipt(call, response, ""))
