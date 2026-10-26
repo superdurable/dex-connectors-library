@@ -5,7 +5,7 @@ metadata:
   displayName: Amazon SQS
   description: Consume messages from an Amazon SQS standard or FIFO queue, or an SQS-compatible queue such as ElasticMQ, with long-polling receive, acknowledgement by delete, and visibility changes that release or extend a message.
   company: Amazon
-  version: v0.1.1
+  version: v0.2.0
 spec:
   provider: amazon-sqs
   codegen:
@@ -94,6 +94,23 @@ spec:
         executeMethodTimeout: 30s
         durability: sync
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A lost receive response may have hidden messages already; FIFO deduplicates its attempt ID for only five minutes and standard queues do not, so bound retries to two minutes."}}
+      mocks:
+        - name: paidOrder
+          branch: received
+          description: A receive from the orders queue returns the paid order 1042 once.
+          default: true
+          output:
+            queueUrl: https://sqs.eu-west-1.amazonaws.com/123456789012/orders
+            messages:
+              - {messageId: order-1042, receiptHandle: receipt-order-1042, body: '{"orderId":"1042","event":"paid"}', md5OfBody: 457ba27172a5858e4fed7600ec948c39, sentAt: "2026-10-25T09:00:00Z", firstReceivedAt: "2026-10-25T09:00:01Z", receiveCount: 1}
+        - name: noOrder
+          branch: empty
+          description: A receive from the empty orders queue returns no messages before the wait ends.
+          output: {queueUrl: https://sqs.eu-west-1.amazonaws.com/123456789012/orders, messages: []}
+        - name: receiveDenied
+          branch: providerRejected
+          description: A receive from a queue without sqs:ReceiveMessage permission is denied.
+          failure: {kind: AUTHORIZATION, message: SQS denied the receive because the connection lacks permission.}
     - name: deleteMessage
       goName: DeleteMessage
       inputType: DeleteMessageInput
@@ -110,6 +127,21 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: acknowledgedOrder
+          branch: deleted
+          description: Deleting receipt-order-1042 acknowledges order-1042 from the orders queue.
+          default: true
+          output: {queueUrl: https://sqs.eu-west-1.amazonaws.com/123456789012/orders, messageId: order-1042}
+        - name: expiredReceipt
+          branch: receiptHandleInvalid
+          description: Deleting an expired FIFO receipt handle for order-1042 cannot acknowledge the message.
+          output: {queueUrl: https://sqs.eu-west-1.amazonaws.com/123456789012/orders.fifo, messageId: order-1042}
+          failure: {kind: NOT_FOUND, message: SQS no longer accepts the receipt handle.}
+        - name: deleteDenied
+          branch: providerRejected
+          description: Deleting receipt-order-1042 without sqs:DeleteMessage permission is denied.
+          failure: {kind: AUTHORIZATION, message: SQS denied the deletion because the connection lacks permission.}
     - name: changeMessageVisibility
       goName: ChangeMessageVisibility
       inputType: ChangeMessageVisibilityInput
@@ -127,3 +159,17 @@ spec:
         executeMethodTimeout: 30s
         durability: async
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Each repeated visibility change starts the timeout again, so bound retries that can extend a message lease after a lost response."}}
+      mocks:
+        - name: releasedOrder
+          branch: changed
+          description: Setting receipt-order-1042 visibility to zero releases that delivery immediately.
+          default: true
+          output: {queueUrl: https://sqs.eu-west-1.amazonaws.com/123456789012/orders, messageId: order-1042, visibilityTimeoutSeconds: 0, visibleAfter: "2026-10-25T09:00:02Z"}
+        - name: expiredVisibilityReceipt
+          branch: receiptHandleInvalid
+          description: Changing visibility with an expired receipt handle for order-1042 is rejected.
+          failure: {kind: NOT_FOUND, message: SQS no longer accepts the receipt handle.}
+        - name: visibilityDenied
+          branch: providerRejected
+          description: Changing visibility without sqs:ChangeMessageVisibility permission is denied.
+          failure: {kind: AUTHORIZATION, message: SQS denied the visibility change because the connection lacks permission.}

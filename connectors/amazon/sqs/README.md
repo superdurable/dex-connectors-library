@@ -24,6 +24,23 @@ consumer at-least-once: processing must tolerate a message delivered again,
 which `ReceiveCount` above 1 reveals. This release sends no messages, has no
 Trigger, and has no Studio pickers; see [Not in this release](#not-in-this-release).
 
+## Mocks
+
+The generated [`sqsmock`](sqsmock) package supplies a paid order from the
+orders queue by default and cases for an empty queue, rejected requests, and
+expired receipt handles. The [runnable integration test](examples/queue-consumer/flow/workflow_mock_integration_test.go)
+uses the same Flow as the live example:
+
+```go
+	mock := sqsmock.New(t, ConnectionName)
+	flow, harness := newQueueConsumerHarnessWithConnection(t, mock.Connection())
+	result := runQueueConsumer(t, integrationContext(t), harness.client, flow, "mock-paid-"+uniqueSuffix(), Input{})
+```
+
+Script another answer with `mock.ReceiveMessages().Respond(...)` and inspect
+each operation's `Calls()` to check the inputs and call count. Mock answers do
+not perform SQS operations.
+
 ## Authentication
 
 A connection holds an access key ID, a secret access key, and, for temporary
