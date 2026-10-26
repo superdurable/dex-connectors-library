@@ -26,6 +26,30 @@ type failingOnceSlackCredentials struct {
 	attempts atomic.Int32
 }
 
+type slackCredentialResolution struct {
+	credentials slack.Credentials
+	err         error
+}
+
+type sequencedSlackCredentials struct {
+	resolutions  []slackCredentialResolution
+	resolveCalls int
+}
+
+func (provider *sequencedSlackCredentials) Resolve(sdkgo.Call) (slack.Credentials, error) {
+	index := provider.resolveCalls
+	provider.resolveCalls++
+	if index >= len(provider.resolutions) {
+		index = len(provider.resolutions) - 1
+	}
+	resolution := provider.resolutions[index]
+	return resolution.credentials, resolution.err
+}
+
+func (provider *sequencedSlackCredentials) ResolveWithRefresh(_ context.Context, call sdkgo.Call, _ sdkgo.CredentialRefreshDriver[slack.Credentials]) (slack.Credentials, error) {
+	return provider.Resolve(call)
+}
+
 func (provider *failingOnceSlackCredentials) Resolve(call sdkgo.Call) (slack.Credentials, error) {
 	if provider.attempts.Add(1) == 1 {
 		return slack.Credentials{}, errors.New("credential store unavailable")
@@ -231,6 +255,105 @@ func TestSharedFenceCredentialFailureRecordsNotSent(t *testing.T) {
 	require.EqualValues(t, 1, posts.Load())
 }
 
+func TestSharedFenceTerminalPreSendCredentialsSelectDefect(t *testing.T) {
+	for _, operationName := range []string{"postChannelMessage", "postThreadReply"} {
+		for _, credentialFailure := range []string{"reauthorization_required", "missing_bot_token"} {
+			t.Run(operationName+"/"+credentialFailure, func(t *testing.T) {
+				resolution := slackCredentialResolution{credentials: slack.Credentials{UserToken: sdkgo.NewSecretString("user-token")}}
+				if credentialFailure == "reauthorization_required" {
+					resolution.err = sdkgo.NewReauthorizationRequiredError(errors.New("authorization revoked"))
+				}
+				provider := &sequencedSlackCredentials{resolutions: []slackCredentialResolution{resolution}}
+				posts := 0
+				client, err := slack.New(slack.Config{}, provider, slack.WithHTTPClient(&http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+					posts++
+					return slackTestResponse(http.StatusOK, `{"ok":true,"channel":"C123","ts":"2.0"}`), nil
+				})}))
+				require.NoError(t, err)
+				ctx := singledispatchtest.NewContext("terminal-presend-"+operationName+"-"+credentialFailure, "post")
+				var result sdkgo.MutationResult[slack.PostMessageOutput]
+				if operationName == "postChannelMessage" {
+					result, err = sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, slack.PostChannelMessageInput{ChannelID: "C123", Text: "hello"})
+					require.Equal(t, slack.PostChannelMessageBranchDefect, result.Branch)
+				} else {
+					result, err = sdkgo.RunMutation(ctx, client.PostThreadReply(), slackConnection, slack.PostThreadReplyInput{ChannelID: "C123", ThreadTimestamp: "1.0", Text: "hello"})
+					require.Equal(t, slack.PostThreadReplyBranchDefect, result.Branch)
+				}
+				require.NoError(t, err)
+				require.NotNil(t, result.Failure)
+				require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
+				require.Contains(t, result.Failure.Message, "reconnect the connection")
+				require.Zero(t, posts)
+				require.Equal(t, 1, provider.resolveCalls)
+				heartbeats := ctx.Heartbeats()
+				require.NotEmpty(t, heartbeats)
+				require.Contains(t, string(heartbeats[len(heartbeats)-1]), `"state":"notSent"`)
+			})
+		}
+	}
+}
+
+func TestSharedFenceReadBackCredentialClassificationNeverResends(t *testing.T) {
+	for _, testCase := range []struct {
+		name              string
+		postBody          string
+		credentialFailure error
+		isNextAttempt     bool
+		wantsRetry        bool
+	}{
+		{name: "inline_missing_user_token", postBody: `{"ok":true,"ts":"2.0"}`},
+		{name: "inline_reauthorization_required", postBody: `{"ok":false,"error":"internal_error","ts":"2.0"}`, credentialFailure: sdkgo.NewReauthorizationRequiredError(errors.New("authorization revoked"))},
+		{name: "next_attempt_missing_user_token", postBody: `{"ok":true,"ts":"2.0"}`, isNextAttempt: true},
+		{name: "next_attempt_reauthorization_required", postBody: `{"ok":false,"error":"internal_error","ts":"2.0"}`, credentialFailure: sdkgo.ErrReauthorizationRequired, isNextAttempt: true},
+		{name: "inline_transient_lookup", postBody: `{"ok":true,"ts":"2.0"}`, credentialFailure: errors.New("credential store unavailable"), wantsRetry: true},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			botCredentials := slack.Credentials{BotToken: sdkgo.NewSecretString("bot-token"), UserToken: sdkgo.NewSecretString("user-token")}
+			readResolution := slackCredentialResolution{credentials: slack.Credentials{BotToken: sdkgo.NewSecretString("bot-token")}, err: testCase.credentialFailure}
+			resolutions := []slackCredentialResolution{{credentials: botCredentials}}
+			if testCase.isNextAttempt {
+				resolutions = append(resolutions, slackCredentialResolution{err: errors.New("credential store unavailable")})
+			}
+			resolutions = append(resolutions, readResolution)
+			provider := &sequencedSlackCredentials{resolutions: resolutions}
+			posts := 0
+			reads := 0
+			client, err := slack.New(slack.Config{}, provider, slack.WithHTTPClient(&http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+				if request.Method == http.MethodPost {
+					posts++
+					return slackTestResponse(http.StatusOK, testCase.postBody), nil
+				}
+				reads++
+				return slackTestResponse(http.StatusOK, `{"ok":true,"messages":[]}`), nil
+			})}))
+			require.NoError(t, err)
+			ctx := singledispatchtest.NewContext("read-credential-"+testCase.name, "post")
+			input := slack.PostThreadReplyInput{ChannelID: "C123", ThreadTimestamp: "1.0", Text: "hello"}
+			if testCase.isNextAttempt {
+				_, err = sdkgo.RunMutation(ctx, client.PostThreadReply(), slackConnection, input)
+				var retryError *sdkgo.RetryError
+				require.ErrorAs(t, err, &retryError)
+				ctx.AdvanceAttempt()
+			}
+			result, err := sdkgo.RunMutation(ctx, client.PostThreadReply(), slackConnection, input)
+			if testCase.wantsRetry {
+				var retryError *sdkgo.RetryError
+				require.ErrorAs(t, err, &retryError)
+				require.Equal(t, sdkgo.FailureAvailability, retryError.Failure.Kind)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, slack.PostThreadReplyBranchUncertain, result.Branch)
+				require.NotNil(t, result.Failure)
+				require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
+				require.Contains(t, result.Failure.Message, "reconnect the connection")
+				require.Equal(t, "2.0", result.Receipt.ProviderObjectID)
+			}
+			require.Equal(t, 1, posts)
+			require.Zero(t, reads)
+		})
+	}
+}
+
 func TestSharedFenceLostClaimNeverResends(t *testing.T) {
 	var posts atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
@@ -321,7 +444,7 @@ func TestSharedFenceReadBackFailureClassificationNeverResends(t *testing.T) {
 		wantsSent         bool
 		wantsReadRequests int
 	}{
-		{name: "missing_read_credential", postBody: `{"ok":true,"ts":"2.0"}`, withoutUserToken: true, wantsRetry: true},
+		{name: "missing_read_credential", postBody: `{"ok":true,"ts":"2.0"}`, withoutUserToken: true},
 		{name: "unusable_read_response", postBody: `{"ok":true,"ts":"2.0"}`, readStatus: http.StatusOK, readBody: `{"ok":`, wantsReadRequests: 1},
 		{name: "read_transport_error", postBody: `{"ok":true,"ts":"2.0"}`, readError: errors.New("connection reset"), wantsRetry: true, wantsReadRequests: 1},
 		{name: "read_rate_limited", postBody: `{"ok":true,"ts":"2.0"}`, readStatus: http.StatusTooManyRequests, readBody: `{"ok":false,"error":"ratelimited"}`, wantsRetry: true, wantsReadRequests: 1},

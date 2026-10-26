@@ -25,9 +25,11 @@ import (
 var slackConnection = sdkgo.ConnectionRef{Provider: "slack", Name: "workspace"}
 
 type rejectionRefreshingCredentialProvider struct {
-	forcedRefreshes int
-	hasRefreshed    bool
-	refreshError    error
+	forcedRefreshes  int
+	hasRefreshed     bool
+	refreshError     error
+	unchangedRefresh bool
+	refreshDeadline  time.Time
 }
 
 func (provider *rejectionRefreshingCredentialProvider) Resolve(sdkgo.Call) (slack.Credentials, error) {
@@ -53,13 +55,17 @@ func (provider *rejectionRefreshingCredentialProvider) ResolveWithRefresh(
 }
 
 func (provider *rejectionRefreshingCredentialProvider) ResolveAfterRejection(
-	context.Context,
-	sdkgo.Call,
-	sdkgo.CredentialRefreshDriver[slack.Credentials],
+	ctx context.Context,
+	_ sdkgo.Call,
+	_ sdkgo.CredentialRefreshDriver[slack.Credentials],
 ) (slack.Credentials, error) {
 	provider.forcedRefreshes++
+	provider.refreshDeadline, _ = ctx.Deadline()
 	if provider.refreshError != nil {
 		return slack.Credentials{}, provider.refreshError
+	}
+	if provider.unchangedRefresh {
+		return provider.Resolve(sdkgo.Call{})
 	}
 	provider.hasRefreshed = true
 	return provider.Resolve(sdkgo.Call{})
@@ -264,6 +270,8 @@ func TestPostMessageRejectedCredentialRefreshesAcrossFencedAttempts(t *testing.T
 			_, err = sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, input)
 			require.Error(t, err)
 			require.Equal(t, 1, provider.forcedRefreshes)
+			require.False(t, provider.refreshDeadline.IsZero())
+			require.LessOrEqual(t, time.Until(provider.refreshDeadline), 27*time.Second)
 			require.Len(t, messageIDs, 1)
 			require.Contains(t, string(ctx.heartbeat), `"state":"canResend"`)
 			ctx.attempt = 2
@@ -278,21 +286,36 @@ func TestPostMessageRejectedCredentialRefreshesAcrossFencedAttempts(t *testing.T
 }
 
 func TestPostMessageRejectedCredentialWithoutRefreshSelectsProviderRejected(t *testing.T) {
-	for _, refreshError := range []error{projectconfig.ErrRejectedCredentialNotRefreshed, errors.New("credential broker unavailable")} {
-		t.Run(refreshError.Error(), func(t *testing.T) {
+	for _, testCase := range []struct {
+		name             string
+		refreshError     error
+		unchangedRefresh bool
+		wantsReconnect   bool
+	}{
+		{name: "not_refreshed", refreshError: projectconfig.ErrRejectedCredentialNotRefreshed},
+		{name: "broker_unavailable", refreshError: errors.New("credential broker unavailable")},
+		{name: "reauthorization_required", refreshError: sdkgo.NewReauthorizationRequiredError(errors.New("authorization revoked")), wantsReconnect: true},
+		{name: "unchanged_token", unchangedRefresh: true, wantsReconnect: true},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
 			requests := 0
 			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
 				requests++
 				_, _ = response.Write([]byte(`{"ok":false,"error":"token_expired"}`))
 			}))
 			t.Cleanup(server.Close)
-			provider := &rejectionRefreshingCredentialProvider{refreshError: refreshError}
+			provider := &rejectionRefreshingCredentialProvider{refreshError: testCase.refreshError, unchangedRefresh: testCase.unchangedRefresh}
 			client, err := slack.New(slack.Config{Endpoint: server.URL}, provider)
 			require.NoError(t, err)
 			result, err := sdkgo.RunMutation(newSlackDexContext("post-refresh-failed"), client.PostChannelMessage(), slackConnection, slack.PostChannelMessageInput{ChannelID: "C123", Text: "hello"})
 			require.NoError(t, err)
 			require.Equal(t, slack.PostChannelMessageBranchProviderRejected, result.Branch)
 			require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
+			if testCase.wantsReconnect {
+				require.Contains(t, result.Failure.Message, "reconnect the connection")
+			} else {
+				require.Contains(t, result.Failure.Message, "temporarily unavailable")
+			}
 			require.Equal(t, 1, requests)
 			require.Equal(t, 1, provider.forcedRefreshes)
 		})

@@ -312,7 +312,7 @@ func (operation ListThreadMessagesOperation) Invoke(call sdkgo.Call, input ListT
 	if strings.TrimSpace(input.ChannelID) == "" || strings.TrimSpace(input.ThreadTimestamp) == "" || input.PageSize < 1 || input.PageSize > maximumThreadPageSize {
 		return sdkgo.NewQueryBranch(ListThreadMessagesBranchDefect, ListThreadMessagesOutput{}, slackFailurePointer("listThreadMessages", sdkgo.FailureValidation, "channel, thread timestamp, and page size from 1 through 15 are required"), sdkgo.Receipt{})
 	}
-	credentials, failure := operation.client.resolveCredentials(call, "listThreadMessages", userCredentialToken)
+	credentials, failure, _ := operation.client.resolveCredentials(call, "listThreadMessages", userCredentialToken)
 	if failure != nil {
 		return sdkgo.NewQueryBranch(ListThreadMessagesBranchDefect, ListThreadMessagesOutput{}, failure, sdkgo.Receipt{})
 	}
@@ -356,7 +356,7 @@ func (operation GetThreadReplyOperation) Invoke(call sdkgo.Call, input GetThread
 	if strings.TrimSpace(input.ChannelID) == "" || strings.TrimSpace(input.ThreadTimestamp) == "" || strings.TrimSpace(input.ReplyTimestamp) == "" || input.ReplyTimestamp == input.ThreadTimestamp {
 		return sdkgo.NewQueryBranch(GetThreadReplyBranchDefect, GetThreadReplyOutput{}, slackFailurePointer("getThreadReply", sdkgo.FailureValidation, "channel, thread timestamp, and a distinct reply timestamp are required"), sdkgo.Receipt{})
 	}
-	credentials, failure := operation.client.resolveCredentials(call, "getThreadReply", userCredentialToken)
+	credentials, failure, _ := operation.client.resolveCredentials(call, "getThreadReply", userCredentialToken)
 	if failure != nil {
 		return sdkgo.NewQueryBranch(GetThreadReplyBranchDefect, GetThreadReplyOutput{}, failure, sdkgo.Receipt{})
 	}
@@ -425,6 +425,7 @@ func (client *Client) postMessage(call sdkgo.Call, operationName string, channel
 	if strings.TrimSpace(channelID) == "" || strings.TrimSpace(text) == "" || len([]rune(text)) > client.maxMessageCharacters {
 		return sdkgo.NewMutationBranch(defect, PostMessageOutput{}, slackFailurePointer(operationName, sdkgo.FailureValidation, "channel and bounded non-empty text are required"), sdkgo.Receipt{})
 	}
+	attemptStartedAt := time.Now()
 	fence, err := singledispatch.NewFence(call, methodTimeout)
 	if err != nil {
 		return sdkgo.NewMutationBranch(defect, PostMessageOutput{}, slackFailurePointer(operationName, sdkgo.FailureLocalDefect, "Slack dispatch fence could not be constructed"), sdkgo.Receipt{})
@@ -435,10 +436,13 @@ func (client *Client) postMessage(call sdkgo.Call, operationName string, channel
 	case singledispatch.ReadBackRequired:
 		return client.readBackPostedMessage(call, decision.Marker, operationName, channelID, threadTimestamp, uncertain, sent)
 	}
-	credentials, failure := client.resolveCredentials(call, operationName, botCredentialToken)
+	credentials, failure, isTerminalCredentialFailure := client.resolveCredentials(call, operationName, botCredentialToken)
 	if failure != nil {
 		if err := fence.RecordNotSent(); err != nil {
 			return sdkgo.NewMutationRetry[PostMessageOutput](slackFailure(operationName, sdkgo.FailureAvailability, "Slack credentials and no-send checkpoint are unavailable"), 0)
+		}
+		if isTerminalCredentialFailure {
+			return sdkgo.NewMutationBranch(defect, PostMessageOutput{}, slackFailurePointer(operationName, sdkgo.FailureAuthentication, "Slack connection credentials are unavailable; reconnect the connection"), sdkgo.Receipt{})
 		}
 		return sdkgo.NewMutationRetry[PostMessageOutput](slackFailure(operationName, sdkgo.FailureAvailability, "Slack credentials are temporarily unavailable; no message was sent"), 0)
 	}
@@ -472,9 +476,21 @@ func (client *Client) postMessage(call sdkgo.Call, operationName string, channel
 	}
 	if response.statusCode == http.StatusUnauthorized ||
 		(err == nil && response.statusCode >= 200 && response.statusCode < 300 && !response.decoded.OK && slackCredentialRejected(response)) {
-		replacement, refreshErr := sdkgo.ResolveCredentialAfterRejection(call.Context, client.credentials, call, client.refreshDriver)
-		if refreshErr != nil || validateResolvedCredentialToken(replacement, botCredentialToken) != nil {
-			return sdkgo.NewMutationBranch(providerRejected, PostMessageOutput{}, slackFailurePointer(operationName, sdkgo.FailureAuthentication, "Slack rejected the connection credential"), client.receipt(call, response, ""))
+		refreshBudget := methodTimeout
+		if stepDeadline, hasDeadline := call.Context.Deadline(); hasDeadline {
+			refreshBudget = min(refreshBudget, stepDeadline.Sub(attemptStartedAt))
+		}
+		refreshContext, cancelRefresh := context.WithDeadline(call.Context, attemptStartedAt.Add(refreshBudget*9/10))
+		replacement, refreshErr := sdkgo.ResolveCredentialAfterRejection(refreshContext, client.credentials, call, client.refreshDriver)
+		cancelRefresh()
+		isReplacementInvalid := validateResolvedCredentialToken(replacement, botCredentialToken) != nil
+		isReplacementUnchanged := !isReplacementInvalid && replacement.BotToken.Reveal() == credentials.BotToken.Reveal()
+		if refreshErr != nil || isReplacementInvalid || isReplacementUnchanged {
+			failureMessage := "Slack credential refresh is temporarily unavailable"
+			if sdkgo.IsReauthorizationRequired(refreshErr) || (refreshErr == nil && (isReplacementInvalid || isReplacementUnchanged)) {
+				failureMessage = "Slack rejected the connection credential; reconnect the connection"
+			}
+			return sdkgo.NewMutationBranch(providerRejected, PostMessageOutput{}, slackFailurePointer(operationName, sdkgo.FailureAuthentication, failureMessage), client.receipt(call, response, ""))
 		}
 		if checkpointErr := fence.RecordCanResend(); checkpointErr != nil {
 			return sdkgo.NewMutationRetry[PostMessageOutput](slackFailure(operationName, sdkgo.FailureAvailability, "Slack retry checkpoint could not be recorded"), 0)
@@ -553,8 +569,11 @@ func (client *Client) readBackPostedMessage(call sdkgo.Call, marker singledispat
 	if marker.CallID != call.ID || marker.ProviderID == "" {
 		return sdkgo.NewMutationUncertain(PostMessageOutput{}, slackFailure(operationName, sdkgo.FailureTransport, "an earlier Slack message cannot be identified"), client.receipt(call, providerResponse{}, ""))
 	}
-	credentials, failure := client.resolveCredentials(call, operationName, userCredentialToken)
+	credentials, failure, isTerminalCredentialFailure := client.resolveCredentials(call, operationName, userCredentialToken)
 	if failure != nil {
+		if isTerminalCredentialFailure {
+			return sdkgo.NewMutationUncertain(PostMessageOutput{}, slackFailure(operationName, sdkgo.FailureAuthentication, "Slack message read-back credentials are unavailable; reconnect the connection to confirm the post"), client.receipt(call, providerResponse{}, marker.ProviderID))
+		}
 		return sdkgo.NewMutationRetry[PostMessageOutput](slackFailure(operationName, sdkgo.FailureAvailability, "Slack message read-back credentials are unavailable"), 0)
 	}
 	queryTimestamp := marker.ProviderID
@@ -580,12 +599,15 @@ func (client *Client) readBackPostedMessage(call sdkgo.Call, marker singledispat
 	return sdkgo.NewMutationUncertain(PostMessageOutput{}, slackFailure(operationName, sdkgo.FailureProtocol, "Slack message read-back did not find the post"), client.receipt(call, response, marker.ProviderID))
 }
 
-func (client *Client) resolveCredentials(call sdkgo.Call, operationName string, tokenKind credentialToken) (Credentials, *sdkgo.Failure) {
+func (client *Client) resolveCredentials(call sdkgo.Call, operationName string, tokenKind credentialToken) (Credentials, *sdkgo.Failure, bool) {
 	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
-	if err != nil || validateResolvedCredentialToken(credentials, tokenKind) != nil {
-		return Credentials{}, slackFailurePointer(operationName, sdkgo.FailureAuthentication, "Slack connection credentials are unavailable")
+	if err != nil {
+		return Credentials{}, slackFailurePointer(operationName, sdkgo.FailureAuthentication, "Slack connection credentials are unavailable"), sdkgo.IsReauthorizationRequired(err)
 	}
-	return credentials, nil
+	if validateResolvedCredentialToken(credentials, tokenKind) != nil {
+		return Credentials{}, slackFailurePointer(operationName, sdkgo.FailureAuthentication, "Slack connection credentials are unavailable"), true
+	}
+	return credentials, nil, false
 }
 
 type credentialToken int

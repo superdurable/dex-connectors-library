@@ -260,8 +260,9 @@ their HTTP statuses and live delivery behavior remain unverified. An
 `internal_error` or `fatal_error` with a returned timestamp is read back;
 without one it remains `uncertain`. A complete HTTP 2xx `ok:false` post with
 `invalid_auth`, `token_expired`, or `token_revoked`, or any HTTP 401, forces a
-credential refresh. If refresh succeeds, the fence permits one retry on the
-next Step attempt with the same `client_msg_id`; a failed refresh selects
+credential refresh within the Step deadline margin. If refresh supplies a
+changed valid bot token, the fence permits one retry on the next Step attempt
+with the same `client_msg_id`; a failed, invalid, or unchanged refresh selects
 `providerRejected`. The post is never sent twice in one attempt.
 Slack's 409 behavior remains unverified.
 The shared single-dispatch fence uses synchronous Step durability to persist
@@ -270,6 +271,12 @@ A known accepted message timestamp is checkpointed for read-back through
 `conversations.replies`; an unavailable read-back retries without a new post,
 while an inconclusive read-back remains `uncertain`. Read-back uses the remaining
 Step context; a timeout retries read-back on the next attempt without posting.
+Before a post, a transient credential lookup failure records `notSent` and
+retries. Reauthorization-required or missing bot credentials record `notSent`
+and select `defect` with an authentication failure and reconnect guidance.
+During read-back, a transient credential failure retries without another post;
+reauthorization-required or missing user credentials select `uncertain` with
+the known message timestamp in the receipt and reconnect guidance.
 For replies, whether Slack excludes the parent message when `oldest` and `latest`
 name the reply and `limit=1` is unverified. A parent-only result selects
 `uncertain`. Missing or stale checkpoints do not authorize a resend. Released
@@ -279,8 +286,9 @@ The fence bounds each request inside the Step attempt. An application must not
 override these post Steps to async durability, which cannot preserve the
 fence's heartbeat across retries.
 
-Every operation uses `defect` for invalid local input, connection configuration,
-or Connector contract violations. A conclusive Slack API refusal uses
+Every operation uses `defect` for invalid local input, terminal connection
+credential failures, connection configuration, or Connector contract violations.
+A conclusive Slack API refusal uses
 `providerRejected`; query responses that are malformed or exceed configured
 limits use `invalidResponse`. Safe query transport, rate-limit, and availability
 failures retry instead of producing a branch.

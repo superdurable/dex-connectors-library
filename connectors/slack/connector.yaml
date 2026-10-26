@@ -254,7 +254,7 @@ spec:
         - {id: sent, goName: Sent, description: Slack accepted the message.}
         - {id: providerRejected, goName: ProviderRejected, description: Slack conclusively rejected the message., optional: true}
         - {id: uncertain, goName: Uncertain, description: The dispatched message outcome cannot be confirmed., optional: true}
-        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, terminal connection credentials, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: sync

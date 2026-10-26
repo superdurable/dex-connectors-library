@@ -169,6 +169,65 @@ func TestThreadApprovalExampleRetriesSafePostsAndNeverResendsUnknownPostsWithRea
 	require.Equal(t, 1, provider.postCount("11.0"))
 }
 
+type slackIntegrationCredentialSource struct {
+	postCredentials slack.Credentials
+}
+
+func (source slackIntegrationCredentialSource) Resolve(call sdkgo.Call) (slack.Credentials, error) {
+	if call.Operation.OperationID == "postThreadReply" {
+		return source.postCredentials, nil
+	}
+	return slack.Credentials{BotToken: sdkgo.NewSecretString("bot-token"), UserToken: sdkgo.NewSecretString("user-token")}, nil
+}
+
+func (source slackIntegrationCredentialSource) ResolveWithRefresh(_ context.Context, call sdkgo.Call, _ sdkgo.CredentialRefreshDriver[slack.Credentials]) (slack.Credentials, error) {
+	return source.Resolve(call)
+}
+
+func TestThreadApprovalExampleClassifiesTerminalPostCredentialsWithRealDex(t *testing.T) {
+	for _, testCase := range []struct {
+		name            string
+		threadTimestamp string
+		postCredentials slack.Credentials
+		wantFailure     string
+		wantPosts       int
+	}{
+		{name: "before_post", threadTimestamp: "13.0", postCredentials: slack.Credentials{UserToken: sdkgo.NewSecretString("user-token")}, wantFailure: "defect"},
+		{name: "during_read_back", threadTimestamp: "15.0", postCredentials: slack.Credentials{BotToken: sdkgo.NewSecretString("bot-token")}, wantFailure: "uncertain", wantPosts: 1},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			provider := newSlackProvider(t)
+			defer provider.Close()
+			reference := sdkgo.ConnectionRef{Provider: "slack", Name: ConnectionName}
+			providerClient, err := slack.New(slack.Config{Endpoint: provider.URL}, slackIntegrationCredentialSource{postCredentials: testCase.postCredentials})
+			require.NoError(t, err)
+			connection, err := slack.NewConnection(providerClient, reference)
+			require.NoError(t, err)
+			flow, harness := newSlackIntegrationHarnessWithConnection(t, connection)
+			harness.startWorker(t)
+			ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+			defer cancel()
+			testRunID := strconv.FormatInt(time.Now().UnixNano(), 10)
+			root := slack.MessageEvent{TeamID: "T" + testRunID, ChannelID: "C1", Timestamp: testCase.threadTimestamp, ThreadTimestamp: testCase.threadTimestamp, UserID: "U1", Text: "request approval"}
+			flowID := startSlackThreadFlow(t, ctx, harness.client, flow, "Ev-root-credentials-"+testRunID, root)
+			waitForSlackStatus(t, ctx, harness.client, flow, flowID, StatusWaitingForReply)
+			reply := sdkgo.TriggerEvent[slack.MessageEvent]{
+				ID: "Ev-reply-credentials-" + testRunID, OccurredAt: time.Now().UTC(),
+				Payload: slack.MessageEvent{TeamID: root.TeamID, ChannelID: "C1", Timestamp: "16.0", ThreadTimestamp: testCase.threadTimestamp, UserID: "U2", Text: "approve"},
+			}
+			replyFilter, err := NewReplyTriggerFilter(slack.ThreadReplyCreatedTriggerConfiguration{ChannelID: "C1", ThreadReplyMatcher: slack.MessageMatcher{MessageContains: "approve", PosterUserIDs: []string{"U2"}}})
+			require.NoError(t, err)
+			replyTarget := sdkgo.NewDexRPCTriggerTarget(harness.client, flow.ReceiveThreadReply, replyFilter, ResolveFlowID, MapToReceiveThreadReplyInput)
+			require.NoError(t, replyTarget.HandleTrigger(ctx, reply))
+			result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{})
+			require.NoError(t, err)
+			require.Equal(t, dex.FlowFailed, result.Status)
+			require.Contains(t, result.ErrorMessage, testCase.wantFailure)
+			require.Equal(t, testCase.wantPosts, provider.postCount(testCase.threadTimestamp))
+		})
+	}
+}
+
 func startSlackThreadFlow(
 	t *testing.T,
 	ctx context.Context,
@@ -264,6 +323,10 @@ func (provider *slackProvider) serveHTTP(response http.ResponseWriter, request *
 		}
 		if threadTimestamp == "11.0" {
 			writeSlackProviderResponse(response, `{"ok":false,"error":"token_expired","ts":123}`)
+			return
+		}
+		if threadTimestamp == "15.0" {
+			writeSlackProviderResponse(response, `{"ok":true,"ts":"15.1"}`)
 			return
 		}
 		writeSlackProviderResponse(response, `{"ok":true,"channel":"C1","ts":"2.1","message":{"ts":"2.1","thread_ts":"1.0","user":"UBOT","text":"Processing complete"}}`)

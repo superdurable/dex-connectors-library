@@ -223,7 +223,7 @@ func PostChannelMessageUncertain(value slack.PostMessageOutput, failure sdkgo.Fa
 	return connectormock.Uncertain(value, failure)
 }
 
-// PostChannelMessageDefect selects the defect branch: Local input, connection configuration, or connector definition is invalid.
+// PostChannelMessageDefect selects the defect branch: Local input, terminal connection credentials, connection configuration, or connector definition is invalid.
 func PostChannelMessageDefect(value slack.PostMessageOutput, failure *sdkgo.Failure) connectormock.Case[slack.PostMessageOutput] {
 	return connectormock.Branch(slack.PostChannelMessageBranchDefect, value, failure)
 }
@@ -277,7 +277,7 @@ func PostThreadReplyUncertain(value slack.PostMessageOutput, failure sdkgo.Failu
 	return connectormock.Uncertain(value, failure)
 }
 
-// PostThreadReplyDefect selects the defect branch: Local input, connection configuration, or connector definition is invalid.
+// PostThreadReplyDefect selects the defect branch: Local input, terminal connection credentials, connection configuration, or connector definition is invalid.
 func PostThreadReplyDefect(value slack.PostMessageOutput, failure *sdkgo.Failure) connectormock.Case[slack.PostMessageOutput] {
 	return connectormock.Branch(slack.PostThreadReplyBranchDefect, value, failure)
 }
