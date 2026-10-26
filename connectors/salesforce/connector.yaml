@@ -242,7 +242,7 @@ spec:
         durability: async
       pagination: {inputField: nextRecordsCursor, nextField: nextRecordsCursor}
       mocks:
-        - name: priyaContactPages
+        - name: allContactsByCreatedDate
           branch: found
           description: "A Contact query without LIMIT ordered by CreatedDate returns 401 contacts in 200, 200, and 1-record pages at the default batch size."
           default: true
