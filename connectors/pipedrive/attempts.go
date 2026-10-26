@@ -83,29 +83,6 @@ func mutationAttemptForSession[T any](failure *sessionFailure, branches operatio
 	}
 }
 
-// singleDispatchMarker is the Dex heartbeat checkpoint recorded before a create is sent.
-type singleDispatchMarker struct {
-	DispatchedCallID sdkgo.CallID `json:"pipedriveDispatchedCallId"`
-}
-
-// hasEarlierDispatch reports an earlier attempt's marker; an unreadable checkpoint counts as one, failing closed.
-func hasEarlierDispatch(call sdkgo.Call) bool {
-	var marker singleDispatchMarker
-	isMarkerFound, err := call.Context.GetLastHeartbeatValue(&marker)
-	return err != nil || isMarkerFound
-}
-
-// Dex accepts the marker before persisting it, so a Worker lost in that instant can still send twice.
-func recordDispatch(call sdkgo.Call) error {
-	return call.Context.RecordHeartbeat(singleDispatchMarker{DispatchedCallID: call.ID})
-}
-
-// releaseDispatch clears the marker after Pipedrive provably did not apply the create.
-func releaseDispatch(call sdkgo.Call) {
-	// A failed clear leaves the marker, so the next attempt treats the create as possibly sent.
-	_ = call.Context.RecordHeartbeat(nil)
-}
-
-func dispatchCheckpointRetry[T any](operation string) sdkgo.MutationAttempt[T] {
-	return sdkgo.NewMutationRetry[T](providerFailure(operation, sdkgo.FailureAvailability, "Dex did not record the dispatch checkpoint; nothing was sent"), 0)
+func singleDispatchRetry[T any](operation string) sdkgo.MutationAttempt[T] {
+	return sdkgo.NewMutationRetry[T](providerFailure(operation, sdkgo.FailureAvailability, "The single-dispatch fence could not authorize a send or retry; the next attempt must reconcile the checkpoint"), 0)
 }

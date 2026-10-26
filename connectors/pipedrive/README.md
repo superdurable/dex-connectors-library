@@ -37,7 +37,7 @@ connector, so a CRM process swaps vendors by changing only the vendor values:
 | Find a person by email | `searchObjects` on `email` with `EQ` | `searchObjects` with `Fields: [email]`, `ExactMatch: true` |
 | Idempotent person write | `upsertObject`, `IDProperty: email` | `upsertObject`, `IDProperty: email` |
 | Organization identity | a unique custom property | `upsertObject`, `IDProperty: name` |
-| Create a deal | `upsertObject` on a unique property | `createObject` (sync, dispatch checkpoint) |
+| Create a deal | `upsertObject` on a unique property | `createObject` (sync, single-dispatch fence) |
 | Stage and owner | `dealstage`, `hubspot_owner_id` properties | `stage_id`, `owner_id` fields |
 | Changed since | `searchObjects` on `hs_lastmodifieddate` | `listObjects` with `UpdatedSince` |
 | Paging | `NextAfter` | `NextCursor` |
@@ -95,8 +95,9 @@ valid `api_domain` refreshes before its first call. `invalid_grant`,
 `deals:full` and `contacts:full` marks the connection
 `reauthorization_required`; a 5xx, a 429, a transport failure, or a response
 without a valid `api_domain` is retried. After Pipedrive rejects an OAuth access
-token with `401`, the connector asks once for a refresh, which project storage
-performs only when the stored expiry has passed, and resends once, because
+token with `401`, the connector asks once for a refresh. Reads and repeatable
+updates resend in the same attempt; fenced creates record a can-resend
+checkpoint and retry in the next attempt with the refreshed credential.
 Pipedrive rejects an unauthenticated request before acting on it.
 
 Both methods ship because they serve different owners: a token is the
@@ -156,59 +157,57 @@ deal's `stage_id` and `owner_id`; fields it does not name keep their values.
 
 ## Duplicate safety
 
-Pipedrive documents no idempotency key, and Dex dispatches an async Step again
-when its local attempt passes about seven seconds or a Worker is lost, so the
-two creating operations use **sync** durability and a Dex heartbeat
-checkpoint recorded before the create is sent:
+Pipedrive's [API reference](https://developers.pipedrive.com/docs/api/v1/Deals) does not document an idempotency key for record creation. `createObject` and the create path of `upsertObject` use the shared `sdkgo/singledispatch` fence with **sync** Execute durability. The fence records an attempt-numbered claim before sending. A later attempt may send only when the immediately previous attempt recorded that it did not send or received a definite refusal. Missing, stale, and unreadable markers fail closed. A claim can be lost between Dex acknowledging the heartbeat frame and persisting it; a later attempt then has no send permission, so this fence does not promise exactly-once confirmation.
 
-- `createObject` does not send its create again in a later attempt of the
-  same Step execution, within the limit described below. A burst-limit
-  `429` or a connection that never opened clears the checkpoint and retries. A
-  lost response, a 5xx, a timeout, or an unreadable success selects
-  `uncertain`, and a later attempt that finds the checkpoint selects
-  `uncertain` without sending anything, so a person decides whether the record
-  exists.
-- `upsertObject` searches before every create. An unconfirmed create returns
-  Retry with the checkpoint kept; the next attempt searches again and updates
-  the record the lost attempt created. It selects `uncertain` instead when the
-  search still finds no record, for example while Pipedrive's search index
-  lags, or when that attempt's search or update fails in a way it does not
-  retry, such as a `403` or an invalid response, so `providerRejected` always
-  means nothing was created.
-- `updateObject` writes absolute values, so a repeat converges and it keeps
-  async durability; it retries every unconfirmed outcome and never selects
-  `uncertain`. A repeat overwrites a change another user made in between.
+A [429 means rate limiting](https://pipedrive.readme.io/docs/core-api-concepts-rate-limiting), and a [503 means service unavailable](https://pipedrive.readme.io/docs/core-api-concepts-http-status-codes). The connector records a can-resend marker and retries burst-limit 429 and 503, plus a transport failure positively observed before any connection was obtained. A daily-budget 429 selects `providerRejected` because its midnight reset exceeds the five-attempt, two-minute create retry budget. The assumption that Pipedrive has not processed a request it answers 503 is **not verified against a live Pipedrive company**. A lost sent response or another ambiguous write fails closed; `createObject` selects `uncertain` unless a provider ID was saved for GET read-back. For an unusable accepted response, `upsertObject` searches its email or name identity in the same attempt; later attempts search that identity or read a saved provider ID before deciding whether a previous create exists. A transient failure after a create request may require a later identity read-back; if the retry budget ends first, the Flow fails without sending another create. The [person search API](https://developers.pipedrive.com/docs/api/v1/Persons) documents exact, case-insensitive matching, but search indexing latency after create is **unverified live**. When read-back cannot confirm an earlier create, `upsertObject` selects `uncertain` and never creates again.
 
-The checkpoint narrows the double-send window but does not close it. Dex
-accepts the checkpoint when the Worker writes it to its stream, before the
-request leaves; a Worker lost in that instant, before Dex stored the
-checkpoint, could still send twice, and a crash after the checkpoint but
-before the request left reports `uncertain` for a request Pipedrive never
-received. For `upsertObject` the identity search before every create narrows
-the first case further: the repeat finds the earlier person or organization
-unless Pipedrive's search index has not caught up.
+Checkpoints written by v0.22.1 and earlier are invalid to the shared fence.
+An in-flight create retrying after a 429 may select `uncertain` after the
+upgrade even when Pipedrive did not create a record; an in-flight upsert with
+a legacy dispatched marker also fails closed. Reconcile in-flight calls before
+upgrading.
 
-The example's real-Dex tests prove these with a fake Pipedrive that answers
-after nine seconds, drops the connection after applying a create, and holds a
-create while the Worker is replaced.
+`updateObject` sets absolute field values and may retry; a repeat can overwrite an intervening user change. The bounded five-attempt, two-minute retry policy on creates remains because the provider has no deduplication key. The example's real-Dex integration tests exercise 429 and 503 once followed by success, a lost accepted reply, and Worker replacement. Those tests run in CI; this change has not used live Pipedrive authorization.
+
+## Mocks
+
+The generated `pipedrivemock` package provides one happy-path default for every operation. Its defaults describe an Acme person 101, organization 201, and deals 301 and 302; search and list defaults have three pages with a duplicate across a page boundary. The default search is for deals, so the example scripts its organization search. Named mocks cover the definite `notFound`, `multipleMatches`, `providerRejected`, and `invalidResponse` branches. Transient, defect, and uncertain outcomes remain scriptable without manifest mocks. The runnable example's real-Dex mock test uses:
+
+```go
+mock := pipedrivemock.New(t, ConnectionName)
+mock.SearchObjects().When(func(input pipedrive.SearchObjectsInput) bool {
+	return input.ObjectType == pipedrive.ObjectTypeOrganizations && input.Term == "Acme Corp"
+}, pipedrivemock.SearchObjectsSearched(pipedrive.ObjectPage{
+	ObjectType: pipedrive.ObjectTypeOrganizations,
+	Objects:    []pipedrive.CRMObject{{ObjectType: pipedrive.ObjectTypeOrganizations, ID: "201", Name: "Acme Corp", IsPartial: true}},
+}, nil))
+mock.ListObjects().When(func(input pipedrive.ListObjectsInput) bool {
+	return input.ObjectType == pipedrive.ObjectTypeDeals && input.PersonID == "101"
+}, pipedrivemock.ListObjectsListed(pipedrive.ObjectPage{ObjectType: pipedrive.ObjectTypeDeals, Objects: []pipedrive.CRMObject{}}, nil))
+harness := newIntakeHarnessForConnection(t, mock.Connection())
+intake := harness.runIntake(t, "mock-new-lead", integrationLead())
+require.Equal(t, PhaseCompleted, intake.Phase)
+```
 
 ## Branches, errors, and rate limits
 
 | Pipedrive response | Result |
 | --- | --- |
 | `400`, `422` | `providerRejected`, `VALIDATION` |
-| `401` | `providerRejected`, `AUTHENTICATION`, after one OAuth refresh and resend only when the stored token has expired |
+| `401` | `providerRejected`, `AUTHENTICATION` if OAuth refresh fails; reads and repeatable updates may refresh and resend, while fenced creates refresh then retry on the next attempt |
 | `402` | `providerRejected`, `PROVIDER_REJECTION` (company account needs payment) |
 | `403`, including Pipedrive's block of API traffic that ignores `429` | `providerRejected`, `AUTHORIZATION` |
 | `404` | `notFound` on `getObject` and `updateObject`; `providerRejected` otherwise |
 | `429` with `x-daily-ratelimit-token-remaining: 0` | `providerRejected`, `QUOTA_EXHAUSTED`; the company's daily token budget resets at midnight in Pipedrive's server time zone |
 | other `429` (burst limit) | Retry after the longer of `Retry-After` and `x-ratelimit-reset`; the reset counts as at least Pipedrive's 2-second window and at most 10 seconds |
-| `408`, `5xx` except `501` | Retry, honoring `Retry-After`; `uncertain` for `createObject` |
+| `408`, `409`, `5xx` except `501` | Retry, honoring `Retry-After`; `createObject` retries `503` and selects `uncertain` for other possibly processed writes; `upsertObject` retries read-back after `409` |
 | connection never opened | Retry, nothing was sent |
 | dropped connection after sending | Retry; `uncertain` for `createObject` |
-| oversized, malformed, `success: false`, or ID-less success | `invalidResponse`; `uncertain` for `createObject` |
+| oversized, malformed, `success: false`, or ID-less success | `invalidResponse` on reads and repeatable updates; `uncertain` for `createObject`; `upsertObject` reads back an accepted create by identity within the attempt |
 | a response that echoes the credential | `invalidResponse`, and the body is discarded |
-| invalid input or unusable credentials | `defect`, no request |
+| invalid input | `defect`, no request; transient credential resolution before a fenced create returns Retry with a not-sent marker; reauthorization-required credentials select `providerRejected` with a reconnect hint and no request; missing credentials or an empty token select `defect` with a reconnect hint |
+
+After a fenced create, transient credential resolution during read-back returns Retry without another POST. Terminal credential failures select `uncertain` with an authentication failure and keep any saved provider ID in the receipt. A write 401 retries only after refresh supplies a changed, valid token; reauthorization failures ask for a reconnect, while transient refresh failures say the credentials are temporarily unavailable.
 
 Failure messages name only the HTTP status, never Pipedrive's `error` or
 `error_info` text. Receipts carry Pipedrive's `X-Correlation-Id`. Every request

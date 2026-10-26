@@ -5,7 +5,7 @@ metadata:
   displayName: Pipedrive
   description: Search, list, read, create, upsert, and update Pipedrive persons, organizations, and deals, with persons upserted by email and deal stages and owners passed through as Pipedrive IDs.
   company: Pipedrive
-  version: v0.22.1
+  version: v0.23.0
 spec:
   provider: pipedrive
   codegen:
@@ -193,12 +193,30 @@ spec:
       authorization: required
       branches:
         - {id: searched, goName: Searched, description: Pipedrive returned one bounded page of matching partial records; the page may be empty.}
-        - {id: providerRejected, goName: ProviderRejected, description: "Pipedrive conclusively rejected the search, such as a revoked token, a missing scope, an exhausted daily token budget, or an invalid term.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Pipedrive conclusively rejected the search, such as a revoked token, a missing scope or an invalid term.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Pipedrive returned an invalid or oversized search page., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: async
+      pagination: {inputField: cursor, nextField: nextCursor}
+      mocks:
+        - name: searchedDefaultAnswer
+          branch: searched
+          description: "A deals search beginning without a cursor returns deal 301, then 302 and a duplicate 301 across three pages."
+          default: true
+          pages:
+            - {objectType: deals, objects: [{objectType: deals, id: "301", name: Acme renewal, isPartial: true}], nextCursor: page-two}
+            - {objectType: deals, objects: [{objectType: deals, id: "302", name: Acme expansion, isPartial: true}, {objectType: deals, id: "301", name: Acme renewal, isPartial: true}], nextCursor: page-three}
+            - {objectType: deals, objects: [], nextCursor: ""}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "A read without permission receives HTTP 403."
+          failure: {kind: AUTHORIZATION, message: "Pipedrive denied access (HTTP 403)."}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "A successful read returns malformed JSON for the requested record or page."
+          failure: {kind: PROTOCOL, message: "Pipedrive returned a malformed success body."}
     - name: getObject
       goName: GetObject
       inputType: GetObjectInput
@@ -210,12 +228,30 @@ spec:
       branches:
         - {id: found, goName: Found, description: The record exists and was returned.}
         - {id: notFound, goName: NotFound, description: "No record of that object type has the ID, or the connection's user cannot see it.", optional: true}
-        - {id: providerRejected, goName: ProviderRejected, description: "Pipedrive conclusively rejected the read, such as a revoked token, a missing scope, or an exhausted daily token budget.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Pipedrive conclusively rejected the read, such as a revoked token, or a missing scope.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Pipedrive returned an invalid or oversized record., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: foundDefaultAnswer
+          branch: found
+          description: "Reading deal 301 returns the Acme renewal record."
+          default: true
+          output: {objectType: deals, id: "301", name: Acme renewal, personId: "101", organizationId: "201", stageId: "3", status: open}
+        - name: notFoundFailure
+          branch: notFound
+          description: "Reading an unknown record ID receives HTTP 404."
+          failure: {kind: NOT_FOUND, message: "Pipedrive found no such record (HTTP 404)."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "A read without permission receives HTTP 403."
+          failure: {kind: AUTHORIZATION, message: "Pipedrive denied access (HTTP 403)."}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "A successful read returns malformed JSON for the requested record or page."
+          failure: {kind: PROTOCOL, message: "Pipedrive returned a malformed success body."}
     - name: listObjects
       goName: ListObjects
       inputType: ListObjectsInput
@@ -226,48 +262,96 @@ spec:
       authorization: required
       branches:
         - {id: listed, goName: Listed, description: Pipedrive returned one bounded page of full records; the page may be empty.}
-        - {id: providerRejected, goName: ProviderRejected, description: "Pipedrive conclusively rejected the list, such as a revoked token, a missing scope, an exhausted daily token budget, or an expired cursor.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Pipedrive conclusively rejected the list, such as a revoked token, a missing scope or an expired cursor.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Pipedrive returned an invalid or oversized page., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: async
+      pagination: {inputField: cursor, nextField: nextCursor}
+      mocks:
+        - name: listedDefaultAnswer
+          branch: listed
+          description: "A deals list beginning without a cursor returns deal 301, then 302 and a duplicate 301 across three pages."
+          default: true
+          pages:
+            - {objectType: deals, objects: [{objectType: deals, id: "301", name: Acme renewal, personId: "101", organizationId: "201", stageId: "3", status: open}], nextCursor: page-two}
+            - {objectType: deals, objects: [{objectType: deals, id: "302", name: Acme expansion, personId: "101", organizationId: "201", stageId: "3", status: open}, {objectType: deals, id: "301", name: Acme renewal, personId: "101", organizationId: "201", stageId: "3", status: open}], nextCursor: page-three}
+            - {objectType: deals, objects: [], nextCursor: ""}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "A read without permission receives HTTP 403."
+          failure: {kind: AUTHORIZATION, message: "Pipedrive denied access (HTTP 403)."}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "A successful read returns malformed JSON for the requested record or page."
+          failure: {kind: PROTOCOL, message: "Pipedrive returned a malformed success body."}
     - name: upsertObject
       goName: UpsertObject
       inputType: UpsertObjectInput
       outputType: UpsertedObject
       kind: mutation
-      description: Create or update one Pipedrive person identified by email, or one organization identified by name. Pipedrive has no idempotency key, so the Step runs with sync durability and records a Dex checkpoint before a create; a later attempt searches the identity again and updates the record it finds or reports uncertain, and a Worker lost before Dex stores the checkpoint can still create twice while search has not indexed the first record.
+      description: Create or update one Pipedrive person identified by email, or one organization identified by name. Pipedrive has no idempotency key, so sync durability lets the shared single-dispatch fence persist a claim before a create; a later attempt searches the identity again and updates the record it finds or reports uncertain, and a missing or stale claim fails closed while identity read-back checks for a previously created record.
       idempotency: required
       authorization: required
       branches:
         - {id: upserted, goName: Upserted, description: Pipedrive created the record or updated the one record that carries the identity value.}
         - {id: multipleMatches, goName: MultipleMatches, description: "More than one record carries the identity value, so the connector changed nothing; the Result lists their IDs.", optional: true}
-        - {id: providerRejected, goName: ProviderRejected, description: "Pipedrive conclusively rejected the search or the write, such as an invalid field value, a revoked token, a missing scope, or an exhausted daily token budget; nothing was created.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Pipedrive conclusively rejected the search or the write, such as an invalid field value, a revoked token, or a missing scope; nothing was created.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "Pipedrive returned an invalid or oversized search page or updated record.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "An earlier attempt sent a create whose outcome was never confirmed, and a search by the identity value finds no record or this attempt's search or update failed without a retry, so the record may exist; the connector does not create it again.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "A create sent in this or an earlier attempt was not confirmed, and identity read-back finds no record or cannot complete; the record may exist, so the connector does not create it again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "An earlier create can be repeated when identity search misses it; Pipedrive does not enforce that search identity as a create key."}}
+        dispatchFence: true
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Pipedrive does not enforce the searched identity as a create key; an unconfirmed create requires read-back or operator reconciliation."}}
+      mocks:
+        - name: upsertedDefaultAnswer
+          branch: upserted
+          description: "Upserting person jane@acme.example.com returns the existing person 101."
+          default: true
+          output: {object: {objectType: persons, id: "101", name: Jane Smith, emails: ["jane@acme.example.com"], organizationId: "201"}, created: false}
+        - name: multipleMatchesFailure
+          branch: multipleMatches
+          description: "A person email search finds two exact matches and no write is sent."
+          failure: {kind: CONFLICT, message: "Two Pipedrive persons share the email address."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "A write with an invalid field value receives HTTP 400."
+          failure: {kind: VALIDATION, message: "Pipedrive rejected the field value (HTTP 400)."}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "A successful identity search returns malformed JSON."
+          failure: {kind: PROTOCOL, message: "Pipedrive returned a malformed success body."}
     - name: createObject
       goName: CreateObject
       inputType: CreateObjectInput
       outputType: CRMObject
       kind: mutation
-      description: Create one Pipedrive person, organization, or deal. Pipedrive has no idempotency key, so the Step runs with sync durability and records a Dex checkpoint before sending, so a later attempt reports uncertain instead of sending the create again; a Worker lost before Dex stores the checkpoint can still send twice.
+      description: Create one Pipedrive person, organization, or deal. Pipedrive has no idempotency key, so sync durability persists the shared single-dispatch fence claim across retries; a later attempt may resend after a definite refusal or proven unsent request, read back a known ID, or report uncertain.
       idempotency: required
       authorization: required
       branches:
         - {id: created, goName: Created, description: Pipedrive created the record and returned it.}
-        - {id: providerRejected, goName: ProviderRejected, description: "Pipedrive conclusively rejected the create, such as a missing title or name, an unknown stage or owner, a revoked token, or an exhausted daily token budget; nothing was created.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Pipedrive conclusively rejected the create, such as a missing title or name, an unknown stage or owner, or a revoked token; nothing was created.", optional: true}
         - {id: uncertain, goName: Uncertain, description: "The create was sent but its outcome cannot be confirmed, so the record may exist; the connector never sends it again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A lost dispatch checkpoint could create another object because Pipedrive has no provider key or generic lookup by Call ID."}}
+        dispatchFence: true
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Pipedrive has no provider key or generic lookup by Call ID, so an unconfirmed create requires operator reconciliation."}}
+      mocks:
+        - name: createdDefaultAnswer
+          branch: created
+          description: "Creating the Acme renewal deal returns deal 301 linked to person 101 and organization 201."
+          default: true
+          output: {objectType: deals, id: "301", name: Acme renewal, personId: "101", organizationId: "201", stageId: "3", status: open}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "A write with an invalid field value receives HTTP 400."
+          failure: {kind: VALIDATION, message: "Pipedrive rejected the field value (HTTP 400)."}
     - name: updateObject
       goName: UpdateObject
       inputType: UpdateObjectInput
@@ -279,9 +363,27 @@ spec:
       branches:
         - {id: updated, goName: Updated, description: Pipedrive updated the record and returned it.}
         - {id: notFound, goName: NotFound, description: "No record of that object type has the ID, or the connection's user cannot see it.", optional: true}
-        - {id: providerRejected, goName: ProviderRejected, description: "Pipedrive conclusively rejected the update, such as an invalid field value, an unknown stage or owner, a revoked token, or an exhausted daily token budget.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Pipedrive conclusively rejected the update, such as an invalid field value, an unknown stage or owner, or a revoked token.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "Pipedrive applied or rejected the update but returned an invalid or oversized record.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: updatedDefaultAnswer
+          branch: updated
+          description: "Updating deal 301 to stage 3 returns that same Acme renewal deal."
+          default: true
+          output: {objectType: deals, id: "301", name: Acme renewal, personId: "101", organizationId: "201", stageId: "3", status: open}
+        - name: notFoundFailure
+          branch: notFound
+          description: "Updating an unknown record ID receives HTTP 404."
+          failure: {kind: NOT_FOUND, message: "Pipedrive found no such record (HTTP 404)."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "A write with an invalid field value receives HTTP 400."
+          failure: {kind: VALIDATION, message: "Pipedrive rejected the field value (HTTP 400)."}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "A successful update returns malformed JSON."
+          failure: {kind: PROTOCOL, message: "Pipedrive returned a malformed success body."}

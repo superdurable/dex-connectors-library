@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -210,10 +211,67 @@ func TestBurstLimitedDealCreateWaitsAndCreatesOneDealWithRealDex(t *testing.T) {
 	harness := newIntakeHarness(t, provider, defaultRequestTimeout)
 
 	intake := harness.runIntake(t, "burst-limit", integrationLead())
-	require.Equal(t, PhaseCompleted, intake.Phase, "a 429 clears the dispatch checkpoint, so the retry may send")
+	require.Equal(t, PhaseCompleted, intake.Phase, "a 429 records a can-resend marker, so the next attempt may send")
 	requests := provider.requestsNamed("dealCreate")
 	require.Len(t, requests, 2)
 	require.GreaterOrEqual(t, requests[1].at.Sub(requests[0].at), 2*time.Second, "the retry waited out Pipedrive's burst window")
+	require.Equal(t, 1, provider.dealCount())
+}
+
+func TestUnavailableDealCreateRetriesOnceAndCreatesOneDealWithRealDex(t *testing.T) {
+	provider := newFakePipedrive(t)
+	provider.unavailableFirstDealCreate = true
+	harness := newIntakeHarness(t, provider, defaultRequestTimeout)
+
+	intake := harness.runIntake(t, "service-unavailable", integrationLead())
+	require.Equal(t, PhaseCompleted, intake.Phase)
+	require.Len(t, provider.requestsNamed("dealCreate"), 2)
+	require.Equal(t, provider.requestsNamed("dealCreate")[0].body, provider.requestsNamed("dealCreate")[1].body)
+	require.Equal(t, 1, provider.dealCount())
+}
+
+type transientCreateCredentialSource struct {
+	mutex       sync.Mutex
+	credentials pipedrive.Credentials
+	failures    int
+}
+
+func (source *transientCreateCredentialSource) Resolve(sdkgo.Call) (pipedrive.Credentials, error) {
+	return source.credentials, nil
+}
+
+func (source *transientCreateCredentialSource) ResolveWithRefresh(_ context.Context, call sdkgo.Call, _ sdkgo.CredentialRefreshDriver[pipedrive.Credentials]) (pipedrive.Credentials, error) {
+	source.mutex.Lock()
+	defer source.mutex.Unlock()
+	if call.Operation.OperationID == "createObject" && source.failures == 0 {
+		source.failures++
+		return pipedrive.Credentials{}, errors.New("credential store unavailable")
+	}
+	return source.credentials, nil
+}
+
+func (source *transientCreateCredentialSource) failureCount() int {
+	source.mutex.Lock()
+	defer source.mutex.Unlock()
+	return source.failures
+}
+
+func TestTransientCredentialStoreFailureBeforeDealCreateRetriesWithoutDuplicateWithRealDex(t *testing.T) {
+	provider := newFakePipedrive(t)
+	credentials := &transientCreateCredentialSource{credentials: pipedrive.Credentials{
+		AuthMethodID: pipedrive.APITokenAuthMethodID, APIToken: sdkgo.NewSecretString(integrationAPIToken),
+	}}
+	client, err := pipedrive.New(pipedrive.Config{Endpoint: provider.URL}, credentials, pipedrive.WithHTTPClient(&http.Client{Timeout: defaultRequestTimeout}))
+	require.NoError(t, err)
+	connection, err := pipedrive.NewConnection(client, sdkgo.ConnectionRef{Provider: "pipedrive", Name: ConnectionName})
+	require.NoError(t, err)
+	harness := newIntakeHarnessForConnection(t, connection)
+
+	intake := harness.runIntake(t, "credential-store-retry", integrationLead())
+	require.Equal(t, PhaseCompleted, intake.Phase)
+	require.Equal(t, DealActionCreated, intake.DealAction)
+	require.Equal(t, 1, credentials.failureCount())
+	require.Equal(t, 1, provider.count("dealCreate"), "the first attempt failed before sending")
 	require.Equal(t, 1, provider.dealCount())
 }
 

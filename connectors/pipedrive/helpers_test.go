@@ -39,6 +39,8 @@ type recordingPipedrive struct {
 }
 
 type recordedRequest struct {
+	context       context.Context
+	remoteAddress string
 	method        string
 	path          string
 	query         map[string][]string
@@ -57,6 +59,7 @@ func newRecordingPipedrive(t *testing.T, handler func(http.ResponseWriter, recor
 			t.Errorf("read fake Pipedrive request body: %v", err)
 		}
 		recorded := recordedRequest{
+			context: request.Context(), remoteAddress: request.RemoteAddr,
 			method: request.Method, path: request.URL.Path, query: request.URL.Query(),
 			apiToken: request.Header.Get("X-Api-Token"), authorization: request.Header.Get("Authorization"),
 			contentType: request.Header.Get("Content-Type"), body: body,
@@ -133,12 +136,13 @@ func (transport tokenEndpointTransport) RoundTrip(request *http.Request) (*http.
 type stepDexContext struct {
 	context.Context
 	step      string
+	attempt   int32
 	mutex     sync.Mutex
 	heartbeat json.RawMessage
 }
 
 func newStepDexContext(step string) *stepDexContext {
-	return &stepDexContext{Context: context.Background(), step: step}
+	return &stepDexContext{Context: context.Background(), step: step, attempt: 1}
 }
 
 func (*stepDexContext) FlowID() string                                  { return "deal-intake-flow" }
@@ -148,7 +152,7 @@ func (ctx *stepDexContext) StepExecutionID() string                     { return
 func (*stepDexContext) FromStepExecutionID() string                     { return "" }
 func (*stepDexContext) RecoveryError() *dex.RecoveryErrorInfo           { return nil }
 func (*stepDexContext) FirstAttemptAt() time.Time                       { return time.Unix(1, 0) }
-func (*stepDexContext) Attempt() int32                                  { return 1 }
+func (ctx *stepDexContext) Attempt() int32                              { return ctx.attempt }
 func (*stepDexContext) HasTimerFired() bool                             { return false }
 func (*stepDexContext) HasTimerFiredByIndex(int) bool                   { return false }
 func (*stepDexContext) WaitForMethodFailed() bool                       { return false }
@@ -182,5 +186,7 @@ func (ctx *stepDexContext) hasHeartbeat() bool {
 	defer ctx.mutex.Unlock()
 	return ctx.heartbeat != nil
 }
+
+func (ctx *stepDexContext) nextAttempt() { ctx.attempt++ }
 
 var _ dex.Context = (*stepDexContext)(nil)
