@@ -19,6 +19,7 @@ import (
 	"sync/atomic"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -44,6 +45,12 @@ type SendEventOutput struct {
 }
 
 // SendEventOperation implements the sendEvent Mutation. Build it with Client.SendEvent.
+//
+// Delivery is at least once. After a 408, 409, 425, 429, or 5xx answer, a timeout, or a lost response the
+// Step retries with the same webhook-id, so the receiver may see one event more than once, even while an earlier attempt is still
+// in flight. The receiver must record the webhook-id in the same transaction that applies the event, or
+// answer an id still in flight with a retryable status such as 409 or 503, and answer 2xx for an id it
+// already applied.
 type SendEventOperation struct{ client *Client }
 
 // Definition returns the immutable sendEvent operation definition.
@@ -57,9 +64,12 @@ func (SendEventOperation) IdempotencyKey(callID sdkgo.CallID, _ SendEventInput) 
 }
 
 // Invoke POSTs the payload once with webhook-id, webhook-timestamp, and webhook-signature headers. A 2xx
-// selects delivered, and a redirect or a 4xx other than 408 and 429 selects rejected. A 408 or 429, or a
-// request that never left this process, returns Retry with the same webhook-id. A 5xx, timeout, or lost
-// connection after the request was written selects uncertain, because the receiver may have accepted it.
+// selects delivered, and a redirect or a 4xx other than 408, 409, 425, and 429 selects rejected. A 408, 409,
+// 425, 429, 5xx, timeout, or transport error returns Retry with the same webhook-id and a new timestamp and signature,
+// after the receiver's Retry-After capped at one hour, and so does a credential broker that is temporarily
+// unavailable, before anything is sent. A receiver commonly answers 409 for a webhook-id still in flight, and
+// the connector cannot read back whether an earlier attempt applied the event, so a 409 is retried until the
+// Step's retry budget runs out.
 func (operation SendEventOperation) Invoke(call sdkgo.Call, input SendEventInput) sdkgo.MutationAttempt[SendEventOutput] {
 	client := operation.client
 	output := SendEventOutput{WebhookID: string(call.IdempotencyKey)}
@@ -74,6 +84,10 @@ func (operation SendEventOperation) Invoke(call sdkgo.Call, input SendEventInput
 		return sendEventDefect(output, sdkgo.FailureValidation, "sendEvent payload exceeds the connection's maxBodyBytes")
 	}
 	credentials, err := client.credentials.Resolve(call)
+	if errors.Is(err, projectconfig.ErrCredentialBrokerUnavailable) {
+		return sdkgo.NewMutationRetry[SendEventOutput](sendEventFailure(sdkgo.FailureAvailability,
+			"the credential broker is temporarily unavailable, so nothing was sent"), 0)
+	}
 	if err != nil || credentials.SigningSecret.Reveal() == "" {
 		return sendEventDefect(output, sdkgo.FailureAuthentication, "the webhook signing secret is unavailable")
 	}
@@ -90,8 +104,8 @@ func (operation SendEventOperation) Invoke(call sdkgo.Call, input SendEventInput
 		if !isDispatched.Load() {
 			return sdkgo.NewMutationRetry[SendEventOutput](sendEventFailure(sdkgo.FailureAvailability, "the delivery URL could not be reached"), 0)
 		}
-		return sdkgo.NewMutationUncertain(output, sendEventFailure(sdkgo.FailureTransport,
-			"the event was sent but the receiver did not answer"), operation.sendEventReceipt(output))
+		return sdkgo.NewMutationRetry[SendEventOutput](sendEventFailure(sdkgo.FailureTransport,
+			"the receiver did not answer the event"), 0)
 	}
 	defer drainAndClose(response.Body)
 	output.StatusCode = response.StatusCode
@@ -102,9 +116,12 @@ func (operation SendEventOperation) Invoke(call sdkgo.Call, input SendEventInput
 	case status == http.StatusRequestTimeout || status == http.StatusTooManyRequests:
 		return sdkgo.NewMutationRetry[SendEventOutput](sendEventFailure(sdkgo.FailureRateLimit,
 			fmt.Sprintf("the receiver answered HTTP %d", status)), providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), client.now()))
-	case status >= 500:
-		return sdkgo.NewMutationUncertain(output, sendEventFailure(sdkgo.FailureAvailability,
-			fmt.Sprintf("the receiver answered HTTP %d after the event was sent", status)), operation.sendEventReceipt(output))
+	case status == http.StatusConflict:
+		return sdkgo.NewMutationRetry[SendEventOutput](sendEventFailure(sdkgo.FailureConflict,
+			"the receiver answered HTTP 409; retrying with the same webhook-id"), providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), client.now()))
+	case status == http.StatusTooEarly || status >= 500:
+		return sdkgo.NewMutationRetry[SendEventOutput](sendEventFailure(sdkgo.FailureAvailability,
+			fmt.Sprintf("the receiver answered HTTP %d", status)), providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), client.now()))
 	default:
 		failure := sendEventFailure(rejectionFailureKind(status), fmt.Sprintf("the receiver answered HTTP %d", status))
 		return sdkgo.NewMutationBranch(SendEventBranchRejected, output, &failure, operation.sendEventReceipt(output))
@@ -168,8 +185,6 @@ func rejectionFailureKind(status int) sdkgo.FailureKind {
 		return sdkgo.FailureAuthorization
 	case http.StatusNotFound, http.StatusGone:
 		return sdkgo.FailureNotFound
-	case http.StatusConflict:
-		return sdkgo.FailureConflict
 	default:
 		return sdkgo.FailureProviderRejection
 	}

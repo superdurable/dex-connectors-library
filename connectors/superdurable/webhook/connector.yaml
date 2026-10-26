@@ -5,7 +5,7 @@ metadata:
   displayName: Webhook
   description: "Receive verified webhook requests from any sender, such as a form service, and start or resume Flows with a stable event ID. Send signed Standard Webhooks events to a configured HTTPS receiver."
   company: Super Durable
-  version: v0.21.1
+  version: v0.22.0
 spec:
   provider: webhook
   codegen:
@@ -74,7 +74,7 @@ spec:
       - name: deliveryUrl
         goName: DeliveryURL
         type: url
-        description: "HTTPS URL that sendEvent POSTs to, copied from the receiving service's webhook or endpoint settings, such as https://hooks.example.com/dex. It is stored as non-secret configuration, so keep tokens out of it; every request is signed with signing_secret instead. Blank makes sendEvent select defect; receiving requests does not need it."
+        description: "HTTPS URL that sendEvent POSTs to, copied from the receiving service's webhook or endpoint settings, such as https://hooks.example.com/dex. It is stored as non-secret configuration, so keep tokens out of it; every request is signed with signing_secret instead. sendEvent delivers at least once: after a 408, 409, 425, 429, or 5xx answer, a timeout, or a lost response it sends the same webhook-id again, so the receiver must record the webhook-id in the same transaction that applies the event, or answer an id still in flight with a retryable status such as 409 or 503, and must answer 2xx for an id it already applied. Keep ids for at least the Step's effective retry window: two minutes under the default retry policy, or four hours when an application retry override leaves TotalDuration zero. Blank makes sendEvent select defect; receiving requests does not need it."
         required: false
   auth:
     type: apiKey
@@ -104,12 +104,11 @@ spec:
       inputType: SendEventInput
       outputType: SendEventOutput
       kind: mutation
-      description: POST one JSON event to the connection's HTTPS delivery URL, signed with the Standard Webhooks scheme and a webhook-id stable across retries.
+      description: "POST one JSON event to the connection's HTTPS delivery URL, signed with the Standard Webhooks scheme. Delivery is at least once: after a 408, 409, 425, 429, or 5xx answer, a timeout, or a lost response the same webhook-id is sent again with a fresh timestamp and signature, so the receiver must deduplicate by webhook-id and answer 2xx for an id it already applied."
       idempotency: required
       branches:
         - {id: delivered, goName: Delivered, description: The receiver answered 2xx and accepted the event.}
-        - {id: rejected, goName: Rejected, description: "The receiver answered a redirect or a 4xx other than 408 and 429, so it refused the event; the Result carries the status code.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The event was sent, but the receiver answered 5xx, timed out, or closed the connection, so it may have accepted the event.", optional: true}
+        - {id: rejected, goName: Rejected, description: "The receiver answered a redirect or a 4xx other than 408, 409, 425, and 429, so it refused the event; the Result carries the status code. A 409 is retried with the same webhook-id instead, and fails the Flow when the retry budget runs out.", optional: true}
         - {id: defect, goName: Defect, description: "The connection has no valid deliveryUrl or signing secret, or the payload is not one JSON value within maxBodyBytes.", optional: true}
       execution:
         executeMethodTimeout: 30s

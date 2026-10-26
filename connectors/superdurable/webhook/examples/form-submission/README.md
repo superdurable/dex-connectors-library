@@ -19,7 +19,7 @@ This example receives signed form submissions and starts one
    `form.submitted` event to the connection's `deliveryUrl`;
 6. `RecordForwarded` stores the `delivered` outcome in the
    `webhook-form-forwarding` Attribute and completes the Flow, and
-   `RecordForwardingFailure` stores a `rejected`, `uncertain`, or `defect`
+   `RecordForwardingFailure` stores a `rejected` or `defect`
    outcome with its safe message and fails the Flow.
 
 The connection is configured for Typeform-style signatures: HMAC-SHA256 of the
@@ -61,7 +61,7 @@ mkdir -p /tmp/webhook-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/superdurable/webhook/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/superdurable/webhook \
-  --version v0.21.1 --tag connectors/superdurable/webhook/v0.21.1 \
+  --version v0.22.0 --tag connectors/superdurable/webhook/v0.22.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/webhook-release/connector-release.json \
   --digest-output /tmp/webhook-release/connector-release.json.sha256
@@ -83,8 +83,15 @@ Open the Dex Web URL that dexcli prints, select **Connectors**, and select
   `signatureEncoding`: `base64`;
 - `eventIdPointer`: `/event_id`;
 - `deliveryUrl`: the HTTPS URL of the service that receives forwarded
-  submissions, such as an HTTPS request inspector you control. Leave it blank
-  to see `ForwardSubmission` select `defect` and fail the Flow with guidance;
+  submissions, such as an HTTPS request inspector you control. A forwarded
+  submission can arrive more than once with the same `webhook-id` after a
+  `408`, `409`, `425`, `429`, or `5xx` answer, a timeout, or a lost response,
+  so the receiver follows the
+  [receiver contract](../../README.md#the-sendevent-mutation): it records the
+  `webhook-id` in the transaction that applies the event and answers `2xx`
+  for an id it already applied. Leave it
+  blank to see `ForwardSubmission` select `defect` and fail the Flow with
+  guidance;
 - leave the other fields at their defaults, and save.
 
 Dex Web lists the `requestReceived` binding `form-submission-received` but has

@@ -65,9 +65,9 @@ type ForwardedEvent struct {
 
 // ForwardingOutcome records the sendEvent branch; it completes the Flow when delivered.
 type ForwardingOutcome struct {
-	// Branch is the sendEvent branch: delivered, rejected, uncertain, or defect.
+	// Branch is the sendEvent branch: delivered, rejected, or defect.
 	Branch sdkgo.BranchID `json:"branch"`
-	// WebhookID is the webhook-id the receiver saw, for reconciling an uncertain outcome.
+	// WebhookID is the webhook-id the receiver saw, for deduplicating retries.
 	WebhookID string `json:"webhookId"`
 	// StatusCode is the receiver's HTTP status, or zero when none arrived.
 	StatusCode int `json:"statusCode,omitempty"`
@@ -105,7 +105,6 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			MapToOperationInput: MapToForwardedEvent,
 			Delivered:           sdkgo.GoTo(recordForwarded{}),
 			Rejected:            sdkgo.GoTo(recordForwardingFailure{}),
-			Uncertain:           sdkgo.GoTo(recordForwardingFailure{}),
 			Defect:              sdkgo.GoTo(recordForwardingFailure{}),
 		})),
 		dex.DefineStep(recordForwarded{}),
@@ -254,7 +253,7 @@ func (recordForwarded) Execute(ctx dex.Context, result webhook.SendEventResult) 
 }
 
 // dex:group group-id:forwarding group-label:"Forwarding"
-// dex:explanation text:"Persist the rejected, uncertain, or defect outcome with its safe message and fail the Flow."
+// dex:explanation text:"Persist the rejected or defect outcome with its safe message and fail the Flow."
 type recordForwardingFailure struct {
 	dex.StepDefaultsNoWaitFor[webhook.SendEventResult]
 }

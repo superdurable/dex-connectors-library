@@ -95,6 +95,55 @@ func TestSubmissionBeforeTheBindingRunsIsRetriedBySenderWithRealDex(t *testing.T
 	require.Len(t, receiver.deliveriesFor(eventID), 1)
 }
 
+func TestForwardSubmissionRetriesALostReceiverAnswerWithRealDex(t *testing.T) {
+	receiver := newForwardingReceiver(t)
+	receiver.dropFirstResponse = true
+	logs := newRecordedLogs(t)
+	connection := newExampleConnection(t, receiver.URL+"/forward", webhook.WithHTTPClient(receiver.Client()), webhook.WithLogger(logs.logger()))
+	flow := formsubmission.NewFlow(connection)
+	client := startWorkerAndClient(t, flow)
+	endpoint := newSubmissionEndpoint(t, connection, newSubmissionTarget(client, flow, logs.logger()))
+	endpoint.start(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	eventID := "evt_retry_" + strconv.FormatInt(time.Now().UnixNano(), 10)
+
+	require.Equal(t, http.StatusOK, endpoint.postSubmission(t, submissionBody(eventID, "form_response"), false))
+	outcome := waitForForwarded(t, ctx, client, eventID)
+	require.Equal(t, webhook.SendEventBranchDelivered, outcome.Branch)
+	deliveries := receiver.deliveriesFor(eventID)
+	require.Len(t, deliveries, 2)
+	require.Equal(t, outcome.WebhookID, deliveries[0].webhookID)
+	require.Equal(t, deliveries[0].webhookID, deliveries[1].webhookID)
+	require.True(t, deliveries[0].isSignatureValid)
+	require.True(t, deliveries[1].isSignatureValid)
+}
+
+func TestForwardSubmissionRetriesAScripted409AfterALostAnswerWithRealDex(t *testing.T) {
+	receiver := newForwardingReceiver(t)
+	receiver.secondDeliveryStatus = http.StatusConflict // a scripted answer; no receiver transaction is modeled
+	receiver.dropFirstResponse = true
+	logs := newRecordedLogs(t)
+	connection := newExampleConnection(t, receiver.URL+"/forward", webhook.WithHTTPClient(receiver.Client()), webhook.WithLogger(logs.logger()))
+	flow := formsubmission.NewFlow(connection)
+	client := startWorkerAndClient(t, flow)
+	endpoint := newSubmissionEndpoint(t, connection, newSubmissionTarget(client, flow, logs.logger()))
+	endpoint.start(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	eventID := "evt_conflict_" + strconv.FormatInt(time.Now().UnixNano(), 10)
+
+	require.Equal(t, http.StatusOK, endpoint.postSubmission(t, submissionBody(eventID, "form_response"), false))
+	outcome := waitForForwarded(t, ctx, client, eventID)
+	require.Equal(t, webhook.SendEventBranchDelivered, outcome.Branch, "a 409 is retried, never selected as rejected")
+	deliveries := receiver.deliveriesFor(eventID)
+	require.Len(t, deliveries, 3)
+	for _, delivery := range deliveries {
+		require.Equal(t, outcome.WebhookID, delivery.webhookID)
+		require.True(t, delivery.isSignatureValid)
+	}
+}
+
 func dexAddress() string {
 	return environmentOr("DEX_FLOW_SERVICE_ADDRESS", "127.0.0.1:8801")
 }
@@ -168,8 +217,11 @@ func startWorkerAndClient(t *testing.T, flow *formsubmission.Flow) *dex.Client {
 // forwardingReceiver is the downstream TLS service that verifies each forwarded submission.
 type forwardingReceiver struct {
 	*httptest.Server
-	mu         sync.Mutex
-	deliveries []forwardedDelivery
+	mu                sync.Mutex
+	deliveries        []forwardedDelivery
+	dropFirstResponse bool
+	// secondDeliveryStatus, when set, answers the second delivery instead of 202.
+	secondDeliveryStatus int
 }
 
 type forwardedDelivery struct {
@@ -200,8 +252,16 @@ func newForwardingReceiver(t *testing.T) *forwardingReceiver {
 			submissionID: event.SubmissionID, webhookID: webhookID,
 			isSignatureValid: request.Header.Get("webhook-signature") == "v1,"+base64.StdEncoding.EncodeToString(mac.Sum(nil)),
 		})
+		isFirstDelivery := len(receiver.deliveries) == 1
+		statusCode := http.StatusAccepted
+		if len(receiver.deliveries) == 2 && receiver.secondDeliveryStatus != 0 {
+			statusCode = receiver.secondDeliveryStatus
+		}
 		receiver.mu.Unlock()
-		response.WriteHeader(http.StatusAccepted)
+		if receiver.dropFirstResponse && isFirstDelivery {
+			panic(http.ErrAbortHandler)
+		}
+		response.WriteHeader(statusCode)
 	}))
 	t.Cleanup(receiver.Close)
 	return receiver

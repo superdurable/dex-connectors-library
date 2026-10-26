@@ -277,15 +277,13 @@ func NewRequestReceivedTrigger(config RequestReceivedTriggerConfig) sdkgo.Trigge
 
 const SendEventBranchDelivered sdkgo.BranchID = "delivered"
 const SendEventBranchRejected sdkgo.BranchID = "rejected"
-const SendEventBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
 const SendEventBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 
 var SendEventDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "sendEvent"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: SendEventBranchDelivered, Description: "The receiver answered 2xx and accepted the event."},
-		{ID: SendEventBranchRejected, Description: "The receiver answered a redirect or a 4xx other than 408 and 429, so it refused the event; the Result carries the status code.", Optional: true},
-		{ID: SendEventBranchUncertain, Description: "The event was sent, but the receiver answered 5xx, timed out, or closed the connection, so it may have accepted the event.", Optional: true},
+		{ID: SendEventBranchRejected, Description: "The receiver answered a redirect or a 4xx other than 408, 409, 425, and 429, so it refused the event; the Result carries the status code. A 409 is retried with the same webhook-id instead, and fails the Flow when the retry budget runs out.", Optional: true},
 		{ID: SendEventBranchDefect, Description: "The connection has no valid deliveryUrl or signing secret, or the payload is not one JSON value within maxBodyBytes.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -308,7 +306,6 @@ type SendEventStepConfig[IN any] struct {
 	MapToOperationInput               func(IN) SendEventInput                               `connector:"mapToOperationInput"`
 	Delivered                         sdkgo.Target[SendEventResult]                         `connector:"branch=delivered"`
 	Rejected                          sdkgo.Target[SendEventResult]                         `connector:"branch=rejected,optional"`
-	Uncertain                         sdkgo.Target[SendEventResult]                         `connector:"branch=uncertain,optional"`
 	Defect                            sdkgo.Target[SendEventResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SendEventOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
@@ -326,15 +323,12 @@ func NewSendEventStep[IN any](config SendEventStepConfig[IN]) sdkgo.MutationStep
 		Operation: config.Connection.operations.SendEvent(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[SendEventResult] {
-			branches := make([]sdkgo.BranchTarget[SendEventResult], 0, 4)
+			branches := make([]sdkgo.BranchTarget[SendEventResult], 0, 3)
 			if config.Delivered.HasStep() {
 				branches = append(branches, config.Delivered.BranchTarget(SendEventBranchDelivered))
 			}
 			if config.Rejected.HasStep() {
 				branches = append(branches, config.Rejected.BranchTarget(SendEventBranchRejected))
-			}
-			if config.Uncertain.HasStep() {
-				branches = append(branches, config.Uncertain.BranchTarget(SendEventBranchUncertain))
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(SendEventBranchDefect))
