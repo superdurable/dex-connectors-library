@@ -5,7 +5,7 @@ metadata:
   displayName: Microsoft OneDrive and SharePoint
   description: Find, read, and write files in OneDrive and SharePoint document libraries through Microsoft Graph, with uploads and folders that stay single under retries.
   company: Microsoft
-  version: v0.22.1
+  version: v0.23.0
 spec:
   provider: microsoft
   codegen:
@@ -246,6 +246,21 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: foundDefaultAnswer
+          branch: found
+          description: "Exact search for Ops Policy.txt in source-folder finds one matching file."
+          default: true
+          output: {"files":[{"id":"source-file-1","name":"Ops Policy.txt","driveId":"b!sourceLibrary_1","parentFolderId":"source-folder","mimeType":"text/plain","sizeBytes":44}],"nextPageToken":""}
+        - name: missingName
+          branch: notFound
+          description: "Searching for Missing Policy.txt returns no matching item."
+          output: {"files":[]}
+          failure: {"kind":"NOT_FOUND","message":"Searching for Missing Policy.txt returns no matching item."}
+        - name: restrictedFolder
+          branch: providerRejected
+          description: "Searching source-folder without read permission is rejected."
+          failure: {"kind":"AUTHORIZATION","message":"Searching source-folder without read permission is rejected."}
     - name: getFile
       goName: GetFile
       inputType: GetFileInput
@@ -262,6 +277,20 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: foundDefaultAnswer
+          branch: found
+          description: "Reading copy-file-1 in b!financeLibrary-2 returns the copied text file metadata."
+          default: true
+          output: {"id":"copy-file-1","name":"Ops Policy (copy).txt","driveId":"b!financeLibrary-2","parentFolderId":"copy-folder-1","mimeType":"text/plain","sizeBytes":44}
+        - name: missingItem
+          branch: notFound
+          description: "Reading missing-file-1 returns not found."
+          failure: {"kind":"NOT_FOUND","message":"Reading missing-file-1 returns not found."}
+        - name: deniedRead
+          branch: providerRejected
+          description: "Reading copy-file-1 metadata without Graph permission is rejected."
+          failure: {"kind":"AUTHORIZATION","message":"Reading copy-file-1 metadata without Graph permission is rejected."}
     - name: readFileText
       goName: ReadFileText
       inputType: ReadFileTextInput
@@ -280,6 +309,30 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: readDefaultAnswer
+          branch: read
+          description: "Reading source-file-1 returns the UTF-8 Ops Policy.txt content."
+          default: true
+          output: {"itemId":"source-file-1","name":"Ops Policy.txt","mimeType":"text/plain","sizeBytes":44,"text":"Ops Policy\nRefunds above 500 need approval.\n","byteCount":44}
+        - name: missingItem
+          branch: notFound
+          description: "Reading missing-file-1 returns not found."
+          failure: {"kind":"NOT_FOUND","message":"Reading missing-file-1 returns not found."}
+        - name: folderContent
+          branch: unsupportedContent
+          description: "Reading source-folder as UTF-8 text is unsupported."
+          output: {"itemId":"source-folder","name":"Policies","sizeBytes":44,"byteCount":0}
+          failure: {"kind":"VALIDATION","message":"Reading source-folder as UTF-8 text is unsupported."}
+        - name: oversizedText
+          branch: tooLarge
+          description: "Reading source-file-large over the configured text limit is rejected."
+          output: {"itemId":"source-file-large","name":"Archive.txt","mimeType":"text/plain","sizeBytes":2097152,"byteCount":0}
+          failure: {"kind":"RESPONSE_TOO_LARGE","message":"Reading source-file-large over the configured text limit is rejected."}
+        - name: deniedDownload
+          branch: providerRejected
+          description: "Reading source-file-1 metadata when Graph returns 403 is rejected."
+          failure: {"kind":"AUTHORIZATION","message":"Reading source-file-1 metadata when Graph returns 403 is rejected."}
     - name: uploadFile
       goName: UploadFile
       inputType: UploadFileInput
@@ -296,6 +349,21 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: uploadedDefaultAnswer
+          branch: uploaded
+          description: "Uploading Ops Policy (copy).txt into copy-folder-1 creates copy-file-1."
+          default: true
+          output: {"item":{"id":"copy-file-1","name":"Ops Policy (copy).txt","driveId":"b!financeLibrary-2","parentFolderId":"copy-folder-1","mimeType":"text/plain","sizeBytes":44}}
+        - name: differentFile
+          branch: alreadyExists
+          description: "Uploading Ops Policy (copy).txt with fail behavior over existing-copy returns a conflict."
+          output: {"item":{"id":"existing-copy","name":"Ops Policy (copy).txt","driveId":"b!financeLibrary-2","parentFolderId":"copy-folder-1","mimeType":"text/plain","sizeBytes":12,"quickXorHash":"T6ADGsogBxCYIQ1sJIMLFAAAAAA="}}
+          failure: {"kind":"CONFLICT","message":"Uploading Ops Policy (copy).txt with fail behavior over existing-copy returns a conflict."}
+        - name: quotaExhausted
+          branch: providerRejected
+          description: "Uploading Ops Policy (copy).txt into copy-folder-1 when the drive quota is exhausted is rejected."
+          failure: {"kind":"QUOTA_EXHAUSTED","message":"Uploading Ops Policy (copy).txt into copy-folder-1 when the drive quota is exhausted is rejected."}
     - name: createFolder
       goName: CreateFolder
       inputType: CreateFolderInput
@@ -312,3 +380,18 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: createdDefaultAnswer
+          branch: created
+          description: "Ensuring Dex copies in destination-folder returns copy-folder-1."
+          default: true
+          output: {"folder":{"id":"copy-folder-1","name":"Dex copies","driveId":"b!financeLibrary-2","parentFolderId":"destination-folder","isFolder":true}}
+        - name: fileAtFolderName
+          branch: nameConflict
+          description: "Creating Dex copies in destination-folder where existing-file has that name returns a conflict."
+          output: {"folder":{"id":"existing-file","name":"Dex copies","driveId":"b!financeLibrary-2","parentFolderId":"destination-folder","mimeType":"text/plain","sizeBytes":12}}
+          failure: {"kind":"CONFLICT","message":"Creating Dex copies in destination-folder where existing-file has that name returns a conflict."}
+        - name: readOnlyParent
+          branch: providerRejected
+          description: "Creating Dex copies in read-only destination-folder is rejected."
+          failure: {"kind":"AUTHORIZATION","message":"Creating Dex copies in read-only destination-folder is rejected."}
