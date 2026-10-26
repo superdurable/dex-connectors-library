@@ -60,7 +60,7 @@ go run ./cmd/connectorctl ui-artifact \
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/zoho/desk/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/zoho/desk \
-  --version v0.22.1 --tag connectors/zoho/desk/v0.22.1 \
+  --version v0.23.0 --tag connectors/zoho/desk/v0.23.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/zoho-desk-release/connector-ui.tgz \
   --ui-digest /tmp/zoho-desk-release/connector-ui.tgz.sha256 \
@@ -130,6 +130,8 @@ Desk, has no idempotency key, sends IDs and counts as strings, answers an
 empty search with 204, and matches look-alike addresses in its email filter:
 
 - a new contact gets one ticket and one private comment;
+- the mock-backed real-Dex tests verify three search pages, literal operation
+  inputs, call counts, and the new-ticket and follow-up Flow outcomes;
 - a repeat contact's on-hold ticket is reopened and reprioritized with one
   private comment, leaving a closed duplicate with a refund comment, another
   contact's ticket, a look-alike address's newer ticket, and the contact's
