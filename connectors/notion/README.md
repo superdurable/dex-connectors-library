@@ -167,19 +167,27 @@ still answer 503. A response without `committed_resource_id` does not prove
 that the page was not saved.
 
 `createPage` uses the shared single-dispatch fence with sync durability. It
-records a claim before POST, then permits a second POST only after a 429, a
-529, or positive transport evidence that no connection was obtained. A lost
-or stale checkpoint fails closed. Credential or data source lookup failures
-before POST record `notSent`, so a later attempt may send.
+records a claim before POST, then permits a second POST only after a 409, a
+429, a 529, or positive transport evidence that no connection was obtained.
+[Notion's status-code guidance](https://developers.notion.com/reference/status-codes)
+says a 409 `conflict_error` transaction could not be completed and advises
+retrying, so the connector records `canResend` before that Retry. A lost or
+stale checkpoint fails closed. Credential or data source lookup failures
+before POST record `notSent`, so a later attempt may send. Temporary credential
+failures Retry; reauthorization, connection selection, and invalid API token
+failures select `defect` after recording `notSent`.
 
-- A conclusive 4xx selects `providerRejected` or `notFound`.
+- A conclusive 4xx other than 409 selects `providerRejected` or `notFound`.
 - A 503 whose `additional_data.committed_resource_id` names the saved page
   reads that page back. A transient read failure retries the read without
   resending POST; a confirmed page selects `created`.
 - An accepted 2xx with a valid page ID but unusable remaining fields also
   reads the page back; an accepted 2xx without an ID remains `uncertain`.
+- A 503 with a committed ID whose read-back conclusively fails, including 403
+  or 404, selects `uncertain`; a transient read-back failure retries only GET
+  until the retry budget ends and the Flow fails.
 - Every other ambiguity selects `uncertain`. That covers a timeout after
-  dispatch, a 409, a 503 without a committed ID, or an interrupted 2xx.
+  dispatch, a 503 without a committed ID, or an interrupted 2xx.
 - The 120-second Execute and heartbeat timeout leave a 70-second fence window
   for the 60-second HTTP request and time for read-back. Every request remains
   bounded by the Step deadline.

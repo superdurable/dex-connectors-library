@@ -51,6 +51,7 @@ const (
 
 	markerReject       = "[reject]"
 	markerRateLimit    = "[rate-limit]"
+	markerConflict     = "[conflict]"
 	markerTimeoutSaved = "[timeout-saved]"
 	markerTimeoutLost  = "[timeout-lost]"
 	markerSaved503     = "[saved-503]"
@@ -155,6 +156,19 @@ func TestRateLimitedCreateIsRetriedAfterRetryAfterWithRealDex(t *testing.T) {
 	require.GreaterOrEqual(t, attempts[1].Sub(attempts[0]), time.Second, "the retry waits for Retry-After")
 	bodies := provider.createBodies(submissionID)
 	require.Equal(t, bodies[0], bodies[1], "both attempts carry the same submission identity and values")
+	require.Equal(t, 1, provider.rowCount(submissionID))
+}
+
+func TestUncommittedConflictIsRetriedOnceWithRealDex(t *testing.T) {
+	provider, flow, harness := newNotionIntegrationHarness(t, shortRequestTimeout)
+	ctx := integrationContext(t)
+
+	submissionID := markerConflict + " sub-1"
+	record := runSubmissionFlow(t, ctx, harness, flow, "conflict-retry", submissionInput(submissionID))
+	require.Equal(t, PhaseCreated, record.Phase)
+	require.Equal(t, 2, provider.createCount(submissionID), "the first 409 committed no row")
+	bodies := provider.createBodies(submissionID)
+	require.Equal(t, bodies[0], bodies[1])
 	require.Equal(t, 1, provider.rowCount(submissionID))
 }
 
@@ -372,6 +386,7 @@ type fakeNotion struct {
 	requests    int
 	nextRow     int
 	rateLimited map[string]bool
+	conflicted  map[string]bool
 }
 
 type fakeDataSource struct {
@@ -398,7 +413,7 @@ type fakeWrite struct {
 }
 
 func newFakeNotion(t *testing.T) *fakeNotion {
-	provider := &fakeNotion{t: t, rateLimited: map[string]bool{}, dataSources: []fakeDataSource{
+	provider := &fakeNotion{t: t, rateLimited: map[string]bool{}, conflicted: map[string]bool{}, dataSources: []fakeDataSource{
 		{id: submissionsSourceID, title: submissionsTitle},
 		{id: archivedSourceID, title: submissionsTitle, isInTrash: true},
 		{id: decoySourceID, title: submissionsTitle + " (2025)"},
@@ -503,6 +518,10 @@ func (provider *fakeNotion) createPage(response http.ResponseWriter, body []byte
 	if isFirstRateLimit {
 		provider.rateLimited[row.submissionID] = true
 	}
+	isFirstConflict := strings.Contains(row.submissionID, markerConflict) && !provider.conflicted[row.submissionID]
+	if isFirstConflict {
+		provider.conflicted[row.submissionID] = true
+	}
 	provider.mutex.Unlock()
 	switch {
 	case strings.Contains(row.submissionID, markerReject):
@@ -511,6 +530,8 @@ func (provider *fakeNotion) createPage(response http.ResponseWriter, body []byte
 		response.Header().Set("Retry-After", "1")
 		provider.writeJSON(response, http.StatusTooManyRequests, `{"object":"error","status":429,"code":"rate_limited","message":"SENTINEL",`+
 			`"additional_data":{"rate_limit_reason":"public_api_request_rate_limit","retry_after":"1"}}`)
+	case isFirstConflict:
+		provider.writeJSON(response, http.StatusConflict, `{"object":"error","status":409,"code":"conflict_error","message":"SENTINEL conflict"}`)
 	case strings.Contains(row.submissionID, markerTimeoutSaved):
 		provider.storeRow(row)
 		time.Sleep(2 * time.Second)

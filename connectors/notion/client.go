@@ -37,6 +37,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
@@ -56,7 +57,6 @@ const (
 	writeRequestTimeout = 60 * time.Second
 	// writeOperationDeadline bounds an update Invoke inside its 90-second Execute timeout.
 	writeOperationDeadline      = 85 * time.Second
-	createPageExecuteTimeout    = 120 * time.Second
 	createPageOperationDeadline = 115 * time.Second
 	maximumStepDeadlineMargin   = 5 * time.Second
 
@@ -228,10 +228,19 @@ func (client *Client) UpdatePageProperties() UpdatePagePropertiesOperation {
 
 // startSession resolves the credential; the caller must call the returned cancel.
 func (client *Client) startSession(call sdkgo.Call, operationID string, deadline time.Duration) (*operationSession, context.CancelFunc, *sdkgo.Failure) {
+	session, cancel, failure, _ := client.startSessionWithCredentialStatus(call, operationID, deadline)
+	return session, cancel, failure
+}
+
+func (client *Client) startSessionWithCredentialStatus(call sdkgo.Call, operationID string, deadline time.Duration) (*operationSession, context.CancelFunc, *sdkgo.Failure, bool) {
 	credentials, err := client.credentials.Resolve(call)
-	if err != nil || !providerhttp.IsHeaderSafeCredential(credentials.APIToken.Reveal()) {
+	if err != nil {
 		return nil, nil, failurePointer(operationID, sdkgo.FailureAuthentication,
-			"Notion connection credentials are unavailable; save the connection's API token again")
+			"Notion connection credentials are unavailable; save the connection's API token again"), isTransientCredentialFailure(err)
+	}
+	if !providerhttp.IsHeaderSafeCredential(credentials.APIToken.Reveal()) {
+		return nil, nil, failurePointer(operationID, sdkgo.FailureAuthentication,
+			"Notion connection API token is invalid; save it again"), false
 	}
 	operationDeadline := time.Now().Add(deadline)
 	if stepDeadline, hasDeadline := call.Context.Deadline(); hasDeadline {
@@ -243,7 +252,12 @@ func (client *Client) startSession(call sdkgo.Call, operationID string, deadline
 		}
 	}
 	operationContext, cancel := context.WithDeadline(call.Context, operationDeadline)
-	return &operationSession{context: operationContext, call: call, credentials: credentials}, cancel, nil
+	return &operationSession{context: operationContext, call: call, credentials: credentials}, cancel, nil, false
+}
+
+func isTransientCredentialFailure(err error) bool {
+	return errors.Is(err, projectconfig.ErrCredentialBrokerUnavailable) ||
+		errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled)
 }
 
 func (client *Client) exchange(session *operationSession, request notionRequest) exchangeResult {
@@ -345,7 +359,7 @@ func (client *Client) classifyRead(operationID string, subject string, result ex
 	}
 }
 
-// classifyUnkeyedWrite retries only provably unwritten requests: undispatched, 429, and 529. Other ambiguity is uncertain.
+// classifyUnkeyedWrite retries only provably unwritten requests: undispatched, 409, 429, and 529.
 func (client *Client) classifyUnkeyedWrite(operationID string, subject string, result exchangeResult) writeClassification {
 	switch {
 	case errors.Is(result.err, errRequestNotBuilt):
@@ -370,6 +384,9 @@ func (client *Client) classifyUnkeyedWrite(operationID string, subject string, r
 	case response.statusCode == http.StatusTooManyRequests || response.statusCode == statusServiceOverload:
 		return writeClassification{outcome: writeRetry, retryAfter: client.retryAfter(response),
 			failure: newFailure(operationID, sdkgo.FailureRateLimit, "Notion rate limited the "+subject+" before writing it")}
+	case response.statusCode == http.StatusConflict:
+		return writeClassification{outcome: writeRetry, retryAfter: client.retryAfter(response),
+			failure: statusFailure(operationID, "Notion could not complete the "+subject+" transaction", response)}
 	case response.statusCode == http.StatusServiceUnavailable && readCommittedResourceID(response.body) != "":
 		return writeClassification{outcome: writeCommitted, committedResourceID: readCommittedResourceID(response.body),
 			failure: newFailure(operationID, sdkgo.FailureAvailability, "Notion saved the "+subject+" but could not build its response in time")}

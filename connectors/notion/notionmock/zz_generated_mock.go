@@ -285,7 +285,7 @@ func CreatePageInvalidResponse(value notion.CreatePageOutput, failure *sdkgo.Fai
 	return connectormock.Branch(notion.CreatePageBranchInvalidResponse, value, failure)
 }
 
-// CreatePageDefect selects the defect branch: Local input, connection configuration, or connector definition is invalid, including a database ID whose database holds several data sources.
+// CreatePageDefect selects the defect branch: Local input, credential authorization, or connector definition is invalid, including a database ID whose database holds several data sources.
 func CreatePageDefect(value notion.CreatePageOutput, failure *sdkgo.Failure) connectormock.Case[notion.CreatePageOutput] {
 	return connectormock.Branch(notion.CreatePageBranchDefect, value, failure)
 }

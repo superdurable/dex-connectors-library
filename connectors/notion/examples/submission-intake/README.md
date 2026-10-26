@@ -185,6 +185,7 @@ They verify:
 - a missing or ambiguous title;
 - a rejected create;
 - a rate-limited create retried after `Retry-After`;
+- a 409 conflict retried after Notion rejects the first transaction;
 - an uncertain create reconciled by query, and one that stays uncertain;
 - a create Notion saved before a 503;
 - a create held for nine seconds that Notion receives once under sync

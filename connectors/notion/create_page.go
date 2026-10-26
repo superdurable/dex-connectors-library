@@ -102,7 +102,7 @@ func (CreatePageOperation) IdempotencyKey(callID sdkgo.CallID, _ CreatePageInput
 // Invoke creates one row and never resends a request Notion may have received.
 func (operation CreatePageOperation) Invoke(call sdkgo.Call, input CreatePageInput) sdkgo.MutationAttempt[CreatePageOutput] {
 	client := operation.client
-	fence, err := singledispatch.NewFence(call, createPageExecuteTimeout)
+	fence, err := singledispatch.NewFence(call, CreatePageDefinition.StepDefaults.ExecuteMethodTimeout)
 	if err != nil {
 		return sdkgo.NewMutationBranch(CreatePageBranchDefect, CreatePageOutput{}, failurePointer(createPageOperationID, sdkgo.FailureLocalDefect, "Notion page dispatch could not be initialized"), sdkgo.Receipt{})
 	}
@@ -120,12 +120,15 @@ func (operation CreatePageOperation) Invoke(call sdkgo.Call, input CreatePageInp
 	if err != nil {
 		return sdkgo.NewMutationBranch(CreatePageBranchDefect, CreatePageOutput{}, validationFailure(createPageOperationID, err), sdkgo.Receipt{})
 	}
-	session, cancel, sessionFailure := client.startSession(call, createPageOperationID, createPageOperationDeadline)
+	session, cancel, sessionFailure, isCredentialFailureTransient := client.startSessionWithCredentialStatus(call, createPageOperationID, createPageOperationDeadline)
 	if sessionFailure != nil {
 		if err := fence.RecordNotSent(); err != nil {
 			return sdkgo.NewMutationRetry[CreatePageOutput](newFailure(createPageOperationID, sdkgo.FailureAvailability, "Notion credential resolution and dispatch checkpoint are unavailable"), 0)
 		}
-		return sdkgo.NewMutationRetry[CreatePageOutput](*sessionFailure, 0)
+		if isCredentialFailureTransient {
+			return sdkgo.NewMutationRetry[CreatePageOutput](*sessionFailure, 0)
+		}
+		return sdkgo.NewMutationBranch(CreatePageBranchDefect, CreatePageOutput{}, sessionFailure, sdkgo.Receipt{})
 	}
 	defer cancel()
 	dataSourceID, resolution, resolutionResponse := client.resolveDataSourceID(session, createPageOperationID, request.selection)
@@ -206,7 +209,9 @@ func (client *Client) confirmCommittedPage(session *operationSession, output Cre
 		return sdkgo.NewMutationUncertain(output, newFailure(createPageOperationID, sdkgo.FailureProtocol, "Notion page read-back did not match the accepted page ID"), receipt)
 	}
 	output.Page = &page
-	output.DataSourceID = page.Parent.ID
+	if page.Parent.Type == ParentTypeDataSource {
+		output.DataSourceID = page.Parent.ID
+	}
 	return sdkgo.NewMutationBranch(CreatePageBranchCreated, output, nil, receipt)
 }
 

@@ -216,9 +216,8 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Notion conclusively rejected the page, such as a missing property, a value of the wrong type, missing Insert content capability, or a workspace limit; nothing was created.", optional: true}
         - {id: uncertain, goName: Uncertain, description: "The request was dispatched but its outcome cannot be confirmed; Notion has no idempotency key, so the page may exist and must not be created again automatically.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "Notion returned an invalid or oversized database while the connector resolved its data source; nothing was created.", optional: true}
-        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid, including a database ID whose database holds several data sources.", optional: true}
-      # Sync persists the single-dispatch fence before a non-idempotent page creation.
-      # The longer Execute timeout leaves Notion's 60-second request budget and read-back time.
+        - {id: defect, goName: Defect, description: "Local input, credential authorization, or connector definition is invalid, including a database ID whose database holds several data sources.", optional: true}
+      # Sync checkpoints fence each create; the 120-second attempt permits Notion's 60-second write and read-back.
       execution:
         executeMethodTimeout: 120s
         heartbeatTimeout: 120s
