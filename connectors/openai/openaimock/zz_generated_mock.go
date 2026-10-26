@@ -67,7 +67,7 @@ func CreateResponseCompleted(value openai.Response, failure *sdkgo.Failure) conn
 	return connectormock.Branch(openai.CreateResponseBranchCompleted, value, failure)
 }
 
-// CreateResponseFailed selects the failed branch: OpenAI returned a terminal failed or incomplete response.
+// CreateResponseFailed selects the failed branch: OpenAI returned a terminal failed or incomplete response. A cancelled response is not failed: the next attempt creates a new one.
 func CreateResponseFailed(value openai.Response, failure *sdkgo.Failure) connectormock.Case[openai.Response] {
 	return connectormock.Branch(openai.CreateResponseBranchFailed, value, failure)
 }
