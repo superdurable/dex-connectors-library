@@ -62,7 +62,8 @@ func (operation PostThreadReplyOperation) Invoke(call sdkgo.Call, input PostThre
 	repliesPath := threadRepliesPath(teamID, channelID, messageID)
 	return client.send(call, messagePost{
 		operationID: postThreadReplyOperationID, subject: "thread reply",
-		path: repliesPath, content: content, requested: requested,
+		executeMethodTimeout: PostThreadReplyDefinition.StepDefaults.ExecuteMethodTimeout,
+		path:                 repliesPath, content: content, requested: requested,
 		branches: postBranches{
 			sent: PostThreadReplyBranchSent, providerRejected: PostThreadReplyBranchProviderRejected, defect: PostThreadReplyBranchDefect,
 		},

@@ -56,7 +56,8 @@ func (operation PostChatMessageOperation) Invoke(call sdkgo.Call, input PostChat
 	}
 	return client.send(call, messagePost{
 		operationID: postChatMessageOperationID, subject: "chat message",
-		path: "/chats/" + chatID + "/messages", content: content, requested: requested,
+		executeMethodTimeout: PostChatMessageDefinition.StepDefaults.ExecuteMethodTimeout,
+		path:                 "/chats/" + chatID + "/messages", content: content, requested: requested,
 		branches: postBranches{
 			sent: PostChatMessageBranchSent, providerRejected: PostChatMessageBranchProviderRejected, defect: PostChatMessageBranchDefect,
 		},

@@ -43,10 +43,12 @@ request. A conclusive Graph refusal selects `providerRejected` (and `notFound`
 for a missing thread when reading); the failure names the HTTP status and
 Graph's `error.code`, never `error.message`. Reads may refresh a rejected
 token and retry once. A post refreshes a rejected token when supported and
-records permission for the next Dex attempt to resend; otherwise 401 selects
-`providerRejected`. A 429 or 503 on a post records permission for
-the immediately following attempt to retry; other ambiguous write responses
-are reconciled or select `uncertain`. Reads retry transient failures after
+records permission for the next Dex attempt to resend only when refresh returns
+a different valid token; otherwise 401 selects `providerRejected`. A credential
+failure requiring reauthorization selects `defect` with a reconnect hint after
+recording `notSent`; a transient credential failure retries. A 429 or 503 on a
+post records permission for the immediately following attempt to retry; 409 and
+other ambiguous write responses are reconciled or select `uncertain`. Reads retry transient failures after
 `Retry-After` when Graph sends one. Teams allows about one request per
 second per channel or chat.
 
@@ -62,16 +64,17 @@ Worker, so every post:
 1. runs with `sync` Execute durability so its heartbeat is visible to later attempts;
 2. uses the Connector SDK single-dispatch fence to claim the write before it sends;
 3. sends again only on the immediately following attempt after a recorded
-   `notSent` or `canResend` checkpoint. Graph's 429 and 503 responses, and a
-   traced connection failure before any connection opened, permit a retry;
+   `notSent` or `canResend` checkpoint. Graph's 401 after a successful token
+   refresh, 429 and 503 responses, and a traced connection failure before any
+   connection opened, permit a retry;
 4. after an ambiguous send, reads a known message ID when possible. Without
    one, a channel post searches the 50 most recently active root messages and
    a reply searches the thread's 50 newest replies. Exactly one matching
    undeleted message may confirm the post; no match or several matches select
    `uncertain`.
 
-An ambiguous response (timeout, 500, 504, 408, an unreadable or oversized 2xx) keeps
-the claim and retries after at least five seconds so the read-back can see
+An ambiguous response (timeout, 408, 409, 500, 504, an unreadable or oversized
+2xx) keeps the claim and retries after at least five seconds so the read-back can see
 the message. Reading back needs `ChannelMessage.Read.All`; without it the
 attempt selects `uncertain`. The connection cannot read chat messages (that
 needs [delegated `Chat.Read`](https://learn.microsoft.com/graph/api/chatmessage-get)),
@@ -79,6 +82,13 @@ so an unconfirmed chat message selects `uncertain` at once.
 A Flow must treat `uncertain` as "may have been posted" and never resend it
 automatically.
 
+[Microsoft Graph's error reference](https://learn.microsoft.com/graph/errors)
+defines 401 as missing or invalid authentication. We infer that authentication
+rejection happens before Graph processes the write; this has not been verified
+against a live Teams tenant. A refresh must produce a different valid token
+before the next attempt can resend. The same reference documents that 409 can
+occur for a request conflicting with current state, so the connector reads back
+instead of treating it as a conclusive rejection.
 [Microsoft Graph's throttling guidance](https://learn.microsoft.com/graph/throttling)
 documents that 429 requests fail before processing. Its
 [error reference](https://learn.microsoft.com/graph/errors) recommends retrying

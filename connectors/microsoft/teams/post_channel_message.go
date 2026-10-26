@@ -58,7 +58,8 @@ func (operation PostChannelMessageOperation) Invoke(call sdkgo.Call, input PostC
 	}
 	return client.send(call, messagePost{
 		operationID: postChannelMessageOperationID, subject: "channel message",
-		path: channelMessagesPath(teamID, channelID), content: content, requested: requested,
+		executeMethodTimeout: PostChannelMessageDefinition.StepDefaults.ExecuteMethodTimeout,
+		path:                 channelMessagesPath(teamID, channelID), content: content, requested: requested,
 		branches: postBranches{
 			sent: PostChannelMessageBranchSent, providerRejected: PostChannelMessageBranchProviderRejected, defect: PostChannelMessageBranchDefect,
 		},

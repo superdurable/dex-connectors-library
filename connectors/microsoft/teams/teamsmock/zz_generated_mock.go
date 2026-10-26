@@ -114,9 +114,9 @@ func ListThreadRepliesRetry(failure sdkgo.Failure, after time.Duration) connecto
 	return connectormock.Retry[teams.ListThreadRepliesOutput](failure, after)
 }
 
-// ListThreadRepliesIncidentAcknowledgement is the manifest mock incidentAcknowledgement: One reply from Ada acknowledging incident INC-1042 in root message 1616990032035; other threads need a script.
+// ListThreadRepliesIncidentAcknowledgement is the manifest mock incidentAcknowledgement: The incident bot's status reply and Ada's acknowledgement in root message 1616990032035; other threads need a script.
 func ListThreadRepliesIncidentAcknowledgement() connectormock.Case[teams.ListThreadRepliesOutput] {
-	value := connectormock.MustDecodeOutput[teams.ListThreadRepliesOutput](`{"replies":[{"id":"1616990032040","replyToId":"1616990032035","messageType":"message","createdAt":"2026-10-01T09:32:00Z","sender":{"userId":"5f1c2d3e-4b5a-4c6d-8e7f-901a2b3c4d5e","displayName":"Ada Lovelace"},"importance":"normal","contentType":"text","text":"ACK INC-1042"}]}`)
+	value := connectormock.MustDecodeOutput[teams.ListThreadRepliesOutput](`{"replies":[{"id":"1616990032036","replyToId":"1616990032035","messageType":"message","createdAt":"2026-10-01T09:31:00Z","sender":{"userId":"8ea0e38b-efb3-4757-924a-5f94061cf8c2","displayName":"Incident Bot"},"importance":"normal","contentType":"text","text":"Status: SEV2 incident INC-1042 is being investigated. Reply ack in this thread to acknowledge.","webUrl":"https://teams.microsoft.com/l/message/19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2/1616990032036"},{"id":"1616990032040","replyToId":"1616990032035","messageType":"message","createdAt":"2026-10-01T09:32:00Z","sender":{"userId":"5f1c2d3e-4b5a-4c6d-8e7f-901a2b3c4d5e","displayName":"Ada Lovelace"},"importance":"normal","contentType":"text","text":"ACK INC-1042","webUrl":"https://teams.microsoft.com/l/message/19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2/1616990032040"}]}`)
 	return connectormock.Branch(teams.ListThreadRepliesBranchRead, value, nil)
 }
 
@@ -170,7 +170,7 @@ func PostChannelMessageRetry(failure sdkgo.Failure, after time.Duration) connect
 
 // PostChannelMessageIncidentPosted is the manifest mock incidentPosted: The signed-in incident account posts INC-1042 in the selected incident channel; other incidents need a script.
 func PostChannelMessageIncidentPosted() connectormock.Case[teams.PostMessageOutput] {
-	value := connectormock.MustDecodeOutput[teams.PostMessageOutput](`{"messageId":"1616990032035","teamId":"fbe2bf47-16c8-47cf-b4a5-4b9b187c508b","channelId":"19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2","createdAt":"2026-10-01T09:30:00Z","sender":{"userId":"8ea0e38b-efb3-4757-924a-5f94061cf8c2","displayName":"Incident Bot"}}`)
+	value := connectormock.MustDecodeOutput[teams.PostMessageOutput](`{"messageId":"1616990032035","teamId":"fbe2bf47-16c8-47cf-b4a5-4b9b187c508b","channelId":"19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2","createdAt":"2026-10-01T09:30:00Z","sender":{"userId":"8ea0e38b-efb3-4757-924a-5f94061cf8c2","displayName":"Incident Bot"},"webUrl":"https://teams.microsoft.com/l/message/19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2/1616990032035"}`)
 	return connectormock.Branch(teams.PostChannelMessageBranchSent, value, nil)
 }
 
@@ -212,7 +212,7 @@ func PostThreadReplyRetry(failure sdkgo.Failure, after time.Duration) connectorm
 
 // PostThreadReplyIncidentStatusReply is the manifest mock incidentStatusReply: The incident account replies with status to root message 1616990032035; other roots need a script.
 func PostThreadReplyIncidentStatusReply() connectormock.Case[teams.PostMessageOutput] {
-	value := connectormock.MustDecodeOutput[teams.PostMessageOutput](`{"messageId":"1616990032036","teamId":"fbe2bf47-16c8-47cf-b4a5-4b9b187c508b","channelId":"19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2","replyToId":"1616990032035","createdAt":"2026-10-01T09:31:00Z","sender":{"userId":"8ea0e38b-efb3-4757-924a-5f94061cf8c2","displayName":"Incident Bot"}}`)
+	value := connectormock.MustDecodeOutput[teams.PostMessageOutput](`{"messageId":"1616990032036","teamId":"fbe2bf47-16c8-47cf-b4a5-4b9b187c508b","channelId":"19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2","replyToId":"1616990032035","createdAt":"2026-10-01T09:31:00Z","sender":{"userId":"8ea0e38b-efb3-4757-924a-5f94061cf8c2","displayName":"Incident Bot"},"webUrl":"https://teams.microsoft.com/l/message/19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2/1616990032036"}`)
 	return connectormock.Branch(teams.PostThreadReplyBranchSent, value, nil)
 }
 
@@ -254,7 +254,7 @@ func PostChatMessageRetry(failure sdkgo.Failure, after time.Duration) connectorm
 
 // PostChatMessageIncidentEscalation is the manifest mock incidentEscalation: The incident account escalates INC-1042 to the on-call meeting chat; another chat needs a script.
 func PostChatMessageIncidentEscalation() connectormock.Case[teams.PostMessageOutput] {
-	value := connectormock.MustDecodeOutput[teams.PostMessageOutput](`{"messageId":"1616990032050","chatId":"19:meeting_MjdhNjM4YzUtYzExZi00@thread.v2","createdAt":"2026-10-01T09:40:00Z","sender":{"userId":"8ea0e38b-efb3-4757-924a-5f94061cf8c2","displayName":"Incident Bot"}}`)
+	value := connectormock.MustDecodeOutput[teams.PostMessageOutput](`{"messageId":"1616990032050","chatId":"19:meeting_MjdhNjM4YzUtYzExZi00@thread.v2","createdAt":"2026-10-01T09:40:00Z","sender":{"userId":"8ea0e38b-efb3-4757-924a-5f94061cf8c2","displayName":"Incident Bot"},"webUrl":"https://teams.microsoft.com/l/message/19:meeting_MjdhNjM4YzUtYzExZi00@thread.v2/1616990032050"}`)
 	return connectormock.Branch(teams.PostChatMessageBranchSent, value, nil)
 }
 

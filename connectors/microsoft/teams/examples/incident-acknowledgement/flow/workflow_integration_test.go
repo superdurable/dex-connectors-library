@@ -66,6 +66,7 @@ const (
 	rootPostLostWithoutStoring
 	rootPostForbidden
 	rootPostUnavailableOnce
+	rootPostConflict
 )
 
 var (
@@ -175,6 +176,18 @@ func TestLostPostWithoutAMatchIsNeverResentWithRealDex(t *testing.T) {
 	result := harness.waitForFailedFlow(t, ctx, harness.startIncident(t, ctx, "uncertain", incidentInput()))
 	require.Contains(t, result.ErrorMessage, "uncertain")
 	require.Contains(t, result.ErrorMessage, "no target")
+	require.Equal(t, 1, provider.rootPostCount())
+	require.Zero(t, provider.replyPostCount())
+}
+
+func TestConflictingPostWithoutAMatchIsNeverResentWithRealDex(t *testing.T) {
+	provider := newFakeTeams(t)
+	provider.setRootPostBehavior(rootPostConflict)
+	harness := newIncidentHarness(t, provider, shortRequestTimeout, EscalationChatSelection{})
+	ctx := integrationContext(t)
+
+	result := harness.waitForFailedFlow(t, ctx, harness.startIncident(t, ctx, "conflict", incidentInput()))
+	require.Contains(t, result.ErrorMessage, "uncertain")
 	require.Equal(t, 1, provider.rootPostCount())
 	require.Zero(t, provider.replyPostCount())
 }
@@ -478,7 +491,7 @@ func (provider *fakeTeams) postRoot(response http.ResponseWriter, request *http.
 		behavior = rootPostAnswered
 	}
 	var message *fakeMessage
-	if behavior != rootPostForbidden && behavior != rootPostLostWithoutStoring && behavior != rootPostUnavailableOnce {
+	if behavior != rootPostForbidden && behavior != rootPostLostWithoutStoring && behavior != rootPostUnavailableOnce && behavior != rootPostConflict {
 		message = provider.storeLocked("", body)
 		provider.roots = append(provider.roots, message)
 	}
@@ -490,6 +503,8 @@ func (provider *fakeTeams) postRoot(response http.ResponseWriter, request *http.
 	case rootPostUnavailableOnce:
 		response.Header().Set("Retry-After", "1")
 		provider.writeJSON(response, http.StatusServiceUnavailable, `{"error":{"code":"ServiceNotAvailable","message":"SENTINEL"}}`)
+	case rootPostConflict:
+		provider.writeJSON(response, http.StatusConflict, `{"error":{"code":"Conflict","message":"SENTINEL"}}`)
 	case rootPostStoredWithoutAnswer, rootPostLostWithoutStoring:
 		<-request.Context().Done()
 	default:

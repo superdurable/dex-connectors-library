@@ -28,12 +28,13 @@ const (
 
 // messagePost is one validated post: where it goes, its body, and where a read-back looks for it.
 type messagePost struct {
-	operationID string
-	subject     string
-	path        string
-	content     messageContent
-	requested   PostMessageOutput
-	branches    postBranches
+	operationID          string
+	executeMethodTimeout time.Duration
+	subject              string
+	path                 string
+	content              messageContent
+	requested            PostMessageOutput
+	branches             postBranches
 	// readBackPath lists the newest messages the post would join; empty means it cannot be read back.
 	readBackPath string
 	// readBackReplyToID is the root message a reply belongs to; empty for a root channel message.
@@ -62,7 +63,7 @@ func (attempt *messageSendAttempt) send(requestContext context.Context) error {
 
 // send permits a repeat only after the immediately previous attempt proved the write was not applied.
 func (client *Client) send(call sdkgo.Call, post messagePost) sdkgo.MutationAttempt[PostMessageOutput] {
-	fence, err := singledispatch.NewFence(call, 30*time.Second)
+	fence, err := singledispatch.NewFence(call, post.executeMethodTimeout)
 	if err != nil {
 		return sdkgo.NewMutationBranch(post.branches.defect, post.requested,
 			failurePointer(post.operationID, sdkgo.FailureLocalDefect, "Microsoft Teams dispatch fence could not be constructed"), sdkgo.Receipt{})
@@ -76,21 +77,22 @@ func (client *Client) send(call sdkgo.Call, post messagePost) sdkgo.MutationAtte
 	if failure != nil {
 		if decision.Kind == singledispatch.SendAllowed {
 			checkpointErr := fence.RecordNotSent()
-			message := "Microsoft Teams credentials are temporarily unavailable before the message was sent"
+			credentialFailure := failure.failure
 			if checkpointErr != nil {
-				message += "; the not-sent checkpoint also failed"
+				credentialFailure.Message += "; the not-sent checkpoint also failed"
 			}
-			return sdkgo.NewMutationRetry[PostMessageOutput](newFailure(post.operationID, sdkgo.FailureAuthentication,
-				message), 0)
+			if failure.isReauthorizationRequired {
+				return sdkgo.NewMutationBranch(post.branches.defect, post.requested, &credentialFailure, sdkgo.Receipt{})
+			}
+			return sdkgo.NewMutationRetry[PostMessageOutput](credentialFailure, 0)
 		}
-		return sdkgo.NewMutationRetry[PostMessageOutput](*failure, 0)
+		if failure.isReauthorizationRequired {
+			return sdkgo.NewMutationBranch(post.branches.defect, post.requested, &failure.failure, sdkgo.Receipt{})
+		}
+		return sdkgo.NewMutationRetry[PostMessageOutput](failure.failure, 0)
 	}
 	defer cancel()
 	if decision.Kind == singledispatch.ReadBackRequired {
-		if decision.Marker.CallID != "" && decision.Marker.CallID != call.ID {
-			return sdkgo.NewMutationUncertain(post.requested, newFailure(post.operationID, sdkgo.FailureTransport,
-				"the Microsoft Teams dispatch checkpoint belongs to another call"), sdkgo.Receipt{})
-		}
 		return client.reconcileEarlierPost(session, post, call.Context.FirstAttemptAt(), decision.Marker.ProviderID)
 	}
 	attempt := &messageSendAttempt{client: client, session: session, post: post}
@@ -106,7 +108,9 @@ func (client *Client) send(call sdkgo.Call, post messagePost) sdkgo.MutationAtte
 	if result.err == nil && result.response.statusCode == http.StatusUnauthorized {
 		if _, supportsRefresh := client.credentials.(sdkgo.RejectedCredentialRefreshingProvider[Credentials]); supportsRefresh {
 			replacement, refreshErr := sdkgo.ResolveCredentialAfterRejection(session.context, client.credentials, call, client.refreshDriver)
-			if refreshErr == nil && validateResolvedCredentials(replacement) == nil {
+			if refreshErr == nil && validateResolvedCredentials(replacement) == nil &&
+				replacement.AccessToken.Reveal() != session.credentials.AccessToken.Reveal() {
+				// Graph rejects unauthenticated requests before processing them; only a changed token permits one resend.
 				failure := newFailure(post.operationID, sdkgo.FailureAuthentication,
 					"Microsoft Graph rejected the access token; the refreshed credential will be used on the next attempt")
 				if checkpointErr := fence.RecordCanResend(); checkpointErr != nil {
@@ -156,6 +160,10 @@ func (client *Client) reconcileEarlierPost(session *operationSession, post messa
 			client.receipt(session, graphResponse{}, ""))
 	}
 	if providerID != "" {
+		if !messageIDPattern.MatchString(providerID) {
+			return sdkgo.NewMutationUncertain(post.requested, newFailure(post.operationID, sdkgo.FailureProtocol,
+				"the earlier Microsoft Teams message has an invalid provider ID"), sdkgo.Receipt{})
+		}
 		result := client.exchange(session, graphRequest{method: http.MethodGet, path: post.readBackPath + "/" + providerID})
 		classification := client.classifyRead(post.operationID, post.subject+" read-back", result)
 		receipt := client.receipt(session, result.response, providerID)

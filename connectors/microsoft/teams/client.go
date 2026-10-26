@@ -120,6 +120,11 @@ type operationSession struct {
 	credentials Credentials
 }
 
+type sessionFailure struct {
+	failure                   sdkgo.Failure
+	isReauthorizationRequired bool
+}
+
 type readOutcome uint8
 
 const (
@@ -229,12 +234,21 @@ func (client *Client) PostChatMessage() PostChatMessageOperation {
 }
 
 // startSession resolves the credential; the caller must call the returned cancel.
-func (client *Client) startSession(call sdkgo.Call, operationID string) (*operationSession, context.CancelFunc, *sdkgo.Failure) {
+func (client *Client) startSession(call sdkgo.Call, operationID string) (*operationSession, context.CancelFunc, *sessionFailure) {
 	operationContext, cancel := context.WithTimeout(call.Context, operationDeadline)
 	credentials, err := sdkgo.ResolveCredential(operationContext, client.credentials, call, client.refreshDriver)
-	if err != nil || validateResolvedCredentials(credentials) != nil {
+	validationErr := validateResolvedCredentials(credentials)
+	if err != nil || validationErr != nil {
 		cancel()
-		return nil, nil, failurePointer(operationID, sdkgo.FailureAuthentication, "Microsoft Teams connection credentials are unavailable; reconnect the connection")
+		isReauthorizationRequired := sdkgo.IsReauthorizationRequired(err) || (err == nil && validationErr != nil)
+		message := "Microsoft Teams connection credentials are temporarily unavailable"
+		if isReauthorizationRequired {
+			message = "Microsoft Teams connection credentials are unavailable; reconnect the connection"
+		}
+		return nil, nil, &sessionFailure{
+			failure:                   newFailure(operationID, sdkgo.FailureAuthentication, message),
+			isReauthorizationRequired: isReauthorizationRequired,
+		}
 	}
 	return &operationSession{context: operationContext, call: call, credentials: credentials}, cancel, nil
 }
@@ -466,12 +480,13 @@ func statusFailureKind(statusCode int) sdkgo.FailureKind {
 
 func isSuccessStatus(statusCode int) bool { return statusCode >= 200 && statusCode < 300 }
 
-// isConclusiveRejectionStatus reports a 4xx other than 408 and 429, or a 501: Graph refused before storing anything.
+// isConclusiveRejectionStatus excludes 409 because a conflicting write needs read-back before its outcome is known.
 func isConclusiveRejectionStatus(statusCode int) bool {
 	if statusCode == http.StatusNotImplemented {
 		return true
 	}
-	return statusCode >= 400 && statusCode < 500 && statusCode != http.StatusRequestTimeout && statusCode != http.StatusTooManyRequests
+	return statusCode >= 400 && statusCode < 500 && statusCode != http.StatusRequestTimeout &&
+		statusCode != http.StatusConflict && statusCode != http.StatusTooManyRequests
 }
 
 // isSafeProviderToken accepts a bounded printable ASCII value such as a request ID.

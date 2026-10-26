@@ -4,6 +4,7 @@
 package teams_test
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -96,7 +97,7 @@ func TestPostChannelMessageRejectsInvalidInputWithoutARequest(t *testing.T) {
 	require.Zero(t, provider.requestCount())
 }
 
-func TestThrottledPostClearsTheCheckpointAndIsSentAfterRetryAfter(t *testing.T) {
+func TestThrottledPostRecordsCanResendAndIsSentAfterRetryAfter(t *testing.T) {
 	provider := newRecordingGraph(t, func(response http.ResponseWriter, _ *http.Request, index int) {
 		if index == 0 {
 			response.Header().Set("Retry-After", "7")
@@ -161,6 +162,35 @@ func TestRejectedAccessTokenRefreshesBeforeTheNextFencedAttempt(t *testing.T) {
 	require.Equal(t, 1, credentials.forcedRefreshes)
 	require.Equal(t, "Bearer replacement-token", provider.request(1).authorization)
 	require.Equal(t, 2, provider.requestCount())
+}
+
+type unchangedRejectedCredentialProvider struct {
+	rejectionRefreshingCredentialProvider
+	refreshAttempts int
+}
+
+func (provider *unchangedRejectedCredentialProvider) ResolveAfterRejection(
+	context.Context,
+	sdkgo.Call,
+	sdkgo.CredentialRefreshDriver[teams.Credentials],
+) (teams.Credentials, error) {
+	provider.refreshAttempts++
+	return teams.Credentials{AccessToken: sdkgo.NewSecretString("rejected-token")}, nil
+}
+
+func TestRejectedAccessTokenWithoutAChangedTokenDoesNotResend(t *testing.T) {
+	provider := newRecordingGraph(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusUnauthorized, graphErrorJSON("InvalidAuthenticationToken"))
+	})
+	credentials := &unchangedRejectedCredentialProvider{}
+	client, err := teams.New(teams.Config{Endpoint: provider.endpoint()}, credentials)
+	require.NoError(t, err)
+	result, err := sdkgo.RunMutation(newTestDexContext("unchanged-token"), client.PostChannelMessage(), teamsConnection, validChannelMessageInput())
+	require.NoError(t, err)
+	require.Equal(t, teams.PostChannelMessageBranchProviderRejected, result.Branch)
+	require.Contains(t, result.Failure.Message, "reconnect the connection")
+	require.Equal(t, 1, credentials.refreshAttempts)
+	require.Equal(t, 1, provider.countRequests(http.MethodPost))
 }
 
 func TestUnconfirmedPostIsConfirmedByReadingTheChannelBackWithoutAResend(t *testing.T) {
