@@ -66,8 +66,7 @@ func (CreateItemOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateItemInput
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke creates one item. Rate limits, an idempotency conflict, 5xx, and transport failures are
-// retried under the same key, so monday.com replays the first result instead of creating a second item.
+// Invoke creates one item. Confirmed retryable failures reuse the key; ambiguous sent failures select uncertain.
 func (operation CreateItemOperation) Invoke(call sdkgo.Call, input CreateItemInput) sdkgo.MutationAttempt[CreateItemOutput] {
 	client := operation.client
 	request, requested, err := buildCreateItemRequest(input)

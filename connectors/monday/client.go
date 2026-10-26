@@ -10,9 +10,8 @@
 // item. CreateItem creates an item with typed column values,
 // UpdateItemColumnValues sets typed absolute column values, and AddUpdate posts
 // an update, monday.com's item comment. Every mutation sends an
-// Idempotency-Key header derived from the Dex Call ID, so a retried or
-// re-dispatched attempt of one Step execution receives monday.com's cached
-// result instead of writing twice.
+// Idempotency-Key header derived from the Dex Call ID. Create and add-update
+// retries also require a durable checkpoint, because monday.com's cache can be bypassed.
 //
 // Every request pins the API-Version header to APIVersion. A connection
 // authenticates with a personal API token or with monday.com OAuth 2.1, whose
@@ -22,14 +21,16 @@ package monday
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net"
 	"net/http"
+	"net/http/httptrace"
 	"regexp"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
@@ -132,8 +133,9 @@ type exchangeOutcome uint8
 const (
 	exchangeSucceeded exchangeOutcome = iota + 1
 	exchangeNotFound
-	// exchangeRetry is safe for reads and, under their idempotency key, for every mutation.
+	// exchangeRetry marks a read or a mutation with a confirmed retryable outcome.
 	exchangeRetry
+	exchangeUncertain
 	exchangeRejected
 	exchangeInvalid
 	exchangeDefect
@@ -216,15 +218,50 @@ func (client *Client) AddUpdate() AddUpdateOperation { return AddUpdateOperation
 
 // exchange resends once after a rejected OAuth token; a 401 means monday.com ran nothing.
 func (client *Client) exchange(call sdkgo.Call, operation string, request graphQLRequest) mondayExchange {
+	var heartbeat *mutationHeartbeat
+	if request.isMutation && (operation == createItemOperationID || operation == addUpdateOperationID) {
+		var previous mutationCheckpoint
+		hasPrevious, err := call.Context.GetLastHeartbeatValue(&previous)
+		if err != nil || hasPrevious && previous.CallID != call.ID {
+			return mondayExchange{outcome: exchangeDefect, failure: mondayFailure(sdkgo.FailureLocalDefect, operation, "mutation checkpoint is invalid")}
+		}
+		attempt := call.Context.Attempt()
+		if !(!hasPrevious && attempt == 1 || hasPrevious && previous.CanResend && previous.Attempt == attempt-1) {
+			return mondayExchange{outcome: exchangeUncertain, failure: mondayFailure(sdkgo.FailureTransport, operation, "an earlier attempt may have applied the mutation")}
+		}
+		heartbeat = newMutationHeartbeat(call)
+		defer heartbeat.stop()
+	}
 	credentials, failedResolution := client.resolveCredentials(call, operation)
 	if failedResolution != nil {
+		if heartbeat != nil && failedResolution.outcome == exchangeRetry {
+			_ = heartbeat.recordCanResend()
+		}
 		return *failedResolution
+	}
+	if heartbeat != nil {
+		if !hasRequestBudget(call.Context, 3*time.Second) {
+			_ = heartbeat.recordCanResend()
+			return mondayExchange{outcome: exchangeRetry, failure: mondayFailure(sdkgo.FailureAvailability, operation, "not enough time remains to send the mutation")}
+		}
+		if err := heartbeat.begin(); err != nil {
+			_ = heartbeat.recordCanResend()
+			return mondayExchange{outcome: exchangeRetry, failure: mondayFailure(sdkgo.FailureAvailability, operation, "dispatch checkpoint could not be recorded")}
+		}
 	}
 	result := client.send(call, credentials, operation, request)
 	if result.response.statusCode == http.StatusUnauthorized && client.canRefreshAfterRejection(credentials) {
 		replacement, err := sdkgo.ResolveCredentialAfterRejection(call.Context, client.credentials, call, client.refreshDriver)
 		if err == nil && validateResolvedCredentials(replacement) == nil {
 			result = client.send(call, replacement, operation, request)
+		}
+	}
+	if heartbeat != nil {
+		switch {
+		case result.outcome == exchangeRetry && result.response.statusCode >= 200 && result.response.statusCode < 300 && result.failure.Kind != sdkgo.FailureRateLimit && result.failure.Kind != sdkgo.FailureConflict:
+			result.outcome = exchangeUncertain
+		case result.outcome == exchangeRetry:
+			_ = heartbeat.recordCanResend()
 		}
 	}
 	return result
@@ -261,12 +298,27 @@ func (client *Client) send(call sdkgo.Call, credentials Credentials, operation s
 	if err != nil {
 		return mondayExchange{outcome: exchangeDefect, failure: mondayFailure(sdkgo.FailureLocalDefect, operation, err.Error())}
 	}
-	httpResponse, err := client.httpClient.Do(httpRequest)
+	requestContext := context.Context(call.Context)
+	if deadline, hasDeadline := call.Context.Deadline(); hasDeadline {
+		var cancel context.CancelFunc
+		requestContext, cancel = context.WithDeadline(call.Context, deadline.Add(-3*time.Second))
+		defer cancel()
+	}
+	var hasConnectionAttempt, hasConnection atomic.Bool
+	requestContext = httptrace.WithClientTrace(requestContext, &httptrace.ClientTrace{
+		GetConn: func(string) { hasConnectionAttempt.Store(true) },
+		GotConn: func(httptrace.GotConnInfo) { hasConnection.Store(true) },
+	})
+	httpResponse, err := client.httpClient.Do(httpRequest.WithContext(requestContext))
 	if err != nil {
-		if isConnectionNeverEstablished(err) {
+		if hasConnectionAttempt.Load() && !hasConnection.Load() {
 			return mondayExchange{outcome: exchangeRetry, failure: mondayFailure(sdkgo.FailureTransport, operation, "monday.com could not be reached; no request was sent")}
 		}
-		return mondayExchange{outcome: exchangeRetry, failure: mondayFailure(sdkgo.FailureTransport, operation, "monday.com request failed before a response arrived")}
+		outcome := exchangeRetry
+		if request.isMutation && operation != updateItemColumnValuesOperationID {
+			outcome = exchangeUncertain
+		}
+		return mondayExchange{outcome: outcome, failure: mondayFailure(sdkgo.FailureTransport, operation, "monday.com request failed before a response arrived")}
 	}
 	body, readErr := providerhttp.ReadBoundedBody(httpResponse.Body, client.maxResponseBytes)
 	closeErr := httpResponse.Body.Close()
@@ -279,7 +331,11 @@ func (client *Client) send(call sdkgo.Call, credentials Credentials, operation s
 	case errors.Is(readErr, providerhttp.ErrBodyTooLarge) && isSuccess:
 		return mondayExchange{outcome: exchangeInvalid, response: response, failure: mondayFailure(sdkgo.FailureResponseTooLarge, operation, "monday.com response exceeds the configured maxResponseBytes limit")}
 	case readErr != nil && !errors.Is(readErr, providerhttp.ErrBodyTooLarge), closeErr != nil:
-		return mondayExchange{outcome: exchangeRetry, response: response, failure: mondayFailure(sdkgo.FailureTransport, operation, "monday.com response could not be read")}
+		outcome := exchangeRetry
+		if request.isMutation && isSuccess {
+			outcome = exchangeInvalid
+		}
+		return mondayExchange{outcome: outcome, response: response, failure: mondayFailure(sdkgo.FailureTransport, operation, "monday.com response could not be read")}
 	}
 	token := credentials.authorizationToken().Reveal()
 	if bytes.Contains(body, []byte(token)) {
@@ -327,6 +383,8 @@ func (client *Client) buildRequest(call sdkgo.Call, credentials Credentials, req
 			return nil, errors.New("monday.com mutation has no idempotency key")
 		}
 		httpRequest.Header.Set(idempotencyKeyHeader, string(call.IdempotencyKey))
+		// Go's Transport retries keyed requests with GetBody after a lost response; the checkpoint must own that decision.
+		httpRequest.GetBody = nil
 	}
 	return httpRequest, nil
 }
@@ -384,6 +442,8 @@ func mutationAttemptForExchange[OUT any](result mondayExchange, requested OUT, r
 		return sdkgo.MutationAttempt[OUT]{}, false
 	case exchangeRetry:
 		return sdkgo.NewMutationRetry[OUT](result.failure, result.retryAfter), true
+	case exchangeUncertain:
+		return sdkgo.NewMutationUncertain(requested, result.failure, receipt), true
 	case exchangeNotFound:
 		return sdkgo.NewMutationBranch(branches.notFound, requested, &result.failure, receipt), true
 	case exchangeDefect:
@@ -545,12 +605,6 @@ func safeRequestID(body []byte) string {
 		return tokens[0]
 	}
 	return ""
-}
-
-// isConnectionNeverEstablished reports a dial failure, after which monday.com cannot have received the request.
-func isConnectionNeverEstablished(err error) bool {
-	var operationError *net.OpError
-	return errors.As(err, &operationError) && operationError.Op == "dial"
 }
 
 func isJSONNull(value json.RawMessage) bool {

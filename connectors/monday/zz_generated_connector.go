@@ -446,13 +446,13 @@ var CreateItemDefinition = sdkgo.MutationDefinition{
 		{ID: CreateItemBranchCreated, Description: "monday.com created the item, or replayed the item this Step already created, and returned it."},
 		{ID: CreateItemBranchNotFound, Description: "The board or group does not exist or the connection cannot see it; nothing was created.", Optional: true},
 		{ID: CreateItemBranchProviderRejected, Description: "monday.com conclusively rejected the item, such as an invalid column value, a missing status label, the board's item limit, or missing permission; nothing was created.", Optional: true},
-		{ID: CreateItemBranchUncertain, Description: "monday.com accepted the mutation but returned an unusable item, so the item may exist and must not be created again automatically.", Optional: true},
+		{ID: CreateItemBranchUncertain, Description: "An earlier create may have been accepted, but its result cannot be confirmed; the item must not be created again automatically.", Optional: true},
 		{ID: CreateItemBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
-		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(10000000000),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 10, TotalDuration: time.Duration(300000000000)},
-		ExecuteDurability: dex.StepDurabilityAsync,
+		ExecuteDurability: dex.StepDurabilitySync,
 	},
 }
 
@@ -600,13 +600,13 @@ var AddUpdateDefinition = sdkgo.MutationDefinition{
 		{ID: AddUpdateBranchAdded, Description: "monday.com added the update, or replayed the update this Step already added, and returned it."},
 		{ID: AddUpdateBranchNotFound, Description: "The item does not exist or the connection cannot see it; nothing was added.", Optional: true},
 		{ID: AddUpdateBranchProviderRejected, Description: "monday.com conclusively rejected the update, such as missing permission; nothing was added.", Optional: true},
-		{ID: AddUpdateBranchUncertain, Description: "monday.com accepted the mutation but returned an unusable update, so the update may exist and must not be added again automatically.", Optional: true},
+		{ID: AddUpdateBranchUncertain, Description: "An earlier update may have been accepted, but its result cannot be confirmed; the update must not be added again automatically.", Optional: true},
 		{ID: AddUpdateBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
-		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(10000000000),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 10, TotalDuration: time.Duration(300000000000)},
-		ExecuteDurability: dex.StepDurabilityAsync,
+		ExecuteDurability: dex.StepDurabilitySync,
 	},
 }
 

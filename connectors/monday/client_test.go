@@ -49,6 +49,7 @@ func TestMutationsSendTheStepIdempotencyKeyOnEveryAttempt(t *testing.T) {
 	_, err := sdkgo.RunMutation(ctx, client.CreateItem(), mondayConnection, monday.CreateItemInput{BoardID: testBoardID, ItemName: "Fire drill"})
 	var retry *sdkgo.RetryError
 	require.ErrorAs(t, err, &retry, "a 5xx is retried, because the key replays an applied create")
+	ctx.attemptNo = 2
 	result, err := sdkgo.RunMutation(ctx, client.CreateItem(), mondayConnection, monday.CreateItemInput{BoardID: testBoardID, ItemName: "Fire drill"})
 	require.NoError(t, err)
 	require.Equal(t, monday.CreateItemBranchCreated, result.Branch)

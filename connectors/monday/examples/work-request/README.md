@@ -55,7 +55,7 @@ mkdir -p /tmp/monday-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/monday/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/monday \
-  --version v0.22.1 --tag connectors/monday/v0.22.1 \
+  --version v0.23.0 --tag connectors/monday/v0.23.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/monday-release/connector-release.json \
   --digest-output /tmp/monday-release/connector-release.json.sha256
@@ -128,13 +128,9 @@ duplicate with `409 IDEMPOTENCY_CONFLICT`, and replays a finished one with
   untouched: a completed same-name item, an archived one, one on another
   board, and a look-alike name;
 - a first page of completed same-name items leads to the cursor's second page;
-- a create, a column update, and an update held for nine seconds, past Dex's
-  async local phase, are each dispatched again. The repeat gets 409 and then
-  the replay, so monday.com runs each request once and the board holds one
-  item and one update;
-- a lost create response is retried and replayed, creating one item;
-- a Worker lost while monday.com holds the create is replaced, and the new
-  Worker's attempt sends the same key and receives the first item;
+- a create and an added update held for nine seconds finish with one sync dispatch each; the absolute column update may be repeated by async dispatch, and the board still holds one item and one update;
+- a lost create response fails closed through `uncertain` after one request;
+- a Worker lost while monday.com holds the create is replaced; the new attempt fails closed through `uncertain` without resending;
 - a complexity-limited create waits for `retry_in_seconds` and creates one
   item;
 - an unusable create answer fails through the unwired `uncertain` branch and is never resent;

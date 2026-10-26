@@ -67,8 +67,7 @@ func (AddUpdateOperation) IdempotencyKey(callID sdkgo.CallID, _ AddUpdateInput) 
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke adds one update. Rate limits, an idempotency conflict, 5xx, and transport failures are
-// retried under the same key, so monday.com replays the first result instead of posting a second update.
+// Invoke adds one update. Confirmed retryable failures reuse the key; ambiguous sent failures select uncertain.
 func (operation AddUpdateOperation) Invoke(call sdkgo.Call, input AddUpdateInput) sdkgo.MutationAttempt[AddUpdateOutput] {
 	client := operation.client
 	requested := AddUpdateOutput{ItemID: strings.TrimSpace(input.ItemID)}

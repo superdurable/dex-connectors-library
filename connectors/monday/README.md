@@ -13,14 +13,13 @@ factories:
 | --- | --- | --- | --- | --- |
 | `monday.NewListItemsStep` | Query | async | `listed` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 | `monday.NewGetItemStep` | Query | async | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
-| `monday.NewCreateItemStep` | Mutation | async | `created` | `notFound`, `providerRejected`, `uncertain`, `defect` |
+| `monday.NewCreateItemStep` | Mutation | sync | `created` | `notFound`, `providerRejected`, `uncertain`, `defect` |
 | `monday.NewUpdateItemColumnValuesStep` | Mutation | async | `updated` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
-| `monday.NewAddUpdateStep` | Mutation | async | `added` | `notFound`, `providerRejected`, `uncertain`, `defect` |
+| `monday.NewAddUpdateStep` | Mutation | sync | `added` | `notFound`, `providerRejected`, `uncertain`, `defect` |
 
 Only the happy-path branch of each operation is required; every other branch
 is optional, and an unwired optional branch fails the Flow. Every operation
-uses a 30-second Execute timeout. Reads and the absolute `updateItemColumnValues` use the one-hour default retry budget; `createItem` and `addUpdate` keep ten attempts within five minutes. Every mutation sends a monday.com `Idempotency-Key`, so all
-three stay async; see [Duplicate safety](#duplicate-safety).
+uses a 30-second Execute timeout. Reads and the absolute `updateItemColumnValues` use the one-hour default retry budget; `createItem` and `addUpdate` keep ten attempts within five minutes. Every mutation sends a monday.com `Idempotency-Key`. `createItem` and `addUpdate` use sync durability so dispatch checkpoints are visible to later attempts; see [Duplicate safety](#duplicate-safety).
 
 This release has no Triggers and no Studio pickers; see
 [Not in this release](#not-in-this-release).
@@ -228,40 +227,9 @@ header for mutations:
    `Idempotency-Replayed: true`.
 3. A concurrent duplicate gets `409 IDEMPOTENCY_CONFLICT` with `Retry-After`.
 
-Every mutation sends the Dex Call ID as its key: a UUID that is stable for
-every attempt of one Step execution, including one on a replacement Worker,
-and different for every other Step execution. This lets each mutation keep
-async durability:
+Every mutation sends the Dex Call ID as its key, stable across attempts of one Step. `createItem` and `addUpdate` record an attempt-numbered dispatch heartbeat before sending. A later attempt resends only when the immediately preceding attempt recorded that it was safe to retry. A missing or stale marker fails closed through `uncertain`; sync Execute durability makes the marker visible to the next attempt. The request stops at least three seconds before the 30-second Step deadline, and a write starts only with at least three seconds remaining.
 
-- When Dex re-dispatches a create or update past its seven-second local
-  phase, or retries after a lost Worker, the new attempt gets 409 while the
-  first still runs, or monday.com's cached result once it finished. The
-  conflict is retried after at least two seconds. Mutations allow ten
-  attempts, so a re-dispatched attempt can wait out a slow first one.
-- A 5xx, a 408, a lost or unreadable response, and a transport failure are
-  retried under the same key. A rate limit, a board lock, and
-  `API_TEMPORARILY_BLOCKED` are retried after monday.com's delay; monday.com
-  documents that a rate-limited request was not processed.
-- `createItem` and `addUpdate` select `uncertain` only when monday.com accepted
-  the mutation but its answer is unusable: malformed, oversized, or reflecting
-  the credential. A retry would replay the same answer, and the item or update
-  may exist. `updateItemColumnValues` selects `invalidResponse` there, because
-  repeating it is safe.
-- A result replayed from the cache sets `replayed: true` on the output and
-  `idempotencyReplayed` in the Receipt metadata.
-
-The guarantee has the limits monday.com documents, and they bound it:
-
-- A cached response expires after 30 minutes. `createItem` and `addUpdate`
-  retry for five minutes; keep their `StepOptionsOverride` windows below 30 minutes.
-- A response larger than 1 MB is not cached. The mutations select only
-  scalar fields, and the update's column values only for the columns it set.
-- Each user and app combination has a memory budget for cached responses.
-  monday.com documents that a request beyond the budget runs but is not cached
-  for replay, and no response signals it. A re-dispatch after such a request
-  would run again. The connector cannot detect this, so a duplicate item or
-  update remains possible only when monday.com both lacks cache budget and an
-  attempt is repeated.
+The [monday.com idempotency contract](https://developer.monday.com/api-reference/docs/idempotency) caches responses for 30 minutes, returns 409 for concurrent requests with one key, and marks a replay with `Idempotency-Replayed: true`. It also says that responses over 1 MB and responses that exceed the user/app memory budget are **not cached**. Therefore, an accepted but malformed, oversized, interrupted, credential-reflecting, or ID-less 2xx response selects `uncertain`; the connector does not resend it. A transport failure after dispatch with no response also selects `uncertain`; the connector disables Go HTTP transport body replay for these mutations so it cannot resend an accepted write behind the checkpoint. A positively unsent request, 429, 503, or idempotency conflict records a can-resend checkpoint and returns Retry. A successful replay sets `replayed: true` and `idempotencyReplayed` in the Receipt. The five-minute retry budget stays inside the documented cache window, though the provider's cache exceptions mean that the key alone is not a guarantee for ambiguous writes.
 
 For `updateItemColumnValues`, that limit is harmless: the values are absolute,
 so a repeat changes nothing.
@@ -282,7 +250,7 @@ before the HTTP status.
 | `COMPLEXITY_BUDGET_EXHAUSTED`, `ComplexityException`, `RATE_LIMIT_EXCEEDED`, `IP_RATE_LIMIT_EXCEEDED`, `maxConcurrencyExceeded`, `FIELD_LIMIT_EXCEEDED`, 429 | Retry after `retry_in_seconds` or `Retry-After` | same |
 | `IDEMPOTENCY_CONFLICT`, 409 without a code | Retry after at least 2 seconds | same |
 | `API_TEMPORARILY_BLOCKED`, 423 | Retry | same |
-| 408, 5xx, connection or read failure | Retry | Retry under the same key |
+| 408, 5xx, connection or read failure | Retry | Retry after 408/5xx or confirmed no-send; lost sent response selects `uncertain` for create/add |
 | `DAILY_LIMIT_EXCEEDED` | `providerRejected`, `QUOTA_EXHAUSTED` | same |
 | `Unauthorized`, `NOT_AUTHENTICATED`, 401 | `providerRejected`, `AUTHENTICATION`; an HTTP 401 for an OAuth token whose stored expiry has passed is refreshed and resent once first | same |
 | `UserUnauthorizedException`, `USER_ACCESS_DENIED`, `missingRequiredPermissions`, 403 | `providerRejected`, `AUTHORIZATION` | same |
@@ -298,6 +266,22 @@ selects its happy branch, because the write happened. monday.com documents
 that an invalid board or item ID can also surface as a 500, which is retried
 until the window ends. The Receipt carries the Call ID, the idempotency key,
 the board, item, or update ID, and monday.com's `extensions.request_id`.
+
+## Mocks
+
+The generated `mondaymock` package provides a consistent February work-request world: three completed-item search pages, item `5550004`, and update `3300001`. Every operation has a happy-path default and mocks for definite `notFound`, `providerRejected`, and read/absolute-update `invalidResponse` outcomes. The runnable example uses the defaults in a real Dex integration test:
+
+```go
+mock := mondaymock.New(t, ConnectionName)
+harness := newWorkHarnessForConnection(t, mock.Connection())
+outcome := harness.runWorkRequest(t, "mock-default", integrationInput())
+require.Equal(t, WorkItemCreated, outcome.Action)
+require.Equal(t, "5550004", outcome.ItemID)
+require.Equal(t, "february", outcome.GroupID)
+require.Equal(t, "3300001", outcome.UpdateID)
+```
+
+The test also asserts three recorded list inputs, one create input, one update input, and no get or schedule calls. Mock answers are fixtures, not live monday.com verification.
 
 ## Not in this release
 
@@ -368,7 +352,7 @@ The provider fakes cover:
 - the OAuth 2.1 refresh with JWT expiry, scope checks, and a single refresh
   and resend after a 401 through a refreshing credential source.
 
-No live monday.com account was used. The following live behavior is
+No live monday.com account was used. The provider's cache-budget exception, checkpoint recovery, and exact 503 behavior were verified only against documentation and a fake provider. The following live behavior is
 unverified:
 
 - whether `items(ids:)` returns an empty list for a missing or deleted item,

@@ -91,7 +91,6 @@ func TestCreateItemRetriesEveryOutcomeTheIdempotencyKeyCovers(t *testing.T) {
 		{name: "server error", reply: func(response http.ResponseWriter) {
 			writeJSON(t, response, http.StatusInternalServerError, `{"errors":[{"message":"SENTINEL"}]}`)
 		}, kind: sdkgo.FailureAvailability},
-		{name: "lost response", reply: func(response http.ResponseWriter) { dropConnection(t, response) }, kind: sdkgo.FailureTransport},
 		{name: "complexity", reply: func(response http.ResponseWriter) {
 			writeJSON(t, response, http.StatusTooManyRequests, `{"errors":[{"message":"x","extensions":{"code":"COMPLEXITY_BUDGET_EXHAUSTED","retry_in_seconds":30}}]}`)
 		}, kind: sdkgo.FailureRateLimit, delay: 30 * time.Second},

@@ -93,7 +93,12 @@ func TestDefinitionsDeclareOptionalBranchesAndKeyedAsyncDurability(t *testing.T)
 		"createItem": monday.CreateItemDefinition.StepDefaults, "updateItemColumnValues": monday.UpdateItemColumnValuesDefinition.StepDefaults,
 		"addUpdate": monday.AddUpdateDefinition.StepDefaults,
 	} {
-		require.Equal(t, dex.StepDurabilityAsync, defaults.ExecuteDurability, "%s: a duplicate dispatch replays under the idempotency key", name)
+		if name == "createItem" || name == "addUpdate" {
+			require.Equal(t, dex.StepDurabilitySync, defaults.ExecuteDurability, name)
+			require.Equal(t, 10*time.Second, defaults.HeartbeatTimeout, name)
+		} else {
+			require.Equal(t, dex.StepDurabilityAsync, defaults.ExecuteDurability, name)
+		}
 		require.Equal(t, 30*time.Second, defaults.ExecuteMethodTimeout, name)
 		require.GreaterOrEqual(t, defaults.ExecuteRetry.TotalDuration, 2*time.Minute, "%s: a one-minute complexity reset fits in the window", name)
 		if name == "createItem" || name == "addUpdate" {

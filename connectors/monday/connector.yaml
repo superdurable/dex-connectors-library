@@ -5,7 +5,7 @@ metadata:
   displayName: monday.com
   description: List a monday.com board's items with a typed column filter, read one item, create items and set typed column values under monday.com idempotency keys, and add updates to items.
   company: monday
-  version: v0.22.1
+  version: v0.23.0
 spec:
   provider: monday
   codegen:
@@ -109,6 +109,35 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      pagination: {inputField: cursor, nextField: nextCursor}
+      mocks:
+        - name: completedWorkRequestPages
+          branch: listed
+          description: Three pages for board 1234567890 and the exact-name work request; only completed items match, with a duplicate across pages.
+          default: true
+          pages:
+            - boardId: "1234567890"
+              items:
+                - {id: "5550002", name: Monthly Fire Drill Checklist - February, state: active, boardId: "1234567890", columnValues: [{id: status, type: status, text: Done}]}
+              nextCursor: completed-page-2
+            - boardId: "1234567890"
+              items:
+                - {id: "5550002", name: Monthly Fire Drill Checklist - February, state: active, boardId: "1234567890", columnValues: [{id: status, type: status, text: Done}]}
+                - {id: "5550003", name: Monthly Fire Drill Checklist - February, state: active, boardId: "1234567890", columnValues: [{id: status, type: status, text: Done}]}
+              nextCursor: completed-page-3
+            - {boardId: "1234567890", items: []}
+        - name: notFoundFailure
+          branch: notFound
+          description: "The board does not exist or the connection cannot see it."
+          failure: {kind: NOT_FOUND, message: "The board does not exist or the connection cannot see it."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: The requested list filter names a missing board column.
+          failure: {kind: VALIDATION, message: monday.com rejected the list filter column.}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "monday.com returned an invalid or oversized page of items."
+          failure: {kind: PROTOCOL, message: "monday.com returned an invalid or oversized page of items."}
     - name: getItem
       goName: GetItem
       inputType: GetItemInput
@@ -126,26 +155,59 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: createdWorkItem
+          branch: found
+          description: Item 5550004 created for the February work request on board 1234567890.
+          default: true
+          output: {id: "5550004", name: Monthly Fire Drill Checklist - February, state: active, boardId: "1234567890", group: {id: february, title: February}, columnValues: [{id: status, type: status, text: Working on it}, {id: date4, type: date, text: "2026-02-18"}]}
+        - name: notFoundFailure
+          branch: notFound
+          description: "The item does not exist, the connection cannot see it, or it is archived or deleted and inactive items were not requested."
+          failure: {kind: NOT_FOUND, message: "The item does not exist, the connection cannot see it, or it is archived or deleted and inactive items were not requested."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: The connection lacks permission to read this item.
+          failure: {kind: AUTHORIZATION, message: monday.com denied item read permission.}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "monday.com returned an invalid or oversized item."
+          failure: {kind: PROTOCOL, message: "monday.com returned an invalid or oversized item."}
     - name: createItem
       goName: CreateItem
       inputType: CreateItemInput
       outputType: CreateItemOutput
       kind: mutation
-      description: Create one item on a board, optionally in a group, with typed column values; every attempt of the Step sends the same monday.com Idempotency-Key, so a repeated dispatch returns the first item instead of creating another.
+      description: Create one item on a board with typed column values. A stable Idempotency-Key and sync dispatch checkpoint fence retries; an unconfirmed sent request fails closed.
       idempotency: required
       authorization: required
       branches:
         - {id: created, goName: Created, description: "monday.com created the item, or replayed the item this Step already created, and returned it."}
         - {id: notFound, goName: NotFound, description: "The board or group does not exist or the connection cannot see it; nothing was created.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "monday.com conclusively rejected the item, such as an invalid column value, a missing status label, the board's item limit, or missing permission; nothing was created.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "monday.com accepted the mutation but returned an unusable item, so the item may exist and must not be created again automatically.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "An earlier create may have been accepted, but its result cannot be confirmed; the item must not be created again automatically.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      # Async: every attempt carries the Step's Idempotency-Key, and the five-minute window stays inside monday.com's 30-minute replay cache.
-      # Ten attempts let a re-dispatched attempt wait out IDEMPOTENCY_CONFLICT answers while a slow first attempt finishes.
+      # Sync makes dispatch heartbeats visible to the next attempt; missing or stale checkpoints fail closed.
+      # The five-minute budget stays inside monday.com's 30-minute key cache.
       execution:
         executeMethodTimeout: 30s
-        durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 10, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "monday.com replays a keyed create for only 30 minutes, so stop createItem retries within five minutes before its cache expires."}}
+        durability: sync
+        heartbeatTimeout: 10s
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 10, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "The monday.com key expires after 30 minutes; stop createItem retries within five minutes despite documented cache exceptions."}}
+      mocks:
+        - name: februaryWorkItem
+          branch: created
+          description: Create the February work request on board 1234567890 in group february as item 5550004.
+          default: true
+          output: {boardId: "1234567890", groupId: february, itemName: Monthly Fire Drill Checklist - February, itemId: "5550004", item: {id: "5550004", name: Monthly Fire Drill Checklist - February, state: active, boardId: "1234567890", group: {id: february, title: February}, columnValues: [{id: status, type: status, text: Working on it}, {id: date4, type: date, text: "2026-02-18"}]}}
+        - name: notFoundFailure
+          branch: notFound
+          description: "The board or group does not exist or the connection cannot see it; nothing was created."
+          failure: {kind: NOT_FOUND, message: "The board or group does not exist or the connection cannot see it; nothing was created."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: The requested status label does not exist and label creation is disabled.
+          failure: {kind: VALIDATION, message: monday.com rejected the status label.}
     - name: updateItemColumnValues
       goName: UpdateItemColumnValues
       inputType: UpdateItemColumnValuesInput
@@ -163,21 +225,54 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: scheduledWorkItem
+          branch: updated
+          description: Set status and due date on item 5550004 of board 1234567890.
+          default: true
+          output: {boardId: "1234567890", itemId: "5550004", item: {id: "5550004", name: Monthly Fire Drill Checklist - February, state: active, boardId: "1234567890", group: {id: february, title: February}, columnValues: [{id: status, type: status, text: Working on it}, {id: date4, type: date, text: "2026-02-18"}]}}
+        - name: notFoundFailure
+          branch: notFound
+          description: "The board or item does not exist or the connection cannot see it; nothing was changed."
+          failure: {kind: NOT_FOUND, message: "The board or item does not exist or the connection cannot see it; nothing was changed."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: The requested status label does not exist and label creation is disabled.
+          failure: {kind: VALIDATION, message: monday.com rejected the status label.}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "monday.com returned an invalid or oversized item, so the values may have been set; repeating the Step is safe."
+          failure: {kind: PROTOCOL, message: "monday.com returned an invalid or oversized item, so the values may have been set; repeating the Step is safe."}
     - name: addUpdate
       goName: AddUpdate
       inputType: AddUpdateInput
       outputType: AddUpdateOutput
       kind: mutation
-      description: Add one plain-text update, monday.com's item comment, to an item; every attempt of the Step sends the same Idempotency-Key, so a repeated dispatch returns the first update instead of posting another.
+      description: Add one plain-text item update. A stable Idempotency-Key and sync dispatch checkpoint fence retries; an unconfirmed sent request fails closed.
       idempotency: required
       authorization: required
       branches:
         - {id: added, goName: Added, description: "monday.com added the update, or replayed the update this Step already added, and returned it."}
         - {id: notFound, goName: NotFound, description: "The item does not exist or the connection cannot see it; nothing was added.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "monday.com conclusively rejected the update, such as missing permission; nothing was added.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "monday.com accepted the mutation but returned an unusable update, so the update may exist and must not be added again automatically.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "An earlier update may have been accepted, but its result cannot be confirmed; the update must not be added again automatically.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
-        durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 10, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "monday.com replays a keyed comment for only 30 minutes, so stop addUpdate retries within five minutes before its cache expires."}}
+        durability: sync
+        heartbeatTimeout: 10s
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 10, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "The monday.com key expires after 30 minutes; stop addUpdate retries within five minutes despite documented cache exceptions."}}
+      mocks:
+        - name: workRequestUpdate
+          branch: added
+          description: Add update 3300001 to the created February work item 5550004.
+          default: true
+          output: {itemId: "5550004", updateId: "3300001", creatorId: "48202303", createdAt: "2026-02-18T10:06:00Z"}
+        - name: notFoundFailure
+          branch: notFound
+          description: "The item does not exist or the connection cannot see it; nothing was added."
+          failure: {kind: NOT_FOUND, message: "The item does not exist or the connection cannot see it; nothing was added."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: The connection lacks permission to add an update to this item.
+          failure: {kind: AUTHORIZATION, message: monday.com denied update permission.}
