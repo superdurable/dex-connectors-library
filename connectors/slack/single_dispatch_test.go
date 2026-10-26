@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -67,6 +68,38 @@ func TestSharedFenceRetries503ExactlyOnce(t *testing.T) {
 	require.Len(t, messageIDs, 2)
 	require.NotEmpty(t, messageIDs[0])
 	require.Equal(t, messageIDs[0], messageIDs[1])
+}
+
+func TestSharedFenceBodyErrorsDoNotAuthorizeNon2xxResend(t *testing.T) {
+	for _, statusCode := range []int{http.StatusInternalServerError, http.StatusBadGateway, http.StatusGatewayTimeout, http.StatusBadRequest} {
+		for _, providerError := range []string{"service_unavailable", "ratelimited"} {
+			t.Run(strconv.Itoa(statusCode)+"-"+providerError, func(t *testing.T) {
+				posts := 0
+				client := newSlackClientWithTransport(t, roundTripFunc(func(request *http.Request) (*http.Response, error) {
+					posts++
+					return slackTestResponse(statusCode, `{"ok":false,"error":"`+providerError+`"}`), nil
+				}))
+				ctx := singledispatchtest.NewContext("shared-fence-status", "post")
+				input := slack.PostThreadReplyInput{ChannelID: "C123", ThreadTimestamp: "1.0", Text: "hello"}
+				result, err := sdkgo.RunMutation(ctx, client.PostThreadReply(), slackConnection, input)
+				require.NoError(t, err)
+				if statusCode >= 500 {
+					require.Equal(t, slack.PostThreadReplyBranchUncertain, result.Branch)
+				} else {
+					require.Equal(t, slack.PostThreadReplyBranchProviderRejected, result.Branch)
+				}
+				require.Equal(t, 1, posts)
+				heartbeats := ctx.Heartbeats()
+				require.NotEmpty(t, heartbeats)
+				require.Contains(t, string(heartbeats[len(heartbeats)-1]), `"state":"claimed"`)
+				ctx.AdvanceAttempt()
+				result, err = sdkgo.RunMutation(ctx, client.PostThreadReply(), slackConnection, input)
+				require.NoError(t, err)
+				require.Equal(t, slack.PostThreadReplyBranchUncertain, result.Branch)
+				require.Equal(t, 1, posts)
+			})
+		}
+	}
 }
 
 func TestSharedFenceCredentialFailureRecordsNotSent(t *testing.T) {
@@ -139,6 +172,102 @@ func TestSharedFenceAcceptedPostReadsBackWithoutResend(t *testing.T) {
 	require.Equal(t, slack.PostThreadReplyBranchSent, result.Branch)
 	require.EqualValues(t, 1, posts.Load())
 	require.EqualValues(t, 1, reads.Load())
+}
+
+func TestSharedFenceInternalErrorReadBackRetriesWithoutResend(t *testing.T) {
+	posts := 0
+	reads := 0
+	client := newSlackClientWithTransport(t, roundTripFunc(func(request *http.Request) (*http.Response, error) {
+		if request.Method == http.MethodPost {
+			posts++
+			return slackTestResponse(http.StatusOK, `{"ok":false,"error":"internal_error","ts":"2.0"}`), nil
+		}
+		reads++
+		if reads == 1 {
+			return slackTestResponse(http.StatusServiceUnavailable, `{"ok":false,"error":"service_unavailable"}`), nil
+		}
+		return slackTestResponse(http.StatusOK, `{"ok":true,"messages":[{"ts":"2.0","thread_ts":"1.0","text":"hello"}]}`), nil
+	}))
+	ctx := singledispatchtest.NewContext("shared-fence-internal-readback", "post")
+	input := slack.PostThreadReplyInput{ChannelID: "C123", ThreadTimestamp: "1.0", Text: "hello"}
+	_, err := sdkgo.RunMutation(ctx, client.PostThreadReply(), slackConnection, input)
+	require.Error(t, err)
+	require.Equal(t, 1, posts)
+	require.Equal(t, 1, reads)
+	ctx.AdvanceAttempt()
+	result, err := sdkgo.RunMutation(ctx, client.PostThreadReply(), slackConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, slack.PostThreadReplyBranchSent, result.Branch)
+	require.Equal(t, 1, posts)
+	require.Equal(t, 2, reads)
+}
+
+func TestSharedFenceReadBackFailureClassificationNeverResends(t *testing.T) {
+	for _, testCase := range []struct {
+		name              string
+		postBody          string
+		readStatus        int
+		readBody          string
+		readError         error
+		withoutUserToken  bool
+		wantsRetry        bool
+		wantsSent         bool
+		wantsReadRequests int
+	}{
+		{name: "missing_read_credential", postBody: `{"ok":true,"ts":"2.0"}`, withoutUserToken: true, wantsRetry: true},
+		{name: "unusable_read_response", postBody: `{"ok":true,"ts":"2.0"}`, readStatus: http.StatusOK, readBody: `{"ok":`, wantsReadRequests: 1},
+		{name: "read_transport_error", postBody: `{"ok":true,"ts":"2.0"}`, readError: errors.New("connection reset"), wantsRetry: true, wantsReadRequests: 1},
+		{name: "read_rate_limited", postBody: `{"ok":true,"ts":"2.0"}`, readStatus: http.StatusTooManyRequests, readBody: `{"ok":false,"error":"ratelimited"}`, wantsRetry: true, wantsReadRequests: 1},
+		{name: "read_server_error", postBody: `{"ok":true,"ts":"2.0"}`, readStatus: http.StatusInternalServerError, readBody: `{"ok":false,"error":"internal_error"}`, wantsRetry: true, wantsReadRequests: 1},
+		{name: "read_client_error", postBody: `{"ok":true,"ts":"2.0"}`, readStatus: http.StatusBadRequest, readBody: `{"ok":false,"error":"invalid_arguments"}`, wantsReadRequests: 1},
+		{name: "read_ok_false", postBody: `{"ok":true,"ts":"2.0"}`, readStatus: http.StatusOK, readBody: `{"ok":false,"error":"channel_not_found"}`, wantsReadRequests: 1},
+		{name: "read_not_found", postBody: `{"ok":true,"ts":"2.0"}`, readStatus: http.StatusOK, readBody: `{"ok":true,"messages":[]}`, wantsReadRequests: 1},
+		{name: "read_confirmed", postBody: `{"ok":true,"ts":"2.0"}`, readStatus: http.StatusOK, readBody: `{"ok":true,"messages":[{"ts":"2.0","thread_ts":"1.0","text":"hello"}]}`, wantsSent: true, wantsReadRequests: 1},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			posts := 0
+			reads := 0
+			transport := roundTripFunc(func(request *http.Request) (*http.Response, error) {
+				if request.Method == http.MethodPost {
+					posts++
+					return slackTestResponse(http.StatusOK, testCase.postBody), nil
+				}
+				reads++
+				if testCase.readError != nil {
+					return nil, testCase.readError
+				}
+				return slackTestResponse(testCase.readStatus, testCase.readBody), nil
+			})
+			var client *slack.Client
+			if testCase.withoutUserToken {
+				var err error
+				client, err = slack.New(slack.Config{}, sdkgo.StaticCredentialProvider[slack.Credentials]{slackConnection: {
+					BotToken: sdkgo.NewSecretString("bot-token"),
+				}}, slack.WithHTTPClient(&http.Client{Transport: transport}))
+				require.NoError(t, err)
+			} else {
+				client = newSlackClientWithTransport(t, transport)
+			}
+			ctx := singledispatchtest.NewContext("shared-fence-read-"+testCase.name, "post")
+			result, err := sdkgo.RunMutation(ctx, client.PostThreadReply(), slackConnection, slack.PostThreadReplyInput{ChannelID: "C123", ThreadTimestamp: "1.0", Text: "hello"})
+			if testCase.wantsRetry {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				if testCase.wantsSent {
+					require.Equal(t, slack.PostThreadReplyBranchSent, result.Branch)
+				} else {
+					require.Equal(t, slack.PostThreadReplyBranchUncertain, result.Branch)
+				}
+			}
+			require.Equal(t, 1, posts)
+			require.Equal(t, testCase.wantsReadRequests, reads)
+		})
+	}
+}
+
+func slackTestResponse(statusCode int, body string) *http.Response {
+	return &http.Response{StatusCode: statusCode, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}
 }
 
 func TestSharedFencePreparesSingleUseHTTPWrite(t *testing.T) {

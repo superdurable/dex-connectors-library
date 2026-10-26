@@ -132,6 +132,23 @@ func TestThreadApprovalExampleRetriesSafePostsAndNeverResendsUnknownPostsWithRea
 	require.Len(t, messageIDs, 2)
 	require.NotEmpty(t, messageIDs[0])
 	require.Equal(t, messageIDs[0], messageIDs[1])
+
+	gatewayRoot := slack.MessageEvent{
+		TeamID: teamID, ChannelID: "C1", Timestamp: "9.0", ThreadTimestamp: "9.0", UserID: "U1", Text: "request approval",
+	}
+	gatewayFlowID := startSlackThreadFlow(t, ctx, harness.client, flow, "Ev-root-gateway-"+testRunID, gatewayRoot)
+	waitForSlackStatus(t, ctx, harness.client, flow, gatewayFlowID, StatusWaitingForReply)
+	gatewayReply := sdkgo.TriggerEvent[slack.MessageEvent]{
+		ID: "Ev-reply-gateway-" + testRunID, OccurredAt: time.Unix(10, 0).UTC(),
+		Payload: slack.MessageEvent{
+			TeamID: teamID, ChannelID: "C1", Timestamp: "10.0", ThreadTimestamp: "9.0", UserID: "U2", Text: "approve",
+		},
+	}
+	require.NoError(t, replyTarget.HandleTrigger(ctx, gatewayReply))
+	gatewayResult, err := harness.client.WaitForFlow(ctx, gatewayFlowID, dex.WaitForFlowOptions{})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowFailed, gatewayResult.Status)
+	require.Equal(t, 1, provider.postCount("9.0"))
 }
 
 func startSlackThreadFlow(
@@ -219,6 +236,11 @@ func (provider *slackProvider) serveHTTP(response http.ResponseWriter, request *
 		}
 		if threadTimestamp == "7.0" && postCount == 1 {
 			response.WriteHeader(http.StatusServiceUnavailable)
+			writeSlackProviderResponse(response, `{"ok":false,"error":"service_unavailable"}`)
+			return
+		}
+		if threadTimestamp == "9.0" {
+			response.WriteHeader(http.StatusGatewayTimeout)
 			writeSlackProviderResponse(response, `{"ok":false,"error":"service_unavailable"}`)
 			return
 		}

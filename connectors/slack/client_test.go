@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/slack"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -25,9 +26,17 @@ var slackConnection = sdkgo.ConnectionRef{Provider: "slack", Name: "workspace"}
 
 type rejectionRefreshingCredentialProvider struct {
 	forcedRefreshes int
+	hasRefreshed    bool
+	refreshError    error
 }
 
-func (*rejectionRefreshingCredentialProvider) Resolve(sdkgo.Call) (slack.Credentials, error) {
+func (provider *rejectionRefreshingCredentialProvider) Resolve(sdkgo.Call) (slack.Credentials, error) {
+	if provider.hasRefreshed {
+		return slack.Credentials{
+			BotToken: sdkgo.NewSecretString("replacement-bot"), UserToken: sdkgo.NewSecretString("replacement-user"),
+			AppToken: sdkgo.NewSecretString("app-token"),
+		}, nil
+	}
 	return slack.Credentials{
 		BotToken: sdkgo.NewSecretString("rejected-bot"), UserToken: sdkgo.NewSecretString("rejected-user"),
 		AppToken: sdkgo.NewSecretString("app-token"),
@@ -49,10 +58,11 @@ func (provider *rejectionRefreshingCredentialProvider) ResolveAfterRejection(
 	sdkgo.CredentialRefreshDriver[slack.Credentials],
 ) (slack.Credentials, error) {
 	provider.forcedRefreshes++
-	return slack.Credentials{
-		BotToken: sdkgo.NewSecretString("replacement-bot"), UserToken: sdkgo.NewSecretString("replacement-user"),
-		AppToken: sdkgo.NewSecretString("app-token"),
-	}, nil
+	if provider.refreshError != nil {
+		return slack.Credentials{}, provider.refreshError
+	}
+	provider.hasRefreshed = true
+	return provider.Resolve(sdkgo.Call{})
 }
 
 func TestListThreadMessagesUsesUserTokenAndReturnsCursor(t *testing.T) {
@@ -217,6 +227,76 @@ func TestPostMessageProviderRejectionUsesProviderRejectedBranch(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, slack.PostChannelMessageBranchProviderRejected, result.Branch)
 	require.Equal(t, sdkgo.FailureNotFound, result.Failure.Kind)
+}
+
+func TestPostMessageRejectedCredentialRefreshesAcrossFencedAttempts(t *testing.T) {
+	for _, testCase := range []struct {
+		name       string
+		statusCode int
+		body       string
+	}{
+		{name: "token_expired", statusCode: http.StatusOK, body: `{"ok":false,"error":"token_expired"}`},
+		{name: "invalid_auth", statusCode: http.StatusOK, body: `{"ok":false,"error":"invalid_auth"}`},
+		{name: "unauthorized", statusCode: http.StatusUnauthorized, body: `{"ok":false,"error":"not_authed"}`},
+		{name: "unauthorized_malformed_body", statusCode: http.StatusUnauthorized, body: `{"ok":`},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			var messageIDs []string
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+				var payload map[string]string
+				require.NoError(t, json.NewDecoder(request.Body).Decode(&payload))
+				messageIDs = append(messageIDs, payload["client_msg_id"])
+				if len(messageIDs) == 1 {
+					require.Equal(t, "Bearer rejected-bot", request.Header.Get("Authorization"))
+					response.WriteHeader(testCase.statusCode)
+					_, _ = response.Write([]byte(testCase.body))
+					return
+				}
+				require.Equal(t, "Bearer replacement-bot", request.Header.Get("Authorization"))
+				_, _ = response.Write([]byte(`{"ok":true,"channel":"C123","ts":"2.0"}`))
+			}))
+			t.Cleanup(server.Close)
+			provider := &rejectionRefreshingCredentialProvider{}
+			client, err := slack.New(slack.Config{Endpoint: server.URL}, provider)
+			require.NoError(t, err)
+			ctx := newSlackDexContext("post-refresh-" + testCase.name)
+			input := slack.PostChannelMessageInput{ChannelID: "C123", Text: "hello"}
+			_, err = sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, input)
+			require.Error(t, err)
+			require.Equal(t, 1, provider.forcedRefreshes)
+			require.Len(t, messageIDs, 1)
+			require.Contains(t, string(ctx.heartbeat), `"state":"canResend"`)
+			ctx.attempt = 2
+			result, err := sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, input)
+			require.NoError(t, err)
+			require.Equal(t, slack.PostChannelMessageBranchSent, result.Branch)
+			require.Equal(t, 1, provider.forcedRefreshes)
+			require.Len(t, messageIDs, 2)
+			require.Equal(t, messageIDs[0], messageIDs[1])
+		})
+	}
+}
+
+func TestPostMessageRejectedCredentialWithoutRefreshSelectsProviderRejected(t *testing.T) {
+	for _, refreshError := range []error{projectconfig.ErrRejectedCredentialNotRefreshed, errors.New("credential broker unavailable")} {
+		t.Run(refreshError.Error(), func(t *testing.T) {
+			requests := 0
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+				requests++
+				_, _ = response.Write([]byte(`{"ok":false,"error":"token_expired"}`))
+			}))
+			t.Cleanup(server.Close)
+			provider := &rejectionRefreshingCredentialProvider{refreshError: refreshError}
+			client, err := slack.New(slack.Config{Endpoint: server.URL}, provider)
+			require.NoError(t, err)
+			result, err := sdkgo.RunMutation(newSlackDexContext("post-refresh-failed"), client.PostChannelMessage(), slackConnection, slack.PostChannelMessageInput{ChannelID: "C123", Text: "hello"})
+			require.NoError(t, err)
+			require.Equal(t, slack.PostChannelMessageBranchProviderRejected, result.Branch)
+			require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
+			require.Equal(t, 1, requests)
+			require.Equal(t, 1, provider.forcedRefreshes)
+		})
+	}
 }
 
 func TestPostMessageServerFailureIsUncertain(t *testing.T) {
@@ -535,12 +615,10 @@ func newSlackClient(t *testing.T, endpoint string) *slack.Client {
 
 type slackDexContext struct {
 	context.Context
-	step                 string
-	attempt              int32
-	heartbeat            []byte
-	heartbeatError       error
-	heartbeatErrorOnCall int
-	heartbeatWriteCount  int
+	step           string
+	attempt        int32
+	heartbeat      []byte
+	heartbeatError error
 }
 
 func newSlackDexContext(step string) *slackDexContext {
@@ -564,12 +642,8 @@ func (*slackDexContext) HasTimerFired() bool           { return false }
 func (*slackDexContext) HasTimerFiredByIndex(int) bool { return false }
 func (*slackDexContext) WaitForMethodFailed() bool     { return false }
 func (context *slackDexContext) RecordHeartbeat(value any) error {
-	context.heartbeatWriteCount++
 	if context.heartbeatError != nil {
 		return context.heartbeatError
-	}
-	if context.heartbeatWriteCount == context.heartbeatErrorOnCall {
-		return errors.New("heartbeat unavailable")
 	}
 	if value == nil {
 		context.heartbeat = nil

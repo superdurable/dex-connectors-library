@@ -452,7 +452,10 @@ func (client *Client) postMessage(call sdkgo.Call, operationName string, channel
 		response, sendErr = client.post(requestContext, credentials, botCredentialToken, "chat.postMessage", payload)
 		return sendErr
 	})
-	if errors.Is(err, singledispatch.ErrCheckpoint) || errors.Is(err, singledispatch.ErrInsufficientTime) {
+	if errors.Is(err, singledispatch.ErrCheckpoint) {
+		return sdkgo.NewMutationRetry[PostMessageOutput](slackFailure(operationName, sdkgo.FailureAvailability, "Slack dispatch claim could not be recorded"), 0)
+	}
+	if errors.Is(err, singledispatch.ErrInsufficientTime) {
 		return sdkgo.NewMutationRetry[PostMessageOutput](slackFailure(operationName, sdkgo.FailureAvailability, "Slack dispatch was not sent before the Step deadline"), 0)
 	}
 	if response.statusCode == http.StatusTooManyRequests || response.statusCode == http.StatusServiceUnavailable {
@@ -466,6 +469,16 @@ func (client *Client) postMessage(call sdkgo.Call, operationName string, channel
 			failureMessage = "Slack message service is temporarily unavailable"
 		}
 		return sdkgo.NewMutationRetry[PostMessageOutput](slackFailure(operationName, failureKind, failureMessage), retryAfter(response.header))
+	}
+	if slackCredentialRejected(response) {
+		replacement, refreshErr := sdkgo.ResolveCredentialAfterRejection(call.Context, client.credentials, call, client.refreshDriver)
+		if refreshErr != nil || validateResolvedCredentialToken(replacement, botCredentialToken) != nil {
+			return sdkgo.NewMutationBranch(providerRejected, PostMessageOutput{}, slackFailurePointer(operationName, sdkgo.FailureAuthentication, "Slack rejected the connection credential"), client.receipt(call, response, ""))
+		}
+		if checkpointErr := fence.RecordCanResend(); checkpointErr != nil {
+			return sdkgo.NewMutationRetry[PostMessageOutput](slackFailure(operationName, sdkgo.FailureAvailability, "Slack retry checkpoint could not be recorded"), 0)
+		}
+		return sdkgo.NewMutationRetry[PostMessageOutput](slackFailure(operationName, sdkgo.FailureAuthentication, "Slack connection credential was refreshed after rejection"), 0)
 	}
 	if err != nil {
 		if errors.Is(err, errSlackRequestInvalid) {
@@ -485,6 +498,9 @@ func (client *Client) postMessage(call sdkgo.Call, operationName string, channel
 	if !response.decoded.OK {
 		switch response.decoded.Error {
 		case "service_unavailable", "ratelimited":
+			if response.statusCode < 200 || response.statusCode >= 300 {
+				break
+			}
 			if checkpointErr := fence.RecordCanResend(); checkpointErr != nil {
 				return sdkgo.NewMutationRetry[PostMessageOutput](slackFailure(operationName, sdkgo.FailureAvailability, "Slack retry checkpoint could not be recorded"), 0)
 			}
@@ -499,6 +515,7 @@ func (client *Client) postMessage(call sdkgo.Call, operationName string, channel
 				providerTimestamp = response.decoded.Timestamp
 			}
 			if providerTimestamp != "" {
+				// Read-back still runs if the provider ID checkpoint is unavailable; later attempts fail closed.
 				_ = fence.RecordProviderID(providerTimestamp)
 				return client.readBackPostedMessage(call, singledispatch.Marker{CallID: call.ID, ProviderID: providerTimestamp}, operationName, channelID, threadTimestamp, uncertain, sent)
 			}
@@ -519,6 +536,7 @@ func (client *Client) postMessage(call sdkgo.Call, operationName string, channel
 		message.Channel = response.decoded.Channel
 	}
 	if message.Timestamp != "" {
+		// The accepted result is known even if its read-back checkpoint is lost.
 		_ = fence.RecordProviderID(message.Timestamp)
 	}
 	if message.Timestamp == "" || message.Channel == "" {
