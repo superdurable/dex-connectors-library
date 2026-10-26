@@ -5,7 +5,7 @@ metadata:
   displayName: Stripe
   description: Create and reconcile hosted card or ACH Checkout Sessions, read PaymentIntents, refund payments, and receive signed Checkout Session events.
   company: Stripe
-  version: v0.24.0
+  version: v0.24.1
 spec:
   provider: stripe
   codegen:
@@ -22,7 +22,7 @@ spec:
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: Maximum complete Stripe API response in bytes; enter a positive integer only to change the safety limit. Oversized responses select invalidResponse.
+        description: Maximum complete Stripe API response in bytes; enter a positive integer only to change the safety limit. Oversized successful responses select invalidResponse; an oversized error response is classified by its status.
         required: false
         default: 1048576
       - name: webhookMaxBodyBytes
@@ -92,7 +92,7 @@ spec:
       inputType: CreateCardCheckoutSessionInput
       outputType: CheckoutSession
       kind: mutation
-      description: Create one Stripe-hosted Checkout Session for a card payment.
+      description: Create one Stripe-hosted Checkout Session for a card payment; keep any overridden retry window at most 23 hours, below the 24 hours that Stripe keeps idempotency keys.
       idempotency: required
       branches:
         - {id: created, goName: Created, description: Stripe created the Checkout Session.}
@@ -130,7 +130,7 @@ spec:
       inputType: CreateACHCheckoutSessionInput
       outputType: CheckoutSession
       kind: mutation
-      description: Create one Stripe-hosted Checkout Session for a US bank account payment.
+      description: Create one Stripe-hosted Checkout Session for a US bank account payment; keep any overridden retry window at most 23 hours, below the 24 hours that Stripe keeps idempotency keys.
       idempotency: required
       branches:
         - {id: created, goName: Created, description: Stripe created the Checkout Session.}
@@ -237,7 +237,7 @@ spec:
       inputType: CreateRefundInput
       outputType: Refund
       kind: mutation
-      description: Refund part or all of one PaymentIntent in minor currency units.
+      description: Refund part or all of one PaymentIntent in minor currency units; keep any overridden retry window at most 23 hours, below the 24 hours that Stripe keeps idempotency keys.
       idempotency: required
       branches:
         - {id: refunded, goName: Refunded, description: Stripe accepted the refund; read its status to tell succeeded from pending.}

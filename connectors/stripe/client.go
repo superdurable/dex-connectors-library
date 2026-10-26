@@ -27,6 +27,11 @@ const (
 	maximumMetadataValRunes = 500
 )
 
+const (
+	stripeIdempotencyErrorType = "idempotency_error"
+	maximumProviderRetryDelay  = time.Hour
+)
+
 var currencyPattern = regexp.MustCompile(`^[a-z]{3}$`)
 
 // Option configures Client construction.
@@ -232,17 +237,18 @@ func (operation CreateACHCheckoutSessionOperation) Invoke(call sdkgo.Call, input
 	}
 	values := input.formValues()
 	response, err := operation.client.request(call, credentials.SecretKey.Reveal(), http.MethodPost, "checkout/sessions", values)
-	if err != nil {
+	isResponseTooLarge := errors.Is(err, errStripeResponseTooLarge)
+	if err != nil && !isResponseTooLarge {
 		if errors.Is(err, errStripeRequestInvalid) {
 			return sdkgo.NewMutationBranch(CreateACHCheckoutSessionBranchDefect, CheckoutSession{}, stripeFailurePointer("createACHCheckoutSession", sdkgo.FailureLocalDefect, err.Error()), sdkgo.Receipt{})
-		}
-		if errors.Is(err, errStripeResponseTooLarge) {
-			return sdkgo.NewMutationBranch(CreateACHCheckoutSessionBranchInvalidResponse, CheckoutSession{}, stripeFailurePointer("createACHCheckoutSession", sdkgo.FailureResponseTooLarge, err.Error()), operation.client.receipt(call, response, ""))
 		}
 		return sdkgo.NewMutationRetry[CheckoutSession](stripeFailure("createACHCheckoutSession", sdkgo.FailureTransport, "Stripe Checkout Session response is unavailable"), retryAfter(response.header))
 	}
 	if response.statusCode == http.StatusTooManyRequests {
 		return sdkgo.NewMutationRetry[CheckoutSession](stripeFailure("createACHCheckoutSession", sdkgo.FailureRateLimit, "Stripe rate limited the Checkout Session request"), retryAfter(response.header))
+	}
+	if response.statusCode == http.StatusConflict && shouldRetryKeyedConflict(response) {
+		return sdkgo.NewMutationRetry[CheckoutSession](stripeFailure("createACHCheckoutSession", sdkgo.FailureConflict, "Stripe reported a conflicting Checkout Session request with this idempotency key"), retryAfter(response.header))
 	}
 	if response.statusCode >= 500 {
 		if shouldRetryKeyedServerFailure(response) {
@@ -252,6 +258,9 @@ func (operation CreateACHCheckoutSessionOperation) Invoke(call sdkgo.Call, input
 	}
 	if response.statusCode < 200 || response.statusCode >= 300 {
 		return sdkgo.NewMutationBranch(CreateACHCheckoutSessionBranchProviderRejected, CheckoutSession{}, classifyStripeRejection("createACHCheckoutSession", response), operation.client.receipt(call, response, ""))
+	}
+	if isResponseTooLarge {
+		return sdkgo.NewMutationBranch(CreateACHCheckoutSessionBranchInvalidResponse, CheckoutSession{}, stripeFailurePointer("createACHCheckoutSession", sdkgo.FailureResponseTooLarge, err.Error()), operation.client.receipt(call, response, ""))
 	}
 	session, err := decodeCheckoutSession(response.body)
 	if err != nil {
@@ -280,10 +289,8 @@ func (operation GetCheckoutSessionOperation) Invoke(call sdkgo.Call, input GetCh
 		return sdkgo.NewQueryBranch(GetCheckoutSessionBranchDefect, CheckoutSession{}, failure, sdkgo.Receipt{})
 	}
 	response, err := operation.client.request(call, credentials.SecretKey.Reveal(), http.MethodGet, "checkout/sessions/"+url.PathEscape(sessionID), nil)
-	if err != nil {
-		if errors.Is(err, errStripeResponseTooLarge) {
-			return sdkgo.NewQueryBranch(GetCheckoutSessionBranchInvalidResponse, CheckoutSession{}, stripeFailurePointer("getCheckoutSession", sdkgo.FailureResponseTooLarge, err.Error()), operation.client.receipt(call, response, sessionID))
-		}
+	isResponseTooLarge := errors.Is(err, errStripeResponseTooLarge)
+	if err != nil && !isResponseTooLarge {
 		return sdkgo.NewQueryRetry[CheckoutSession](stripeFailure("getCheckoutSession", sdkgo.FailureAvailability, "Stripe Checkout Session is temporarily unavailable"), 0)
 	}
 	if response.statusCode == http.StatusTooManyRequests {
@@ -297,6 +304,9 @@ func (operation GetCheckoutSessionOperation) Invoke(call sdkgo.Call, input GetCh
 	}
 	if response.statusCode < 200 || response.statusCode >= 300 {
 		return sdkgo.NewQueryBranch(GetCheckoutSessionBranchProviderRejected, CheckoutSession{}, classifyStripeRejection("getCheckoutSession", response), operation.client.receipt(call, response, sessionID))
+	}
+	if isResponseTooLarge {
+		return sdkgo.NewQueryBranch(GetCheckoutSessionBranchInvalidResponse, CheckoutSession{}, stripeFailurePointer("getCheckoutSession", sdkgo.FailureResponseTooLarge, err.Error()), operation.client.receipt(call, response, sessionID))
 	}
 	session, err := decodeCheckoutSession(response.body)
 	if err != nil {
@@ -416,6 +426,8 @@ func (client *Client) request(call sdkgo.Call, secretKey string, method string, 
 		return result, err
 	}
 	if int64(len(result.body)) > client.maxResponseBytes {
+		// A truncated body must not classify the response; callers use status and headers.
+		result.body = nil
 		return result, errStripeResponseTooLarge
 	}
 	return result, nil
@@ -435,6 +447,15 @@ func shouldRetryKeyedServerFailure(response providerResponse) bool {
 		return false
 	}
 	return response.statusCode == http.StatusBadGateway || response.statusCode == http.StatusServiceUnavailable || response.statusCode == http.StatusGatewayTimeout
+}
+
+// shouldRetryKeyedConflict follows Stripe's SDKs: retry a 409 unless Stripe says not to or the key's parameters differ.
+// https://docs.stripe.com/error-low-level#content-errors
+func shouldRetryKeyedConflict(response providerResponse) bool {
+	if strings.EqualFold(response.header.Get("Stripe-Should-Retry"), "false") {
+		return false
+	}
+	return parseStripeAPIError(response.body).Type != stripeIdempotencyErrorType
 }
 
 func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Credentials, *sdkgo.Failure) {
@@ -495,10 +516,14 @@ func stripeFailurePointer(operation string, kind sdkgo.FailureKind, message stri
 	return &failure
 }
 
+// retryAfter caps the hint before converting it, so a huge value cannot overflow into a negative delay.
 func retryAfter(header http.Header) time.Duration {
-	seconds, err := strconv.Atoi(header.Get("Retry-After"))
+	seconds, err := strconv.ParseInt(header.Get("Retry-After"), 10, 64)
 	if err != nil || seconds < 1 {
 		return 0
+	}
+	if seconds >= int64(maximumProviderRetryDelay/time.Second) {
+		return maximumProviderRetryDelay
 	}
 	return time.Duration(seconds) * time.Second
 }
