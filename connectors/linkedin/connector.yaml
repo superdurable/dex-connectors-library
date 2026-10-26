@@ -5,7 +5,7 @@ metadata:
   displayName: LinkedIn
   description: Read the authenticated member's OpenID Connect UserInfo profile and verified email.
   company: LinkedIn
-  version: v0.22.1
+  version: v0.23.0
 spec:
   provider: linkedin
   codegen:
@@ -102,3 +102,33 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: verifiedSignupProfile
+          branch: profileLoaded
+          description: "An empty profile request for the authorized Ada Lovelace member returns her verified signup identity."
+          default: true
+          output: {subject: "linkedin-member-ada", name: Ada Lovelace, givenName: Ada, familyName: Lovelace, pictureUrl: "https://media.licdn.com/dms/image/ada/profile-displayphoto-shrink_100_100/0/ada", locale: en_US, verifiedEmail: "ada@example.com"}
+        - name: memberWithoutVerifiedEmail
+          branch: verifiedEmailRequired
+          description: "An empty profile request for a member whose UserInfo email is unverified requires a verified email."
+          failure: {kind: AUTHENTICATION, message: "LinkedIn verified email is required."}
+        - name: grantWithoutEmailScope
+          branch: verifiedEmailRequired
+          description: "An empty profile request using a grant without the email scope returns no verified email."
+          failure: {kind: AUTHENTICATION, message: "LinkedIn verified email is required."}
+        - name: forbiddenUserInfoRequest
+          branch: insufficientScope
+          description: "An empty profile request answered with HTTP 403 by LinkedIn UserInfo is forbidden."
+          failure: {kind: AUTHORIZATION, message: "LinkedIn authorization is forbidden or lacks scope."}
+        - name: revokedMemberGrant
+          branch: authorizationRevoked
+          description: "An empty profile request using a revoked grant requires reauthorization."
+          failure: {kind: AUTHENTICATION, message: "LinkedIn authorization is invalid or revoked."}
+        - name: missingMember
+          branch: notFound
+          description: "An empty profile request for a removed member returns no UserInfo profile."
+          failure: {kind: NOT_FOUND, message: "LinkedIn member was not found."}
+        - name: rejectedUserInfoRequest
+          branch: providerRejected
+          description: "An empty profile request answered with HTTP 400 by LinkedIn UserInfo is rejected."
+          failure: {kind: PROVIDER_REJECTION, message: "LinkedIn rejected the UserInfo request."}

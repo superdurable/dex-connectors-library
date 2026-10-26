@@ -5,7 +5,7 @@ metadata:
   displayName: Microsoft Excel
   description: Read Excel tables as rows keyed by column name, read and write bounded ranges, and append table rows without duplicates in workbooks stored in OneDrive for work or school and SharePoint, through Microsoft Graph.
   company: Microsoft
-  version: v0.22.1
+  version: v0.23.0
 spec:
   provider: microsoft
   codegen:
@@ -177,6 +177,28 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: approvalPolicyRows
+          branch: read
+          description: "A getTableRows request for the ApprovalPolicy table in the policy workbook returns travel and hardware approval limits."
+          default: true
+          output:
+            columns: [Category, MaxAutoApproveUsd, Approver]
+            rows:
+              - {index: 0, values: {Category: travel, MaxAutoApproveUsd: 500, Approver: "lead@contoso.com"}}
+              - {index: 1, values: {Category: hardware, MaxAutoApproveUsd: 1500, Approver: "it@contoso.com"}}
+        - name: policyTableMissing
+          branch: notFound
+          description: "A getTableRows request for a deleted ApprovalPolicy table finds no table."
+          failure: {kind: NOT_FOUND, message: "Workbook or table was not found or is not visible to the connection."}
+        - name: policyTableTooLarge
+          branch: tooLarge
+          description: "A getTableRows request for an ApprovalPolicy table above the configured cell limit is refused."
+          failure: {kind: RESPONSE_TOO_LARGE, message: "Table holds more cells than the configured cell limit."}
+        - name: policyReadForbidden
+          branch: providerRejected
+          description: "A getTableRows request for the policy workbook without Files.Read permission is rejected."
+          failure: {kind: AUTHORIZATION, message: "Provider rejected the policy table read."}
     - name: getValues
       goName: GetValues
       inputType: GetValuesInput
@@ -194,6 +216,29 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: approvedSummary
+          branch: read
+          description: "A getValues request for Summary!A2:E2 after approving REQ-1001 reads the displayed decision row."
+          default: true
+          output:
+            address: "Summary!A2:E2"
+            rowCount: 1
+            columnCount: 5
+            values: [["REQ-1001", Travel, 420, approved, "2026-10-26T10:00:00Z"]]
+            text: [["REQ-1001", Travel, "420", approved, "2026-10-26T10:00:00Z"]]
+        - name: summaryWorksheetMissing
+          branch: notFound
+          description: "A getValues request for Summary!A2:E2 after the worksheet was deleted finds no worksheet."
+          failure: {kind: NOT_FOUND, message: "Workbook or worksheet was not found or is not visible to the connection."}
+        - name: summaryResponseTooLarge
+          branch: tooLarge
+          description: "A getValues request for Summary!A2:E2 with a response above the configured byte limit is refused."
+          failure: {kind: RESPONSE_TOO_LARGE, message: "Provider response exceeds the configured response limit."}
+        - name: summaryReadForbidden
+          branch: providerRejected
+          description: "A getValues request for Summary!A2:E2 without Files.Read permission is rejected."
+          failure: {kind: AUTHORIZATION, message: "Provider rejected the summary read."}
     - name: updateValues
       goName: UpdateValues
       inputType: UpdateValuesInput
@@ -209,6 +254,20 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: approvedSummaryWritten
+          branch: updated
+          description: "An updateValues request writing the REQ-1001 approval to Summary!A2:E2 succeeds."
+          default: true
+          output: {address: "Summary!A2:E2", rowCount: 1, columnCount: 5}
+        - name: summaryWriteMissing
+          branch: notFound
+          description: "An updateValues request for Summary!A2:E2 after the worksheet was deleted finds no worksheet."
+          failure: {kind: NOT_FOUND, message: "Workbook or worksheet was not found or is not visible to the connection."}
+        - name: summaryProtected
+          branch: providerRejected
+          description: "An updateValues request writing Summary!A2:E2 on a protected worksheet is forbidden."
+          failure: {kind: AUTHORIZATION, message: "Provider rejected the write."}
     - name: appendTableRows
       goName: AppendTableRows
       inputType: AppendTableRowsInput
@@ -228,3 +287,21 @@ spec:
         executeMethodTimeout: 30s
         durability: sync
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "A repeated append POST could add the rows again if key-column read-back misses the first append; Excel enforces no append key."}}
+      mocks:
+        - name: approvedDecisionLogged
+          branch: appended
+          description: "An appendTableRows request keyed by REQ-1001 adds its approved row to the Decisions table."
+          default: true
+          output: {appendedKeys: ["REQ-1001"], alreadyPresentKeys: []}
+        - name: decisionTableMissing
+          branch: notFound
+          description: "An appendTableRows request for a deleted Decisions table finds no table and writes nothing."
+          failure: {kind: NOT_FOUND, message: "Workbook or table was not found or is not visible to the connection."}
+        - name: decisionColumnsMismatch
+          branch: columnsMismatch
+          description: "An appendTableRows request with RequestId as key fails when Decisions lacks that column."
+          failure: {kind: VALIDATION, message: "The table has no column with the key column's name."}
+        - name: decisionAppendForbidden
+          branch: providerRejected
+          description: "An appendTableRows request for Decisions on a protected worksheet is forbidden before writing."
+          failure: {kind: AUTHORIZATION, message: "Provider rejected the append; nothing was written."}

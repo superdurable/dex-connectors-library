@@ -5,7 +5,7 @@ metadata:
   displayName: Microsoft Entra ID
   description: Read and list Microsoft Entra ID user accounts, create, disable, and enable them, revoke their sign-in sessions, and add or remove group members through Microsoft Graph, converging instead of duplicating when a Step repeats.
   company: Microsoft
-  version: v0.22.1
+  version: v0.23.0
 spec:
   provider: microsoft
   codegen:
@@ -144,6 +144,20 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: adaAccount
+          branch: found
+          description: "A getUser request for ada.lovelace@contoso.com finds Ada's enabled account before offboarding."
+          default: true
+          output: {id: "11111111-2222-4333-8444-555555555555", userPrincipalName: "ada.lovelace@contoso.com", displayName: Ada Lovelace, givenName: Ada, surname: Lovelace, mailNickname: ada.lovelace, isAccountEnabled: true, userType: Member, department: Engineering, usageLocation: GB, createdDateTime: "2026-10-25T09:00:00Z"}
+        - name: accountMissing
+          branch: notFound
+          description: "A getUser request for absent@contoso.com finds no account."
+          failure: {kind: NOT_FOUND, message: "Account was not found."}
+        - name: accountReadForbidden
+          branch: providerRejected
+          description: "A getUser request for ada.lovelace@contoso.com without User.Read.All is forbidden."
+          failure: {kind: AUTHORIZATION, message: "Microsoft Graph rejected the account read."}
     - name: listUsers
       goName: ListUsers
       inputType: ListUsersInput
@@ -160,6 +174,20 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      pagination: {inputField: pageToken, nextField: nextPageToken}
+      mocks:
+        - name: tenantAccounts
+          branch: listed
+          description: "A listUsers request with no filter pages through the Contoso tenant, including Ada, a duplicate, and a disabled user."
+          default: true
+          pages:
+            - {users: [{id: "22222222-3333-4444-8555-666666666666", userPrincipalName: "grace.hopper@contoso.com", displayName: Grace Hopper, isAccountEnabled: true, userType: Member}], nextPageToken: "https://graph.microsoft.com/v1.0/users?$skiptoken=page-2"}
+            - {users: [{id: "11111111-2222-4333-8444-555555555555", userPrincipalName: "ada.lovelace@contoso.com", displayName: Ada Lovelace, givenName: Ada, surname: Lovelace, mailNickname: ada.lovelace, isAccountEnabled: true, userType: Member, department: Engineering, usageLocation: GB, createdDateTime: "2026-10-25T09:00:00Z"}, {id: "22222222-3333-4444-8555-666666666666", userPrincipalName: "grace.hopper@contoso.com", displayName: Grace Hopper, isAccountEnabled: true, userType: Member}], nextPageToken: "https://graph.microsoft.com/v1.0/users?$skiptoken=page-3"}
+            - {users: [{id: "33333333-4444-4555-8666-777777777777", userPrincipalName: "alan.turing@contoso.com", displayName: Alan Turing, isAccountEnabled: false, userType: Member}]}
+        - name: unsupportedAccountFilter
+          branch: providerRejected
+          description: "A listUsers request with an unsupported OData filter is rejected by Graph."
+          failure: {kind: VALIDATION, message: "Microsoft Graph rejected the user filter."}
     - name: createUser
       goName: CreateUser
       inputType: CreateUserInput
@@ -177,6 +205,21 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: createdAda
+          branch: created
+          description: "A createUser request for ada.lovelace@contoso.com with the onboarding details creates her enabled account."
+          default: true
+          output: {user: {id: "11111111-2222-4333-8444-555555555555", userPrincipalName: "ada.lovelace@contoso.com", displayName: Ada Lovelace, givenName: Ada, surname: Lovelace, mailNickname: ada.lovelace, isAccountEnabled: true, userType: Member, department: Engineering, usageLocation: GB, createdDateTime: "2026-10-25T09:00:00Z"}, wasAlreadyCreated: false}
+        - name: accountNameTaken
+          branch: alreadyExists
+          description: "A createUser request for taken@contoso.com conflicts with another account's principal name."
+          output: {user: {id: "66666666-7777-4888-8999-aaaaaaaaaaaa", userPrincipalName: "taken@contoso.com", displayName: "Existing Account", mailNickname: taken, isAccountEnabled: true, userType: Member}}
+          failure: {kind: CONFLICT, message: "User principal name belongs to another account."}
+        - name: unverifiedDomain
+          branch: providerRejected
+          description: "A createUser request for ada@unverified.example is rejected because the tenant has not verified that domain."
+          failure: {kind: VALIDATION, message: "Microsoft Graph rejected the unverified domain."}
     - name: disableUser
       goName: DisableUser
       inputType: DisableUserInput
@@ -194,6 +237,20 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: disabledAda
+          branch: disabled
+          description: "A disableUser request for object ID 11111111-2222-4333-8444-555555555555 blocks Ada's sign-in."
+          default: true
+          output: {id: "11111111-2222-4333-8444-555555555555", userPrincipalName: "ada.lovelace@contoso.com", displayName: Ada Lovelace, givenName: Ada, surname: Lovelace, mailNickname: ada.lovelace, isAccountEnabled: false, userType: Member, department: Engineering, usageLocation: GB, createdDateTime: "2026-10-25T09:00:00Z"}
+        - name: disableMissingAccount
+          branch: notFound
+          description: "A disableUser request for deleted object 99999999-9999-4999-8999-999999999999 finds no account."
+          failure: {kind: NOT_FOUND, message: "Account was not found."}
+        - name: disableForbidden
+          branch: providerRejected
+          description: "A disableUser request for Ada's account without account management permission is forbidden."
+          failure: {kind: AUTHORIZATION, message: "Microsoft Graph rejected the account change."}
     - name: enableUser
       goName: EnableUser
       inputType: EnableUserInput
@@ -211,6 +268,20 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: enabledAda
+          branch: enabled
+          description: "An enableUser request for ada.lovelace@contoso.com restores Ada's sign-in after offboarding."
+          default: true
+          output: {id: "11111111-2222-4333-8444-555555555555", userPrincipalName: "ada.lovelace@contoso.com", displayName: Ada Lovelace, givenName: Ada, surname: Lovelace, mailNickname: ada.lovelace, isAccountEnabled: true, userType: Member, department: Engineering, usageLocation: GB, createdDateTime: "2026-10-25T09:00:00Z"}
+        - name: enableMissingAccount
+          branch: notFound
+          description: "An enableUser request for deleted@contoso.com finds no account."
+          failure: {kind: NOT_FOUND, message: "Account was not found."}
+        - name: enableForbidden
+          branch: providerRejected
+          description: "An enableUser request for Ada's account without account management permission is forbidden."
+          failure: {kind: AUTHORIZATION, message: "Microsoft Graph rejected the account change."}
     - name: revokeSignInSessions
       goName: RevokeSignInSessions
       inputType: RevokeSignInSessionsInput
@@ -229,6 +300,20 @@ spec:
         executeMethodTimeout: 30s
         durability: async
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Each repeated revocation advances the session cutoff and can sign out someone who signed in after the first attempt, so bound retries to five attempts within two minutes."}}
+      mocks:
+        - name: adaSessionsRevoked
+          branch: revoked
+          description: "A revokeSignInSessions request for object ID 11111111-2222-4333-8444-555555555555 revokes Ada's sessions."
+          default: true
+          output: {userKey: "11111111-2222-4333-8444-555555555555"}
+        - name: revokeMissingAccount
+          branch: notFound
+          description: "A revokeSignInSessions request for deleted object 99999999-9999-4999-8999-999999999999 finds no account."
+          failure: {kind: NOT_FOUND, message: "Account was not found."}
+        - name: revokeForbidden
+          branch: providerRejected
+          description: "A revokeSignInSessions request for Ada without User.RevokeSessions.All is forbidden."
+          failure: {kind: AUTHORIZATION, message: "Microsoft Graph rejected session revocation."}
     - name: addUserToGroup
       goName: AddUserToGroup
       inputType: AddUserToGroupInput
@@ -246,6 +331,20 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: adaAddedToTeam
+          branch: added
+          description: "An addUserToGroup request for Ada's object ID and team group aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee adds her direct membership."
+          default: true
+          output: {groupId: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee", userId: "11111111-2222-4333-8444-555555555555", wasAlreadyMember: false}
+        - name: addToMissingGroup
+          branch: notFound
+          description: "An addUserToGroup request for deleted group bbbbbbbb-cccc-4ddd-8eee-ffffffffffff finds no group."
+          failure: {kind: NOT_FOUND, message: "Group was not found."}
+        - name: dynamicGroupRejectsAdd
+          branch: providerRejected
+          description: "An addUserToGroup request for a dynamic group is rejected because direct membership cannot be edited."
+          failure: {kind: VALIDATION, message: "Microsoft Graph rejected the dynamic group membership."}
     - name: removeUserFromGroup
       goName: RemoveUserFromGroup
       inputType: RemoveUserFromGroupInput
@@ -263,3 +362,17 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: adaRemovedFromTeam
+          branch: removed
+          description: "A removeUserFromGroup request for Ada's object ID and team group aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee removes her direct membership."
+          default: true
+          output: {groupId: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee", userId: "11111111-2222-4333-8444-555555555555", wasAlreadyRemoved: false}
+        - name: removeFromMissingGroup
+          branch: notFound
+          description: "A removeUserFromGroup request for deleted group bbbbbbbb-cccc-4ddd-8eee-ffffffffffff finds no group."
+          failure: {kind: NOT_FOUND, message: "Group was not found."}
+        - name: dynamicGroupRejectsRemoval
+          branch: providerRejected
+          description: "A removeUserFromGroup request for a dynamic group is rejected because direct membership cannot be edited."
+          failure: {kind: VALIDATION, message: "Microsoft Graph rejected the dynamic group membership change."}

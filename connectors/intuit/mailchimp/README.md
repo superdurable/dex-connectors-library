@@ -296,6 +296,32 @@ never sees the key. Mailchimp publishes no list of data centers to declare one
 command per host. The audience and campaign IDs are therefore operation input,
 with the paths above.
 
+## Mocks
+
+`mailchimpmock.New` supplies one coherent audience: Ben, Ed, and Fay are
+subscribed to audience `57afe96172`, Ben has the spring launch tag, and draft
+campaign `42694e9e57` targets that audience. `listMembers` serves three
+oldest-first pages. Named cases cover missing contacts and audiences, denied
+access, rejected writes, and campaigns that are already sent, unsendable, or
+missing. Script a different case when a test uses another audience or campaign.
+
+The [runnable integration test](examples/approved-campaign-send/flow/workflow_mock_integration_test.go)
+starts the example Flow on a real Dex Worker, approves the send, and checks its
+mapped operation inputs:
+
+```go
+mock := mailchimpmock.New(t, ConnectionName)
+flow := NewFlow(mock.Connection())
+```
+
+```go
+sends := mock.SendCampaign().Calls()
+require.Len(t, sends, 1)
+require.Equal(t, mailchimp.SendCampaignInput{CampaignID: integrationCampaignID, ExpectedListID: integrationListID}, sends[0].Input)
+```
+
+See [`sdkgo/connectormock`](../../../sdkgo/README.md#connector-mocks) for scripting.
+
 ## Example
 
 [`examples/approved-campaign-send`](examples/approved-campaign-send) is a

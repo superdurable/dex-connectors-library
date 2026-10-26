@@ -276,6 +276,34 @@ call refreshes it.
 - Linear's `client_credentials` grant and `actor=app` authorization for agent applications.
 - Attachments, sub-issue relations other than `ParentID`, and custom views.
 
+## Mocks
+
+`linearmock.New` supplies a typed connection for the Engineering team. Its
+defaults describe Alice Nguyen, the team's workflow states, an issue created
+for the February fire drill, its move to In Progress, its comment, and its
+read-back. The unfiltered issue search serves three newest-first pages with a
+duplicate and an archived issue. Named cases cover missing issues, users, and
+teams, plus conclusive provider rejections. A separate empty search case lets
+a test start from the point before the fire drill issue was created.
+
+The [runnable integration test](examples/issue-request/flow/workflow_mock_integration_test.go)
+starts the example on a real Dex Worker without Linear:
+
+```go
+mock := linearmock.New(t, ConnectionName)
+mock.SearchIssues().Respond(linearmock.SearchIssuesNoOpenFireDrillIssue())
+flow := NewFlow(mock.Connection(), TeamSelection{TeamID: integrationTeamID, TeamKey: "ENG", TeamName: "Engineering"})
+```
+
+It checks the Flow's action and all seven mapped operation inputs:
+
+```go
+creates := mock.CreateIssue().Calls()
+require.Len(t, creates, 1)
+```
+
+See [`sdkgo/connectormock`](../../sdkgo/README.md#connector-mocks) for scripting.
+
 ## Examples
 
 - [`examples/issue-request`](examples/issue-request) is a Dex Web **Start Flow** example that uses all seven

@@ -58,7 +58,7 @@ mkdir -p /tmp/entra-id-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/microsoft/entra-id/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/microsoft/entra-id \
-  --version v0.22.1 --tag connectors/microsoft/entra-id/v0.22.1 \
+  --version v0.23.0 --tag connectors/microsoft/entra-id/v0.23.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/entra-id-release/connector-release.json \
   --digest-output /tmp/entra-id-release/connector-release.json.sha256
