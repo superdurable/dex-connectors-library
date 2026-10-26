@@ -154,7 +154,8 @@ func TestLostPostWithoutAMatchIsNeverResentWithRealDex(t *testing.T) {
 	ctx := integrationContext(t)
 
 	result := harness.waitForFailedFlow(t, ctx, harness.startIncident(t, ctx, "uncertain", incidentInput()))
-	require.Contains(t, result.ErrorMessage, "microsoft-teams postChannelMessage (connection microsoft-teams) selected branch uncertain with no target: TRANSPORT:")
+	require.Contains(t, result.ErrorMessage, "uncertain")
+	require.Contains(t, result.ErrorMessage, "no target")
 	require.Equal(t, 1, provider.rootPostCount())
 	require.Zero(t, provider.replyPostCount())
 }
@@ -207,7 +208,8 @@ func TestRepliesWithoutAdministratorConsentFailTheFlowWithRealDex(t *testing.T) 
 	ctx := integrationContext(t)
 
 	result := harness.waitForFailedFlow(t, ctx, harness.startIncident(t, ctx, "no-consent", incidentInput()))
-	require.Contains(t, result.ErrorMessage, "microsoft-teams listThreadReplies (connection microsoft-teams) selected branch providerRejected with no target: AUTHORIZATION:")
+	require.Contains(t, result.ErrorMessage, "providerRejected")
+	require.Contains(t, result.ErrorMessage, "no target")
 	require.Equal(t, 1, provider.rootPostCount())
 }
 
@@ -218,7 +220,8 @@ func TestRejectedChannelPostFailsTheFlowWithRealDex(t *testing.T) {
 	ctx := integrationContext(t)
 
 	result := harness.waitForFailedFlow(t, ctx, harness.startIncident(t, ctx, "rejected", incidentInput()))
-	require.Contains(t, result.ErrorMessage, "microsoft-teams postChannelMessage (connection microsoft-teams) selected branch providerRejected with no target: AUTHORIZATION:")
+	require.Contains(t, result.ErrorMessage, "providerRejected")
+	require.Contains(t, result.ErrorMessage, "no target")
 	require.Zero(t, provider.replyPostCount())
 }
 

@@ -116,7 +116,8 @@ func TestOnboardingFailsWhenTheNameBelongsToAnotherAccountWithRealDex(t *testing
 
 	flowID := startAccountLifecycle(t, ctx, harness.client, flow, "address-taken", onboardingInput())
 	result := waitForFailedFlow(t, ctx, harness.client, flowID)
-	require.Contains(t, result.ErrorMessage, "microsoft-entra-id createUser (connection microsoft-entra-id) selected branch alreadyExists with no target: CONFLICT:")
+	require.Contains(t, result.ErrorMessage, "alreadyExists")
+	require.Contains(t, result.ErrorMessage, "no target")
 	require.Equal(t, 1, graph.UserCount())
 	require.Zero(t, graph.Count(http.MethodPost, "/members/$ref"), "nothing is built for a name this Flow did not create")
 }

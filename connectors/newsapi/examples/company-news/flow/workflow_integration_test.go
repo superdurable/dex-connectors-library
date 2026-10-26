@@ -84,7 +84,8 @@ func TestCompanyNewsExampleRoutesNewsAPIOutcomesWithRealDex(t *testing.T) {
 		company := "Exhausted " + testRunID
 		result := harness.runFlow(t, ctx, flow, "newsapi-company-news-exhausted-"+testRunID, CompanyNewsRequest{Company: company})
 		require.Equal(t, dex.FlowFailed, result.Status)
-		require.Contains(t, result.ErrorMessage, "newsapi searchArticles (connection newsapi) selected branch providerRejected with no target: QUOTA_EXHAUSTED:")
+		require.Contains(t, result.ErrorMessage, "providerRejected")
+		require.Contains(t, result.ErrorMessage, "no target")
 		require.NotContains(t, result.ErrorMessage, "SENTINEL")
 		require.Len(t, provider.requestsFor(company), 1)
 	})

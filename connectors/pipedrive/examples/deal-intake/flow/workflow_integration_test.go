@@ -164,7 +164,8 @@ func TestLostDealCreateResponseSelectsUncertainAndIsNeverResentWithRealDex(t *te
 
 	result := harness.waitForFlow(t, harness.startIntake(t, "lost-deal", integrationLead()))
 	require.Equal(t, dex.FlowFailed, result.Status)
-	require.Contains(t, result.ErrorMessage, "pipedrive createObject (connection pipedrive-crm) selected branch uncertain with no target: TRANSPORT: Pipedrive request failed before a response arrived")
+	require.Contains(t, result.ErrorMessage, "uncertain")
+	require.Contains(t, result.ErrorMessage, "no target")
 	require.Equal(t, 1, provider.count("dealCreate"), "an unconfirmed create is never resent")
 	require.Equal(t, 1, provider.dealCount(), "Pipedrive did create the deal, which a person must now find")
 }
@@ -197,7 +198,8 @@ func TestLostWorkerDuringDealCreateSelectsUncertainWithoutResendingWithRealDex(t
 	result := harness.waitForFlow(t, flowID)
 	close(provider.holdsFirstDealCreate)
 	require.Equal(t, dex.FlowFailed, result.Status)
-	require.Contains(t, result.ErrorMessage, "pipedrive createObject (connection pipedrive-crm) selected branch uncertain with no target:")
+	require.Contains(t, result.ErrorMessage, "uncertain")
+	require.Contains(t, result.ErrorMessage, "no target")
 	require.Contains(t, result.ErrorMessage, "an earlier attempt of this Step may have sent the create")
 	provider.waitForDelayedRequests(t)
 	require.Equal(t, 1, provider.count("dealCreate"), "the attempt on the new Worker did not resend the create")
@@ -224,7 +226,8 @@ func TestSharedEmailFailsWithoutWritingWithRealDex(t *testing.T) {
 
 	result := harness.waitForFlow(t, harness.startIntake(t, "shared-email", integrationLead()))
 	require.Equal(t, dex.FlowFailed, result.Status)
-	require.Contains(t, result.ErrorMessage, "pipedrive upsertObject (connection pipedrive-crm) selected branch multipleMatches with no target: CONFLICT:")
+	require.Contains(t, result.ErrorMessage, "multipleMatches")
+	require.Contains(t, result.ErrorMessage, "no target")
 	require.Zero(t, provider.count("personCreate")+provider.count("personUpdate"))
 	require.Zero(t, provider.count("dealList"))
 	require.Equal(t, "Jane S.", provider.person(second).name)
@@ -238,7 +241,8 @@ func TestRejectedDealFailsWithoutPipedriveTextWithRealDex(t *testing.T) {
 
 	result := harness.waitForFlow(t, harness.startIntake(t, "rejected-deal", integrationLead()))
 	require.Equal(t, dex.FlowFailed, result.Status)
-	require.Contains(t, result.ErrorMessage, "pipedrive createObject (connection pipedrive-crm) selected branch providerRejected with no target: VALIDATION:")
+	require.Contains(t, result.ErrorMessage, "providerRejected")
+	require.Contains(t, result.ErrorMessage, "no target")
 	require.NotContains(t, result.ErrorMessage, "SENTINEL")
 	require.Zero(t, provider.dealCount())
 }

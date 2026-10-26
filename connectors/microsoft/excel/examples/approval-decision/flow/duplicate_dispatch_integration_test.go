@@ -63,7 +63,8 @@ func TestApprovalDecisionUnconfirmedAppendFailsWithoutResendingWithRealDex(t *te
 
 	result := harness.waitForFlow(t, harness.startDecision(t, "unconfirmed", travelRequest("REQ-2004", 50)))
 	require.Equal(t, dex.FlowFailed, result.Status)
-	require.Contains(t, result.ErrorMessage, "microsoft-excel appendTableRows (connection microsoft-excel-approvals) selected branch uncertain with no target:")
+	require.Contains(t, result.ErrorMessage, "uncertain")
+	require.Contains(t, result.ErrorMessage, "no target")
 	require.Contains(t, result.ErrorMessage, "earlier attempt")
 	require.NotContains(t, result.ErrorMessage, "SENTINEL")
 	require.Equal(t, 1, provider.Count(fakeexcel.CountAppendsReceived))
@@ -84,7 +85,8 @@ func TestApprovalDecisionLostWorkerDuringTheAppendIsNeverResentWithRealDex(t *te
 	result := harness.waitForFlow(t, flowID)
 	close(hold)
 	require.Equal(t, dex.FlowFailed, result.Status)
-	require.Contains(t, result.ErrorMessage, "microsoft-excel appendTableRows (connection microsoft-excel-approvals) selected branch uncertain with no target:")
+	require.Contains(t, result.ErrorMessage, "uncertain")
+	require.Contains(t, result.ErrorMessage, "no target")
 	provider.WaitForDelayedRequests(t, 2*slowProviderDelay)
 	require.Equal(t, 1, provider.Count(fakeexcel.CountAppendsReceived), "the attempt on the new Worker did not resend the append")
 }

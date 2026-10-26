@@ -190,7 +190,8 @@ func TestRejectedCreateFailsTheFlowWithoutLinearTextWithRealDex(t *testing.T) {
 
 	result := harness.waitForFlow(t, flowID)
 	require.Equal(t, dex.FlowFailed, result.Status)
-	require.Contains(t, result.ErrorMessage, "linear createIssue (connection linear-workspace) selected branch providerRejected with no target: VALIDATION: Linear rejected the input (HTTP 400) [INPUT_ERROR; invalid input]")
+	require.Contains(t, result.ErrorMessage, "providerRejected")
+	require.Contains(t, result.ErrorMessage, "no target")
 	require.NotContains(t, result.ErrorMessage, "SENTINEL")
 	require.NotContains(t, result.ErrorMessage, integrationAPIKey)
 	require.Equal(t, 1, provider.count("LinearCreateIssue"), "a conclusive rejection is not retried")

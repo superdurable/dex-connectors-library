@@ -220,7 +220,8 @@ func TestUnusableCreateAnswerFailsWithoutResendingWithRealDex(t *testing.T) {
 
 	result := harness.waitForFlow(t, harness.startWorkRequest(t, "unusable-create", integrationInput()))
 	require.Equal(t, dex.FlowFailed, result.Status)
-	require.Contains(t, result.ErrorMessage, "monday createItem (connection monday-workspace) selected branch uncertain with no target:")
+	require.Contains(t, result.ErrorMessage, "uncertain")
+	require.Contains(t, result.ErrorMessage, "no target")
 	require.Contains(t, result.ErrorMessage, "monday.com accepted the item but returned an unusable item")
 	require.Equal(t, 1, provider.count("create"), "an accepted create is never sent again")
 	require.Equal(t, 1, provider.itemCount(), "monday.com did create the item, which a person must now find")

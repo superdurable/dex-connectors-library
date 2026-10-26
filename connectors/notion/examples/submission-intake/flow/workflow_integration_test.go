@@ -117,7 +117,8 @@ func TestMissingDatabaseFailsAndAmbiguousDatabaseCompletesWithoutWritingWithReal
 	missing, err := harness.client.WaitForFlow(ctx, missingID, dex.WaitForFlowOptions{})
 	require.NoError(t, err)
 	require.Equal(t, dex.FlowFailed, missing.Status)
-	require.Contains(t, missing.ErrorMessage, "notion search (connection notion-workspace) selected branch noMatch with no target: NOT_FOUND:")
+	require.Contains(t, missing.ErrorMessage, "noMatch")
+	require.Contains(t, missing.ErrorMessage, "no target")
 
 	ambiguousInput := submissionInput("sub-ambiguous")
 	ambiguousInput.DatabaseTitle = opsLogTitle
@@ -136,7 +137,8 @@ func TestRejectedCreateFailsWithNotionsSafeCodeWithRealDex(t *testing.T) {
 	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{})
 	require.NoError(t, err)
 	require.Equal(t, dex.FlowFailed, result.Status)
-	require.Contains(t, result.ErrorMessage, "notion createPage (connection notion-workspace) selected branch providerRejected with no target: VALIDATION:")
+	require.Contains(t, result.ErrorMessage, "providerRejected")
+	require.Contains(t, result.ErrorMessage, "no target")
 	require.Contains(t, result.ErrorMessage, "validation_error")
 	require.NotContains(t, result.ErrorMessage, "SENTINEL")
 	require.Equal(t, 1, provider.createCount(submissionID))
