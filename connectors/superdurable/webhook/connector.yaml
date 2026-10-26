@@ -74,7 +74,7 @@ spec:
       - name: deliveryUrl
         goName: DeliveryURL
         type: url
-        description: "HTTPS URL that sendEvent POSTs to, copied from the receiving service's webhook or endpoint settings, such as https://hooks.example.com/dex. It is stored as non-secret configuration, so keep tokens out of it; every request is signed with signing_secret instead. sendEvent delivers at least once: after a 5xx, a timeout, or a lost response it sends the same webhook-id again, so the receiver must deduplicate by webhook-id and answer 2xx for an id it already processed; a 409 for a repeated id is reported as rejected. Blank makes sendEvent select defect; receiving requests does not need it."
+        description: "HTTPS URL that sendEvent POSTs to, copied from the receiving service's webhook or endpoint settings, such as https://hooks.example.com/dex. It is stored as non-secret configuration, so keep tokens out of it; every request is signed with signing_secret instead. sendEvent delivers at least once: after a 409, a 5xx, a timeout, or a lost response it sends the same webhook-id again, so the receiver must record the webhook-id in the same transaction that applies the event, or answer an id still in flight with a retryable status such as 409 or 503, and must answer 2xx for an id it already applied. Blank makes sendEvent select defect; receiving requests does not need it."
         required: false
   auth:
     type: apiKey
@@ -104,11 +104,11 @@ spec:
       inputType: SendEventInput
       outputType: SendEventOutput
       kind: mutation
-      description: "POST one JSON event to the connection's HTTPS delivery URL, signed with the Standard Webhooks scheme. Delivery is at least once: after a 5xx, a timeout, or a lost response the same webhook-id is sent again with a fresh timestamp and signature, so the receiver must deduplicate by webhook-id and answer 2xx for an id it already processed."
+      description: "POST one JSON event to the connection's HTTPS delivery URL, signed with the Standard Webhooks scheme. Delivery is at least once: after a 409, a 5xx, a timeout, or a lost response the same webhook-id is sent again with a fresh timestamp and signature, so the receiver must deduplicate by webhook-id and answer 2xx for an id it already applied."
       idempotency: required
       branches:
         - {id: delivered, goName: Delivered, description: The receiver answered 2xx and accepted the event.}
-        - {id: rejected, goName: Rejected, description: "The receiver answered a redirect or a 4xx other than 408 and 429, so it refused the event; the Result carries the status code. A receiver that answers 409 for a repeated webhook-id lands here although it applied the event, so it must answer 2xx instead.", optional: true}
+        - {id: rejected, goName: Rejected, description: "The receiver answered a redirect or a 4xx other than 408, 409, and 429, so it refused the event; the Result carries the status code. A 409 is retried with the same webhook-id instead, and fails the Flow when the retry budget runs out.", optional: true}
         - {id: defect, goName: Defect, description: "The connection has no valid deliveryUrl or signing secret, or the payload is not one JSON value within maxBodyBytes.", optional: true}
       execution:
         executeMethodTimeout: 30s

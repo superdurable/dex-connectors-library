@@ -14,7 +14,6 @@ import (
 	"net/http/httptest"
 	"regexp"
 	"strconv"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -29,6 +28,9 @@ import (
 
 const forwardedPayload = `{"type":"form.submitted","data":{"email":"ada@example.com"}}`
 
+// droppedAnswer in fakeReceiver.scriptedAnswers aborts the response after the receiver read the event.
+const droppedAnswer = -1
+
 // fakeReceiver is a TLS webhook receiver that verifies Standard Webhooks signatures with its own code.
 type fakeReceiver struct {
 	*httptest.Server
@@ -38,9 +40,11 @@ type fakeReceiver struct {
 	dropFirstResponse bool
 	// replayStatusCode, when set, is the answer for a webhook-id that arrived before, as a deduplicating receiver gives.
 	replayStatusCode int
-	mu               sync.Mutex
-	deliveries       []receivedDelivery
-	seenWebhookIDs   map[string]bool
+	// scriptedAnswers, when set, answers the delivery at each index; droppedAnswer aborts that response.
+	scriptedAnswers []int
+	mu              sync.Mutex
+	deliveries      []receivedDelivery
+	seenWebhookIDs  map[string]bool
 }
 
 type receivedDelivery struct {
@@ -80,8 +84,11 @@ func (receiver *fakeReceiver) receiveDelivery(response http.ResponseWriter, requ
 	}
 	receiver.seenWebhookIDs[webhookID] = true
 	isFirstDelivery := len(receiver.deliveries) == 1
+	if deliveryIndex := len(receiver.deliveries) - 1; deliveryIndex < len(receiver.scriptedAnswers) {
+		statusCode = receiver.scriptedAnswers[deliveryIndex]
+	}
 	receiver.mu.Unlock()
-	if receiver.dropFirstResponse && isFirstDelivery {
+	if (receiver.dropFirstResponse && isFirstDelivery) || statusCode == droppedAnswer {
 		panic(http.ErrAbortHandler)
 	}
 	if receiver.retryAfter != "" {
@@ -196,7 +203,8 @@ func TestSendEventMapsReceiverStatusesToBranches(t *testing.T) {
 		{http.StatusUnauthorized, webhook.SendEventBranchRejected, sdkgo.FailureAuthentication},
 		{http.StatusForbidden, webhook.SendEventBranchRejected, sdkgo.FailureAuthorization},
 		{http.StatusNotFound, webhook.SendEventBranchRejected, sdkgo.FailureNotFound},
-		{http.StatusConflict, webhook.SendEventBranchRejected, sdkgo.FailureConflict},
+		{http.StatusGone, webhook.SendEventBranchRejected, sdkgo.FailureNotFound},
+		{http.StatusUnprocessableEntity, webhook.SendEventBranchRejected, sdkgo.FailureProviderRejection},
 	} {
 		t.Run(strconv.Itoa(test.statusCode), func(t *testing.T) {
 			receiver := newFakeReceiver(t, standardKey(t), test.statusCode)
@@ -210,8 +218,6 @@ func TestSendEventMapsReceiverStatusesToBranches(t *testing.T) {
 			} else {
 				require.Equal(t, test.expectedKind, result.Failure.Kind)
 				require.Contains(t, result.Failure.Message, strconv.Itoa(test.statusCode))
-				require.Equal(t, test.statusCode == http.StatusConflict, strings.Contains(result.Failure.Message, "must answer 2xx"),
-					"only a 409 carries the deduplication guidance")
 			}
 			requireSecretFree(t, result)
 		})
@@ -339,25 +345,69 @@ func TestSendEventSignsEveryAttemptWithItsOwnTimestamp(t *testing.T) {
 	require.True(t, deliveries[1].isSignatureValid)
 }
 
-func TestSendEventReportsAReplayAnsweredWith409AsRejected(t *testing.T) {
-	receiver := newFakeReceiver(t, standardKey(t), http.StatusAccepted)
-	receiver.dropFirstResponse = true
-	receiver.replayStatusCode = http.StatusConflict // a receiver that deduplicates but answers a repeated id with 409
-	client := newSendingClient(t, receiver.URL, standardSecret, receiver.Client())
+func TestSendEventRetriesA409WithTheSameWebhookIDAfterTheCappedRetryAfter(t *testing.T) {
+	for _, test := range []struct {
+		name          string
+		retryAfter    string
+		expectedDelay time.Duration
+	}{
+		{name: "without Retry-After"},
+		{name: "with Retry-After", retryAfter: "7", expectedDelay: 7 * time.Second},
+		{name: "with a Retry-After beyond one hour", retryAfter: "7200", expectedDelay: time.Hour},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			receiver := newFakeReceiver(t, standardKey(t), http.StatusConflict)
+			receiver.retryAfter = test.retryAfter
+			client := newSendingClient(t, receiver.URL, standardSecret, receiver.Client())
+			for range 2 {
+				_, err := sendEvent(t, client, "forward", forwardedPayload)
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry, "a 409 never selects rejected")
+				require.Equal(t, sdkgo.FailureConflict, retry.Failure.Kind)
+				require.Contains(t, retry.Failure.Message, "409")
+				require.NotContains(t, retry.Failure.Message, sentinelSecret)
+				var retryAfter *dex.RetryAfterError
+				if test.expectedDelay == 0 {
+					require.False(t, errors.As(err, &retryAfter), "without a Retry-After the Step's retry policy decides the delay")
+				} else {
+					require.ErrorAs(t, err, &retryAfter)
+					require.Equal(t, test.expectedDelay, retryAfter.After)
+				}
+			}
+			deliveries := receiver.receivedDeliveries()
+			require.Len(t, deliveries, 2)
+			require.Equal(t, deliveries[0].webhookID, deliveries[1].webhookID)
+			require.Equal(t, deliveries[0].body, deliveries[1].body)
+		})
+	}
+}
+
+func TestSendEventDeliversOnceAfterAnInFlightDuplicateIsAnswered409(t *testing.T) {
+	receiver := newFakeReceiver(t, standardKey(t), http.StatusOK)
+	// Lost answer, then 409 while the first request applies, then 2xx once applied.
+	receiver.scriptedAnswers = []int{droppedAnswer, http.StatusConflict, http.StatusOK}
+	client := newSendingClientWithClock(t, receiver.URL, standardSecret, receiver.Client(), advancingClock())
 	_, err := sendEvent(t, client, "forward", forwardedPayload)
 	var retry *sdkgo.RetryError
 	require.ErrorAs(t, err, &retry, "the first answer was lost")
+	require.Equal(t, sdkgo.FailureTransport, retry.Failure.Kind)
+	_, err = sendEvent(t, client, "forward", forwardedPayload)
+	require.ErrorAs(t, err, &retry, "an in-flight duplicate answered 409 is retried")
+	require.Equal(t, sdkgo.FailureConflict, retry.Failure.Kind)
 
 	result, err := sendEvent(t, client, "forward", forwardedPayload)
 	require.NoError(t, err)
-	require.Equal(t, webhook.SendEventBranchRejected, result.Branch, "the connector does not guess that the lost attempt delivered the event")
-	require.Equal(t, sdkgo.FailureConflict, result.Failure.Kind)
-	require.Equal(t, http.StatusConflict, result.Value.StatusCode)
-	require.Contains(t, result.Failure.Message, "must answer 2xx for a webhook-id it already processed")
+	require.Equal(t, webhook.SendEventBranchDelivered, result.Branch)
+	require.Nil(t, result.Failure)
+	require.Equal(t, http.StatusOK, result.Value.StatusCode)
 	deliveries := receiver.receivedDeliveries()
-	require.Len(t, deliveries, 2)
-	require.Equal(t, deliveries[0].webhookID, result.Value.WebhookID)
-	require.Equal(t, deliveries[0].webhookID, deliveries[1].webhookID)
+	require.Len(t, deliveries, 3)
+	for _, delivery := range deliveries {
+		require.Equal(t, result.Value.WebhookID, delivery.webhookID)
+		require.Equal(t, forwardedPayload, delivery.body)
+		require.True(t, delivery.isSignatureValid)
+	}
+	requireSecretFree(t, result)
 }
 
 func TestSendEventRetriesWhenTheCredentialBrokerIsUnavailable(t *testing.T) {
