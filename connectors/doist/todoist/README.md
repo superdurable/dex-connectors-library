@@ -75,11 +75,12 @@ async durability, a 30-second Execute timeout, and at most five attempts within
 two minutes. Backoff starts at one second and caps at 30 seconds.
 An unwired optional branch fails the Flow.
 
-Every request ends before the attempt's Execute deadline, so Dex records the
-operation's own result instead of timing out the attempt and running it again.
-The attempt time is the 30-second Execute timeout, or less when the Step
-context's deadline is earlier; an async Step's first attempt may get only about
-seven seconds. A create or update POST must finish within seven twelfths of
+The connector ends its requests inside the attempt deadline it observes on the
+Step context, with a reserved margin, so under normal engine timing Dex records
+the operation's own result instead of timing out the attempt and running it
+again, which for create would send a second POST. The attempt time is the
+30-second Execute timeout, or less when the Step context's deadline is earlier;
+an async Step's first attempt may get only about seven seconds. A create or update POST must finish within seven twelfths of
 that time, and every request, including a read-back, within five sixths; the
 rest covers recording the result. These limits also cut a longer `Timeout` or
 caller-supplied `http.Client.Timeout`. A request with less than a tenth of the
@@ -87,7 +88,9 @@ attempt time left is not sent: the attempt retries, except that a skipped
 create read-back selects `uncertain`. A create POST cut off by its limit
 therefore selects `uncertain`, and an update cut off by its limit retries.
 Credentials are resolved once per attempt, before its first request, and a
-read-back reuses them.
+read-back reuses them. A residual risk remains: a heavily loaded engine may not
+record the result within the margin, and a custom transport that ignores the
+request context is not interrupted by these limits.
 
 The existing get/update pair has the following contract:
 

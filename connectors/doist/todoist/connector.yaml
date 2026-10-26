@@ -43,7 +43,7 @@ spec:
         - Sign in to Todoist as the account whose tasks this connection should list, read, create, update, and delete.
         - Open Settings > Integrations > Developer and copy the personal API token under API token. This secret grants access to that account; never put it in Flow input.
         - Paste the token without a Bearer prefix into api_token and save the connection. Leave the non-secret HTTP settings blank for their displayed defaults.
-        - To revoke the token, use the API token replacement control on the same Developer settings page. Save the replacement here; credentials are resolved on each request without restarting the Worker.
+        - To revoke the token, use the API token replacement control on the same Developer settings page. Save the replacement here; credentials are resolved on each operation attempt without restarting the Worker.
   operations:
     - name: getTask
       goName: GetTask
