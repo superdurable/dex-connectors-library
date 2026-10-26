@@ -204,16 +204,25 @@ these positions:
   a 5xx or a lost response, is retried.
 - **createTicket** and **addNote** run with sync durability, so Dex never sends
   a second attempt while the first is in flight. Before sending, the operation
-  records a Dex heartbeat checkpoint naming the Step's Call ID. A later
-  attempt of the same Step execution that finds the checkpoint, after a lost
-  Worker or an Execute timeout, selects `uncertain` without sending.
-- Only an outcome that proves Freshdesk did not apply the request is retried: a
-  429, which Freshdesk returns instead of processing the request, and a
-  connection that failed before it opened. The checkpoint is cleared first.
-- A 5xx, a 408, a lost or unreadable response, and an invalid or oversized
+  records a heartbeat checkpoint naming the Call ID and attempt. A 429, 503,
+  or traced DNS, connect, or TLS failure before connection records which next
+  attempt may retry. A missing or stale checkpoint on a later attempt selects
+  `uncertain` without sending; Dex does not acknowledge heartbeat persistence.
+- A request starts only when at least two seconds remain on the Step context.
+  Its context ends one second before the observed Execute deadline, leaving
+  time to record the outcome. A skipped request permits only the next attempt.
+- A 408, a 5xx other than 503, a lost or unreadable response, and an invalid or oversized
   2xx select `uncertain`: the ticket or note may exist, and the connector never
   resends it. The example leaves `uncertain` unwired, so the Flow fails;
   an operator can inspect Freshdesk before deciding what to do next.
+
+[Freshdesk API v2](https://developers.freshdesk.com/api/) documents ticket
+search, ticket custom fields, and paginated conversation reads, but does not
+document a per-request idempotency key, a ticket lookup by connector Call ID,
+or a conversation marker field. Ticket search indexing can lag by minutes.
+An account-specific ticket custom field would change the customer's ticket
+form and still leave note or reply correlation unresolved. A search miss
+cannot prove that a possibly accepted write did not happen.
 
 Keep these two Steps sync. An application override to async durability lets
 Dex dispatch a second request after seven seconds. A checkpoint lost before
@@ -237,7 +246,8 @@ token that contains the API key is dropped.
 | 3xx | `providerRejected`, `PROTOCOL`; redirects are never followed | same |
 | 429 | Retry after `Retry-After` | Retry after `Retry-After` |
 | connection refused before sending | Retry | Retry |
-| 408, 5xx, lost or unreadable response | Retry, after `Retry-After` when present | `uncertain` |
+| 503 | Retry, after `Retry-After` when present | Retry after a next-attempt checkpoint |
+| 408, other 5xx, lost or unreadable response | Retry, after `Retry-After` when present | `uncertain` |
 | oversized, malformed, or credential-reflecting 2xx | `invalidResponse` | `uncertain` |
 | invalid input or connection credentials | `defect`, with no request | `defect`, with no request |
 
@@ -279,6 +289,23 @@ read and the write is overwritten for the fields this Step sets.
 unresolved ticket about an issue or creates one, sets its priority, and adds
 one private triage note.
 
+## Mocks
+
+The generated `freshdeskmock` package gives each operation one realistic
+default and named definite rejection cases. Its defaults describe Jane's
+billing issue: search page 1 is empty, page 2 finds ticket 1201, getTicket
+confirms it, updateTicket reprioritizes it, and addNote adds the triage note.
+createTicket has a default for the alternate new-issue path. Tests should
+assert call inputs and counts; unscripted calls otherwise receive defaults.
+The runnable example's real-Dex mock test uses:
+
+```go
+mock := freshdeskmock.New(t, ConnectionName)
+harness := newTriageHarnessForConnection(t, mock.Connection())
+input := integrationIssueInput()
+outcome := harness.runTriage(t, "mock-default", input)
+```
+
 ## Verification
 
 ```bash
@@ -302,8 +329,8 @@ go run ./cmd/connectorctl generate --check connectors/freshworks/freshdesk/conne
 
 The provider fakes cover Basic authentication, filter-query building and quoting,
 page limits, the contact lookup and requester filter, the requester embed and
-oldest-first conversations, escaped HTML bodies, the dispatch checkpoint and its
-clearing, only-changed-field updates and complete tag lists, Freshdesk error
+oldest-first conversations, escaped HTML bodies, attempt-scoped dispatch and
+retry checkpoints, only-changed-field updates and complete tag lists, Freshdesk error
 codes and field tokens without message text, `Retry-After`, redirects,
 oversized, malformed, and credential-reflecting responses, and invalid
 credentials.
@@ -315,5 +342,7 @@ tags; how the filter query treats a status value the account does not define;
 whether `PUT /api/v2/tickets/{id}` replaces the tag list with the sent list;
 whether `/conversations` is ordered oldest first and sets the `Link` header as
 other list endpoints do; whether 429 responses are always returned before a
-write is applied; the `X-Request-Id` header; and the Profile Settings path in
+write is applied; whether a 503 always means no write was accepted; the
+`X-Request-Id` header; deadline and checkpoint behavior against a real
+Freshdesk account; and the Profile Settings path in
 the setup guidance.

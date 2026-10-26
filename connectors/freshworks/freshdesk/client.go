@@ -15,11 +15,12 @@ package freshdesk
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net"
 	"net/http"
+	"net/http/httptrace"
 	"net/url"
 	"regexp"
 	"sort"
@@ -111,6 +112,8 @@ const (
 	exchangeNotSent
 	// exchangeUnavailable is a 5xx, a 408, or a transport failure after connecting; a write may have been applied.
 	exchangeUnavailable
+	// exchangeServiceUnavailable is a 503, which the Step retries under the provider retry contract.
+	exchangeServiceUnavailable
 	exchangeRejected
 	exchangeInvalid
 	exchangeDefect
@@ -201,13 +204,24 @@ func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Cre
 
 // exchange sends one authenticated request and classifies its response without deciding retry policy.
 func (client *Client) exchange(call sdkgo.Call, credentials Credentials, operation string, request freshdeskRequest) freshdeskExchange {
-	httpRequest, err := client.buildRequest(call, credentials, request)
+	var requestContext context.Context = call.Context
+	if deadline, hasDeadline := requestContext.Deadline(); hasDeadline {
+		if time.Until(deadline) <= 2*time.Second {
+			return freshdeskExchange{outcome: exchangeNotSent, failure: freshdeskFailure(sdkgo.FailureAvailability, operation, "too little attempt time remained, so the request was not sent")}
+		}
+		boundedContext, cancel := context.WithDeadline(requestContext, deadline.Add(-time.Second))
+		defer cancel()
+		requestContext = boundedContext
+	}
+	observation := &dispatchObservation{}
+	requestContext = httptrace.WithClientTrace(requestContext, observation.clientTrace())
+	httpRequest, err := client.buildRequest(requestContext, credentials, request)
 	if err != nil {
 		return freshdeskExchange{outcome: exchangeDefect, failure: freshdeskFailure(sdkgo.FailureLocalDefect, operation, err.Error())}
 	}
 	httpResponse, err := client.httpClient.Do(httpRequest)
 	if err != nil {
-		if isConnectionNeverEstablished(err) {
+		if observation.isProvablyUndispatched() {
 			return freshdeskExchange{outcome: exchangeNotSent, failure: freshdeskFailure(sdkgo.FailureTransport, operation, "Freshdesk could not be reached; no request was sent")}
 		}
 		return freshdeskExchange{outcome: exchangeUnavailable, failure: freshdeskFailure(sdkgo.FailureTransport, operation, "Freshdesk request failed before a response arrived")}
@@ -233,7 +247,7 @@ func (client *Client) exchange(call sdkgo.Call, credentials Credentials, operati
 	return client.classifyFailureStatus(response, credentials, operation)
 }
 
-func (client *Client) buildRequest(call sdkgo.Call, credentials Credentials, request freshdeskRequest) (*http.Request, error) {
+func (client *Client) buildRequest(requestContext context.Context, credentials Credentials, request freshdeskRequest) (*http.Request, error) {
 	target := client.apiBaseURL + request.path
 	if len(request.query) != 0 {
 		target += "?" + request.query.Encode()
@@ -245,9 +259,9 @@ func (client *Client) buildRequest(call sdkgo.Call, credentials Credentials, req
 		if encodeErr != nil {
 			return nil, errFreshdeskRequestNotBuilt
 		}
-		httpRequest, err = http.NewRequestWithContext(call.Context, request.method, target, bytes.NewReader(encoded))
+		httpRequest, err = http.NewRequestWithContext(requestContext, request.method, target, bytes.NewReader(encoded))
 	} else {
-		httpRequest, err = http.NewRequestWithContext(call.Context, request.method, target, nil)
+		httpRequest, err = http.NewRequestWithContext(requestContext, request.method, target, nil)
 	}
 	if err != nil {
 		return nil, errFreshdeskRequestNotBuilt
@@ -269,6 +283,9 @@ func (client *Client) classifyFailureStatus(response freshdeskResponse, credenti
 	case status == http.StatusTooManyRequests:
 		return freshdeskExchange{outcome: exchangeRateLimited, response: response, retryAfter: retryAfter,
 			failure: freshdeskFailure(sdkgo.FailureRateLimit, operation, withErrorSummary("Freshdesk rate limited the request (HTTP 429)", summary))}
+	case status == http.StatusServiceUnavailable:
+		return freshdeskExchange{outcome: exchangeServiceUnavailable, response: response, retryAfter: retryAfter,
+			failure: freshdeskFailure(sdkgo.FailureAvailability, operation, withErrorSummary("Freshdesk is unavailable (HTTP 503)", summary))}
 	case status == http.StatusRequestTimeout || status >= 500:
 		return freshdeskExchange{outcome: exchangeUnavailable, response: response, retryAfter: retryAfter,
 			failure: freshdeskFailure(sdkgo.FailureAvailability, operation, withErrorSummary(fmt.Sprintf("Freshdesk could not complete the request (HTTP %d)", status), summary))}
@@ -358,12 +375,6 @@ func (client *Client) receipt(call sdkgo.Call, response freshdeskResponse, objec
 		receipt.ProviderObjectID = strconv.FormatInt(objectID, 10)
 	}
 	return receipt
-}
-
-// isConnectionNeverEstablished reports a dial failure, after which Freshdesk cannot have received the request.
-func isConnectionNeverEstablished(err error) bool {
-	var operationError *net.OpError
-	return errors.As(err, &operationError) && operationError.Op == "dial"
 }
 
 func safeRequestID(header http.Header) string {

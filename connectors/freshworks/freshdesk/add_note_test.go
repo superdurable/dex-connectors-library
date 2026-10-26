@@ -72,10 +72,17 @@ func TestAddNoteBranches(t *testing.T) {
 			provider := newRecordingFreshdesk(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
 				writeJSON(t, response, test.status, test.body)
 			})
-			result, err := sdkgo.RunMutation(newFreshdeskDexContext("note-"+test.name), newFreshdeskClient(t, provider.URL).AddNote(), freshdeskConnection, freshdesk.AddNoteInput{TicketID: 3, Body: "Hello"})
+			ctx := newFreshdeskDexContext("note-" + test.name)
+			result, err := sdkgo.RunMutation(ctx, newFreshdeskClient(t, provider.URL).AddNote(), freshdeskConnection, freshdesk.AddNoteInput{TicketID: 3, Body: "Hello"})
 			require.NoError(t, err)
 			require.Equal(t, test.branch, result.Branch)
 			require.Equal(t, 1, provider.requestCount())
+			if test.branch == freshdesk.AddNoteBranchUncertain {
+				replayed, replayErr := sdkgo.RunMutation(ctx.nextAttempt(), newFreshdeskClient(t, provider.URL).AddNote(), freshdeskConnection, freshdesk.AddNoteInput{TicketID: 3, Body: "Hello"})
+				require.NoError(t, replayErr)
+				require.Equal(t, freshdesk.AddNoteBranchUncertain, replayed.Branch)
+				require.Equal(t, 1, provider.requestCount(), "an accepted or possibly accepted note is never resent")
+			}
 		})
 	}
 }
@@ -87,4 +94,31 @@ func TestAddNoteRejectsInvalidInputBeforeAnyRequest(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, freshdesk.AddNoteBranchDefect, result.Branch)
 	}
+}
+
+func TestAddNoteRetriesServiceUnavailableWithoutDuplicateReply(t *testing.T) {
+	provider := newRecordingFreshdesk(t, func(response http.ResponseWriter, _ *http.Request, index int) {
+		if index == 0 {
+			writeJSON(t, response, http.StatusServiceUnavailable, `{"code":"service_unavailable"}`)
+			return
+		}
+		writeJSON(t, response, http.StatusCreated, `{"id":7,"ticket_id":141,"body_text":"We are working on this issue.","created_at":"2026-01-27T10:00:00Z"}`)
+	})
+	input := freshdesk.AddNoteInput{TicketID: 141, Body: "We are working on this issue.", IsPublicReply: true}
+	first := newFreshdeskDexContext("reply-503")
+	_, err := sdkgo.RunMutation(first, newFreshdeskClient(t, provider.URL).AddNote(), freshdeskConnection, input)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+	second := first.nextAttempt()
+	result, err := sdkgo.RunMutation(second, newFreshdeskClient(t, provider.URL).AddNote(), freshdeskConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, freshdesk.AddNoteBranchAdded, result.Branch)
+	require.Equal(t, 2, provider.requestCount())
+	third := second.nextAttempt()
+	third.previousHeartbeat = first.recordedHeartbeat
+	result, err = sdkgo.RunMutation(third, newFreshdeskClient(t, provider.URL).AddNote(), freshdeskConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, freshdesk.AddNoteBranchUncertain, result.Branch)
+	require.Equal(t, 2, provider.requestCount())
 }

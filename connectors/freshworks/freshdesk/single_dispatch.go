@@ -9,7 +9,9 @@ import (
 
 // singleDispatchMarker is the Dex heartbeat checkpoint recorded before a non-idempotent request is sent.
 type singleDispatchMarker struct {
-	DispatchedCallID sdkgo.CallID `json:"freshdeskDispatchedCallId"`
+	DispatchedCallID  sdkgo.CallID `json:"freshdeskDispatchedCallId"`
+	DispatchedAttempt int32        `json:"freshdeskDispatchedAttempt,omitempty"`
+	RetryAttempt      int32        `json:"freshdeskRetryAttempt,omitempty"`
 }
 
 // singleDispatchClaim is whether this attempt may send its non-idempotent Freshdesk request.
@@ -28,19 +30,22 @@ const (
 func claimSingleDispatch(call sdkgo.Call) singleDispatchClaim {
 	var marker singleDispatchMarker
 	isMarkerFound, err := call.Context.GetLastHeartbeatValue(&marker)
-	if err != nil || isMarkerFound {
+	if err != nil || (isMarkerFound && (marker.DispatchedCallID != call.ID || marker.RetryAttempt != call.Context.Attempt())) {
 		return singleDispatchAlreadySent
 	}
-	if err := call.Context.RecordHeartbeat(singleDispatchMarker{DispatchedCallID: call.ID}); err != nil {
+	if !isMarkerFound && call.Context.Attempt() != 1 {
+		return singleDispatchAlreadySent
+	}
+	if err := call.Context.RecordHeartbeat(singleDispatchMarker{DispatchedCallID: call.ID, DispatchedAttempt: call.Context.Attempt()}); err != nil {
 		return singleDispatchNotRecorded
 	}
 	return singleDispatchGranted
 }
 
-// releaseSingleDispatch clears the marker after Freshdesk provably did not apply the request.
-func releaseSingleDispatch(call sdkgo.Call) {
-	// A failed clear leaves the marker, so the next attempt selects uncertain instead of resending.
-	_ = call.Context.RecordHeartbeat(nil)
+// permitSingleDispatchRetry records which next attempt may resend after a safe retry outcome.
+func permitSingleDispatchRetry(call sdkgo.Call) {
+	// A failed or unacknowledged heartbeat makes the next attempt fail closed.
+	_ = call.Context.RecordHeartbeat(singleDispatchMarker{DispatchedCallID: call.ID, RetryAttempt: call.Context.Attempt() + 1})
 }
 
 // singleDispatchBranches names an operation's branches for the shared single-dispatch outcome mapping.
@@ -70,8 +75,8 @@ func singleDispatchAttemptForExchange[OUT any](call sdkgo.Call, result freshdesk
 	switch result.outcome {
 	case exchangeSucceeded:
 		return sdkgo.MutationAttempt[OUT]{}, false
-	case exchangeRateLimited, exchangeNotSent:
-		releaseSingleDispatch(call)
+	case exchangeRateLimited, exchangeNotSent, exchangeServiceUnavailable:
+		permitSingleDispatchRetry(call)
 		return sdkgo.NewMutationRetry[OUT](result.failure, result.retryAfter), true
 	case exchangeUnavailable, exchangeInvalid:
 		return sdkgo.NewMutationUncertain(zero, result.failure, receipt), true
@@ -81,7 +86,6 @@ func singleDispatchAttemptForExchange[OUT any](call sdkgo.Call, result freshdesk
 		}
 		return sdkgo.NewMutationBranch(branches.providerRejected, zero, &result.failure, receipt), true
 	case exchangeDefect:
-		releaseSingleDispatch(call)
 		return sdkgo.NewMutationBranch(branches.defect, zero, &result.failure, receipt), true
 	default:
 		return sdkgo.NewMutationBranch(branches.providerRejected, zero, &result.failure, receipt), true

@@ -128,7 +128,7 @@ func searchTicketsAttemptForExchange(result freshdeskExchange, receipt sdkgo.Rec
 	switch result.outcome {
 	case exchangeSucceeded:
 		return sdkgo.QueryAttempt[SearchTicketsOutput]{}, false
-	case exchangeRateLimited, exchangeNotSent, exchangeUnavailable:
+	case exchangeRateLimited, exchangeNotSent, exchangeUnavailable, exchangeServiceUnavailable:
 		return sdkgo.NewQueryRetry[SearchTicketsOutput](result.failure, result.retryAfter), true
 	case exchangeInvalid:
 		return sdkgo.NewQueryBranch(SearchTicketsBranchInvalidResponse, SearchTicketsOutput{}, &result.failure, receipt), true

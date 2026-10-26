@@ -5,7 +5,7 @@ metadata:
   displayName: Freshdesk
   description: Search, read, create, and update Freshdesk tickets and add private notes or public replies, keeping Freshdesk's own integer statuses and priorities.
   company: Freshworks
-  version: v0.21.2
+  version: v0.22.0
 spec:
   provider: freshdesk
   codegen:
@@ -57,6 +57,30 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      pagination: {inputField: page, nextField: nextPage}
+      mocks:
+        - name: customerIssuePages
+          branch: searched
+          description: "For requester jane@acme.example.com and tag billing-double-charge, page 1 is empty, page 2 finds ticket 1201, and page 3 repeats it; other searches need a script."
+          default: true
+          pages:
+            - {tickets: [], totalMatched: 2, nextPage: 2}
+            - tickets:
+                - {id: 1201, subject: Double charge on order 88213, status: 3, priority: 1, requesterId: 6007738334, createdAt: "2026-01-26T14:02:00Z", updatedAt: "2026-01-28T08:45:00Z"}
+              totalMatched: 2
+              nextPage: 3
+            - tickets:
+                - {id: 1201, subject: Double charge on order 88213, status: 3, priority: 1, requesterId: 6007738334, createdAt: "2026-01-26T14:02:00Z", updatedAt: "2026-01-28T08:45:00Z"}
+              totalMatched: 2
+              nextPage: 0
+        - name: searchRejected
+          branch: providerRejected
+          description: "A search for an unknown status is rejected by Freshdesk."
+          failure: {kind: VALIDATION, message: "Freshdesk rejected the ticket status filter."}
+        - name: invalidSearchPage
+          branch: invalidResponse
+          description: "A search page for the requested filter is malformed."
+          failure: {kind: PROTOCOL, message: "Freshdesk returned an invalid search page."}
     - name: getTicket
       goName: GetTicket
       inputType: GetTicketInput
@@ -73,6 +97,27 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: customerIssueTicket
+          branch: found
+          description: "Ticket 1201 belongs to jane@acme.example.com and carries billing-double-charge; another ticket ID needs a script."
+          default: true
+          output:
+            ticket: {id: 1201, subject: Double charge on order 88213, description: I was charged twice., status: 3, priority: 1, requesterId: 6007738334, tags: [billing-double-charge], createdAt: "2026-01-26T14:02:00Z", updatedAt: "2026-01-28T08:45:00Z"}
+            requester: {id: 6007738334, name: Jane Smith, email: jane@acme.example.com}
+            conversations: []
+        - name: ticketMissing
+          branch: notFound
+          description: "The requested ticket ID is not visible to the agent."
+          failure: {kind: NOT_FOUND, message: "Freshdesk found no such ticket."}
+        - name: ticketReadRejected
+          branch: providerRejected
+          description: "The agent cannot read the requested ticket."
+          failure: {kind: AUTHORIZATION, message: "Freshdesk rejected the ticket read."}
+        - name: invalidTicketRead
+          branch: invalidResponse
+          description: "The requested ticket has a malformed conversation page."
+          failure: {kind: PROTOCOL, message: "Freshdesk returned an invalid conversation page."}
     - name: createTicket
       goName: CreateTicket
       inputType: CreateTicketInput
@@ -88,7 +133,18 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "A lost dispatch checkpoint could repeat the ticket POST because Freshdesk has no idempotency key or ticket lookup by Call ID."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "A possibly accepted ticket POST remains uncertain because Freshdesk documents no idempotency key or ticket lookup by Call ID."}}
+      mocks:
+        - name: createdCustomerIssue
+          branch: created
+          description: "For a new issue from jane@acme.example.com tagged billing-double-charge, Freshdesk creates ticket 1202; other inputs need a script."
+          default: true
+          output:
+            ticket: {id: 1202, subject: Double charge on order 88213, description: I was charged twice for order 88213., status: 2, priority: 3, requesterId: 6007738334, tags: [billing-double-charge], createdAt: "2026-01-29T10:00:00Z", updatedAt: "2026-01-29T10:00:00Z"}
+        - name: ticketCreateRejected
+          branch: providerRejected
+          description: "A new ticket naming a group the agent cannot use is rejected."
+          failure: {kind: VALIDATION, message: "Freshdesk rejected the requested group."}
     - name: updateTicket
       goName: UpdateTicket
       inputType: UpdateTicketInput
@@ -105,6 +161,25 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: reprioritizedCustomerIssue
+          branch: updated
+          description: "For ticket 1201, set status Open, priority High, and tag dex-repeat-contact; another ticket or change needs a script."
+          default: true
+          output:
+            ticket: {id: 1201, subject: Double charge on order 88213, description: I was charged twice., status: 2, priority: 3, requesterId: 6007738334, tags: [billing-double-charge, dex-repeat-contact], createdAt: "2026-01-26T14:02:00Z", updatedAt: "2026-01-29T10:01:00Z"}
+        - name: updateTicketMissing
+          branch: notFound
+          description: "The ticket ID to update no longer exists."
+          failure: {kind: NOT_FOUND, message: "Freshdesk found no such ticket."}
+        - name: updateRejected
+          branch: providerRejected
+          description: "The ticket is marked spam and cannot be updated."
+          failure: {kind: PROVIDER_REJECTION, message: "Freshdesk rejected the ticket update."}
+        - name: invalidUpdatedTicket
+          branch: invalidResponse
+          description: "The update succeeded but its ticket answer is malformed."
+          failure: {kind: PROTOCOL, message: "Freshdesk returned an invalid updated ticket."}
     - name: addNote
       goName: AddNote
       inputType: AddNoteInput
@@ -121,4 +196,19 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "A lost dispatch checkpoint could post the note twice because Freshdesk has no idempotency key or note lookup by Call ID."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "A possibly accepted note remains uncertain because Freshdesk documents no idempotency key or note lookup by Call ID."}}
+      mocks:
+        - name: customerIssuePrivateNote
+          branch: added
+          description: "For ticket 1201, add the private triage note for jane@acme.example.com's billing issue; another ticket or body needs a script."
+          default: true
+          output:
+            conversation: {id: 7001, ticketId: 1201, userId: 6001263404, source: 2, isPrivate: true, body: "Dex triage: the customer contacted us again about billing-double-charge. Priority set to High (3).\n\nCustomer message:\nI was charged twice for order 88213.", createdAt: "2026-01-29T10:02:00Z"}
+        - name: noteTicketMissing
+          branch: notFound
+          description: "The ticket ID for the note no longer exists."
+          failure: {kind: NOT_FOUND, message: "Freshdesk found no such ticket for the note."}
+        - name: noteRejected
+          branch: providerRejected
+          description: "The agent cannot add a note to this ticket."
+          failure: {kind: AUTHORIZATION, message: "Freshdesk rejected the note."}

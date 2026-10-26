@@ -109,7 +109,7 @@ func updateTicketAttemptForExchange(result freshdeskExchange, receipt sdkgo.Rece
 	switch result.outcome {
 	case exchangeSucceeded:
 		return sdkgo.MutationAttempt[UpdateTicketOutput]{}, false
-	case exchangeRateLimited, exchangeNotSent, exchangeUnavailable:
+	case exchangeRateLimited, exchangeNotSent, exchangeUnavailable, exchangeServiceUnavailable:
 		return sdkgo.NewMutationRetry[UpdateTicketOutput](result.failure, result.retryAfter), true
 	case exchangeNotFound:
 		return sdkgo.NewMutationBranch(UpdateTicketBranchNotFound, value, &result.failure, receipt), true

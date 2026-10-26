@@ -57,7 +57,7 @@ mkdir -p /tmp/freshdesk-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/freshworks/freshdesk/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/freshworks/freshdesk \
-  --version v0.21.2 --tag connectors/freshworks/freshdesk/v0.21.2 \
+  --version v0.22.0 --tag connectors/freshworks/freshdesk/v0.22.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/freshdesk-release/connector-release.json \
   --digest-output /tmp/freshdesk-release/connector-release.json.sha256
@@ -135,6 +135,8 @@ Freshdesk, has no idempotency key and omits tags from search results:
 - a lost update response is retried and finds the values applied;
 - a lost create or note response fails the Flow and is never resent;
 - a rate-limited create waits for `Retry-After` and creates one ticket;
+- a 503 create retries once, sends the same ticket request, and creates one ticket;
+- a mock-backed Flow searches two pages, reads and updates the ticket, and records one note with exact inputs;
 - a Worker lost while Freshdesk holds the create is replaced, and the new
   attempt finds the dispatch checkpoint and sends nothing;
 - a rejected ticket fails the Flow through the unwired `providerRejected`

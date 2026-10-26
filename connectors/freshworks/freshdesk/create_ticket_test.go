@@ -4,7 +4,11 @@
 package freshdesk_test
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
+	"io"
+	"net"
 	"net/http"
 	"strings"
 	"testing"
@@ -44,7 +48,7 @@ func TestCreateTicketSendsEscapedHTMLAndFreshdeskIntegersOnce(t *testing.T) {
 	require.JSONEq(t, `{"subject":"Double charge on order 88213","description":"I was charged &lt;b&gt;twice&lt;/b&gt;.<br>Order 88213 &amp; 88214.",
 		"email":"jane@acme.example.com","name":"Jane Smith","status":2,"priority":3,"type":"Problem","tags":["billing-double-charge"],
 		"group_id":156,"responder_id":6001263404}`, request.body)
-	require.JSONEq(t, `{"freshdeskDispatchedCallId":"`+string(result.Receipt.CallID)+`"}`, string(ctx.recordedHeartbeat),
+	require.JSONEq(t, `{"freshdeskDispatchedCallId":"`+string(result.Receipt.CallID)+`","freshdeskDispatchedAttempt":1}`, string(ctx.recordedHeartbeat),
 		"the dispatch marker is recorded before the request")
 }
 
@@ -99,6 +103,12 @@ func TestCreateTicketNeverResendsARequestWhoseOutcomeIsUnknown(t *testing.T) {
 			require.NotContains(t, string(encoded), "SENTINEL")
 			require.NotContains(t, string(encoded), testAPIKey)
 			require.NotEmpty(t, ctx.recordedHeartbeat, "the marker stays, so a replayed attempt sends nothing")
+			if test.branch == freshdesk.CreateTicketBranchUncertain {
+				replayed, replayErr := sdkgo.RunMutation(ctx.nextAttempt(), newFreshdeskClient(t, provider.URL).CreateTicket(), freshdeskConnection, validCreateTicketInput())
+				require.NoError(t, replayErr)
+				require.Equal(t, freshdesk.CreateTicketBranchUncertain, replayed.Branch)
+				require.Equal(t, 1, provider.requestCount(), "an accepted or possibly accepted write is never resent")
+			}
 		})
 	}
 }
@@ -116,14 +126,14 @@ func TestCreateTicketRetriesOnlyWhatFreshdeskProvablyDidNotApply(t *testing.T) {
 	var retryAfter *dex.RetryAfterError
 	require.ErrorAs(t, err, &retryAfter)
 	require.Equal(t, 34*time.Second, retryAfter.After)
-	require.Nil(t, ctx.recordedHeartbeat, "a 429 clears the marker so the retry may send")
+	require.Contains(t, string(ctx.recordedHeartbeat), `"freshdeskRetryAttempt":2`, "a 429 permits only the next attempt")
 	require.Equal(t, 2, ctx.heartbeatCount)
 
 	refused := newFreshdeskDexContext("create-refused")
 	_, err = sdkgo.RunMutation(refused, newFreshdeskClient(t, closedLoopbackURL(t)).CreateTicket(), freshdeskConnection, validCreateTicketInput())
 	require.ErrorAs(t, err, &retry)
 	require.Equal(t, sdkgo.FailureTransport, retry.Failure.Kind)
-	require.Nil(t, refused.recordedHeartbeat, "a refused connection sent nothing")
+	require.Contains(t, string(refused.recordedHeartbeat), `"freshdeskRetryAttempt":2`, "a refused connection permits only the next attempt")
 
 	next := ctx.nextAttempt()
 	created := newRecordingFreshdesk(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
@@ -143,6 +153,12 @@ func TestCreateTicketAfterAnEarlierDispatchSendsNothing(t *testing.T) {
 	require.Equal(t, freshdesk.CreateTicketBranchUncertain, result.Branch)
 	require.Equal(t, "an earlier attempt of this Step may have sent the request, so it is not sent again", result.Failure.Message)
 
+	missing := newFreshdeskDexContext("create-missing-marker").nextAttempt()
+	result, err = sdkgo.RunMutation(missing, newFreshdeskClient(t, provider.URL).CreateTicket(), freshdeskConnection, validCreateTicketInput())
+	require.NoError(t, err)
+	require.Equal(t, freshdesk.CreateTicketBranchUncertain, result.Branch, "an unacknowledged dispatch marker cannot authorize a resend")
+	require.Zero(t, provider.requestCount())
+
 	unrecordable := newFreshdeskDexContext("create-unrecordable")
 	unrecordable.rejectsHeartbeat = true
 	_, err = sdkgo.RunMutation(unrecordable, newFreshdeskClient(t, provider.URL).CreateTicket(), freshdeskConnection, validCreateTicketInput())
@@ -150,6 +166,88 @@ func TestCreateTicketAfterAnEarlierDispatchSendsNothing(t *testing.T) {
 	require.ErrorAs(t, err, &retry)
 	require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
 	require.Zero(t, provider.requestCount())
+}
+
+func TestCreateTicketRetriesServiceUnavailableOnlyOnTheNextAttempt(t *testing.T) {
+	provider := newRecordingFreshdesk(t, func(response http.ResponseWriter, _ *http.Request, index int) {
+		if index == 0 {
+			writeJSON(t, response, http.StatusServiceUnavailable, `{"code":"service_unavailable"}`)
+			return
+		}
+		writeJSON(t, response, http.StatusCreated, ticketBodyJSON(1204, 2, nil))
+	})
+	first := newFreshdeskDexContext("create-503")
+	_, err := sdkgo.RunMutation(first, newFreshdeskClient(t, provider.URL).CreateTicket(), freshdeskConnection, validCreateTicketInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+	require.Contains(t, string(first.recordedHeartbeat), `"freshdeskRetryAttempt":2`)
+
+	second := first.nextAttempt()
+	result, err := sdkgo.RunMutation(second, newFreshdeskClient(t, provider.URL).CreateTicket(), freshdeskConnection, validCreateTicketInput())
+	require.NoError(t, err)
+	require.Equal(t, freshdesk.CreateTicketBranchCreated, result.Branch)
+	require.Equal(t, 2, provider.requestCount())
+
+	third := second.nextAttempt()
+	third.previousHeartbeat = first.recordedHeartbeat
+	result, err = sdkgo.RunMutation(third, newFreshdeskClient(t, provider.URL).CreateTicket(), freshdeskConnection, validCreateTicketInput())
+	require.NoError(t, err)
+	require.Equal(t, freshdesk.CreateTicketBranchUncertain, result.Branch, "a stale safe marker cannot resend an accepted ticket")
+	require.Equal(t, 2, provider.requestCount())
+}
+
+func TestCreateTicketSkipsRequestWithoutAttemptTime(t *testing.T) {
+	provider := newRecordingFreshdesk(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
+	stepContext, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	ctx := newFreshdeskDexContext("create-deadline")
+	ctx.Context = stepContext
+	_, err := sdkgo.RunMutation(ctx, newFreshdeskClient(t, provider.URL).CreateTicket(), freshdeskConnection, validCreateTicketInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+	require.Zero(t, provider.requestCount())
+}
+
+type untracedDialFailureTransport struct{}
+
+func (untracedDialFailureTransport) RoundTrip(*http.Request) (*http.Response, error) {
+	return nil, &net.OpError{Op: "dial", Err: errors.New("untraced dial failure")}
+}
+
+func TestCreateTicketDoesNotRetryAnUntracedDialError(t *testing.T) {
+	client, err := freshdesk.New(freshdesk.Config{Domain: testDomain}, testCredentialProvider(),
+		freshdesk.WithHTTPClient(&http.Client{Transport: untracedDialFailureTransport{}}))
+	require.NoError(t, err)
+	ctx := newFreshdeskDexContext("create-untraced")
+	result, err := sdkgo.RunMutation(ctx, client.CreateTicket(), freshdeskConnection, validCreateTicketInput())
+	require.NoError(t, err)
+	require.Equal(t, freshdesk.CreateTicketBranchUncertain, result.Branch)
+	require.Equal(t, sdkgo.FailureTransport, result.Failure.Kind)
+}
+
+func TestCreateTicketCutsAnAcceptedBodyBeforeTheAttemptDeadlineWithoutResending(t *testing.T) {
+	provider := newRecordingFreshdesk(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+		response.Header().Set("Content-Length", "200")
+		response.WriteHeader(http.StatusCreated)
+		_, err := io.WriteString(response, "{")
+		require.NoError(t, err)
+		response.(http.Flusher).Flush()
+		<-request.Context().Done()
+	})
+	stepContext, cancel := context.WithTimeout(context.Background(), 2500*time.Millisecond)
+	defer cancel()
+	first := newFreshdeskDexContext("create-accepted-body-cut")
+	first.Context = stepContext
+	result, err := sdkgo.RunMutation(first, newFreshdeskClient(t, provider.URL).CreateTicket(), freshdeskConnection, validCreateTicketInput())
+	require.NoError(t, err)
+	require.Equal(t, freshdesk.CreateTicketBranchUncertain, result.Branch)
+	require.NoError(t, stepContext.Err(), "the result returned before the Step deadline")
+	replayed, err := sdkgo.RunMutation(first.nextAttempt(), newFreshdeskClient(t, provider.URL).CreateTicket(), freshdeskConnection, validCreateTicketInput())
+	require.NoError(t, err)
+	require.Equal(t, freshdesk.CreateTicketBranchUncertain, replayed.Branch)
+	require.Equal(t, 1, provider.requestCount())
 }
 
 func TestCreateTicketRejectsInvalidInputBeforeAnyRequest(t *testing.T) {
