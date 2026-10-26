@@ -37,25 +37,26 @@ func newReamazeFence(call sdkgo.Call, executeTimeout time.Duration) (*singledisp
 }
 
 func fencedCredentialAttempt[OUT any](fence *singledispatch.Fence, operation string, defect sdkgo.BranchID, err error) sdkgo.MutationAttempt[OUT] {
+	if checkpointErr := fence.RecordNotSent(); checkpointErr != nil {
+		return sdkgo.NewMutationRetry[OUT](reamazeFailure(sdkgo.FailureAvailability, operation,
+			errors.Join(err, checkpointErr).Error()), 0)
+	}
 	if !errors.Is(err, errReamazeCredentialsUnavailable) {
 		var zero OUT
 		return sdkgo.NewMutationBranch(defect, zero, reamazeFailurePointer(sdkgo.FailureAuthentication, operation,
 			"Re:amaze connection credentials are unusable; reconnect the connection in Dex Web"), sdkgo.Receipt{})
 	}
-	if checkpointErr := fence.RecordNotSent(); checkpointErr != nil {
-		return sdkgo.NewMutationRetry[OUT](reamazeFailure(sdkgo.FailureAvailability, operation,
-			errors.Join(err, checkpointErr).Error()), 0)
-	}
 	return sdkgo.NewMutationRetry[OUT](reamazeFailure(sdkgo.FailureAvailability, operation, err.Error()), 0)
 }
 
-func uncertainOrRetryCredentials[OUT any](operation string, err error) sdkgo.MutationAttempt[OUT] {
+func uncertainOrRetryCredentials[OUT any](client *Client, call sdkgo.Call, operation string, providerID string, err error) sdkgo.MutationAttempt[OUT] {
 	if errors.Is(err, errReamazeCredentialsUnavailable) {
-		return sdkgo.NewMutationRetry[OUT](reamazeFailure(sdkgo.FailureAvailability, operation, err.Error()), 0)
+		return sdkgo.NewMutationRetry[OUT](reamazeFailure(sdkgo.FailureAvailability, operation,
+			"connection credentials could not be loaded to read back an earlier write"), 0)
 	}
 	var zero OUT
 	return sdkgo.NewMutationUncertain(zero, reamazeFailure(sdkgo.FailureAuthentication, operation,
-		"the earlier write cannot be read back until the connection is restored"), sdkgo.Receipt{})
+		"the earlier write cannot be read back; reconnect the connection in Dex Web"), client.receipt(call, reamazeResponse{}, providerID))
 }
 
 func fencedDispatchError[OUT any](operation string, err error) sdkgo.MutationAttempt[OUT] {

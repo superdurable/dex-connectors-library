@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/reamaze"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
 
@@ -82,6 +83,64 @@ func TestCreateConversationFenceRecordsNotSentAfterCredentialFailure(t *testing.
 	require.Equal(t, 1, provider.requestCount())
 }
 
+func TestReplyFenceRecordsNotSentAfterTransientCredentialFailure(t *testing.T) {
+	provider := newRecordingReamaze(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeValue(t, response, http.StatusCreated, messageJSON("Note.", 1, "dex-x"))
+	})
+	client, credentials := newSwitchingReamazeClient(t, provider.URL)
+	credentials.resolveErr = errors.New("credential storage unavailable")
+	ctx := singledispatchtest.NewContext("reamaze-flow", "reply-credential-retry")
+	input := reamaze.ReplyToConversationInput{ConversationID: "double-charge", Text: "Note.", IsInternalNote: true}
+	_, err := sdkgo.RunMutation(ctx, client.ReplyToConversation(), reamazeConnection, input)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+	require.Zero(t, provider.requestCount())
+	require.Len(t, ctx.Heartbeats(), 1)
+	require.Contains(t, string(ctx.Heartbeats()[0]), `"state":"notSent"`)
+
+	credentials.resolveErr = nil
+	ctx.AdvanceAttempt()
+	result, err := sdkgo.RunMutation(ctx, client.ReplyToConversation(), reamazeConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, reamaze.ReplyToConversationBranchReplied, result.Branch)
+	require.Equal(t, 1, provider.requestCount())
+}
+
+func TestFencedWritesKeepReceiptIdentityWhenCheckpointFailsClosed(t *testing.T) {
+	provider := newRecordingReamaze(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusCreated, `{}`)
+	})
+	client := newReamazeClient(t, provider.URL)
+	for _, test := range []struct {
+		name       string
+		wantBranch sdkgo.BranchID
+		run        func(*singledispatchtest.Context) (sdkgo.BranchID, sdkgo.Receipt, error)
+	}{
+		{name: "create", wantBranch: reamaze.CreateConversationBranchUncertain, run: func(ctx *singledispatchtest.Context) (sdkgo.BranchID, sdkgo.Receipt, error) {
+			result, err := sdkgo.RunMutation(ctx, client.CreateConversation(), reamazeConnection, validCreateConversationInput())
+			return result.Branch, result.Receipt, err
+		}},
+		{name: "reply", wantBranch: reamaze.ReplyToConversationBranchUncertain, run: func(ctx *singledispatchtest.Context) (sdkgo.BranchID, sdkgo.Receipt, error) {
+			result, err := sdkgo.RunMutation(ctx, client.ReplyToConversation(), reamazeConnection,
+				reamaze.ReplyToConversationInput{ConversationID: "double-charge", Text: "Note."})
+			return result.Branch, result.Receipt, err
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			ctx := singledispatchtest.NewContext("reamaze-flow", test.name+"-foreign-checkpoint")
+			require.NoError(t, ctx.SetPersistedCheckpoint(singledispatch.Marker{CallID: "foreign", Attempt: 1, State: singledispatch.StateClaimed}))
+			branch, receipt, err := test.run(ctx)
+			require.NoError(t, err)
+			require.Equal(t, test.wantBranch, branch)
+			require.NotEmpty(t, receipt.CallID)
+			require.Equal(t, sdkgo.IdempotencyKey(receipt.CallID), receipt.IdempotencyKey)
+			require.Empty(t, receipt.ProviderObjectID, "a foreign marker cannot expose its provider ID")
+			require.Zero(t, provider.requestCount())
+		})
+	}
+}
+
 func TestFencedWritesRejectUnusableCredentialsBeforeSending(t *testing.T) {
 	for _, test := range []struct {
 		name string
@@ -101,11 +160,16 @@ func TestFencedWritesRejectUnusableCredentialsBeforeSending(t *testing.T) {
 			require.Equal(t, reamaze.CreateConversationBranchDefect, create.Branch)
 			require.Equal(t, sdkgo.FailureAuthentication, create.Failure.Kind)
 			require.Contains(t, create.Failure.Message, "reconnect")
-			reply, err := sdkgo.RunMutation(singledispatchtest.NewContext("reamaze-flow", "unusable-reply"), client.ReplyToConversation(), reamazeConnection,
+			require.Len(t, ctx.Heartbeats(), 1)
+			require.Contains(t, string(ctx.Heartbeats()[0]), `"state":"notSent"`)
+			replyContext := singledispatchtest.NewContext("reamaze-flow", "unusable-reply")
+			reply, err := sdkgo.RunMutation(replyContext, client.ReplyToConversation(), reamazeConnection,
 				reamaze.ReplyToConversationInput{ConversationID: "double-charge", Text: "Note."})
 			require.NoError(t, err)
 			require.Equal(t, reamaze.ReplyToConversationBranchDefect, reply.Branch)
 			require.Equal(t, sdkgo.FailureAuthentication, reply.Failure.Kind)
+			require.Len(t, replyContext.Heartbeats(), 1)
+			require.Contains(t, string(replyContext.Heartbeats()[0]), `"state":"notSent"`)
 			require.Zero(t, provider.requestCount())
 		})
 	}

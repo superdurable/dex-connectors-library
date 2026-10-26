@@ -212,6 +212,9 @@ func TestCreateConversationNeverSelectsDefectForCredentialsAfterAnEarlierDispatc
 				require.NoError(t, err)
 				require.Equal(t, reamaze.CreateConversationBranchUncertain, result.Branch, "a sent write is never reported as defect")
 				require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
+				require.Contains(t, result.Failure.Message, "reconnect the connection in Dex Web")
+				require.NotEmpty(t, result.Receipt.CallID)
+				require.Equal(t, sdkgo.IdempotencyKey(result.Receipt.CallID), result.Receipt.IdempotencyKey)
 				return
 			}
 			var retry *sdkgo.RetryError
@@ -226,6 +229,29 @@ func TestCreateConversationNeverSelectsDefectForCredentialsAfterAnEarlierDispatc
 			require.Equal(t, http.MethodGet, provider.request(1).method, "the next attempt reads back instead of resending")
 		})
 	}
+}
+
+func TestCreateConversationTerminalCredentialsKeepSavedProviderID(t *testing.T) {
+	provider := newRecordingReamaze(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeValue(t, response, http.StatusCreated, conversationJSON("double-charge", 0, nil))
+	})
+	client, credentials := newSwitchingReamazeClient(t, provider.URL)
+	first := newReamazeDexContext("create-saved-provider-id")
+	created, err := sdkgo.RunMutation(first, client.CreateConversation(), reamazeConnection, validCreateConversationInput())
+	require.NoError(t, err)
+	require.Equal(t, reamaze.CreateConversationBranchCreated, created.Branch)
+	require.Contains(t, string(first.recordedHeartbeat), `"providerId":"double-charge"`)
+
+	credentials.resolveErr = sdkgo.ErrReauthorizationRequired
+	result, err := sdkgo.RunMutation(first.nextAttempt(), client.CreateConversation(), reamazeConnection, validCreateConversationInput())
+	require.NoError(t, err)
+	require.Equal(t, reamaze.CreateConversationBranchUncertain, result.Branch)
+	require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
+	require.Contains(t, result.Failure.Message, "reconnect the connection in Dex Web")
+	require.Equal(t, created.Receipt.CallID, result.Receipt.CallID)
+	require.Equal(t, created.Receipt.IdempotencyKey, result.Receipt.IdempotencyKey)
+	require.Equal(t, "double-charge", result.Receipt.ProviderObjectID)
+	require.Equal(t, 1, provider.requestCount())
 }
 
 func TestCreateConversationResendsOnlyAfterAProvableNonApplication(t *testing.T) {

@@ -265,10 +265,11 @@ the HTTP status, such as `Re:amaze rejected the request (HTTP 422)`.
 | oversized, interrupted, or credential-reflecting 2xx | `invalidResponse` or Retry for a read | Read back in the same attempt; `uncertain` if no record confirms acceptance |
 | malformed 2xx | `invalidResponse` | Read back in the same attempt; `uncertain` if unconfirmed |
 | connection credentials that cannot be read yet, such as a storage outage | Retry, with no request | Retry, with no request |
-| invalid input or unusable connection credentials | `defect`, with no request | `defect`, `AUTHENTICATION` with a reconnect hint for unusable credentials before send; `uncertain` after a possible send |
+| invalid input or unusable connection credentials | `defect`, with no request | `defect`, `AUTHENTICATION` with a reconnect hint before send; `uncertain` with a reconnect hint after a possible send |
 
-The Receipt carries the Call ID, the conversation slug, and an `X-Request-Id`
-header when Re:amaze sends one.
+The Receipt carries the Call ID and idempotency key. It includes a conversation
+slug when the connector knows one, including a saved slug on a read-back
+credential failure, and an `X-Request-Id` header when Re:amaze sends one.
 
 ## Not in this release
 

@@ -85,11 +85,11 @@ func (operation ReplyToConversationOperation) Invoke(call sdkgo.Call, input Repl
 	}
 	switch decision := fence.Decide(); decision.Kind {
 	case singledispatch.FailClosed:
-		return sdkgo.NewMutationUncertain(output, reamazeFailure(sdkgo.FailureTransport, replyToConversationOperation, "dispatch checkpoint cannot be trusted"), sdkgo.Receipt{})
+		return sdkgo.NewMutationUncertain(output, reamazeFailure(sdkgo.FailureTransport, replyToConversationOperation, "dispatch checkpoint cannot be trusted"), operation.client.receipt(call, reamazeResponse{}, ""))
 	case singledispatch.ReadBackRequired:
 		credentials, err := operation.client.resolveCredentials(call)
 		if err != nil {
-			return uncertainOrRetryCredentials[ConversationReply](replyToConversationOperation, err)
+			return uncertainOrRetryCredentials[ConversationReply](operation.client, call, replyToConversationOperation, input.ConversationID, err)
 		}
 		return operation.reconcileEarlierDispatch(call, credentials, input)
 	}

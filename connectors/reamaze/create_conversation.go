@@ -127,11 +127,11 @@ func (operation CreateConversationOperation) Invoke(call sdkgo.Call, input Creat
 	}
 	switch decision := fence.Decide(); decision.Kind {
 	case singledispatch.FailClosed:
-		return sdkgo.NewMutationUncertain(CreateConversationOutput{}, reamazeFailure(sdkgo.FailureTransport, createConversationOperation, "dispatch checkpoint cannot be trusted"), sdkgo.Receipt{})
+		return sdkgo.NewMutationUncertain(CreateConversationOutput{}, reamazeFailure(sdkgo.FailureTransport, createConversationOperation, "dispatch checkpoint cannot be trusted"), operation.client.receipt(call, reamazeResponse{}, ""))
 	case singledispatch.ReadBackRequired:
 		credentials, err := operation.client.resolveCredentials(call)
 		if err != nil {
-			return uncertainOrRetryCredentials[CreateConversationOutput](createConversationOperation, err)
+			return uncertainOrRetryCredentials[CreateConversationOutput](operation.client, call, createConversationOperation, decision.Marker.ProviderID, err)
 		}
 		if decision.Marker.ProviderID != "" {
 			return operation.confirmDispatchCandidate(call, credentials, decision.Marker.ProviderID, dispatchKey(call))

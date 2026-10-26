@@ -22,6 +22,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -207,6 +208,37 @@ func TestLostCreateResponseIsReconciledWithoutResendingWithRealDex(t *testing.T)
 	require.Equal(t, 1, provider.count("read"), "the listed candidate's key is confirmed by a single conversation read")
 	require.Equal(t, 1, provider.conversationCount())
 	require.Len(t, provider.conversation(outcome.Conversation.ID).messages, 2, "the Flow continued to the note")
+}
+
+type reauthorizationAfterCreateProvider struct {
+	resolveCount atomic.Int32
+}
+
+func (provider *reauthorizationAfterCreateProvider) Resolve(sdkgo.Call) (reamaze.Credentials, error) {
+	if provider.resolveCount.Add(1) > 2 {
+		return reamaze.Credentials{}, sdkgo.ErrReauthorizationRequired
+	}
+	return reamaze.Credentials{Email: integrationEmail, APIToken: sdkgo.NewSecretString(integrationAPIToken)}, nil
+}
+
+func TestLostCreateResponseWithRevokedCredentialsDoesNotResendWithRealDex(t *testing.T) {
+	provider := newFakeReamaze(t)
+	provider.losesFirstCreateResponse = true
+	reference := sdkgo.ConnectionRef{Provider: "reamaze", Name: ConnectionName}
+	client, err := reamaze.New(reamaze.Config{Brand: integrationBrand}, &reauthorizationAfterCreateProvider{},
+		reamaze.WithAPIBaseURL(provider.URL+"/api/v1"))
+	require.NoError(t, err)
+	connection, err := reamaze.NewConnection(client, reference)
+	require.NoError(t, err)
+	harness := newTriageHarnessForConnection(t, connection)
+
+	result := harness.waitForFlow(t, harness.startTriage(t, "lost-create-revoked-credentials", integrationIssueInput()))
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "uncertain")
+	require.Contains(t, result.ErrorMessage, "no target")
+	require.Equal(t, 1, provider.count("create"))
+	require.Zero(t, provider.count("reconcile"), "read-back waits for restored credentials")
+	require.Equal(t, 1, provider.conversationCount())
 }
 
 func TestUnappliedCreateWithAnUnknownOutcomeFailsWithRealDex(t *testing.T) {
