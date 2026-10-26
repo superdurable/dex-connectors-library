@@ -17,11 +17,11 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		decode func() error
 	}{
 		{name: "listMeetings/listedDefaultAnswer/1", decode: func() error {
-			_, err := connectormock.DecodeOutput[zoom.MeetingPage](`{"meetings":[{"id":92674392836,"topic":"Consultation","type":2,"startTime":"2036-02-24T17:00:00Z","durationMinutes":30,"timeZone":"America/Los_Angeles"},{"id":92674392840,"topic":"Team review","type":2,"startTime":"2036-02-25T17:00:00Z","durationMinutes":45,"timeZone":"America/Los_Angeles"}],"nextPageToken":"zoom-page-2","totalRecords":3}`)
+			_, err := connectormock.DecodeOutput[zoom.MeetingPage](`{"meetings":[{"id":92674392836,"topic":"Consultation","type":2,"startTime":"2036-02-24T17:00:00Z","durationMinutes":30,"timeZone":"America/Los_Angeles","createdAt":"2036-02-23T17:00:00Z"},{"id":92674392840,"topic":"Team review","type":2,"startTime":"2036-02-25T17:00:00Z","durationMinutes":45,"timeZone":"America/Los_Angeles","createdAt":"2036-02-24T17:00:00Z"}],"nextPageToken":"zoom-page-2","totalRecords":3}`)
 			return err
 		}},
 		{name: "listMeetings/listedDefaultAnswer/2", decode: func() error {
-			_, err := connectormock.DecodeOutput[zoom.MeetingPage](`{"meetings":[{"id":92674392840,"topic":"Team review","type":2,"startTime":"2036-02-25T17:00:00Z","durationMinutes":45,"timeZone":"America/Los_Angeles"},{"id":92674392841,"topic":"Planning","type":2,"startTime":"2036-02-26T17:00:00Z","durationMinutes":60,"timeZone":"America/Los_Angeles"}],"nextPageToken":"zoom-page-3","totalRecords":3}`)
+			_, err := connectormock.DecodeOutput[zoom.MeetingPage](`{"meetings":[{"id":92674392840,"topic":"Team review","type":2,"startTime":"2036-02-25T17:00:00Z","durationMinutes":45,"timeZone":"America/Los_Angeles","createdAt":"2036-02-24T17:00:00Z"},{"id":92674392841,"topic":"Planning","type":2,"startTime":"2036-02-26T17:00:00Z","durationMinutes":60,"timeZone":"America/Los_Angeles","createdAt":"2036-02-25T17:00:00Z"}],"nextPageToken":"zoom-page-3","totalRecords":3}`)
 			return err
 		}},
 		{name: "listMeetings/listedDefaultAnswer/3", decode: func() error {
@@ -29,11 +29,11 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			return err
 		}},
 		{name: "getMeeting/foundDefaultAnswer/1", decode: func() error {
-			_, err := connectormock.DecodeOutput[zoom.Meeting](`{"id":92674392836,"hostId":"zoom-host-1","topic":"Consultation","type":2,"startTime":"2036-02-24T17:00:00Z","durationMinutes":30,"timeZone":"America/Los_Angeles","joinUrl":"https://us05web.zoom.us/j/92674392836?pwd=mock","settings":{"waitingRoom":true}}`)
+			_, err := connectormock.DecodeOutput[zoom.Meeting](`{"id":92674392836,"hostId":"zoom-host-1","topic":"Consultation","type":2,"startTime":"2036-02-24T17:00:00Z","durationMinutes":30,"timeZone":"America/Los_Angeles","createdAt":"2036-02-23T17:00:00Z","joinUrl":"https://us05web.zoom.us/j/92674392836?pwd=mock","settings":{"waitingRoom":true}}`)
 			return err
 		}},
 		{name: "createMeeting/createdDefaultAnswer/1", decode: func() error {
-			_, err := connectormock.DecodeOutput[zoom.Meeting](`{"id":92674392836,"hostId":"zoom-host-1","topic":"Consultation","type":2,"startTime":"2036-02-24T17:00:00Z","durationMinutes":30,"timeZone":"America/Los_Angeles","joinUrl":"https://us05web.zoom.us/j/92674392836?pwd=mock","settings":{"waitingRoom":true}}`)
+			_, err := connectormock.DecodeOutput[zoom.Meeting](`{"id":92674392836,"hostId":"zoom-host-1","topic":"Consultation","type":2,"startTime":"2036-02-24T17:00:00Z","durationMinutes":30,"timeZone":"America/Los_Angeles","createdAt":"2036-02-23T17:00:00Z","joinUrl":"https://us05web.zoom.us/j/92674392836?pwd=mock","settings":{"waitingRoom":true}}`)
 			return err
 		}},
 		{name: "updateMeeting/updatedDefaultAnswer/1", decode: func() error {

@@ -47,7 +47,7 @@ dexcli visualize ./examples/booked-meeting/flow/workflow.go \
   --schema-version 2.0 --json --out ./build/booked-meeting
 ```
 
-The graph resolves the five Zoom Steps from the released connector artifact.
+The graph resolves the five Zoom Steps from the connector module in this checkout.
 
 Run `dexcli dev` with that build directory, open Dex Web at
 `http://127.0.0.1:8802` rather than `localhost`, open **Connections**, and

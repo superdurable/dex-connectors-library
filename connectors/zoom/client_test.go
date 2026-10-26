@@ -207,7 +207,7 @@ func TestCredentialRefreshOutagesRetryAndRevokedGrantsSelectDefect(t *testing.T)
 	result, err := sdkgo.RunQuery(newZoomDexContext("refresh-revoked"), revoked.GetMeeting(), zoomConnection, zoom.GetMeetingInput{MeetingID: 85746065})
 	require.NoError(t, err)
 	require.Equal(t, zoom.GetMeetingBranchDefect, result.Branch)
-	require.Equal(t, "Zoom connection requires reauthorization", result.Failure.Message)
+	require.Equal(t, "Zoom connection requires reauthorization; reconnect the connection", result.Failure.Message)
 	require.Zero(t, provider.requestCount())
 }
 

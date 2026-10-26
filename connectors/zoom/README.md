@@ -1,6 +1,6 @@
 # Zoom Connector
 
-> **Verification status: Dex-integrated, not live.** Existing example paths ran on a real Dex stack against a local stand-in for Zoom; this change's real-Dex tests are left to CI. No live Zoom account was used. See
+> **Verification status: Dex-integrated, not live.** The example paths, including the 503 retry and mock-backed scenarios, ran on a real Dex stack in CI against a local stand-in for Zoom. No live Zoom account was used. See
 > [verification status](../../docs/verification-status.md) for what is and
 > is not verified.
 
@@ -36,7 +36,9 @@ connector sends the instant to Zoom in its documented GMT form,
 never depends on Zoom's time zone table; the zone only decides how Zoom
 displays the meeting. Zoom silently replaces a past `start_time` with the
 current time on create and ignores it on update, so both operations reject a
-start that is not in the future. Results report `startTime` in UTC and
+start that is not in the future before its first send. A later create attempt
+checks the dispatch fence first, so a saved meeting ID is read back even after
+the requested start has passed. Results report `startTime` in UTC and
 `timeZone` separately; compare instants, not text.
 
 ## Zoom setup
@@ -96,9 +98,12 @@ with `invalid_request`, `invalid_client`, `invalid_grant`, or
 `unauthorized_client`, or that returns a scope string missing a required
 scope, marks the connection `reauthorization_required`, and the operation
 selects `defect` without a request. Zoom documents no refresh error codes of
-its own, so these are the RFC 6749 section 5.2 codes. A 5xx or another failed
-refresh is always retried, and the operation returns Retry, which is safe even
-for `createMeeting` because nothing was sent.
+its own, so these are the RFC 6749 section 5.2 codes. Before a `createMeeting`
+send, reauthorization records `notSent` and selects `defect`; if a prior create
+has an accepted ID, reauthorization prevents read-back and selects `uncertain`.
+A transient refresh failure before a provider request returns Retry. After a
+create request receives 401, a failed refresh selects `providerRejected` with
+reauthorization or temporary-unavailability guidance and no second send.
 
 Server-to-Server OAuth apps use Zoom's `account_credentials` grant, which
 `sdkgo/oauthtoken` does not implement, so this release supports only user-level
@@ -161,7 +166,7 @@ behavior has not been verified against a live Zoom account.
 | 201 with a valid meeting | `created`, with the meeting ID and join URL |
 | 400, 403, 404, or another definite 4xx except 401, 408, 409, and 429 | `providerRejected`, with Zoom's error code |
 | 401 | Force one credential refresh; on success checkpoint permission to retry, otherwise `providerRejected` |
-| 429 or 503 | Checkpoint permission to retry after Zoom's delay when supplied |
+| 429, including a daily-limit 429, or 503 | Checkpoint permission to retry after Zoom's delay when supplied; retry exhaustion fails the Flow |
 | DNS, connect, or TLS failure before any connection opened | Retry |
 | Timeout, dropped connection, 3xx, 408, 409 without a lookup key, or another 5xx after dispatch | `uncertain` |
 | 2xx whose body is oversized, unreadable, unusable, or reflects the credential | `uncertain` |
@@ -206,6 +211,9 @@ create with `listMeetings` instead of creating again:
 ```
 
 Zoom limits each host to 100 meeting create and update requests per UTC day.
+All five operations retry daily-limit 429 responses like per-second 429 responses.
+If Zoom's retry delay outlasts the create Step's two-minute retry budget, Dex
+fails the Flow on retry exhaustion; it does not select `providerRejected`.
 
 ### updateMeeting
 
@@ -219,7 +227,8 @@ with identical bodies and the meeting held the requested slot once; see
 `TestSlowRescheduleIsSafeToRepeatWithRealDex`. Zoom answers `204` with no
 body, so read the meeting back with `getMeeting` to observe the stored values.
 A deleted meeting selects `notFound`. Zoom limits one meeting to 100 updates per
-day.
+day. A daily-limit 429 retries until its Step budget is exhausted, when Dex
+fails the Flow; it does not select `providerRejected`.
 
 ### listPastMeetingParticipants
 
@@ -237,7 +246,8 @@ The generated `zoommock` package provides one consistent consultation:
 updates that ID, and `listMeetings` and `listPastMeetingParticipants` serve
 three pages each. Every operation has one default happy path plus mocks for
 its definite business branches. The default pages include duplicates across
-page boundaries so applications must handle changing list snapshots.
+page boundaries so applications must handle changing list snapshots. Meeting
+defaults include `createdAt` for reconciliation after an uncertain create.
 
 The runnable example's real-Dex mock test binds those operations to the Flow:
 
@@ -286,8 +296,8 @@ the refresh exchange and rotation, credential reflection, redirects, oversized
 and malformed responses, and the absence of start URLs, passcodes, and Zoom
 message text in results.
 
-The new 503 retry and mock-backed example tests need a real Dex stack and run
-in CI; local verification compiled them without starting Dex.
+The 503 retry and mock-backed example tests run on a real Dex stack in CI.
+Local verification uses provider fakes and does not start Dex.
 
 No live Zoom account was used. The following behavior is unverified:
 

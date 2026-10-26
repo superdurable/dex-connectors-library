@@ -96,8 +96,8 @@ spec:
           description: Matches upcoming meeting pages for the authorized host, including the consultation created below.
           default: true
           pages:
-            - {meetings: [{id: 92674392836, topic: Consultation, type: 2, startTime: '2036-02-24T17:00:00Z', durationMinutes: 30, timeZone: America/Los_Angeles}, {id: 92674392840, topic: Team review, type: 2, startTime: '2036-02-25T17:00:00Z', durationMinutes: 45, timeZone: America/Los_Angeles}], nextPageToken: zoom-page-2, totalRecords: 3}
-            - {meetings: [{id: 92674392840, topic: Team review, type: 2, startTime: '2036-02-25T17:00:00Z', durationMinutes: 45, timeZone: America/Los_Angeles}, {id: 92674392841, topic: Planning, type: 2, startTime: '2036-02-26T17:00:00Z', durationMinutes: 60, timeZone: America/Los_Angeles}], nextPageToken: zoom-page-3, totalRecords: 3}
+            - {meetings: [{id: 92674392836, topic: Consultation, type: 2, startTime: '2036-02-24T17:00:00Z', durationMinutes: 30, timeZone: America/Los_Angeles, createdAt: '2036-02-23T17:00:00Z'}, {id: 92674392840, topic: Team review, type: 2, startTime: '2036-02-25T17:00:00Z', durationMinutes: 45, timeZone: America/Los_Angeles, createdAt: '2036-02-24T17:00:00Z'}], nextPageToken: zoom-page-2, totalRecords: 3}
+            - {meetings: [{id: 92674392840, topic: Team review, type: 2, startTime: '2036-02-25T17:00:00Z', durationMinutes: 45, timeZone: America/Los_Angeles, createdAt: '2036-02-24T17:00:00Z'}, {id: 92674392841, topic: Planning, type: 2, startTime: '2036-02-26T17:00:00Z', durationMinutes: 60, timeZone: America/Los_Angeles, createdAt: '2036-02-25T17:00:00Z'}], nextPageToken: zoom-page-3, totalRecords: 3}
             - {meetings: [], nextPageToken: '', totalRecords: 3}
         - name: providerRejectedFailure
           branch: providerRejected
@@ -129,7 +129,7 @@ spec:
           branch: found
           description: Matches a read of meeting 92674392836, the consultation created below.
           default: true
-          output: {id: 92674392836, hostId: zoom-host-1, topic: Consultation, type: 2, startTime: '2036-02-24T17:00:00Z', durationMinutes: 30, timeZone: America/Los_Angeles, joinUrl: 'https://us05web.zoom.us/j/92674392836?pwd=mock', settings: {waitingRoom: true}}
+          output: {id: 92674392836, hostId: zoom-host-1, topic: Consultation, type: 2, startTime: '2036-02-24T17:00:00Z', durationMinutes: 30, timeZone: America/Los_Angeles, createdAt: '2036-02-23T17:00:00Z', joinUrl: 'https://us05web.zoom.us/j/92674392836?pwd=mock', settings: {waitingRoom: true}}
         - name: notFoundFailure
           branch: notFound
           description: Matches a read with an unknown or deleted meeting ID.
@@ -159,17 +159,17 @@ spec:
         executeMethodTimeout: 30s
         durability: sync
         dispatchFence: true
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: personWaiting, explanation: "A person booking a meeting needs a prompt result; unconfirmed dispatches select uncertainty without a second send."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Zoom has no create idempotency key or Call ID lookup; the fence prevents a second send after an unconfirmed create."}}
       mocks:
         - name: createdDefaultAnswer
           branch: created
           description: Matches a scheduled Consultation at 2036-02-24T17:00:00Z for the authorized host.
           default: true
-          output: {id: 92674392836, hostId: zoom-host-1, topic: Consultation, type: 2, startTime: '2036-02-24T17:00:00Z', durationMinutes: 30, timeZone: America/Los_Angeles, joinUrl: 'https://us05web.zoom.us/j/92674392836?pwd=mock', settings: {waitingRoom: true}}
+          output: {id: 92674392836, hostId: zoom-host-1, topic: Consultation, type: 2, startTime: '2036-02-24T17:00:00Z', durationMinutes: 30, timeZone: America/Los_Angeles, createdAt: '2036-02-23T17:00:00Z', joinUrl: 'https://us05web.zoom.us/j/92674392836?pwd=mock', settings: {waitingRoom: true}}
         - name: providerRejectedFailure
           branch: providerRejected
           description: Matches a create when the authorized user cannot host meetings.
-          failure: {kind: PROVIDER_REJECTION, message: "Zoom conclusively rejected the meeting, such as a user who cannot host or an exhausted daily create limit; nothing was created."}
+          failure: {kind: PROVIDER_REJECTION, message: "Zoom conclusively rejected the meeting because the user cannot host; nothing was created."}
     - name: updateMeeting
       goName: UpdateMeeting
       inputType: UpdateMeetingInput
@@ -181,7 +181,7 @@ spec:
       branches:
         - {id: updated, goName: Updated, description: Zoom accepted the patch.}
         - {id: notFound, goName: NotFound, description: The meeting does not exist or was deleted., optional: true}
-        - {id: providerRejected, goName: ProviderRejected, description: "Zoom conclusively rejected the patch, such as an exhausted daily update limit.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Zoom conclusively rejected the patch, such as an invalid field value.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
@@ -199,7 +199,7 @@ spec:
         - name: providerRejectedFailure
           branch: providerRejected
           description: Matches an update whose field value Zoom rejects with HTTP 400.
-          failure: {kind: PROVIDER_REJECTION, message: "Zoom conclusively rejected the patch, such as an exhausted daily update limit."}
+          failure: {kind: PROVIDER_REJECTION, message: "Zoom conclusively rejected the patch because a field value is invalid."}
     - name: listPastMeetingParticipants
       goName: ListPastMeetingParticipants
       inputType: ListPastMeetingParticipantsInput

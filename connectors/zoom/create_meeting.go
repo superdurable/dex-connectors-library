@@ -99,12 +99,15 @@ func (operation CreateMeetingOperation) Invoke(call sdkgo.Call, input CreateMeet
 		}
 		return client.readBackCreatedMeeting(call, requested, decision.Marker.ProviderID)
 	}
+	if !requested.StartTime.After(client.now()) {
+		return sdkgo.NewMutationBranch(CreateMeetingBranchDefect, Meeting{}, failurePointer(createMeetingOperationID, sdkgo.FailureValidation, "startTime is not in the future, and Zoom would replace it with the current time"), sdkgo.Receipt{})
+	}
 	credentials, failure, isRetryable := client.resolveCredentials(call, createMeetingOperationID)
 	if failure != nil {
+		if err := fence.RecordNotSent(); err != nil {
+			return sdkgo.NewMutationRetry[Meeting](newFailure(createMeetingOperationID, sdkgo.FailureAvailability, "Zoom credentials and the not-sent checkpoint were unavailable"), 0)
+		}
 		if isRetryable {
-			if err := fence.RecordNotSent(); err != nil {
-				return sdkgo.NewMutationRetry[Meeting](newFailure(createMeetingOperationID, sdkgo.FailureAvailability, "Zoom credentials and the not-sent checkpoint were unavailable"), 0)
-			}
 			return sdkgo.NewMutationRetry[Meeting](*failure, 0)
 		}
 		return sdkgo.NewMutationBranch(CreateMeetingBranchDefect, Meeting{}, failure, sdkgo.Receipt{})
@@ -133,14 +136,24 @@ func (operation CreateMeetingOperation) Invoke(call sdkgo.Call, input CreateMeet
 	classification := client.classifyErrorStatus(createMeetingOperationID, response)
 	switch {
 	case response.statusCode == http.StatusUnauthorized:
-		refreshed, refreshErr := sdkgo.ResolveCredentialAfterRejection(call.Context, client.credentials, call, client.refreshDriver)
-		if refreshErr == nil && validateResolvedCredentials(refreshed) == nil {
+		var refreshContext context.Context = call.Context
+		if deadline, hasDeadline := call.Context.Deadline(); hasDeadline {
+			boundedContext, cancel := context.WithDeadline(call.Context, deadline.Add(-time.Second))
+			defer cancel()
+			refreshContext = boundedContext
+		}
+		refreshed, refreshErr := sdkgo.ResolveCredentialAfterRejection(refreshContext, client.credentials, call, client.refreshDriver)
+		if refreshErr == nil && validateResolvedCredentials(refreshed) == nil && refreshed.AccessToken.Reveal() != credentials.AccessToken.Reveal() {
 			if err := fence.RecordCanResend(); err != nil {
 				return sdkgo.NewMutationRetry[Meeting](newFailure(createMeetingOperationID, sdkgo.FailureAvailability, "Zoom rejected the credential but the resend checkpoint failed"), 0)
 			}
 			return sdkgo.NewMutationRetry[Meeting](classification.failure, 0)
 		}
-		return sdkgo.NewMutationBranch(CreateMeetingBranchProviderRejected, requested, &classification.failure, client.receipt(call, "", classification.errorCode))
+		failure := newFailure(createMeetingOperationID, sdkgo.FailureAvailability, "Zoom credential refresh is temporarily unavailable")
+		if sdkgo.IsReauthorizationRequired(refreshErr) || refreshErr == nil {
+			failure = newFailure(createMeetingOperationID, sdkgo.FailureAuthentication, "Zoom connection requires reauthorization; reconnect the connection")
+		}
+		return sdkgo.NewMutationBranch(CreateMeetingBranchProviderRejected, requested, &failure, client.receipt(call, "", classification.errorCode))
 	case response.statusCode == http.StatusTooManyRequests || response.statusCode == http.StatusServiceUnavailable:
 		if err := fence.RecordCanResend(); err != nil {
 			return sdkgo.NewMutationRetry[Meeting](newFailure(createMeetingOperationID, sdkgo.FailureAvailability, "Zoom rejected the create but the resend checkpoint failed"), 0)
@@ -217,7 +230,7 @@ func (client *Client) buildCreateMeetingRequest(input CreateMeetingInput) (zoomC
 	if err := validateTopic(input.Topic); err != nil {
 		return zoomCreateMeetingRequest{}, Meeting{}, err
 	}
-	startTime, err := parseMeetingStart(input.StartTime, input.TimeZone, client.now())
+	startTime, err := parseMeetingStartInstant(input.StartTime, input.TimeZone)
 	if err != nil {
 		return zoomCreateMeetingRequest{}, Meeting{}, err
 	}

@@ -489,7 +489,7 @@ var UpdateMeetingDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: UpdateMeetingBranchUpdated, Description: "Zoom accepted the patch."},
 		{ID: UpdateMeetingBranchNotFound, Description: "The meeting does not exist or was deleted.", Optional: true},
-		{ID: UpdateMeetingBranchProviderRejected, Description: "Zoom conclusively rejected the patch, such as an exhausted daily update limit.", Optional: true},
+		{ID: UpdateMeetingBranchProviderRejected, Description: "Zoom conclusively rejected the patch, such as an invalid field value.", Optional: true},
 		{ID: UpdateMeetingBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

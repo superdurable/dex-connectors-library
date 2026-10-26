@@ -79,7 +79,7 @@ func TestUpdateMeetingRetriesUnknownOutcomesBecauseThePatchIsAbsolute(t *testing
 	require.Equal(t, sdkgo.FailureTransport, retry.Failure.Kind)
 }
 
-func TestUpdateMeetingClassifiesMissingMeetingsAndDailyLimits(t *testing.T) {
+func TestUpdateMeetingClassifiesMissingMeetingsAndRejectedValues(t *testing.T) {
 	for _, test := range []struct {
 		name       string
 		status     int

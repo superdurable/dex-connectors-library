@@ -55,9 +55,8 @@ type clientOptions struct {
 
 // WithHTTPClient replaces the HTTP client used for Zoom API calls and token
 // refresh. The caller keeps ownership of client and its transport. The
-// connector uses a copy that never follows redirects, and it bounds every API
-// request by 20 seconds even when client allows longer, so a hung create
-// selects uncertain before Dex's 30-second Execute timeout.
+// connector uses a copy that never follows redirects and bounds API requests
+// by 20 seconds; the create fence applies its shorter 7/12 attempt window.
 func WithHTTPClient(client *http.Client) Option {
 	return func(options *clientOptions) { options.httpClient = client }
 }
@@ -176,11 +175,11 @@ func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Cre
 	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
 	switch {
 	case sdkgo.IsReauthorizationRequired(err):
-		return Credentials{}, failurePointer(operation, sdkgo.FailureAuthentication, "Zoom connection requires reauthorization"), false
+		return Credentials{}, failurePointer(operation, sdkgo.FailureAuthentication, "Zoom connection requires reauthorization; reconnect the connection"), false
 	case err != nil:
 		return Credentials{}, failurePointer(operation, sdkgo.FailureAvailability, "Zoom connection credentials could not be refreshed"), true
 	case validateResolvedCredentials(credentials) != nil:
-		return Credentials{}, failurePointer(operation, sdkgo.FailureAuthentication, "Zoom connection credentials are unavailable"), false
+		return Credentials{}, failurePointer(operation, sdkgo.FailureAuthentication, "Zoom connection credentials are unavailable; reconnect the connection"), false
 	default:
 		return credentials, nil, false
 	}

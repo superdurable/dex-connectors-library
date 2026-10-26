@@ -123,8 +123,8 @@ func ListMeetingsRetry(failure sdkgo.Failure, after time.Duration) connectormock
 // ListMeetingsListedDefaultAnswer is the manifest mock listedDefaultAnswer: Matches upcoming meeting pages for the authorized host, including the consultation created below.
 func ListMeetingsListedDefaultAnswer() connectormock.Case[zoom.MeetingPage] {
 	pages := []zoom.MeetingPage{
-		connectormock.MustDecodeOutput[zoom.MeetingPage](`{"meetings":[{"id":92674392836,"topic":"Consultation","type":2,"startTime":"2036-02-24T17:00:00Z","durationMinutes":30,"timeZone":"America/Los_Angeles"},{"id":92674392840,"topic":"Team review","type":2,"startTime":"2036-02-25T17:00:00Z","durationMinutes":45,"timeZone":"America/Los_Angeles"}],"nextPageToken":"zoom-page-2","totalRecords":3}`),
-		connectormock.MustDecodeOutput[zoom.MeetingPage](`{"meetings":[{"id":92674392840,"topic":"Team review","type":2,"startTime":"2036-02-25T17:00:00Z","durationMinutes":45,"timeZone":"America/Los_Angeles"},{"id":92674392841,"topic":"Planning","type":2,"startTime":"2036-02-26T17:00:00Z","durationMinutes":60,"timeZone":"America/Los_Angeles"}],"nextPageToken":"zoom-page-3","totalRecords":3}`),
+		connectormock.MustDecodeOutput[zoom.MeetingPage](`{"meetings":[{"id":92674392836,"topic":"Consultation","type":2,"startTime":"2036-02-24T17:00:00Z","durationMinutes":30,"timeZone":"America/Los_Angeles","createdAt":"2036-02-23T17:00:00Z"},{"id":92674392840,"topic":"Team review","type":2,"startTime":"2036-02-25T17:00:00Z","durationMinutes":45,"timeZone":"America/Los_Angeles","createdAt":"2036-02-24T17:00:00Z"}],"nextPageToken":"zoom-page-2","totalRecords":3}`),
+		connectormock.MustDecodeOutput[zoom.MeetingPage](`{"meetings":[{"id":92674392840,"topic":"Team review","type":2,"startTime":"2036-02-25T17:00:00Z","durationMinutes":45,"timeZone":"America/Los_Angeles","createdAt":"2036-02-24T17:00:00Z"},{"id":92674392841,"topic":"Planning","type":2,"startTime":"2036-02-26T17:00:00Z","durationMinutes":60,"timeZone":"America/Los_Angeles","createdAt":"2036-02-25T17:00:00Z"}],"nextPageToken":"zoom-page-3","totalRecords":3}`),
 		connectormock.MustDecodeOutput[zoom.MeetingPage](`{"meetings":[],"nextPageToken":"","totalRecords":3}`),
 	}
 	pageNumber := connectormock.CursorPageNumber[zoom.ListMeetingsInput]("pageToken", "nextPageToken", pages)
@@ -180,7 +180,7 @@ func GetMeetingRetry(failure sdkgo.Failure, after time.Duration) connectormock.C
 
 // GetMeetingFoundDefaultAnswer is the manifest mock foundDefaultAnswer: Matches a read of meeting 92674392836, the consultation created below.
 func GetMeetingFoundDefaultAnswer() connectormock.Case[zoom.Meeting] {
-	value := connectormock.MustDecodeOutput[zoom.Meeting](`{"id":92674392836,"hostId":"zoom-host-1","topic":"Consultation","type":2,"startTime":"2036-02-24T17:00:00Z","durationMinutes":30,"timeZone":"America/Los_Angeles","joinUrl":"https://us05web.zoom.us/j/92674392836?pwd=mock","settings":{"waitingRoom":true}}`)
+	value := connectormock.MustDecodeOutput[zoom.Meeting](`{"id":92674392836,"hostId":"zoom-host-1","topic":"Consultation","type":2,"startTime":"2036-02-24T17:00:00Z","durationMinutes":30,"timeZone":"America/Los_Angeles","createdAt":"2036-02-23T17:00:00Z","joinUrl":"https://us05web.zoom.us/j/92674392836?pwd=mock","settings":{"waitingRoom":true}}`)
 	return connectormock.Branch(zoom.GetMeetingBranchFound, value, nil)
 }
 
@@ -232,14 +232,14 @@ func CreateMeetingRetry(failure sdkgo.Failure, after time.Duration) connectormoc
 
 // CreateMeetingCreatedDefaultAnswer is the manifest mock createdDefaultAnswer: Matches a scheduled Consultation at 2036-02-24T17:00:00Z for the authorized host.
 func CreateMeetingCreatedDefaultAnswer() connectormock.Case[zoom.Meeting] {
-	value := connectormock.MustDecodeOutput[zoom.Meeting](`{"id":92674392836,"hostId":"zoom-host-1","topic":"Consultation","type":2,"startTime":"2036-02-24T17:00:00Z","durationMinutes":30,"timeZone":"America/Los_Angeles","joinUrl":"https://us05web.zoom.us/j/92674392836?pwd=mock","settings":{"waitingRoom":true}}`)
+	value := connectormock.MustDecodeOutput[zoom.Meeting](`{"id":92674392836,"hostId":"zoom-host-1","topic":"Consultation","type":2,"startTime":"2036-02-24T17:00:00Z","durationMinutes":30,"timeZone":"America/Los_Angeles","createdAt":"2036-02-23T17:00:00Z","joinUrl":"https://us05web.zoom.us/j/92674392836?pwd=mock","settings":{"waitingRoom":true}}`)
 	return connectormock.Branch(zoom.CreateMeetingBranchCreated, value, nil)
 }
 
 // CreateMeetingProviderRejectedFailure is the manifest mock providerRejectedFailure: Matches a create when the authorized user cannot host meetings.
 func CreateMeetingProviderRejectedFailure() connectormock.Case[zoom.Meeting] {
 	var value zoom.Meeting
-	return connectormock.Branch(zoom.CreateMeetingBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "Zoom conclusively rejected the meeting, such as a user who cannot host or an exhausted daily create limit; nothing was created."})
+	return connectormock.Branch(zoom.CreateMeetingBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "Zoom conclusively rejected the meeting because the user cannot host; nothing was created."})
 }
 
 // CreateMeetingDefault is the manifest default, createdDefaultAnswer, which New installs.
@@ -257,7 +257,7 @@ func UpdateMeetingNotFound(value zoom.UpdatedMeeting, failure *sdkgo.Failure) co
 	return connectormock.Branch(zoom.UpdateMeetingBranchNotFound, value, failure)
 }
 
-// UpdateMeetingProviderRejected selects the providerRejected branch: Zoom conclusively rejected the patch, such as an exhausted daily update limit.
+// UpdateMeetingProviderRejected selects the providerRejected branch: Zoom conclusively rejected the patch, such as an invalid field value.
 func UpdateMeetingProviderRejected(value zoom.UpdatedMeeting, failure *sdkgo.Failure) connectormock.Case[zoom.UpdatedMeeting] {
 	return connectormock.Branch(zoom.UpdateMeetingBranchProviderRejected, value, failure)
 }
@@ -287,7 +287,7 @@ func UpdateMeetingNotFoundFailure() connectormock.Case[zoom.UpdatedMeeting] {
 // UpdateMeetingProviderRejectedFailure is the manifest mock providerRejectedFailure: Matches an update whose field value Zoom rejects with HTTP 400.
 func UpdateMeetingProviderRejectedFailure() connectormock.Case[zoom.UpdatedMeeting] {
 	var value zoom.UpdatedMeeting
-	return connectormock.Branch(zoom.UpdateMeetingBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "Zoom conclusively rejected the patch, such as an exhausted daily update limit."})
+	return connectormock.Branch(zoom.UpdateMeetingBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "Zoom conclusively rejected the patch because a field value is invalid."})
 }
 
 // UpdateMeetingDefault is the manifest default, updatedDefaultAnswer, which New installs.
