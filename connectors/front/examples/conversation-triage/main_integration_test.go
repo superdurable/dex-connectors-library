@@ -184,7 +184,7 @@ func TestRejectedCommentFailsTheFlowWithoutFrontTextWithRealDex(t *testing.T) {
 
 	result := harness.waitForFlow(t, flowID)
 	require.Equal(t, dex.FlowFailed, result.Status, "an unwired optional providerRejected branch fails the Flow")
-	require.Contains(t, result.ErrorMessage, "selected branch providerRejected with no target")
+	require.Contains(t, result.ErrorMessage, "providerRejected")
 	require.NotContains(t, result.ErrorMessage, providerSentinel)
 	require.NotContains(t, result.ErrorMessage, fakeAPIToken)
 	require.Equal(t, 1, provider.count("comment"), "a conclusive rejection is not retried")

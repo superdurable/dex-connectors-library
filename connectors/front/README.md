@@ -225,12 +225,17 @@ and an accepted comment's ID can be read at
 [`GET /comments/{id}`](https://dev.frontapp.com/reference/get-comment).
 If that ID was checkpointed and a later Dex attempt occurs, the connector
 reads the resource before reporting `replied`; a transient read failure
-retries the read without another POST. A lost answer without an ID remains
+retries the read without another POST. A comment read-back `404` selects
+`uncertain`, because the comment may have been deleted after acceptance.
+A reply `message_uid` read-back `404` retries the GET without another POST:
+Front may not have created the accepted message yet, although this timing
+remains unverified with a live Front account. A lost answer without an ID remains
 `uncertain` because content and author are not unique identifiers.
 
-The previous connector-local checkpoint encoded `isFrontReplyDispatched`.
-An in-flight retry with that old marker fails closed under the shared fence;
-reconcile that Flow manually before retrying it after this upgrade.
+Every in-flight reply retry from v0.21.x fails closed to `uncertain` at
+attempt 2 or later and never resends, including retries whose old
+`isFrontReplyDispatched` checkpoint was cleared after a `429` or unsent
+failure. Reconcile those Flows manually after this upgrade.
 
 The real-Dex tests in
 [`examples/conversation-triage`](examples/conversation-triage/main_integration_test.go)
@@ -353,13 +358,14 @@ Failure names only the HTTP status.
 | 401 | `providerRejected`, `AUTHENTICATION`, such as a deleted token |
 | 403 | `providerRejected`, `AUTHORIZATION`, such as a token without the namespace or permission |
 | 404, 410 | `notFound` where declared, otherwise `providerRejected`; `providerRejected` on an `updateConversation` write after its read found the conversation |
-| 409 | `providerRejected`, `CONFLICT` |
+| 409 | `uncertain`, `CONFLICT` for `replyToConversation`; `providerRejected`, `CONFLICT` for other operations |
 | 301 | `merged` for `getConversation`, `notFound` for the Mutations, naming the absorbing conversation |
 | other 3xx | `providerRejected`, `PROTOCOL`; redirects are never followed |
 | 429 | Retry after `Retry-After` seconds, capped at an hour; without it, at the `X-Ratelimit-Reset` second, one second to a minute later |
-| 408, 5xx, transport failure | Retry, except `uncertain` for a sent reply or comment |
-| oversized, malformed, or credential-reflecting 2xx | `invalidResponse` |
-| invalid input or credentials | `defect`, with no request |
+| 408, 5xx, transport failure | Retry for reads and repeat-safe writes; `replyToConversation` Retries a 503 or provably unsent failure and selects `uncertain` for other ambiguous sends |
+| oversized, malformed, or credential-reflecting 2xx | `uncertain` for `replyToConversation`; `invalidResponse` for other operations |
+| invalid input | `defect`, with no request |
+| unavailable or invalid credentials | `replyToConversation` records not-sent and Retries; other operations select `defect`, with no request |
 
 Front's rate limit is per company: 50, 100, or 200 requests a minute on the
 Starter, Professional, and Enterprise plans, plus a burst allowance. Per

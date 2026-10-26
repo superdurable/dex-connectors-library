@@ -44,7 +44,7 @@ func TestConversationTriageUsesFrontMocksWithRealDex(t *testing.T) {
 	require.Len(t, replyCalls, 1)
 	require.Equal(t, front.ReplyToConversationInput{
 		ConversationID: "cnv_100", IsInternalNote: true,
-		Text: conversationtriage.BuildTriageComment("jane@acme.example.com", "crd_100", []string{"cnv_200"}, false),
+		Text: "Dex triage: the requester jane@acme.example.com is Front contact crd_100 and has 1 other open conversation: cnv_200.",
 	}, replyCalls[0].Input)
 	updateCalls := mock.UpdateConversation().Calls()
 	require.Len(t, updateCalls, 1)

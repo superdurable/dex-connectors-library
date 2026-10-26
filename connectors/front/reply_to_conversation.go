@@ -113,7 +113,7 @@ func (operation ReplyToConversationOperation) Invoke(call sdkgo.Call, input Repl
 	}
 	switch decision := fence.Decide(); decision.Kind {
 	case singledispatch.FailClosed:
-		return client.uncertainReply(call, output, "the dispatch checkpoint could not be trusted; the reply or comment is not sent again")
+		return client.uncertainReply(call, output, sdkgo.FailureAvailability, "the dispatch checkpoint could not be trusted; the reply or comment is not sent again")
 	case singledispatch.ReadBackRequired:
 		return client.readBackReply(call, input, output, decision.Marker)
 	}
@@ -131,7 +131,7 @@ func (operation ReplyToConversationOperation) Invoke(call sdkgo.Call, input Repl
 			return sdkgo.NewMutationRetry[ConversationReply](frontFailure(sdkgo.FailureAvailability, operationID,
 				"the reply was not dispatched; retry after the checkpoint or attempt budget recovers"), 0)
 		}
-		return client.uncertainReply(call, output, "the fenced reply outcome could not be determined")
+		return client.uncertainReply(call, output, sdkgo.FailureTransport, "the fenced reply outcome could not be determined")
 	}
 	return client.classifyReplyExchange(call, output, attempt.result, fence)
 }
@@ -144,8 +144,12 @@ func (attempt *replySendAttempt) send(requestContext context.Context) error {
 func (client *Client) readBackReply(
 	call sdkgo.Call, input ReplyToConversationInput, output ConversationReply, marker singledispatch.Marker,
 ) sdkgo.MutationAttempt[ConversationReply] {
-	if marker.CallID != call.ID || marker.ProviderID == "" {
-		return client.uncertainReply(call, output, "an earlier attempt may have sent the reply or comment; no provider ID can confirm it")
+	providerIDPattern := messageUIDPattern
+	if input.IsInternalNote {
+		providerIDPattern = commentIDPattern
+	}
+	if marker.CallID != call.ID || !providerIDPattern.MatchString(marker.ProviderID) {
+		return client.uncertainReply(call, output, sdkgo.FailureProtocol, "an earlier attempt may have sent the reply or comment; no usable provider ID can confirm it")
 	}
 	operationID := ReplyToConversationDefinition.Operation.OperationID
 	credentials, failure := client.resolveCredentials(call, operationID)
@@ -166,14 +170,18 @@ func (client *Client) readBackReply(
 		receipt := client.receipt(call, marker.ProviderID)
 		return sdkgo.NewMutationBranch(ReplyToConversationBranchReplied, output, nil, receipt)
 	}
-	if result.isRetryable() || result.outcome == exchangeNotFound {
+	if result.isRetryable() {
 		return sdkgo.NewMutationRetry[ConversationReply](result.failure, result.retryAfter)
 	}
-	return client.uncertainReply(call, output, "Front could not confirm an earlier accepted reply or comment")
+	if result.outcome == exchangeNotFound && !input.IsInternalNote {
+		// Front may return 404 before an accepted message_uid becomes readable; live timing is unverified.
+		return sdkgo.NewMutationRetry[ConversationReply](result.failure, result.retryAfter)
+	}
+	return client.uncertainReply(call, output, result.failure.Kind, "Front could not confirm an earlier accepted reply or comment")
 }
 
-func (client *Client) uncertainReply(call sdkgo.Call, output ConversationReply, message string) sdkgo.MutationAttempt[ConversationReply] {
-	return sdkgo.NewMutationUncertain(output, frontFailure(sdkgo.FailureTransport,
+func (client *Client) uncertainReply(call sdkgo.Call, output ConversationReply, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[ConversationReply] {
+	return sdkgo.NewMutationUncertain(output, frontFailure(kind,
 		ReplyToConversationDefinition.Operation.OperationID, message), client.receipt(call, output.ConversationID))
 }
 
@@ -185,7 +193,11 @@ func (client *Client) classifyReplyExchange(call sdkgo.Call, output Conversation
 		output.MessageUID, output.CommentID = decodeReplyIdentity(result.response.body, output.IsInternalNote)
 		providerID := cmp.Or(output.CommentID, output.MessageUID)
 		if providerID == "" {
-			return client.uncertainReply(call, output, "Front accepted the reply or comment, but its answer has no usable provider ID; do not resend")
+			kind := result.failure.Kind
+			if kind == "" {
+				kind = sdkgo.FailureProtocol
+			}
+			return client.uncertainReply(call, output, kind, "Front accepted the reply or comment, but its answer has no usable provider ID; do not resend")
 		}
 		_ = fence.RecordProviderID(providerID) // Acceptance is already known if this extra checkpoint fails.
 		receipt.ProviderObjectID = providerID
@@ -221,11 +233,11 @@ func (client *Client) classifyReplyExchange(call sdkgo.Call, output Conversation
 		return sdkgo.NewMutationBranch(ReplyToConversationBranchNotFound, output, &failure, receipt)
 	case exchangeRejected:
 		if result.response.statusCode == http.StatusConflict {
-			return client.uncertainReply(call, output, "Front returned a conflict without a key or unique value for read-back")
+			return client.uncertainReply(call, output, sdkgo.FailureConflict, "Front returned a conflict without a key or unique value for read-back")
 		}
 		return sdkgo.NewMutationBranch(ReplyToConversationBranchProviderRejected, output, &result.failure, receipt)
 	default:
-		return client.uncertainReply(call, output, "the reply or comment may exist")
+		return client.uncertainReply(call, output, result.failure.Kind, "the reply or comment may exist")
 	}
 }
 

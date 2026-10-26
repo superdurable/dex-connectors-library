@@ -5,6 +5,7 @@ package front_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -61,6 +62,7 @@ func TestReplyToConversationNeverSendsAgainAfterAnEarlierDispatch(t *testing.T) 
 		front.ReplyToConversationInput{ConversationID: testConversationID, Text: "Hello"})
 	require.NoError(t, err)
 	require.Equal(t, front.ReplyToConversationBranchUncertain, result.Branch)
+	require.Equal(t, sdkgo.FailureAvailability, result.Failure.Kind)
 	require.Contains(t, result.Failure.Message, "not sent again")
 }
 
@@ -69,6 +71,7 @@ func TestReplyToConversationClassifiesEveryAnswer(t *testing.T) {
 		status             int
 		location           string
 		branch             sdkgo.BranchID
+		failureKind        sdkgo.FailureKind
 		isRetry            bool
 		shouldKeepDispatch bool
 	}{
@@ -80,7 +83,7 @@ func TestReplyToConversationClassifiesEveryAnswer(t *testing.T) {
 		"merged":         {status: http.StatusMovedPermanently, location: "https://api2.frontapp.com/conversations/cnv_yo1kg5q", branch: front.ReplyToConversationBranchNotFound, shouldKeepDispatch: true},
 		"no send right":  {status: http.StatusForbidden, branch: front.ReplyToConversationBranchProviderRejected, shouldKeepDispatch: true},
 		"bad author":     {status: http.StatusBadRequest, branch: front.ReplyToConversationBranchProviderRejected, shouldKeepDispatch: true},
-		"conflict":       {status: http.StatusConflict, branch: front.ReplyToConversationBranchUncertain, shouldKeepDispatch: true},
+		"conflict":       {status: http.StatusConflict, branch: front.ReplyToConversationBranchUncertain, failureKind: sdkgo.FailureConflict, shouldKeepDispatch: true},
 	} {
 		t.Run(name, func(t *testing.T) {
 			provider := newRecordingFront(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
@@ -101,6 +104,9 @@ func TestReplyToConversationClassifiesEveryAnswer(t *testing.T) {
 			}
 			require.NoError(t, err)
 			require.Equal(t, test.branch, result.Branch)
+			if test.failureKind != "" {
+				require.Equal(t, test.failureKind, result.Failure.Kind)
+			}
 			require.NotContains(t, result.Failure.Message, providerSentinel)
 			if test.location != "" {
 				require.Contains(t, result.Failure.Message, "cnv_yo1kg5q")
@@ -186,6 +192,136 @@ func TestReplyToConversationFenceReadsBackAcceptedCommentWithoutResending(t *tes
 	require.Equal(t, front.ReplyToConversationBranchReplied, second.Branch)
 	require.Equal(t, "com_1ywg3f2", second.Value.CommentID)
 	require.Equal(t, 2, provider.requestCount())
+}
+
+func TestReplyToConversationFenceReadsBackAcceptedReplyWithoutResending(t *testing.T) {
+	const messageUID = "1eab543f84a0785f7b6b8967cck18f4d"
+	provider := newRecordingFront(t, func(response http.ResponseWriter, request *http.Request, index int) {
+		if index == 0 {
+			writeJSON(t, response, http.StatusAccepted, `{"status":"accepted","message_uid":"`+messageUID+`"}`)
+			return
+		}
+		require.Equal(t, http.MethodGet, request.Method)
+		require.Equal(t, "/messages/alt:uid:"+messageUID, request.URL.Path)
+		writeJSON(t, response, http.StatusOK, `{"message_uid":"`+messageUID+`"}`)
+	})
+	dexContext := singledispatchtest.NewContext("front-flow", "accepted-reply")
+	client := newFrontClient(t, provider.URL)
+	input := front.ReplyToConversationInput{ConversationID: testConversationID, Text: "Hello"}
+	first, err := sdkgo.RunMutation(dexContext, client.ReplyToConversation(), frontConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, front.ReplyToConversationBranchReplied, first.Branch)
+	dexContext.AdvanceAttempt()
+	second, err := sdkgo.RunMutation(dexContext, client.ReplyToConversation(), frontConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, front.ReplyToConversationBranchReplied, second.Branch)
+	require.Equal(t, messageUID, second.Value.MessageUID)
+	require.Equal(t, 2, provider.requestCount())
+}
+
+func TestReplyToConversationFenceClassifiesReadBackNotFoundWithoutResending(t *testing.T) {
+	for name, test := range map[string]struct {
+		isInternalNote bool
+		acceptedStatus int
+		acceptedBody   string
+		readBackPath   string
+		shouldRetry    bool
+	}{
+		"deleted comment": {isInternalNote: true, acceptedStatus: http.StatusCreated, acceptedBody: `{"id":"com_1ywg3f2"}`, readBackPath: "/comments/com_1ywg3f2"},
+		"pending reply":   {acceptedStatus: http.StatusAccepted, acceptedBody: `{"message_uid":"abc123"}`, readBackPath: "/messages/alt:uid:abc123", shouldRetry: true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			provider := newRecordingFront(t, func(response http.ResponseWriter, request *http.Request, index int) {
+				if index == 0 {
+					writeJSON(t, response, test.acceptedStatus, test.acceptedBody)
+					return
+				}
+				require.Equal(t, http.MethodGet, request.Method)
+				require.Equal(t, test.readBackPath, request.URL.Path)
+				writeFrontError(t, response, http.StatusNotFound)
+			})
+			dexContext := singledispatchtest.NewContext("front-flow", "read-back-404-"+name)
+			client := newFrontClient(t, provider.URL)
+			input := front.ReplyToConversationInput{ConversationID: testConversationID, Text: "Hello", IsInternalNote: test.isInternalNote}
+			_, err := sdkgo.RunMutation(dexContext, client.ReplyToConversation(), frontConnection, input)
+			require.NoError(t, err)
+			dexContext.AdvanceAttempt()
+			result, err := sdkgo.RunMutation(dexContext, client.ReplyToConversation(), frontConnection, input)
+			if test.shouldRetry {
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry)
+				require.Equal(t, sdkgo.FailureNotFound, retry.Failure.Kind)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, front.ReplyToConversationBranchUncertain, result.Branch)
+				require.Equal(t, sdkgo.FailureNotFound, result.Failure.Kind)
+			}
+			require.Equal(t, 2, provider.requestCount())
+		})
+	}
+}
+
+func TestReplyToConversationFenceRejectsInvalidStoredProviderIDBeforeReadBack(t *testing.T) {
+	for _, isInternalNote := range []bool{false, true} {
+		provider := newRecordingFront(t, func(response http.ResponseWriter, _ *http.Request, index int) {
+			require.Zero(t, index)
+			if isInternalNote {
+				writeJSON(t, response, http.StatusCreated, `{"id":"com_1ywg3f2"}`)
+				return
+			}
+			writeJSON(t, response, http.StatusAccepted, `{"message_uid":"abc123"}`)
+		})
+		dexContext := singledispatchtest.NewContext("front-flow", "invalid-provider-id")
+		client := newFrontClient(t, provider.URL)
+		input := front.ReplyToConversationInput{ConversationID: testConversationID, Text: "Hello", IsInternalNote: isInternalNote}
+		_, err := sdkgo.RunMutation(dexContext, client.ReplyToConversation(), frontConnection, input)
+		require.NoError(t, err)
+		heartbeats := dexContext.Heartbeats()
+		var marker singledispatch.Marker
+		require.NoError(t, json.Unmarshal(heartbeats[len(heartbeats)-1], &marker))
+		marker.ProviderID = "../unexpected"
+		dexContext.AdvanceAttempt()
+		require.NoError(t, dexContext.SetPersistedCheckpoint(marker))
+		result, err := sdkgo.RunMutation(dexContext, client.ReplyToConversation(), frontConnection, input)
+		require.NoError(t, err)
+		require.Equal(t, front.ReplyToConversationBranchUncertain, result.Branch)
+		require.Equal(t, sdkgo.FailureProtocol, result.Failure.Kind)
+		require.Equal(t, 1, provider.requestCount())
+	}
+}
+
+type delayedFrontCredentials struct {
+	provider        sdkgo.StaticCredentialProvider[front.Credentials]
+	credentialDelay time.Duration
+}
+
+func (credentials delayedFrontCredentials) Resolve(call sdkgo.Call) (front.Credentials, error) {
+	time.Sleep(credentials.credentialDelay)
+	return credentials.provider.Resolve(call)
+}
+
+func TestReplyToConversationFenceRetriesWhenTimeRunsOutBeforeDispatch(t *testing.T) {
+	provider := newRecordingFront(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusCreated, `{"id":"com_1ywg3f2"}`)
+	})
+	dexContext := singledispatchtest.NewContext("front-flow", "insufficient-time")
+	cancel := dexContext.SetDeadline(time.Now().Add(150 * time.Millisecond))
+	defer cancel()
+	delayedClient, err := front.New(front.Config{}, delayedFrontCredentials{provider: testCredentialProvider(), credentialDelay: 100 * time.Millisecond}, front.WithAPIBaseURL(provider.URL))
+	require.NoError(t, err)
+	input := front.ReplyToConversationInput{ConversationID: testConversationID, Text: "Hello", IsInternalNote: true}
+	_, err = sdkgo.RunMutation(dexContext, delayedClient.ReplyToConversation(), frontConnection, input)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+	require.Zero(t, provider.requestCount())
+	dexContext.AdvanceAttempt()
+	cancelNext := dexContext.SetDeadline(time.Now().Add(5 * time.Second))
+	defer cancelNext()
+	result, err := sdkgo.RunMutation(dexContext, newFrontClient(t, provider.URL).ReplyToConversation(), frontConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, front.ReplyToConversationBranchReplied, result.Branch)
+	require.Equal(t, 1, provider.requestCount())
 }
 
 func TestReplyToConversationFenceRetriesCredentialFailureBeforeSending(t *testing.T) {
@@ -283,6 +419,7 @@ func TestReplyToConversationFenceSelectsUncertainWhenReadBackCannotConfirm(t *te
 	result, err := sdkgo.RunMutation(dexContext, client.ReplyToConversation(), frontConnection, input)
 	require.NoError(t, err)
 	require.Equal(t, front.ReplyToConversationBranchUncertain, result.Branch)
+	require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
 	require.Equal(t, 2, provider.requestCount())
 	require.Equal(t, http.MethodGet, provider.request(1).method)
 }
@@ -298,6 +435,7 @@ func TestReplyToConversationAcceptedWithoutIDNeverResends(t *testing.T) {
 	result, err := sdkgo.RunMutation(dexContext, client.ReplyToConversation(), frontConnection, input)
 	require.NoError(t, err)
 	require.Equal(t, front.ReplyToConversationBranchUncertain, result.Branch)
+	require.Equal(t, sdkgo.FailureProtocol, result.Failure.Kind)
 	dexContext.AdvanceAttempt()
 	result, err = sdkgo.RunMutation(dexContext, client.ReplyToConversation(), frontConnection, input)
 	require.NoError(t, err)
@@ -309,9 +447,10 @@ func TestReplyToConversationUnusableAcceptedBodyNeverResends(t *testing.T) {
 	for name, test := range map[string]struct {
 		body             string
 		maxResponseBytes int64
+		failureKind      sdkgo.FailureKind
 	}{
-		"unparsable": {body: "{invalid"},
-		"oversized":  {body: `{"status":"accepted"}`, maxResponseBytes: 8},
+		"unparsable": {body: "{invalid", failureKind: sdkgo.FailureProtocol},
+		"oversized":  {body: `{"status":"accepted"}`, maxResponseBytes: 8, failureKind: sdkgo.FailureResponseTooLarge},
 	} {
 		t.Run(name, func(t *testing.T) {
 			provider := newRecordingFront(t, func(response http.ResponseWriter, _ *http.Request, index int) {
@@ -325,6 +464,7 @@ func TestReplyToConversationUnusableAcceptedBodyNeverResends(t *testing.T) {
 			result, err := sdkgo.RunMutation(dexContext, client.ReplyToConversation(), frontConnection, input)
 			require.NoError(t, err)
 			require.Equal(t, front.ReplyToConversationBranchUncertain, result.Branch)
+			require.Equal(t, test.failureKind, result.Failure.Kind)
 			dexContext.AdvanceAttempt()
 			result, err = sdkgo.RunMutation(dexContext, client.ReplyToConversation(), frontConnection, input)
 			require.NoError(t, err)
