@@ -14,6 +14,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/pipedrive"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
 
 // fakePersonStore answers persons requests; like Pipedrive, its exact search ignores case and returns look-alike addresses.
@@ -162,6 +164,7 @@ func TestUpsertObjectReadsBackAnUnconfirmedCreateInsteadOfCreatingAgain(t *testi
 	require.ErrorAs(t, err, &retry, "an unconfirmed create is retried")
 	require.True(t, ctx.hasHeartbeat(), "the checkpoint stays so the retry reads the person back")
 
+	ctx.nextAttempt()
 	result, err := sdkgo.RunMutation(ctx, client.UpsertObject(), pipedriveConnection, personUpsert("jane@acme.example.com"))
 	require.NoError(t, err)
 	require.Equal(t, pipedrive.UpsertObjectBranchUpserted, result.Branch)
@@ -172,6 +175,34 @@ func TestUpsertObjectReadsBackAnUnconfirmedCreateInsteadOfCreatingAgain(t *testi
 		methods = append(methods, request.method+" "+request.path)
 	}
 	require.Equal(t, []string{"GET /api/v2/persons/search", "POST /api/v2/persons", "GET /api/v2/persons/search", "PATCH /api/v2/persons/901"}, methods)
+}
+
+func TestUpsertObjectCreateRetries503WithSharedFence(t *testing.T) {
+	createRequests := 0
+	provider := newRecordingPipedrive(t, func(response http.ResponseWriter, request recordedRequest) {
+		if request.method == http.MethodGet {
+			writeJSON(t, response, http.StatusOK, `{"success":true,"data":{"items":[]},"additional_data":{"next_cursor":null}}`)
+			return
+		}
+		createRequests++
+		if createRequests == 1 {
+			writeError(t, response, http.StatusServiceUnavailable)
+			return
+		}
+		writeRecord(t, response, `{"id":901,"name":"Jane Smith","emails":[{"value":"jane@acme.example.com","primary":true}]}`)
+	})
+	client := newAPITokenClient(t, provider.URL)
+	ctx := singledispatchtest.NewContext("deal-intake", "upsert-503")
+	_, err := sdkgo.RunMutation(ctx, client.UpsertObject(), pipedriveConnection, personUpsert("jane@acme.example.com"))
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	ctx.AdvanceAttempt()
+	result, err := sdkgo.RunMutation(ctx, client.UpsertObject(), pipedriveConnection, personUpsert("jane@acme.example.com"))
+	require.NoError(t, err)
+	require.Equal(t, pipedrive.UpsertObjectBranchUpserted, result.Branch)
+	require.True(t, result.Value.Created)
+	require.Equal(t, 2, createRequests)
+	require.Len(t, provider.recordedRequests(), 4)
 }
 
 func TestUpsertObjectSelectsUncertainWhenAnEarlierCreateCannotBeFound(t *testing.T) {
@@ -210,7 +241,17 @@ func TestUpsertObjectSelectsUncertainWhenAnAttemptAfterAnUnconfirmedCreateIsRefu
 	} {
 		before := len(refusedSearch.recordedRequests()) + len(refusedUpdate.recordedRequests())
 		ctx := newStepDexContext("upsert-refused-after-create")
-		require.NoError(t, ctx.RecordHeartbeat(map[string]string{"pipedriveDispatchedCallId": "earlier"}))
+		seed := newRecordingPipedrive(t, func(response http.ResponseWriter, request recordedRequest) {
+			if request.method == http.MethodGet {
+				writeJSON(t, response, http.StatusOK, `{"success":true,"data":{"items":[]},"additional_data":{"next_cursor":null}}`)
+				return
+			}
+			writeRecord(t, response, `{"id":901,"name":"Jane","emails":[{"value":"jane@acme.example.com","primary":true}]}`)
+		})
+		seedResult, err := sdkgo.RunMutation(ctx, newAPITokenClient(t, seed.URL).UpsertObject(), pipedriveConnection, personUpsert("jane@acme.example.com"))
+		require.NoError(t, err)
+		require.NoError(t, ctx.RecordHeartbeat(singledispatch.Marker{CallID: seedResult.Receipt.CallID, Attempt: 1, State: singledispatch.StateClaimed}))
+		ctx.nextAttempt()
 		result, err := sdkgo.RunMutation(ctx, testCase.client.UpsertObject(), pipedriveConnection, personUpsert("jane@acme.example.com"))
 		require.NoError(t, err, name)
 		require.Equal(t, sdkgo.UncertainBranchID, result.Branch, name)

@@ -210,10 +210,22 @@ func TestBurstLimitedDealCreateWaitsAndCreatesOneDealWithRealDex(t *testing.T) {
 	harness := newIntakeHarness(t, provider, defaultRequestTimeout)
 
 	intake := harness.runIntake(t, "burst-limit", integrationLead())
-	require.Equal(t, PhaseCompleted, intake.Phase, "a 429 clears the dispatch checkpoint, so the retry may send")
+	require.Equal(t, PhaseCompleted, intake.Phase, "a 429 records a can-resend marker, so the next attempt may send")
 	requests := provider.requestsNamed("dealCreate")
 	require.Len(t, requests, 2)
 	require.GreaterOrEqual(t, requests[1].at.Sub(requests[0].at), 2*time.Second, "the retry waited out Pipedrive's burst window")
+	require.Equal(t, 1, provider.dealCount())
+}
+
+func TestUnavailableDealCreateRetriesOnceAndCreatesOneDealWithRealDex(t *testing.T) {
+	provider := newFakePipedrive(t)
+	provider.unavailableFirstDealCreate = true
+	harness := newIntakeHarness(t, provider, defaultRequestTimeout)
+
+	intake := harness.runIntake(t, "service-unavailable", integrationLead())
+	require.Equal(t, PhaseCompleted, intake.Phase)
+	require.Len(t, provider.requestsNamed("dealCreate"), 2)
+	require.Equal(t, provider.requestsNamed("dealCreate")[0].body, provider.requestsNamed("dealCreate")[1].body)
 	require.Equal(t, 1, provider.dealCount())
 }
 

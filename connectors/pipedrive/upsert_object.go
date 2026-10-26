@@ -13,9 +13,11 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 const (
@@ -81,31 +83,61 @@ func (UpsertObjectOperation) IdempotencyKey(callID sdkgo.CallID, _ UpsertObjectI
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke searches the identity value, updates the one match, or creates the
-// record. A create is preceded by a Dex heartbeat checkpoint; an attempt that
-// finds the checkpoint selects uncertain instead of creating again when it finds
-// no match or its search or update fails without a retry.
+// Invoke searches by identity and fences a create; later attempts read back rather than resend.
 func (operation UpsertObjectOperation) Invoke(call sdkgo.Call, input UpsertObjectInput) sdkgo.MutationAttempt[UpsertedObject] {
 	const operationID = "upsertObject"
+	fence, err := singledispatch.NewFence(call, 30*time.Second)
+	if err != nil {
+		return sdkgo.NewMutationBranch(UpsertObjectBranchDefect, UpsertedObject{}, providerFailurePointer(operationID, sdkgo.FailureLocalDefect, "single-dispatch fence could not be built"), sdkgo.Receipt{})
+	}
+	decision := fence.Decide()
+	if decision.Kind == singledispatch.FailClosed {
+		return unconfirmedCreateAttempt(providerFailure(operationID, sdkgo.FailureTransport, "create checkpoint could not be read"), sdkgo.Receipt{})
+	}
 	requests, err := input.upsertRequests()
 	if err != nil {
 		return sdkgo.NewMutationBranch(UpsertObjectBranchDefect, UpsertedObject{}, providerFailurePointer(operationID, sdkgo.FailureValidation, err.Error()), sdkgo.Receipt{})
 	}
-	isEarlierCreatePossible := hasEarlierDispatch(call)
+	isEarlierCreatePossible := decision.Kind == singledispatch.ReadBackRequired
 	session, cancel, failure := operation.client.startSession(call, operationID)
 	if failure != nil {
-		if isEarlierCreatePossible && failure.route != sessionRetry {
+		if !isEarlierCreatePossible {
+			if err := fence.RecordNotSent(); err != nil {
+				return singleDispatchRetry[UpsertedObject](operationID)
+			}
+			return sdkgo.NewMutationRetry[UpsertedObject](failure.failure, 0)
+		}
+		if failure.route != sessionRetry {
 			return unconfirmedCreateAttempt(failure.failure, sdkgo.Receipt{})
 		}
 		return mutationAttemptForSession[UpsertedObject](failure, upsertBranches)
 	}
 	defer cancel()
+	if isEarlierCreatePossible && decision.Marker.ProviderID != "" && decision.Marker.CallID == call.ID {
+		object, result := operation.client.readRecord(session, input.ObjectType, decision.Marker.ProviderID)
+		receipt := operation.client.receipt(call, result.response, decision.Marker.ProviderID)
+		if isRetryableExchange(result.outcome) {
+			return sdkgo.NewMutationRetry[UpsertedObject](result.failure, result.retryAfter)
+		}
+		if result.outcome != exchangeSucceeded {
+			return unconfirmedCreateAttempt(result.failure, receipt)
+		}
+		if requests.updateBody == nil {
+			return sdkgo.NewMutationBranch(UpsertObjectBranchUpserted, UpsertedObject{Object: object}, nil, receipt)
+		}
+		return operation.updateMatch(session, input.ObjectType, decision.Marker.ProviderID, requests.updateBody, true)
+	}
 	matchingIDs, hasMoreMatches, result := operation.findIdentityMatches(session, input, requests.identityField)
 	receipt := operation.client.receipt(call, result.response, "")
 	switch {
 	case result.outcome != exchangeSucceeded && isEarlierCreatePossible && !isRetryableExchange(result.outcome):
 		return unconfirmedCreateAttempt(result.failure, receipt)
 	case result.outcome != exchangeSucceeded:
+		if !isEarlierCreatePossible && isRetryableExchange(result.outcome) {
+			if err := fence.RecordNotSent(); err != nil {
+				return singleDispatchRetry[UpsertedObject](operationID)
+			}
+		}
 		return repeatableMutationAttemptForExchange[UpsertedObject](result, receipt, upsertBranches)
 	case len(matchingIDs) > 1 || hasMoreMatches:
 		return sdkgo.NewMutationBranch(UpsertObjectBranchMultipleMatches, UpsertedObject{MatchingIDs: matchingIDs}, providerFailurePointer(operationID, sdkgo.FailureConflict,
@@ -115,7 +147,7 @@ func (operation UpsertObjectOperation) Invoke(call sdkgo.Call, input UpsertObjec
 	case isEarlierCreatePossible:
 		return unconfirmedCreateAttempt(providerFailure(operationID, sdkgo.FailureTransport, "Pipedrive search finds no record with the identity value"), receipt)
 	}
-	return operation.createRecord(session, input.ObjectType, requests.createBody)
+	return operation.createRecord(session, input.ObjectType, requests.createBody, fence)
 }
 
 // findIdentityMatches runs Pipedrive's exact search and keeps results whose identity value really matches.
@@ -162,26 +194,37 @@ func (operation UpsertObjectOperation) updateMatch(
 	return sdkgo.NewMutationBranch(UpsertObjectBranchUpserted, UpsertedObject{Object: object}, nil, receipt)
 }
 
-// createRecord keeps the checkpoint after an unconfirmed create, so the next attempt finds the record by identity.
-func (operation UpsertObjectOperation) createRecord(session *operationSession, objectType ObjectType, createBody []byte) sdkgo.MutationAttempt[UpsertedObject] {
+// createRecord fences the POST; unconfirmed outcomes require a later identity read-back.
+func (operation UpsertObjectOperation) createRecord(session *operationSession, objectType ObjectType, createBody []byte, fence *singledispatch.Fence) sdkgo.MutationAttempt[UpsertedObject] {
 	call := session.call
-	if err := recordDispatch(call); err != nil {
-		return dispatchCheckpointRetry[UpsertedObject](session.operation)
+	send := &createObjectSend{client: operation.client, session: session, request: providerRequest{method: http.MethodPost, path: collectionPath(objectType), body: createBody, singleDispatch: true}}
+	if err := fence.Dispatch(send.execute); err != nil {
+		if errors.Is(err, singledispatch.ErrCheckpoint) || errors.Is(err, singledispatch.ErrInsufficientTime) {
+			return singleDispatchRetry[UpsertedObject](session.operation)
+		}
+		return unconfirmedCreateAttempt(providerFailure(session.operation, sdkgo.FailureTransport, "create dispatch could not be confirmed"), sdkgo.Receipt{})
 	}
-	result := operation.client.exchange(session, providerRequest{method: http.MethodPost, path: collectionPath(objectType), body: createBody})
+	result := send.result
 	receipt := operation.client.receipt(call, result.response, "")
 	switch result.outcome {
 	case exchangeSucceeded:
 	case exchangeNotSent, exchangeRateLimited:
-		releaseDispatch(call)
+		if err := fence.RecordCanResend(); err != nil {
+			return singleDispatchRetry[UpsertedObject](session.operation)
+		}
 		return sdkgo.NewMutationRetry[UpsertedObject](result.failure, result.retryAfter)
-	case exchangeUnavailable, exchangeInvalid:
+	case exchangeUnavailable:
+		if result.response.statusCode == http.StatusServiceUnavailable {
+			if err := fence.RecordCanResend(); err != nil {
+				return singleDispatchRetry[UpsertedObject](session.operation)
+			}
+		}
+		return sdkgo.NewMutationRetry[UpsertedObject](result.failure, result.retryAfter)
+	case exchangeInvalid:
 		return sdkgo.NewMutationRetry[UpsertedObject](result.failure, result.retryAfter)
 	case exchangeDefect:
-		releaseDispatch(call)
 		return sdkgo.NewMutationBranch(UpsertObjectBranchDefect, UpsertedObject{}, &result.failure, receipt)
 	default:
-		releaseDispatch(call)
 		return sdkgo.NewMutationBranch(UpsertObjectBranchProviderRejected, UpsertedObject{}, &result.failure, receipt)
 	}
 	object, err := decodeRecordBody(objectType, result.response.body)
@@ -190,6 +233,7 @@ func (operation UpsertObjectOperation) createRecord(session *operationSession, o
 			"Pipedrive accepted the create but returned an invalid record; the next attempt reads it back by its identity value"), 0)
 	}
 	receipt.ProviderObjectID = object.ID
+	_ = fence.RecordProviderID(object.ID)
 	return sdkgo.NewMutationBranch(UpsertObjectBranchUpserted, UpsertedObject{Object: object, Created: true}, nil, receipt)
 }
 

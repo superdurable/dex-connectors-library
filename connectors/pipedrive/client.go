@@ -6,14 +6,10 @@
 //
 // A Client exposes six operations. SearchObjects, GetObject, and ListObjects
 // read records; UpdateObject sets named fields on one record and is safe to
-// repeat. CreateObject and UpsertObject create records, and Pipedrive has no
-// idempotency key. Both run with sync durability and record a Dex heartbeat
-// checkpoint before a create is sent: CreateObject then reports an unconfirmed
-// outcome as uncertain instead of sending again, and UpsertObject, which finds
-// a person by email or an organization by name first, reads the record back by
-// that identity. Dex accepts the checkpoint once the Worker writes it to its
-// stream, before storing it, so a Worker lost in that instant can still send
-// twice: the checkpoint narrows the double-send window but does not close it.
+// repeat. CreateObject and UpsertObject create records without a provider
+// idempotency key. Both use sync durability and a shared single-dispatch fence
+// before sending a create. Later attempts read back a saved ID or searched
+// identity and fail closed when they cannot confirm the prior write.
 //
 // A connection authenticates with a Personal API token sent in the
 // x-api-token header to https://api.pipedrive.com, or with a Pipedrive OAuth
@@ -39,6 +35,7 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 const (
@@ -174,10 +171,12 @@ func (client *Client) UpdateObject() UpdateObjectOperation {
 
 // providerRequest is one Pipedrive request; path starts with /api/ below the connection's base URL.
 type providerRequest struct {
-	method string
-	path   string
-	query  url.Values
-	body   []byte
+	method         string
+	path           string
+	query          url.Values
+	body           []byte
+	context        context.Context
+	singleDispatch bool
 }
 
 type providerResponse struct {
@@ -293,7 +292,11 @@ func (client *Client) exchange(session *operationSession, request providerReques
 
 func (client *Client) exchangeOnce(session *operationSession, request providerRequest) pipedriveExchange {
 	operation := session.operation
-	if session.context.Err() != nil {
+	requestContext := session.context
+	if request.context != nil {
+		requestContext = request.context
+	}
+	if requestContext.Err() != nil {
 		return pipedriveExchange{outcome: exchangeNotSent, failure: providerFailure(operation, sdkgo.FailureTransport, "the operation deadline passed before Pipedrive was contacted; no request was sent")}
 	}
 	target := session.baseURL + request.path
@@ -305,7 +308,7 @@ func (client *Client) exchangeOnce(session *operationSession, request providerRe
 		body = bytes.NewReader(request.body)
 	}
 	observation := &dispatchObservation{}
-	httpRequest, err := http.NewRequestWithContext(httptrace.WithClientTrace(session.context, observation.clientTrace()), request.method, target, body)
+	httpRequest, err := http.NewRequestWithContext(httptrace.WithClientTrace(requestContext, observation.clientTrace()), request.method, target, body)
 	if err != nil {
 		return pipedriveExchange{outcome: exchangeDefect, failure: providerFailure(operation, sdkgo.FailureLocalDefect, errRequestNotBuilt.Error())}
 	}
@@ -318,6 +321,11 @@ func (client *Client) exchangeOnce(session *operationSession, request providerRe
 	httpRequest.Header.Set("Accept", "application/json")
 	if request.body != nil {
 		httpRequest.Header.Set("Content-Type", "application/json")
+	}
+	if request.singleDispatch {
+		if err := singledispatch.PrepareHTTPWrite(httpRequest); err != nil {
+			return pipedriveExchange{outcome: exchangeDefect, failure: providerFailure(operation, sdkgo.FailureLocalDefect, "Pipedrive write request could not be prepared")}
+		}
 	}
 	httpResponse, err := client.httpClient.Do(httpRequest)
 	if err != nil {
@@ -380,11 +388,12 @@ func (client *Client) classifyErrorResponse(operation string, response providerR
 	result := pipedriveExchange{response: response}
 	switch {
 	case status == http.StatusTooManyRequests && isDailyTokenBudgetExhausted(response.header):
-		result.outcome, result.failure = exchangeRejected, providerFailure(operation, sdkgo.FailureQuotaExhausted, "Pipedrive's daily API token budget is exhausted until it resets at midnight in Pipedrive's server time zone")
+		result.outcome, result.failure = exchangeRateLimited, providerFailure(operation, sdkgo.FailureQuotaExhausted, "Pipedrive's daily API token budget is exhausted until it resets at midnight in Pipedrive's server time zone")
+		result.retryAfter = retryAfter
 	case status == http.StatusTooManyRequests:
 		result.outcome, result.failure = exchangeRateLimited, providerFailure(operation, sdkgo.FailureRateLimit, "Pipedrive's burst rate limit rejected the request")
 		result.retryAfter = max(retryAfter, burstLimitDelay(response.header))
-	case status == http.StatusRequestTimeout || (status >= 500 && status != http.StatusNotImplemented):
+	case status == http.StatusConflict || status == http.StatusRequestTimeout || (status >= 500 && status != http.StatusNotImplemented):
 		result.outcome, result.retryAfter = exchangeUnavailable, retryAfter
 		result.failure = providerFailure(operation, sdkgo.FailureAvailability, fmt.Sprintf("Pipedrive is temporarily unavailable (HTTP %d)", status))
 	case status == http.StatusUnauthorized:

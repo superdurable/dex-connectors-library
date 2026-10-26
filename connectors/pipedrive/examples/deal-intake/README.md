@@ -19,15 +19,13 @@ in one Flow, `PipedriveDealIntake`:
    stage and owner, or `CreatePipedriveDeal` (`createObject`, sync) creates it
    there with the lead source in the picked deal custom field. A rejected or
    unconfirmed create fails the Flow; a later attempt does not
-   send the create again, except in the narrow case of a Worker lost before Dex
-   stored its dispatch checkpoint (see the connector README's duplicate safety
-   section).
+   send the create again, except after a definite 429, 503, or proven unsent attempt (see the connector README's duplicate safety section).
 6. `ReadBackPipedriveDeal` (`getObject`) confirms the stored stage and
    `CompletePipedriveDealIntake` completes with the `DealIntake` output.
 
 ## Release baseline
 
-- Pipedrive Connector `v0.22.1`
+- Pipedrive Connector `v0.23.0`
 - dexcli `cli-v1.5.0` or a later stable release
 
 ## Generate the Flow Definition Graph
@@ -42,12 +40,12 @@ cd pipedrive-deal-intake-e2e
 mkdir -p flow build
 
 curl -fsSL \
-  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/pipedrive/v0.22.1/connectors/pipedrive/examples/deal-intake/flow/workflow.go \
+  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/pipedrive/v0.23.0/connectors/pipedrive/examples/deal-intake/flow/workflow.go \
   -o flow/workflow.go
 
 go mod init example.com/pipedrive-deal-intake-e2e
 go mod edit -go=1.24.0
-go get github.com/superdurable/dex-connectors-library/connectors/pipedrive@v0.22.1
+go get github.com/superdurable/dex-connectors-library/connectors/pipedrive@v0.23.0
 go mod tidy
 
 dexcli visualize ./flow/workflow.go \

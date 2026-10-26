@@ -321,7 +321,7 @@ var SearchObjectsDefinition = sdkgo.QueryDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "searchObjects"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: SearchObjectsBranchSearched, Description: "Pipedrive returned one bounded page of matching partial records; the page may be empty."},
-		{ID: SearchObjectsBranchProviderRejected, Description: "Pipedrive conclusively rejected the search, such as a revoked token, a missing scope, an exhausted daily token budget, or an invalid term.", Optional: true},
+		{ID: SearchObjectsBranchProviderRejected, Description: "Pipedrive conclusively rejected the search, such as a revoked token, a missing scope or an invalid term.", Optional: true},
 		{ID: SearchObjectsBranchInvalidResponse, Description: "Pipedrive returned an invalid or oversized search page.", Optional: true},
 		{ID: SearchObjectsBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
@@ -396,7 +396,7 @@ var GetObjectDefinition = sdkgo.QueryDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: GetObjectBranchFound, Description: "The record exists and was returned."},
 		{ID: GetObjectBranchNotFound, Description: "No record of that object type has the ID, or the connection's user cannot see it.", Optional: true},
-		{ID: GetObjectBranchProviderRejected, Description: "Pipedrive conclusively rejected the read, such as a revoked token, a missing scope, or an exhausted daily token budget.", Optional: true},
+		{ID: GetObjectBranchProviderRejected, Description: "Pipedrive conclusively rejected the read, such as a revoked token, or a missing scope.", Optional: true},
 		{ID: GetObjectBranchInvalidResponse, Description: "Pipedrive returned an invalid or oversized record.", Optional: true},
 		{ID: GetObjectBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
@@ -473,7 +473,7 @@ var ListObjectsDefinition = sdkgo.QueryDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listObjects"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: ListObjectsBranchListed, Description: "Pipedrive returned one bounded page of full records; the page may be empty."},
-		{ID: ListObjectsBranchProviderRejected, Description: "Pipedrive conclusively rejected the list, such as a revoked token, a missing scope, an exhausted daily token budget, or an expired cursor.", Optional: true},
+		{ID: ListObjectsBranchProviderRejected, Description: "Pipedrive conclusively rejected the list, such as a revoked token, a missing scope or an expired cursor.", Optional: true},
 		{ID: ListObjectsBranchInvalidResponse, Description: "Pipedrive returned an invalid or oversized page.", Optional: true},
 		{ID: ListObjectsBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
@@ -549,7 +549,7 @@ var UpsertObjectDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: UpsertObjectBranchUpserted, Description: "Pipedrive created the record or updated the one record that carries the identity value."},
 		{ID: UpsertObjectBranchMultipleMatches, Description: "More than one record carries the identity value, so the connector changed nothing; the Result lists their IDs.", Optional: true},
-		{ID: UpsertObjectBranchProviderRejected, Description: "Pipedrive conclusively rejected the search or the write, such as an invalid field value, a revoked token, a missing scope, or an exhausted daily token budget; nothing was created.", Optional: true},
+		{ID: UpsertObjectBranchProviderRejected, Description: "Pipedrive conclusively rejected the search or the write, such as an invalid field value, a revoked token, or a missing scope; nothing was created.", Optional: true},
 		{ID: UpsertObjectBranchInvalidResponse, Description: "Pipedrive returned an invalid or oversized search page or updated record.", Optional: true},
 		{ID: UpsertObjectBranchUncertain, Description: "An earlier attempt sent a create whose outcome was never confirmed, and a search by the identity value finds no record or this attempt's search or update failed without a retry, so the record may exist; the connector does not create it again.", Optional: true},
 		{ID: UpsertObjectBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
@@ -631,7 +631,7 @@ var CreateObjectDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createObject"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateObjectBranchCreated, Description: "Pipedrive created the record and returned it."},
-		{ID: CreateObjectBranchProviderRejected, Description: "Pipedrive conclusively rejected the create, such as a missing title or name, an unknown stage or owner, a revoked token, or an exhausted daily token budget; nothing was created.", Optional: true},
+		{ID: CreateObjectBranchProviderRejected, Description: "Pipedrive conclusively rejected the create, such as a missing title or name, an unknown stage or owner, or a revoked token; nothing was created.", Optional: true},
 		{ID: CreateObjectBranchUncertain, Description: "The create was sent but its outcome cannot be confirmed, so the record may exist; the connector never sends it again.", Optional: true},
 		{ID: CreateObjectBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
@@ -706,7 +706,7 @@ var UpdateObjectDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: UpdateObjectBranchUpdated, Description: "Pipedrive updated the record and returned it."},
 		{ID: UpdateObjectBranchNotFound, Description: "No record of that object type has the ID, or the connection's user cannot see it.", Optional: true},
-		{ID: UpdateObjectBranchProviderRejected, Description: "Pipedrive conclusively rejected the update, such as an invalid field value, an unknown stage or owner, a revoked token, or an exhausted daily token budget.", Optional: true},
+		{ID: UpdateObjectBranchProviderRejected, Description: "Pipedrive conclusively rejected the update, such as an invalid field value, an unknown stage or owner, or a revoked token.", Optional: true},
 		{ID: UpdateObjectBranchInvalidResponse, Description: "Pipedrive applied or rejected the update but returned an invalid or oversized record.", Optional: true},
 		{ID: UpdateObjectBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},

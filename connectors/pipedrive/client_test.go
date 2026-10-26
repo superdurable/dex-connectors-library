@@ -36,7 +36,7 @@ func TestErrorResponsesSelectBranchesWithoutProviderText(t *testing.T) {
 		{name: "not implemented", status: http.StatusNotImplemented, branch: pipedrive.GetObjectBranchProviderRejected, failureKind: sdkgo.FailureProviderRejection},
 		{
 			name: "daily token budget exhausted", status: http.StatusTooManyRequests, header: map[string]string{"X-Daily-Ratelimit-Token-Remaining": "0"},
-			branch: pipedrive.GetObjectBranchProviderRejected, failureKind: sdkgo.FailureQuotaExhausted,
+			isRetry: true, failureKind: sdkgo.FailureQuotaExhausted,
 		},
 		{name: "burst limit", status: http.StatusTooManyRequests, isRetry: true, failureKind: sdkgo.FailureRateLimit, minimumDelay: 2 * time.Second},
 		{

@@ -48,14 +48,16 @@ func TestCreateObjectRecordsTheCheckpointThenSendsOneCreate(t *testing.T) {
 	require.Equal(t, "application/json", requests[0].contentType)
 	require.JSONEq(t, `{"title":"Acme renewal","person_id":501,"stage_id":3,"custom_fields":{"`+sourceFieldKey+`":"webinar"}}`, string(requests[0].body))
 
+	ctx.nextAttempt()
 	again, err := sdkgo.RunMutation(ctx, client.CreateObject(), pipedriveConnection, dealInput())
 	require.NoError(t, err)
-	require.Equal(t, sdkgo.UncertainBranchID, again.Branch, "a later attempt of the same Step execution never sends the create again")
-	require.Len(t, provider.recordedRequests(), 1)
+	require.Equal(t, pipedrive.CreateObjectBranchCreated, again.Branch, "a later attempt reads back the accepted ID")
+	require.Len(t, provider.recordedRequests(), 2)
+	require.Equal(t, http.MethodGet, provider.recordedRequests()[1].method)
 }
 
 func TestCreateObjectSelectsUncertainWhenTheOutcomeIsUnknown(t *testing.T) {
-	for name, status := range map[string]int{"server error": http.StatusInternalServerError, "gateway timeout": http.StatusGatewayTimeout} {
+	for name, status := range map[string]int{"conflict needs read-back": http.StatusConflict, "server error": http.StatusInternalServerError, "gateway timeout": http.StatusGatewayTimeout} {
 		provider := newRecordingPipedrive(t, func(response http.ResponseWriter, _ recordedRequest) { writeError(t, response, status) })
 		client := newAPITokenClient(t, provider.URL)
 		result, err := sdkgo.RunMutation(newStepDexContext("create-unknown"), client.CreateObject(), pipedriveConnection, dealInput())
@@ -83,7 +85,7 @@ func TestCreateObjectRetriesABurstLimitAndClearsTheCheckpoint(t *testing.T) {
 	var retry *sdkgo.RetryError
 	require.ErrorAs(t, err, &retry)
 	require.Equal(t, sdkgo.FailureRateLimit, retry.Failure.Kind)
-	require.False(t, ctx.hasHeartbeat(), "Pipedrive refused the create, so the next attempt may send it")
+	require.True(t, ctx.hasHeartbeat(), "the can-resend checkpoint permits only the next attempt")
 }
 
 func TestCreateObjectRejectsAnInvalidDealWithoutSendingIt(t *testing.T) {

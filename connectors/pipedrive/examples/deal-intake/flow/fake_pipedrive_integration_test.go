@@ -43,6 +43,7 @@ type fakePipedrive struct {
 	losesFirstPersonCreateResponse bool
 	losesFirstDealCreateResponse   bool
 	rateLimitsFirstDealCreate      bool
+	unavailableFirstDealCreate     bool
 	rejectsDealCreate              bool
 	holdsFirstDealCreate           chan struct{}
 }
@@ -287,6 +288,9 @@ func (provider *fakePipedrive) createDeal(response http.ResponseWriter, request 
 		response.Header().Set("X-Ratelimit-Reset", "1")
 		response.Header().Set("X-Daily-Ratelimit-Token-Remaining", "29000")
 		provider.writeJSON(response, http.StatusTooManyRequests, `{"success":false,"error":"Rate limit exceeded SENTINEL","errorCode":429}`)
+		return
+	case attempt == 1 && provider.unavailableFirstDealCreate:
+		provider.writeJSON(response, http.StatusServiceUnavailable, `{"success":false,"error":"Maintenance SENTINEL"}`)
 		return
 	case provider.rejectsDealCreate:
 		provider.writeJSON(response, http.StatusBadRequest, `{"success":false,"error":"Stage does not exist SENTINEL","errorCode":400}`)
