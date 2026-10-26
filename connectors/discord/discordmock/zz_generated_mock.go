@@ -165,9 +165,9 @@ func ListChannelMessagesRetry(failure sdkgo.Failure, after time.Duration) connec
 	return connectormock.Retry[discord.MessagePage](failure, after)
 }
 
-// ListChannelMessagesAnnouncementReadBack is the manifest mock announcementReadBack: Listing the newest messages in channel 100000000000000001 finds the posted release announcement.
+// ListChannelMessagesAnnouncementReadBack is the manifest mock announcementReadBack: Listing channel 100000000000000001 finds the posted announcement behind another user's newer message.
 func ListChannelMessagesAnnouncementReadBack() connectormock.Case[discord.MessagePage] {
-	value := connectormock.MustDecodeOutput[discord.MessagePage](`{"messages":[{"id":"300000000000000001","channelId":"100000000000000001","author":{"id":"200000000000000001","username":"releasebot","isBot":true},"content":"Release today @everyone","timestamp":"2026-10-26T12:00:00Z","type":0}],"oldestMessageId":"300000000000000001","isFull":false}`)
+	value := connectormock.MustDecodeOutput[discord.MessagePage](`{"messages":[{"id":"300000000000000002","channelId":"100000000000000001","author":{"id":"400000000000000002","username":"teammate","isBot":false},"content":"Thanks for the announcement!","timestamp":"2026-10-26T12:01:00Z","type":0},{"id":"300000000000000001","channelId":"100000000000000001","author":{"id":"400000000000000001","username":"releasebot","isBot":true},"content":"Release today @everyone","timestamp":"2026-10-26T12:00:00Z","type":0}],"oldestMessageId":"300000000000000001","isFull":false}`)
 	return connectormock.Branch(discord.ListChannelMessagesBranchListed, value, nil)
 }
 
@@ -220,7 +220,7 @@ func CreateMessageRetry(failure sdkgo.Failure, after time.Duration) connectormoc
 
 // CreateMessageReleaseAnnouncement is the manifest mock releaseAnnouncement: Posting Release today @everyone to channel 100000000000000001 creates one mention-safe message.
 func CreateMessageReleaseAnnouncement() connectormock.Case[discord.Message] {
-	value := connectormock.MustDecodeOutput[discord.Message](`{"id":"300000000000000001","channelId":"100000000000000001","author":{"id":"200000000000000001","username":"releasebot","isBot":true},"content":"Release today @everyone","timestamp":"2026-10-26T12:00:00Z","type":0}`)
+	value := connectormock.MustDecodeOutput[discord.Message](`{"id":"300000000000000001","channelId":"100000000000000001","author":{"id":"400000000000000001","username":"releasebot","isBot":true},"content":"Release today @everyone","timestamp":"2026-10-26T12:00:00Z","type":0}`)
 	return connectormock.Branch(discord.CreateMessageBranchCreated, value, nil)
 }
 

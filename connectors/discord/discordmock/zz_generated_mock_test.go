@@ -21,11 +21,11 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			return err
 		}},
 		{name: "listChannelMessages/announcementReadBack/1", decode: func() error {
-			_, err := connectormock.DecodeOutput[discord.MessagePage](`{"messages":[{"id":"300000000000000001","channelId":"100000000000000001","author":{"id":"200000000000000001","username":"releasebot","isBot":true},"content":"Release today @everyone","timestamp":"2026-10-26T12:00:00Z","type":0}],"oldestMessageId":"300000000000000001","isFull":false}`)
+			_, err := connectormock.DecodeOutput[discord.MessagePage](`{"messages":[{"id":"300000000000000002","channelId":"100000000000000001","author":{"id":"400000000000000002","username":"teammate","isBot":false},"content":"Thanks for the announcement!","timestamp":"2026-10-26T12:01:00Z","type":0},{"id":"300000000000000001","channelId":"100000000000000001","author":{"id":"400000000000000001","username":"releasebot","isBot":true},"content":"Release today @everyone","timestamp":"2026-10-26T12:00:00Z","type":0}],"oldestMessageId":"300000000000000001","isFull":false}`)
 			return err
 		}},
 		{name: "createMessage/releaseAnnouncement/1", decode: func() error {
-			_, err := connectormock.DecodeOutput[discord.Message](`{"id":"300000000000000001","channelId":"100000000000000001","author":{"id":"200000000000000001","username":"releasebot","isBot":true},"content":"Release today @everyone","timestamp":"2026-10-26T12:00:00Z","type":0}`)
+			_, err := connectormock.DecodeOutput[discord.Message](`{"id":"300000000000000001","channelId":"100000000000000001","author":{"id":"400000000000000001","username":"releasebot","isBot":true},"content":"Release today @everyone","timestamp":"2026-10-26T12:00:00Z","type":0}`)
 			return err
 		}},
 		{name: "addReaction/announcementReaction/1", decode: func() error {

@@ -36,14 +36,14 @@ func TestChannelAnnouncementRunsOnMockDefaultsWithRealDex(t *testing.T) {
 
 	channelCalls := mock.GetChannel().Calls()
 	require.Len(t, channelCalls, 1)
-	require.Equal(t, discord.GetChannelInput{ChannelID: request.ChannelID}, channelCalls[0].Input)
+	require.Equal(t, discord.GetChannelInput{ChannelID: "100000000000000001"}, channelCalls[0].Input)
 	postCalls := mock.CreateMessage().Calls()
 	require.Len(t, postCalls, 1)
-	require.Equal(t, discord.CreateMessageInput{ChannelID: request.ChannelID, Content: request.Text}, postCalls[0].Input)
+	require.Equal(t, discord.CreateMessageInput{ChannelID: "100000000000000001", Content: "Release today @everyone"}, postCalls[0].Input)
 	reactionCalls := mock.AddReaction().Calls()
 	require.Len(t, reactionCalls, 1)
-	require.Equal(t, discord.AddReactionInput{ChannelID: request.ChannelID, MessageID: outcome.MessageID, Emoji: "📣"}, reactionCalls[0].Input)
+	require.Equal(t, discord.AddReactionInput{ChannelID: "100000000000000001", MessageID: "300000000000000001", Emoji: "📣"}, reactionCalls[0].Input)
 	readBackCalls := mock.ListChannelMessages().Calls()
 	require.Len(t, readBackCalls, 1)
-	require.Equal(t, discord.ListChannelMessagesInput{ChannelID: request.ChannelID, Limit: readBackPageSize}, readBackCalls[0].Input)
+	require.Equal(t, discord.ListChannelMessagesInput{ChannelID: "100000000000000001", Limit: 10}, readBackCalls[0].Input)
 }

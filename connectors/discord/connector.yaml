@@ -94,11 +94,12 @@ spec:
       mocks:
         - name: announcementReadBack
           branch: listed
-          description: "Listing the newest messages in channel 100000000000000001 finds the posted release announcement."
+          description: "Listing channel 100000000000000001 finds the posted announcement behind another user's newer message."
           default: true
           output:
             messages:
-              - {id: "300000000000000001", channelId: "100000000000000001", author: {id: "200000000000000001", username: releasebot, isBot: true}, content: "Release today @everyone", timestamp: "2026-10-26T12:00:00Z", type: 0}
+              - {id: "300000000000000002", channelId: "100000000000000001", author: {id: "400000000000000002", username: teammate, isBot: false}, content: "Thanks for the announcement!", timestamp: "2026-10-26T12:01:00Z", type: 0}
+              - {id: "300000000000000001", channelId: "100000000000000001", author: {id: "400000000000000001", username: releasebot, isBot: true}, content: "Release today @everyone", timestamp: "2026-10-26T12:00:00Z", type: 0}
             oldestMessageId: "300000000000000001"
             isFull: false
         - name: unknownChannel
@@ -133,7 +134,7 @@ spec:
           branch: created
           description: "Posting Release today @everyone to channel 100000000000000001 creates one mention-safe message."
           default: true
-          output: {id: "300000000000000001", channelId: "100000000000000001", author: {id: "200000000000000001", username: releasebot, isBot: true}, content: "Release today @everyone", timestamp: "2026-10-26T12:00:00Z", type: 0}
+          output: {id: "300000000000000001", channelId: "100000000000000001", author: {id: "400000000000000001", username: releasebot, isBot: true}, content: "Release today @everyone", timestamp: "2026-10-26T12:00:00Z", type: 0}
         - name: unknownChannel
           branch: notFound
           description: "Posting to unknown channel 100000000000000404 receives Discord's Unknown Channel 404."
