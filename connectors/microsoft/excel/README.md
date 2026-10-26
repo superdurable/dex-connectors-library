@@ -243,6 +243,31 @@ restart. The cell and response limits are startup configuration:
 `maxResponseBytes` bounds one Graph response, and `maxCells`, at most 100,000,
 bounds the cells one operation reads or writes.
 
+## Mocks
+
+`excelmock.New` provides defaults for one approval workbook. The policy table
+has travel and hardware limits, the Decisions table accepts `REQ-1001`, and
+the Summary worksheet reads that approved decision back. Named cases cover
+missing resources, oversized reads, protected writes, and a decision table
+whose key column is absent. Script a different case for another request or
+workbook. No default pretends a timed-out append was safely repeated.
+
+The [runnable integration test](examples/approval-decision/flow/workflow_mock_integration_test.go)
+runs the example on a real Dex Worker without Microsoft Graph:
+
+```go
+mock := excelmock.New(t, ConnectionName)
+```
+
+It asserts the Flow's decision and its mapped inputs, including the append:
+
+```go
+appends := mock.AppendTableRows().Calls()
+require.Len(t, appends, 1)
+```
+
+See [`sdkgo/connectormock`](../../../sdkgo/README.md#connector-mocks) for scripting.
+
 ## Example
 
 [`examples/approval-decision`](examples/approval-decision/README.md) uses every
