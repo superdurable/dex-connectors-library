@@ -438,3 +438,51 @@ func TestCreateResponseHonorsBothRetryAfterForms(t *testing.T) {
 		})
 	}
 }
+
+// A read-back GET is safe to repeat, so 408 and 409 keep polling like 429 and 5xx.
+func TestCreateResponseReadBackPollsThroughRequestTimeoutAndConflict(t *testing.T) {
+	for _, status := range []int{http.StatusRequestTimeout, http.StatusConflict} {
+		t.Run(fmt.Sprint(status), func(t *testing.T) {
+			script, server := newProviderScript(t,
+				replyJSON(`{"id":"resp_pending","status":"queued"}`),
+				replyStatus(status),
+				replyJSON(`{"id":"resp_pending","status":"completed"}`),
+			)
+			result, err := runCreateResponse(testsupport.NewDexContext("flow-1", fmt.Sprintf("read-back-%d", status)), newClient(t, server.URL))
+			require.NoError(t, err)
+			require.Equal(t, openai.CreateResponseBranchCompleted, result.Branch)
+			require.Equal(t, "resp_pending", result.Value.ID)
+			require.Equal(t, []string{http.MethodPost, http.MethodGet, http.MethodGet}, script.requestMethods())
+		})
+	}
+}
+
+func TestCreateResponseReadBackRequestTimeoutsUntilTheDeadlineKeepTheResponseID(t *testing.T) {
+	script, server := newProviderScript(t, replyJSON(`{"id":"resp_timeout","status":"in_progress"}`))
+	for range 20 {
+		script.replies = append(script.replies, replyStatus(http.StatusRequestTimeout))
+	}
+	client := newClient(t, server.URL)
+	ctx := testsupport.NewDexContext("flow-1", "read-back-408-deadline")
+	attemptContext, cancel := context.WithTimeout(context.Background(), 7*time.Second)
+	defer cancel()
+	ctx.Context = attemptContext
+	_, err := runCreateResponse(ctx, client)
+	require.ErrorContains(t, err, "not confirmed yet")
+
+	script.mu.Lock()
+	script.replies = append(script.replies[:len(script.methods)], replyJSON(`{"id":"resp_timeout","status":"completed"}`))
+	script.mu.Unlock()
+	ctx.Context = context.Background()
+	ctx.AttemptNo = 2
+	result, err := runCreateResponse(ctx, client)
+	require.NoError(t, err)
+	require.Equal(t, openai.CreateResponseBranchCompleted, result.Branch)
+	require.Equal(t, "resp_timeout", result.Value.ID)
+	methods := script.requestMethods()
+	require.Equal(t, http.MethodPost, methods[0])
+	require.Greater(t, len(methods), 2)
+	for _, method := range methods[1:] {
+		require.Equal(t, http.MethodGet, method, "the next attempt reads the checkpointed response instead of creating another")
+	}
+}

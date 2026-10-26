@@ -437,7 +437,8 @@ func (client *Client) readStoredResponse(call sdkgo.Call, responseID string, pol
 		return unconfirmed(sdkgo.FailureAuthorization, "read-back returned HTTP 403; the API key needs read permission for responses (GET /v1/responses/{id})")
 	case status == http.StatusTooManyRequests:
 		return storedResponseRead{retryAfter: retryAfterHeader(response.Header)}
-	case status >= 500:
+	case status >= 500, status == http.StatusRequestTimeout, status == http.StatusConflict:
+		// A repeated GET is safe; the attempt deadline bounds polling.
 		return storedResponseRead{}
 	default:
 		return unconfirmed(sdkgo.FailureProviderRejection, "read-back returned HTTP "+strconv.Itoa(status))
@@ -585,6 +586,9 @@ func classifyOpenAIStatus(operation string, status int, header http.Header) (sdk
 		kind = sdkgo.FailureAuthorization
 	case http.StatusNotFound:
 		kind = sdkgo.FailureNotFound
+	case http.StatusRequestTimeout:
+		kind = sdkgo.FailureAvailability
+		isRetryable = operation == "retrieveResponse"
 	case http.StatusConflict:
 		kind = sdkgo.FailureConflict
 	case http.StatusTooManyRequests:

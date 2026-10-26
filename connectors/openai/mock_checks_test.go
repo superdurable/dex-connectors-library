@@ -222,9 +222,7 @@ func TestOpenAIMockChecksOnlyJSONSyntaxWithoutStrict(t *testing.T) {
 	require.Len(t, recorder.failures(), 1)
 }
 
-// TestOpenAIMockDeliversWhatTheRealConnectorCompletesForStructuredOutput keeps the answer check from rejecting answers
-// that the real createResponse returns: a refusal without text on the completed branch, and an incomplete Response,
-// which selects failed with its partial text.
+// The answer check accepts what the real createResponse returns: a textless refusal and a failed incomplete Response.
 func TestOpenAIMockDeliversWhatTheRealConnectorCompletesForStructuredOutput(t *testing.T) {
 	for _, test := range []struct {
 		name       string
@@ -260,6 +258,31 @@ func TestOpenAIMockDeliversWhatTheRealConnectorCompletesForStructuredOutput(t *t
 			require.Empty(t, recorder.failures())
 		})
 	}
+}
+
+func TestOpenAIMockRejectsACompletedAnswerWithAnotherStatus(t *testing.T) {
+	for name, request := range map[string]openai.CreateRequest{"plain": {Input: "profile"}, "structured": structuredStatusRequest()} {
+		t.Run(name, func(t *testing.T) {
+			recorder := &recordingMockTB{TB: t}
+			mock := openaimock.New(recorder, openAIConnection.Name)
+			mock.CreateResponse().Respond(openaimock.CreateResponseCompleted(openai.Response{ID: "resp_cut", Status: "incomplete", OutputText: "Shipped"}, nil))
+			result, err := sdkgo.RunMutation(testsupport.NewDexContext("flow-1", "completed-incomplete-"+name), mock.CreateResponse(), openAIConnection, request)
+			require.NoError(t, err)
+			require.Equal(t, openai.CreateResponseBranchDefect, result.Branch, "the real connector selects failed for an incomplete Response")
+			require.Len(t, recorder.failures(), 1)
+			require.Contains(t, recorder.failures()[0], "CreateResponseFailed")
+		})
+	}
+}
+
+func TestOpenAIMockAcceptsACompletedPlainAnswerWithoutStatus(t *testing.T) {
+	recorder := &recordingMockTB{TB: t}
+	mock := openaimock.New(recorder, openAIConnection.Name)
+	mock.CreateResponse().Respond(openaimock.CreateResponseCompleted(openai.Response{ID: "resp_plain", OutputText: "Shipped."}, nil))
+	result, err := sdkgo.RunMutation(testsupport.NewDexContext("flow-1", "completed-no-status"), mock.CreateResponse(), openAIConnection, openai.CreateRequest{Input: "profile"})
+	require.NoError(t, err)
+	require.Equal(t, openai.CreateResponseBranchCompleted, result.Branch)
+	require.Empty(t, recorder.failures())
 }
 
 func TestOpenAIMockChecksAScriptedAnswerWithoutStatus(t *testing.T) {

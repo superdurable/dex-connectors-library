@@ -104,6 +104,22 @@ func TestRetrieveResponseClassifiesTerminalOutcomes(t *testing.T) {
 	}
 }
 
+func TestRetrieveResponseRetriesTransientStatuses(t *testing.T) {
+	for _, status := range []int{http.StatusRequestTimeout, http.StatusTooManyRequests, http.StatusBadGateway} {
+		t.Run(fmt.Sprint(status), func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+				response.WriteHeader(status)
+			}))
+			defer server.Close()
+			_, err := sdkgo.RunQuery(
+				testsupport.NewDexContext("flow-1", fmt.Sprintf("retrieve-transient-%d", status)), newClient(t, server.URL).RetrieveResponse(), openAIConnection,
+				openai.RetrieveRequest{ResponseID: "resp_known"},
+			)
+			require.ErrorContains(t, err, fmt.Sprint(status), "a GET is safe to repeat")
+		})
+	}
+}
+
 func TestRetrieveResponseMissingConnectionUsesDefectBranch(t *testing.T) {
 	client, err := openai.New(openai.Config{}, sdkgo.StaticCredentialProvider[openai.Credentials]{})
 	require.NoError(t, err)

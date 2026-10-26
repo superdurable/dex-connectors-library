@@ -199,7 +199,7 @@ stale checkpoint never permits a new request; the next attempt selects
 | `createResponse` | `completed` (required) | OpenAI completed the Response. |
 | `createResponse` | `failed` | OpenAI returned a terminal `failed` or `incomplete` Response, streamed or not. |
 | `createResponse` | `providerRejected` | A conclusive 4xx refusal, such as 400, 401, 403, 404, or 422. |
-| `createResponse` | `uncertain` | A request may have created a Response that cannot be confirmed: the request was sent but no Response ID was observed, for example after HTTP 408, HTTP 409, a 5xx other than 503, or a streaming `error` event; an earlier attempt left no usable checkpoint; the Response has no recognized status; or reading it back returned 401, 403, 404, another 4xx, or an unreadable body. |
+| `createResponse` | `uncertain` | A request may have created a Response that cannot be confirmed: the request was sent but no Response ID was observed, for example after HTTP 408, HTTP 409, a 5xx other than 503, or a streaming `error` event; an earlier attempt left no usable checkpoint; the Response has no recognized status; or reading it back returned 401, 403, 404, another 4xx other than 408, 409, or 429, or an unreadable body. |
 | `createResponse` | `defect` | The input, the model, credentials, or connection configuration is invalid; nothing is sent. |
 | `retrieveResponse` | `found` (required) | The Response exists and was returned. |
 | `retrieveResponse` | `notFound` | OpenAI returned 404. |
@@ -208,13 +208,15 @@ stale checkpoint never permits a new request; the next attempt selects
 | `retrieveResponse` | `defect` | The Response ID, credentials, or connection configuration is invalid. |
 
 HTTP 429 returns Retry for both operations, honoring a `Retry-After` given in
-seconds or as an HTTP date, up to one hour. An unsent create request, HTTP
+seconds or as an HTTP date, up to one hour. `retrieveResponse` also returns
+Retry for HTTP 408 and 5xx. An unsent create request, HTTP
 503, and a `cancelled` Response also retry `createResponse`, which then sends
 a new request. Other create failures after the request may have been sent,
 such as HTTP 408, HTTP 409, or another 5xx, select `uncertain` when no
 Response ID is known: OpenAI offers neither a create deduplication key nor a
-lookup of a Response by request. A read-back waits out HTTP 429,
-5xx, and transport failures within the attempt. The create request carries no
+lookup of a Response by request. A read-back keeps polling through HTTP 408, 409, 429,
+5xx, and transport failures within the attempt, then returns Retry with the
+Response ID kept for the next attempt. The create request carries no
 `Idempotency-Key`: [the Responses create reference](https://developers.openai.com/api/reference/resources/responses/methods/create)
 documents no deduplication for it, and Go's `net/http` would resend a POST
 that carries it on a reused connection. Receipts hold the `x-request-id` and
@@ -270,7 +272,7 @@ These snippets come from
 Named cases cover incomplete stored Responses, missing IDs, and conclusive
 provider refusals.
 
-The mock runs two connector-owned checks on `createResponse`:
+The mock runs three connector-owned checks on `createResponse`:
 
 - A request that the real operation rejects locally selects `defect` with the
   real operation's failure kind and message, without failing the test or
@@ -278,11 +280,13 @@ The mock runs two connector-owned checks on `createResponse`:
   printable ASCII without spaces, and an `Input` or `StructuredOutput` that is
   not JSON serializable. A blank `Model` uses the connection's model. OpenAI
   judges the schema's content, so the mock does not.
+- A `completed` answer must have `Status: "completed"` or no `Status`, for
+  every request: the real operation selects `failed` for a `failed` or
+  `incomplete` Response, so script one with `CreateResponseFailed`.
 - A `completed` answer to a request with `StructuredOutput` must have
   `OutputText` that is exactly one JSON value: no Markdown fence and no text
-  around it. The check skips a Response whose `Status` is set and is not
-  `completed`, and a Response without `OutputText`, because an incomplete
-  Response carries truncated text and a refusal carries none. OpenAI guarantees schema adherence only with
+  around it. The check skips a Response without `OutputText`, because a
+  refusal carries none. OpenAI guarantees schema adherence only with
   `Strict: true`, so only then, and when the schema is in the portable subset
   that the llm connector also enforces (every property in `required`,
   `additionalProperties: false`, one type per node), must the value also match
