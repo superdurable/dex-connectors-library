@@ -245,14 +245,19 @@ no `binding`. Their runner records go to `slog.Default()`, so call
 
 Posting sends the stable Dex Call ID as Slack `client_msg_id`. [Slack's
 `chat.postMessage` reference](https://docs.slack.dev/reference/methods/chat.postMessage/)
-lists duplicate-related errors but does not document a replay deduplication
-guarantee for this field. That guarantee remains unverified; a connection loss
-after dispatch, a 409 or ambiguous 500, or a successful response without a usable
+does not list `client_msg_id` as an argument; it mentions the field only in
+duplicate-related error descriptions. Its replay deduplication behavior remains
+unverified. A connection loss after dispatch, a 409, other 5xx, an `ok:false`
+`internal_error` or `fatal_error`, or a successful response without a usable
 message identity selects `uncertain` and requires reconciliation. The connector
 does not resend after such an outcome. A traced DNS, connect, or TLS failure
-before a connection exists, HTTP 429, and HTTP 503 retry. A dispatch checkpoint
-prevents a later attempt from resending when its previous result or marker is
-unknown; each request ends before the Step's attempt deadline.
+before a connection exists, HTTP 429 or 503, and `ok:false` `ratelimited` or
+`service_unavailable` retry. Slack does not document their HTTP statuses or
+whether the retryable body errors can be partially applied; that retry safety
+and Slack's 409 behavior remain unverified. Synchronous Step durability persists
+the dispatch checkpoint that permits only proven-safe retries across attempts.
+If that checkpoint is missing or stale, the connector does not resend. Each
+request ends before the Step's attempt deadline.
 
 Every operation uses `defect` for invalid local input, connection configuration,
 or Connector contract violations. A conclusive Slack API refusal uses

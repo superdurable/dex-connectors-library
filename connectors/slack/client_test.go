@@ -332,17 +332,38 @@ func TestPostMessageMissingOrStaleRetryCheckpointDoesNotResend(t *testing.T) {
 	}
 }
 
-func TestPostMessageFailedCheckpointDoesNotDispatch(t *testing.T) {
+func TestPostMessageFailedCheckpointRetriesWithoutDispatch(t *testing.T) {
 	requests := 0
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) { requests++ }))
 	t.Cleanup(server.Close)
 	client := newSlackClient(t, server.URL)
 	ctx := newSlackDexContext("post-checkpoint-failed")
 	ctx.heartbeatError = errors.New("heartbeat unavailable")
-	result, err := sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, slack.PostChannelMessageInput{ChannelID: "C123", Text: "hello"})
-	require.NoError(t, err)
-	require.Equal(t, slack.PostChannelMessageBranchDefect, result.Branch)
+	_, err := sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, slack.PostChannelMessageInput{ChannelID: "C123", Text: "hello"})
+	require.Error(t, err)
 	require.Equal(t, 0, requests)
+}
+
+func TestPostMessageFailedDispatchClaimRetriesFromSafeCheckpoint(t *testing.T) {
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		requests++
+		_, _ = response.Write([]byte(`{"ok":true,"channel":"C123","ts":"2.0"}`))
+	}))
+	t.Cleanup(server.Close)
+	client := newSlackClient(t, server.URL)
+	ctx := newSlackDexContext("post-dispatch-checkpoint-failed")
+	ctx.heartbeatErrorOnCall = 2
+	input := slack.PostChannelMessageInput{ChannelID: "C123", Text: "hello"}
+	_, err := sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, input)
+	require.Error(t, err)
+	require.Equal(t, 0, requests)
+	require.Contains(t, string(ctx.heartbeat), `"slackPostSafeToRetry":true`)
+	ctx.attempt = 2
+	result, err := sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, slack.PostChannelMessageBranchSent, result.Branch)
+	require.Equal(t, 1, requests)
 }
 
 func TestPostMessageProvenUnsentRetriesButAmbiguousTransportIsUncertain(t *testing.T) {
@@ -403,7 +424,10 @@ func TestPostMessageAcceptedWithoutIdentityIsNotResent(t *testing.T) {
 
 func TestPostMessageDeadlineCutsBeforeDispatch(t *testing.T) {
 	requests := 0
-	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) { requests++ }))
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		requests++
+		_, _ = response.Write([]byte(`{"ok":true,"channel":"C123","ts":"2.0"}`))
+	}))
 	t.Cleanup(server.Close)
 	client := newSlackClient(t, server.URL)
 	stepContext, cancel := context.WithDeadline(context.Background(), time.Now().Add(100*time.Millisecond))
@@ -413,7 +437,66 @@ func TestPostMessageDeadlineCutsBeforeDispatch(t *testing.T) {
 	_, err := sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, slack.PostChannelMessageInput{ChannelID: "C123", Text: "hello"})
 	require.Error(t, err)
 	require.Equal(t, 0, requests)
-	require.Empty(t, ctx.heartbeat)
+	require.Contains(t, string(ctx.heartbeat), `"slackPostSafeToRetry":true`)
+	ctx.Context = context.Background()
+	ctx.attempt = 2
+	result, err := sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, slack.PostChannelMessageInput{ChannelID: "C123", Text: "hello"})
+	require.NoError(t, err)
+	require.Equal(t, slack.PostChannelMessageBranchSent, result.Branch)
+	require.Equal(t, 1, requests)
+}
+
+func TestPostMessageBodyErrorsPreserveSafeRetryAndUnknownOutcome(t *testing.T) {
+	for _, testCase := range []struct {
+		name       string
+		wantsRetry bool
+	}{
+		{name: "service_unavailable", wantsRetry: true},
+		{name: "ratelimited", wantsRetry: true},
+		{name: "internal_error"},
+		{name: "fatal_error"},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			requests := 0
+			var messageIDs []string
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+				requests++
+				var payload map[string]string
+				require.NoError(t, json.NewDecoder(request.Body).Decode(&payload))
+				messageIDs = append(messageIDs, payload["client_msg_id"])
+				response.Header().Set("Content-Type", "application/json")
+				if requests == 1 {
+					_, _ = response.Write([]byte(`{"ok":false,"error":"` + testCase.name + `"}`))
+					return
+				}
+				_, _ = response.Write([]byte(`{"ok":true,"channel":"C123","ts":"2.0"}`))
+			}))
+			t.Cleanup(server.Close)
+			client := newSlackClient(t, server.URL)
+			ctx := newSlackDexContext("post-body-error-" + testCase.name)
+			input := slack.PostThreadReplyInput{ChannelID: "C123", ThreadTimestamp: "1.0", Text: "hello"}
+			firstResult, err := sdkgo.RunMutation(ctx, client.PostThreadReply(), slackConnection, input)
+			if testCase.wantsRetry {
+				require.Error(t, err)
+				require.Contains(t, string(ctx.heartbeat), `"slackPostSafeToRetry":true`)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, slack.PostThreadReplyBranchUncertain, firstResult.Branch)
+			}
+			ctx.attempt = 2
+			secondResult, err := sdkgo.RunMutation(ctx, client.PostThreadReply(), slackConnection, input)
+			require.NoError(t, err)
+			if testCase.wantsRetry {
+				require.Equal(t, slack.PostThreadReplyBranchSent, secondResult.Branch)
+				require.Equal(t, 2, requests)
+				require.Equal(t, messageIDs[0], messageIDs[1])
+				require.NotEmpty(t, messageIDs[0])
+			} else {
+				require.Equal(t, slack.PostThreadReplyBranchUncertain, secondResult.Branch)
+				require.Equal(t, 1, requests)
+			}
+		})
+	}
 }
 
 type roundTripFunc func(*http.Request) (*http.Response, error)
@@ -451,10 +534,12 @@ func newSlackClient(t *testing.T, endpoint string) *slack.Client {
 
 type slackDexContext struct {
 	context.Context
-	step           string
-	attempt        int32
-	heartbeat      []byte
-	heartbeatError error
+	step                 string
+	attempt              int32
+	heartbeat            []byte
+	heartbeatError       error
+	heartbeatErrorOnCall int
+	heartbeatWriteCount  int
 }
 
 func newSlackDexContext(step string) *slackDexContext {
@@ -478,8 +563,12 @@ func (*slackDexContext) HasTimerFired() bool           { return false }
 func (*slackDexContext) HasTimerFiredByIndex(int) bool { return false }
 func (*slackDexContext) WaitForMethodFailed() bool     { return false }
 func (context *slackDexContext) RecordHeartbeat(value any) error {
+	context.heartbeatWriteCount++
 	if context.heartbeatError != nil {
 		return context.heartbeatError
+	}
+	if context.heartbeatWriteCount == context.heartbeatErrorOnCall {
+		return errors.New("heartbeat unavailable")
 	}
 	if value == nil {
 		context.heartbeat = nil

@@ -52,8 +52,8 @@ func newPostRequestContext(stepContext context.Context, attemptStart time.Time, 
 	return requestContext, cancel, true
 }
 
-// claimPostDispatch fails closed when an earlier attempt cannot prove that a resend is safe.
-func claimPostDispatch(call sdkgo.Call) postDispatchClaim {
+// preparePostDispatch fails closed when an earlier attempt cannot prove that a resend is safe.
+func preparePostDispatch(call sdkgo.Call) postDispatchClaim {
 	var checkpoint postDispatchCheckpoint
 	isFound, err := call.Context.GetLastHeartbeatValue(&checkpoint)
 	if err != nil {
@@ -67,10 +67,14 @@ func claimPostDispatch(call sdkgo.Call) postDispatchClaim {
 	} else if !isFound || checkpoint.CallID != call.ID || checkpoint.Attempt != attempt-1 || !checkpoint.IsSafeToRetry {
 		return postDispatchMayHaveSent
 	}
-	if err := call.Context.RecordHeartbeat(postDispatchCheckpoint{CallID: call.ID, Attempt: attempt}); err != nil {
+	if err := call.Context.RecordHeartbeat(postDispatchCheckpoint{CallID: call.ID, Attempt: attempt, IsSafeToRetry: true}); err != nil {
 		return postDispatchNotRecorded
 	}
 	return postDispatchGranted
+}
+
+func recordPostDispatchClaim(call sdkgo.Call) error {
+	return call.Context.RecordHeartbeat(postDispatchCheckpoint{CallID: call.ID, Attempt: call.Context.Attempt()})
 }
 
 func markPostSafeToRetry(call sdkgo.Call) {
