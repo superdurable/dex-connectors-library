@@ -69,7 +69,7 @@ func run(ctx context.Context, logger *slog.Logger, connectionOptions ...calendly
 		return err
 	}
 	flow := inviteerecorder.NewFlow(connection)
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	registry, err := dex.NewRegistry([]dex.Flow{flow, inviteerecorder.NewSchedulingLinkFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register invitee recorder Flow: %w", err)
 	}

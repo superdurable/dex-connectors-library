@@ -19,6 +19,14 @@ This example receives signed Calendly webhooks and starts one
    `calendly-scheduled-event` Attribute and completes the Flow. Unwired optional
    branches fail the Flow with the connector's safe failure reason.
 
+The same Worker also registers `CalendlyCreateSchedulingLink`. Its start input
+is `CreateSchedulingLinkInput` with an event type URI; it completes with the
+single-use `SchedulingLink`. The `scheduling_link_integration_test.go` example
+starts this Flow against a provider stand-in that answers `503` once, then
+`201`, and checks that exactly two identical POST bodies were sent. The
+`workflow_mock_integration_test.go` example starts the invitee Flow with the
+generated mock connection and checks the Flow's recorded event and call input.
+
 ## 1. Generate the Flow Definition
 
 From `connectors/calendly`, generate strict FDG 2.0 with the latest stable
@@ -32,11 +40,15 @@ dexcli visualize ./examples/invitee-recorder/flow/workflow.go \
   --schema-version 2.0 \
   --json \
   --out ./build/invitee-recorder
+dexcli visualize ./examples/invitee-recorder/flow/scheduling_link_workflow.go \
+  --schema-version 2.0 \
+  --json \
+  --out ./build/scheduling-link
 ```
 
-The command must report `valid: true` with the three Steps, only the `found`
+Both commands must report `valid: true`. The first has three Steps, only the `found`
 `getScheduledEvent` branch routed, and the `invitee-created` binding with its
-`eventTypePicker` unit. Inside this repository it also warns
+`eventTypePicker` unit. The second routes only the `created` branch. Inside this repository each also warns
 `connector_release_required` and `connector_trigger_release_required`, because
 a local module is not a published release.
 
@@ -59,7 +71,7 @@ go run ./cmd/connectorctl ui-artifact \
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/calendly/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/calendly \
-  --version v0.22.1 --tag connectors/calendly/v0.22.1 \
+  --version v0.23.0 --tag connectors/calendly/v0.23.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/calendly-release/connector-ui.tgz \
   --ui-digest /tmp/calendly-release/connector-ui.tgz.sha256 \

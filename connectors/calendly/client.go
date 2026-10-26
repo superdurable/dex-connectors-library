@@ -17,6 +17,7 @@ package calendly
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -29,11 +30,11 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 	"github.com/superdurable/dex-connectors-library/sdkgo/webhooktrigger"
 )
 
@@ -113,6 +114,41 @@ type calendlyResponse struct {
 	statusCode int
 	header     http.Header
 	body       []byte
+}
+
+// schedulingLinkDispatchObservation proves a failed connection never supplied a socket to the write.
+type schedulingLinkDispatchObservation struct {
+	mu                   sync.Mutex
+	hasConnectionFailure bool
+	hasConnection        bool
+}
+
+func (observation *schedulingLinkDispatchObservation) clientTrace() *httptrace.ClientTrace {
+	return &httptrace.ClientTrace{
+		DNSDone:          func(info httptrace.DNSDoneInfo) { observation.recordConnectionFailure(info.Err) },
+		ConnectDone:      func(_, _ string, err error) { observation.recordConnectionFailure(err) },
+		TLSHandshakeDone: func(_ tls.ConnectionState, err error) { observation.recordConnectionFailure(err) },
+		GotConn: func(httptrace.GotConnInfo) {
+			observation.mu.Lock()
+			defer observation.mu.Unlock()
+			observation.hasConnection = true
+		},
+	}
+}
+
+func (observation *schedulingLinkDispatchObservation) recordConnectionFailure(err error) {
+	if err == nil {
+		return
+	}
+	observation.mu.Lock()
+	defer observation.mu.Unlock()
+	observation.hasConnectionFailure = true
+}
+
+func (observation *schedulingLinkDispatchObservation) isProvablyUndispatched() bool {
+	observation.mu.Lock()
+	defer observation.mu.Unlock()
+	return observation.hasConnectionFailure && !observation.hasConnection
 }
 
 // calendlyErrorBody holds the documented machine-readable fields of a Calendly error object.
@@ -218,7 +254,7 @@ func (provider webhookCredentialProvider) ResolveContext(ctx context.Context, ca
 
 // sendCalendlyRequest repeats a request once after an OAuth 401 and a forced refresh; Calendly ignored it.
 func (client *Client) sendCalendlyRequest(
-	call sdkgo.Call, credentials *Credentials, method string, path string, query url.Values, body any, isDispatched *atomic.Bool,
+	call sdkgo.Call, credentials *Credentials, method string, path string, query url.Values, body any, observation *schedulingLinkDispatchObservation,
 ) (calendlyResponse, error) {
 	var encodedBody []byte
 	if body != nil {
@@ -233,7 +269,7 @@ func (client *Client) sendCalendlyRequest(
 		target += "?" + query.Encode()
 	}
 	for attempt := 0; attempt < 2; attempt++ {
-		response, err := client.sendCalendlyRequestOnce(call.Context, credentials.AccessToken.Reveal(), method, target, encodedBody, isDispatched)
+		response, err := client.sendCalendlyRequestOnce(call.Context, credentials.AccessToken.Reveal(), method, target, encodedBody, observation)
 		if err != nil || response.statusCode != http.StatusUnauthorized || attempt > 0 || !client.canRefreshAfterRejection(*credentials) {
 			return response, err
 		}
@@ -242,32 +278,24 @@ func (client *Client) sendCalendlyRequest(
 			return response, nil
 		}
 		*credentials = replacement
-		if isDispatched != nil {
-			// Calendly refused the first request unprocessed, so only the repeat can leave an unknown outcome.
-			isDispatched.Store(false)
-		}
 	}
 	return calendlyResponse{}, errors.New("Calendly authenticated request retry was exhausted")
 }
 
 func (client *Client) sendCalendlyRequestOnce(
-	requestContext context.Context, accessToken string, method string, target string, body []byte, isDispatched *atomic.Bool,
+	requestContext context.Context, accessToken string, method string, target string, body []byte, observation *schedulingLinkDispatchObservation,
 ) (calendlyResponse, error) {
 	if requestContext == nil {
 		requestContext = context.Background()
 	}
-	tracedContext := httptrace.WithClientTrace(requestContext, &httptrace.ClientTrace{
-		WroteRequest: func(written httptrace.WroteRequestInfo) {
-			if written.Err == nil && isDispatched != nil {
-				isDispatched.Store(true)
-			}
-		},
-	})
+	if observation != nil {
+		requestContext = httptrace.WithClientTrace(requestContext, observation.clientTrace())
+	}
 	var requestBody io.Reader
 	if body != nil {
 		requestBody = bytes.NewReader(body)
 	}
-	request, err := http.NewRequestWithContext(tracedContext, method, target, requestBody)
+	request, err := http.NewRequestWithContext(requestContext, method, target, requestBody)
 	if err != nil {
 		return calendlyResponse{}, errCalendlyRequestInvalid
 	}
@@ -275,6 +303,11 @@ func (client *Client) sendCalendlyRequestOnce(
 	request.Header.Set("Accept", "application/json")
 	if body != nil {
 		request.Header.Set("Content-Type", "application/json")
+	}
+	if observation != nil {
+		if err := singledispatch.PrepareHTTPWrite(request); err != nil {
+			return calendlyResponse{}, errCalendlyRequestInvalid
+		}
 	}
 	response, err := client.httpClient.Do(request)
 	if err != nil {
