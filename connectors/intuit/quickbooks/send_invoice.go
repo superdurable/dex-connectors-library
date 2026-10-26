@@ -39,6 +39,7 @@ func (SendInvoiceOperation) IdempotencyKey(callID sdkgo.CallID, _ SendInvoiceInp
 // the Step's requestid and returns the invoice QuickBooks updated, with EmailStatus EmailSent.
 func (operation SendInvoiceOperation) Invoke(call sdkgo.Call, input SendInvoiceInput) sdkgo.MutationAttempt[Invoice] {
 	client := operation.client
+	attemptBudget := client.newAttemptBudget(call.Context, SendInvoiceDefinition.StepDefaults.ExecuteMethodTimeout)
 	invoiceID, sendTo := strings.TrimSpace(input.InvoiceID), strings.TrimSpace(input.SendTo)
 	requested := Invoice{InvoiceID: invoiceID}
 	if err := validateEntityID("invoiceId", invoiceID); err != nil {
@@ -54,7 +55,7 @@ func (operation SendInvoiceOperation) Invoke(call sdkgo.Call, input SendInvoiceI
 		query.Set("sendTo", sendTo)
 	}
 	result := client.exchange(call, sendInvoiceOperationID, quickbooksRequest{
-		method: http.MethodPost, path: "/invoice/" + invoiceID + "/send", query: query, isMutation: true,
+		method: http.MethodPost, path: "/invoice/" + invoiceID + "/send", query: query, isMutation: true, attemptBudget: attemptBudget,
 	})
 	receipt := client.receipt(call, result, invoiceID)
 	if attempt, isTerminal := mutationAttemptForExchange(result, requested, receipt, mutationBranches{

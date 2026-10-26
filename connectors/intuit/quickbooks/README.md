@@ -308,7 +308,10 @@ and the first code is in the Receipt metadata `faultCode`.
 | invalid input, or no known company | `defect`, with no request |
 
 Each HTTP request ends at least 500 milliseconds before the Step context's
-deadline, leaving time to classify its result. Intuit's [request ID guidance](https://developer.intuit.com/app/developer/qbo/docs/learn/learn-basic-field-definitions#request-id)
+deadline, leaving time to classify its result. A write starts only when at
+least one tenth of the smaller of the 30-second Execute timeout and the Step's
+available time at Invoke start remains. If less time remains, the connector
+returns Retry before sending the write. Intuit's [request ID guidance](https://developer.intuit.com/app/developer/qbo/docs/learn/learn-basic-field-definitions#request-id)
 describes replay for writes. The [Invoice API](https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/invoice)
 documents invoice read-back and `EmailStatus`; the [Payment API](https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/payment)
 documents payment read-back. Key retention and replay of `/send` remain

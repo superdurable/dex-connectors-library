@@ -80,13 +80,14 @@ func (RecordPaymentOperation) IdempotencyKey(callID sdkgo.CallID, _ RecordPaymen
 // returned payment applies the amount to the invoice.
 func (operation RecordPaymentOperation) Invoke(call sdkgo.Call, input RecordPaymentInput) sdkgo.MutationAttempt[Payment] {
 	client := operation.client
+	attemptBudget := client.newAttemptBudget(call.Context, RecordPaymentDefinition.StepDefaults.ExecuteMethodTimeout)
 	requested := Payment{CustomerID: strings.TrimSpace(input.CustomerID), TotalAmount: input.Amount}
 	payload, err := buildRecordPaymentRequest(input)
 	if err != nil {
 		return sdkgo.NewMutationBranch(RecordPaymentBranchDefect, requested,
 			quickbooksFailurePointer(sdkgo.FailureValidation, recordPaymentOperationID, err.Error()), sdkgo.Receipt{})
 	}
-	result := client.exchange(call, recordPaymentOperationID, quickbooksRequest{method: http.MethodPost, path: "/payment", payload: payload, isMutation: true})
+	result := client.exchange(call, recordPaymentOperationID, quickbooksRequest{method: http.MethodPost, path: "/payment", payload: payload, isMutation: true, attemptBudget: attemptBudget})
 	receipt := client.receipt(call, result, "")
 	if attempt, isTerminal := mutationAttemptForExchange(result, requested, receipt, mutationBranches{
 		providerRejected: RecordPaymentBranchProviderRejected, defect: RecordPaymentBranchDefect,

@@ -46,11 +46,12 @@ var (
 
 // quickbooksRequest is one Accounting API request below /v3/company/{realmId}; a mutation carries the Step's requestid.
 type quickbooksRequest struct {
-	method     string
-	path       string
-	query      url.Values
-	payload    any
-	isMutation bool
+	method        string
+	path          string
+	query         url.Values
+	payload       any
+	isMutation    bool
+	attemptBudget quickbooksAttemptBudget
 }
 
 // quickbooksResponse holds the safe parts of one response; body is kept only when it is usable.

@@ -99,7 +99,7 @@ func WithLocalProviderURL(baseURL string) Option {
 	return func(options *clientOptions) { options.localProviderURL = baseURL }
 }
 
-// WithClock overrides the clock used for Receipts, Retry-After dates, and token expiry.
+// WithClock overrides the clock used for Receipts, Retry-After dates, token expiry, and request timing.
 // Tests use it; production connections leave it unset.
 func WithClock(now func() time.Time) Option {
 	return func(options *clientOptions) { options.now = now }
@@ -116,6 +116,11 @@ type Client struct {
 	configuredRealmID string
 	maxResponseBytes  int64
 	now               func() time.Time
+}
+
+type quickbooksAttemptBudget struct {
+	deadline         time.Time
+	minimumWriteTime time.Duration
 }
 
 // New validates configuration and constructs a QuickBooks client. Credentials are resolved
@@ -253,10 +258,20 @@ func (client *Client) send(call sdkgo.Call, credentials Credentials, realmID str
 	if err != nil {
 		return quickbooksExchange{outcome: exchangeDefect, failure: quickbooksFailure(sdkgo.FailureLocalDefect, operation, err.Error())}
 	}
-	if deadline, hasDeadline := call.Context.Deadline(); hasDeadline {
+	deadline, hasDeadline := call.Context.Deadline()
+	if request.isMutation {
+		if request.attemptBudget.minimumWriteTime <= 0 || request.attemptBudget.deadline.Sub(client.now()) < request.attemptBudget.minimumWriteTime {
+			return quickbooksExchange{outcome: exchangeRetry, failure: quickbooksFailure(sdkgo.FailureTransport, operation, "QuickBooks write was not sent because too little attempt time remains")}
+		}
+		deadline, hasDeadline = request.attemptBudget.deadline, true
+	}
+	if call.Context.Err() != nil {
+		return quickbooksExchange{outcome: exchangeRetry, failure: quickbooksFailure(sdkgo.FailureTransport, operation, "QuickBooks attempt has no time left for a request; no request was sent")}
+	}
+	if hasDeadline {
 		requestDeadline := deadline.Add(-requestDeadlineMargin)
-		if time.Until(requestDeadline) <= 0 {
-			return quickbooksExchange{outcome: exchangeRetry, failure: quickbooksFailure(sdkgo.FailureTransport, operation, "QuickBooks attempt has no time left for a request")}
+		if requestDeadline.Sub(client.now()) <= 0 {
+			return quickbooksExchange{outcome: exchangeRetry, failure: quickbooksFailure(sdkgo.FailureTransport, operation, "QuickBooks attempt has no time left for a request; no request was sent")}
 		}
 		requestContext, cancel := context.WithDeadline(httpRequest.Context(), requestDeadline)
 		defer cancel()
@@ -270,6 +285,16 @@ func (client *Client) send(call sdkgo.Call, credentials Credentials, realmID str
 		return quickbooksExchange{outcome: exchangeRetry, failure: quickbooksFailure(sdkgo.FailureTransport, operation, "QuickBooks request failed before a response arrived")}
 	}
 	return classifyHTTPResponse(operation, httpResponse, credentials.AccessToken.Reveal(), client.maxResponseBytes, client.now())
+}
+
+func (client *Client) newAttemptBudget(stepContext context.Context, executeTimeout time.Duration) quickbooksAttemptBudget {
+	startedAt := client.now()
+	available := executeTimeout
+	if stepDeadline, hasDeadline := stepContext.Deadline(); hasDeadline {
+		available = min(available, stepDeadline.Sub(startedAt))
+	}
+	available = max(available, 0)
+	return quickbooksAttemptBudget{deadline: startedAt.Add(available), minimumWriteTime: available / 10}
 }
 
 // buildRequest addresses the company's realm, pins the minor version, and adds a mutation's requestid.

@@ -6,6 +6,7 @@ package quickbooks_test
 import (
 	"context"
 	"net/http"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -228,6 +229,44 @@ func TestDeadlineMarginPreventsAnAttemptFromStartingANewRequest(t *testing.T) {
 	require.Zero(t, provider.requestCount())
 }
 
+func TestMutationWithLessThanTenthOfAttemptBudgetDoesNotSend(t *testing.T) {
+	provider := newRecordingQuickBooks(t, func(http.ResponseWriter, recordedRequest, int) { t.Fatal("no request is expected") })
+	startedAt := time.Now()
+	requestContext, cancel := context.WithDeadline(context.Background(), startedAt.Add(30*time.Second))
+	defer cancel()
+	var clockCalls atomic.Int32
+	clock := func() time.Time {
+		if clockCalls.Add(1) == 1 {
+			return startedAt
+		}
+		return startedAt.Add(28 * time.Second)
+	}
+	dexContext := newQuickBooksDexContext("short-write-window")
+	dexContext.Context = requestContext
+	_, err := sdkgo.RunMutation(dexContext, newQuickBooksClient(t, provider.URL, quickbooks.WithClock(clock)).RecordPayment(), quickbooksConnection, validRecordPaymentInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	require.Contains(t, retry.Failure.Message, "not sent")
+	require.Zero(t, provider.requestCount())
+}
+
+func TestReadWithTwoSecondsOfAttemptTimeStillRuns(t *testing.T) {
+	provider := newRecordingQuickBooks(t, func(response http.ResponseWriter, request recordedRequest, _ int) {
+		require.Equal(t, http.MethodGet, request.method)
+		writeValue(t, response, http.StatusOK, map[string]any{"Invoice": invoiceJSON()})
+	})
+	startedAt := time.Now()
+	requestContext, cancel := context.WithDeadline(context.Background(), startedAt.Add(30*time.Second))
+	defer cancel()
+	dexContext := newQuickBooksDexContext("short-read-window")
+	dexContext.Context = requestContext
+	client := newQuickBooksClient(t, provider.URL, quickbooks.WithClock(func() time.Time { return startedAt.Add(28 * time.Second) }))
+	result, err := sdkgo.RunQuery(dexContext, client.GetInvoice(), quickbooksConnection, quickbooks.GetInvoiceInput{InvoiceID: testInvoiceID})
+	require.NoError(t, err)
+	require.Equal(t, quickbooks.GetInvoiceBranchFound, result.Branch)
+	require.Equal(t, 1, provider.requestCount())
+}
+
 func TestDeadlineCutsAnAcceptedWriteMidResponseWithoutResending(t *testing.T) {
 	provider := newRecordingQuickBooks(t, func(response http.ResponseWriter, _ recordedRequest, _ int) {
 		response.Header().Set("Content-Length", "500")
@@ -235,10 +274,10 @@ func TestDeadlineCutsAnAcceptedWriteMidResponseWithoutResending(t *testing.T) {
 		_, err := response.Write([]byte(`{"Customer":`))
 		require.NoError(t, err)
 		response.(http.Flusher).Flush()
-		<-time.After(1500 * time.Millisecond)
+		<-time.After(4500 * time.Millisecond)
 	})
 	dexContext := newQuickBooksDexContext("deadline-mid-response")
-	requestContext, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second))
+	requestContext, cancel := context.WithDeadline(context.Background(), time.Now().Add(4*time.Second))
 	defer cancel()
 	dexContext.Context = requestContext
 	result, err := sdkgo.RunMutation(dexContext, newQuickBooksClient(t, provider.URL).CreateCustomer(), quickbooksConnection,
