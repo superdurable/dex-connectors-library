@@ -178,7 +178,7 @@ func GetTaskRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case
 
 // GetTaskFoundDefaultAnswer is the manifest mock foundDefaultAnswer: Task 1204000000000002, created for REQ-1042 in the Facilities project, is read for reconciliation.
 func GetTaskFoundDefaultAnswer() connectormock.Case[asana.Task] {
-	value := connectormock.MustDecodeOutput[asana.Task](`{"id":"1204000000000002","name":"[REQ-1042] Replace badge reader","isCompleted":false,"memberships":[{"project":{"id":"1201000000000001","name":"Facilities"},"section":{"id":"1201000000000101","name":"Approved"}}],"workspace":{"id":"1200000000000001","name":"Operations"},"notes":"Door 4 is offline.","createdAt":"2026-09-30T16:15:00Z","modifiedAt":"2026-09-30T16:15:00Z"}`)
+	value := connectormock.MustDecodeOutput[asana.Task](`{"id":"1204000000000002","name":"[REQ-1042] Replace badge reader","isCompleted":false,"memberships":[{"project":{"id":"1201000000000001","name":"Facilities"},"section":{"id":"1201000000000101","name":"Approved"}}],"workspace":{"id":"1200000000000001","name":"Operations"},"notes":"Door 4 is offline.","dueOn":"2026-10-15","createdAt":"2026-09-30T16:15:00Z","modifiedAt":"2026-09-30T16:15:00Z"}`)
 	return connectormock.Branch(asana.GetTaskBranchFound, value, nil)
 }
 
@@ -188,7 +188,7 @@ func GetTaskNotFoundFailure() connectormock.Case[asana.Task] {
 	return connectormock.Branch(asana.GetTaskBranchNotFound, value, &sdkgo.Failure{Kind: sdkgo.FailureNotFound, Message: "The task does not exist or the connection cannot see it."})
 }
 
-// GetTaskProviderRejectedFailure is the manifest mock providerRejectedFailure: Reading task 1204000000000002 without permission is rejected by Asana.
+// GetTaskProviderRejectedFailure is the manifest mock providerRejectedFailure: Reading restricted task 1204000000000042 without permission is rejected by Asana.
 func GetTaskProviderRejectedFailure() connectormock.Case[asana.Task] {
 	var value asana.Task
 	return connectormock.Branch(asana.GetTaskBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "Asana conclusively rejected the task read."})
@@ -271,7 +271,7 @@ func UpdateTaskRetry(failure sdkgo.Failure, after time.Duration) connectormock.C
 
 // UpdateTaskUpdatedDefaultAnswer is the manifest mock updatedDefaultAnswer: Assigning task 1204000000000002 to Ada and moving it to the Approved section returns that task.
 func UpdateTaskUpdatedDefaultAnswer() connectormock.Case[asana.UpdateTaskOutput] {
-	value := connectormock.MustDecodeOutput[asana.UpdateTaskOutput](`{"taskId":"1204000000000002","task":{"id":"1204000000000002","name":"[REQ-1042] Replace badge reader","isCompleted":false,"assignee":{"id":"1203000000000001","name":"Ada Lovelace"},"memberships":[{"project":{"id":"1201000000000001","name":"Facilities"},"section":{"id":"1201000000000101","name":"Approved"}}],"workspace":{"id":"1200000000000001","name":"Operations"},"notes":"Door 4 is offline.","createdAt":"2026-09-30T16:15:00Z","modifiedAt":"2026-09-30T16:17:00Z"},"isMovedToSection":true}`)
+	value := connectormock.MustDecodeOutput[asana.UpdateTaskOutput](`{"taskId":"1204000000000002","task":{"id":"1204000000000002","name":"[REQ-1042] Replace badge reader","isCompleted":false,"assignee":{"id":"1203000000000001","name":"Ada Lovelace"},"memberships":[{"project":{"id":"1201000000000001","name":"Facilities"},"section":{"id":"1201000000000101","name":"Approved"}}],"workspace":{"id":"1200000000000001","name":"Operations"},"notes":"Door 4 is offline.","dueOn":"2026-10-15","createdAt":"2026-09-30T16:15:00Z","modifiedAt":"2026-09-30T16:17:00Z"},"isMovedToSection":true}`)
 	return connectormock.Branch(asana.UpdateTaskBranchUpdated, value, nil)
 }
 
@@ -334,7 +334,7 @@ func AddCommentNotFoundFailure() connectormock.Case[asana.AddCommentOutput] {
 	return connectormock.Branch(asana.AddCommentBranchNotFound, value, &sdkgo.Failure{Kind: sdkgo.FailureNotFound, Message: "The task does not exist or the connection cannot see it; nothing was added."})
 }
 
-// AddCommentProviderRejectedFailure is the manifest mock providerRejectedFailure: Commenting on task 1204000000000002 without permission is rejected by Asana.
+// AddCommentProviderRejectedFailure is the manifest mock providerRejectedFailure: Commenting on restricted task 1204000000000042 without permission is rejected by Asana.
 func AddCommentProviderRejectedFailure() connectormock.Case[asana.AddCommentOutput] {
 	var value asana.AddCommentOutput
 	return connectormock.Branch(asana.AddCommentBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "Asana conclusively rejected the comment, such as missing permission or invalid text; nothing was added."})

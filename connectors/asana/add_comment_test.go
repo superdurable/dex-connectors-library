@@ -36,7 +36,7 @@ func TestAddCommentPostsPlainTextAndReturnsTheStory(t *testing.T) {
 	require.JSONEq(t, `{"data":{"text":"Approved by Grace.\n<b>not markup</b>"}}`, request.body, "plain text is sent as text, never html_text")
 }
 
-func TestAddCommentNeverResendsARequestAsanaMayHaveReceived(t *testing.T) {
+func TestAddCommentClassifiesPostOutcomesWithoutResendingAmbiguousWrites(t *testing.T) {
 	for _, test := range []struct {
 		name    string
 		status  int
@@ -136,10 +136,10 @@ func TestAddCommentLostAcceptedIDCheckpointNeverResends(t *testing.T) {
 	require.Equal(t, 1, provider.requestCount())
 }
 
-func TestAddCommentDoesNotDispatchNearAttemptDeadline(t *testing.T) {
+func TestAddCommentDoesNotDispatchWithShortPositiveSendWindow(t *testing.T) {
 	provider := newRecordingAsana(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
 	client := newAsanaClient(t, provider.URL)
-	deadlineContext, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	deadlineContext, cancel := context.WithTimeout(context.Background(), 1100*time.Millisecond)
 	defer cancel()
 	stepContext := newAsanaDexContext("comment-deadline")
 	stepContext.Context = deadlineContext

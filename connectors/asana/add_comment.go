@@ -64,7 +64,7 @@ func (AddCommentOperation) IdempotencyKey(callID sdkgo.CallID, _ AddCommentInput
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke adds one comment story and never resends a request Asana may have received.
+// Invoke adds one comment, retrying only outcomes that permit another POST and reading back a checkpointed story.
 func (operation AddCommentOperation) Invoke(call sdkgo.Call, input AddCommentInput) sdkgo.MutationAttempt[AddCommentOutput] {
 	client := operation.client
 	requested := AddCommentOutput{TaskID: strings.TrimSpace(input.TaskID)}
@@ -75,32 +75,40 @@ func (operation AddCommentOperation) Invoke(call sdkgo.Call, input AddCommentInp
 	if err != nil {
 		return sdkgo.NewMutationBranch(AddCommentBranchDefect, requested, failurePointer(addCommentOperationID, sdkgo.FailureValidation, err.Error()), sdkgo.Receipt{})
 	}
+	previous, hasPrevious, checkpointErr := previousUnkeyedWriteCheckpoint(call, addCommentOperationID)
+	if checkpointErr != nil {
+		return sdkgo.NewMutationUncertain(requested, newFailure(addCommentOperationID, sdkgo.FailureLocalDefect, "Asana comment dispatch checkpoint is unavailable"), client.receiptForCall(call, ""))
+	}
+	attempt := call.Context.Attempt()
+	hasReadBackID := hasPrevious && previous.ObjectID != ""
+	canSend := !hasPrevious && attempt == 1 || hasPrevious && previous.CanResend && previous.Attempt == attempt-1
+	switch {
+	case hasReadBackID:
+		if !gidPattern.MatchString(previous.ObjectID) {
+			return sdkgo.NewMutationUncertain(requested, newFailure(addCommentOperationID, sdkgo.FailureProtocol, "Asana comment checkpoint has an invalid story ID"), client.receiptForCall(call, ""))
+		}
+	case canSend:
+	case !hasPrevious:
+		return sdkgo.NewMutationUncertain(requested, newFailure(addCommentOperationID, sdkgo.FailureTransport, "Asana comment dispatch checkpoint is missing; the comment may exist"), client.receiptForCall(call, ""))
+	default:
+		return sdkgo.NewMutationUncertain(requested, newFailure(addCommentOperationID, sdkgo.FailureTransport, "Asana comment dispatch checkpoint does not permit another comment"), client.receiptForCall(call, ""))
+	}
 	session, cancel, startFailure := client.startSession(call, addCommentOperationID)
 	if startFailure != nil {
+		if hasReadBackID {
+			return sdkgo.NewMutationRetry[AddCommentOutput](*startFailure, 0)
+		}
 		return sdkgo.NewMutationBranch(AddCommentBranchDefect, requested, startFailure, sdkgo.Receipt{})
 	}
 	defer cancel()
 	heartbeat := newUnkeyedWriteHeartbeat(call, addCommentOperationID)
 	defer heartbeat.stop()
-	previous, hasPrevious, checkpointErr := previousUnkeyedWriteCheckpoint(call, addCommentOperationID)
-	if checkpointErr != nil {
-		return sdkgo.NewMutationUncertain(requested, newFailure(addCommentOperationID, sdkgo.FailureLocalDefect, "Asana comment dispatch checkpoint is unavailable"), client.receipt(session, ""))
-	}
-	attempt := call.Context.Attempt()
-	switch {
-	case hasPrevious && previous.ObjectID != "":
-		if !gidPattern.MatchString(previous.ObjectID) {
-			return sdkgo.NewMutationUncertain(requested, newFailure(addCommentOperationID, sdkgo.FailureProtocol, "Asana comment checkpoint has an invalid story ID"), client.receipt(session, ""))
-		}
+	if hasReadBackID {
 		_ = heartbeat.begin(previous.ObjectID)
 		return operation.readBackAddedComment(session, heartbeat, requested, previous.ObjectID)
-	case !hasPrevious && attempt == 1, hasPrevious && previous.CanResend && previous.Attempt == attempt-1:
-	case !hasPrevious:
-		return sdkgo.NewMutationUncertain(requested, newFailure(addCommentOperationID, sdkgo.FailureTransport, "Asana comment dispatch checkpoint is missing; the comment may exist"), client.receipt(session, ""))
-	default:
-		return sdkgo.NewMutationUncertain(requested, newFailure(addCommentOperationID, sdkgo.FailureTransport, "Asana comment dispatch checkpoint does not permit another comment"), client.receipt(session, ""))
 	}
 	if err := heartbeat.begin(""); err != nil {
+		_ = heartbeat.recordCanResend()
 		return sdkgo.NewMutationRetry[AddCommentOutput](newFailure(addCommentOperationID, sdkgo.FailureAvailability, "Asana comment dispatch checkpoint could not be recorded"), 0)
 	}
 	if !client.canStartRequest(session) {

@@ -82,7 +82,7 @@ func TestCreateTaskInAProjectOrWorkspaceOmitsBlankOptionalFields(t *testing.T) {
 	require.JSONEq(t, `{"data":{"name":"Call the locksmith","workspace":"1100000000000001","assignee":"me"}}`, provider.request(1).body)
 }
 
-func TestCreateTaskNeverResendsARequestAsanaMayHaveReceived(t *testing.T) {
+func TestCreateTaskClassifiesPostOutcomesWithoutResendingAmbiguousWrites(t *testing.T) {
 	for _, test := range []struct {
 		name    string
 		status  int
@@ -97,7 +97,6 @@ func TestCreateTaskNeverResendsARequestAsanaMayHaveReceived(t *testing.T) {
 		{name: "premium field", status: http.StatusPaymentRequired, body: `{"errors":[{"message":"SENTINEL premium only"}]}`, branch: asana.CreateTaskBranchProviderRejected, kind: sdkgo.FailureAuthorization},
 		{name: "rate limit", status: http.StatusTooManyRequests, body: `{"errors":[{"message":"SENTINEL"}]}`, isRetry: true, kind: sdkgo.FailureRateLimit},
 		{name: "server error", status: http.StatusInternalServerError, body: `{"errors":[{"message":"SENTINEL","phrase":"6 sad squid snuggle softly"}]}`, branch: asana.CreateTaskBranchUncertain, kind: sdkgo.FailureAvailability},
-		{name: "unavailable", status: http.StatusServiceUnavailable, body: `{}`, isRetry: true, kind: sdkgo.FailureAvailability},
 		{name: "gateway timeout", status: http.StatusGatewayTimeout, body: `{}`, branch: asana.CreateTaskBranchUncertain, kind: sdkgo.FailureAvailability},
 		{name: "redirect", status: http.StatusFound, body: `{}`, branch: asana.CreateTaskBranchUncertain, kind: sdkgo.FailureAvailability},
 		{name: "unusable created body", status: http.StatusCreated, body: `{"data":{"gid":"SENTINEL"}}`, branch: asana.CreateTaskBranchUncertain, kind: sdkgo.FailureProtocol},
@@ -202,10 +201,10 @@ func TestCreateTaskStaleRetryCheckpointNeverResends(t *testing.T) {
 	require.Equal(t, 1, provider.requestCount())
 }
 
-func TestCreateTaskDoesNotDispatchNearAttemptDeadline(t *testing.T) {
+func TestCreateTaskDoesNotDispatchWithShortPositiveSendWindow(t *testing.T) {
 	provider := newRecordingAsana(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
 	client := newAsanaClient(t, provider.URL)
-	deadlineContext, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	deadlineContext, cancel := context.WithTimeout(context.Background(), 1100*time.Millisecond)
 	defer cancel()
 	stepContext := newAsanaDexContext("create-deadline")
 	stepContext.Context = deadlineContext

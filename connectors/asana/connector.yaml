@@ -149,14 +149,14 @@ spec:
           branch: found
           description: "Task 1204000000000002, created for REQ-1042 in the Facilities project, is read for reconciliation."
           default: true
-          output: {id: "1204000000000002", name: "[REQ-1042] Replace badge reader", isCompleted: false, memberships: [{project: {id: "1201000000000001", name: Facilities}, section: {id: "1201000000000101", name: Approved}}], workspace: {id: "1200000000000001", name: Operations}, notes: "Door 4 is offline.", createdAt: "2026-09-30T16:15:00Z", modifiedAt: "2026-09-30T16:15:00Z"}
+          output: {id: "1204000000000002", name: "[REQ-1042] Replace badge reader", isCompleted: false, memberships: [{project: {id: "1201000000000001", name: Facilities}, section: {id: "1201000000000101", name: Approved}}], workspace: {id: "1200000000000001", name: Operations}, notes: "Door 4 is offline.", dueOn: "2026-10-15", createdAt: "2026-09-30T16:15:00Z", modifiedAt: "2026-09-30T16:15:00Z"}
         - name: notFoundFailure
           branch: notFound
           description: "Reading task 1204000000000999 finds no visible task."
           failure: {kind: NOT_FOUND, message: "The task does not exist or the connection cannot see it."}
         - name: providerRejectedFailure
           branch: providerRejected
-          description: "Reading task 1204000000000002 without permission is rejected by Asana."
+          description: "Reading restricted task 1204000000000042 without permission is rejected by Asana."
           failure: {kind: PROVIDER_REJECTION, message: "Asana conclusively rejected the task read."}
     - name: createTask
       goName: CreateTask
@@ -169,13 +169,13 @@ spec:
       branches:
         - {id: created, goName: Created, description: Asana created the task and returned its ID.}
         - {id: providerRejected, goName: ProviderRejected, description: "Asana conclusively rejected the task, such as an unknown project, section, assignee, or custom field value, or missing permission; nothing was created.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The request was dispatched but its outcome cannot be confirmed; Asana has no idempotency key, so the task may exist and must not be created again automatically.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The request may have reached Asana but its outcome cannot be confirmed; Asana has no idempotency key, so the task may exist and must not be created again automatically.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       # Sync: an async fallback attempt re-sends a slow create, and Asana has no idempotency key.
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A replayed task POST could create another task because Asana has no provider idempotency key or task lookup by Call ID."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A 503 response permits a task POST retry, but Asana does not guarantee the first POST made no task; no idempotency key or Call ID lookup prevents a duplicate."}}
       mocks:
         - name: createdDefaultAnswer
           branch: created
@@ -208,7 +208,7 @@ spec:
           branch: updated
           description: "Assigning task 1204000000000002 to Ada and moving it to the Approved section returns that task."
           default: true
-          output: {taskId: "1204000000000002", task: {id: "1204000000000002", name: "[REQ-1042] Replace badge reader", isCompleted: false, assignee: {id: "1203000000000001", name: Ada Lovelace}, memberships: [{project: {id: "1201000000000001", name: Facilities}, section: {id: "1201000000000101", name: Approved}}], workspace: {id: "1200000000000001", name: Operations}, notes: "Door 4 is offline.", createdAt: "2026-09-30T16:15:00Z", modifiedAt: "2026-09-30T16:17:00Z"}, isMovedToSection: true}
+          output: {taskId: "1204000000000002", task: {id: "1204000000000002", name: "[REQ-1042] Replace badge reader", isCompleted: false, assignee: {id: "1203000000000001", name: Ada Lovelace}, memberships: [{project: {id: "1201000000000001", name: Facilities}, section: {id: "1201000000000101", name: Approved}}], workspace: {id: "1200000000000001", name: Operations}, notes: "Door 4 is offline.", dueOn: "2026-10-15", createdAt: "2026-09-30T16:15:00Z", modifiedAt: "2026-09-30T16:17:00Z"}, isMovedToSection: true}
         - name: notFoundFailure
           branch: notFound
           description: "Updating unknown task 1204000000000999 finds no visible task."
@@ -229,12 +229,12 @@ spec:
         - {id: added, goName: Added, description: Asana added the comment and returned its story ID.}
         - {id: notFound, goName: NotFound, description: The task does not exist or the connection cannot see it; nothing was added., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Asana conclusively rejected the comment, such as missing permission or invalid text; nothing was added.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The request was dispatched but its outcome cannot be confirmed; Asana has no idempotency key, so the comment may exist and must not be added again automatically.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The request may have reached Asana but its outcome cannot be confirmed; Asana has no idempotency key, so the comment may exist and must not be added again automatically.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A replayed comment POST could add another comment because Asana has no provider idempotency key or comment lookup by Call ID."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A 503 response permits a comment POST retry, but Asana does not guarantee the first POST made no comment; no idempotency key or Call ID lookup prevents a duplicate."}}
       mocks:
         - name: addedDefaultAnswer
           branch: added
@@ -247,5 +247,5 @@ spec:
           failure: {kind: NOT_FOUND, message: "The task does not exist or the connection cannot see it; nothing was added."}
         - name: providerRejectedFailure
           branch: providerRejected
-          description: "Commenting on task 1204000000000002 without permission is rejected by Asana."
+          description: "Commenting on restricted task 1204000000000042 without permission is rejected by Asana."
           failure: {kind: PROVIDER_REJECTION, message: "Asana conclusively rejected the comment, such as missing permission or invalid text; nothing was added."}

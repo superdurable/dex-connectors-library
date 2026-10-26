@@ -374,7 +374,7 @@ var CreateTaskDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateTaskBranchCreated, Description: "Asana created the task and returned its ID."},
 		{ID: CreateTaskBranchProviderRejected, Description: "Asana conclusively rejected the task, such as an unknown project, section, assignee, or custom field value, or missing permission; nothing was created.", Optional: true},
-		{ID: CreateTaskBranchUncertain, Description: "The request was dispatched but its outcome cannot be confirmed; Asana has no idempotency key, so the task may exist and must not be created again automatically.", Optional: true},
+		{ID: CreateTaskBranchUncertain, Description: "The request may have reached Asana but its outcome cannot be confirmed; Asana has no idempotency key, so the task may exist and must not be created again automatically.", Optional: true},
 		{ID: CreateTaskBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -528,7 +528,7 @@ var AddCommentDefinition = sdkgo.MutationDefinition{
 		{ID: AddCommentBranchAdded, Description: "Asana added the comment and returned its story ID."},
 		{ID: AddCommentBranchNotFound, Description: "The task does not exist or the connection cannot see it; nothing was added.", Optional: true},
 		{ID: AddCommentBranchProviderRejected, Description: "Asana conclusively rejected the comment, such as missing permission or invalid text; nothing was added.", Optional: true},
-		{ID: AddCommentBranchUncertain, Description: "The request was dispatched but its outcome cannot be confirmed; Asana has no idempotency key, so the comment may exist and must not be added again automatically.", Optional: true},
+		{ID: AddCommentBranchUncertain, Description: "The request may have reached Asana but its outcome cannot be confirmed; Asana has no idempotency key, so the comment may exist and must not be added again automatically.", Optional: true},
 		{ID: AddCommentBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

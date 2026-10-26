@@ -11,6 +11,7 @@ import (
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 
+// Two heartbeats fit within Dex's ten-second minimum heartbeat timeout.
 const unkeyedWriteHeartbeatInterval = 5 * time.Second
 
 var errForeignCheckpoint = errors.New("the Step heartbeat belongs to another connector call")

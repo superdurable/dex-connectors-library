@@ -96,39 +96,47 @@ func (CreateTaskOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateTaskInput
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke creates one task and never resends a request Asana may have received.
+// Invoke creates one task, retrying only outcomes that permit another POST and reading back a checkpointed task.
 func (operation CreateTaskOperation) Invoke(call sdkgo.Call, input CreateTaskInput) sdkgo.MutationAttempt[CreateTaskOutput] {
 	client := operation.client
 	fields, requested, err := buildCreateTaskFields(input)
 	if err != nil {
 		return sdkgo.NewMutationBranch(CreateTaskBranchDefect, requested, failurePointer(createTaskOperationID, sdkgo.FailureValidation, err.Error()), sdkgo.Receipt{})
 	}
+	previous, hasPrevious, checkpointErr := previousUnkeyedWriteCheckpoint(call, createTaskOperationID)
+	if checkpointErr != nil {
+		return sdkgo.NewMutationUncertain(requested, newFailure(createTaskOperationID, sdkgo.FailureLocalDefect, "Asana task dispatch checkpoint is unavailable"), client.receiptForCall(call, ""))
+	}
+	attempt := call.Context.Attempt()
+	hasReadBackID := hasPrevious && previous.ObjectID != ""
+	canSend := !hasPrevious && attempt == 1 || hasPrevious && previous.CanResend && previous.Attempt == attempt-1
+	switch {
+	case hasReadBackID:
+		if !gidPattern.MatchString(previous.ObjectID) {
+			return sdkgo.NewMutationUncertain(requested, newFailure(createTaskOperationID, sdkgo.FailureProtocol, "Asana task checkpoint has an invalid task ID"), client.receiptForCall(call, ""))
+		}
+	case canSend:
+	case !hasPrevious:
+		return sdkgo.NewMutationUncertain(requested, newFailure(createTaskOperationID, sdkgo.FailureTransport, "Asana task dispatch checkpoint is missing; the task may exist"), client.receiptForCall(call, ""))
+	default:
+		return sdkgo.NewMutationUncertain(requested, newFailure(createTaskOperationID, sdkgo.FailureTransport, "Asana task dispatch checkpoint does not permit another create"), client.receiptForCall(call, ""))
+	}
 	session, cancel, startFailure := client.startSession(call, createTaskOperationID)
 	if startFailure != nil {
+		if hasReadBackID {
+			return sdkgo.NewMutationRetry[CreateTaskOutput](*startFailure, 0)
+		}
 		return sdkgo.NewMutationBranch(CreateTaskBranchDefect, requested, startFailure, sdkgo.Receipt{})
 	}
 	defer cancel()
 	heartbeat := newUnkeyedWriteHeartbeat(call, createTaskOperationID)
 	defer heartbeat.stop()
-	previous, hasPrevious, checkpointErr := previousUnkeyedWriteCheckpoint(call, createTaskOperationID)
-	if checkpointErr != nil {
-		return sdkgo.NewMutationUncertain(requested, newFailure(createTaskOperationID, sdkgo.FailureLocalDefect, "Asana task dispatch checkpoint is unavailable"), client.receipt(session, ""))
-	}
-	attempt := call.Context.Attempt()
-	switch {
-	case hasPrevious && previous.ObjectID != "":
-		if !gidPattern.MatchString(previous.ObjectID) {
-			return sdkgo.NewMutationUncertain(requested, newFailure(createTaskOperationID, sdkgo.FailureProtocol, "Asana task checkpoint has an invalid task ID"), client.receipt(session, ""))
-		}
+	if hasReadBackID {
 		_ = heartbeat.begin(previous.ObjectID)
 		return operation.readBackCreatedTask(session, heartbeat, requested, previous.ObjectID)
-	case !hasPrevious && attempt == 1, hasPrevious && previous.CanResend && previous.Attempt == attempt-1:
-	case !hasPrevious:
-		return sdkgo.NewMutationUncertain(requested, newFailure(createTaskOperationID, sdkgo.FailureTransport, "Asana task dispatch checkpoint is missing; the task may exist"), client.receipt(session, ""))
-	default:
-		return sdkgo.NewMutationUncertain(requested, newFailure(createTaskOperationID, sdkgo.FailureTransport, "Asana task dispatch checkpoint does not permit another create"), client.receipt(session, ""))
 	}
 	if err := heartbeat.begin(""); err != nil {
+		_ = heartbeat.recordCanResend()
 		return sdkgo.NewMutationRetry[CreateTaskOutput](newFailure(createTaskOperationID, sdkgo.FailureAvailability, "Asana task dispatch checkpoint could not be recorded"), 0)
 	}
 	if !client.canStartRequest(session) {

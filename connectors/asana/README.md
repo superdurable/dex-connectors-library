@@ -198,8 +198,9 @@ comment or an edited comment.
 
 `createTask` and `addComment` use sync Execute durability although a request is
 usually fast. With async durability, Dex runs a Step in a local phase of about
-seven seconds and then dispatches a backup attempt, so a slow create would be
-sent twice. With sync durability, a real Dex run against a fake Asana that held
+seven seconds and then dispatches a backup attempt. The local-phase checkpoint
+is not visible to that attempt, so a slow write may become `uncertain`.
+With sync durability, a real Dex run against a fake Asana that held
 the create, or the comment, for nine seconds recorded one request;
 `TestSlowCreateIsSentOnceUnderSyncDurabilityWithRealDex` and
 `TestSlowCommentIsSentOnceUnderSyncDurabilityWithRealDex` guard this. Do not
@@ -214,10 +215,13 @@ exactly as with one request;
 The connector records a dispatch heartbeat before either POST and keeps it alive
 during the request. A later attempt may send only after the prior attempt
 checkpointed a 429, 503, or provably unsent transport result. A valid task or
-story gid is checkpointed for read-back. If Dex loses or restores no checkpoint,
+story gid is checkpointed for read-back. A near-deadline attempt also records
+that no POST was sent before asking Dex to retry. If Dex loses or restores no checkpoint,
 or a checkpoint is stale, the connector fails closed as `uncertain` and sends
 no second POST. Dex heartbeat recording is not an acknowledgement that the
 checkpoint was persisted, so an accepted write can still become `uncertain`.
+Under an async override, the local-phase heartbeat is not visible to a later
+attempt, so even a 429 or 503 may become `uncertain` instead of retrying.
 An application handles `uncertain` without creating again automatically; the
 [`approved-request-task`](examples/approved-request-task) example parks the
 create for an operator, who confirms the task found in the project or approves
@@ -231,8 +235,9 @@ Live 503 and recovery read-back behavior remain unverified.
 
 ## Mocks
 
-The generated `asanamock` package has one happy-path default for each operation
-and named `notFound` and `providerRejected` cases. Its defaults describe one
+The generated `asanamock` package has one happy-path default for each operation,
+`providerRejected` cases for all five, and `notFound` cases for listTasks,
+getTask, updateTask, and addComment. Its defaults describe one
 Facilities approval: an unrelated open task is listed, a new request task is
 created, assigned, and commented on. The real-Dex example test starts with:
 

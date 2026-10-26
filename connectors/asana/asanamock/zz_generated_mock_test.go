@@ -21,7 +21,7 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			return err
 		}},
 		{name: "getTask/foundDefaultAnswer/1", decode: func() error {
-			_, err := connectormock.DecodeOutput[asana.Task](`{"id":"1204000000000002","name":"[REQ-1042] Replace badge reader","isCompleted":false,"memberships":[{"project":{"id":"1201000000000001","name":"Facilities"},"section":{"id":"1201000000000101","name":"Approved"}}],"workspace":{"id":"1200000000000001","name":"Operations"},"notes":"Door 4 is offline.","createdAt":"2026-09-30T16:15:00Z","modifiedAt":"2026-09-30T16:15:00Z"}`)
+			_, err := connectormock.DecodeOutput[asana.Task](`{"id":"1204000000000002","name":"[REQ-1042] Replace badge reader","isCompleted":false,"memberships":[{"project":{"id":"1201000000000001","name":"Facilities"},"section":{"id":"1201000000000101","name":"Approved"}}],"workspace":{"id":"1200000000000001","name":"Operations"},"notes":"Door 4 is offline.","dueOn":"2026-10-15","createdAt":"2026-09-30T16:15:00Z","modifiedAt":"2026-09-30T16:15:00Z"}`)
 			return err
 		}},
 		{name: "createTask/createdDefaultAnswer/1", decode: func() error {
@@ -29,7 +29,7 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			return err
 		}},
 		{name: "updateTask/updatedDefaultAnswer/1", decode: func() error {
-			_, err := connectormock.DecodeOutput[asana.UpdateTaskOutput](`{"taskId":"1204000000000002","task":{"id":"1204000000000002","name":"[REQ-1042] Replace badge reader","isCompleted":false,"assignee":{"id":"1203000000000001","name":"Ada Lovelace"},"memberships":[{"project":{"id":"1201000000000001","name":"Facilities"},"section":{"id":"1201000000000101","name":"Approved"}}],"workspace":{"id":"1200000000000001","name":"Operations"},"notes":"Door 4 is offline.","createdAt":"2026-09-30T16:15:00Z","modifiedAt":"2026-09-30T16:17:00Z"},"isMovedToSection":true}`)
+			_, err := connectormock.DecodeOutput[asana.UpdateTaskOutput](`{"taskId":"1204000000000002","task":{"id":"1204000000000002","name":"[REQ-1042] Replace badge reader","isCompleted":false,"assignee":{"id":"1203000000000001","name":"Ada Lovelace"},"memberships":[{"project":{"id":"1201000000000001","name":"Facilities"},"section":{"id":"1201000000000101","name":"Approved"}}],"workspace":{"id":"1200000000000001","name":"Operations"},"notes":"Door 4 is offline.","dueOn":"2026-10-15","createdAt":"2026-09-30T16:15:00Z","modifiedAt":"2026-09-30T16:17:00Z"},"isMovedToSection":true}`)
 			return err
 		}},
 		{name: "addComment/addedDefaultAnswer/1", decode: func() error {
