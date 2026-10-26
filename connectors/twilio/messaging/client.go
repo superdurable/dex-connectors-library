@@ -28,6 +28,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
@@ -393,7 +394,7 @@ func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageI
 		}
 		errorCode := readErrorCode(response.body)
 		requested.ErrorCode = errorCode
-		message := "Twilio rejected the message credentials"
+		message := "Twilio rejected the message credentials; update the connection"
 		if refreshFailure != nil {
 			message = refreshFailure.Message
 		}
@@ -572,6 +573,10 @@ func (client *Client) resolveAuthorizationAfterRejection(call sdkgo.Call) (basic
 		if errors.Is(err, sdkgo.ErrReauthorizationRequired) {
 			return basicAuthorization{}, failurePointer("sendMessage", sdkgo.FailureAuthentication, "Twilio connection credentials require reauthorization; reconnect the connection"), false
 		}
+		// The non-shared resolver exposes rejected credentials without verified expiry only through this error text.
+		if errors.Is(err, projectconfig.ErrRejectedCredentialNotRefreshed) || strings.Contains(err.Error(), "authentication rejection does not prove credential expiry") {
+			return basicAuthorization{}, failurePointer("sendMessage", sdkgo.FailureAuthentication, "Twilio rejected the message credentials; update the connection"), false
+		}
 		return basicAuthorization{}, failurePointer("sendMessage", sdkgo.FailureAvailability, "Twilio credential refresh is temporarily unavailable"), true
 	}
 	return client.validateAuthorization(credentials, "sendMessage")
@@ -591,7 +596,7 @@ func (twilioCredentialRefreshDriver) Refresh(context.Context, sdkgo.CredentialRe
 
 func (client *Client) validateAuthorization(credentials Credentials, operationID string) (basicAuthorization, *sdkgo.Failure, bool) {
 	if err := credentials.Validate(); err != nil {
-		return basicAuthorization{}, failurePointer(operationID, sdkgo.FailureAuthentication, "Twilio connection credentials are incomplete"), false
+		return basicAuthorization{}, failurePointer(operationID, sdkgo.FailureAuthentication, "Twilio connection credentials are incomplete; update or reconnect the connection"), false
 	}
 	var authorization basicAuthorization
 	switch credentials.AuthMethodID {

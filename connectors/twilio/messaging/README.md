@@ -122,10 +122,12 @@ A transport without positive DNS, connect, or TLS failure evidence is treated
 as possibly dispatched.
 An unavailable credential service retries before the POST with a `notSent`
 checkpoint. An invalid or reauthorization-required credential selects `defect`
-without sending. On 401, the connector requests a forced credential refresh;
+without sending and asks for the connection to be updated or reconnected. On
+401, the connector requests a forced credential refresh;
 it records a safe retry only if that returns a different valid credential.
 Static Twilio credentials cannot refresh automatically, so a 401 selects
-`providerRejected` until the connection is updated.
+`providerRejected` with an update-connection hint until the connection is
+updated.
 
 After a valid 2xx answer, the connector saves the message SID. If Dex repeats
 that Step before committing its result, the next attempt reads the saved SID

@@ -6,6 +6,7 @@ package messaging_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -18,6 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/twilio/messaging"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
@@ -96,23 +98,26 @@ func TestSendMessageFenceRecordsCredentialFailureBeforeRetry(t *testing.T) {
 
 func TestSendMessageFenceClassifiesCredentialLookupBeforeSend(t *testing.T) {
 	for _, testCase := range []struct {
-		name       string
-		lookupErr  error
-		isTerminal bool
+		name        string
+		lookupErr   error
+		credentials messaging.Credentials
+		isTerminal  bool
 	}{
-		{"reauthorization", sdkgo.NewReauthorizationRequiredError(errors.New("revoked")), true},
-		{"store unavailable", errors.New("project connection store returned HTTP 503"), false},
-		{"connection refused", errors.New("connect: connection refused"), false},
+		{"reauthorization", sdkgo.NewReauthorizationRequiredError(errors.New("revoked")), messaging.Credentials{}, true},
+		{"store unavailable", errors.New("project connection store returned HTTP 503"), messaging.Credentials{}, false},
+		{"connection refused", errors.New("connect: connection refused"), messaging.Credentials{}, false},
+		{"invalid credentials", nil, messaging.Credentials{AuthMethodID: messaging.AuthTokenAuthMethodID}, true},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			provider := newTwilioFake(t, respondWithStatus(http.StatusCreated))
-			credentials := &switchingTwilioCredentials{lookupErr: testCase.lookupErr}
+			credentials := &switchingTwilioCredentials{lookupErr: testCase.lookupErr, credentials: testCase.credentials}
 			client := newTwilioClient(t, provider.URL, messaging.Config{DefaultSender: testSender}, credentials)
 			ctx := singledispatchtest.NewContext("twilio-credential-"+testCase.name, "send-message")
 			result, err := sdkgo.RunMutation(ctx, client.SendMessage(), twilioConnection, validSendInput())
 			if testCase.isTerminal {
 				require.NoError(t, err)
 				require.Equal(t, messaging.SendMessageBranchDefect, result.Branch)
+				require.Contains(t, result.Failure.Message, "reconnect")
 			} else {
 				var retry *sdkgo.RetryError
 				require.ErrorAs(t, err, &retry)
@@ -131,12 +136,14 @@ func TestSendMessageFenceClassifiesCredentialLookupBeforeSend(t *testing.T) {
 
 func TestSendMessageFenceClassifiesCredentialLookupDuringReadBack(t *testing.T) {
 	for _, testCase := range []struct {
-		name       string
-		lookupErr  error
-		isTerminal bool
+		name               string
+		lookupErr          error
+		invalidCredentials bool
+		isTerminal         bool
 	}{
-		{"reauthorization", sdkgo.NewReauthorizationRequiredError(errors.New("revoked")), true},
-		{"store unavailable", errors.New("project connection store returned HTTP 503"), false},
+		{"reauthorization", sdkgo.NewReauthorizationRequiredError(errors.New("revoked")), false, true},
+		{"store unavailable", errors.New("project connection store returned HTTP 503"), false, false},
+		{"invalid credentials", nil, true, true},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			provider := newTwilioFake(t, func(response http.ResponseWriter, _ *http.Request) {
@@ -150,12 +157,16 @@ func TestSendMessageFenceClassifiesCredentialLookupDuringReadBack(t *testing.T) 
 			require.NoError(t, err)
 			require.Equal(t, messaging.SendMessageBranchAccepted, result.Branch)
 			credentials.setError(testCase.lookupErr)
+			if testCase.invalidCredentials {
+				credentials.setCredentials(messaging.Credentials{AuthMethodID: messaging.AuthTokenAuthMethodID})
+			}
 			ctx.AdvanceAttempt()
 			result, err = sdkgo.RunMutation(ctx, client.SendMessage(), twilioConnection, validSendInput())
 			if testCase.isTerminal {
 				require.NoError(t, err)
 				require.Equal(t, messaging.SendMessageBranchUncertain, result.Branch)
 				require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
+				require.Contains(t, result.Failure.Message, "reconnect")
 				require.Equal(t, testMessageSID, result.Receipt.ProviderObjectID)
 			} else {
 				var retry *sdkgo.RetryError
@@ -197,17 +208,28 @@ func TestSendMessageFenceClassifiesRejectedCredentialRefresh(t *testing.T) {
 		message string
 	}{
 		{"reauthorization", sdkgo.NewReauthorizationRequiredError(errors.New("revoked")), "reconnect"},
+		{"rejected credential not refreshed", fmt.Errorf("forced read: %w", projectconfig.ErrRejectedCredentialNotRefreshed), "update the connection"},
+		{"expiry not proved", errors.New("authentication rejection does not prove credential expiry"), "update the connection"},
 		{"refresh unavailable", errors.New("credential store unavailable"), "temporarily unavailable"},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			provider := newTwilioFake(t, respondWithStatus(http.StatusUnauthorized))
+			provider := newTwilioFake(t, func(response http.ResponseWriter, _ *http.Request) {
+				response.WriteHeader(http.StatusUnauthorized)
+				writeBody(response, `{"code":20003}`)
+			})
 			credentials := &failingRefreshTwilioCredentials{refreshErr: testCase.err}
 			client := newTwilioClient(t, provider.URL, messaging.Config{DefaultSender: testSender}, credentials)
 			ctx := singledispatchtest.NewContext("twilio-rejected-refresh-"+testCase.name, "send-message")
 			result, err := sdkgo.RunMutation(ctx, client.SendMessage(), twilioConnection, validSendInput())
 			require.NoError(t, err)
 			require.Equal(t, messaging.SendMessageBranchProviderRejected, result.Branch)
+			require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
+			require.Equal(t, 20003, result.Value.ErrorCode)
+			require.Equal(t, "20003", result.Receipt.Metadata["twilioErrorCode"])
 			require.Contains(t, result.Failure.Message, testCase.message)
+			if testCase.message == "update the connection" {
+				require.NotContains(t, result.Failure.Message, "temporarily unavailable")
+			}
 			require.Len(t, provider.recordedRequests(), 1)
 		})
 	}
@@ -515,6 +537,12 @@ func (provider *switchingTwilioCredentials) setError(lookupErr error) {
 	provider.mutex.Lock()
 	defer provider.mutex.Unlock()
 	provider.lookupErr = lookupErr
+}
+
+func (provider *switchingTwilioCredentials) setCredentials(credentials messaging.Credentials) {
+	provider.mutex.Lock()
+	defer provider.mutex.Unlock()
+	provider.credentials = credentials
 }
 
 type rotatingTwilioCredentials struct {
