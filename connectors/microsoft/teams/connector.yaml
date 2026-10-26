@@ -170,7 +170,7 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A repeated channel POST could publish another message when recent-message read-back misses it; Teams does not enforce a deduplication key."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A lost dispatch checkpoint could publish another channel message because Teams enforces no deduplication key and the next attempt sends without read-back."}}
     - name: postThreadReply
       goName: PostThreadReply
       inputType: PostThreadReplyInput
@@ -183,7 +183,7 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A repeated reply POST could publish another message when recent-reply read-back misses it; Teams does not enforce a deduplication key."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A lost dispatch checkpoint could publish another reply because Teams enforces no deduplication key and the next attempt sends without read-back."}}
     - name: postChatMessage
       goName: PostChatMessage
       inputType: PostChatMessageInput

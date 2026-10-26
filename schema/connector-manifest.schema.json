@@ -682,7 +682,7 @@
               "required": ["kind", "explanation"],
               "properties": {
                 "kind": { "enum": ["billedOperation", "personWaiting", "duplicateWriteRisk"] },
-                "explanation": { "type": "string", "minLength": 1 }
+                "explanation": { "type": "string", "pattern": "\\S" }
               }
             }
           }

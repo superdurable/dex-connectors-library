@@ -204,4 +204,4 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A repeated comment POST could add another comment when page-comment read-back is inconclusive; Confluence has no comment key."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A lost dispatch checkpoint could add another comment because Confluence has no comment key and the next attempt sends without read-back."}}

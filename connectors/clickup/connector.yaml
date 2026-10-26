@@ -118,7 +118,7 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "A repeated task POST could create another task when name-and-time list read-back is inconclusive; ClickUp has no provider key."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "A lost dispatch checkpoint could create another task because ClickUp has no create key and the next attempt sends without read-back."}}
     - name: updateTask
       goName: UpdateTask
       inputType: UpdateTaskInput
@@ -170,7 +170,7 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "A repeated comment POST could add another comment when content-and-time read-back is inconclusive; ClickUp has no provider key."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "A lost dispatch checkpoint could add another comment because ClickUp has no comment key and the next attempt sends without read-back."}}
     - name: findMemberByEmail
       goName: FindMemberByEmail
       inputType: FindMemberByEmailInput
