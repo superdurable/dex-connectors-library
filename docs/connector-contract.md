@@ -35,7 +35,7 @@ configured client to a validated logical `ConnectionRef`, so an HTTP, OpenAI,
 Gmail, or Sheets connection cannot be passed to another connector factory.
 The same typed connection can be reused by operations from that connector.
 
-The factory owns one provider invocation and then either one `dex.GoTo` or a
+The factory owns one Connector operation invocation and then either one `dex.GoTo` or a
 Flow failure. The application supplies a stable Step type, annotations,
 registration-time typed Connection, pure `MapToOperationInput`, and one typed
 target for every required branch. Optional branches may be left empty.
@@ -109,6 +109,9 @@ configured Flow triggers.
 One Step execution invokes one Connector operation. A second call in the same
 execution reuses the same Call ID and is prohibited. Use another Step
 execution for a second provider call or polling iteration.
+A Mutation attempt may still make read-only provider requests within the same
+Execute to confirm the outcome of its own write. Polling, another write, or
+any other provider call needs another Step execution.
 
 ## Branch-only Result and strict Attempt
 
