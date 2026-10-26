@@ -322,6 +322,70 @@ func TestFencedPostReauthorizationFailureRecordsNotSentAndSelectsDefect(t *testi
 	require.Zero(t, provider.requestCount())
 }
 
+type reauthorizationAfterDispatchTeamsCredentials struct {
+	mutex    sync.Mutex
+	attempts int
+}
+
+func (provider *reauthorizationAfterDispatchTeamsCredentials) Resolve(sdkgo.Call) (teams.Credentials, error) {
+	provider.mutex.Lock()
+	defer provider.mutex.Unlock()
+	provider.attempts++
+	if provider.attempts > 1 {
+		return teams.Credentials{}, sdkgo.NewReauthorizationRequiredError(errors.New("authorization expired"))
+	}
+	return teams.Credentials{AccessToken: sdkgo.NewSecretString(testAccessToken)}, nil
+}
+
+func (provider *reauthorizationAfterDispatchTeamsCredentials) ResolveWithRefresh(
+	_ context.Context,
+	call sdkgo.Call,
+	_ sdkgo.CredentialRefreshDriver[teams.Credentials],
+) (teams.Credentials, error) {
+	return provider.Resolve(call)
+}
+
+func TestFencedPostReauthorizationAfterAcceptedWriteIsUncertainWithoutReadBack(t *testing.T) {
+	for _, operation := range []string{"channel", "reply", "chat"} {
+		t.Run(operation, func(t *testing.T) {
+			provider := newRecordingGraph(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+				require.Equal(t, http.MethodPost, request.Method)
+				writeJSON(t, response, http.StatusCreated, `{}`)
+			})
+			credentials := &reauthorizationAfterDispatchTeamsCredentials{}
+			client, err := teams.New(teams.Config{Endpoint: provider.endpoint()}, credentials)
+			require.NoError(t, err)
+			stepContext := singledispatchtest.NewContext("teams-flow", "reauthorization-after-"+operation)
+			first, err := runPostForReauthorizationTest(stepContext, client, operation)
+			if operation == "chat" {
+				require.NoError(t, err)
+				require.Equal(t, sdkgo.UncertainBranchID, first.Branch)
+			} else {
+				requireRetry(t, err, sdkgo.FailureProtocol)
+			}
+			stepContext.AdvanceAttempt()
+			second, err := runPostForReauthorizationTest(stepContext, client, operation)
+			require.NoError(t, err)
+			require.Equal(t, sdkgo.UncertainBranchID, second.Branch)
+			require.Equal(t, sdkgo.FailureAuthentication, second.Failure.Kind)
+			require.Contains(t, second.Failure.Message, "reconnect the connection")
+			require.Equal(t, 1, provider.countRequests(http.MethodPost))
+			require.Zero(t, provider.countRequests(http.MethodGet))
+		})
+	}
+}
+
+func runPostForReauthorizationTest(stepContext *singledispatchtest.Context, client *teams.Client, operation string) (sdkgo.MutationResult[teams.PostMessageOutput], error) {
+	switch operation {
+	case "reply":
+		return sdkgo.RunMutation(stepContext, client.PostThreadReply(), teamsConnection, validThreadReplyInput())
+	case "chat":
+		return sdkgo.RunMutation(stepContext, client.PostChatMessage(), teamsConnection, validChatMessageInput())
+	default:
+		return sdkgo.RunMutation(stepContext, client.PostChannelMessage(), teamsConnection, validChannelMessageInput())
+	}
+}
+
 func TestFencedPostCutsOffTheRequestBeforeItsAttemptDeadline(t *testing.T) {
 	provider := newRecordingGraph(t, func(_ http.ResponseWriter, request *http.Request, _ int) {
 		<-request.Context().Done()

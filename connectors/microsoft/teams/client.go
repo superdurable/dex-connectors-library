@@ -480,7 +480,7 @@ func statusFailureKind(statusCode int) sdkgo.FailureKind {
 
 func isSuccessStatus(statusCode int) bool { return statusCode >= 200 && statusCode < 300 }
 
-// isConclusiveRejectionStatus excludes 409 because a conflicting write needs read-back before its outcome is known.
+// isConclusiveRejectionStatus reports a 4xx other than 408, 409 and 429, or a 501: Graph refused before storing anything.
 func isConclusiveRejectionStatus(statusCode int) bool {
 	if statusCode == http.StatusNotImplemented {
 		return true

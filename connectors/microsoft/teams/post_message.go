@@ -87,7 +87,7 @@ func (client *Client) send(call sdkgo.Call, post messagePost) sdkgo.MutationAtte
 			return sdkgo.NewMutationRetry[PostMessageOutput](credentialFailure, 0)
 		}
 		if failure.isReauthorizationRequired {
-			return sdkgo.NewMutationBranch(post.branches.defect, post.requested, &failure.failure, sdkgo.Receipt{})
+			return sdkgo.NewMutationUncertain(post.requested, failure.failure, sdkgo.Receipt{})
 		}
 		return sdkgo.NewMutationRetry[PostMessageOutput](failure.failure, 0)
 	}
@@ -105,9 +105,11 @@ func (client *Client) send(call sdkgo.Call, post messagePost) sdkgo.MutationAtte
 			"the "+post.subject+" was not sent before the dispatch deadline"), 0)
 	}
 	result := attempt.result
+	var refreshFailure error
 	if result.err == nil && result.response.statusCode == http.StatusUnauthorized {
 		if _, supportsRefresh := client.credentials.(sdkgo.RejectedCredentialRefreshingProvider[Credentials]); supportsRefresh {
 			replacement, refreshErr := sdkgo.ResolveCredentialAfterRejection(session.context, client.credentials, call, client.refreshDriver)
+			refreshFailure = refreshErr
 			if refreshErr == nil && validateResolvedCredentials(replacement) == nil &&
 				replacement.AccessToken.Reveal() != session.credentials.AccessToken.Reveal() {
 				// Graph rejects unauthenticated requests before processing them; only a changed token permits one resend.
@@ -141,6 +143,9 @@ func (client *Client) send(call sdkgo.Call, post messagePost) sdkgo.MutationAtte
 		}
 		return sdkgo.NewMutationRetry[PostMessageOutput](classification.failure, classification.retryAfter)
 	case writeRejected:
+		if result.response.statusCode == http.StatusUnauthorized && refreshFailure != nil && !sdkgo.IsReauthorizationRequired(refreshFailure) {
+			classification.failure.Message = strings.TrimSuffix(classification.failure.Message, "; reconnect the connection") + "; credential refresh is temporarily unavailable"
+		}
 		return sdkgo.NewMutationBranch(post.branches.providerRejected, post.requested, &classification.failure, receipt)
 	case writeDefect:
 		return sdkgo.NewMutationBranch(post.branches.defect, post.requested, &classification.failure, receipt)

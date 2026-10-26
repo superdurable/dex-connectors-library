@@ -29,6 +29,7 @@ func TestIncidentAcknowledgementUsesTeamsMockDefaultsWithRealDex(t *testing.T) {
 	require.Equal(t, input.IncidentID, record.Update.IncidentID)
 	require.Equal(t, 1, record.ReplyChecks)
 	require.NotNil(t, record.Acknowledgement)
+	require.Equal(t, "1616990032040", record.Acknowledgement.MessageID)
 
 	posts := mock.PostChannelMessage().Calls()
 	require.Len(t, posts, 1)

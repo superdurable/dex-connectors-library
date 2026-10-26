@@ -193,6 +193,33 @@ func TestRejectedAccessTokenWithoutAChangedTokenDoesNotResend(t *testing.T) {
 	require.Equal(t, 1, provider.countRequests(http.MethodPost))
 }
 
+type transientRejectedCredentialProvider struct {
+	rejectionRefreshingCredentialProvider
+}
+
+func (*transientRejectedCredentialProvider) ResolveAfterRejection(
+	context.Context,
+	sdkgo.Call,
+	sdkgo.CredentialRefreshDriver[teams.Credentials],
+) (teams.Credentials, error) {
+	return teams.Credentials{}, errors.New("token endpoint temporarily unavailable")
+}
+
+func TestRejectedAccessTokenWithTransientRefreshFailureDoesNotRecommendReconnect(t *testing.T) {
+	provider := newRecordingGraph(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusUnauthorized, graphErrorJSON("InvalidAuthenticationToken"))
+	})
+	client, err := teams.New(teams.Config{Endpoint: provider.endpoint()}, &transientRejectedCredentialProvider{})
+	require.NoError(t, err)
+	result, err := sdkgo.RunMutation(newTestDexContext("transient-refresh"), client.PostChannelMessage(), teamsConnection, validChannelMessageInput())
+	require.NoError(t, err)
+	require.Equal(t, teams.PostChannelMessageBranchProviderRejected, result.Branch)
+	require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
+	require.Contains(t, result.Failure.Message, "credential refresh is temporarily unavailable")
+	require.NotContains(t, result.Failure.Message, "reconnect the connection")
+	require.Equal(t, 1, provider.countRequests(http.MethodPost))
+}
+
 func TestUnconfirmedPostIsConfirmedByReadingTheChannelBackWithoutAResend(t *testing.T) {
 	var mutex sync.Mutex
 	channel := collectionJSON("")
