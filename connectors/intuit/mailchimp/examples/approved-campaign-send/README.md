@@ -23,9 +23,10 @@ campaign only after a person approves it, and at most once:
 6. `AwaitSendApproval` sets the phase to `awaitingApproval` and waits. Nothing
    is sent until a person runs **Approve campaign send**;
 7. `SendLaunchCampaign` calls `mailchimp.NewSendCampaignStep` with sync
-   durability and `expectedListId` set to the launch audience. Only `sent`
-   completes the Flow. Other outcomes fail with the connector's safe reason,
-   and an uncertain send is never resent.
+   durability and `expectedListId` set to the launch audience. `sent` and
+   `alreadySent` complete the Flow as `sent`. Other outcomes fail the Flow,
+   naming the branch that has no target, and an uncertain send is never
+   resent.
 
 Unwired optional branches, such as an invalid response or a local defect, fail
 the Flow.
