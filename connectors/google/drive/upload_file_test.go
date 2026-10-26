@@ -12,14 +12,17 @@ import (
 	"mime"
 	"mime/multipart"
 	"net/http"
+	"net/http/httptrace"
 	"regexp"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/google/drive"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
 
 var idempotencyQueryPattern = regexp.MustCompile(`^appProperties has \{ key='dexIdempotencyKey' and value='([^'\\]+)' \}$`)
@@ -34,6 +37,12 @@ const (
 	uploadRejectsMissingParent
 	uploadCreatesThenDropsConnection
 	uploadCreatesThenAnswersInvalidJSON
+	uploadRejectsWith503
+	uploadCreatesThenReadBackRejects
+	uploadStallsUntilDeadline
+	uploadRejectsWith403RateLimit
+	uploadCreatesThenAnswersOversized
+	uploadCreatesThenInterruptsSuccess
 )
 
 // multipartUpload is one decoded Drive multipart upload.
@@ -43,14 +52,28 @@ type multipartUpload struct {
 	media            []byte
 }
 
+type failBeforeUploadTransport struct{ delegate http.RoundTripper }
+
+func (transport failBeforeUploadTransport) RoundTrip(request *http.Request) (*http.Response, error) {
+	if request.Method != http.MethodPost {
+		return transport.delegate.RoundTrip(request)
+	}
+	if trace := httptrace.ContextClientTrace(request.Context()); trace != nil && trace.ConnectDone != nil {
+		trace.ConnectDone("tcp", request.URL.Host, errors.New("dial failed"))
+	}
+	return nil, errors.New("dial failed before connection")
+}
+
 // uploadDrive is a stateful fake that stores created files with their app properties.
 type uploadDrive struct {
-	t        *testing.T
-	fake     *fakeDrive
-	mutex    sync.Mutex
-	outcomes []uploadOutcome
-	files    []map[string]any
-	uploads  []multipartUpload
+	t                    *testing.T
+	fake                 *fakeDrive
+	mutex                sync.Mutex
+	outcomes             []uploadOutcome
+	files                []map[string]any
+	uploads              []multipartUpload
+	hasReadBackRejection bool
+	suppressMatches      bool
 }
 
 func newUploadDrive(t *testing.T, outcomes ...uploadOutcome) *uploadDrive {
@@ -65,6 +88,10 @@ func (provider *uploadDrive) serveHTTP(response http.ResponseWriter, request *ht
 	defer provider.mutex.Unlock()
 	switch {
 	case request.Method == http.MethodGet && request.URL.Path == "/drive/v3/files":
+		if provider.hasReadBackRejection {
+			provider.writeJSONLocked(response, http.StatusForbidden, map[string]any{"error": map[string]any{"code": 403}})
+			return
+		}
 		match := idempotencyQueryPattern.FindStringSubmatch(request.URL.Query().Get("q"))
 		require.NotNil(provider.t, match, "lookup must query only the idempotency app property")
 		matches := []map[string]any{}
@@ -72,6 +99,9 @@ func (provider *uploadDrive) serveHTTP(response http.ResponseWriter, request *ht
 			if file["appProperties"].(map[string]any)["dexIdempotencyKey"] == match[1] {
 				matches = append(matches, file)
 			}
+		}
+		if provider.suppressMatches {
+			matches = nil
 		}
 		provider.writeJSONLocked(response, http.StatusOK, map[string]any{"files": matches})
 	case request.Method == http.MethodPost && request.URL.Path == "/upload/drive/v3/files":
@@ -85,6 +115,15 @@ func (provider *uploadDrive) serveHTTP(response http.ResponseWriter, request *ht
 		switch outcome {
 		case uploadRejectsWith429:
 			provider.writeJSONLocked(response, http.StatusTooManyRequests, map[string]any{"error": map[string]any{"code": 429}})
+			return
+		case uploadRejectsWith503:
+			provider.writeJSONLocked(response, http.StatusServiceUnavailable, map[string]any{"error": map[string]any{"code": 503}})
+			return
+		case uploadRejectsWith403RateLimit:
+			provider.writeJSONLocked(response, http.StatusForbidden, map[string]any{"error": map[string]any{"errors": []any{map[string]any{"reason": "rateLimitExceeded"}}}})
+			return
+		case uploadStallsUntilDeadline:
+			<-request.Context().Done()
 			return
 		case uploadRejectsMissingParent:
 			provider.writeJSONLocked(response, http.StatusNotFound, map[string]any{"error": map[string]any{"errors": []any{map[string]any{"reason": "notFound", "message": "File not found: SENTINEL"}}}})
@@ -104,6 +143,18 @@ func (provider *uploadDrive) serveHTTP(response http.ResponseWriter, request *ht
 			require.NoError(provider.t, err)
 			require.NoError(provider.t, connection.Close())
 		case uploadCreatesThenAnswersInvalidJSON:
+			response.WriteHeader(http.StatusOK)
+			_, err := response.Write([]byte(`{"id":`))
+			require.NoError(provider.t, err)
+		case uploadCreatesThenReadBackRejects:
+			provider.hasReadBackRejection = true
+			response.WriteHeader(http.StatusOK)
+			_, err := response.Write([]byte(`{"id":`))
+			require.NoError(provider.t, err)
+		case uploadCreatesThenAnswersOversized:
+			provider.writeJSONLocked(response, http.StatusOK, map[string]any{"id": file["id"], "padding": strings.Repeat("x", 1024)})
+		case uploadCreatesThenInterruptsSuccess:
+			response.Header().Set("Content-Length", "1000")
 			response.WriteHeader(http.StatusOK)
 			_, err := response.Write([]byte(`{"id":`))
 			require.NoError(provider.t, err)
@@ -206,24 +257,31 @@ func TestUploadFileUploadsBytesToTheMyDriveRootWithoutParents(t *testing.T) {
 }
 
 func TestUploadFileRetryOfTheSameStepExecutionReusesTheEarlierFile(t *testing.T) {
-	provider := newUploadDrive(t, uploadCreatesThenAnswers500)
+	provider := newUploadDrive(t, uploadRejectsWith503)
 	client := newDriveClient(t, provider.fake.URL)
 	input := drive.UploadFileInput{Name: "report.txt", MimeType: "text/plain", TextContent: "report"}
-	ctx := newDexContext("upload-retried")
+	ctx := singledispatchtest.NewContext("drive-flow", "upload-retried")
 
-	unknown, err := sdkgo.RunMutation(ctx, client.UploadFile(), driveConnection, input)
-	require.NoError(t, err)
-	require.Equal(t, drive.UploadFileBranchUncertain, unknown.Branch)
-	require.Equal(t, sdkgo.FailureAvailability, unknown.Failure.Kind)
+	_, err := sdkgo.RunMutation(ctx, client.UploadFile(), driveConnection, input)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+	ctx.AdvanceAttempt()
 
 	recovered, err := sdkgo.RunMutation(ctx, client.UploadFile(), driveConnection, input)
 	require.NoError(t, err)
 	require.Equal(t, drive.UploadFileBranchUploaded, recovered.Branch)
-	require.True(t, recovered.Value.IsFromEarlierAttempt)
+	require.False(t, recovered.Value.IsFromEarlierAttempt)
 	require.Equal(t, "created-1", recovered.Value.File.ID)
-	require.Equal(t, unknown.Receipt.IdempotencyKey, recovered.Receipt.IdempotencyKey)
 	require.Equal(t, 1, provider.fileCount())
-	require.Equal(t, 1, provider.uploadCount())
+	require.Equal(t, 2, provider.uploadCount())
+	require.Equal(t, provider.recordedUploads()[0].metadata["appProperties"], provider.recordedUploads()[1].metadata["appProperties"])
+
+	ctx.AdvanceAttempt()
+	accepted, err := sdkgo.RunMutation(ctx, client.UploadFile(), driveConnection, input)
+	require.NoError(t, err)
+	require.True(t, accepted.Value.IsFromEarlierAttempt)
+	require.Equal(t, 2, provider.uploadCount())
 
 	another, err := sdkgo.RunMutation(newDexContext("upload-new-step-execution"), client.UploadFile(), driveConnection, input)
 	require.NoError(t, err)
@@ -231,34 +289,152 @@ func TestUploadFileRetryOfTheSameStepExecutionReusesTheEarlierFile(t *testing.T)
 	require.Equal(t, 2, provider.fileCount())
 }
 
-func TestUploadFileAmbiguousOutcomesAreUncertainAndNeverResent(t *testing.T) {
+func TestUploadFileAmbiguousOutcomesAreConfirmedByReadBack(t *testing.T) {
 	for _, test := range []struct {
-		name     string
-		outcome  uploadOutcome
-		wantKind sdkgo.FailureKind
+		name    string
+		outcome uploadOutcome
+		config  drive.Config
 	}{
-		{name: "server error after dispatch", outcome: uploadCreatesThenAnswers500, wantKind: sdkgo.FailureAvailability},
-		{name: "dropped connection", outcome: uploadCreatesThenDropsConnection, wantKind: sdkgo.FailureTransport},
-		{name: "invalid success response", outcome: uploadCreatesThenAnswersInvalidJSON, wantKind: sdkgo.FailureProtocol},
+		{name: "server error after dispatch", outcome: uploadCreatesThenAnswers500},
+		{name: "dropped connection", outcome: uploadCreatesThenDropsConnection},
+		{name: "invalid success response", outcome: uploadCreatesThenAnswersInvalidJSON},
+		{name: "oversized success response", outcome: uploadCreatesThenAnswersOversized, config: drive.Config{MaxResponseBytes: 512}},
+		{name: "interrupted success response", outcome: uploadCreatesThenInterruptsSuccess},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			provider := newUploadDrive(t, test.outcome)
-			client := newDriveClient(t, provider.fake.URL)
+			client := newDriveClient(t, provider.fake.URL, test.config)
 			result, err := sdkgo.RunMutation(newDexContext("upload-ambiguous"), client.UploadFile(), driveConnection, drive.UploadFileInput{
 				Name: "report.txt", MimeType: "text/plain", TextContent: "report",
 			})
 			require.NoError(t, err)
-			require.Equal(t, drive.UploadFileBranchUncertain, result.Branch)
-			require.Equal(t, test.wantKind, result.Failure.Kind)
+			require.Equal(t, drive.UploadFileBranchUploaded, result.Branch)
+			require.False(t, result.Value.IsFromEarlierAttempt)
 			require.Equal(t, 1, provider.uploadCount())
 		})
 	}
 }
 
+func TestUploadFileAcceptedWithoutIDAndRejectedReadBackIsUncertain(t *testing.T) {
+	provider := newUploadDrive(t, uploadCreatesThenReadBackRejects)
+	client := newDriveClient(t, provider.fake.URL)
+	result, err := sdkgo.RunMutation(singledispatchtest.NewContext("drive-flow", "readback-rejected"), client.UploadFile(), driveConnection, drive.UploadFileInput{
+		Name: "report.txt", MimeType: "text/plain", TextContent: "report",
+	})
+	require.NoError(t, err)
+	require.Equal(t, drive.UploadFileBranchUncertain, result.Branch)
+	require.Equal(t, 1, provider.uploadCount())
+}
+
+func TestUploadFileLostClaimNeverResendsAnAcceptedWrite(t *testing.T) {
+	provider := newUploadDrive(t, uploadCreatesThenAnswers500)
+	client := newDriveClient(t, provider.fake.URL)
+	ctx := singledispatchtest.NewContext("drive-flow", "lost-claim")
+	ctx.LoseNextHeartbeat()
+	input := drive.UploadFileInput{Name: "report.txt", MimeType: "text/plain", TextContent: "report"}
+	first, err := sdkgo.RunMutation(ctx, client.UploadFile(), driveConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, drive.UploadFileBranchUploaded, first.Branch)
+	provider.mutex.Lock()
+	provider.suppressMatches = true
+	provider.mutex.Unlock()
+	ctx.AdvanceAttempt()
+	second, err := sdkgo.RunMutation(ctx, client.UploadFile(), driveConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, drive.UploadFileBranchUncertain, second.Branch)
+	require.Equal(t, 1, provider.uploadCount())
+}
+
+func TestUploadFileAcceptedResponseAndStaleMarkerNeverAuthorizeResend(t *testing.T) {
+	provider := newUploadDrive(t)
+	client := newDriveClient(t, provider.fake.URL)
+	ctx := singledispatchtest.NewContext("drive-flow", "accepted-stale")
+	input := drive.UploadFileInput{Name: "report.txt", MimeType: "text/plain", TextContent: "report"}
+	first, err := sdkgo.RunMutation(ctx, client.UploadFile(), driveConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, drive.UploadFileBranchUploaded, first.Branch)
+	provider.mutex.Lock()
+	provider.suppressMatches = true
+	provider.mutex.Unlock()
+	ctx.AdvanceAttempt()
+	ctx.AdvanceAttempt()
+	later, err := sdkgo.RunMutation(ctx, client.UploadFile(), driveConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, drive.UploadFileBranchUncertain, later.Branch)
+	require.Equal(t, 1, provider.uploadCount())
+}
+
+func TestUploadFileCredentialFailureRecordsNotSentForTheNextAttempt(t *testing.T) {
+	provider := newUploadDrive(t)
+	client, err := drive.New(drive.Config{Endpoint: provider.fake.URL}, sdkgo.StaticCredentialProvider[drive.Credentials]{})
+	require.NoError(t, err)
+	ctx := singledispatchtest.NewContext("drive-flow", "credential-retry")
+	input := drive.UploadFileInput{Name: "report.txt", MimeType: "text/plain", TextContent: "report"}
+	_, err = sdkgo.RunMutation(ctx, client.UploadFile(), driveConnection, input)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	require.Equal(t, 0, provider.uploadCount())
+	ctx.AdvanceAttempt()
+	result, err := sdkgo.RunMutation(ctx, newDriveClient(t, provider.fake.URL).UploadFile(), driveConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, drive.UploadFileBranchUploaded, result.Branch)
+	require.Equal(t, 1, provider.uploadCount())
+}
+
+func TestUploadFileProvenUnsentTransportFailurePermitsOneLaterSend(t *testing.T) {
+	provider := newUploadDrive(t)
+	client, err := drive.New(drive.Config{Endpoint: provider.fake.URL}, sdkgo.StaticCredentialProvider[drive.Credentials]{
+		driveConnection: {AccessToken: sdkgo.NewSecretString(driveTestToken)},
+	}, drive.WithHTTPClient(&http.Client{Transport: failBeforeUploadTransport{delegate: http.DefaultTransport}}))
+	require.NoError(t, err)
+	ctx := singledispatchtest.NewContext("drive-flow", "unsent-transport")
+	input := drive.UploadFileInput{Name: "report.txt", MimeType: "text/plain", TextContent: "report"}
+	_, err = sdkgo.RunMutation(ctx, client.UploadFile(), driveConnection, input)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	require.Equal(t, sdkgo.FailureTransport, retry.Failure.Kind)
+	require.Equal(t, 0, provider.uploadCount())
+	ctx.AdvanceAttempt()
+	result, err := sdkgo.RunMutation(ctx, newDriveClient(t, provider.fake.URL).UploadFile(), driveConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, drive.UploadFileBranchUploaded, result.Branch)
+	require.Equal(t, 1, provider.uploadCount())
+}
+
+func TestUploadFileCutsAStalledWriteBeforeTheStepDeadline(t *testing.T) {
+	provider := newUploadDrive(t, uploadStallsUntilDeadline)
+	client := newDriveClient(t, provider.fake.URL)
+	ctx := singledispatchtest.NewContext("drive-flow", "deadline-cut")
+	cancel := ctx.SetDeadline(time.Now().Add(300 * time.Millisecond))
+	defer cancel()
+	result, err := sdkgo.RunMutation(ctx, client.UploadFile(), driveConnection, drive.UploadFileInput{
+		Name: "report.txt", MimeType: "text/plain", TextContent: "report",
+	})
+	require.NoError(t, err)
+	require.Equal(t, drive.UploadFileBranchUncertain, result.Branch)
+	require.Equal(t, 1, provider.uploadCount())
+}
+
+func TestUploadFileRetries403RateLimitWithAResendCheckpoint(t *testing.T) {
+	provider := newUploadDrive(t, uploadRejectsWith403RateLimit)
+	client := newDriveClient(t, provider.fake.URL)
+	ctx := singledispatchtest.NewContext("drive-flow", "rate-limit-403")
+	input := drive.UploadFileInput{Name: "report.txt", MimeType: "text/plain", TextContent: "report"}
+	_, err := sdkgo.RunMutation(ctx, client.UploadFile(), driveConnection, input)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	require.Equal(t, sdkgo.FailureRateLimit, retry.Failure.Kind)
+	ctx.AdvanceAttempt()
+	result, err := sdkgo.RunMutation(ctx, client.UploadFile(), driveConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, drive.UploadFileBranchUploaded, result.Branch)
+	require.Equal(t, 2, provider.uploadCount())
+}
+
 func TestUploadFileRetriesARateLimitedUploadAfterLookingUpAgain(t *testing.T) {
 	provider := newUploadDrive(t, uploadRejectsWith429)
 	client := newDriveClient(t, provider.fake.URL)
-	ctx := newDexContext("upload-rate-limited")
+	ctx := singledispatchtest.NewContext("drive-flow", "upload-rate-limited")
 	input := drive.UploadFileInput{Name: "report.txt", MimeType: "text/plain", TextContent: "report"}
 
 	_, err := sdkgo.RunMutation(ctx, client.UploadFile(), driveConnection, input)
@@ -267,6 +443,7 @@ func TestUploadFileRetriesARateLimitedUploadAfterLookingUpAgain(t *testing.T) {
 	require.Equal(t, sdkgo.FailureRateLimit, retry.Failure.Kind)
 	require.Equal(t, 0, provider.fileCount())
 
+	ctx.AdvanceAttempt()
 	result, err := sdkgo.RunMutation(ctx, client.UploadFile(), driveConnection, input)
 	require.NoError(t, err)
 	require.Equal(t, drive.UploadFileBranchUploaded, result.Branch)
