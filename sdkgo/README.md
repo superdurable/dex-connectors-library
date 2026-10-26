@@ -9,21 +9,6 @@ Applications normally depend on a connector module such as OpenAI rather than
 constructing the generic factories directly. Connector authors may use the
 generic `NewQueryStep` and `NewMutationStep` APIs as an advanced escape hatch.
 
-## Step Execute retries
-
-When a Query or Mutation definition leaves `StepDefaults.ExecuteRetry` nil,
-the SDK supplies `DefaultConnectorStepExecuteRetryPolicy()`: one-second initial
-delay, coefficient 2, five-minute maximum delay, unlimited attempts, and a
-one-hour total duration. A Retry keeps trying transient failures within that
-budget; when it runs out, the Flow fails. An explicit definition policy takes
-precedence, and applications can replace either policy for one Step with
-`StepOptionsOverride.ExecuteRetry`.
-
-A later manifest change will let authors omit `retry` and require a validated
-reason for a shorter policy: `billedOperation`, `personWaiting`, or
-`duplicateWriteRisk`. Those manifest rules are planned; this SDK release only
-changes the fallback for a nil definition policy.
-
 An application loads its project configuration once with
 `projectconfig.LoadFromEnvironment` and opens every declared connection with the
 connector's generated `NewProjectConnection(project, connectionName)`.
@@ -411,6 +396,27 @@ the Flow persistence schema. The Connector SDK does not aggregate or register
 those resources. Manifest progress declarations only control which typed Stream
 fields code generation exposes; runtime operation definitions do not duplicate
 or validate that metadata.
+
+### Step Execute retries
+
+When a Query or Mutation definition leaves `StepDefaults.ExecuteRetry` nil,
+the SDK supplies `DefaultConnectorStepExecuteRetryPolicy()`: one-second initial
+delay, coefficient 2, five-minute maximum delay, unlimited attempts, and a
+one-hour total duration. A Retry keeps trying transient failures within that
+budget; when it runs out, the Flow fails unless the Step routes exhausted
+retries to an `ExecuteFailure` recovery Step. The total duration also bounds
+the first attempt through ScheduleToClose, so an Execute timeout over one hour
+needs an explicit retry policy to run for its full duration.
+
+An explicit definition policy takes precedence. An application can replace
+either policy for one Step with `StepOptionsOverride.ExecuteRetry`. This
+replaces the entire policy; zero fields use Dex server defaults. Start with
+`DefaultConnectorStepExecuteRetryPolicy()` and change the fields needed for
+the override.
+
+A later manifest change will let authors omit `retry` and require a validated
+reason for a shorter policy: `billedOperation`, `personWaiting`, or
+`duplicateWriteRisk`. Until then, manifests must still declare `retry`.
 
 Generated Step and Trigger binding configs also accept a static
 `ConnectorConfigurationUI`. A Flow composes release-owned UI units and binds

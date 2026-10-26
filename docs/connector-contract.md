@@ -215,11 +215,17 @@ optional heartbeat timeout, retry policy, and durability. A nil
 delay, coefficient 2, five-minute maximum delay, unlimited attempts, and a
 one-hour total duration. An explicit definition policy takes precedence;
 applications may replace it per Step with `StepOptionsOverride.ExecuteRetry`.
-When retries exhaust the duration, the Flow fails. A later manifest change is
+The override replaces the entire policy, with zero fields taking Dex server
+defaults; start from `DefaultConnectorStepExecuteRetryPolicy()` and change the
+needed fields. Total duration also bounds the first attempt through
+ScheduleToClose, so an Execute timeout over one hour needs an explicit policy.
+When retries exhaust the duration, the Flow fails unless `ExecuteFailure`
+routes to a recovery Step. A later manifest change is
 planned to allow omission of `retry` and require a validated reason for a
 shorter policy: `billedOperation`, `personWaiting`, or `duplicateWriteRisk`.
 
-HTTP defaults are 30 seconds and a five-attempt/two-minute window. OpenAI response creation
+Manifest-declared policies take precedence over the SDK fallback. HTTP defaults
+are 30 seconds and a five-attempt/two-minute window. OpenAI response creation
 defaults are 150 seconds and a three-attempt/five-minute window; within an
 attempt it polls a known response until five seconds before the Execute
 timeout. Execute durability is asynchronous unless the operation is very likely

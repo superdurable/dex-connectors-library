@@ -173,6 +173,13 @@ func TestFactoryExecuteRetryPolicyPrecedence(t *testing.T) {
 	})
 	require.Equal(t, sdkgo.DefaultConnectorStepExecuteRetryPolicy(), mutationStep.GetStepOptions().ExecuteRetry)
 
+	nilDefinitionOverride := &dex.RetryPolicy{TotalDuration: 30 * time.Minute}
+	config.StepOptionsOverride = &dex.StepOptions{ExecuteRetry: nilDefinitionOverride}
+	queryStep = sdkgo.MustNewQueryStep(config)
+	require.Equal(t, nilDefinitionOverride, queryStep.GetStepOptions().ExecuteRetry)
+	require.Zero(t, queryStep.GetStepOptions().ExecuteRetry.MaximumInterval)
+	config.StepOptionsOverride = nil
+
 	explicit := &dex.RetryPolicy{InitialInterval: 2 * time.Second, MaximumAttempts: 3, TotalDuration: 5 * time.Minute}
 	definition.StepDefaults.ExecuteRetry = explicit
 	operation.definition = definition
