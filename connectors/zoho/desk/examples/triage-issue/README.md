@@ -130,6 +130,8 @@ Desk, has no idempotency key, sends IDs and counts as strings, answers an
 empty search with 204, and matches look-alike addresses in its email filter:
 
 - a new contact gets one ticket and one private comment;
+- the mock-backed real-Dex tests verify three search pages, literal operation
+  inputs, call counts, and the new-ticket and follow-up Flow outcomes;
 - a repeat contact's on-hold ticket is reopened and reprioritized with one
   private comment, leaving a closed duplicate with a refund comment, another
   contact's ticket, a look-alike address's newer ticket, and the contact's

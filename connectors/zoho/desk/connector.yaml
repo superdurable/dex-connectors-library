@@ -350,7 +350,7 @@ spec:
       mocks:
         - name: noExistingTicket
           branch: searched
-          description: Three pages of broader Zoho results contain no ticket for jane@example.test in department 1892000000006907.
+          description: Three pages of broader Zoho results, searched with Open and On Hold status types and a 25-ticket limit, contain no ticket for jane@example.test in department 1892000000006907.
           default: true
           pages:
             - {tickets: [], totalMatched: 51, nextFrom: 25}
@@ -384,13 +384,14 @@ spec:
       mocks:
         - name: openedTicketDetails
           branch: found
-          description: Ticket 1892000000099001 created for jane@example.test is read before a follow-up.
+          description: Ticket 1892000000099001 is read before a follow-up, after its private comment and a move to On Hold with Low priority.
           default: true
           output:
-            ticket: {id: "1892000000099001", ticketNumber: "101", subject: Billing question, descriptionHtml: "<div>Please check my invoice.</div>", status: Open, statusType: Open, priority: High, channel: Web, departmentId: "1892000000006907", contactId: "1892000000042032", email: jane@example.test, createdAt: "2026-01-28T09:00:00Z", modifiedAt: "2026-01-28T09:00:00Z"}
+            ticket: {id: "1892000000099001", ticketNumber: "101", subject: Billing question, descriptionHtml: "<div>Please check my invoice.</div>", status: On Hold, statusType: On Hold, priority: Low, channel: Web, departmentId: "1892000000006907", contactId: "1892000000042032", email: jane@example.test, commentCount: 1, createdAt: "2026-01-28T09:00:00Z", modifiedAt: "2026-01-28T09:03:00Z"}
             contact: {id: "1892000000042032", email: jane@example.test, firstName: Jane, lastName: Doe}
             threads: []
-            comments: []
+            comments:
+              - {id: "1892000000099002", isPublic: false, content: "Dex triage: opened with priority High; the contact had no open or on-hold ticket in this department.", contentType: plainText, commenterId: "1892000000056007", commentedAt: "2026-01-28T09:02:00Z"}
         - name: ticketNotFound
           branch: notFound
           description: The requested ticket ID does not exist and Zoho Desk returns HTTP 404.
@@ -451,21 +452,25 @@ spec:
       mocks:
         - name: reprioritizedBillingTicket
           branch: updated
-          description: Ticket 1892000000099001 now has the requested High priority and Open status.
+          description: Ticket 1892000000099001 is reopened and reprioritized from On Hold and Low to Open and High.
           default: true
           output:
-            ticket: {id: "1892000000099001", ticketNumber: "101", subject: Billing question, status: Open, statusType: Open, priority: High, channel: Web, departmentId: "1892000000006907", contactId: "1892000000042032", email: jane@example.test, createdAt: "2026-01-28T09:00:00Z", modifiedAt: "2026-01-28T09:01:00Z"}
-        - name: updateTicketNotFound
+            ticket: {id: "1892000000099001", ticketNumber: "101", subject: Billing question, descriptionHtml: "<div>Please check my invoice.</div>", status: Open, statusType: Open, priority: High, channel: Web, departmentId: "1892000000006907", contactId: "1892000000042032", email: jane@example.test, commentCount: 1, createdAt: "2026-01-28T09:00:00Z", modifiedAt: "2026-01-28T09:04:00Z"}
+        - name: ticketNotFound
           branch: notFound
           description: The requested update ticket ID does not exist and Zoho Desk returns HTTP 404.
           failure: {kind: NOT_FOUND, message: Zoho Desk found no such ticket (HTTP 404).}
         - name: invalidStatus
           branch: providerRejected
           description: The requested status is unknown and Zoho Desk returns HTTP 422 without applying it.
+          output:
+            ticket: {id: "1892000000099001", ticketNumber: "101", subject: Billing question, descriptionHtml: "<div>Please check my invoice.</div>", status: On Hold, statusType: On Hold, priority: Low, channel: Web, departmentId: "1892000000006907", contactId: "1892000000042032", email: jane@example.test, commentCount: 1, createdAt: "2026-01-28T09:00:00Z", modifiedAt: "2026-01-28T09:03:00Z"}
           failure: {kind: VALIDATION, message: Zoho Desk rejected the ticket update (HTTP 422).}
         - name: invalidUpdatedTicket
           branch: invalidResponse
           description: Zoho Desk accepted the update but returned an invalid ticket body.
+          output:
+            ticket: {id: "1892000000099001", ticketNumber: "101", subject: Billing question, descriptionHtml: "<div>Please check my invoice.</div>", status: On Hold, statusType: On Hold, priority: Low, channel: Web, departmentId: "1892000000006907", contactId: "1892000000042032", email: jane@example.test, commentCount: 1, createdAt: "2026-01-28T09:00:00Z", modifiedAt: "2026-01-28T09:03:00Z"}
           failure: {kind: PROTOCOL, message: Zoho Desk returned an invalid updated ticket.}
     - name: addComment
       goName: AddComment
@@ -488,11 +493,11 @@ spec:
       mocks:
         - name: privateTriageComment
           branch: added
-          description: Ticket 1892000000099001 receives a private triage comment after creation.
+          description: 'Ticket 1892000000099001 receives the private comment "Dex triage: opened with priority High; the contact had no open or on-hold ticket in this department."'
           default: true
           output:
-            comment: {id: "1892000000099002", isPublic: false, content: "Triage started for jane@example.test.", contentType: plainText, commenterId: "1892000000056007", commentedAt: "2026-01-28T09:02:00Z"}
-        - name: commentTicketNotFound
+            comment: {id: "1892000000099002", isPublic: false, content: "Dex triage: opened with priority High; the contact had no open or on-hold ticket in this department.", contentType: plainText, commenterId: "1892000000056007", commentedAt: "2026-01-28T09:02:00Z"}
+        - name: ticketNotFound
           branch: notFound
           description: The target ticket ID does not exist and Zoho Desk returns HTTP 404 without adding a comment.
           failure: {kind: NOT_FOUND, message: Zoho Desk found no such ticket (HTTP 404).}

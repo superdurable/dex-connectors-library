@@ -120,7 +120,7 @@ func SearchTicketsRetry(failure sdkgo.Failure, after time.Duration) connectormoc
 	return connectormock.Retry[desk.SearchTicketsOutput](failure, after)
 }
 
-// SearchTicketsNoExistingTicket is the manifest mock noExistingTicket: Three pages of broader Zoho results contain no ticket for jane@example.test in department 1892000000006907.
+// SearchTicketsNoExistingTicket is the manifest mock noExistingTicket: Three pages of broader Zoho results, searched with Open and On Hold status types and a 25-ticket limit, contain no ticket for jane@example.test in department 1892000000006907.
 func SearchTicketsNoExistingTicket() connectormock.Case[desk.SearchTicketsOutput] {
 	pages := []desk.SearchTicketsOutput{
 		connectormock.MustDecodeOutput[desk.SearchTicketsOutput](`{"tickets":[],"totalMatched":51,"nextFrom":25}`),
@@ -178,9 +178,9 @@ func GetTicketRetry(failure sdkgo.Failure, after time.Duration) connectormock.Ca
 	return connectormock.Retry[desk.TicketDetails](failure, after)
 }
 
-// GetTicketOpenedTicketDetails is the manifest mock openedTicketDetails: Ticket 1892000000099001 created for jane@example.test is read before a follow-up.
+// GetTicketOpenedTicketDetails is the manifest mock openedTicketDetails: Ticket 1892000000099001 is read before a follow-up, after its private comment and a move to On Hold with Low priority.
 func GetTicketOpenedTicketDetails() connectormock.Case[desk.TicketDetails] {
-	value := connectormock.MustDecodeOutput[desk.TicketDetails](`{"ticket":{"id":"1892000000099001","ticketNumber":"101","subject":"Billing question","descriptionHtml":"\u003cdiv\u003ePlease check my invoice.\u003c/div\u003e","status":"Open","statusType":"Open","priority":"High","channel":"Web","departmentId":"1892000000006907","contactId":"1892000000042032","email":"jane@example.test","createdAt":"2026-01-28T09:00:00Z","modifiedAt":"2026-01-28T09:00:00Z"},"contact":{"id":"1892000000042032","email":"jane@example.test","firstName":"Jane","lastName":"Doe"},"threads":[],"comments":[]}`)
+	value := connectormock.MustDecodeOutput[desk.TicketDetails](`{"ticket":{"id":"1892000000099001","ticketNumber":"101","subject":"Billing question","descriptionHtml":"\u003cdiv\u003ePlease check my invoice.\u003c/div\u003e","status":"On Hold","statusType":"On Hold","priority":"Low","channel":"Web","departmentId":"1892000000006907","contactId":"1892000000042032","email":"jane@example.test","commentCount":1,"createdAt":"2026-01-28T09:00:00Z","modifiedAt":"2026-01-28T09:03:00Z"},"contact":{"id":"1892000000042032","email":"jane@example.test","firstName":"Jane","lastName":"Doe"},"threads":[],"comments":[{"id":"1892000000099002","isPublic":false,"content":"Dex triage: opened with priority High; the contact had no open or on-hold ticket in this department.","contentType":"plainText","commenterId":"1892000000056007","commentedAt":"2026-01-28T09:02:00Z"}]}`)
 	return connectormock.Branch(desk.GetTicketBranchFound, value, nil)
 }
 
@@ -277,27 +277,27 @@ func UpdateTicketRetry(failure sdkgo.Failure, after time.Duration) connectormock
 	return connectormock.Retry[desk.UpdateTicketOutput](failure, after)
 }
 
-// UpdateTicketReprioritizedBillingTicket is the manifest mock reprioritizedBillingTicket: Ticket 1892000000099001 now has the requested High priority and Open status.
+// UpdateTicketReprioritizedBillingTicket is the manifest mock reprioritizedBillingTicket: Ticket 1892000000099001 is reopened and reprioritized from On Hold and Low to Open and High.
 func UpdateTicketReprioritizedBillingTicket() connectormock.Case[desk.UpdateTicketOutput] {
-	value := connectormock.MustDecodeOutput[desk.UpdateTicketOutput](`{"ticket":{"id":"1892000000099001","ticketNumber":"101","subject":"Billing question","status":"Open","statusType":"Open","priority":"High","channel":"Web","departmentId":"1892000000006907","contactId":"1892000000042032","email":"jane@example.test","createdAt":"2026-01-28T09:00:00Z","modifiedAt":"2026-01-28T09:01:00Z"}}`)
+	value := connectormock.MustDecodeOutput[desk.UpdateTicketOutput](`{"ticket":{"id":"1892000000099001","ticketNumber":"101","subject":"Billing question","descriptionHtml":"\u003cdiv\u003ePlease check my invoice.\u003c/div\u003e","status":"Open","statusType":"Open","priority":"High","channel":"Web","departmentId":"1892000000006907","contactId":"1892000000042032","email":"jane@example.test","commentCount":1,"createdAt":"2026-01-28T09:00:00Z","modifiedAt":"2026-01-28T09:04:00Z"}}`)
 	return connectormock.Branch(desk.UpdateTicketBranchUpdated, value, nil)
 }
 
-// UpdateTicketUpdateTicketNotFound is the manifest mock updateTicketNotFound: The requested update ticket ID does not exist and Zoho Desk returns HTTP 404.
-func UpdateTicketUpdateTicketNotFound() connectormock.Case[desk.UpdateTicketOutput] {
+// UpdateTicketTicketNotFound is the manifest mock ticketNotFound: The requested update ticket ID does not exist and Zoho Desk returns HTTP 404.
+func UpdateTicketTicketNotFound() connectormock.Case[desk.UpdateTicketOutput] {
 	var value desk.UpdateTicketOutput
 	return connectormock.Branch(desk.UpdateTicketBranchNotFound, value, &sdkgo.Failure{Kind: sdkgo.FailureNotFound, Message: "Zoho Desk found no such ticket (HTTP 404)."})
 }
 
 // UpdateTicketInvalidStatus is the manifest mock invalidStatus: The requested status is unknown and Zoho Desk returns HTTP 422 without applying it.
 func UpdateTicketInvalidStatus() connectormock.Case[desk.UpdateTicketOutput] {
-	var value desk.UpdateTicketOutput
+	value := connectormock.MustDecodeOutput[desk.UpdateTicketOutput](`{"ticket":{"id":"1892000000099001","ticketNumber":"101","subject":"Billing question","descriptionHtml":"\u003cdiv\u003ePlease check my invoice.\u003c/div\u003e","status":"On Hold","statusType":"On Hold","priority":"Low","channel":"Web","departmentId":"1892000000006907","contactId":"1892000000042032","email":"jane@example.test","commentCount":1,"createdAt":"2026-01-28T09:00:00Z","modifiedAt":"2026-01-28T09:03:00Z"}}`)
 	return connectormock.Branch(desk.UpdateTicketBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureValidation, Message: "Zoho Desk rejected the ticket update (HTTP 422)."})
 }
 
 // UpdateTicketInvalidUpdatedTicket is the manifest mock invalidUpdatedTicket: Zoho Desk accepted the update but returned an invalid ticket body.
 func UpdateTicketInvalidUpdatedTicket() connectormock.Case[desk.UpdateTicketOutput] {
-	var value desk.UpdateTicketOutput
+	value := connectormock.MustDecodeOutput[desk.UpdateTicketOutput](`{"ticket":{"id":"1892000000099001","ticketNumber":"101","subject":"Billing question","descriptionHtml":"\u003cdiv\u003ePlease check my invoice.\u003c/div\u003e","status":"On Hold","statusType":"On Hold","priority":"Low","channel":"Web","departmentId":"1892000000006907","contactId":"1892000000042032","email":"jane@example.test","commentCount":1,"createdAt":"2026-01-28T09:00:00Z","modifiedAt":"2026-01-28T09:03:00Z"}}`)
 	return connectormock.Branch(desk.UpdateTicketBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "Zoho Desk returned an invalid updated ticket."})
 }
 
@@ -336,14 +336,14 @@ func AddCommentRetry(failure sdkgo.Failure, after time.Duration) connectormock.C
 	return connectormock.Retry[desk.AddCommentOutput](failure, after)
 }
 
-// AddCommentPrivateTriageComment is the manifest mock privateTriageComment: Ticket 1892000000099001 receives a private triage comment after creation.
+// AddCommentPrivateTriageComment is the manifest mock privateTriageComment: Ticket 1892000000099001 receives the private comment "Dex triage: opened with priority High; the contact had no open or on-hold ticket in this department."
 func AddCommentPrivateTriageComment() connectormock.Case[desk.AddCommentOutput] {
-	value := connectormock.MustDecodeOutput[desk.AddCommentOutput](`{"comment":{"id":"1892000000099002","isPublic":false,"content":"Triage started for jane@example.test.","contentType":"plainText","commenterId":"1892000000056007","commentedAt":"2026-01-28T09:02:00Z"}}`)
+	value := connectormock.MustDecodeOutput[desk.AddCommentOutput](`{"comment":{"id":"1892000000099002","isPublic":false,"content":"Dex triage: opened with priority High; the contact had no open or on-hold ticket in this department.","contentType":"plainText","commenterId":"1892000000056007","commentedAt":"2026-01-28T09:02:00Z"}}`)
 	return connectormock.Branch(desk.AddCommentBranchAdded, value, nil)
 }
 
-// AddCommentCommentTicketNotFound is the manifest mock commentTicketNotFound: The target ticket ID does not exist and Zoho Desk returns HTTP 404 without adding a comment.
-func AddCommentCommentTicketNotFound() connectormock.Case[desk.AddCommentOutput] {
+// AddCommentTicketNotFound is the manifest mock ticketNotFound: The target ticket ID does not exist and Zoho Desk returns HTTP 404 without adding a comment.
+func AddCommentTicketNotFound() connectormock.Case[desk.AddCommentOutput] {
 	var value desk.AddCommentOutput
 	return connectormock.Branch(desk.AddCommentBranchNotFound, value, &sdkgo.Failure{Kind: sdkgo.FailureNotFound, Message: "Zoho Desk found no such ticket (HTTP 404)."})
 }

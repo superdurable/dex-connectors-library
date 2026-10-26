@@ -262,10 +262,11 @@ visibility selects `uncertain`. Content is at most 32,000 characters.
 ## Mocks
 
 `deskmock.New(t, ConnectionName)` supplies one consistent world: three search
-pages for `jane@example.test` find no ticket, create returns ticket `1892000000099001`,
-and addComment returns private comment `1892000000099002`. Each operation also
-has mocks for its definite optional business branches. The runnable Flow's
-real-Dex mock test starts with this code:
+pages for `jane@example.test` find no ticket, create returns Open/High ticket
+`1892000000099001`, and addComment returns private comment `1892000000099002`.
+A later get reads that ticket On Hold/Low with the comment; update reopens it
+as Open/High. Each operation also has mocks for its definite optional business
+branches. The runnable Flow's new-ticket real-Dex mock test starts with this code:
 
 ```go
 mock := deskmock.New(t, ConnectionName)
@@ -280,7 +281,8 @@ require.Equal(t, TriageTicketOpened, outcome.Action)
 ```
 
 See `examples/triage-issue/flow/workflow_mock_integration_test.go` for the
-literal call-input and count assertions. These mocks make no provider requests.
+new-ticket and follow-up tests with literal call-input and count assertions.
+These mocks make no provider requests.
 
 ## Duplicate safety
 
