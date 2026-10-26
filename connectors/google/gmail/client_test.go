@@ -67,7 +67,8 @@ func TestSendMessageUsesPrimarySenderAndStableMessageID(t *testing.T) {
 	require.Equal(t, "owner@example.com", result.Value.Sender)
 	require.Equal(t, "message-1", result.Value.MessageID)
 	require.Contains(t, raw, "From: owner@example.com")
-	require.Contains(t, raw, "Message-ID: <"+string(result.Receipt.IdempotencyKey)+"@dex.superdurable.dev>")
+	require.Contains(t, raw, "Message-ID: <")
+	require.Contains(t, raw, "@dex.superdurable.dev>")
 	require.NotContains(t, raw, "gmail-token")
 }
 
@@ -135,7 +136,7 @@ func TestServerFailureRetriesAfterSentMailMiss(t *testing.T) {
 	require.ErrorAs(t, err, &retry)
 	require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
 	require.Equal(t, 1, sends)
-	require.Equal(t, 1, searches)
+	require.Equal(t, 4, searches)
 }
 
 func TestRateLimitRetries(t *testing.T) {
@@ -180,16 +181,17 @@ func TestProviderRejectionIsTerminal(t *testing.T) {
 	require.Equal(t, sdkgo.FailureAuthorization, result.Failure.Kind)
 }
 
-func TestMalformedSuccessRetriesAfterSentMailMiss(t *testing.T) {
+func TestMalformedSuccessIsSentAfterSentMailMiss(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
 		_, _ = response.Write([]byte(`{"threadId":"thread-without-message"}`))
 	}))
 	defer server.Close()
 	client := newGmailClient(t, server.URL)
-	_, err := sdkgo.RunMutation(newGmailDexContext("send-malformed"), client.SendMessage(), gmailConnection, gmail.SendMessageInput{To: []string{"customer@example.com"}, Subject: "Progress", TextBody: "Update"})
-	var retry *sdkgo.RetryError
-	require.ErrorAs(t, err, &retry)
-	require.Equal(t, sdkgo.FailureProtocol, retry.Failure.Kind)
+	result, err := sdkgo.RunMutation(newGmailDexContext("send-malformed"), client.SendMessage(), gmailConnection, gmail.SendMessageInput{To: []string{"customer@example.com"}, Subject: "Progress", TextBody: "Update"})
+	require.NoError(t, err)
+	require.Equal(t, gmail.SendMessageBranchSent, result.Branch)
+	require.Empty(t, result.Value.MessageID)
+	require.Empty(t, result.Value.ThreadID)
 }
 
 func TestRejectsHeaderInjectionBeforeProviderCall(t *testing.T) {
@@ -220,16 +222,28 @@ func newGmailClient(t *testing.T, endpoint string) *gmail.Client {
 
 type gmailDexContext struct {
 	context.Context
-	step    string
-	attempt int32
+	step          string
+	attempt       int32
+	runID         string
+	flowStartedAt time.Time
 }
 
 func newGmailDexContext(step string) *gmailDexContext {
 	return &gmailDexContext{Context: context.Background(), step: step}
 }
-func (*gmailDexContext) FlowID() string                        { return "follow-up-flow" }
-func (*gmailDexContext) RunID() string                         { return "run" }
-func (*gmailDexContext) FlowStartedAt() time.Time              { return time.Unix(1, 0) }
+func (*gmailDexContext) FlowID() string { return "follow-up-flow" }
+func (ctx *gmailDexContext) RunID() string {
+	if ctx.runID != "" {
+		return ctx.runID
+	}
+	return "run"
+}
+func (ctx *gmailDexContext) FlowStartedAt() time.Time {
+	if !ctx.flowStartedAt.IsZero() {
+		return ctx.flowStartedAt
+	}
+	return time.Unix(1, 0)
+}
 func (context *gmailDexContext) StepExecutionID() string       { return context.step }
 func (*gmailDexContext) FromStepExecutionID() string           { return "" }
 func (*gmailDexContext) RecoveryError() *dex.RecoveryErrorInfo { return nil }

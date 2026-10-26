@@ -109,10 +109,13 @@ example starts, it logs `dex server unavailable; retrying` with a `delay` that
 grows to 30 seconds, and starts the Worker and the Gmail runner once Dex
 answers.
 
-The example wires only the happy-path branches. An unwired optional branch fails
-the Flow with its safe failure reason; wire one only when the application must
-react, such as asking an operator to check Sent Mail. A reply whose answer is
-lost completes when the Sent Mail search finds its Message-ID. A search miss
-retries, and each later attempt searches again before posting. A 503 whose
-search finds nothing may resend the reply under the same Message-ID; Gmail
-does not deduplicate by that header.
+The example wires only the happy-path branches. An unwired optional branch
+fails the Flow with its safe failure reason. A reply whose answer is lost
+completes when the Sent Mail search finds its Message-ID. A failed or missing
+read-back retries, and each numbered later attempt searches before reading the
+source or posting. Any possibly accepted failure can resend after a search
+miss; Gmail does not deduplicate by Message-ID. Dex local-activity crash replay
+can restart the visible attempt number at one and POST without a pre-send
+search. An accepted 2xx with an unusable response selects `sent` without
+resending; if Sent Mail still has no match, the output `messageId` is empty and
+`threadId` is the requested reply thread.

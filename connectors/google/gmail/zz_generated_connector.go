@@ -517,7 +517,7 @@ const SendMessageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 var SendMessageDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "sendMessage"},
 	Branches: []sdkgo.BranchDefinition{
-		{ID: SendMessageBranchSent, Description: "Gmail accepted the message and returned its identity."},
+		{ID: SendMessageBranchSent, Description: "Gmail accepted the message; its message and thread IDs can be empty when an unusable accepted response has no Sent Mail match."},
 		{ID: SendMessageBranchProviderRejected, Description: "Gmail conclusively rejected the message.", Optional: true},
 		{ID: SendMessageBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
@@ -585,7 +585,7 @@ const ReplyToMessageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 var ReplyToMessageDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "replyToMessage"},
 	Branches: []sdkgo.BranchDefinition{
-		{ID: ReplyToMessageBranchSent, Description: "Gmail accepted the reply and returned its identity."},
+		{ID: ReplyToMessageBranchSent, Description: "Gmail accepted the reply; its message ID can be empty when an unusable accepted response has no Sent Mail match, while the requested thread ID remains."},
 		{ID: ReplyToMessageBranchProviderRejected, Description: "Gmail conclusively rejected the reply.", Optional: true},
 		{ID: ReplyToMessageBranchInvalidResponse, Description: "Gmail returned an invalid or oversized source message response before sending the reply.", Optional: true},
 		{ID: ReplyToMessageBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},

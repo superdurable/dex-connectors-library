@@ -143,6 +143,9 @@ func (ReplyToMessageOperation) IdempotencyKey(callID sdkgo.CallID, _ ReplyToMess
 
 // Invoke reads the source message and sends one reply in its Gmail thread.
 func (operation ReplyToMessageOperation) Invoke(call sdkgo.Call, input ReplyToMessageInput) sdkgo.MutationAttempt[SendMessageOutput] {
+	if call.Context.Attempt() < 1 {
+		return sdkgo.NewMutationBranch(ReplyToMessageBranchDefect, SendMessageOutput{}, gmailOperationFailurePointer("replyToMessage", sdkgo.FailureLocalDefect, "Dex Execute attempt number is invalid"), sdkgo.Receipt{})
+	}
 	budget := newSendAttemptBudget(call.Context, ReplyToMessageDefinition.StepDefaults.ExecuteMethodTimeout)
 	defer budget.cancel()
 	credentials, err := operation.client.resolveCredentials(budget.attemptContext, call)
@@ -151,6 +154,18 @@ func (operation ReplyToMessageOperation) Invoke(call sdkgo.Call, input ReplyToMe
 	}
 	if strings.TrimSpace(input.MessageID) == "" || strings.TrimSpace(input.TextBody) == "" {
 		return sdkgo.NewMutationBranch(ReplyToMessageBranchDefect, SendMessageOutput{}, gmailOperationFailurePointer("replyToMessage", sdkgo.FailureValidation, "message ID and text body are required"), sdkgo.Receipt{})
+	}
+	if call.Context.Attempt() > 1 {
+		searchContext, cancelSearch := budget.preSendContext()
+		sent, isFound, searchErr := operation.client.findSentMessageByRFCMessageID(searchContext, call, credentials)
+		cancelSearch()
+		if isFound {
+			return operation.client.sentMessage(call, budget, credentials, replyToMessageOutcomes, gmailOutgoingMessage{}, sent, operation.client.receipt(call, "", ""))
+		}
+		if searchErr != nil {
+			return sdkgo.NewMutationRetry[SendMessageOutput](gmailOperationFailure("replyToMessage", sdkgo.FailureAvailability,
+				"Gmail sent-mail search did not answer before the reply"), 0)
+		}
 	}
 	sourceContext, cancelSourceRead := budget.preSendContext()
 	resource, result, credentials, err := operation.client.readMessage(sourceContext, call, credentials, input.MessageID, "metadata")
@@ -189,6 +204,7 @@ func (operation ReplyToMessageOperation) Invoke(call sdkgo.Call, input ReplyToMe
 	}
 	return operation.client.sendAndConfirm(call, budget, credentials, replyToMessageOutcomes, gmailOutgoingMessage{
 		payload: payload, recipients: []string{recipient}, requestedThreadID: message.ThreadID,
+		hasPreSendSearch: call.Context.Attempt() > 1,
 	})
 }
 

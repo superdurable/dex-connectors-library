@@ -141,7 +141,7 @@ func GetMessageRateLimited() connectormock.Case[gmail.Message] {
 // GetMessageDefault is the manifest default, customerQuestion, which New installs.
 func GetMessageDefault() connectormock.Case[gmail.Message] { return GetMessageCustomerQuestion() }
 
-// SendMessageSent selects the sent branch: Gmail accepted the message and returned its identity.
+// SendMessageSent selects the sent branch: Gmail accepted the message; its message and thread IDs can be empty when an unusable accepted response has no Sent Mail match.
 func SendMessageSent(value gmail.SendMessageOutput, failure *sdkgo.Failure) connectormock.Case[gmail.SendMessageOutput] {
 	return connectormock.Branch(gmail.SendMessageBranchSent, value, failure)
 }
@@ -194,7 +194,7 @@ func SendMessageDefault() connectormock.Case[gmail.SendMessageOutput] {
 	return SendMessageSentToCustomer()
 }
 
-// ReplyToMessageSent selects the sent branch: Gmail accepted the reply and returned its identity.
+// ReplyToMessageSent selects the sent branch: Gmail accepted the reply; its message ID can be empty when an unusable accepted response has no Sent Mail match, while the requested thread ID remains.
 func ReplyToMessageSent(value gmail.SendMessageOutput, failure *sdkgo.Failure) connectormock.Case[gmail.SendMessageOutput] {
 	return connectormock.Branch(gmail.ReplyToMessageBranchSent, value, failure)
 }

@@ -234,7 +234,7 @@ spec:
       description: Send one MIME message from the authorized primary account.
       idempotency: required
       branches:
-        - {id: sent, goName: Sent, description: Gmail accepted the message and returned its identity.}
+        - {id: sent, goName: Sent, description: "Gmail accepted the message; its message and thread IDs can be empty when an unusable accepted response has no Sent Mail match."}
         - {id: providerRejected, goName: ProviderRejected, description: Gmail conclusively rejected the message., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
@@ -269,7 +269,7 @@ spec:
       description: Reply to one Gmail message in its existing thread.
       idempotency: required
       branches:
-        - {id: sent, goName: Sent, description: Gmail accepted the reply and returned its identity.}
+        - {id: sent, goName: Sent, description: "Gmail accepted the reply; its message ID can be empty when an unusable accepted response has no Sent Mail match, while the requested thread ID remains."}
         - {id: providerRejected, goName: ProviderRejected, description: Gmail conclusively rejected the reply., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Gmail returned an invalid or oversized source message response before sending the reply., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}

@@ -104,7 +104,19 @@ func TestThreadReplyExampleCompletesAndRetriesAfterSearchMissWithRealDex(t *test
 	require.NoError(t, err)
 	require.Equal(t, dex.FlowCompleted, retriedResult.Status)
 	require.Equal(t, 2, provider.sendCount(retriedThreadID))
-	require.Equal(t, 2, provider.searchCount(retriedThreadID))
+	require.Equal(t, 5, provider.searchCount(retriedThreadID))
+}
+
+func TestThreadReplyAcceptedResponseWithoutIDCompletesWithRealDex(t *testing.T) {
+	provider := newGmailProvider(t)
+	defer provider.Close()
+	flow, harness := newGmailIntegrationHarness(t, provider.URL)
+	harness.startWorker(t)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	threadID := requireThreadReplyCompletesAfterReadBack(t, ctx, harness, flow, "accepted-"+strconv.FormatInt(time.Now().UnixNano(), 10))
+	require.Equal(t, 1, provider.sendCount(threadID))
+	require.Equal(t, 4, provider.searchCount(threadID))
 }
 
 func TestThreadReplyConfirmsALostSendResponseWithRealDex(t *testing.T) {
@@ -254,7 +266,7 @@ func (provider *gmailProvider) serveSentMailSearch(response http.ResponseWriter,
 	provider.mutex.Lock()
 	var found struct{ ID, ThreadID string }
 	for rfcMessageID, threadID := range provider.threadsByRFCMessageID {
-		if query.Get("q") == "in:sent rfc822msgid:"+rfcMessageID && query.Get("maxResults") == "1" {
+		if query.Get("q") == "in:sent rfc822msgid:"+rfcMessageID && query.Get("maxResults") == "1" && query.Get("includeSpamTrash") == "true" {
 			provider.searchesByThread[threadID]++
 			found = provider.sentByRFCMessageID[rfcMessageID]
 		}
@@ -300,6 +312,8 @@ func (provider *gmailProvider) serveSend(response http.ResponseWriter, request *
 		}
 	case strings.HasPrefix(threadID, "thread-confirmed-"):
 		panic(http.ErrAbortHandler)
+	case strings.HasPrefix(threadID, "thread-accepted-"):
+		writeGmailProviderResponse(response, `{"threadId":`+strconv.Quote(threadID)+`}`)
 	case strings.HasPrefix(threadID, "thread-retried-") && provider.sendCount(threadID) == 1:
 		response.WriteHeader(http.StatusInternalServerError)
 		writeGmailProviderResponse(response, `{"error":{"message":"unavailable"}}`)

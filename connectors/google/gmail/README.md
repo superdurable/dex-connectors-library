@@ -39,8 +39,8 @@ A refresh token that Google rotates is stored with the new access token; when
 Google omits a new one, the prior value is retained. `invalid_grant` requires
 reauthorization. After a 401 the connector asks once for a refresh, which the
 project connection performs only when the stored expiry has passed, and then
-retries once; otherwise the 401 is an authentication failure, never an
-uncertain send. There is never a refresh loop.
+retries once; otherwise the 401 selects `providerRejected`. There is never
+a refresh loop.
 
 `messageReceived` and `replyReceived` are neutral provider Triggers. Their
 manifest does not decide whether an event starts a Flow or invokes an RPC. The
@@ -123,49 +123,62 @@ or use `NewProjectMessageTriggerRunner`.
 time. `ReplyToMessage` reads the source metadata and sends with Gmail thread
 ID, `In-Reply-To`, and `References` preserved.
 
-The stable Connector idempotency key is written into the RFC `Message-ID` and
-safe correlation header. Gmail documents no deduplication by `Message-ID`, so
-the connector uses that header for Sent Mail read-back, not provider deduplication:
+The connector derives an RFC `Message-ID` from the stable call key, Dex's
+first run ID, and the Flow start second; the safe correlation header carries
+the Call ID. Gmail documents no deduplication by `Message-ID`, so the connector
+uses that header for Sent Mail read-back:
 
 - A 2xx with a Gmail message ID is `sent`, with no search. When Gmail omits the
   thread ID, one read of the message supplies it; if that read fails, a reply
   reports the requested thread and a new message an empty thread ID.
-- A request that may have reached Gmail but lost its answer, got a 5xx, or got
-  a 2xx without a message ID triggers a Sent Mail search,
-  `in:sent rfc822msgid:<Message-ID>` in Gmail's
+- A 2xx whose body cannot be read, is oversized or invalid, or lacks an ID is
+  already accepted. The connector polls Sent Mail several times. A match
+  supplies the IDs; otherwise `sent` has an empty `messageId` and the requested
+  reply thread ID, or an empty thread ID for a new message. It never resends
+  that accepted request.
+- A request that may have reached Gmail but lost its answer or got a 5xx polls
+  Sent Mail several times by `in:sent rfc822msgid:<Message-ID>` in Gmail's
   [documented search syntax](https://support.google.com/mail/answer/7190).
+  The lookup requests Spam and Trash inclusion.
   Any match is `sent` with Gmail's message and thread IDs, also when a reply
-  landed in another thread. No match, or a failed search, returns Retry.
-- Every attempt after the first searches Sent Mail before its POST using the
-  same Message-ID. A match returns `sent` without another POST. A miss sends
-  once; a failed search returns Retry without sending.
+  landed in another thread. A miss or failed lookup returns Retry.
+- Every numbered attempt after the first searches Sent Mail before reading a
+  reply's source or posting. A match returns `sent` without another POST; for a
+  reply its `recipients` can be empty because the source was never read. A miss
+  permits one POST; a failed search returns Retry without sending. After a
+  later POST's 4xx, one more search can find an earlier accepted copy before
+  the connector selects `providerRejected`.
 - A 429 and a failure that a traced DNS, connect, or TLS error proves happened
   before a connection existed return Retry.
 
 A 503 or another possibly accepted request resends under the same `Message-ID`
 after a search miss. If Gmail accepted the message but has not indexed it by
 the next attempt, the recipient can receive two copies. Gmail does not dedupe
-by `Message-ID`. Retries stop when the configured budget is exhausted; the
-Flow then fails. Releases before v0.24.0 could select `uncertain` after one
-miss and did not re-check on a later attempt.
+by `Message-ID`. Dex local-activity crash replay may restart the visible
+attempt number at one; that replay can POST without the pre-send search. Sent
+Mail indexing lag and this replay can both cause duplicate delivery. Retries
+stop when the configured budget is exhausted; the Flow then fails. The released
+v0.23.1 selected `uncertain` for an ambiguous send and did not search Sent Mail.
+The run-specific Message-ID reduces false matches when a Flow ID is reused or
+a Flow retries, although two runs with the same first run ID and Flow start
+second can still collide.
 
 A request whose dispatch cannot be traced counts as possibly sent. That
 includes every failure through a `WithHTTPClient` transport that does not drive
 `net/http/httptrace`, so such a client searches after a failed POST and retries
 when the message is not found.
 
-Every attempt finishes its requests before its Dex deadline, so the engine
-never times the attempt out and runs it again. The available time is the Step
-context deadline that Dex sets, or else the manifest's 30-second Execute
-timeout. The send ends by seven twelfths of it, the search and thread read by
-five sixths, and the rest covers the Result write. A reply's source read ends
-early enough to leave the send a tenth. A send that runs out of time becomes a
-search, never a resend; with less than a tenth left, the attempt returns Retry
-before sending. With the default async durability, Dex first runs the Step
-under a much shorter deadline, 7 seconds on the Temporal engine, so the send
-gets about 4 seconds and the search under 2. A slower send, such as a large
-message, returns Retry when the search does not yet find it. The next attempt
-searches again before sending.
+Each attempt budgets at most the manifest's 30-second Execute timeout,
+shortened by the Dex Step context deadline when that is earlier. The send ends
+by seven twelfths of that budget, the read-back and thread read by five
+sixths, and the rest covers the Result write. A reply's source read ends early
+enough to leave the send a tenth. A send that runs out of time becomes a search;
+with less than a tenth left, the attempt returns Retry before sending. With
+the default async durability, Dex first runs the Step under a much shorter
+deadline, 7 seconds on the Temporal engine, so the send gets about 4 seconds
+and the search under 2. A slower send, such as a large message, returns Retry
+when the search does not yet find it. The next attempt usually searches again
+before sending; local-activity crash replay is the exception described above.
 
 The search adds no scope: `gmail.readonly` permits
 [`messages.list`](https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.messages/list)
