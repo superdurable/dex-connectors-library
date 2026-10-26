@@ -190,13 +190,14 @@ POST and permits a later send only after the preceding attempt recorded
 | 409 | Read back by the Call ID property; confirmed creation selects `created`, otherwise `uncertain` |
 | 429 | Checkpoint `canResend`, then Retry after `Retry-After` |
 | DNS, connect, or TLS failure before any connection opened | Retry |
-| 503 | Read back first; when absent, checkpoint `canResend` and Retry |
+| 503 | Checkpoint `canResend`, then Retry after `Retry-After` |
 | Timeout, dropped connection, 408, 3xx, or another 5xx after dispatch | Read back; confirmed creation selects `created`, otherwise `uncertain` |
 | 2xx whose body is oversized, unreadable, unusable, or reflects the token | Read back; confirmed creation selects `created`, otherwise `uncertain` |
 
-A transient 429, 5xx, transport error, or interrupted read-back returns Retry.
-The next attempt reads back again without another POST. If the retry budget is
-exhausted, the Flow fails.
+During read-back, a transient 429, 5xx, transport error, interrupted response,
+or temporarily unavailable credential returns Retry without another POST. A
+credential failure before a write also retries after recording `notSent`. If
+the retry budget is exhausted, the Flow fails.
 
 On `providerRejected` and `uncertain`, the Value echoes the requested project
 and summary without an issue key.
@@ -262,9 +263,8 @@ the bounded read-back cannot confirm. That outcome selects `uncertain`.
 
 A traced DNS, connect, or TLS failure before any connection is obtained, HTTP
 429, and HTTP 503 select Retry after the fence records permission for the next
-attempt. For 503, the connector first checks the provider property and returns
-success when found. The fence reserves part of the 30-second Execute budget for
-read-back and classification. A 409 also reads back before choosing a result.
+attempt. The fence reserves part of the Execute budget for read-back and
+classification. A 409 reads back before choosing a result.
 An application handles unresolved `uncertain` without creating again; the
 [`triage-issue`](examples/triage-issue) example parks the create for an
 operator, who confirms the issue found in the project or approves a new create.
@@ -276,6 +276,8 @@ Atlassian documents issue and comment entity properties and their read APIs:
 [Add and list comments](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-comments/),
 and [Get comment property](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-comment-properties/).
 Live behavior of the marker on Jira Cloud remains unverified.
+`GET /issue/{key}/comment?expand=properties` is undocumented; the connector
+falls back to the documented comment-property GET when expansion omits it.
 
 ## Mocks
 
@@ -338,4 +340,5 @@ search and status category ID clauses; workflow and transition-screen rejections
 429 and 5xx behavior under load; the `accessible-resources` and
 `project/search` commands through Dex Web; and the developer-console paths in
 the setup guidance. Entity-property writes during issue/comment creation,
-property read-back, and 503 responses under load are also unverified live.
+property read-back, the undocumented comment-list property expansion, and 503
+responses under load are also unverified live.

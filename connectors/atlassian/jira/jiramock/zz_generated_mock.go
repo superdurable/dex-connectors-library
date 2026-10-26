@@ -185,10 +185,10 @@ func GetIssueNotFoundFailure() connectormock.Case[jira.Issue] {
 	return connectormock.Branch(jira.GetIssueBranchNotFound, value, &sdkgo.Failure{Kind: sdkgo.FailureNotFound, Message: "Jira issue was not found."})
 }
 
-// GetIssueProviderRejectedFailure is the manifest mock providerRejectedFailure: Matches an issue read denied by Jira project permissions.
+// GetIssueProviderRejectedFailure is the manifest mock providerRejectedFailure: Matches an issue read whose access token Jira still rejects with 401 after refresh.
 func GetIssueProviderRejectedFailure() connectormock.Case[jira.Issue] {
 	var value jira.Issue
-	return connectormock.Branch(jira.GetIssueBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthorization, Message: "Jira rejected the issue read."})
+	return connectormock.Branch(jira.GetIssueBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthentication, Message: "Jira rejected the issue read."})
 }
 
 // GetIssueInvalidResponseFailure is the manifest mock invalidResponseFailure: Matches an issue read with an invalid provider response.
@@ -354,10 +354,10 @@ func AddCommentNotFoundFailure() connectormock.Case[jira.AddCommentOutput] {
 	return connectormock.Branch(jira.AddCommentBranchNotFound, value, &sdkgo.Failure{Kind: sdkgo.FailureNotFound, Message: "Jira issue was not found."})
 }
 
-// AddCommentProviderRejectedFailure is the manifest mock providerRejectedFailure: Matches a comment denied by Jira Add comments permission.
+// AddCommentProviderRejectedFailure is the manifest mock providerRejectedFailure: Matches a comment rejected because the per-issue comment limit was reached (HTTP 413).
 func AddCommentProviderRejectedFailure() connectormock.Case[jira.AddCommentOutput] {
 	var value jira.AddCommentOutput
-	return connectormock.Branch(jira.AddCommentBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthorization, Message: "Jira rejected the comment."})
+	return connectormock.Branch(jira.AddCommentBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "Jira rejected the comment."})
 }
 
 // AddCommentDefault is the manifest default, addedDefaultAnswer, which New installs.

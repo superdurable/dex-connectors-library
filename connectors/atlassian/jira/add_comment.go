@@ -78,7 +78,7 @@ func (operation AddCommentOperation) Invoke(call sdkgo.Call, input AddCommentInp
 	if err != nil {
 		return sdkgo.NewMutationBranch(AddCommentBranchDefect, requested, failurePointer(addCommentOperationID, sdkgo.FailureValidation, err.Error()), sdkgo.Receipt{})
 	}
-	fence, err := singledispatch.NewFence(call, 30*time.Second)
+	fence, err := singledispatch.NewFence(call, AddCommentDefinition.StepDefaults.ExecuteMethodTimeout)
 	if err != nil {
 		return sdkgo.NewMutationBranch(AddCommentBranchDefect, requested, failurePointer(addCommentOperationID, sdkgo.FailureLocalDefect, "Jira dispatch fence could not be constructed"), sdkgo.Receipt{})
 	}
@@ -97,7 +97,7 @@ func (operation AddCommentOperation) Invoke(call sdkgo.Call, input AddCommentInp
 			}
 			return sdkgo.NewMutationBranch(AddCommentBranchDefect, requested, sessionErr.pointer(), sdkgo.Receipt{})
 		}
-		if sessionErr.isRetryable {
+		if sessionErr.isRetryable || sessionErr.failure.Kind == sdkgo.FailureAuthentication {
 			return sdkgo.NewMutationRetry[AddCommentOutput](sessionErr.failure, sessionErr.retryAfter)
 		}
 		return sdkgo.NewMutationUncertain(requested, sessionErr.failure, sdkgo.Receipt{})
@@ -127,15 +127,6 @@ func (operation AddCommentOperation) Invoke(call sdkgo.Call, input AddCommentInp
 	receipt = client.receipt(session, result.response, "")
 	switch classification.outcome {
 	case writeRetry:
-		if result.response.statusCode == http.StatusServiceUnavailable {
-			comment, status := client.findAddedComment(session, issueIDOrKey, marker, "")
-			if status == writeReadbackFound {
-				return addedCommentBranch(requested, comment, receipt)
-			}
-			if status == writeReadbackRetry {
-				return sdkgo.NewMutationRetry[AddCommentOutput](newFailure(addCommentOperationID, sdkgo.FailureAvailability, "Jira comment read-back is temporarily unavailable"), 0)
-			}
-		}
 		if err := fence.RecordCanResend(); err != nil {
 			return sdkgo.NewMutationRetry[AddCommentOutput](newFailure(addCommentOperationID, sdkgo.FailureAvailability, "Jira retry checkpoint could not be recorded"), classification.retryAfter)
 		}

@@ -180,8 +180,8 @@ spec:
           failure: {kind: NOT_FOUND, message: "Jira issue was not found."}
         - name: providerRejectedFailure
           branch: providerRejected
-          description: "Matches an issue read denied by Jira project permissions."
-          failure: {kind: AUTHORIZATION, message: "Jira rejected the issue read."}
+          description: "Matches an issue read whose access token Jira still rejects with 401 after refresh."
+          failure: {kind: AUTHENTICATION, message: "Jira rejected the issue read."}
         - name: invalidResponseFailure
           branch: invalidResponse
           description: "Matches an issue read with an invalid provider response."
@@ -197,7 +197,7 @@ spec:
       branches:
         - {id: created, goName: Created, description: Jira created the issue and returned its key and ID.}
         - {id: providerRejected, goName: ProviderRejected, description: "Jira conclusively rejected the issue, such as a missing required field, an unknown project or issue type, or missing permission; nothing was created.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The request may have reached Jira, but bounded issue-property read-back did not confirm it; the issue may exist and must not be created again automatically.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The request may have reached Jira but could not be confirmed; the issue may exist and must not be created again automatically.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       # Jira has no idempotency key; the shared fence needs durable sync heartbeats before dispatch.
       execution:
@@ -268,7 +268,7 @@ spec:
         - {id: added, goName: Added, description: Jira added the comment and returned its ID.}
         - {id: notFound, goName: NotFound, description: The issue does not exist or the connection cannot browse it; nothing was added., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Jira conclusively rejected the comment, such as missing Add comments permission or the per-issue comment limit; nothing was added.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The request may have reached Jira, but bounded comment-property read-back did not confirm it; the comment may exist and must not be added again automatically.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The request may have reached Jira but could not be confirmed; the comment may exist and must not be added again automatically.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
@@ -287,5 +287,5 @@ spec:
           failure: {kind: NOT_FOUND, message: "Jira issue was not found."}
         - name: providerRejectedFailure
           branch: providerRejected
-          description: "Matches a comment denied by Jira Add comments permission."
-          failure: {kind: AUTHORIZATION, message: "Jira rejected the comment."}
+          description: "Matches a comment rejected because the per-issue comment limit was reached (HTTP 413)."
+          failure: {kind: PROVIDER_REJECTION, message: "Jira rejected the comment."}

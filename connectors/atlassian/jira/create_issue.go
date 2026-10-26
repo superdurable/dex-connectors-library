@@ -8,7 +8,6 @@ import (
 	"errors"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
@@ -107,7 +106,7 @@ func (operation CreateIssueOperation) Invoke(call sdkgo.Call, input CreateIssueI
 	if err != nil {
 		return sdkgo.NewMutationBranch(CreateIssueBranchDefect, requested, failurePointer(createIssueOperationID, sdkgo.FailureValidation, err.Error()), sdkgo.Receipt{})
 	}
-	fence, err := singledispatch.NewFence(call, 30*time.Second)
+	fence, err := singledispatch.NewFence(call, CreateIssueDefinition.StepDefaults.ExecuteMethodTimeout)
 	if err != nil {
 		return sdkgo.NewMutationBranch(CreateIssueBranchDefect, requested, failurePointer(createIssueOperationID, sdkgo.FailureLocalDefect, "Jira dispatch fence could not be constructed"), sdkgo.Receipt{})
 	}
@@ -126,7 +125,7 @@ func (operation CreateIssueOperation) Invoke(call sdkgo.Call, input CreateIssueI
 			}
 			return sdkgo.NewMutationBranch(CreateIssueBranchDefect, requested, sessionErr.pointer(), sdkgo.Receipt{})
 		}
-		if sessionErr.isRetryable {
+		if sessionErr.isRetryable || sessionErr.failure.Kind == sdkgo.FailureAuthentication {
 			return sdkgo.NewMutationRetry[CreateIssueOutput](sessionErr.failure, sessionErr.retryAfter)
 		}
 		return sdkgo.NewMutationUncertain(requested, sessionErr.failure, sdkgo.Receipt{})
@@ -154,15 +153,6 @@ func (operation CreateIssueOperation) Invoke(call sdkgo.Call, input CreateIssueI
 	receipt = client.receipt(session, result.response, "")
 	switch classification.outcome {
 	case writeRetry:
-		if result.response.statusCode == http.StatusServiceUnavailable {
-			created, status := client.findCreatedIssue(session, requested, marker, "")
-			if status == writeReadbackFound {
-				return createdIssueBranch(requested, created, receipt)
-			}
-			if status == writeReadbackRetry {
-				return sdkgo.NewMutationRetry[CreateIssueOutput](newFailure(createIssueOperationID, sdkgo.FailureAvailability, "Jira issue read-back is temporarily unavailable"), 0)
-			}
-		}
 		if err := fence.RecordCanResend(); err != nil {
 			return sdkgo.NewMutationRetry[CreateIssueOutput](newFailure(createIssueOperationID, sdkgo.FailureAvailability, "Jira retry checkpoint could not be recorded"), classification.retryAfter)
 		}
