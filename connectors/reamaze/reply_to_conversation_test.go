@@ -5,6 +5,7 @@ package reamaze_test
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"testing"
 
@@ -41,7 +42,7 @@ func TestReplyToConversationSendsAnInternalNoteWithTheDispatchKeyAsOriginID(t *t
 	require.True(t, result.Value.Message.IsInternalNote)
 	require.Equal(t, key, result.Value.Message.OriginID)
 	require.False(t, result.Value.WasAlreadyApplied)
-	require.JSONEq(t, `{"reamazeDispatchedCallId":"`+string(result.Receipt.CallID)+`"}`, string(ctx.recordedHeartbeat))
+	require.JSONEq(t, `{"callId":"`+string(result.Receipt.CallID)+`","attempt":1,"state":"claimed"}`, string(ctx.recordedHeartbeat))
 }
 
 func TestReplyToConversationSendsAPublicReplyByDefault(t *testing.T) {
@@ -107,21 +108,44 @@ func TestReplyToConversationReconcilesByOriginIDWithoutResending(t *testing.T) {
 	}
 }
 
-func TestReplyToConversationSelectsUncertainForUnusableCredentialsAfterAnEarlierDispatch(t *testing.T) {
-	provider := newRecordingReamaze(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
-		dropConnection(t, response)
-	})
-	client, credentials := newSwitchingReamazeClient(t, provider.URL)
-	input := reamaze.ReplyToConversationInput{ConversationID: "double-charge", Text: "Dex triage note."}
-	first := newReamazeDexContext("note-credentials")
-	_, err := sdkgo.RunMutation(first, client.ReplyToConversation(), reamazeConnection, input)
-	require.Error(t, err, "a lost response keeps the marker and retries")
+func TestReplyToConversationCredentialFailureAfterAnEarlierDispatch(t *testing.T) {
+	for _, test := range []struct {
+		name       string
+		resolveErr error
+		isTerminal bool
+	}{
+		{name: "reauthorization required", resolveErr: sdkgo.ErrReauthorizationRequired, isTerminal: true},
+		{name: "credential store outage", resolveErr: errors.New("credential storage unavailable")},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			provider := newRecordingReamaze(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+				dropConnection(t, response)
+			})
+			client, credentials := newSwitchingReamazeClient(t, provider.URL)
+			input := reamaze.ReplyToConversationInput{ConversationID: "double-charge", Text: "Dex triage note."}
+			first := newReamazeDexContext("note-credentials")
+			_, err := sdkgo.RunMutation(first, client.ReplyToConversation(), reamazeConnection, input)
+			require.Error(t, err, "a lost response keeps the marker and retries")
 
-	credentials.resolveErr = sdkgo.ErrReauthorizationRequired
-	result, err := sdkgo.RunMutation(first.nextAttempt(), client.ReplyToConversation(), reamazeConnection, input)
-	require.NoError(t, err)
-	require.Equal(t, reamaze.ReplyToConversationBranchUncertain, result.Branch, "a sent reply is never reported as defect")
-	require.Equal(t, 1, provider.requestCount())
+			credentials.resolveErr = test.resolveErr
+			result, err := sdkgo.RunMutation(first.nextAttempt(), client.ReplyToConversation(), reamazeConnection, input)
+			require.Equal(t, 1, provider.requestCount())
+			if !test.isTerminal {
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry)
+				require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+				require.NotContains(t, retry.Failure.Message, "nothing was sent")
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, reamaze.ReplyToConversationBranchUncertain, result.Branch)
+			require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
+			require.Contains(t, result.Failure.Message, "reconnect the connection in Dex Web")
+			require.NotEmpty(t, result.Receipt.CallID)
+			require.Equal(t, sdkgo.IdempotencyKey(result.Receipt.CallID), result.Receipt.IdempotencyKey)
+			require.Equal(t, input.ConversationID, result.Receipt.ProviderObjectID)
+		})
+	}
 }
 
 func TestReplyToConversationTerminalOutcomes(t *testing.T) {
@@ -139,13 +163,16 @@ func TestReplyToConversationTerminalOutcomes(t *testing.T) {
 	client := newReamazeClient(t, provider.URL)
 	input := reamaze.ReplyToConversationInput{ConversationID: "double-charge", Text: "Note.", IsInternalNote: true}
 	for _, want := range []sdkgo.BranchID{
-		reamaze.ReplyToConversationBranchNotFound, reamaze.ReplyToConversationBranchProviderRejected, reamaze.ReplyToConversationBranchUncertain,
+		reamaze.ReplyToConversationBranchNotFound, reamaze.ReplyToConversationBranchProviderRejected,
 	} {
 		result, err := sdkgo.RunMutation(newReamazeDexContext("note-terminal"), client.ReplyToConversation(), reamazeConnection, input)
 		require.NoError(t, err)
 		require.Equal(t, want, result.Branch)
 		require.NotContains(t, result.Failure.Message, "SENTINEL")
 	}
+	result, err := sdkgo.RunMutation(newReamazeDexContext("note-accepted-invalid"), client.ReplyToConversation(), reamazeConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, reamaze.ReplyToConversationBranchUncertain, result.Branch, "an unconfirmed accepted write resolves in this attempt")
 	for _, invalid := range []reamaze.ReplyToConversationInput{
 		{ConversationID: "../x", Text: "Note."},
 		{ConversationID: "double-charge", Text: " "},
@@ -154,5 +181,5 @@ func TestReplyToConversationTerminalOutcomes(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, reamaze.ReplyToConversationBranchDefect, result.Branch)
 	}
-	require.Equal(t, 3, provider.requestCount())
+	require.Equal(t, 4, provider.requestCount())
 }

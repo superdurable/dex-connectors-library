@@ -33,6 +33,8 @@ const (
 	RepeatContactTag = "dex-repeat-contact"
 	// NewestThreadLimit is how many of the conversation's newest threads the Flow reads.
 	NewestThreadLimit = 5
+	// MaximumSearchPages bounds the active-conversation search before the Flow fails without a note.
+	MaximumSearchPages = 100
 
 	readConversationStepType        = "ReadConversation"
 	findCustomerProfilesStepType    = "FindCustomerProfiles"
@@ -72,6 +74,8 @@ type TriageContext struct {
 	CustomerEmail string `json:"customerEmail"`
 	// IsRepeatContact reports that the customer has another active conversation in the inbox.
 	IsRepeatContact bool `json:"isRepeatContact,omitempty"`
+	// SearchPage is the 1-based active-conversation page; zero starts at page one.
+	SearchPage int `json:"searchPage,omitempty"`
 }
 
 // TriageNote is the internal note the Flow adds.
@@ -96,7 +100,7 @@ type Triage struct {
 	CustomerEmail string `json:"customerEmail,omitempty"`
 	// CustomerProfileIDs lists every Help Scout customer profile with that email.
 	CustomerProfileIDs []int64 `json:"customerProfileIds,omitempty"`
-	// OtherActiveConversationIDs lists the customer's other active conversations in the inbox.
+	// OtherActiveConversationIDs lists the customer's other active conversations across all searched pages.
 	OtherActiveConversationIDs []int64 `json:"otherActiveConversationIds,omitempty"`
 	// NoteThreadID is the internal note's thread ID.
 	NoteThreadID int64 `json:"noteThreadId,omitempty"`
@@ -156,7 +160,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			StepType: searchActiveConversationsStep, ConnectionName: ConnectionName, Connection: flow.connection,
 			Annotations: sdkgo.StepAnnotations{
 				GroupID: "helpscout-read", GroupLabel: "Help Scout reads",
-				Explanation: "List the customer's active conversations in the same inbox.",
+				Explanation: "Read the next page of the customer's active conversations in the same inbox.",
 			},
 			MapToOperationInput: MapToSearchConversationsInput,
 			Searched:            sdkgo.GoTo(recordActiveConversations{}),
@@ -271,6 +275,7 @@ func MapToFindCustomerByEmailInput(triageContext TriageContext) helpscout.FindCu
 func MapToSearchConversationsInput(triageContext TriageContext) helpscout.SearchConversationsInput {
 	return helpscout.SearchConversationsInput{
 		MailboxID: triageContext.MailboxID, Status: helpscout.ConversationStatusActive, CustomerEmail: triageContext.CustomerEmail,
+		Page: triageContext.SearchPage,
 	}
 }
 
@@ -446,12 +451,32 @@ func (recordActiveConversations) Execute(ctx dex.Context, result helpscout.Searc
 	if err != nil {
 		return nil, err
 	}
-	triage.Stage, triage.OtherActiveConversationIDs = "note", []int64{}
+	if triage.OtherActiveConversationIDs == nil {
+		triage.OtherActiveConversationIDs = []int64{}
+	}
 	for _, conversation := range result.Value.Conversations {
 		if conversation.ID != request.ConversationID && !slices.Contains(triage.OtherActiveConversationIDs, conversation.ID) {
 			triage.OtherActiveConversationIDs = append(triage.OtherActiveConversationIDs, conversation.ID)
 		}
 	}
+	if result.Value.NextPage > 0 {
+		if result.Value.NextPage > MaximumSearchPages {
+			triage.Stage, triage.FailedStep = "failed", searchActiveConversationsStep
+			if err := triageAttribute.Set(ctx, triage); err != nil {
+				return nil, err
+			}
+			return dex.ForceFail(fmt.Sprintf("active conversation search exceeded the %d-page cap", MaximumSearchPages)), nil
+		}
+		triage.Stage = "search"
+		if err := triageAttribute.Set(ctx, triage); err != nil {
+			return nil, err
+		}
+		return dex.GoTo(sdkgo.StepRef[TriageContext](searchActiveConversationsStep), TriageContext{
+			ConversationID: request.ConversationID, MailboxID: request.MailboxID,
+			CustomerEmail: triage.CustomerEmail, SearchPage: result.Value.NextPage,
+		}), nil
+	}
+	triage.Stage = "note"
 	if err := triageAttribute.Set(ctx, triage); err != nil {
 		return nil, err
 	}

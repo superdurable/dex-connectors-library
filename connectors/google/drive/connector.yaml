@@ -5,7 +5,7 @@ metadata:
   displayName: Google Drive
   description: Find Google Drive files by name, read metadata and bounded text, and upload files without creating duplicates on retry.
   company: Google
-  version: v0.22.1
+  version: v0.23.0
 spec:
   provider: google
   codegen:
@@ -185,6 +185,28 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      pagination: {inputField: pageToken, nextField: nextPageToken}
+      mocks:
+        - name: foundDefaultAnswer
+          branch: found
+          description: A broad search returns three unordered pages with a duplicate and an archived file; exact-name tests script their own answer.
+          default: true
+          pages:
+            - {files: [{id: file_recent, name: Current Plan, mimeType: text/plain}, {id: file_archive, name: Archive 2025, mimeType: text/plain}], nextPageToken: next-2}
+            - {files: [{id: file_archive, name: Archive 2025, mimeType: text/plain}, {id: file_policy, name: Ops Policy, mimeType: application/vnd.google-apps.document}], nextPageToken: next-3}
+            - {files: [{id: file_notes, name: Notes, mimeType: text/plain}]}
+        - name: notFoundFailure
+          branch: notFound
+          description: "No file matched and Google Drive reported no further pages."
+          failure: {kind: NOT_FOUND, message: "No file matched and Google Drive reported no further pages."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: An expired page token makes Google reject the search with a non-retryable 400.
+          failure: {kind: PROVIDER_REJECTION, message: "Google rejected the expired search page token."}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: Google returned malformed search metadata that the connector cannot decode.
+          failure: {kind: PROTOCOL, message: "Google returned malformed search metadata."}
     - name: getFile
       goName: GetFile
       inputType: GetFileInput
@@ -201,6 +223,24 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: foundDefaultAnswer
+          branch: found
+          description: Reading copied_policy returns the text copy created by the upload default; other IDs need a scripted answer.
+          default: true
+          output: {id: copied_policy, name: Ops Policy copy.txt, mimeType: text/plain, parents: [fld_finance], sizeBytes: 43, webViewLink: "https://drive.google.com/file/d/copied_policy/view"}
+        - name: notFoundFailure
+          branch: notFound
+          description: "The file does not exist or the connection cannot see it."
+          failure: {kind: NOT_FOUND, message: "The file does not exist or the connection cannot see it."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: Google rejected the metadata read with a non-retryable 400.
+          failure: {kind: PROVIDER_REJECTION, message: "Google rejected the metadata read."}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: Google returned malformed file metadata that the connector cannot decode.
+          failure: {kind: PROTOCOL, message: "Google returned malformed file metadata."}
     - name: readFileText
       goName: ReadFileText
       inputType: ReadFileTextInput
@@ -219,12 +259,38 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: readDefaultAnswer
+          branch: read
+          description: Reading file_policy returns the policy text as UTF-8 plain text for the example copy.
+          default: true
+          output: {fileId: file_policy, name: Ops Policy, mimeType: application/vnd.google-apps.document, textMimeType: text/plain, text: "Ops Policy\nRefunds above 500 need approval.", byteCount: 43}
+        - name: notFoundFailure
+          branch: notFound
+          description: "The file does not exist or the connection cannot see it."
+          failure: {kind: NOT_FOUND, message: "The file does not exist or the connection cannot see it."}
+        - name: unsupportedContentFailure
+          branch: unsupportedContent
+          description: "The file is binary, a folder or shortcut, a Google Workspace type without a text export, or not valid UTF-8 text."
+          failure: {kind: VALIDATION, message: "The file cannot be read as UTF-8 text."}
+        - name: tooLargeFailure
+          branch: tooLarge
+          description: "The file text exceeds the configured limit or Google's export limit."
+          failure: {kind: RESPONSE_TOO_LARGE, message: "The file text exceeds the configured limit or Google's export limit."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: Google rejected the content download with a non-retryable 400.
+          failure: {kind: PROVIDER_REJECTION, message: "Google rejected the content download."}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: Google returned malformed metadata that the connector cannot decode.
+          failure: {kind: PROTOCOL, message: "Google returned malformed metadata."}
     - name: uploadFile
       goName: UploadFile
       inputType: UploadFileInput
       outputType: UploadFileOutput
       kind: mutation
-      description: Create one file from text or bytes in an optional parent folder, reusing the file an earlier attempt of the same Step execution created.
+      description: Create one file from text or bytes in an optional parent folder. Sync durability makes the single-dispatch heartbeat fence visible to retries, while the app property supports read-back of ambiguous uploads.
       idempotency: required
       branches:
         - {id: uploaded, goName: Uploaded, description: Google Drive created the file or returned the file an earlier attempt created.}
@@ -234,5 +300,20 @@ spec:
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
-        durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Drive does not enforce the stored application idempotency property, so a stale duplicate lookup can permit another upload POST."}}
+        durability: sync
+        dispatchFence: true
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Drive does not enforce the stored application idempotency property, so ambiguous uploads cannot be resent without a reliable fence checkpoint."}}
+      mocks:
+        - name: uploadedDefaultAnswer
+          branch: uploaded
+          description: Uploading the example policy copy creates a text file in fld_finance; other inputs should script their own answer.
+          default: true
+          output: {file: {id: copied_policy, name: Ops Policy copy.txt, mimeType: text/plain, parents: [fld_finance], sizeBytes: 43}}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: A missing parent folder makes Google reject the upload with a 404.
+          failure: {kind: NOT_FOUND, message: "The parent folder does not exist or is not visible."}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: Google returned malformed duplicate-lookup metadata before any upload was sent.
+          failure: {kind: PROTOCOL, message: "Google returned malformed duplicate-lookup metadata."}

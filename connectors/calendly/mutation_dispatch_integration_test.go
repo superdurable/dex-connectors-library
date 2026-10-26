@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -49,15 +50,21 @@ func TestCreateSchedulingLinkPostsOnceToASlowProviderWithRealDex(t *testing.T) {
 	require.Len(t, fake.requestsTo(http.MethodPost, "/scheduling_links"), 1, "one Step execution created one link")
 }
 
-// TestCreateSchedulingLinkPostsOnceUnderAnAsyncOverrideWithRealDex overrides the Step to async durability. The
-// short local attempt has too little time before its deadline to send, so the one POST runs in the regular
-// attempt and no duplicate dispatch can repeat it.
-func TestCreateSchedulingLinkPostsOnceUnderAnAsyncOverrideWithRealDex(t *testing.T) {
-	fake := newFakeCalendly(t, map[string]http.HandlerFunc{"POST /scheduling_links": delayed(respondJSON(http.StatusCreated, createdLinkBody))})
+// TestCreateSchedulingLinkRetries503WithRealDex proves the checkpoint survives a regular sync retry.
+func TestCreateSchedulingLinkRetries503WithRealDex(t *testing.T) {
+	var requests atomic.Int32
+	fake := newFakeCalendly(t, map[string]http.HandlerFunc{"POST /scheduling_links": func(response http.ResponseWriter, request *http.Request) {
+		if requests.Add(1) == 1 {
+			writeJSON(response, http.StatusServiceUnavailable, providerError("Unavailable", "later"))
+			return
+		}
+		respondJSON(http.StatusCreated, createdLinkBody)(response, request)
+	}})
 	harness := startProbeHarness(t, fake)
-	outcome := harness.runProbe(t, asyncLinkProbeFlowType, "async")
+	outcome := harness.runProbe(t, linkProbeFlowType, "retry-503")
 	require.Equal(t, calendly.CreateSchedulingLinkBranchCreated, outcome.Branch)
-	require.Len(t, fake.requestsTo(http.MethodPost, "/scheduling_links"), 1, "the deadline guard keeps an async override single")
+	require.Equal(t, int32(2), requests.Load())
+	require.Len(t, fake.requestsTo(http.MethodPost, "/scheduling_links"), 2)
 }
 
 // TestCancelScheduledEventIsSafeUnderDuplicateDispatchWithRealDex lets Dex re-dispatch the async Step while
@@ -153,7 +160,6 @@ func (response *bufferedResponse) Write(contents []byte) (int, error) {
 
 const (
 	linkProbeFlowType         = "CalendlyCreateSchedulingLinkProbe"
-	asyncLinkProbeFlowType    = "CalendlyCreateSchedulingLinkAsyncProbe"
 	cancelProbeFlowType       = "CalendlyCancelScheduledEventProbe"
 	subscriptionProbeFlowType = "CalendlyCreateWebhookSubscriptionProbe"
 )
@@ -177,10 +183,9 @@ func (*probeFlow) GetRPCs() []dex.RPCDef { return nil }
 var probeAnnotations = sdkgo.StepAnnotations{GroupID: "probe", GroupLabel: "Probe", Explanation: "Run one Calendly Mutation against the slow fake provider."}
 
 func newProbeFlows(connection calendly.Connection) []dex.Flow {
-	asyncOverride := &dex.StepOptions{ExecuteDurability: dex.StepDurabilityAsync}
-	linkStep := func(stepType string, override *dex.StepOptions) dex.StepDef {
+	linkStep := func(stepType string) dex.StepDef {
 		return dex.DefineStartStep(calendly.NewCreateSchedulingLinkStep(calendly.CreateSchedulingLinkStepConfig[string]{
-			StepType: stepType, Connection: connection, ConnectionName: testConnection.Name, StepOptionsOverride: override, Annotations: probeAnnotations,
+			StepType: stepType, Connection: connection, ConnectionName: testConnection.Name, Annotations: probeAnnotations,
 			MapToOperationInput: func(string) calendly.CreateSchedulingLinkInput {
 				return calendly.CreateSchedulingLinkInput{EventTypeURI: testEventTypeURI}
 			},
@@ -189,8 +194,7 @@ func newProbeFlows(connection calendly.Connection) []dex.Flow {
 		}))
 	}
 	return []dex.Flow{
-		&probeFlow{flowType: linkProbeFlowType, steps: []dex.StepDef{linkStep("CreateLinkSync", nil), dex.DefineStep(recordLinkOutcome{})}},
-		&probeFlow{flowType: asyncLinkProbeFlowType, steps: []dex.StepDef{linkStep("CreateLinkAsync", asyncOverride), dex.DefineStep(recordLinkOutcome{})}},
+		&probeFlow{flowType: linkProbeFlowType, steps: []dex.StepDef{linkStep("CreateLinkSync"), dex.DefineStep(recordLinkOutcome{})}},
 		&probeFlow{flowType: cancelProbeFlowType, steps: []dex.StepDef{
 			dex.DefineStartStep(calendly.NewCancelScheduledEventStep(calendly.CancelScheduledEventStepConfig[string]{
 				StepType: "CancelEvent", Connection: connection, ConnectionName: testConnection.Name, Annotations: probeAnnotations,

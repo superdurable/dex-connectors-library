@@ -45,12 +45,13 @@ type fakeHiver struct {
 	counts             map[string]int
 	requests           map[string][]fakeRecordedRequest
 
-	claimsOnRead           string
-	delaysFirstUpdate      bool
-	delaysFirstNote        bool
-	losesFirstNoteResponse bool
-	rateLimitsFirstNote    bool
-	holdsFirstDraft        chan struct{}
+	claimsOnRead                string
+	delaysFirstUpdate           bool
+	delaysFirstNote             bool
+	losesFirstNoteResponse      bool
+	rateLimitsFirstNote         bool
+	serviceUnavailableFirstNote bool
+	holdsFirstDraft             chan struct{}
 }
 
 type fakeInbox struct {
@@ -83,9 +84,10 @@ type fakeDraft struct {
 }
 
 type fakeRecordedRequest struct {
-	at    time.Time
-	query map[string][]string
-	body  string
+	at            time.Time
+	query         map[string][]string
+	body          string
+	correlationID string
 }
 
 // newFakeHiver enforces 80 percent of the client's interval, so local timing jitter is not a violation.
@@ -277,6 +279,10 @@ func (provider *fakeHiver) addNote(response http.ResponseWriter, request *http.R
 	if provider.rateLimitsFirstNote && attempt == 1 {
 		response.Header().Set("Retry-After", "1")
 		provider.writeJSON(response, http.StatusTooManyRequests, `{"Message":"Too Many Requests"}`)
+		return
+	}
+	if provider.serviceUnavailableFirstNote && attempt == 1 {
+		provider.writeJSON(response, http.StatusServiceUnavailable, `{"Message":"Service unavailable"}`)
 		return
 	}
 	if provider.delaysFirstNote && attempt == 1 {
@@ -478,8 +484,18 @@ func (provider *fakeHiver) record(name string, request *http.Request, body []byt
 	provider.mutex.Lock()
 	defer provider.mutex.Unlock()
 	provider.counts[name]++
-	provider.requests[name] = append(provider.requests[name], fakeRecordedRequest{at: time.Now(), query: request.URL.Query(), body: string(body)})
+	provider.requests[name] = append(provider.requests[name], fakeRecordedRequest{at: time.Now(), query: request.URL.Query(), body: string(body), correlationID: request.Header.Get("X-Dex-Call-ID")})
 	return provider.counts[name]
+}
+
+func (provider *fakeHiver) correlationIDs(name string) []string {
+	provider.mutex.Lock()
+	defer provider.mutex.Unlock()
+	identifiers := make([]string, 0, len(provider.requests[name]))
+	for _, request := range provider.requests[name] {
+		identifiers = append(identifiers, request.correlationID)
+	}
+	return identifiers
 }
 
 func (provider *fakeHiver) writeValue(response http.ResponseWriter, status int, value any) {

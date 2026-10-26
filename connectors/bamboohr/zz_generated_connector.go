@@ -578,7 +578,7 @@ var AddEmployeeDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "addEmployee"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: AddEmployeeBranchCreated, Description: "BambooHR added the employee and returned its internal ID."},
-		{ID: AddEmployeeBranchProviderRejected, Description: "BambooHR conclusively rejected the employee, such as a duplicate email, an invalid value, or an account at its employee limit; no employee was added.", Optional: true},
+		{ID: AddEmployeeBranchProviderRejected, Description: "BambooHR conclusively rejected the employee, such as a duplicate email or invalid field value; no employee was added.", Optional: true},
 		{ID: AddEmployeeBranchUncertain, Description: "The request was sent but its outcome cannot be confirmed, so the employee may exist; the connector never resends it.", Optional: true},
 		{ID: AddEmployeeBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},

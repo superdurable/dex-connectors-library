@@ -5,7 +5,7 @@ metadata:
   displayName: Hiver
   description: "List Hiver shared inboxes and their conversations, read one conversation, set its status, assignee, and tags, add internal notes, and create shared reply drafts, keeping Hiver's own open, pending, and closed statuses."
   company: Hiver
-  version: v0.21.2
+  version: v0.22.0
 spec:
   provider: hiver
   codegen:
@@ -58,6 +58,24 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      pagination: {inputField: pageToken, nextField: nextPageToken}
+      mocks:
+        - name: listedDefaultAnswer
+          branch: listed
+          description: "For an empty pageToken or the following inbox token, returns three pages with support@acme.example.com on the last page."
+          default: true
+          pages:
+            - {inboxes: [{id: "201", displayName: Billing, email: billing@acme.example.com, channelType: email, isAuthorized: true}], nextPageToken: inboxes-2}
+            - {inboxes: [{id: "201", displayName: Billing, email: billing@acme.example.com, channelType: email, isAuthorized: true}, {id: "202", displayName: Sales, email: sales@acme.example.com, channelType: email, isAuthorized: true}], nextPageToken: inboxes-3}
+            - {inboxes: [{id: "105902", displayName: Support, email: support@acme.example.com, channelType: email, isAuthorized: true}]}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "For an invalid API key, Hiver returns HTTP 401 before listing inboxes."
+          failure: {kind: AUTHENTICATION, message: "Hiver rejected the request (HTTP 401)."}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "For an empty pageToken, Hiver returned malformed inbox JSON."
+          failure: {kind: PROTOCOL, message: "Hiver returned malformed inbox JSON."}
     - name: listConversations
       goName: ListConversations
       inputType: ListConversationsInput
@@ -74,6 +92,28 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      pagination: {inputField: pageToken, nextField: nextPageToken}
+      mocks:
+        - name: listedDefaultAnswer
+          branch: listed
+          description: "For inboxId 105902 and successive pageToken values, returns two filtered pages before one open unassigned conversation."
+          default: true
+          pages:
+            - {conversations: [{id: "573741350", inboxId: "105902", status: closed, tagIds: []}], nextPageToken: conversations-2}
+            - {conversations: [{id: "573741350", inboxId: "105902", status: closed, tagIds: []}, {id: "573741351", inboxId: "105902", status: open, assignee: {type: user, id: "456343"}, tagIds: []}], nextPageToken: conversations-3}
+            - {conversations: [{id: "573741352", inboxId: "105902", status: open, tagIds: []}]}
+        - name: notFoundFailure
+          branch: notFound
+          description: "The shared inbox does not exist or is not visible to the API key."
+          failure: {kind: NOT_FOUND, message: "The shared inbox does not exist or is not visible to the API key."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "For an invalid API key, Hiver returns HTTP 401 before listing conversations."
+          failure: {kind: AUTHENTICATION, message: "Hiver rejected the request (HTTP 401)."}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "For inboxId 105902, Hiver returned malformed conversation-page JSON."
+          failure: {kind: PROTOCOL, message: "Hiver returned malformed conversation-page JSON."}
     - name: getConversation
       goName: GetConversation
       inputType: GetConversationInput
@@ -90,6 +130,24 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: foundDefaultAnswer
+          branch: found
+          description: "For inboxId 105902 and conversationId 573741352, returns the still-open unassigned conversation and one source message."
+          default: true
+          output: {conversation: {id: "573741352", inboxId: "105902", status: open, tagIds: []}, messages: [{hiverMessageId: "834466048", gmailMessageId: "19cfee91188070f8"}]}
+        - name: notFoundFailure
+          branch: notFound
+          description: "The conversation or shared inbox does not exist or is not visible to the API key."
+          failure: {kind: NOT_FOUND, message: "The conversation or shared inbox does not exist or is not visible to the API key."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "For an invalid API key, Hiver returns HTTP 401 before reading the conversation."
+          failure: {kind: AUTHENTICATION, message: "Hiver rejected the request (HTTP 401)."}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "For conversationId 573741352, Hiver returned malformed conversation JSON."
+          failure: {kind: PROTOCOL, message: "Hiver returned malformed conversation JSON."}
     - name: updateConversation
       goName: UpdateConversation
       inputType: UpdateConversationInput
@@ -106,37 +164,85 @@ spec:
       execution:
         executeMethodTimeout: 60s
         durability: async
+      mocks:
+        - name: updatedDefaultAnswer
+          branch: updated
+          description: "For the claim of conversation 573741352 by phoebe@acme.example.com with Claimed, returns the assigned tagged conversation."
+          default: true
+          output: {conversation: {id: "573741352", inboxId: "105902", status: open, assignee: {type: user, id: "456342"}, tagIds: ["784268"]}, assigneeUserId: "456342", appliedTags: [{id: "784268", name: Claimed}]}
+        - name: notFoundFailure
+          branch: notFound
+          description: "The conversation or shared inbox does not exist or is not visible to the API key."
+          failure: {kind: NOT_FOUND, message: "The conversation or shared inbox does not exist or is not visible to the API key."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "For an assigneeEmail absent from inbox users, the connector rejects the change before PATCH."
+          failure: {kind: VALIDATION, message: "assigneeEmail matches 0 users of the shared inbox instead of one; the change was not sent"}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "For conversationId 573741352, Hiver returned malformed conversation JSON during read-back after accepting the change."
+          failure: {kind: PROTOCOL, message: "Hiver returned malformed conversation JSON during read-back after accepting the change."}
     - name: addNote
       goName: AddNote
       inputType: AddNoteInput
       outputType: AddNoteOutput
       kind: mutation
-      description: "Add one internal note, visible only to Hiver users, to a conversation. Hiver has no idempotency key and no note list, so the Step runs with sync durability and records a Dex checkpoint before sending; a retry that finds it selects uncertain instead of sending again. A Worker that loses its Dex connection before Dex stores the checkpoint can still send a second note on the retry."
+      description: "Add one internal note, visible only to Hiver users, to a conversation. The shared single-dispatch fence requires sync durability so retry attempts can read its heartbeat checkpoint. Hiver documents no idempotency key or note read-back, so ambiguous sends remain uncertain."
       idempotency: required
       branches:
         - {id: added, goName: Added, description: "Hiver added the note and returned it."}
         - {id: notFound, goName: NotFound, description: "The conversation or shared inbox does not exist or is not visible to the API key; nothing was added.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Hiver conclusively rejected the note; nothing was added.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The note may exist: Hiver's answer was lost, a server error, or unreadable, or an earlier attempt of this Step may have sent it. The Step does not send it again.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The note may exist: Hiver's answer was lost, unreadable, 408, 409, another server error besides 503, or an earlier attempt may have sent it. The Step does not send it again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "A lost dispatch checkpoint could post the note twice because Hiver has no provider key or note read-back by Call ID."}}
+        dispatchFence: true
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "Hiver has no provider key or note read-back by Call ID, and a lost checkpoint cannot prove that a repeat is safe."}}
+      mocks:
+        - name: addedDefaultAnswer
+          branch: added
+          description: "For a note on conversation 573741352, returns the internal note created by the claiming agent."
+          default: true
+          output: {note: {id: "35042650", conversationId: "573741352", authorId: "456342", authorEmail: phoebe@acme.example.com, createdAt: "2026-07-21T14:24:22Z"}}
+        - name: notFoundFailure
+          branch: notFound
+          description: "The conversation or shared inbox does not exist or is not visible to the API key; nothing was added."
+          failure: {kind: NOT_FOUND, message: "The conversation or shared inbox does not exist or is not visible to the API key; nothing was added."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "For invalid note content, Hiver returns HTTP 400 without adding a note."
+          failure: {kind: VALIDATION, message: "Hiver rejected the request (HTTP 400)."}
     - name: createSharedDraft
       goName: CreateSharedDraft
       inputType: CreateSharedDraftInput
       outputType: SharedDraft
       kind: mutation
-      description: "Create one shared reply draft to a conversation message for a Hiver user to review and send; Hiver's API cannot send a reply itself. Hiver has no idempotency key, so the Step runs with sync durability and records a Dex checkpoint before sending; a retry that finds it selects uncertain instead of sending again. A Worker that loses its Dex connection before Dex stores the checkpoint can still create a second draft on the retry."
+      description: "Create one shared reply draft for a Hiver user to review and send. The shared single-dispatch fence requires sync durability so retry attempts can read its heartbeat checkpoint. Hiver documents no idempotency key or draft read-back, so ambiguous sends remain uncertain."
       idempotency: required
       branches:
         - {id: created, goName: Created, description: "Hiver created the shared draft and returned its ID."}
         - {id: notFound, goName: NotFound, description: "The message or shared inbox does not exist or is not visible to the API key; no draft was created.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Hiver conclusively rejected the draft; no draft was created.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The draft may exist: Hiver's answer was lost, a server error, or unreadable, or an earlier attempt of this Step may have sent it. The Step does not send it again.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The draft may exist: Hiver's answer was lost, unreadable, 408, 409, another server error besides 503, or an earlier attempt may have sent it. The Step does not send it again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "A lost dispatch checkpoint could create another shared draft because Hiver has no provider key or draft read-back by Call ID."}}
+        dispatchFence: true
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "Hiver has no provider key or draft read-back by Call ID, and a lost checkpoint cannot prove that a repeat is safe."}}
+      mocks:
+        - name: createdDefaultAnswer
+          branch: created
+          description: "For the reply to message 834466048 in inbox 105902, returns a reviewable shared draft."
+          default: true
+          output: {id: "901", conversationId: "573741352", replyToHiverMessageId: "834466048"}
+        - name: notFoundFailure
+          branch: notFound
+          description: "The message or shared inbox does not exist or is not visible to the API key; no draft was created."
+          failure: {kind: NOT_FOUND, message: "The message or shared inbox does not exist or is not visible to the API key; no draft was created."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "For a draft body Hiver rejects, HTTP 400 leaves no shared draft."
+          failure: {kind: VALIDATION, message: "Hiver rejected the request (HTTP 400)."}

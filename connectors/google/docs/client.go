@@ -14,16 +14,21 @@ package docs
 
 import (
 	"bytes"
+	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptrace"
 	"net/url"
 	"regexp"
+	"sync"
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 const (
@@ -79,13 +84,15 @@ type Client struct {
 	now                func() time.Time
 }
 
-// googleRequest is one Google HTTP request; body is resent once after a 401 forces a refresh.
+// googleRequest is one Google HTTP request; only non-fenced requests may resend after a 401 refresh.
 type googleRequest struct {
-	method        string
-	target        string
-	body          []byte
-	contentType   string
-	responseLimit int64
+	method           string
+	target           string
+	body             []byte
+	contentType      string
+	responseLimit    int64
+	requestContext   context.Context
+	isSingleDispatch bool
 }
 
 type googleResponse struct {
@@ -96,8 +103,52 @@ type googleResponse struct {
 }
 
 type googleRequestError struct {
-	kind    sdkgo.FailureKind
-	message string
+	kind                   sdkgo.FailureKind
+	message                string
+	isProvablyUndispatched bool
+}
+
+type createDispatchObservation struct {
+	mutex                 sync.Mutex
+	hasConnectionFailure  bool
+	hasObtainedConnection bool
+}
+
+func (observation *createDispatchObservation) trace() *httptrace.ClientTrace {
+	return &httptrace.ClientTrace{
+		DNSDone: func(info httptrace.DNSDoneInfo) {
+			if info.Err != nil {
+				observation.recordConnectionFailure()
+			}
+		},
+		ConnectDone: func(_, _ string, err error) {
+			if err != nil {
+				observation.recordConnectionFailure()
+			}
+		},
+		TLSHandshakeDone: func(_ tls.ConnectionState, err error) {
+			if err != nil {
+				observation.recordConnectionFailure()
+			}
+		},
+		GotConn: func(httptrace.GotConnInfo) {
+			observation.mutex.Lock()
+			observation.hasObtainedConnection = true
+			observation.mutex.Unlock()
+		},
+	}
+}
+
+func (observation *createDispatchObservation) recordConnectionFailure() {
+	observation.mutex.Lock()
+	observation.hasConnectionFailure = true
+	observation.mutex.Unlock()
+}
+
+func (observation *createDispatchObservation) isProvablyUndispatched() bool {
+	observation.mutex.Lock()
+	defer observation.mutex.Unlock()
+	return observation.hasConnectionFailure && !observation.hasObtainedConnection
 }
 
 // Error returns the safe human-readable failure message.
@@ -228,15 +279,24 @@ func (client *Client) sendRead(
 	return response, &readOutcome{branch: branches.providerRejected, failure: docsFailure(statusFailureKind(response.status, tokens), branches.operationID, "provider rejected the request"), receipt: receipt}
 }
 
-// sendRequest sends request with the resolved credential. After one 401 it
-// forces a single coordinated refresh, updates credential, and sends once more.
+// sendRequest sends with the resolved credential. Non-fenced requests may refresh
+// after one 401 and send once more; fenced writes never repeat here.
 func (client *Client) sendRequest(call sdkgo.Call, credential *Credentials, request googleRequest) (googleResponse, error) {
 	for attempt := 0; attempt < 2; attempt++ {
+		requestContext := context.Context(call.Context)
+		if request.requestContext != nil {
+			requestContext = request.requestContext
+		}
+		var observation *createDispatchObservation
+		if request.isSingleDispatch {
+			observation = &createDispatchObservation{}
+			requestContext = httptrace.WithClientTrace(requestContext, observation.trace())
+		}
 		var body io.Reader
 		if request.body != nil {
 			body = bytes.NewReader(request.body)
 		}
-		httpRequest, err := http.NewRequestWithContext(call.Context, request.method, request.target, body)
+		httpRequest, err := http.NewRequestWithContext(requestContext, request.method, request.target, body)
 		if err != nil {
 			return googleResponse{}, &googleRequestError{kind: sdkgo.FailureLocalDefect, message: "provider request could not be built"}
 		}
@@ -244,9 +304,14 @@ func (client *Client) sendRequest(call sdkgo.Call, credential *Credentials, requ
 		if request.contentType != "" {
 			httpRequest.Header.Set("Content-Type", request.contentType)
 		}
+		if request.isSingleDispatch {
+			if err := singledispatch.PrepareHTTPWrite(httpRequest); err != nil {
+				return googleResponse{}, &googleRequestError{kind: sdkgo.FailureLocalDefect, message: "provider write could not be prepared"}
+			}
+		}
 		httpResponse, err := client.httpClient.Do(httpRequest)
 		if err != nil {
-			return googleResponse{}, &googleRequestError{kind: sdkgo.FailureTransport, message: "provider request failed"}
+			return googleResponse{}, &googleRequestError{kind: sdkgo.FailureTransport, message: "provider request failed", isProvablyUndispatched: observation != nil && observation.isProvablyUndispatched()}
 		}
 		// Error bodies get their own bound, so a small success limit never hides an error status.
 		content, readErr := providerhttp.ReadBoundedBody(httpResponse.Body, max(request.responseLimit, providerhttp.MaxErrorBodyBytes))
@@ -266,7 +331,7 @@ func (client *Client) sendRequest(call sdkgo.Call, credential *Credentials, requ
 		if readErr != nil || closeErr != nil {
 			return response, &googleRequestError{kind: sdkgo.FailureTransport, message: "provider response could not be read"}
 		}
-		if response.status != http.StatusUnauthorized || attempt != 0 {
+		if response.status != http.StatusUnauthorized || attempt != 0 || request.isSingleDispatch {
 			return response, nil
 		}
 		if _, ok := client.credentials.(sdkgo.RejectedCredentialRefreshingProvider[Credentials]); !ok {

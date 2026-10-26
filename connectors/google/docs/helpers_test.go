@@ -40,11 +40,12 @@ func newDocsClient(t *testing.T, endpoint string, config ...docs.Config) *docs.C
 
 // recordedRequest is one request a recording server received.
 type recordedRequest struct {
-	method string
-	path   string
-	query  map[string][]string
-	header http.Header
-	body   []byte
+	method         string
+	path           string
+	query          map[string][]string
+	header         http.Header
+	body           []byte
+	requestContext context.Context
 }
 
 // recordingServer answers every request with one handler and records it.
@@ -63,7 +64,7 @@ func newRecordingServer(t *testing.T, handler func(response http.ResponseWriter,
 			http.Error(response, "unreadable request", http.StatusBadRequest)
 			return
 		}
-		recorded := recordedRequest{method: request.Method, path: request.URL.Path, query: request.URL.Query(), header: request.Header.Clone(), body: body}
+		recorded := recordedRequest{method: request.Method, path: request.URL.Path, query: request.URL.Query(), header: request.Header.Clone(), body: body, requestContext: request.Context()}
 		server.mutex.Lock()
 		server.requests = append(server.requests, recorded)
 		server.mutex.Unlock()

@@ -113,7 +113,7 @@ func updateEmployeeAttemptForExchange(result bambooHRExchange, receipt sdkgo.Rec
 	switch result.outcome {
 	case exchangeSucceeded:
 		return sdkgo.MutationAttempt[UpdateEmployeeOutput]{}, false
-	case exchangeRateLimited, exchangeLimitExceeded, exchangeNotSent, exchangeUnavailable:
+	case exchangeRateLimited, exchangeNotSent, exchangeUnavailable:
 		return sdkgo.NewMutationRetry[UpdateEmployeeOutput](result.failure, result.retryAfter), true
 	case exchangeNotFound:
 		return sdkgo.NewMutationBranch(UpdateEmployeeBranchNotFound, value, &result.failure, receipt), true

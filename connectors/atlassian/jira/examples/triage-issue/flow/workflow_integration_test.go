@@ -40,6 +40,7 @@ const (
 
 	markerReject           = "[reject]"
 	markerRateLimit        = "[rate-limit]"
+	markerUnavailable      = "[unavailable]"
 	markerServerError      = "[server-error]"
 	markerCreateTimeout    = "[create-timeout]"
 	markerSlowCreate       = "[slow-create]"
@@ -109,6 +110,15 @@ func TestRateLimitedCreateIsRetriedAfterRetryAfterWithRealDex(t *testing.T) {
 	attempts := provider.createTimesFor(summary)
 	require.Len(t, attempts, 2)
 	require.GreaterOrEqual(t, attempts[1].Sub(attempts[0]), time.Second, "the retry waits for Retry-After")
+}
+
+func TestUnavailableCreateRetriesWithRealDex(t *testing.T) {
+	provider, flow, harness := newJiraIntegrationHarness(t, integrationCloudID, shortRequestTimeout)
+	ctx := integrationContext(t)
+	summary := markerUnavailable + " Door sensor noisy"
+	triage := runTriageFlow(t, ctx, harness, flow, "unavailable", triageInput(summary))
+	require.Equal(t, PhaseTriaged, triage.Phase)
+	require.Equal(t, 2, provider.createCount(summary), "a 503 returns Retry to Dex")
 }
 
 func TestTimeoutAfterDispatchIsReconciledWithoutCreatingAgainWithRealDex(t *testing.T) {
@@ -407,6 +417,8 @@ func (provider *fakeJira) createIssue(response http.ResponseWriter, request *htt
 	case strings.Contains(summary, markerRateLimit) && attempt == 1:
 		response.Header().Set("Retry-After", "1")
 		provider.writeJSON(response, http.StatusTooManyRequests, `{"errorMessages":["SENTINEL rate limited"]}`)
+	case strings.Contains(summary, markerUnavailable) && attempt == 1:
+		provider.writeJSON(response, http.StatusServiceUnavailable, `{"errorMessages":["SENTINEL unavailable"]}`)
 	case strings.Contains(summary, markerServerError) && attempt == 1:
 		provider.writeJSON(response, http.StatusInternalServerError, `{"errorMessages":["SENTINEL internal error"]}`)
 	case strings.Contains(summary, markerCreateTimeout):

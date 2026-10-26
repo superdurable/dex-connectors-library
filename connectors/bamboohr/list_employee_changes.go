@@ -143,7 +143,7 @@ func (operation ListEmployeeChangesOperation) Invoke(call sdkgo.Call, input List
 	receipt := operation.client.receipt(call, "")
 	switch result.outcome {
 	case exchangeSucceeded:
-	case exchangeRateLimited, exchangeLimitExceeded, exchangeNotSent, exchangeUnavailable:
+	case exchangeRateLimited, exchangeNotSent, exchangeUnavailable:
 		return sdkgo.NewQueryRetry[ListEmployeeChangesOutput](result.failure, result.retryAfter)
 	case exchangeInvalid:
 		return sdkgo.NewQueryBranch(ListEmployeeChangesBranchInvalidResponse, ListEmployeeChangesOutput{}, &result.failure, receipt)

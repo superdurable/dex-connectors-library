@@ -140,7 +140,7 @@ func (operation FindEmployeeByEmailOperation) Invoke(call sdkgo.Call, input Find
 	receipt := operation.client.receipt(call, "")
 	switch result.outcome {
 	case exchangeSucceeded:
-	case exchangeRateLimited, exchangeLimitExceeded, exchangeNotSent, exchangeUnavailable:
+	case exchangeRateLimited, exchangeNotSent, exchangeUnavailable:
 		return sdkgo.NewQueryRetry[FindEmployeeByEmailOutput](result.failure, result.retryAfter)
 	case exchangeInvalid:
 		return sdkgo.NewQueryBranch(FindEmployeeByEmailBranchInvalidResponse, FindEmployeeByEmailOutput{}, &result.failure, receipt)
