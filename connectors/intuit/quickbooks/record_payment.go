@@ -80,13 +80,14 @@ func (RecordPaymentOperation) IdempotencyKey(callID sdkgo.CallID, _ RecordPaymen
 // returned payment applies the amount to the invoice.
 func (operation RecordPaymentOperation) Invoke(call sdkgo.Call, input RecordPaymentInput) sdkgo.MutationAttempt[Payment] {
 	client := operation.client
+	attemptBudget := client.newAttemptBudget(call.Context, RecordPaymentDefinition.StepDefaults.ExecuteMethodTimeout)
 	requested := Payment{CustomerID: strings.TrimSpace(input.CustomerID), TotalAmount: input.Amount}
 	payload, err := buildRecordPaymentRequest(input)
 	if err != nil {
 		return sdkgo.NewMutationBranch(RecordPaymentBranchDefect, requested,
 			quickbooksFailurePointer(sdkgo.FailureValidation, recordPaymentOperationID, err.Error()), sdkgo.Receipt{})
 	}
-	result := client.exchange(call, recordPaymentOperationID, quickbooksRequest{method: http.MethodPost, path: "/payment", payload: payload, isMutation: true})
+	result := client.exchange(call, recordPaymentOperationID, quickbooksRequest{method: http.MethodPost, path: "/payment", payload: payload, isMutation: true, attemptBudget: attemptBudget})
 	receipt := client.receipt(call, result, "")
 	if attempt, isTerminal := mutationAttemptForExchange(result, requested, receipt, mutationBranches{
 		providerRejected: RecordPaymentBranchProviderRejected, defect: RecordPaymentBranchDefect,
@@ -102,6 +103,16 @@ func (operation RecordPaymentOperation) Invoke(call sdkgo.Call, input RecordPaym
 		err = errors.New("the returned payment does not apply to the invoice")
 	}
 	if err != nil {
+		if paymentID := acceptedEntityID(result.response.body, "Payment"); paymentID != "" {
+			if body, isFound := readAcceptedEntity(client, call, recordPaymentOperationID, "payment", paymentID); isFound {
+				if readWire, readErr := decodeEntity[paymentWire](body, "Payment"); readErr == nil {
+					if readPayment, decodeErr := decodePayment(readWire); decodeErr == nil && readPayment.PaymentID == paymentID && readPayment.CustomerID == payload.CustomerRef.Value && areDecimalsNumericallyEqual(readPayment.TotalAmount, input.Amount) && appliesToInvoice(readPayment, payload.Line[0].LinkedTxn[0].TxnID) {
+						receipt.ProviderObjectID = paymentID
+						return sdkgo.NewMutationBranch(RecordPaymentBranchRecorded, readPayment, nil, receipt)
+					}
+				}
+			}
+		}
 		return sdkgo.NewMutationUncertain(requested, quickbooksFailure(sdkgo.FailureProtocol, recordPaymentOperationID,
 			"QuickBooks accepted the payment but returned an unusable payment: "+err.Error()), receipt)
 	}

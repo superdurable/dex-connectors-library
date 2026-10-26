@@ -5,7 +5,7 @@ metadata:
   displayName: Trello
   description: List and read Trello cards on a board or list with open, closed, and due-date filters, create cards and comments without silent duplicates, and move, archive, reopen, reschedule, or relabel cards.
   company: Atlassian
-  version: v0.21.2
+  version: v0.22.0
 spec:
   provider: trello
   codegen:
@@ -65,6 +65,38 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      pagination: {inputField: before, nextField: nextBefore}
+      mocks:
+        - name: approvedBoardPages
+          branch: listed
+          description: Three newest-first pages for the requested approved board, including an archived card.
+          default: true
+          pages:
+            - cards:
+                - {id: "6512f0a1c2d3e4f5a6b71002", name: "[REQ-10420] Different request", boardId: "6512f0a1c2d3e4f5a6b70001", listId: "6512f0a1c2d3e4f5a6b70101", isClosed: false, position: 1024}
+                - {id: "6512f0a1c2d3e4f5a6b71001", name: "Lobby paint", boardId: "6512f0a1c2d3e4f5a6b70001", listId: "6512f0a1c2d3e4f5a6b70101", isClosed: false, position: 2048}
+              scannedCardCount: 2
+              nextBefore: "6512f0a1c2d3e4f5a6b71001"
+            - cards:
+                - {id: "6512f0a1c2d3e4f5a6b71000", name: "Lobby paint", boardId: "6512f0a1c2d3e4f5a6b70001", listId: "6512f0a1c2d3e4f5a6b70101", isClosed: false, position: 2048}
+                - {id: "6512f0a1c2d3e4f5a6b70fff", name: "Door sensor", boardId: "6512f0a1c2d3e4f5a6b70001", listId: "6512f0a1c2d3e4f5a6b70101", isClosed: false, position: 3072}
+              scannedCardCount: 2
+              nextBefore: "6512f0a1c2d3e4f5a6b70fff"
+            - cards:
+                - {id: "6512f0a1c2d3e4f5a6b70ffe", name: "[REQ-1042] Archived request", boardId: "6512f0a1c2d3e4f5a6b70001", listId: "6512f0a1c2d3e4f5a6b70101", isClosed: true, position: 4096}
+              scannedCardCount: 1
+        - name: notFoundFailure
+          branch: notFound
+          description: "The board or list does not exist."
+          failure: {kind: NOT_FOUND, message: "The board or list does not exist."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "Trello conclusively rejected the list, such as an invalid key or token, or a board the token's member cannot open."
+          failure: {kind: PROVIDER_REJECTION, message: "Trello conclusively rejected the list, such as an invalid key or token, or a board the token's member cannot open."}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "Trello returned an invalid or oversized card page."
+          failure: {kind: PROTOCOL, message: "Trello returned an invalid or oversized card page."}
     - name: getCard
       goName: GetCard
       inputType: GetCardInput
@@ -82,12 +114,30 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: approvedRequestCard
+          branch: found
+          description: The requested card ID identifies the approved request card on the approved board.
+          default: true
+          output: {id: "6512f0a1c2d3e4f5a6b72001", name: "[REQ-1042] Replace badge reader", boardId: "6512f0a1c2d3e4f5a6b70001", listId: "6512f0a1c2d3e4f5a6b70102", isClosed: false, position: 1024}
+        - name: notFoundFailure
+          branch: notFound
+          description: "The card does not exist."
+          failure: {kind: NOT_FOUND, message: "The card does not exist."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "Trello conclusively rejected the card read, such as an invalid key or token, or a card the token's member cannot open."
+          failure: {kind: PROVIDER_REJECTION, message: "Trello conclusively rejected the card read, such as an invalid key or token, or a card the token's member cannot open."}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "Trello returned an invalid or oversized card."
+          failure: {kind: PROTOCOL, message: "Trello returned an invalid or oversized card."}
     - name: createCard
       goName: CreateCard
       inputType: CreateCardInput
       outputType: CreateCardOutput
       kind: mutation
-      description: Create one card in a list with a name, a plain-text description, a due date, labels, members, and a position. Trello has no idempotency key, so the Step runs with sync durability and sends the request at most once per Step execution.
+      description: Create one card in a list with a name, a plain-text description, a due date, labels, members, and a position. Sync durability and a checkpoint prevent replay after ambiguous responses; 429 and 503 retry.
       idempotency: required
       authorization: required
       branches:
@@ -100,6 +150,16 @@ spec:
         executeMethodTimeout: 30s
         durability: sync
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A lost dispatch checkpoint could create another card because Trello has no create key or card lookup by Call ID."}}
+      mocks:
+        - name: approvedRequestCreated
+          branch: created
+          description: Creating the approved request in the approved list returns its new card ID.
+          default: true
+          output: {cardId: "6512f0a1c2d3e4f5a6b72001", name: "[REQ-1042] Replace badge reader", listId: "6512f0a1c2d3e4f5a6b70102", boardId: "6512f0a1c2d3e4f5a6b70001", shortLink: AbCd1234, url: "https://trello.com/c/AbCd1234/approved-request", shortUrl: "https://trello.com/c/AbCd1234"}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "Trello conclusively rejected the card, such as an unknown list, label, or member, or missing permission; nothing was created."
+          failure: {kind: PROVIDER_REJECTION, message: "Trello conclusively rejected the card, such as an unknown list, label, or member, or missing permission; nothing was created."}
     - name: updateCard
       goName: UpdateCard
       inputType: UpdateCardInput
@@ -117,12 +177,32 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: approvedRequestUpdated
+          branch: updated
+          description: Updating the approved request card returns that card in the approved list.
+          default: true
+          output:
+            cardId: "6512f0a1c2d3e4f5a6b72001"
+            card: {id: "6512f0a1c2d3e4f5a6b72001", name: "[REQ-1042] Replace badge reader", boardId: "6512f0a1c2d3e4f5a6b70001", listId: "6512f0a1c2d3e4f5a6b70102", isClosed: false, position: 1024}
+        - name: notFoundFailure
+          branch: notFound
+          description: "The card does not exist."
+          failure: {kind: NOT_FOUND, message: "The card does not exist."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "Trello conclusively rejected a change, such as an unknown list, label, or member, or missing permission."
+          failure: {kind: PROVIDER_REJECTION, message: "Trello conclusively rejected a change, such as an unknown list, label, or member, or missing permission."}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "Trello returned an invalid or oversized card, or a card that does not show a requested change."
+          failure: {kind: PROTOCOL, message: "Trello returned an invalid or oversized card, or a card that does not show a requested change."}
     - name: addComment
       goName: AddComment
       inputType: AddCommentInput
       outputType: AddCommentOutput
       kind: mutation
-      description: Add one plain-text comment, authored by the token's member, to a card. Trello has no idempotency key, so the Step runs with sync durability and sends the request at most once per Step execution.
+      description: Add one plain-text comment, authored by the token's member, to a card. Sync durability and a checkpoint prevent replay after ambiguous responses; 429 and 503 retry.
       idempotency: required
       authorization: required
       branches:
@@ -135,3 +215,17 @@ spec:
         executeMethodTimeout: 30s
         durability: sync
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A lost dispatch checkpoint could add another comment because Trello has no comment key or lookup by Call ID."}}
+      mocks:
+        - name: approvalCommentAdded
+          branch: added
+          description: Adding the approval text to the approved request card returns its comment action ID.
+          default: true
+          output: {cardId: "6512f0a1c2d3e4f5a6b72001", commentId: "6512f0a1c2d3e4f5a6b73001", authorMemberId: "6512f0a1c2d3e4f5a6b70301", createdAt: "2026-10-26T16:20:00Z"}
+        - name: notFoundFailure
+          branch: notFound
+          description: "The card does not exist; nothing was added."
+          failure: {kind: NOT_FOUND, message: "The card does not exist; nothing was added."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "Trello conclusively rejected the comment, such as missing permission or invalid text; nothing was added."
+          failure: {kind: PROVIDER_REJECTION, message: "Trello conclusively rejected the comment, such as missing permission or invalid text; nothing was added."}

@@ -51,6 +51,7 @@ const (
 
 	markerReject         = "[reject]"
 	markerRateLimit      = "[rate-limit]"
+	markerUnavailable    = "[service-unavailable]"
 	markerServerError    = "[server-error]"
 	markerCreateTimeout  = "[create-timeout]"
 	markerSlowCreate     = "[slow-create]"
@@ -146,6 +147,17 @@ func TestRateLimitedCreateIsRetriedAfterRetryAfterWithRealDex(t *testing.T) {
 	attempts := provider.createTimesFor("[REQ-3002] " + markerRateLimit + " Door sensor noisy")
 	require.Len(t, attempts, 2)
 	require.GreaterOrEqual(t, attempts[1].Sub(attempts[0]), time.Second, "the retry waits for Retry-After")
+}
+
+func TestServiceUnavailableCreateRetriesWithoutDuplicatingWithRealDex(t *testing.T) {
+	provider := newFakeTrello(t)
+	harness := newTrelloHarness(t, provider, shortRequestTimeout, DuplicateCheck{PageSize: fakePageSize})
+	cardName := "[REQ-3005] " + markerUnavailable + " Door sensor noisy"
+	record := harness.runRequestFlow(t, "service-unavailable", requestInput("REQ-3005", markerUnavailable+" Door sensor noisy"))
+	require.Equal(t, PhaseReady, record.Phase)
+	require.Equal(t, 1, record.CreateAttempts)
+	require.Len(t, provider.createTimesFor(cardName), 2, "Dex retries the same Step after the first 503")
+	require.Equal(t, record.CardID, provider.cardIDForName(cardName))
 }
 
 func TestTimeoutAfterDispatchIsReconciledWithoutCreatingAgainWithRealDex(t *testing.T) {
@@ -449,6 +461,8 @@ func (provider *fakeTrello) createCard(response http.ResponseWriter, request *ht
 	case strings.Contains(name, markerRateLimit) && attempt == 1:
 		response.Header().Set("Retry-After", "1")
 		provider.writeJSON(response, http.StatusTooManyRequests, `{"error":"API_TOKEN_LIMIT_EXCEEDED","message":"Rate limit exceeded SENTINEL"}`)
+	case strings.Contains(name, markerUnavailable) && attempt == 1:
+		provider.writeText(response, http.StatusServiceUnavailable, "SENTINEL service unavailable")
 	case strings.Contains(name, markerServerError) && attempt == 1:
 		provider.writeText(response, http.StatusInternalServerError, "SENTINEL internal error")
 	case strings.Contains(name, markerCreateTimeout):
@@ -714,6 +728,12 @@ func newTrelloHarness(t *testing.T, provider *fakeTrello, requestTimeout time.Du
 	require.NoError(t, err)
 	connection, err := trello.NewConnection(providerClient, reference)
 	require.NoError(t, err)
+	return newTrelloHarnessForConnection(t, connection, duplicateCheck)
+}
+
+func newTrelloHarnessForConnection(t *testing.T, connection trello.Connection, duplicateCheck DuplicateCheck) *trelloHarness {
+	t.Helper()
+	var err error
 	harness := &trelloHarness{flow: NewFlow(connection, duplicateCheck), serverAddress: environmentOr("DEX_FLOW_SERVICE_ADDRESS", "127.0.0.1:8801")}
 	harness.registry, err = dex.NewRegistry([]dex.Flow{harness.flow})
 	require.NoError(t, err)

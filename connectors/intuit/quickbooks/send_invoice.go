@@ -39,6 +39,7 @@ func (SendInvoiceOperation) IdempotencyKey(callID sdkgo.CallID, _ SendInvoiceInp
 // the Step's requestid and returns the invoice QuickBooks updated, with EmailStatus EmailSent.
 func (operation SendInvoiceOperation) Invoke(call sdkgo.Call, input SendInvoiceInput) sdkgo.MutationAttempt[Invoice] {
 	client := operation.client
+	attemptBudget := client.newAttemptBudget(call.Context, SendInvoiceDefinition.StepDefaults.ExecuteMethodTimeout)
 	invoiceID, sendTo := strings.TrimSpace(input.InvoiceID), strings.TrimSpace(input.SendTo)
 	requested := Invoice{InvoiceID: invoiceID}
 	if err := validateEntityID("invoiceId", invoiceID); err != nil {
@@ -54,7 +55,7 @@ func (operation SendInvoiceOperation) Invoke(call sdkgo.Call, input SendInvoiceI
 		query.Set("sendTo", sendTo)
 	}
 	result := client.exchange(call, sendInvoiceOperationID, quickbooksRequest{
-		method: http.MethodPost, path: "/invoice/" + invoiceID + "/send", query: query, isMutation: true,
+		method: http.MethodPost, path: "/invoice/" + invoiceID + "/send", query: query, isMutation: true, attemptBudget: attemptBudget,
 	})
 	receipt := client.receipt(call, result, invoiceID)
 	if attempt, isTerminal := mutationAttemptForExchange(result, requested, receipt, mutationBranches{
@@ -73,7 +74,17 @@ func (operation SendInvoiceOperation) Invoke(call sdkgo.Call, input SendInvoiceI
 	if err == nil && invoice.EmailStatus != EmailStatusEmailSent {
 		err = errors.New("the returned invoice is not marked EmailSent")
 	}
+	if err == nil && sendTo != "" && !strings.EqualFold(invoice.BillEmail, sendTo) {
+		err = errors.New("the returned invoice has another billing address")
+	}
 	if err != nil {
+		if body, isFound := readAcceptedEntity(client, call, sendInvoiceOperationID, "invoice", invoiceID); isFound {
+			if readWire, readErr := decodeEntity[invoiceWire](body, "Invoice"); readErr == nil {
+				if readInvoice, decodeErr := decodeInvoice(readWire); decodeErr == nil && readInvoice.InvoiceID == invoiceID && readInvoice.EmailStatus == EmailStatusEmailSent && (sendTo == "" || strings.EqualFold(readInvoice.BillEmail, sendTo)) {
+					return sdkgo.NewMutationBranch(SendInvoiceBranchSent, readInvoice, nil, receipt)
+				}
+			}
+		}
 		return sdkgo.NewMutationUncertain(requested, quickbooksFailure(sdkgo.FailureProtocol, sendInvoiceOperationID,
 			"QuickBooks accepted the delivery but returned an unusable invoice: "+err.Error()), receipt)
 	}

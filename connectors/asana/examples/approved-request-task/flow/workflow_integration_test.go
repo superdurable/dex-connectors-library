@@ -48,6 +48,7 @@ const (
 
 	markerReject         = "[reject]"
 	markerRateLimit      = "[rate-limit]"
+	markerUnavailable    = "[unavailable]"
 	markerServerError    = "[server-error]"
 	markerCreateTimeout  = "[create-timeout]"
 	markerSlowCreate     = "[slow-create]"
@@ -130,6 +131,17 @@ func TestRateLimitedCreateIsRetriedAfterRetryAfterWithRealDex(t *testing.T) {
 	attempts := provider.createTimesFor("[REQ-3002] " + markerRateLimit + " Door sensor noisy")
 	require.Len(t, attempts, 2)
 	require.GreaterOrEqual(t, attempts[1].Sub(attempts[0]), time.Second, "the retry waits for Retry-After")
+}
+
+func TestUnavailableCreateRetriesTheSameStepWithRealDex(t *testing.T) {
+	provider, flow, harness := newAsanaIntegrationHarness(t, shortRequestTimeout)
+	ctx := integrationContext(t)
+	taskName := "[REQ-3010] " + markerUnavailable + " Repair alarm"
+	record := runRequestFlow(t, ctx, harness, flow, "unavailable", requestInput("REQ-3010", markerUnavailable+" Repair alarm"))
+	require.Equal(t, PhaseReady, record.Phase)
+	require.Equal(t, 1, record.CreateAttempts)
+	require.Len(t, provider.createTimesFor(taskName), 2, "the first 503 is retried by Dex within one Step execution")
+	require.Equal(t, 1, len(provider.commentTexts(record.TaskID)))
 }
 
 func TestTimeoutAfterDispatchIsReconciledWithoutCreatingAgainWithRealDex(t *testing.T) {
@@ -435,6 +447,8 @@ func (provider *fakeAsana) createTask(response http.ResponseWriter, request *htt
 	case strings.Contains(name, markerRateLimit) && attempt == 1:
 		response.Header().Set("Retry-After", "1")
 		provider.writeJSON(response, http.StatusTooManyRequests, `{"errors":[{"message":"SENTINEL You have made too many requests recently."}]}`)
+	case strings.Contains(name, markerUnavailable) && attempt == 1:
+		provider.writeJSON(response, http.StatusServiceUnavailable, `{"errors":[{"message":"SENTINEL temporarily unavailable"}]}`)
 	case strings.Contains(name, markerServerError) && attempt == 1:
 		provider.writeJSON(response, http.StatusInternalServerError, `{"errors":[{"message":"SENTINEL","phrase":"6 sad squid snuggle softly"}]}`)
 	case strings.Contains(name, markerCreateTimeout):

@@ -59,8 +59,8 @@ func (AddCommentOperation) IdempotencyKey(callID sdkgo.CallID, _ AddCommentInput
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke sends POST /cards/{id}/actions/comments at most once per Step execution. Only a 429 or a
-// connection that never opened is retried; any other unconfirmed outcome selects uncertain without resending.
+// Invoke sends POST /cards/{id}/actions/comments. A 429, 503, or traced undispatched failure retries.
+// An ambiguous outcome does not resend.
 func (operation AddCommentOperation) Invoke(call sdkgo.Call, input AddCommentInput) sdkgo.MutationAttempt[AddCommentOutput] {
 	client := operation.client
 	requested := AddCommentOutput{CardID: strings.TrimSpace(input.CardID)}
@@ -76,7 +76,7 @@ func (operation AddCommentOperation) Invoke(call sdkgo.Call, input AddCommentInp
 		return sdkgo.NewMutationBranch(AddCommentBranchDefect, requested, startFailure, sdkgo.Receipt{})
 	}
 	defer cancel()
-	if attempt, isFinal := singleDispatchAttemptBeforeSend(claimSingleDispatch(call), addCommentOperationID, requested,
+	if attempt, isFinal := singleDispatchAttemptBeforeSend(call, claimSingleDispatch(call, session.context), addCommentOperationID, requested,
 		client.receipt(session, trelloResponse{}, cardID)); isFinal {
 		return attempt
 	}

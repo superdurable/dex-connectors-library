@@ -81,6 +81,13 @@ func jsonNumberLiteral(value Decimal) json.Number {
 	return json.Number(value)
 }
 
+// areDecimalsNumericallyEqual compares exact decimal values despite different trailing zeros.
+func areDecimalsNumericallyEqual(left Decimal, right Decimal) bool {
+	leftValue, isLeftParsed := new(big.Rat).SetString(string(left))
+	rightValue, isRightParsed := new(big.Rat).SetString(string(right))
+	return isLeftParsed && isRightParsed && leftValue.Cmp(rightValue) == 0
+}
+
 // multiplyRoundedToCents multiplies exactly and rounds half away from zero to two places; inputs are pre-validated.
 func multiplyRoundedToCents(quantity Decimal, unitPrice Decimal) (Decimal, error) {
 	quantityValue, isQuantityParsed := new(big.Rat).SetString(string(quantity))

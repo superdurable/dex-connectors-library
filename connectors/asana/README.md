@@ -11,9 +11,9 @@ through the Asana REST API, `https://app.asana.com/api/1.0`:
 | --- | --- | --- | --- | --- | --- |
 | `listTasks` | Query | `GET /tasks?project=` or `?section=` | async | `listed` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 | `getTask` | Query | `GET /tasks/{task_gid}` | async | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
-| `createTask` | Mutation | `POST /tasks` | sync | `created` | `providerRejected`, `uncertain`, `defect` |
+| `createTask` | Mutation | `POST /tasks`, recovery `GET /tasks/{task_gid}` | sync | `created` | `providerRejected`, `uncertain`, `defect` |
 | `updateTask` | Mutation | `POST /sections/{section_gid}/addTask`, then `PUT /tasks/{task_gid}` | async | `updated` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
-| `addComment` | Mutation | `POST /tasks/{task_gid}/stories` | sync | `added` | `notFound`, `providerRejected`, `uncertain`, `defect` |
+| `addComment` | Mutation | `POST /tasks/{task_gid}/stories`, recovery `GET /stories/{story_gid}` | sync | `added` | `notFound`, `providerRejected`, `uncertain`, `defect` |
 
 Asana's only task status is `completed`; section membership carries the
 workflow state, so moving a task between sections is its status change.
@@ -101,7 +101,9 @@ for every call. `endpoint` and `maxResponseBytes` are startup configuration.
 ## Operations
 
 Every operation bounds its requests by 25 seconds in total and each request by
-20 seconds, below the 30-second Execute timeout. Redirects are never followed.
+20 seconds, below the 30-second Execute timeout. The Step context's deadline
+also cuts every request off at least one second before the attempt deadline;
+a write is not dispatched when that margin has passed. Redirects are never followed.
 A response that contains the token is never returned. 408, 429 (after
 `Retry-After`, in seconds), 5xx, and transport failures retry reads and
 `updateTask`; 404 selects `notFound` where the operation declares it; 400, 402
@@ -143,22 +145,26 @@ Asana's create-only `memberships`; otherwise in the project's default section.
 gid: `Text`, `Number`, `EnumOptionID` (the option's gid, not its name), or
 `MultiEnumOptionIDs`; date and people fields are not supported.
 
-Asana has no idempotency key, so the connector retries only when Asana cannot
-have created anything:
+Asana documents no provider-enforced idempotency key for these POSTs. The
+connector retries 429 and 503, and retries transport failures only with
+positive evidence that the request never obtained a connection:
 
 | Outcome | Result |
 | --- | --- |
 | 201 with a task gid | `created` |
 | 400, 401, 402, 403, 404, or another 4xx except 408 and 429 | `providerRejected` |
-| 429 | Retry, after `Retry-After` |
+| 429 or 503 | Retry, after `Retry-After` when supplied |
 | DNS, connect, or TLS failure before any connection opened | Retry |
-| Timeout, dropped connection, 408, 3xx, or 5xx after dispatch | `uncertain` |
+| Timeout, dropped connection, 408, 3xx, or 5xx other than 503 after dispatch | `uncertain` |
 | 2xx whose body is oversized, unreadable, unusable, or reflects the token | `uncertain` |
 
 On `providerRejected` and `uncertain`, the Value echoes the requested name,
 project, section, and workspace without a task gid. Asana's `external.gid`
 lookup was not used as a duplicate guard: it needs OAuth, and Asana does not
-document that it is unique.
+document that it is unique. When a valid task gid was returned and checkpointed
+before a lost Step result, the next attempt reads [that task by gid](https://developers.asana.com/reference/gettask)
+and reports `created` only when its gid matches. Without a saved gid, listing
+tasks by name or notes cannot reliably distinguish this call from another create.
 
 ### updateTask
 
@@ -182,16 +188,19 @@ section if someone reordered it in between.
 `AddCommentInput.Text` is plain text of at most 65536 characters, sent as
 `text`, never `html_text`, so it is never read as markup. The comment is
 authored by the token's user. The branch table matches `createTask`, except that
-a 404 selects `notFound`. A read-before-write over the task's stories would not
-make a comment safe: two concurrent attempts both read before either writes,
-and it would also suppress a deliberately repeated comment.
+a 404 selects `notFound`. With a checkpointed story gid, a later attempt
+[reads the story by gid](https://developers.asana.com/reference/getstory)
+and reports `added` only when its gid matches. Without a saved gid, reading
+stories by text cannot reliably distinguish this call from another identical
+comment or an edited comment.
 
 ## Avoiding duplicate tasks and comments
 
 `createTask` and `addComment` use sync Execute durability although a request is
 usually fast. With async durability, Dex runs a Step in a local phase of about
-seven seconds and then dispatches a backup attempt, so a slow create would be
-sent twice. With sync durability, a real Dex run against a fake Asana that held
+seven seconds and then dispatches a backup attempt. The local-phase checkpoint
+is not visible to that attempt, so a slow write may become `uncertain`.
+With sync durability, a real Dex run against a fake Asana that held
 the create, or the comment, for nine seconds recorded one request;
 `TestSlowCreateIsSentOnceUnderSyncDurabilityWithRealDex` and
 `TestSlowCommentIsSentOnceUnderSyncDurabilityWithRealDex` guard this. Do not
@@ -203,14 +212,44 @@ same `PUT` twice, and the task ended assigned, scheduled, and in the section
 exactly as with one request;
 `TestSlowUpdateBackupAttemptLeavesTheSameTaskWithRealDex` guards this.
 
-The connector never resends a dispatched create or comment, but Dex runs a Step
-at least once. If the Worker is lost after Asana accepts a create and before Dex
-commits the Step result, Dex runs the Step again and Asana creates a second
-task. No connector can close that window without a provider idempotency key. An
-application handles `uncertain` without creating again automatically; the
+The connector records a dispatch heartbeat before either POST and keeps it alive
+during the request. A later attempt may send only after the prior attempt
+checkpointed a 429, 503, or provably unsent transport result. A valid task or
+story gid is checkpointed for read-back. A near-deadline attempt also records
+that no POST was sent before asking Dex to retry. If Dex loses or restores no checkpoint,
+or a checkpoint is stale, the connector fails closed as `uncertain` and sends
+no second POST. Dex heartbeat recording is not an acknowledgement that the
+checkpoint was persisted, so an accepted write can still become `uncertain`.
+Under an async override, the local-phase heartbeat is not visible to a later
+attempt, so even a 429 or 503 may become `uncertain` instead of retrying.
+An application handles `uncertain` without creating again automatically; the
 [`approved-request-task`](examples/approved-request-task) example parks the
 create for an operator, who confirms the task found in the project or approves
 a new create.
+
+Asana's [task](https://developers.asana.com/reference/gettask) and
+[story](https://developers.asana.com/reference/getstory) read endpoints support
+gid-based confirmation. The provider documentation does not guarantee that a
+503 means no write occurred; retrying it follows the connector failure policy.
+Live 503 and recovery read-back behavior remain unverified.
+
+## Mocks
+
+The generated `asanamock` package has one happy-path default for each operation,
+`providerRejected` cases for all five, and `notFound` cases for listTasks,
+getTask, updateTask, and addComment. Its defaults describe one
+Facilities approval: an unrelated open task is listed, a new request task is
+created, assigned, and commented on. The real-Dex example test starts with:
+
+```go
+mock := asanamock.New(t, ConnectionName)
+flow := NewFlow(mock.Connection(), ProjectSelection{ProjectID: "1201000000000001", SectionID: "1201000000000101"})
+registry, err := dex.NewRegistry([]dex.Flow{flow})
+require.NoError(t, err)
+```
+
+The complete runnable test is
+[`workflow_mock_integration_test.go`](examples/approved-request-task/flow/workflow_mock_integration_test.go).
 
 ## Studio pickers
 
@@ -272,5 +311,6 @@ every endpoint and the `opt_fields` this connector requests; `GET /tasks` with
 omits; `completed_since=now` and `modified_since` on `GET /tasks`; creating a
 task in a section through `memberships`, which the reference marks both
 create-only and read-only; `addTask` for a section of another project; the
-status of an expired offset; 429 and 5xx behavior under load; and the three
+status of an expired offset; 429 and 5xx behavior under load; task and story
+read-back after a lost Step result; and the three
 Studio commands through Dex Web.

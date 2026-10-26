@@ -44,6 +44,26 @@ func TestUpdateCardSendsAbsoluteValuesAndConfirmsThemOnARead(t *testing.T) {
 	require.Equal(t, http.MethodGet, provider.request(1).method)
 }
 
+func TestUpdateCardReadsBackAfterAcceptedPutBodyIsInterrupted(t *testing.T) {
+	provider := newRecordingTrello(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+		if request.Method == http.MethodPut {
+			response.Header().Set("Content-Length", "100")
+			response.WriteHeader(http.StatusOK)
+			_, err := response.Write([]byte(`{}`))
+			require.NoError(t, err)
+			return
+		}
+		writeJSON(t, response, http.StatusOK, cardJSON(cardJSONOptions{isClosed: true}))
+	})
+	result, err := sdkgo.RunMutation(newTrelloDexContext("update-interrupted-body"), newTrelloClient(t, provider.URL).UpdateCard(),
+		trelloConnection, trello.UpdateCardInput{CardID: testCardID, IsClosed: boolPointer(true)})
+	require.NoError(t, err)
+	require.Equal(t, trello.UpdateCardBranchUpdated, result.Branch)
+	require.Equal(t, 2, provider.requestCount())
+	require.Equal(t, http.MethodPut, provider.request(0).method)
+	require.Equal(t, http.MethodGet, provider.request(1).method)
+}
+
 func TestUpdateCardClearsDueAndEveryLabelWithExplicitValues(t *testing.T) {
 	provider := newRecordingTrello(t, func(response http.ResponseWriter, request *http.Request, _ int) {
 		writeJSON(t, response, http.StatusOK, cardJSON(cardJSONOptions{}))

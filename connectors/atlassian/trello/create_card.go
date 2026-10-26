@@ -76,8 +76,7 @@ func (CreateCardOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateCardInput
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke sends POST /cards at most once per Step execution. Only a 429 or a connection that never opened is
-// retried; any other unconfirmed outcome selects uncertain without resending.
+// Invoke sends POST /cards. A 429, 503, or traced undispatched failure retries; an ambiguous outcome does not resend.
 func (operation CreateCardOperation) Invoke(call sdkgo.Call, input CreateCardInput) sdkgo.MutationAttempt[CreateCardOutput] {
 	client := operation.client
 	fields, requested, err := buildCreateCardFields(input)
@@ -89,7 +88,7 @@ func (operation CreateCardOperation) Invoke(call sdkgo.Call, input CreateCardInp
 		return sdkgo.NewMutationBranch(CreateCardBranchDefect, requested, startFailure, sdkgo.Receipt{})
 	}
 	defer cancel()
-	if attempt, isFinal := singleDispatchAttemptBeforeSend(claimSingleDispatch(call), createCardOperationID, requested,
+	if attempt, isFinal := singleDispatchAttemptBeforeSend(call, claimSingleDispatch(call, session.context), createCardOperationID, requested,
 		client.receipt(session, trelloResponse{}, "")); isFinal {
 		return attempt
 	}

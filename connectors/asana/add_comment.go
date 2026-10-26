@@ -18,7 +18,7 @@ const (
 )
 
 // createdStoryFields are the opt_fields of the comment story Asana returns.
-var createdStoryFields = []string{"created_at", "created_by.name", "resource_subtype"}
+var createdStoryFields = []string{"gid", "created_at", "created_by.gid", "created_by.name", "resource_subtype"}
 
 // AddCommentInput describes one comment on one task.
 type AddCommentInput struct {
@@ -64,7 +64,7 @@ func (AddCommentOperation) IdempotencyKey(callID sdkgo.CallID, _ AddCommentInput
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke adds one comment story and never resends a request Asana may have received.
+// Invoke adds one comment, retrying only outcomes that permit another POST and reading back a checkpointed story.
 func (operation AddCommentOperation) Invoke(call sdkgo.Call, input AddCommentInput) sdkgo.MutationAttempt[AddCommentOutput] {
 	client := operation.client
 	requested := AddCommentOutput{TaskID: strings.TrimSpace(input.TaskID)}
@@ -75,11 +75,46 @@ func (operation AddCommentOperation) Invoke(call sdkgo.Call, input AddCommentInp
 	if err != nil {
 		return sdkgo.NewMutationBranch(AddCommentBranchDefect, requested, failurePointer(addCommentOperationID, sdkgo.FailureValidation, err.Error()), sdkgo.Receipt{})
 	}
+	previous, hasPrevious, checkpointErr := previousUnkeyedWriteCheckpoint(call, addCommentOperationID)
+	if checkpointErr != nil {
+		return sdkgo.NewMutationUncertain(requested, newFailure(addCommentOperationID, sdkgo.FailureLocalDefect, "Asana comment dispatch checkpoint is unavailable"), client.receiptForCall(call, ""))
+	}
+	attempt := call.Context.Attempt()
+	hasReadBackID := hasPrevious && previous.ObjectID != ""
+	canSend := !hasPrevious && attempt == 1 || hasPrevious && previous.CanResend && previous.Attempt == attempt-1
+	switch {
+	case hasReadBackID:
+		if !gidPattern.MatchString(previous.ObjectID) {
+			return sdkgo.NewMutationUncertain(requested, newFailure(addCommentOperationID, sdkgo.FailureProtocol, "Asana comment checkpoint has an invalid story ID"), client.receiptForCall(call, ""))
+		}
+	case canSend:
+	case !hasPrevious:
+		return sdkgo.NewMutationUncertain(requested, newFailure(addCommentOperationID, sdkgo.FailureTransport, "Asana comment dispatch checkpoint is missing; the comment may exist"), client.receiptForCall(call, ""))
+	default:
+		return sdkgo.NewMutationUncertain(requested, newFailure(addCommentOperationID, sdkgo.FailureTransport, "Asana comment dispatch checkpoint does not permit another comment"), client.receiptForCall(call, ""))
+	}
 	session, cancel, startFailure := client.startSession(call, addCommentOperationID)
 	if startFailure != nil {
+		if hasReadBackID {
+			return sdkgo.NewMutationRetry[AddCommentOutput](*startFailure, 0)
+		}
 		return sdkgo.NewMutationBranch(AddCommentBranchDefect, requested, startFailure, sdkgo.Receipt{})
 	}
 	defer cancel()
+	heartbeat := newUnkeyedWriteHeartbeat(call, addCommentOperationID)
+	defer heartbeat.stop()
+	if hasReadBackID {
+		_ = heartbeat.begin(previous.ObjectID)
+		return operation.readBackAddedComment(session, heartbeat, requested, previous.ObjectID)
+	}
+	if err := heartbeat.begin(""); err != nil {
+		_ = heartbeat.recordCanResend()
+		return sdkgo.NewMutationRetry[AddCommentOutput](newFailure(addCommentOperationID, sdkgo.FailureAvailability, "Asana comment dispatch checkpoint could not be recorded"), 0)
+	}
+	if !client.canStartRequest(session) {
+		_ = heartbeat.recordCanResend()
+		return sdkgo.NewMutationRetry[AddCommentOutput](newFailure(addCommentOperationID, sdkgo.FailureTransport, "Asana comment attempt deadline is too close to send"), 0)
+	}
 	result := client.exchange(session, asanaRequest{
 		method: http.MethodPost, path: joinPath("tasks", taskID, "stories"), query: url.Values{"opt_fields": {strings.Join(createdStoryFields, ",")}},
 		payload: dataEnvelope[addCommentFields]{Data: addCommentFields{Text: input.Text}},
@@ -89,6 +124,7 @@ func (operation AddCommentOperation) Invoke(call sdkgo.Call, input AddCommentInp
 	switch classification.outcome {
 	case writeAccepted:
 	case writeRetry:
+		_ = heartbeat.recordCanResend()
 		return sdkgo.NewMutationRetry[AddCommentOutput](classification.failure, classification.retryAfter)
 	case writeDefect:
 		return sdkgo.NewMutationBranch(AddCommentBranchDefect, requested, &classification.failure, receipt)
@@ -105,10 +141,41 @@ func (operation AddCommentOperation) Invoke(call sdkgo.Call, input AddCommentInp
 	}
 	output := requested
 	output.CommentID, output.Author = story.GID, story.CreatedBy.userView()
+	// A lost ID checkpoint makes a later attempt uncertain; it never sends a second comment.
+	_ = heartbeat.recordObjectID(story.GID)
 	// The comment exists either way; an unparseable timestamp only leaves CreatedAt nil.
 	if createdAt, err := parseOptionalAsanaTime(&story.CreatedAt); err == nil {
 		output.CreatedAt = createdAt
 	}
 	receipt.ProviderObjectID = story.GID
 	return sdkgo.NewMutationBranch(AddCommentBranchAdded, output, nil, receipt)
+}
+
+func (operation AddCommentOperation) readBackAddedComment(session *operationSession, heartbeat *unkeyedWriteHeartbeat, requested AddCommentOutput, storyID string) sdkgo.MutationAttempt[AddCommentOutput] {
+	client := operation.client
+	if !client.canStartRequest(session) {
+		return sdkgo.NewMutationRetry[AddCommentOutput](newFailure(addCommentOperationID, sdkgo.FailureTransport, "Asana comment read-back attempt deadline is too close"), 0)
+	}
+	result := client.exchange(session, asanaRequest{
+		method: http.MethodGet, path: joinPath("stories", storyID),
+		query: url.Values{"opt_fields": {strings.Join(createdStoryFields, ",")}},
+	})
+	classification := client.classifyRead(addCommentOperationID, addCommentFailureSubject, result)
+	if classification.outcome == readRetry {
+		return sdkgo.NewMutationRetry[AddCommentOutput](classification.failure, classification.retryAfter)
+	}
+	if classification.outcome != readSucceeded {
+		return sdkgo.NewMutationUncertain(requested, newFailure(addCommentOperationID, sdkgo.FailureProtocol, "Asana comment could not be confirmed by ID"), client.receipt(session, storyID))
+	}
+	story, err := decodeData[storyResource](result.response.body)
+	if err != nil || story.GID != storyID {
+		return sdkgo.NewMutationUncertain(requested, newFailure(addCommentOperationID, sdkgo.FailureProtocol, "Asana comment read-back did not match the checkpointed ID"), client.receipt(session, storyID))
+	}
+	output := requested
+	output.CommentID, output.Author = storyID, story.CreatedBy.userView()
+	if createdAt, err := parseOptionalAsanaTime(&story.CreatedAt); err == nil {
+		output.CreatedAt = createdAt
+	}
+	_ = heartbeat.recordObjectID(storyID)
+	return sdkgo.NewMutationBranch(AddCommentBranchAdded, output, nil, client.receipt(session, storyID))
 }

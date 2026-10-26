@@ -4,6 +4,7 @@
 package trello_test
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -35,8 +36,21 @@ func TestAddCommentSendsThePlainTextOnceInTheBody(t *testing.T) {
 	require.Equal(t, "/cards/"+testCardID+"/actions/comments", request.path)
 	require.Empty(t, request.rawQuery, "comment text travels in the JSON body, never in the URL")
 	require.JSONEq(t, `{"text":"Approved by Grace Hopper.\n\n**Budget** code FAC-7."}`, request.body)
-	require.JSONEq(t, `{"trelloDispatchedCallId":"`+string(result.Receipt.CallID)+`"}`, string(ctx.recordedHeartbeat))
+	require.JSONEq(t, `{"trelloDispatchedCallId":"`+string(result.Receipt.CallID)+`","trelloAttempt":1}`, string(ctx.recordedHeartbeat))
 	requireNoSentinel(t, result)
+}
+
+func TestAddCommentRetriesWithoutSendingWhenAttemptWindowIsTooShort(t *testing.T) {
+	provider := newRecordingTrello(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
+	ctx := newTrelloDexContext("comment-short-window")
+	attemptContext, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	ctx.Context = attemptContext
+	_, err := sdkgo.RunMutation(ctx, newTrelloClient(t, provider.URL).AddComment(), trelloConnection,
+		trello.AddCommentInput{CardID: testCardID, Text: "Approved."})
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	require.Zero(t, provider.requestCount())
+	require.Contains(t, string(ctx.recordedHeartbeat), `"trelloCanRetry":true`)
 }
 
 func TestAddCommentBranches(t *testing.T) {
@@ -46,7 +60,8 @@ func TestAddCommentBranches(t *testing.T) {
 	}{
 		"missing card":   {func(response http.ResponseWriter) { writeText(t, response, http.StatusNotFound, "SENTINEL") }, trello.AddCommentBranchNotFound},
 		"no permission":  {func(response http.ResponseWriter) { writeText(t, response, http.StatusUnauthorized, "SENTINEL") }, trello.AddCommentBranchProviderRejected},
-		"server error":   {func(response http.ResponseWriter) { writeText(t, response, http.StatusServiceUnavailable, "SENTINEL") }, trello.AddCommentBranchUncertain},
+		"server error":   {func(response http.ResponseWriter) { writeText(t, response, http.StatusInternalServerError, "SENTINEL") }, trello.AddCommentBranchUncertain},
+		"conflict":       {func(response http.ResponseWriter) { writeText(t, response, http.StatusConflict, "SENTINEL") }, trello.AddCommentBranchUncertain},
 		"lost response":  {func(response http.ResponseWriter) { dropConnection(t, response) }, trello.AddCommentBranchUncertain},
 		"unusable reply": {func(response http.ResponseWriter) { writeJSON(t, response, http.StatusOK, `{"type":"commentCard"}`) }, trello.AddCommentBranchUncertain},
 	} {
@@ -62,6 +77,52 @@ func TestAddCommentBranches(t *testing.T) {
 		require.NotEmpty(t, ctx.recordedHeartbeat, "%s: the marker stays", name)
 		requireNoSentinel(t, result)
 	}
+}
+
+func TestAddCommentRetriesServiceUnavailableAndNeverResendsAcceptedComment(t *testing.T) {
+	provider := newRecordingTrello(t, func(response http.ResponseWriter, _ *http.Request, index int) {
+		if index == 0 {
+			writeText(t, response, http.StatusServiceUnavailable, "SENTINEL")
+			return
+		}
+		writeJSON(t, response, http.StatusOK, `{"type":"commentCard"}`)
+	})
+	client := newTrelloClient(t, provider.URL)
+	input := trello.AddCommentInput{CardID: testCardID, Text: "Approved."}
+	first := newTrelloDexContext("comment-service-unavailable")
+	_, err := sdkgo.RunMutation(first, client.AddComment(), trelloConnection, input)
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	require.Contains(t, string(first.recordedHeartbeat), `"trelloCanRetry":true`)
+	second := first.nextAttempt()
+	result, err := sdkgo.RunMutation(second, client.AddComment(), trelloConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, trello.AddCommentBranchUncertain, result.Branch)
+	require.Equal(t, 2, provider.requestCount())
+	result, err = sdkgo.RunMutation(second.nextAttempt(), client.AddComment(), trelloConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, trello.AddCommentBranchUncertain, result.Branch)
+	require.Equal(t, 2, provider.requestCount(), "an accepted comment is never sent again")
+}
+
+func TestAddCommentDoesNotResendFromAStaleRetryMarkerOnAttemptThree(t *testing.T) {
+	provider := newRecordingTrello(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeText(t, response, http.StatusServiceUnavailable, "SENTINEL")
+	})
+	client := newTrelloClient(t, provider.URL)
+	input := trello.AddCommentInput{CardID: testCardID, Text: "Approved."}
+	first := newTrelloDexContext("comment-stale-retry")
+	_, err := sdkgo.RunMutation(first, client.AddComment(), trelloConnection, input)
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	second := first.nextAttempt()
+	_, err = sdkgo.RunMutation(second, client.AddComment(), trelloConnection, input)
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	require.Equal(t, 2, provider.requestCount())
+	third := second.nextAttempt()
+	third.previousHeartbeat = first.recordedHeartbeat
+	result, err := sdkgo.RunMutation(third, client.AddComment(), trelloConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, trello.AddCommentBranchUncertain, result.Branch)
+	require.Equal(t, 2, provider.requestCount())
 }
 
 func TestAddCommentAfterAnEarlierDispatchSendsNothing(t *testing.T) {

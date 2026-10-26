@@ -10,8 +10,8 @@
 // and every value keeps QuickBooks's own vocabulary, such as EmailStatus NeedToSend.
 //
 // Every mutation sends the requestid query parameter derived from the Dex Call ID, so a retried
-// or re-dispatched attempt of one Step execution receives QuickBooks's original response
-// instead of creating a second customer, invoice, or payment, or sending a second email.
+// or re-dispatched attempt of one Step execution requests QuickBooks's original response.
+// Key retention and replay on the invoice-send endpoint remain unverified.
 //
 // A connection authorizes one QuickBooks company through Intuit's OAuth 2.0 consent. The
 // connector reads the company's realm ID from the realmid claim of the ID token Intuit returns
@@ -22,6 +22,7 @@ package quickbooks
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -59,6 +60,7 @@ const (
 	defaultRequestTimeout = 20 * time.Second
 	// maximumRequestIDBytes is the longest requestid QuickBooks accepts.
 	maximumRequestIDBytes = 50
+	requestDeadlineMargin = 500 * time.Millisecond
 
 	intuitTransactionIDHeader = "intuit_tid"
 )
@@ -97,7 +99,7 @@ func WithLocalProviderURL(baseURL string) Option {
 	return func(options *clientOptions) { options.localProviderURL = baseURL }
 }
 
-// WithClock overrides the clock used for Receipts, Retry-After dates, and token expiry.
+// WithClock overrides the clock used for Receipts, Retry-After dates, token expiry, and request timing.
 // Tests use it; production connections leave it unset.
 func WithClock(now func() time.Time) Option {
 	return func(options *clientOptions) { options.now = now }
@@ -114,6 +116,11 @@ type Client struct {
 	configuredRealmID string
 	maxResponseBytes  int64
 	now               func() time.Time
+}
+
+type quickbooksAttemptBudget struct {
+	deadline         time.Time
+	minimumWriteTime time.Duration
 }
 
 // New validates configuration and constructs a QuickBooks client. Credentials are resolved
@@ -251,6 +258,25 @@ func (client *Client) send(call sdkgo.Call, credentials Credentials, realmID str
 	if err != nil {
 		return quickbooksExchange{outcome: exchangeDefect, failure: quickbooksFailure(sdkgo.FailureLocalDefect, operation, err.Error())}
 	}
+	deadline, hasDeadline := call.Context.Deadline()
+	if request.isMutation {
+		if request.attemptBudget.minimumWriteTime <= 0 || request.attemptBudget.deadline.Sub(client.now()) < request.attemptBudget.minimumWriteTime {
+			return quickbooksExchange{outcome: exchangeRetry, failure: quickbooksFailure(sdkgo.FailureTransport, operation, "QuickBooks write was not sent because too little attempt time remains")}
+		}
+		deadline, hasDeadline = request.attemptBudget.deadline, true
+	}
+	if call.Context.Err() != nil {
+		return quickbooksExchange{outcome: exchangeRetry, failure: quickbooksFailure(sdkgo.FailureTransport, operation, "QuickBooks attempt has no time left for a request; no request was sent")}
+	}
+	if hasDeadline {
+		requestDeadline := deadline.Add(-requestDeadlineMargin)
+		if requestDeadline.Sub(client.now()) <= 0 {
+			return quickbooksExchange{outcome: exchangeRetry, failure: quickbooksFailure(sdkgo.FailureTransport, operation, "QuickBooks attempt has no time left for a request; no request was sent")}
+		}
+		requestContext, cancel := context.WithDeadline(httpRequest.Context(), requestDeadline)
+		defer cancel()
+		httpRequest = httpRequest.WithContext(requestContext)
+	}
 	httpResponse, err := client.httpClient.Do(httpRequest)
 	if err != nil {
 		if isConnectionNeverEstablished(err) {
@@ -259,6 +285,16 @@ func (client *Client) send(call sdkgo.Call, credentials Credentials, realmID str
 		return quickbooksExchange{outcome: exchangeRetry, failure: quickbooksFailure(sdkgo.FailureTransport, operation, "QuickBooks request failed before a response arrived")}
 	}
 	return classifyHTTPResponse(operation, httpResponse, credentials.AccessToken.Reveal(), client.maxResponseBytes, client.now())
+}
+
+func (client *Client) newAttemptBudget(stepContext context.Context, executeTimeout time.Duration) quickbooksAttemptBudget {
+	startedAt := client.now()
+	available := executeTimeout
+	if stepDeadline, hasDeadline := stepContext.Deadline(); hasDeadline {
+		available = min(available, stepDeadline.Sub(startedAt))
+	}
+	available = max(available, 0)
+	return quickbooksAttemptBudget{deadline: startedAt.Add(available), minimumWriteTime: available / 10}
 }
 
 // buildRequest addresses the company's realm, pins the minor version, and adds a mutation's requestid.

@@ -4,8 +4,8 @@
 // Package asana lists, reads, creates, and updates Asana tasks and comments on them as Dex connector
 // Steps, through the Asana REST API at https://app.asana.com/api/1.0.
 //
-// Asana accepts no idempotency key, so CreateTask and AddComment never resend a request Asana may have
-// received: an ambiguous outcome selects the uncertain branch, and both default to sync durability.
+// Asana accepts no idempotency key. CreateTask and AddComment retry 429, 503, and proven-unsent requests.
+// A lost accepted response or another unknown outcome selects uncertain; both default to sync durability.
 // UpdateTask writes only absolute values, such as completed true or a section membership, so a repeated
 // or concurrent update converges on the same task and keeps the async default.
 package asana
@@ -33,7 +33,8 @@ const (
 	providerName = "asana"
 
 	// operationDeadline keeps every request of one Invoke inside the 30-second Execute timeout.
-	operationDeadline = 25 * time.Second
+	operationDeadline     = 25 * time.Second
+	attemptDeadlineMargin = time.Second
 	// requestTimeout bounds one exchange, so a hung write selects uncertain before Dex times the Step out.
 	requestTimeout = 20 * time.Second
 )
@@ -89,9 +90,10 @@ type exchangeResult struct {
 
 // operationSession carries the resolved credential for one Invoke.
 type operationSession struct {
-	context     context.Context
-	call        sdkgo.Call
-	credentials Credentials
+	context            context.Context
+	call               sdkgo.Call
+	credentials        Credentials
+	minimumRequestTime time.Duration
 }
 
 type readOutcome uint8
@@ -191,12 +193,28 @@ func (client *Client) AddComment() AddCommentOperation { return AddCommentOperat
 
 // startSession resolves the credential, reread before every call; the caller must call the returned cancel.
 func (client *Client) startSession(call sdkgo.Call, operationID string) (*operationSession, context.CancelFunc, *sdkgo.Failure) {
+	now := client.now()
+	deadline := now.Add(operationDeadline)
+	attemptBudget := operationDeadline
+	if attemptDeadline, hasDeadline := call.Context.Deadline(); hasDeadline {
+		if remaining := attemptDeadline.Sub(now); remaining < attemptBudget {
+			attemptBudget = remaining
+		}
+		if attemptDeadline.Add(-attemptDeadlineMargin).Before(deadline) {
+			deadline = attemptDeadline.Add(-attemptDeadlineMargin)
+		}
+	}
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || validateResolvedCredentials(credentials) != nil {
 		return nil, nil, failurePointer(operationID, sdkgo.FailureAuthentication, "Asana connection credentials are unavailable; save a personal access token for the connection")
 	}
-	operationContext, cancel := context.WithTimeout(call.Context, operationDeadline)
-	return &operationSession{context: operationContext, call: call, credentials: credentials}, cancel, nil
+	operationContext, cancel := context.WithDeadline(call.Context, deadline)
+	return &operationSession{context: operationContext, call: call, credentials: credentials, minimumRequestTime: attemptBudget / 10}, cancel, nil
+}
+
+func (client *Client) canStartRequest(session *operationSession) bool {
+	deadline, hasDeadline := session.context.Deadline()
+	return hasDeadline && session.minimumRequestTime > 0 && deadline.Sub(client.now()) >= session.minimumRequestTime
 }
 
 // exchange sends one request. A personal access token cannot be refreshed, so a 401 is never resent.
@@ -287,7 +305,7 @@ func (client *Client) classifyRead(operationID string, subject string, result ex
 	}
 }
 
-// classifyUnkeyedWrite retries only a 429 or an undispatched request, when Asana cannot have written.
+// classifyUnkeyedWrite retries 429, 503, or an undispatched request; other ambiguous outcomes remain uncertain.
 func (client *Client) classifyUnkeyedWrite(operationID string, subject string, result exchangeResult) writeClassification {
 	switch {
 	case errors.Is(result.err, errRequestNotBuilt):
@@ -309,6 +327,8 @@ func (client *Client) classifyUnkeyedWrite(operationID string, subject string, r
 		return writeClassification{outcome: writeAccepted}
 	case response.statusCode == http.StatusTooManyRequests:
 		return writeClassification{outcome: writeRetry, retryAfter: client.retryAfter(response), failure: newFailure(operationID, sdkgo.FailureRateLimit, "Asana rate limited the "+subject+" before writing it")}
+	case response.statusCode == http.StatusServiceUnavailable:
+		return writeClassification{outcome: writeRetry, retryAfter: client.retryAfter(response), failure: newFailure(operationID, sdkgo.FailureAvailability, "Asana "+subject+" is temporarily unavailable")}
 	case response.statusCode == http.StatusNotFound:
 		return writeClassification{outcome: writeNotFound, failure: rejectionFailure(operationID, subject, response.statusCode)}
 	case isConclusiveRejectionStatus(response.statusCode):
@@ -356,8 +376,12 @@ func (client *Client) retryAfter(response asanaResponse) time.Duration {
 
 // receipt records the call; Asana documents no request ID header, so ProviderRequestID stays empty.
 func (client *Client) receipt(session *operationSession, objectID string) sdkgo.Receipt {
+	return client.receiptForCall(session.call, objectID)
+}
+
+func (client *Client) receiptForCall(call sdkgo.Call, objectID string) sdkgo.Receipt {
 	return sdkgo.Receipt{
-		CallID: session.call.ID, IdempotencyKey: session.call.IdempotencyKey, Provider: providerName,
+		CallID: call.ID, IdempotencyKey: call.IdempotencyKey, Provider: providerName,
 		ProviderObjectID: objectID, ObservedAt: client.now().UTC(),
 	}
 }

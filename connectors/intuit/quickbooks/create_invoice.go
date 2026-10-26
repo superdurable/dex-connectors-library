@@ -135,13 +135,14 @@ func (CreateInvoiceOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateInvoic
 // Invoke creates the invoice with POST /invoice under the Step's requestid.
 func (operation CreateInvoiceOperation) Invoke(call sdkgo.Call, input CreateInvoiceInput) sdkgo.MutationAttempt[CreateInvoiceOutput] {
 	client := operation.client
+	attemptBudget := client.newAttemptBudget(call.Context, CreateInvoiceDefinition.StepDefaults.ExecuteMethodTimeout)
 	requested := CreateInvoiceOutput{DocNumber: strings.TrimSpace(input.DocNumber)}
 	payload, err := buildCreateInvoiceRequest(input)
 	if err != nil {
 		return sdkgo.NewMutationBranch(CreateInvoiceBranchDefect, requested,
 			quickbooksFailurePointer(sdkgo.FailureValidation, createInvoiceOperationID, err.Error()), sdkgo.Receipt{})
 	}
-	result := client.exchange(call, createInvoiceOperationID, quickbooksRequest{method: http.MethodPost, path: "/invoice", payload: payload, isMutation: true})
+	result := client.exchange(call, createInvoiceOperationID, quickbooksRequest{method: http.MethodPost, path: "/invoice", payload: payload, isMutation: true, attemptBudget: attemptBudget})
 	receipt := client.receipt(call, result, "")
 	if attempt, isTerminal := mutationAttemptForExchange(result, requested, receipt, mutationBranches{
 		providerRejected: CreateInvoiceBranchProviderRejected, defect: CreateInvoiceBranchDefect,
@@ -157,6 +158,16 @@ func (operation CreateInvoiceOperation) Invoke(call sdkgo.Call, input CreateInvo
 		err = errors.New("invoice belongs to another customer")
 	}
 	if err != nil {
+		if invoiceID := acceptedEntityID(result.response.body, "Invoice"); invoiceID != "" {
+			if body, isFound := readAcceptedEntity(client, call, createInvoiceOperationID, "invoice", invoiceID); isFound {
+				if readWire, readErr := decodeEntity[invoiceWire](body, "Invoice"); readErr == nil {
+					if readInvoice, decodeErr := decodeInvoice(readWire); decodeErr == nil && readInvoice.InvoiceID == invoiceID && readInvoice.CustomerID == payload.CustomerRef.Value && (payload.DocNumber == "" || readInvoice.DocNumber == payload.DocNumber) {
+						receipt.ProviderObjectID = invoiceID
+						return sdkgo.NewMutationBranch(CreateInvoiceBranchCreated, CreateInvoiceOutput{Invoice: readInvoice, DocNumber: requested.DocNumber}, nil, receipt)
+					}
+				}
+			}
+		}
 		return sdkgo.NewMutationUncertain(requested, quickbooksFailure(sdkgo.FailureProtocol, createInvoiceOperationID,
 			"QuickBooks accepted the invoice but returned an unusable invoice: "+err.Error()), receipt)
 	}
