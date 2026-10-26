@@ -58,8 +58,8 @@ func (AddCommentOperation) IdempotencyKey(callID sdkgo.CallID, _ AddCommentInput
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke sends POST /rest/servicedeskapi/request/{issueIdOrKey}/comment at most once per Step execution.
-// Only a 429 or a connection that never opened is retried; any other unconfirmed outcome selects uncertain.
+// Invoke sends POST /rest/servicedeskapi/request/{issueIdOrKey}/comment without repeating a possibly accepted write.
+// A 429, 503, or proven pre-connection failure retries; other unconfirmed outcomes select uncertain.
 func (operation AddCommentOperation) Invoke(call sdkgo.Call, input AddCommentInput) sdkgo.MutationAttempt[AddCommentOutput] {
 	client := operation.client
 	requested := AddCommentOutput{IssueIDOrKey: input.IssueIDOrKey, IsPublic: input.IsPublic}
@@ -71,37 +71,68 @@ func (operation AddCommentOperation) Invoke(call sdkgo.Call, input AddCommentInp
 	if err := validatePlainText(input.Body, "body", true); err != nil {
 		return sdkgo.NewMutationBranch(AddCommentBranchDefect, requested, failurePointer(addCommentOperationID, sdkgo.FailureValidation, err.Error()), sdkgo.Receipt{})
 	}
+	if attempt, isTerminal := singleDispatchAttemptBeforeSend(claimSingleDispatch(call), addCommentOperationID, requested, singleDispatchReceipt(call)); isTerminal {
+		return attempt
+	}
 	session, cancel, sessionErr := client.startSession(call, addCommentOperationID)
 	if sessionErr != nil {
 		if sessionErr.isRetryable {
+			releaseSingleDispatch(call)
 			return sdkgo.NewMutationRetry[AddCommentOutput](sessionErr.failure, sessionErr.retryAfter)
 		}
 		return sdkgo.NewMutationBranch(AddCommentBranchDefect, requested, sessionErr.pointer(), sdkgo.Receipt{})
 	}
 	defer cancel()
-	if attempt, isTerminal := singleDispatchAttemptBeforeSend(claimSingleDispatch(call), addCommentOperationID, requested, client.emptyReceipt(session)); isTerminal {
-		return attempt
-	}
 	result := client.exchange(session, providerRequest{
 		method: http.MethodPost, api: serviceDeskAPI, path: requestPath(issueIDOrKey) + "/comment",
 		payload: addCommentRequestBody{Body: input.Body, Public: input.IsPublic},
 	})
 	classification := client.classifyUnkeyedWrite(addCommentOperationID, addCommentFailureSubject, result)
 	receipt := client.receipt(session, result.response, issueIDOrKey)
+	if result.response.statusCode == http.StatusConflict {
+		var conflict serviceDeskComment
+		if json.Unmarshal(result.response.body, &conflict) == nil {
+			if recovered, isConfirmed := client.readBackConflictedComment(session, issueIDOrKey, input, conflict.ID); isConfirmed {
+				return addedCommentAttempt(requested, recovered, receipt)
+			}
+		}
+	}
 	if attempt, isTerminal := singleDispatchAttemptForWrite(call, classification, requested, receipt, singleDispatchBranches{
 		notFound: AddCommentBranchNotFound, providerRejected: AddCommentBranchProviderRejected, defect: AddCommentBranchDefect,
 	}); isTerminal {
 		return attempt
 	}
 	var created serviceDeskComment
-	if err := json.Unmarshal(result.response.body, &created); err != nil || !isSafeProviderToken(created.ID) {
+	if err := json.Unmarshal(result.response.body, &created); err != nil || !numericIDPattern.MatchString(created.ID) {
 		return sdkgo.NewMutationUncertain(requested, newFailure(addCommentOperationID, sdkgo.FailureProtocol,
 			"Jira Service Management accepted the comment but returned an unusable comment reference"), receipt)
 	}
+	return addedCommentAttempt(requested, created, receipt)
+}
+
+func addedCommentAttempt(requested AddCommentOutput, created serviceDeskComment, receipt sdkgo.Receipt) sdkgo.MutationAttempt[AddCommentOutput] {
 	output := requested
 	output.CommentID, output.CreatedAt = created.ID, created.Created.timePointer()
 	if created.Public != nil {
 		output.IsPublic = *created.Public
 	}
 	return sdkgo.NewMutationBranch(AddCommentBranchAdded, output, nil, receipt)
+}
+
+func (client *Client) readBackConflictedComment(session *operationSession, issueIDOrKey string, input AddCommentInput, commentID string) (serviceDeskComment, bool) {
+	if !numericIDPattern.MatchString(commentID) {
+		return serviceDeskComment{}, false
+	}
+	result := client.exchange(session, providerRequest{
+		method: http.MethodGet, api: serviceDeskAPI, path: requestPath(issueIDOrKey) + "/comment/" + commentID,
+	})
+	if client.classifyRead(addCommentOperationID, addCommentFailureSubject, result).outcome != readSucceeded {
+		return serviceDeskComment{}, false
+	}
+	var recovered serviceDeskComment
+	if json.Unmarshal(result.response.body, &recovered) != nil || recovered.ID != commentID || recovered.Public == nil ||
+		recovered.Body != input.Body || *recovered.Public != input.IsPublic {
+		return serviceDeskComment{}, false
+	}
+	return recovered, true
 }

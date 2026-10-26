@@ -4,12 +4,16 @@
 package jiraservicemanagement
 
 import (
+	"time"
+
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 
 // singleDispatchMarker is the Dex heartbeat checkpoint recorded before a non-idempotent request is sent.
 type singleDispatchMarker struct {
 	DispatchedCallID sdkgo.CallID `json:"jiraServiceManagementDispatchedCallId"`
+	Attempt          int32        `json:"attempt"`
+	CanResend        bool         `json:"canResend,omitempty"`
 }
 
 // singleDispatchClaim is whether this attempt may send its non-idempotent request.
@@ -35,19 +39,28 @@ type singleDispatchBranches struct {
 func claimSingleDispatch(call sdkgo.Call) singleDispatchClaim {
 	var marker singleDispatchMarker
 	isMarkerFound, err := call.Context.GetLastHeartbeatValue(&marker)
-	if err != nil || isMarkerFound {
+	if err != nil {
 		return singleDispatchAlreadySent
 	}
-	if err := call.Context.RecordHeartbeat(singleDispatchMarker{DispatchedCallID: call.ID}); err != nil {
+	attempt := call.Context.Attempt()
+	if attempt < 1 || (attempt == 1 && isMarkerFound) ||
+		(attempt > 1 && (!isMarkerFound || marker.DispatchedCallID != call.ID || marker.Attempt != attempt-1 || !marker.CanResend)) {
+		return singleDispatchAlreadySent
+	}
+	if err := call.Context.RecordHeartbeat(singleDispatchMarker{DispatchedCallID: call.ID, Attempt: attempt}); err != nil {
 		return singleDispatchNotRecorded
 	}
 	return singleDispatchGranted
 }
 
-// releaseSingleDispatch clears the marker after the provider provably did not apply the request.
+// releaseSingleDispatch permits only the immediately following attempt after provable non-application.
 func releaseSingleDispatch(call sdkgo.Call) {
-	// A failed clear leaves the marker, so the next attempt selects uncertain instead of resending.
-	_ = call.Context.RecordHeartbeat(nil)
+	// A lost marker leaves the next attempt uncertain instead of resending.
+	_ = call.Context.RecordHeartbeat(singleDispatchMarker{DispatchedCallID: call.ID, Attempt: call.Context.Attempt(), CanResend: true})
+}
+
+func singleDispatchReceipt(call sdkgo.Call) sdkgo.Receipt {
+	return sdkgo.Receipt{CallID: call.ID, IdempotencyKey: call.IdempotencyKey, Provider: providerName, ObservedAt: time.Now().UTC()}
 }
 
 // singleDispatchAttemptBeforeSend returns the attempt for a claim that does not permit sending.

@@ -124,7 +124,8 @@ customer's same-summary request, and a resolved duplicate, then read back with
 its SLAs, labeled, noted internally, replied to publicly, and moved; the
 customer's open request reused; an unknown requester completes without a
 create; a rejected create sent once; a rate-limited create retried after
-`Retry-After`; a create timeout reconciled by confirming a missing, a
+`Retry-After`; a 503 create retried from an attempt-numbered checkpoint; a
+create timeout reconciled by confirming a missing, a
 mismatched, and then the real request key without a second create; a 5xx
 create raised again only after operator approval; a nine-second create and a
 nine-second public reply each sent once under sync durability; a nine-second
@@ -132,6 +133,8 @@ label update and a nine-second transition whose backup attempts find the
 change already made and write nothing; a destination the workflow does not
 offer; an internal note timeout that fails without a resend; and a blank
 `cloudId` resolved to the only granted site.
+The mock-backed test runs the same Flow on a real Dex Worker, scripts one
+create retry, and checks literal connector inputs and call counts.
 
 ```bash
 DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./examples/support-request/... -count=1 -v

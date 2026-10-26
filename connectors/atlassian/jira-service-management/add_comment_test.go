@@ -5,6 +5,7 @@ package jiraservicemanagement_test
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -78,4 +79,115 @@ func TestAddCommentRejectsABlankBodyWithoutARequest(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, jiraservicemanagement.AddCommentBranchDefect, result.Branch)
 	}
+}
+
+func TestAddCommentRetries503AndFailsClosedAfterAnAcceptedReply(t *testing.T) {
+	provider := newRecordingProvider(t, func(response http.ResponseWriter, _ *http.Request, index int) {
+		if index == 0 {
+			writeJSON(t, response, http.StatusServiceUnavailable, `{"errorMessage":"SENTINEL unavailable"}`)
+			return
+		}
+		writeJSON(t, response, http.StatusCreated, `{"id":"1001","public":true}`)
+	})
+	input := jiraservicemanagement.AddCommentInput{IssueIDOrKey: "ITH-42", Body: "We are on it.", IsPublic: true}
+	ctx := newTestDexContext("comment-503")
+	_, err := sdkgo.RunMutation(ctx, newTestClient(t, provider.URL).AddComment(), jsmConnection, input)
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	require.Contains(t, string(ctx.recordedHeartbeat), `"canResend":true`)
+	next := ctx.nextAttempt()
+	result, err := sdkgo.RunMutation(next, newTestClient(t, provider.URL).AddComment(), jsmConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, jiraservicemanagement.AddCommentBranchAdded, result.Branch)
+	third := next.nextAttempt()
+	third.previousHeartbeat = ctx.recordedHeartbeat
+	result, err = sdkgo.RunMutation(third, newTestClient(t, provider.URL).AddComment(), jsmConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, jiraservicemanagement.AddCommentBranchUncertain, result.Branch)
+	require.Equal(t, 2, provider.requestCount(), "an accepted reply is never resent")
+}
+
+func TestAddCommentKeepsAConflictUncertainWithoutResending(t *testing.T) {
+	provider := newRecordingProvider(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusConflict, `{"errorMessage":"SENTINEL conflict"}`)
+	})
+	input := jiraservicemanagement.AddCommentInput{IssueIDOrKey: "ITH-42", Body: "We are on it.", IsPublic: true}
+	ctx := newTestDexContext("comment-conflict")
+	result, err := sdkgo.RunMutation(ctx, newTestClient(t, provider.URL).AddComment(), jsmConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, jiraservicemanagement.AddCommentBranchUncertain, result.Branch)
+	require.Equal(t, sdkgo.FailureConflict, result.Failure.Kind)
+	replay, err := sdkgo.RunMutation(ctx.nextAttempt(), newTestClient(t, provider.URL).AddComment(), jsmConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, jiraservicemanagement.AddCommentBranchUncertain, replay.Branch)
+	require.Equal(t, 1, provider.requestCount())
+}
+
+func TestAddCommentDoesNotResendAfterAnInterruptedAcceptedResponse(t *testing.T) {
+	provider := newRecordingProvider(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeInterruptedAcceptedJSON(t, response)
+	})
+	input := jiraservicemanagement.AddCommentInput{IssueIDOrKey: "ITH-42", Body: "We are on it.", IsPublic: true}
+	ctx := newTestDexContext("comment-interrupted-accepted")
+	result, err := sdkgo.RunMutation(ctx, newTestClient(t, provider.URL).AddComment(), jsmConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, jiraservicemanagement.AddCommentBranchUncertain, result.Branch)
+	replay, err := sdkgo.RunMutation(ctx.nextAttempt(), newTestClient(t, provider.URL).AddComment(), jsmConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, jiraservicemanagement.AddCommentBranchUncertain, replay.Branch)
+	require.Equal(t, 1, provider.requestCount())
+}
+
+func TestAddCommentDoesNotResendAfterAnOversizedAcceptedResponse(t *testing.T) {
+	provider := newRecordingProvider(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusCreated, `{"id":"1001","padding":"`+strings.Repeat("x", 2048)+`"}`)
+	})
+	client, err := jiraservicemanagement.New(jiraservicemanagement.Config{
+		CloudID: testCloudID, Endpoint: provider.URL, MaxResponseBytes: 1024,
+	}, staticTestCredentials())
+	require.NoError(t, err)
+	input := jiraservicemanagement.AddCommentInput{IssueIDOrKey: "ITH-42", Body: "We are on it.", IsPublic: true}
+	ctx := newTestDexContext("comment-oversized-accepted")
+	result, err := sdkgo.RunMutation(ctx, client.AddComment(), jsmConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, jiraservicemanagement.AddCommentBranchUncertain, result.Branch)
+	replay, err := sdkgo.RunMutation(ctx.nextAttempt(), client.AddComment(), jsmConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, jiraservicemanagement.AddCommentBranchUncertain, replay.Branch)
+	require.Equal(t, 1, provider.requestCount())
+}
+
+func TestAddCommentChecksPriorDispatchBeforeResolvingCredentials(t *testing.T) {
+	provider := newRecordingProvider(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusCreated, `{"id":"1001","public":true}`)
+	})
+	input := jiraservicemanagement.AddCommentInput{IssueIDOrKey: "ITH-42", Body: "We are on it.", IsPublic: true}
+	ctx := newTestDexContext("comment-credential-after-acceptance")
+	result, err := sdkgo.RunMutation(ctx, newTestClient(t, provider.URL).AddComment(), jsmConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, jiraservicemanagement.AddCommentBranchAdded, result.Branch)
+	client, err := jiraservicemanagement.New(jiraservicemanagement.Config{CloudID: testCloudID, Endpoint: provider.URL},
+		sdkgo.StaticCredentialProvider[jiraservicemanagement.Credentials]{})
+	require.NoError(t, err)
+	replay, err := sdkgo.RunMutation(ctx.nextAttempt(), client.AddComment(), jsmConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, jiraservicemanagement.AddCommentBranchUncertain, replay.Branch)
+	require.Equal(t, 1, provider.requestCount())
+}
+
+func TestAddCommentReadsBackAConflictWithACommentID(t *testing.T) {
+	provider := newRecordingProvider(t, func(response http.ResponseWriter, request *http.Request, index int) {
+		if index == 0 {
+			writeJSON(t, response, http.StatusConflict, `{"id":"1001"}`)
+			return
+		}
+		require.Equal(t, http.MethodGet, request.Method)
+		require.Equal(t, testServiceDeskPath+"/request/ITH-42/comment/1001", request.URL.Path)
+		writeJSON(t, response, http.StatusOK, `{"id":"1001","body":"We are on it.","public":true}`)
+	})
+	input := jiraservicemanagement.AddCommentInput{IssueIDOrKey: "ITH-42", Body: "We are on it.", IsPublic: true}
+	result, err := sdkgo.RunMutation(newTestDexContext("comment-conflict-readback"), newTestClient(t, provider.URL).AddComment(), jsmConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, jiraservicemanagement.AddCommentBranchAdded, result.Branch)
+	require.Equal(t, "1001", result.Value.CommentID)
+	require.Equal(t, 2, provider.requestCount())
 }

@@ -93,6 +93,10 @@ type createTicketRequestBody struct {
 type createdRequestResource struct {
 	IssueID       string           `json:"issueId"`
 	IssueKey      string           `json:"issueKey"`
+	ServiceDeskID string           `json:"serviceDeskId"`
+	RequestTypeID string           `json:"requestTypeId"`
+	Summary       string           `json:"summary"`
+	Reporter      *serviceDeskUser `json:"reporter"`
 	CreatedDate   *serviceDeskDate `json:"createdDate"`
 	CurrentStatus *struct {
 		Status         string `json:"status"`
@@ -109,28 +113,36 @@ func (CreateTicketOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateTicketI
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke sends POST /rest/servicedeskapi/request at most once per Step execution. Only a 429 or a
-// connection that never opened is retried; any other unconfirmed outcome selects uncertain.
+// Invoke sends POST /rest/servicedeskapi/request once per attempt, fenced by its dispatch checkpoint.
 func (operation CreateTicketOperation) Invoke(call sdkgo.Call, input CreateTicketInput) sdkgo.MutationAttempt[CreateTicketOutput] {
 	client := operation.client
 	body, requested, err := buildCreateTicketRequest(input)
 	if err != nil {
 		return sdkgo.NewMutationBranch(CreateTicketBranchDefect, requested, failurePointer(createTicketOperationID, sdkgo.FailureValidation, err.Error()), sdkgo.Receipt{})
 	}
+	if attempt, isTerminal := singleDispatchAttemptBeforeSend(claimSingleDispatch(call), createTicketOperationID, requested, singleDispatchReceipt(call)); isTerminal {
+		return attempt
+	}
 	session, cancel, sessionErr := client.startSession(call, createTicketOperationID)
 	if sessionErr != nil {
 		if sessionErr.isRetryable {
+			releaseSingleDispatch(call)
 			return sdkgo.NewMutationRetry[CreateTicketOutput](sessionErr.failure, sessionErr.retryAfter)
 		}
 		return sdkgo.NewMutationBranch(CreateTicketBranchDefect, requested, sessionErr.pointer(), sdkgo.Receipt{})
 	}
 	defer cancel()
-	if attempt, isTerminal := singleDispatchAttemptBeforeSend(claimSingleDispatch(call), createTicketOperationID, requested, client.emptyReceipt(session)); isTerminal {
-		return attempt
-	}
 	result := client.exchange(session, providerRequest{method: http.MethodPost, api: serviceDeskAPI, path: "/request", payload: body})
 	classification := client.classifyUnkeyedWrite(createTicketOperationID, createTicketFailureSubject, result)
 	receipt := client.receipt(session, result.response, "")
+	if result.response.statusCode == http.StatusConflict {
+		var conflict createdRequestResource
+		if json.Unmarshal(result.response.body, &conflict) == nil {
+			if recovered, isConfirmed := client.readBackCreatedTicket(session, conflict, requested); isConfirmed {
+				return createdTicketAttempt(requested, recovered, receipt)
+			}
+		}
+	}
 	if classification.outcome == writeRejected {
 		requested.RejectedFieldIDs, requested.ProviderErrorKey = classification.rejection.fieldIDs, classification.rejection.errorKey
 	}
@@ -140,10 +152,22 @@ func (operation CreateTicketOperation) Invoke(call sdkgo.Call, input CreateTicke
 		return attempt
 	}
 	var created createdRequestResource
-	if err := json.Unmarshal(result.response.body, &created); err != nil || !numericIDPattern.MatchString(created.IssueID) || !issueKeyPattern.MatchString(created.IssueKey) {
+	if err := json.Unmarshal(result.response.body, &created); err != nil {
 		return sdkgo.NewMutationUncertain(requested, newFailure(createTicketOperationID, sdkgo.FailureProtocol,
 			"Jira Service Management accepted the customer request but returned an unusable request reference"), receipt)
 	}
+	if !numericIDPattern.MatchString(created.IssueID) || !issueKeyPattern.MatchString(created.IssueKey) {
+		if recovered, isConfirmed := client.readBackCreatedTicket(session, created, requested); isConfirmed {
+			created = recovered
+		} else {
+			return sdkgo.NewMutationUncertain(requested, newFailure(createTicketOperationID, sdkgo.FailureProtocol,
+				"Jira Service Management accepted the customer request but its reference could not be confirmed"), receipt)
+		}
+	}
+	return createdTicketAttempt(requested, created, receipt)
+}
+
+func createdTicketAttempt(requested CreateTicketOutput, created createdRequestResource, receipt sdkgo.Receipt) sdkgo.MutationAttempt[CreateTicketOutput] {
 	output := requested
 	output.IssueID, output.IssueKey, output.CreatedAt = created.IssueID, created.IssueKey, created.CreatedDate.timePointer()
 	if created.CurrentStatus != nil {
@@ -151,6 +175,33 @@ func (operation CreateTicketOperation) Invoke(call sdkgo.Call, input CreateTicke
 	}
 	receipt.ProviderObjectID = created.IssueKey
 	return sdkgo.NewMutationBranch(CreateTicketBranchCreated, output, nil, receipt)
+}
+
+func (client *Client) readBackCreatedTicket(session *operationSession, accepted createdRequestResource, requested CreateTicketOutput) (createdRequestResource, bool) {
+	reference := accepted.IssueID
+	if !numericIDPattern.MatchString(reference) {
+		reference = accepted.IssueKey
+	}
+	if !numericIDPattern.MatchString(reference) && !issueKeyPattern.MatchString(reference) {
+		return createdRequestResource{}, false
+	}
+	result := client.exchange(session, providerRequest{method: http.MethodGet, api: serviceDeskAPI, path: requestPath(reference)})
+	if client.classifyRead(createTicketOperationID, createTicketFailureSubject, result).outcome != readSucceeded {
+		return createdRequestResource{}, false
+	}
+	var recovered createdRequestResource
+	if json.Unmarshal(result.response.body, &recovered) != nil || !numericIDPattern.MatchString(recovered.IssueID) || !issueKeyPattern.MatchString(recovered.IssueKey) {
+		return createdRequestResource{}, false
+	}
+	if recovered.ServiceDeskID != requested.ServiceDeskID || recovered.RequestTypeID != requested.RequestTypeID || recovered.Summary != requested.Summary ||
+		requested.RaiseOnBehalfOfAccountID != "" && (recovered.Reporter == nil || recovered.Reporter.AccountID != requested.RaiseOnBehalfOfAccountID) {
+		return createdRequestResource{}, false
+	}
+	if numericIDPattern.MatchString(accepted.IssueID) && recovered.IssueID != accepted.IssueID ||
+		issueKeyPattern.MatchString(accepted.IssueKey) && recovered.IssueKey != accepted.IssueKey {
+		return createdRequestResource{}, false
+	}
+	return recovered, true
 }
 
 // buildCreateTicketRequest validates input and returns the request plus the echo used by every branch.
