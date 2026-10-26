@@ -196,9 +196,15 @@ func requireRetry(t *testing.T, err error, kind sdkgo.FailureKind) *sdkgo.RetryE
 type rejectionRefreshingCredentialProvider struct {
 	mutex           sync.Mutex
 	forcedRefreshes int
+	hasReplacement  bool
 }
 
-func (*rejectionRefreshingCredentialProvider) Resolve(sdkgo.Call) (teams.Credentials, error) {
+func (provider *rejectionRefreshingCredentialProvider) Resolve(sdkgo.Call) (teams.Credentials, error) {
+	provider.mutex.Lock()
+	defer provider.mutex.Unlock()
+	if provider.hasReplacement {
+		return teams.Credentials{AccessToken: sdkgo.NewSecretString("replacement-token")}, nil
+	}
 	return teams.Credentials{AccessToken: sdkgo.NewSecretString("rejected-token")}, nil
 }
 
@@ -219,6 +225,7 @@ func (provider *rejectionRefreshingCredentialProvider) ResolveAfterRejection(
 	provider.mutex.Lock()
 	defer provider.mutex.Unlock()
 	provider.forcedRefreshes++
+	provider.hasReplacement = true
 	return teams.Credentials{AccessToken: sdkgo.NewSecretString("replacement-token")}, nil
 }
 
@@ -227,13 +234,14 @@ type testDexContext struct {
 	context.Context
 	step           string
 	firstAttemptAt time.Time
+	attempt        int32
 	mutex          sync.Mutex
 	heartbeat      []byte
 	recordErr      error
 }
 
 func newTestDexContext(step string) *testDexContext {
-	return &testDexContext{Context: context.Background(), step: step, firstAttemptAt: time.Now()}
+	return &testDexContext{Context: context.Background(), step: step, firstAttemptAt: time.Now(), attempt: 1}
 }
 
 func (*testDexContext) FlowID() string                          { return "teams-flow" }
@@ -243,7 +251,7 @@ func (dexContext *testDexContext) StepExecutionID() string      { return dexCont
 func (*testDexContext) FromStepExecutionID() string             { return "" }
 func (*testDexContext) RecoveryError() *dex.RecoveryErrorInfo   { return nil }
 func (dexContext *testDexContext) FirstAttemptAt() time.Time    { return dexContext.firstAttemptAt }
-func (*testDexContext) Attempt() int32                          { return 1 }
+func (dexContext *testDexContext) Attempt() int32               { return dexContext.attempt }
 func (*testDexContext) HasTimerFired() bool                     { return false }
 func (*testDexContext) HasTimerFiredByIndex(int) bool           { return false }
 func (*testDexContext) WaitForMethodFailed() bool               { return false }
@@ -284,6 +292,12 @@ func (dexContext *testDexContext) hasHeartbeat() bool {
 	dexContext.mutex.Lock()
 	defer dexContext.mutex.Unlock()
 	return dexContext.heartbeat != nil
+}
+
+func (dexContext *testDexContext) advanceAttempt() {
+	dexContext.mutex.Lock()
+	defer dexContext.mutex.Unlock()
+	dexContext.attempt++
 }
 
 var _ dex.Context = (*testDexContext)(nil)

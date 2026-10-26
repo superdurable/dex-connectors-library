@@ -113,8 +113,9 @@ func TestThrottledPostClearsTheCheckpointAndIsSentAfterRetryAfter(t *testing.T) 
 	var retryAfter *dex.RetryAfterError
 	require.ErrorAs(t, err, &retryAfter)
 	require.Equal(t, 7*time.Second, retryAfter.After)
-	require.False(t, dexContext.hasHeartbeat(), "Graph throttles before storing, so the post may be sent again")
+	require.True(t, dexContext.hasHeartbeat(), "the fence records permission for only the next attempt to resend")
 
+	dexContext.advanceAttempt()
 	result, err := sdkgo.RunMutation(dexContext, client.PostChannelMessage(), teamsConnection, validChannelMessageInput())
 	require.NoError(t, err)
 	require.Equal(t, teams.PostChannelMessageBranchSent, result.Branch)
@@ -138,7 +139,7 @@ func TestRejectedPostNamesTheGraphErrorCodeWithoutItsMessage(t *testing.T) {
 	require.Equal(t, 1, provider.requestCount())
 }
 
-func TestRejectedAccessTokenIsRefreshedAndThePostSentOnce(t *testing.T) {
+func TestRejectedAccessTokenRefreshesBeforeTheNextFencedAttempt(t *testing.T) {
 	provider := newRecordingGraph(t, func(response http.ResponseWriter, request *http.Request, _ int) {
 		if request.Header.Get("Authorization") == "Bearer rejected-token" {
 			writeJSON(t, response, http.StatusUnauthorized, graphErrorJSON("InvalidAuthenticationToken"))
@@ -150,7 +151,11 @@ func TestRejectedAccessTokenIsRefreshedAndThePostSentOnce(t *testing.T) {
 	client, err := teams.New(teams.Config{Endpoint: provider.endpoint()}, credentials)
 	require.NoError(t, err)
 
-	result, err := sdkgo.RunMutation(newTestDexContext("refresh"), client.PostChannelMessage(), teamsConnection, validChannelMessageInput())
+	dexContext := newTestDexContext("refresh")
+	_, err = sdkgo.RunMutation(dexContext, client.PostChannelMessage(), teamsConnection, validChannelMessageInput())
+	requireRetry(t, err, sdkgo.FailureAuthentication)
+	dexContext.advanceAttempt()
+	result, err := sdkgo.RunMutation(dexContext, client.PostChannelMessage(), teamsConnection, validChannelMessageInput())
 	require.NoError(t, err)
 	require.Equal(t, teams.PostChannelMessageBranchSent, result.Branch)
 	require.Equal(t, 1, credentials.forcedRefreshes)
@@ -193,6 +198,7 @@ func TestUnconfirmedPostIsConfirmedByReadingTheChannelBackWithoutAResend(t *test
 	require.Equal(t, 5*time.Second, retryAfter.After, "the next attempt waits for the message to appear")
 	require.True(t, dexContext.hasHeartbeat())
 
+	dexContext.advanceAttempt()
 	result, err := sdkgo.RunMutation(dexContext, client.PostChannelMessage(), teamsConnection, validChannelMessageInput())
 	require.NoError(t, err)
 	require.Equal(t, teams.PostChannelMessageBranchSent, result.Branch)
@@ -219,7 +225,7 @@ func TestUnconfirmedPostWithoutAMatchSelectsUncertain(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			provider := newRecordingGraph(t, func(response http.ResponseWriter, request *http.Request, _ int) {
 				if request.Method == http.MethodPost {
-					writeJSON(t, response, http.StatusServiceUnavailable, graphErrorJSON("ServiceNotAvailable"))
+					writeJSON(t, response, http.StatusInternalServerError, graphErrorJSON("InternalServerError"))
 					return
 				}
 				readBack(t, response)
@@ -229,8 +235,9 @@ func TestUnconfirmedPostWithoutAMatchSelectsUncertain(t *testing.T) {
 
 			_, err := sdkgo.RunMutation(dexContext, client.PostChannelMessage(), teamsConnection, validChannelMessageInput())
 			retry := requireRetry(t, err, sdkgo.FailureAvailability)
-			require.Contains(t, retry.Failure.Message, "HTTP 503 ServiceNotAvailable")
+			require.Contains(t, retry.Failure.Message, "HTTP 500 InternalServerError")
 
+			dexContext.advanceAttempt()
 			result, err := sdkgo.RunMutation(dexContext, client.PostChannelMessage(), teamsConnection, validChannelMessageInput())
 			require.NoError(t, err)
 			require.Equal(t, sdkgo.UncertainBranchID, result.Branch)
@@ -254,6 +261,7 @@ func TestUnusableAcceptedResponseIsReconciledInsteadOfResent(t *testing.T) {
 
 	_, err := sdkgo.RunMutation(dexContext, client.PostChannelMessage(), teamsConnection, validChannelMessageInput())
 	requireRetry(t, err, sdkgo.FailureProtocol)
+	dexContext.advanceAttempt()
 	result, err := sdkgo.RunMutation(dexContext, client.PostChannelMessage(), teamsConnection, validChannelMessageInput())
 	require.NoError(t, err)
 	require.Equal(t, teams.PostChannelMessageBranchSent, result.Branch)
@@ -288,6 +296,7 @@ func TestPostResponseReflectingTheAccessTokenIsNotTrusted(t *testing.T) {
 	_, err := sdkgo.RunMutation(dexContext, client.PostChannelMessage(), teamsConnection, validChannelMessageInput())
 	retry := requireRetry(t, err, sdkgo.FailureProtocol)
 	require.Contains(t, retry.Failure.Message, "credential material")
+	dexContext.advanceAttempt()
 	result, err := sdkgo.RunMutation(dexContext, client.PostChannelMessage(), teamsConnection, validChannelMessageInput())
 	require.NoError(t, err)
 	require.Equal(t, sdkgo.UncertainBranchID, result.Branch)

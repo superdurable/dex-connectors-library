@@ -76,6 +76,7 @@ func TestUnconfirmedReplyIsConfirmedOnlyByAReplyInTheSameThread(t *testing.T) {
 
 	_, err := sdkgo.RunMutation(dexContext, client.PostThreadReply(), teamsConnection, validThreadReplyInput())
 	requireRetry(t, err, sdkgo.FailureTransport)
+	dexContext.advanceAttempt()
 	result, err := sdkgo.RunMutation(dexContext, client.PostThreadReply(), teamsConnection, validThreadReplyInput())
 	require.NoError(t, err)
 	require.Equal(t, teams.PostThreadReplyBranchSent, result.Branch)

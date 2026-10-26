@@ -41,39 +41,68 @@ only when it stays on the endpoint's scheme and host and names the same thread.
 Every operation selects `defect` for invalid input or configuration without a
 request. A conclusive Graph refusal selects `providerRejected` (and `notFound`
 for a missing thread when reading); the failure names the HTTP status and
-Graph's `error.code`, never `error.message`. After a 401 the connector asks
-once for a token refresh, which the project connection performs only when the
-stored expiry has passed, and then retries once; otherwise the 401 selects
-`providerRejected`. 429, 503, 504, other 5xx, 408, and dropped connections retry
-after `Retry-After` when Graph sends one. Teams allows about one request per
+Graph's `error.code`, never `error.message`. Reads may refresh a rejected
+token and retry once. A post refreshes a rejected token when supported and
+records permission for the next Dex attempt to resend; otherwise 401 selects
+`providerRejected`. A 429 or 503 on a post records permission for
+the immediately following attempt to retry; other ambiguous write responses
+are reconciled or select `uncertain`. Reads retry transient failures after
+`Retry-After` when Graph sends one. Teams allows about one request per
 second per channel or chat.
 
 ## Duplicate-safe posting
 
-Graph's `chatMessage` has no idempotency key and no client-settable ID, so a
-repeated request posts a second message. Dex re-dispatches an async Step whose
+The documented [channel](https://learn.microsoft.com/graph/api/channel-post-messages)
+and [chat](https://learn.microsoft.com/graph/api/chat-post-messages) create
+requests expose no idempotency key or client-settable message ID. A repeated
+request can post a second message. Dex re-dispatches an async Step whose
 local attempt passes about seven seconds and replays a Step after a lost
 Worker, so every post:
 
-1. runs with `sync` Execute durability, so no backup attempt runs while the
-   first is in flight;
-2. records a Dex heartbeat checkpoint before it sends;
-3. on any later attempt of the same Step execution, never sends. A channel
-   post reads the channel's 50 most recently active root messages, and a reply
-   reads the thread's 50 newest replies, and reports `sent` with
-   `isConfirmedByReadBack` when exactly one person's undeleted message created
-   after the first send has the same subject and text. Otherwise it selects
-   `uncertain`;
-4. clears the checkpoint only when Graph provably stored nothing: a 429, or a
-   connection that never opened.
+1. runs with `sync` Execute durability so its heartbeat is visible to later attempts;
+2. uses the Connector SDK single-dispatch fence to claim the write before it sends;
+3. sends again only on the immediately following attempt after a recorded
+   `notSent` or `canResend` checkpoint. Graph's 429 and 503 responses, and a
+   traced connection failure before any connection opened, permit a retry;
+4. after an ambiguous send, reads a known message ID when possible. Without
+   one, a channel post searches the 50 most recently active root messages and
+   a reply searches the thread's 50 newest replies. Exactly one matching
+   undeleted message may confirm the post; no match or several matches select
+   `uncertain`.
 
-An ambiguous response (timeout, 5xx, 408, an unreadable or oversized 2xx) keeps
-the checkpoint and retries after at least five seconds so the read-back can see
+An ambiguous response (timeout, 500, 504, 408, an unreadable or oversized 2xx) keeps
+the claim and retries after at least five seconds so the read-back can see
 the message. Reading back needs `ChannelMessage.Read.All`; without it the
 attempt selects `uncertain`. The connection cannot read chat messages (that
-needs `Chat.Read`), so an unconfirmed chat message selects `uncertain` at once.
+needs [delegated `Chat.Read`](https://learn.microsoft.com/graph/api/chatmessage-get)),
+so an unconfirmed chat message selects `uncertain` at once.
 A Flow must treat `uncertain` as "may have been posted" and never resend it
 automatically.
+
+[Microsoft Graph's throttling guidance](https://learn.microsoft.com/graph/throttling)
+documents that 429 requests fail before processing. Its
+[error reference](https://learn.microsoft.com/graph/errors) recommends retrying
+503 after a delay. The exact 503 no-acceptance behavior for Teams messages and
+the completeness of the recent-message read-back remain unverified against a
+live tenant; an inconclusive read-back never permits another write.
+An in-flight Step from an older connector release carries a legacy heartbeat
+marker that this fence cannot read. Its next attempt fails closed and needs
+operator reconciliation; upgrade while no post Step is in flight when possible.
+
+## Mocks
+
+`teamsmock` provides one consistent incident world: the default channel post
+creates the root message, the default reply posts status in its thread, the
+default read returns Ada's acknowledgement, and the default chat post is an
+escalation to the on-call chat. Each operation also has a conclusive
+`providerRejected` mock; the read has `notFound` and `invalidResponse` cases.
+The runnable example uses the generated connection in a real-Dex test:
+
+```go
+	mock := teamsmock.New(t, ConnectionName)
+	policy := AcknowledgementPolicy{CheckInterval: time.Second, MaximumChecks: 3}
+	flow := NewFlow(mock.Connection(), ChannelSelection{TeamID: integrationTeamID, ChannelID: integrationChannelID}, EscalationChatSelection{}, &policy)
+```
 
 The example's integration tests prove each step on a real Dex Server: a fake
 that answers posts after nine seconds receives one post per Step, a lost

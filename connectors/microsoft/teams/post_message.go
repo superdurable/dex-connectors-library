@@ -4,7 +4,9 @@
 package teams
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -12,6 +14,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 const (
@@ -44,43 +47,98 @@ type postBranches struct {
 	defect           sdkgo.BranchID
 }
 
-// send posts the message at most once per Step execution. It records a dispatch checkpoint first; an
-// attempt that finds the checkpoint never sends, and reports the earlier message when a read-back finds
-// exactly one match, or selects uncertain. Only a 429 or a connection that never opened clears the
-// checkpoint for a resend.
+// messageSendAttempt keeps the one fenced provider exchange and its result together.
+type messageSendAttempt struct {
+	client  *Client
+	session *operationSession
+	post    messagePost
+	result  exchangeResult
+}
+
+func (attempt *messageSendAttempt) send(requestContext context.Context) error {
+	attempt.result = attempt.client.exchangeFencedWrite(attempt.session, attempt.post, requestContext)
+	return nil
+}
+
+// send permits a repeat only after the immediately previous attempt proved the write was not applied.
 func (client *Client) send(call sdkgo.Call, post messagePost) sdkgo.MutationAttempt[PostMessageOutput] {
+	fence, err := singledispatch.NewFence(call, 30*time.Second)
+	if err != nil {
+		return sdkgo.NewMutationBranch(post.branches.defect, post.requested,
+			failurePointer(post.operationID, sdkgo.FailureLocalDefect, "Microsoft Teams dispatch fence could not be constructed"), sdkgo.Receipt{})
+	}
+	decision := fence.Decide()
+	if decision.Kind == singledispatch.FailClosed {
+		return sdkgo.NewMutationUncertain(post.requested, newFailure(post.operationID, sdkgo.FailureTransport,
+			"the Microsoft Teams dispatch checkpoint is unavailable, so the message is not sent again"), sdkgo.Receipt{})
+	}
 	session, cancel, failure := client.startSession(call, post.operationID)
 	if failure != nil {
-		return sdkgo.NewMutationBranch(post.branches.defect, post.requested, failure, sdkgo.Receipt{})
+		if decision.Kind == singledispatch.SendAllowed {
+			checkpointErr := fence.RecordNotSent()
+			message := "Microsoft Teams credentials are temporarily unavailable before the message was sent"
+			if checkpointErr != nil {
+				message += "; the not-sent checkpoint also failed"
+			}
+			return sdkgo.NewMutationRetry[PostMessageOutput](newFailure(post.operationID, sdkgo.FailureAuthentication,
+				message), 0)
+		}
+		return sdkgo.NewMutationRetry[PostMessageOutput](*failure, 0)
 	}
 	defer cancel()
-	earliestSendAt := earliestDispatchTime(call, client.now())
-	if dispatchedAt, hasCheckpoint := readDispatchCheckpoint(call); hasCheckpoint {
-		return client.reconcileEarlierPost(session, post, earlierTime(earliestSendAt, dispatchedAt))
+	if decision.Kind == singledispatch.ReadBackRequired {
+		if decision.Marker.CallID != "" && decision.Marker.CallID != call.ID {
+			return sdkgo.NewMutationUncertain(post.requested, newFailure(post.operationID, sdkgo.FailureTransport,
+				"the Microsoft Teams dispatch checkpoint belongs to another call"), sdkgo.Receipt{})
+		}
+		return client.reconcileEarlierPost(session, post, call.Context.FirstAttemptAt(), decision.Marker.ProviderID)
 	}
-	if err := recordDispatchCheckpoint(call, earliestSendAt); err != nil {
+	attempt := &messageSendAttempt{client: client, session: session, post: post}
+	if err := fence.Dispatch(attempt.send); err != nil {
+		if !errors.Is(err, singledispatch.ErrCheckpoint) && !errors.Is(err, singledispatch.ErrInsufficientTime) {
+			return sdkgo.NewMutationUncertain(post.requested, newFailure(post.operationID, sdkgo.FailureTransport,
+				"Microsoft Teams message dispatch outcome is unknown"), sdkgo.Receipt{})
+		}
 		return sdkgo.NewMutationRetry[PostMessageOutput](newFailure(post.operationID, sdkgo.FailureAvailability,
-			"the "+post.subject+" checkpoint could not be recorded, so nothing was sent to Microsoft Teams"), 0)
+			"the "+post.subject+" was not sent before the dispatch deadline"), 0)
 	}
-	result := client.exchange(session, graphRequest{method: http.MethodPost, path: post.path, payload: post.content.body})
+	result := attempt.result
+	if result.err == nil && result.response.statusCode == http.StatusUnauthorized {
+		if _, supportsRefresh := client.credentials.(sdkgo.RejectedCredentialRefreshingProvider[Credentials]); supportsRefresh {
+			replacement, refreshErr := sdkgo.ResolveCredentialAfterRejection(session.context, client.credentials, call, client.refreshDriver)
+			if refreshErr == nil && validateResolvedCredentials(replacement) == nil {
+				failure := newFailure(post.operationID, sdkgo.FailureAuthentication,
+					"Microsoft Graph rejected the access token; the refreshed credential will be used on the next attempt")
+				if checkpointErr := fence.RecordCanResend(); checkpointErr != nil {
+					failure.Message += "; the safe-resend checkpoint failed"
+				}
+				return sdkgo.NewMutationRetry[PostMessageOutput](failure, 0)
+			}
+		}
+	}
 	classification := client.classifyWrite(post.operationID, post.subject, result)
 	receipt := client.receipt(session, result.response, "")
 	switch classification.outcome {
 	case writeAccepted:
 		var resource chatMessageResource
 		if json.Unmarshal(result.response.body, &resource) == nil {
+			if messageIDPattern.MatchString(resource.ID) {
+				// Acceptance is known; a lost optional read-back checkpoint cannot permit another send.
+				_ = fence.RecordProviderID(resource.ID)
+			}
 			if message, err := decodeMessage(resource, 0); err == nil {
 				return sdkgo.NewMutationBranch(post.branches.sent, postedOutput(post.requested, message, false), nil, client.receipt(session, result.response, message.ID))
 			}
 		}
 		classification.failure = newFailure(post.operationID, sdkgo.FailureProtocol, "Microsoft Graph accepted the "+post.subject+" but returned an unusable message")
 	case writeNotApplied:
-		clearDispatchCheckpoint(call)
+		if err := fence.RecordCanResend(); err != nil {
+			classification.failure.Message += "; the safe-resend checkpoint failed"
+		}
 		return sdkgo.NewMutationRetry[PostMessageOutput](classification.failure, classification.retryAfter)
 	case writeRejected:
 		return sdkgo.NewMutationBranch(post.branches.providerRejected, post.requested, &classification.failure, receipt)
 	case writeDefect:
-		clearDispatchCheckpoint(call)
 		return sdkgo.NewMutationBranch(post.branches.defect, post.requested, &classification.failure, receipt)
 	}
 	if post.readBackPath == "" {
@@ -90,12 +148,30 @@ func (client *Client) send(call sdkgo.Call, post messagePost) sdkgo.MutationAtte
 	return sdkgo.NewMutationRetry[PostMessageOutput](classification.failure, max(classification.retryAfter, ambiguousWriteSettleDelay))
 }
 
-// reconcileEarlierPost never sends: it reports an earlier attempt's message found by a read-back, or uncertain.
-func (client *Client) reconcileEarlierPost(session *operationSession, post messagePost, earliestSendAt time.Time) sdkgo.MutationAttempt[PostMessageOutput] {
+// reconcileEarlierPost only reads the provider; an inconclusive read never permits another POST.
+func (client *Client) reconcileEarlierPost(session *operationSession, post messagePost, earliestSendAt time.Time, providerID string) sdkgo.MutationAttempt[PostMessageOutput] {
 	if post.readBackPath == "" {
 		return sdkgo.NewMutationUncertain(post.requested, newFailure(post.operationID, sdkgo.FailureTransport,
 			"an earlier attempt of this Step may have sent the "+post.subject+", and the connection cannot read it back, so it is not sent again"),
 			client.receipt(session, graphResponse{}, ""))
+	}
+	if providerID != "" {
+		result := client.exchange(session, graphRequest{method: http.MethodGet, path: post.readBackPath + "/" + providerID})
+		classification := client.classifyRead(post.operationID, post.subject+" read-back", result)
+		receipt := client.receipt(session, result.response, providerID)
+		if classification.outcome == readRetry {
+			return sdkgo.NewMutationRetry[PostMessageOutput](classification.failure, classification.retryAfter)
+		}
+		if classification.outcome == readSucceeded {
+			var resource chatMessageResource
+			if json.Unmarshal(result.response.body, &resource) == nil && resource.ID == providerID {
+				if message, err := decodeMessage(resource, 0); err == nil {
+					return sdkgo.NewMutationBranch(post.branches.sent, postedOutput(post.requested, message, true), nil, receipt)
+				}
+			}
+		}
+		return sdkgo.NewMutationUncertain(post.requested, newFailure(post.operationID, sdkgo.FailureProtocol,
+			"the earlier Microsoft Teams message could not be confirmed by its provider ID"), receipt)
 	}
 	result := client.exchange(session, graphRequest{
 		method: http.MethodGet, path: post.readBackPath, query: url.Values{"$top": {strconv.Itoa(readBackPageSize)}},
