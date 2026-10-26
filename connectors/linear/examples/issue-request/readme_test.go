@@ -27,11 +27,15 @@ func TestREADMEStartFlowSampleIsAValidRequest(t *testing.T) {
 	require.Equal(t, "In Progress", request.StateName)
 }
 
-// TestConnectorREADMESnippetIsTheExampleCode keeps the connector README's Go snippet runnable.
+// TestConnectorREADMESnippetIsTheExampleCode keeps the connector README's Go snippets in runnable sources.
 func TestConnectorREADMESnippetIsTheExampleCode(t *testing.T) {
 	snippets := fencedBlocks(readFile(t, filepath.Join("..", "..", "README.md")), "go")
-	require.Len(t, snippets, 1)
+	require.Len(t, snippets, 3)
 	require.Contains(t, readFile(t, "main.go"), snippets[0])
+	mockTest := readFile(t, filepath.Join("flow", "workflow_mock_integration_test.go"))
+	for _, snippet := range snippets[1:] {
+		require.Contains(t, strings.ReplaceAll(mockTest, "\t", ""), snippet)
+	}
 }
 
 func readFile(t *testing.T, path string) string {
