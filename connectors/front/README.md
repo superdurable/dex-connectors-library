@@ -361,7 +361,7 @@ Failure names only the HTTP status.
 | Answer | Result |
 | --- | --- |
 | 400, 413, 422 | `providerRejected`, `VALIDATION` |
-| 401 | `providerRejected`, `AUTHENTICATION`; `replyToConversation` attempts forced credential refresh and permits one fenced Retry with a changed valid token |
+| 401 | `providerRejected`, `AUTHENTICATION`; `replyToConversation` attempts forced credential refresh when the credential source supports refresh after rejection and permits one fenced Retry with a changed valid token |
 | 403 | `providerRejected`, `AUTHORIZATION`, such as a token without the namespace or permission |
 | 404, 410 | `notFound` where declared, otherwise `providerRejected`; `providerRejected` on an `updateConversation` write after its read found the conversation |
 | 409 | `uncertain`, `CONFLICT` for `replyToConversation`; `providerRejected`, `CONFLICT` for other operations |

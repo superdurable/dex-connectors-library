@@ -380,6 +380,57 @@ func (provider refreshingFrontCredentials) ResolveAfterRejection(
 	return provider.replacement, provider.failure
 }
 
+type deadlineRecordingFrontCredentials struct {
+	refreshingFrontCredentials
+	deadline *time.Time
+}
+
+func (provider deadlineRecordingFrontCredentials) ResolveAfterRejection(
+	ctx context.Context, call sdkgo.Call, driver sdkgo.CredentialRefreshDriver[front.Credentials],
+) (front.Credentials, error) {
+	*provider.deadline, _ = ctx.Deadline()
+	return provider.refreshingFrontCredentials.ResolveAfterRejection(ctx, call, driver)
+}
+
+func TestReplyToConversationFenceRejectsStaticCredentialWithoutResending(t *testing.T) {
+	provider := newRecordingFront(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeFrontError(t, response, http.StatusUnauthorized)
+	})
+	client, err := front.New(front.Config{}, testCredentialProvider(), front.WithAPIBaseURL(provider.URL))
+	require.NoError(t, err)
+	dexContext := singledispatchtest.NewContext("front-flow", "static-rejected")
+	input := front.ReplyToConversationInput{ConversationID: testConversationID, Text: "Hello", IsInternalNote: true}
+	result, err := sdkgo.RunMutation(dexContext, client.ReplyToConversation(), frontConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, front.ReplyToConversationBranchProviderRejected, result.Branch)
+	require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
+	require.Contains(t, result.Failure.Message, "reconnect")
+	require.Equal(t, 1, provider.requestCount())
+	dexContext.AdvanceAttempt()
+	result, err = sdkgo.RunMutation(dexContext, client.ReplyToConversation(), frontConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, front.ReplyToConversationBranchUncertain, result.Branch)
+	require.Equal(t, 1, provider.requestCount())
+}
+
+func TestReplyToConversationRefreshDeadlineHasMargin(t *testing.T) {
+	provider := newRecordingFront(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeFrontError(t, response, http.StatusUnauthorized)
+	})
+	var refreshDeadline time.Time
+	credentials := deadlineRecordingFrontCredentials{deadline: &refreshDeadline}
+	client, err := front.New(front.Config{}, credentials, front.WithAPIBaseURL(provider.URL))
+	require.NoError(t, err)
+	dexContext := singledispatchtest.NewContext("front-flow", "refresh-deadline")
+	stepDeadline := time.Now().Add(5 * time.Second)
+	cancel := dexContext.SetDeadline(stepDeadline)
+	defer cancel()
+	_, err = sdkgo.RunMutation(dexContext, client.ReplyToConversation(), frontConnection,
+		front.ReplyToConversationInput{ConversationID: testConversationID, Text: "Hello", IsInternalNote: true})
+	require.NoError(t, err)
+	require.Equal(t, stepDeadline.Add(-100*time.Millisecond), refreshDeadline)
+}
+
 func TestReplyToConversationFenceRefreshesRejectedTokenBeforeResending(t *testing.T) {
 	for name, test := range map[string]struct {
 		replacement front.Credentials
