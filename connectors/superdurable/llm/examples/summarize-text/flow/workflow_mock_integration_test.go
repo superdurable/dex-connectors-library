@@ -12,8 +12,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/superdurable/llm"
+	"github.com/superdurable/dex-connectors-library/connectors/superdurable/llm/examples/summarize-text/structuredoutput"
 	"github.com/superdurable/dex-connectors-library/connectors/superdurable/llm/llmmock"
-	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/textgen"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -71,12 +71,12 @@ func TestSummarizeTextExampleRunsOnTheLLMMockWithRealDex(t *testing.T) {
 // structured output schema, which the plain text manifest default cannot answer.
 func TestStructuredOutputFlowRunsOnTheLLMMockWithRealDex(t *testing.T) {
 	mock := llmmock.New(t, ConnectionName)
-	flow := &releaseStatusFlow{connection: mock.Connection()}
+	flow := structuredoutput.NewFlow(mock.Connection())
 	client := startWorker(t, flow)
 	flowID := fmt.Sprintf("llm-release-status-mock-%d", time.Now().UnixNano())
 	mock.GenerateText().ForFlow(flowID).Respond(llmmock.GenerateTextGenerated(llm.GenerateTextResponse{Text: `{"status":"shipped"}`}, nil))
 
-	result := runSummaryFlow(t, client, flow, flowID)
+	result := runFlowToCompletion(t, client, flow, flowID, structuredoutput.SummaryRequest{Text: "The LLM connector shipped today."})
 
 	require.Equal(t, dex.FlowCompleted, result.Status, "Flow %s: %s", flowID, result.ErrorMessage)
 	var releaseStatus string
@@ -85,48 +85,4 @@ func TestStructuredOutputFlowRunsOnTheLLMMockWithRealDex(t *testing.T) {
 	calls := mock.GenerateText().Calls()
 	require.Len(t, calls, 1)
 	require.Equal(t, "release_status", calls[0].Input.StructuredOutput.Name, "the Step's schema reaches the request")
-}
-
-// releaseStatusFlow asks the model for a JSON release status, as an application with structured output does.
-type releaseStatusFlow struct {
-	dex.FlowDefaults
-	connection llm.Connection
-}
-
-func (*releaseStatusFlow) GetFlowType() string { return "LLMReleaseStatusMock" }
-
-func (*releaseStatusFlow) GetPersistenceSchema() dex.PersistenceSchema {
-	return dex.PersistenceSchema{}
-}
-
-func (flow *releaseStatusFlow) GetSteps() []dex.StepDef {
-	return []dex.StepDef{
-		dex.DefineStartStep(llm.NewGenerateTextStep(llm.GenerateTextStepConfig[SummaryRequest]{
-			StepType: "GenerateReleaseStatus", ConnectionName: ConnectionName, Connection: flow.connection,
-			Annotations: sdkgo.StepAnnotations{
-				GroupID: "status", GroupLabel: "Status", Explanation: "Ask the model for the release status as JSON.",
-			},
-			MapToOperationInput: releaseStatusRequest,
-			Generated:           sdkgo.GoTo(completeReleaseStatus{}),
-		})),
-		dex.DefineStep(completeReleaseStatus{}),
-	}
-}
-
-func releaseStatusRequest(request SummaryRequest) llm.GenerateTextRequest {
-	return llm.GenerateTextRequest{
-		Messages: []textgen.Message{{Role: textgen.MessageRoleUser, Text: request.Text}},
-		StructuredOutput: &textgen.StructuredOutput{Name: "release_status", Schema: map[string]any{
-			"type": "object", "properties": map[string]any{"status": map[string]any{"type": "string"}},
-			"required": []any{"status"}, "additionalProperties": false,
-		}},
-	}
-}
-
-type completeReleaseStatus struct {
-	dex.StepDefaultsNoWaitFor[llm.GenerateTextResult]
-}
-
-func (completeReleaseStatus) Execute(_ dex.Context, result llm.GenerateTextResult) (*dex.StepDecision, error) {
-	return dex.GracefulComplete(result.Value.Text), nil
 }

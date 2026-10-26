@@ -625,8 +625,9 @@ and scripts one Flow's call with a manifest mock:
 
 A Flow whose request sets `StructuredOutput` must script its answer, because
 the manifest default `shortSummary` is plain text that does not match a schema.
-The [runnable test](examples/summarize-text/flow/workflow_mock_integration_test.go)
-runs a Flow whose Step asks for this schema:
+The [structured-output Flow](examples/summarize-text/structuredoutput/flow.go)
+used by the [runnable test](examples/summarize-text/flow/workflow_mock_integration_test.go)
+asks for this schema:
 
 ```go
 func releaseStatusRequest(request SummaryRequest) llm.GenerateTextRequest {
@@ -644,7 +645,7 @@ and scripts the JSON answer for that schema:
 
 ```go
 	mock := llmmock.New(t, ConnectionName)
-	flow := &releaseStatusFlow{connection: mock.Connection()}
+	flow := structuredoutput.NewFlow(mock.Connection())
 	client := startWorker(t, flow)
 	flowID := fmt.Sprintf("llm-release-status-mock-%d", time.Now().UnixNano())
 	mock.GenerateText().ForFlow(flowID).Respond(llmmock.GenerateTextGenerated(llm.GenerateTextResponse{Text: `{"status":"shipped"}`}, nil))

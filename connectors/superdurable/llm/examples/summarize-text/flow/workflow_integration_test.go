@@ -254,9 +254,15 @@ func runSummaryFlowToCompletion(t *testing.T, client *dex.Client, flow *Flow, fl
 // runSummaryFlow starts the Flow and waits, across server long-poll caps, until it closes.
 func runSummaryFlow(t *testing.T, client *dex.Client, flow dex.Flow, flowID string) dex.FlowResult {
 	t.Helper()
+	return runFlowToCompletion(t, client, flow, flowID, SummaryRequest{Text: "The LLM connector shipped today."})
+}
+
+// runFlowToCompletion starts a Flow and waits, across server long-poll caps, until it closes.
+func runFlowToCompletion(t *testing.T, client *dex.Client, flow dex.Flow, flowID string, input any) dex.FlowResult {
+	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	_, err := client.StartFlow(ctx, flow, flowID, SummaryRequest{Text: "The LLM connector shipped today."}, dex.StartFlowOptions{})
+	_, err := client.StartFlow(ctx, flow, flowID, input, dex.StartFlowOptions{})
 	require.NoError(t, err)
 	for {
 		result, err := client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
