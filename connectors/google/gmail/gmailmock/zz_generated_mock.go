@@ -141,7 +141,7 @@ func GetMessageRateLimited() connectormock.Case[gmail.Message] {
 // GetMessageDefault is the manifest default, customerQuestion, which New installs.
 func GetMessageDefault() connectormock.Case[gmail.Message] { return GetMessageCustomerQuestion() }
 
-// SendMessageSent selects the sent branch: Gmail accepted the message and returned its identity.
+// SendMessageSent selects the sent branch: Gmail accepted the message; its message and thread IDs can be empty when an unusable accepted response has no Sent Mail match.
 func SendMessageSent(value gmail.SendMessageOutput, failure *sdkgo.Failure) connectormock.Case[gmail.SendMessageOutput] {
 	return connectormock.Branch(gmail.SendMessageBranchSent, value, failure)
 }
@@ -149,11 +149,6 @@ func SendMessageSent(value gmail.SendMessageOutput, failure *sdkgo.Failure) conn
 // SendMessageProviderRejected selects the providerRejected branch: Gmail conclusively rejected the message.
 func SendMessageProviderRejected(value gmail.SendMessageOutput, failure *sdkgo.Failure) connectormock.Case[gmail.SendMessageOutput] {
 	return connectormock.Branch(gmail.SendMessageBranchProviderRejected, value, failure)
-}
-
-// SendMessageUncertain returns an uncertain sendMessage outcome.
-func SendMessageUncertain(value gmail.SendMessageOutput, failure sdkgo.Failure) connectormock.Case[gmail.SendMessageOutput] {
-	return connectormock.Uncertain(value, failure)
 }
 
 // SendMessageDefect selects the defect branch: Local input, connection configuration, or connector definition is invalid.
@@ -178,10 +173,9 @@ func SendMessageInvalidRecipient() connectormock.Case[gmail.SendMessageOutput] {
 	return connectormock.Branch(gmail.SendMessageBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "Gmail rejected the message recipients."})
 }
 
-// SendMessageConnectionLost is the manifest mock connectionLost: The connection closed after the message was sent, so delivery is unknown.
+// SendMessageConnectionLost is the manifest mock connectionLost: The connection closed after dispatch and Sent Mail found nothing; retry the lookup before another send.
 func SendMessageConnectionLost() connectormock.Case[gmail.SendMessageOutput] {
-	var value gmail.SendMessageOutput
-	return connectormock.Uncertain(value, sdkgo.Failure{Kind: sdkgo.FailureTransport, Message: "The connection closed before Gmail answered."})
+	return connectormock.Retry[gmail.SendMessageOutput](sdkgo.Failure{Kind: sdkgo.FailureTransport, Message: "The connection closed before Gmail answered."}, time.Duration(0))
 }
 
 // SendMessageNoRecipients is the manifest mock noRecipients: The message has no recipient, so no request is sent.
@@ -200,7 +194,7 @@ func SendMessageDefault() connectormock.Case[gmail.SendMessageOutput] {
 	return SendMessageSentToCustomer()
 }
 
-// ReplyToMessageSent selects the sent branch: Gmail accepted the reply and returned its identity.
+// ReplyToMessageSent selects the sent branch: Gmail accepted the reply; its message ID can be empty when an unusable accepted response has no Sent Mail match, while the requested thread ID remains.
 func ReplyToMessageSent(value gmail.SendMessageOutput, failure *sdkgo.Failure) connectormock.Case[gmail.SendMessageOutput] {
 	return connectormock.Branch(gmail.ReplyToMessageBranchSent, value, failure)
 }
@@ -213,11 +207,6 @@ func ReplyToMessageProviderRejected(value gmail.SendMessageOutput, failure *sdkg
 // ReplyToMessageInvalidResponse selects the invalidResponse branch: Gmail returned an invalid or oversized source message response before sending the reply.
 func ReplyToMessageInvalidResponse(value gmail.SendMessageOutput, failure *sdkgo.Failure) connectormock.Case[gmail.SendMessageOutput] {
 	return connectormock.Branch(gmail.ReplyToMessageBranchInvalidResponse, value, failure)
-}
-
-// ReplyToMessageUncertain returns an uncertain replyToMessage outcome.
-func ReplyToMessageUncertain(value gmail.SendMessageOutput, failure sdkgo.Failure) connectormock.Case[gmail.SendMessageOutput] {
-	return connectormock.Uncertain(value, failure)
 }
 
 // ReplyToMessageDefect selects the defect branch: Local input, connection configuration, or connector definition is invalid.
@@ -248,10 +237,9 @@ func ReplyToMessageMalformedSource() connectormock.Case[gmail.SendMessageOutput]
 	return connectormock.Branch(gmail.ReplyToMessageBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "Gmail returned an invalid source message."})
 }
 
-// ReplyToMessageConnectionLost is the manifest mock connectionLost: The connection closed after the reply was sent, so delivery is unknown.
+// ReplyToMessageConnectionLost is the manifest mock connectionLost: The connection closed after dispatch and Sent Mail found nothing; retry the lookup before another reply.
 func ReplyToMessageConnectionLost() connectormock.Case[gmail.SendMessageOutput] {
-	var value gmail.SendMessageOutput
-	return connectormock.Uncertain(value, sdkgo.Failure{Kind: sdkgo.FailureTransport, Message: "The connection closed before Gmail answered."})
+	return connectormock.Retry[gmail.SendMessageOutput](sdkgo.Failure{Kind: sdkgo.FailureTransport, Message: "The connection closed before Gmail answered."}, time.Duration(0))
 }
 
 // ReplyToMessageEmptyBody is the manifest mock emptyBody: The reply has no body, so no request is sent.

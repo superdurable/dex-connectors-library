@@ -5,7 +5,7 @@ metadata:
   displayName: Gmail
   description: Start and update Dex Flows from received Gmail messages, read messages, and send or reply to email.
   company: Google
-  version: v0.23.1
+  version: v0.24.0
 spec:
   provider: google
   codegen:
@@ -234,9 +234,8 @@ spec:
       description: Send one MIME message from the authorized primary account.
       idempotency: required
       branches:
-        - {id: sent, goName: Sent, description: Gmail accepted the message and returned its identity.}
+        - {id: sent, goName: Sent, description: "Gmail accepted the message; its message and thread IDs can be empty when an unusable accepted response has no Sent Mail match."}
         - {id: providerRejected, goName: ProviderRejected, description: Gmail conclusively rejected the message., optional: true}
-        - {id: uncertain, goName: Uncertain, description: The dispatched send outcome cannot be confirmed., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
@@ -253,8 +252,8 @@ spec:
           description: Gmail rejected the message because a recipient address is invalid.
           failure: {kind: PROVIDER_REJECTION, message: Gmail rejected the message recipients.}
         - name: connectionLost
-          description: The connection closed after the message was sent, so delivery is unknown.
-          uncertain: {failure: {kind: TRANSPORT, message: The connection closed before Gmail answered.}}
+          description: The connection closed after dispatch and Sent Mail found nothing; retry the lookup before another send.
+          retry: {failure: {kind: TRANSPORT, message: The connection closed before Gmail answered.}}
         - name: noRecipients
           branch: defect
           description: The message has no recipient, so no request is sent.
@@ -270,10 +269,9 @@ spec:
       description: Reply to one Gmail message in its existing thread.
       idempotency: required
       branches:
-        - {id: sent, goName: Sent, description: Gmail accepted the reply and returned its identity.}
+        - {id: sent, goName: Sent, description: "Gmail accepted the reply; its message ID can be empty when an unusable accepted response has no Sent Mail match, while the requested thread ID remains."}
         - {id: providerRejected, goName: ProviderRejected, description: Gmail conclusively rejected the reply., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Gmail returned an invalid or oversized source message response before sending the reply., optional: true}
-        - {id: uncertain, goName: Uncertain, description: The dispatched reply outcome cannot be confirmed., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
@@ -294,8 +292,8 @@ spec:
           description: Gmail returned a source message that cannot be decoded, so no reply is sent.
           failure: {kind: PROTOCOL, message: Gmail returned an invalid source message.}
         - name: connectionLost
-          description: The connection closed after the reply was sent, so delivery is unknown.
-          uncertain: {failure: {kind: TRANSPORT, message: The connection closed before Gmail answered.}}
+          description: The connection closed after dispatch and Sent Mail found nothing; retry the lookup before another reply.
+          retry: {failure: {kind: TRANSPORT, message: The connection closed before Gmail answered.}}
         - name: emptyBody
           branch: defect
           description: The reply has no body, so no request is sent.

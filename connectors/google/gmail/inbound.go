@@ -143,14 +143,33 @@ func (ReplyToMessageOperation) IdempotencyKey(callID sdkgo.CallID, _ ReplyToMess
 
 // Invoke reads the source message and sends one reply in its Gmail thread.
 func (operation ReplyToMessageOperation) Invoke(call sdkgo.Call, input ReplyToMessageInput) sdkgo.MutationAttempt[SendMessageOutput] {
-	credentials, err := operation.client.resolveCredentials(call.Context, call)
+	if call.Context.Attempt() < 1 {
+		return sdkgo.NewMutationBranch(ReplyToMessageBranchDefect, SendMessageOutput{}, gmailOperationFailurePointer("replyToMessage", sdkgo.FailureLocalDefect, "Dex Execute attempt number is invalid"), sdkgo.Receipt{})
+	}
+	budget := newSendAttemptBudget(call.Context, ReplyToMessageDefinition.StepDefaults.ExecuteMethodTimeout)
+	defer budget.cancel()
+	credentials, err := operation.client.resolveCredentials(budget.attemptContext, call)
 	if err != nil {
 		return sdkgo.NewMutationBranch(ReplyToMessageBranchDefect, SendMessageOutput{}, gmailOperationFailurePointer("replyToMessage", sdkgo.FailureAuthentication, "connection credentials are unavailable"), sdkgo.Receipt{})
 	}
 	if strings.TrimSpace(input.MessageID) == "" || strings.TrimSpace(input.TextBody) == "" {
 		return sdkgo.NewMutationBranch(ReplyToMessageBranchDefect, SendMessageOutput{}, gmailOperationFailurePointer("replyToMessage", sdkgo.FailureValidation, "message ID and text body are required"), sdkgo.Receipt{})
 	}
-	resource, result, credentials, err := operation.client.readMessage(call.Context, call, credentials, input.MessageID, "metadata")
+	if call.Context.Attempt() > 1 {
+		searchContext, cancelSearch := budget.preSendContext()
+		sent, isFound, searchErr := operation.client.findSentMessageByRFCMessageID(searchContext, call, credentials)
+		cancelSearch()
+		if isFound {
+			return operation.client.sentMessage(call, budget, credentials, replyToMessageOutcomes, gmailOutgoingMessage{}, sent, operation.client.receipt(call, "", ""))
+		}
+		if searchErr != nil {
+			return sdkgo.NewMutationRetry[SendMessageOutput](gmailOperationFailure("replyToMessage", sdkgo.FailureAvailability,
+				"Gmail sent-mail search did not answer before the reply"), 0)
+		}
+	}
+	sourceContext, cancelSourceRead := budget.preSendContext()
+	resource, result, credentials, err := operation.client.readMessage(sourceContext, call, credentials, input.MessageID, "metadata")
+	cancelSourceRead()
 	if err != nil {
 		if result.statusCode == 0 || result.statusCode == http.StatusTooManyRequests || result.statusCode >= 500 {
 			delay, retryAfterErr := retryAfter(result.header)
@@ -183,39 +202,10 @@ func (operation ReplyToMessageOperation) Invoke(call sdkgo.Call, input ReplyToMe
 	if err != nil {
 		return sdkgo.NewMutationBranch(ReplyToMessageBranchDefect, SendMessageOutput{}, gmailOperationFailurePointer("replyToMessage", sdkgo.FailureLocalDefect, "reply request could not be encoded"), sdkgo.Receipt{})
 	}
-	return operation.sendReply(call, credentials, recipient, message.ThreadID, payload)
-}
-
-func (operation ReplyToMessageOperation) sendReply(call sdkgo.Call, credentials Credentials, recipient string, threadID string, payload []byte) sdkgo.MutationAttempt[SendMessageOutput] {
-	target := strings.TrimRight(operation.client.endpoint.String(), "/") + "/users/me/messages/send"
-	response, credentials, err := operation.client.doAuthenticatedRequest(
-		call.Context, call, credentials, http.MethodPost, target, payload, "application/json",
-	)
-	if err != nil {
-		return sdkgo.NewMutationUncertain(SendMessageOutput{}, gmailOperationFailure("replyToMessage", sdkgo.FailureTransport, "Gmail reply outcome is unknown"), operation.client.receipt(call, "", ""))
-	}
-	defer response.Body.Close()
-	receipt := operation.client.receipt(call, googleRequestID(response.Header), "")
-	content, readErr := io.ReadAll(io.LimitReader(response.Body, operation.client.maxResponseBytes+1))
-	if readErr != nil || int64(len(content)) > operation.client.maxResponseBytes || response.StatusCode >= 500 {
-		return sdkgo.NewMutationUncertain(SendMessageOutput{}, gmailOperationFailure("replyToMessage", sdkgo.FailureAvailability, "Gmail reply outcome is unknown"), receipt)
-	}
-	if response.StatusCode == http.StatusTooManyRequests {
-		delay, err := retryAfter(response.Header)
-		if err != nil {
-			return sdkgo.NewMutationRetry[SendMessageOutput](gmailOperationFailure("replyToMessage", sdkgo.FailureProtocol, "Gmail returned an invalid Retry-After header"), 0)
-		}
-		return sdkgo.NewMutationRetry[SendMessageOutput](gmailOperationFailure("replyToMessage", sdkgo.FailureRateLimit, "Gmail temporarily rejected the reply"), delay)
-	}
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return sdkgo.NewMutationBranch(ReplyToMessageBranchProviderRejected, SendMessageOutput{}, gmailOperationFailurePointer("replyToMessage", statusFailureKind(response.StatusCode), "Gmail rejected the reply"), receipt)
-	}
-	var sent sendResponse
-	if err := json.Unmarshal(content, &sent); err != nil || sent.ID == "" || (sent.ThreadID != "" && sent.ThreadID != threadID) {
-		return sdkgo.NewMutationUncertain(SendMessageOutput{}, gmailOperationFailure("replyToMessage", sdkgo.FailureProtocol, "Gmail returned an invalid reply response"), receipt)
-	}
-	receipt.ProviderObjectID = sent.ID
-	return sdkgo.NewMutationBranch(ReplyToMessageBranchSent, SendMessageOutput{Sender: credentials.PrimaryEmail, Recipients: []string{recipient}, MessageID: sent.ID, ThreadID: threadID}, nil, receipt)
+	return operation.client.sendAndConfirm(call, budget, credentials, replyToMessageOutcomes, gmailOutgoingMessage{
+		payload: payload, recipients: []string{recipient}, requestedThreadID: message.ThreadID,
+		hasPreSendSearch: call.Context.Attempt() > 1,
+	})
 }
 
 func classifyGetMessageFailure(result gmailHTTPResult, err error) sdkgo.QueryAttempt[Message] {
@@ -343,7 +333,7 @@ func buildReplyMIMEMessage(call sdkgo.Call, sender string, recipient string, sou
 	mustWriteMIMEHeader(&message, "From", sender)
 	mustWriteMIMEHeader(&message, "To", recipient)
 	mustWriteMIMEHeader(&message, "Subject", mime.QEncoding.Encode("UTF-8", subject))
-	mustWriteMIMEHeader(&message, "Message-ID", "<"+string(call.IdempotencyKey)+"@dex.superdurable.dev>")
+	mustWriteMIMEHeader(&message, "Message-ID", "<"+rfcMessageIDAddress(call)+">")
 	mustWriteMIMEHeader(&message, "In-Reply-To", source.RFCMessageID)
 	references := strings.TrimSpace(source.References + " " + source.RFCMessageID)
 	mustWriteMIMEHeader(&message, "References", references)

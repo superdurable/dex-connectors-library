@@ -67,7 +67,8 @@ func TestSendMessageUsesPrimarySenderAndStableMessageID(t *testing.T) {
 	require.Equal(t, "owner@example.com", result.Value.Sender)
 	require.Equal(t, "message-1", result.Value.MessageID)
 	require.Contains(t, raw, "From: owner@example.com")
-	require.Contains(t, raw, "Message-ID: <"+string(result.Receipt.IdempotencyKey)+"@dex.superdurable.dev>")
+	require.Contains(t, raw, "Message-ID: <")
+	require.Contains(t, raw, "@dex.superdurable.dev>")
 	require.NotContains(t, raw, "gmail-token")
 }
 
@@ -117,21 +118,28 @@ func TestSendMessageDoesNotLoopWhenReplacementCredentialIsUnauthorized(t *testin
 	require.Equal(t, 1, provider.forcedRefreshes)
 }
 
-func TestServerFailureIsUncertainAndNeverAutomaticRetry(t *testing.T) {
-	requests := 0
-	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
-		requests++
+func TestServerFailureRetriesAfterSentMailMiss(t *testing.T) {
+	sends, searches := 0, 0
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		if request.Method == http.MethodGet {
+			searches++
+			_, _ = response.Write([]byte(`{"messages":[]}`))
+			return
+		}
+		sends++
 		response.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer server.Close()
 	client := newGmailClient(t, server.URL)
-	result, err := sdkgo.RunMutation(newGmailDexContext("send-unknown"), client.SendMessage(), gmailConnection, gmail.SendMessageInput{To: []string{"customer@example.com"}, Subject: "Progress", TextBody: "Update"})
-	require.NoError(t, err)
-	require.Equal(t, gmail.SendMessageBranchUncertain, result.Branch)
-	require.Equal(t, 1, requests)
+	_, err := sdkgo.RunMutation(newGmailDexContext("send-unknown"), client.SendMessage(), gmailConnection, gmail.SendMessageInput{To: []string{"customer@example.com"}, Subject: "Progress", TextBody: "Update"})
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+	require.Equal(t, 1, sends)
+	require.Equal(t, 4, searches)
 }
 
-func TestRateLimitIsTheOnlyAutomaticRetryPath(t *testing.T) {
+func TestRateLimitRetries(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
 		response.Header().Set("Retry-After", "3")
 		response.WriteHeader(http.StatusTooManyRequests)
@@ -173,7 +181,7 @@ func TestProviderRejectionIsTerminal(t *testing.T) {
 	require.Equal(t, sdkgo.FailureAuthorization, result.Failure.Kind)
 }
 
-func TestMalformedSuccessIsUncertain(t *testing.T) {
+func TestMalformedSuccessIsSentAfterSentMailMiss(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
 		_, _ = response.Write([]byte(`{"threadId":"thread-without-message"}`))
 	}))
@@ -181,9 +189,9 @@ func TestMalformedSuccessIsUncertain(t *testing.T) {
 	client := newGmailClient(t, server.URL)
 	result, err := sdkgo.RunMutation(newGmailDexContext("send-malformed"), client.SendMessage(), gmailConnection, gmail.SendMessageInput{To: []string{"customer@example.com"}, Subject: "Progress", TextBody: "Update"})
 	require.NoError(t, err)
-	require.Equal(t, gmail.SendMessageBranchUncertain, result.Branch)
-	require.NotNil(t, result.Failure)
-	require.Equal(t, sdkgo.FailureProtocol, result.Failure.Kind)
+	require.Equal(t, gmail.SendMessageBranchSent, result.Branch)
+	require.Empty(t, result.Value.MessageID)
+	require.Empty(t, result.Value.ThreadID)
 }
 
 func TestRejectsHeaderInjectionBeforeProviderCall(t *testing.T) {
@@ -214,20 +222,38 @@ func newGmailClient(t *testing.T, endpoint string) *gmail.Client {
 
 type gmailDexContext struct {
 	context.Context
-	step string
+	step          string
+	attempt       int32
+	runID         string
+	flowStartedAt time.Time
 }
 
 func newGmailDexContext(step string) *gmailDexContext {
 	return &gmailDexContext{Context: context.Background(), step: step}
 }
-func (*gmailDexContext) FlowID() string                                  { return "follow-up-flow" }
-func (*gmailDexContext) RunID() string                                   { return "run" }
-func (*gmailDexContext) FlowStartedAt() time.Time                        { return time.Unix(1, 0) }
-func (context *gmailDexContext) StepExecutionID() string                 { return context.step }
-func (*gmailDexContext) FromStepExecutionID() string                     { return "" }
-func (*gmailDexContext) RecoveryError() *dex.RecoveryErrorInfo           { return nil }
-func (*gmailDexContext) FirstAttemptAt() time.Time                       { return time.Unix(1, 0) }
-func (*gmailDexContext) Attempt() int32                                  { return 1 }
+func (*gmailDexContext) FlowID() string { return "follow-up-flow" }
+func (ctx *gmailDexContext) RunID() string {
+	if ctx.runID != "" {
+		return ctx.runID
+	}
+	return "run"
+}
+func (ctx *gmailDexContext) FlowStartedAt() time.Time {
+	if !ctx.flowStartedAt.IsZero() {
+		return ctx.flowStartedAt
+	}
+	return time.Unix(1, 0)
+}
+func (context *gmailDexContext) StepExecutionID() string       { return context.step }
+func (*gmailDexContext) FromStepExecutionID() string           { return "" }
+func (*gmailDexContext) RecoveryError() *dex.RecoveryErrorInfo { return nil }
+func (*gmailDexContext) FirstAttemptAt() time.Time             { return time.Unix(1, 0) }
+func (ctx *gmailDexContext) Attempt() int32 {
+	if ctx.attempt > 0 {
+		return ctx.attempt
+	}
+	return 1
+}
 func (*gmailDexContext) HasTimerFired() bool                             { return false }
 func (*gmailDexContext) HasTimerFiredByIndex(int) bool                   { return false }
 func (*gmailDexContext) WaitForMethodFailed() bool                       { return false }
