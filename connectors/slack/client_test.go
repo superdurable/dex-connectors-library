@@ -5,25 +5,40 @@ package slack_test
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/http/httptrace"
+	"strconv"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/slack"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
 var slackConnection = sdkgo.ConnectionRef{Provider: "slack", Name: "workspace"}
 
 type rejectionRefreshingCredentialProvider struct {
-	forcedRefreshes int
+	forcedRefreshes  int
+	hasRefreshed     bool
+	refreshError     error
+	unchangedRefresh bool
+	refreshDeadline  time.Time
 }
 
-func (*rejectionRefreshingCredentialProvider) Resolve(sdkgo.Call) (slack.Credentials, error) {
+func (provider *rejectionRefreshingCredentialProvider) Resolve(sdkgo.Call) (slack.Credentials, error) {
+	if provider.hasRefreshed {
+		return slack.Credentials{
+			BotToken: sdkgo.NewSecretString("replacement-bot"), UserToken: sdkgo.NewSecretString("replacement-user"),
+			AppToken: sdkgo.NewSecretString("app-token"),
+		}, nil
+	}
 	return slack.Credentials{
 		BotToken: sdkgo.NewSecretString("rejected-bot"), UserToken: sdkgo.NewSecretString("rejected-user"),
 		AppToken: sdkgo.NewSecretString("app-token"),
@@ -40,15 +55,20 @@ func (provider *rejectionRefreshingCredentialProvider) ResolveWithRefresh(
 }
 
 func (provider *rejectionRefreshingCredentialProvider) ResolveAfterRejection(
-	context.Context,
-	sdkgo.Call,
-	sdkgo.CredentialRefreshDriver[slack.Credentials],
+	ctx context.Context,
+	_ sdkgo.Call,
+	_ sdkgo.CredentialRefreshDriver[slack.Credentials],
 ) (slack.Credentials, error) {
 	provider.forcedRefreshes++
-	return slack.Credentials{
-		BotToken: sdkgo.NewSecretString("replacement-bot"), UserToken: sdkgo.NewSecretString("replacement-user"),
-		AppToken: sdkgo.NewSecretString("app-token"),
-	}, nil
+	provider.refreshDeadline, _ = ctx.Deadline()
+	if provider.refreshError != nil {
+		return slack.Credentials{}, provider.refreshError
+	}
+	if provider.unchangedRefresh {
+		return provider.Resolve(sdkgo.Call{})
+	}
+	provider.hasRefreshed = true
+	return provider.Resolve(sdkgo.Call{})
 }
 
 func TestListThreadMessagesUsesUserTokenAndReturnsCursor(t *testing.T) {
@@ -175,7 +195,11 @@ func TestPostThreadReplyUsesBotTokenThreadAndStableClientMessageID(t *testing.T)
 	}))
 	defer server.Close()
 	client := newSlackClient(t, server.URL)
-	result, err := sdkgo.RunMutation(newSlackDexContext("reply-complete"), client.PostThreadReply(), slackConnection, slack.PostThreadReplyInput{ChannelID: "C123", ThreadTimestamp: "1.0", Text: "Processing complete"})
+	stepContext, cancel := context.WithTimeout(context.Background(), 7*time.Second)
+	defer cancel()
+	ctx := newSlackDexContext("reply-complete")
+	ctx.Context = stepContext
+	result, err := sdkgo.RunMutation(ctx, client.PostThreadReply(), slackConnection, slack.PostThreadReplyInput{ChannelID: "C123", ThreadTimestamp: "1.0", Text: "Processing complete"})
 	require.NoError(t, err)
 	require.Equal(t, slack.PostThreadReplyBranchSent, result.Branch)
 	require.Equal(t, "1.0", payload["thread_ts"])
@@ -211,6 +235,93 @@ func TestPostMessageProviderRejectionUsesProviderRejectedBranch(t *testing.T) {
 	require.Equal(t, sdkgo.FailureNotFound, result.Failure.Kind)
 }
 
+func TestPostMessageRejectedCredentialRefreshesAcrossFencedAttempts(t *testing.T) {
+	for _, testCase := range []struct {
+		name       string
+		statusCode int
+		body       string
+	}{
+		{name: "token_expired", statusCode: http.StatusOK, body: `{"ok":false,"error":"token_expired"}`},
+		{name: "invalid_auth", statusCode: http.StatusOK, body: `{"ok":false,"error":"invalid_auth"}`},
+		{name: "unauthorized", statusCode: http.StatusUnauthorized, body: `{"ok":false,"error":"not_authed"}`},
+		{name: "unauthorized_malformed_body", statusCode: http.StatusUnauthorized, body: `{"ok":`},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			var messageIDs []string
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+				var payload map[string]string
+				require.NoError(t, json.NewDecoder(request.Body).Decode(&payload))
+				messageIDs = append(messageIDs, payload["client_msg_id"])
+				if len(messageIDs) == 1 {
+					require.Equal(t, "Bearer rejected-bot", request.Header.Get("Authorization"))
+					response.WriteHeader(testCase.statusCode)
+					_, _ = response.Write([]byte(testCase.body))
+					return
+				}
+				require.Equal(t, "Bearer replacement-bot", request.Header.Get("Authorization"))
+				_, _ = response.Write([]byte(`{"ok":true,"channel":"C123","ts":"2.0"}`))
+			}))
+			t.Cleanup(server.Close)
+			provider := &rejectionRefreshingCredentialProvider{}
+			client, err := slack.New(slack.Config{Endpoint: server.URL}, provider)
+			require.NoError(t, err)
+			ctx := newSlackDexContext("post-refresh-" + testCase.name)
+			input := slack.PostChannelMessageInput{ChannelID: "C123", Text: "hello"}
+			_, err = sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, input)
+			require.Error(t, err)
+			require.Equal(t, 1, provider.forcedRefreshes)
+			require.False(t, provider.refreshDeadline.IsZero())
+			require.LessOrEqual(t, time.Until(provider.refreshDeadline), 27*time.Second)
+			require.Len(t, messageIDs, 1)
+			require.Contains(t, string(ctx.heartbeat), `"state":"canResend"`)
+			ctx.attempt = 2
+			result, err := sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, input)
+			require.NoError(t, err)
+			require.Equal(t, slack.PostChannelMessageBranchSent, result.Branch)
+			require.Equal(t, 1, provider.forcedRefreshes)
+			require.Len(t, messageIDs, 2)
+			require.Equal(t, messageIDs[0], messageIDs[1])
+		})
+	}
+}
+
+func TestPostMessageRejectedCredentialWithoutRefreshSelectsProviderRejected(t *testing.T) {
+	for _, testCase := range []struct {
+		name             string
+		refreshError     error
+		unchangedRefresh bool
+		wantsReconnect   bool
+	}{
+		{name: "not_refreshed", refreshError: projectconfig.ErrRejectedCredentialNotRefreshed},
+		{name: "broker_unavailable", refreshError: errors.New("credential broker unavailable")},
+		{name: "reauthorization_required", refreshError: sdkgo.NewReauthorizationRequiredError(errors.New("authorization revoked")), wantsReconnect: true},
+		{name: "unchanged_token", unchangedRefresh: true, wantsReconnect: true},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			requests := 0
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+				requests++
+				_, _ = response.Write([]byte(`{"ok":false,"error":"token_expired"}`))
+			}))
+			t.Cleanup(server.Close)
+			provider := &rejectionRefreshingCredentialProvider{refreshError: testCase.refreshError, unchangedRefresh: testCase.unchangedRefresh}
+			client, err := slack.New(slack.Config{Endpoint: server.URL}, provider)
+			require.NoError(t, err)
+			result, err := sdkgo.RunMutation(newSlackDexContext("post-refresh-failed"), client.PostChannelMessage(), slackConnection, slack.PostChannelMessageInput{ChannelID: "C123", Text: "hello"})
+			require.NoError(t, err)
+			require.Equal(t, slack.PostChannelMessageBranchProviderRejected, result.Branch)
+			require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
+			if testCase.wantsReconnect {
+				require.Contains(t, result.Failure.Message, "reconnect the connection")
+			} else {
+				require.Contains(t, result.Failure.Message, "temporarily unavailable")
+			}
+			require.Equal(t, 1, requests)
+			require.Equal(t, 1, provider.forcedRefreshes)
+		})
+	}
+}
+
 func TestPostMessageServerFailureIsUncertain(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
 		response.WriteHeader(http.StatusInternalServerError)
@@ -221,6 +332,290 @@ func TestPostMessageServerFailureIsUncertain(t *testing.T) {
 	result, err := sdkgo.RunMutation(newSlackDexContext("post-unknown"), client.PostChannelMessage(), slackConnection, slack.PostChannelMessageInput{ChannelID: "C123", Text: "hello"})
 	require.NoError(t, err)
 	require.Equal(t, slack.PostChannelMessageBranchUncertain, result.Branch)
+}
+
+func TestPostMessageConflictIsUncertainWithoutVerifiedReplay(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		response.WriteHeader(http.StatusConflict)
+		_, _ = response.Write([]byte(`{"ok":false,"error":"conflict"}`))
+	}))
+	t.Cleanup(server.Close)
+	client := newSlackClient(t, server.URL)
+	result, err := sdkgo.RunMutation(newSlackDexContext("post-conflict"), client.PostThreadReply(), slackConnection, slack.PostThreadReplyInput{ChannelID: "C123", ThreadTimestamp: "1.0", Text: "hello"})
+	require.NoError(t, err)
+	require.Equal(t, slack.PostThreadReplyBranchUncertain, result.Branch)
+}
+
+func TestPostMessageServiceUnavailableRetriesBothOperations(t *testing.T) {
+	for _, testCase := range []struct {
+		operation    string
+		statusCode   int
+		responseBody string
+	}{
+		{operation: "channel", statusCode: http.StatusServiceUnavailable, responseBody: `{"ok":false,"error":"service_unavailable"}`},
+		{operation: "reply", statusCode: http.StatusServiceUnavailable, responseBody: `{"ok":false,"error":"service_unavailable"}`},
+		{operation: "channel", statusCode: http.StatusServiceUnavailable, responseBody: `{"ok":`},
+		{operation: "reply", statusCode: http.StatusTooManyRequests, responseBody: `{"ok":`},
+	} {
+		t.Run(testCase.operation+"-"+strconv.Itoa(testCase.statusCode)+"-"+testCase.responseBody, func(t *testing.T) {
+			requests := 0
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+				requests++
+				response.WriteHeader(testCase.statusCode)
+				_, _ = response.Write([]byte(testCase.responseBody))
+			}))
+			t.Cleanup(server.Close)
+			client := newSlackClient(t, server.URL)
+			ctx := newSlackDexContext("post-503-" + testCase.operation)
+			var err error
+			if testCase.operation == "channel" {
+				_, err = sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, slack.PostChannelMessageInput{ChannelID: "C123", Text: "hello"})
+			} else {
+				_, err = sdkgo.RunMutation(ctx, client.PostThreadReply(), slackConnection, slack.PostThreadReplyInput{ChannelID: "C123", ThreadTimestamp: "1.0", Text: "hello"})
+			}
+			require.Error(t, err)
+			require.Equal(t, 1, requests)
+			require.NotEmpty(t, ctx.heartbeat)
+		})
+	}
+}
+
+func TestPostMessageRetriesServiceUnavailableWithSameCallID(t *testing.T) {
+	requests := 0
+	var messageIDs []string
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		requests++
+		var payload map[string]string
+		require.NoError(t, json.NewDecoder(request.Body).Decode(&payload))
+		messageIDs = append(messageIDs, payload["client_msg_id"])
+		if requests == 1 {
+			response.WriteHeader(http.StatusServiceUnavailable)
+			_, _ = response.Write([]byte(`{"ok":false,"error":"service_unavailable"}`))
+			return
+		}
+		_, _ = response.Write([]byte(`{"ok":true,"channel":"C123","ts":"2.0"}`))
+	}))
+	t.Cleanup(server.Close)
+	client := newSlackClient(t, server.URL)
+	ctx := newSlackDexContext("post-503-recovery")
+	input := slack.PostThreadReplyInput{ChannelID: "C123", ThreadTimestamp: "1.0", Text: "hello"}
+	_, err := sdkgo.RunMutation(ctx, client.PostThreadReply(), slackConnection, input)
+	require.Error(t, err)
+	ctx.attempt = 2
+	result, err := sdkgo.RunMutation(ctx, client.PostThreadReply(), slackConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, slack.PostThreadReplyBranchSent, result.Branch)
+	require.Equal(t, 2, requests)
+	require.Equal(t, messageIDs[0], messageIDs[1])
+	require.NotEmpty(t, messageIDs[0])
+}
+
+func TestPostMessageMissingOrStaleRetryCheckpointDoesNotResend(t *testing.T) {
+	for _, testCase := range []struct {
+		name      string
+		attempt   int32
+		heartbeat []byte
+	}{
+		{name: "missing", attempt: 2},
+		{name: "stale", attempt: 3, heartbeat: []byte(`{"callId":"old","attempt":1,"state":"canResend"}`)},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			requests := 0
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) { requests++ }))
+			t.Cleanup(server.Close)
+			client := newSlackClient(t, server.URL)
+			ctx := newSlackDexContext("post-checkpoint-" + testCase.name)
+			ctx.attempt = testCase.attempt
+			ctx.heartbeat = testCase.heartbeat
+			result, err := sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, slack.PostChannelMessageInput{ChannelID: "C123", Text: "hello"})
+			require.NoError(t, err)
+			require.Equal(t, slack.PostChannelMessageBranchUncertain, result.Branch)
+			require.Equal(t, 0, requests)
+		})
+	}
+}
+
+func TestPostMessageFailedCheckpointRetriesWithoutDispatch(t *testing.T) {
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) { requests++ }))
+	t.Cleanup(server.Close)
+	client := newSlackClient(t, server.URL)
+	ctx := newSlackDexContext("post-checkpoint-failed")
+	ctx.heartbeatError = errors.New("heartbeat unavailable")
+	_, err := sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, slack.PostChannelMessageInput{ChannelID: "C123", Text: "hello"})
+	require.Error(t, err)
+	require.Equal(t, 0, requests)
+}
+
+func TestPostMessageFailedDispatchClaimFailsClosedWithoutCheckpoint(t *testing.T) {
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		requests++
+		_, _ = response.Write([]byte(`{"ok":true,"channel":"C123","ts":"2.0"}`))
+	}))
+	t.Cleanup(server.Close)
+	client := newSlackClient(t, server.URL)
+	ctx := newSlackDexContext("post-dispatch-checkpoint-failed")
+	ctx.heartbeatError = errors.New("heartbeat unavailable")
+	input := slack.PostChannelMessageInput{ChannelID: "C123", Text: "hello"}
+	_, err := sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, input)
+	require.Error(t, err)
+	require.Equal(t, 0, requests)
+	require.Empty(t, ctx.heartbeat)
+	ctx.heartbeatError = nil
+	ctx.attempt = 2
+	result, err := sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, slack.PostChannelMessageBranchUncertain, result.Branch)
+	require.Equal(t, 0, requests)
+}
+
+func TestPostMessageProvenUnsentRetriesButAmbiguousTransportIsUncertain(t *testing.T) {
+	for _, testCase := range []struct {
+		name       string
+		trace      func(*httptrace.ClientTrace)
+		wantsRetry bool
+	}{
+		{name: "dns_failure", trace: func(trace *httptrace.ClientTrace) {
+			trace.DNSDone(httptrace.DNSDoneInfo{Err: errors.New("lookup failed")})
+		}, wantsRetry: true},
+		{name: "connect_failure", trace: func(trace *httptrace.ClientTrace) {
+			trace.ConnectDone("tcp", "localhost:443", errors.New("connect failed"))
+		}, wantsRetry: true},
+		{name: "tls_failure", trace: func(trace *httptrace.ClientTrace) {
+			trace.TLSHandshakeDone(tls.ConnectionState{}, errors.New("handshake failed"))
+		}, wantsRetry: true},
+		{name: "unknown_transport", trace: func(*httptrace.ClientTrace) {}},
+		{name: "connection_obtained", trace: func(trace *httptrace.ClientTrace) {
+			trace.GotConn(httptrace.GotConnInfo{})
+			trace.ConnectDone("tcp", "localhost:443", errors.New("connection closed"))
+		}},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			client := newSlackClientWithTransport(t, roundTripFunc(func(request *http.Request) (*http.Response, error) {
+				testCase.trace(httptrace.ContextClientTrace(request.Context()))
+				return nil, errors.New("transport failed")
+			}))
+			ctx := newSlackDexContext("post-transport-" + testCase.name)
+			result, err := sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, slack.PostChannelMessageInput{ChannelID: "C123", Text: "hello"})
+			if testCase.wantsRetry {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, slack.PostChannelMessageBranchUncertain, result.Branch)
+			}
+		})
+	}
+}
+
+func TestPostMessageAcceptedWithoutIdentityIsNotResent(t *testing.T) {
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		requests++
+		_, _ = response.Write([]byte(`{"ok":true,"message":{"text":"hello"}}`))
+	}))
+	t.Cleanup(server.Close)
+	client := newSlackClient(t, server.URL)
+	ctx := newSlackDexContext("post-accepted-invalid")
+	result, err := sdkgo.RunMutation(ctx, client.PostThreadReply(), slackConnection, slack.PostThreadReplyInput{ChannelID: "C123", ThreadTimestamp: "1.0", Text: "hello"})
+	require.NoError(t, err)
+	require.Equal(t, slack.PostThreadReplyBranchUncertain, result.Branch)
+	ctx.attempt = 2
+	_, err = sdkgo.RunMutation(ctx, client.PostThreadReply(), slackConnection, slack.PostThreadReplyInput{ChannelID: "C123", ThreadTimestamp: "1.0", Text: "hello"})
+	require.NoError(t, err)
+	require.Equal(t, 1, requests)
+}
+
+func TestPostMessageDeadlineCutsBeforeDispatch(t *testing.T) {
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		requests++
+		_, _ = response.Write([]byte(`{"ok":true,"channel":"C123","ts":"2.0"}`))
+	}))
+	t.Cleanup(server.Close)
+	client := newSlackClient(t, server.URL)
+	stepContext, cancel := context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
+	defer cancel()
+	ctx := newSlackDexContext("post-deadline")
+	ctx.Context = stepContext
+	_, err := sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, slack.PostChannelMessageInput{ChannelID: "C123", Text: "hello"})
+	require.Error(t, err)
+	require.Equal(t, 0, requests)
+	require.Contains(t, string(ctx.heartbeat), `"state":"notSent"`)
+	ctx.Context = context.Background()
+	ctx.attempt = 2
+	result, err := sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, slack.PostChannelMessageInput{ChannelID: "C123", Text: "hello"})
+	require.NoError(t, err)
+	require.Equal(t, slack.PostChannelMessageBranchSent, result.Branch)
+	require.Equal(t, 1, requests)
+}
+
+func TestPostMessageBodyErrorsPreserveSafeRetryAndUnknownOutcome(t *testing.T) {
+	for _, testCase := range []struct {
+		name       string
+		wantsRetry bool
+	}{
+		{name: "service_unavailable", wantsRetry: true},
+		{name: "ratelimited", wantsRetry: true},
+		{name: "internal_error"},
+		{name: "fatal_error"},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			requests := 0
+			var messageIDs []string
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+				requests++
+				var payload map[string]string
+				require.NoError(t, json.NewDecoder(request.Body).Decode(&payload))
+				messageIDs = append(messageIDs, payload["client_msg_id"])
+				response.Header().Set("Content-Type", "application/json")
+				if requests == 1 {
+					_, _ = response.Write([]byte(`{"ok":false,"error":"` + testCase.name + `"}`))
+					return
+				}
+				_, _ = response.Write([]byte(`{"ok":true,"channel":"C123","ts":"2.0"}`))
+			}))
+			t.Cleanup(server.Close)
+			client := newSlackClient(t, server.URL)
+			ctx := newSlackDexContext("post-body-error-" + testCase.name)
+			input := slack.PostThreadReplyInput{ChannelID: "C123", ThreadTimestamp: "1.0", Text: "hello"}
+			firstResult, err := sdkgo.RunMutation(ctx, client.PostThreadReply(), slackConnection, input)
+			if testCase.wantsRetry {
+				require.Error(t, err)
+				require.Contains(t, string(ctx.heartbeat), `"state":"canResend"`)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, slack.PostThreadReplyBranchUncertain, firstResult.Branch)
+			}
+			ctx.attempt = 2
+			secondResult, err := sdkgo.RunMutation(ctx, client.PostThreadReply(), slackConnection, input)
+			require.NoError(t, err)
+			if testCase.wantsRetry {
+				require.Equal(t, slack.PostThreadReplyBranchSent, secondResult.Branch)
+				require.Equal(t, 2, requests)
+				require.Equal(t, messageIDs[0], messageIDs[1])
+				require.NotEmpty(t, messageIDs[0])
+			} else {
+				require.Equal(t, slack.PostThreadReplyBranchUncertain, secondResult.Branch)
+				require.Equal(t, 1, requests)
+			}
+		})
+	}
+}
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (roundTrip roundTripFunc) RoundTrip(request *http.Request) (*http.Response, error) {
+	return roundTrip(request)
+}
+
+func newSlackClientWithTransport(t *testing.T, transport http.RoundTripper) *slack.Client {
+	t.Helper()
+	client, err := slack.New(slack.Config{}, sdkgo.StaticCredentialProvider[slack.Credentials]{
+		slackConnection: {BotToken: sdkgo.NewSecretString("bot-token"), UserToken: sdkgo.NewSecretString("user-token")},
+	}, slack.WithHTTPClient(&http.Client{Transport: transport}))
+	require.NoError(t, err)
+	return client
 }
 
 func TestListThreadMessagesRejectsPageLargerThanSlackLimit(t *testing.T) {
@@ -243,26 +638,53 @@ func newSlackClient(t *testing.T, endpoint string) *slack.Client {
 
 type slackDexContext struct {
 	context.Context
-	step string
+	step           string
+	attempt        int32
+	heartbeat      []byte
+	heartbeatError error
 }
 
 func newSlackDexContext(step string) *slackDexContext {
 	return &slackDexContext{Context: context.Background(), step: step}
 }
 
-func (*slackDexContext) FlowID() string                                  { return "slack-flow" }
-func (*slackDexContext) RunID() string                                   { return "run" }
-func (*slackDexContext) FlowStartedAt() time.Time                        { return time.Unix(1, 0) }
-func (context *slackDexContext) StepExecutionID() string                 { return context.step }
-func (*slackDexContext) FromStepExecutionID() string                     { return "" }
-func (*slackDexContext) RecoveryError() *dex.RecoveryErrorInfo           { return nil }
-func (*slackDexContext) FirstAttemptAt() time.Time                       { return time.Unix(1, 0) }
-func (*slackDexContext) Attempt() int32                                  { return 1 }
-func (*slackDexContext) HasTimerFired() bool                             { return false }
-func (*slackDexContext) HasTimerFiredByIndex(int) bool                   { return false }
-func (*slackDexContext) WaitForMethodFailed() bool                       { return false }
-func (*slackDexContext) RecordHeartbeat(any) error                       { return nil }
-func (*slackDexContext) GetLastHeartbeatValue(any) (bool, error)         { return false, nil }
+func (*slackDexContext) FlowID() string                        { return "slack-flow" }
+func (*slackDexContext) RunID() string                         { return "run" }
+func (*slackDexContext) FlowStartedAt() time.Time              { return time.Unix(1, 0) }
+func (context *slackDexContext) StepExecutionID() string       { return context.step }
+func (*slackDexContext) FromStepExecutionID() string           { return "" }
+func (*slackDexContext) RecoveryError() *dex.RecoveryErrorInfo { return nil }
+func (*slackDexContext) FirstAttemptAt() time.Time             { return time.Unix(1, 0) }
+func (context *slackDexContext) Attempt() int32 {
+	if context.attempt == 0 {
+		return 1
+	}
+	return context.attempt
+}
+func (*slackDexContext) HasTimerFired() bool           { return false }
+func (*slackDexContext) HasTimerFiredByIndex(int) bool { return false }
+func (*slackDexContext) WaitForMethodFailed() bool     { return false }
+func (context *slackDexContext) RecordHeartbeat(value any) error {
+	if context.heartbeatError != nil {
+		return context.heartbeatError
+	}
+	if value == nil {
+		context.heartbeat = nil
+		return nil
+	}
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	context.heartbeat = encoded
+	return nil
+}
+func (context *slackDexContext) GetLastHeartbeatValue(target any) (bool, error) {
+	if len(context.heartbeat) == 0 {
+		return false, nil
+	}
+	return true, json.Unmarshal(context.heartbeat, target)
+}
 func (*slackDexContext) SetStepExecutionLocal(string, any) error         { return nil }
 func (*slackDexContext) GetStepExecutionLocal(string, any) (bool, error) { return false, nil }
 func (*slackDexContext) RecordEvent(string, any) error                   { return nil }

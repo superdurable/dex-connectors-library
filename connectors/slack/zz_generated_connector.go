@@ -537,12 +537,12 @@ var PostChannelMessageDefinition = sdkgo.MutationDefinition{
 		{ID: PostChannelMessageBranchSent, Description: "Slack accepted the message."},
 		{ID: PostChannelMessageBranchProviderRejected, Description: "Slack conclusively rejected the message.", Optional: true},
 		{ID: PostChannelMessageBranchUncertain, Description: "The dispatched message outcome cannot be confirmed.", Optional: true},
-		{ID: PostChannelMessageBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
+		{ID: PostChannelMessageBranchDefect, Description: "Local input, terminal connection credentials, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
-		ExecuteDurability: dex.StepDurabilityAsync,
+		ExecuteDurability: dex.StepDurabilitySync,
 	},
 }
 
@@ -610,12 +610,12 @@ var PostThreadReplyDefinition = sdkgo.MutationDefinition{
 		{ID: PostThreadReplyBranchSent, Description: "Slack accepted the message."},
 		{ID: PostThreadReplyBranchProviderRejected, Description: "Slack conclusively rejected the message.", Optional: true},
 		{ID: PostThreadReplyBranchUncertain, Description: "The dispatched message outcome cannot be confirmed.", Optional: true},
-		{ID: PostThreadReplyBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
+		{ID: PostThreadReplyBranchDefect, Description: "Local input, terminal connection credentials, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
-		ExecuteDurability: dex.StepDurabilityAsync,
+		ExecuteDurability: dex.StepDurabilitySync,
 	},
 }
 

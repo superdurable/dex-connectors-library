@@ -243,12 +243,52 @@ no `binding`. Their runner records go to `slog.Default()`, so call
 - `PostChannelMessage` creates a top-level channel message.
 - `PostThreadReply` replies to an existing thread.
 
-Posting uses Dex Call ID as Slack `client_msg_id`. An ambiguous provider result
-uses the `uncertain` branch and must be reconciled or manually recovered rather
-than automatically resent.
+Posting sends the stable Dex Call ID as Slack `client_msg_id`. [Slack's
+`chat.postMessage` reference](https://docs.slack.dev/reference/methods/chat.postMessage/)
+does not list `client_msg_id` as an argument; it mentions the field only in
+duplicate-related error descriptions. Its replay deduplication behavior remains
+unverified. A connection loss after dispatch, a 409, other 5xx, an `ok:false`
+`internal_error` or `fatal_error` without a timestamp, or a successful response
+without a usable message identity selects `uncertain` and requires reconciliation.
+The connector does not resend after such an outcome. A traced DNS, connect, or
+TLS failure before a connection exists, HTTP 429, and HTTP 503 return Retry.
+An HTTP 2xx carrying
+`ok:false` `ratelimited` or `service_unavailable` also retries after recording
+that the request was not processed. [Slack's method error descriptions](https://docs.slack.dev/reference/methods/chat.postMessage/)
+describe rate limiting with `Retry-After` and temporary service unavailability;
+their HTTP statuses and live delivery behavior remain unverified. An
+`internal_error` or `fatal_error` with a returned timestamp is read back;
+without one it remains `uncertain`. A complete HTTP 2xx `ok:false` post with
+`invalid_auth`, `token_expired`, or `token_revoked`, or any HTTP 401, forces a
+credential refresh within the Step deadline margin. If refresh supplies a
+changed valid bot token, the fence permits one retry on the next Step attempt
+with the same `client_msg_id`; a failed, invalid, or unchanged refresh selects
+`providerRejected`. The post is never sent twice in one attempt.
+Slack's 409 behavior remains unverified.
+The shared single-dispatch fence uses synchronous Step durability to persist
+its claim and safe-retry evidence.
+A known accepted message timestamp is checkpointed for read-back through
+`conversations.replies`; an unavailable read-back retries without a new post,
+while an inconclusive read-back remains `uncertain`. Read-back uses the remaining
+Step context; a timeout retries read-back on the next attempt without posting.
+Before a post, a transient credential lookup failure records `notSent` and
+retries. Reauthorization-required or missing bot credentials record `notSent`
+and select `defect` with an authentication failure and reconnect guidance.
+During read-back, a transient credential failure retries without another post;
+reauthorization-required or missing user credentials select `uncertain` with
+the known message timestamp in the receipt and reconnect guidance.
+For replies, whether Slack excludes the parent message when `oldest` and `latest`
+name the reply and `limit=1` is unverified. A parent-only result selects
+`uncertain`. Missing or stale checkpoints do not authorize a resend. Released
+versions never wrote a fence marker: a post Step retry spanning the upgrade
+from v1.1.1 at attempt two or later selects `uncertain` without posting.
+The fence bounds each request inside the Step attempt. An application must not
+override these post Steps to async durability, which cannot preserve the
+fence's heartbeat across retries.
 
-Every operation uses `defect` for invalid local input, connection configuration,
-or Connector contract violations. A conclusive Slack API refusal uses
+Every operation uses `defect` for invalid local input, terminal connection
+credential failures, connection configuration, or Connector contract violations.
+A conclusive Slack API refusal uses
 `providerRejected`; query responses that are malformed or exceed configured
 limits use `invalidResponse`. Safe query transport, rate-limit, and availability
 failures retry instead of producing a branch.
