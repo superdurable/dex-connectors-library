@@ -32,7 +32,7 @@ every Re:amaze operation to triage a new customer issue:
 
 The `uncertain` branches of the create and the note are unwired: a request that
 was sent, whose outcome is unknown, and that the read-back did not find fails
-the Flow with the connector's safe reason. Other optional branches also fail
+the Flow with an error naming the branch with no target. Other optional branches also fail
 the Flow, such as a rejected conversation, a missing conversation, an invalid
 response, or a local defect.
 

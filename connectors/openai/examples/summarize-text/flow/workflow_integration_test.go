@@ -71,8 +71,7 @@ func TestSummarizeTextExampleStoresOpenAIResponsesWithRealDex(t *testing.T) {
 		require.NoError(t, err)
 		result := waitForSummaryResult(t, ctx, client, flowID)
 		require.Equal(t, dex.FlowFailed, result.Status)
-		require.Contains(t, result.ErrorMessage, "failed")
-		require.Contains(t, result.ErrorMessage, "no target")
+		require.Contains(t, result.ErrorMessage, "openai createResponse (connection openai-api) selected branch failed with no target")
 	})
 
 	requests := provider.Requests()
@@ -113,6 +112,8 @@ func TestSummarizeTextExampleConfirmsInterruptedStreamWithRealDex(t *testing.T) 
 	require.Equal(t, "/responses/resp_recovered", requests[1].Path)
 }
 
+const uncertainSummaryReason = "openai createResponse (connection openai-api) selected branch uncertain with no target"
+
 // TestSummarizeTextExampleFailsClosedAfterWorkerLossBeforeAResponseIDWithRealDex
 // loses the Worker after OpenAI received the create request but before any Response ID.
 func TestSummarizeTextExampleFailsClosedAfterWorkerLossBeforeAResponseIDWithRealDex(t *testing.T) {
@@ -124,8 +125,7 @@ func TestSummarizeTextExampleFailsClosedAfterWorkerLossBeforeAResponseIDWithReal
 	client, flowID, ctx := startSummaryFlowAndLoseWorker(t, provider, func(*dex.Client, string) bool { return len(provider.Requests()) == 1 })
 	result := waitForSummaryResult(t, ctx, client, flowID)
 	require.Equal(t, dex.FlowFailed, result.Status, "the unwired uncertain branch fails the Flow")
-	require.Contains(t, result.ErrorMessage, "uncertain")
-	require.Contains(t, result.ErrorMessage, "no target")
+	require.Contains(t, result.ErrorMessage, uncertainSummaryReason)
 	require.Equal(t, []string{http.MethodPost}, providerMethods(provider), "a Response may exist, so the next attempt must not create another")
 }
 
@@ -156,8 +156,7 @@ func TestSummarizeTextExampleNeverResendsAfterWorkerLossWithRealDex(t *testing.T
 	// Reading the Response back and failing closed are both correct; only a second POST is not.
 	if result.Status == dex.FlowFailed {
 		t.Log("Dex had not persisted the Response ID checkpoint; the resumed attempt failed closed")
-		require.Contains(t, result.ErrorMessage, "uncertain")
-		require.Contains(t, result.ErrorMessage, "no target")
+		require.Contains(t, result.ErrorMessage, uncertainSummaryReason)
 		require.Equal(t, []string{http.MethodPost}, methods)
 		return
 	}

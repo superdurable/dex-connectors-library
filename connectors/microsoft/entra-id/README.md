@@ -271,7 +271,7 @@ cursor that `sdkgo` does not provide.
 [`examples/account-lifecycle`](examples/account-lifecycle) is a runnable Dex
 Web **Start Flow** example. Onboarding creates the hire's account, or finds
 the one an earlier run created for the same hire ID, and adds it to a team
-group; a name that belongs to someone else is handed to IT without creating
+group; a name that belongs to someone else fails the Flow without creating
 anything; reinstating enables a returning person's account instead of
 creating a second one; and offboarding finds the account, disables it,
 revokes its sign-in sessions, and removes the membership.

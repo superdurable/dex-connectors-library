@@ -11,7 +11,7 @@ This example runs one operation-only Flow from Dex Web **Start Flow**:
 
 The summary and display RPCs show the request and the outcome in Dex Web.
 Optional branches, including an exhausted key's `providerRejected` outcome,
-are unwired and fail the Flow with the connector's safe reason.
+are unwired and fail the Flow with an error naming the branch with no target.
 
 `RecordCompanyNewsRequest` computes `from` once, in UTC, and persists it, so a
 retried search uses the same window. The start Step implements a `WaitFor` that

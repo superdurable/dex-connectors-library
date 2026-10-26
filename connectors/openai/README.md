@@ -303,8 +303,8 @@ such as the incomplete summary, carry partial text and are not checked.
 
 The [summarize-text example](examples/summarize-text/README.md) runs one Flow
 from Dex Web **Start Flow**: it persists the request, stores an OpenAI
-Response that summarizes it while streaming the text, and completes with the
-`completed` or `failed` Response.
+Response that summarizes it while streaming the text. A `completed` Response
+completes the Flow; the unwired `failed` branch fails it.
 
 ## Verify
 

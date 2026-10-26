@@ -358,13 +358,6 @@ func isAttributeNotFound(err error) bool {
 	return errors.As(err, &missingAttribute)
 }
 
-func failureMessage(failure *sdkgo.Failure) string {
-	if failure == nil {
-		return ""
-	}
-	return failure.Message
-}
-
 // dex:group group-id:request group-label:"Reply request"
 // dex:explanation text:"Validate the customer and reply text and record them before contacting Microsoft Graph."
 type recordReplyRequest struct {

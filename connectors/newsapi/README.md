@@ -100,8 +100,9 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./e
 The provider tests cover the header-only key, query encoding, null-preserving
 article fields, removed articles, every documented error code, input
 validation, malformed and oversized responses, transport failure, and credential
-replacement. The example's real Dex suite covers the found and wired rejected
-routes, a retried outage, an unwired `invalidResponse`, and invalid start input.
+replacement. The example's real Dex suite covers the found route, an unwired
+`providerRejected` outcome, a retried outage, an unwired `invalidResponse`, and
+invalid start input.
 
 An opt-in live test makes two NewsAPI requests, which count against the key's
 daily allowance: one with a wrong key, which must select `providerRejected`

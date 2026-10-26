@@ -186,9 +186,9 @@ Microsoft's guide says to repeat an append that answered 504. The connector
 reads the key column instead, so a 504 whose append landed converges to
 `appended`, and one that did not land selects `uncertain` instead of risking a
 second row. Wire `uncertain` to a person, or to a Timer and a later
-`getTableRows`, as the example's `ReportExcelDecisionUncertain` Step does. A
-key the table already holds is never appended again, by any Flow; key text
-stored with a kept apostrophe still matches.
+`getTableRows`. The example leaves `uncertain` unwired, so selecting it fails
+the Flow. A key the table already holds is never appended again, by any Flow;
+key text stored with a kept apostrophe still matches.
 
 ## Errors and throttling
 

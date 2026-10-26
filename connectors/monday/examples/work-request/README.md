@@ -24,8 +24,8 @@ every monday.com operation to handle a recurring work request:
    completes with the outcome.
 
 The `uncertain` branches of the create and update are unwired. When monday.com
-accepted a write but answered unusably, the Flow fails with the connector's
-safe reason. Other optional branches are also unwired and fail the Flow, such as a rejected column value,
+accepted a write but answered unusably, the Flow fails with an error naming
+the branch with no target. Other optional branches are also unwired and fail the Flow, such as a rejected column value,
 a missing board, an invalid response, or a local defect.
 
 ## Generate the Flow Definition

@@ -11,7 +11,7 @@ handle an issue request:
    requested title and whose state type is `triage`, `backlog`, `unstarted`, or `started`.
    `ChooseOpenIssue` reuses the first such issue, or goes on to create one;
 4. `CreateRequestedIssue` calls `linear.NewCreateIssueStep` with the title, description, and resolved
-   assignee; an unwired `providerRejected` branch fails the Flow with the connector's safe reason;
+   assignee; an unwired `providerRejected` branch fails the Flow with an error naming the branch with no target;
 5. `ListTeamStates` calls `linear.NewListWorkflowStatesStep`, and `ChooseTargetState` picks the state named
    `stateName`, or the team's first `unstarted` state, failing with the available names when none matches;
 6. `MoveIssue` calls `linear.NewUpdateIssueStep` to set the state and the resolved assignee;

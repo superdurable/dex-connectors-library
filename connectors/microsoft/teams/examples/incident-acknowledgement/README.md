@@ -10,7 +10,7 @@ every Microsoft Teams operation to get a person to acknowledge an incident:
    branch fails the Flow and the connector does not re-send an uncertain post.
 3. `PostStatusReply` calls `teams.NewPostThreadReplyStep` with
    `Status: SEV2 incident INC-1042 is being investigated. Reply ack in this
-   thread to acknowledge.` Every outcome is recorded and the Flow goes on.
+   thread to acknowledge.` A sent status reply is recorded and the Flow goes on.
 4. `WaitForAcknowledgement` waits on a durable Timer, then
    `ReadThreadReplies` calls `teams.NewListThreadRepliesStep` for the newest
    50 replies. `CheckAcknowledgement` completes as `acknowledged` on the
@@ -24,7 +24,7 @@ every Microsoft Teams operation to get a person to acknowledge an incident:
    completes as `unacknowledged`.
 6. When replies cannot be read, for example because nobody granted
    administrator consent for `ChannelMessage.Read.All`, an unwired branch
-   fails the Flow with the connector's safe reason.
+   fails the Flow with an error naming the branch with no target.
 
 The Worker reads every 30 seconds, at most 20 times. Each poll reads only the
 newest 50 replies, so an acknowledgement is missed only if more than 50 replies

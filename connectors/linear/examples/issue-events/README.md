@@ -8,8 +8,8 @@ This example serves the Linear connector's webhook endpoint and starts one Flow 
 2. the application's `AcceptIssueCreated` filter admits only `create` events of issues outside the trash, and
    `ResolveFlowID` names the Flow after the event ID, so a redelivery starts no second Flow;
 3. `RecordIssueEvent` records the event, `ReadEventIssue` calls `linear.NewGetIssueStep` by the issue UUID, and
-   `RecordIssueRead` completes with the issue. Optional branches are unwired and fail the Flow with the
-   connector's safe reason.
+   `RecordIssueRead` completes with the issue. Optional branches are unwired and fail the Flow with an
+   error naming the branch with no target.
 
 ## 1. Generate the Flow Definition
 

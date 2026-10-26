@@ -21,8 +21,8 @@ every Microsoft Excel operation:
    range, and `CompleteExcelApprovalDecision` completes as `completed` with
    `summaryConfirmed`.
 
-`appendTableRows`'s `uncertain` branch is unwired and fails the Flow with the
-connector's safe reason. No non-happy branch routes to another Step.
+`appendTableRows`'s `uncertain` branch is unwired and fails the Flow with an
+error naming the branch with no target. No non-happy branch routes to another Step.
 
 ## Prepare the workbook
 

@@ -177,8 +177,8 @@ func TestUnconfirmedSendFailsAndIsNeverResentWithRealDex(t *testing.T) {
 
 	result := harness.waitForFlow(t, harness.startReply(t, "unconfirmed", integrationInput()))
 	require.Equal(t, dex.FlowFailed, result.Status)
-	require.Contains(t, result.ErrorMessage, "uncertain")
-	require.Contains(t, result.ErrorMessage, "no target")
+	require.Contains(t, result.ErrorMessage, "outlook-mail replyToMessage (connection outlook-support-mailbox) selected branch uncertain with no target:")
+	require.Contains(t, result.ErrorMessage, "the send was dispatched but its answer was lost")
 	require.Equal(t, 1, harness.graph.RequestCount(graphtest.EndpointSendDraft), "an unconfirmed send is never dispatched again")
 	require.Empty(t, harness.graph.Deliveries())
 	require.Len(t, harness.graph.MessagesInFolder("drafts"), 1)
