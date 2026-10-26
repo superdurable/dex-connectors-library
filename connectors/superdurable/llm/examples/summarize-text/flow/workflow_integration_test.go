@@ -209,6 +209,12 @@ func startSummaryWorker(
 func startSummaryWorkerWithConnection(t *testing.T, llmConnection llm.Connection, summaryModel SummaryModelConfiguration) (*Flow, *dex.Client) {
 	t.Helper()
 	flow := NewFlow(llmConnection, summaryModel)
+	return flow, startWorker(t, flow)
+}
+
+// startWorker registers flow on a new Worker at a free local port and returns a Client targeting it.
+func startWorker(t *testing.T, flow dex.Flow) *dex.Client {
+	t.Helper()
 	serverAddress := cmp.Or(os.Getenv(textgentest.DexFlowServiceAddressEnvironmentVariable), textgentest.DefaultDexFlowServiceAddress)
 	registry, err := dex.NewRegistry([]dex.Flow{flow})
 	require.NoError(t, err)
@@ -233,7 +239,7 @@ func startSummaryWorkerWithConnection(t *testing.T, llmConnection llm.Connection
 		defer cancel()
 		require.NoError(t, errors.Join(worker.Stop(ctx), <-workerResult, client.Close(), cache.Close()))
 	})
-	return flow, client
+	return client
 }
 
 func runSummaryFlowToCompletion(t *testing.T, client *dex.Client, flow *Flow, flowID string) SummaryOutcome {
@@ -246,11 +252,17 @@ func runSummaryFlowToCompletion(t *testing.T, client *dex.Client, flow *Flow, fl
 }
 
 // runSummaryFlow starts the Flow and waits, across server long-poll caps, until it closes.
-func runSummaryFlow(t *testing.T, client *dex.Client, flow *Flow, flowID string) dex.FlowResult {
+func runSummaryFlow(t *testing.T, client *dex.Client, flow dex.Flow, flowID string) dex.FlowResult {
+	t.Helper()
+	return runFlowToCompletion(t, client, flow, flowID, SummaryRequest{Text: "The LLM connector shipped today."})
+}
+
+// runFlowToCompletion starts a Flow and waits, across server long-poll caps, until it closes.
+func runFlowToCompletion(t *testing.T, client *dex.Client, flow dex.Flow, flowID string, input any) dex.FlowResult {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	_, err := client.StartFlow(ctx, flow, flowID, SummaryRequest{Text: "The LLM connector shipped today."}, dex.StartFlowOptions{})
+	_, err := client.StartFlow(ctx, flow, flowID, input, dex.StartFlowOptions{})
 	require.NoError(t, err)
 	for {
 		result, err := client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})

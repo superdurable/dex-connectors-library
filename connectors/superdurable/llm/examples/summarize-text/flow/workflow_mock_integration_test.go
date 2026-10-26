@@ -12,6 +12,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/superdurable/llm"
+	"github.com/superdurable/dex-connectors-library/connectors/superdurable/llm/examples/summarize-text/structuredoutput"
 	"github.com/superdurable/dex-connectors-library/connectors/superdurable/llm/llmmock"
 	"github.com/superdurable/dex-connectors-library/sdkgo/textgen"
 	"github.com/superdurable/dex/sdk-go/dex"
@@ -64,4 +65,24 @@ func TestSummarizeTextExampleRunsOnTheLLMMockWithRealDex(t *testing.T) {
 	}
 	require.Equal(t, "mock-model", requests[fmt.Sprintf("llm-summary-mock-default-%d", runID)].Model, "the Step pick reaches the request")
 	require.Equal(t, []string{"", string(llm.GenerateTextBranchTruncated)}, branches[fmt.Sprintf("llm-summary-mock-retry-%d", runID)])
+}
+
+// TestStructuredOutputFlowRunsOnTheLLMMockWithRealDex scripts the JSON answer for a Flow whose request sets a
+// structured output schema, which the plain text manifest default cannot answer.
+func TestStructuredOutputFlowRunsOnTheLLMMockWithRealDex(t *testing.T) {
+	mock := llmmock.New(t, ConnectionName)
+	flow := structuredoutput.NewFlow(mock.Connection())
+	client := startWorker(t, flow)
+	flowID := fmt.Sprintf("llm-release-status-mock-%d", time.Now().UnixNano())
+	mock.GenerateText().ForFlow(flowID).Respond(llmmock.GenerateTextGenerated(llm.GenerateTextResponse{Text: `{"status":"shipped"}`}, nil))
+
+	result := runFlowToCompletion(t, client, flow, flowID, structuredoutput.SummaryRequest{Text: "The LLM connector shipped today."})
+
+	require.Equal(t, dex.FlowCompleted, result.Status, "Flow %s: %s", flowID, result.ErrorMessage)
+	var releaseStatus string
+	require.NoError(t, result.DecodeSingleOutput(&releaseStatus))
+	require.Equal(t, `{"status":"shipped"}`, releaseStatus)
+	calls := mock.GenerateText().Calls()
+	require.Len(t, calls, 1)
+	require.Equal(t, "release_status", calls[0].Input.StructuredOutput.Name, "the Step's schema reaches the request")
 }

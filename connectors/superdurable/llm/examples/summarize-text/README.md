@@ -62,7 +62,7 @@ go run ./cmd/connectorctl ui-artifact \
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/superdurable/llm/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/superdurable/llm \
-  --version v0.23.1 --tag connectors/superdurable/llm/v0.23.1 \
+  --version v0.24.0 --tag connectors/superdurable/llm/v0.24.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/llm-release/connector-ui.tgz \
   --ui-digest /tmp/llm-release/connector-ui.tgz.sha256 \
@@ -164,7 +164,9 @@ pick the provider's model-ID rule rejects, which records a defect without a
 request. A second real Dex test runs the same Flow on an `llmmock` connection,
 as an application test does: the manifest default completes the summary, a
 scripted quota failure fails the Flow, and a scripted rate limit is retried
-before a truncated result:
+before a truncated result. A third real Dex test runs a small Flow whose Step
+requests structured output on the mock and scripts the JSON answer for its
+schema, which the plain text default cannot answer:
 
 ```bash
 DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./examples/summarize-text/... -count=1

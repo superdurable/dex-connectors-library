@@ -31,7 +31,7 @@ Gemini's `generateContent`.
 Install a published component release:
 
 ```bash
-go get github.com/superdurable/dex-connectors-library/connectors/superdurable/llm@v0.23.1
+go get github.com/superdurable/dex-connectors-library/connectors/superdurable/llm@v0.24.0
 ```
 
 The package name, `llm`, is the last element of the module path, so import
@@ -219,6 +219,26 @@ func (flow *Flow) MapToGenerateTextRequest(request SummaryRequest) llm.GenerateT
 `github.com/superdurable/dex-connectors-library/sdkgo/textgen`, which also
 defines `Message`, `StructuredOutput`, `ReasoningEffort`, `FinishReason`, and
 `Usage`.
+
+### Structured output
+
+`StructuredOutput` asks for JSON that matches a schema. Every provider accepts
+the same portable JSON Schema subset, and a schema outside it selects `defect`
+with `VALIDATION` and no request:
+
+- the root is an object;
+- every object sets `"additionalProperties": false` and lists every property
+  in `required`;
+- the only keywords are `type`, `properties`, `required`,
+  `additionalProperties`, `items`, `enum`, `const`, `description`, `title`,
+  `minimum`, `maximum`, `minLength`, `maxLength`, `minItems`, `maxItems`, and
+  `format` (`date-time`, `date`, `time`, or `uuid`);
+- the schema is at most ten levels deep.
+
+The Result's text is the JSON alone, validated against the original schema; a
+mismatch selects `invalidResponse`. The
+[generateText operation contract](../../../docs/connector-contract.md#the-generatetext-operation)
+defines the subset.
 
 ### A Step that names a model
 
@@ -607,8 +627,8 @@ local connections file.
 `llmmock` is the generated mock package for application tests. `llmmock.New`
 returns a scripted connection that the Step factories accept in place of a
 project connection, so a Flow runs on a real Worker without a provider or a
-key. Unscripted calls answer with the manifest default, `shortSummary`, a
-`generated` result with usage. The example's
+key. Unscripted calls to a plain text request answer with the manifest
+default, `shortSummary`, a `generated` result with usage. The example's
 [mock test](examples/summarize-text/flow/workflow_mock_integration_test.go)
 passes the mock's connection to the Flow:
 
@@ -623,7 +643,56 @@ and scripts one Flow's call with a manifest mock:
 		mock.GenerateText().ForFlow(flowID).Respond(llmmock.GenerateTextQuotaExhausted())
 ```
 
-The manifest mocks are `shortSummary` (the default), `structuredAnswer`,
+A Flow whose request sets `StructuredOutput` must script its answer, because
+the manifest default `shortSummary` is plain text that does not match a schema.
+The [structured-output Flow](examples/summarize-text/structuredoutput/flow.go)
+used by the [runnable test](examples/summarize-text/flow/workflow_mock_integration_test.go)
+asks for this schema:
+
+```go
+func releaseStatusRequest(request SummaryRequest) llm.GenerateTextRequest {
+	return llm.GenerateTextRequest{
+		Messages: []textgen.Message{{Role: textgen.MessageRoleUser, Text: request.Text}},
+		StructuredOutput: &textgen.StructuredOutput{Name: "release_status", Schema: map[string]any{
+			"type": "object", "properties": map[string]any{"status": map[string]any{"type": "string"}},
+			"required": []any{"status"}, "additionalProperties": false,
+		}},
+	}
+}
+```
+
+and scripts the JSON answer for that schema:
+
+```go
+	mock := llmmock.New(t, ConnectionName)
+	flow := structuredoutput.NewFlow(mock.Connection())
+	client := startWorker(t, flow)
+	flowID := fmt.Sprintf("llm-release-status-mock-%d", time.Now().UnixNano())
+	mock.GenerateText().ForFlow(flowID).Respond(llmmock.GenerateTextGenerated(llm.GenerateTextResponse{Text: `{"status":"shipped"}`}, nil))
+```
+
+The mock checks the request and the answer before the Flow sees them, and a
+failed check selects `defect`:
+
+- A request that fails the provider-independent checks (messages,
+  `maxOutputTokens`, and the structured output name and
+  [schema subset](#structured-output)) selects `defect` with the failure kind
+  and message that real `generateText` returns for the same request when its
+  model ID passes the real connector's model validation; a Flow that does not
+  wire `defect` fails. Real `generateText` checks the model ID first, so a bad
+  model ID gets a different message there. The per-model, feature, and
+  wire-format rules, such as those in [Portable requests](#portable-requests),
+  are not checked, and the Failure's provider is `llm`, not the connection's.
+- A `generated` answer must have text. An answer to a structured request must
+  be exactly the JSON that matches the request's schema, with no Markdown fence
+  or surrounding whitespace, because that is the text real `generateText`
+  returns. A failed answer check also fails the test.
+- A plain text request still answers with `shortSummary` without scripting.
+  A structured request on that default fails the test: script a JSON answer
+  for its schema as above.
+
+The manifest mocks are `shortSummary` (the default), `structuredAnswer` (only
+for the example schema with string `status` and numeric `confidence`),
 `outputTokenLimit`, `contentPolicy`, `invalidKey`, `quotaExhausted`,
 `schemaMismatch`, `unsupportedField`, and the retry `rateLimited`;
 `GenerateText<Branch>` and `GenerateTextRetry` build any other outcome. A
@@ -631,6 +700,20 @@ mocked Result's `Receipt.Provider` and Failure provider are `llm`, not the
 connection's provider, and the mock writes nothing to the text Stream.
 Scripting is described in
 [`sdkgo/connectormock`](../../../sdkgo/README.md#connector-mocks).
+
+## Migrate llmmock tests to v0.24.0
+
+Release v0.24.0 is breaking for application tests that run on `llmmock`,
+which used to pass where real `generateText` fails. A test that now fails
+shows a mismatch that the real connector would also hit:
+
+| Before | In v0.24.0 | Migration |
+| --- | --- | --- |
+| A structured output schema outside the portable subset, such as an object without `"additionalProperties": false` or with a property missing from `required` | The request selects `defect` with the real message | Keep the schema inside the [structured output schema subset](#structured-output) that the real connector requires |
+| A structured request answered by the default `shortSummary` | The test fails: the text is not JSON for the schema | Script a JSON answer for the schema with `Respond(llmmock.GenerateTextGenerated(...))` |
+| `GenerateTextStructuredAnswer()` for a schema other than the example's string `status` and numeric `confidence` | The test fails: the answer does not match the schema | Script a JSON answer for your schema |
+| A scripted answer with the JSON inside a Markdown fence or with surrounding whitespace | The test fails | Script the JSON text alone, as the real connector returns it |
+| A scripted `generated` answer with empty `Text` | The test fails | Script non-empty `Text`; a real response without text selects `invalidResponse` |
 
 ## Example
 
