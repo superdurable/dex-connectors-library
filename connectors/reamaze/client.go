@@ -5,9 +5,8 @@
 // searchConversations and getConversation read conversations, findContactByEmail resolves a
 // customer, updateConversation changes status, assignee, and tags so that a repeated attempt
 // writes nothing twice, and createConversation and replyToConversation send each request once
-// per Step execution and reconcile an unconfirmed attempt by reading the record back, because
-// Re:amaze documents no idempotency key. Dex accepts the dispatch checkpoint when the Worker
-// writes it to its stream, so a Worker lost before Dex stored it can still send twice.
+// per Step attempt through a shared fail-closed fence and reconcile an unconfirmed attempt
+// by reading the record back, because Re:amaze documents no idempotency key.
 //
 // The connector authenticates as one staff user over HTTP Basic, the user's login email as the
 // user name and the user's API token as the password, and sends every request to
@@ -18,6 +17,7 @@ package reamaze
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -31,6 +31,7 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 const (
@@ -89,10 +90,12 @@ type Client struct {
 }
 
 type reamazeRequest struct {
-	method  string
-	path    string
-	query   url.Values
-	payload any
+	method         string
+	path           string
+	query          url.Values
+	payload        any
+	requestContext context.Context
+	isFencedWrite  bool
 }
 
 type reamazeResponse struct {
@@ -216,6 +219,11 @@ func (client *Client) exchange(call sdkgo.Call, credentials Credentials, operati
 	if err != nil {
 		return reamazeExchange{outcome: exchangeDefect, failure: reamazeFailure(sdkgo.FailureLocalDefect, operation, err.Error())}
 	}
+	if request.isFencedWrite {
+		if err := singledispatch.PrepareHTTPWrite(httpRequest); err != nil {
+			return reamazeExchange{outcome: exchangeDefect, failure: reamazeFailure(sdkgo.FailureLocalDefect, operation, err.Error())}
+		}
+	}
 	httpResponse, err := client.httpClient.Do(httpRequest)
 	if err != nil {
 		if isConnectionNeverEstablished(err) {
@@ -255,9 +263,9 @@ func (client *Client) buildRequest(call sdkgo.Call, credentials Credentials, req
 		if encodeErr != nil {
 			return nil, errReamazeRequestNotBuilt
 		}
-		httpRequest, err = http.NewRequestWithContext(call.Context, request.method, target, bytes.NewReader(encoded))
+		httpRequest, err = http.NewRequestWithContext(requestContext(call, request), request.method, target, bytes.NewReader(encoded))
 	} else {
-		httpRequest, err = http.NewRequestWithContext(call.Context, request.method, target, nil)
+		httpRequest, err = http.NewRequestWithContext(requestContext(call, request), request.method, target, nil)
 	}
 	if err != nil {
 		return nil, errReamazeRequestNotBuilt
@@ -268,6 +276,13 @@ func (client *Client) buildRequest(call sdkgo.Call, credentials Credentials, req
 		httpRequest.Header.Set("Content-Type", "application/json")
 	}
 	return httpRequest, nil
+}
+
+func requestContext(call sdkgo.Call, request reamazeRequest) context.Context {
+	if request.requestContext != nil {
+		return request.requestContext
+	}
+	return call.Context
 }
 
 // classifyFailureStatus maps a non-2xx response by status alone; Re:amaze error bodies are never read.

@@ -64,7 +64,7 @@ mkdir -p /tmp/reamaze-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/reamaze/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/reamaze \
-  --version v0.21.2 --tag connectors/reamaze/v0.21.2 \
+  --version v0.22.0 --tag connectors/reamaze/v0.22.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/reamaze-release/connector-release.json \
   --digest-output /tmp/reamaze-release/connector-release.json.sha256
@@ -145,6 +145,8 @@ conversations the customer follows:
   after one read-back and is never resent;
 - a lost note response is reconciled by its `origin_id`;
 - a rate-limited create waits for `Retry-After` and creates one conversation;
+- a 503 create retries with the same dispatch key and creates one conversation;
+- the mock-backed Flow asserts its mapped call inputs, counts, and output;
 - a Worker lost while Re:amaze holds the create is replaced, and the new
   attempt finds the dispatch checkpoint, reads back, and sends nothing;
 - a rejected conversation fails the Flow through the unwired

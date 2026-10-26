@@ -239,13 +239,39 @@ func TestLostNoteResponseIsReconciledByOriginIDWithRealDex(t *testing.T) {
 	require.Equal(t, outcome.NoteOriginID, messages[1].originID)
 }
 
+func TestServiceUnavailableCreateRetriesWithTheSameKeyWithRealDex(t *testing.T) {
+	provider := newFakeReamaze(t)
+	provider.unavailableFirstCreate = true
+	harness := newTriageHarness(t, provider, defaultRequestTimeout)
+	outcome := harness.runTriage(t, "service-unavailable", integrationIssueInput())
+	require.Equal(t, TriageConversationOpened, outcome.Action)
+	require.Equal(t, 2, provider.count("create"))
+	require.Equal(t, 1, provider.conversationCount())
+	first := createDispatchKeyFromRequest(t, provider.requestAt("create", 0).body)
+	second := createDispatchKeyFromRequest(t, provider.requestAt("create", 1).body)
+	require.Equal(t, first, second)
+}
+
+func createDispatchKeyFromRequest(t *testing.T, body string) string {
+	t.Helper()
+	var payload struct {
+		Conversation struct {
+			Data map[string]string `json:"data"`
+		} `json:"conversation"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(body), &payload))
+	key := payload.Conversation.Data[reamaze.DispatchKeyDataAttribute]
+	require.NotEmpty(t, key)
+	return key
+}
+
 func TestRateLimitedCreateWaitsAndCreatesOneConversationWithRealDex(t *testing.T) {
 	provider := newFakeReamaze(t)
 	provider.rateLimitsFirstCreate = true
 	harness := newTriageHarness(t, provider, defaultRequestTimeout)
 
 	outcome := harness.runTriage(t, "rate-limited", integrationIssueInput())
-	require.Equal(t, TriageConversationOpened, outcome.Action, "a 429 clears the dispatch marker, so the retry may send")
+	require.Equal(t, TriageConversationOpened, outcome.Action, "a 429 permits one fenced retry")
 	require.False(t, outcome.WasAlreadyApplied)
 	times := provider.requestTimes("create")
 	require.Len(t, times, 2)
@@ -338,6 +364,7 @@ type fakeReamaze struct {
 	losesFirstNoteResponse          bool
 	failsFirstCreateWithoutApplying bool
 	rateLimitsFirstCreate           bool
+	unavailableFirstCreate          bool
 	rejectsCreate                   bool
 	holdsFirstCreate                chan struct{}
 }
@@ -532,6 +559,11 @@ func (provider *fakeReamaze) createConversation(response http.ResponseWriter, re
 	attempt := provider.record("create", request, body)
 	if provider.rejectsCreate {
 		provider.writeJSON(response, http.StatusUnprocessableEntity, `{"errors":{"category":["SENTINEL is not a channel of this brand"]}}`)
+		return
+	}
+	if provider.unavailableFirstCreate && attempt == 1 {
+		response.Header().Set("Retry-After", "1")
+		provider.writeJSON(response, http.StatusServiceUnavailable, `{}`)
 		return
 	}
 	if provider.rateLimitsFirstCreate && attempt == 1 {
@@ -833,6 +865,13 @@ func (provider *fakeReamaze) lastRequest(name string) fakeRecordedRequest {
 	return requests[len(requests)-1]
 }
 
+func (provider *fakeReamaze) requestAt(name string, index int) fakeRecordedRequest {
+	provider.mutex.Lock()
+	defer provider.mutex.Unlock()
+	require.Greater(provider.t, len(provider.requests[name]), index)
+	return provider.requests[name][index]
+}
+
 func (provider *fakeReamaze) queryValues(name string, key string) []string {
 	provider.mutex.Lock()
 	defer provider.mutex.Unlock()
@@ -909,6 +948,12 @@ func newTriageHarness(t *testing.T, provider *fakeReamaze, requestTimeout time.D
 	require.NoError(t, err)
 	connection, err := reamaze.NewConnection(providerClient, reference)
 	require.NoError(t, err)
+	return newTriageHarnessForConnection(t, connection)
+}
+
+func newTriageHarnessForConnection(t *testing.T, connection reamaze.Connection) *triageHarness {
+	t.Helper()
+	var err error
 	harness := &triageHarness{flow: NewFlow(connection), serverAddress: environmentOr("DEX_FLOW_SERVICE_ADDRESS", "127.0.0.1:8801")}
 	harness.registry, err = dex.NewRegistry([]dex.Flow{harness.flow})
 	require.NoError(t, err)

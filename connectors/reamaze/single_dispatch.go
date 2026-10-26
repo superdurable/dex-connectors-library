@@ -4,99 +4,118 @@
 package reamaze
 
 import (
+	"context"
 	"errors"
+	"net/http"
+	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
-// singleDispatchMarker is the Dex heartbeat checkpoint recorded before a non-idempotent request is sent.
-type singleDispatchMarker struct {
-	DispatchedCallID sdkgo.CallID `json:"reamazeDispatchedCallId"`
+const uncertainNotFoundMessage = "an earlier attempt may have sent the request without a confirmed outcome, and Re:amaze shows no record with its key"
+
+type fencedReamazeSend struct {
+	client      *Client
+	call        sdkgo.Call
+	credentials Credentials
+	operation   string
+	request     reamazeRequest
+	result      reamazeExchange
 }
 
-// singleDispatchBranches names an operation's branches for the shared single-dispatch outcome mapping.
-type singleDispatchBranches struct {
+func (send *fencedReamazeSend) dispatch(requestContext context.Context) error {
+	send.request.requestContext = requestContext
+	send.request.isFencedWrite = true
+	send.result = send.client.exchange(send.call, send.credentials, send.operation, send.request)
+	return nil
+}
+
+func newReamazeFence(call sdkgo.Call) (*singledispatch.Fence, error) {
+	return singledispatch.NewFence(call, 30*time.Second)
+}
+
+func fencedCredentialAttempt[OUT any](fence *singledispatch.Fence, operation string, value OUT, err error) sdkgo.MutationAttempt[OUT] {
+	if checkpointErr := fence.RecordNotSent(); checkpointErr != nil {
+		return sdkgo.NewMutationRetry[OUT](reamazeFailure(sdkgo.FailureAvailability, operation,
+			errors.Join(err, checkpointErr).Error()), 0)
+	}
+	return sdkgo.NewMutationRetry[OUT](reamazeFailure(sdkgo.FailureAvailability, operation, err.Error()), 0)
+}
+
+func uncertainOrRetryCredentials[OUT any](operation string, err error) sdkgo.MutationAttempt[OUT] {
+	if errors.Is(err, errReamazeCredentialsUnavailable) {
+		return sdkgo.NewMutationRetry[OUT](reamazeFailure(sdkgo.FailureAvailability, operation, err.Error()), 0)
+	}
+	var zero OUT
+	return sdkgo.NewMutationUncertain(zero, reamazeFailure(sdkgo.FailureAuthentication, operation,
+		"the earlier write cannot be read back until the connection is restored"), sdkgo.Receipt{})
+}
+
+func fencedDispatchError[OUT any](operation string, err error) sdkgo.MutationAttempt[OUT] {
+	if errors.Is(err, singledispatch.ErrCheckpoint) || errors.Is(err, singledispatch.ErrInsufficientTime) {
+		return sdkgo.NewMutationRetry[OUT](reamazeFailure(sdkgo.FailureAvailability, operation, "write was not sent before the attempt deadline or checkpoint"), 0)
+	}
+	var zero OUT
+	return sdkgo.NewMutationUncertain(zero, reamazeFailure(sdkgo.FailureTransport, operation, "write dispatch outcome could not be confirmed"), sdkgo.Receipt{})
+}
+
+type fencedWriteBranches struct {
 	notFound         sdkgo.BranchID
 	providerRejected sdkgo.BranchID
 	defect           sdkgo.BranchID
 }
 
-// uncertainNotFoundMessage explains a reconciliation that found no trace of the earlier dispatch.
-const uncertainNotFoundMessage = "an earlier attempt of this Step sent the request without a confirmed outcome, and Re:amaze shows no record with its key, so it is not sent again"
-
-// hasEarlierDispatch is checked before credentials resolve, so a credential failure cannot report a sent write as defect.
-func hasEarlierDispatch(call sdkgo.Call) bool {
-	var marker singleDispatchMarker
-	isMarkerFound, err := call.Context.GetLastHeartbeatValue(&marker)
-	return err != nil || isMarkerFound
-}
-
-// singleDispatchAttemptForCredentials never selects defect after an earlier dispatch, which Re:amaze may have applied.
-func singleDispatchAttemptForCredentials[OUT any](operation string, defect sdkgo.BranchID, value OUT, err error, isAlreadyDispatched bool, receipt sdkgo.Receipt) sdkgo.MutationAttempt[OUT] {
-	if !isAlreadyDispatched || errors.Is(err, errReamazeCredentialsUnavailable) {
-		return credentialMutationAttempt(operation, defect, value, err)
-	}
-	return sdkgo.NewMutationUncertain(value, reamazeFailure(sdkgo.FailureAuthentication, operation,
-		"an earlier attempt of this Step sent the request, and the connection credentials can no longer read it back"), receipt)
-}
-
-// recordSingleDispatch records the marker before the first send; false means nothing may be sent yet.
-func recordSingleDispatch(call sdkgo.Call) bool {
-	return call.Context.RecordHeartbeat(singleDispatchMarker{DispatchedCallID: call.ID}) == nil
-}
-
-// singleDispatchAttemptNotRecorded retries without sending, because the marker is not stored.
-func singleDispatchAttemptNotRecorded[OUT any](operation string) sdkgo.MutationAttempt[OUT] {
-	return sdkgo.NewMutationRetry[OUT](reamazeFailure(sdkgo.FailureAvailability, operation, "Dex did not record the dispatch checkpoint; nothing was sent"), 0)
-}
-
-// singleDispatchAttemptForSend maps a sent request; only a provable non-application releases the marker.
-func singleDispatchAttemptForSend[OUT any](call sdkgo.Call, result reamazeExchange, receipt sdkgo.Receipt, branches singleDispatchBranches) (sdkgo.MutationAttempt[OUT], bool) {
+func fencedWriteResult[OUT any](fence *singledispatch.Fence, result reamazeExchange, receipt sdkgo.Receipt, branches fencedWriteBranches) (sdkgo.MutationAttempt[OUT], bool) {
 	var zero OUT
 	switch result.outcome {
 	case exchangeSucceeded:
 		return sdkgo.MutationAttempt[OUT]{}, false
 	case exchangeRateLimited, exchangeNotSent:
-		releaseSingleDispatch(call)
+		if err := fence.RecordCanResend(); err != nil {
+			return sdkgo.NewMutationRetry[OUT](reamazeFailure(sdkgo.FailureAvailability, result.failure.Operation, "retry checkpoint could not be recorded"), 0), true
+		}
 		return sdkgo.NewMutationRetry[OUT](result.failure, result.retryAfter), true
-	case exchangeUnavailable, exchangeInvalid:
+	case exchangeUnavailable:
+		if result.response.statusCode == http.StatusServiceUnavailable {
+			if err := fence.RecordCanResend(); err != nil {
+				return sdkgo.NewMutationRetry[OUT](reamazeFailure(sdkgo.FailureAvailability, result.failure.Operation, "retry checkpoint could not be recorded"), 0), true
+			}
+		}
 		return sdkgo.NewMutationRetry[OUT](result.failure, result.retryAfter), true
+	case exchangeRejected:
+		if result.response.statusCode == http.StatusConflict {
+			return sdkgo.NewMutationRetry[OUT](result.failure, 0), true
+		}
+		return sdkgo.NewMutationBranch(branches.providerRejected, zero, &result.failure, receipt), true
+	case exchangeInvalid:
+		// A 2xx response may have accepted the write; the next attempt reads back.
+		return sdkgo.NewMutationRetry[OUT](result.failure, 0), true
 	case exchangeNotFound:
 		if branches.notFound != "" {
 			return sdkgo.NewMutationBranch(branches.notFound, zero, &result.failure, receipt), true
 		}
 		return sdkgo.NewMutationBranch(branches.providerRejected, zero, &result.failure, receipt), true
 	case exchangeDefect:
-		releaseSingleDispatch(call)
 		return sdkgo.NewMutationBranch(branches.defect, zero, &result.failure, receipt), true
 	default:
 		return sdkgo.NewMutationBranch(branches.providerRejected, zero, &result.failure, receipt), true
 	}
 }
 
-// releaseSingleDispatch clears the marker after Re:amaze provably did not apply the request.
-func releaseSingleDispatch(call sdkgo.Call) {
-	// A failed clear leaves the marker, so the next attempt reconciles instead of resending.
-	_ = call.Context.RecordHeartbeat(nil)
-}
-
-// singleDispatchAttemptForReconciliationRead maps the read-back of an earlier dispatch; it never resends.
-func singleDispatchAttemptForReconciliationRead[OUT any](result reamazeExchange, receipt sdkgo.Receipt, operation string, notFound sdkgo.BranchID) (sdkgo.MutationAttempt[OUT], bool) {
+func fencedReconciliationRead[OUT any](result reamazeExchange, receipt sdkgo.Receipt, operation string) (sdkgo.MutationAttempt[OUT], bool) {
 	var zero OUT
 	switch {
 	case result.outcome == exchangeSucceeded:
 		return sdkgo.MutationAttempt[OUT]{}, false
 	case result.isRetryableRead():
 		return sdkgo.NewMutationRetry[OUT](result.failure, result.retryAfter), true
-	case result.outcome == exchangeNotFound && notFound != "":
-		return sdkgo.NewMutationBranch(notFound, zero, &result.failure, receipt), true
 	default:
 		return sdkgo.NewMutationUncertain(zero, reamazeFailure(result.failure.Kind, operation,
-			"an earlier attempt of this Step sent the request, and it could not be read back: "+result.failure.Message), receipt), true
+			"an earlier attempt may have sent the request, and it could not be read back: "+result.failure.Message), receipt), true
 	}
 }
 
-// dispatchKey is the Re:amaze-visible identity of one Step execution's write, derived from its idempotency key.
 func dispatchKey(call sdkgo.Call) string {
 	key := string(call.IdempotencyKey)
 	if key == "" {

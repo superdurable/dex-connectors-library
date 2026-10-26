@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/reamaze"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 func validCreateConversationInput() reamaze.CreateConversationInput {
@@ -45,8 +46,7 @@ func TestCreateConversationSendsTheDispatchKeyOnceAfterRecordingTheMarker(t *tes
 		"data":{"dex_dispatch_key":"`+dispatchKeyOf(result.Receipt.CallID)+`"},
 		"message":{"body":"I was charged **twice**.\nOrder 88213.","suppress_notifications":true},
 		"user":{"name":"Jane Smith","email":"jane@acme.example.com"}}}`, request.body)
-	require.JSONEq(t, `{"reamazeDispatchedCallId":"`+string(result.Receipt.CallID)+`"}`, string(ctx.recordedHeartbeat),
-		"the dispatch marker is recorded before the request")
+	require.JSONEq(t, `{"callId":"`+string(result.Receipt.CallID)+`","attempt":1,"state":"claimed","providerId":"double-charge-on-order-88213"}`, string(ctx.recordedHeartbeat))
 }
 
 func TestCreateConversationOmitsUnsetFieldsAndSendsOpenStatusZero(t *testing.T) {
@@ -88,8 +88,14 @@ func TestCreateConversationReconcilesAnUnconfirmedAttemptWithoutResending(t *tes
 		{name: "server error, nothing created", firstReply: func(response http.ResponseWriter) {
 			writeJSON(t, response, http.StatusBadGateway, `{"error":"SENTINEL"}`)
 		}, wantBranch: reamaze.CreateConversationBranchUncertain, wantFailure: sdkgo.FailureTransport, wantRequests: 2},
+		{name: "accepted without conversation ID", firstReply: func(response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusCreated, `{"subject":"accepted"}`)
+		}, wantBranch: reamaze.CreateConversationBranchUncertain, wantFailure: sdkgo.FailureTransport, wantRequests: 2},
+		{name: "conflict needs read-back", firstReply: func(response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusConflict, `{"error":"SENTINEL"}`)
+		}, wantBranch: reamaze.CreateConversationBranchUncertain, wantFailure: sdkgo.FailureTransport, wantRequests: 2},
 		{name: "list ignores the data filter", firstReply: func(response http.ResponseWriter) {
-			writeJSON(t, response, http.StatusServiceUnavailable, ``)
+			writeJSON(t, response, http.StatusBadGateway, ``)
 		}, isListed: true, readKey: func(sdkgo.CallID) string { return "dex-another-step" }, wantBranch: reamaze.CreateConversationBranchUncertain,
 			wantFailure: sdkgo.FailureTransport, wantRequests: 3},
 	} {
@@ -120,9 +126,9 @@ func TestCreateConversationReconcilesAnUnconfirmedAttemptWithoutResending(t *tes
 			first := newReamazeDexContext("create-reconcile")
 			_, err := sdkgo.RunMutation(first, client.CreateConversation(), reamazeConnection, validCreateConversationInput())
 			require.Error(t, err, "an unconfirmed send is retried as a reconciliation")
-			var marker map[string]string
+			var marker singledispatch.Marker
 			require.NoError(t, json.Unmarshal(first.recordedHeartbeat, &marker))
-			callID = sdkgo.CallID(marker["reamazeDispatchedCallId"])
+			callID = marker.CallID
 
 			result, err := sdkgo.RunMutation(first.nextAttempt(), client.CreateConversation(), reamazeConnection, validCreateConversationInput())
 			require.NoError(t, err)
@@ -164,9 +170,9 @@ func TestCreateConversationKeepsReconcilingAfterARetriedReadBack(t *testing.T) {
 	first := newReamazeDexContext("create-read-back-retry")
 	_, err := sdkgo.RunMutation(first, client.CreateConversation(), reamazeConnection, validCreateConversationInput())
 	require.Error(t, err)
-	var marker map[string]string
+	var marker singledispatch.Marker
 	require.NoError(t, json.Unmarshal(first.recordedHeartbeat, &marker))
-	callID = sdkgo.CallID(marker["reamazeDispatchedCallId"])
+	callID = marker.CallID
 
 	second := first.nextAttempt()
 	_, err = sdkgo.RunMutation(second, client.CreateConversation(), reamazeConnection, validCreateConversationInput())
@@ -238,7 +244,7 @@ func TestCreateConversationResendsOnlyAfterAProvableNonApplication(t *testing.T)
 	first := newReamazeDexContext("create-429")
 	_, err := sdkgo.RunMutation(first, client.CreateConversation(), reamazeConnection, validCreateConversationInput())
 	require.Error(t, err)
-	require.Nil(t, first.recordedHeartbeat, "a 429 clears the marker")
+	require.Contains(t, string(first.recordedHeartbeat), `"state":"canResend"`)
 	result, err := sdkgo.RunMutation(first.nextAttempt(), client.CreateConversation(), reamazeConnection, validCreateConversationInput())
 	require.NoError(t, err)
 	require.Equal(t, reamaze.CreateConversationBranchCreated, result.Branch)
@@ -260,10 +266,8 @@ func TestCreateConversationTerminalOutcomes(t *testing.T) {
 	require.Equal(t, sdkgo.FailureValidation, result.Failure.Kind)
 	require.NotContains(t, result.Failure.Message, "SENTINEL")
 
-	result, err = sdkgo.RunMutation(newReamazeDexContext("create-malformed"), client.CreateConversation(), reamazeConnection, validCreateConversationInput())
-	require.NoError(t, err)
-	require.Equal(t, reamaze.CreateConversationBranchUncertain, result.Branch, "a 2xx without a valid conversation cannot be confirmed")
-	require.NotContains(t, result.Failure.Message, "SENTINEL")
+	_, err = sdkgo.RunMutation(newReamazeDexContext("create-malformed"), client.CreateConversation(), reamazeConnection, validCreateConversationInput())
+	require.Error(t, err, "an accepted write with no usable ID retries for read-back")
 }
 
 func TestCreateConversationSendsNothingWithoutAMarkerOrValidInput(t *testing.T) {

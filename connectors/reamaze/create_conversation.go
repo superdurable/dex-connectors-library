@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 const (
@@ -115,42 +116,53 @@ func (CreateConversationOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateC
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke sends POST /conversations once per Step execution, after recording a dispatch
-// checkpoint. An attempt that finds the checkpoint never sends: it lists conversations whose
-// DispatchKeyDataAttribute is the Step's key and reports the one found, or selects uncertain.
-// Only a 429 or a connection that never opened clears the checkpoint for a resend. Dex accepts
-// the checkpoint when the Worker writes it to its stream, so a Worker lost before Dex stored it
-// can still send twice.
+// Invoke fences the create request and reconciles an unconfirmed write by its conversation data key.
 func (operation CreateConversationOperation) Invoke(call sdkgo.Call, input CreateConversationInput) sdkgo.MutationAttempt[CreateConversationOutput] {
 	if err := validateCreateConversationInput(input); err != nil {
 		return sdkgo.NewMutationBranch(CreateConversationBranchDefect, CreateConversationOutput{}, reamazeFailurePointer(sdkgo.FailureValidation, createConversationOperation, err.Error()), sdkgo.Receipt{})
 	}
-	isAlreadyDispatched := hasEarlierDispatch(call)
-	credentials, err := operation.client.resolveCredentials(call)
+	fence, err := newReamazeFence(call)
 	if err != nil {
-		return singleDispatchAttemptForCredentials(createConversationOperation, CreateConversationBranchDefect, CreateConversationOutput{}, err,
-			isAlreadyDispatched, operation.client.receipt(call, reamazeResponse{}, ""))
+		return sdkgo.NewMutationBranch(CreateConversationBranchDefect, CreateConversationOutput{}, reamazeFailurePointer(sdkgo.FailureLocalDefect, createConversationOperation, err.Error()), sdkgo.Receipt{})
 	}
-	if isAlreadyDispatched {
+	switch decision := fence.Decide(); decision.Kind {
+	case singledispatch.FailClosed:
+		return sdkgo.NewMutationUncertain(CreateConversationOutput{}, reamazeFailure(sdkgo.FailureTransport, createConversationOperation, "dispatch checkpoint cannot be trusted"), sdkgo.Receipt{})
+	case singledispatch.ReadBackRequired:
+		if decision.Marker.CallID != "" && decision.Marker.CallID != call.ID {
+			return sdkgo.NewMutationUncertain(CreateConversationOutput{}, reamazeFailure(sdkgo.FailureTransport, createConversationOperation, "dispatch checkpoint belongs to another call"), sdkgo.Receipt{})
+		}
+		credentials, err := operation.client.resolveCredentials(call)
+		if err != nil {
+			return uncertainOrRetryCredentials[CreateConversationOutput](createConversationOperation, err)
+		}
+		if decision.Marker.ProviderID != "" {
+			return operation.confirmDispatchCandidate(call, credentials, decision.Marker.ProviderID, dispatchKey(call))
+		}
 		return operation.reconcileEarlierDispatch(call, credentials)
 	}
-	if !recordSingleDispatch(call) {
-		return singleDispatchAttemptNotRecorded[CreateConversationOutput](createConversationOperation)
+	credentials, err := operation.client.resolveCredentials(call)
+	if err != nil {
+		return fencedCredentialAttempt[CreateConversationOutput](fence, createConversationOperation, CreateConversationOutput{}, err)
 	}
-	result := operation.client.exchange(call, credentials, createConversationOperation, reamazeRequest{
-		method: http.MethodPost, path: "/conversations", payload: buildCreateConversationRequest(input, dispatchKey(call)),
-	})
+	send := &fencedReamazeSend{client: operation.client, call: call, credentials: credentials, operation: createConversationOperation,
+		request: reamazeRequest{method: http.MethodPost, path: "/conversations", payload: buildCreateConversationRequest(input, dispatchKey(call))}}
+	if err := fence.Dispatch(send.dispatch); err != nil {
+		return fencedDispatchError[CreateConversationOutput](createConversationOperation, err)
+	}
+	result := send.result
 	receipt := operation.client.receipt(call, result.response, "")
-	if attempt, isTerminal := singleDispatchAttemptForSend[CreateConversationOutput](call, result, receipt, singleDispatchBranches{
+	if attempt, isTerminal := fencedWriteResult[CreateConversationOutput](fence, result, receipt, fencedWriteBranches{
 		providerRejected: CreateConversationBranchProviderRejected, defect: CreateConversationBranchDefect,
 	}); isTerminal {
 		return attempt
 	}
 	conversation, err := decodeConversationBody(result.response.body, "")
 	if err != nil {
-		return sdkgo.NewMutationUncertain(CreateConversationOutput{}, reamazeFailure(sdkgo.FailureProtocol, createConversationOperation,
-			"Re:amaze accepted the conversation but returned an invalid conversation: "+err.Error()), receipt)
+		return sdkgo.NewMutationRetry[CreateConversationOutput](reamazeFailure(sdkgo.FailureProtocol, createConversationOperation,
+			"Re:amaze accepted the conversation but returned an invalid conversation: "+err.Error()), 0)
 	}
+	_ = fence.RecordProviderID(conversation.ID)
 	return sdkgo.NewMutationBranch(CreateConversationBranchCreated, CreateConversationOutput{Conversation: conversation}, nil,
 		operation.client.receipt(call, result.response, conversation.ID))
 }
@@ -163,7 +175,7 @@ func (operation CreateConversationOperation) reconcileEarlierDispatch(call sdkgo
 		query: url.Values{"filter": {string(ConversationFilterAll)}, "data[" + DispatchKeyDataAttribute + "]": {key}},
 	})
 	receipt := operation.client.receipt(call, result.response, "")
-	if attempt, isTerminal := singleDispatchAttemptForReconciliationRead[CreateConversationOutput](result, receipt, createConversationOperation, ""); isTerminal {
+	if attempt, isTerminal := fencedReconciliationRead[CreateConversationOutput](result, receipt, createConversationOperation); isTerminal {
 		return attempt
 	}
 	match, err := findConversationWithDispatchKey(result.response.body, key)
@@ -185,7 +197,7 @@ func (operation CreateConversationOperation) reconcileEarlierDispatch(call sdkgo
 func (operation CreateConversationOperation) confirmDispatchCandidate(call sdkgo.Call, credentials Credentials, slug string, key string) sdkgo.MutationAttempt[CreateConversationOutput] {
 	result := operation.client.exchange(call, credentials, createConversationOperation, reamazeRequest{method: http.MethodGet, path: conversationPath(slug)})
 	receipt := operation.client.receipt(call, result.response, slug)
-	if attempt, isTerminal := singleDispatchAttemptForReconciliationRead[CreateConversationOutput](result, receipt, createConversationOperation, ""); isTerminal {
+	if attempt, isTerminal := fencedReconciliationRead[CreateConversationOutput](result, receipt, createConversationOperation); isTerminal {
 		return attempt
 	}
 	conversation, isConfirmed, err := decodeConversationWithDispatchKey(result.response.body, slug, key)

@@ -5,7 +5,7 @@ metadata:
   displayName: Re:amaze
   description: Search, read, create, and update Re:amaze conversations, add public replies or internal notes, and find contacts by email, keeping Re:amaze's own integer statuses.
   company: Re:amaze
-  version: v0.21.2
+  version: v0.22.0
 spec:
   provider: reamaze
   codegen:
@@ -62,6 +62,20 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: searchedDefaultAnswer
+          branch: searched
+          description: "A search for Jane’s new billing issue has no matching conversation on this page."
+          default: true
+          output: {conversations: [], totalCount: 0, pageCount: 1}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "Re:amaze rejects an invalid search filter with HTTP 400."
+          failure: {kind: VALIDATION, message: "Re:amaze rejected the search filter (HTTP 400)."}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "Re:amaze returned a malformed JSON response for this searchConversations request."
+          failure: {kind: PROTOCOL, message: "Re:amaze returned a malformed JSON response."}
     - name: getConversation
       goName: GetConversation
       inputType: GetConversationInput
@@ -78,12 +92,30 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: foundDefaultAnswer
+          branch: found
+          description: "Reading the billing conversation returns Jane’s opening message."
+          default: true
+          output: {conversation: {id: double-charge, subject: Double charge on order 88213, status: 0, tags: [billing-double-charge], channel: {slug: support, name: Support, type: 1}, requester: {name: Jane Smith, email: jane@acme.example.com}, firstMessage: I was charged twice., createdAt: "2026-01-26T22:02:00Z"}, messages: [{body: I was charged twice., visibility: 0, isInternalNote: false, origin: 7, originId: customer-88213, createdAt: "2026-01-26T22:02:00Z"}]}
+        - name: notFoundFailure
+          branch: notFound
+          description: "The conversation does not exist in the brand or is not visible to the connection's user."
+          failure: {kind: NOT_FOUND, message: "The conversation does not exist in the brand or is not visible to the connection's user."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "Re:amaze rejects an invalid conversation request with HTTP 400."
+          failure: {kind: VALIDATION, message: "Re:amaze rejected the conversation request (HTTP 400)."}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "Re:amaze returned a malformed JSON response for this getConversation request."
+          failure: {kind: PROTOCOL, message: "Re:amaze returned a malformed JSON response."}
     - name: createConversation
       goName: CreateConversation
       inputType: CreateConversationInput
       outputType: CreateConversationOutput
       kind: mutation
-      description: "Create one conversation on behalf of a customer in one channel. Re:amaze has no idempotency key, so the Step runs with sync durability, sends the request once per Step execution, and reconciles an unconfirmed attempt by finding the conversation whose data attribute holds the Step's key. Dex accepts the dispatch checkpoint when the Worker writes it to its stream, so a Worker lost before Dex stored it can still send twice."
+      description: "Create one conversation on behalf of a customer in one channel. Re:amaze has no idempotency key, so the Step runs with sync durability, sends the request once per Step execution, and reconciles an unconfirmed attempt by finding the conversation whose data attribute holds the Step's key. A shared single-dispatch fence requires sync durability so retry attempts see its heartbeat checkpoint and do not resend a possibly accepted write."
       idempotency: required
       branches:
         - {id: created, goName: Created, description: "The conversation exists; a retried attempt that found the conversation an earlier attempt created reports it instead of sending again."}
@@ -93,7 +125,18 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "A lost dispatch checkpoint could create another conversation because Reamaze does not enforce the data attribute and the next attempt sends without read-back."}}
+        dispatchFence: true
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "A conversation without confirmed read-back may be a duplicate if manually repeated; limit attempts while waiting for reconciliation."}}
+      mocks:
+        - name: createdDefaultAnswer
+          branch: created
+          description: "Creating Jane’s billing issue returns the new support conversation."
+          default: true
+          output: {conversation: {id: double-charge, subject: Double charge on order 88213, status: 0, tags: [billing-double-charge], channel: {slug: support, name: Support, type: 1}, requester: {name: Jane Smith, email: jane@acme.example.com}, firstMessage: I was charged twice., createdAt: "2026-01-26T22:02:00Z"}}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "Re:amaze rejects an unknown channel with HTTP 422."
+          failure: {kind: VALIDATION, message: "Re:amaze rejected the channel (HTTP 422)."}
     - name: updateConversation
       goName: UpdateConversation
       inputType: UpdateConversationInput
@@ -110,12 +153,30 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: updatedDefaultAnswer
+          branch: updated
+          description: "Setting the billing conversation status and tags returns that conversation."
+          default: true
+          output: {conversation: {id: double-charge, subject: Double charge on order 88213, status: 0, tags: [billing-double-charge], channel: {slug: support, name: Support, type: 1}, requester: {name: Jane Smith, email: jane@acme.example.com}, firstMessage: I was charged twice., createdAt: "2026-01-26T22:02:00Z"}}
+        - name: notFoundFailure
+          branch: notFound
+          description: "The conversation does not exist in the brand or is not visible to the connection's user."
+          failure: {kind: NOT_FOUND, message: "The conversation does not exist in the brand or is not visible to the connection's user."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "Re:amaze rejects an unknown assignee with HTTP 422."
+          failure: {kind: VALIDATION, message: "Re:amaze rejected the assignee (HTTP 422)."}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "Re:amaze returned a malformed JSON response for this updateConversation request."
+          failure: {kind: PROTOCOL, message: "Re:amaze returned a malformed JSON response."}
     - name: replyToConversation
       goName: ReplyToConversation
       inputType: ReplyToConversationInput
       outputType: ConversationReply
       kind: mutation
-      description: "Add one public reply, which Re:amaze sends to the customer, or one internal note to a conversation. The message carries an origin_id derived from the Step, the Step runs with sync durability, and an unconfirmed attempt is reconciled by finding that origin_id instead of sending again. Dex accepts the dispatch checkpoint when the Worker writes it to its stream, so a Worker lost before Dex stored it can still send twice."
+      description: "Add one public reply, which Re:amaze sends to the customer, or one internal note to a conversation. The message carries an origin_id derived from the Step, the Step runs with sync durability, and an unconfirmed attempt is reconciled by finding that origin_id instead of sending again. A shared single-dispatch fence requires sync durability so retry attempts see its heartbeat checkpoint and do not resend a possibly accepted write."
       idempotency: required
       branches:
         - {id: replied, goName: Replied, description: "The reply or note is in the conversation; a retried attempt that found its own earlier message reports it instead of sending again."}
@@ -126,7 +187,22 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "A lost dispatch checkpoint could add another message because Reamaze does not document enforced origin-ID deduplication and the next attempt sends without read-back."}}
+        dispatchFence: true
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "Reamaze does not guarantee origin-ID deduplication, so an unconfirmed reply cannot safely be sent again."}}
+      mocks:
+        - name: repliedDefaultAnswer
+          branch: replied
+          description: "Adding an internal triage note returns the note in Jane’s billing conversation."
+          default: true
+          output: {conversationId: double-charge, message: {body: Triage note for order 88213., visibility: 1, isInternalNote: true, origin: 7, originId: dex-note-88213, createdAt: "2026-01-27T20:00:00Z"}}
+        - name: notFoundFailure
+          branch: notFound
+          description: "The conversation does not exist in the brand or is not visible to the connection's user; nothing was added."
+          failure: {kind: NOT_FOUND, message: "The conversation does not exist in the brand or is not visible to the connection's user; nothing was added."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "Re:amaze rejects an invalid message with HTTP 422."
+          failure: {kind: VALIDATION, message: "Re:amaze rejected the message (HTTP 422)."}
     - name: findContactByEmail
       goName: FindContactByEmail
       inputType: FindContactByEmailInput
@@ -143,3 +219,21 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: foundDefaultAnswer
+          branch: found
+          description: "Finding Jane’s email returns her account contact."
+          default: true
+          output: {contacts: [{name: Jane Smith, email: jane@acme.example.com, friendlyName: Jane}]}
+        - name: notFoundNoMatch
+          branch: notFound
+          description: "Jane's email has no exact match on the first contact search page."
+          output: {contacts: [], hasMoreCandidates: false}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "Re:amaze rejects an invalid contact search with HTTP 400."
+          failure: {kind: VALIDATION, message: "Re:amaze rejected the contact search (HTTP 400)."}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "Re:amaze returned a malformed JSON response for this findContactByEmail request."
+          failure: {kind: PROTOCOL, message: "Re:amaze returned a malformed JSON response."}

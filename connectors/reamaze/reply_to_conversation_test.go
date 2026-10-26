@@ -41,7 +41,7 @@ func TestReplyToConversationSendsAnInternalNoteWithTheDispatchKeyAsOriginID(t *t
 	require.True(t, result.Value.Message.IsInternalNote)
 	require.Equal(t, key, result.Value.Message.OriginID)
 	require.False(t, result.Value.WasAlreadyApplied)
-	require.JSONEq(t, `{"reamazeDispatchedCallId":"`+string(result.Receipt.CallID)+`"}`, string(ctx.recordedHeartbeat))
+	require.JSONEq(t, `{"callId":"`+string(result.Receipt.CallID)+`","attempt":1,"state":"claimed"}`, string(ctx.recordedHeartbeat))
 }
 
 func TestReplyToConversationSendsAPublicReplyByDefault(t *testing.T) {
@@ -139,13 +139,15 @@ func TestReplyToConversationTerminalOutcomes(t *testing.T) {
 	client := newReamazeClient(t, provider.URL)
 	input := reamaze.ReplyToConversationInput{ConversationID: "double-charge", Text: "Note.", IsInternalNote: true}
 	for _, want := range []sdkgo.BranchID{
-		reamaze.ReplyToConversationBranchNotFound, reamaze.ReplyToConversationBranchProviderRejected, reamaze.ReplyToConversationBranchUncertain,
+		reamaze.ReplyToConversationBranchNotFound, reamaze.ReplyToConversationBranchProviderRejected,
 	} {
 		result, err := sdkgo.RunMutation(newReamazeDexContext("note-terminal"), client.ReplyToConversation(), reamazeConnection, input)
 		require.NoError(t, err)
 		require.Equal(t, want, result.Branch)
 		require.NotContains(t, result.Failure.Message, "SENTINEL")
 	}
+	_, err := sdkgo.RunMutation(newReamazeDexContext("note-accepted-invalid"), client.ReplyToConversation(), reamazeConnection, input)
+	require.Error(t, err, "an accepted write with an invalid body retries for read-back")
 	for _, invalid := range []reamaze.ReplyToConversationInput{
 		{ConversationID: "../x", Text: "Note."},
 		{ConversationID: "double-charge", Text: " "},
