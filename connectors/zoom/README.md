@@ -166,7 +166,8 @@ behavior has not been verified against a live Zoom account.
 | 201 with a valid meeting | `created`, with the meeting ID and join URL |
 | 400, 403, 404, or another definite 4xx except 401, 408, 409, and 429 | `providerRejected`, with Zoom's error code |
 | 401 | Force one credential refresh; on success checkpoint permission to retry, otherwise `providerRejected` |
-| 429, including a daily-limit 429, or 503 | Checkpoint permission to retry after Zoom's delay when supplied; retry exhaustion fails the Flow |
+| 429 with Zoom's documented daily-limit message | `providerRejected` with a connector-owned rate-limit message; no resend checkpoint |
+| Other 429, including per-second and unrecognized messages, or 503 | Checkpoint permission to retry after Zoom's delay when supplied; retry exhaustion fails the Flow |
 | DNS, connect, or TLS failure before any connection opened | Retry |
 | Timeout, dropped connection, 3xx, 408, 409 without a lookup key, or another 5xx after dispatch | `uncertain` |
 | 2xx whose body is oversized, unreadable, unusable, or reflects the credential | `uncertain` |
@@ -185,7 +186,10 @@ Worker-loss test and a new 503-then-success real-Dex test cover these paths in
 CI.
 
 [Zoom's rate-limit guidance](https://developers.zoom.us/docs/api/rate-limits/)
-says 429 means the request failed and recommends waiting before retrying.
+distinguishes daily and per-second 429 responses by message. The connector
+matches the documented daily-limit wording without exposing Zoom's text in
+failures or receipts. It retries any 429 whose message is absent, malformed, or
+does not match that wording.
 [Zoom's error guidance](https://developers.zoom.us/docs/api/errors/) describes
 503 as temporary unavailability. Zoom's behavior for ambiguous transport
 loss and other 5xx responses remains unverified against a live account, so
@@ -211,9 +215,9 @@ create with `listMeetings` instead of creating again:
 ```
 
 Zoom limits each host to 100 meeting create and update requests per UTC day.
-All five operations retry daily-limit 429 responses like per-second 429 responses.
-If Zoom's retry delay outlasts the create Step's two-minute retry budget, Dex
-fails the Flow on retry exhaustion; it does not select `providerRejected`.
+All five operations select `providerRejected` for a 429 with Zoom's documented
+daily-limit message. Other 429 responses retry; if Zoom's delay outlasts the
+create Step's two-minute retry budget, Dex fails the Flow on retry exhaustion.
 
 ### updateMeeting
 
@@ -221,14 +225,14 @@ fails the Flow on retry exhaustion; it does not select `providerRejected`.
 together), duration, or settings of one meeting; a patch with no change
 selects `defect`. Every set field replaces Zoom's value, so repeating a patch
 leaves the same meeting, and the operation keeps the async default: transport
-failures, 408, 409, 429, and 5xx are retried. In a real
+failures, 408, 409, other 429, and 5xx are retried. In a real
 Dex run with a fake that answered after nine seconds, Dex sent the patch twice
 with identical bodies and the meeting held the requested slot once; see
 `TestSlowRescheduleIsSafeToRepeatWithRealDex`. Zoom answers `204` with no
 body, so read the meeting back with `getMeeting` to observe the stored values.
 A deleted meeting selects `notFound`. Zoom limits one meeting to 100 updates per
-day. A daily-limit 429 retries until its Step budget is exhausted, when Dex
-fails the Flow; it does not select `providerRejected`.
+day. A 429 with Zoom's documented daily-limit message selects
+`providerRejected`; an unrecognized 429 retries.
 
 ### listPastMeetingParticipants
 

@@ -106,22 +106,23 @@ func TestFailuresKeepOnlyZoomsNumericErrorCode(t *testing.T) {
 	require.NotContains(t, string(encoded), testAccessToken)
 }
 
-func TestThrottlesRetryAfterZoomsDelayIncludingDailyLimits(t *testing.T) {
+func TestUnknownAndPerSecondThrottlesRetryAfterZoomsDelay(t *testing.T) {
 	for _, test := range []struct {
 		name       string
 		retryAfter string
 		delay      time.Duration
+		message    string
 	}{
-		{name: "per-second limit", retryAfter: "2", delay: 2 * time.Second},
-		{name: "no Retry-After"},
-		{name: "daily limit", retryAfter: "3600", delay: time.Hour},
+		{name: "per-second limit", retryAfter: "2", delay: 2 * time.Second, message: "You have reached the maximum per-second rate limit for this API. Try again later."},
+		{name: "no Retry-After", message: "SENTINEL limit"},
+		{name: "unknown limit", retryAfter: "3600", delay: time.Hour, message: "SENTINEL other limit"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			provider := newRecordingProvider(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
 				if test.retryAfter != "" {
 					response.Header().Set("Retry-After", test.retryAfter)
 				}
-				writeJSON(t, response, http.StatusTooManyRequests, `{"code":429,"message":"SENTINEL limit"}`)
+				writeJSON(t, response, http.StatusTooManyRequests, `{"code":429,"message":"`+test.message+`"}`)
 			})
 			client := newZoomClient(t, provider.URL)
 			_, err := sdkgo.RunQuery(newZoomDexContext("throttle"), client.GetMeeting(), zoomConnection, zoom.GetMeetingInput{MeetingID: 85746065})
@@ -137,6 +138,23 @@ func TestThrottlesRetryAfterZoomsDelayIncludingDailyLimits(t *testing.T) {
 			require.Equal(t, test.delay, retryAfter.After)
 		})
 	}
+}
+
+func TestDocumentedDailyLimitRejectsReadsWithoutExposingProviderText(t *testing.T) {
+	provider := newRecordingProvider(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		response.Header().Set("Retry-After", "3600")
+		writeJSON(t, response, http.StatusTooManyRequests, `{"code":429,"message":"You have reached the maximum daily rate limit for this API. SENTINEL"}`)
+	})
+	result, err := sdkgo.RunQuery(newZoomDexContext("daily-limit"), newZoomClient(t, provider.URL).GetMeeting(), zoomConnection, zoom.GetMeetingInput{MeetingID: 85746065})
+	require.NoError(t, err)
+	require.Equal(t, zoom.GetMeetingBranchProviderRejected, result.Branch)
+	require.Equal(t, sdkgo.FailureRateLimit, result.Failure.Kind)
+	require.Equal(t, "Zoom daily API rate limit reached with HTTP 429 (code 429)", result.Failure.Message)
+	require.Equal(t, "429", result.Receipt.Metadata["zoomErrorCode"])
+	encoded, err := json.Marshal(result)
+	require.NoError(t, err)
+	require.NotContains(t, string(encoded), "SENTINEL")
+	require.Equal(t, 1, provider.requestCount())
 }
 
 func TestServerErrorsAndTransportFailuresRetryReads(t *testing.T) {

@@ -107,15 +107,34 @@ func TestUpdateMeetingClassifiesMissingMeetingsAndRejectedValues(t *testing.T) {
 	}
 }
 
-func TestUpdateMeetingRetriesDailyRateLimit(t *testing.T) {
-	provider := newRecordingProvider(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
-		response.Header().Set("Retry-After", "7200")
-		writeJSON(t, response, http.StatusTooManyRequests, `{"code":429}`)
-	})
-	_, err := sdkgo.RunMutation(newZoomDexContext("daily-update-limit"), newZoomClient(t, provider.URL).UpdateMeeting(), zoomConnection, zoom.UpdateMeetingInput{MeetingID: 85746065, Topic: "Renamed"})
-	var retry *sdkgo.RetryError
-	require.ErrorAs(t, err, &retry)
-	require.Equal(t, sdkgo.FailureRateLimit, retry.Failure.Kind)
+func TestUpdateMeetingRejectsDocumentedDailyLimitAndRetriesUnknownLimit(t *testing.T) {
+	for _, test := range []struct {
+		name    string
+		message string
+		isDaily bool
+	}{
+		{name: "daily limit", message: "You have reached the maximum daily rate limit for this API.", isDaily: true},
+		{name: "unknown limit", message: "SENTINEL limit"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			provider := newRecordingProvider(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+				response.Header().Set("Retry-After", "7200")
+				writeJSON(t, response, http.StatusTooManyRequests, `{"code":429,"message":"`+test.message+`"}`)
+			})
+			result, err := sdkgo.RunMutation(newZoomDexContext("update-limit"), newZoomClient(t, provider.URL).UpdateMeeting(), zoomConnection, zoom.UpdateMeetingInput{MeetingID: 85746065, Topic: "Renamed"})
+			if test.isDaily {
+				require.NoError(t, err)
+				require.Equal(t, zoom.UpdateMeetingBranchProviderRejected, result.Branch)
+				require.Equal(t, sdkgo.FailureRateLimit, result.Failure.Kind)
+				require.Equal(t, "Zoom daily API rate limit reached with HTTP 429 (code 429)", result.Failure.Message)
+			} else {
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry)
+				require.Equal(t, sdkgo.FailureRateLimit, retry.Failure.Kind)
+			}
+			require.Equal(t, 1, provider.requestCount())
+		})
+	}
 }
 
 func TestUpdateMeetingRetriesConflictWithTheSameAbsoluteValues(t *testing.T) {

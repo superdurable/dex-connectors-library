@@ -96,24 +96,30 @@ func TestCreateMeetingRejectsAmbiguousTimesAndInvalidInputWithoutARequest(t *tes
 		t.Run(test.name, func(t *testing.T) {
 			input := validCreateMeetingInput()
 			test.mutate(&input)
-			result, err := sdkgo.RunMutation(newZoomDexContext("invalid-"+test.name), client.CreateMeeting(), zoomConnection, input)
+			context := newZoomDexContext("invalid-" + test.name)
+			result, err := sdkgo.RunMutation(context, client.CreateMeeting(), zoomConnection, input)
 			require.NoError(t, err)
 			require.Equal(t, zoom.CreateMeetingBranchDefect, result.Branch)
 			require.Equal(t, sdkgo.FailureValidation, result.Failure.Kind)
 			require.Contains(t, result.Failure.Message, test.reason)
+			if test.name == "past start" {
+				requireCheckpointState(t, context.lastHeartbeat(), singledispatch.StateNotSent)
+			}
 		})
 	}
 	require.Zero(t, provider.requestCount())
 }
 
-func TestCreateMeetingRetriesOnlyWhenZoomProvablyCreatedNothing(t *testing.T) {
+func TestCreateMeetingClassifiesRateLimitsBeforeAllowingAnotherSend(t *testing.T) {
 	for _, throttle := range []struct {
 		name       string
 		retryAfter string
 		message    string
+		isDaily    bool
 	}{
 		{name: "per-second throttle", retryAfter: "1", message: "You have reached the maximum per-second rate limit for this API. Try again later."},
-		{name: "daily limit", retryAfter: "3600", message: "You have reached the maximum daily rate limit for this API. Refer to the response header for details on when you can make another request."},
+		{name: "daily limit", retryAfter: "3600", message: "YOU HAVE REACHED THE MAXIMUM DAILY RATE LIMIT FOR THIS API. Refer to the response header for details on when you can make another request.", isDaily: true},
+		{name: "unknown limit", retryAfter: "2", message: "SENTINEL other limit"},
 	} {
 		t.Run(throttle.name, func(t *testing.T) {
 			context := newZoomDexContext("throttled-create")
@@ -121,10 +127,20 @@ func TestCreateMeetingRetriesOnlyWhenZoomProvablyCreatedNothing(t *testing.T) {
 				response.Header().Set("Retry-After", throttle.retryAfter)
 				writeJSON(t, response, http.StatusTooManyRequests, `{"code":429,"message":"`+throttle.message+`"}`)
 			})
-			_, err := sdkgo.RunMutation(context, newZoomClient(t, provider.URL).CreateMeeting(), zoomConnection, validCreateMeetingInput())
+			result, err := sdkgo.RunMutation(context, newZoomClient(t, provider.URL).CreateMeeting(), zoomConnection, validCreateMeetingInput())
+			if throttle.isDaily {
+				require.NoError(t, err)
+				require.Equal(t, zoom.CreateMeetingBranchProviderRejected, result.Branch)
+				require.Equal(t, sdkgo.FailureRateLimit, result.Failure.Kind)
+				require.Equal(t, "Zoom daily API rate limit reached with HTTP 429 (code 429)", result.Failure.Message)
+				requireCheckpointState(t, context.lastHeartbeat(), singledispatch.StateClaimed)
+				require.Equal(t, 1, provider.requestCount())
+				return
+			}
 			var retry *sdkgo.RetryError
 			require.ErrorAs(t, err, &retry)
 			require.Equal(t, sdkgo.FailureRateLimit, retry.Failure.Kind)
+			require.NotContains(t, retry.Failure.Message, "SENTINEL")
 			requireCheckpointState(t, context.lastHeartbeat(), singledispatch.StateCanResend)
 			require.Equal(t, 1, provider.requestCount())
 		})
@@ -141,6 +157,40 @@ func TestCreateMeetingRetriesOnlyWhenZoomProvablyCreatedNothing(t *testing.T) {
 		require.Equal(t, sdkgo.FailureTransport, retry.Failure.Kind)
 		requireCheckpointState(t, context.lastHeartbeat(), singledispatch.StateCanResend)
 	})
+}
+
+func TestCreateMeetingStaticCredentialUnauthorizedMessage(t *testing.T) {
+	provider := newRecordingProvider(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusUnauthorized, `{"code":124,"message":"SENTINEL"}`)
+	})
+	result, err := sdkgo.RunMutation(newZoomDexContext("static-credential-401"), newZoomClient(t, provider.URL).CreateMeeting(), zoomConnection, validCreateMeetingInput())
+	require.NoError(t, err)
+	require.Equal(t, zoom.CreateMeetingBranchProviderRejected, result.Branch)
+	require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
+	require.Contains(t, result.Failure.Message, "reconnect the connection")
+	require.NotContains(t, result.Failure.Message, "temporarily unavailable")
+	require.NotContains(t, result.Failure.Message, "SENTINEL")
+	require.Equal(t, 1, provider.requestCount())
+}
+
+func TestCreateMeetingRetainsMalformedAcceptedProviderIDForReconciliation(t *testing.T) {
+	provider := newRecordingProvider(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusCreated, meetingJSON(92674392836, "Consultation with Priya", "2036-02-24T17:00:00Z"))
+	})
+	context := singledispatchtest.NewContext("zoom-flow", "malformed-provider-id")
+	client := newZoomClient(t, provider.URL)
+	first, err := sdkgo.RunMutation(context, client.CreateMeeting(), zoomConnection, validCreateMeetingInput())
+	require.NoError(t, err)
+	context.AdvanceAttempt()
+	require.NoError(t, context.SetPersistedCheckpoint(singledispatch.Marker{
+		CallID: first.Receipt.CallID, Attempt: 1, State: singledispatch.StateClaimed, ProviderID: "Zoom-ID-SENTINEL",
+	}))
+	second, err := sdkgo.RunMutation(context, client.CreateMeeting(), zoomConnection, validCreateMeetingInput())
+	require.NoError(t, err)
+	require.Equal(t, zoom.CreateMeetingBranchUncertain, second.Branch)
+	require.Equal(t, sdkgo.FailureProtocol, second.Failure.Kind)
+	require.Equal(t, "Zoom-ID-SENTINEL", second.Receipt.ProviderObjectID)
+	require.Equal(t, 1, provider.requestCount())
 }
 
 func TestCreateMeetingReportsEveryAmbiguousOutcomeAsUncertain(t *testing.T) {

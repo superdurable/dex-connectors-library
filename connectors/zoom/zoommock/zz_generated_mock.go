@@ -100,7 +100,7 @@ func ListMeetingsListed(value zoom.MeetingPage, failure *sdkgo.Failure) connecto
 	return connectormock.Branch(zoom.ListMeetingsBranchListed, value, failure)
 }
 
-// ListMeetingsProviderRejected selects the providerRejected branch: Zoom conclusively rejected the listing, such as a user without meeting hosting capability.
+// ListMeetingsProviderRejected selects the providerRejected branch: Zoom conclusively rejected the listing, including a documented daily-limit 429 or a user without meeting hosting capability.
 func ListMeetingsProviderRejected(value zoom.MeetingPage, failure *sdkgo.Failure) connectormock.Case[zoom.MeetingPage] {
 	return connectormock.Branch(zoom.ListMeetingsBranchProviderRejected, value, failure)
 }
@@ -137,6 +137,12 @@ func ListMeetingsProviderRejectedFailure() connectormock.Case[zoom.MeetingPage] 
 	return connectormock.Branch(zoom.ListMeetingsBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthorization, Message: "Zoom denied access to the meeting list."})
 }
 
+// ListMeetingsDailyLimitFailure is the manifest mock dailyLimitFailure: Matches a listing rejected by Zoom's documented daily-limit 429 message.
+func ListMeetingsDailyLimitFailure() connectormock.Case[zoom.MeetingPage] {
+	var value zoom.MeetingPage
+	return connectormock.Branch(zoom.ListMeetingsBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureRateLimit, Message: "Zoom daily API rate limit reached with HTTP 429 (code 429)"})
+}
+
 // ListMeetingsInvalidResponseFailure is the manifest mock invalidResponseFailure: Matches a listing whose Zoom response is structurally unusable.
 func ListMeetingsInvalidResponseFailure() connectormock.Case[zoom.MeetingPage] {
 	var value zoom.MeetingPage
@@ -158,7 +164,7 @@ func GetMeetingNotFound(value zoom.Meeting, failure *sdkgo.Failure) connectormoc
 	return connectormock.Branch(zoom.GetMeetingBranchNotFound, value, failure)
 }
 
-// GetMeetingProviderRejected selects the providerRejected branch: Zoom conclusively rejected the meeting read.
+// GetMeetingProviderRejected selects the providerRejected branch: Zoom conclusively rejected the meeting read, including a documented daily-limit 429.
 func GetMeetingProviderRejected(value zoom.Meeting, failure *sdkgo.Failure) connectormock.Case[zoom.Meeting] {
 	return connectormock.Branch(zoom.GetMeetingBranchProviderRejected, value, failure)
 }
@@ -196,6 +202,12 @@ func GetMeetingProviderRejectedFailure() connectormock.Case[zoom.Meeting] {
 	return connectormock.Branch(zoom.GetMeetingBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthorization, Message: "Zoom denied access to the meeting."})
 }
 
+// GetMeetingDailyLimitFailure is the manifest mock dailyLimitFailure: Matches a meeting read rejected by Zoom's documented daily-limit 429 message.
+func GetMeetingDailyLimitFailure() connectormock.Case[zoom.Meeting] {
+	var value zoom.Meeting
+	return connectormock.Branch(zoom.GetMeetingBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureRateLimit, Message: "Zoom daily API rate limit reached with HTTP 429 (code 429)"})
+}
+
 // GetMeetingInvalidResponseFailure is the manifest mock invalidResponseFailure: Matches a meeting read whose response is structurally unusable.
 func GetMeetingInvalidResponseFailure() connectormock.Case[zoom.Meeting] {
 	var value zoom.Meeting
@@ -210,7 +222,7 @@ func CreateMeetingCreated(value zoom.Meeting, failure *sdkgo.Failure) connectorm
 	return connectormock.Branch(zoom.CreateMeetingBranchCreated, value, failure)
 }
 
-// CreateMeetingProviderRejected selects the providerRejected branch: Zoom conclusively rejected the meeting, such as a user who cannot host; nothing was created.
+// CreateMeetingProviderRejected selects the providerRejected branch: Zoom conclusively rejected the meeting, including a documented daily-limit 429 or a user who cannot host; nothing was created.
 func CreateMeetingProviderRejected(value zoom.Meeting, failure *sdkgo.Failure) connectormock.Case[zoom.Meeting] {
 	return connectormock.Branch(zoom.CreateMeetingBranchProviderRejected, value, failure)
 }
@@ -242,6 +254,12 @@ func CreateMeetingProviderRejectedFailure() connectormock.Case[zoom.Meeting] {
 	return connectormock.Branch(zoom.CreateMeetingBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "Zoom conclusively rejected the meeting because the user cannot host; nothing was created."})
 }
 
+// CreateMeetingDailyLimitFailure is the manifest mock dailyLimitFailure: Matches a create rejected by Zoom's documented daily-limit 429 message; nothing was created.
+func CreateMeetingDailyLimitFailure() connectormock.Case[zoom.Meeting] {
+	var value zoom.Meeting
+	return connectormock.Branch(zoom.CreateMeetingBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureRateLimit, Message: "Zoom daily API rate limit reached with HTTP 429 (code 429)"})
+}
+
 // CreateMeetingDefault is the manifest default, createdDefaultAnswer, which New installs.
 func CreateMeetingDefault() connectormock.Case[zoom.Meeting] {
 	return CreateMeetingCreatedDefaultAnswer()
@@ -257,7 +275,7 @@ func UpdateMeetingNotFound(value zoom.UpdatedMeeting, failure *sdkgo.Failure) co
 	return connectormock.Branch(zoom.UpdateMeetingBranchNotFound, value, failure)
 }
 
-// UpdateMeetingProviderRejected selects the providerRejected branch: Zoom conclusively rejected the patch, such as an invalid field value.
+// UpdateMeetingProviderRejected selects the providerRejected branch: Zoom conclusively rejected the patch, including a documented daily-limit 429 or an invalid field value.
 func UpdateMeetingProviderRejected(value zoom.UpdatedMeeting, failure *sdkgo.Failure) connectormock.Case[zoom.UpdatedMeeting] {
 	return connectormock.Branch(zoom.UpdateMeetingBranchProviderRejected, value, failure)
 }
@@ -290,6 +308,12 @@ func UpdateMeetingProviderRejectedFailure() connectormock.Case[zoom.UpdatedMeeti
 	return connectormock.Branch(zoom.UpdateMeetingBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "Zoom conclusively rejected the patch because a field value is invalid."})
 }
 
+// UpdateMeetingDailyLimitFailure is the manifest mock dailyLimitFailure: Matches an update rejected by Zoom's documented daily-limit 429 message.
+func UpdateMeetingDailyLimitFailure() connectormock.Case[zoom.UpdatedMeeting] {
+	var value zoom.UpdatedMeeting
+	return connectormock.Branch(zoom.UpdateMeetingBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureRateLimit, Message: "Zoom daily API rate limit reached with HTTP 429 (code 429)"})
+}
+
 // UpdateMeetingDefault is the manifest default, updatedDefaultAnswer, which New installs.
 func UpdateMeetingDefault() connectormock.Case[zoom.UpdatedMeeting] {
 	return UpdateMeetingUpdatedDefaultAnswer()
@@ -305,7 +329,7 @@ func ListPastMeetingParticipantsNotFound(value zoom.ParticipantPage, failure *sd
 	return connectormock.Branch(zoom.ListPastMeetingParticipantsBranchNotFound, value, failure)
 }
 
-// ListPastMeetingParticipantsProviderRejected selects the providerRejected branch: Zoom conclusively rejected the listing, such as a free account or a meeting older than Zoom keeps.
+// ListPastMeetingParticipantsProviderRejected selects the providerRejected branch: Zoom conclusively rejected the listing, including a documented daily-limit 429, a free account, or a meeting older than Zoom keeps.
 func ListPastMeetingParticipantsProviderRejected(value zoom.ParticipantPage, failure *sdkgo.Failure) connectormock.Case[zoom.ParticipantPage] {
 	return connectormock.Branch(zoom.ListPastMeetingParticipantsBranchProviderRejected, value, failure)
 }
@@ -346,6 +370,12 @@ func ListPastMeetingParticipantsNotFoundFailure() connectormock.Case[zoom.Partic
 func ListPastMeetingParticipantsProviderRejectedFailure() connectormock.Case[zoom.ParticipantPage] {
 	var value zoom.ParticipantPage
 	return connectormock.Branch(zoom.ListPastMeetingParticipantsBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthorization, Message: "Zoom denied access to the participant list."})
+}
+
+// ListPastMeetingParticipantsDailyLimitFailure is the manifest mock dailyLimitFailure: Matches a participant listing rejected by Zoom's documented daily-limit 429 message.
+func ListPastMeetingParticipantsDailyLimitFailure() connectormock.Case[zoom.ParticipantPage] {
+	var value zoom.ParticipantPage
+	return connectormock.Branch(zoom.ListPastMeetingParticipantsBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureRateLimit, Message: "Zoom daily API rate limit reached with HTTP 429 (code 429)"})
 }
 
 // ListPastMeetingParticipantsInvalidResponseFailure is the manifest mock invalidResponseFailure: Matches a participant listing whose response is structurally unusable.

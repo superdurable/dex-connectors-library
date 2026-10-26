@@ -269,7 +269,7 @@ var ListMeetingsDefinition = sdkgo.QueryDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listMeetings"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: ListMeetingsBranchListed, Description: "One page of the user's meetings was listed."},
-		{ID: ListMeetingsBranchProviderRejected, Description: "Zoom conclusively rejected the listing, such as a user without meeting hosting capability.", Optional: true},
+		{ID: ListMeetingsBranchProviderRejected, Description: "Zoom conclusively rejected the listing, including a documented daily-limit 429 or a user without meeting hosting capability.", Optional: true},
 		{ID: ListMeetingsBranchInvalidResponse, Description: "Zoom returned an invalid or oversized meeting page.", Optional: true},
 		{ID: ListMeetingsBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
@@ -342,7 +342,7 @@ var GetMeetingDefinition = sdkgo.QueryDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: GetMeetingBranchFound, Description: "The meeting was read."},
 		{ID: GetMeetingBranchNotFound, Description: "The meeting does not exist or was deleted.", Optional: true},
-		{ID: GetMeetingBranchProviderRejected, Description: "Zoom conclusively rejected the meeting read.", Optional: true},
+		{ID: GetMeetingBranchProviderRejected, Description: "Zoom conclusively rejected the meeting read, including a documented daily-limit 429.", Optional: true},
 		{ID: GetMeetingBranchInvalidResponse, Description: "Zoom returned an invalid or oversized meeting.", Optional: true},
 		{ID: GetMeetingBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
@@ -417,7 +417,7 @@ var CreateMeetingDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createMeeting"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateMeetingBranchCreated, Description: "Zoom created the meeting and returned its ID and join URL."},
-		{ID: CreateMeetingBranchProviderRejected, Description: "Zoom conclusively rejected the meeting, such as a user who cannot host; nothing was created.", Optional: true},
+		{ID: CreateMeetingBranchProviderRejected, Description: "Zoom conclusively rejected the meeting, including a documented daily-limit 429 or a user who cannot host; nothing was created.", Optional: true},
 		{ID: CreateMeetingBranchUncertain, Description: "The request was dispatched but its outcome cannot be confirmed; the meeting may exist and must not be created again automatically.", Optional: true},
 		{ID: CreateMeetingBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
@@ -489,7 +489,7 @@ var UpdateMeetingDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: UpdateMeetingBranchUpdated, Description: "Zoom accepted the patch."},
 		{ID: UpdateMeetingBranchNotFound, Description: "The meeting does not exist or was deleted.", Optional: true},
-		{ID: UpdateMeetingBranchProviderRejected, Description: "Zoom conclusively rejected the patch, such as an invalid field value.", Optional: true},
+		{ID: UpdateMeetingBranchProviderRejected, Description: "Zoom conclusively rejected the patch, including a documented daily-limit 429 or an invalid field value.", Optional: true},
 		{ID: UpdateMeetingBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -561,7 +561,7 @@ var ListPastMeetingParticipantsDefinition = sdkgo.QueryDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: ListPastMeetingParticipantsBranchListed, Description: "One page of participants was listed."},
 		{ID: ListPastMeetingParticipantsBranchNotFound, Description: "Zoom has no ended instance of the meeting.", Optional: true},
-		{ID: ListPastMeetingParticipantsBranchProviderRejected, Description: "Zoom conclusively rejected the listing, such as a free account or a meeting older than Zoom keeps.", Optional: true},
+		{ID: ListPastMeetingParticipantsBranchProviderRejected, Description: "Zoom conclusively rejected the listing, including a documented daily-limit 429, a free account, or a meeting older than Zoom keeps.", Optional: true},
 		{ID: ListPastMeetingParticipantsBranchInvalidResponse, Description: "Zoom returned an invalid or oversized participant page.", Optional: true},
 		{ID: ListPastMeetingParticipantsBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},

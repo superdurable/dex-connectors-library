@@ -23,6 +23,7 @@ import (
 	"net/http/httptrace"
 	"net/url"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -42,7 +43,7 @@ const (
 
 var (
 	errRequestNotBuilt = errors.New("Zoom request could not be built")
-	// zoomErrorCodePointers locate Zoom's numeric error code; message text is never read.
+	// zoomErrorCodePointers locate Zoom's numeric error code.
 	zoomErrorCodePointers = []string{"/code"}
 )
 
@@ -303,7 +304,7 @@ func (client *Client) classifyReadResponse(operation string, response providerRe
 	}
 }
 
-// classifyErrorStatus maps a non-2xx response, keeping only Zoom's numeric error code, never its text.
+// classifyErrorStatus maps a non-2xx response without exposing Zoom's message text.
 func (client *Client) classifyErrorStatus(operation string, response providerResponse) statusClassification {
 	errorCode := zoomErrorCode(response.body)
 	switch {
@@ -318,6 +319,12 @@ func (client *Client) classifyErrorStatus(operation string, response providerRes
 			failure: newFailure(operation, sdkgo.FailureNotFound, describeStatus("Zoom reported the resource missing", response.statusCode, errorCode)),
 		}
 	case response.statusCode == http.StatusTooManyRequests:
+		if !response.hasBodyReadFailed && isDocumentedDailyRateLimit(response.body) {
+			return statusClassification{
+				outcome: statusOutcomeRejected, errorCode: errorCode,
+				failure: newFailure(operation, sdkgo.FailureRateLimit, describeStatus("Zoom daily API rate limit reached", response.statusCode, errorCode)),
+			}
+		}
 		delay := providerhttp.ParseRetryAfter(response.header.Get("Retry-After"), client.now())
 		return statusClassification{
 			outcome: statusOutcomeRetry, retryAfter: delay, errorCode: errorCode,
@@ -407,6 +414,17 @@ func zoomErrorCode(body []byte) string {
 		}
 	}
 	return ""
+}
+
+func isDocumentedDailyRateLimit(body []byte) bool {
+	var zoomError struct {
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal(body, &zoomError); err != nil {
+		return false
+	}
+	const dailyLimitMessage = "you have reached the maximum daily rate limit for this api."
+	return strings.HasPrefix(strings.ToLower(strings.TrimSpace(zoomError.Message)), dailyLimitMessage)
 }
 
 func describeStatus(message string, status int, errorCode string) string {
