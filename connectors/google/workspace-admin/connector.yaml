@@ -5,7 +5,7 @@ metadata:
   displayName: Google Workspace Admin
   description: Read and list Google Workspace user accounts, create, suspend, and restore them, and add or remove group members through the Admin SDK Directory API, converging instead of duplicating when a Step repeats.
   company: Google
-  version: v0.22.1
+  version: v0.23.0
 spec:
   provider: google
   codegen:
@@ -142,6 +142,20 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: adaAccount
+          branch: found
+          description: The read of user ID 1001 returns Ada in the Engineering organizational unit.
+          default: true
+          output: {id: "1001", primaryEmail: ada@example.com, name: {givenName: Ada, familyName: Lovelace, fullName: Ada Lovelace}, orgUnitPath: /Engineering, isSuspended: false, isMailboxSetup: true}
+        - name: notFoundFailure
+          branch: notFound
+          description: The user ID 1001 names an account that does not exist.
+          failure: {kind: NOT_FOUND, message: "No account has this address or ID."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: Google denies the user ID 1001 because the administrator lacks the required privilege.
+          failure: {kind: AUTHORIZATION, message: Google denied the requested administrator action.}
     - name: listUsers
       goName: ListUsers
       inputType: ListUsersInput
@@ -158,6 +172,23 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      pagination: {inputField: pageToken, nextField: nextPageToken}
+      mocks:
+        - name: engineeringUsers
+          branch: listed
+          description: The Engineering user listing returns three unordered pages with Ada repeated across a boundary.
+          default: true
+          pages:
+            - users: [{id: "1001", primaryEmail: ada@example.com, name: {givenName: Ada, familyName: Lovelace, fullName: Ada Lovelace}, orgUnitPath: /Engineering, isSuspended: false, isMailboxSetup: true}]
+              nextPageToken: engineering-page-2
+            - users: [{id: "1002", primaryEmail: bob@example.com, name: {givenName: Bob, familyName: Chen, fullName: Bob Chen}, orgUnitPath: /Engineering, isSuspended: true, suspensionReason: ADMIN}, {id: "1001", primaryEmail: ada@example.com, name: {givenName: Ada, familyName: Lovelace, fullName: Ada Lovelace}, orgUnitPath: /Engineering, isSuspended: false, isMailboxSetup: true}]
+              nextPageToken: engineering-page-3
+            - users: [{id: "1003", primaryEmail: carol@example.com, name: {givenName: Carol, familyName: Diaz, fullName: Carol Diaz}, orgUnitPath: /Engineering, isSuspended: false}]
+
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: Google denies the Engineering user listing because the administrator lacks the required privilege.
+          failure: {kind: AUTHORIZATION, message: Google denied the requested administrator action.}
     - name: createUser
       goName: CreateUser
       inputType: CreateUserInput
@@ -175,6 +206,20 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: adaCreated
+          branch: created
+          description: Creating ada@example.com in /Engineering returns account ID 1001.
+          default: true
+          output: {user: {id: "1001", primaryEmail: ada@example.com, name: {givenName: Ada, familyName: Lovelace, fullName: Ada Lovelace}, orgUnitPath: /Engineering, isSuspended: false, isMailboxSetup: true}, wasAlreadyCreated: false}
+        - name: alreadyExistsFailure
+          branch: alreadyExists
+          description: The creation of ada@example.com conflicts with an existing group, so no account is returned.
+          failure: {kind: CONFLICT, message: "The address belongs to another account, alias, or group that this Step did not create."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: Google denies the creation of ada@example.com because the administrator lacks the required privilege.
+          failure: {kind: AUTHORIZATION, message: Google denied the requested administrator action.}
     - name: suspendUser
       goName: SuspendUser
       inputType: SuspendUserInput
@@ -192,6 +237,20 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: adaSuspended
+          branch: suspended
+          description: Suspending user ID 1001 returns Ada with sign-in disabled.
+          default: true
+          output: {id: "1001", primaryEmail: ada@example.com, name: {givenName: Ada, familyName: Lovelace, fullName: Ada Lovelace}, orgUnitPath: /Engineering, isSuspended: true, suspensionReason: ADMIN, isMailboxSetup: true}
+        - name: notFoundFailure
+          branch: notFound
+          description: The suspension of user ID 1001 names an account that does not exist.
+          failure: {kind: NOT_FOUND, message: "No account has this address or ID."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: Google denies the suspension of user ID 1001 because the administrator lacks the required privilege.
+          failure: {kind: AUTHORIZATION, message: Google denied the requested administrator action.}
     - name: unsuspendUser
       goName: UnsuspendUser
       inputType: UnsuspendUserInput
@@ -209,6 +268,20 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: adaUnsuspended
+          branch: unsuspended
+          description: Unsuspending user ID 1001 returns Ada with sign-in restored.
+          default: true
+          output: {id: "1001", primaryEmail: ada@example.com, name: {givenName: Ada, familyName: Lovelace, fullName: Ada Lovelace}, orgUnitPath: /Engineering, isSuspended: false, isMailboxSetup: true}
+        - name: notFoundFailure
+          branch: notFound
+          description: The restoration of user ID 1001 names an account that does not exist.
+          failure: {kind: NOT_FOUND, message: "No account has this address or ID."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: Google denies the restoration of user ID 1001 because the administrator lacks the required privilege.
+          failure: {kind: AUTHORIZATION, message: Google denied the requested administrator action.}
     - name: addUserToGroup
       goName: AddUserToGroup
       inputType: AddUserToGroupInput
@@ -226,6 +299,20 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: adaJoinedEngineering
+          branch: added
+          description: Adding ada@example.com to engineering@example.com returns direct MEMBER status.
+          default: true
+          output: {membership: {groupKey: engineering@example.com, memberId: "1001", email: ada@example.com, role: MEMBER, type: USER, status: ACTIVE}, wasAlreadyMember: false}
+        - name: notFoundFailure
+          branch: notFound
+          description: The addition of ada@example.com to engineering@example.com names a user or group that does not exist.
+          failure: {kind: NOT_FOUND, message: "The group or the account does not exist."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: Google denies the addition of ada@example.com to engineering@example.com because the administrator lacks the required privilege.
+          failure: {kind: AUTHORIZATION, message: Google denied the requested administrator action.}
     - name: removeUserFromGroup
       goName: RemoveUserFromGroup
       inputType: RemoveUserFromGroupInput
@@ -243,3 +330,17 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: adaLeftEngineering
+          branch: removed
+          description: Removing user ID 1001 from engineering@example.com reports the membership removed.
+          default: true
+          output: {groupKey: engineering@example.com, memberKey: "1001", wasAlreadyRemoved: false}
+        - name: notFoundFailure
+          branch: notFound
+          description: The removal of user ID 1001 from engineering@example.com names a group that does not exist.
+          failure: {kind: NOT_FOUND, message: "The group does not exist."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: Google denies the removal of user ID 1001 from engineering@example.com because the administrator lacks the required privilege.
+          failure: {kind: AUTHORIZATION, message: Google denied the requested administrator action.}

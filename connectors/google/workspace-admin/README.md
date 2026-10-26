@@ -208,6 +208,23 @@ bodies are read with their own 64 KiB bound, and redirects are never followed
 with the credential. Only each operation's happy-path branch is required; every
 other branch is optional and fails the Flow when unwired.
 
+## Mocks
+
+The generated `workspaceadminmock` package models Ada's account, its
+Engineering group membership, both sign-in states, and a three-page user
+listing with a repeated account. The
+[real-Dex example test](examples/account-lifecycle/flow/workflow_mock_integration_test.go)
+starts onboarding and offboarding with the same mock connection:
+
+```go
+mock := workspaceadminmock.New(t, ConnectionName)
+flow := NewFlow(mock.Connection())
+```
+
+Each operation also provides mocks for its definite absent-resource or
+provider-rejection branches. `CreateUser` has an `alreadyExists` case. Script
+other accounts, groups, and organizational units explicitly.
+
 ## Example
 
 [`examples/account-lifecycle`](examples/account-lifecycle) is a runnable Dex

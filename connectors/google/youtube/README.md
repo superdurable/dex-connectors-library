@@ -60,6 +60,25 @@ retry instead of producing a branch. Failure messages carry Google's documented
 error reason, never its message text. Titles and descriptions are untrusted
 provider text.
 
+## Mocks
+
+The generated `youtubemock` package models one Compiler Lab channel, its
+walkthrough video, and a curated playlist. Search and playlist listings have
+three-page cursor chains with a repeated item. The
+[real-Dex example test](examples/playlist-curator/flow/workflow_mock_integration_test.go)
+uses separate read and manage connections:
+
+```go
+readMock := youtubemock.New(t, ReadConnectionName)
+manageMock := youtubemock.New(t, ManageConnectionName)
+flow := NewFlow(readMock.Connection(), manageMock.Connection())
+```
+
+Each operation has an authorization rejection and quota exhaustion case.
+Reads and the playlist write also offer `notFound` where the provider can
+report an absent resource. Script a case for other channel, video, or playlist
+inputs.
+
 ## Example
 
 [`examples/playlist-curator`](examples/playlist-curator) is a runnable Dex Web

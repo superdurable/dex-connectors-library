@@ -344,6 +344,22 @@ Ticket operations, a team picker, and conversation assignment are not in this
 release; `GET /teams` returns a JSON object, so a team picker can follow the
 admin picker's pattern.
 
+## Mocks
+
+The generated `intercommock` package models Ada's unanswered inbound
+conversation, a three-page search with a repeated earlier conversation, and
+the reply and close outcomes.
+The [real-Dex example test](examples/answer-duplicate-conversation/workflow_mock_integration_test.go)
+starts the Flow with a mock connection and a configured replying admin:
+
+```go
+mock := intercommock.New(t, answerduplicate.ConnectionName)
+```
+
+Every operation has a definite authorization-rejection case; reads and
+writes that can identify an absent conversation or contact also provide
+`notFound`. Script other conversation IDs and contact emails explicitly.
+
 ## Example
 
 [`examples/answer-duplicate-conversation`](examples/answer-duplicate-conversation)

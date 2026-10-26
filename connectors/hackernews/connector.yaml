@@ -5,7 +5,7 @@ metadata:
   displayName: Hacker News Daily
   description: Read public Hacker News feeds, stories, and discussions for a daily developer digest with direct source links.
   company: Hacker News
-  version: v0.21.2
+  version: v0.22.0
 spec:
   provider: hacker-news
   codegen:
@@ -50,6 +50,16 @@ spec:
         executeMethodTimeout: 30s
         durability: async
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 0, totalDuration: 65m}
+      mocks:
+        - name: developerFeed
+          branch: listed
+          description: The top feed requested with a limit of at least one contains the compiler story 42001.
+          default: true
+          output: {ids: [42001], hasMore: true, observedAt: "2026-10-26T12:00:00Z"}
+        - name: feedRejected
+          branch: providerRejected
+          description: Hacker News rejects the requested feed snapshot.
+          failure: {kind: PROVIDER_REJECTION, message: Hacker News rejected the feed request.}
     - name: getItem
       goName: GetItem
       inputType: GetItemInput
@@ -68,3 +78,17 @@ spec:
         executeMethodTimeout: 30s
         durability: async
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 0, totalDuration: 65m}
+      mocks:
+        - name: compilerStory
+          branch: found
+          description: Item 42001 is a public compiler release story with a source and discussion link.
+          default: true
+          output: {id: 42001, type: story, by: compilerdev, time: 1793016000, title: A compiler release, url: "https://example.com/compiler", discussionUrl: "https://news.ycombinator.com/item?id=42001", score: 100, descendants: 0}
+        - name: itemMissing
+          branch: notFound
+          description: The requested item ID identifies a deleted or dead story.
+          failure: {kind: NOT_FOUND, message: Hacker News item is deleted or dead.}
+        - name: itemRejected
+          branch: providerRejected
+          description: Hacker News rejects the requested item read.
+          failure: {kind: PROVIDER_REJECTION, message: Hacker News rejected the item request.}
