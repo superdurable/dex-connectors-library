@@ -278,7 +278,7 @@ the API key is dropped.
 | 408, other 5xx, lost or unreadable response | Retry, after `Retry-After` when present | `uncertain` |
 | oversized, malformed, or credential-reflecting 2xx | `invalidResponse` | `uncertain` |
 | invalid input | `defect`, with no request | `defect`, with no request |
-| reauthorization required or unusable connection credentials | `defect`, with no request | `defect` after a `notSent` checkpoint, with no request |
+| reauthorization required or unusable connection credentials | `defect`, with no request | `defect` after a `notSent` checkpoint, with no request; Retry while reading back an earlier attempt's write |
 | transient credential resolution failure | `defect`, with no request | Retry after a `notSent` checkpoint, with no request |
 
 BambooHR returned 503 for rate limiting until September 16, 2026, and returns
