@@ -397,27 +397,6 @@ those resources. Manifest progress declarations only control which typed Stream
 fields code generation exposes; runtime operation definitions do not duplicate
 or validate that metadata.
 
-### Step Execute retries
-
-When a Query or Mutation definition leaves `StepDefaults.ExecuteRetry` nil,
-the SDK supplies `DefaultConnectorStepExecuteRetryPolicy()`: one-second initial
-delay, coefficient 2, five-minute maximum delay, unlimited attempts, and a
-one-hour total duration. A Retry keeps trying transient failures within that
-budget; when it runs out, the Flow fails unless the Step routes exhausted
-retries to an `ExecuteFailure` recovery Step. The total duration also bounds
-the first attempt through ScheduleToClose, so an Execute timeout over one hour
-needs an explicit retry policy to run for its full duration.
-
-An explicit definition policy takes precedence. An application can replace
-either policy for one Step with `StepOptionsOverride.ExecuteRetry`. This
-replaces the entire policy; zero fields use Dex server defaults. Start with
-`DefaultConnectorStepExecuteRetryPolicy()` and change the fields needed for
-the override.
-
-A later manifest change will let authors omit `retry` and require a validated
-reason for a shorter policy: `billedOperation`, `personWaiting`, or
-`duplicateWriteRisk`. Until then, manifests must still declare `retry`.
-
 Generated Step and Trigger binding configs also accept a static
 `ConnectorConfigurationUI`. A Flow composes release-owned UI units and binds
 their ports to JSON Pointers in its own configuration shape. Dex CLI extracts
@@ -451,6 +430,28 @@ absolute replacement, upsert, or delete makes a repeat safe; and a read-back
 cannot confirm the outcome. A Mutation that cannot produce uncertainty omits
 that branch and target. See
 [Branch-only Result and strict Attempt](../docs/connector-contract.md#branch-only-result-and-strict-attempt).
+
+### Step Execute retries
+
+When a Query or Mutation definition leaves `StepDefaults.ExecuteRetry` nil,
+the SDK supplies `DefaultConnectorStepExecuteRetryPolicy()`: one-second initial
+delay, coefficient 2, five-minute maximum delay, unlimited attempts, and a
+one-hour total duration. A Retry keeps trying transient failures within that
+budget; when it runs out, the Flow fails unless the Step routes exhausted
+retries to an `ExecuteFailure` recovery Step. The total duration can also cap
+the first attempt (it does on the Temporal-backed Dex Server), so an Execute
+timeout over one hour needs an explicit retry policy to run for its full
+duration.
+
+An explicit definition policy takes precedence. An application can replace
+either policy for one Step with `StepOptionsOverride.ExecuteRetry`. This
+replaces the entire policy; zero fields use Dex server defaults. Start with
+`DefaultConnectorStepExecuteRetryPolicy()` and change the fields needed for
+the override.
+
+A later manifest change will let authors omit `retry` and require a validated
+reason for a shorter policy: `billedOperation`, `personWaiting`, or
+`duplicateWriteRisk`. Until then, manifests must still declare `retry`.
 
 ## Text generation connectors
 
