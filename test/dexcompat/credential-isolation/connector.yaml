@@ -77,4 +77,3 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 3, totalDuration: 2m}
