@@ -45,7 +45,13 @@ func newClaimHarness(t *testing.T, provider *fakeHiver, requestInterval time.Dur
 	require.NoError(t, err)
 	connection, err := hiver.NewConnection(providerClient, reference)
 	require.NoError(t, err)
+	return newClaimHarnessWithConnection(t, connection)
+}
+
+func newClaimHarnessWithConnection(t *testing.T, connection hiver.Connection) *claimHarness {
+	t.Helper()
 	harness := &claimHarness{flow: NewFlow(connection), serverAddress: environmentOr("DEX_FLOW_SERVICE_ADDRESS", "127.0.0.1:8801")}
+	var err error
 	harness.registry, err = dex.NewRegistry([]dex.Flow{harness.flow})
 	require.NoError(t, err)
 	harness.cache, err = blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})

@@ -73,11 +73,13 @@ func (CreateSharedDraftOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateSh
 // Invoke sends POST /v1/inboxes/{inbox_id}/conversations/shared-drafts as multipart/form-data
 // unless an earlier attempt of this Step execution recorded the dispatch checkpoint, in which
 // case it selects uncertain without sending. Hiver never sends the draft to the customer; a
-// Hiver user does. Only a 429, a connection that never opened, or a cancelled wait for a
-// request slot is retried; any other unconfirmed outcome selects uncertain without resending.
-// Dex may not yet have stored the checkpoint when the draft is sent, so a Worker that loses
-// its Dex connection in that instant can create a second draft on the retry.
+// Hiver user does. A 429, 503, traced pre-connection failure, or cancelled request-slot wait
+// records a safe-resend marker and retries; other unconfirmed outcomes
+// select uncertain without resending. A missing checkpoint on a later attempt fails closed.
 func (operation CreateSharedDraftOperation) Invoke(call sdkgo.Call, input CreateSharedDraftInput) sdkgo.MutationAttempt[SharedDraft] {
+	if priorAttempt := previousSingleDispatchAttempt[SharedDraft](call, operation.client, createSharedDraftOperation); priorAttempt != nil {
+		return *priorAttempt
+	}
 	if err := validateCreateSharedDraftInput(input); err != nil {
 		return sdkgo.NewMutationBranch(CreateSharedDraftBranchDefect, SharedDraft{}, hiverFailurePointer(sdkgo.FailureValidation, createSharedDraftOperation, err.Error()), sdkgo.Receipt{})
 	}

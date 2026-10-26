@@ -76,12 +76,13 @@ func (AddNoteOperation) IdempotencyKey(callID sdkgo.CallID, _ AddNoteInput) sdkg
 
 // Invoke sends POST /v1/inboxes/{inbox_id}/conversations/{conversation_id}/notes as
 // multipart/form-data unless an earlier attempt of this Step execution recorded the dispatch
-// checkpoint, in which case it selects uncertain without sending. Only a 429, a connection that
-// never opened, or a cancelled wait for a request slot is retried; any other unconfirmed outcome
-// selects uncertain without resending, because Hiver has no note list to check first. Dex may
-// not yet have stored the checkpoint when the note is sent, so a Worker that loses its Dex
-// connection in that instant can send a second note on the retry.
+// checkpoint, in which case it selects uncertain without sending. A 429, 503, proven pre-send
+// failure, or cancelled request-slot wait records a safe-resend marker and retries. Other
+// unconfirmed outcomes select uncertain because Hiver has no note list to check first.
 func (operation AddNoteOperation) Invoke(call sdkgo.Call, input AddNoteInput) sdkgo.MutationAttempt[AddNoteOutput] {
+	if priorAttempt := previousSingleDispatchAttempt[AddNoteOutput](call, operation.client, addNoteOperation); priorAttempt != nil {
+		return *priorAttempt
+	}
 	if err := validateAddNoteInput(input); err != nil {
 		return sdkgo.NewMutationBranch(AddNoteBranchDefect, AddNoteOutput{}, hiverFailurePointer(sdkgo.FailureValidation, addNoteOperation, err.Error()), sdkgo.Receipt{})
 	}

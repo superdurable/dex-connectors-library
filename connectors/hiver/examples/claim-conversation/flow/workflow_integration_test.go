@@ -175,6 +175,23 @@ func TestRateLimitedNoteWaitsAndAddsOneNoteWithRealDex(t *testing.T) {
 	require.Len(t, provider.conversation(target).notes, 1)
 }
 
+func TestServiceUnavailableNoteRetriesWithSameCallIDWithRealDex(t *testing.T) {
+	provider := newFakeHiver(t, fastRequestInterval)
+	provider.seedStandardInbox()
+	target := provider.seedConversation(integrationInboxID, "open", "", nil)
+	provider.serviceUnavailableFirstNote = true
+	harness := newClaimHarness(t, provider, fastRequestInterval, defaultRequestTimeout)
+
+	outcome := harness.runClaim(t, "service-unavailable-note", integrationClaimInput())
+	require.Equal(t, ClaimActionClaimed, outcome.Action)
+	require.Equal(t, 2, provider.count("note"))
+	identifiers := provider.correlationIDs("note")
+	require.Len(t, identifiers, 2)
+	require.NotEmpty(t, identifiers[0])
+	require.Equal(t, identifiers[0], identifiers[1], "both attempts use the same correlation Call ID")
+	require.Len(t, provider.conversation(target).notes, 1)
+}
+
 // TestLostWorkerDuringDraftFailsWithoutResendingWithRealDex replaces the Worker while Hiver holds the draft.
 func TestLostWorkerDuringDraftFailsWithoutResendingWithRealDex(t *testing.T) {
 	provider := newFakeHiver(t, fastRequestInterval)
