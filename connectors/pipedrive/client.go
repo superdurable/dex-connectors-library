@@ -48,7 +48,8 @@ const (
 	// defaultRequestTimeout bounds one Pipedrive request when WithHTTPClient supplies no Timeout.
 	defaultRequestTimeout = 20 * time.Second
 	// operationDeadline keeps every request of one attempt, including a token refresh, inside the 30-second Execute timeout.
-	operationDeadline = 25 * time.Second
+	operationDeadline        = 25 * time.Second
+	credentialDeadlineMargin = 100 * time.Millisecond
 	// burstRetryDelay is Pipedrive's rolling burst-limit window.
 	burstRetryDelay = 2 * time.Second
 	// maximumBurstRetryDelay bounds a delay read from x-ratelimit-reset.
@@ -234,16 +235,25 @@ type sessionFailure struct {
 
 // startSession resolves credentials, refreshing an expired OAuth token, and the connection's base URL.
 func (client *Client) startSession(call sdkgo.Call, operation string) (*operationSession, context.CancelFunc, *sessionFailure) {
-	sessionContext, cancel := context.WithTimeout(call.Context, operationDeadline)
+	sessionTimeout := operationDeadline
+	if deadline, hasDeadline := call.Context.Deadline(); hasDeadline {
+		sessionTimeout = min(sessionTimeout, time.Until(deadline)-credentialDeadlineMargin)
+	}
+	sessionContext, cancel := context.WithTimeout(call.Context, sessionTimeout)
 	credentials, err := sdkgo.ResolveCredential(sessionContext, client.credentials, call, client.refreshDriver)
 	var failure *sessionFailure
 	switch {
-	case sdkgo.IsReauthorizationRequired(err):
-		failure = &sessionFailure{route: sessionRejected, failure: providerFailure(operation, sdkgo.FailureAuthentication, "Pipedrive authorization must be renewed")}
-	case errors.Is(err, errCredentialRefreshUnavailable):
-		failure = &sessionFailure{route: sessionRetry, failure: providerFailure(operation, sdkgo.FailureAvailability, "Pipedrive OAuth token refresh is temporarily unavailable")}
-	case err != nil || validateResolvedCredentials(credentials) != nil:
-		failure = &sessionFailure{route: sessionDefect, failure: providerFailure(operation, sdkgo.FailureAuthentication, "Pipedrive connection credentials are unavailable")}
+	case sessionContext.Err() != nil:
+		failure = &sessionFailure{route: sessionRetry, failure: providerFailure(operation, sdkgo.FailureAvailability, "Pipedrive connection credentials are temporarily unavailable")}
+	case errors.Is(err, sdkgo.ErrReauthorizationRequired):
+		failure = &sessionFailure{route: sessionRejected, failure: providerFailure(operation, sdkgo.FailureAuthentication, "Pipedrive authorization must be renewed; reconnect the connection")}
+	case err != nil && err.Error() == "connection is not configured":
+		// sdkgo.StaticCredentialProvider returns this error for an absent connection without a typed sentinel.
+		failure = &sessionFailure{route: sessionDefect, failure: providerFailure(operation, sdkgo.FailureAuthentication, "Pipedrive connection credentials are unavailable; reconnect the connection")}
+	case err != nil:
+		failure = &sessionFailure{route: sessionRetry, failure: providerFailure(operation, sdkgo.FailureAvailability, "Pipedrive connection credentials are temporarily unavailable")}
+	case validateResolvedCredentials(credentials) != nil:
+		failure = &sessionFailure{route: sessionDefect, failure: providerFailure(operation, sdkgo.FailureAuthentication, "Pipedrive connection credentials are unavailable; reconnect the connection")}
 	}
 	if failure != nil {
 		cancel()
@@ -252,7 +262,7 @@ func (client *Client) startSession(call sdkgo.Call, operation string) (*operatio
 	baseURL, err := client.baseURLFor(credentials)
 	if err != nil {
 		cancel()
-		return nil, nil, &sessionFailure{route: sessionDefect, failure: providerFailure(operation, sdkgo.FailureValidation, err.Error())}
+		return nil, nil, &sessionFailure{route: sessionDefect, failure: providerFailure(operation, sdkgo.FailureAuthentication, err.Error())}
 	}
 	return &operationSession{call: call, operation: operation, context: sessionContext, credentials: credentials, baseURL: baseURL}, cancel, nil
 }
@@ -264,7 +274,7 @@ func (client *Client) baseURLFor(credentials Credentials) (string, error) {
 	}
 	baseURL, err := validatePipedriveBaseURL(credentials.APIDomain)
 	if err != nil {
-		return "", errors.New("Pipedrive OAuth connection has no valid api_domain; authorize the connection again")
+		return "", errors.New("Pipedrive OAuth connection has no valid api_domain; reconnect the connection")
 	}
 	return baseURL, nil
 }
@@ -275,26 +285,37 @@ func (client *Client) exchange(session *operationSession, request providerReques
 	if result.response.statusCode != http.StatusUnauthorized || session.credentials.AuthMethodID != OAuthAuthMethodID {
 		return result
 	}
-	if !client.refreshCredentialAfterRejection(session) {
+	refreshed, _ := client.refreshCredentialAfterRejection(session)
+	if !refreshed {
 		return result
 	}
 	return client.exchangeOnce(session, request)
 }
 
-func (client *Client) refreshCredentialAfterRejection(session *operationSession) bool {
+func (client *Client) refreshCredentialAfterRejection(session *operationSession) (bool, error) {
 	if _, supportsRejection := client.credentials.(sdkgo.RejectedCredentialRefreshingProvider[Credentials]); !supportsRejection {
-		return false
+		return false, sdkgo.ErrReauthorizationRequired
 	}
 	replacement, err := sdkgo.ResolveCredentialAfterRejection(session.context, client.credentials, session.call, client.refreshDriver)
-	if err != nil || validateResolvedCredentials(replacement) != nil || replacement.AuthMethodID != OAuthAuthMethodID {
-		return false
+	if err != nil {
+		return false, err
+	}
+	if err = validateResolvedCredentials(replacement); err != nil || replacement.AuthMethodID != OAuthAuthMethodID || requestCredential(replacement) == requestCredential(session.credentials) {
+		return false, sdkgo.ErrReauthorizationRequired
 	}
 	baseURL, err := client.baseURLFor(replacement)
 	if err != nil {
-		return false
+		return false, sdkgo.ErrReauthorizationRequired
 	}
 	session.credentials, session.baseURL = replacement, baseURL
-	return true
+	return true, nil
+}
+
+func rejectedWriteFailure(operation string, refreshError error) sdkgo.Failure {
+	if errors.Is(refreshError, sdkgo.ErrReauthorizationRequired) {
+		return providerFailure(operation, sdkgo.FailureAuthentication, "Pipedrive rejected the access token (HTTP 401); reconnect the connection")
+	}
+	return providerFailure(operation, sdkgo.FailureAuthentication, "Pipedrive rejected the access token (HTTP 401); credential refresh is temporarily unavailable")
 }
 
 func (client *Client) exchangeOnce(session *operationSession, request providerRequest) pipedriveExchange {

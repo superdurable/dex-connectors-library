@@ -107,7 +107,11 @@ func (operation UpsertObjectOperation) Invoke(call sdkgo.Call, input UpsertObjec
 			return mutationAttemptForSession[UpsertedObject](failure, upsertBranches)
 		}
 		if failure.route != sessionRetry {
-			return unconfirmedCreateAttempt(failure.failure, sdkgo.Receipt{})
+			providerID := ""
+			if decision.Marker.CallID == call.ID {
+				providerID = decision.Marker.ProviderID
+			}
+			return unconfirmedCreateAttempt(failure.failure, operation.client.receipt(call, providerResponse{}, providerID))
 		}
 		return mutationAttemptForSession[UpsertedObject](failure, upsertBranches)
 	}
@@ -210,11 +214,15 @@ func (operation UpsertObjectOperation) createRecord(session *operationSession, i
 	}
 	result := send.result
 	receipt := operation.client.receipt(call, result.response, "")
-	if result.response.statusCode == http.StatusUnauthorized && session.credentials.AuthMethodID == OAuthAuthMethodID && operation.client.refreshCredentialAfterRejection(session) {
-		if err := fence.RecordCanResend(); err != nil {
-			return singleDispatchRetry[UpsertedObject](session.operation)
+	if result.response.statusCode == http.StatusUnauthorized && session.credentials.AuthMethodID == OAuthAuthMethodID {
+		refreshed, refreshError := operation.client.refreshCredentialAfterRejection(session)
+		if refreshed {
+			if err := fence.RecordCanResend(); err != nil {
+				return singleDispatchRetry[UpsertedObject](session.operation)
+			}
+			return sdkgo.NewMutationRetry[UpsertedObject](result.failure, 0)
 		}
-		return sdkgo.NewMutationRetry[UpsertedObject](result.failure, 0)
+		result.failure = rejectedWriteFailure(session.operation, refreshError)
 	}
 	switch result.outcome {
 	case exchangeSucceeded:

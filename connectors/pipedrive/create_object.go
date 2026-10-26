@@ -55,7 +55,7 @@ func (operation CreateObjectOperation) Invoke(call sdkgo.Call, input CreateObjec
 				if failure.route == sessionRetry {
 					return sdkgo.NewMutationRetry[CRMObject](failure.failure, 0)
 				}
-				return sdkgo.NewMutationUncertain(CRMObject{}, failure.failure, sdkgo.Receipt{})
+				return sdkgo.NewMutationUncertain(CRMObject{}, failure.failure, operation.client.receipt(call, providerResponse{}, decision.Marker.ProviderID))
 			}
 			defer cancel()
 			object, result := operation.client.readRecord(session, input.ObjectType, decision.Marker.ProviderID)
@@ -92,11 +92,15 @@ func (operation CreateObjectOperation) Invoke(call sdkgo.Call, input CreateObjec
 	}
 	result := send.result
 	receipt := operation.client.receipt(call, result.response, "")
-	if result.response.statusCode == http.StatusUnauthorized && session.credentials.AuthMethodID == OAuthAuthMethodID && operation.client.refreshCredentialAfterRejection(session) {
-		if err := fence.RecordCanResend(); err != nil {
-			return singleDispatchRetry[CRMObject](operationID)
+	if result.response.statusCode == http.StatusUnauthorized && session.credentials.AuthMethodID == OAuthAuthMethodID {
+		refreshed, refreshError := operation.client.refreshCredentialAfterRejection(session)
+		if refreshed {
+			if err := fence.RecordCanResend(); err != nil {
+				return singleDispatchRetry[CRMObject](operationID)
+			}
+			return sdkgo.NewMutationRetry[CRMObject](result.failure, 0)
 		}
-		return sdkgo.NewMutationRetry[CRMObject](result.failure, 0)
+		result.failure = rejectedWriteFailure(operationID, refreshError)
 	}
 	switch result.outcome {
 	case exchangeSucceeded:
