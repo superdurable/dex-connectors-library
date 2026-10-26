@@ -372,9 +372,9 @@ var CreateCustomerDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createCustomer"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateCustomerBranchCreated, Description: "QuickBooks created the customer, or returned the customer this Step already created."},
-		{ID: CreateCustomerBranchNameConflict, Description: "Another customer, vendor, or employee already uses the display name (QuickBooks error 6240); nothing was created, so resolve it with findCustomer by display name.", Optional: true},
+		{ID: CreateCustomerBranchNameConflict, Description: "A customer, vendor, or employee already uses the display name (QuickBooks error 6240); resolve it with findCustomer by display name, including a possible earlier attempt.", Optional: true},
 		{ID: CreateCustomerBranchProviderRejected, Description: "QuickBooks conclusively rejected the customer, such as an invalid field or a revoked connection; nothing was created.", Optional: true},
-		{ID: CreateCustomerBranchUncertain, Description: "QuickBooks accepted the request but returned an unusable customer; look it up with findCustomer before creating again.", Optional: true},
+		{ID: CreateCustomerBranchUncertain, Description: "QuickBooks accepted the request but returned an unusable customer that read-back could not confirm; look it up with findCustomer before creating again.", Optional: true},
 		{ID: CreateCustomerBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -449,7 +449,7 @@ var CreateInvoiceDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateInvoiceBranchCreated, Description: "QuickBooks created the invoice, or returned the invoice this Step already created, with its number, total, and balance."},
 		{ID: CreateInvoiceBranchProviderRejected, Description: "QuickBooks conclusively rejected the invoice, such as an unknown or inactive customer or item, a duplicate document number, a closed period, or a revoked connection; nothing was created.", Optional: true},
-		{ID: CreateInvoiceBranchUncertain, Description: "QuickBooks accepted the request but returned an unusable invoice; look it up by document number before creating again.", Optional: true},
+		{ID: CreateInvoiceBranchUncertain, Description: "QuickBooks accepted the request but returned an unusable invoice that read-back could not confirm; look it up by document number before creating again.", Optional: true},
 		{ID: CreateInvoiceBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -668,7 +668,7 @@ var SendInvoiceDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: SendInvoiceBranchSent, Description: "QuickBooks emailed the invoice, or returned the delivery this Step already made, with EmailStatus EmailSent."},
 		{ID: SendInvoiceBranchProviderRejected, Description: "QuickBooks conclusively rejected the delivery, such as an invoice without an address, a deleted invoice, or a revoked connection; nothing was sent.", Optional: true},
-		{ID: SendInvoiceBranchUncertain, Description: "QuickBooks accepted the request but returned an unusable invoice; read it back with getInvoice and check its EmailStatus before sending again.", Optional: true},
+		{ID: SendInvoiceBranchUncertain, Description: "QuickBooks accepted the request but returned an unusable invoice that read-back could not confirm; check its EmailStatus with getInvoice before sending again.", Optional: true},
 		{ID: SendInvoiceBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -739,7 +739,7 @@ var RecordPaymentDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: RecordPaymentBranchRecorded, Description: "QuickBooks recorded the payment, or returned the payment this Step already recorded, with the invoices it applies to."},
 		{ID: RecordPaymentBranchProviderRejected, Description: "QuickBooks conclusively rejected the payment, such as an invoice of another customer, an amount above the balance, an invalid deposit account, a closed period, or a revoked connection; nothing was recorded.", Optional: true},
-		{ID: RecordPaymentBranchUncertain, Description: "QuickBooks accepted the request but returned an unusable payment; read the invoice back before paying again.", Optional: true},
+		{ID: RecordPaymentBranchUncertain, Description: "QuickBooks accepted the request but returned an unusable payment that read-back could not confirm; inspect the invoice before paying again.", Optional: true},
 		{ID: RecordPaymentBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

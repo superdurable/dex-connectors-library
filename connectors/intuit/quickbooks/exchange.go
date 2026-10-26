@@ -46,11 +46,12 @@ var (
 
 // quickbooksRequest is one Accounting API request below /v3/company/{realmId}; a mutation carries the Step's requestid.
 type quickbooksRequest struct {
-	method     string
-	path       string
-	query      url.Values
-	payload    any
-	isMutation bool
+	method        string
+	path          string
+	query         url.Values
+	payload       any
+	isMutation    bool
+	attemptBudget quickbooksAttemptBudget
 }
 
 // quickbooksResponse holds the safe parts of one response; body is kept only when it is usable.
@@ -69,6 +70,8 @@ const (
 	exchangeNotFound
 	// exchangeRetry is safe for reads and, under the Step's requestid, for every mutation.
 	exchangeRetry
+	// exchangeInterrupted preserves an accepted 2xx for write read-back while reads retry.
+	exchangeInterrupted
 	exchangeRejected
 	// exchangeNameConflict is Fault code 6240, which createCustomer reports on its own branch.
 	exchangeNameConflict
@@ -135,7 +138,7 @@ func classifyHTTPResponse(operation string, httpResponse *http.Response, secret 
 		return quickbooksExchange{outcome: exchangeInvalid, response: response,
 			failure: quickbooksFailure(sdkgo.FailureResponseTooLarge, operation, "QuickBooks response exceeds the configured maxResponseBytes limit")}
 	case err != nil:
-		return quickbooksExchange{outcome: exchangeRetry, response: response,
+		return quickbooksExchange{outcome: exchangeInterrupted, response: response,
 			failure: quickbooksFailure(sdkgo.FailureTransport, operation, "QuickBooks response was interrupted")}
 	case secret != "" && bytes.Contains(body, []byte(secret)):
 		return quickbooksExchange{outcome: exchangeInvalid, response: response,
@@ -175,6 +178,8 @@ func classifyFailedStatus(operation string, response quickbooksResponse, summary
 		return classification.classifiedExchange(exchangeNotFound, sdkgo.FailureNotFound, "QuickBooks found no such resource")
 	case status == http.StatusBadRequest:
 		return classifyFault(classification)
+	case status == http.StatusConflict:
+		return classification.classifiedExchange(exchangeRetry, sdkgo.FailureConflict, "QuickBooks returned a conflict; retrying the same requestid")
 	case status >= 300 && status < 400:
 		return classification.classifiedExchange(exchangeRejected, sdkgo.FailureProtocol, "QuickBooks redirected the request")
 	default:

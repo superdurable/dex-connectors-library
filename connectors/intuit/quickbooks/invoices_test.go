@@ -110,7 +110,8 @@ func TestCreateInvoiceValidatesBeforeAnyRequestAndRejectionsAreConclusive(t *tes
 	result, err = sdkgo.RunMutation(newQuickBooksDexContext("another-customer"), client.CreateInvoice(), quickbooksConnection, validCreateInvoiceInput())
 	require.NoError(t, err)
 	require.Equal(t, quickbooks.CreateInvoiceBranchUncertain, result.Branch, "an accepted answer about another customer is never trusted")
-	require.Equal(t, 3, provider.requestCount())
+	require.Equal(t, 4, provider.requestCount(), "the accepted invoice is read by ID without another POST")
+	require.Equal(t, http.MethodGet, provider.request(3).method)
 }
 
 func TestCreateInvoiceRetriesALostResponseAndADuplicateRequestIDUnderTheSameRequestID(t *testing.T) {

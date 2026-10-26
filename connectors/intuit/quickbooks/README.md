@@ -1,6 +1,6 @@
 # QuickBooks Online Connector
 
-> **Verification status: Dex-integrated, not live.** Every operation and the example ran on a real Dex stack against a local QuickBooks stand-in, and Dex Web loaded the local release and built the Intuit authorization URL. No live QuickBooks company or Intuit app was used. See
+> **Verification status: Dex-integrated, not live.** Earlier operation and example tests ran on a real Dex stack against a local QuickBooks stand-in, and Dex Web loaded the local release and built the Intuit authorization URL. New read-back and mock-backed Dex tests are checked in for CI. No live QuickBooks company or Intuit app was used. See
 > [verification status](../../../docs/verification-status.md) for what the levels mean.
 
 The QuickBooks Online Connector reads and writes the QuickBooks Online
@@ -260,10 +260,13 @@ replay on a new Worker, sends the same request:
   when it sends 600 rather than the replay; the connector treats it as a
   repeat that arrived while the first request still ran, then retries under
   the same ID;
-- an accepted 2xx that cannot be decoded, or that names another customer,
-  invoice, or invoice application, selects `uncertain`. Read back with
-  `listInvoices` by document number, `findCustomer`, or `getInvoice` before
-  writing again with a new Step execution.
+- an accepted 2xx whose body is interrupted, cannot be decoded, or names another customer,
+  invoice, or invoice application, is never resent. When the reply contains a
+  valid entity ID, the connector reads that customer, invoice, or payment by
+  ID and selects success only when the read-back matches the request.
+  `sendInvoice` reads the known invoice ID and requires `EmailSent`. An
+  inconclusive read-back selects `uncertain`; the request ID remains fixed
+  for failures whose acceptance is unknown.
 
 A new Step execution is a new logical write. Set `docNumber` to an
 application ID, such as an order ID, and look it up with `listInvoices`
@@ -290,6 +293,7 @@ and the first code is in the Receipt metadata `faultCode`.
 | 400 with code 6240 | `nameConflict` for `createCustomer`, `CONFLICT` |
 | 400 with code 6140 | `providerRejected`, `CONFLICT` |
 | 400 with code 600 | Retry under the same requestid |
+| 409 | Retry under the same requestid |
 | other 400 or 200 `ValidationFault` | `providerRejected`, `VALIDATION` |
 | `SystemFault` in a 200 or 400 | Retry |
 | 401 | `providerRejected`, `AUTHENTICATION`, after one token refresh and resend only when the stored token has expired |
@@ -299,9 +303,42 @@ and the first code is in the Receipt metadata `faultCode`.
 | 429 | Retry after `Retry-After`, or 60 seconds |
 | 408, 500, 502, 503, 504, transport failure | Retry |
 | 501, other 4xx | `providerRejected` |
-| oversized, malformed, or credential-reflecting 2xx | `invalidResponse`, or `uncertain` for a write |
+| oversized, malformed, or credential-reflecting 2xx | `invalidResponse` for a read; for a write, read back when possible, then `uncertain` if unconfirmed |
 | `invalid_grant` or `invalid_client` at the token endpoint | `providerRejected`, `AUTHENTICATION` |
 | invalid input, or no known company | `defect`, with no request |
+
+Each HTTP request ends at least 500 milliseconds before the Step context's
+deadline, leaving time to classify its result. A write starts only when at
+least one tenth of the smaller of the 30-second Execute timeout and the Step's
+available time at Invoke start remains. If less time remains, the connector
+returns Retry before sending the write. Intuit's [request ID guidance](https://developer.intuit.com/app/developer/qbo/docs/learn/learn-basic-field-definitions#request-id)
+describes replay for writes. The [Invoice API](https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/invoice)
+documents invoice read-back and `EmailStatus`; the [Payment API](https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/payment)
+documents payment read-back. Key retention and replay of `/send` remain
+unverified, so the bounded retry policies and `uncertain` branches remain.
+
+## Mocks
+
+`quickbooksmock` has one realistic default per operation. Its defaults depict
+existing City Agency customer 58, order `ORDER-1042` as open invoice 130,
+payment 186, and a paid, emailed read-back. The create defaults use a separate
+new buyer, customer 59, and order `ORDER-2048`. Optional business outcomes have named mocks,
+including a missing or ambiguous customer and a display-name conflict. The
+runnable example uses the generated package on a real Dex Worker:
+
+```go
+mock := quickbooksmock.New(t, ConnectionName)
+mock.RecordPayment().Respond(
+	quickbooksmock.RecordPaymentRetry(sdkgo.Failure{Kind: sdkgo.FailureAvailability, Provider: "quickbooks", Operation: "recordPayment", Message: "temporary outage"}, 0),
+	quickbooksmock.RecordPaymentDefault(),
+)
+harness := newOrderHarnessForFlow(t, NewFlow(mock.Connection()), nil)
+input := integrationOrder()
+outcome := harness.runOrder(t, "mock-retry", input)
+```
+
+That test checks every call input and count, the stable payment Call ID across
+retry, and the Flow's outcome.
 
 ## Not in this release
 
@@ -382,7 +419,8 @@ unverified: the Dex Web code exchange and its storage of `id_token`; whether
 Intuit returns `realmid` in the ID token for every consent and an `id_token`
 on refresh; whether the token response carries `scope`; how long QuickBooks
 keeps a `requestid` and whether `/send` honors it; when QuickBooks answers
-600 instead of replaying; the HTTP status of a missing invoice and of
+600 instead of replaying; the meaning of HTTP 409 for a repeated requestid;
+the HTTP status of a missing invoice and of
 error 5010; whether 429 carries `Retry-After`; the `PrimaryEmailAddr`
 filter syntax; the ordering of invoices created in the same second; decimal
 precision of `Qty`, `UnitPrice`, and `TotalAmt`, and the length limit of
