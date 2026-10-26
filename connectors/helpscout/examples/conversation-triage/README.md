@@ -19,9 +19,9 @@ This example receives signed Help Scout webhooks and starts one
    `InspectConversation` records the status and the primary customer's email;
 6. `FindCustomerProfiles` calls `findCustomerByEmail`, and
    `RecordCustomerProfiles` records every matching profile, or none;
-7. `SearchActiveConversations` calls `searchConversations` for the customer's
-   `active` conversations in the inbox, and `RecordActiveConversations`
-   records the others and writes the note;
+7. `SearchActiveConversations` calls `searchConversations` through the last page
+   of the customer's `active` conversations in the inbox, and
+   `RecordActiveConversations` records the others across those pages before writing the note;
 8. `AddTriageNote` calls `replyToConversation` with `isInternalNote`, so the
    customer is never emailed, and `RecordTriageNote` records its thread ID;
 9. `TagTriagedConversation` calls `updateConversation` to add `dex-triaged`,
@@ -71,7 +71,7 @@ go run ./cmd/connectorctl ui-artifact \
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/helpscout/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/helpscout \
-  --version v0.22.1 --tag connectors/helpscout/v0.22.1 \
+  --version v0.23.0 --tag connectors/helpscout/v0.23.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/helpscout-release/connector-ui.tgz \
   --ui-digest /tmp/helpscout-release/connector-ui.tgz.sha256 \
@@ -180,8 +180,13 @@ completed run's `helpscout-triage` Attribute holds the triage record:
 {"stage": "completed", "subject": "Double charge on order 88213", "status": "active", "newestThreadTypes": ["customer"], "customerEmail": "jane@acme.example.com", "customerProfileIds": [1001, 1002], "otherActiveConversationIds": [502], "noteThreadId": 5011, "tags": ["billing", "dex-triaged", "dex-repeat-contact"]}
 ```
 
-The internal note reads
-`Dex triage: 2 Help Scout customer profiles match jane@acme.example.com; the customer has 1 other active conversation in this inbox: 502.`
+The Flow follows search pagination through the last page before writing the
+note. It fails without a note if another page remains after 100 pages, so a
+completed Flow counts every returned active conversation. The sample run above
+writes `Dex triage: 2 Help Scout customer profiles match jane@acme.example.com; the customer has 1 other active conversation in this inbox: 502.`
+The default mock returns one profile and three search pages, including
+conversation 503 on page 3. Its note reads
+`Dex triage: 1 Help Scout customer profile matches jane@acme.example.com; the customer has 2 other active conversations in this inbox: 502, 503.`
 
 ## 6. Redeliver and forge
 

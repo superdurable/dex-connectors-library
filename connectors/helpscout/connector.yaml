@@ -5,7 +5,7 @@ metadata:
   displayName: Help Scout
   description: "Search, read, reply to, and update Help Scout Inbox conversations, find customers by email, and receive signed conversation webhooks, keeping Help Scout's own active, pending, closed, and spam statuses."
   company: Help Scout
-  version: v0.22.1
+  version: v0.23.0
 spec:
   provider: helpscout
   codegen:
@@ -109,6 +109,24 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      pagination: {inputField: page, nextField: nextPage}
+      mocks:
+        - name: searchedDefaultAnswer
+          branch: searched
+          description: "Matches the support inbox's active conversations for jane@acme.example.com; page one includes conversation 501 and repeat contact 502."
+          default: true
+          pages:
+            - {conversations: [{id: 502, number: 13, subject: "Earlier billing question", status: active, mailboxId: 123, tags: []}, {id: 501, number: 12, subject: "Double charge on order 88213", status: active, mailboxId: 123, threadCount: 1, tags: [billing]}], page: 1, nextPage: 2, totalPages: 3, totalConversations: 3}
+            - {conversations: [{id: 501, number: 12, subject: "Double charge on order 88213", status: active, mailboxId: 123, threadCount: 1, tags: [billing]}], page: 2, nextPage: 3, totalPages: 3, totalConversations: 3}
+            - {conversations: [{id: 503, number: 14, subject: "Shipping question", status: active, mailboxId: 123, tags: []}], page: 3, nextPage: 0, totalPages: 3, totalConversations: 3}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "Matches a search with a provider-rejected filter (HTTP 400)."
+          failure: {kind: VALIDATION, message: "Help Scout rejected the search filter (HTTP 400)."}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "Matches a search whose successful page is malformed."
+          failure: {kind: PROTOCOL, message: "Help Scout returned a malformed or oversized page."}
     - name: getConversation
       goName: GetConversation
       inputType: GetConversationInput
@@ -126,12 +144,38 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: foundDefaultAnswer
+          branch: found
+          description: "Matches conversation 501 in inbox 123, with Jane as primary customer and a recent customer message."
+          default: true
+          output:
+            conversation: {id: 501, number: 12, subject: "Double charge on order 88213", status: active, state: published, type: email, mailboxId: 123, threadCount: 1, primaryCustomer: {id: 238604, type: customer, email: "jane@acme.example.com"}, tags: [billing]}
+            threads: [{id: 560, type: customer, status: active, state: published, body: "I was charged twice", createdAt: "2026-09-30T07:59:00Z"}]
+            hasOlderThreads: false
+        - name: mergedFailure
+          branch: merged
+          description: "Matches conversation 501 after Help Scout merged it into conversation 777."
+          output: {threads: [], mergedIntoConversationId: 777}
+          failure: {kind: NOT_FOUND, message: "Conversation 501 was merged into conversation 777."}
+        - name: notFoundFailure
+          branch: notFound
+          description: "Matches an unknown conversation ID (HTTP 404)."
+          failure: {kind: NOT_FOUND, message: "The conversation does not exist, was deleted, or is not visible to the app's Help Scout user."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "Matches a token that cannot read conversation 501 (HTTP 403)."
+          failure: {kind: AUTHORIZATION, message: "Help Scout denied conversation access (HTTP 403)."}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "Matches a malformed successful conversation response."
+          failure: {kind: PROTOCOL, message: "Help Scout returned a malformed or oversized conversation or thread page."}
     - name: replyToConversation
       goName: ReplyToConversation
       inputType: ReplyToConversationInput
       outputType: ConversationReply
       kind: mutation
-      description: "Add one customer reply, which Help Scout emails, or one internal note to a conversation. Help Scout has no idempotency key, so the Step runs with sync durability and sends the thread at most once per Step execution."
+      description: "Add one customer reply, which Help Scout emails, or one internal note to a conversation. Help Scout has no idempotency key; the single-dispatch fence requires sync durability so retry attempts can read its heartbeat checkpoint before deciding whether to send."
       idempotency: required
       branches:
         - {id: replied, goName: Replied, description: "Help Scout created the reply or note and returned its thread ID."}
@@ -142,7 +186,21 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "A lost dispatch checkpoint could send another reply because Help Scout has no provider key or thread read-back by Call ID."}}
+        dispatchFence: true
+      mocks:
+        - name: repliedDefaultAnswer
+          branch: replied
+          description: "Matches an internal triage note on conversation 501, created as thread 567."
+          default: true
+          output: {conversationId: 501, threadId: 567, isInternalNote: true}
+        - name: notFoundFailure
+          branch: notFound
+          description: "Matches a note sent to an unknown conversation (HTTP 404)."
+          failure: {kind: NOT_FOUND, message: "The conversation does not exist, was merged, or is not visible to the app's Help Scout user; nothing was added."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "Matches a locked conversation with too many threads (HTTP 412)."
+          failure: {kind: PROVIDER_REJECTION, message: "Help Scout conclusively rejected the thread, such as a locked conversation with 100 threads or an unknown customer; nothing was added."}
     - name: updateConversation
       goName: UpdateConversation
       inputType: UpdateConversationInput
@@ -159,6 +217,26 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: updatedDefaultAnswer
+          branch: updated
+          description: "Matches tagging conversation 501 after triage and identifying repeat contact 502."
+          default: true
+          output:
+            conversation: {id: 501, number: 12, subject: "Double charge on order 88213", status: active, state: published, type: email, mailboxId: 123, threadCount: 1, primaryCustomer: {id: 238604, type: customer, email: "jane@acme.example.com"}, tags: [billing, dex-triaged, dex-repeat-contact]}
+            wasAlreadyApplied: false
+        - name: notFoundFailure
+          branch: notFound
+          description: "Matches an update to an unknown conversation (HTTP 404)."
+          failure: {kind: NOT_FOUND, message: "The conversation does not exist, was merged, or is not visible to the app's Help Scout user."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "Matches a locked conversation that refuses an update (HTTP 412)."
+          failure: {kind: PROVIDER_REJECTION, message: "Help Scout refused to change the locked conversation (HTTP 412)."}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "Matches an oversized read-back after a status update."
+          failure: {kind: RESPONSE_TOO_LARGE, message: "Help Scout returned an oversized conversation read-back."}
     - name: findCustomerByEmail
       goName: FindCustomerByEmail
       inputType: FindCustomerByEmailInput
@@ -175,3 +253,24 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: foundDefaultAnswer
+          branch: found
+          description: "Matches jane@acme.example.com to customer profile 238604."
+          default: true
+          output:
+            email: "jane@acme.example.com"
+            customers: [{id: 238604, firstName: Jane, lastName: Smith, emails: ["jane@acme.example.com"], conversationCount: 3, createdAt: "2026-01-01T00:00:00Z"}]
+        - name: notFoundFailure
+          branch: notFound
+          description: "Matches an email address with no customer profile."
+          output: {email: "missing@acme.example.com", customers: []}
+          failure: {kind: NOT_FOUND, message: "No customer profile has the email address."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "Matches a token forbidden from customer lookup (HTTP 403)."
+          failure: {kind: AUTHORIZATION, message: "Help Scout denied customer access (HTTP 403)."}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "Matches an oversized customer lookup page."
+          failure: {kind: RESPONSE_TOO_LARGE, message: "Help Scout returned an oversized customer lookup page."}

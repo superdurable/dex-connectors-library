@@ -75,7 +75,7 @@ func (operation GetConversationOperation) Invoke(call sdkgo.Call, input GetConve
 	branches := failureBranches{
 		notFound: GetConversationBranchNotFound, providerRejected: GetConversationBranchProviderRejected, invalidResponse: GetConversationBranchInvalidResponse,
 	}
-	response, err := client.send(call.Context, call, &credentials, helpScoutRequest{method: http.MethodGet, path: conversationPath(input.ConversationID)}, nil)
+	response, err := client.send(call.Context, call, &credentials, helpScoutRequest{method: http.MethodGet, path: conversationPath(input.ConversationID)})
 	if err == nil && response.statusCode == http.StatusMovedPermanently {
 		return client.mergedConversationAttempt(call, input.ConversationID, response)
 	}
@@ -90,7 +90,7 @@ func (operation GetConversationOperation) Invoke(call sdkgo.Call, input GetConve
 	}
 	response, err = client.send(call.Context, call, &credentials, helpScoutRequest{
 		method: http.MethodGet, path: conversationPath(input.ConversationID) + "/threads", query: url.Values{"page": {"1"}},
-	}, nil)
+	})
 	if attempt, isTerminal := classifyQueryExchange[ConversationDetails](client, call, operationID, credentials, response, err, branches, input.ConversationID); isTerminal {
 		return attempt
 	}

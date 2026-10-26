@@ -111,6 +111,27 @@ func TestDeliveryBeforeTheBindingRunsIsAnswered503AndTheRetryStartsTheFlowWithRe
 	require.Len(t, fake.notesFor(conversationID), 1)
 }
 
+// TestTriageNoteRetries503WithRealDex proves the fenced note retries once and completes the example Flow.
+func TestTriageNoteRetries503WithRealDex(t *testing.T) {
+	fake := newFakeHelpScout(t)
+	fake.failFirstNote = true
+	logs := newRecordedLogs(t)
+	connection := newExampleConnection(t, newExampleCredentials(), fake.connectionOption(), helpscout.WithLogger(logs.logger()))
+	flow := conversationtriage.NewFlow(connection)
+	client := startWorkerAndClient(t, flow)
+	endpoint := newConversationEndpoint(t, connection, newConversationTarget(client, flow, logs.logger()))
+	endpoint.start(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	conversationID := uniqueConversationID()
+	require.Equal(t, http.StatusOK, endpoint.deliverWebhook(t, helpscout.WebhookEventConversationCreated,
+		conversationWebhookBody(conversationID, triagedInboxID, "active"), sentinelWebhookSecret, false))
+	triage := waitForTriage(t, ctx, client, waitForOneDeliveredEvent(t, logs, conversationID))
+	require.Equal(t, "completed", triage.Stage)
+	require.Equal(t, 2, fake.requestCount(http.MethodPost, fmt.Sprintf("/v2/conversations/%d/notes", conversationID)))
+	require.Len(t, fake.notesFor(conversationID), 1)
+}
+
 func dexAddress() string {
 	return environmentOr("DEX_FLOW_SERVICE_ADDRESS", "127.0.0.1:8801")
 }

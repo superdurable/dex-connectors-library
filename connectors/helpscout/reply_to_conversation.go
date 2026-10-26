@@ -5,25 +5,24 @@ package helpscout
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"net/http/httptrace"
+	"net/url"
 	"strconv"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 const (
 	// MaxReplyTextBytes bounds the text of one reply or note; it is the connector's limit, not Help Scout's.
-	MaxReplyTextBytes = 64 << 10
-
-	// replyDeadlineMargin leaves time to return uncertain before the Execute deadline.
-	replyDeadlineMargin = 3 * time.Second
-	// minimumReplyRequestTime is the least request time worth dispatching the thread with.
-	minimumReplyRequestTime = 5 * time.Second
+	MaxReplyTextBytes     = 64 << 10
+	maxReplyReadBackPages = 10
 )
 
 // ReplyToConversationInput is one customer reply or internal note to add to a conversation.
@@ -48,23 +47,17 @@ type ReplyToConversationInput struct {
 type ConversationReply struct {
 	// ConversationID is the conversation the thread belongs to.
 	ConversationID int64 `json:"conversationId"`
-	// ThreadID is the new thread's ID from Help Scout's Resource-Id header, or zero when Help Scout
-	// created the thread without naming it.
+	// ThreadID is the confirmed thread's ID. It is zero when no thread was confirmed.
 	ThreadID int64 `json:"threadId,omitempty"`
 	// IsInternalNote reports that the thread is a note rather than a customer reply.
 	IsInternalNote bool `json:"isInternalNote,omitempty"`
-	// CustomerID is the customer a reply was sent to; zero for a note.
+	// CustomerID is the customer a reply was sent to; zero for a note or when read-back cannot identify the customer.
 	CustomerID int64 `json:"customerId,omitempty"`
 }
 
 // ReplyToConversationOperation implements the replyToConversation Mutation. Build it with
 // Client.ReplyToConversation.
 type ReplyToConversationOperation struct{ client *Client }
-
-// replyDispatchCheckpoint is the Dex heartbeat value recorded before the thread request leaves the Worker.
-type replyDispatchCheckpoint struct {
-	IsDispatched bool `json:"isHelpScoutThreadDispatched"`
-}
 
 type replyRequestWire struct {
 	Customer struct {
@@ -85,20 +78,14 @@ func (ReplyToConversationOperation) Definition() sdkgo.MutationDefinition {
 }
 
 // IdempotencyKey returns the call ID, recorded in the Receipt only. Help Scout documents no idempotency
-// key and threads carry no client-supplied ID, which is why the operation sends at most once per Step
-// execution instead.
+// key; the fence permits another send only after the immediately preceding attempt proved non-application.
 func (ReplyToConversationOperation) IdempotencyKey(callID sdkgo.CallID, _ ReplyToConversationInput) sdkgo.IdempotencyKey {
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke records a Dex heartbeat checkpoint and then sends the reply or note once. A later attempt of the
-// same Step execution that finds the checkpoint selects uncertain without sending. Only a 429, the 504
-// that Help Scout documents as safe to retry, or a request that never left the process returns Retry and
-// clears the checkpoint. A 5xx other than 504, a timeout, or a lost answer after the request was written
-// selects uncertain. The request must answer three seconds before the attempt's deadline, so a slow Help
-// Scout selects uncertain rather than a Dex retry.
+// Invoke fences one thread write across Dex retries. A later attempt reads back a saved thread ID;
+// without one, an ambiguous sent write selects uncertain.
 func (operation ReplyToConversationOperation) Invoke(call sdkgo.Call, input ReplyToConversationInput) sdkgo.MutationAttempt[ConversationReply] {
-	attemptStart := time.Now()
 	operationID := ReplyToConversationDefinition.Operation.OperationID
 	client := operation.client
 	output := ConversationReply{ConversationID: input.ConversationID, IsInternalNote: input.IsInternalNote, CustomerID: input.CustomerID}
@@ -106,42 +93,80 @@ func (operation ReplyToConversationOperation) Invoke(call sdkgo.Call, input Repl
 		return sdkgo.NewMutationBranch(ReplyToConversationBranchDefect, output,
 			helpScoutFailurePointer(operationID, sdkgo.FailureValidation, err.Error()), sdkgo.Receipt{})
 	}
-	if hasEarlierReplyDispatch(call) {
-		return sdkgo.NewMutationUncertain(output, helpScoutFailure(operationID, sdkgo.FailureTransport,
-			"an earlier attempt of this Step may have sent the thread, so it is not sent again"), client.receipt(call, input.ConversationID, ""))
+	fence, err := singledispatch.NewFence(call, ReplyToConversationDefinition.StepDefaults.ExecuteMethodTimeout)
+	if err != nil {
+		return sdkgo.NewMutationBranch(ReplyToConversationBranchDefect, output,
+			helpScoutFailurePointer(operationID, sdkgo.FailureLocalDefect, err.Error()), sdkgo.Receipt{})
+	}
+	switch decision := fence.Decide(); decision.Kind {
+	case singledispatch.FailClosed:
+		return client.uncertainReply(call, output, "the dispatch checkpoint is unavailable, so the thread is not sent again")
+	case singledispatch.ReadBackRequired:
+		return client.readBackReply(call, output, decision.Marker)
 	}
 	credentials, err := client.resolveCredentials(call)
 	if err != nil {
-		return credentialMutationAttempt(operationID, ReplyToConversationBranchDefect, output, err)
+		if !errors.Is(err, errHelpScoutCredentialsUnavailable) {
+			return credentialMutationAttempt(operationID, ReplyToConversationBranchDefect, output, err)
+		}
+		if checkpointErr := fence.RecordNotSent(); checkpointErr != nil {
+			return sdkgo.NewMutationRetry[ConversationReply](helpScoutFailure(operationID, sdkgo.FailureAvailability,
+				"the thread was not sent and Dex could not persist its retry checkpoint"), 0)
+		}
+		return sdkgo.NewMutationRetry[ConversationReply](helpScoutFailure(operationID, sdkgo.FailureAvailability, err.Error()), 0)
 	}
 	if !input.IsInternalNote && input.CustomerID == 0 {
-		customerID, attempt, isTerminal := client.readPrimaryCustomerID(call, &credentials, output)
+		customerID, attempt, isTerminal := client.readPrimaryCustomerID(call, &credentials, output, fence)
 		if isTerminal {
 			return attempt
 		}
 		output.CustomerID = customerID
 	}
-	requestContext, cancel, isStartable := newReplyRequestContext(call.Context, attemptStart)
-	defer cancel()
-	if !isStartable {
-		return sdkgo.NewMutationRetry[ConversationReply](helpScoutFailure(operationID, sdkgo.FailureAvailability,
-			"too little of the Execute timeout remained to send the thread; nothing was sent"), 0)
+	request := buildThreadRequest(input, output.CustomerID)
+	encodedBody, err := json.Marshal(request.payload)
+	if err != nil {
+		return sdkgo.NewMutationBranch(ReplyToConversationBranchDefect, output,
+			helpScoutFailurePointer(operationID, sdkgo.FailureLocalDefect, errHelpScoutRequestInvalid.Error()), sdkgo.Receipt{})
 	}
-	if err := call.Context.RecordHeartbeat(replyDispatchCheckpoint{IsDispatched: true}); err != nil {
+	sendAttempt := &replySendAttempt{client: client, credentials: credentials, request: request, encodedBody: encodedBody}
+	err = fence.Dispatch(sendAttempt.send)
+	if errors.Is(err, singledispatch.ErrCheckpoint) || errors.Is(err, singledispatch.ErrInsufficientTime) {
 		return sdkgo.NewMutationRetry[ConversationReply](helpScoutFailure(operationID, sdkgo.FailureAvailability,
-			"Dex did not record the dispatch checkpoint, so nothing was sent to Help Scout"), 0)
+			"the thread was not sent before the Execute dispatch deadline"), 0)
 	}
-	var isDispatched atomic.Bool
-	response, err := client.send(requestContext, call, &credentials, buildThreadRequest(input, output.CustomerID), &isDispatched)
-	return client.classifyReplyExchange(call, output, credentials, response, err, isDispatched.Load())
+	return client.classifyReplyExchange(call, output, credentials, sendAttempt.response, err, &sendAttempt.observation, fence)
+}
+
+type replySendAttempt struct {
+	client      *Client
+	credentials Credentials
+	request     helpScoutRequest
+	encodedBody []byte
+	response    helpScoutResponse
+	observation dispatchObservation
+}
+
+func (attempt *replySendAttempt) send(requestContext context.Context) error {
+	tracedContext := httptrace.WithClientTrace(requestContext, attempt.observation.clientTrace())
+	var err error
+	attempt.response, err = attempt.client.sendOnce(tracedContext, attempt.credentials.AccessToken.Reveal(), attempt.request.method,
+		helpScoutAPIBaseURL+attempt.request.path, attempt.encodedBody)
+	return err
 }
 
 // readPrimaryCustomerID reads the conversation before any thread is sent, so every failure is safe to retry.
 func (client *Client) readPrimaryCustomerID(
-	call sdkgo.Call, credentials *Credentials, output ConversationReply,
+	call sdkgo.Call, credentials *Credentials, output ConversationReply, fence *singledispatch.Fence,
 ) (int64, sdkgo.MutationAttempt[ConversationReply], bool) {
 	operationID := ReplyToConversationDefinition.Operation.OperationID
-	response, err := client.send(call.Context, call, credentials, helpScoutRequest{method: http.MethodGet, path: conversationPath(output.ConversationID)}, nil)
+	readContext, cancel, canRead := boundedReplyReadContext(call.Context)
+	defer cancel()
+	if !canRead {
+		_ = fence.RecordNotSent() // A lost checkpoint fails closed on the next attempt.
+		return 0, sdkgo.NewMutationRetry[ConversationReply](helpScoutFailure(operationID, sdkgo.FailureAvailability,
+			"too little attempt time remains to read the primary customer before sending"), 0), true
+	}
+	response, err := client.send(readContext, call, credentials, helpScoutRequest{method: http.MethodGet, path: conversationPath(output.ConversationID)})
 	if err == nil && response.statusCode == http.StatusMovedPermanently {
 		message := "the conversation was merged into another; reply to that conversation"
 		if mergedIntoID, locationErr := parseConversationLocation(response.header.Get("Location")); locationErr == nil {
@@ -154,7 +179,10 @@ func (client *Client) readPrimaryCustomerID(
 		notFound: ReplyToConversationBranchNotFound, providerRejected: ReplyToConversationBranchProviderRejected,
 		invalidResponse: ReplyToConversationBranchProviderRejected,
 	}
-	if attempt, isTerminal := classifyIdempotentMutationExchange(client, call, operationID, *credentials, response, err, branches, output.ConversationID, output); isTerminal {
+	if attempt, isTerminal, isRetry := classifyIdempotentMutationExchange(client, call, operationID, *credentials, response, err, branches, output.ConversationID, output); isTerminal {
+		if isRetry {
+			_ = fence.RecordNotSent() // A lost checkpoint fails closed on the next attempt.
+		}
 		return 0, attempt, true
 	}
 	conversation, err := decodeConversationBody(response.body, output.ConversationID)
@@ -171,45 +199,44 @@ func (client *Client) readPrimaryCustomerID(
 	return conversation.PrimaryCustomer.ID, sdkgo.MutationAttempt[ConversationReply]{}, false
 }
 
-// classifyReplyExchange maps the sent thread: only a provable non-application is retried.
+// classifyReplyExchange maps the fenced write without granting resend after evidence of acceptance.
 func (client *Client) classifyReplyExchange(
-	call sdkgo.Call, output ConversationReply, credentials Credentials, response helpScoutResponse, err error, isDispatched bool,
+	call sdkgo.Call, output ConversationReply, credentials Credentials, response helpScoutResponse, err error,
+	observation *dispatchObservation, fence *singledispatch.Fence,
 ) sdkgo.MutationAttempt[ConversationReply] {
 	operationID := ReplyToConversationDefinition.Operation.OperationID
 	isSuccess := response.statusCode >= 200 && response.statusCode < 300
-	if err != nil && isSuccess && (errors.Is(err, errHelpScoutResponseTooLarge) || errors.Is(err, errHelpScoutResponseMalformed)) {
-		// The thread exists; its body is never read, so an oversized or credential-echoing body changes nothing.
+	if err != nil && isSuccess {
+		// The Resource-Id header proves creation even when the body is interrupted or unusable.
 		err = nil
 	}
 	switch {
 	case err != nil && errors.Is(err, errHelpScoutRequestInvalid):
-		clearReplyDispatch(call)
 		return sdkgo.NewMutationBranch(ReplyToConversationBranchDefect, output,
 			helpScoutFailurePointer(operationID, sdkgo.FailureLocalDefect, errHelpScoutRequestInvalid.Error()), sdkgo.Receipt{})
-	case err != nil && !isDispatched:
-		clearReplyDispatch(call)
+	case err != nil && observation.isProvablyUndispatched():
+		_ = fence.RecordCanResend() // A lost checkpoint fails closed on the next attempt.
 		return sdkgo.NewMutationRetry[ConversationReply](helpScoutFailure(operationID, sdkgo.FailureTransport,
 			"Help Scout could not be reached, so no thread was sent"), 0)
 	case err != nil:
-		return sdkgo.NewMutationUncertain(output, helpScoutFailure(operationID, sdkgo.FailureTransport,
-			"the thread was sent but Help Scout's answer was lost; the thread may exist"), client.receipt(call, output.ConversationID, ""))
+		return client.uncertainReply(call, output, "the thread may exist because Help Scout's answer was lost")
 	case isSuccess:
 		output.ThreadID = parseResourceID(response.header.Get(resourceIDHeader))
+		if output.ThreadID == 0 {
+			return client.uncertainReply(call, output, "Help Scout accepted the thread without a valid Resource-Id; the thread may exist")
+		}
+		_ = fence.RecordProviderID(strconv.FormatInt(output.ThreadID, 10)) // A lost ID still forbids another send.
 		return sdkgo.NewMutationBranch(ReplyToConversationBranchReplied, output, nil, client.receipt(call, output.ThreadID, ""))
 	}
 	outcome := client.classifyFailure(operationID, response, credentials)
 	receipt := client.receipt(call, output.ConversationID, outcome.logRef)
 	switch status := response.statusCode; {
-	case status == http.StatusTooManyRequests:
-		clearReplyDispatch(call)
-		return sdkgo.NewMutationRetry[ConversationReply](outcome.failure, outcome.retryAfter)
-	case status == http.StatusGatewayTimeout:
-		// Help Scout documents a 504 as an internal timeout that did not complete and is safe to retry.
-		clearReplyDispatch(call)
+	case status == http.StatusTooManyRequests || status == http.StatusServiceUnavailable || status == http.StatusGatewayTimeout:
+		_ = fence.RecordCanResend() // A lost checkpoint fails closed on the next attempt.
 		return sdkgo.NewMutationRetry[ConversationReply](outcome.failure, outcome.retryAfter)
 	case status == http.StatusNotFound || status == http.StatusGone:
 		return sdkgo.NewMutationBranch(ReplyToConversationBranchNotFound, output, &outcome.failure, receipt)
-	case status >= 400 && status < 500 && status != http.StatusRequestTimeout:
+	case status >= 400 && status < 500 && status != http.StatusRequestTimeout && status != http.StatusConflict:
 		return sdkgo.NewMutationBranch(ReplyToConversationBranchProviderRejected, output, &outcome.failure, receipt)
 	default:
 		// A 3xx, 408, or 5xx other than 504 can follow a thread Help Scout already created.
@@ -217,6 +244,100 @@ func (client *Client) classifyReplyExchange(
 		failure.Message += "; the thread may exist"
 		return sdkgo.NewMutationUncertain(output, failure, receipt)
 	}
+}
+
+func (client *Client) uncertainReply(call sdkgo.Call, output ConversationReply, message string) sdkgo.MutationAttempt[ConversationReply] {
+	return sdkgo.NewMutationUncertain(output, helpScoutFailure(ReplyToConversationDefinition.Operation.OperationID,
+		sdkgo.FailureTransport, message), client.receipt(call, output.ConversationID, ""))
+}
+
+func (client *Client) readBackReply(call sdkgo.Call, output ConversationReply, marker singledispatch.Marker) sdkgo.MutationAttempt[ConversationReply] {
+	threadID := parseResourceID(marker.ProviderID)
+	if marker.CallID != call.ID || threadID == 0 {
+		return client.uncertainReply(call, output, "an earlier attempt may have sent the thread without a confirmable ID")
+	}
+	credentials, err := client.resolveCredentials(call)
+	if err != nil {
+		if errors.Is(err, errHelpScoutCredentialsUnavailable) {
+			return sdkgo.NewMutationRetry[ConversationReply](helpScoutFailure(ReplyToConversationDefinition.Operation.OperationID,
+				sdkgo.FailureAvailability, err.Error()), 0)
+		}
+		return client.uncertainReply(call, output, "the accepted thread could not be confirmed because authorization failed")
+	}
+	for pageNumber := 1; pageNumber <= maxReplyReadBackPages; pageNumber++ {
+		readContext, cancel, canRead := boundedReplyReadContext(call.Context)
+		if !canRead {
+			cancel()
+			return sdkgo.NewMutationRetry[ConversationReply](helpScoutFailure(ReplyToConversationDefinition.Operation.OperationID,
+				sdkgo.FailureAvailability, "too little attempt time remains to confirm the accepted thread"), 0)
+		}
+		response, readErr := client.send(readContext, call, &credentials, helpScoutRequest{method: http.MethodGet,
+			path: conversationPath(output.ConversationID) + "/threads", query: url.Values{"page": {strconv.Itoa(pageNumber)}}})
+		cancel()
+		if errors.Is(readErr, errHelpScoutResponseTooLarge) || errors.Is(readErr, errHelpScoutResponseMalformed) || errors.Is(readErr, errHelpScoutRequestInvalid) {
+			return client.uncertainReply(call, output, "Help Scout returned an unusable thread read-back")
+		}
+		if readErr != nil || response.statusCode == http.StatusTooManyRequests || response.statusCode == http.StatusRequestTimeout || response.statusCode >= 500 {
+			return sdkgo.NewMutationRetry[ConversationReply](helpScoutFailure(ReplyToConversationDefinition.Operation.OperationID,
+				sdkgo.FailureAvailability, "Help Scout thread read-back is temporarily unavailable"), 0)
+		}
+		if response.statusCode != http.StatusOK {
+			return client.uncertainReply(call, output, "Help Scout did not confirm the accepted thread")
+		}
+		var page threadPageWire
+		if decodeHelpScoutJSON(response.body, &page) != nil || len(page.Embedded.Threads) > maxThreadsPerPage {
+			return client.uncertainReply(call, output, "Help Scout returned an unusable thread read-back")
+		}
+		for _, thread := range page.Embedded.Threads {
+			if thread.ID == threadID {
+				output.ThreadID = threadID
+				if !output.IsInternalNote && output.CustomerID == 0 {
+					if thread.Customer != nil && thread.Customer.ID > 0 {
+						output.CustomerID = thread.Customer.ID
+					} else {
+						output.CustomerID = client.readBackPrimaryCustomerID(call, &credentials, output.ConversationID)
+					}
+				}
+				return sdkgo.NewMutationBranch(ReplyToConversationBranchReplied, output, nil, client.receipt(call, threadID, ""))
+			}
+		}
+		if page.Links.Next == nil {
+			break
+		}
+	}
+	return client.uncertainReply(call, output, "Help Scout did not confirm the accepted thread in its thread pages")
+}
+
+func (client *Client) readBackPrimaryCustomerID(call sdkgo.Call, credentials *Credentials, conversationID int64) int64 {
+	readContext, cancel, canRead := boundedReplyReadContext(call.Context)
+	defer cancel()
+	if !canRead {
+		return 0
+	}
+	response, err := client.send(readContext, call, credentials, helpScoutRequest{method: http.MethodGet, path: conversationPath(conversationID)})
+	if err != nil || response.statusCode != http.StatusOK {
+		return 0
+	}
+	conversation, err := decodeConversationBody(response.body, conversationID)
+	if err != nil || conversation.PrimaryCustomer == nil {
+		return 0
+	}
+	return conversation.PrimaryCustomer.ID
+}
+
+func boundedReplyReadContext(stepContext context.Context) (context.Context, context.CancelFunc, bool) {
+	if stepContext == nil {
+		stepContext = context.Background()
+	}
+	deadline := time.Now().Add(helpScoutRequestTimeout)
+	if attemptDeadline, hasDeadline := stepContext.Deadline(); hasDeadline && attemptDeadline.Add(-time.Second).Before(deadline) {
+		deadline = attemptDeadline.Add(-time.Second)
+	}
+	if time.Until(deadline) < time.Second {
+		return stepContext, func() {}, false
+	}
+	readContext, cancel := context.WithDeadline(stepContext, deadline)
+	return readContext, cancel, true
 }
 
 func validateReplyToConversationInput(input ReplyToConversationInput) error {
@@ -246,36 +367,6 @@ func buildThreadRequest(input ReplyToConversationInput, customerID int64) helpSc
 	payload := replyRequestWire{Text: input.Text, Status: string(input.Status)}
 	payload.Customer.ID = customerID
 	return helpScoutRequest{method: http.MethodPost, path: conversationPath(input.ConversationID) + "/reply", payload: payload}
-}
-
-// newReplyRequestContext ends the request before the attempt's deadline; false means too little time is left.
-func newReplyRequestContext(stepContext context.Context, attemptStart time.Time) (context.Context, context.CancelFunc, bool) {
-	if stepContext == nil {
-		stepContext = context.Background()
-	}
-	deadline := attemptStart.Add(ReplyToConversationDefinition.StepDefaults.ExecuteMethodTimeout)
-	if contextDeadline, hasDeadline := stepContext.Deadline(); hasDeadline && contextDeadline.Before(deadline) {
-		deadline = contextDeadline
-	}
-	requestDeadline := deadline.Add(-replyDeadlineMargin)
-	if time.Until(requestDeadline) < minimumReplyRequestTime {
-		return stepContext, func() {}, false
-	}
-	requestContext, cancel := context.WithDeadline(stepContext, requestDeadline)
-	return requestContext, cancel, true
-}
-
-// hasEarlierReplyDispatch reports an earlier attempt's checkpoint; an unreadable one counts, avoiding a duplicate.
-func hasEarlierReplyDispatch(call sdkgo.Call) bool {
-	var checkpoint replyDispatchCheckpoint
-	isFound, err := call.Context.GetLastHeartbeatValue(&checkpoint)
-	return err != nil || (isFound && checkpoint.IsDispatched)
-}
-
-// clearReplyDispatch removes the checkpoint after Help Scout provably added nothing.
-func clearReplyDispatch(call sdkgo.Call) {
-	// A lost clear leaves the checkpoint set, so the next attempt reports uncertain instead of sending twice.
-	_ = call.Context.RecordHeartbeat(nil)
 }
 
 // parseResourceID reads a positive thread ID, or zero when Help Scout omits or garbles the header.

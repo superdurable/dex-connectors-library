@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -30,7 +31,6 @@ const slowProviderDelay = 9 * time.Second
 
 const (
 	replyProbeFlowType            = "HelpScoutReplyProbe"
-	asyncReplyProbeFlowType       = "HelpScoutReplyAsyncProbe"
 	replyRetryProbeFlowType       = "HelpScoutReplyRetryProbe"
 	updateProbeFlowType           = "HelpScoutUpdateProbe"
 	probeConversationID     int64 = 501
@@ -56,29 +56,40 @@ func TestReplyToConversationPostsOnceToASlowProviderWithRealDex(t *testing.T) {
 	require.Len(t, fake.requestsTo(http.MethodPost, "/v2/conversations/501/reply"), 1, "one Step execution sent one reply")
 }
 
-// TestReplyToConversationPostsOnceUnderAnAsyncOverrideWithRealDex overrides the Step to async durability. The
-// short local attempt has too little time before its deadline to send, so the one POST runs in the regular
-// attempt and no duplicate dispatch can repeat it.
-func TestReplyToConversationPostsOnceUnderAnAsyncOverrideWithRealDex(t *testing.T) {
-	fake := newFakeHelpScout(t, slowReplyRoutes())
-	harness := startProbeHarness(t, fake)
-	outcome := harness.runProbe(t, asyncReplyProbeFlowType, "async")
-	require.Equal(t, helpscout.ReplyToConversationBranchReplied, outcome.Branch)
-	require.Len(t, fake.requestsTo(http.MethodPost, "/v2/conversations/501/reply"), 1, "the deadline guard keeps an async override single")
-}
-
-// TestReplyCheckpointSurvivesADexRetryWithRealDex fails the Step's first attempt after the reply was sent;
-// Dex's retry of the same Step execution finds the heartbeat checkpoint and reports uncertain unsent.
-func TestReplyCheckpointSurvivesADexRetryWithRealDex(t *testing.T) {
+// TestReplyFenceReadsBackAnAcceptedThreadWithRealDex fails after the first accepted reply.
+// The next Dex attempt confirms its saved thread ID without sending another POST.
+func TestReplyFenceReadsBackAnAcceptedThreadWithRealDex(t *testing.T) {
 	fake := newFakeHelpScout(t, map[string]http.HandlerFunc{
 		"GET /v2/conversations/501":        respondJSON(http.StatusOK, conversationJSON(501, "active", 123)),
 		"POST /v2/conversations/501/reply": createdThread("567"),
+		"GET /v2/conversations/501/threads": respondJSON(http.StatusOK,
+			threadPageJSON([]string{threadJSON(567, "message", "We refunded the duplicate charge.", "2026-09-30T12:00:00Z")}, false)),
 	})
 	harness := startProbeHarness(t, fake)
 	outcome := harness.runProbe(t, replyRetryProbeFlowType, "retry")
-	require.Equal(t, sdkgo.UncertainBranchID, outcome.Branch)
-	require.Equal(t, sdkgo.FailureTransport, outcome.FailureKind)
+	require.Equal(t, helpscout.ReplyToConversationBranchReplied, outcome.Branch)
+	require.EqualValues(t, 567, outcome.ThreadID)
 	require.Len(t, fake.requestsTo(http.MethodPost, "/v2/conversations/501/reply"), 1, "the retry did not send a second reply")
+}
+
+// TestReplyFenceRetries503WithRealDex proves a Retry checkpoint permits only the next attempt's POST.
+func TestReplyFenceRetries503WithRealDex(t *testing.T) {
+	var requestCount atomic.Int32
+	fake := newFakeHelpScout(t, map[string]http.HandlerFunc{
+		"GET /v2/conversations/501": respondJSON(http.StatusOK, conversationJSON(501, "active", 123)),
+		"POST /v2/conversations/501/reply": func(response http.ResponseWriter, request *http.Request) {
+			if requestCount.Add(1) == 1 {
+				response.WriteHeader(http.StatusServiceUnavailable)
+				return
+			}
+			createdThread("567")(response, request)
+		},
+	})
+	harness := startProbeHarness(t, fake)
+	outcome := harness.runProbe(t, replyProbeFlowType, "retry-503")
+	require.Equal(t, helpscout.ReplyToConversationBranchReplied, outcome.Branch)
+	require.EqualValues(t, 2, requestCount.Load())
+	require.Len(t, fake.requestsTo(http.MethodPost, "/v2/conversations/501/reply"), 2)
 }
 
 // TestUpdateConversationConvergesUnderDuplicateDispatchWithRealDex lets Dex dispatch the async Step again
@@ -165,9 +176,6 @@ func newProbeFlows(connection helpscout.Connection, client *helpscout.Client) []
 	}
 	return []dex.Flow{
 		&probeFlow{flowType: replyProbeFlowType, steps: []dex.StepDef{replyStep("ReplySync", nil), dex.DefineStep(recordReplyOutcome{})}},
-		&probeFlow{flowType: asyncReplyProbeFlowType, steps: []dex.StepDef{
-			replyStep("ReplyAsync", &dex.StepOptions{ExecuteDurability: dex.StepDurabilityAsync}), dex.DefineStep(recordReplyOutcome{}),
-		}},
 		&probeFlow{flowType: replyRetryProbeFlowType, steps: []dex.StepDef{dex.DefineStartStep(replyThenFailFirstAttempt{client: client})}},
 		&probeFlow{flowType: updateProbeFlowType, steps: []dex.StepDef{
 			dex.DefineStartStep(helpscout.NewUpdateConversationStep(helpscout.UpdateConversationStepConfig[string]{
