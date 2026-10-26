@@ -322,6 +322,25 @@ customer's contact by email, looks for an invoice already raised for the
 order's reference, raises an approved invoice when there is none, records the
 order's payment, and reads the invoice back to confirm it is paid.
 
+## Mocks
+
+The generated `xeromock` defaults describe City Agency's paid `ORDER-1042`:
+the contact and paid invoice exist, and a read returns that invoice. The
+example selects `orderWithoutInvoice` to exercise creation and payment.
+Named cases cover
+missing or ambiguous contacts, missing invoices, authorization refusals,
+and an exhausted daily API quota. The runnable example uses the typed mock
+connection:
+
+```go
+mock := xeromock.New(t, ConnectionName)
+mock.ListInvoices().Default(xeromock.ListInvoicesOrderWithoutInvoice())
+flow := NewFlow(mock.Connection())
+```
+
+This snippet comes from
+[`workflow_mock_integration_test.go`](examples/approved-order/flow/workflow_mock_integration_test.go).
+
 ## Verification
 
 ```bash
