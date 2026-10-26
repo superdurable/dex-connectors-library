@@ -5,9 +5,9 @@
 > is not verified.
 
 The Google Docs Connector reads a document as bounded Markdown or plain text
-together with its revision ID, creates documents in a Drive folder without a
-duplicate when a Step retries, and writes text only at the revision a Flow
-read. It exposes operation-specific Dex Step factories:
+together with its revision ID, creates documents in a Drive folder with a
+single-dispatch fence and read-back, and writes text only at the revision a
+Flow read. It exposes operation-specific Dex Step factories:
 
 - `docs.NewGetDocumentTextStep` renders the first tab of one document, without
   pending suggestions, as Markdown or plain text with its title and revision ID.
@@ -128,30 +128,32 @@ when they were read.
 
 Google documents no idempotency key for creating a Doc, and Drive's
 pre-generated file IDs are not supported for Google Workspace types or
-conversions. `createDocument` therefore uses Drive's `files.create`:
-metadata-only for an empty document, or one multipart upload that Drive
-converts into a Google Doc from `text/plain` or `text/markdown`. The metadata
-carries the title, optional parent folder, and the SDK's idempotency key as a
-private app property, `dexIdempotencyKey`. Every attempt:
+conversions. `createDocument` uses Drive's `files.create`: metadata-only for an
+empty document, or one multipart upload that Drive converts into a Google Doc.
+The metadata carries a private `dexIdempotencyKey` app property derived from
+the stable Dex Call ID. [Drive file search](https://developers.google.com/workspace/drive/api/guides/search-files)
+supports queries on that property.
 
-1. looks for a file, trashed or not, that already carries the key, and returns
-   the earliest one as `created` with `isFromEarlierAttempt: true`;
-2. otherwise records a Dex heartbeat checkpoint naming the Step's Call ID;
-3. sends the create once.
+The shared single-dispatch fence reads the previous Dex heartbeat before
+credentials or Drive lookup. Sync durability makes that heartbeat visible to
+later attempts. An attempt first searches for a tagged file; if found, it
+returns that document without another create. The fence permits a send only on
+the first attempt or after the immediately prior attempt proved that no create
+was sent or Drive returned a 429 or 503 and read-back found no matching file.
+A missing, stale, or claimed heartbeat cannot authorize another send. A 2xx
+reply with an invalid or interrupted body is treated as accepted and searched
+by app property. A found file completes `created`; inconclusive read-back
+selects `uncertain`, and the example leaves that branch unwired for manual
+reconciliation. HTTP writes use a bounded fraction of the Step deadline and
+disable Go's transparent request replay.
 
-The lookup alone is not a safe read-before-write: a concurrent attempt can
-look before the first create lands, and Google does not document that a new
-file is searchable at once. The operation therefore runs with sync
-durability, so Dex never dispatches a second attempt while one is in flight,
-and the checkpoint covers a lost Worker or an Execute timeout: a later attempt
-that finds the checkpoint but not the document selects `uncertain` without
-sending. A 429 or a 403 rate-limit reason, which Google returns before
-creating anything, clears the checkpoint and is retried. A timeout, dropped
-connection, 5xx, 408, or invalid success response selects `uncertain`. The
-example leaves that branch unwired, so the Flow fails for manual reconciliation
-in Drive; the connector never sends the create again. Keep the Step sync: an
-application override to async durability lets Dex send a second create after
-about seven seconds.
+[Google's Drive error guide](https://developers.google.com/workspace/drive/api/guides/handle-errors)
+recommends backoff for 429 and 503. It describes a 503 as an error during
+processing, so whether a 503 always precedes file creation is **unverified**.
+Drive also does not promise immediate search visibility for new app properties;
+a 503 followed by a negative lookup may still risk a duplicate on resend.
+The fake-provider and real-Dex integration tests exercise this policy, but no
+live Google account verified the 503 or indexing behavior.
 
 App properties are private to the OAuth client or service account that wrote
 them, so the lookup finds only documents created through the same
@@ -259,6 +261,34 @@ exists only to render the connection status and these pickers from the shared
 **Start Flow** example that reads a policy template, creates a document from
 it, fills its placeholders at the revision it read, appends a publication
 stamp, and reads the published text back.
+
+## Mocks
+
+The generated `docsmock` package supplies one happy-path answer for each
+operation and branch cases for missing documents, size limits, revision
+conflicts, rejected writes, and invalid responses. Defaults describe a policy
+template, its draft in `fld_policies`, its placeholder fill, and its stamp.
+Script read-back answers to match the Flow's document lifecycle. The runnable
+real-Dex test uses the mock connection this way:
+
+```go
+mock := docsmock.New(t, ConnectionName)
+mock.GetDocumentText().Respond(
+	docsmock.GetDocumentTextDefault(),
+	docsmock.GetDocumentTextRead(docs.GetDocumentTextOutput{
+		DocumentID: "policyDraft1", Title: "Acme Refund Policy", RevisionID: "rev-draft-1",
+		Format: docs.TextFormatPlainText, Text: "Refund Policy\nEffective {{effectiveDate}} for {{companyName}} customers.\n",
+	}, nil),
+	docsmock.GetDocumentTextRead(docs.GetDocumentTextOutput{
+		DocumentID: "policyDraft1", Title: "Acme Refund Policy", RevisionID: "rev-draft-3",
+		Format: docs.TextFormatMarkdown, Text: "# Refund Policy\n\nEffective 2026-10-01 for Acme customers.\nPublished by Dex.\n",
+	}, nil),
+).Strict()
+```
+
+Install the v0.23.0 connector with
+`go get github.com/superdurable/dex-connectors-library/connectors/google/docs@v0.23.0`
+after this release is published.
 
 ## Verification
 

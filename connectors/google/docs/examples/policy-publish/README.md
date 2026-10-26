@@ -87,13 +87,15 @@ GOWORK=off go test -race ./examples/policy-publish/...
 GOWORK=off go test -tags=integration ./examples/policy-publish/... -count=1 -v
 ```
 
-The integration tests run the Flow on a real Dex Server against a stateful
+The integration tests run the Flow on a real Dex Server against generated
+`docsmock` answers or a stateful
 fake Docs and Drive provider that applies a batch only at its required
 revision. They prove that:
 
 - a create that answers after nine seconds is sent once, because the Step is
   sync;
-- a create applied before a lost response is found again by its app property;
+- a create applied before a 429 or 500 is found again by its app property;
+- a 503 before creation retries with exactly two requests using the same key;
 - an unconfirmed create, and a Worker lost while the create is in flight,
   fail on the unwired `uncertain` branch without a second create;
 - a fill or stamp that answers after nine seconds is dispatched again by Dex

@@ -88,6 +88,8 @@ const (
 	CreateResponseCreated CreateResponse = iota
 	// CreateResponseRateLimitedWithoutCreating answers 429 and creates nothing.
 	CreateResponseRateLimitedWithoutCreating
+	// CreateResponseUnavailableWithoutCreating answers 503 and creates nothing.
+	CreateResponseUnavailableWithoutCreating
 	// CreateResponseCreatedThenRateLimited creates the document, then answers 429 as a lost response would surface.
 	CreateResponseCreatedThenRateLimited
 	// CreateResponseCreatedThenServerError creates the document, then answers 500.
@@ -133,6 +135,7 @@ type Server struct {
 	files                     []*driveFile
 	counts                    map[string]int
 	createResponses           []CreateResponse
+	createKeys                []string
 	firstCreateDelay          time.Duration
 	firstCreateHold           chan struct{}
 	isCreatedHiddenFromLookup bool
@@ -206,6 +209,13 @@ func (server *Server) Count(name string) int {
 	server.mutex.Lock()
 	defer server.mutex.Unlock()
 	return server.counts[name]
+}
+
+// CreateKeys returns the private app-property keys received by Drive creates.
+func (server *Server) CreateKeys() []string {
+	server.mutex.Lock()
+	defer server.mutex.Unlock()
+	return append([]string(nil), server.createKeys...)
 }
 
 // QueueCreateResponses sets how the next Drive creates are answered, in order.
@@ -457,14 +467,19 @@ func (server *Server) createDocument(response http.ResponseWriter, metadataJSON 
 	}
 	server.mutex.Lock()
 	server.counts[CountCreatesReceived]++
+	server.createKeys = append(server.createKeys, metadata.AppProperties["dexIdempotencyKey"])
 	answer := CreateResponseCreated
 	if len(server.createResponses) > 0 {
 		answer, server.createResponses = server.createResponses[0], server.createResponses[1:]
 	}
-	if answer == CreateResponseRateLimitedWithoutCreating {
+	if answer == CreateResponseRateLimitedWithoutCreating || answer == CreateResponseUnavailableWithoutCreating {
 		server.mutex.Unlock()
-		response.Header().Set("Retry-After", "1")
-		writeJSON(response, http.StatusTooManyRequests, errorBody(http.StatusTooManyRequests, "RESOURCE_EXHAUSTED"))
+		if answer == CreateResponseRateLimitedWithoutCreating {
+			response.Header().Set("Retry-After", "1")
+			writeJSON(response, http.StatusTooManyRequests, errorBody(http.StatusTooManyRequests, "RESOURCE_EXHAUSTED"))
+		} else {
+			writeJSON(response, http.StatusServiceUnavailable, errorBody(http.StatusServiceUnavailable, "UNAVAILABLE"))
+		}
 		return
 	}
 	server.nextFileNumber++

@@ -3,9 +3,9 @@ kind: Connector
 metadata:
   name: google-docs
   displayName: Google Docs
-  description: Read Google Docs as bounded Markdown or plain text with their revision, create documents in a Drive folder without duplicates on retry, and replace or append text only at the revision a Flow read.
+  description: Read Google Docs as bounded Markdown or plain text with their revision, create documents in a Drive folder with a single-dispatch fence and read-back, and replace or append text only at the revision a Flow read.
   company: Google
-  version: v0.22.1
+  version: v0.23.0
 spec:
   provider: google
   codegen:
@@ -203,23 +203,60 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: policyTemplate
+          branch: read
+          description: The input names the policy template; the answer contains placeholders for the publication Flow.
+          default: true
+          output: {documentId: policyTemplate1, title: Refund Policy Template, revisionId: rev-template-1, format: markdown, text: "# Refund Policy\n\nEffective {{effectiveDate}} for {{companyName}} customers.\n", byteCount: 76}
+        - name: notFoundFailure
+          branch: notFound
+          description: "The document does not exist or the connection cannot see it."
+          failure: {kind: NOT_FOUND, message: "The document does not exist or the connection cannot see it."}
+        - name: tooLargeFailure
+          branch: tooLarge
+          description: The requested document exceeds the configured text or response size limit.
+          failure: {kind: RESPONSE_TOO_LARGE, message: The Google Docs response exceeds the configured limit.}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: The connection lacks permission to read the requested document.
+          failure: {kind: AUTHORIZATION, message: The connection cannot read the document.}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "Google returned an invalid document response."
+          failure: {kind: PROTOCOL, message: "Google returned an invalid document response."}
     - name: createDocument
       goName: CreateDocument
       inputType: CreateDocumentInput
       outputType: CreateDocumentOutput
       kind: mutation
-      description: Create one Google Doc from a title and optional plain-text or Markdown text in an optional Drive folder. Google offers no idempotency key for this, so the Step runs with sync durability, looks for the document an earlier attempt created, and sends the request at most once per Step execution.
+      description: Create one Google Doc from a title and optional plain-text or Markdown text in an optional Drive folder. Google offers no idempotency key, so the single-dispatch fence requires sync durability to persist its heartbeat across attempts; a private Drive app property supports read-back before any permitted resend.
       idempotency: required
       branches:
         - {id: created, goName: Created, description: Google created the document or returned the one an earlier attempt of the same Step execution created.}
         - {id: providerRejected, goName: ProviderRejected, description: "Google conclusively rejected the creation or the duplicate lookup, such as a missing parent folder; no document was created.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized duplicate-lookup response before the creation was sent., optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The creation was sent but its outcome cannot be confirmed, so the document may exist; the connector never sends it again.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "A creation may have been sent but its outcome cannot be confirmed, so the document may exist; the connector sends nothing after selecting this branch.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: sync
+        dispatchFence: true
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "A repeated document POST could create another file when Drive property lookup misses it; Drive does not enforce that property as a key."}}
+      mocks:
+        - name: createdPolicyDraft
+          branch: created
+          description: The input creates a policy draft in the configured folder from the template text.
+          default: true
+          output: {document: {documentId: policyDraft1, title: Acme Refund Policy, parents: [fld_policies], webViewLink: "https://docs.google.com/document/d/policyDraft1/edit", createdTime: "2026-10-26T09:00:00Z"}}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: The input names a missing parent folder and Google creates no document.
+          failure: {kind: NOT_FOUND, message: The parent Drive folder was not found.}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: The duplicate lookup returns malformed JSON before a create is sent.
+          failure: {kind: PROTOCOL, message: The duplicate lookup returned an invalid response.}
     - name: replaceDocumentText
       goName: ReplaceDocumentText
       inputType: ReplaceDocumentTextInput
@@ -238,6 +275,32 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: filledPolicyDraft
+          branch: replaced
+          description: The input replaces the policy draft placeholders at rev-draft-1 and yields a new revision.
+          default: true
+          output: {documentId: policyDraft1, revisionId: rev-draft-2, replacements: [{placeholder: "{{effectiveDate}}", occurrencesChanged: 1}, {placeholder: "{{companyName}}", occurrencesChanged: 1}]}
+        - name: placeholderNotFoundFailure
+          branch: placeholderNotFound
+          description: "A requested placeholder does not occur in the body at the required revision; nothing was written."
+          failure: {kind: VALIDATION, message: A requested placeholder is absent from the document body.}
+        - name: revisionChangedFailure
+          branch: revisionChanged
+          description: "The document changed after the required revision and does not hold the requested text; nothing was written."
+          failure: {kind: CONFLICT, message: The document revision changed before the replacement.}
+        - name: notFoundFailure
+          branch: notFound
+          description: "The document does not exist or the connection cannot see it."
+          failure: {kind: NOT_FOUND, message: "The document does not exist or the connection cannot see it."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: The connection lacks edit access to the requested document.
+          failure: {kind: AUTHORIZATION, message: The connection cannot edit the document.}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "Google returned an invalid or oversized document response."
+          failure: {kind: PROTOCOL, message: "Google returned an invalid or oversized document response."}
     - name: appendText
       goName: AppendText
       inputType: AppendTextInput
@@ -255,3 +318,25 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: stampedPolicyDraft
+          branch: appended
+          description: The input appends the publication stamp to policyDraft1 at rev-draft-2.
+          default: true
+          output: {documentId: policyDraft1, revisionId: rev-draft-3}
+        - name: revisionChangedFailure
+          branch: revisionChanged
+          description: "The document changed after the required revision and does not end with the requested text; nothing was written."
+          failure: {kind: CONFLICT, message: The document revision changed before the append.}
+        - name: notFoundFailure
+          branch: notFound
+          description: "The document does not exist or the connection cannot see it."
+          failure: {kind: NOT_FOUND, message: "The document does not exist or the connection cannot see it."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: The connection lacks edit access to the requested document.
+          failure: {kind: AUTHORIZATION, message: The connection cannot edit the document.}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "Google returned an invalid or oversized document response."
+          failure: {kind: PROTOCOL, message: "Google returned an invalid or oversized document response."}

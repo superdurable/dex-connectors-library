@@ -102,24 +102,38 @@ func TestPolicyPublishRetriedCreateReusesTheDocumentAnEarlierAttemptCreatedWithR
 
 	outcome := harness.runPublish(t, "retried-create", publishInput())
 	require.Equal(t, StatusPublished, outcome.Status)
-	require.True(t, outcome.IsCreationFromEarlierAttempt, "the retry found the document by its private app property")
+	require.False(t, outcome.IsCreationFromEarlierAttempt, "the first attempt read back its accepted document")
 	require.Equal(t, 1, provider.Count(fakegoogledocs.CountCreatesReceived))
 	require.Equal(t, []string{outcome.Document.DocumentID}, provider.CreatedDocumentIDs())
 	requirePublishedDocument(t, provider, outcome)
 }
 
-func TestPolicyPublishLostCreateResponseFailsWithoutResendingWithRealDex(t *testing.T) {
+func TestPolicyPublishRetriesUnavailableCreateWithOneStableKeyWithRealDex(t *testing.T) {
+	provider := newPolicyProvider(t)
+	provider.QueueCreateResponses(fakegoogledocs.CreateResponseUnavailableWithoutCreating)
+	harness := newPublishHarness(t, provider)
+
+	outcome := harness.runPublish(t, "unavailable-create", publishInput())
+	require.Equal(t, StatusPublished, outcome.Status)
+	require.Equal(t, 2, provider.Count(fakegoogledocs.CountCreatesReceived))
+	keys := provider.CreateKeys()
+	require.Len(t, keys, 2)
+	require.NotEmpty(t, keys[0])
+	require.Equal(t, keys[0], keys[1])
+	require.Len(t, provider.CreatedDocumentIDs(), 1)
+}
+
+func TestPolicyPublishCreatedThenServerErrorReadsBackWithoutResendingWithRealDex(t *testing.T) {
 	provider := newPolicyProvider(t)
 	provider.QueueCreateResponses(fakegoogledocs.CreateResponseCreatedThenServerError)
 	harness := newPublishHarness(t, provider)
 
-	flowID := harness.startPublish(t, "lost-create", publishInput())
-	result := harness.waitForFlow(t, flowID)
-	require.Equal(t, dex.FlowFailed, result.Status)
-	require.Contains(t, result.ErrorMessage, "uncertain")
-	require.Contains(t, result.ErrorMessage, "no target")
+	outcome := harness.runPublish(t, "server-error-after-create", publishInput())
+	require.Equal(t, StatusPublished, outcome.Status)
+	require.False(t, outcome.IsCreationFromEarlierAttempt)
 	require.Equal(t, 1, provider.Count(fakegoogledocs.CountCreatesReceived))
-	require.Zero(t, provider.Count(fakegoogledocs.CountBatchUpdatesReceived))
+	require.Len(t, provider.CreatedDocumentIDs(), 1)
+	requirePublishedDocument(t, provider, outcome)
 }
 
 func TestPolicyPublishLostWorkerDuringCreateIsNeverResentWithRealDex(t *testing.T) {
@@ -266,6 +280,12 @@ func newPublishHarness(t *testing.T, provider *fakegoogledocs.Server) *publishHa
 	require.NoError(t, err)
 	connection, err := docs.NewConnection(providerClient, reference)
 	require.NoError(t, err)
+	return newPublishHarnessForConnection(t, connection)
+}
+
+func newPublishHarnessForConnection(t *testing.T, connection docs.Connection) *publishHarness {
+	t.Helper()
+	var err error
 	harness := &publishHarness{
 		flow: NewFlow(connection,
 			sdkgo.ConnectorLoadedConfiguration[TemplateConfiguration]{Reference: TemplateConfigurationRef(), Value: TemplateConfiguration{DocumentID: templateDocumentID, DocumentTitle: "Refund Policy Template"}},
