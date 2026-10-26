@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"net/mail"
+	"slices"
 	"strings"
 	"unicode/utf8"
 
@@ -360,13 +361,13 @@ func (resolveSubmissionsDataSource) Execute(ctx dex.Context, result notion.Searc
 		return nil, err
 	}
 	for _, id := range exactTitleMatchIDs(result.Value.Matches, record.Submission.DatabaseTitle) {
-		if !containsID(record.CandidateDataSourceIDs, id) {
+		if !slices.Contains(record.CandidateDataSourceIDs, id) {
 			record.CandidateDataSourceIDs = append(record.CandidateDataSourceIDs, id)
 		}
 	}
 	record.SearchPagesRead++
 	if cursor := result.Value.NextCursor; cursor != "" {
-		if containsID(record.SearchSeenCursors, cursor) {
+		if slices.Contains(record.SearchSeenCursors, cursor) {
 			return dex.ForceFail(searchRepeatedCursorFailure), nil
 		}
 		if record.SearchPagesRead >= maximumScanPages {
@@ -408,15 +409,6 @@ func exactTitleMatchIDs(matches []notion.SearchMatch, title string) []string {
 		}
 	}
 	return ids
-}
-
-func containsID(ids []string, id string) bool {
-	for _, candidate := range ids {
-		if candidate == id {
-			return true
-		}
-	}
-	return false
 }
 
 // dex:group group-id:notion group-label:"Notion"
@@ -642,7 +634,7 @@ func collectSubmissionRows(record *SubmissionRecord, output notion.QueryDatabase
 		}
 		if record.PageID == "" {
 			record.PageID, record.PageURL = page.ID, page.URL
-		} else if page.ID != record.PageID && !containsID(record.DuplicatePageIDs, page.ID) {
+		} else if page.ID != record.PageID && !slices.Contains(record.DuplicatePageIDs, page.ID) {
 			if len(record.DuplicatePageIDs) == 0 {
 				record.DuplicatePageIDs = append(record.DuplicatePageIDs, record.PageID)
 			}
@@ -654,7 +646,7 @@ func collectSubmissionRows(record *SubmissionRecord, output notion.QueryDatabase
 	case output.NextCursor == "" || len(record.DuplicatePageIDs) > 0:
 		// The scan ends on the last page, or as soon as two rows make the duplicate certain.
 		record.QueryCursor, record.QueryPagesRead, record.QuerySeenCursors = "", 0, nil
-	case containsID(record.QuerySeenCursors, output.NextCursor):
+	case slices.Contains(record.QuerySeenCursors, output.NextCursor):
 		return queryRepeatedCursorFailure
 	case record.QueryPagesRead >= maximumScanPages:
 		return queryPageLimitFailure

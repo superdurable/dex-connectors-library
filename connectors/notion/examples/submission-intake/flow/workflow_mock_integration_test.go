@@ -24,12 +24,11 @@ const (
 	mockFirstRowID   = "2a4d6f80-1b3c-4d5e-8f70-1122334455a1"
 	mockSecondRowID  = "2a4d6f80-1b3c-4d5e-8f70-1122334455a2"
 	mockThirdRowID   = "2a4d6f80-1b3c-4d5e-8f70-1122334455a3"
-	mockSecondSource = "2a4d6f80-1b3c-4d5e-8f70-112233445599"
+	mockSecondSource = "2a4d6f80-1b3c-4d5e-8f70-1122334455b2"
 	mockSubmissionID = "sub-new-1"
 )
 
-// The mock defaults fit the database title "Form submissions" and the submission ID "sub-new-1";
-// any other input needs a script, as the tests below show.
+// The mock defaults fit title "Form submissions" and submission ID "sub-new-1"; other inputs need a script.
 func TestSubmissionIntakeUsesMockDefaultsWithRealDex(t *testing.T) {
 	mock := notionmock.New(t, ConnectionName)
 	flow, harness := newNotionIntegrationHarnessWithConnection(t, mock.Connection())
