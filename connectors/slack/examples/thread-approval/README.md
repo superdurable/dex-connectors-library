@@ -38,7 +38,7 @@ calling Dex. The pure filter has no error result.
 
 After the connector release, this walkthrough uses these versions:
 
-- [Slack Connector v1.1.1](https://github.com/superdurable/dex-connectors-library/releases/tag/connectors%2Fslack%2Fv1.1.1)
+- [Slack Connector v1.2.0](https://github.com/superdurable/dex-connectors-library/releases/tag/connectors%2Fslack%2Fv1.2.0)
 - [dexcli v0.13.7](https://github.com/superdurable/dex/releases/tag/cli-v0.13.7)
 
 Install Go 1.24 or newer and curl. You also need permission to create and
@@ -66,7 +66,7 @@ macOS installation, download the matching archive from the
 ## 1. Prepare a clean local test project
 
 Create a separate directory that consumes the released Connector. The Flow
-source is copied from the immutable v1.1.1 tag so dexcli can analyze it as an
+source is copied from the immutable v1.2.0 tag so dexcli can analyze it as an
 application dependency rather than as part of the Connector module itself.
 
 ```bash
@@ -75,11 +75,11 @@ cd slack-thread-approval-e2e
 mkdir -p flow build
 
 curl -fsSL \
-  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/slack/v1.1.1/connectors/slack/examples/thread-approval/flow/workflow.go \
+  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/slack/v1.2.0/connectors/slack/examples/thread-approval/flow/workflow.go \
   -o flow/workflow.go
 
 go mod init example.com/slack-thread-approval-e2e
-go get github.com/superdurable/dex-connectors-library/connectors/slack@v1.1.1
+go get github.com/superdurable/dex-connectors-library/connectors/slack@v1.2.0
 go mod tidy
 ```
 
@@ -316,7 +316,7 @@ the Dex Server address printed by the current dexcli process:
 export DEX_FLOW_SERVICE_ADDRESS="127.0.0.1:8801"
 
 GOWORK=off go run \
-  github.com/superdurable/dex-connectors-library/connectors/slack/examples/thread-approval@v1.1.1
+  github.com/superdurable/dex-connectors-library/connectors/slack/examples/thread-approval@v1.2.0
 ```
 
 Replace `127.0.0.1:8801` when dexcli printed another Dex Server address. The

@@ -13,6 +13,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/http/httptrace"
 	"net/url"
 	"strconv"
 	"strings"
@@ -173,10 +174,11 @@ type slackResponse struct {
 }
 
 type providerResponse struct {
-	statusCode int
-	header     http.Header
-	body       []byte
-	decoded    slackResponse
+	statusCode             int
+	header                 http.Header
+	body                   []byte
+	decoded                slackResponse
+	isProvablyUndispatched bool
 }
 
 var (
@@ -393,14 +395,14 @@ func (PostChannelMessageOperation) Definition() sdkgo.MutationDefinition {
 	return PostChannelMessageDefinition
 }
 
-// IdempotencyKey derives the provider key from the stable connector call ID.
+// IdempotencyKey supplies a stable client message ID; Slack does not document replay deduplication.
 func (PostChannelMessageOperation) IdempotencyKey(callID sdkgo.CallID, _ PostChannelMessageInput) sdkgo.IdempotencyKey {
 	return sdkgo.IdempotencyKey(callID)
 }
 
 // Invoke executes one provider call and classifies its attempt.
 func (operation PostChannelMessageOperation) Invoke(call sdkgo.Call, input PostChannelMessageInput) sdkgo.MutationAttempt[PostMessageOutput] {
-	return operation.client.postMessage(call, "postChannelMessage", input.ChannelID, "", input.Text, PostChannelMessageBranchSent, PostChannelMessageBranchProviderRejected, PostChannelMessageBranchUncertain, PostChannelMessageBranchDefect)
+	return operation.client.postMessage(call, "postChannelMessage", input.ChannelID, "", input.Text, PostChannelMessageDefinition.StepDefaults.ExecuteMethodTimeout, PostChannelMessageBranchSent, PostChannelMessageBranchProviderRejected, PostChannelMessageBranchUncertain, PostChannelMessageBranchDefect)
 }
 
 // Definition returns the immutable connector operation definition.
@@ -408,17 +410,18 @@ func (PostThreadReplyOperation) Definition() sdkgo.MutationDefinition {
 	return PostThreadReplyDefinition
 }
 
-// IdempotencyKey derives the provider key from the stable connector call ID.
+// IdempotencyKey supplies a stable client message ID; Slack does not document replay deduplication.
 func (PostThreadReplyOperation) IdempotencyKey(callID sdkgo.CallID, _ PostThreadReplyInput) sdkgo.IdempotencyKey {
 	return sdkgo.IdempotencyKey(callID)
 }
 
 // Invoke executes one provider call and classifies its attempt.
 func (operation PostThreadReplyOperation) Invoke(call sdkgo.Call, input PostThreadReplyInput) sdkgo.MutationAttempt[PostMessageOutput] {
-	return operation.client.postMessage(call, "postThreadReply", input.ChannelID, input.ThreadTimestamp, input.Text, PostThreadReplyBranchSent, PostThreadReplyBranchProviderRejected, PostThreadReplyBranchUncertain, PostThreadReplyBranchDefect)
+	return operation.client.postMessage(call, "postThreadReply", input.ChannelID, input.ThreadTimestamp, input.Text, PostThreadReplyDefinition.StepDefaults.ExecuteMethodTimeout, PostThreadReplyBranchSent, PostThreadReplyBranchProviderRejected, PostThreadReplyBranchUncertain, PostThreadReplyBranchDefect)
 }
 
-func (client *Client) postMessage(call sdkgo.Call, operationName string, channelID string, threadTimestamp string, text string, sent sdkgo.BranchID, providerRejected sdkgo.BranchID, uncertain sdkgo.BranchID, defect sdkgo.BranchID) sdkgo.MutationAttempt[PostMessageOutput] {
+func (client *Client) postMessage(call sdkgo.Call, operationName string, channelID string, threadTimestamp string, text string, methodTimeout time.Duration, sent sdkgo.BranchID, providerRejected sdkgo.BranchID, uncertain sdkgo.BranchID, defect sdkgo.BranchID) sdkgo.MutationAttempt[PostMessageOutput] {
+	attemptStart := time.Now()
 	if strings.TrimSpace(channelID) == "" || strings.TrimSpace(text) == "" || len([]rune(text)) > client.maxMessageCharacters {
 		return sdkgo.NewMutationBranch(defect, PostMessageOutput{}, slackFailurePointer(operationName, sdkgo.FailureValidation, "channel and bounded non-empty text are required"), sdkgo.Receipt{})
 	}
@@ -426,19 +429,44 @@ func (client *Client) postMessage(call sdkgo.Call, operationName string, channel
 	if failure != nil {
 		return sdkgo.NewMutationBranch(defect, PostMessageOutput{}, failure, sdkgo.Receipt{})
 	}
+	requestContext, cancel, hasRequestTime := newPostRequestContext(call.Context, attemptStart, methodTimeout)
+	if !hasRequestTime {
+		return sdkgo.NewMutationRetry[PostMessageOutput](slackFailure(operationName, sdkgo.FailureAvailability, "Slack message request has no time before the Step deadline"), 0)
+	}
+	defer cancel()
+	switch claimPostDispatch(call) {
+	case postDispatchMayHaveSent:
+		return sdkgo.NewMutationUncertain(PostMessageOutput{}, slackFailure(operationName, sdkgo.FailureTransport, "an earlier attempt may have posted the Slack message"), client.receipt(call, providerResponse{}, ""))
+	case postDispatchNotRecorded:
+		return sdkgo.NewMutationBranch(defect, PostMessageOutput{}, slackFailurePointer(operationName, sdkgo.FailureLocalDefect, "Slack dispatch checkpoint could not be recorded"), sdkgo.Receipt{})
+	}
 	payload := map[string]string{"channel": channelID, "text": text, "client_msg_id": string(call.IdempotencyKey)}
 	if threadTimestamp != "" {
 		payload["thread_ts"] = threadTimestamp
 	}
-	response, err := client.post(call, &credentials, botCredentialToken, "chat.postMessage", payload)
+	response, err := client.post(call, requestContext, &credentials, botCredentialToken, "chat.postMessage", payload)
+	if response.statusCode == http.StatusTooManyRequests || response.statusCode == http.StatusServiceUnavailable {
+		markPostSafeToRetry(call)
+		failureKind := sdkgo.FailureRateLimit
+		failureMessage := "Slack rate limited the message"
+		if response.statusCode == http.StatusServiceUnavailable {
+			failureKind = sdkgo.FailureAvailability
+			failureMessage = "Slack message service is temporarily unavailable"
+		}
+		return sdkgo.NewMutationRetry[PostMessageOutput](slackFailure(operationName, failureKind, failureMessage), retryAfter(response.header))
+	}
 	if err != nil {
 		if errors.Is(err, errSlackRequestInvalid) {
 			return sdkgo.NewMutationBranch(defect, PostMessageOutput{}, slackFailurePointer(operationName, sdkgo.FailureLocalDefect, err.Error()), sdkgo.Receipt{})
 		}
+		if response.isProvablyUndispatched {
+			markPostSafeToRetry(call)
+			return sdkgo.NewMutationRetry[PostMessageOutput](slackFailure(operationName, sdkgo.FailureTransport, "Slack message request did not reach the provider"), 0)
+		}
 		return sdkgo.NewMutationUncertain(PostMessageOutput{}, slackFailure(operationName, sdkgo.FailureTransport, "Slack message outcome is unknown"), client.receipt(call, response, ""))
 	}
-	if response.statusCode == http.StatusTooManyRequests {
-		return sdkgo.NewMutationRetry[PostMessageOutput](slackFailure(operationName, sdkgo.FailureRateLimit, "Slack rate limited the message"), retryAfter(response.header))
+	if response.statusCode == http.StatusConflict {
+		return sdkgo.NewMutationUncertain(PostMessageOutput{}, slackFailure(operationName, sdkgo.FailureProtocol, "Slack returned a conflict without a confirmable message identity"), client.receipt(call, response, ""))
 	}
 	if response.statusCode >= 500 {
 		return sdkgo.NewMutationUncertain(PostMessageOutput{}, slackFailure(operationName, sdkgo.FailureAvailability, "Slack message outcome is unknown"), client.receipt(call, response, ""))
@@ -484,14 +512,14 @@ func (client *Client) get(call sdkgo.Call, credentials *Credentials, tokenKind c
 	})
 }
 
-func (client *Client) post(call sdkgo.Call, credentials *Credentials, tokenKind credentialToken, method string, payload any) (providerResponse, error) {
+func (client *Client) post(call sdkgo.Call, requestContext context.Context, credentials *Credentials, tokenKind credentialToken, method string, payload any) (providerResponse, error) {
 	contents, err := json.Marshal(payload)
 	if err != nil {
 		return providerResponse{}, fmt.Errorf("%w: request could not be encoded", errSlackRequestInvalid)
 	}
 	target := strings.TrimRight(client.endpoint.String(), "/") + "/" + method
 	return client.doAuthenticated(call, credentials, tokenKind, func() (*http.Request, error) {
-		request, requestErr := http.NewRequestWithContext(call.Context, http.MethodPost, target, bytes.NewReader(contents))
+		request, requestErr := http.NewRequestWithContext(requestContext, http.MethodPost, target, bytes.NewReader(contents))
 		if requestErr != nil {
 			return nil, fmt.Errorf("%w: request could not be built", errSlackRequestInvalid)
 		}
@@ -535,9 +563,13 @@ func (client *Client) doAuthenticated(
 
 func (client *Client) do(request *http.Request, token string) (providerResponse, error) {
 	request.Header.Set("Authorization", "Bearer "+token)
+	observation := &postDispatchObservation{}
+	if request.Method == http.MethodPost {
+		request = request.WithContext(httptrace.WithClientTrace(request.Context(), observation.clientTrace()))
+	}
 	response, err := client.httpClient.Do(request)
 	if err != nil {
-		return providerResponse{}, err
+		return providerResponse{isProvablyUndispatched: observation.isProvablyUndispatched()}, err
 	}
 	defer response.Body.Close()
 	result := providerResponse{statusCode: response.StatusCode, header: response.Header.Clone()}

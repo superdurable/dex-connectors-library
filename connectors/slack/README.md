@@ -243,9 +243,16 @@ no `binding`. Their runner records go to `slog.Default()`, so call
 - `PostChannelMessage` creates a top-level channel message.
 - `PostThreadReply` replies to an existing thread.
 
-Posting uses Dex Call ID as Slack `client_msg_id`. An ambiguous provider result
-uses the `uncertain` branch and must be reconciled or manually recovered rather
-than automatically resent.
+Posting sends the stable Dex Call ID as Slack `client_msg_id`. [Slack's
+`chat.postMessage` reference](https://docs.slack.dev/reference/methods/chat.postMessage/)
+lists duplicate-related errors but does not document a replay deduplication
+guarantee for this field. That guarantee remains unverified; a connection loss
+after dispatch, a 409 or ambiguous 500, or a successful response without a usable
+message identity selects `uncertain` and requires reconciliation. The connector
+does not resend after such an outcome. A traced DNS, connect, or TLS failure
+before a connection exists, HTTP 429, and HTTP 503 retry. A dispatch checkpoint
+prevents a later attempt from resending when its previous result or marker is
+unknown; each request ends before the Step's attempt deadline.
 
 Every operation uses `defect` for invalid local input, connection configuration,
 or Connector contract violations. A conclusive Slack API refusal uses
