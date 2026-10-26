@@ -106,12 +106,12 @@ credentials. Its identity is connector ID, connection name, trigger name, and
 binding name. One OAuth connection may therefore serve several independently
 configured Flow triggers.
 
-One Step execution invokes one Connector operation. A second call in the same
-execution reuses the same Call ID and is prohibited. Use another Step
-execution for a second provider call or polling iteration.
-A Mutation attempt may still make read-only provider requests within the same
-Execute to confirm the outcome of its own write. Polling, another write, or
-any other provider call needs another Step execution.
+One Step execution makes one Connector operation invocation. A second
+Connector operation invocation in the same execution reuses the same Call ID
+and is prohibited. Within its one invocation, a Mutation may make provider
+reads solely to confirm the outcome of that invocation's own write, and must
+finish them before the attempt's Execute deadline. Use another Step execution
+for any other provider call, another write, or a polling iteration.
 
 ## Branch-only Result and strict Attempt
 
