@@ -412,6 +412,23 @@ reads the same field and stage metadata inside a Flow.
   since an instant or a stored cursor with `listModifiedRecords`, page by page,
   and completes with the cursor the next poll continues from.
 
+## Mocks
+
+The generated `crmmock` defaults describe Acme Corp: its account exists, Ada
+is upserted as a contact, the renewal deal advances to Negotiation/Review,
+and a read confirms that stage. The changed-deals listing returns the same
+deal. Named cases cover missing records, unique-field conflicts, rejected
+field values, and permission refusals. The lead-qualification example uses
+the mock connection with its real Flow:
+
+```go
+mock := crmmock.New(t, ConnectionName)
+flow := NewFlow(mock.Connection())
+```
+
+This snippet comes from
+[`workflow_mock_integration_test.go`](examples/lead-qualification/flow/workflow_mock_integration_test.go).
+
 ## Verification
 
 ```bash
