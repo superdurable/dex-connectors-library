@@ -87,7 +87,7 @@ func (connector noteConnector) createNote(call sdkgo.Call) (string, error) {
 	credential, err := connector.resolveCredential()
 	if err != nil {
 		if checkpointErr := fence.RecordNotSent(); checkpointErr != nil {
-			return "", checkpointErr
+			return "", errors.Join(errRetry, checkpointErr)
 		}
 		return "", errRetry
 	}
@@ -100,7 +100,7 @@ func (connector noteConnector) createNote(call sdkgo.Call) (string, error) {
 	}
 	if attempt.status == 503 || attempt.status == 429 {
 		if err := fence.RecordCanResend(); err != nil {
-			return "", err
+			return "", errors.Join(errRetry, err)
 		}
 		return "", errRetry
 	}
@@ -108,7 +108,6 @@ func (connector noteConnector) createNote(call sdkgo.Call) (string, error) {
 		return "", errUncertain
 	}
 	// The accepted result is known even if its extra read-back checkpoint is lost.
-	// The accepted result remains known even if its extra checkpoint is lost.
 	_ = fence.RecordProviderID(attempt.providerID)
 	return attempt.providerID, nil
 }
