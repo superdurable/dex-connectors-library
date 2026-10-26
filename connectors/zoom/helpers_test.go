@@ -127,7 +127,10 @@ type rejectionRefreshingCredentialProvider struct {
 	forcedRefreshes int
 }
 
-func (*rejectionRefreshingCredentialProvider) Resolve(sdkgo.Call) (zoom.Credentials, error) {
+func (provider *rejectionRefreshingCredentialProvider) Resolve(sdkgo.Call) (zoom.Credentials, error) {
+	if provider.forcedRefreshes > 0 {
+		return zoom.Credentials{AccessToken: sdkgo.NewSecretString("replacement-token")}, nil
+	}
 	return zoom.Credentials{AccessToken: sdkgo.NewSecretString("rejected-token")}, nil
 }
 

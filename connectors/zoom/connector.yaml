@@ -5,7 +5,7 @@ metadata:
   displayName: Zoom
   description: List, read, schedule, and reschedule the authorized user's Zoom meetings, and list who joined a past meeting.
   company: Zoom
-  version: v0.22.1
+  version: v0.23.0
 spec:
   provider: zoom
   codegen:
@@ -89,6 +89,24 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      pagination: {inputField: pageToken, nextField: nextPageToken}
+      mocks:
+        - name: listedDefaultAnswer
+          branch: listed
+          description: Matches upcoming meeting pages for the authorized host, including the consultation created below.
+          default: true
+          pages:
+            - {meetings: [{id: 92674392836, topic: Consultation, type: 2, startTime: '2036-02-24T17:00:00Z', durationMinutes: 30, timeZone: America/Los_Angeles}, {id: 92674392840, topic: Team review, type: 2, startTime: '2036-02-25T17:00:00Z', durationMinutes: 45, timeZone: America/Los_Angeles}], nextPageToken: zoom-page-2, totalRecords: 3}
+            - {meetings: [{id: 92674392840, topic: Team review, type: 2, startTime: '2036-02-25T17:00:00Z', durationMinutes: 45, timeZone: America/Los_Angeles}, {id: 92674392841, topic: Planning, type: 2, startTime: '2036-02-26T17:00:00Z', durationMinutes: 60, timeZone: America/Los_Angeles}], nextPageToken: zoom-page-3, totalRecords: 3}
+            - {meetings: [], nextPageToken: '', totalRecords: 3}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: Matches a listing that Zoom denies with HTTP 403.
+          failure: {kind: AUTHORIZATION, message: Zoom denied access to the meeting list.}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: Matches a listing whose Zoom response is structurally unusable.
+          failure: {kind: PROTOCOL, message: Zoom returned an unusable meeting page.}
     - name: getMeeting
       goName: GetMeeting
       inputType: GetMeetingInput
@@ -106,24 +124,52 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: foundDefaultAnswer
+          branch: found
+          description: Matches a read of meeting 92674392836, the consultation created below.
+          default: true
+          output: {id: 92674392836, hostId: zoom-host-1, topic: Consultation, type: 2, startTime: '2036-02-24T17:00:00Z', durationMinutes: 30, timeZone: America/Los_Angeles, joinUrl: 'https://us05web.zoom.us/j/92674392836?pwd=mock', settings: {waitingRoom: true}}
+        - name: notFoundFailure
+          branch: notFound
+          description: Matches a read with an unknown or deleted meeting ID.
+          failure: {kind: NOT_FOUND, message: "The meeting does not exist or was deleted."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: Matches a meeting read that Zoom denies with HTTP 403.
+          failure: {kind: AUTHORIZATION, message: Zoom denied access to the meeting.}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: Matches a meeting read whose response is structurally unusable.
+          failure: {kind: PROTOCOL, message: Zoom returned an unusable meeting.}
     - name: createMeeting
       goName: CreateMeeting
       inputType: CreateMeetingInput
       outputType: Meeting
       kind: mutation
-      description: Schedule one meeting for the authorized user at an explicit start instant and IANA time zone; Zoom has no idempotency key, so an unknown outcome is reported instead of retried.
+      description: Schedule one meeting for the authorized user at an explicit start instant and IANA time zone; a synchronous dispatch fence makes the pre-send checkpoint visible across attempts and prevents a second send after an unknown outcome.
       idempotency: required
       authorization: required
       branches:
         - {id: created, goName: Created, description: Zoom created the meeting and returned its ID and join URL.}
-        - {id: providerRejected, goName: ProviderRejected, description: "Zoom conclusively rejected the meeting, such as a user who cannot host or an exhausted daily create limit; nothing was created.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Zoom conclusively rejected the meeting, such as a user who cannot host; nothing was created.", optional: true}
         - {id: uncertain, goName: Uncertain, description: "The request was dispatched but its outcome cannot be confirmed; the meeting may exist and must not be created again automatically.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      # Sync: an async fallback attempt would send a slow create again, and Zoom has no idempotency key.
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A lost dispatch checkpoint could create another meeting because Zoom has no provider key or meeting lookup by Call ID."}}
+        dispatchFence: true
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: personWaiting, explanation: "A person booking a meeting needs a prompt result; unconfirmed dispatches select uncertainty without a second send."}}
+      mocks:
+        - name: createdDefaultAnswer
+          branch: created
+          description: Matches a scheduled Consultation at 2036-02-24T17:00:00Z for the authorized host.
+          default: true
+          output: {id: 92674392836, hostId: zoom-host-1, topic: Consultation, type: 2, startTime: '2036-02-24T17:00:00Z', durationMinutes: 30, timeZone: America/Los_Angeles, joinUrl: 'https://us05web.zoom.us/j/92674392836?pwd=mock', settings: {waitingRoom: true}}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: Matches a create when the authorized user cannot host meetings.
+          failure: {kind: PROVIDER_REJECTION, message: "Zoom conclusively rejected the meeting, such as a user who cannot host or an exhausted daily create limit; nothing was created."}
     - name: updateMeeting
       goName: UpdateMeeting
       inputType: UpdateMeetingInput
@@ -140,6 +186,20 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: updatedDefaultAnswer
+          branch: updated
+          description: Matches an absolute-value update to meeting 92674392836.
+          default: true
+          output: {meetingId: 92674392836}
+        - name: notFoundFailure
+          branch: notFound
+          description: Matches an update to an unknown or deleted meeting ID.
+          failure: {kind: NOT_FOUND, message: "The meeting does not exist or was deleted."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: Matches an update whose field value Zoom rejects with HTTP 400.
+          failure: {kind: PROVIDER_REJECTION, message: "Zoom conclusively rejected the patch, such as an exhausted daily update limit."}
     - name: listPastMeetingParticipants
       goName: ListPastMeetingParticipants
       inputType: ListPastMeetingParticipantsInput
@@ -157,3 +217,25 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      pagination: {inputField: pageToken, nextField: nextPageToken}
+      mocks:
+        - name: listedDefaultAnswer
+          branch: listed
+          description: Matches participant pages for meeting 92674392836 after its consultation ends.
+          default: true
+          pages:
+            - {meetingId: 92674392836, participants: [{id: zoom-host-1, name: Host, isInternalUser: true, durationSeconds: 1800}, {id: guest-1, name: Guest, durationSeconds: 1680}], nextPageToken: zoom-attendance-2, totalRecords: 3}
+            - {meetingId: 92674392836, participants: [{id: guest-1, name: Guest, durationSeconds: 1680}, {id: guest-2, name: Second guest, durationSeconds: 1200}], nextPageToken: zoom-attendance-3, totalRecords: 3}
+            - {meetingId: 92674392836, participants: [], nextPageToken: '', totalRecords: 3}
+        - name: notFoundFailure
+          branch: notFound
+          description: Matches participant listing before the meeting has an ended instance.
+          failure: {kind: NOT_FOUND, message: "Zoom has no ended instance of the meeting."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: Matches a participant listing that Zoom denies with HTTP 403.
+          failure: {kind: AUTHORIZATION, message: Zoom denied access to the participant list.}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: Matches a participant listing whose response is structurally unusable.
+          failure: {kind: PROTOCOL, message: Zoom returned an unusable participant page.}

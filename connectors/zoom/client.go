@@ -28,14 +28,13 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 const (
 	providerName = "zoom"
-	// requestTimeout expires before the 30-second Execute timeout, so a hung create selects uncertain.
+	// requestTimeout bounds ordinary requests; the create fence imposes a shorter write deadline.
 	requestTimeout = 20 * time.Second
-	// maximumThrottleDelay separates a per-second throttle from a daily limit that resets much later.
-	maximumThrottleDelay = time.Minute
 	// errorCodeMetadataKey names the Receipt metadata entry holding Zoom's numeric error code.
 	errorCodeMetadataKey = "zoomErrorCode"
 	currentUserPath      = "/users/me"
@@ -187,12 +186,22 @@ func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Cre
 	}
 }
 
-// exchange sends one request, and once more after a refresh when Zoom answers 401, which applies nothing.
+// exchange sends one request, and once more after a refresh when an unfenced call receives 401.
 // It returns isDispatched false only when Zoom provably received nothing.
 func (client *Client) exchange(
 	call sdkgo.Call,
 	credentials *Credentials,
 	request providerRequest,
+) (response providerResponse, isDispatched bool, err error) {
+	return client.exchangeWithContext(call, call.Context, credentials, request, false)
+}
+
+func (client *Client) exchangeWithContext(
+	call sdkgo.Call,
+	requestContext context.Context,
+	credentials *Credentials,
+	request providerRequest,
+	isFencedWrite bool,
 ) (response providerResponse, isDispatched bool, err error) {
 	var encodedPayload []byte
 	if request.payload != nil {
@@ -206,8 +215,8 @@ func (client *Client) exchange(
 		target += "?" + request.query.Encode()
 	}
 	for attempt := 0; attempt < 2; attempt++ {
-		response, isDispatched, err = client.sendOnce(call, credentials.AccessToken, request.method, target, encodedPayload)
-		if err != nil || response.statusCode != http.StatusUnauthorized || attempt != 0 {
+		response, isDispatched, err = client.sendOnce(requestContext, credentials.AccessToken, request.method, target, encodedPayload, isFencedWrite)
+		if err != nil || response.statusCode != http.StatusUnauthorized || attempt != 0 || isFencedWrite {
 			return response, isDispatched, err
 		}
 		if _, isRejectionRefreshing := client.credentials.(sdkgo.RejectedCredentialRefreshingProvider[Credentials]); !isRejectionRefreshing {
@@ -224,13 +233,14 @@ func (client *Client) exchange(
 
 // sendOnce performs one bounded HTTP request and reads a bounded body.
 func (client *Client) sendOnce(
-	call sdkgo.Call,
+	parentContext context.Context,
 	accessToken sdkgo.SecretString,
 	method string,
 	target string,
 	payload []byte,
+	isFencedWrite bool,
 ) (providerResponse, bool, error) {
-	requestContext, cancel := context.WithTimeout(call.Context, requestTimeout)
+	requestContext, cancel := context.WithTimeout(parentContext, requestTimeout)
 	defer cancel()
 	observation := &dispatchObservation{}
 	requestContext = httptrace.WithClientTrace(requestContext, observation.clientTrace())
@@ -246,6 +256,11 @@ func (client *Client) sendOnce(
 	httpRequest.Header.Set("Accept", "application/json")
 	if payload != nil {
 		httpRequest.Header.Set("Content-Type", "application/json")
+	}
+	if isFencedWrite {
+		if err := singledispatch.PrepareHTTPWrite(httpRequest); err != nil {
+			return providerResponse{}, false, errRequestNotBuilt
+		}
 	}
 	httpResponse, err := client.httpClient.Do(httpRequest)
 	if err != nil {
@@ -305,15 +320,14 @@ func (client *Client) classifyErrorStatus(operation string, response providerRes
 		}
 	case response.statusCode == http.StatusTooManyRequests:
 		delay := providerhttp.ParseRetryAfter(response.header.Get("Retry-After"), client.now())
-		if delay > maximumThrottleDelay {
-			return statusClassification{
-				outcome: statusOutcomeRejected, errorCode: errorCode,
-				failure: newFailure(operation, sdkgo.FailureRateLimit, describeStatus("Zoom's rate limit resets later than one minute, as its daily limits do", response.statusCode, errorCode)),
-			}
-		}
 		return statusClassification{
 			outcome: statusOutcomeRetry, retryAfter: delay, errorCode: errorCode,
 			failure: newFailure(operation, sdkgo.FailureRateLimit, describeStatus("Zoom rate limited the request", response.statusCode, errorCode)),
+		}
+	case response.statusCode == http.StatusConflict:
+		return statusClassification{
+			outcome: statusOutcomeRetry, errorCode: errorCode,
+			failure: newFailure(operation, sdkgo.FailureConflict, describeStatus("Zoom reported a conflict", response.statusCode, errorCode)),
 		}
 	case response.statusCode == http.StatusRequestTimeout || response.statusCode >= http.StatusInternalServerError:
 		return statusClassification{

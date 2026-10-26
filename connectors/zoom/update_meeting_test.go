@@ -88,7 +88,6 @@ func TestUpdateMeetingClassifiesMissingMeetingsAndDailyLimits(t *testing.T) {
 		branch     sdkgo.BranchID
 	}{
 		{name: "deleted meeting", status: http.StatusNotFound, body: `{"code":3001,"message":"SENTINEL"}`, branch: zoom.UpdateMeetingBranchNotFound},
-		{name: "daily update limit", status: http.StatusTooManyRequests, retryAfter: "7200", body: `{"code":429}`, branch: zoom.UpdateMeetingBranchProviderRejected},
 		{name: "invalid schedule", status: http.StatusBadRequest, body: `{"code":300,"message":"SENTINEL"}`, branch: zoom.UpdateMeetingBranchProviderRejected},
 		{name: "redirect", status: http.StatusTemporaryRedirect, body: `{}`, branch: zoom.UpdateMeetingBranchProviderRejected},
 	} {
@@ -106,4 +105,26 @@ func TestUpdateMeetingClassifiesMissingMeetingsAndDailyLimits(t *testing.T) {
 			require.NotContains(t, result.Failure.Message, "SENTINEL")
 		})
 	}
+}
+
+func TestUpdateMeetingRetriesDailyRateLimit(t *testing.T) {
+	provider := newRecordingProvider(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		response.Header().Set("Retry-After", "7200")
+		writeJSON(t, response, http.StatusTooManyRequests, `{"code":429}`)
+	})
+	_, err := sdkgo.RunMutation(newZoomDexContext("daily-update-limit"), newZoomClient(t, provider.URL).UpdateMeeting(), zoomConnection, zoom.UpdateMeetingInput{MeetingID: 85746065, Topic: "Renamed"})
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	require.Equal(t, sdkgo.FailureRateLimit, retry.Failure.Kind)
+}
+
+func TestUpdateMeetingRetriesConflictWithTheSameAbsoluteValues(t *testing.T) {
+	provider := newRecordingProvider(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusConflict, `{"code":409}`)
+	})
+	_, err := sdkgo.RunMutation(newZoomDexContext("conflicted-update"), newZoomClient(t, provider.URL).UpdateMeeting(), zoomConnection, zoom.UpdateMeetingInput{MeetingID: 85746065, Topic: "Renamed"})
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	require.Equal(t, sdkgo.FailureConflict, retry.Failure.Kind)
+	require.Equal(t, 1, provider.requestCount())
 }

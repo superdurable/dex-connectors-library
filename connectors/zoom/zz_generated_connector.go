@@ -417,7 +417,7 @@ var CreateMeetingDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createMeeting"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateMeetingBranchCreated, Description: "Zoom created the meeting and returned its ID and join URL."},
-		{ID: CreateMeetingBranchProviderRejected, Description: "Zoom conclusively rejected the meeting, such as a user who cannot host or an exhausted daily create limit; nothing was created.", Optional: true},
+		{ID: CreateMeetingBranchProviderRejected, Description: "Zoom conclusively rejected the meeting, such as a user who cannot host; nothing was created.", Optional: true},
 		{ID: CreateMeetingBranchUncertain, Description: "The request was dispatched but its outcome cannot be confirmed; the meeting may exist and must not be created again automatically.", Optional: true},
 		{ID: CreateMeetingBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},

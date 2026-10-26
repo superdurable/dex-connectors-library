@@ -106,16 +106,15 @@ func TestFailuresKeepOnlyZoomsNumericErrorCode(t *testing.T) {
 	require.NotContains(t, string(encoded), testAccessToken)
 }
 
-func TestThrottlesRetryAfterZoomsDelayAndDailyLimitsAreRejected(t *testing.T) {
+func TestThrottlesRetryAfterZoomsDelayIncludingDailyLimits(t *testing.T) {
 	for _, test := range []struct {
 		name       string
 		retryAfter string
-		isRetried  bool
 		delay      time.Duration
 	}{
-		{name: "per-second limit", retryAfter: "2", isRetried: true, delay: 2 * time.Second},
-		{name: "no Retry-After", isRetried: true},
-		{name: "daily limit", retryAfter: "3600", isRetried: false},
+		{name: "per-second limit", retryAfter: "2", delay: 2 * time.Second},
+		{name: "no Retry-After"},
+		{name: "daily limit", retryAfter: "3600", delay: time.Hour},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			provider := newRecordingProvider(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
@@ -125,13 +124,7 @@ func TestThrottlesRetryAfterZoomsDelayAndDailyLimitsAreRejected(t *testing.T) {
 				writeJSON(t, response, http.StatusTooManyRequests, `{"code":429,"message":"SENTINEL limit"}`)
 			})
 			client := newZoomClient(t, provider.URL)
-			result, err := sdkgo.RunQuery(newZoomDexContext("throttle"), client.GetMeeting(), zoomConnection, zoom.GetMeetingInput{MeetingID: 85746065})
-			if !test.isRetried {
-				require.NoError(t, err)
-				require.Equal(t, zoom.GetMeetingBranchProviderRejected, result.Branch)
-				require.Equal(t, sdkgo.FailureRateLimit, result.Failure.Kind)
-				return
-			}
+			_, err := sdkgo.RunQuery(newZoomDexContext("throttle"), client.GetMeeting(), zoomConnection, zoom.GetMeetingInput{MeetingID: 85746065})
 			var retry *sdkgo.RetryError
 			require.ErrorAs(t, err, &retry)
 			require.Equal(t, sdkgo.FailureRateLimit, retry.Failure.Kind)
