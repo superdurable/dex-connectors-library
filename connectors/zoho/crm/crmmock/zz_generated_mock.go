@@ -317,7 +317,7 @@ func UpsertRecordInvalidContactFields() connectormock.Case[crm.UpsertRecordOutpu
 
 // UpsertRecordAccessDenied is the manifest mock accessDenied: upsertRecord with a token missing the module scope returns HTTP 403.
 func UpsertRecordAccessDenied() connectormock.Case[crm.UpsertRecordOutput] {
-	value := connectormock.MustDecodeOutput[crm.UpsertRecordOutput](`{"module":"Contacts","providerErrors":[{"code":"NO_PERMISSION"}]}`)
+	value := connectormock.MustDecodeOutput[crm.UpsertRecordOutput](`{"module":"Contacts","providerErrors":[{"code":"OAUTH_SCOPE_MISMATCH"}]}`)
 	return connectormock.Branch(crm.UpsertRecordBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthorization, Message: "Zoho CRM denied the module operation."})
 }
 
@@ -378,21 +378,21 @@ func UpdateRecordMissingRecord() connectormock.Case[crm.UpdateRecordOutput] {
 	return connectormock.Branch(crm.UpdateRecordBranchNotFound, value, &sdkgo.Failure{Kind: sdkgo.FailureNotFound, Message: "Zoho CRM found no record with the ID."})
 }
 
-// UpdateRecordUpdateDuplicateField is the manifest mock updateDuplicateField: Updating a deal with a unique value held by another record returns DUPLICATE_DATA.
-func UpdateRecordUpdateDuplicateField() connectormock.Case[crm.UpdateRecordOutput] {
+// UpdateRecordDuplicateField is the manifest mock duplicateField: Updating a deal with a unique value held by another record returns DUPLICATE_DATA.
+func UpdateRecordDuplicateField() connectormock.Case[crm.UpdateRecordOutput] {
 	value := connectormock.MustDecodeOutput[crm.UpdateRecordOutput](`{"module":"Deals","providerErrors":[{"code":"DUPLICATE_DATA","field":"External_Deal_ID","duplicateRecordId":"4150868000000376099"}]}`)
 	return connectormock.Branch(crm.UpdateRecordBranchConflict, value, &sdkgo.Failure{Kind: sdkgo.FailureConflict, Message: "Zoho CRM found another record with a value of a unique field."})
 }
 
-// UpdateRecordUpdateInvalidFields is the manifest mock updateInvalidFields: Updating a deal to a blocked stage returns INVALID_DATA.
-func UpdateRecordUpdateInvalidFields() connectormock.Case[crm.UpdateRecordOutput] {
+// UpdateRecordInvalidFields is the manifest mock invalidFields: Updating a deal to a blocked stage returns INVALID_DATA.
+func UpdateRecordInvalidFields() connectormock.Case[crm.UpdateRecordOutput] {
 	value := connectormock.MustDecodeOutput[crm.UpdateRecordOutput](`{"module":"Deals","providerErrors":[{"code":"INVALID_DATA","field":"Stage"}]}`)
 	return connectormock.Branch(crm.UpdateRecordBranchRecordRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureValidation, Message: "Zoho CRM rejected the deal fields."})
 }
 
 // UpdateRecordAccessDenied is the manifest mock accessDenied: updateRecord with a token missing the module scope returns HTTP 403.
 func UpdateRecordAccessDenied() connectormock.Case[crm.UpdateRecordOutput] {
-	value := connectormock.MustDecodeOutput[crm.UpdateRecordOutput](`{"module":"Deals","providerErrors":[{"code":"NO_PERMISSION"}]}`)
+	value := connectormock.MustDecodeOutput[crm.UpdateRecordOutput](`{"module":"Deals","providerErrors":[{"code":"OAUTH_SCOPE_MISMATCH"}]}`)
 	return connectormock.Branch(crm.UpdateRecordBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthorization, Message: "Zoho CRM denied the module operation."})
 }
 

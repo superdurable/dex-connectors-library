@@ -53,7 +53,7 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			return err
 		}},
 		{name: "upsertRecord/accessDenied/1", decode: func() error {
-			_, err := connectormock.DecodeOutput[crm.UpsertRecordOutput](`{"module":"Contacts","providerErrors":[{"code":"NO_PERMISSION"}]}`)
+			_, err := connectormock.DecodeOutput[crm.UpsertRecordOutput](`{"module":"Contacts","providerErrors":[{"code":"OAUTH_SCOPE_MISMATCH"}]}`)
 			return err
 		}},
 		{name: "updateRecord/advancedRenewalDeal/1", decode: func() error {
@@ -64,16 +64,16 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[crm.UpdateRecordOutput](`{"module":"Deals","providerErrors":[{"code":"INVALID_DATA","field":"id"}]}`)
 			return err
 		}},
-		{name: "updateRecord/updateDuplicateField/1", decode: func() error {
+		{name: "updateRecord/duplicateField/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[crm.UpdateRecordOutput](`{"module":"Deals","providerErrors":[{"code":"DUPLICATE_DATA","field":"External_Deal_ID","duplicateRecordId":"4150868000000376099"}]}`)
 			return err
 		}},
-		{name: "updateRecord/updateInvalidFields/1", decode: func() error {
+		{name: "updateRecord/invalidFields/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[crm.UpdateRecordOutput](`{"module":"Deals","providerErrors":[{"code":"INVALID_DATA","field":"Stage"}]}`)
 			return err
 		}},
 		{name: "updateRecord/accessDenied/1", decode: func() error {
-			_, err := connectormock.DecodeOutput[crm.UpdateRecordOutput](`{"module":"Deals","providerErrors":[{"code":"NO_PERMISSION"}]}`)
+			_, err := connectormock.DecodeOutput[crm.UpdateRecordOutput](`{"module":"Deals","providerErrors":[{"code":"OAUTH_SCOPE_MISMATCH"}]}`)
 			return err
 		}},
 		{name: "listModuleFields/dealFields/1", decode: func() error {

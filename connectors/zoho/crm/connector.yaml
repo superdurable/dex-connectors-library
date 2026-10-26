@@ -369,7 +369,7 @@ spec:
         - name: accessDenied
           branch: providerRejected
           description: "upsertRecord with a token missing the module scope returns HTTP 403."
-          output: {module: Contacts, providerErrors: [{code: NO_PERMISSION}]}
+          output: {module: Contacts, providerErrors: [{code: OAUTH_SCOPE_MISMATCH}]}
           failure: {kind: AUTHORIZATION, message: Zoho CRM denied the module operation.}
     - name: updateRecord
       goName: UpdateRecord
@@ -401,12 +401,12 @@ spec:
           description: "Updating missing Deal 4150868000000999999 returns INVALID_DATA for its ID."
           output: {module: Deals, providerErrors: [{code: INVALID_DATA, field: id}]}
           failure: {kind: NOT_FOUND, message: Zoho CRM found no record with the ID.}
-        - name: updateDuplicateField
+        - name: duplicateField
           branch: conflict
           description: "Updating a deal with a unique value held by another record returns DUPLICATE_DATA."
           output: {module: Deals, providerErrors: [{code: DUPLICATE_DATA, field: External_Deal_ID, duplicateRecordId: "4150868000000376099"}]}
           failure: {kind: CONFLICT, message: Zoho CRM found another record with a value of a unique field.}
-        - name: updateInvalidFields
+        - name: invalidFields
           branch: recordRejected
           description: "Updating a deal to a blocked stage returns INVALID_DATA."
           output: {module: Deals, providerErrors: [{code: INVALID_DATA, field: Stage}]}
@@ -414,7 +414,7 @@ spec:
         - name: accessDenied
           branch: providerRejected
           description: "updateRecord with a token missing the module scope returns HTTP 403."
-          output: {module: Deals, providerErrors: [{code: NO_PERMISSION}]}
+          output: {module: Deals, providerErrors: [{code: OAUTH_SCOPE_MISMATCH}]}
           failure: {kind: AUTHORIZATION, message: Zoho CRM denied the module operation.}
     - name: listModuleFields
       goName: ListModuleFields
