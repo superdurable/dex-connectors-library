@@ -5,7 +5,7 @@ metadata:
   displayName: Slack
   description: Start and update Dex Flows from Slack threads and exchange thread messages.
   company: Slack
-  version: v1.1.0
+  version: v1.1.1
 spec:
   provider: slack
   codegen:
@@ -172,10 +172,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Slack conclusively rejected the thread query., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Slack returned an invalid or oversized thread response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &slackQueryExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
       pagination: {inputField: cursor, nextField: nextCursor}
       mocks:
         - name: approvalThread
@@ -218,7 +217,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Slack conclusively rejected the reply query., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Slack returned an invalid or oversized reply response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *slackQueryExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
       mocks:
         - name: approvalReply
           branch: found
@@ -254,10 +255,10 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Slack conclusively rejected the message., optional: true}
         - {id: uncertain, goName: Uncertain, description: The dispatched message outcome cannot be confirmed., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &slackMutationExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A replayed channel POST could publish another message because client_msg_id replay is unverified and there is no read-back by Call ID."}}
       mocks:
         - name: messageSent
           branch: sent
@@ -284,7 +285,10 @@ spec:
       description: Post one reply to an existing Slack channel thread.
       idempotency: required
       branches: *postBranches
-      execution: *slackMutationExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A replayed reply POST could publish another message because client_msg_id replay is unverified and there is no read-back by Call ID."}}
       mocks:
         - name: replySent
           branch: sent

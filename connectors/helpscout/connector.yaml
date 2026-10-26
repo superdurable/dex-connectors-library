@@ -5,7 +5,7 @@ metadata:
   displayName: Help Scout
   description: "Search, read, reply to, and update Help Scout Inbox conversations, find customers by email, and receive signed conversation webhooks, keeping Help Scout's own active, pending, closed, and spam statuses."
   company: Help Scout
-  version: v0.22.0
+  version: v0.22.1
 spec:
   provider: helpscout
   codegen:
@@ -106,10 +106,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Help Scout conclusively rejected the search, such as an invalid token, a filter it does not accept, or an account without API access.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "Help Scout returned a malformed or oversized page.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &helpScoutReadExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
     - name: getConversation
       goName: GetConversation
       inputType: GetConversationInput
@@ -124,7 +123,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Help Scout conclusively rejected the read, such as an invalid token or an account without API access.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "Help Scout returned a malformed or oversized conversation or thread page.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *helpScoutReadExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: replyToConversation
       goName: ReplyToConversation
       inputType: ReplyToConversationInput
@@ -141,7 +142,7 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "A lost dispatch checkpoint could send another reply because Help Scout has no provider key or thread read-back by Call ID."}}
     - name: updateConversation
       goName: UpdateConversation
       inputType: UpdateConversationInput
@@ -155,7 +156,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Help Scout conclusively rejected the change, such as an assignee who is not a user or team of the account.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "Help Scout returned a malformed or oversized conversation, so part of the change may have been applied.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *helpScoutReadExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: findCustomerByEmail
       goName: FindCustomerByEmail
       inputType: FindCustomerByEmailInput
@@ -169,4 +172,6 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Help Scout conclusively rejected the lookup, such as an invalid token or an account without API access.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "Help Scout returned a malformed or oversized customer page.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *helpScoutReadExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async

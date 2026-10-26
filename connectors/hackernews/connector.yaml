@@ -5,7 +5,7 @@ metadata:
   displayName: Hacker News Daily
   description: Read public Hacker News feeds, stories, and discussions for a daily developer digest with direct source links.
   company: Hacker News
-  version: v0.21.1
+  version: v0.21.2
 spec:
   provider: hacker-news
   codegen:
@@ -46,10 +46,10 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Hacker News rejected the request., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Hacker News returned malformed or oversized data., optional: true}
         - {id: defect, goName: Defect, description: Local input or connection configuration is invalid., optional: true}
-      execution: &queryExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 65m}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 0, totalDuration: 65m}
     - name: getItem
       goName: GetItem
       inputType: GetItemInput
@@ -64,4 +64,7 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Hacker News rejected the request., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Hacker News returned malformed or oversized data., optional: true}
         - {id: defect, goName: Defect, description: Local input or connection configuration is invalid., optional: true}
-      execution: *queryExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 0, totalDuration: 65m}

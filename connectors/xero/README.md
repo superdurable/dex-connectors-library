@@ -19,8 +19,7 @@ operation-specific Dex Step factories:
 
 Only the happy-path branch of each operation is required; every other branch
 is optional, and an unwired optional branch fails the Flow. Every operation
-uses async Execute durability and a 30-second Execute timeout. Reads retry
-for up to five minutes; the two writes retry for up to four minutes, which
+uses async Execute durability and a 30-second Execute timeout. Reads use the one-hour default retry budget; the two writes retry for up to four minutes, which
 keeps every attempt inside Xero's six-minute Idempotency-Key lifetime.
 
 This release has no Triggers and no Studio pickers; see

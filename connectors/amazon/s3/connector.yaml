@@ -5,7 +5,7 @@ metadata:
   displayName: Amazon S3
   description: List, inspect, and read bounded text from objects in Amazon S3 or an S3-compatible store such as Cloudflare R2 or MinIO, and store objects with retry-safe overwrite or create-only writes.
   company: Amazon
-  version: v0.21.1
+  version: v0.21.2
 spec:
   provider: amazon-s3
   codegen:
@@ -103,10 +103,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "The store conclusively rejected the list, such as a missing bucket, a wrong Region, invalid credentials, or missing s3:ListBucket permission.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: The store returned an invalid or oversized list page., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &s3Execution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
     - name: headObject
       goName: HeadObject
       inputType: HeadObjectInput
@@ -121,7 +120,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "The store conclusively rejected the read, such as a wrong Region, invalid credentials, or missing s3:GetObject permission.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: The store returned metadata without a valid size or modification time., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *s3Execution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: getObjectText
       goName: GetObjectText
       inputType: GetObjectTextInput
@@ -138,7 +139,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "The store conclusively rejected the read, such as a missing bucket, a wrong Region, invalid credentials, or missing s3:GetObject permission.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: The store returned a response without a valid size or with content that contains the connection's credentials., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *s3Execution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: putObject
       goName: PutObject
       inputType: PutObjectInput
@@ -152,4 +155,6 @@ spec:
         - {id: alreadyExists, goName: AlreadyExists, description: "Create-only mode found an object at the key that this Step execution did not write; nothing was written.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "The store conclusively rejected the write, such as a missing bucket, a wrong Region, invalid credentials, missing s3:PutObject permission, or a store that does not support create-only writes.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *s3Execution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async

@@ -36,10 +36,7 @@ func TestListPlaylistTracksFactoryAppliesManifestDefaults(t *testing.T) {
 	options := step.GetStepOptions()
 	require.Equal(t, dex.StepDurabilityAsync, options.ExecuteDurability)
 	require.Equal(t, 30*time.Second, options.ExecuteMethodTimeout)
-	require.Equal(t, &dex.RetryPolicy{
-		InitialInterval: time.Second, BackoffCoefficient: 2, MaximumInterval: 30 * time.Second,
-		MaximumAttempts: 5, TotalDuration: 2 * time.Minute,
-	}, options.ExecuteRetry)
+	require.Equal(t, &dex.RetryPolicy{InitialInterval: time.Second, BackoffCoefficient: 2, MaximumInterval: 5 * time.Minute, MaximumAttempts: 0, TotalDuration: time.Hour}, options.ExecuteRetry)
 }
 
 func TestListPlaylistTracksFactoryFailsClosed(t *testing.T) {

@@ -5,7 +5,7 @@ metadata:
   displayName: HubSpot
   description: Search, read, upsert, and update HubSpot CRM contacts, companies, and deals.
   company: HubSpot
-  version: v0.23.0
+  version: v0.23.1
 spec:
   provider: hubspot
   codegen:
@@ -148,10 +148,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "HubSpot conclusively rejected the search, such as an unknown property, a missing scope, a rejected token, or an exhausted daily limit.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: HubSpot returned an invalid or oversized search response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &hubspotExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
       pagination: {inputField: after, nextField: nextAfter}
       mocks:
         - name: recentOpenDeals
@@ -190,7 +189,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "HubSpot conclusively rejected the read, such as an unknown property, a missing scope, a rejected token, or an exhausted daily limit.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: HubSpot returned an invalid or oversized record response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *hubspotExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
       mocks:
         - name: qualifiedDeal
           branch: found
@@ -218,7 +219,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "HubSpot conclusively rejected the upsert, such as an invalid property value, a property that is not unique, a missing scope, a rejected token, or an exhausted daily limit.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: HubSpot applied or rejected the upsert but returned an invalid or oversized response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *hubspotExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
       mocks:
         - name: upsertedLead
           branch: upserted
@@ -249,7 +252,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "HubSpot conclusively rejected the update, such as an invalid property value, a missing scope, a rejected token, or an exhausted daily limit.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: HubSpot applied or rejected the update but returned an invalid or oversized response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *hubspotExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
       mocks:
         - name: advancedDeal
           branch: updated

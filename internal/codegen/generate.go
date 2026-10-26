@@ -235,7 +235,11 @@ func Generate(manifest schema.Manifest) ([]byte, error) {
 		}
 		generation.mustWrite("\tStepDefaults: sdkgo.StepDefaults{\n")
 		generation.mustWrite("\t\tExecuteMethodTimeout: time.Duration(%d), HeartbeatTimeout: time.Duration(%d),\n", durations.executeMethodTimeout, durations.heartbeatTimeout)
-		generation.mustWrite("\t\tExecuteRetry: &dex.RetryPolicy{InitialInterval: time.Duration(%d), BackoffCoefficient: %s, MaximumInterval: time.Duration(%d), MaximumAttempts: %d, TotalDuration: time.Duration(%d)},\n", durations.retryInitialInterval, strconv.FormatFloat(operation.Execution.Retry.BackoffCoefficient, 'f', -1, 64), durations.retryMaximumInterval, operation.Execution.Retry.MaximumAttempts, durations.retryTotalDuration)
+		if operation.Execution.Retry == nil {
+			generation.mustWrite("\t\tExecuteRetry: &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},\n")
+		} else {
+			generation.mustWrite("\t\tExecuteRetry: &dex.RetryPolicy{InitialInterval: time.Duration(%d), BackoffCoefficient: %s, MaximumInterval: time.Duration(%d), MaximumAttempts: %d, TotalDuration: time.Duration(%d)},\n", durations.retryInitialInterval, strconv.FormatFloat(operation.Execution.Retry.BackoffCoefficient, 'f', -1, 64), durations.retryMaximumInterval, operation.Execution.Retry.MaximumAttempts, durations.retryTotalDuration)
+		}
 		generation.mustWrite("\t\tExecuteDurability: %s,\n\t},\n", durability)
 		generation.mustWrite("}\n\n")
 		writeOperationFactory(generation, manifest, operation)
@@ -305,14 +309,16 @@ func parseOperationDurations(operation schema.Operation) (operationDurations, er
 	if values.heartbeatTimeout, err = parse("heartbeat timeout", operation.Execution.HeartbeatTimeout, true); err != nil {
 		return operationDurations{}, err
 	}
-	if values.retryInitialInterval, err = parse("retry initial interval", operation.Execution.Retry.InitialInterval, false); err != nil {
-		return operationDurations{}, err
-	}
-	if values.retryMaximumInterval, err = parse("retry maximum interval", operation.Execution.Retry.MaximumInterval, false); err != nil {
-		return operationDurations{}, err
-	}
-	if values.retryTotalDuration, err = parse("retry total duration", operation.Execution.Retry.TotalDuration, false); err != nil {
-		return operationDurations{}, err
+	if retry := operation.Execution.Retry; retry != nil {
+		if values.retryInitialInterval, err = parse("retry initial interval", retry.InitialInterval, false); err != nil {
+			return operationDurations{}, err
+		}
+		if values.retryMaximumInterval, err = parse("retry maximum interval", retry.MaximumInterval, false); err != nil {
+			return operationDurations{}, err
+		}
+		if values.retryTotalDuration, err = parse("retry total duration", retry.TotalDuration, false); err != nil {
+			return operationDurations{}, err
+		}
 	}
 	return values, nil
 }

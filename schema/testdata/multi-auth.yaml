@@ -61,4 +61,4 @@ spec:
       branches:
         - {id: found, goName: Found, description: The thing was found.}
         - {id: defect, goName: Defect, description: The request was invalid., optional: true}
-      execution: {executeMethodTimeout: 30s, durability: async, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}}
+      execution: {executeMethodTimeout: 30s, durability: async, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: Explicit test policy bounds duplicate writes.}}}

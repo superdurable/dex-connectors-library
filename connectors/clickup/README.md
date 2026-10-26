@@ -145,8 +145,7 @@ never returned.
 
 ClickUp's rate limit is per token and per minute (100 requests on Free,
 Unlimited, and Business plans; 1,000 on Business Plus; 10,000 on Enterprise), so
-the retry policy allows six attempts in five minutes with up to a minute
-between them.
+reads and repeatable updates use the one-hour default retry budget; `createTask` and `addComment` keep five attempts within five minutes.
 
 ### searchTasks
 

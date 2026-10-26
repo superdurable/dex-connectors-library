@@ -29,7 +29,7 @@ spec:
         - {id: found, goName: Found, description: The widget was read.}
         - {id: notFound, goName: NotFound, description: The widget does not exist., optional: true}
         - {id: defect, goName: Defect, description: The input is invalid., optional: true}
-      execution: {executeMethodTimeout: 30s, durability: async, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}}
+      execution: {executeMethodTimeout: 30s, durability: async, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: Explicit test policy bounds duplicate writes.}}}
       mocks:
         - name: gear
           branch: found
@@ -57,7 +57,7 @@ spec:
       branches:
         - {id: listed, goName: Listed, description: One page was listed.}
         - {id: defect, goName: Defect, description: The input is invalid., optional: true}
-      execution: {executeMethodTimeout: 30s, durability: async, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}}
+      execution: {executeMethodTimeout: 30s, durability: async, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: Explicit test policy bounds duplicate writes.}}}
       pagination: {inputField: page, nextField: nextPage}
       mocks:
         - name: threePages
@@ -83,7 +83,7 @@ spec:
         - {id: created, goName: Created, description: The widget was created.}
         - {id: uncertain, goName: Uncertain, description: The create outcome is unknown., optional: true}
         - {id: defect, goName: Defect, description: The input is invalid., optional: true}
-      execution: {executeMethodTimeout: 30s, durability: async, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}}
+      execution: {executeMethodTimeout: 30s, durability: async, retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: Explicit test policy bounds duplicate writes.}}}
       mocks:
         - name: createdGear
           branch: created

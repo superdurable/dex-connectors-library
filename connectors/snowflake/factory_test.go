@@ -52,8 +52,7 @@ func TestDefinitionsDeclareOneHappyPathAndAsyncDefaults(t *testing.T) {
 	} {
 		require.Equal(t, dex.StepDurabilityAsync, defaults.ExecuteDurability, "no call waits for the statement, so each returns well inside seven seconds")
 		require.Equal(t, 30*time.Second, defaults.ExecuteMethodTimeout)
-		require.Equal(t, int32(5), defaults.ExecuteRetry.MaximumAttempts)
-		require.Equal(t, 2*time.Minute, defaults.ExecuteRetry.TotalDuration)
+		require.Equal(t, &dex.RetryPolicy{InitialInterval: time.Second, BackoffCoefficient: 2, MaximumInterval: 5 * time.Minute, MaximumAttempts: 0, TotalDuration: time.Hour}, defaults.ExecuteRetry)
 	}
 }
 

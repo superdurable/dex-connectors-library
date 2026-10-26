@@ -5,7 +5,7 @@ metadata:
   displayName: BambooHR
   description: Read BambooHR employee records, find an employee by email, poll employee changes, list time off requests, update employee fields, and add employees, keeping BambooHR's own field names and status values.
   company: BambooHR
-  version: v0.21.1
+  version: v0.21.2
 spec:
   provider: bamboohr
   codegen:
@@ -55,10 +55,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "BambooHR conclusively rejected the read, such as invalid credentials or a user who cannot view this employee.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: BambooHR returned an invalid or oversized employee record., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &bamboohrReadExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
     - name: findEmployeeByEmail
       goName: FindEmployeeByEmail
       inputType: FindEmployeeByEmailInput
@@ -73,7 +72,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "BambooHR conclusively rejected the search, such as invalid credentials or an unsupported field.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: BambooHR returned an invalid or oversized employee list., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *bamboohrReadExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: listEmployeeChanges
       goName: ListEmployeeChanges
       inputType: ListEmployeeChangesInput
@@ -86,7 +87,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "BambooHR conclusively rejected the request, such as invalid credentials.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: BambooHR returned an invalid or oversized change list., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *bamboohrReadExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: listTimeOffRequests
       goName: ListTimeOffRequests
       inputType: ListTimeOffRequestsInput
@@ -99,7 +102,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "BambooHR conclusively rejected the request, such as invalid credentials or an invalid filter.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: BambooHR returned an invalid or oversized time off page., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *bamboohrReadExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: updateEmployee
       goName: UpdateEmployee
       inputType: UpdateEmployeeInput
@@ -113,7 +118,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "BambooHR conclusively rejected the change, such as a duplicate email, an invalid list value, or a field the connection cannot edit.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "BambooHR returned an invalid or oversized employee record, so the change may have been applied.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *bamboohrReadExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: addEmployee
       goName: AddEmployee
       inputType: AddEmployeeInput
@@ -129,4 +136,4 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "A lost dispatch checkpoint could create another employee because BambooHR has no idempotency key or employee lookup by Call ID."}}

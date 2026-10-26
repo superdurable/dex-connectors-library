@@ -5,7 +5,7 @@ metadata:
   displayName: Google Sheets
   description: Read ranges, find stable keyed rows, and idempotently upsert rows in Google Sheets.
   company: Google
-  version: v0.23.0
+  version: v0.23.1
 spec:
   provider: google
   codegen:
@@ -140,10 +140,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Google conclusively rejected the range read., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized range response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &googleExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
       mocks:
         - name: contactsRange
           branch: read
@@ -178,7 +177,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Google conclusively rejected the row query., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized row response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *googleExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
       mocks:
         - name: contactFound
           branch: found
@@ -214,7 +215,10 @@ spec:
         - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized pre-write response., optional: true}
         - {id: uncertain, goName: Uncertain, description: The dispatched write outcome cannot be confirmed., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *googleExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A retry can append again when the preceding append is not yet visible to the key lookup, so bound upsertRow retries."}}
       mocks:
         - name: contactUpserted
           branch: upserted

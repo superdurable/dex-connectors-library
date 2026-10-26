@@ -20,9 +20,10 @@ factories:
 
 Only the happy-path branch of each operation is required; every other branch
 is optional, and an unwired optional branch fails the Flow. Every operation
-uses async Execute durability, a 30-second Execute timeout, and a
-five-minute retry window, which fits QuickBooks's documented one-minute wait
-after a throttled request.
+uses async Execute durability and a 30-second Execute timeout. Reads and
+`createCustomer` use the one-hour default retry budget. `createInvoice`,
+`sendInvoice`, and `recordPayment` use six attempts within five minutes because
+QuickBooks does not document `requestid` retention or whether `/send` honors it.
 
 This release has no Triggers and no Studio pickers; see
 [Not in this release](#not-in-this-release).
@@ -253,12 +254,12 @@ attempt of one Step execution, including Dex's async backup dispatch and a
 replay on a new Worker, sends the same request:
 
 - a lost response, a timeout, HTTP 429, 408, or 5xx, or a `SystemFault` is
-  retried with the identical request, and QuickBooks replays the first
-  answer;
+  retried with the identical request. QuickBooks may replay the first answer
+  while it retains the ID; retention and `/send` replay remain unverified;
 - error 600, Duplicate Request ID, is also retried. QuickBooks does not say
   when it sends 600 rather than the replay; the connector treats it as a
-  repeat that arrived while the first request still ran, which a later
-  attempt receives as the replay;
+  repeat that arrived while the first request still ran, then retries under
+  the same ID;
 - an accepted 2xx that cannot be decoded, or that names another customer,
   invoice, or invoice application, selects `uncertain`. Read back with
   `listInvoices` by document number, `findCustomer`, or `getInvoice` before

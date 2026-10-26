@@ -5,7 +5,7 @@ metadata:
   displayName: Salesforce
   description: Query Salesforce CRM records with typed SOQL bind values, read one record, create or update a record by external ID without duplicates on retry, and update a record by ID.
   company: Salesforce
-  version: v0.22.0
+  version: v0.22.1
 spec:
   provider: salesforce
   codegen:
@@ -237,10 +237,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Salesforce conclusively refused the request, such as a revoked session or a user without API or object access.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Salesforce returned an invalid or oversized query page., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &salesforceExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
     - name: getRecord
       goName: GetRecord
       inputType: GetRecordInput
@@ -254,7 +253,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Salesforce conclusively refused the read, such as an unknown field name or a user without object or field access.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Salesforce returned an invalid or oversized record., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *salesforceExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: upsertRecordByExternalId
       goName: UpsertRecordByExternalID
       inputType: UpsertRecordByExternalIDInput
@@ -268,7 +269,9 @@ spec:
         - {id: recordRejected, goName: RecordRejected, description: "Salesforce rejected the record values, such as REQUIRED_FIELD_MISSING, INVALID_FIELD, FIELD_CUSTOM_VALIDATION_EXCEPTION, or DUPLICATES_DETECTED.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Salesforce conclusively refused the request, such as a revoked session, an unknown sObject or external ID field, or a user without create or edit access.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *salesforceExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: updateRecord
       goName: UpdateRecord
       inputType: UpdateRecordInput
@@ -282,4 +285,6 @@ spec:
         - {id: recordRejected, goName: RecordRejected, description: "Salesforce rejected the field values, such as INVALID_FIELD, FIELD_CUSTOM_VALIDATION_EXCEPTION, DUPLICATE_VALUE, or ENTITY_IS_LOCKED.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Salesforce conclusively refused the request, such as a revoked session or a user without edit access.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *salesforceExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async

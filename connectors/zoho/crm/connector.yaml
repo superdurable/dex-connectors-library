@@ -5,7 +5,7 @@ metadata:
   displayName: Zoho CRM
   description: Find, read, upsert, and update Zoho CRM records such as contacts, accounts, and deals in the connection's Zoho data center, list records changed since a watermark, and read a module's fields and picklist values, keeping Zoho CRM's own field names and stages.
   company: Zoho
-  version: v0.22.0
+  version: v0.22.1
 spec:
   provider: zoho
   codegen:
@@ -250,10 +250,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Zoho CRM conclusively rejected the query, such as an unknown module or field, a value of the wrong type, a missing scope, or a revoked authorization.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Zoho CRM returned an invalid or oversized page of records., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &zohoCRMExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
     - name: getRecord
       goName: GetRecord
       inputType: GetRecordInput
@@ -268,7 +267,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Zoho CRM conclusively rejected the read, such as an unknown module or field, a missing scope, or a revoked authorization.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Zoho CRM returned an invalid or oversized record., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *zohoCRMExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: listModifiedRecords
       goName: ListModifiedRecords
       inputType: ListModifiedRecordsInput
@@ -282,7 +283,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Zoho CRM conclusively rejected the listing, such as an unknown module or field, a missing scope, or a revoked authorization.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "Zoho CRM returned an invalid or oversized page, such as a record without its modified time.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, cursor, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *zohoCRMExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: upsertRecord
       goName: UpsertRecord
       inputType: UpsertRecordInput
@@ -298,7 +301,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Zoho CRM conclusively refused the request, such as an unknown module, a user without create or edit permission, a missing scope, or a revoked authorization.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "Zoho CRM answered with an invalid or oversized response, so the record may have been written.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *zohoCRMExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: updateRecord
       goName: UpdateRecord
       inputType: UpdateRecordInput
@@ -315,7 +320,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Zoho CRM conclusively refused the request, such as an unknown module, a user without edit permission, a missing scope, or a revoked authorization.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "Zoho CRM answered with an invalid or oversized response, so the update may have been applied.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *zohoCRMExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: listModuleFields
       goName: ListModuleFields
       inputType: ListModuleFieldsInput
@@ -329,4 +336,6 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Zoho CRM conclusively rejected the request, such as an unknown module, a missing ZohoCRM.settings.fields.READ scope, or a revoked authorization.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Zoho CRM returned an invalid or oversized field list., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *zohoCRMExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async

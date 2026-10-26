@@ -63,9 +63,7 @@ supplies a transport.
 
 ## Execution contract
 
-Every operation uses async durability, a 30-second Execute timeout, and five
-attempts within two minutes, with exponential backoff from 1 second to 30
-seconds. Each attempt makes one HTTP request. Redirects are not followed.
+Every operation uses async durability and a 30-second Execute timeout. `createMessage` keeps five attempts within two minutes; the other operations use the one-hour default retry budget. Each attempt makes one HTTP request. Redirects are not followed.
 
 `createMessage` sends a 25-character `nonce` derived with SHA-256 from the
 Step's idempotency key, with `enforce_nonce: true`. Retries and Worker restarts

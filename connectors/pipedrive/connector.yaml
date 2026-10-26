@@ -5,7 +5,7 @@ metadata:
   displayName: Pipedrive
   description: Search, list, read, create, upsert, and update Pipedrive persons, organizations, and deals, with persons upserted by email and deal stages and owners passed through as Pipedrive IDs.
   company: Pipedrive
-  version: v0.22.0
+  version: v0.22.1
 spec:
   provider: pipedrive
   codegen:
@@ -196,10 +196,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Pipedrive conclusively rejected the search, such as a revoked token, a missing scope, an exhausted daily token budget, or an invalid term.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Pipedrive returned an invalid or oversized search page., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &pipedriveAsyncExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
     - name: getObject
       goName: GetObject
       inputType: GetObjectInput
@@ -214,7 +213,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Pipedrive conclusively rejected the read, such as a revoked token, a missing scope, or an exhausted daily token budget.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Pipedrive returned an invalid or oversized record., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *pipedriveAsyncExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: listObjects
       goName: ListObjects
       inputType: ListObjectsInput
@@ -228,7 +229,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Pipedrive conclusively rejected the list, such as a revoked token, a missing scope, an exhausted daily token budget, or an expired cursor.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Pipedrive returned an invalid or oversized page., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *pipedriveAsyncExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: upsertObject
       goName: UpsertObject
       inputType: UpsertObjectInput
@@ -244,10 +247,10 @@ spec:
         - {id: invalidResponse, goName: InvalidResponse, description: "Pipedrive returned an invalid or oversized search page or updated record.", optional: true}
         - {id: uncertain, goName: Uncertain, description: "An earlier attempt sent a create whose outcome was never confirmed, and a search by the identity value finds no record or this attempt's search or update failed without a retry, so the record may exist; the connector does not create it again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &pipedriveSingleDispatchExecution
+      execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "An earlier create can be repeated when identity search misses it; Pipedrive does not enforce that search identity as a create key."}}
     - name: createObject
       goName: CreateObject
       inputType: CreateObjectInput
@@ -261,7 +264,10 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Pipedrive conclusively rejected the create, such as a missing title or name, an unknown stage or owner, a revoked token, or an exhausted daily token budget; nothing was created.", optional: true}
         - {id: uncertain, goName: Uncertain, description: "The create was sent but its outcome cannot be confirmed, so the record may exist; the connector never sends it again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *pipedriveSingleDispatchExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A lost dispatch checkpoint could create another object because Pipedrive has no provider key or generic lookup by Call ID."}}
     - name: updateObject
       goName: UpdateObject
       inputType: UpdateObjectInput
@@ -276,4 +282,6 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Pipedrive conclusively rejected the update, such as an invalid field value, an unknown stage or owner, a revoked token, or an exhausted daily token budget.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "Pipedrive applied or rejected the update but returned an invalid or oversized record.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *pipedriveAsyncExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async

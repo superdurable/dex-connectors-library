@@ -187,8 +187,7 @@ optional branch fails the Flow.
 
 ## Retries, uncertainty, and idempotency
 
-Both operations return Retry, which Dex retries with the Step's policy of five
-attempts within two minutes, for:
+Both operations return Retry, which Dex retries with the Step's one-hour default retry budget, for:
 
 - connection refusal and connect timeouts;
 - `too_many_connections` and the rest of SQLSTATE class 53;

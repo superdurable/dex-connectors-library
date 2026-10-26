@@ -5,7 +5,7 @@ metadata:
   displayName: LLM
   description: "The text generation connector for applications: one generateText Step runs a model of the provider that the connection names, including an OpenAI-compatible custom endpoint, with that provider's API key and its own model IDs."
   company: Super Durable
-  version: v0.24.0
+  version: v0.24.1
 spec:
   provider: llm
   codegen:
@@ -223,7 +223,7 @@ spec:
         executeMethodTimeout: 1200s
         heartbeatTimeout: 60s
         durability: sync
-        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 4, totalDuration: 30m}
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 3, totalDuration: 1h, reason: {kind: billedOperation, explanation: "A provider may bill an unconfirmed text generation, and a retry can incur another charge without a shared deduplication key."}}
       mockChecks:
         requestFunction: ValidateGenerateTextRequest
         answer: {branch: generated, function: ValidateGenerateTextAnswer}

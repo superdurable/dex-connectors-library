@@ -5,7 +5,7 @@ metadata:
   displayName: NewsAPI
   description: Search recent news articles from the publishers NewsAPI indexes by keyword, title or body fields, sources, domains, language, and publication window.
   company: NewsAPI
-  version: v0.21.1
+  version: v0.21.2
 spec:
   provider: newsapi
   codegen:
@@ -61,4 +61,3 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 3, totalDuration: 2m}

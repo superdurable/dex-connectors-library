@@ -5,7 +5,7 @@ metadata:
   displayName: Zoho Desk
   description: Search, read, create, and update Zoho Desk tickets and add public or private comments in the connection's Zoho data center, keeping Zoho Desk's own status and priority names.
   company: Zoho
-  version: v0.22.0
+  version: v0.22.1
 spec:
   provider: zoho
   codegen:
@@ -343,10 +343,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Zoho Desk conclusively rejected the search, such as a revoked authorization, a missing scope, another organization, or an invalid filter value.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Zoho Desk returned an invalid or oversized search page., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &zohoDeskReadExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
     - name: getTicket
       goName: GetTicket
       inputType: GetTicketInput
@@ -361,7 +360,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Zoho Desk conclusively rejected the ticket read., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "Zoho Desk returned an invalid or oversized ticket, thread list, or comment list.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *zohoDeskReadExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: createTicket
       goName: CreateTicket
       inputType: CreateTicketInput
@@ -375,10 +376,10 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Zoho Desk conclusively rejected the ticket, such as an unknown department, status, or assignee; no ticket was created.", optional: true}
         - {id: uncertain, goName: Uncertain, description: "The request was sent but its outcome cannot be confirmed, so the ticket may exist; the connector never resends it.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &zohoDeskSingleDispatchExecution
+      execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "A lost dispatch checkpoint could create another ticket because Zoho Desk has no provider key or ticket lookup by Call ID."}}
     - name: updateTicket
       goName: UpdateTicket
       inputType: UpdateTicketInput
@@ -393,7 +394,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Zoho Desk conclusively rejected the change, such as an unknown status, an assignee outside the department, or a blueprint that forbids the transition.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "Zoho Desk returned an invalid or oversized ticket, so the change may have been applied.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *zohoDeskReadExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: addComment
       goName: AddComment
       inputType: AddCommentInput
@@ -408,4 +411,7 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Zoho Desk conclusively rejected the comment; nothing was added.", optional: true}
         - {id: uncertain, goName: Uncertain, description: "The request was sent but its outcome cannot be confirmed, so the comment may exist; the connector never resends it.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *zohoDeskSingleDispatchExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "A lost dispatch checkpoint could add another comment because Zoho Desk has no provider key or comment lookup by Call ID."}}

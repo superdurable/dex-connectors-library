@@ -19,7 +19,7 @@ connection.
 Install a published component release:
 
 ```bash
-go get github.com/superdurable/dex-connectors-library/connectors/openai@v0.22.1
+go get github.com/superdurable/dex-connectors-library/connectors/openai@v0.22.2
 ```
 
 ## Connection
@@ -226,7 +226,7 @@ copy OpenAI's `x-ratelimit-{limit,remaining,reset}-{requests,tokens}` headers.
 | Operation | Execute durability | Execute timeout | Retry |
 | --- | --- | --- | --- |
 | `createResponse` | `sync` | 150 seconds | 2-second initial interval, backoff 2, 30-second maximum interval, 3 attempts, 5 minutes total |
-| `retrieveResponse` | `async` | 30 seconds | 1-second initial interval, backoff 2, 30-second maximum interval, 5 attempts, 2 minutes total |
+| `retrieveResponse` | `async` | 30 seconds | 1-second initial interval, backoff 2, 5-minute maximum interval, unlimited attempts, 1 hour total |
 
 The `createResponse` Step must keep `sync` durability, and its Flow must record
 no heartbeats of its own in that Step. An async attempt that runs locally keeps

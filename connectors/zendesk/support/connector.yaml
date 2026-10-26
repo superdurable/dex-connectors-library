@@ -5,7 +5,7 @@ metadata:
   displayName: Zendesk Support
   description: Search, read, create, and update Zendesk Support tickets, with duplicate-safe ticket creation and follow-up comments.
   company: Zendesk
-  version: v0.21.1
+  version: v0.21.2
 spec:
   provider: zendesk
   codegen:
@@ -59,10 +59,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Zendesk conclusively rejected the search, such as invalid credentials, a missing permission, or an expired cursor.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Zendesk returned an invalid or oversized search page., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &zendeskExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
     - name: getTicket
       goName: GetTicket
       inputType: GetTicketInput
@@ -76,7 +75,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Zendesk conclusively rejected the ticket read., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Zendesk returned an invalid or oversized ticket or comment page., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *zendeskExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: createTicket
       goName: CreateTicket
       inputType: CreateTicketInput
@@ -89,7 +90,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Zendesk conclusively rejected the ticket, such as an invalid requester, group, or assignee; no ticket was created.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "Zendesk accepted the request but returned an invalid or oversized ticket, so the ticket may exist.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *zendeskExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: updateTicket
       goName: UpdateTicket
       inputType: UpdateTicketInput
@@ -104,4 +107,7 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Zendesk conclusively rejected the change, such as updating a closed ticket or assigning an unknown agent.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "Zendesk returned an invalid or oversized ticket or audit response, so the change may have been applied.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *zendeskExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "Comment reconciliation scans only the latest audit page, so a later retry could miss its own audit and post the comment again."}}

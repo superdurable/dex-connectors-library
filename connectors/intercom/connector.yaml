@@ -5,7 +5,7 @@ metadata:
   displayName: Intercom
   description: "Search, read, answer, close, reopen, and snooze Intercom conversations, find contacts by email, and receive signed conversation webhooks, with Intercom's own open, closed, and snoozed states."
   company: Intercom
-  version: v0.21.1
+  version: v0.21.2
 spec:
   provider: intercom
   codegen:
@@ -117,10 +117,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Intercom conclusively rejected the search, such as an invalid token, a missing permission, or an invalid cursor.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Intercom returned an invalid or oversized search page., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &intercomExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
     - name: getConversation
       goName: GetConversation
       inputType: GetConversationInput
@@ -134,7 +133,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Intercom conclusively rejected the conversation read., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Intercom returned an invalid or oversized conversation., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *intercomExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: replyToConversation
       goName: ReplyToConversation
       inputType: ReplyToConversationInput
@@ -152,7 +153,7 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "A lost dispatch checkpoint could add a second conversation part because Intercom has no reply key and the next attempt sends without read-back."}}
     - name: updateConversationState
       goName: UpdateConversationState
       inputType: UpdateConversationStateInput
@@ -166,7 +167,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Intercom conclusively rejected the change, such as an unknown admin, and the conversation is not in the requested state.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "Intercom returned an invalid or oversized conversation, so the change may have been applied.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *intercomExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: findContactByEmail
       goName: FindContactByEmail
       inputType: FindContactByEmailInput
@@ -180,4 +183,6 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Intercom conclusively rejected the contact search., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Intercom returned an invalid or oversized contact page., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *intercomExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async

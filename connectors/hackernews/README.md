@@ -40,7 +40,7 @@ application networking.
 Both operations are read-only queries. Each Execute attempt makes one HTTP
 request. They use async durability and a 30-second Execute timeout. HTTP 408,
 429, 5xx, transport failures, and interrupted response bodies retry. The default
-policy allows five attempts within 65 minutes, with exponential backoff from
+policy allows unlimited attempts within 65 minutes, with exponential backoff from
 1 second to 30 seconds. `Retry-After` can extend the delay up to one hour, within
 the remaining retry budget. Other non-200 responses select `providerRejected`.
 Redirects are not followed.

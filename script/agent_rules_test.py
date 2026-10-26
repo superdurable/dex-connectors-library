@@ -95,11 +95,12 @@ class AgentRulesTest(unittest.TestCase):
                 for fragment in required_fragments:
                     self.assertIn(fragment, contents)
 
-    def test_branch_and_uncertainty_bullets_are_identical_in_agent_mirrors(self) -> None:
+    def test_branch_uncertainty_and_retry_bullets_are_identical_in_agent_mirrors(self) -> None:
         openings = (
             "A connector manifest author marks every branch that is not a happy path",
             "Applications and examples wire only happy-path branches by default",
             "A connector selects a branch for a definite business outcome",
+            "Omitted manifest `execution.retry` uses one-second initial delay",
         )
         mirrored_rules = []
         for path in (ROOT / "AGENTS.md", ROOT / ".cursor" / "rules" / "project-core.mdc"):
@@ -112,13 +113,14 @@ class AgentRulesTest(unittest.TestCase):
             )
         agents_rules, cursor_rules = mirrored_rules
         self.assertEqual(agents_rules, cursor_rules)
-        self.assertEqual([1, 1, 1], [len(matches) for matches in agents_rules])
-        manifest_rule, wiring_rule, uncertainty_rule = (matches[0] for matches in agents_rules)
+        self.assertEqual([1, 1, 1, 1], [len(matches) for matches in agents_rules])
+        manifest_rule, wiring_rule, uncertainty_rule, retry_rule = (matches[0] for matches in agents_rules)
         self.assertIn("Only the happy-path branch is required", manifest_rule)
         self.assertIn("an unwired optional branch fails the Flow when selected", wiring_rule)
         self.assertIn("A transport failure before the request left the process", uncertainty_rule)
         self.assertIn("exhausted retries never become uncertainty", uncertainty_rule)
-        for rule in (manifest_rule, wiring_rule, uncertainty_rule):
+        self.assertIn("limited attempts or under one hour", retry_rule)
+        for rule in (manifest_rule, wiring_rule, uncertainty_rule, retry_rule):
             self.assertNotIn("choose a continuation", rule)
 
     def test_checked_in_example_is_the_end_to_end_verification_path(self) -> None:

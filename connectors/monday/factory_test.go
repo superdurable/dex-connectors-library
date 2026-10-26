@@ -96,8 +96,12 @@ func TestDefinitionsDeclareOptionalBranchesAndKeyedAsyncDurability(t *testing.T)
 		require.Equal(t, dex.StepDurabilityAsync, defaults.ExecuteDurability, "%s: a duplicate dispatch replays under the idempotency key", name)
 		require.Equal(t, 30*time.Second, defaults.ExecuteMethodTimeout, name)
 		require.GreaterOrEqual(t, defaults.ExecuteRetry.TotalDuration, 2*time.Minute, "%s: a one-minute complexity reset fits in the window", name)
-		require.Less(t, defaults.ExecuteRetry.TotalDuration, mondayIdempotencyCacheDuration,
-			"%s: every retry must reach monday.com while it still caches the first attempt's result", name)
+		if name == "createItem" || name == "addUpdate" {
+			require.Less(t, defaults.ExecuteRetry.TotalDuration, mondayIdempotencyCacheDuration,
+				"%s: every retry must reach monday.com while it still caches the first attempt's result", name)
+		} else {
+			require.Equal(t, &dex.RetryPolicy{InitialInterval: time.Second, BackoffCoefficient: 2, MaximumInterval: 5 * time.Minute, MaximumAttempts: 0, TotalDuration: time.Hour}, defaults.ExecuteRetry, name)
+		}
 	}
 }
 

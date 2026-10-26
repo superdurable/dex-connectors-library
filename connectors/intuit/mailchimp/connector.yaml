@@ -5,7 +5,7 @@ metadata:
   displayName: Mailchimp
   description: Read, upsert, tag, and list Mailchimp audience contacts without resubscribing anyone who unsubscribed, and send an existing campaign at most once after reading its status.
   company: Intuit
-  version: v0.21.1
+  version: v0.21.2
 spec:
   provider: mailchimp
   codegen:
@@ -51,10 +51,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Mailchimp conclusively rejected the read, such as an invalid or revoked API key or a role without access.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Mailchimp returned an invalid or oversized contact., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &mailchimpRepeatableExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 6, totalDuration: 5m}
     - name: listMembers
       goName: ListMembers
       inputType: ListMembersInput
@@ -69,7 +68,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Mailchimp conclusively rejected the list, such as an invalid API key or a role without access.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Mailchimp returned an invalid or oversized page of contacts., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *mailchimpRepeatableExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: upsertMember
       goName: UpsertMember
       inputType: UpsertMemberInput
@@ -83,7 +84,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Mailchimp conclusively rejected the contact, such as an invalid merge field, a permanently deleted address, or a contact in a compliance state; nothing was written.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "Mailchimp returned an invalid or oversized contact, so the change may have been applied.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *mailchimpRepeatableExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: updateMemberTags
       goName: UpdateMemberTags
       inputType: UpdateMemberTagsInput
@@ -98,7 +101,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Mailchimp conclusively rejected the tag changes, such as an invalid API key or a role without access.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "Mailchimp accepted the request but returned an oversized or credential-reflecting body, so the tags may have changed.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *mailchimpRepeatableExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: sendCampaign
       goName: SendCampaign
       inputType: SendCampaignInput
@@ -120,4 +125,3 @@ spec:
       execution:
         executeMethodTimeout: 60s
         durability: sync
-        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 5m}

@@ -221,7 +221,7 @@ being processed. To apply each event once, the receiver:
   is still in flight with a retryable status such as `409` or `503`;
 - answers `2xx` for an id it has already applied, without applying it again;
 - keeps each id for at least the Step's effective retry window, measured from
-  the first attempt. Under the manifest retry policy that is two minutes. A
+  the first attempt. This connector defaults to two minutes. A
   `StepOptionsOverride` whose `ExecuteRetry` is set replaces that policy: its
   `TotalDuration` is then the window, and a zero `TotalDuration` uses the Dex
   server default of four hours, so keep ids for at least four hours in that

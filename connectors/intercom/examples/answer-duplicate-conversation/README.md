@@ -75,7 +75,7 @@ go run ./cmd/connectorctl ui-artifact --manifest connectors/intercom/connector.y
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/intercom/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/intercom \
-  --version v0.21.1 --tag connectors/intercom/v0.21.1 \
+  --version v0.21.2 --tag connectors/intercom/v0.21.2 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/intercom-release/connector-ui.tgz --ui-digest /tmp/intercom-release/connector-ui.tgz.sha256 \
   --output /tmp/intercom-release/connector-release.json \

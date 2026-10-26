@@ -92,6 +92,10 @@ func TestDefinitionsDeclareOptionalBranchesAndAsyncDurability(t *testing.T) {
 		require.Greater(t, defaults.ExecuteRetry.TotalDuration, time.Minute, "a one-minute Zendesk Retry-After must fit in the window")
 		require.Less(t, defaults.ExecuteRetry.TotalDuration, 2*time.Hour, "Zendesk keeps an Idempotency-Key for two hours")
 	}
+	updateRetry := support.UpdateTicketDefinition.StepDefaults.ExecuteRetry
+	require.Equal(t, int32(6), updateRetry.MaximumAttempts)
+	require.Equal(t, 5*time.Minute, updateRetry.TotalDuration)
+	require.Equal(t, int32(0), support.CreateTicketDefinition.StepDefaults.ExecuteRetry.MaximumAttempts)
 }
 
 func TestConnectionAndCredentialsNeverRevealSecrets(t *testing.T) {

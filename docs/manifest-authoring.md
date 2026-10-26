@@ -21,14 +21,18 @@ An operation declares:
   connection, or `none` for public operations;
 - Dex Execute timeout, retry, heartbeat, and durability defaults.
 
-The SDK uses a one-hour Execute retry budget when a definition has no retry
-policy: one-second initial delay, coefficient 2, five-minute maximum delay,
-and unlimited attempts. Explicit manifest policies still take precedence, and
-applications can override them per Step. A later manifest change is planned
-to let authors omit `retry` and require a validated reason for a shorter
-policy: `billedOperation`, `personWaiting`, or `duplicateWriteRisk`. That
-manifest validation is not yet implemented; manifests still must declare
-`retry` today.
+Omit `execution.retry` for the Connector Step Execute default: one-second
+initial delay, coefficient 2, five-minute maximum delay, unlimited attempts
+(`maximumAttempts: 0`), and one-hour total duration. An explicit policy must
+set positive `initialInterval`, `maximumInterval`, and `totalDuration`, plus
+`backoffCoefficient` of at least 1; `maximumAttempts` is optional and zero
+means unlimited. A policy with limited attempts or a duration below one hour
+must include `reason.kind` (`billedOperation`, `personWaiting`, or
+`duplicateWriteRisk`) and a sentence in `reason.explanation`. A policy that is
+not shorter must omit the reason. Applications can replace the entire policy
+per Step with `StepOptionsOverride.ExecuteRetry`.
+`executeMethodTimeout` must be shorter than the policy's `totalDuration`,
+including the one-hour duration used when `execution.retry` is omitted.
 
 Declare a branch for each definite business outcome the application may need
 to handle, such as `notFound` or `providerRejected`. Return Retry for transient

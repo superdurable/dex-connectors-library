@@ -106,10 +106,10 @@ without either header, so the connector reads the bounded error body's
 `Retry-After` seconds, for `X-RateLimit-Reset` when `X-RateLimit-Remaining` is
 `0`, and otherwise for one minute, as GitHub's rate-limit guidance says.
 
-The change queries allow five Execute attempts within 65 minutes, so Dex can
+The change queries allow unlimited Execute attempts within 65 minutes, so Dex can
 wait out GitHub's hourly primary rate-limit window. The Step fails when a delay
-does not fit in the remaining budget or the attempts run out, and then the
-Flow fails unless `StepOptionsOverride` sets `dex.ProceedToOnExecuteFailure`.
+does not fit in the remaining budget, and then the Flow fails unless
+`StepOptionsOverride` sets `dex.ProceedToOnExecuteFailure`.
 When a delay is longer than the Step's async local execution can wait, Dex
 sends the first retry at once as it moves the Step to regular execution; later
 retries wait for GitHub's delay. To fail sooner, give `StepOptionsOverride` a
@@ -170,7 +170,7 @@ and `<Operation>Retry` build any other outcome. Scripting is described in
 Install the published module:
 
 ```bash
-go get github.com/superdurable/dex-connectors-library/connectors/github@v0.23.0
+go get github.com/superdurable/dex-connectors-library/connectors/github@v0.23.1
 ```
 
 Verify it independently:

@@ -19,9 +19,7 @@ factories:
 
 Only the happy-path branch of each operation is required; every other branch
 is optional, and an unwired optional branch fails the Flow. Every operation
-uses a 30-second Execute timeout and a five-minute retry window, which fits
-monday.com's one-minute complexity budget. Reads allow six attempts and
-mutations ten. Every mutation sends a monday.com `Idempotency-Key`, so all
+uses a 30-second Execute timeout. Reads and the absolute `updateItemColumnValues` use the one-hour default retry budget; `createItem` and `addUpdate` keep ten attempts within five minutes. Every mutation sends a monday.com `Idempotency-Key`, so all
 three stay async; see [Duplicate safety](#duplicate-safety).
 
 This release has no Triggers and no Studio pickers; see
@@ -254,8 +252,8 @@ async durability:
 
 The guarantee has the limits monday.com documents, and they bound it:
 
-- A cached response expires after 30 minutes. Every retry window is five
-  minutes; keep any `StepOptionsOverride` window below 30 minutes.
+- A cached response expires after 30 minutes. `createItem` and `addUpdate`
+  retry for five minutes; keep their `StepOptionsOverride` windows below 30 minutes.
 - A response larger than 1 MB is not cached. The mutations select only
   scalar fields, and the update's column values only for the columns it set.
 - Each user and app combination has a memory budget for cached responses.

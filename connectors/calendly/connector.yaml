@@ -5,7 +5,7 @@ metadata:
   displayName: Calendly
   description: "Read Calendly scheduled events and invitees, cancel events, create single-use scheduling links, register webhook subscriptions, and receive signed invitee.created and invitee.canceled webhooks."
   company: Calendly
-  version: v0.22.0
+  version: v0.22.1
 spec:
   provider: calendly
   codegen:
@@ -161,10 +161,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Calendly conclusively rejected the request, such as an invalid token, a missing scope, or an organization the token cannot read.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "Calendly returned a malformed or oversized response.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &calendlyExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
     - name: getScheduledEvent
       goName: GetScheduledEvent
       inputType: GetScheduledEventInput
@@ -178,7 +177,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Calendly conclusively rejected the request, such as an invalid token or a missing scope.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "Calendly returned a malformed or oversized response.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *calendlyExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: listEventInvitees
       goName: ListEventInvitees
       inputType: ListEventInviteesInput
@@ -192,7 +193,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Calendly conclusively rejected the request, such as an invalid token or a missing scope.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "Calendly returned a malformed or oversized response.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *calendlyExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: cancelScheduledEvent
       goName: CancelScheduledEvent
       inputType: CancelScheduledEventInput
@@ -206,7 +209,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Calendly refused to cancel an active event, such as one that already started or one the token may not cancel.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "Calendly returned a malformed or oversized response.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *calendlyExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: createSchedulingLink
       goName: CreateSchedulingLink
       inputType: CreateSchedulingLinkInput
@@ -222,7 +227,7 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "A repeated scheduling-link POST could create another link because Calendly has no idempotency key or lookup for the new link."}}
     - name: createWebhookSubscription
       goName: CreateWebhookSubscription
       inputType: CreateWebhookSubscriptionInput
@@ -236,4 +241,7 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Calendly conclusively rejected the request, such as a plan without webhooks or a token that is not an organization admin.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "Calendly returned a malformed or oversized response.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *calendlyExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "Calendly has no webhook-create key, so a stale subscription list can allow a second POST under the same Step."}}

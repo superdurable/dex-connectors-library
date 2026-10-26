@@ -5,7 +5,7 @@ metadata:
   displayName: Typeform
   description: "Receive signed Typeform form_response webhooks as typed, field-keyed answers, list and read forms, list responses, and create or update a form's webhook."
   company: Typeform
-  version: v0.21.1
+  version: v0.21.2
 spec:
   provider: typeform
   codegen:
@@ -112,10 +112,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Typeform conclusively rejected the request, such as an invalid token, a missing forms:read scope, or an unknown workspace.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "Typeform returned a malformed or oversized response.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &typeformExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
     - name: getForm
       goName: GetForm
       inputType: GetFormInput
@@ -129,7 +128,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Typeform conclusively rejected the request, such as an invalid token or a missing forms:read scope.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "Typeform returned a malformed or oversized response.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *typeformExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: listResponses
       goName: ListResponses
       inputType: ListResponsesInput
@@ -143,7 +144,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Typeform conclusively rejected the request, such as an invalid token, a missing responses:read scope, or an invalid filter.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "Typeform returned a malformed or oversized response.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *typeformExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: upsertWebhook
       goName: UpsertWebhook
       inputType: UpsertWebhookInput
@@ -157,4 +160,6 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Typeform conclusively rejected the webhook, such as a URL that is not HTTPS, a plan without webhooks, or a token without the webhooks:write scope.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "Typeform answered 2xx with a malformed or oversized body, so it may have stored the webhook without this Result describing it.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration such as a blank webhook_secret, or connector definition is invalid.", optional: true}
-      execution: *typeformExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async

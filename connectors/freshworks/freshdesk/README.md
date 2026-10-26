@@ -18,8 +18,7 @@ factories:
 
 Only the happy-path branch of each operation is required; every other branch
 is optional, and an unwired optional branch fails the Flow. Every operation
-uses a 30-second Execute timeout and a retry window of at least five minutes,
-which fits Freshdesk's per-minute rate limit and its `Retry-After` header.
+uses a 30-second Execute timeout. Reads and `updateTicket` use the one-hour default retry budget; `createTicket` and `addNote` keep five attempts within five minutes.
 `createTicket` and `addNote` use sync durability because Freshdesk has no
 idempotency key; see [Duplicate safety](#duplicate-safety).
 

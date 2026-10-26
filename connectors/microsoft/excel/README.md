@@ -31,7 +31,7 @@ these operation-specific Dex Step factories:
 
 Only the happy branch of each operation is required; an unwired optional branch
 fails the Flow. The three idempotent operations use async Execute durability, a
-30-second Execute timeout, and retry for up to two minutes. `appendTableRows`
+30-second Execute timeout, and the one-hour default retry budget. `appendTableRows`
 uses sync durability and retries for up to five minutes; see
 [Duplicate dispatch](#duplicate-dispatch).
 

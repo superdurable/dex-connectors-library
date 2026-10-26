@@ -5,7 +5,7 @@ metadata:
   displayName: OpenAI
   description: "OpenAI Responses API stored responses: create a model response with JSON Schema structured output, streamed text and progress, token usage, and explicit uncertainty, and retrieve it by ID for recovery. Text generation Steps use the llm connector."
   company: OpenAI
-  version: v0.22.1
+  version: v0.22.2
 spec:
   provider: openai
   codegen:
@@ -89,10 +89,10 @@ spec:
         - {id: uncertain, goName: Uncertain, description: "A request may have created a response that cannot be confirmed: no response ID was observed or checkpointed, for example after HTTP 408 or 409, a 5xx other than 503, or a streamed error event, or the stored response cannot be read back. The Responses API documents no deduplication of create requests.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       progress: [structured, text]
-      execution: &openaiExecution
+      execution:
         executeMethodTimeout: 150s
         durability: sync
-        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 3, totalDuration: 5m}
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 3, totalDuration: 5m, reason: {kind: billedOperation, explanation: "An unconfirmed response creation may already incur charges, and a retry can create another billed response without a provider deduplication key."}}
       mockChecks:
         requestFunction: ValidateCreateResponseRequest
         answer: {branch: completed, function: ValidateCreateResponseAnswer}
@@ -137,7 +137,6 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
       mocks:
         - name: storedResponse
           branch: found

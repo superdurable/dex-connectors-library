@@ -71,8 +71,7 @@ that mismatches the requested fields, also reads GET `/tasks/{task_id}`, as does
 a create response with a task ID but unusable fields. Other calls use GET/POST
 `/tasks` for list/create, or GET/POST/DELETE `/tasks/{task_id}` for
 read/update/delete. Steps use
-async durability, a 30-second Execute timeout, and at most five attempts within
-two minutes. Backoff starts at one second and caps at 30 seconds.
+async durability and a 30-second Execute timeout. `createTask` keeps five attempts within two minutes; reads, update, and delete use the one-hour default retry budget.
 An unwired optional branch fails the Flow.
 
 The connector ends its requests inside the attempt deadline it observes on the

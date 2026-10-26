@@ -5,7 +5,7 @@ metadata:
   displayName: Email (IMAP and SMTP)
   description: Search, read, flag, and move messages in any IMAP mailbox and send new messages or threaded replies over SMTP, for mail providers other than Gmail and Microsoft 365.
   company: Super Durable
-  version: v0.21.1
+  version: v0.21.2
 spec:
   provider: email
   codegen:
@@ -104,10 +104,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "The IMAP server conclusively refused the login, TLS, mailbox, or search, such as a wrong app password, a certificate that fails verification, or a mailbox that does not exist.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: The IMAP server returned a response the connector cannot parse., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &emailIMAPExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
     - name: getMessage
       goName: GetMessage
       inputType: GetMessageInput
@@ -121,7 +120,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "The IMAP server conclusively refused the login, TLS, or read.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: The IMAP server returned a response or message the connector cannot parse., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *emailIMAPExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: sendMessage
       goName: SendMessage
       inputType: SendMessageInput
@@ -134,11 +135,11 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "The SMTP server conclusively refused the login, TLS, sender, a recipient, or the message, so nothing was sent.", optional: true}
         - {id: uncertain, goName: Uncertain, description: "The message was submitted but the server's answer was lost, so it may have been sent; the connector never submits it again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &emailSMTPExecution
+      execution:
         executeMethodTimeout: 150s
         heartbeatTimeout: 150s
         durability: sync
-        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 10m}
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 10m, reason: {kind: duplicateWriteRisk, explanation: "A repeated SMTP submission could send the email twice because Message-ID is not a server deduplication key and no sent-mail read-back exists."}}
     - name: replyToMessage
       goName: ReplyToMessage
       inputType: ReplyToMessageInput
@@ -153,7 +154,11 @@ spec:
         - {id: invalidResponse, goName: InvalidResponse, description: "The source message has no usable reply address or could not be parsed, so nothing was sent.", optional: true}
         - {id: uncertain, goName: Uncertain, description: "The reply was submitted but the server's answer was lost, so it may have been sent; the connector never submits it again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *emailSMTPExecution
+      execution:
+        executeMethodTimeout: 150s
+        heartbeatTimeout: 150s
+        durability: sync
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 10m, reason: {kind: duplicateWriteRisk, explanation: "A repeated SMTP submission could send the reply twice because Message-ID is not a server deduplication key and no sent-mail read-back exists."}}
     - name: moveMessage
       goName: MoveMessage
       inputType: MoveMessageInput
@@ -166,7 +171,9 @@ spec:
         - {id: notFound, goName: NotFound, description: "The source mailbox does not exist, its UIDVALIDITY changed, or no message has the UID and none with the expected Message-ID is in the destination.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "The IMAP server conclusively refused the login, TLS, or move, such as a destination mailbox that does not exist or a server without MOVE or UIDPLUS.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *emailIMAPExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: setFlags
       goName: SetFlags
       inputType: SetFlagsInput
@@ -179,4 +186,6 @@ spec:
         - {id: notFound, goName: NotFound, description: "The mailbox does not exist, its UIDVALIDITY changed, or no message has the UID.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "The IMAP server conclusively refused the login, TLS, or flag change, such as a read-only mailbox.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *emailIMAPExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async

@@ -5,7 +5,7 @@ metadata:
   displayName: Front
   description: "Search, read, reply to, comment on, and update Front conversations and find contacts by email, keeping Front's own conversation statuses, ticket status IDs, and tag and teammate IDs."
   company: Front
-  version: v0.21.1
+  version: v0.21.2
 spec:
   provider: front
   codegen:
@@ -97,10 +97,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Front conclusively rejected the search, such as an invalid token, a token without conversation read access, or an expired page token.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "Front returned a malformed or oversized page, or a next-page link outside Front's API hosts.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &frontReadExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
     - name: getConversation
       goName: GetConversation
       inputType: GetConversationInput
@@ -118,7 +117,6 @@ spec:
       execution:
         executeMethodTimeout: 45s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
     - name: replyToConversation
       goName: ReplyToConversation
       inputType: ReplyToConversationInput
@@ -135,7 +133,7 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "A lost dispatch checkpoint could send the reply twice because Front has no provider idempotency key or reply read-back."}}
     - name: updateConversation
       goName: UpdateConversation
       inputType: UpdateConversationInput
@@ -152,7 +150,6 @@ spec:
       execution:
         executeMethodTimeout: 60s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
     - name: findContactByEmail
       goName: FindContactByEmail
       inputType: FindContactByEmailInput
@@ -166,4 +163,6 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Front conclusively rejected the lookup, such as an invalid token or a token without contact read access.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "Front returned a malformed or oversized contact.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *frontReadExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async

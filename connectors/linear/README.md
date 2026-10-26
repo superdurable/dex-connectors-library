@@ -24,8 +24,7 @@ state → Issue, with assignee resolution by email, label set operations, and co
 | `linear.NewIssueEventReceivedTrigger` | `IssueEvent`: a signed Issue `create`, `update`, or `remove` webhook | `<action>:<issue UUID>:<updatedAt in Unix ms>` |
 
 Only the happy-path branch of each operation is required; every other branch is optional, and an unwired
-optional branch fails the Flow. Every operation uses a 30-second Execute timeout and a six-attempt, five-minute
-retry window. No write has an `uncertain` branch: creates carry a client-supplied UUID and updates are
+optional branch fails the Flow. Every operation uses a 30-second Execute timeout and unlimited attempts within one hour. No write has an `uncertain` branch: creates carry a client-supplied UUID and updates are
 absolute, so every ambiguous outcome is retried safely; see [Duplicate safety](#duplicate-safety).
 
 Workflow state names, types, label names, and priorities are Linear's own values, passed through unchanged.

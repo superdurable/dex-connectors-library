@@ -5,7 +5,7 @@ metadata:
   displayName: Microsoft SQL Server
   description: Run one parameterized read query, or one transactional write statement, against Microsoft SQL Server, Azure SQL Database, or Azure SQL Managed Instance.
   company: Microsoft
-  version: v0.21.1
+  version: v0.21.2
 spec:
   provider: microsoft-sql-server
   codegen:
@@ -96,10 +96,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "The server conclusively refused the connection or statement, such as bad credentials, a firewall rule, a syntax error, a missing table, a permission error, or statementTimeout.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "The server returned a value the connector cannot decode under its documented type mapping.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &sqlServerExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
     - name: execute
       goName: ExecuteStatement
       inputType: ExecuteStatementInput
@@ -114,4 +113,6 @@ spec:
         - {id: uncertain, goName: Uncertain, description: "The connection failed after COMMIT was sent, so whether the server committed the write is unknown.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "The server returned a value the connector cannot decode under its documented type mapping; the connector rolled back and nothing was written.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *sqlServerExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async

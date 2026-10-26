@@ -23,7 +23,7 @@ integers. It exposes these operation-specific Dex Step factories:
 
 Only the happy-path branch of each operation is required; every other branch
 is optional, and an unwired optional branch fails the Flow. Every operation
-uses a 30-second Execute timeout and a five-minute retry window. Re:amaze
+uses a 30-second Execute timeout. Reads and `updateConversation` use the one-hour default retry budget; `createConversation` and `replyToConversation` keep five attempts within five minutes. Re:amaze
 limits each API token per minute, so a 429 without `Retry-After` waits one
 minute before the retry. `createConversation` and
 `replyToConversation` use sync durability because Re:amaze has no idempotency

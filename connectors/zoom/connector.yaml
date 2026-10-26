@@ -5,7 +5,7 @@ metadata:
   displayName: Zoom
   description: List, read, schedule, and reschedule the authorized user's Zoom meetings, and list who joined a past meeting.
   company: Zoom
-  version: v0.22.0
+  version: v0.22.1
 spec:
   provider: zoom
   codegen:
@@ -86,10 +86,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Zoom conclusively rejected the listing, such as a user without meeting hosting capability.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Zoom returned an invalid or oversized meeting page., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &zoomAsyncExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
     - name: getMeeting
       goName: GetMeeting
       inputType: GetMeetingInput
@@ -104,7 +103,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Zoom conclusively rejected the meeting read., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Zoom returned an invalid or oversized meeting., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *zoomAsyncExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: createMeeting
       goName: CreateMeeting
       inputType: CreateMeetingInput
@@ -122,7 +123,7 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A lost dispatch checkpoint could create another meeting because Zoom has no provider key or meeting lookup by Call ID."}}
     - name: updateMeeting
       goName: UpdateMeeting
       inputType: UpdateMeetingInput
@@ -136,7 +137,9 @@ spec:
         - {id: notFound, goName: NotFound, description: The meeting does not exist or was deleted., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Zoom conclusively rejected the patch, such as an exhausted daily update limit.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *zoomAsyncExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: listPastMeetingParticipants
       goName: ListPastMeetingParticipants
       inputType: ListPastMeetingParticipantsInput
@@ -151,4 +154,6 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Zoom conclusively rejected the listing, such as a free account or a meeting older than Zoom keeps.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Zoom returned an invalid or oversized participant page., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *zoomAsyncExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async

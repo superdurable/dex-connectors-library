@@ -30,7 +30,7 @@ that returns at once, because Dex Web Start Flow in dexcli v0.13.8 invokes
 
 ## Release baseline
 
-- OAuth 2.0 HTTP Connector `v0.1.0`
+- OAuth 2.0 HTTP Connector `v0.1.1`
 - dexcli `v0.13.8` or a later stable release
 
 ## 1. Prepare a clean local test project
@@ -45,12 +45,12 @@ cd oauth2-http-api-request-e2e
 mkdir -p flow build
 
 curl -fsSL \
-  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/superdurable/oauth2-http/v0.1.0/connectors/superdurable/oauth2-http/examples/api-request/flow/workflow.go \
+  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/superdurable/oauth2-http/v0.1.1/connectors/superdurable/oauth2-http/examples/api-request/flow/workflow.go \
   -o flow/workflow.go
 
 go mod init example.com/oauth2-http-api-request-e2e
 go mod edit -go=1.24.0
-go get github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http@v0.1.0
+go get github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http@v0.1.1
 go mod tidy
 ```
 
@@ -108,7 +108,7 @@ connection.
 export DEX_FLOW_SERVICE_ADDRESS="127.0.0.1:8801"
 
 GOWORK=off go run \
-  github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http/examples/api-request@v0.1.0
+  github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http/examples/api-request@v0.1.1
 ```
 
 The Worker listens on `127.0.0.1:8884` by default. Set
@@ -149,8 +149,8 @@ throttled request that Dex retries after the server's `Retry-After` delay, and
 a Flow failure for an unwired `defect` branch. A mock test runs the same Flow on
 an `oauth2httpmock` connection, as an application test does.
 
-Before `v0.1.0` is published, build a local release artifact with
+Before `v0.1.1` is published, build a local release artifact with
 `go run ./cmd/connectorctl release-artifact` from the repository root and pass
 its directory to `dexcli dev --connector-release-override oauth2-http=DIRECTORY`.
-The test project must still resolve the connector `v0.1.0` module without a
+The test project must still resolve the connector `v0.1.1` module without a
 `replace`, as the compatibility gate does with a local module proxy.

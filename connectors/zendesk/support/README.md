@@ -16,9 +16,10 @@ Flows. It exposes these operation-specific Dex Step factories:
 
 Only the happy-path branch of each operation is required; every other branch
 is optional, and an unwired optional branch fails the Flow. Every operation
-uses async Execute durability, a 30-second Execute timeout, and a
-six-attempt, five-minute retry window, which fits Zendesk's one-minute
-`Retry-After` and stays far inside Zendesk's two-hour Idempotency-Key lifetime.
+uses async Execute durability and a 30-second Execute timeout. Reads and
+`createTicket` use the one-hour default retry budget, within Zendesk's two-hour
+Idempotency-Key lifetime. `updateTicket` keeps six attempts within five minutes
+because comment reconciliation scans only the latest audit page.
 
 This release has no Triggers and no Studio pickers; see
 [Not in this release](#not-in-this-release).

@@ -5,7 +5,7 @@ metadata:
   displayName: Gmail
   description: Start and update Dex Flows from received Gmail messages, read messages, and send or reply to email.
   company: Google
-  version: v0.24.0
+  version: v0.24.1
 spec:
   provider: google
   codegen:
@@ -197,10 +197,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Gmail conclusively rejected the message query., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Gmail returned an invalid or oversized message response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &gmailQueryExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
       mocks:
         - name: customerQuestion
           branch: read
@@ -240,7 +239,7 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Gmail does not deduplicate Message-ID, and a Sent Mail search miss can cause a second send, so bound sendMessage retries to five attempts within two minutes."}}
       mocks:
         - name: sentToCustomer
           branch: sent
@@ -276,7 +275,7 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Gmail does not deduplicate Message-ID, and a Sent Mail search miss can cause a second reply, so bound replyToMessage retries to five attempts within two minutes."}}
       mocks:
         - name: repliedInThread
           branch: sent

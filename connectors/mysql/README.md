@@ -268,8 +268,7 @@ retried.
 
 ## Retries, uncertainty, and idempotency
 
-Both operations return Retry, which Dex retries with the Step's policy of five
-attempts within two minutes, for:
+Both operations return Retry, which Dex retries with the Step's one-hour default retry budget, for:
 
 - connection refusal and connect timeouts;
 - error 1040 (too many connections) and 1203 (account connection limit);

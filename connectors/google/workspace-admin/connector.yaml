@@ -5,7 +5,7 @@ metadata:
   displayName: Google Workspace Admin
   description: Read and list Google Workspace user accounts, create, suspend, and restore them, and add or remove group members through the Admin SDK Directory API, converging instead of duplicating when a Step repeats.
   company: Google
-  version: v0.22.0
+  version: v0.22.1
 spec:
   provider: google
   codegen:
@@ -139,10 +139,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Google conclusively rejected the read, such as an administrator without user read privileges.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized account., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &directoryExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
     - name: listUsers
       goName: ListUsers
       inputType: ListUsersInput
@@ -156,7 +155,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Google conclusively rejected the listing, such as an unknown domain, an invalid query, or an expired page token.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized page., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *directoryExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: createUser
       goName: CreateUser
       inputType: CreateUserInput
@@ -171,10 +172,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Google conclusively rejected the account, such as an unknown organizational unit or an unverified domain.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized account while reading back an existing address., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &directoryPropagationExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 8, totalDuration: 5m}
     - name: suspendUser
       goName: SuspendUser
       inputType: SuspendUserInput
@@ -189,7 +189,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Google conclusively rejected the change, such as a User Management Admin suspending an administrator.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized account., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *directoryExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: unsuspendUser
       goName: UnsuspendUser
       inputType: UnsuspendUserInput
@@ -204,7 +206,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Google conclusively rejected the change or kept the account suspended, such as one Google suspended for abuse.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized account., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *directoryExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: addUserToGroup
       goName: AddUserToGroup
       inputType: AddUserToGroupInput
@@ -219,7 +223,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Google conclusively rejected the membership, such as a disabled MANAGER role or missing group privileges.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized membership., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *directoryPropagationExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: removeUserFromGroup
       goName: RemoveUserFromGroup
       inputType: RemoveUserFromGroupInput
@@ -234,4 +240,6 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Google conclusively rejected the removal or the group check., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized group check., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *directoryExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async

@@ -55,7 +55,7 @@ mkdir -p /tmp/monday-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/monday/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/monday \
-  --version v0.22.0 --tag connectors/monday/v0.22.0 \
+  --version v0.22.1 --tag connectors/monday/v0.22.1 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/monday-release/connector-release.json \
   --digest-output /tmp/monday-release/connector-release.json.sha256

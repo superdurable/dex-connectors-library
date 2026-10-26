@@ -28,6 +28,12 @@ import (
 
 const forwardedPayload = `{"type":"form.submitted","data":{"email":"ada@example.com"}}`
 
+func TestSendEventRetryBudgetMatchesReceiverRetentionWindow(t *testing.T) {
+	retry := webhook.SendEventDefinition.StepDefaults.ExecuteRetry
+	require.Equal(t, int32(5), retry.MaximumAttempts)
+	require.Equal(t, 2*time.Minute, retry.TotalDuration)
+}
+
 // droppedAnswer in fakeReceiver.scriptedAnswers aborts the response after the receiver read the event.
 const droppedAnswer = -1
 

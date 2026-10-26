@@ -52,7 +52,7 @@ Until the connector is released, build a local release override from the reposit
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/microsoft/sql-server/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/microsoft/sql-server \
-  --version v0.21.1 --tag connectors/microsoft/sql-server/v0.21.1 \
+  --version v0.21.2 --tag connectors/microsoft/sql-server/v0.21.2 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/sql-server-refund/release/connector-release.json \
   --digest-output /tmp/sql-server-refund/release/connector-release.json.sha256

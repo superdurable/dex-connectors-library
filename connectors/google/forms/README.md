@@ -202,8 +202,7 @@ response ID, or an answer keyed by a different question selects
 `invalidResponse`. `408`, `429`, 5xx, transport failures, and a `403` whose
 Google reason is a rate limit return Retry and honor `Retry-After` up to one
 hour. `responses.list` counts against Google's per-minute expensive-read quota,
-so the retry policy spans six attempts over up to five minutes, which outlasts a
-per-minute quota window. Error responses are read with their own 64 KiB bound
+so the one-hour default retry budget outlasts a per-minute quota window. Error responses are read with their own 64 KiB bound
 and classified by status. Failures carry only a connector-written message and
 kind, never Google's error text, answers, or credentials. A credential that
 cannot be resolved or refreshed selects `defect`.

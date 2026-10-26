@@ -5,7 +5,7 @@ metadata:
   displayName: Microsoft Outlook Calendar
   description: List and read Outlook calendar events in a bounded window, create and update events idempotently, and query free/busy schedules through Microsoft Graph, with delegated Microsoft OAuth or an app-only connection to one mailbox.
   company: Microsoft
-  version: v0.22.0
+  version: v0.22.1
 spec:
   provider: microsoft
   codegen:
@@ -169,10 +169,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Microsoft Graph conclusively rejected the calendar view., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Graph returned an invalid or oversized event page., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &outlookCalendarExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
     - name: getEvent
       goName: GetEvent
       inputType: GetEventInput
@@ -186,20 +185,25 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Microsoft Graph conclusively rejected the event read., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Graph returned an invalid or oversized event., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *outlookCalendarExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: createEvent
       goName: CreateEvent
       inputType: CreateEventInput
       outputType: CreateEventOutput
       kind: mutation
-      description: Create one timed or all-day event under the Step's idempotency key, sent as Graph's transactionId and stamped as an extended property, so a retried or re-dispatched Step returns the existing event instead of a duplicate.
+      description: Create one timed or all-day event under the Step's idempotency key, sent as Graph's transactionId and stamped as an extended property for retry lookup.
       idempotency: required
       branches:
         - {id: created, goName: Created, description: The event that carries the Step's idempotency key exists.}
         - {id: providerRejected, goName: ProviderRejected, description: Microsoft Graph conclusively rejected the event., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Graph returned an invalid or oversized event response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *outlookCalendarExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Graph does not document transactionId replay or retention, and a lagging extended-property lookup can permit another event POST."}}
     - name: updateEvent
       goName: UpdateEvent
       inputType: UpdateEventInput
@@ -213,7 +217,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Microsoft Graph conclusively rejected the event change., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Graph returned an invalid or oversized event response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *outlookCalendarExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: queryFreeBusy
       goName: QueryFreeBusy
       inputType: QueryFreeBusyInput
@@ -227,4 +233,6 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Microsoft Graph conclusively rejected the schedule query., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Graph returned an invalid or oversized schedule response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *outlookCalendarExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async

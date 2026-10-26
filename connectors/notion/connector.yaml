@@ -5,7 +5,7 @@ metadata:
   displayName: Notion
   description: Search Notion pages and data sources by title, query database rows with typed filters, read a page's properties and plain-text content, and create or update database rows without silent duplicates.
   company: Notion
-  version: v0.22.0
+  version: v0.22.1
 spec:
   provider: notion
   codegen:
@@ -56,10 +56,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Notion conclusively rejected the search, such as an invalid token, a stale cursor, or a blocked connection.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Notion returned an invalid or oversized search page., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &notionReadExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
       pagination: {inputField: startCursor, nextField: nextCursor}
       mocks:
         - name: submissionsSearch
@@ -101,7 +100,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Notion conclusively rejected the query, such as a filter on a missing property or a type mismatch.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Notion returned an invalid or oversized query page., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid, including a database ID whose database holds several data sources.", optional: true}
-      execution: *notionReadExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
       pagination: {inputField: startCursor, nextField: nextCursor}
       mocks:
         - name: existingSubmission
@@ -173,7 +174,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Notion conclusively rejected the page read., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Notion returned an invalid or oversized page or block list., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *notionReadExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
       mocks:
         - name: submittedPage
           branch: found
@@ -220,7 +223,7 @@ spec:
         executeMethodTimeout: 90s
         heartbeatTimeout: 90s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "A repeated create POST could add another page because Notion has no provider key and a lost response contains no page ID to read."}}
       mocks:
         - name: createdSubmission
           branch: created
@@ -265,7 +268,6 @@ spec:
         executeMethodTimeout: 90s
         heartbeatTimeout: 90s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
       mocks:
         - name: updatedSubmission
           branch: updated

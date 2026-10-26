@@ -80,8 +80,7 @@ branches and failure kinds, and puts the code in the Failure message and the
 Receipt's `errorCode` metadata. `HOURLY_*` and `BURST_*` limit codes and `429`
 retry after `X-RateLimit-Reset`, `Retry-After`, the 30-second burst window, or
 the top of the hour; `5xx` and `408` retry. Queries and `voidEnvelope` use
-async durability with a 65-minute retry window, so a delay until the next
-hourly reset fits. `ENVELOPE_DOES_NOT_EXIST` or `404` selects `notFound`,
+async durability and unlimited attempts within 65 minutes, so a delay until the next hourly reset can fit. `createEnvelopeFromTemplate` retains six attempts within 65 minutes. `ENVELOPE_DOES_NOT_EXIST` or `404` selects `notFound`,
 authentication and permission codes select `providerRejected`, and
 `ENVELOPE_ALLOWANCE_EXCEEDED` is `QUOTA_EXHAUSTED`.
 

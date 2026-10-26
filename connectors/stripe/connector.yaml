@@ -5,7 +5,7 @@ metadata:
   displayName: Stripe
   description: Create and reconcile hosted card or ACH Checkout Sessions, read PaymentIntents, refund payments, and receive signed Checkout Session events.
   company: Stripe
-  version: v0.24.1
+  version: v0.24.2
 spec:
   provider: stripe
   codegen:
@@ -100,10 +100,9 @@ spec:
         - {id: uncertain, goName: Uncertain, description: A Stripe 500 or non-retryable server response left the Checkout Session outcome unconfirmed., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Stripe returned an invalid or oversized Checkout Session response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &stripeExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
       mocks:
         - name: createdCardSession
           branch: created
@@ -138,7 +137,9 @@ spec:
         - {id: uncertain, goName: Uncertain, description: A Stripe 500 or non-retryable server response left the Checkout Session outcome unconfirmed., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Stripe returned an invalid or oversized Checkout Session response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *stripeExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
       mocks:
         - name: createdSession
           branch: created
@@ -173,7 +174,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Stripe conclusively rejected the Checkout Session query., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Stripe returned an invalid or oversized Checkout Session response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *stripeExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
       mocks:
         - name: paidSession
           branch: found
@@ -209,7 +212,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Stripe conclusively rejected the PaymentIntent query., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Stripe returned an invalid or oversized PaymentIntent response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *stripeExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
       mocks:
         - name: partiallyRefundedPayment
           branch: found
@@ -245,7 +250,9 @@ spec:
         - {id: uncertain, goName: Uncertain, description: A non-retryable Stripe server response left the refund outcome unconfirmed after bounded read-back., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Stripe returned an invalid or oversized refund response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *stripeExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
       mocks:
         - name: succeededRefund
           branch: refunded

@@ -5,7 +5,7 @@ metadata:
   displayName: Google Forms
   description: Read a Google Form's questions and its responses, listed one bounded page at a time after a submission time or read one by ID.
   company: Google
-  version: v0.22.0
+  version: v0.22.1
 spec:
   provider: google
   codegen:
@@ -170,10 +170,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Google conclusively rejected the read, such as a revoked grant or an account that cannot open the form.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized form., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &formsExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
     - name: listResponses
       goName: ListResponses
       inputType: ListResponsesInput
@@ -187,7 +186,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Google conclusively rejected the listing, such as an account that cannot read the form's responses or an expired page token.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized page of responses., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *formsExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: getResponse
       goName: GetResponse
       inputType: GetResponseInput
@@ -201,4 +202,6 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Google conclusively rejected the read, such as an account that cannot read the form's responses.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized response record., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *formsExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async

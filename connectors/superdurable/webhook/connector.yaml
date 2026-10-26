@@ -5,7 +5,7 @@ metadata:
   displayName: Webhook
   description: "Receive verified webhook requests from any sender, such as a form service, and start or resume Flows with a stable event ID. Send signed Standard Webhooks events to a configured HTTPS receiver."
   company: Super Durable
-  version: v0.22.0
+  version: v0.22.1
 spec:
   provider: webhook
   codegen:
@@ -74,7 +74,7 @@ spec:
       - name: deliveryUrl
         goName: DeliveryURL
         type: url
-        description: "HTTPS URL that sendEvent POSTs to, copied from the receiving service's webhook or endpoint settings, such as https://hooks.example.com/dex. It is stored as non-secret configuration, so keep tokens out of it; every request is signed with signing_secret instead. sendEvent delivers at least once: after a 408, 409, 425, 429, or 5xx answer, a timeout, or a lost response it sends the same webhook-id again, so the receiver must record the webhook-id in the same transaction that applies the event, or answer an id still in flight with a retryable status such as 409 or 503, and must answer 2xx for an id it already applied. Keep ids for at least the Step's effective retry window: two minutes under the default retry policy, or four hours when an application retry override leaves TotalDuration zero. Blank makes sendEvent select defect; receiving requests does not need it."
+        description: "HTTPS URL that sendEvent POSTs to, copied from the receiving service's webhook or endpoint settings, such as https://hooks.example.com/dex. It is stored as non-secret configuration, so keep tokens out of it; every request is signed with signing_secret instead. sendEvent delivers at least once: after a 408, 409, 425, 429, or 5xx answer, a timeout, or a lost response it sends the same webhook-id again, so the receiver must record the webhook-id in the same transaction that applies the event, or answer an id still in flight with a retryable status such as 409 or 503, and must answer 2xx for an id it already applied. Keep ids for at least the Step's effective retry window: two minutes under the connector default, or four hours when an application retry override leaves TotalDuration zero. Blank makes sendEvent select defect; receiving requests does not need it."
         required: false
   auth:
     type: apiKey
@@ -113,4 +113,4 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Receivers retain each webhook-id for the documented two-minute window; a later retry could apply the same event again after that record expires."}}

@@ -20,7 +20,7 @@ factories:
 
 Only the happy-path branch of each operation is required; every other branch
 is optional, and an unwired optional branch fails the Flow. IMAP operations use
-a 30-second Execute timeout and five attempts within two minutes. The two SMTP
+a 30-second Execute timeout and unlimited attempts within one hour. The two SMTP
 operations use sync durability, a 150-second Execute timeout with a matching
 heartbeat timeout, and five attempts within ten minutes; see
 [Duplicate safety](#duplicate-safety).

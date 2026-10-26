@@ -5,7 +5,7 @@ metadata:
   displayName: Microsoft Entra ID
   description: Read and list Microsoft Entra ID user accounts, create, disable, and enable them, revoke their sign-in sessions, and add or remove group members through Microsoft Graph, converging instead of duplicating when a Step repeats.
   company: Microsoft
-  version: v0.22.0
+  version: v0.22.1
 spec:
   provider: microsoft
   codegen:
@@ -141,10 +141,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively rejected the read, such as a token without User.Read.All.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Graph returned an invalid or oversized account., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &directoryExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
     - name: listUsers
       goName: ListUsers
       inputType: ListUsersInput
@@ -158,7 +157,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively rejected the listing, such as an unsupported filter.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Graph returned an invalid or oversized page., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *directoryExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: createUser
       goName: CreateUser
       inputType: CreateUserInput
@@ -173,10 +174,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively rejected the account, such as an unverified or federated domain or a token without User.Create.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Graph returned an invalid or oversized account while reading back an existing user principal name., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &directoryPropagationExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 8, totalDuration: 5m}
     - name: disableUser
       goName: DisableUser
       inputType: DisableUserInput
@@ -191,7 +191,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively rejected the change, such as an account synchronized from on-premises Active Directory or one with an administrator role the caller cannot manage.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Graph returned an invalid or oversized account., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *directoryPropagationExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: enableUser
       goName: EnableUser
       inputType: EnableUserInput
@@ -206,7 +208,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively rejected the change, such as an account synchronized from on-premises Active Directory or one with an administrator role the caller cannot manage.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Graph returned an invalid or oversized account., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *directoryPropagationExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: revokeSignInSessions
       goName: RevokeSignInSessions
       inputType: RevokeSignInSessionsInput
@@ -221,7 +225,10 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively rejected the revocation, such as a token without User.RevokeSessions.All.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Graph returned an invalid or oversized revocation response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *directoryExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Each repeated revocation advances the session cutoff and can sign out someone who signed in after the first attempt, so bound retries to five attempts within two minutes."}}
     - name: addUserToGroup
       goName: AddUserToGroup
       inputType: AddUserToGroupInput
@@ -236,7 +243,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively rejected the membership, such as a dynamic, distribution, mail-enabled security, or role-assignable group.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Graph returned an invalid or oversized membership check., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *directoryPropagationExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: removeUserFromGroup
       goName: RemoveUserFromGroup
       inputType: RemoveUserFromGroupInput
@@ -251,4 +260,6 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively rejected the removal, such as a group with dynamic membership.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Graph returned an invalid or oversized group check., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *directoryExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async

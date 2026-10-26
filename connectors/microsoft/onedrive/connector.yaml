@@ -5,7 +5,7 @@ metadata:
   displayName: Microsoft OneDrive and SharePoint
   description: Find, read, and write files in OneDrive and SharePoint document libraries through Microsoft Graph, with uploads and folders that stay single under retries.
   company: Microsoft
-  version: v0.22.0
+  version: v0.22.1
 spec:
   provider: microsoft
   codegen:
@@ -243,10 +243,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively rejected the search, such as a revoked grant, a missing folder, or search under Sites.Selected.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Graph returned an invalid or oversized search or listing response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: &graphExecution
+      execution:
         executeMethodTimeout: 30s
         durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
     - name: getFile
       goName: GetFile
       inputType: GetFileInput
@@ -260,7 +259,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Microsoft Graph conclusively rejected the metadata read., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Graph returned an invalid or oversized metadata response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *graphExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: readFileText
       goName: ReadFileText
       inputType: ReadFileTextInput
@@ -276,7 +277,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Microsoft Graph conclusively rejected the metadata read or content download., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Graph returned an invalid or oversized metadata response or an unusable download redirect., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *graphExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: uploadFile
       goName: UploadFile
       inputType: UploadFileInput
@@ -290,7 +293,9 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively rejected the upload, such as a missing or read-only parent folder, a blocked file type, or a full quota.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Graph returned an invalid or oversized response while reading back a conflicting item., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *graphExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
     - name: createFolder
       goName: CreateFolder
       inputType: CreateFolderInput
@@ -304,4 +309,6 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively rejected the folder creation, such as a missing or read-only parent folder.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Graph returned an invalid or oversized response to the creation or its read-back., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      execution: *graphExecution
+      execution:
+        executeMethodTimeout: 30s
+        durability: async

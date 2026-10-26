@@ -153,7 +153,7 @@ Every retry of one Step execution reuses its idempotency key. Stripe keeps a
 key for at least 24 hours and can run a later request with a removed key as a
 new operation, so Stripe asks clients to retry an unresolved request only
 within [the first 24 hours](https://docs.stripe.com/error-low-level#post-requests).
-The generated two-minute retry window stays far inside that limit. A
+The generated one-hour retry budget stays inside that limit. A
 `StepOptionsOverride` for `CreateCardCheckoutSession`,
 `CreateACHCheckoutSession`, or `CreateRefund` must set a nonzero
 `ExecuteRetry.TotalDuration` below 24 hours with a margin, at most 23 hours;

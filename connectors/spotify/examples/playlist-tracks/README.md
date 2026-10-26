@@ -41,8 +41,8 @@ mkdir -p /tmp/spotify-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/spotify/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/spotify \
-  --version v0.22.0 \
-  --tag connectors/spotify/v0.22.0 \
+  --version v0.22.1 \
+  --tag connectors/spotify/v0.22.1 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/spotify-release/connector-release.json \
   --digest-output /tmp/spotify-release/connector-release.json.sha256

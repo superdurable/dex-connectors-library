@@ -60,7 +60,7 @@ go run ./cmd/connectorctl ui-artifact \
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/zoho/desk/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/zoho/desk \
-  --version v0.22.0 --tag connectors/zoho/desk/v0.22.0 \
+  --version v0.22.1 --tag connectors/zoho/desk/v0.22.1 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/zoho-desk-release/connector-ui.tgz \
   --ui-digest /tmp/zoho-desk-release/connector-ui.tgz.sha256 \

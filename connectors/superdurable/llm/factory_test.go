@@ -35,7 +35,7 @@ func TestGenerateTextFactoryAppliesTheQueuedStreamingBudget(t *testing.T) {
 	require.Equal(t, 60*time.Second, options.HeartbeatTimeout)
 	require.Equal(t, &dex.RetryPolicy{
 		InitialInterval: 2 * time.Second, BackoffCoefficient: 2, MaximumInterval: time.Minute,
-		MaximumAttempts: 4, TotalDuration: 30 * time.Minute,
+		MaximumAttempts: 3, TotalDuration: time.Hour,
 	}, options.ExecuteRetry)
 }
 

@@ -120,7 +120,7 @@ func requireAsyncQueryDefaults(t *testing.T, options *dex.StepOptions) {
 	t.Helper()
 	require.Equal(t, dex.StepDurabilityAsync, options.ExecuteDurability)
 	require.Equal(t, 30*time.Second, options.ExecuteMethodTimeout)
-	require.Equal(t, int32(5), options.ExecuteRetry.MaximumAttempts)
+	require.Zero(t, options.ExecuteRetry.MaximumAttempts)
 	require.Equal(t, 65*time.Minute, options.ExecuteRetry.TotalDuration)
 	require.Greater(t, options.ExecuteRetry.TotalDuration, time.Hour, "a rate-limited query can wait for GitHub's hourly reset")
 }
@@ -161,7 +161,7 @@ func TestGeneratedFactoriesExposeEveryTypedBranch(t *testing.T) {
 	})
 	require.Equal(t, "ReadGitHubRepositories", repositories.GetStepType())
 	for _, options := range []*dex.StepOptions{profile.GetStepOptions(), repositories.GetStepOptions()} {
-		require.Equal(t, 2*time.Minute, options.ExecuteRetry.TotalDuration, "signup queries keep the two-minute retry budget")
+		require.Equal(t, &dex.RetryPolicy{InitialInterval: time.Second, BackoffCoefficient: 2, MaximumInterval: 5 * time.Minute, MaximumAttempts: 0, TotalDuration: time.Hour}, options.ExecuteRetry, "signup queries use the Connector Step default")
 	}
 }
 
