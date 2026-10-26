@@ -21,7 +21,7 @@ func TestMockRequestCheckMatchesLocalValidation(t *testing.T) {
 	require.Equal(t, "at least one content is required", failure.Message)
 }
 
-func TestMockAnswerCheckRejectsStructuredMismatches(t *testing.T) {
+func TestMockAnswerCheckMatchesGeneratedBranch(t *testing.T) {
 	request := gemini.GenerateContentRequest{ResponseJSONSchema: map[string]any{
 		"type": "object", "properties": map[string]any{"headline": map[string]any{"type": "string"}},
 		"required": []any{"headline"}, "additionalProperties": false,
@@ -29,10 +29,15 @@ func TestMockAnswerCheckRejectsStructuredMismatches(t *testing.T) {
 	answer := gemini.GenerateContentResponse{FinishReason: "STOP", Text: `{"headline":"Connector ships"}`}
 	require.NoError(t, gemini.ValidateGenerateContentMockAnswer(request, answer))
 	answer.Text = "plain text"
-	require.ErrorContains(t, gemini.ValidateGenerateContentMockAnswer(request, answer), "exactly one JSON value")
+	require.NoError(t, gemini.ValidateGenerateContentMockAnswer(request, answer))
 	answer.Text = `{"unexpected":"value"}`
-	require.ErrorContains(t, gemini.ValidateGenerateContentMockAnswer(request, answer), "portable schema")
+	require.NoError(t, gemini.ValidateGenerateContentMockAnswer(request, answer))
 	answer.Text = `{"headline":"Connector ships"}`
+	answer.FinishReason = ""
+	require.NoError(t, gemini.ValidateGenerateContentMockAnswer(request, answer))
 	answer.FinishReason = "MAX_TOKENS"
 	require.ErrorContains(t, gemini.ValidateGenerateContentMockAnswer(request, answer), "STOP")
+	answer.FinishReason = "STOP"
+	answer.Text = ""
+	require.ErrorContains(t, gemini.ValidateGenerateContentMockAnswer(request, answer), "nonempty text")
 }

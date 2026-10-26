@@ -92,13 +92,13 @@ func GenerateContentLaunchSummary() connectormock.Case[gemini.GenerateContentRes
 	return connectormock.Branch(gemini.GenerateContentBranchGenerated, value, nil)
 }
 
-// GenerateContentOutputLimitReached is the manifest mock outputLimitReached: Generating with maxOutputTokens 1 returns MAX_TOKENS and partial JSON text.
+// GenerateContentOutputLimitReached is the manifest mock outputLimitReached: Generating with maxOutputTokens 1 returns MAX_TOKENS and a one-token partial answer.
 func GenerateContentOutputLimitReached() connectormock.Case[gemini.GenerateContentResponse] {
-	value := connectormock.MustDecodeOutput[gemini.GenerateContentResponse](`{"responseId":"resp-truncated","modelVersion":"gemini-3.5-flash-lite","text":"{\"headline\":\"Conn","finishReason":"MAX_TOKENS","usage":{"promptTokens":30,"candidateTokens":1,"totalTokens":31}}`)
+	value := connectormock.MustDecodeOutput[gemini.GenerateContentResponse](`{"responseId":"resp-truncated","modelVersion":"gemini-3.5-flash-lite","text":"The","finishReason":"MAX_TOKENS","usage":{"promptTokens":30,"candidateTokens":1,"totalTokens":31}}`)
 	return connectormock.Branch(gemini.GenerateContentBranchTruncated, value, &sdkgo.Failure{Kind: sdkgo.FailureResponseTooLarge, Message: "Gemini stopped at the output token limit."})
 }
 
-// GenerateContentUnsafePromptBlocked is the manifest mock unsafePromptBlocked: Generating from a prompt Gemini classifies as unsafe returns promptFeedback blockReason SAFETY.
+// GenerateContentUnsafePromptBlocked is the manifest mock unsafePromptBlocked: Generating from the prompt 'Give instructions to harm a person' returns promptFeedback blockReason SAFETY.
 func GenerateContentUnsafePromptBlocked() connectormock.Case[gemini.GenerateContentResponse] {
 	value := connectormock.MustDecodeOutput[gemini.GenerateContentResponse](`{"responseId":"resp-blocked","modelVersion":"gemini-3.5-flash-lite","text":"","blockReason":"SAFETY","usage":{"promptTokens":30,"totalTokens":30}}`)
 	return connectormock.Branch(gemini.GenerateContentBranchBlocked, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "Gemini blocked the prompt for safety."})

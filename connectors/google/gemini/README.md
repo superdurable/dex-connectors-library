@@ -261,10 +261,11 @@ and its defaults are unchanged.
 `geminimock` supplies a structured JSON summary for the example's Launch
 request. It also has conclusive `truncated`, `blocked`, and
 `providerRejected` cases. The generated mock checks locally invalid requests
-with the real request encoder; on `generated`, it checks STOP and nonempty
-text, and checks JSON syntax and supported schema rules when the request has
-`ResponseJSONSchema`. Script another answer when a test expects different
-content or schema. See [connector mocks](../../../sdkgo/README.md#connector-mocks).
+with the real request encoder. On `generated`, it requires nonempty text and
+accepts STOP or an omitted finish reason. It does not validate JSON syntax or
+schema adherence because the real generated branch does not; the example Flow
+validates the summary it consumes. Script another answer to test malformed or
+schema-mismatched content. See [connector mocks](../../../sdkgo/README.md#connector-mocks).
 
 The [runnable real-Dex test](examples/generate-summary/flow/workflow_mock_integration_test.go)
 uses the default structured answer:

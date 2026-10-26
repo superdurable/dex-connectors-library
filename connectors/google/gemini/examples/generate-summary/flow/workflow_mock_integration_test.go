@@ -36,10 +36,18 @@ func TestGenerateSummaryUsesStructuredMockWithRealDex(t *testing.T) {
 
 	calls := mock.GenerateContent().Calls()
 	require.Len(t, calls, 1)
-	require.Equal(t, gemini.GenerateContentRequest{
-		SystemInstruction: "You write concise newsletter summaries. Use only facts stated in the provided text. " +
-			"Return a headline, a two-sentence summary, and up to five key points.",
-		Contents:           []gemini.Content{{Role: "user", Parts: []gemini.Part{{Text: "Title: Launch\n\nThe connector shipped today."}}}},
-		ResponseJSONSchema: SummarySchema(), MaxOutputTokens: 4096,
-	}, calls[0].Input)
+	require.Equal(t, "You write concise newsletter summaries. Use only facts stated in the provided text. "+
+		"Return a headline, a two-sentence summary, and up to five key points.", calls[0].Input.SystemInstruction)
+	require.Equal(t, []gemini.Content{{Role: "user", Parts: []gemini.Part{{Text: "Title: Launch\n\nThe connector shipped today."}}}}, calls[0].Input.Contents)
+	require.Equal(t, 4096, calls[0].Input.MaxOutputTokens)
+	schema := calls[0].Input.ResponseJSONSchema
+	require.Equal(t, "object", schema["type"])
+	require.Equal(t, []any{"headline", "summary", "keyPoints"}, schema["required"])
+	require.Equal(t, false, schema["additionalProperties"])
+	properties, ok := schema["properties"].(map[string]any)
+	require.True(t, ok)
+	require.Len(t, properties, 3)
+	require.Equal(t, map[string]any{"type": "string", "description": "A headline of at most twelve words."}, properties["headline"])
+	require.Equal(t, map[string]any{"type": "string", "description": "A two-sentence summary."}, properties["summary"])
+	require.Equal(t, map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "maxItems": 5}, properties["keyPoints"])
 }

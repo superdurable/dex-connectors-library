@@ -21,7 +21,7 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			return err
 		}},
 		{name: "generateContent/outputLimitReached/1", decode: func() error {
-			_, err := connectormock.DecodeOutput[gemini.GenerateContentResponse](`{"responseId":"resp-truncated","modelVersion":"gemini-3.5-flash-lite","text":"{\"headline\":\"Conn","finishReason":"MAX_TOKENS","usage":{"promptTokens":30,"candidateTokens":1,"totalTokens":31}}`)
+			_, err := connectormock.DecodeOutput[gemini.GenerateContentResponse](`{"responseId":"resp-truncated","modelVersion":"gemini-3.5-flash-lite","text":"The","finishReason":"MAX_TOKENS","usage":{"promptTokens":30,"candidateTokens":1,"totalTokens":31}}`)
 			return err
 		}},
 		{name: "generateContent/unsafePromptBlocked/1", decode: func() error {
