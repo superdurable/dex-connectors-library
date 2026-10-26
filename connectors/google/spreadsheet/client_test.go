@@ -22,10 +22,17 @@ var sheetsConnection = sdkgo.ConnectionRef{Provider: "google", Name: "customer-s
 
 type rejectionRefreshingCredentialProvider struct {
 	forcedRefreshes int
+	currentToken    string
+	refreshError    error
+	keepRejected    bool
 }
 
-func (*rejectionRefreshingCredentialProvider) Resolve(sdkgo.Call) (spreadsheet.Credentials, error) {
-	return spreadsheet.Credentials{AccessToken: sdkgo.NewSecretString("rejected-token")}, nil
+func (provider *rejectionRefreshingCredentialProvider) Resolve(sdkgo.Call) (spreadsheet.Credentials, error) {
+	token := provider.currentToken
+	if token == "" {
+		token = "rejected-token"
+	}
+	return spreadsheet.Credentials{AccessToken: sdkgo.NewSecretString(token)}, nil
 }
 
 // ResolveWithRefresh returns the stored credential unchanged: its expiry has not passed.
@@ -43,7 +50,13 @@ func (provider *rejectionRefreshingCredentialProvider) ResolveAfterRejection(
 	sdkgo.CredentialRefreshDriver[spreadsheet.Credentials],
 ) (spreadsheet.Credentials, error) {
 	provider.forcedRefreshes++
-	return spreadsheet.Credentials{AccessToken: sdkgo.NewSecretString("replacement-token")}, nil
+	if provider.refreshError != nil {
+		return spreadsheet.Credentials{}, provider.refreshError
+	}
+	if !provider.keepRejected {
+		provider.currentToken = "replacement-token"
+	}
+	return provider.Resolve(sdkgo.Call{})
 }
 
 func TestFindRowDistinguishesMissingAndDuplicateKeys(t *testing.T) {
@@ -169,7 +182,7 @@ func TestGetValuesMissingConnectionUsesDefectBranch(t *testing.T) {
 	result, err := sdkgo.RunQuery(newDexContext("missing-connection"), client.GetValues(), sheetsConnection, spreadsheet.GetValuesInput{SpreadsheetID: "sheet", Range: "Customers!A:B"})
 	require.NoError(t, err)
 	require.Equal(t, spreadsheet.GetValuesBranchDefect, result.Branch)
-	require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
+	require.Equal(t, sdkgo.FailureAvailability, result.Failure.Kind)
 }
 
 func TestGetValuesRejectsOversizedResponseWithoutRetry(t *testing.T) {
@@ -198,44 +211,6 @@ func TestGetValuesInvalidJSONUsesInvalidResponseBranch(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, spreadsheet.GetValuesBranchInvalidResponse, result.Branch)
 	require.Equal(t, sdkgo.FailureProtocol, result.Failure.Kind)
-}
-
-func TestUpsertReconcilesAmbiguousAppendWithoutSecondRow(t *testing.T) {
-	rows := [][]string{{"accountId", "name"}}
-	var writes int
-	server := sheetServer(t, &rows, func(response http.ResponseWriter, request *http.Request) bool {
-		writes++
-		var payload struct {
-			Values [][]string `json:"values"`
-		}
-		require.NoError(t, json.NewDecoder(request.Body).Decode(&payload))
-		if request.Method == http.MethodPost {
-			rows = append(rows, payload.Values[0])
-			response.WriteHeader(http.StatusInternalServerError)
-			return true
-		}
-		rows[1] = payload.Values[0]
-		_, _ = response.Write([]byte(`{"updatedRange":"'Customers'!A2:B2"}`))
-		return true
-	})
-	defer server.Close()
-	client := newSheetsClient(t, server.URL)
-	input := spreadsheet.UpsertRowInput{SpreadsheetID: "sheet", SheetName: "Customers", KeyColumn: "accountId", KeyValue: "a-1", Values: map[string]string{"name": "Ada"}}
-	ctx := newDexContext("upsert-one")
-
-	unknown, err := sdkgo.RunMutation(ctx, client.UpsertRow(), sheetsConnection, input)
-	require.NoError(t, err)
-	require.Equal(t, spreadsheet.UpsertRowBranchUncertain, unknown.Branch)
-	require.Len(t, rows, 2)
-
-	recovered, err := sdkgo.RunMutation(ctx, client.UpsertRow(), sheetsConnection, input)
-	require.NoError(t, err)
-	require.Equal(t, spreadsheet.UpsertRowBranchUpserted, recovered.Branch)
-	require.Equal(t, "updated", recovered.Value.Action)
-	require.Len(t, rows, 2)
-	require.Equal(t, 2, writes)
-	require.Equal(t, unknown.Receipt.CallID, recovered.Receipt.CallID)
-	require.Equal(t, unknown.Receipt.IdempotencyKey, recovered.Receipt.IdempotencyKey)
 }
 
 func sheetServer(t *testing.T, rows *[][]string, write func(http.ResponseWriter, *http.Request) bool) *httptest.Server {

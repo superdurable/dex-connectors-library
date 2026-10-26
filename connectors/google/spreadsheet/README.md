@@ -18,12 +18,36 @@ refresh-token rotation replaces the previous token only when Google returns a
 new one, and terminal `invalid_grant` responses require reauthorization.
 
 `UpsertRow` first reads the target sheet and matches a stable key column. It
-updates one match, appends when absent, and returns the `conflict` branch for
-duplicates. An ambiguous provider write returns `uncertain`; retrying the same
-Step execution retains its Call ID and queries before writing again.
+[replaces values at an absolute range](https://developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets.values/update)
+when one row matches, [appends a new row](https://developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets.values/append)
+when absent, and returns `conflict` for duplicate keys. A PUT can retry because
+it replaces the same values. An append uses the shared single-dispatch fence
+with synchronous Execute durability; the fence records its dispatch claim before
+the POST and prevents a second send after an unconfirmed claim. A 429, 503, 409,
+401 followed by a successful credential refresh, or traced failure before a
+connection is obtained permits a retry. The retry first reads the row key
+again. A visible row with the requested values confirms the
+append. An unconfirmed, possibly accepted append returns `uncertain`. A write
+401 that cannot obtain a new credential returns `providerRejected`.
+
+Google [recommends backoff for 503](https://developers.google.com/workspace/sheets/api/troubleshoot-api-errors),
+but its published [append documentation](https://developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets.values/append)
+does not guarantee that 503 or 409 means the row was not applied, or that a
+row-key lookup immediately sees every accepted append. The connector treats
+these statuses as not-processed evidence; that provider behavior and read
+visibility timing are unverified against a live Google spreadsheet. The
+connector's `X-Idempotency-Key` is a stable correlation header; Google does not
+document deduplication for it. A delayed row becoming visible after a retry's
+lookup could still lead to duplicate rows.
 
 Every operation uses `defect` for invalid local input, connection configuration,
-or Connector contract violations. A conclusive Google API refusal uses
+or Connector contract violations. `GetValues` and `FindRow` also select `defect`
+for any credential resolution failure, including transient refresh failures.
+Before an upsert write, terminal reauthorization failures such as `invalid_grant`
+select `defect` only after a not-sent checkpoint; transient credential failures
+retry after that checkpoint. If an earlier append may have been accepted, a
+terminal credential failure selects `uncertain`, while a transient failure
+retries without sending again. A conclusive Google API refusal uses
 `providerRejected`; malformed or oversized reads before a write use
 `invalidResponse`. Safe query transport, rate-limit, and availability failures
 retry instead of producing a branch.
@@ -60,8 +84,9 @@ Named cases cover missing ranges or rows, duplicate keys, and provider refusals.
 ## Verification
 
 ```bash
-GOWORK=off go test -race ./...
+GOWORK=off go test -race -count=1 ./...
 GOWORK=off go vet ./...
+GOWORK=off go vet -tags=integration ./...
 npm ci --prefix ui
 npm test --prefix ui
 npm run build --prefix ui
