@@ -434,3 +434,20 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=live ./... -cou
   requests, so a table or column picker cannot be declared for a database. A change-data Trigger
   would need a durable per-binding cursor, such as a change tracking version, which `sdkgo` does
   not provide.
+
+## Mocks
+
+The `sqlservermock` default provides a committed refund row for order `88213` and a successful insert with one `OUTPUT` row. The named `raceLost` case returns six columns with zero rows after another Flow won the race. Named `rowLimit`, `missingTable`, and `duplicateKey` cases cover definite limits and rejections. The [record refund example](examples/record-refund/flow/workflow_mock_integration_test.go) scripts an empty first query with six columns and checks both the race-lost read-back and the default successful insert against a real Dex Worker.
+
+```go
+mock := sqlservermock.New(t, ConnectionName)
+mock.QueryRows().Respond(sqlservermock.QueryRowsCompleted(sqlserver.RowSet{Columns: []sqlserver.Column{
+	{Name: "refund_id", TypeName: "BIGINT"}, {Name: "order_id", TypeName: "NVARCHAR"},
+	{Name: "amount_usd", TypeName: "DECIMAL"}, {Name: "external_reference", TypeName: "NVARCHAR"},
+	{Name: "idempotency_key", TypeName: "UNIQUEIDENTIFIER"}, {Name: "recorded_at", TypeName: "DATETIME2"},
+}, Rows: []map[string]any{}}, nil))
+mock.ExecuteStatement().Respond(sqlservermock.ExecuteStatementRaceLost())
+harness := startTestWorkerWithConnection(t, mock.Connection())
+```
+
+Install this release with `go get github.com/superdurable/dex-connectors-library/connectors/microsoft/sql-server@v0.22.0`.
