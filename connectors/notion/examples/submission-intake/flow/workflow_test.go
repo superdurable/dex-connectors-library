@@ -43,10 +43,11 @@ func TestMappersBuildTheSubmissionKeyedRequests(t *testing.T) {
 	}
 	require.Equal(t, notion.SearchInput{Query: "Form submissions", ObjectType: notion.SearchObjectDataSource, PageSize: searchPageSize},
 		MapToFindSubmissionsDataSourceInput(record))
+	require.Equal(t, notion.MaximumPageSize, MapToFindSubmissionsDataSourceInput(record).PageSize, "one Step searches as many results as Notion allows")
 	query := MapToFindSubmissionRowsInput(record)
 	require.Equal(t, record.DataSourceID, query.DataSourceID)
 	require.Equal(t, &notion.QueryFilter{Property: SubmissionIDProperty, Type: notion.PropertyTypeRichText, Condition: notion.FilterEquals, Text: "sub-42"}, query.Filter)
-	require.Equal(t, 2, query.PageSize, "two rows are enough to see a duplicate")
+	require.Equal(t, notion.MaximumPageSize, query.PageSize, "one Step reads as many rows as Notion allows")
 
 	create := MapToCreateSubmissionRowInput(record)
 	require.Equal(t, map[string]notion.PropertyValue{
@@ -68,6 +69,15 @@ func TestExactTitleMatchIgnoresCaseTrashAndPartialTitles(t *testing.T) {
 		{ObjectType: notion.SearchObjectPage, ID: "d", Title: "Form submissions"},
 	}
 	require.Equal(t, []string{"a"}, exactTitleMatchIDs(matches, "Form submissions"))
+}
+
+func TestSubmissionRowScanRejectsARepeatedCursorAfterSeveralPages(t *testing.T) {
+	record := SubmissionRecord{Submission: Input{SubmissionID: "sub-42"}}
+	for _, cursor := range []string{"page-a", "page-b"} {
+		require.Empty(t, collectSubmissionRows(&record, notion.QueryDatabaseOutput{NextCursor: cursor}))
+	}
+	require.Equal(t, queryRepeatedCursorFailure,
+		collectSubmissionRows(&record, notion.QueryDatabaseOutput{NextCursor: "page-a"}))
 }
 
 func TestTheFlowRegistersEveryStepAndTheAttribute(t *testing.T) {

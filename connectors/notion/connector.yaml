@@ -5,7 +5,7 @@ metadata:
   displayName: Notion
   description: Search Notion pages and data sources by title, query database rows with typed filters, read a page's properties and plain-text content, and create or update database rows without silent duplicates.
   company: Notion
-  version: v0.21.1
+  version: v0.22.0
 spec:
   provider: notion
   codegen:
@@ -60,6 +60,33 @@ spec:
         executeMethodTimeout: 30s
         durability: async
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
+      pagination: {inputField: startCursor, nextField: nextCursor}
+      mocks:
+        - name: submissionsSearch
+          branch: searched
+          description: "Three search pages that fit database title Form submissions: decoys and a trashed match on page 1, the data source on page 2, and the same data source again on page 3. Script other titles."
+          default: true
+          pages:
+            - matches:
+                - {objectType: data_source, id: 2a4d6f80-1b3c-4d5e-8f70-000000000002, title: "Form submissions (2025)", parent: {type: database_id, id: 2a4d6f80-1b3c-4d5e-8f70-000000000012}}
+                - {objectType: data_source, id: 2a4d6f80-1b3c-4d5e-8f70-000000000001, title: Form submissions, parent: {type: database_id, id: 2a4d6f80-1b3c-4d5e-8f70-000000000011}, inTrash: true}
+              nextCursor: search-page-2
+              hasMore: true
+            - matches:
+                - {objectType: data_source, id: 2a4d6f80-1b3c-4d5e-8f70-112233445566, title: Form submissions, parent: {type: database_id, id: 2a4d6f80-1b3c-4d5e-8f70-112233445500}}
+              nextCursor: search-page-3
+              hasMore: true
+            - matches:
+                - {objectType: data_source, id: 2a4d6f80-1b3c-4d5e-8f70-112233445566, title: Form submissions, parent: {type: database_id, id: 2a4d6f80-1b3c-4d5e-8f70-112233445500}}
+                - {objectType: data_source, id: 2a4d6f80-1b3c-4d5e-8f70-000000000013, title: "Form submissions archive", parent: {type: database_id, id: 2a4d6f80-1b3c-4d5e-8f70-000000000014}}
+        - name: noSharedTitle
+          branch: noMatch
+          description: No shared data source title contains the search text.
+          failure: {kind: NOT_FOUND, message: No shared Notion title matches the search.}
+        - name: searchRejected
+          branch: providerRejected
+          description: Notion conclusively rejects an inaccessible search.
+          failure: {kind: AUTHORIZATION, message: Notion rejected the search.}
     - name: queryDatabase
       goName: QueryDatabase
       inputType: QueryDatabaseInput
@@ -75,6 +102,63 @@ spec:
         - {id: invalidResponse, goName: InvalidResponse, description: Notion returned an invalid or oversized query page., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid, including a database ID whose database holds several data sources.", optional: true}
       execution: *notionReadExecution
+      pagination: {inputField: startCursor, nextField: nextCursor}
+      mocks:
+        - name: existingSubmission
+          branch: queried
+          description: "Three pages that fit submission ID sub-new-1: a trashed and an archived row on page 1, the saved row on page 2, and the same row again on page 3. Script other submission IDs."
+          default: true
+          pages:
+            - dataSourceId: 2a4d6f80-1b3c-4d5e-8f70-112233445566
+              pages:
+                - id: 2a4d6f80-1b3c-4d5e-8f70-112233445588
+                  title: Ada Lovelace
+                  parent: {type: data_source_id, id: 2a4d6f80-1b3c-4d5e-8f70-112233445566, databaseId: 2a4d6f80-1b3c-4d5e-8f70-112233445500}
+                  inTrash: true
+                  properties:
+                    Submission ID: {id: submission-id, type: rich_text, text: sub-new-1, plainText: sub-new-1}
+                - id: 2a4d6f80-1b3c-4d5e-8f70-112233445599
+                  title: Ada Lovelace
+                  parent: {type: data_source_id, id: 2a4d6f80-1b3c-4d5e-8f70-112233445566, databaseId: 2a4d6f80-1b3c-4d5e-8f70-112233445500}
+                  archived: true
+                  properties:
+                    Submission ID: {id: submission-id, type: rich_text, text: sub-new-1, plainText: sub-new-1}
+              nextCursor: rows-page-2
+              hasMore: true
+            - dataSourceId: 2a4d6f80-1b3c-4d5e-8f70-112233445566
+              pages:
+                -
+                  id: 2a4d6f80-1b3c-4d5e-8f70-112233445577
+                  url: https://www.notion.so/2a4d6f801b3c4d5e8f70112233445577
+                  title: Ada Lovelace
+                  parent: {type: data_source_id, id: 2a4d6f80-1b3c-4d5e-8f70-112233445566, databaseId: 2a4d6f80-1b3c-4d5e-8f70-112233445500}
+                  properties:
+                    Name: {id: title, type: title, text: Ada Lovelace, plainText: Ada Lovelace}
+                    Submission ID: {id: submission-id, type: rich_text, text: sub-new-1, plainText: sub-new-1}
+                    Email: {id: email, type: email, email: ada@example.com, plainText: ada@example.com}
+                    Submitted at: {id: submitted-at, type: date, date: {start: "2026-10-25T00:00:00Z"}, plainText: "2026-10-25T00:00:00Z"}
+              nextCursor: rows-page-3
+              hasMore: true
+            - dataSourceId: 2a4d6f80-1b3c-4d5e-8f70-112233445566
+              pages:
+                -
+                  id: 2a4d6f80-1b3c-4d5e-8f70-112233445577
+                  url: https://www.notion.so/2a4d6f801b3c4d5e8f70112233445577
+                  title: Ada Lovelace
+                  parent: {type: data_source_id, id: 2a4d6f80-1b3c-4d5e-8f70-112233445566, databaseId: 2a4d6f80-1b3c-4d5e-8f70-112233445500}
+                  properties:
+                    Name: {id: title, type: title, text: Ada Lovelace, plainText: Ada Lovelace}
+                    Submission ID: {id: submission-id, type: rich_text, text: sub-new-1, plainText: sub-new-1}
+                    Email: {id: email, type: email, email: ada@example.com, plainText: ada@example.com}
+                    Submitted at: {id: submitted-at, type: date, date: {start: "2026-10-25T00:00:00Z"}, plainText: "2026-10-25T00:00:00Z"}
+        - name: dataSourceMissing
+          branch: notFound
+          description: The data source is missing or not shared.
+          failure: {kind: NOT_FOUND, message: Notion could not find the data source.}
+        - name: queryRejected
+          branch: providerRejected
+          description: The requested property filter is not accepted.
+          failure: {kind: VALIDATION, message: Notion rejected the database filter.}
     - name: getPage
       goName: GetPage
       inputType: GetPageInput
@@ -90,6 +174,31 @@ spec:
         - {id: invalidResponse, goName: InvalidResponse, description: Notion returned an invalid or oversized page or block list., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution: *notionReadExecution
+      mocks:
+        - name: submittedPage
+          branch: found
+          description: The saved submission row with properties and plain-text body.
+          default: true
+          output:
+            page:
+              id: 2a4d6f80-1b3c-4d5e-8f70-112233445577
+              url: https://www.notion.so/2a4d6f801b3c4d5e8f70112233445577
+              title: Ada Lovelace
+              parent: {type: data_source_id, id: 2a4d6f80-1b3c-4d5e-8f70-112233445566, databaseId: 2a4d6f80-1b3c-4d5e-8f70-112233445500}
+              properties:
+                Name: {id: title, type: title, text: Ada Lovelace, plainText: Ada Lovelace}
+                Submission ID: {id: submission-id, type: rich_text, text: sub-new-1, plainText: sub-new-1}
+                Email: {id: email, type: email, email: ada@example.com, plainText: ada@example.com}
+                Submitted at: {id: submitted-at, type: date, date: {start: "2026-10-25T00:00:00Z"}, plainText: "2026-10-25T00:00:00Z"}
+            content: {text: "Hello from the form.\nSecond paragraph.", blockCount: 2}
+        - name: pageMissing
+          branch: notFound
+          description: The row was deleted or access was removed.
+          failure: {kind: NOT_FOUND, message: Notion could not find the page.}
+        - name: pageReadRejected
+          branch: providerRejected
+          description: Notion denies this page read.
+          failure: {kind: AUTHORIZATION, message: Notion rejected the page read.}
     - name: createPage
       goName: CreatePage
       inputType: CreatePageInput
@@ -112,6 +221,32 @@ spec:
         heartbeatTimeout: 90s
         durability: sync
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
+      mocks:
+        - name: createdSubmission
+          branch: created
+          description: A newly created submission row.
+          default: true
+          output:
+            dataSourceId: 2a4d6f80-1b3c-4d5e-8f70-112233445566
+            pageId: 2a4d6f80-1b3c-4d5e-8f70-112233445577
+            page:
+              id: 2a4d6f80-1b3c-4d5e-8f70-112233445577
+              url: https://www.notion.so/2a4d6f801b3c4d5e8f70112233445577
+              title: Ada Lovelace
+              parent: {type: data_source_id, id: 2a4d6f80-1b3c-4d5e-8f70-112233445566, databaseId: 2a4d6f80-1b3c-4d5e-8f70-112233445500}
+              properties:
+                Name: {id: title, type: title, text: Ada Lovelace, plainText: Ada Lovelace}
+                Submission ID: {id: submission-id, type: rich_text, text: sub-new-1, plainText: sub-new-1}
+                Email: {id: email, type: email, email: ada@example.com, plainText: ada@example.com}
+                Submitted at: {id: submitted-at, type: date, date: {start: "2026-10-25T00:00:00Z"}, plainText: "2026-10-25T00:00:00Z"}
+        - name: createSourceMissing
+          branch: notFound
+          description: The destination data source is unavailable.
+          failure: {kind: NOT_FOUND, message: Notion could not find the destination data source.}
+        - name: createRejected
+          branch: providerRejected
+          description: Notion rejects a row with an invalid property.
+          failure: {kind: VALIDATION, message: Notion rejected the submitted row.}
     - name: updatePageProperties
       goName: UpdatePageProperties
       inputType: UpdatePagePropertiesInput
@@ -131,3 +266,27 @@ spec:
         heartbeatTimeout: 90s
         durability: async
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m}
+      mocks:
+        - name: updatedSubmission
+          branch: updated
+          description: An existing submission row after absolute property replacement.
+          default: true
+          output:
+            page:
+              id: 2a4d6f80-1b3c-4d5e-8f70-112233445577
+              url: https://www.notion.so/2a4d6f801b3c4d5e8f70112233445577
+              title: Ada Lovelace
+              parent: {type: data_source_id, id: 2a4d6f80-1b3c-4d5e-8f70-112233445566, databaseId: 2a4d6f80-1b3c-4d5e-8f70-112233445500}
+              properties:
+                Name: {id: title, type: title, text: Ada Lovelace, plainText: Ada Lovelace}
+                Submission ID: {id: submission-id, type: rich_text, text: sub-new-1, plainText: sub-new-1}
+                Email: {id: email, type: email, email: ada@example.com, plainText: ada@example.com}
+                Submitted at: {id: submitted-at, type: date, date: {start: "2026-10-25T00:00:00Z"}, plainText: "2026-10-25T00:00:00Z"}
+        - name: updatePageMissing
+          branch: notFound
+          description: The submission row no longer exists.
+          failure: {kind: NOT_FOUND, message: Notion could not find the row to update.}
+        - name: updateRejected
+          branch: providerRejected
+          description: Notion rejects an invalid property update.
+          failure: {kind: VALIDATION, message: Notion rejected the row update.}
