@@ -149,6 +149,24 @@ func TestThreadApprovalExampleRetriesSafePostsAndNeverResendsUnknownPostsWithRea
 	require.NoError(t, err)
 	require.Equal(t, dex.FlowFailed, gatewayResult.Status)
 	require.Equal(t, 1, provider.postCount("9.0"))
+
+	malformedRoot := slack.MessageEvent{
+		TeamID: teamID, ChannelID: "C1", Timestamp: "11.0", ThreadTimestamp: "11.0", UserID: "U1", Text: "request approval",
+	}
+	malformedFlowID := startSlackThreadFlow(t, ctx, harness.client, flow, "Ev-root-malformed-"+testRunID, malformedRoot)
+	waitForSlackStatus(t, ctx, harness.client, flow, malformedFlowID, StatusWaitingForReply)
+	malformedReply := sdkgo.TriggerEvent[slack.MessageEvent]{
+		ID: "Ev-reply-malformed-" + testRunID, OccurredAt: time.Unix(12, 0).UTC(),
+		Payload: slack.MessageEvent{
+			TeamID: teamID, ChannelID: "C1", Timestamp: "12.0", ThreadTimestamp: "11.0", UserID: "U2", Text: "approve",
+		},
+	}
+	require.NoError(t, replyTarget.HandleTrigger(ctx, malformedReply))
+	malformedResult, err := harness.client.WaitForFlow(ctx, malformedFlowID, dex.WaitForFlowOptions{})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowFailed, malformedResult.Status)
+	require.Contains(t, malformedResult.ErrorMessage, "uncertain")
+	require.Equal(t, 1, provider.postCount("11.0"))
 }
 
 func startSlackThreadFlow(
@@ -242,6 +260,10 @@ func (provider *slackProvider) serveHTTP(response http.ResponseWriter, request *
 		if threadTimestamp == "9.0" {
 			response.WriteHeader(http.StatusGatewayTimeout)
 			writeSlackProviderResponse(response, `{"ok":false,"error":"service_unavailable"}`)
+			return
+		}
+		if threadTimestamp == "11.0" {
+			writeSlackProviderResponse(response, `{"ok":false,"error":"token_expired","ts":123}`)
 			return
 		}
 		writeSlackProviderResponse(response, `{"ok":true,"channel":"C1","ts":"2.1","message":{"ts":"2.1","thread_ts":"1.0","user":"UBOT","text":"Processing complete"}}`)

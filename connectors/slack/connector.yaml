@@ -259,7 +259,7 @@ spec:
         executeMethodTimeout: 30s
         durability: sync
         dispatchFence: true
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Only HTTP 429, HTTP 503, complete rate-limit or service-unavailable errors, proven-unsent, pre-dispatch, and read-back failures retry; client_msg_id replay is unverified, and a lost timestamp cannot be read back, so a broader replay could publish another message."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Only HTTP 429/503, complete HTTP 2xx rate-limit or service-unavailable refusals, HTTP 401 or complete HTTP 2xx credential refusals followed by successful refresh, proven-unsent, pre-dispatch, and read-back failures retry; client_msg_id replay is unverified, and a lost timestamp cannot be read back, so a broader replay could publish another message."}}
       mocks:
         - name: messageSent
           branch: sent
@@ -290,7 +290,7 @@ spec:
         executeMethodTimeout: 30s
         durability: sync
         dispatchFence: true
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Only HTTP 429, HTTP 503, complete rate-limit or service-unavailable errors, proven-unsent, pre-dispatch, and read-back failures retry; client_msg_id replay is unverified, and a lost timestamp cannot be read back, so a broader replay could publish another reply."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Only HTTP 429/503, complete HTTP 2xx rate-limit or service-unavailable refusals, HTTP 401 or complete HTTP 2xx credential refusals followed by successful refresh, proven-unsent, pre-dispatch, and read-back failures retry; client_msg_id replay is unverified, and a lost timestamp cannot be read back, so a broader replay could publish another reply."}}
       mocks:
         - name: replySent
           branch: sent

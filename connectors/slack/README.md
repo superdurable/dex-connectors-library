@@ -258,7 +258,7 @@ that the request was not processed. [Slack's method error descriptions](https://
 describe rate limiting with `Retry-After` and temporary service unavailability;
 their HTTP statuses and live delivery behavior remain unverified. An
 `internal_error` or `fatal_error` with a returned timestamp is read back;
-without one it remains `uncertain`. An HTTP 2xx `ok:false` post with
+without one it remains `uncertain`. A complete HTTP 2xx `ok:false` post with
 `invalid_auth`, `token_expired`, or `token_revoked`, or any HTTP 401, forces a
 credential refresh. If refresh succeeds, the fence permits one retry on the
 next Step attempt with the same `client_msg_id`; a failed refresh selects
