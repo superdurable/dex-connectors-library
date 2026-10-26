@@ -109,8 +109,8 @@ and `maxResponseBytes` are startup configuration.
 ## Operations
 
 Every operation bounds its requests by 25 seconds in total and each request by
-20 seconds, below the 30-second Execute timeout and Trello's own 30-second
-limit. Redirects are never followed. A response that contains the key or the
+20 seconds, with a one-second margin before the observed Dex attempt deadline.
+Redirects are never followed. A response that contains the key or the
 token is never returned. Reads and `updateCard` retry 408, 429, 5xx, and
 transport failures; 404 selects `notFound` where the operation declares it;
 400, 401, 403, 409, and other 4xx select `providerRejected`.
@@ -162,16 +162,17 @@ content never travels in a URL. Due dates are sent in UTC with millisecond
 precision. Trello documents no limit for a card name or a comment; the
 connector bounds both at 16384 characters, like a description.
 
-Trello has no idempotency key, so the connector sends the request at most once
-per Step execution:
+Trello has no idempotency key. The connector prevents replay after an ambiguous
+or accepted answer; 429 and 503 can retry in the same Step execution:
 
 | Outcome | Result |
 | --- | --- |
 | 2xx with a card ID | `created` |
-| 400, 401, 403, 404, 409, or another 4xx except 408 and 429 | `providerRejected` |
-| 429 | Retry, after `Retry-After` or one 10-second window |
+| 400, 401, 403, 404, or another 4xx except 408, 409, and 429 | `providerRejected` |
+| 429 or 503 | Retry, honoring `Retry-After` when present |
+| 409 without a provider key or conclusive read-back | `uncertain`; no resend |
 | DNS, connect, or TLS failure before any connection opened | Retry |
-| Timeout, dropped connection, 408, 3xx, or 5xx after dispatch | `uncertain` |
+| Timeout, dropped connection, 408, 3xx, or 5xx other than 503 after dispatch | `uncertain` |
 | 2xx whose body is oversized, unreadable, unusable, or reflects a credential | `uncertain` |
 | An earlier attempt of the same Step execution recorded the dispatch checkpoint | `uncertain`, with nothing sent |
 
@@ -228,12 +229,20 @@ naming its Call ID. An attempt of the same Step execution that finds the
 checkpoint, after a lost Worker or an Execute timeout, selects `uncertain`
 without sending; `TestLostWorkerDuringCreateSelectsUncertainWithoutResendingWithRealDex`
 force-stops the Worker while the fake holds the create and proves the next
-Worker's attempt sends nothing. Only a 429 or a connection that never opened
-clears the checkpoint and retries. Dex accepts the checkpoint when the Worker
-writes it to its stream, before the request leaves; a Worker lost in that
-instant, before Dex stored the checkpoint, could still send twice, and a crash
-after the checkpoint but before the request left reports `uncertain` for a
-request Trello never received.
+Worker's attempt sends nothing. Only a 429, 503, or a traced connection failure
+before connection acquisition records permission for another attempt. Dex does
+not acknowledge checkpoint persistence. A later attempt with a missing or
+stale checkpoint therefore selects `uncertain` without sending. A crash after
+a checkpoint but before the request left can report `uncertain` for a request
+Trello never received.
+
+Trello documents card listings and card comment actions, but neither endpoint
+provides a documented Call ID lookup or enforces a unique marker for these
+writes. Matching a card name or comment text cannot distinguish a prior item
+with identical content. The connector keeps `uncertain` for a possibly accepted
+write rather than treating such a read as confirmation. The 503 retry behavior
+follows Trello's [status-code guide](https://developer.atlassian.com/cloud/trello/guides/rest-api/status-codes/);
+whether Trello can return 503 after applying either POST remains unverified.
 
 `updateCard` keeps the async default. With a fake that held the `PUT` for nine
 seconds, Dex dispatched a backup attempt, Trello received the same body twice,
@@ -297,6 +306,25 @@ approved request into a card in the approved list: it pages through the board's
 open cards for one that already carries the request ID, moves an existing one or
 creates the card once, and comments with the approval. It uses all five
 operations.
+
+## Mocks
+
+The generated `trellomock` package supplies one consistent approved-board
+world. `listCards` pages through three card pages; `getCard`, `createCard`,
+`updateCard`, and `addComment` refer to the same approved request card. Each
+operation also has mocks for its definite `notFound`, `providerRejected`, or
+`invalidResponse` branches when declared. Retry and `uncertain` are scripted
+test cases rather than default fixtures.
+
+The real-Dex [mock example test](examples/approved-request-card/flow/workflow_mock_integration_test.go)
+starts with these lines:
+
+```go
+mock := trellomock.New(t, ConnectionName)
+harness := newTrelloHarnessForConnection(t, mock.Connection(), DuplicateCheck{})
+record := harness.runRequestFlow(t, "mock-approved", requestInput("REQ-1042", "Replace badge reader"))
+require.Equal(t, PhaseReady, record.Phase)
+```
 
 ## Verification
 

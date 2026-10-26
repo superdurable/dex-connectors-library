@@ -4,9 +4,9 @@
 // Package trello lists, reads, creates, and updates Trello cards and comments on them as Dex connector
 // Steps, through the Trello REST API at https://api.trello.com/1.
 //
-// Trello accepts no idempotency key, so CreateCard and AddComment send their request at most once per Step
-// execution: both default to sync durability, record a Dex heartbeat checkpoint before sending, and select
-// the uncertain branch for any outcome that may have reached Trello. UpdateCard writes only absolute values,
+// Trello accepts no idempotency key, so CreateCard and AddComment default to sync durability and record
+// a heartbeat before sending. They retry 429 and 503 and select uncertain for other ambiguous outcomes.
+// UpdateCard writes only absolute values,
 // such as a list, a closed flag, or a complete label set, so a repeated update converges on the same card and
 // keeps the async default.
 package trello
@@ -203,7 +203,11 @@ func (client *Client) startSession(call sdkgo.Call, operationID string) (*operat
 	if err != nil || validateResolvedCredentials(credentials) != nil {
 		return nil, nil, failurePointer(operationID, sdkgo.FailureAuthentication, "Trello connection credentials are unavailable; save an API key and a token for the connection")
 	}
-	operationContext, cancel := context.WithTimeout(call.Context, operationDeadline)
+	requestDeadline := time.Now().Add(operationDeadline)
+	if attemptDeadline, hasDeadline := call.Context.Deadline(); hasDeadline && attemptDeadline.Add(-time.Second).Before(requestDeadline) {
+		requestDeadline = attemptDeadline.Add(-time.Second)
+	}
+	operationContext, cancel := context.WithDeadline(call.Context, requestDeadline)
 	return &operationSession{context: operationContext, call: call, credentials: credentials}, cancel, nil
 }
 
@@ -295,7 +299,7 @@ func (client *Client) classifyRead(operationID string, subject string, result ex
 	}
 }
 
-// classifyUnkeyedWrite retries only a 429 or an undispatched request, when Trello cannot have written.
+// classifyUnkeyedWrite retries 429, 503, and provably undispatched writes.
 func (client *Client) classifyUnkeyedWrite(operationID string, subject string, result exchangeResult) writeClassification {
 	switch {
 	case errors.Is(result.err, errRequestNotBuilt):
@@ -317,8 +321,12 @@ func (client *Client) classifyUnkeyedWrite(operationID string, subject string, r
 		return writeClassification{outcome: writeAccepted}
 	case response.statusCode == http.StatusTooManyRequests:
 		return writeClassification{outcome: writeRetry, retryAfter: client.rateLimitDelay(response), failure: rateLimitFailure(operationID, subject, response)}
+	case response.statusCode == http.StatusServiceUnavailable:
+		return writeClassification{outcome: writeRetry, retryAfter: client.retryAfter(response), failure: newFailure(operationID, sdkgo.FailureAvailability, "Trello "+subject+" is temporarily unavailable")}
 	case response.statusCode == http.StatusNotFound:
 		return writeClassification{outcome: writeNotFound, failure: rejectionFailure(operationID, subject, response.statusCode)}
+	case response.statusCode == http.StatusConflict:
+		return writeClassification{outcome: writeUncertain, failure: newFailure(operationID, sdkgo.FailureConflict, "Trello "+subject+" conflicts with provider state and cannot be retried without a key")}
 	case isConclusiveRejectionStatus(response.statusCode):
 		return writeClassification{outcome: writeRejected, failure: rejectionFailure(operationID, subject, response.statusCode)}
 	default:

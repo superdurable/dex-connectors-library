@@ -10,6 +10,7 @@ import (
 // singleDispatchMarker is the Dex heartbeat checkpoint recorded before a non-idempotent request is sent.
 type singleDispatchMarker struct {
 	DispatchedCallID sdkgo.CallID `json:"trelloDispatchedCallId"`
+	CanRetry         bool         `json:"trelloCanRetry,omitempty"`
 }
 
 // singleDispatchClaim is whether this attempt may send its non-idempotent Trello request.
@@ -30,7 +31,13 @@ const earlierDispatchMessage = "an earlier attempt of this Step may have sent th
 func claimSingleDispatch(call sdkgo.Call) singleDispatchClaim {
 	var marker singleDispatchMarker
 	isMarkerFound, err := call.Context.GetLastHeartbeatValue(&marker)
-	if err != nil || isMarkerFound {
+	if err != nil {
+		return singleDispatchAlreadySent
+	}
+	if isMarkerFound && (!marker.CanRetry || marker.DispatchedCallID != call.ID) {
+		return singleDispatchAlreadySent
+	}
+	if !isMarkerFound && call.Context.Attempt() > 1 {
 		return singleDispatchAlreadySent
 	}
 	if err := call.Context.RecordHeartbeat(singleDispatchMarker{DispatchedCallID: call.ID}); err != nil {
@@ -39,10 +46,10 @@ func claimSingleDispatch(call sdkgo.Call) singleDispatchClaim {
 	return singleDispatchGranted
 }
 
-// releaseSingleDispatch clears the marker after Trello provably did not apply the request.
+// releaseSingleDispatch records a safe retry; a lost checkpoint cannot authorize another send.
 func releaseSingleDispatch(call sdkgo.Call) {
-	// A failed clear leaves the marker, so the next attempt selects uncertain instead of resending.
-	_ = call.Context.RecordHeartbeat(nil)
+	// A failed release leaves the dispatch marker, so the next attempt selects uncertain.
+	_ = call.Context.RecordHeartbeat(singleDispatchMarker{DispatchedCallID: call.ID, CanRetry: true})
 }
 
 // singleDispatchAttemptBeforeSend ends the attempt unless the claim was granted.
