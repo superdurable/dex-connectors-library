@@ -5,7 +5,7 @@ metadata:
   displayName: Microsoft Outlook Calendar
   description: List and read Outlook calendar events in a bounded window, create and update events idempotently, and query free/busy schedules through Microsoft Graph, with delegated Microsoft OAuth or an app-only connection to one mailbox.
   company: Microsoft
-  version: v0.22.1
+  version: v0.23.0
 spec:
   provider: microsoft
   codegen:
@@ -172,6 +172,20 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: listedDefaultAnswer
+          branch: listed
+          description: "Listing team-calendar returns the held Meridian kickoff and a free briefing."
+          default: true
+          output: {"calendarId":"team-calendar","timeMin":"2026-02-20T14:00:00-08:00","timeMax":"2026-02-20T15:00:00-08:00","timeZone":"America/Los_Angeles","events":[{"id":"hold-1","calendarId":"team-calendar","subject":"Meridian kickoff","start":{"dateTime":"2026-02-20T14:00:00-08:00","timeZone":"America/Los_Angeles"},"end":{"dateTime":"2026-02-20T15:00:00-08:00","timeZone":"America/Los_Angeles"},"showAs":"busy","isOrganizer":true,"onlineMeeting":{"provider":"teamsForBusiness","joinUrl":"https://teams.microsoft.com/l/meetup-join/hold-1"}},{"id":"free-briefing-1","calendarId":"team-calendar","subject":"Optional briefing","start":{"dateTime":"2026-02-20T14:15:00-08:00","timeZone":"America/Los_Angeles"},"end":{"dateTime":"2026-02-20T14:45:00-08:00","timeZone":"America/Los_Angeles"},"showAs":"free"}],"nextPageToken":""}
+        - name: missingCalendar
+          branch: notFound
+          description: "Listing a missing calendar returns not found."
+          failure: {"kind":"NOT_FOUND","message":"Listing a missing calendar returns not found."}
+        - name: deniedCalendar
+          branch: providerRejected
+          description: "Listing a calendar without permission is rejected."
+          failure: {"kind":"AUTHORIZATION","message":"Listing a calendar without permission is rejected."}
     - name: getEvent
       goName: GetEvent
       inputType: GetEventInput
@@ -188,6 +202,20 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: foundDefaultAnswer
+          branch: found
+          description: "Reading hold-1 returns the Meridian kickoff hold without a calendar ID."
+          default: true
+          output: {"id":"hold-1","subject":"Meridian kickoff","body":"Agenda to follow.","start":{"dateTime":"2026-02-20T14:00:00-08:00","timeZone":"America/Los_Angeles"},"end":{"dateTime":"2026-02-20T15:00:00-08:00","timeZone":"America/Los_Angeles"},"showAs":"busy","isOrganizer":true,"onlineMeeting":{"provider":"teamsForBusiness","joinUrl":"https://teams.microsoft.com/l/meetup-join/hold-1"}}
+        - name: missingEvent
+          branch: notFound
+          description: "Reading a missing event ID returns not found."
+          failure: {"kind":"NOT_FOUND","message":"Reading a missing event ID returns not found."}
+        - name: deniedEvent
+          branch: providerRejected
+          description: "Reading an event without permission is rejected."
+          failure: {"kind":"AUTHORIZATION","message":"Reading an event without permission is rejected."}
     - name: createEvent
       goName: CreateEvent
       inputType: CreateEventInput
@@ -204,6 +232,16 @@ spec:
         executeMethodTimeout: 30s
         durability: async
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Graph does not document transactionId replay or retention, and a lagging extended-property lookup can permit another event POST."}}
+      mocks:
+        - name: createdDefaultAnswer
+          branch: created
+          description: "Creating the Meridian kickoff hold in team-calendar returns hold-1."
+          default: true
+          output: {"event":{"id":"hold-1","calendarId":"team-calendar","subject":"Meridian kickoff","body":"Agenda to follow.","start":{"dateTime":"2026-02-20T14:00:00-08:00","timeZone":"America/Los_Angeles"},"end":{"dateTime":"2026-02-20T15:00:00-08:00","timeZone":"America/Los_Angeles"},"showAs":"busy","isOrganizer":true,"onlineMeeting":{"provider":"teamsForBusiness","joinUrl":"https://teams.microsoft.com/l/meetup-join/hold-1"}},"wasAlreadyCreated":false}
+        - name: deniedCreate
+          branch: providerRejected
+          description: "Creating an event in a read-only calendar is rejected."
+          failure: {"kind":"AUTHORIZATION","message":"Creating an event in a read-only calendar is rejected."}
     - name: updateEvent
       goName: UpdateEvent
       inputType: UpdateEventInput
@@ -220,6 +258,20 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: updatedDefaultAnswer
+          branch: updated
+          description: "Updating hold-1 with Priya and Alice returns the invited Meridian kickoff."
+          default: true
+          output: {"event":{"id":"hold-1","subject":"Meridian kickoff","body":"Agenda to follow.","start":{"dateTime":"2026-02-20T14:00:00-08:00","timeZone":"America/Los_Angeles"},"end":{"dateTime":"2026-02-20T15:00:00-08:00","timeZone":"America/Los_Angeles"},"showAs":"busy","attendees":[{"email":"priya@meridian.example.com"},{"email":"alice@example.com"}],"isOrganizer":true,"onlineMeeting":{"provider":"teamsForBusiness","joinUrl":"https://teams.microsoft.com/l/meetup-join/hold-1"}},"wasAlreadyApplied":false}
+        - name: missingEvent
+          branch: notFound
+          description: "Updating a missing event ID returns not found."
+          failure: {"kind":"NOT_FOUND","message":"Updating a missing event ID returns not found."}
+        - name: deniedUpdate
+          branch: providerRejected
+          description: "Updating an event without write permission is rejected."
+          failure: {"kind":"AUTHORIZATION","message":"Updating an event without write permission is rejected."}
     - name: queryFreeBusy
       goName: QueryFreeBusy
       inputType: QueryFreeBusyInput
@@ -236,3 +288,18 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: queriedDefaultAnswer
+          branch: queried
+          description: "Querying Priya and Alice for the Meridian kickoff hour reports both free."
+          default: true
+          output: {"timeMin":"2026-02-20T14:00:00-08:00","timeMax":"2026-02-20T15:00:00-08:00","timeZone":"America/Los_Angeles","availabilityViewInterval":30,"schedules":[{"scheduleId":"priya@meridian.example.com","isBusy":false,"isAvailabilityKnown":true,"items":[],"availabilityView":"00"},{"scheduleId":"alice@example.com","isBusy":false,"isAvailabilityKnown":true,"items":[],"availabilityView":"00"}]}
+        - name: unknownSchedule
+          branch: incomplete
+          description: "Querying only alice@example.com when Graph cannot read her schedule returns unknown availability."
+          output: {"timeMin":"2026-02-20T14:00:00-08:00","timeMax":"2026-02-20T15:00:00-08:00","timeZone":"America/Los_Angeles","availabilityViewInterval":30,"schedules":[{"scheduleId":"alice@example.com","isBusy":false,"isAvailabilityKnown":false,"unknownReason":"error","items":[],"availabilityView":"","errorResponseCode":"ErrorAccessDenied"}]}
+          failure: {"kind":"PROVIDER_REJECTION","message":"Querying only alice@example.com when Graph cannot read her schedule returns unknown availability."}
+        - name: deniedSchedule
+          branch: providerRejected
+          description: "Querying schedules without permission is rejected."
+          failure: {"kind":"AUTHORIZATION","message":"Querying schedules without permission is rejected."}

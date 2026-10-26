@@ -313,3 +313,14 @@ endpoint, cancelled meetings in `calendarView`, the `getSchedule` error and
 availability-view shapes for unshared or unknown schedules, Teams meeting
 creation, `$top` on the calendars list, and both picker commands with a valid
 token.
+
+## Mocks
+
+`outlookcalendarmock` supplies free availability for Priya and Alice, a Meridian kickoff hold with a Teams meeting, its read-back without a calendar ID, a one-page calendar view with a free decoy event, and the invited event. Named mocks cover missing calendars or events, incomplete availability, and permission denials. The [book meeting example](examples/book-meeting/flow/workflow_mock_integration_test.go) checks every operation call through a real Dex Worker.
+
+```go
+mock := outlookcalendarmock.New(t, ConnectionName)
+flow, harness := newBookMeetingHarness(t, mock.Connection(), CalendarSelection{CalendarID: "team-calendar", CalendarName: "Ops Team"})
+```
+
+Install this release with `go get github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-calendar@v0.23.0`.
