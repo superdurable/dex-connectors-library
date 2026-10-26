@@ -18,9 +18,23 @@ refresh-token rotation replaces the previous token only when Google returns a
 new one, and terminal `invalid_grant` responses require reauthorization.
 
 `UpsertRow` first reads the target sheet and matches a stable key column. It
-updates one match, appends when absent, and returns the `conflict` branch for
-duplicates. An ambiguous provider write returns `uncertain`; retrying the same
-Step execution retains its Call ID and queries before writing again.
+[replaces values at an absolute range](https://developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets.values/update)
+when one row matches, [appends a new row](https://developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets.values/append)
+when absent, and returns `conflict` for duplicate keys. A PUT can retry because
+it replaces the same values. An append uses the shared single-dispatch fence
+with synchronous Execute durability; the fence records its dispatch claim before
+the POST and prevents a second send after an unconfirmed claim. A 429, 503, or
+traced failure before a connection is obtained permits a retry, which first
+reads the row key again. A visible row with the requested values confirms the
+append. An unconfirmed, possibly accepted append returns `uncertain`.
+
+Google [recommends backoff for 503](https://developers.google.com/workspace/sheets/api/troubleshoot-api-errors),
+but its published append documentation does not guarantee that a 503 means the
+row was not applied or that a row-key lookup immediately sees every accepted
+append. The connector's `X-Idempotency-Key` is a stable correlation header;
+Google does not document deduplication for that header. A delayed row becoming
+visible after a retry's lookup could still lead to a duplicate. This timing
+behavior has not been verified against a live Google spreadsheet.
 
 Every operation uses `defect` for invalid local input, connection configuration,
 or Connector contract violations. A conclusive Google API refusal uses
@@ -60,8 +74,9 @@ Named cases cover missing ranges or rows, duplicate keys, and provider refusals.
 ## Verification
 
 ```bash
-GOWORK=off go test -race ./...
+GOWORK=off go test -race -count=1 ./...
 GOWORK=off go vet ./...
+GOWORK=off go vet -tags=integration ./...
 npm ci --prefix ui
 npm test --prefix ui
 npm run build --prefix ui

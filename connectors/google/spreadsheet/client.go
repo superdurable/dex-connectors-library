@@ -6,17 +6,22 @@ package spreadsheet
 
 import (
 	"bytes"
+	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptrace"
 	"net/url"
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 // Option configures Client construction.
@@ -141,8 +146,15 @@ type requestResult struct {
 }
 
 type providerRequestError struct {
-	kind    sdkgo.FailureKind
-	message string
+	kind         sdkgo.FailureKind
+	message      string
+	undispatched bool
+}
+
+type writeDispatchObservation struct {
+	mutex                 sync.Mutex
+	hasObtainedConnection bool
+	hasFailedToConnect    bool
 }
 
 // Error returns the safe human-readable failure message.
@@ -284,114 +296,6 @@ func (operation FindRowOperation) Invoke(call sdkgo.Call, input FindRowInput) sd
 	return sdkgo.NewQueryBranch(branch, found, findFailure, receipt)
 }
 
-// Definition returns the immutable connector operation definition.
-func (UpsertRowOperation) Definition() sdkgo.MutationDefinition { return UpsertRowDefinition }
-
-// IdempotencyKey derives the provider key from the stable connector call ID.
-func (UpsertRowOperation) IdempotencyKey(callID sdkgo.CallID, _ UpsertRowInput) sdkgo.IdempotencyKey {
-	return sdkgo.IdempotencyKey(callID)
-}
-
-// Invoke executes one provider call and classifies its attempt.
-func (operation UpsertRowOperation) Invoke(call sdkgo.Call, input UpsertRowInput) sdkgo.MutationAttempt[UpsertRowOutput] {
-	findInput := FindRowInput{SpreadsheetID: input.SpreadsheetID, SheetName: input.SheetName, KeyColumn: input.KeyColumn, KeyValue: input.KeyValue}
-	if err := validateFindInput(findInput); err != nil || len(input.Values) == 0 {
-		message := "values are required"
-		if err != nil {
-			message = err.Error()
-		}
-		return sdkgo.NewMutationBranch(UpsertRowBranchDefect, UpsertRowOutput{}, failurePointer(sdkgo.FailureValidation, "upsertRow", message), sdkgo.Receipt{})
-	}
-	credential, failure := operation.client.resolveCredential(call, "upsertRow")
-	if failure != nil {
-		return sdkgo.NewMutationBranch(UpsertRowBranchDefect, UpsertRowOutput{}, failure, sdkgo.Receipt{})
-	}
-	lookup, err := operation.client.getValues(call, credential, input.SpreadsheetID, quoteSheet(input.SheetName))
-	if err != nil {
-		if requestFailure, ok := err.(*providerRequestError); ok {
-			switch requestFailure.kind {
-			case sdkgo.FailureResponseTooLarge:
-				return sdkgo.NewMutationBranch(UpsertRowBranchInvalidResponse, UpsertRowOutput{}, failurePointer(requestFailure.kind, "upsertRow", requestFailure.message), operation.client.receipt(call, lookup, ""))
-			case sdkgo.FailureLocalDefect:
-				return sdkgo.NewMutationBranch(UpsertRowBranchDefect, UpsertRowOutput{}, failurePointer(requestFailure.kind, "upsertRow", requestFailure.message), sdkgo.Receipt{})
-			}
-		}
-		return sdkgo.NewMutationRetry[UpsertRowOutput](sheetFailure(sdkgo.FailureAvailability, "upsertRow", "provider is unavailable before write"), 0)
-	}
-	lookupReceipt := operation.client.receipt(call, lookup, "")
-	retry, delay, retryAfterErr := classifyRetryableStatus(lookup.status, lookup.header)
-	if retryAfterErr != nil {
-		return sdkgo.NewMutationRetry[UpsertRowOutput](sheetFailure(sdkgo.FailureProtocol, "upsertRow", "provider returned an invalid Retry-After header"), 0)
-	}
-	if retry {
-		return sdkgo.NewMutationRetry[UpsertRowOutput](sheetFailure(statusFailureKind(lookup.status), "upsertRow", "provider temporarily rejected the pre-write query"), delay)
-	}
-	if lookup.status < 200 || lookup.status >= 300 {
-		return sdkgo.NewMutationBranch(UpsertRowBranchProviderRejected, UpsertRowOutput{}, failurePointer(statusFailureKind(lookup.status), "upsertRow", "provider rejected the pre-write query"), lookupReceipt)
-	}
-	values, decodeFailure := operation.client.decodeValues(lookup.body, "upsertRow")
-	if decodeFailure != nil {
-		return sdkgo.NewMutationBranch(UpsertRowBranchInvalidResponse, UpsertRowOutput{}, decodeFailure, lookupReceipt)
-	}
-	rows := convertValues(values).Values
-	match, branch, findFailure := findRow(rows, input.KeyColumn, input.KeyValue)
-	if branch == FindRowBranchConflict {
-		return sdkgo.NewMutationBranch(UpsertRowBranchConflict, UpsertRowOutput{}, findFailure, lookupReceipt)
-	}
-	if branch != FindRowBranchFound && branch != FindRowBranchNotFound {
-		return sdkgo.NewMutationBranch(UpsertRowBranchDefect, UpsertRowOutput{}, findFailure, lookupReceipt)
-	}
-	row, buildFailure := buildRow(rows, input)
-	if buildFailure != nil {
-		return sdkgo.NewMutationBranch(UpsertRowBranchDefect, UpsertRowOutput{}, buildFailure, lookupReceipt)
-	}
-	action := "inserted"
-	method := http.MethodPost
-	targetRange := quoteSheet(input.SheetName)
-	query := url.Values{"valueInputOption": {"RAW"}, "insertDataOption": {"INSERT_ROWS"}}
-	pathSuffix := "/values/" + url.PathEscape(targetRange) + ":append"
-	rowNumber := int64(len(rows) + 1)
-	if branch == FindRowBranchFound {
-		action = "updated"
-		method = http.MethodPut
-		rowNumber = match.RowNumber
-		targetRange = fmt.Sprintf("%s!A%d", quoteSheet(input.SheetName), rowNumber)
-		query = url.Values{"valueInputOption": {"RAW"}}
-		pathSuffix = "/values/" + url.PathEscape(targetRange)
-	}
-	payload := map[string]any{"range": targetRange, "majorDimension": "ROWS", "values": [][]string{row}}
-	writeResult, err := operation.client.request(call, credential, method, input.SpreadsheetID, pathSuffix, query, payload)
-	if err != nil {
-		if requestFailure, ok := err.(*providerRequestError); ok && requestFailure.kind == sdkgo.FailureLocalDefect {
-			return sdkgo.NewMutationBranch(UpsertRowBranchDefect, UpsertRowOutput{}, failurePointer(requestFailure.kind, "upsertRow", requestFailure.message), lookupReceipt)
-		}
-		return sdkgo.NewMutationUncertain(UpsertRowOutput{}, sheetFailure(sdkgo.FailureTransport, "upsertRow", "provider outcome is unknown"), lookupReceipt)
-	}
-	receipt := operation.client.receipt(call, writeResult, fmt.Sprintf("%s#%s!%d", input.SpreadsheetID, input.SheetName, rowNumber))
-	if writeResult.status == http.StatusTooManyRequests {
-		delay, err := retryAfterDelay(writeResult.header)
-		if err != nil {
-			return sdkgo.NewMutationRetry[UpsertRowOutput](sheetFailure(sdkgo.FailureProtocol, "upsertRow", "provider returned an invalid Retry-After header"), 0)
-		}
-		return sdkgo.NewMutationRetry[UpsertRowOutput](sheetFailure(statusFailureKind(writeResult.status), "upsertRow", "provider conclusively rejected the write temporarily"), delay)
-	}
-	if writeResult.status >= 500 {
-		return sdkgo.NewMutationUncertain(UpsertRowOutput{}, sheetFailure(sdkgo.FailureAvailability, "upsertRow", "provider write outcome is unknown"), receipt)
-	}
-	if writeResult.status < 200 || writeResult.status >= 300 {
-		return sdkgo.NewMutationBranch(UpsertRowBranchProviderRejected, UpsertRowOutput{}, failurePointer(statusFailureKind(writeResult.status), "upsertRow", "provider rejected the write"), receipt)
-	}
-	var response updateResponse
-	if err := json.Unmarshal(writeResult.body, &response); err != nil {
-		return sdkgo.NewMutationUncertain(UpsertRowOutput{}, sheetFailure(sdkgo.FailureProtocol, "upsertRow", "provider returned an invalid write response"), receipt)
-	}
-	updatedRange := response.UpdatedRange
-	if response.Updates != nil && response.Updates.UpdatedRange != "" {
-		updatedRange = response.Updates.UpdatedRange
-	}
-	return sdkgo.NewMutationBranch(UpsertRowBranchUpserted, UpsertRowOutput{Action: action, RowNumber: rowNumber, UpdatedRange: updatedRange}, nil, receipt)
-}
-
 func (client *Client) resolveCredential(call sdkgo.Call, operation string) (Credentials, *sdkgo.Failure) {
 	credential, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
 	if err != nil || validateResolvedCredentials(credential) != nil {
@@ -454,6 +358,86 @@ func (client *Client) request(call sdkgo.Call, credential Credentials, method, s
 		}
 	}
 	return requestResult{}, &providerRequestError{kind: sdkgo.FailureLocalDefect, message: "authenticated request retry was exhausted"}
+}
+
+func (client *Client) writeRequest(ctx context.Context, call sdkgo.Call, credential Credentials, method, spreadsheetID, suffix string, query url.Values, payload any) (requestResult, error) {
+	encodedPayload, err := json.Marshal(payload)
+	if err != nil {
+		return requestResult{}, &providerRequestError{kind: sdkgo.FailureLocalDefect, message: "provider write could not be encoded", undispatched: true}
+	}
+	target := strings.TrimRight(client.endpoint.String(), "/") + "/spreadsheets/" + url.PathEscape(spreadsheetID) + suffix
+	observation := &writeDispatchObservation{}
+	requestContext := httptrace.WithClientTrace(ctx, observation.clientTrace())
+	request, err := http.NewRequestWithContext(requestContext, method, target, bytes.NewReader(encodedPayload))
+	if err != nil {
+		return requestResult{}, &providerRequestError{kind: sdkgo.FailureLocalDefect, message: "provider write could not be built", undispatched: true}
+	}
+	request.URL.RawQuery = query.Encode()
+	request.Header.Set("Authorization", "Bearer "+credential.AccessToken.Reveal())
+	request.Header.Set("Content-Type", "application/json")
+	// Sheets does not document deduplication for this correlation header.
+	request.Header.Set("X-Idempotency-Key", string(call.IdempotencyKey))
+	if err := singledispatch.PrepareHTTPWrite(request); err != nil {
+		return requestResult{}, &providerRequestError{kind: sdkgo.FailureLocalDefect, message: "provider write could not be prepared", undispatched: true}
+	}
+	response, err := client.httpClient.Do(request)
+	if err != nil {
+		return requestResult{}, &providerRequestError{kind: sdkgo.FailureTransport, message: "provider write failed", undispatched: observation.isProvablyUndispatched()}
+	}
+	result := requestResult{status: response.StatusCode, header: response.Header, requestID: googleRequestID(response.Header)}
+	content, readErr := io.ReadAll(io.LimitReader(response.Body, client.maxResponseBytes+1))
+	closeErr := response.Body.Close()
+	if readErr != nil || closeErr != nil {
+		return result, &providerRequestError{kind: sdkgo.FailureTransport, message: "provider write response could not be read"}
+	}
+	if int64(len(content)) > client.maxResponseBytes {
+		return result, &providerRequestError{kind: sdkgo.FailureResponseTooLarge, message: "provider write response exceeds configured limit"}
+	}
+	result.body = content
+	return result, nil
+}
+
+func (observation *writeDispatchObservation) clientTrace() *httptrace.ClientTrace {
+	return &httptrace.ClientTrace{
+		DNSDone: observation.recordDNSDone, ConnectDone: observation.recordConnectDone,
+		TLSHandshakeDone: observation.recordTLSHandshakeDone, GotConn: observation.recordObtainedConnection,
+	}
+}
+
+func (observation *writeDispatchObservation) isProvablyUndispatched() bool {
+	observation.mutex.Lock()
+	defer observation.mutex.Unlock()
+	return observation.hasFailedToConnect && !observation.hasObtainedConnection
+}
+
+func (observation *writeDispatchObservation) recordDNSDone(info httptrace.DNSDoneInfo) {
+	if info.Err != nil {
+		observation.recordConnectionFailure()
+	}
+}
+
+func (observation *writeDispatchObservation) recordConnectDone(_ string, _ string, err error) {
+	if err != nil {
+		observation.recordConnectionFailure()
+	}
+}
+
+func (observation *writeDispatchObservation) recordTLSHandshakeDone(_ tls.ConnectionState, err error) {
+	if err != nil {
+		observation.recordConnectionFailure()
+	}
+}
+
+func (observation *writeDispatchObservation) recordObtainedConnection(httptrace.GotConnInfo) {
+	observation.mutex.Lock()
+	defer observation.mutex.Unlock()
+	observation.hasObtainedConnection = true
+}
+
+func (observation *writeDispatchObservation) recordConnectionFailure() {
+	observation.mutex.Lock()
+	defer observation.mutex.Unlock()
+	observation.hasFailedToConnect = true
 }
 
 func validateResolvedCredentials(credentials Credentials) error {

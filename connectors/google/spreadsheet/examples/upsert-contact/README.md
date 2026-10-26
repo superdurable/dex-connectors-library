@@ -41,6 +41,12 @@ The spreadsheet must contain an `email` header. Only the `upserted` branch is
 wired; conflicts, provider rejection, invalid responses, uncertain writes, and
 local defects fail the Flow.
 
+The real-Dex retry test in
+[`workflow_retry_integration_test.go`](flow/workflow_retry_integration_test.go)
+serves one 503 response followed by success and checks that the Flow completes
+after exactly two append requests with the same correlation key. CI runs this
+test; local verification does not start a Dex stack.
+
 ```bash
 GOWORK=off go test -race ./examples/upsert-contact/...
 ```

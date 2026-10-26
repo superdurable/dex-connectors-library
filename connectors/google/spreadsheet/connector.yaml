@@ -5,7 +5,7 @@ metadata:
   displayName: Google Sheets
   description: Read ranges, find stable keyed rows, and idempotently upsert rows in Google Sheets.
   company: Google
-  version: v0.23.1
+  version: v0.24.0
 spec:
   provider: google
   codegen:
@@ -206,7 +206,7 @@ spec:
       inputType: UpsertRowInput
       outputType: UpsertRowOutput
       kind: mutation
-      description: Query by a stable key and update or append exactly one row.
+      description: Query by a stable key and replace or append one row; synchronous durability persists the append dispatch fence before Google receives a non-repeatable write.
       idempotency: required
       branches:
         - {id: upserted, goName: Upserted, description: One row was inserted or updated.}
@@ -217,7 +217,8 @@ spec:
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
-        durability: async
+        durability: sync
+        dispatchFence: true
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A retry can append again when the preceding append is not yet visible to the key lookup, so bound upsertRow retries."}}
       mocks:
         - name: contactUpserted

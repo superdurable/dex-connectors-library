@@ -200,44 +200,6 @@ func TestGetValuesInvalidJSONUsesInvalidResponseBranch(t *testing.T) {
 	require.Equal(t, sdkgo.FailureProtocol, result.Failure.Kind)
 }
 
-func TestUpsertReconcilesAmbiguousAppendWithoutSecondRow(t *testing.T) {
-	rows := [][]string{{"accountId", "name"}}
-	var writes int
-	server := sheetServer(t, &rows, func(response http.ResponseWriter, request *http.Request) bool {
-		writes++
-		var payload struct {
-			Values [][]string `json:"values"`
-		}
-		require.NoError(t, json.NewDecoder(request.Body).Decode(&payload))
-		if request.Method == http.MethodPost {
-			rows = append(rows, payload.Values[0])
-			response.WriteHeader(http.StatusInternalServerError)
-			return true
-		}
-		rows[1] = payload.Values[0]
-		_, _ = response.Write([]byte(`{"updatedRange":"'Customers'!A2:B2"}`))
-		return true
-	})
-	defer server.Close()
-	client := newSheetsClient(t, server.URL)
-	input := spreadsheet.UpsertRowInput{SpreadsheetID: "sheet", SheetName: "Customers", KeyColumn: "accountId", KeyValue: "a-1", Values: map[string]string{"name": "Ada"}}
-	ctx := newDexContext("upsert-one")
-
-	unknown, err := sdkgo.RunMutation(ctx, client.UpsertRow(), sheetsConnection, input)
-	require.NoError(t, err)
-	require.Equal(t, spreadsheet.UpsertRowBranchUncertain, unknown.Branch)
-	require.Len(t, rows, 2)
-
-	recovered, err := sdkgo.RunMutation(ctx, client.UpsertRow(), sheetsConnection, input)
-	require.NoError(t, err)
-	require.Equal(t, spreadsheet.UpsertRowBranchUpserted, recovered.Branch)
-	require.Equal(t, "updated", recovered.Value.Action)
-	require.Len(t, rows, 2)
-	require.Equal(t, 2, writes)
-	require.Equal(t, unknown.Receipt.CallID, recovered.Receipt.CallID)
-	require.Equal(t, unknown.Receipt.IdempotencyKey, recovered.Receipt.IdempotencyKey)
-}
-
 func sheetServer(t *testing.T, rows *[][]string, write func(http.ResponseWriter, *http.Request) bool) *httptest.Server {
 	t.Helper()
 	var mutex sync.Mutex
