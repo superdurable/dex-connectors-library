@@ -28,7 +28,7 @@ import (
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
-func TestThreadReplyExampleCompletesOnceAndFailsUnwiredUncertainOutcomeWithRealDex(t *testing.T) {
+func TestThreadReplyExampleCompletesAndRetriesAfterSearchMissWithRealDex(t *testing.T) {
 	provider := newGmailProvider(t)
 	defer provider.Close()
 	flow, harness := newGmailIntegrationHarness(t, provider.URL)
@@ -82,31 +82,29 @@ func TestThreadReplyExampleCompletesOnceAndFailsUnwiredUncertainOutcomeWithRealD
 	require.Equal(t, successReplyMessageID, completedState.ReplyMessageID)
 	require.Equal(t, 1, provider.sendCount(successThreadID))
 
-	uncertainRootMessageID := "root-uncertain-" + testRunID
-	uncertainReplyMessageID := "reply-uncertain-" + testRunID
-	uncertainThreadID := "thread-uncertain-" + testRunID
+	retriedRootMessageID := "root-retried-" + testRunID
+	retriedReplyMessageID := "reply-retried-" + testRunID
+	retriedThreadID := "thread-retried-" + testRunID
 
-	uncertainRoot := gmail.MessageEvent{
-		PrimaryEmail: primaryEmail, MessageID: uncertainRootMessageID, ThreadID: uncertainThreadID,
+	retriedRoot := gmail.MessageEvent{
+		PrimaryEmail: primaryEmail, MessageID: retriedRootMessageID, ThreadID: retriedThreadID,
 		From: "sender@example.com", Subject: "Approval request", Snippet: "request approval",
 	}
-	uncertainFlowID := startGmailThreadFlow(t, ctx, harness.client, flow, "root-uncertain-"+testRunID, uncertainRoot)
-	waitForGmailStatus(t, ctx, harness.client, flow, uncertainFlowID, StatusWaitingForReply)
-	uncertainReply := sdkgo.TriggerEvent[gmail.MessageEvent]{
-		ID: "reply-uncertain-" + testRunID, OccurredAt: time.Unix(4, 0).UTC(),
+	retriedFlowID := startGmailThreadFlow(t, ctx, harness.client, flow, "root-retried-"+testRunID, retriedRoot)
+	waitForGmailStatus(t, ctx, harness.client, flow, retriedFlowID, StatusWaitingForReply)
+	retriedReply := sdkgo.TriggerEvent[gmail.MessageEvent]{
+		ID: "reply-retried-" + testRunID, OccurredAt: time.Unix(4, 0).UTC(),
 		Payload: gmail.MessageEvent{
-			PrimaryEmail: primaryEmail, MessageID: uncertainReplyMessageID, ThreadID: uncertainThreadID,
+			PrimaryEmail: primaryEmail, MessageID: retriedReplyMessageID, ThreadID: retriedThreadID,
 			From: "sender@example.com", Subject: "Re: Approval request", Snippet: "approved", IsReply: true,
 		},
 	}
-	require.NoError(t, replyTarget.HandleTrigger(ctx, uncertainReply))
-	uncertainResult, err := harness.client.WaitForFlow(ctx, uncertainFlowID, dex.WaitForFlowOptions{})
+	require.NoError(t, replyTarget.HandleTrigger(ctx, retriedReply))
+	retriedResult, err := harness.client.WaitForFlow(ctx, retriedFlowID, dex.WaitForFlowOptions{})
 	require.NoError(t, err)
-	require.Equal(t, dex.FlowFailed, uncertainResult.Status)
-	require.Contains(t, uncertainResult.ErrorMessage,
-		gmail.ConnectorID+" replyToMessage (connection "+ConnectionName+") selected branch uncertain with no target: AVAILABILITY")
-	require.Equal(t, 1, provider.sendCount(uncertainThreadID))
-	require.Equal(t, 1, provider.searchCount(uncertainThreadID))
+	require.Equal(t, dex.FlowCompleted, retriedResult.Status)
+	require.Equal(t, 2, provider.sendCount(retriedThreadID))
+	require.Equal(t, 2, provider.searchCount(retriedThreadID))
 }
 
 func TestThreadReplyConfirmsALostSendResponseWithRealDex(t *testing.T) {
@@ -269,7 +267,7 @@ func (provider *gmailProvider) serveSentMailSearch(response http.ResponseWriter,
 	writeGmailProviderResponse(response, `{"messages":[{"id":`+strconv.Quote(found.ID)+`,"threadId":`+strconv.Quote(found.ThreadID)+`}]}`)
 }
 
-// serveSend answers by thread prefix: confirmed loses the answer, hanging never answers, uncertain fails with 500.
+// serveSend answers by thread prefix: confirmed loses the answer, hanging never answers, retried fails once with 500.
 func (provider *gmailProvider) serveSend(response http.ResponseWriter, request *http.Request) {
 	var payload map[string]string
 	if err := json.NewDecoder(request.Body).Decode(&payload); err != nil {
@@ -302,7 +300,7 @@ func (provider *gmailProvider) serveSend(response http.ResponseWriter, request *
 		}
 	case strings.HasPrefix(threadID, "thread-confirmed-"):
 		panic(http.ErrAbortHandler)
-	case strings.HasPrefix(threadID, "thread-uncertain-"):
+	case strings.HasPrefix(threadID, "thread-retried-") && provider.sendCount(threadID) == 1:
 		response.WriteHeader(http.StatusInternalServerError)
 		writeGmailProviderResponse(response, `{"error":{"message":"unavailable"}}`)
 	default:

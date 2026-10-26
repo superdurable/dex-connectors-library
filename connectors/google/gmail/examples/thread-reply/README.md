@@ -96,7 +96,7 @@ Steps, both Trigger bindings, branch targets, and Result Attributes.
 Start Dex, then run the example. It reads the `DEX_PROJECT_*` project
 configuration environment documented in
 [`sdkgo/projectconfig`](../../../../../sdkgo/projectconfig/README.md#application-loading);
-Dex Web or Superverse Studio writes that configuration:
+Dex Web writes that configuration:
 
 ```bash
 go run ./examples/thread-reply
@@ -112,6 +112,7 @@ answers.
 The example wires only the happy-path branches. An unwired optional branch fails
 the Flow with its safe failure reason; wire one only when the application must
 react, such as asking an operator to check Sent Mail. A reply whose answer is
-lost completes when the Sent Mail search finds its Message-ID. An uncertain
-reply was not found and is not resent, since Gmail search visibility may lag;
-a 503 whose search finds nothing is retried and sends the reply again.
+lost completes when the Sent Mail search finds its Message-ID. A search miss
+retries, and each later attempt searches again before posting. A 503 whose
+search finds nothing may resend the reply under the same Message-ID; Gmail
+does not deduplicate by that header.

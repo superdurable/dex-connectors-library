@@ -125,31 +125,34 @@ ID, `In-Reply-To`, and `References` preserved.
 
 The stable Connector idempotency key is written into the RFC `Message-ID` and
 safe correlation header. Gmail documents no deduplication by `Message-ID`, so
-the connector does not rely on it and confirms possibly sent requests instead:
+the connector uses that header for Sent Mail read-back, not provider deduplication:
 
 - A 2xx with a Gmail message ID is `sent`, with no search. When Gmail omits the
   thread ID, one read of the message supplies it; if that read fails, a reply
   reports the requested thread and a new message an empty thread ID.
-- A request that may have reached Gmail but lost its answer, got a 5xx other
-  than 503, or got a 2xx without a message ID triggers one Sent Mail search,
+- A request that may have reached Gmail but lost its answer, got a 5xx, or got
+  a 2xx without a message ID triggers a Sent Mail search,
   `in:sent rfc822msgid:<Message-ID>` in Gmail's
   [documented search syntax](https://support.google.com/mail/answer/7190).
   Any match is `sent` with Gmail's message and thread IDs, also when a reply
-  landed in another thread. No match, or a search that fails, selects
-  `uncertain`, which is never resent.
-- Only a 429, a 503 whose search finds no message, and a failure that a traced
-  DNS, connect, or TLS error proves happened before a connection existed return
-  Retry.
+  landed in another thread. No match, or a failed search, returns Retry.
+- Every attempt after the first searches Sent Mail before its POST using the
+  same Message-ID. A match returns `sent` without another POST. A miss sends
+  once; a failed search returns Retry without sending.
+- A 429 and a failure that a traced DNS, connect, or TLS error proves happened
+  before a connection existed return Retry.
 
-A 503 retry sends the message again under the same `Message-ID`. If Gmail
-accepted the request despite the 503 and the search could not see it yet, the
-recipient can receive two copies. Releases before v0.23.2 reported every
-ambiguous outcome, 503 included, as `uncertain` instead of retrying it.
+A 503 or another possibly accepted request resends under the same `Message-ID`
+after a search miss. If Gmail accepted the message but has not indexed it by
+the next attempt, the recipient can receive two copies. Gmail does not dedupe
+by `Message-ID`. Retries stop when the configured budget is exhausted; the
+Flow then fails. Releases before v0.24.0 could select `uncertain` after one
+miss and did not re-check on a later attempt.
 
 A request whose dispatch cannot be traced counts as possibly sent. That
 includes every failure through a `WithHTTPClient` transport that does not drive
-`net/http/httptrace`, so such a client turns would-be retries into searches and
-`uncertain`.
+`net/http/httptrace`, so such a client searches after a failed POST and retries
+when the message is not found.
 
 Every attempt finishes its requests before its Dex deadline, so the engine
 never times the attempt out and runs it again. The available time is the Step
@@ -161,8 +164,8 @@ search, never a resend; with less than a tenth left, the attempt returns Retry
 before sending. With the default async durability, Dex first runs the Step
 under a much shorter deadline, 7 seconds on the Temporal engine, so the send
 gets about 4 seconds and the search under 2. A slower send, such as a large
-message, is confirmed by that search and selects `uncertain` when Gmail has
-not indexed it yet.
+message, returns Retry when the search does not yet find it. The next attempt
+searches again before sending.
 
 The search adds no scope: `gmail.readonly` permits
 [`messages.list`](https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.messages/list)
@@ -170,11 +173,8 @@ with a query. Three Gmail behaviors are unverified without a live account:
 whether `messages.send` keeps the client-set `Message-ID` header, whether the
 documented query matches it, and how soon a sent message becomes searchable.
 If either of the first two fails, the search never matches, so ambiguous sends
-select `uncertain`, never a false `sent`. A search miss is not re-checked on a
-later attempt. An unwired
-`uncertain` branch fails the Flow with its safe failure reason. Wire it only
-when a requirement names a reaction, such as asking an operator to check Sent
-Mail.
+retry and can create duplicates. Live provider authorization and indexing
+latency remain unverified.
 
 Every operation uses `defect` for invalid local input, connection configuration,
 or Connector contract violations. A conclusive Gmail API refusal uses
@@ -198,7 +198,7 @@ connection, err := gmail.NewProjectConnection(project, threadreply.ConnectionNam
 ```
 
 `projectconfig.LoadFromEnvironment` reads the `DEX_PROJECT_*` configuration
-that Dex Web or Superverse Studio writes; see
+that Dex Web writes; see
 [`sdkgo/projectconfig`](../../../sdkgo/projectconfig/README.md#application-loading).
 The example passes the same `project` and connection name to
 `NewProjectMessageTriggerRunner`, which reads both Trigger bindings' saved
@@ -228,11 +228,10 @@ scripts one reply per Flow:
 
 ```go
 	mock.ReplyToMessage().ForFlow(ResolveFlowID(threadEvent(sentThreadID))).Respond(gmailmock.ReplyToMessageRepliedInThread())
-	mock.ReplyToMessage().ForFlow(ResolveFlowID(threadEvent(uncertainThreadID))).Respond(gmailmock.ReplyToMessageConnectionLost())
+	mock.ReplyToMessage().ForFlow(ResolveFlowID(threadEvent(retriedThreadID))).Respond(gmailmock.ReplyToMessageConnectionLost(), gmailmock.ReplyToMessageRepliedInThread())
 ```
 
-The uncertain reply fails the example Flow, which leaves that optional branch
-unwired, and `Calls()` shows it was sent once and never resent. Each
+The retried reply completes, and `Calls()` shows two attempts. Each
 operation's manifest mocks cover every branch: for example
 `GetMessageDeletedMessage`, `SendMessageInvalidRecipient`, and
 `SendMessageConnectionLost`, with `<Operation>Retry` for a retried attempt.

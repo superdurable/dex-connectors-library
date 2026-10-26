@@ -25,12 +25,15 @@ import (
 // sendFakeBehavior scripts how the fake Gmail API answers one test's send, search, and thread read.
 type sendFakeBehavior struct {
 	// answerSend writes the messages.send answer; nil aborts the connection after reading the request.
-	answerSend func(http.ResponseWriter)
+	answerSend        func(http.ResponseWriter)
+	answerSendAttempt func(http.ResponseWriter, int)
 	// searchMatch is the messages.list match JSON; empty answers with no messages.
-	searchMatch string
+	searchMatch      string
+	matchFromSearch  int
+	searchStatusCode int
 	// threadReadID answers a format=minimal read with this thread; empty answers 500.
-	threadReadID                                        string
-	isSendHanging, isSearchHanging, isSourceReadHanging bool
+	threadReadID                                                       string
+	isSendHanging, isSearchHanging, isSourceReadHanging, hangFirstSend bool
 }
 
 // gmailSendFake is a Gmail API fake whose search matches only the exact documented rfc822msgid query.
@@ -41,6 +44,7 @@ type gmailSendFake struct {
 	mutex                            sync.Mutex
 	sends, searches, threadReads     int
 	rfcMessageID, rejectedSearchText string
+	rfcMessageIDs                    []string
 }
 
 func newGmailSendFake(t *testing.T, behavior sendFakeBehavior) *gmailSendFake {
@@ -92,15 +96,19 @@ func (fake *gmailSendFake) serveSend(response http.ResponseWriter, request *http
 	}
 	fake.mutex.Lock()
 	fake.sends++
+	sendNumber := fake.sends
 	for _, line := range strings.Split(string(raw), "\r\n") {
 		if value, isMessageID := strings.CutPrefix(line, "Message-ID: "); isMessageID {
 			fake.rfcMessageID = strings.TrimSuffix(strings.TrimPrefix(value, "<"), ">")
+			fake.rfcMessageIDs = append(fake.rfcMessageIDs, fake.rfcMessageID)
 		}
 	}
 	fake.mutex.Unlock()
 	switch {
-	case fake.behavior.isSendHanging:
+	case fake.behavior.isSendHanging || (fake.behavior.hangFirstSend && sendNumber == 1):
 		fake.hang(request)
+	case fake.behavior.answerSendAttempt != nil:
+		fake.behavior.answerSendAttempt(response, sendNumber)
 	case fake.behavior.answerSend == nil:
 		panic(http.ErrAbortHandler)
 	default:
@@ -111,6 +119,7 @@ func (fake *gmailSendFake) serveSend(response http.ResponseWriter, request *http
 func (fake *gmailSendFake) serveSearch(response http.ResponseWriter, request *http.Request) {
 	fake.mutex.Lock()
 	fake.searches++
+	searchNumber := fake.searches
 	expectedQuery := "in:sent rfc822msgid:" + fake.rfcMessageID
 	if request.URL.Query().Get("q") != expectedQuery || request.URL.Query().Get("maxResults") != "1" {
 		fake.rejectedSearchText = request.URL.RawQuery
@@ -119,11 +128,15 @@ func (fake *gmailSendFake) serveSearch(response http.ResponseWriter, request *ht
 		return
 	}
 	fake.mutex.Unlock()
+	if fake.behavior.searchStatusCode != 0 {
+		response.WriteHeader(fake.behavior.searchStatusCode)
+		return
+	}
 	if fake.behavior.isSearchHanging {
 		fake.hang(request)
 		return
 	}
-	if fake.behavior.searchMatch == "" {
+	if fake.behavior.searchMatch == "" || (fake.behavior.matchFromSearch > 0 && searchNumber < fake.behavior.matchFromSearch) {
 		_, _ = response.Write([]byte(`{"resultSizeEstimate":0}`))
 		return
 	}
@@ -141,6 +154,12 @@ func (fake *gmailSendFake) counts() (sends int, searches int, threadReads int, r
 	fake.mutex.Lock()
 	defer fake.mutex.Unlock()
 	return fake.sends, fake.searches, fake.threadReads, fake.rejectedSearchText
+}
+
+func (fake *gmailSendFake) messageIDs() []string {
+	fake.mutex.Lock()
+	defer fake.mutex.Unlock()
+	return append([]string(nil), fake.rfcMessageIDs...)
 }
 
 // sendAttemptResult is one send or reply attempt seen through the shared SendMessageOutput.
@@ -229,15 +248,15 @@ func (transport untracedFailingWriteTransport) RoundTrip(request *http.Request) 
 	return transport.base.RoundTrip(request)
 }
 
-// TestGmailUntracedTransportFailureIsPossiblySent keeps a RoundTripper without httptrace events from causing a resend.
+// TestGmailUntracedTransportFailureIsPossiblySent requires read-back before a later resend.
 func TestGmailUntracedTransportFailureIsPossiblySent(t *testing.T) {
 	forSendAndReply(t, func(t *testing.T, isReply bool) {
 		fake := newGmailSendFake(t, sendFakeBehavior{})
 		client := newGmailClientWithHTTPClient(t, fake.URL, &http.Client{Transport: untracedFailingWriteTransport{base: http.DefaultTransport}})
 		result := runGmailSendAttempt(newGmailDexContext("untraced-"+t.Name()), client, isReply)
-		require.NoError(t, result.err, "a possibly sent request must not return Retry")
-		require.Equal(t, sendBranch(isReply, gmail.SendMessageBranchUncertain, gmail.ReplyToMessageBranchUncertain), result.branch)
-		require.Equal(t, sdkgo.FailureTransport, result.failure.Kind)
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, result.err, &retry)
+		require.Equal(t, sdkgo.FailureTransport, retry.Failure.Kind)
 		_, searches, _, _ := fake.counts()
 		require.Equal(t, 1, searches)
 	})
@@ -264,21 +283,22 @@ func TestGmailAmbiguousWritesSearchSentMail(t *testing.T) {
 				}
 				fake := newGmailSendFake(t, behavior)
 				result := runGmailSendAttempt(newGmailDexContext(t.Name()), newGmailClient(t, fake.URL), isReply)
-				require.NoError(t, result.err)
 				sends, searches, _, rejectedSearch := fake.counts()
 				require.Empty(t, rejectedSearch, "the search must use the exact documented rfc822msgid query")
 				require.Equal(t, 1, sends)
 				require.Equal(t, 1, searches)
-				if test.isFound {
-					require.Equal(t, sendBranch(isReply, gmail.SendMessageBranchSent, gmail.ReplyToMessageBranchSent), result.branch)
-					require.Equal(t, gmail.SendMessageOutput{
-						Sender: "owner@example.com", Recipients: result.value.Recipients, MessageID: "sent-1", ThreadID: "thread-1",
-					}, result.value)
-					require.Nil(t, result.failure)
+				if !test.isFound {
+					var retry *sdkgo.RetryError
+					require.ErrorAs(t, result.err, &retry)
+					require.Contains(t, retry.Failure.Message, "the sent-mail search found no message")
 					return
 				}
-				require.Equal(t, sendBranch(isReply, gmail.SendMessageBranchUncertain, gmail.ReplyToMessageBranchUncertain), result.branch)
-				require.Contains(t, result.failure.Message, "the sent-mail search found no message")
+				require.NoError(t, result.err)
+				require.Equal(t, sendBranch(isReply, gmail.SendMessageBranchSent, gmail.ReplyToMessageBranchSent), result.branch)
+				require.Equal(t, gmail.SendMessageOutput{
+					Sender: "owner@example.com", Recipients: result.value.Recipients, MessageID: "sent-1", ThreadID: "thread-1",
+				}, result.value)
+				require.Nil(t, result.failure)
 			})
 		})
 	}
@@ -349,13 +369,12 @@ func TestGmailSendAttemptReturnsBeforeTheExecuteTimeout(t *testing.T) {
 		name                 string
 		behavior             sendFakeBehavior
 		isReply              bool
-		wantRetry            bool
 		wantSends, wantReads int
 	}{
 		{name: "send hangs and the search misses", behavior: sendFakeBehavior{isSendHanging: true}, wantSends: 1, wantReads: 1},
 		{name: "send and search hang", behavior: sendFakeBehavior{isSendHanging: true, isSearchHanging: true}, wantSends: 1, wantReads: 1},
 		{name: "reply hangs and the search misses", behavior: sendFakeBehavior{isSendHanging: true}, isReply: true, wantSends: 1, wantReads: 1},
-		{name: "reply source read hangs", behavior: sendFakeBehavior{isSourceReadHanging: true}, isReply: true, wantRetry: true},
+		{name: "reply source read hangs", behavior: sendFakeBehavior{isSourceReadHanging: true}, isReply: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
@@ -365,13 +384,8 @@ func TestGmailSendAttemptReturnsBeforeTheExecuteTimeout(t *testing.T) {
 			stepDeadline, _ := stepContext.Deadline()
 			result := runGmailSendAttempt(&gmailDexContext{Context: stepContext, step: t.Name()}, newGmailClient(t, fake.URL), test.isReply)
 			require.True(t, time.Now().Before(stepDeadline.Add(-500*time.Millisecond)), "Invoke must return before the Execute deadline")
-			if test.wantRetry {
-				var retry *sdkgo.RetryError
-				require.ErrorAs(t, result.err, &retry)
-			} else {
-				require.NoError(t, result.err)
-				require.Equal(t, sendBranch(test.isReply, gmail.SendMessageBranchUncertain, gmail.ReplyToMessageBranchUncertain), result.branch)
-			}
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, result.err, &retry)
 			sends, searches, _, _ := fake.counts()
 			require.Equal(t, test.wantSends, sends)
 			require.Equal(t, test.wantReads, searches)
@@ -389,6 +403,89 @@ func TestGmailSendWithoutTimeLeftRetriesBeforeSending(t *testing.T) {
 		require.ErrorAs(t, result.err, &retry)
 		sends, _, _, _ := fake.counts()
 		require.Zero(t, sends)
+	})
+}
+
+func TestGmailSlowSendFindsMailOnNextAttemptWithoutAnotherPost(t *testing.T) {
+	forSendAndReply(t, func(t *testing.T, isReply bool) {
+		fake := newGmailSendFake(t, sendFakeBehavior{
+			hangFirstSend: true, searchMatch: `{"id":"sent-1","threadId":"thread-1"}`, matchFromSearch: 2,
+		})
+		client := newGmailClient(t, fake.URL)
+		stepContext, cancel := context.WithTimeout(context.Background(), 600*time.Millisecond)
+		first := runGmailSendAttempt(&gmailDexContext{Context: stepContext, step: t.Name()}, client, isReply)
+		cancel()
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, first.err, &retry)
+		second := runGmailSendAttempt(&gmailDexContext{Context: context.Background(), step: t.Name(), attempt: 2}, client, isReply)
+		require.NoError(t, second.err)
+		require.Equal(t, sendBranch(isReply, gmail.SendMessageBranchSent, gmail.ReplyToMessageBranchSent), second.branch)
+		require.Equal(t, "sent-1", second.value.MessageID)
+		require.Equal(t, "thread-1", second.value.ThreadID)
+		sends, searches, _, _ := fake.counts()
+		require.Equal(t, 1, sends)
+		require.Equal(t, 2, searches)
+	})
+}
+
+func TestGmailNextAttemptResendsAfterSearchMiss(t *testing.T) {
+	forSendAndReply(t, func(t *testing.T, isReply bool) {
+		fake := newGmailSendFake(t, sendFakeBehavior{answerSendAttempt: func(response http.ResponseWriter, sendNumber int) {
+			if sendNumber == 1 {
+				response.WriteHeader(http.StatusServiceUnavailable)
+				return
+			}
+			_, _ = response.Write([]byte(`{"id":"sent-2","threadId":"thread-1"}`))
+		}})
+		client := newGmailClient(t, fake.URL)
+		first := runGmailSendAttempt(newGmailDexContext(t.Name()), client, isReply)
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, first.err, &retry)
+		second := runGmailSendAttempt(&gmailDexContext{Context: context.Background(), step: t.Name(), attempt: 2}, client, isReply)
+		require.NoError(t, second.err)
+		require.Equal(t, sendBranch(isReply, gmail.SendMessageBranchSent, gmail.ReplyToMessageBranchSent), second.branch)
+		sends, searches, _, _ := fake.counts()
+		require.Equal(t, 2, sends)
+		require.Equal(t, 2, searches)
+		messageIDs := fake.messageIDs()
+		require.Len(t, messageIDs, 2)
+		require.Equal(t, messageIDs[0], messageIDs[1])
+	})
+}
+
+func TestGmailSearchFailureRetriesWithoutResending(t *testing.T) {
+	forSendAndReply(t, func(t *testing.T, isReply bool) {
+		fake := newGmailSendFake(t, sendFakeBehavior{
+			answerSend: writeGmailSendStatus(http.StatusInternalServerError), searchStatusCode: http.StatusServiceUnavailable,
+		})
+		client := newGmailClient(t, fake.URL)
+		first := runGmailSendAttempt(newGmailDexContext(t.Name()), client, isReply)
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, first.err, &retry)
+		second := runGmailSendAttempt(&gmailDexContext{Context: context.Background(), step: t.Name(), attempt: 2}, client, isReply)
+		require.ErrorAs(t, second.err, &retry)
+		sends, searches, _, _ := fake.counts()
+		require.Equal(t, 1, sends)
+		require.Equal(t, 2, searches)
+	})
+}
+
+func TestGmailPreSendMatchSkipsPost(t *testing.T) {
+	forSendAndReply(t, func(t *testing.T, isReply bool) {
+		fake := newGmailSendFake(t, sendFakeBehavior{
+			answerSend:  writeGmailSendStatus(http.StatusInternalServerError),
+			searchMatch: `{"id":"sent-1","threadId":"thread-1"}`, matchFromSearch: 2,
+		})
+		client := newGmailClient(t, fake.URL)
+		first := runGmailSendAttempt(newGmailDexContext(t.Name()), client, isReply)
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, first.err, &retry)
+		second := runGmailSendAttempt(&gmailDexContext{Context: context.Background(), step: t.Name(), attempt: 2}, client, isReply)
+		require.NoError(t, second.err)
+		require.Equal(t, sendBranch(isReply, gmail.SendMessageBranchSent, gmail.ReplyToMessageBranchSent), second.branch)
+		sends, searches, _, _ := fake.counts()
+		require.Equal(t, 1, sends)
+		require.Equal(t, 2, searches)
 	})
 }
 

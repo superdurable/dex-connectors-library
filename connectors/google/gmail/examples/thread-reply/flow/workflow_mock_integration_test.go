@@ -55,9 +55,9 @@ func TestThreadReplyExampleRunsOnTheGmailMockWithRealDex(t *testing.T) {
 	}
 
 	sentThreadID := "thread-mock-sent-" + testRunID
-	uncertainThreadID := "thread-mock-uncertain-" + testRunID
+	retriedThreadID := "thread-mock-retried-" + testRunID
 	mock.ReplyToMessage().ForFlow(ResolveFlowID(threadEvent(sentThreadID))).Respond(gmailmock.ReplyToMessageRepliedInThread())
-	mock.ReplyToMessage().ForFlow(ResolveFlowID(threadEvent(uncertainThreadID))).Respond(gmailmock.ReplyToMessageConnectionLost())
+	mock.ReplyToMessage().ForFlow(ResolveFlowID(threadEvent(retriedThreadID))).Respond(gmailmock.ReplyToMessageConnectionLost(), gmailmock.ReplyToMessageRepliedInThread())
 
 	sentFlowID := approveThread(sentThreadID)
 	result, err := harness.client.WaitForFlow(ctx, sentFlowID, dex.WaitForFlowOptions{NeedsResults: true})
@@ -68,19 +68,17 @@ func TestThreadReplyExampleRunsOnTheGmailMockWithRealDex(t *testing.T) {
 	require.Equal(t, StatusCompleted, state.Status)
 	require.Equal(t, "Re: Order 1042 has not arrived", state.RootMessage.Subject, "the manifest default answers the unscripted read")
 
-	uncertainFlowID := approveThread(uncertainThreadID)
-	uncertainResult, err := harness.client.WaitForFlow(ctx, uncertainFlowID, dex.WaitForFlowOptions{})
+	retriedFlowID := approveThread(retriedThreadID)
+	retriedResult, err := harness.client.WaitForFlow(ctx, retriedFlowID, dex.WaitForFlowOptions{})
 	require.NoError(t, err)
-	require.Equal(t, dex.FlowFailed, uncertainResult.Status, "the example leaves the optional uncertain branch unwired")
-	require.Contains(t, uncertainResult.ErrorMessage,
-		gmail.ConnectorID+" replyToMessage (connection "+ConnectionName+") selected branch uncertain with no target: TRANSPORT")
+	require.Equal(t, dex.FlowCompleted, retriedResult.Status)
 
 	replies := map[string][]gmail.ReplyToMessageInput{}
 	for _, call := range mock.ReplyToMessage().Calls() {
 		replies[call.FlowID] = append(replies[call.FlowID], call.Input)
 	}
 	require.Equal(t, []gmail.ReplyToMessageInput{{MessageID: "reply-" + sentThreadID, TextBody: "Processing complete."}}, replies[sentFlowID])
-	require.Len(t, replies[uncertainFlowID], 1, "an uncertain reply is reported, not resent")
+	require.Len(t, replies[retriedFlowID], 2, "a retry follows the transient failure")
 }
 
 func threadEvent(threadID string) sdkgo.TriggerEvent[gmail.MessageEvent] {

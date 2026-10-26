@@ -5,7 +5,7 @@ metadata:
   displayName: Gmail
   description: Start and update Dex Flows from received Gmail messages, read messages, and send or reply to email.
   company: Google
-  version: v0.23.2
+  version: v0.24.0
 spec:
   provider: google
   codegen:
@@ -236,7 +236,6 @@ spec:
       branches:
         - {id: sent, goName: Sent, description: Gmail accepted the message and returned its identity.}
         - {id: providerRejected, goName: ProviderRejected, description: Gmail conclusively rejected the message., optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The dispatched send could not be found in sent-mail search; search indexing may lag, so delivery remains unknown.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
@@ -253,8 +252,8 @@ spec:
           description: Gmail rejected the message because a recipient address is invalid.
           failure: {kind: PROVIDER_REJECTION, message: Gmail rejected the message recipients.}
         - name: connectionLost
-          description: The connection closed after dispatch and sent-mail search found no message, so delivery remains unknown.
-          uncertain: {failure: {kind: TRANSPORT, message: The connection closed before Gmail answered.}}
+          description: The connection closed after dispatch and Sent Mail found nothing; retry the lookup before another send.
+          retry: {failure: {kind: TRANSPORT, message: The connection closed before Gmail answered.}}
         - name: noRecipients
           branch: defect
           description: The message has no recipient, so no request is sent.
@@ -273,7 +272,6 @@ spec:
         - {id: sent, goName: Sent, description: Gmail accepted the reply and returned its identity.}
         - {id: providerRejected, goName: ProviderRejected, description: Gmail conclusively rejected the reply., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Gmail returned an invalid or oversized source message response before sending the reply., optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The dispatched reply could not be found in sent-mail search; search indexing may lag, so delivery remains unknown.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
@@ -294,8 +292,8 @@ spec:
           description: Gmail returned a source message that cannot be decoded, so no reply is sent.
           failure: {kind: PROTOCOL, message: Gmail returned an invalid source message.}
         - name: connectionLost
-          description: The connection closed after dispatch and sent-mail search found no reply, so delivery remains unknown.
-          uncertain: {failure: {kind: TRANSPORT, message: The connection closed before Gmail answered.}}
+          description: The connection closed after dispatch and Sent Mail found nothing; retry the lookup before another reply.
+          retry: {failure: {kind: TRANSPORT, message: The connection closed before Gmail answered.}}
         - name: emptyBody
           branch: defect
           description: The reply has no body, so no request is sent.

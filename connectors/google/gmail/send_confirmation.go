@@ -102,10 +102,22 @@ func (budget sendAttemptBudget) sendContext() (context.Context, context.CancelFu
 	return sendContext, cancel, true
 }
 
-// sendAndConfirm POSTs once. A possibly sent request never returns Retry, since Retry would send it again.
+// sendAndConfirm checks prior attempts before posting once under the same Message-ID.
 func (client *Client) sendAndConfirm(
 	call sdkgo.Call, budget sendAttemptBudget, credentials Credentials, operation gmailSendOperation, message gmailOutgoingMessage,
 ) sdkgo.MutationAttempt[SendMessageOutput] {
+	if call.Context.Attempt() > 1 {
+		searchContext, cancelSearch := budget.preSendContext()
+		sent, isFound, searchErr := client.findSentMessageByCallID(searchContext, call, credentials)
+		cancelSearch()
+		if isFound {
+			return client.sentMessage(call, budget, credentials, operation, message, sent, client.receipt(call, "", ""))
+		}
+		if searchErr != nil {
+			return sdkgo.NewMutationRetry[SendMessageOutput](gmailOperationFailure(operation.operationID, sdkgo.FailureAvailability,
+				"Gmail sent-mail search did not answer before the "+operation.requestName), 0)
+		}
+	}
 	sendContext, cancelSend, hasTimeToSend := budget.sendContext()
 	if !hasTimeToSend {
 		return sdkgo.NewMutationRetry[SendMessageOutput](gmailOperationFailure(operation.operationID, sdkgo.FailureAvailability,
@@ -160,7 +172,7 @@ func (client *Client) sendAndConfirm(
 	return client.sentMessage(call, budget, credentials, operation, message, sent, receipt)
 }
 
-// confirmPossiblySentMessage returns sent when the read-back finds the message, otherwise uncertain.
+// confirmPossiblySentMessage retries when read-back cannot yet confirm delivery.
 func (client *Client) confirmPossiblySentMessage(
 	call sdkgo.Call, budget sendAttemptBudget, credentials Credentials, operation gmailSendOperation, message gmailOutgoingMessage,
 	kind sdkgo.FailureKind, failureMessage string, receipt sdkgo.Receipt,
@@ -174,7 +186,7 @@ func (client *Client) confirmPossiblySentMessage(
 	} else {
 		failureMessage += "; the sent-mail search found no message"
 	}
-	return sdkgo.NewMutationUncertain(SendMessageOutput{}, gmailOperationFailure(operation.operationID, kind, failureMessage), receipt)
+	return sdkgo.NewMutationRetry[SendMessageOutput](gmailOperationFailure(operation.operationID, kind, failureMessage), 0)
 }
 
 // sentMessage reads a missing thread ID; if that fails, the message ID still proves the send.
