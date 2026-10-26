@@ -101,13 +101,13 @@ spec:
           output: {employee: {employeeId: "140", firstName: Ava, lastName: Nguyen, status: Active, workEmail: ava.nguyen@example.com}, candidateCount: 1}
         - name: notFoundFailure
           branch: notFound
-          description: "No employee visible to the connection has work email sam.park@example.com."
+          description: "No employee visible to the connection has Sam Park's work or home email sam.park@personal.example.com."
           failure: {kind: NOT_FOUND, message: "No employee visible to the connection has this email; BambooHR drops employees whose email the connection cannot read."}
         - name: ambiguousFailure
           branch: ambiguous
-          description: "A search for ava.nguyen@example.com finds more than 100 substring candidates, so the one visible exact match cannot be chosen."
-          output: {matches: [{employeeId: "140", workEmail: ava.nguyen@example.com}], candidateCount: 101}
-          failure: {kind: CONFLICT, message: "More than 100 employee emails contain the address; no single employee was chosen."}
+          description: "Work email shared@example.com exactly matches employees 150 and 151, so neither can be chosen."
+          output: {matches: [{employeeId: "150", firstName: Alex, lastName: Chen, status: Active, workEmail: shared@example.com}, {employeeId: "151", firstName: Robin, lastName: Lee, status: Active, workEmail: shared@example.com}], candidateCount: 2}
+          failure: {kind: CONFLICT, message: "Two employees have this work email; no single employee was chosen."}
         - name: providerRejectedFailure
           branch: providerRejected
           description: "The API key is invalid (HTTP 401)."
@@ -139,7 +139,7 @@ spec:
           output: {changes: [{employeeId: "140", action: Updated, lastChanged: "2026-10-13T10:00:00Z"}, {employeeId: "141", action: Updated, lastChanged: "2026-10-13T11:00:00Z"}], nextCursor: {since: "2026-10-13T11:00:00Z", afterEmployeeId: "141"}, hasMore: false}
         - name: providerRejectedFailure
           branch: providerRejected
-          description: "BambooHR conclusively rejected the request, such as invalid credentials."
+          description: "The API key is invalid (HTTP 401)."
           failure: {kind: AUTHENTICATION, message: "The API key is invalid."}
         - name: invalidResponseFailure
           branch: invalidResponse
@@ -164,12 +164,12 @@ spec:
       mocks:
         - name: listedDefaultAnswer
           branch: listed
-          description: "For employee 140 with pageSize 1 and no status filter, pages 1-3 contain three distinct time off requests."
+          description: "For employee 140 with pageSize 1 and no status filter, a request created between page reads shifts 502 onto page 2; deduplicate the repeated request."
           default: true
           pages:
-            - {requests: [{id: 502, employeeId: "140", categoryId: 78, startDate: "2026-10-26", endDate: "2026-10-26", amount: 1, unit: DAYS, status: DENIED, requestedAt: "2026-09-03T15:04:05Z"}], page: 1, totalItems: 3, nextPage: 2}
-            - {requests: [{id: 501, employeeId: "140", categoryId: 78, startDate: "2026-10-20", endDate: "2026-10-21", amount: 2, unit: DAYS, status: APPROVED, requestedAt: "2026-09-02T15:04:05Z"}], page: 2, totalItems: 3, nextPage: 3}
-            - {requests: [{id: 500, employeeId: "140", categoryId: 78, startDate: "2026-10-18", endDate: "2026-10-18", amount: 1, unit: DAYS, status: APPROVED, requestedAt: "2026-09-01T15:04:05Z"}], page: 3, totalItems: 3, nextPage: 0}
+            - {requests: [{id: 502, employeeId: "140", categoryId: 78, startDate: "2026-10-26", endDate: "2026-10-26", amount: 1, unit: DAYS, status: DENIED, requestedAt: "2026-09-03T15:04:05Z"}], page: 1, totalItems: 2, nextPage: 2}
+            - {requests: [{id: 502, employeeId: "140", categoryId: 78, startDate: "2026-10-26", endDate: "2026-10-26", amount: 1, unit: DAYS, status: DENIED, requestedAt: "2026-09-03T15:04:05Z"}], page: 2, totalItems: 3, nextPage: 3}
+            - {requests: [{id: 501, employeeId: "140", categoryId: 78, startDate: "2026-10-20", endDate: "2026-10-21", amount: 2, unit: DAYS, status: APPROVED, requestedAt: "2026-09-02T15:04:05Z"}], page: 3, totalItems: 3, nextPage: 0}
         - name: providerRejectedFailure
           branch: providerRejected
           description: "BambooHR rejected an invalid time off filter (HTTP 400)."

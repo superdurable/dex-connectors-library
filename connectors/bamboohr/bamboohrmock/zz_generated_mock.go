@@ -206,16 +206,16 @@ func FindEmployeeByEmailFoundDefaultAnswer() connectormock.Case[bamboohr.FindEmp
 	return connectormock.Branch(bamboohr.FindEmployeeByEmailBranchFound, value, nil)
 }
 
-// FindEmployeeByEmailNotFoundFailure is the manifest mock notFoundFailure: No employee visible to the connection has work email sam.park@example.com.
+// FindEmployeeByEmailNotFoundFailure is the manifest mock notFoundFailure: No employee visible to the connection has Sam Park's work or home email sam.park@personal.example.com.
 func FindEmployeeByEmailNotFoundFailure() connectormock.Case[bamboohr.FindEmployeeByEmailOutput] {
 	var value bamboohr.FindEmployeeByEmailOutput
 	return connectormock.Branch(bamboohr.FindEmployeeByEmailBranchNotFound, value, &sdkgo.Failure{Kind: sdkgo.FailureNotFound, Message: "No employee visible to the connection has this email; BambooHR drops employees whose email the connection cannot read."})
 }
 
-// FindEmployeeByEmailAmbiguousFailure is the manifest mock ambiguousFailure: A search for ava.nguyen@example.com finds more than 100 substring candidates, so the one visible exact match cannot be chosen.
+// FindEmployeeByEmailAmbiguousFailure is the manifest mock ambiguousFailure: Work email shared@example.com exactly matches employees 150 and 151, so neither can be chosen.
 func FindEmployeeByEmailAmbiguousFailure() connectormock.Case[bamboohr.FindEmployeeByEmailOutput] {
-	value := connectormock.MustDecodeOutput[bamboohr.FindEmployeeByEmailOutput](`{"matches":[{"employeeId":"140","workEmail":"ava.nguyen@example.com"}],"candidateCount":101}`)
-	return connectormock.Branch(bamboohr.FindEmployeeByEmailBranchAmbiguous, value, &sdkgo.Failure{Kind: sdkgo.FailureConflict, Message: "More than 100 employee emails contain the address; no single employee was chosen."})
+	value := connectormock.MustDecodeOutput[bamboohr.FindEmployeeByEmailOutput](`{"matches":[{"employeeId":"150","firstName":"Alex","lastName":"Chen","status":"Active","workEmail":"shared@example.com"},{"employeeId":"151","firstName":"Robin","lastName":"Lee","status":"Active","workEmail":"shared@example.com"}],"candidateCount":2}`)
+	return connectormock.Branch(bamboohr.FindEmployeeByEmailBranchAmbiguous, value, &sdkgo.Failure{Kind: sdkgo.FailureConflict, Message: "Two employees have this work email; no single employee was chosen."})
 }
 
 // FindEmployeeByEmailProviderRejectedFailure is the manifest mock providerRejectedFailure: The API key is invalid (HTTP 401).
@@ -266,7 +266,7 @@ func ListEmployeeChangesListedDefaultAnswer() connectormock.Case[bamboohr.ListEm
 	return connectormock.Branch(bamboohr.ListEmployeeChangesBranchListed, value, nil)
 }
 
-// ListEmployeeChangesProviderRejectedFailure is the manifest mock providerRejectedFailure: BambooHR conclusively rejected the request, such as invalid credentials.
+// ListEmployeeChangesProviderRejectedFailure is the manifest mock providerRejectedFailure: The API key is invalid (HTTP 401).
 func ListEmployeeChangesProviderRejectedFailure() connectormock.Case[bamboohr.ListEmployeeChangesOutput] {
 	var value bamboohr.ListEmployeeChangesOutput
 	return connectormock.Branch(bamboohr.ListEmployeeChangesBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthentication, Message: "The API key is invalid."})
@@ -308,12 +308,12 @@ func ListTimeOffRequestsRetry(failure sdkgo.Failure, after time.Duration) connec
 	return connectormock.Retry[bamboohr.ListTimeOffRequestsOutput](failure, after)
 }
 
-// ListTimeOffRequestsListedDefaultAnswer is the manifest mock listedDefaultAnswer: For employee 140 with pageSize 1 and no status filter, pages 1-3 contain three distinct time off requests.
+// ListTimeOffRequestsListedDefaultAnswer is the manifest mock listedDefaultAnswer: For employee 140 with pageSize 1 and no status filter, a request created between page reads shifts 502 onto page 2; deduplicate the repeated request.
 func ListTimeOffRequestsListedDefaultAnswer() connectormock.Case[bamboohr.ListTimeOffRequestsOutput] {
 	pages := []bamboohr.ListTimeOffRequestsOutput{
-		connectormock.MustDecodeOutput[bamboohr.ListTimeOffRequestsOutput](`{"requests":[{"id":502,"employeeId":"140","categoryId":78,"startDate":"2026-10-26","endDate":"2026-10-26","amount":1,"unit":"DAYS","status":"DENIED","requestedAt":"2026-09-03T15:04:05Z"}],"page":1,"totalItems":3,"nextPage":2}`),
-		connectormock.MustDecodeOutput[bamboohr.ListTimeOffRequestsOutput](`{"requests":[{"id":501,"employeeId":"140","categoryId":78,"startDate":"2026-10-20","endDate":"2026-10-21","amount":2,"unit":"DAYS","status":"APPROVED","requestedAt":"2026-09-02T15:04:05Z"}],"page":2,"totalItems":3,"nextPage":3}`),
-		connectormock.MustDecodeOutput[bamboohr.ListTimeOffRequestsOutput](`{"requests":[{"id":500,"employeeId":"140","categoryId":78,"startDate":"2026-10-18","endDate":"2026-10-18","amount":1,"unit":"DAYS","status":"APPROVED","requestedAt":"2026-09-01T15:04:05Z"}],"page":3,"totalItems":3,"nextPage":0}`),
+		connectormock.MustDecodeOutput[bamboohr.ListTimeOffRequestsOutput](`{"requests":[{"id":502,"employeeId":"140","categoryId":78,"startDate":"2026-10-26","endDate":"2026-10-26","amount":1,"unit":"DAYS","status":"DENIED","requestedAt":"2026-09-03T15:04:05Z"}],"page":1,"totalItems":2,"nextPage":2}`),
+		connectormock.MustDecodeOutput[bamboohr.ListTimeOffRequestsOutput](`{"requests":[{"id":502,"employeeId":"140","categoryId":78,"startDate":"2026-10-26","endDate":"2026-10-26","amount":1,"unit":"DAYS","status":"DENIED","requestedAt":"2026-09-03T15:04:05Z"}],"page":2,"totalItems":3,"nextPage":3}`),
+		connectormock.MustDecodeOutput[bamboohr.ListTimeOffRequestsOutput](`{"requests":[{"id":501,"employeeId":"140","categoryId":78,"startDate":"2026-10-20","endDate":"2026-10-21","amount":2,"unit":"DAYS","status":"APPROVED","requestedAt":"2026-09-02T15:04:05Z"}],"page":3,"totalItems":3,"nextPage":0}`),
 	}
 	pageNumber := connectormock.CursorPageNumber[bamboohr.ListTimeOffRequestsInput]("page", "nextPage", pages)
 	return connectormock.Paged(bamboohr.ListTimeOffRequestsBranchListed, pageNumber, pages...)

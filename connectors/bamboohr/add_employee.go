@@ -15,6 +15,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
@@ -104,12 +105,17 @@ func (operation AddEmployeeOperation) Invoke(call sdkgo.Call, input AddEmployeeI
 		}
 		return operation.readBackAddedEmployee(call, decision.Marker.ProviderID)
 	}
-	credentials, failure := operation.client.resolveCredentials(call, addEmployeeOperation)
-	if failure != nil {
+	credentials, credentialErr := operation.client.credentials.Resolve(call)
+	isUnusableCredentials := credentialErr == nil && validateResolvedCredentials(credentials) != nil
+	if credentialErr != nil || isUnusableCredentials {
 		if err := fence.RecordNotSent(); err != nil {
 			return sdkgo.NewMutationRetry[AddEmployeeOutput](bambooHRFailure(sdkgo.FailureAvailability, addEmployeeOperation, "credentials and not-sent checkpoint are unavailable"), 0)
 		}
-		return sdkgo.NewMutationRetry[AddEmployeeOutput](*failure, 0)
+		failure := bambooHRFailure(sdkgo.FailureAuthentication, addEmployeeOperation, "connection credentials are unavailable")
+		if isTerminalAddEmployeeCredentialError(credentialErr) || isUnusableCredentials {
+			return sdkgo.NewMutationBranch(AddEmployeeBranchDefect, AddEmployeeOutput{}, &failure, receipt)
+		}
+		return sdkgo.NewMutationRetry[AddEmployeeOutput](bambooHRFailure(sdkgo.FailureAvailability, addEmployeeOperation, "connection credentials could not be read"), 0)
 	}
 	attempt := &addEmployeeSendAttempt{client: operation.client, credentials: credentials, input: input}
 	if err := fence.Dispatch(attempt.send); err != nil {
@@ -178,6 +184,11 @@ func (operation AddEmployeeOperation) readBackAddedEmployee(call sdkgo.Call, emp
 
 func addEmployeeUncertain(receipt sdkgo.Receipt, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[AddEmployeeOutput] {
 	return sdkgo.NewMutationUncertain(AddEmployeeOutput{}, bambooHRFailure(kind, addEmployeeOperation, message), receipt)
+}
+
+func isTerminalAddEmployeeCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrObjectNotFound) ||
+		errors.Is(err, projectconfig.ErrConnectionNotSelected) || errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 func validateAddEmployeeInput(input AddEmployeeInput) error {

@@ -5,6 +5,7 @@ package bamboohr_test
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"testing"
 	"time"
@@ -12,8 +13,15 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/bamboohr"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
+
+type addEmployeeCredentialErrorProvider struct{ resolutionError error }
+
+func (provider addEmployeeCredentialErrorProvider) Resolve(sdkgo.Call) (bamboohr.Credentials, error) {
+	return bamboohr.Credentials{}, provider.resolutionError
+}
 
 func TestAddEmployeeFenceRetriesOnlyConfirmedNonApplications(t *testing.T) {
 	for _, status := range []int{http.StatusTooManyRequests, http.StatusServiceUnavailable} {
@@ -102,18 +110,50 @@ func TestAddEmployeeFenceDoesNotResendWhenCanResendCheckpointFails(t *testing.T)
 	require.Equal(t, 1, provider.requestCount())
 }
 
-func TestAddEmployeeFenceRecordsCredentialFailureBeforeRetry(t *testing.T) {
+func TestAddEmployeeFenceRejectsTerminalOrUnusableCredentialsBeforeSending(t *testing.T) {
+	provider := newRecordingBambooHR(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no provider request is permitted") })
+	for name, credentials := range map[string]sdkgo.CredentialProvider[bamboohr.Credentials]{
+		"reauthorization required": addEmployeeCredentialErrorProvider{fmt.Errorf("credential refresh: %w", sdkgo.ErrReauthorizationRequired)},
+		"connection not selected":  addEmployeeCredentialErrorProvider{projectconfig.ErrConnectionNotSelected},
+		"broker rejected":          addEmployeeCredentialErrorProvider{projectconfig.ErrCredentialBrokerRejected},
+		"credential missing":       addEmployeeCredentialErrorProvider{projectconfig.ErrObjectNotFound},
+		"missing key":              sdkgo.StaticCredentialProvider[bamboohr.Credentials]{bambooHRConnection: {}},
+		"unusable key": sdkgo.StaticCredentialProvider[bamboohr.Credentials]{
+			bambooHRConnection: {APIKey: sdkgo.NewSecretString("invalid:key")},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			ctx := singledispatchtest.NewContext("bamboohr-flow", "add-terminal-credentials")
+			client, err := bamboohr.New(bamboohr.Config{CompanyDomain: testCompanyDomain}, credentials,
+				bamboohr.WithAPIBaseURL(provider.URL+"/api/v1"))
+			require.NoError(t, err)
+			result, err := sdkgo.RunMutation(ctx, client.AddEmployee(), bambooHRConnection, validAddEmployeeInput())
+			require.NoError(t, err)
+			require.Equal(t, bamboohr.AddEmployeeBranchDefect, result.Branch)
+			require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
+			require.Equal(t, "connection credentials are unavailable", result.Failure.Message)
+			require.Zero(t, provider.requestCount())
+			require.Len(t, ctx.Heartbeats(), 1)
+			require.Contains(t, string(ctx.Heartbeats()[0]), `"state":"notSent"`)
+		})
+	}
+}
+
+func TestAddEmployeeFenceRecordsTransientCredentialFailureBeforeRetry(t *testing.T) {
 	provider := newRecordingBambooHR(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
 		writeJSON(t, response, http.StatusCreated, `{"id":"140"}`)
 	})
 	ctx := singledispatchtest.NewContext("bamboohr-flow", "add-credentials")
-	missingCredentials, err := bamboohr.New(bamboohr.Config{CompanyDomain: testCompanyDomain},
-		sdkgo.StaticCredentialProvider[bamboohr.Credentials]{}, bamboohr.WithAPIBaseURL(provider.URL+"/api/v1"))
+	transientCredentials, err := bamboohr.New(bamboohr.Config{CompanyDomain: testCompanyDomain},
+		addEmployeeCredentialErrorProvider{projectconfig.ErrCredentialBrokerUnavailable}, bamboohr.WithAPIBaseURL(provider.URL+"/api/v1"))
 	require.NoError(t, err)
-	_, err = sdkgo.RunMutation(ctx, missingCredentials.AddEmployee(), bambooHRConnection, validAddEmployeeInput())
+	_, err = sdkgo.RunMutation(ctx, transientCredentials.AddEmployee(), bambooHRConnection, validAddEmployeeInput())
 	var retry *sdkgo.RetryError
 	require.ErrorAs(t, err, &retry)
+	require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
 	require.Zero(t, provider.requestCount())
+	require.Len(t, ctx.Heartbeats(), 1)
+	require.Contains(t, string(ctx.Heartbeats()[0]), `"state":"notSent"`)
 	ctx.AdvanceAttempt()
 	result, err := sdkgo.RunMutation(ctx, newBambooHRClient(t, provider.URL).AddEmployee(), bambooHRConnection, validAddEmployeeInput())
 	require.NoError(t, err)

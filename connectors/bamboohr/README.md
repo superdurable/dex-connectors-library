@@ -241,6 +241,8 @@ take these positions:
   describes 429 as throttling and 503 as endpoint unavailability. A 429 without
   `Retry-After` also retries; the provider says the header should be present,
   so the missing-header case has not been verified live.
+- After a 503 resend, a 409 may come from the first request; `providerRejected`
+  cannot rule out that the employee already exists.
 - A 500, 408, ambiguous transport failure, or accepted 2xx without a usable
   employee ID selects `uncertain`. The connector cannot associate an email or
   name lookup with its specific POST. The onboarding example looks up the hire
@@ -276,7 +278,8 @@ the API key is dropped.
 | 408, other 5xx, lost or unreadable response | Retry, after `Retry-After` when present | `uncertain` |
 | oversized, malformed, or credential-reflecting 2xx | `invalidResponse` | `uncertain` |
 | invalid input | `defect`, with no request | `defect`, with no request |
-| connection credentials unavailable | `defect`, with no request | Retry after a `notSent` checkpoint |
+| reauthorization required or unusable connection credentials | `defect`, with no request | `defect` after a `notSent` checkpoint, with no request |
+| transient credential resolution failure | `defect`, with no request | Retry after a `notSent` checkpoint, with no request |
 
 BambooHR returned 503 for rate limiting until September 16, 2026, and returns
 429 with `Retry-After` since; 503 now means the API is unavailable. The
