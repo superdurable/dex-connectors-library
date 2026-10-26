@@ -37,6 +37,7 @@ const (
 
 	// Each scenario is selected by the booking topic the fake receives.
 	topicScheduled       = "Consultation"
+	topicUnavailable     = "Unavailable create"
 	topicSlowCreate      = "Slow create"
 	topicStalledCreate   = "Stalled create"
 	topicServerError     = "Server error"
@@ -84,6 +85,16 @@ func TestSlowCreateIsSentOnceWithRealDex(t *testing.T) {
 	require.Equal(t, provider.meetingByTopic(t, topicSlowCreate).id, record.MeetingID)
 	require.Equal(t, 1, provider.createCount(topicSlowCreate), "one Step execution sends one create request")
 	require.Nil(t, record.UncertainCreate)
+}
+
+func TestUnavailableCreateRetriesOnceAndSchedulesWithRealDex(t *testing.T) {
+	provider, harness := newBookedMeetingHarness(t, providerRequestTimeout, &AttendancePolicy{})
+	ctx := integrationContext(t)
+	flowID := harness.startBookedMeeting(t, ctx, "unavailable-create", futureBooking(topicUnavailable, time.Hour))
+	record := harness.waitForPhase(t, ctx, flowID, PhaseScheduled)
+	require.Equal(t, provider.meetingByTopic(t, topicUnavailable).id, record.MeetingID)
+	require.Equal(t, 2, provider.createCount(topicUnavailable))
+	require.Equal(t, provider.createBody(t, topicUnavailable, 0), provider.createBody(t, topicUnavailable, 1))
 }
 
 func TestUnknownCreateIsAdoptedFromTheMeetingListWithoutCreatingAgainWithRealDex(t *testing.T) {
@@ -354,8 +365,14 @@ func (provider *fakeZoom) createMeeting(response http.ResponseWriter, request *h
 	topic, _ := body["topic"].(string)
 	provider.mutex.Lock()
 	provider.createBodies[topic] = append(provider.createBodies[topic], body)
+	attemptCount := len(provider.createBodies[topic])
 	provider.mutex.Unlock()
 	switch topic {
+	case topicUnavailable:
+		if attemptCount == 1 {
+			provider.writeJSON(response, http.StatusServiceUnavailable, `{"code":503,"message":"SENTINEL unavailable"}`)
+			return
+		}
 	case topicServerError:
 		provider.writeJSON(response, http.StatusInternalServerError, `{"code":500,"message":"SENTINEL internal error"}`)
 		return

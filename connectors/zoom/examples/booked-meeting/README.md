@@ -47,8 +47,7 @@ dexcli visualize ./examples/booked-meeting/flow/workflow.go \
   --schema-version 2.0 --json --out ./build/booked-meeting
 ```
 
-The graph is valid; before the first connector release it reports only the
-expected `connector_release_required` warning on the five Zoom Steps.
+The graph resolves the five Zoom Steps from the connector module in this checkout.
 
 Run `dexcli dev` with that build directory, open Dex Web at
 `http://127.0.0.1:8802` rather than `localhost`, open **Connections**, and
@@ -72,7 +71,7 @@ Start `ZoomBookedMeeting` with a unique Flow ID and a future slot:
 {
   "bookingId": "BK-77",
   "topic": "Consultation with Priya",
-  "startTime": "2026-10-08T09:00:00-07:00",
+  "startTime": "2036-02-24T09:00:00-08:00",
   "timeZone": "America/Los_Angeles",
   "durationMinutes": 30,
   "agenda": "Intro call"

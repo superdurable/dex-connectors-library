@@ -63,8 +63,8 @@ func (UpdateMeetingOperation) IdempotencyKey(callID sdkgo.CallID, _ UpdateMeetin
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke sends one patch. Transport failures, 408, 429, and 5xx responses are
-// retried, because sending the same absolute values again is safe.
+// Invoke sends one patch. Transport failures, 408, other 429, and 5xx responses
+// retry because sending the same absolute values again is safe.
 func (operation UpdateMeetingOperation) Invoke(call sdkgo.Call, input UpdateMeetingInput) sdkgo.MutationAttempt[UpdatedMeeting] {
 	client := operation.client
 	request, err := client.buildUpdateMeetingRequest(input)

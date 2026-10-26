@@ -213,6 +213,18 @@ func (settings *MeetingSettingsInput) validate() error {
 
 // parseMeetingStart returns an explicit future start; Zoom silently replaces a past start_time.
 func parseMeetingStart(startTime string, timeZone string, now time.Time) (time.Time, error) {
+	instant, err := parseMeetingStartInstant(startTime, timeZone)
+	if err != nil {
+		return time.Time{}, err
+	}
+	if !instant.After(now) {
+		return time.Time{}, fmt.Errorf("startTime %s is not in the future, and Zoom would replace it with the current time",
+			instant.UTC().Format(time.RFC3339))
+	}
+	return instant, nil
+}
+
+func parseMeetingStartInstant(startTime string, timeZone string) (time.Time, error) {
 	instant, err := time.Parse(time.RFC3339Nano, startTime)
 	if err != nil {
 		return time.Time{}, fmt.Errorf("startTime %q must be RFC 3339 with an explicit offset, such as 2026-02-24T09:00:00-08:00 or 2026-02-24T17:00:00Z", startTime)
@@ -222,10 +234,6 @@ func parseMeetingStart(startTime string, timeZone string, now time.Time) (time.T
 	}
 	if err := validateTimeZoneName(timeZone); err != nil {
 		return time.Time{}, err
-	}
-	if !instant.After(now) {
-		return time.Time{}, fmt.Errorf("startTime %s is not in the future, and Zoom would replace it with the current time",
-			instant.UTC().Format(time.RFC3339))
 	}
 	return instant, nil
 }
