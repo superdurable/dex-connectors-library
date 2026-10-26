@@ -69,7 +69,7 @@ spec:
       mocks:
         - name: approvedBoardPages
           branch: listed
-          description: Three pages for the requested approved board, including a duplicate cursor card and an archived card.
+          description: Three newest-first pages for the requested approved board, including an archived card.
           default: true
           pages:
             - cards:
@@ -78,12 +78,12 @@ spec:
               scannedCardCount: 2
               nextBefore: "6512f0a1c2d3e4f5a6b71001"
             - cards:
-                - {id: "6512f0a1c2d3e4f5a6b71001", name: "Lobby paint", boardId: "6512f0a1c2d3e4f5a6b70001", listId: "6512f0a1c2d3e4f5a6b70101", isClosed: false, position: 2048}
-                - {id: "6512f0a1c2d3e4f5a6b71003", name: "Door sensor", boardId: "6512f0a1c2d3e4f5a6b70001", listId: "6512f0a1c2d3e4f5a6b70101", isClosed: false, position: 3072}
+                - {id: "6512f0a1c2d3e4f5a6b71000", name: "Lobby paint", boardId: "6512f0a1c2d3e4f5a6b70001", listId: "6512f0a1c2d3e4f5a6b70101", isClosed: false, position: 2048}
+                - {id: "6512f0a1c2d3e4f5a6b70fff", name: "Door sensor", boardId: "6512f0a1c2d3e4f5a6b70001", listId: "6512f0a1c2d3e4f5a6b70101", isClosed: false, position: 3072}
               scannedCardCount: 2
-              nextBefore: "6512f0a1c2d3e4f5a6b71003"
+              nextBefore: "6512f0a1c2d3e4f5a6b70fff"
             - cards:
-                - {id: "6512f0a1c2d3e4f5a6b71004", name: "[REQ-1042] Archived request", boardId: "6512f0a1c2d3e4f5a6b70001", listId: "6512f0a1c2d3e4f5a6b70101", isClosed: true, position: 4096}
+                - {id: "6512f0a1c2d3e4f5a6b70ffe", name: "[REQ-1042] Archived request", boardId: "6512f0a1c2d3e4f5a6b70001", listId: "6512f0a1c2d3e4f5a6b70101", isClosed: true, position: 4096}
               scannedCardCount: 1
         - name: notFoundFailure
           branch: notFound

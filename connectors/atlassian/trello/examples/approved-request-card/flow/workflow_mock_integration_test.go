@@ -28,7 +28,7 @@ func TestApprovedRequestUsesTrelloMockWithRealDex(t *testing.T) {
 	require.Len(t, listCalls, 3)
 	require.Equal(t, trello.ListCardsInput{BoardID: integrationBoardID, Status: trello.CardStatusOpen, PageSize: 100}, listCalls[0].Input)
 	require.Equal(t, "6512f0a1c2d3e4f5a6b71001", listCalls[1].Input.Before)
-	require.Equal(t, "6512f0a1c2d3e4f5a6b71003", listCalls[2].Input.Before)
+	require.Equal(t, "6512f0a1c2d3e4f5a6b70fff", listCalls[2].Input.Before)
 	createCalls := mock.CreateCard().Calls()
 	require.Len(t, createCalls, 1)
 	require.Equal(t, trello.CreateCardInput{

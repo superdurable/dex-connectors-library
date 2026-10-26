@@ -21,11 +21,11 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			return err
 		}},
 		{name: "listCards/approvedBoardPages/2", decode: func() error {
-			_, err := connectormock.DecodeOutput[trello.ListCardsOutput](`{"cards":[{"id":"6512f0a1c2d3e4f5a6b71001","name":"Lobby paint","boardId":"6512f0a1c2d3e4f5a6b70001","listId":"6512f0a1c2d3e4f5a6b70101","isClosed":false,"position":2048},{"id":"6512f0a1c2d3e4f5a6b71003","name":"Door sensor","boardId":"6512f0a1c2d3e4f5a6b70001","listId":"6512f0a1c2d3e4f5a6b70101","isClosed":false,"position":3072}],"scannedCardCount":2,"nextBefore":"6512f0a1c2d3e4f5a6b71003"}`)
+			_, err := connectormock.DecodeOutput[trello.ListCardsOutput](`{"cards":[{"id":"6512f0a1c2d3e4f5a6b71000","name":"Lobby paint","boardId":"6512f0a1c2d3e4f5a6b70001","listId":"6512f0a1c2d3e4f5a6b70101","isClosed":false,"position":2048},{"id":"6512f0a1c2d3e4f5a6b70fff","name":"Door sensor","boardId":"6512f0a1c2d3e4f5a6b70001","listId":"6512f0a1c2d3e4f5a6b70101","isClosed":false,"position":3072}],"scannedCardCount":2,"nextBefore":"6512f0a1c2d3e4f5a6b70fff"}`)
 			return err
 		}},
 		{name: "listCards/approvedBoardPages/3", decode: func() error {
-			_, err := connectormock.DecodeOutput[trello.ListCardsOutput](`{"cards":[{"id":"6512f0a1c2d3e4f5a6b71004","name":"[REQ-1042] Archived request","boardId":"6512f0a1c2d3e4f5a6b70001","listId":"6512f0a1c2d3e4f5a6b70101","isClosed":true,"position":4096}],"scannedCardCount":1}`)
+			_, err := connectormock.DecodeOutput[trello.ListCardsOutput](`{"cards":[{"id":"6512f0a1c2d3e4f5a6b70ffe","name":"[REQ-1042] Archived request","boardId":"6512f0a1c2d3e4f5a6b70001","listId":"6512f0a1c2d3e4f5a6b70101","isClosed":true,"position":4096}],"scannedCardCount":1}`)
 			return err
 		}},
 		{name: "getCard/approvedRequestCard/1", decode: func() error {

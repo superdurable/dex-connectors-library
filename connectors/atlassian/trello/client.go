@@ -6,9 +6,8 @@
 //
 // Trello accepts no idempotency key, so CreateCard and AddComment default to sync durability and record
 // a heartbeat before sending. They retry 429 and 503 and select uncertain for other ambiguous outcomes.
-// UpdateCard writes only absolute values,
-// such as a list, a closed flag, or a complete label set, so a repeated update converges on the same card and
-// keeps the async default.
+// UpdateCard writes only absolute values, such as a list, a closed flag, or a complete label set.
+// A repeated update converges on the same card, so it keeps the async default.
 package trello
 
 import (
@@ -345,7 +344,7 @@ func (client *Client) classifyRepeatableWrite(operationID string, subject string
 	response := result.response
 	switch {
 	case isSuccessStatus(response.statusCode) && response.hasBodyReadFailed:
-		return writeClassification{outcome: writeRetry, failure: newFailure(operationID, sdkgo.FailureTransport, "Trello "+subject+" response was interrupted, so the update is sent again")}
+		return writeClassification{outcome: writeAccepted}
 	case isSuccessStatus(response.statusCode) && response.isBodyTooLarge:
 		return writeClassification{outcome: writeInvalid, failure: newFailure(operationID, sdkgo.FailureResponseTooLarge, "Trello "+subject+" response exceeds the configured size limit")}
 	case isSuccessStatus(response.statusCode) && response.reflectsSecret:

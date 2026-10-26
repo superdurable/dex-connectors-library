@@ -125,12 +125,12 @@ func ListCardsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Ca
 	return connectormock.Retry[trello.ListCardsOutput](failure, after)
 }
 
-// ListCardsApprovedBoardPages is the manifest mock approvedBoardPages: Three pages for the requested approved board, including a duplicate cursor card and an archived card.
+// ListCardsApprovedBoardPages is the manifest mock approvedBoardPages: Three newest-first pages for the requested approved board, including an archived card.
 func ListCardsApprovedBoardPages() connectormock.Case[trello.ListCardsOutput] {
 	pages := []trello.ListCardsOutput{
 		connectormock.MustDecodeOutput[trello.ListCardsOutput](`{"cards":[{"id":"6512f0a1c2d3e4f5a6b71002","name":"[REQ-10420] Different request","boardId":"6512f0a1c2d3e4f5a6b70001","listId":"6512f0a1c2d3e4f5a6b70101","isClosed":false,"position":1024},{"id":"6512f0a1c2d3e4f5a6b71001","name":"Lobby paint","boardId":"6512f0a1c2d3e4f5a6b70001","listId":"6512f0a1c2d3e4f5a6b70101","isClosed":false,"position":2048}],"scannedCardCount":2,"nextBefore":"6512f0a1c2d3e4f5a6b71001"}`),
-		connectormock.MustDecodeOutput[trello.ListCardsOutput](`{"cards":[{"id":"6512f0a1c2d3e4f5a6b71001","name":"Lobby paint","boardId":"6512f0a1c2d3e4f5a6b70001","listId":"6512f0a1c2d3e4f5a6b70101","isClosed":false,"position":2048},{"id":"6512f0a1c2d3e4f5a6b71003","name":"Door sensor","boardId":"6512f0a1c2d3e4f5a6b70001","listId":"6512f0a1c2d3e4f5a6b70101","isClosed":false,"position":3072}],"scannedCardCount":2,"nextBefore":"6512f0a1c2d3e4f5a6b71003"}`),
-		connectormock.MustDecodeOutput[trello.ListCardsOutput](`{"cards":[{"id":"6512f0a1c2d3e4f5a6b71004","name":"[REQ-1042] Archived request","boardId":"6512f0a1c2d3e4f5a6b70001","listId":"6512f0a1c2d3e4f5a6b70101","isClosed":true,"position":4096}],"scannedCardCount":1}`),
+		connectormock.MustDecodeOutput[trello.ListCardsOutput](`{"cards":[{"id":"6512f0a1c2d3e4f5a6b71000","name":"Lobby paint","boardId":"6512f0a1c2d3e4f5a6b70001","listId":"6512f0a1c2d3e4f5a6b70101","isClosed":false,"position":2048},{"id":"6512f0a1c2d3e4f5a6b70fff","name":"Door sensor","boardId":"6512f0a1c2d3e4f5a6b70001","listId":"6512f0a1c2d3e4f5a6b70101","isClosed":false,"position":3072}],"scannedCardCount":2,"nextBefore":"6512f0a1c2d3e4f5a6b70fff"}`),
+		connectormock.MustDecodeOutput[trello.ListCardsOutput](`{"cards":[{"id":"6512f0a1c2d3e4f5a6b70ffe","name":"[REQ-1042] Archived request","boardId":"6512f0a1c2d3e4f5a6b70001","listId":"6512f0a1c2d3e4f5a6b70101","isClosed":true,"position":4096}],"scannedCardCount":1}`),
 	}
 	pageNumber := connectormock.CursorPageNumber[trello.ListCardsInput]("before", "nextBefore", pages)
 	return connectormock.Paged(trello.ListCardsBranchListed, pageNumber, pages...)

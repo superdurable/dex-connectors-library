@@ -48,7 +48,7 @@ func TestCreateCardSendsOneJSONRequestAfterRecordingTheDispatchMarker(t *testing
 	require.JSONEq(t, `{"idList":"`+testListID+`","name":"[REQ-1042] Replace badge reader",
 		"desc":"Badge reader at door 4 is offline.\nFacilities approved.","due":"2026-10-16T00:00:00.000Z",
 		"idLabels":"`+testLabelID+`,`+otherLabelID+`","idMembers":"`+testMemberID+`","pos":"top"}`, request.body)
-	require.JSONEq(t, `{"trelloDispatchedCallId":"`+string(result.Receipt.CallID)+`"}`, string(ctx.recordedHeartbeat),
+	require.JSONEq(t, `{"trelloDispatchedCallId":"`+string(result.Receipt.CallID)+`","trelloAttempt":1}`, string(ctx.recordedHeartbeat),
 		"the dispatch marker is recorded before the request")
 }
 
@@ -171,19 +171,70 @@ func TestCreateCardRetriesServiceUnavailableButNotAnAcceptedResponse(t *testing.
 	require.Equal(t, 2, provider.requestCount(), "an absent retry checkpoint never authorizes resending")
 }
 
+func TestCreateCardDoesNotResendFromAStaleRetryMarkerOnAttemptThree(t *testing.T) {
+	provider := newRecordingTrello(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeText(t, response, http.StatusServiceUnavailable, "SENTINEL")
+	})
+	client := newTrelloClient(t, provider.URL)
+	first := newTrelloDexContext("create-stale-retry")
+	_, err := sdkgo.RunMutation(first, client.CreateCard(), trelloConnection, validCreateCardInput())
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	require.Contains(t, string(first.recordedHeartbeat), `"trelloAttempt":1`)
+	second := first.nextAttempt()
+	_, err = sdkgo.RunMutation(second, client.CreateCard(), trelloConnection, validCreateCardInput())
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	require.Equal(t, 2, provider.requestCount())
+	third := second.nextAttempt()
+	third.previousHeartbeat = first.recordedHeartbeat
+	result, err := sdkgo.RunMutation(third, client.CreateCard(), trelloConnection, validCreateCardInput())
+	require.NoError(t, err)
+	require.Equal(t, trello.CreateCardBranchUncertain, result.Branch)
+	require.Equal(t, 2, provider.requestCount())
+}
+
+func TestCreateCardRecordsRetryAfterClaimHeartbeatFails(t *testing.T) {
+	provider := newRecordingTrello(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusOK, cardJSON(cardJSONOptions{name: "[REQ-1042] Replace badge reader"}))
+	})
+	client := newTrelloClient(t, provider.URL)
+	first := newTrelloDexContext("create-heartbeat-failure")
+	first.heartbeatFailuresRemaining = 1
+	_, err := sdkgo.RunMutation(first, client.CreateCard(), trelloConnection, validCreateCardInput())
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	require.Zero(t, provider.requestCount())
+	require.Contains(t, string(first.recordedHeartbeat), `"trelloCanRetry":true`)
+	result, err := sdkgo.RunMutation(first.nextAttempt(), client.CreateCard(), trelloConnection, validCreateCardInput())
+	require.NoError(t, err)
+	require.Equal(t, trello.CreateCardBranchCreated, result.Branch)
+	require.Equal(t, 1, provider.requestCount())
+}
+
+func TestCreateCardRetriesWithoutSendingWhenAttemptWindowIsTooShort(t *testing.T) {
+	provider := newRecordingTrello(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
+	ctx := newTrelloDexContext("create-short-window")
+	attemptContext, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	ctx.Context = attemptContext
+	_, err := sdkgo.RunMutation(ctx, newTrelloClient(t, provider.URL).CreateCard(), trelloConnection, validCreateCardInput())
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	require.Equal(t, 0, provider.requestCount())
+	require.Contains(t, string(ctx.recordedHeartbeat), `"trelloCanRetry":true`)
+	require.Contains(t, string(ctx.recordedHeartbeat), `"trelloAttempt":1`)
+}
+
 func TestCreateCardCutsRequestBeforeDexAttemptDeadline(t *testing.T) {
 	provider := newRecordingTrello(t, func(_ http.ResponseWriter, request *http.Request, _ int) {
 		<-request.Context().Done()
 	})
 	ctx := newTrelloDexContext("create-deadline")
-	attemptContext, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
+	attemptContext, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	ctx.Context = attemptContext
 	started := time.Now()
 	result, err := sdkgo.RunMutation(ctx, newTrelloClient(t, provider.URL).CreateCard(), trelloConnection, validCreateCardInput())
 	require.NoError(t, err)
 	require.Equal(t, trello.CreateCardBranchUncertain, result.Branch)
-	require.Less(t, time.Since(started), 1250*time.Millisecond)
+	require.Less(t, time.Since(started), 4500*time.Millisecond)
 	require.Equal(t, 1, provider.requestCount())
 }
 

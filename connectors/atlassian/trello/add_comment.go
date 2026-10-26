@@ -76,7 +76,7 @@ func (operation AddCommentOperation) Invoke(call sdkgo.Call, input AddCommentInp
 		return sdkgo.NewMutationBranch(AddCommentBranchDefect, requested, startFailure, sdkgo.Receipt{})
 	}
 	defer cancel()
-	if attempt, isFinal := singleDispatchAttemptBeforeSend(claimSingleDispatch(call), addCommentOperationID, requested,
+	if attempt, isFinal := singleDispatchAttemptBeforeSend(call, claimSingleDispatch(call, session.context), addCommentOperationID, requested,
 		client.receipt(session, trelloResponse{}, cardID)); isFinal {
 		return attempt
 	}

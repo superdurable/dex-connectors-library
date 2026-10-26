@@ -220,12 +220,13 @@ func requireRetry(t *testing.T, err error, kind sdkgo.FailureKind) *sdkgo.RetryE
 // trelloDexContext is a dex.Context whose heartbeat reads the previous attempt's value, as Dex supplies it.
 type trelloDexContext struct {
 	context.Context
-	step              string
-	previousHeartbeat json.RawMessage
-	recordedHeartbeat json.RawMessage
-	heartbeatCount    int
-	rejectsHeartbeat  bool
-	attempt           int32
+	step                       string
+	previousHeartbeat          json.RawMessage
+	recordedHeartbeat          json.RawMessage
+	heartbeatCount             int
+	rejectsHeartbeat           bool
+	heartbeatFailuresRemaining int
+	attempt                    int32
 }
 
 func newTrelloDexContext(step string) *trelloDexContext {
@@ -255,6 +256,10 @@ func (*trelloDexContext) GetStepExecutionLocal(string, any) (bool, error) { retu
 func (*trelloDexContext) RecordEvent(string, any) error                   { return nil }
 
 func (context *trelloDexContext) RecordHeartbeat(value any) error {
+	if context.heartbeatFailuresRemaining > 0 {
+		context.heartbeatFailuresRemaining--
+		return errors.New("heartbeat stream temporarily unavailable")
+	}
 	if context.rejectsHeartbeat {
 		return errors.New("heartbeat stream closed")
 	}

@@ -88,7 +88,7 @@ func (operation CreateCardOperation) Invoke(call sdkgo.Call, input CreateCardInp
 		return sdkgo.NewMutationBranch(CreateCardBranchDefect, requested, startFailure, sdkgo.Receipt{})
 	}
 	defer cancel()
-	if attempt, isFinal := singleDispatchAttemptBeforeSend(claimSingleDispatch(call), createCardOperationID, requested,
+	if attempt, isFinal := singleDispatchAttemptBeforeSend(call, claimSingleDispatch(call, session.context), createCardOperationID, requested,
 		client.receipt(session, trelloResponse{}, "")); isFinal {
 		return attempt
 	}

@@ -110,6 +110,8 @@ and `maxResponseBytes` are startup configuration.
 
 Every operation bounds its requests by 25 seconds in total and each request by
 20 seconds, with a one-second margin before the observed Dex attempt deadline.
+`createCard` and `addComment` require at least three seconds of request budget
+before dispatch; a shorter attempt records a not-sent checkpoint and retries.
 Redirects are never followed. A response that contains the key or the
 token is never returned. Reads and `updateCard` retry 408, 429, 5xx, and
 transport failures; 404 selects `notFound` where the operation declares it;
@@ -169,12 +171,12 @@ or accepted answer; 429 and 503 can retry in the same Step execution:
 | --- | --- |
 | 2xx with a card ID | `created` |
 | 400, 401, 403, 404, or another 4xx except 408, 409, and 429 | `providerRejected` |
-| 429 or 503 | Retry, honoring `Retry-After` when present |
+| 429 or 503 | Retry, honoring `Retry-After` when present; a 429 without it waits one 10-second window |
 | 409 without a provider key or conclusive read-back | `uncertain`; no resend |
 | DNS, connect, or TLS failure before any connection opened | Retry |
 | Timeout, dropped connection, 408, 3xx, or 5xx other than 503 after dispatch | `uncertain` |
 | 2xx whose body is oversized, unreadable, unusable, or reflects a credential | `uncertain` |
-| An earlier attempt of the same Step execution recorded the dispatch checkpoint | `uncertain`, with nothing sent |
+| An earlier attempt left a dispatch checkpoint without a current safe-retry release | `uncertain`, with nothing sent |
 
 On `providerRejected` and `uncertain`, the Value echoes the requested name and
 list without a card ID.
@@ -229,9 +231,10 @@ naming its Call ID. An attempt of the same Step execution that finds the
 checkpoint, after a lost Worker or an Execute timeout, selects `uncertain`
 without sending; `TestLostWorkerDuringCreateSelectsUncertainWithoutResendingWithRealDex`
 force-stops the Worker while the fake holds the create and proves the next
-Worker's attempt sends nothing. Only a 429, 503, or a traced connection failure
-before connection acquisition records permission for another attempt. Dex does
-not acknowledge checkpoint persistence. A later attempt with a missing or
+Worker's attempt sends nothing. A 429, 503, traced failure before connection
+acquisition, short attempt window, or failed claim can record permission for the
+immediately next attempt when no write was accepted or sent. Dex does not
+acknowledge checkpoint persistence. A later attempt with a missing or
 stale checkpoint therefore selects `uncertain` without sending. A crash after
 a checkpoint but before the request left can report `uncertain` for a request
 Trello never received.
@@ -244,7 +247,8 @@ write rather than treating such a read as confirmation. The 503 retry behavior
 follows Trello's [status-code guide](https://developer.atlassian.com/cloud/trello/guides/rest-api/status-codes/);
 whether Trello can return 503 after applying either POST remains unverified.
 
-`updateCard` keeps the async default. With a fake that held the `PUT` for nine
+`updateCard` keeps the async default. A 2xx PUT with an unreadable body proceeds
+to GET read-back within the same attempt. With a fake that held the `PUT` for nine
 seconds, Dex dispatched a backup attempt, Trello received the same body twice,
 and the card ended in the list with the labels and due date exactly as with one
 request; `TestSlowMoveBackupAttemptLeavesTheSameCardWithRealDex` guards this.
