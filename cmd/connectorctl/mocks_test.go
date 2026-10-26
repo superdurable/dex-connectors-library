@@ -5,7 +5,6 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -95,65 +94,26 @@ func TestScaffoldWritesPlaceholdersOfTheDeclaredCursorType(t *testing.T) {
 	}
 }
 
-func TestScaffoldWritesStringEncodedCursorWireValues(t *testing.T) {
-	testCases := []struct {
-		name   string
-		source string
-		pages  []string
-		decode func(*testing.T, []byte, int)
-	}{
-		{
-			name:   "integer cursor",
-			source: "type WidgetPage struct {\n\tNextPage int `json:\"nextPage,string\"`\n}\n",
-			pages:  []string{`{"nextPage":"2"}`, `{"nextPage":"3"}`, `{"nextPage":null}`},
-			decode: func(t *testing.T, encoded []byte, pageIndex int) {
-				var page struct {
-					NextPage int `json:"nextPage,string"`
-				}
-				require.NoError(t, json.Unmarshal(encoded, &page))
-				require.Equal(t, []int{2, 3, 0}[pageIndex], page.NextPage)
-			},
-		},
-		{
-			name:   "integer cursor with implicit JSON name",
-			source: "type WidgetPage struct {\n\tNextPage int `json:\",string\"`\n}\n",
-			pages:  []string{`{"nextPage":"2"}`, `{"nextPage":"3"}`, `{"nextPage":null}`},
-			decode: func(t *testing.T, encoded []byte, pageIndex int) {
-				var page struct {
-					NextPage int `json:",string"`
-				}
-				require.NoError(t, json.Unmarshal(encoded, &page))
-				require.Equal(t, []int{2, 3, 0}[pageIndex], page.NextPage)
-			},
-		},
-		{
-			name:   "string cursor",
-			source: "type WidgetPage struct {\n\tNextPage string `json:\"nextPage,string\"`\n}\n",
-			pages:  []string{`{"nextPage":"\"page-2\""}`, `{"nextPage":"\"page-3\""}`, `{"nextPage":null}`},
-			decode: func(t *testing.T, encoded []byte, pageIndex int) {
-				var page struct {
-					NextPage string `json:"nextPage,string"`
-				}
-				require.NoError(t, json.Unmarshal(encoded, &page))
-				require.Equal(t, []string{"page-2", "page-3", ""}[pageIndex], page.NextPage)
-			},
-		},
+func TestScaffoldRejectsStringEncodedCursorWithoutEditingManifest(t *testing.T) {
+	testCases := map[string]string{
+		"integer cursor":     "type WidgetPage struct {\n\tNextPage int `json:\"nextPage,string\"`\n}\n",
+		"implicit JSON name": "type WidgetPage struct {\n\tNextPage int `json:\",string\"`\n}\n",
+		"string cursor":      "type WidgetPage struct {\n\tNextPage string `json:\"nextPage,string\"`\n}\n",
 	}
-	for _, testCase := range testCases {
-		t.Run(testCase.name, func(t *testing.T) {
+	for name, source := range testCases {
+		t.Run(name, func(t *testing.T) {
 			manifestPath := writeMockFixtureConnector(t, t.TempDir())
-			writeWidgetPageSource(t, manifestPath, testCase.source)
-			require.NoError(t, os.WriteFile(manifestPath, []byte(removeAllMocks(t, manifestPath)), 0o600))
+			writeWidgetPageSource(t, manifestPath, source)
+			stripped := removeAllMocks(t, manifestPath)
+			require.NoError(t, os.WriteFile(manifestPath, []byte(stripped), 0o600))
 
-			require.NoError(t, scaffoldMocks(manifestPath, &bytes.Buffer{}))
+			err := scaffoldMocks(manifestPath, &bytes.Buffer{})
 
-			manifest, err := load(manifestPath)
-			require.NoError(t, err)
-			pages := manifest.Spec.Operations[1].Mocks[0].Pages
-			require.Equal(t, testCase.pages, pageJSON(manifest.Spec.Operations[1].Mocks[0]))
-			for pageIndex, page := range pages {
-				testCase.decode(t, []byte(page.JSON()), pageIndex)
-			}
+			require.ErrorContains(t, err, "connectormock.CursorPageNumber cannot page string-encoded cursors")
+			require.ErrorContains(t, err, "remove the string option before scaffolding")
+			current, readErr := os.ReadFile(manifestPath)
+			require.NoError(t, readErr)
+			require.Equal(t, stripped, string(current))
 		})
 	}
 }

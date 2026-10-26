@@ -34,10 +34,9 @@ type textGenerationAttempt struct {
 }
 
 // preparedRequest is a validated request ready for the wire format.
-// canonicalSchema is the structured output schema the answer is checked
-// against, or nil for plain text.
 type preparedRequest struct {
-	encodeInput     EncodeRequestInput
+	encodeInput EncodeRequestInput
+	// canonicalSchema checks structured answers; it is nil for plain text.
 	canonicalSchema map[string]any
 }
 

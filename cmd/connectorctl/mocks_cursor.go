@@ -40,15 +40,11 @@ func scaffoldCursorPlaceholders(connectorDirectory string, operation schema.Oper
 	}
 	cursorType, isStringEncoded, isFound := cursorFieldType(declarations, operation.OutputType, operation.Pagination.NextField)
 	if isFound {
+		if isStringEncoded {
+			return cursorPlaceholders{}, fmt.Errorf("%s: pagination cursor %s of %s uses json:\",string\"; connectormock.CursorPageNumber cannot page string-encoded cursors, so remove the string option before scaffolding",
+				operation.Name, operation.Pagination.NextField, operation.OutputType)
+		}
 		if placeholders, isSupported := placeholdersForCursorType(declarations, cursorType); isSupported {
-			if isStringEncoded {
-				// Null ends the listing and decodes to zero even with encoding/json's string option.
-				return cursorPlaceholders{
-					firstNext:  strconv.Quote(placeholders.firstNext),
-					secondNext: strconv.Quote(placeholders.secondNext),
-					last:       "null",
-				}, nil
-			}
 			return placeholders, nil
 		}
 	}

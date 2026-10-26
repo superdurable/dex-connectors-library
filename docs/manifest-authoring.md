@@ -886,10 +886,11 @@ operation without one and a failure mock for each optional branch other than
 placeholder, or three placeholder pages for a paginated Query. The pages'
 cursor placeholders follow the type that the output's Go struct declares for
 the cursor field in the active Go files beside the manifest: a string cursor
-gets strings and a number cursor gets numbers. A `json:",string"` cursor gets
-quoted JSON values on the first two pages and `null` on the ending page. The
-command stops without editing the manifest when it cannot read the type or
-finds duplicate active declarations; then write the paginated default by hand.
+gets strings and a number cursor gets numbers. The command rejects a cursor
+with the `json:",string"` option because `CursorPageNumber` cannot page it;
+remove the option before scaffolding. The command stops without editing the
+manifest when it cannot read the type or finds duplicate active declarations;
+then write the paginated default by hand.
 Replace the placeholders with realistic answers before committing; they decode
 strictly into the output type but need not pass its
 `Validate` method. The command edits only the lines it inserts, reports the
