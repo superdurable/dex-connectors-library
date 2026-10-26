@@ -266,6 +266,33 @@ notifications, which require the `validationToken` handshake that
 expiry, or `users/delta` polling, which needs a durable per-binding delta
 cursor that `sdkgo` does not provide.
 
+## Mocks
+
+`entraidmock.New` supplies a typed connection for the Contoso tenant. Its
+defaults describe Ada Lovelace's account and one team group across creation,
+membership, offboarding, and reinstatement. `listUsers` serves three unordered
+pages with a duplicate and a disabled account. Named cases cover missing
+resources, a taken principal name, rejected filters, and conclusive permission
+or group membership rejections. Script another case for another tenant or user.
+
+The [runnable integration test](examples/account-lifecycle/flow/workflow_mock_integration_test.go)
+runs all three lifecycle paths on a real Dex Worker without Microsoft Graph:
+
+```go
+mock := entraidmock.New(t, ConnectionName)
+flow := NewFlow(mock.Connection())
+```
+
+It checks the Flow hand-offs and the mapped operation inputs:
+
+```go
+removals := mock.RemoveUserFromGroup().Calls()
+require.Len(t, removals, 1)
+require.Equal(t, entraid.RemoveUserFromGroupInput{GroupID: testGroupID, UserID: adaID}, removals[0].Input)
+```
+
+See [`sdkgo/connectormock`](../../../sdkgo/README.md#connector-mocks) for scripting.
+
 ## Example
 
 [`examples/account-lifecycle`](examples/account-lifecycle) is a runnable Dex
