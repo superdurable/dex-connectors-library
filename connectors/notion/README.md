@@ -161,26 +161,34 @@ property; checkbox and status properties cannot be cleared.
 
 ## Avoiding duplicate rows
 
-Notion has no idempotency key or client request ID. Its request-limit guidance
+Notion has no idempotency key or client request ID. Its [request-limit guidance](https://developers.notion.com/reference/request-limits)
 retries only 429 and 529 for writes, and warns that a write can be saved and
-still answer 503.
+still answer 503. A response without `committed_resource_id` does not prove
+that the page was not saved.
 
-`createPage` therefore never resends a request Notion may have received. It
-retries only a request that never reached Notion, a 429, or a 529.
+`createPage` uses the shared single-dispatch fence with sync durability. It
+records a claim before POST, then permits a second POST only after a 429, a
+529, or positive transport evidence that no connection was obtained. A lost
+or stale checkpoint fails closed. Credential or data source lookup failures
+before POST record `notSent`, so a later attempt may send.
 
 - A conclusive 4xx selects `providerRejected` or `notFound`.
 - A 503 whose `additional_data.committed_resource_id` names the saved page
-  selects `created`: the connector reads that page back and sets
-  `IsConfirmedAfterTimeout`.
+  reads that page back. A transient read failure retries the read without
+  resending POST; a confirmed page selects `created`.
+- An accepted 2xx with a valid page ID but unusable remaining fields also
+  reads the page back; an accepted 2xx without an ID remains `uncertain`.
 - Every other ambiguity selects `uncertain`. That covers a timeout after
-  dispatch, a 409, a 5xx, or an interrupted or unusable 2xx.
-- The request may wait 60 seconds, longer than Notion's roughly 55-second
-  write deadline, so a slow save becomes a confirmed 503 rather than a client
-  timeout.
-- The operation uses sync durability with a 90-second Execute and heartbeat
-  timeout. Under async durability, Dex dispatches a Step again when its local
-  attempt passes about seven seconds, and that second dispatch would create a
-  second row.
+  dispatch, a 409, a 503 without a committed ID, or an interrupted 2xx.
+- The 120-second Execute and heartbeat timeout leave a 70-second fence window
+  for the 60-second HTTP request and time for read-back. Every request remains
+  bounded by the Step deadline.
+
+Notion documents `committed_resource_id` and the 503 ambiguity, but this
+fence behavior has not been verified against a live Notion workspace. A
+generic `createPage` cannot reliably search for a page without its ID; the
+example uses its application-owned Submission ID property to reconcile an
+uncertain create.
 
 `updatePageProperties` sends absolute values, so a repeated `PATCH` leaves the
 page in the same state. It keeps async durability and retries every

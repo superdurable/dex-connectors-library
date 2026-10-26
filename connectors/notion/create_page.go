@@ -4,6 +4,8 @@
 package notion
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -13,6 +15,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 const (
@@ -48,11 +51,10 @@ type CreatePageOutput struct {
 	DataSourceID string `json:"dataSourceId,omitempty"`
 	// PageID is the created page's ID.
 	PageID string `json:"pageId,omitempty"`
-	// Page is the created page. It is nil only when Notion confirmed the save
-	// after a timeout and the connector could not read the page back.
+	// Page is the created page, or nil on a non-created outcome.
 	Page *Page `json:"page,omitempty"`
-	// IsConfirmedAfterTimeout reports that Notion answered 503 but named the saved
-	// page, so the connector read it instead of reporting an uncertain outcome.
+	// IsConfirmedAfterTimeout reports a 503 with a saved page ID confirmed during
+	// this attempt; a later attempt's read-back cannot recover the original status.
 	IsConfirmedAfterTimeout bool `json:"confirmedAfterTimeout,omitempty"`
 }
 
@@ -71,6 +73,23 @@ type createPageRequest struct {
 	children   []map[string]any
 }
 
+type createPageSend struct {
+	client  *Client
+	session *operationSession
+	body    createPageRequestBody
+	result  exchangeResult
+}
+
+func (send *createPageSend) dispatch(ctx context.Context) error {
+	requestSession := *send.session
+	requestSession.context = ctx
+	send.result = send.client.exchange(&requestSession, notionRequest{
+		method: http.MethodPost, path: "/pages", payload: send.body,
+		timeout: writeRequestTimeout, singleDispatchWrite: true,
+	})
+	return nil
+}
+
 // Definition returns the immutable connector operation definition.
 func (CreatePageOperation) Definition() sdkgo.MutationDefinition { return CreatePageDefinition }
 
@@ -83,17 +102,39 @@ func (CreatePageOperation) IdempotencyKey(callID sdkgo.CallID, _ CreatePageInput
 // Invoke creates one row and never resends a request Notion may have received.
 func (operation CreatePageOperation) Invoke(call sdkgo.Call, input CreatePageInput) sdkgo.MutationAttempt[CreatePageOutput] {
 	client := operation.client
+	fence, err := singledispatch.NewFence(call, createPageExecuteTimeout)
+	if err != nil {
+		return sdkgo.NewMutationBranch(CreatePageBranchDefect, CreatePageOutput{}, failurePointer(createPageOperationID, sdkgo.FailureLocalDefect, "Notion page dispatch could not be initialized"), sdkgo.Receipt{})
+	}
+	decision := fence.Decide()
+	if decision.Kind == singledispatch.FailClosed {
+		return sdkgo.NewMutationUncertain(CreatePageOutput{}, newFailure(createPageOperationID, sdkgo.FailureProtocol, "Notion page dispatch checkpoint cannot be trusted"), sdkgo.Receipt{})
+	}
+	if decision.Kind == singledispatch.ReadBackRequired {
+		if decision.Marker.CallID != call.ID || decision.Marker.ProviderID == "" {
+			return sdkgo.NewMutationUncertain(CreatePageOutput{}, newFailure(createPageOperationID, sdkgo.FailureProtocol, "Notion page creation may already have been sent without a confirmable page ID"), sdkgo.Receipt{})
+		}
+		return client.readBackCreatedPage(call, decision.Marker.ProviderID)
+	}
 	request, err := buildCreatePageRequest(input)
 	if err != nil {
 		return sdkgo.NewMutationBranch(CreatePageBranchDefect, CreatePageOutput{}, validationFailure(createPageOperationID, err), sdkgo.Receipt{})
 	}
-	session, cancel, sessionFailure := client.startSession(call, createPageOperationID, writeOperationDeadline)
+	session, cancel, sessionFailure := client.startSession(call, createPageOperationID, createPageOperationDeadline)
 	if sessionFailure != nil {
-		return sdkgo.NewMutationBranch(CreatePageBranchDefect, CreatePageOutput{}, sessionFailure, sdkgo.Receipt{})
+		if err := fence.RecordNotSent(); err != nil {
+			return sdkgo.NewMutationRetry[CreatePageOutput](newFailure(createPageOperationID, sdkgo.FailureAvailability, "Notion credential resolution and dispatch checkpoint are unavailable"), 0)
+		}
+		return sdkgo.NewMutationRetry[CreatePageOutput](*sessionFailure, 0)
 	}
 	defer cancel()
 	dataSourceID, resolution, resolutionResponse := client.resolveDataSourceID(session, createPageOperationID, request.selection)
 	if resolution.outcome != readSucceeded {
+		if resolution.outcome == readRetry {
+			if err := fence.RecordNotSent(); err != nil {
+				return sdkgo.NewMutationRetry[CreatePageOutput](newFailure(createPageOperationID, sdkgo.FailureAvailability, "Notion data source lookup and dispatch checkpoint are unavailable"), 0)
+			}
+		}
 		return createPageAttemptForLookup(resolution, client.receipt(session, resolutionResponse, request.selection.databaseID))
 	}
 	output := CreatePageOutput{DataSourceID: dataSourceID}
@@ -101,14 +142,26 @@ func (operation CreatePageOperation) Invoke(call sdkgo.Call, input CreatePageInp
 		Parent:     map[string]string{"type": string(ParentTypeDataSource), "data_source_id": dataSourceID},
 		Properties: request.properties, Children: request.children,
 	}
-	result := client.exchange(session, notionRequest{method: http.MethodPost, path: "/pages", payload: body, timeout: writeRequestTimeout})
+	send := &createPageSend{client: client, session: session, body: body}
+	if err := fence.Dispatch(send.dispatch); err != nil {
+		if errors.Is(err, singledispatch.ErrInsufficientTime) || errors.Is(err, singledispatch.ErrCheckpoint) {
+			return sdkgo.NewMutationRetry[CreatePageOutput](newFailure(createPageOperationID, sdkgo.FailureTransport, "Notion page dispatch checkpoint or attempt budget is temporarily unavailable"), 0)
+		}
+		return sdkgo.NewMutationUncertain(output, newFailure(createPageOperationID, sdkgo.FailureProtocol, "Notion page dispatch could not be classified"), sdkgo.Receipt{})
+	}
+	result := send.result
 	classification := client.classifyUnkeyedWrite(createPageOperationID, createPageFailureSubject, result)
 	receipt := client.receipt(session, result.response, "")
 	switch classification.outcome {
 	case writeAccepted:
 	case writeCommitted:
-		return client.confirmCommittedPage(session, output, classification.committedResourceID, receipt)
+		// A lost accepted-ID checkpoint cannot authorize another write.
+		_ = fence.RecordProviderID(classification.committedResourceID)
+		return client.confirmCommittedPage(session, output, classification.committedResourceID, receipt, true)
 	case writeRetry:
+		if err := fence.RecordCanResend(); err != nil {
+			return sdkgo.NewMutationRetry[CreatePageOutput](newFailure(createPageOperationID, sdkgo.FailureAvailability, "Notion retry checkpoint could not be recorded"), classification.retryAfter)
+		}
 		return sdkgo.NewMutationRetry[CreatePageOutput](classification.failure, classification.retryAfter)
 	case writeNotFound:
 		return sdkgo.NewMutationBranch(CreatePageBranchNotFound, output, &classification.failure, receipt)
@@ -121,25 +174,64 @@ func (operation CreatePageOperation) Invoke(call sdkgo.Call, input CreatePageInp
 	}
 	page, err := decodePageBody(result.response.body)
 	if err != nil {
+		if pageID := readAcceptedPageID(result.response.body); pageID != "" {
+			// Read-back can still confirm this accepted page if its checkpoint is lost.
+			_ = fence.RecordProviderID(pageID)
+			return client.confirmCommittedPage(session, output, pageID, receipt, false)
+		}
 		return sdkgo.NewMutationUncertain(output, newFailure(createPageOperationID, sdkgo.FailureProtocol,
 			"Notion accepted the page creation but returned an unusable page"), receipt)
 	}
+	// The complete response confirms the page even if the checkpoint is lost.
+	_ = fence.RecordProviderID(page.ID)
 	output.PageID, output.Page = page.ID, &page
 	receipt.ProviderObjectID = page.ID
 	return sdkgo.NewMutationBranch(CreatePageBranchCreated, output, nil, receipt)
 }
 
-// confirmCommittedPage reads the page Notion saved before its 503; a failed read still selects created.
-func (client *Client) confirmCommittedPage(session *operationSession, output CreatePageOutput, pageID string, receipt sdkgo.Receipt) sdkgo.MutationAttempt[CreatePageOutput] {
-	output.PageID, output.IsConfirmedAfterTimeout = pageID, true
+// confirmCommittedPage reads a known accepted page without sending another write.
+func (client *Client) confirmCommittedPage(session *operationSession, output CreatePageOutput, pageID string, receipt sdkgo.Receipt, confirmedAfterTimeout bool) sdkgo.MutationAttempt[CreatePageOutput] {
+	output.PageID, output.IsConfirmedAfterTimeout = pageID, confirmedAfterTimeout
 	receipt.ProviderObjectID = pageID
 	result := client.exchange(session, notionRequest{method: http.MethodGet, path: "/pages/" + url.PathEscape(pageID)})
-	if client.classifyRead(createPageOperationID, createPageFailureSubject, result).outcome == readSucceeded {
-		if page, err := decodePageBody(result.response.body); err == nil && page.ID == pageID {
-			output.Page = &page
-		}
+	classification := client.classifyRead(createPageOperationID, createPageFailureSubject, result)
+	if classification.outcome == readRetry {
+		return sdkgo.NewMutationRetry[CreatePageOutput](classification.failure, classification.retryAfter)
 	}
+	if classification.outcome != readSucceeded {
+		return sdkgo.NewMutationUncertain(output, newFailure(createPageOperationID, sdkgo.FailureProtocol, "Notion accepted the page but read-back could not confirm it"), receipt)
+	}
+	page, err := decodePageBody(result.response.body)
+	if err != nil || page.ID != pageID {
+		return sdkgo.NewMutationUncertain(output, newFailure(createPageOperationID, sdkgo.FailureProtocol, "Notion page read-back did not match the accepted page ID"), receipt)
+	}
+	output.Page = &page
+	output.DataSourceID = page.Parent.ID
 	return sdkgo.NewMutationBranch(CreatePageBranchCreated, output, nil, receipt)
+}
+
+func (client *Client) readBackCreatedPage(call sdkgo.Call, pageID string) sdkgo.MutationAttempt[CreatePageOutput] {
+	session, cancel, failure := client.startSession(call, createPageOperationID, createPageOperationDeadline)
+	if failure != nil {
+		return sdkgo.NewMutationRetry[CreatePageOutput](*failure, 0)
+	}
+	defer cancel()
+	return client.confirmCommittedPage(session, CreatePageOutput{}, pageID, client.receipt(session, notionResponse{}, pageID), false)
+}
+
+func readAcceptedPageID(body []byte) string {
+	var accepted struct {
+		Object string `json:"object"`
+		ID     string `json:"id"`
+	}
+	if err := json.Unmarshal(body, &accepted); err != nil || accepted.Object != "page" {
+		return ""
+	}
+	id, err := ParseID(accepted.ID)
+	if err != nil {
+		return ""
+	}
+	return id
 }
 
 // createPageAttemptForLookup maps a failed data source lookup; nothing was written, so a Retry is safe.

@@ -153,6 +153,8 @@ func TestRateLimitedCreateIsRetriedAfterRetryAfterWithRealDex(t *testing.T) {
 	attempts := provider.createTimes(submissionID)
 	require.Len(t, attempts, 2, "a 429 wrote nothing, so Dex retries the same Step execution")
 	require.GreaterOrEqual(t, attempts[1].Sub(attempts[0]), time.Second, "the retry waits for Retry-After")
+	bodies := provider.createBodies(submissionID)
+	require.Equal(t, bodies[0], bodies[1], "both attempts carry the same submission identity and values")
 	require.Equal(t, 1, provider.rowCount(submissionID))
 }
 
@@ -645,6 +647,18 @@ func (provider *fakeNotion) createTimes(submissionID string) []time.Time {
 		}
 	}
 	return times
+}
+
+func (provider *fakeNotion) createBodies(submissionID string) []string {
+	provider.mutex.Lock()
+	defer provider.mutex.Unlock()
+	var bodies []string
+	for _, write := range provider.creates {
+		if write.key == submissionID {
+			bodies = append(bodies, write.body)
+		}
+	}
+	return bodies
 }
 
 func (provider *fakeNotion) totalCreates() int {

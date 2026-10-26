@@ -10,9 +10,9 @@
 // a data source ID or a database ID; a database ID resolves to the database's
 // only data source, and a database with several data sources selects defect.
 //
-// Notion accepts no idempotency key, so CreatePage never resends a request
-// Notion may have received: an ambiguous outcome selects the uncertain branch,
-// and the operation uses sync durability so Dex does not dispatch it twice.
+// Notion accepts no idempotency key, so CreatePage uses a sync single-dispatch
+// fence and never resends a request Notion may have received. An ambiguous
+// outcome without a confirmable page ID selects uncertain.
 // When Notion saves the page but answers 503 with the saved page's ID, the
 // create reads that page and selects created. UpdatePageProperties sends
 // absolute property values, so a repeated or duplicated update leaves the page
@@ -38,6 +38,7 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 const (
@@ -53,8 +54,11 @@ const (
 	readOperationDeadline = 25 * time.Second
 	// writeRequestTimeout outlasts Notion's roughly 55-second write deadline, so a slow save returns its 503.
 	writeRequestTimeout = 60 * time.Second
-	// writeOperationDeadline bounds a write Invoke inside its 90-second Execute timeout.
-	writeOperationDeadline = 85 * time.Second
+	// writeOperationDeadline bounds an update Invoke inside its 90-second Execute timeout.
+	writeOperationDeadline      = 85 * time.Second
+	createPageExecuteTimeout    = 120 * time.Second
+	createPageOperationDeadline = 115 * time.Second
+	maximumStepDeadlineMargin   = 5 * time.Second
 
 	notionVersionHeader   = "Notion-Version"
 	requestIDHeader       = "X-Notion-Request-Id"
@@ -93,11 +97,12 @@ type Client struct {
 
 // notionRequest is one Notion REST call below /v1.
 type notionRequest struct {
-	method  string
-	path    string
-	query   url.Values
-	payload any
-	timeout time.Duration
+	method              string
+	path                string
+	query               url.Values
+	payload             any
+	timeout             time.Duration
+	singleDispatchWrite bool
 }
 
 // notionResponse is one bounded Notion response. The body is empty when it was oversized or unreadable.
@@ -228,7 +233,16 @@ func (client *Client) startSession(call sdkgo.Call, operationID string, deadline
 		return nil, nil, failurePointer(operationID, sdkgo.FailureAuthentication,
 			"Notion connection credentials are unavailable; save the connection's API token again")
 	}
-	operationContext, cancel := context.WithTimeout(call.Context, deadline)
+	operationDeadline := time.Now().Add(deadline)
+	if stepDeadline, hasDeadline := call.Context.Deadline(); hasDeadline {
+		remaining := time.Until(stepDeadline)
+		margin := min(maximumStepDeadlineMargin, max(remaining/6, 0))
+		boundedDeadline := stepDeadline.Add(-margin)
+		if boundedDeadline.Before(operationDeadline) {
+			operationDeadline = boundedDeadline
+		}
+	}
+	operationContext, cancel := context.WithDeadline(call.Context, operationDeadline)
 	return &operationSession{context: operationContext, call: call, credentials: credentials}, cancel, nil
 }
 
@@ -267,6 +281,11 @@ func (client *Client) exchange(session *operationSession, request notionRequest)
 	httpRequest.Header.Set("Accept", "application/json")
 	if encodedPayload != nil {
 		httpRequest.Header.Set("Content-Type", "application/json")
+	}
+	if request.singleDispatchWrite {
+		if err := singledispatch.PrepareHTTPWrite(httpRequest); err != nil {
+			return exchangeResult{err: errRequestNotBuilt}
+		}
 	}
 	httpResponse, err := client.httpClient.Do(httpRequest)
 	if err != nil {

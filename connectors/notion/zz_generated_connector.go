@@ -443,7 +443,7 @@ var CreatePageDefinition = sdkgo.MutationDefinition{
 		{ID: CreatePageBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid, including a database ID whose database holds several data sources.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
-		ExecuteMethodTimeout: time.Duration(90000000000), HeartbeatTimeout: time.Duration(90000000000),
+		ExecuteMethodTimeout: time.Duration(120000000000), HeartbeatTimeout: time.Duration(120000000000),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 6, TotalDuration: time.Duration(300000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
