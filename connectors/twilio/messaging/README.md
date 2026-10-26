@@ -171,7 +171,7 @@ dex.DefineStep(messaging.NewSendMessageStep(messaging.SendMessageStepConfig[Inpu
 	},
 	Connection: flow.connection, MapToOperationInput: flow.MapToSendMessageInput,
 	Accepted: sdkgo.GoTo(recordAcceptedTextMessage{}),
-	// An uncertain send continues through operator reconciliation before any resend.
+	// An uncertain send continues through operator reconciliation Actions.
 	Uncertain: sdkgo.GoTo(recordUncertainTextMessage{}),
 })),
 ```

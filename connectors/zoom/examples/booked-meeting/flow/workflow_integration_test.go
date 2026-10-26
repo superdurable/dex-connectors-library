@@ -193,18 +193,19 @@ func TestRescheduleOfADeletedMeetingFailsOnNotFoundWithRealDex(t *testing.T) {
 	require.Contains(t, result.ErrorMessage, "no target")
 }
 
-func TestMeetingWithoutAnEndedInstanceFailsOnNotFoundWithRealDex(t *testing.T) {
+func TestMeetingWithoutAnEndedInstanceIsANoShowWithRealDex(t *testing.T) {
 	_, harness := newBookedMeetingHarness(t, providerRequestTimeout, &AttendancePolicy{CheckDelay: time.Hour})
 	ctx := integrationContext(t)
 	flowID := harness.startBookedMeeting(t, ctx, "no-show", futureBooking(topicNoShow, time.Hour))
 	harness.waitForPhase(t, ctx, flowID, PhaseScheduled)
 
 	require.NoError(t, harness.client.InvokeRPC(ctx, flowID, harness.flow.CheckBookedMeetingAttendance, nil, nil))
-	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
-	require.NoError(t, err)
-	require.Equal(t, dex.FlowFailed, result.Status)
-	require.Contains(t, result.ErrorMessage, "notFound")
-	require.Contains(t, result.ErrorMessage, "no target")
+	record := harness.waitForFlowOutput(t, ctx, flowID)
+	require.Equal(t, PhaseNoShow, record.Phase)
+	require.Contains(t, record.Note, "no ended instance")
+	require.Error(t, harness.client.InvokeRPC(ctx, flowID, harness.flow.RescheduleBookedMeeting,
+		RescheduleBookedMeetingInput{StartTime: futureStart(time.Hour).Format(time.RFC3339), TimeZone: "UTC", DurationMinutes: 30}, nil),
+		"a completed booking cannot be rescheduled")
 }
 
 // TestAttendanceTimerFiresAfterTheScheduledEndWithRealDex waits for the shortest Zoom meeting, one minute, to end.

@@ -50,13 +50,12 @@ func TestSummarizeTextExampleRunsOnTheLLMMockWithRealDex(t *testing.T) {
 
 	t.Run("a rate limit is retried and the next case answers", func(t *testing.T) {
 		flowID := fmt.Sprintf("llm-summary-mock-retry-%d", runID)
-		mock.GenerateText().ForFlow(flowID).Respond(llmmock.GenerateTextRateLimited(), llmmock.GenerateTextOutputTokenLimit())
+		mock.GenerateText().ForFlow(flowID).Respond(llmmock.GenerateTextRateLimited(), llmmock.GenerateTextShortSummary())
 
-		result := runSummaryFlow(t, client, flow, flowID)
+		outcome := runSummaryFlowToCompletion(t, client, flow, flowID)
 
-		require.Equal(t, dex.FlowFailed, result.Status)
-		require.Contains(t, result.ErrorMessage,
-			"llm generateText (connection llm) selected branch truncated with no target: RESPONSE_TOO_LARGE: The model stopped at the output token limit.")
+		require.Equal(t, llm.GenerateTextBranchGenerated, outcome.Branch)
+		require.Equal(t, "The connector shipped on time.", outcome.Summary)
 	})
 
 	requests := make(map[string]llm.GenerateTextRequest)
@@ -66,7 +65,7 @@ func TestSummarizeTextExampleRunsOnTheLLMMockWithRealDex(t *testing.T) {
 		branches[call.FlowID] = append(branches[call.FlowID], string(call.Branch))
 	}
 	require.Equal(t, "mock-model", requests[fmt.Sprintf("llm-summary-mock-default-%d", runID)].Model, "the Step pick reaches the request")
-	require.Equal(t, []string{"", string(llm.GenerateTextBranchTruncated)}, branches[fmt.Sprintf("llm-summary-mock-retry-%d", runID)])
+	require.Equal(t, []string{"", string(llm.GenerateTextBranchGenerated)}, branches[fmt.Sprintf("llm-summary-mock-retry-%d", runID)])
 }
 
 // TestStructuredOutputFlowRunsOnTheLLMMockWithRealDex scripts the JSON answer for a Flow whose request sets a

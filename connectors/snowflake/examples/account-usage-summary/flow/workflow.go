@@ -51,7 +51,7 @@ const (
 	PhaseRunning = "running"
 	// PhaseCompleted means the statement finished and the usage summary is recorded.
 	PhaseCompleted = "completed"
-	// PhaseWaitBudgetExhausted means the statement outlasted the Flow's status reads and was canceled.
+	// PhaseWaitBudgetExhausted means the Flow stopped waiting after its final status read and attempted cancellation.
 	PhaseWaitBudgetExhausted = "waitBudgetExhausted"
 )
 
@@ -104,7 +104,7 @@ type UsageSummaryRecord struct {
 type StatusPolicy struct {
 	// CheckInterval is the durable Timer before each status read; at least one second.
 	CheckInterval time.Duration
-	// MaximumRunningReads is the number of running reads before the Flow cancels the statement.
+	// MaximumRunningReads is the number of running reads before the Flow attempts cancellation.
 	MaximumRunningReads int
 }
 
@@ -166,11 +166,13 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			StepType: cancelUsageQueryStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
 				GroupID: "snowflake", GroupLabel: "Snowflake",
-				Explanation: "Cancel the statement after the last allowed status read.",
+				Explanation: "Try to cancel the statement after the last allowed status read.",
 			},
 			Connection:          flow.connection,
 			MapToOperationInput: flow.MapToCancelUsageQueryInput,
 			Canceled:            sdkgo.GoTo(recordWaitBudgetExhausted{}),
+			// A refused cancel usually means the statement finished; the wait budget outcome still holds.
+			ProviderRejected: sdkgo.GoTo(recordWaitBudgetExhausted{}),
 		})),
 		dex.DefineStep(recordWaitBudgetExhausted{}),
 	}
@@ -390,20 +392,20 @@ func (completeUsageSummary) Execute(ctx dex.Context, result snowflake.GetStateme
 }
 
 // dex:group group-id:wait group-label:"Wait"
-// dex:explanation text:"Complete as waitBudgetExhausted after Snowflake accepts the cancel."
+// dex:explanation text:"Complete as waitBudgetExhausted, recording whether Snowflake accepted the cancel."
 type recordWaitBudgetExhausted struct {
 	dex.StepDefaultsNoWaitFor[snowflake.CancelStatementResult]
 }
 
 func (recordWaitBudgetExhausted) GetStepType() string { return recordWaitBudgetExhaustedStepType }
 
-func (recordWaitBudgetExhausted) Execute(ctx dex.Context, _ snowflake.CancelStatementResult) (*dex.StepDecision, error) {
+func (recordWaitBudgetExhausted) Execute(ctx dex.Context, result snowflake.CancelStatementResult) (*dex.StepDecision, error) {
 	record, err := usageRecordAttribute.Get(ctx)
 	if err != nil {
 		return nil, err
 	}
 	record.Phase = PhaseWaitBudgetExhausted
-	record.IsCancellationAccepted = true
+	record.IsCancellationAccepted = result.Branch == snowflake.CancelStatementBranchCanceled
 	if err := usagePhaseAttribute.Set(ctx, record.Phase); err != nil {
 		return nil, err
 	}

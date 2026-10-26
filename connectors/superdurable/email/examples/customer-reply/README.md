@@ -131,8 +131,8 @@ the Flow on a real Worker against the in-process IMAP and SMTP servers in
   because both Steps are sync;
 - a move held for nine seconds is dispatched again by async Dex, and the
   message is archived once;
-- an answer lost after the final dot completes as `needsReview` and is never
-  resubmitted;
+- an answer lost after the final dot fails the Flow through the unwired
+  `uncertain` branch and is never resubmitted;
 - a Worker lost while the server holds the final dot is replaced, and the new
   attempt finds the submission checkpoint and submits nothing;
 - a 451 refusal is retried and the reply is submitted once;

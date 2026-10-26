@@ -68,6 +68,7 @@ func TestAccountUsageSummaryFailsOnFailedStatementWithRealDex(t *testing.T) {
 	require.Contains(t, result.ErrorMessage, "providerRejected")
 	require.Contains(t, result.ErrorMessage, "no target")
 	require.NotContains(t, result.ErrorMessage, "SENTINEL")
+	require.NotContains(t, result.ErrorMessage, integrationAccessToken)
 	require.Equal(t, 1, provider.ExecutionCount())
 }
 
@@ -93,6 +94,17 @@ func TestAccountUsageSummaryCancelsAfterTheWaitBudgetWithRealDex(t *testing.T) {
 	require.True(t, record.IsCancellationAccepted)
 	require.Equal(t, 3, record.StatusReads)
 	require.Equal(t, 3, provider.ReadCount(record.StatementHandle))
+	require.Equal(t, 1, provider.CancelCount(record.StatementHandle))
+}
+
+func TestAccountUsageSummaryCompletesWhenCancellationIsRefusedAfterTheStatementFinishesWithRealDex(t *testing.T) {
+	provider := newUsageProvider(t, func(fakesnowflake.SubmittedStatement) fakesnowflake.StatementScript { return completedScript(3) })
+	harness := newUsageHarness(t, provider, 3)
+
+	record := harness.runSummary(t, "cancel-finished", request)
+	require.Equal(t, PhaseWaitBudgetExhausted, record.Phase)
+	require.False(t, record.IsCancellationAccepted)
+	require.Equal(t, 3, record.StatusReads)
 	require.Equal(t, 1, provider.CancelCount(record.StatementHandle))
 }
 

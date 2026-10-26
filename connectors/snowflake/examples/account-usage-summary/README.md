@@ -13,9 +13,11 @@ started from Dex Web **Start Flow**. It never holds a Worker while the warehouse
 6. A `providerRejected` submission or read fails the Flow on its unwired branch.
 7. After the last allowed running read, `CancelUsageQuery` uses `cancelStatement`, and
    `RecordWaitBudgetExhausted` completes with `waitBudgetExhausted` and whether Snowflake accepted
-   the cancel. A rejected cancel fails the Flow on its unwired branch.
+   the cancel. A rejected cancel follows this outcome because the statement may have finished
+   between the final read and the cancel request.
 
-`DefaultStatusPolicy` reads every 15 seconds and cancels after 40 running reads, about ten minutes.
+`DefaultStatusPolicy` reads every 15 seconds and attempts cancellation after 40 running reads,
+about ten minutes.
 The `truncated`, `invalidResponse`, and `defect` branches are not wired and fail the Flow.
 
 ## Prepare Snowflake
@@ -96,6 +98,8 @@ The integration suite runs the Flow on a real Dex Worker against the scripted SQ
 - a failed statement (422) that fails the Flow on `providerRejected` without provider message text;
 - a refused submission (422 at submit) that runs nothing;
 - a statement that outlasts the wait budget and is canceled;
+- a statement that finishes after the final running read and refuses cancellation,
+  completing with `isCancellationAccepted: false`;
 - a submission that answers after nine seconds, which Dex dispatches twice with the same
   `requestId` while the scripted API runs the statement once;
 - a Worker force-stopped during the durable wait and replaced, which resumes without resubmitting;

@@ -140,8 +140,8 @@ a `SummaryOutcome` like this, and the run detail shows the same value under
 
 A pick that is not a valid model ID, such as one with a space, fails the run
 on the unwired `defect` branch before the provider is called; a model the
-provider does not serve fails it on the unwired `providerRejected` branch. Empty text, or text over 64 KiB, fails the Flow before
-any provider is called.
+provider does not serve fails it on the unwired `providerRejected` branch.
+Empty text, or text over 64 KiB, fails the Flow before any provider is called.
 
 ## Test
 
@@ -157,12 +157,13 @@ the Dex Client against local fake DeepSeek, Mistral, Claude, and Kimi APIs. It
 covers the provider's default model streaming its text, a connection model, a
 Claude pick that selects `blocked`, a rejected key that selects
 `providerRejected`, and an invalid model ID that selects `defect` without a
-provider request. Each unwired branch fails the Flow. A second real Dex test runs the same Flow on an `llmmock` connection,
-as an application test does: the manifest default completes the summary, a
-scripted quota failure fails the Flow, and a scripted rate limit is retried
-before a `truncated` branch fails the Flow. A third real Dex test runs a small Flow whose Step
-requests structured output on the mock and scripts the JSON answer for its
-schema, which the plain text default cannot answer:
+provider request. Each unwired branch fails the Flow. A second real Dex test
+runs the same Flow on an `llmmock` connection, as an application test does:
+the manifest default completes the summary, a scripted quota failure fails
+the Flow, and a scripted rate limit is retried before normal completion. A
+third real Dex test runs a small Flow whose Step requests structured output
+on the mock and scripts the JSON answer for its schema, which the plain text
+default cannot answer:
 
 ```bash
 DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./examples/summarize-text/... -count=1

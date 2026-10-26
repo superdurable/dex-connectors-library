@@ -142,8 +142,8 @@ empty search with 204, and matches look-alike addresses in its email filter:
 - an update held for nine seconds is dispatched again by async Dex, and both
   attempts write the same values;
 - a lost update response is retried and finds the values applied;
-- a lost create or comment response completes as `needsReview` and is never
-  resent;
+- a lost create or comment response fails the Flow through the unwired
+  `uncertain` branch and is never resent;
 - a rate-limited create waits for `Retry-After` and creates one ticket;
 - a Worker lost while Zoho Desk holds the create is replaced, and the new
   attempt finds the dispatch checkpoint and sends nothing;

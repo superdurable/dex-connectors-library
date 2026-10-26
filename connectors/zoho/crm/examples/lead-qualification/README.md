@@ -19,7 +19,8 @@ five Zoho CRM operations to qualify one lead:
    which links the contact to it;
 6. `FindZohoOpenDeal` calls `crm.NewFindRecordsStep` for the contact's most
    recently modified deal whose `Contact_Name` is the contact and whose stage
-   is not one of `ClosedDealStages`, and `ChooseZohoOpenDeal` advances a found deal or completes as `noOpenDeal` when none exists;
+   is not one of `ClosedDealStages`, and `ChooseZohoOpenDeal` advances a found
+   deal or completes as `noOpenDeal` when none exists;
 7. `AdvanceZohoOpenDeal` calls `crm.NewUpdateRecordStep` to set the deal's
    `Stage`, and its `Owner` when `ownerId` is set;
 8. `ReadBackZohoDeal` calls `crm.NewGetRecordStep`, and
@@ -123,7 +124,7 @@ ID, as a record's `Owner` lookup shows it, or blank to keep the deal's owner.
 
 The Flow result and the `zoho-crm-lead-qualification` Attribute hold the
 `phase`, the account, contact, and deal IDs, whether the account and contact
-were created, the deal's stage and owner as read back.
+were created, and the deal's stage and owner as read back.
 
 ## Test
 

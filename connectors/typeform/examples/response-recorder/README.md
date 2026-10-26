@@ -41,7 +41,7 @@ dexcli visualize ./examples/response-recorder/flow/workflow.go \
   --out ./build/response-recorder
 ```
 
-The command must report `valid: true` with the four Steps, only the `found`
+The command must report `valid: true` with the three Steps, only the `found`
 branch wired, and the `response-submitted` binding with its `formPicker`
 unit. Inside this repository it also warns `connector_release_required` and
 `connector_trigger_release_required`, because a local module is not a

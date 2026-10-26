@@ -63,7 +63,7 @@ const (
 	PhaseAttended = "attended"
 	// PhaseNoShow means no guest joined, or Zoom has no ended instance of the meeting.
 	PhaseNoShow = "noShow"
-	// PhaseAttendanceUnknown means Zoom refused the participant listing, such as on a free account.
+	// PhaseAttendanceUnknown means the first participant page lists only the host while more pages remain.
 	PhaseAttendanceUnknown = "attendanceUnknown"
 	// PhaseNeedsReconciliation means the meeting may exist but could not be identified; it was not created again.
 	PhaseNeedsReconciliation = "needsReconciliation"
@@ -255,6 +255,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			},
 			Connection: flow.connection, MapToOperationInput: MapToListPastMeetingParticipantsInput,
 			Listed: sdkgo.GoTo(recordMeetingAttendance{}),
+			// No ended instance means no guest joined; record the routine no-show outcome.
+			NotFound: sdkgo.GoTo(recordMeetingAttendance{}),
 		})),
 		dex.DefineStep(recordMeetingAttendance{}),
 	}
@@ -708,15 +710,20 @@ func (recordMeetingAttendance) Execute(ctx dex.Context, result zoom.ListPastMeet
 	if err != nil {
 		return nil, err
 	}
-	record.GuestJoins = CountGuestJoins(result.Value.Participants, record.HostID)
-	switch {
-	case record.GuestJoins > 0:
-		record.Phase = PhaseAttended
-	case result.Value.NextPageToken != "":
-		record.Phase = PhaseAttendanceUnknown
-		record.Note = "the first participant page lists only the host"
-	default:
+	if result.Branch == zoom.ListPastMeetingParticipantsBranchNotFound {
 		record.Phase = PhaseNoShow
+		record.Note = "Zoom has no ended instance of the meeting, so nobody joined"
+	} else {
+		record.GuestJoins = CountGuestJoins(result.Value.Participants, record.HostID)
+		switch {
+		case record.GuestJoins > 0:
+			record.Phase = PhaseAttended
+		case result.Value.NextPageToken != "":
+			record.Phase = PhaseAttendanceUnknown
+			record.Note = "the first participant page lists only the host"
+		default:
+			record.Phase = PhaseNoShow
+		}
 	}
 	if err := bookingPhaseAttribute.Set(ctx, record.Phase); err != nil {
 		return nil, err

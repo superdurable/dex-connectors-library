@@ -143,7 +143,8 @@ request, and replays it:
 - a paid invoice for the order is left alone, an approved one is paid without
   raising another, and another customer's invoice with the same reference is
   ignored;
-- a missing contact completes without writing;
+- a missing contact fails the Flow on the unwired `notFound` branch without
+  writing;
 - a minute limit waits for `Retry-After`;
 - the daily limit, a validation rejection, and a cached 500 each fail the
   Flow through an unwired optional branch after one request, without Xero's
