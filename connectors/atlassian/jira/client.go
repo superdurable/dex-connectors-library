@@ -263,7 +263,14 @@ func (client *Client) startSession(call sdkgo.Call, operationID string) (*operat
 		cancel()
 		return nil, nil, &sessionFailure{failure: newFailure(operationID, sdkgo.FailureAvailability, "Jira credential lookup did not finish within the Execute budget"), isRetryable: true}
 	}
-	if err != nil || validateResolvedCredentials(credentials) != nil {
+	if err != nil {
+		cancel()
+		if errors.Is(err, sdkgo.ErrReauthorizationRequired) {
+			return nil, nil, &sessionFailure{failure: newFailure(operationID, sdkgo.FailureAuthentication, "Jira connection credentials are unavailable; reconnect the connection")}
+		}
+		return nil, nil, &sessionFailure{failure: newFailure(operationID, sdkgo.FailureAvailability, "Jira credential lookup is temporarily unavailable"), isRetryable: true}
+	}
+	if validateResolvedCredentials(credentials) != nil {
 		cancel()
 		return nil, nil, &sessionFailure{failure: newFailure(operationID, sdkgo.FailureAuthentication, "Jira connection credentials are unavailable; reconnect the connection")}
 	}

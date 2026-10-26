@@ -191,12 +191,12 @@ func TestRateLimitedReadRetriesAfterRetryAfter(t *testing.T) {
 	require.Equal(t, 7*time.Second, retryAfter.After)
 }
 
-func TestUnavailableCredentialsRetryWithoutAProviderRequest(t *testing.T) {
+func TestMissingCredentialLookupRetriesWithoutAProviderRequest(t *testing.T) {
 	provider := newRecordingJira(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
 	client, err := jira.New(jira.Config{CloudID: testCloudID, Endpoint: provider.URL}, sdkgo.StaticCredentialProvider[jira.Credentials]{})
 	require.NoError(t, err)
 	_, err = sdkgo.RunMutation(newJiraDexContext("no-credentials"), client.CreateIssue(), jiraConnection, validCreateIssueInput())
-	requireRetry(t, err, sdkgo.FailureAuthentication)
+	requireRetry(t, err, sdkgo.FailureAvailability)
 }
 
 func TestRedirectsAreNeverFollowed(t *testing.T) {

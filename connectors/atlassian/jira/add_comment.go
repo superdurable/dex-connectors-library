@@ -92,12 +92,12 @@ func (operation AddCommentOperation) Invoke(call sdkgo.Call, input AddCommentInp
 			if checkpointErr := fence.RecordNotSent(); checkpointErr != nil {
 				return sdkgo.NewMutationRetry[AddCommentOutput](newFailure(addCommentOperationID, sdkgo.FailureAvailability, "Jira setup failed and the not-sent checkpoint could not be recorded"), sessionErr.retryAfter)
 			}
-			if sessionErr.isRetryable || sessionErr.failure.Kind == sdkgo.FailureAuthentication {
+			if sessionErr.isRetryable {
 				return sdkgo.NewMutationRetry[AddCommentOutput](sessionErr.failure, sessionErr.retryAfter)
 			}
 			return sdkgo.NewMutationBranch(AddCommentBranchDefect, requested, sessionErr.pointer(), sdkgo.Receipt{})
 		}
-		if sessionErr.isRetryable || sessionErr.failure.Kind == sdkgo.FailureAuthentication {
+		if sessionErr.isRetryable {
 			return sdkgo.NewMutationRetry[AddCommentOutput](sessionErr.failure, sessionErr.retryAfter)
 		}
 		return sdkgo.NewMutationUncertain(requested, sessionErr.failure, sdkgo.Receipt{})

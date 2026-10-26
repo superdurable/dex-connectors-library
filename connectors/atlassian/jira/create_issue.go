@@ -120,12 +120,12 @@ func (operation CreateIssueOperation) Invoke(call sdkgo.Call, input CreateIssueI
 			if checkpointErr := fence.RecordNotSent(); checkpointErr != nil {
 				return sdkgo.NewMutationRetry[CreateIssueOutput](newFailure(createIssueOperationID, sdkgo.FailureAvailability, "Jira setup failed and the not-sent checkpoint could not be recorded"), sessionErr.retryAfter)
 			}
-			if sessionErr.isRetryable || sessionErr.failure.Kind == sdkgo.FailureAuthentication {
+			if sessionErr.isRetryable {
 				return sdkgo.NewMutationRetry[CreateIssueOutput](sessionErr.failure, sessionErr.retryAfter)
 			}
 			return sdkgo.NewMutationBranch(CreateIssueBranchDefect, requested, sessionErr.pointer(), sdkgo.Receipt{})
 		}
-		if sessionErr.isRetryable || sessionErr.failure.Kind == sdkgo.FailureAuthentication {
+		if sessionErr.isRetryable {
 			return sdkgo.NewMutationRetry[CreateIssueOutput](sessionErr.failure, sessionErr.retryAfter)
 		}
 		return sdkgo.NewMutationUncertain(requested, sessionErr.failure, sdkgo.Receipt{})

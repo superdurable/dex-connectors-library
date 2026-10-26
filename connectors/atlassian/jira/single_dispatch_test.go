@@ -330,9 +330,19 @@ func TestStaleCanResendMarkerNeverAuthorizesThirdCommentWrite(t *testing.T) {
 	require.Equal(t, 2, postCount)
 }
 
-type delayedJiraCredentials struct{ isReady bool }
+type delayedJiraCredentials struct {
+	isReady               bool
+	failure               error
+	hasInvalidCredentials bool
+}
 
 func (provider *delayedJiraCredentials) Resolve(sdkgo.Call) (jira.Credentials, error) {
+	if provider.failure != nil {
+		return jira.Credentials{}, provider.failure
+	}
+	if provider.hasInvalidCredentials {
+		return jira.Credentials{}, nil
+	}
 	if !provider.isReady {
 		return jira.Credentials{}, errors.New("credential broker temporarily unavailable")
 	}
@@ -352,7 +362,7 @@ func TestCredentialFailureRecordsNotSentBeforeNextIssueAttempt(t *testing.T) {
 	require.NoError(t, err)
 	ctx := singledispatchtest.NewContext("jira-flow", "credential-retry")
 	_, err = sdkgo.RunMutation(ctx, client.CreateIssue(), jiraConnection, validCreateIssueInput())
-	requireRetry(t, err, sdkgo.FailureAuthentication)
+	requireRetry(t, err, sdkgo.FailureAvailability)
 	require.Zero(t, provider.requestCount())
 	credentials.isReady = true
 	ctx.AdvanceAttempt()
@@ -372,7 +382,7 @@ func TestCredentialFailureRecordsNotSentBeforeNextCommentAttempt(t *testing.T) {
 	ctx := singledispatchtest.NewContext("jira-flow", "comment-credential-retry")
 	input := jira.AddCommentInput{IssueIDOrKey: "OPS-43", Body: "Triage started."}
 	_, err = sdkgo.RunMutation(ctx, client.AddComment(), jiraConnection, input)
-	requireRetry(t, err, sdkgo.FailureAuthentication)
+	requireRetry(t, err, sdkgo.FailureAvailability)
 	require.Zero(t, provider.requestCount())
 	credentials.isReady = true
 	ctx.AdvanceAttempt()
@@ -433,7 +443,7 @@ func TestReadbackCredentialFailureRetriesWithoutAnotherIssue(t *testing.T) {
 	credentials.isReady = false
 	ctx.AdvanceAttempt()
 	_, err = sdkgo.RunMutation(ctx, client.CreateIssue(), jiraConnection, validCreateIssueInput())
-	requireRetry(t, err, sdkgo.FailureAuthentication)
+	requireRetry(t, err, sdkgo.FailureAvailability)
 	require.Equal(t, 1, provider.requestCountFor(http.MethodPost, testSitePrefix+"/issue"))
 }
 
@@ -455,8 +465,108 @@ func TestReadbackCredentialFailureRetriesWithoutAnotherComment(t *testing.T) {
 	credentials.isReady = false
 	ctx.AdvanceAttempt()
 	_, err = sdkgo.RunMutation(ctx, client.AddComment(), jiraConnection, input)
-	requireRetry(t, err, sdkgo.FailureAuthentication)
+	requireRetry(t, err, sdkgo.FailureAvailability)
 	require.Equal(t, 1, provider.requestCountFor(http.MethodPost, testSitePrefix+"/issue/OPS-43/comment"))
+}
+
+func TestPermanentCredentialFailuresBeforeDispatchSelectDefect(t *testing.T) {
+	for _, credentialFailure := range []struct {
+		name                  string
+		failure               error
+		hasInvalidCredentials bool
+	}{
+		{name: "reauthorization", failure: sdkgo.NewReauthorizationRequiredError(errors.New("SENTINEL private detail"))},
+		{name: "invalid credentials", hasInvalidCredentials: true},
+	} {
+		for _, operationName := range []string{"create issue", "add comment"} {
+			t.Run(credentialFailure.name+"/"+operationName, func(t *testing.T) {
+				provider := newRecordingJira(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
+				credentials := &delayedJiraCredentials{
+					isReady: true, failure: credentialFailure.failure,
+					hasInvalidCredentials: credentialFailure.hasInvalidCredentials,
+				}
+				client, err := jira.New(jira.Config{CloudID: testCloudID, Endpoint: provider.URL}, credentials)
+				require.NoError(t, err)
+				ctx := singledispatchtest.NewContext("jira-flow", "permanent-credential-"+operationName)
+				if operationName == "create issue" {
+					result, err := sdkgo.RunMutation(ctx, client.CreateIssue(), jiraConnection, validCreateIssueInput())
+					require.NoError(t, err)
+					require.Equal(t, jira.CreateIssueBranchDefect, result.Branch)
+					require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
+					require.Contains(t, result.Failure.Message, "reconnect")
+					require.NotContains(t, result.Failure.Message, "SENTINEL")
+				} else {
+					result, err := sdkgo.RunMutation(ctx, client.AddComment(), jiraConnection,
+						jira.AddCommentInput{IssueIDOrKey: "OPS-43", Body: "Triage started."})
+					require.NoError(t, err)
+					require.Equal(t, jira.AddCommentBranchDefect, result.Branch)
+					require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
+					require.Contains(t, result.Failure.Message, "reconnect")
+					require.NotContains(t, result.Failure.Message, "SENTINEL")
+				}
+				require.Zero(t, provider.requestCount())
+				heartbeats := ctx.Heartbeats()
+				require.Len(t, heartbeats, 1)
+				var marker singledispatch.Marker
+				require.NoError(t, json.Unmarshal(heartbeats[0], &marker))
+				require.Equal(t, singledispatch.StateNotSent, marker.State)
+			})
+		}
+	}
+}
+
+func TestPermanentCredentialFailuresDuringReadbackSelectUncertain(t *testing.T) {
+	for _, credentialFailure := range []struct {
+		name                  string
+		failure               error
+		hasInvalidCredentials bool
+	}{
+		{name: "reauthorization", failure: sdkgo.NewReauthorizationRequiredError(errors.New("SENTINEL private detail"))},
+		{name: "invalid credentials", hasInvalidCredentials: true},
+	} {
+		for _, operationName := range []string{"create issue", "add comment"} {
+			t.Run(credentialFailure.name+"/"+operationName, func(t *testing.T) {
+				provider := newRecordingJira(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+					if request.Method == http.MethodPost && request.URL.Path != testSitePrefix+"/search/jql" {
+						writeJSON(t, response, http.StatusBadGateway, `{}`)
+						return
+					}
+					writeJSON(t, response, http.StatusTooManyRequests, `{}`)
+				})
+				credentials := &delayedJiraCredentials{isReady: true}
+				client, err := jira.New(jira.Config{CloudID: testCloudID, Endpoint: provider.URL}, credentials)
+				require.NoError(t, err)
+				ctx := singledispatchtest.NewContext("jira-flow", "readback-permanent-credential-"+operationName)
+				if operationName == "create issue" {
+					_, err = sdkgo.RunMutation(ctx, client.CreateIssue(), jiraConnection, validCreateIssueInput())
+				} else {
+					_, err = sdkgo.RunMutation(ctx, client.AddComment(), jiraConnection,
+						jira.AddCommentInput{IssueIDOrKey: "OPS-43", Body: "Triage started."})
+				}
+				requireRetry(t, err, sdkgo.FailureAvailability)
+				credentials.failure = credentialFailure.failure
+				credentials.hasInvalidCredentials = credentialFailure.hasInvalidCredentials
+				ctx.AdvanceAttempt()
+				if operationName == "create issue" {
+					result, err := sdkgo.RunMutation(ctx, client.CreateIssue(), jiraConnection, validCreateIssueInput())
+					require.NoError(t, err)
+					require.Equal(t, jira.CreateIssueBranchUncertain, result.Branch)
+					require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
+					require.NotContains(t, result.Failure.Message, "SENTINEL")
+					require.Equal(t, 1, provider.requestCountFor(http.MethodPost, testSitePrefix+"/issue"))
+				} else {
+					result, err := sdkgo.RunMutation(ctx, client.AddComment(), jiraConnection,
+						jira.AddCommentInput{IssueIDOrKey: "OPS-43", Body: "Triage started."})
+					require.NoError(t, err)
+					require.Equal(t, jira.AddCommentBranchUncertain, result.Branch)
+					require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
+					require.NotContains(t, result.Failure.Message, "SENTINEL")
+					require.Equal(t, 1, provider.requestCountFor(http.MethodPost, testSitePrefix+"/issue/OPS-43/comment"))
+				}
+				require.Equal(t, 2, provider.requestCount())
+			})
+		}
+	}
 }
 
 type writeMarkerPropertyForTest struct {
