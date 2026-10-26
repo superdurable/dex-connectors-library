@@ -102,6 +102,18 @@ func dropConnection(t *testing.T, response http.ResponseWriter) {
 	require.NoError(t, connection.Close())
 }
 
+func writeInterruptedAcceptedJSON(t *testing.T, response http.ResponseWriter) {
+	t.Helper()
+	hijacker, isHijacker := response.(http.Hijacker)
+	require.True(t, isHijacker)
+	connection, buffered, err := hijacker.Hijack()
+	require.NoError(t, err)
+	_, err = buffered.WriteString("HTTP/1.1 201 Created\r\nContent-Type: application/json\r\nContent-Length: 100\r\n\r\n{\"issueId\":")
+	require.NoError(t, err)
+	require.NoError(t, buffered.Flush())
+	require.NoError(t, connection.Close())
+}
+
 // closedLoopbackURL returns an address nothing listens on, so a connection is refused before any byte is sent.
 func closedLoopbackURL(t *testing.T) string {
 	t.Helper()

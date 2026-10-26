@@ -33,6 +33,7 @@ const (
 	markerReject         = "[reject]"
 	markerRateLimit      = "[rate-limit]"
 	markerServerError    = "[server-error]"
+	markerUnavailable    = "[unavailable]"
 	markerCreateTimeout  = "[create-timeout]"
 	markerSlowCreate     = "[slow-create]"
 	markerSlowReply      = "[slow-reply]"
@@ -206,6 +207,8 @@ func (provider *fakeServiceDesk) createRequest(response http.ResponseWriter, req
 		provider.writeJSON(response, http.StatusTooManyRequests, `{"errorMessage":"SENTINEL rate limited"}`)
 	case strings.Contains(summary, markerServerError) && attempt == 1:
 		provider.writeJSON(response, http.StatusInternalServerError, `{"errorMessage":"SENTINEL internal error"}`)
+	case strings.Contains(summary, markerUnavailable) && attempt == 1:
+		provider.writeJSON(response, http.StatusServiceUnavailable, `{"errorMessage":"SENTINEL temporarily unavailable"}`)
 	case strings.Contains(summary, markerCreateTimeout):
 		provider.storeRequest(summary, body.RaiseOnBehalfOf)
 		// The request was raised, but the response never arrives before the connector gives up.

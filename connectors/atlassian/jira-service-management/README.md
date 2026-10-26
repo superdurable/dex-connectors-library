@@ -11,6 +11,8 @@ and customer calls use the request API at `/rest/servicedeskapi`; search,
 labels, priority, and workflow transitions use the Jira platform API at
 `/rest/api/3` on the same site, because every customer request is a Jira issue.
 
+Install this connector with `go get github.com/superdurable/dex-connectors-library/connectors/atlassian/jira-service-management@v0.23.0`.
+
 | Operation | Kind | Durability | Happy branch | Other branches |
 | --- | --- | --- | --- | --- |
 | `findCustomerByEmail` | Query | async | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
@@ -135,8 +137,9 @@ startup configuration.
 
 ## Operations
 
-Every operation bounds its requests by 25 seconds in total and each request by
-20 seconds, below the 30-second Execute timeout. Redirects are never followed.
+Every operation ends by the earlier of 25 seconds or five seconds before its
+observed Step deadline; each request is bounded by 20 seconds. A write with
+less than three seconds left does not start. Redirects are never followed.
 After a 401 the connector asks once for a refresh and resends once, because
 Atlassian rejects an unauthenticated request before acting on it. A response
 that contains the access token is never returned.
@@ -228,15 +231,24 @@ second request and a repeated public reply is a second customer email. Dex
 re-dispatches an async Step whose local attempt passes about seven seconds and
 retries a Step after a lost Worker, so the writes take these positions:
 
-- **createTicket** and **addComment** run with sync durability, so Dex never
-  sends a second attempt while the first is in flight. Before sending, each
-  records a Dex heartbeat checkpoint naming the Step's Call ID; a later attempt
-  of the same Step execution that finds it, after a lost Worker or an Execute
-  timeout, selects `uncertain` without sending. Only a 429 and a connection that
-  never opened clear the checkpoint and retry; a 5xx, a 408, a lost or
-  unreadable response, and an unusable 2xx select `uncertain`, and the connector
-  never resends. A read-back marker was rejected because it would show in the
-  customer's request or reply.
+- **createTicket** and **addComment** run with sync durability. Before resolving
+  credentials or sending, each checks and records the Step's Call ID and
+  attempt number in a Dex heartbeat. A
+  429, 503, or positively traced pre-connection failure records a `canResend`
+  checkpoint and returns Retry. The next attempt sends only if it sees that
+  checkpoint from the immediately preceding attempt. A missing, stale, or
+  dispatched checkpoint selects `uncertain` without sending. Other 5xx, 408,
+  a lost or unreadable response, and an unusable 2xx remain uncertain. A 409
+  with a usable request or comment ID triggers a read by that ID; mismatched
+  or inconclusive reads remain uncertain.
+  For an accepted create with a valid ID or key but a malformed counterpart,
+  the connector reads the request by that reference before deciding; it never
+  repeats the POST. [Atlassian documents request lookup by ID or key and
+  comment lookup by ID](https://developer.atlassian.com/cloud/jira/service-desk/rest/api-group-request/),
+  but its create and comment POSTs document no Call ID field or enforced
+  idempotency key. A comment with no returned ID cannot be attributed by
+  listing text and timestamps alone. These provider claims have not been
+  verified against a live Atlassian site.
 - **updateTicket** and **transitionTicket** keep async durability and read
   before they write, so a backup attempt finds the change already made.
 
@@ -246,12 +258,34 @@ Real Dex runs with a fake that answers after nine seconds guard each position:
 `TestSlowLabelUpdateBackupAttemptWritesOnceWithRealDex` (two reads, one write),
 and `TestSlowTransitionBackupAttemptMovesTheRequestOnceWithRealDex`. Do not
 override `createTicket` or `addComment` to async. Recording the checkpoint
-returns once the Worker writes it to its stream, before Dex stores it, so a
-Worker lost after the request left but before Dex stored the checkpoint could
-still send twice. A crash after the checkpoint but before the request left
-reports `uncertain` for a request the provider never received. The
+returns before Dex confirms persistence. A lost `canResend` checkpoint therefore
+selects `uncertain` even after a 429 or 503, and a crash before dispatch can
+report uncertainty for a request the provider never received. The
 [`support-request`](examples/support-request) example parks an uncertain create
 for an operator.
+
+## Mocks
+
+The `jiraservicemanagementmock` package provides one consistent default support
+desk: Jane is an active customer of desk 10, no request has the exact summary
+`Laptop will not boot`, create raises `ITH-42`, and later reads, labels, notes,
+replies, and the workflow transition refer to that request. Search has three
+pages with near duplicates across a page boundary. Every operation also has
+cases for its definite business outcomes, including missing customers and
+requests, rejected writes, invalid responses, and unavailable transitions.
+
+The real Dex mock integration test scripts one retry before creation:
+
+```go
+	mock := jiraservicemanagementmock.New(t, ConnectionName)
+	mock.CreateTicket().Respond(
+		jiraservicemanagementmock.CreateTicketRetry(sdkgo.Failure{Kind: sdkgo.FailureAvailability, Message: "Jira returned 503"}, 0),
+		jiraservicemanagementmock.CreateTicketDefault(),
+	)
+```
+
+See [`workflow_mock_integration_test.go`](examples/support-request/flow/workflow_mock_integration_test.go)
+for the full Flow test and its recorded-input and call-count assertions.
 
 ## Errors
 
@@ -265,11 +299,12 @@ token, such as
 
 | Response | Reads, updateTicket, transitionTicket | createTicket, addComment |
 | --- | --- | --- |
-| 400, 401 after one refresh, 403, 409, 422, other 4xx | `providerRejected`; `transitionTicket` retries a 409 the read-back does not explain | `providerRejected` |
+| 400, 401 after one refresh, 403, 422, other 4xx | `providerRejected` | `providerRejected` |
+| 409 | `transitionTicket` reads back and may retry | Read back by a returned ID; otherwise `uncertain` |
 | 404 | `notFound` where declared | `notFound` (`addComment`), `providerRejected` (`createTicket`) |
-| 429 | Retry after `Retry-After` | Retry after `Retry-After` |
+| 429, 503 | Retry after `Retry-After` | Retry only with a fresh `canResend` checkpoint |
 | connection refused before sending | Retry | Retry |
-| 408, 5xx, lost or unreadable response | Retry | `uncertain` |
+| 408, other 5xx, lost or unreadable response | Retry | `uncertain` |
 | 3xx, oversized, malformed, or token-reflecting 2xx | `invalidResponse` | `uncertain` |
 | invalid input or credentials | `defect`, no request | `defect`, no request |
 

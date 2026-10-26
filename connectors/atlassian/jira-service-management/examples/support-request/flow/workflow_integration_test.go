@@ -126,6 +126,16 @@ func TestRateLimitedCreateIsRetriedAfterRetryAfterWithRealDex(t *testing.T) {
 	require.GreaterOrEqual(t, attempts[1].Sub(attempts[0]), time.Second, "the retry waits for Retry-After")
 }
 
+func TestUnavailableCreateRetriesWithoutOperatorApprovalWithRealDex(t *testing.T) {
+	provider, flow, harness := newSupportIntegrationHarness(t, integrationCloudID, shortRequestTimeout)
+	ctx := integrationContext(t)
+	summary := markerUnavailable + " Laptop charger failed"
+	record := runSupportFlow(t, ctx, harness, flow, "unavailable-create", supportInput(summary))
+	require.Equal(t, PhaseHandled, record.Phase)
+	require.Equal(t, 1, record.CreateAttempts)
+	require.Equal(t, 2, provider.createCount(summary), "the 503 response proved no request was accepted")
+}
+
 func TestCreateTimeoutIsReconciledWithoutRaisingAgainWithRealDex(t *testing.T) {
 	provider, flow, harness := newSupportIntegrationHarness(t, integrationCloudID, shortRequestTimeout)
 	ctx := integrationContext(t)
@@ -345,6 +355,12 @@ func newSupportIntegrationHarness(t *testing.T, cloudID string, requestTimeout t
 	require.NoError(t, err)
 	connection, err := jiraservicemanagement.NewConnection(providerClient, reference)
 	require.NoError(t, err)
+	flow, harness := newSupportIntegrationHarnessForConnection(t, connection)
+	return provider, flow, harness
+}
+
+func newSupportIntegrationHarnessForConnection(t *testing.T, connection jiraservicemanagement.Connection) (*Flow, *supportIntegrationHarness) {
+	t.Helper()
 	flow := NewFlow(connection, DeskSelection{}, RequestTypeSelection{})
 	registry, err := dex.NewRegistry([]dex.Flow{flow})
 	require.NoError(t, err)
@@ -367,7 +383,7 @@ func newSupportIntegrationHarness(t *testing.T, cloudID string, requestTimeout t
 		defer cancel()
 		require.NoError(t, errors.Join(harness.worker.Stop(stopCtx), <-harness.workerResult, harness.client.Close(), harness.cache.Close()))
 	})
-	return provider, flow, harness
+	return flow, harness
 }
 
 func availableIntegrationPort(t *testing.T) string {

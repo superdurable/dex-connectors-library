@@ -5,7 +5,7 @@ metadata:
   displayName: Jira Service Management
   description: Raise, read, label, comment on, and move Jira Service Management customer requests as tickets, with public replies and internal notes, SLA cycles, and customers found by email, never sending a request or comment twice.
   company: Atlassian
-  version: v0.22.1
+  version: v0.23.0
 spec:
   provider: atlassian
   codegen:
@@ -157,6 +157,25 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: foundDefaultAnswer
+          branch: found
+          description: "For serviceDeskId 10 and jane@acme.example.com, Jane Doe is an active customer."
+          default: true
+          output: {email: jane@acme.example.com, customers: [{accountId: 5b10ac8d82e05b22cc7d4ef5, displayName: Jane Doe, isActive: true}]}
+        - name: notFoundFailure
+          branch: notFound
+          description: "For serviceDeskId 10 and nobody@acme.example.com, no customer has that email."
+          output: {email: nobody@acme.example.com, customers: []}
+          failure: {kind: NOT_FOUND, message: "No customer has that email."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "For serviceDeskId 10, HTTP 403 denies customer lookup."
+          failure: {kind: AUTHORIZATION, message: "Customer lookup was forbidden."}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "For serviceDeskId 10, Jira returned a malformed customer page."
+          failure: {kind: PROTOCOL, message: "The customer page was malformed."}
     - name: searchTickets
       goName: SearchTickets
       inputType: SearchTicketsInput
@@ -173,6 +192,31 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      pagination: {inputField: nextPageToken, nextField: nextPageToken}
+      mocks:
+        - name: searchedDefaultAnswer
+          branch: searched
+          description: "For project ITH and a new Laptop will not boot request, the first page has no exact-summary ticket."
+          default: true
+          pages:
+            - jql: 'project = ITH AND reporter = "5b10ac8d82e05b22cc7d4ef5"'
+              tickets:
+                - {id: "10040", key: ITH-40, projectKey: ITH, summary: Laptop will not boot after an update, status: {id: "10000", name: Waiting for support, categoryKey: new}, createdAt: '2026-09-20T14:13:20Z', updatedAt: '2026-09-20T14:13:20Z'}
+              nextPageToken: page-2
+            - jql: 'project = ITH AND reporter = "5b10ac8d82e05b22cc7d4ef5"'
+              tickets:
+                - {id: "10041", key: ITH-41, projectKey: ITH, summary: Laptop will not boot on Monday, status: {id: "10000", name: Waiting for support, categoryKey: new}, createdAt: '2026-09-19T14:13:20Z', updatedAt: '2026-09-19T14:13:20Z'}
+                - {id: "10040", key: ITH-40, projectKey: ITH, summary: Laptop will not boot after an update, status: {id: "10000", name: Waiting for support, categoryKey: new}, createdAt: '2026-09-20T14:13:20Z', updatedAt: '2026-09-20T14:13:20Z'}
+              nextPageToken: page-3
+            - {jql: 'project = ITH AND reporter = "5b10ac8d82e05b22cc7d4ef5"', tickets: [], nextPageToken: ""}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "For project ITH, HTTP 403 denies issue search."
+          failure: {kind: AUTHORIZATION, message: "Issue search was forbidden."}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "For project ITH, Jira returned a malformed search page."
+          failure: {kind: PROTOCOL, message: "The search page was malformed."}
     - name: getTicket
       goName: GetTicket
       inputType: GetTicketInput
@@ -190,12 +234,30 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: foundDefaultAnswer
+          branch: found
+          description: "For issueIdOrKey ITH-42, the new request has no comments and a first-response SLA."
+          default: true
+          output: {ticket: {id: "10042", key: ITH-42, projectKey: ITH, summary: Laptop will not boot, status: {id: "10000", name: Waiting for support, categoryKey: new}, priority: {id: "2", name: High}, reporter: {accountId: 5b10ac8d82e05b22cc7d4ef5, displayName: Jane Doe}, labels: [], description: My laptop will not boot., createdAt: '2026-09-21T14:13:20Z', updatedAt: '2026-09-21T14:13:20Z'}, comments: [], slas: [{id: "3", name: Time to first response, ongoingCycle: {startedAt: '2026-09-21T14:13:20Z', goalDurationMillis: 14400000, elapsedMillis: 0, remainingMillis: 14400000}}]}
+        - name: notFoundFailure
+          branch: notFound
+          description: "For issueIdOrKey ITH-99, no visible request exists."
+          failure: {kind: NOT_FOUND, message: "The request was not found."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "For issueIdOrKey ITH-42, HTTP 403 denies the SLA read."
+          failure: {kind: AUTHORIZATION, message: "The SLA read was forbidden."}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "For issueIdOrKey ITH-42, Jira returned a malformed SLA page."
+          failure: {kind: PROTOCOL, message: "The SLA page was malformed."}
     - name: createTicket
       goName: CreateTicket
       inputType: CreateTicketInput
       outputType: CreateTicketOutput
       kind: mutation
-      description: Raise one customer request of a request type, optionally on a customer's behalf. Jira Service Management has no idempotency key, so the Step runs with sync durability and sends the request at most once per Step execution.
+      description: Raise one customer request of a request type, optionally on a customer's behalf. The sync Step retries definite 429 and 503 responses but never repeats a possibly accepted request.
       idempotency: required
       authorization: required
       branches:
@@ -208,6 +270,17 @@ spec:
         executeMethodTimeout: 30s
         durability: sync
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A lost dispatch checkpoint could create another request because Jira Service Management has no create key or request lookup by Call ID."}}
+      mocks:
+        - name: createdDefaultAnswer
+          branch: created
+          description: "For desk 10, request type 25, and Laptop will not boot, Jira created ITH-42 for Jane."
+          default: true
+          output: {issueId: "10042", issueKey: ITH-42, serviceDeskId: "10", requestTypeId: "25", summary: Laptop will not boot, raiseOnBehalfOfAccountId: 5b10ac8d82e05b22cc7d4ef5, requestStatus: {name: Waiting for support, category: NEW}, createdAt: '2026-09-21T14:13:20Z'}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "For desk 10 and request type 25, HTTP 400 rejects a missing required field."
+          output: {serviceDeskId: "10", requestTypeId: "25", summary: Laptop will not boot, rejectedFieldIds: [customfield_10050], providerErrorKey: sd.request.create.field.required}
+          failure: {kind: VALIDATION, message: "A required request field was missing."}
     - name: updateTicket
       goName: UpdateTicket
       inputType: UpdateTicketInput
@@ -225,6 +298,24 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: updatedDefaultAnswer
+          branch: updated
+          description: "For ITH-42 with addLabels hardware and priority High, the request holds both values."
+          default: true
+          output: {issueId: "10042", issueKey: ITH-42, labels: [hardware], priority: {id: "2", name: High}}
+        - name: notFoundFailure
+          branch: notFound
+          description: "For issueIdOrKey ITH-99, no visible issue exists."
+          failure: {kind: NOT_FOUND, message: "The issue was not found."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "For ITH-42, HTTP 403 denies Edit Issues permission."
+          failure: {kind: AUTHORIZATION, message: "The issue update was forbidden."}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "For ITH-42, Jira returned a malformed read-back issue."
+          failure: {kind: PROTOCOL, message: "The read-back issue was malformed."}
     - name: transitionTicket
       goName: TransitionTicket
       inputType: TransitionTicketInput
@@ -243,12 +334,35 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: transitionedDefaultAnswer
+          branch: transitioned
+          description: "For ITH-42 moving to In progress, transition 31 reaches that status."
+          default: true
+          output: {issueId: "10042", issueKey: ITH-42, previousStatus: {id: "10000", name: Waiting for support, categoryKey: new}, status: {id: "10001", name: In progress, categoryKey: indeterminate}, transition: {id: "31", name: Start Progress, destinationStatus: {id: "10001", name: In progress, categoryKey: indeterminate}}}
+        - name: notFoundFailure
+          branch: notFound
+          description: "For issueIdOrKey ITH-99, no visible issue exists."
+          failure: {kind: NOT_FOUND, message: "The issue was not found."}
+        - name: transitionUnavailableFailure
+          branch: transitionUnavailable
+          description: "For ITH-42 moving to Closed, no available transition matches."
+          output: {issueId: "10042", issueKey: ITH-42, previousStatus: {id: "10000", name: Waiting for support, categoryKey: new}, status: {id: "10000", name: Waiting for support, categoryKey: new}, availableTransitions: [{id: "31", name: Start Progress, destinationStatus: {id: "10001", name: In progress, categoryKey: indeterminate}}]}
+          failure: {kind: CONFLICT, message: "No transition to Closed is available."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "For ITH-42, HTTP 403 denies the requested transition."
+          failure: {kind: AUTHORIZATION, message: "The transition was forbidden."}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "For ITH-42, Jira returned a malformed transition list."
+          failure: {kind: PROTOCOL, message: "The transition list was malformed."}
     - name: addComment
       goName: AddComment
       inputType: AddCommentInput
       outputType: AddCommentOutput
       kind: mutation
-      description: Add one public reply, which Jira Service Management shares with the customer, or one internal note that only agents see. The Step runs with sync durability and sends the comment at most once per Step execution.
+      description: Add one public reply, which Jira Service Management shares with the customer, or one internal note that only agents see. The sync Step retries definite 429 and 503 responses but never repeats a possibly accepted comment.
       idempotency: required
       authorization: required
       branches:
@@ -261,3 +375,18 @@ spec:
         executeMethodTimeout: 30s
         durability: sync
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A lost dispatch checkpoint could add another comment because Jira Service Management has no comment key or lookup by Call ID."}}
+      mocks:
+        - name: addedDefaultAnswer
+          branch: added
+          description: "For ITH-42 and the internal note Check the warranty first., comment 1001 is private."
+          default: true
+          output: {issueIdOrKey: ITH-42, commentId: "1001", isPublic: false, createdAt: '2026-09-21T14:15:00Z'}
+        - name: notFoundFailure
+          branch: notFound
+          description: "For issueIdOrKey ITH-99, no visible request exists for the note."
+          output: {issueIdOrKey: ITH-99, isPublic: false}
+          failure: {kind: NOT_FOUND, message: "The request was not found."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "For ITH-42, HTTP 403 denies Add Comments permission."
+          failure: {kind: AUTHORIZATION, message: "Adding the comment was forbidden."}

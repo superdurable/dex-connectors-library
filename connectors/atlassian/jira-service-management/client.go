@@ -43,6 +43,9 @@ const (
 
 	// operationDeadline keeps every request of one Invoke inside the 30-second Execute timeout.
 	operationDeadline = 25 * time.Second
+	// executeDeadlineMargin leaves time for Dex to record a completed attempt.
+	executeDeadlineMargin    = 5 * time.Second
+	minimumWriteDispatchTime = 3 * time.Second
 	// requestTimeout bounds one exchange, so a hung write selects uncertain before Dex times the Step out.
 	requestTimeout = 20 * time.Second
 
@@ -273,7 +276,16 @@ func (client *Client) AddComment() AddCommentOperation { return AddCommentOperat
 
 // startSession resolves the credential and the site; the caller must call the returned cancel.
 func (client *Client) startSession(call sdkgo.Call, operationID string) (*operationSession, context.CancelFunc, *sessionFailure) {
-	operationContext, cancel := context.WithTimeout(call.Context, operationDeadline)
+	deadline := time.Now().Add(operationDeadline)
+	if executeDeadline, hasDeadline := call.Context.Deadline(); hasDeadline {
+		if boundedDeadline := executeDeadline.Add(-executeDeadlineMargin); boundedDeadline.Before(deadline) {
+			deadline = boundedDeadline
+		}
+	}
+	if time.Until(deadline) < minimumWriteDispatchTime {
+		return nil, nil, &sessionFailure{failure: newFailure(operationID, sdkgo.FailureAvailability, "the Step attempt has too little time left to start a provider request"), isRetryable: true}
+	}
+	operationContext, cancel := context.WithDeadline(call.Context, deadline)
 	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
 	if err != nil || validateResolvedCredentials(credentials) != nil {
 		cancel()
@@ -394,6 +406,9 @@ func (client *Client) requestURL(session *operationSession, request providerRequ
 }
 
 func (client *Client) exchangeOnce(session *operationSession, request providerRequest, target string, payload []byte) exchangeResult {
+	if request.method != http.MethodGet && time.Until(sessionDeadline(session.context)) < minimumWriteDispatchTime {
+		return exchangeResult{err: errRequestNotSentBeforeDeadline}
+	}
 	requestContext, cancel := context.WithTimeout(session.context, requestTimeout)
 	defer cancel()
 	observation := &dispatchObservation{}
@@ -440,6 +455,11 @@ func (client *Client) exchangeOnce(session *operationSession, request providerRe
 	return exchangeResult{response: response, isDispatched: true}
 }
 
+func sessionDeadline(ctx context.Context) time.Time {
+	deadline, _ := ctx.Deadline()
+	return deadline
+}
+
 // classifyRead maps one read exchange to an outcome without choosing an operation branch.
 func (client *Client) classifyRead(operationID string, subject string, result exchangeResult) readClassification {
 	if errors.Is(result.err, errRequestNotBuilt) {
@@ -471,9 +491,11 @@ func (client *Client) classifyRead(operationID string, subject string, result ex
 	}
 }
 
-// classifyUnkeyedWrite retries only a 429 or an undispatched request, when the provider cannot have written.
+// classifyUnkeyedWrite retries documented transient responses and requests that provably never left.
 func (client *Client) classifyUnkeyedWrite(operationID string, subject string, result exchangeResult) writeClassification {
 	switch {
+	case errors.Is(result.err, errRequestNotSentBeforeDeadline):
+		return writeClassification{outcome: writeRetry, failure: newFailure(operationID, sdkgo.FailureAvailability, "the Step attempt has too little time left to start the "+subject+" request")}
 	case errors.Is(result.err, errRequestNotBuilt):
 		return writeClassification{outcome: writeDefect, failure: newFailure(operationID, sdkgo.FailureLocalDefect, "Jira Service Management request could not be built")}
 	case result.err != nil && !result.isDispatched:
@@ -493,6 +515,10 @@ func (client *Client) classifyUnkeyedWrite(operationID string, subject string, r
 		return writeClassification{outcome: writeAccepted}
 	case response.statusCode == http.StatusTooManyRequests:
 		return writeClassification{outcome: writeRetry, retryAfter: client.retryAfter(response), failure: newFailure(operationID, sdkgo.FailureRateLimit, "Jira Service Management rate limited the "+subject+" before writing it")}
+	case response.statusCode == http.StatusServiceUnavailable:
+		return writeClassification{outcome: writeRetry, retryAfter: client.retryAfter(response), failure: newFailure(operationID, sdkgo.FailureAvailability, "Jira Service Management is temporarily unavailable for the "+subject)}
+	case response.statusCode == http.StatusConflict:
+		return writeClassification{outcome: writeUncertain, failure: newFailure(operationID, sdkgo.FailureConflict, "Jira Service Management "+subject+" outcome requires read-back after HTTP 409")}
 	case response.statusCode == http.StatusNotFound:
 		return writeClassification{outcome: writeNotFound, failure: rejectionFailure(operationID, subject, response.statusCode, providerRejection{})}
 	case isConclusiveRejectionStatus(response.statusCode):
@@ -519,10 +545,6 @@ func (client *Client) receipt(session *operationSession, response providerRespon
 		}
 	}
 	return receipt
-}
-
-func (client *Client) emptyReceipt(session *operationSession) sdkgo.Receipt {
-	return client.receipt(session, providerResponse{header: http.Header{}}, "")
 }
 
 // readProviderRejection returns the safe field IDs and error key of an error body; messages are never read.
@@ -625,6 +647,7 @@ func failurePointer(operationID string, kind sdkgo.FailureKind, message string) 
 func (failure *sessionFailure) pointer() *sdkgo.Failure { return &failure.failure }
 
 var errRequestNotBuilt = errors.New("Jira Service Management request could not be built")
+var errRequestNotSentBeforeDeadline = errors.New("Jira Service Management request was not sent before the Step attempt deadline")
 
 // dispatchObservation records whether a request could have reached the provider.
 type dispatchObservation struct {
