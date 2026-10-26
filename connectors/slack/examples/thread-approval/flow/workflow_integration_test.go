@@ -28,7 +28,7 @@ import (
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
-func TestThreadApprovalExampleCompletesOnceAndNeverResendsAmbiguousOrAcceptedPostsWithRealDex(t *testing.T) {
+func TestThreadApprovalExampleRetriesSafePostsAndNeverResendsUnknownPostsWithRealDex(t *testing.T) {
 	provider := newSlackProvider(t)
 	defer provider.Close()
 	flow, harness := newSlackIntegrationHarness(t, provider.URL)
@@ -111,6 +111,27 @@ func TestThreadApprovalExampleCompletesOnceAndNeverResendsAmbiguousOrAcceptedPos
 	require.NoError(t, err)
 	require.Equal(t, dex.FlowFailed, acceptedResult.Status)
 	require.Equal(t, 1, provider.postCount("5.0"))
+
+	retryRoot := slack.MessageEvent{
+		TeamID: teamID, ChannelID: "C1", Timestamp: "7.0", ThreadTimestamp: "7.0", UserID: "U1", Text: "request approval",
+	}
+	retryFlowID := startSlackThreadFlow(t, ctx, harness.client, flow, "Ev-root-retry-"+testRunID, retryRoot)
+	waitForSlackStatus(t, ctx, harness.client, flow, retryFlowID, StatusWaitingForReply)
+	retryReply := sdkgo.TriggerEvent[slack.MessageEvent]{
+		ID: "Ev-reply-retry-" + testRunID, OccurredAt: time.Unix(8, 0).UTC(),
+		Payload: slack.MessageEvent{
+			TeamID: teamID, ChannelID: "C1", Timestamp: "8.0", ThreadTimestamp: "7.0", UserID: "U2", Text: "approve",
+		},
+	}
+	require.NoError(t, replyTarget.HandleTrigger(ctx, retryReply))
+	retryResult, err := harness.client.WaitForFlow(ctx, retryFlowID, dex.WaitForFlowOptions{})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, retryResult.Status, "flow error: %s", retryResult.ErrorMessage)
+	require.Equal(t, 2, provider.postCount("7.0"))
+	messageIDs := provider.postMessageIDs("7.0")
+	require.Len(t, messageIDs, 2)
+	require.NotEmpty(t, messageIDs[0])
+	require.Equal(t, messageIDs[0], messageIDs[1])
 }
 
 func startSlackThreadFlow(
@@ -152,14 +173,15 @@ func waitForSlackStatus(
 
 type slackProvider struct {
 	*httptest.Server
-	mutex         sync.Mutex
-	postsByThread map[string]int
-	textByThread  map[string]string
+	mutex              sync.Mutex
+	postsByThread      map[string]int
+	textByThread       map[string]string
+	messageIDsByThread map[string][]string
 }
 
 func newSlackProvider(t *testing.T) *slackProvider {
 	t.Helper()
-	provider := &slackProvider{postsByThread: map[string]int{}, textByThread: map[string]string{}}
+	provider := &slackProvider{postsByThread: map[string]int{}, textByThread: map[string]string{}, messageIDsByThread: map[string][]string{}}
 	provider.Server = httptest.NewServer(http.HandlerFunc(provider.serveHTTP))
 	return provider
 }
@@ -182,6 +204,8 @@ func (provider *slackProvider) serveHTTP(response http.ResponseWriter, request *
 		provider.mutex.Lock()
 		provider.postsByThread[threadTimestamp]++
 		provider.textByThread[threadTimestamp] = payload["text"]
+		provider.messageIDsByThread[threadTimestamp] = append(provider.messageIDsByThread[threadTimestamp], payload["client_msg_id"])
+		postCount := provider.postsByThread[threadTimestamp]
 		provider.mutex.Unlock()
 		response.Header().Set("Content-Type", "application/json")
 		if threadTimestamp == "3.0" {
@@ -191,6 +215,11 @@ func (provider *slackProvider) serveHTTP(response http.ResponseWriter, request *
 		}
 		if threadTimestamp == "5.0" {
 			writeSlackProviderResponse(response, `{"ok":true,"message":{"text":"Integration complete."}}`)
+			return
+		}
+		if threadTimestamp == "7.0" && postCount == 1 {
+			response.WriteHeader(http.StatusServiceUnavailable)
+			writeSlackProviderResponse(response, `{"ok":false,"error":"service_unavailable"}`)
 			return
 		}
 		writeSlackProviderResponse(response, `{"ok":true,"channel":"C1","ts":"2.1","message":{"ts":"2.1","thread_ts":"1.0","user":"UBOT","text":"Processing complete"}}`)
@@ -215,6 +244,12 @@ func (provider *slackProvider) postText(threadTimestamp string) string {
 	provider.mutex.Lock()
 	defer provider.mutex.Unlock()
 	return provider.textByThread[threadTimestamp]
+}
+
+func (provider *slackProvider) postMessageIDs(threadTimestamp string) []string {
+	provider.mutex.Lock()
+	defer provider.mutex.Unlock()
+	return append([]string(nil), provider.messageIDsByThread[threadTimestamp]...)
 }
 
 type slackIntegrationHarness struct {

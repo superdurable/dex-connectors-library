@@ -248,7 +248,7 @@ spec:
       inputType: PostChannelMessageInput
       outputType: PostMessageOutput
       kind: mutation
-      description: Post one top-level message to a Slack channel.
+      description: Post one top-level message to a Slack channel. Synchronous durability persists the dispatch checkpoint required for safe retries.
       idempotency: required
       branches: &postBranches
         - {id: sent, goName: Sent, description: Slack accepted the message.}
@@ -257,8 +257,8 @@ spec:
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
-        durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A replayed channel POST could publish another message because client_msg_id replay is unverified and there is no read-back by Call ID."}}
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Only rate-limit, service-unavailable, proven-unsent, and pre-dispatch failures retry; client_msg_id replay and read-back by Call ID remain unverified, so a broader replay could publish another message."}}
       mocks:
         - name: messageSent
           branch: sent
@@ -282,13 +282,13 @@ spec:
       inputType: PostThreadReplyInput
       outputType: PostMessageOutput
       kind: mutation
-      description: Post one reply to an existing Slack channel thread.
+      description: Post one reply to an existing Slack channel thread. Synchronous durability persists the dispatch checkpoint required for safe retries.
       idempotency: required
       branches: *postBranches
       execution:
         executeMethodTimeout: 30s
-        durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A replayed reply POST could publish another message because client_msg_id replay is unverified and there is no read-back by Call ID."}}
+        durability: sync
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Only rate-limit, service-unavailable, proven-unsent, and pre-dispatch failures retry; client_msg_id replay and read-back by Call ID remain unverified, so a broader replay could publish another reply."}}
       mocks:
         - name: replySent
           branch: sent

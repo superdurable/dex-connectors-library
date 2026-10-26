@@ -425,6 +425,12 @@ func (client *Client) postMessage(call sdkgo.Call, operationName string, channel
 	if strings.TrimSpace(channelID) == "" || strings.TrimSpace(text) == "" || len([]rune(text)) > client.maxMessageCharacters {
 		return sdkgo.NewMutationBranch(defect, PostMessageOutput{}, slackFailurePointer(operationName, sdkgo.FailureValidation, "channel and bounded non-empty text are required"), sdkgo.Receipt{})
 	}
+	switch preparePostDispatch(call) {
+	case postDispatchMayHaveSent:
+		return sdkgo.NewMutationUncertain(PostMessageOutput{}, slackFailure(operationName, sdkgo.FailureTransport, "an earlier attempt may have posted the Slack message"), client.receipt(call, providerResponse{}, ""))
+	case postDispatchNotRecorded:
+		return sdkgo.NewMutationRetry[PostMessageOutput](slackFailure(operationName, sdkgo.FailureAvailability, "Slack dispatch checkpoint could not be recorded; no message was sent"), 0)
+	}
 	credentials, failure := client.resolveCredentials(call, operationName, botCredentialToken)
 	if failure != nil {
 		return sdkgo.NewMutationBranch(defect, PostMessageOutput{}, failure, sdkgo.Receipt{})
@@ -434,15 +440,12 @@ func (client *Client) postMessage(call sdkgo.Call, operationName string, channel
 		return sdkgo.NewMutationRetry[PostMessageOutput](slackFailure(operationName, sdkgo.FailureAvailability, "Slack message request has no time before the Step deadline"), 0)
 	}
 	defer cancel()
-	switch claimPostDispatch(call) {
-	case postDispatchMayHaveSent:
-		return sdkgo.NewMutationUncertain(PostMessageOutput{}, slackFailure(operationName, sdkgo.FailureTransport, "an earlier attempt may have posted the Slack message"), client.receipt(call, providerResponse{}, ""))
-	case postDispatchNotRecorded:
-		return sdkgo.NewMutationBranch(defect, PostMessageOutput{}, slackFailurePointer(operationName, sdkgo.FailureLocalDefect, "Slack dispatch checkpoint could not be recorded"), sdkgo.Receipt{})
-	}
 	payload := map[string]string{"channel": channelID, "text": text, "client_msg_id": string(call.IdempotencyKey)}
 	if threadTimestamp != "" {
 		payload["thread_ts"] = threadTimestamp
+	}
+	if err := recordPostDispatchClaim(call); err != nil {
+		return sdkgo.NewMutationRetry[PostMessageOutput](slackFailure(operationName, sdkgo.FailureAvailability, "Slack dispatch checkpoint could not be recorded; no message was sent"), 0)
 	}
 	response, err := client.post(call, requestContext, &credentials, botCredentialToken, "chat.postMessage", payload)
 	if response.statusCode == http.StatusTooManyRequests || response.statusCode == http.StatusServiceUnavailable {
@@ -470,6 +473,18 @@ func (client *Client) postMessage(call sdkgo.Call, operationName string, channel
 	}
 	if response.statusCode >= 500 {
 		return sdkgo.NewMutationUncertain(PostMessageOutput{}, slackFailure(operationName, sdkgo.FailureAvailability, "Slack message outcome is unknown"), client.receipt(call, response, ""))
+	}
+	if response.statusCode >= 200 && response.statusCode < 300 && !response.decoded.OK {
+		switch response.decoded.Error {
+		case "service_unavailable":
+			markPostSafeToRetry(call)
+			return sdkgo.NewMutationRetry[PostMessageOutput](slackFailure(operationName, sdkgo.FailureAvailability, "Slack message service is temporarily unavailable"), retryAfter(response.header))
+		case "ratelimited":
+			markPostSafeToRetry(call)
+			return sdkgo.NewMutationRetry[PostMessageOutput](slackFailure(operationName, sdkgo.FailureRateLimit, "Slack rate limited the message"), retryAfter(response.header))
+		case "internal_error", "fatal_error":
+			return sdkgo.NewMutationUncertain(PostMessageOutput{}, slackFailure(operationName, sdkgo.FailureAvailability, "Slack message outcome is unknown"), client.receipt(call, response, ""))
+		}
 	}
 	if failure := classifyResponse(operationName, response); failure != nil {
 		return sdkgo.NewMutationBranch(providerRejected, PostMessageOutput{}, failure, client.receipt(call, response, ""))
