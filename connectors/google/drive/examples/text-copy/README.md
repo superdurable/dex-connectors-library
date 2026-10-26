@@ -18,8 +18,8 @@ every Google Drive operation:
 9. `CompleteTextCopy` completes as `copied` with the read-back metadata.
 
 Only the happy-path Google Drive branches are wired. Missing, unsupported,
-oversized, rejected, invalid, uncertain, and defect
-outcomes fail the Flow, and an uncertain upload is never sent again.
+oversized, rejected, invalid, uncertain, and defect outcomes fail the Flow,
+and an uncertain upload is never sent again.
 
 ## Configure
 

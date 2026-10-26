@@ -147,10 +147,11 @@ and the checkpoint covers a lost Worker or an Execute timeout: a later attempt
 that finds the checkpoint but not the document selects `uncertain` without
 sending. A 429 or a 403 rate-limit reason, which Google returns before
 creating anything, clears the checkpoint and is retried. A timeout, dropped
-connection, 5xx, 408, or invalid success response selects `uncertain`. Route
-that branch to a person who checks Drive, as the example does; the connector
-never sends the create again. Keep the Step sync: an application override to
-async durability lets Dex send a second create after about seven seconds.
+connection, 5xx, 408, or invalid success response selects `uncertain`. The
+example leaves that branch unwired, so the Flow fails for manual reconciliation
+in Drive; the connector never sends the create again. Keep the Step sync: an
+application override to async durability lets Dex send a second create after
+about seven seconds.
 
 App properties are private to the OAuth client or service account that wrote
 them, so the lookup finds only documents created through the same

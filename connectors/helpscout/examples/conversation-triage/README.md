@@ -47,8 +47,8 @@ dexcli visualize ./examples/conversation-triage/flow/workflow.go \
 ```
 
 The command must report `valid: true` with the 11 remaining Steps, only the
-business-reaction `notFound` branch additionally routed, and the `new-conversations` binding with its
-`mailboxPicker` unit. Inside this repository it also warns
+business-reaction `notFound` branch additionally routed, and the
+`new-conversations` binding with its `mailboxPicker` unit. Inside this repository it also warns
 `connector_release_required` and `connector_trigger_release_required`, because
 a local module is not a published release.
 

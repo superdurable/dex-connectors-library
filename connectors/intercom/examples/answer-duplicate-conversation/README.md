@@ -20,8 +20,8 @@ Flow per new conversation, and the Flow uses every Intercom operation:
    an admin already answered, or that no contact started, and otherwise looks
    up the sender's email;
 6. `FindCustomerContacts` calls `findContactByEmail`, which can return a lead
-   and a user for the same person. Without a matching contact, the unwired
-   `notFound` branch fails the Flow and leaves the conversation untouched;
+   and a user for the same person. If a new contact is not searchable yet,
+   `notFound` completes as `leftOpen` and leaves the conversation for a person;
 7. `SearchEarlierConversations` calls `searchConversations` for those
    contacts' open and snoozed conversations, and `ChooseEarlierConversation`
    picks the oldest one created before the new conversation. Without one, the
@@ -34,8 +34,9 @@ Flow per new conversation, and the Flow uses every Intercom operation:
    conversation as the same admin, and `CompleteAnsweredDuplicate` completes
    as `answeredAndClosed`.
 
-Only happy-path branches are wired. A missing conversation or contact, an uncertain reply, a
-rejected request, an invalid response, and a local defect fail the Flow.
+The `notFound` contact route is also wired to leave a new conversation open.
+A missing conversation, an uncertain reply, a rejected request, an invalid
+response, and a local defect fail the Flow.
 
 ## 1. Generate the Flow Definition
 

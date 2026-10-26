@@ -153,9 +153,10 @@ Mailchimp, has no idempotency key:
 - a lost send response fails on the unwired `uncertain` branch without a resend;
 - a Worker lost while Mailchimp holds the send is replaced, and the new
   attempt finds the dispatch checkpoint, reads the campaign as sending,
-  fails on `alreadySent`, and sends nothing;
+  completes through `alreadySent` without sending again;
 - a rate-limited send waits for `Retry-After` and sends once;
-- an already sent, scheduled, or other-audience campaign fails without sending;
+- an already sent campaign completes without sending; a scheduled or
+  other-audience campaign fails without sending;
 - a contact Mailchimp rejects is recorded with only the problem title, and the
   launch continues;
 - an invalid launch fails the Flow before any Mailchimp request.

@@ -214,8 +214,8 @@ Worker, so the operations take these positions:
   before it opened. The checkpoint is cleared first. A 5xx, a 408, an HTML 502
   from Mailchimp's CDN, a lost or unreadable response, and an oversized or
   credential-reflecting 2xx select `uncertain`: the campaign may be sending,
-  and the connector never sends it again. A new Step execution, such as the
-  example's recheck Action, reads the campaign again first.
+  and the connector never sends it again. A new Step execution reads the
+  campaign again first.
 
 Keep `sendCampaign` sync. An application override to async durability lets
 Dex dispatch a second send after seven seconds. A checkpoint lost before Dex

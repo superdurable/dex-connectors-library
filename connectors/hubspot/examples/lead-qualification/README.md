@@ -14,10 +14,10 @@ four HubSpot operations:
 4. `ReadBackHubSpotDeal` runs `getObject` and completes only when HubSpot
    returns the configured stage.
 
-The Flow completes with `phase` `dealAdvanced` or `noOpenDeal` when the contact
+The Flow completes with `phase` `dealAdvanced`, or `noOpenDeal` when the contact
 has no open deal in the pipeline. A rejected contact upsert fails the Flow
-with HubSpot's secret-safe `VALIDATION` reason. Application Steps store
-the progress in the `hubspot-lead-qualification` Attribute, which the summary
+with HubSpot's secret-safe `VALIDATION: INVALID_EMAIL` reason. Application Steps
+store the progress in the `hubspot-lead-qualification` Attribute, which the summary
 and display RPCs read, because a Connector branch target receives only the
 current operation Result.
 

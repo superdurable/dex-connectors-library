@@ -216,8 +216,8 @@ func TestLostSendResponseFailsWithoutResendingWithRealDex(t *testing.T) {
 	require.Equal(t, 1, provider.appliedSendCount())
 }
 
-// TestLostWorkerDuringSendFailsWithoutResendingWithRealDex replaces the Worker mid-send.
-func TestLostWorkerDuringSendFailsWithoutResendingWithRealDex(t *testing.T) {
+// TestLostWorkerDuringSendCompletesWithoutResendingWithRealDex replaces the Worker mid-send.
+func TestLostWorkerDuringSendCompletesWithoutResendingWithRealDex(t *testing.T) {
 	provider := newFakeMailchimp(t)
 	provider.holdsFirstSend = make(chan struct{})
 	harness := newLaunchHarness(t, provider, slowRequestTimeout)
@@ -228,13 +228,13 @@ func TestLostWorkerDuringSendFailsWithoutResendingWithRealDex(t *testing.T) {
 		"the first attempt must reach Mailchimp")
 	harness.replaceWorker(t)
 
-	result := harness.waitForFlow(t, flowID)
+	record := harness.waitForFlowOutput(t, flowID)
 	close(provider.holdsFirstSend)
-	require.Equal(t, dex.FlowFailed, result.Status)
-	require.Contains(t, result.ErrorMessage, "alreadySent")
-	require.Contains(t, result.ErrorMessage, "no target")
+	require.Equal(t, PhaseSent, record.Phase, "the replacement Worker found Mailchimp sending the campaign")
+	require.Equal(t, 1, record.SendExecutions)
 	provider.waitForDelayedRequests(t)
 	require.Equal(t, 1, provider.count("send"), "the attempt on the new Worker did not resend the campaign")
+	require.Equal(t, 1, provider.appliedSendCount())
 	require.Equal(t, 2, provider.count("campaign"), "one read before the send and one read by the replayed attempt")
 }
 
@@ -273,6 +273,12 @@ func TestCampaignAlreadySentOrForAnotherAudienceIsNeverSentWithRealDex(t *testin
 			harness.waitForPhase(t, flowID, PhaseAwaitingApproval)
 			require.NoError(t, harness.client.InvokeRPC(integrationContext(t), flowID, harness.flow.ApproveCampaignSend, approval(), nil))
 
+			if test.branch == "alreadySent" {
+				record := harness.waitForFlowOutput(t, flowID)
+				require.Equal(t, PhaseSent, record.Phase)
+				require.Zero(t, provider.count("send"))
+				return
+			}
 			result := harness.waitForFlow(t, flowID)
 			require.Equal(t, dex.FlowFailed, result.Status)
 			require.Contains(t, result.ErrorMessage, test.branch)

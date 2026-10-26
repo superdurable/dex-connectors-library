@@ -137,6 +137,9 @@ the same value under `gemini-summary-outcome`:
 }
 ```
 
+`blockReason` remains in the persisted outcome type for older runs. Generated
+summaries leave it empty; blocked responses now fail the Flow.
+
 Text over 64 KiB, an empty text, or a title over 200 characters fails the
 Flow before Gemini is called.
 

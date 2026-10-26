@@ -36,6 +36,7 @@ const (
 	readInboundConversationStepType    = "ReadInboundConversation"
 	chooseCustomerEmailStepType        = "ChooseCustomerEmail"
 	findCustomerContactsStepType       = "FindCustomerContacts"
+	completeWithoutContactStepType     = "CompleteWithoutContact"
 	searchEarlierConversationsStepType = "SearchEarlierConversations"
 	chooseEarlierConversationStepType  = "ChooseEarlierConversation"
 	replyToDuplicateStepType           = "ReplyToDuplicate"
@@ -129,7 +130,7 @@ const (
 type DuplicateConversationOutcome struct {
 	// Action is what the Flow did.
 	Action OutcomeAction `json:"action"`
-	// Reason explains leftOpen, skipped, and needsReview, such as noEarlierConversation or alreadyAnswered.
+	// Reason explains leftOpen and skipped, such as noEarlierConversation or alreadyAnswered.
 	Reason string `json:"reason,omitempty"`
 	// ConversationID is the inbound conversation.
 	ConversationID string `json:"conversationId"`
@@ -191,7 +192,10 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			},
 			Connection: flow.connection, MapToOperationInput: MapToFindContactByEmailInput,
 			Found: sdkgo.GoTo(sdkgo.StepRef[intercom.FindContactByEmailResult](searchEarlierConversationsStepType)),
+			// A new contact not yet searchable leaves the conversation open for a person.
+			NotFound: sdkgo.GoTo(completeWithoutContact{}),
 		})),
+		dex.DefineStep(completeWithoutContact{}),
 		dex.DefineStep(intercom.NewSearchConversationsStep(intercom.SearchConversationsStepConfig[intercom.FindContactByEmailResult]{
 			StepType: searchEarlierConversationsStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
@@ -461,6 +465,29 @@ func (chooseCustomerEmail) Execute(ctx dex.Context, result intercom.GetConversat
 		return nil, err
 	}
 	return dex.GoTo(sdkgo.StepRef[CustomerEmail](findCustomerContactsStepType), CustomerEmail{Email: email}), nil
+}
+
+// dex:group group-id:inbound group-label:"Inbound conversation"
+// dex:explanation text:"Leave the conversation open when Intercom has no contact with the sender's email yet."
+type completeWithoutContact struct {
+	dex.StepDefaultsNoWaitFor[intercom.FindContactByEmailResult]
+}
+
+func (completeWithoutContact) GetStepType() string { return completeWithoutContactStepType }
+
+func (completeWithoutContact) Execute(ctx dex.Context, _ intercom.FindContactByEmailResult) (*dex.StepDecision, error) {
+	inbound, err := inboundConversationAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	outcome := DuplicateConversationOutcome{
+		Action: OutcomeLeftOpen, Reason: "noContact", ConversationID: inbound.Input.ConversationID,
+		ConversationState: intercom.ConversationStateOpen,
+	}
+	if err := outcomeAttribute.Set(ctx, outcome); err != nil {
+		return nil, err
+	}
+	return dex.GracefulComplete(outcome), nil
 }
 
 // dex:group group-id:inbound group-label:"Inbound conversation"

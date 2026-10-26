@@ -52,7 +52,7 @@ const (
 	PhaseAwaitingApproval = "awaitingApproval"
 	// PhaseSending means a sendCampaign Step is about to run or running.
 	PhaseSending = "sending"
-	// PhaseSent means Mailchimp accepted this Flow's send.
+	// PhaseSent means Mailchimp accepted or already applied the campaign send.
 	PhaseSent = "sent"
 	// PhaseDeclined means a person declined the send.
 	PhaseDeclined = "declined"
@@ -285,6 +285,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			},
 			Connection: flow.connection, MapToOperationInput: MapToSendCampaignInput,
 			Sent: sdkgo.GoTo(recordCampaignSent{}),
+			// A replayed send that Mailchimp already applied completes the approved launch.
+			AlreadySent: sdkgo.GoTo(recordCampaignSent{}),
 		})),
 		dex.DefineStep(recordCampaignSent{}),
 		dex.DefineStep(recordDeclinedSend{}),
@@ -714,7 +716,7 @@ func (awaitSendApproval) Execute(ctx dex.Context, result mailchimp.ListMembersRe
 }
 
 // dex:group group-id:send group-label:"Campaign send"
-// dex:explanation text:"Record the send Mailchimp accepted and complete."
+// dex:explanation text:"Record the campaign Mailchimp sent or is already sending and complete."
 type recordCampaignSent struct {
 	dex.StepDefaultsNoWaitFor[mailchimp.SendCampaignResult]
 }

@@ -157,7 +157,7 @@ func TestLostNoteResponseFailsAndIsNeverResentWithRealDex(t *testing.T) {
 	require.Contains(t, result.ErrorMessage, "no target")
 	require.Equal(t, 1, provider.count("note"), "an unconfirmed note is never resent")
 	require.Len(t, provider.conversation(target).notes, 1, "Hiver did add the note, which a person must now find")
-	require.Zero(t, provider.count("draft"), "the Flow stops for review before drafting")
+	require.Zero(t, provider.count("draft"), "the failed Flow never creates a draft")
 }
 
 func TestRateLimitedNoteWaitsAndAddsOneNoteWithRealDex(t *testing.T) {

@@ -281,7 +281,7 @@ func (*Flow) GetDexSummary(ctx dex.Context, _ dex.None) (*dex.RPCResult[map[stri
 // GetDexDisplay returns the customer issue and the ticket, note, and reply Gorgias returned.
 //
 // dex:field attribute-key:gorgias-customer-issue value-type:json editable:false description:"Requester, subject, message, issue tag, priority, and acknowledgement"
-// dex:field attribute-key:gorgias-triage-outcome value-type:json editable:false description:"Action, ticket, note, acknowledgement, and review state"
+// dex:field attribute-key:gorgias-triage-outcome value-type:json editable:false description:"Action, ticket, note, and acknowledgement"
 func (*Flow) GetDexDisplay(ctx dex.Context, _ dex.None) (*dex.RPCResult[map[string]any], error) {
 	issue, outcome, err := triageInspection(ctx)
 	if err != nil {

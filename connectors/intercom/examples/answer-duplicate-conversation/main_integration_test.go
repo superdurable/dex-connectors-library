@@ -102,6 +102,23 @@ func TestConversationWithoutAnEarlierOneIsLeftOpenWithRealDex(t *testing.T) {
 	require.Equal(t, "open", provider.conversation(inboundID).state)
 }
 
+func TestConversationWithContactNotYetSearchableIsLeftOpenWithRealDex(t *testing.T) {
+	provider := newFakeIntercom(t)
+	userID := provider.seedContact(integrationCustomerEmail, "user")
+	inboundID := provider.seedConversation(userID, "open", time.Minute, "Hello, I have a question.")
+	provider.contacts = nil
+	harness := newDuplicateHarness(t, provider, defaultRequestTimeout, fakeAdminID)
+
+	outcome := harness.runDuplicate(t, "contact-not-searchable", inboundID)
+	require.Equal(t, answerduplicate.OutcomeLeftOpen, outcome.Action)
+	require.Equal(t, "noContact", outcome.Reason)
+	require.Equal(t, 1, provider.count("contactSearch"))
+	require.Zero(t, provider.count("conversationSearch"))
+	require.Zero(t, provider.count("reply"))
+	require.Zero(t, provider.count("manage"))
+	require.Equal(t, "open", provider.conversation(inboundID).state)
+}
+
 func TestAnsweredConversationIsSkippedBeforeAnyLookupWithRealDex(t *testing.T) {
 	provider := newFakeIntercom(t)
 	scenario := seedDuplicateScenario(provider)

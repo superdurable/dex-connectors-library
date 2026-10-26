@@ -58,10 +58,11 @@ const (
 
 // SummaryOutcome is the Flow completion output.
 type SummaryOutcome struct {
-	Status       Status       `json:"status"`
-	Title        string       `json:"title"`
-	Summary      *Summary     `json:"summary,omitempty"`
-	FinishReason string       `json:"finishReason,omitempty"`
+	Status       Status   `json:"status"`
+	Title        string   `json:"title"`
+	Summary      *Summary `json:"summary,omitempty"`
+	FinishReason string   `json:"finishReason,omitempty"`
+	// BlockReason is retained for persisted outcomes; generated summaries leave it empty.
 	BlockReason  string       `json:"blockReason,omitempty"`
 	ModelVersion string       `json:"modelVersion,omitempty"`
 	Usage        gemini.Usage `json:"usage"`
@@ -261,7 +262,7 @@ func (summaryGenerated) Execute(ctx dex.Context, result gemini.GenerateContentRe
 func outcomeFor(status Status, request SummaryRequest, result gemini.GenerateContentResult) SummaryOutcome {
 	return SummaryOutcome{
 		Status: status, Title: request.Title, FinishReason: result.Value.FinishReason,
-		BlockReason: result.Value.BlockReason, ModelVersion: result.Value.ModelVersion, Usage: result.Value.Usage,
+		ModelVersion: result.Value.ModelVersion, Usage: result.Value.Usage,
 	}
 }
 

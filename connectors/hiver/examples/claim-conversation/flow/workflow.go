@@ -267,7 +267,7 @@ func (*Flow) GetDexSummary(ctx dex.Context, _ dex.None) (*dex.RPCResult[map[stri
 // GetDexDisplay returns the claim request and the conversation, note, and draft Hiver returned.
 //
 // dex:field attribute-key:hiver-claim-request value-type:json editable:false description:"Inbox address, assignee, tag, note, and reply draft"
-// dex:field attribute-key:hiver-claim-outcome value-type:json editable:false description:"Action, conversation, note, draft, and review state"
+// dex:field attribute-key:hiver-claim-outcome value-type:json editable:false description:"Action, conversation, note, and draft"
 func (*Flow) GetDexDisplay(ctx dex.Context, _ dex.None) (*dex.RPCResult[map[string]any], error) {
 	request, outcome, err := claimInspection(ctx)
 	if err != nil {

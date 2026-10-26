@@ -260,7 +260,7 @@ and its defaults are unchanged.
 
 The [generate-summary example](examples/generate-summary/README.md) runs one
 Flow that asks Gemini for a JSON Schema summary through `generateContent` and
-completes with the decoded summary or a truncated or blocked outcome.
+completes with the decoded summary. Truncated or blocked output fails the example Flow.
 
 ## Verify
 
