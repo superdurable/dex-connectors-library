@@ -328,23 +328,32 @@ func TestReplyToConversationFenceRetriesWhenTimeRunsOutBeforeDispatch(t *testing
 }
 
 func TestReplyToConversationFenceRetriesCredentialFailureBeforeSending(t *testing.T) {
-	provider := newRecordingFront(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
-		writeJSON(t, response, http.StatusCreated, `{"id":"com_1ywg3f2"}`)
-	})
-	dexContext := singledispatchtest.NewContext("front-flow", "credential-recovery")
-	missingCredentials, err := front.New(front.Config{}, failingFrontCredentials{failure: projectconfig.ErrCredentialBrokerUnavailable}, front.WithAPIBaseURL(provider.URL))
-	require.NoError(t, err)
-	input := front.ReplyToConversationInput{ConversationID: testConversationID, Text: "Hello", IsInternalNote: true}
-	_, err = sdkgo.RunMutation(dexContext, missingCredentials.ReplyToConversation(), frontConnection, input)
-	var retry *sdkgo.RetryError
-	require.ErrorAs(t, err, &retry)
-	require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
-	require.Zero(t, provider.requestCount())
-	dexContext.AdvanceAttempt()
-	result, err := sdkgo.RunMutation(dexContext, newFrontClient(t, provider.URL).ReplyToConversation(), frontConnection, input)
-	require.NoError(t, err)
-	require.Equal(t, front.ReplyToConversationBranchReplied, result.Branch)
-	require.Equal(t, 1, provider.requestCount())
+	for name, credentialFailure := range map[string]error{
+		"broker unavailable": projectconfig.ErrCredentialBrokerUnavailable,
+		"deadline exceeded":  context.DeadlineExceeded,
+		"store read failure": errors.New("project object read failed"),
+		"missing connection": errors.New("connection is not configured"),
+	} {
+		t.Run(name, func(t *testing.T) {
+			provider := newRecordingFront(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+				writeJSON(t, response, http.StatusCreated, `{"id":"com_1ywg3f2"}`)
+			})
+			dexContext := singledispatchtest.NewContext("front-flow", "credential-recovery-"+name)
+			unavailableCredentials, err := front.New(front.Config{}, failingFrontCredentials{failure: credentialFailure}, front.WithAPIBaseURL(provider.URL))
+			require.NoError(t, err)
+			input := front.ReplyToConversationInput{ConversationID: testConversationID, Text: "Hello", IsInternalNote: true}
+			_, err = sdkgo.RunMutation(dexContext, unavailableCredentials.ReplyToConversation(), frontConnection, input)
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry)
+			require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+			require.Zero(t, provider.requestCount())
+			dexContext.AdvanceAttempt()
+			result, err := sdkgo.RunMutation(dexContext, newFrontClient(t, provider.URL).ReplyToConversation(), frontConnection, input)
+			require.NoError(t, err)
+			require.Equal(t, front.ReplyToConversationBranchReplied, result.Branch)
+			require.Equal(t, 1, provider.requestCount())
+		})
+	}
 }
 
 type failingFrontCredentials struct{ failure error }
@@ -353,11 +362,78 @@ func (provider failingFrontCredentials) Resolve(sdkgo.Call) (front.Credentials, 
 	return front.Credentials{}, provider.failure
 }
 
+type refreshingFrontCredentials struct {
+	replacement front.Credentials
+	failure     error
+}
+
+func (provider refreshingFrontCredentials) Resolve(sdkgo.Call) (front.Credentials, error) {
+	return front.Credentials{APIToken: sdkgo.NewSecretString("rejected-token")}, nil
+}
+
+func (provider refreshingFrontCredentials) ResolveAfterRejection(
+	ctx context.Context, _ sdkgo.Call, _ sdkgo.CredentialRefreshDriver[front.Credentials],
+) (front.Credentials, error) {
+	if err := ctx.Err(); err != nil {
+		return front.Credentials{}, err
+	}
+	return provider.replacement, provider.failure
+}
+
+func TestReplyToConversationFenceRefreshesRejectedTokenBeforeResending(t *testing.T) {
+	for name, test := range map[string]struct {
+		replacement front.Credentials
+		failure     error
+		isRetry     bool
+		message     string
+	}{
+		"changed token":      {replacement: front.Credentials{APIToken: sdkgo.NewSecretString("replacement-token")}, isRetry: true},
+		"same token":         {replacement: front.Credentials{APIToken: sdkgo.NewSecretString("rejected-token")}, message: "reconnect"},
+		"reauthorization":    {failure: sdkgo.ErrReauthorizationRequired, message: "reconnect"},
+		"broker unavailable": {failure: projectconfig.ErrCredentialBrokerUnavailable, message: "temporarily unavailable"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			provider := newRecordingFront(t, func(response http.ResponseWriter, _ *http.Request, index int) {
+				if index == 0 {
+					writeFrontError(t, response, http.StatusUnauthorized)
+					return
+				}
+				writeJSON(t, response, http.StatusCreated, `{"id":"com_1ywg3f2"}`)
+			})
+			client, err := front.New(front.Config{}, refreshingFrontCredentials{replacement: test.replacement, failure: test.failure}, front.WithAPIBaseURL(provider.URL))
+			require.NoError(t, err)
+			dexContext := singledispatchtest.NewContext("front-flow", "refresh-rejected-"+name)
+			input := front.ReplyToConversationInput{ConversationID: testConversationID, Text: "Hello", IsInternalNote: true}
+			result, err := sdkgo.RunMutation(dexContext, client.ReplyToConversation(), frontConnection, input)
+			if test.isRetry {
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry)
+				dexContext.AdvanceAttempt()
+				retryClient, newClientError := front.New(front.Config{}, sdkgo.StaticCredentialProvider[front.Credentials]{
+					frontConnection: test.replacement,
+				}, front.WithAPIBaseURL(provider.URL))
+				require.NoError(t, newClientError)
+				result, err = sdkgo.RunMutation(dexContext, retryClient.ReplyToConversation(), frontConnection, input)
+				require.NoError(t, err)
+				require.Equal(t, front.ReplyToConversationBranchReplied, result.Branch)
+				require.Equal(t, 2, provider.requestCount())
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, front.ReplyToConversationBranchProviderRejected, result.Branch)
+				require.Contains(t, result.Failure.Message, test.message)
+				require.Equal(t, 1, provider.requestCount())
+			}
+		})
+	}
+}
+
 func TestReplyToConversationFenceRejectsUnusableCredentialsBeforeSending(t *testing.T) {
 	provider := newRecordingFront(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request may be sent") })
 	for name, credentialSource := range map[string]front.CredentialSource{
 		"reauthorization required": failingFrontCredentials{failure: sdkgo.ErrReauthorizationRequired},
-		"missing connection":       sdkgo.StaticCredentialProvider[front.Credentials]{},
+		"empty token": sdkgo.StaticCredentialProvider[front.Credentials]{
+			frontConnection: {},
+		},
 		"invalid token": sdkgo.StaticCredentialProvider[front.Credentials]{
 			frontConnection: {APIToken: sdkgo.NewSecretString("token with space")},
 		},
@@ -365,11 +441,14 @@ func TestReplyToConversationFenceRejectsUnusableCredentialsBeforeSending(t *test
 		t.Run(name, func(t *testing.T) {
 			client, err := front.New(front.Config{}, credentialSource, front.WithAPIBaseURL(provider.URL))
 			require.NoError(t, err)
-			result, err := sdkgo.RunMutation(singledispatchtest.NewContext("front-flow", "unusable-credentials-"+name),
+			dexContext := singledispatchtest.NewContext("front-flow", "unusable-credentials-"+name)
+			result, err := sdkgo.RunMutation(dexContext,
 				client.ReplyToConversation(), frontConnection, front.ReplyToConversationInput{ConversationID: testConversationID, Text: "Hello"})
 			require.NoError(t, err)
 			require.Equal(t, front.ReplyToConversationBranchDefect, result.Branch)
 			require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
+			require.Empty(t, result.Receipt.ProviderObjectID)
+			require.NotEmpty(t, dexContext.Heartbeats())
 			require.Zero(t, provider.requestCount())
 		})
 	}
@@ -394,7 +473,7 @@ func TestReplyToConversationFenceRejectsStaleCanResend(t *testing.T) {
 	require.Equal(t, 1, provider.requestCount())
 }
 
-func TestReplyToConversationFenceNeverResendsAfterLostClaim(t *testing.T) {
+func TestReplyToConversationFenceNeverResendsAfterClaimWithoutProviderID(t *testing.T) {
 	provider := newRecordingFront(t, func(response http.ResponseWriter, _ *http.Request, index int) {
 		require.Zero(t, index, "a lost claim must not permit a second write")
 		writeJSON(t, response, http.StatusAccepted, `{"status":"accepted"}`)
@@ -434,6 +513,51 @@ func TestReplyToConversationFenceRetriesReadBackFailureWithoutResending(t *testi
 	require.Equal(t, http.MethodGet, provider.request(1).method)
 }
 
+func TestReplyToConversationFenceClassifiesReadBackCredentialFailureWithoutResending(t *testing.T) {
+	for name, test := range map[string]struct {
+		credentialSource front.CredentialSource
+		isUncertain      bool
+	}{
+		"reauthorization required": {credentialSource: failingFrontCredentials{failure: sdkgo.ErrReauthorizationRequired}, isUncertain: true},
+		"empty token": {credentialSource: sdkgo.StaticCredentialProvider[front.Credentials]{
+			frontConnection: {},
+		}, isUncertain: true},
+		"invalid token": {credentialSource: sdkgo.StaticCredentialProvider[front.Credentials]{
+			frontConnection: {APIToken: sdkgo.NewSecretString("token with space")},
+		}, isUncertain: true},
+		"broker unavailable": {credentialSource: failingFrontCredentials{failure: projectconfig.ErrCredentialBrokerUnavailable}},
+		"deadline exceeded":  {credentialSource: failingFrontCredentials{failure: context.DeadlineExceeded}},
+		"store read failure": {credentialSource: failingFrontCredentials{failure: errors.New("project object read failed")}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			provider := newRecordingFront(t, func(response http.ResponseWriter, _ *http.Request, index int) {
+				require.Zero(t, index, "credential failure must not send or read from Front")
+				writeJSON(t, response, http.StatusCreated, `{"id":"com_1ywg3f2"}`)
+			})
+			dexContext := singledispatchtest.NewContext("front-flow", "read-back-credentials-"+name)
+			input := front.ReplyToConversationInput{ConversationID: testConversationID, Text: "Hello", IsInternalNote: true}
+			_, err := sdkgo.RunMutation(dexContext, newFrontClient(t, provider.URL).ReplyToConversation(), frontConnection, input)
+			require.NoError(t, err)
+			dexContext.AdvanceAttempt()
+			client, err := front.New(front.Config{}, test.credentialSource, front.WithAPIBaseURL(provider.URL))
+			require.NoError(t, err)
+			result, err := sdkgo.RunMutation(dexContext, client.ReplyToConversation(), frontConnection, input)
+			if test.isUncertain {
+				require.NoError(t, err)
+				require.Equal(t, front.ReplyToConversationBranchUncertain, result.Branch)
+				require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
+				require.Equal(t, "com_1ywg3f2", result.Receipt.ProviderObjectID)
+				require.Contains(t, result.Failure.Message, "reconnection")
+			} else {
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry)
+				require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+			}
+			require.Equal(t, 1, provider.requestCount())
+		})
+	}
+}
+
 func TestReplyToConversationFenceSelectsUncertainWhenReadBackCannotConfirm(t *testing.T) {
 	provider := newRecordingFront(t, func(response http.ResponseWriter, request *http.Request, index int) {
 		if index == 0 {
@@ -453,6 +577,8 @@ func TestReplyToConversationFenceSelectsUncertainWhenReadBackCannotConfirm(t *te
 	require.NoError(t, err)
 	require.Equal(t, front.ReplyToConversationBranchUncertain, result.Branch)
 	require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
+	require.Equal(t, "com_1ywg3f2", result.Receipt.ProviderObjectID)
+	require.Contains(t, result.Failure.Message, "reconnect")
 	require.Equal(t, 2, provider.requestCount())
 	require.Equal(t, http.MethodGet, provider.request(1).method)
 }

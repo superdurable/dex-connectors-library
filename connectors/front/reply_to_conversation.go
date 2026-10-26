@@ -13,9 +13,10 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
@@ -120,12 +121,13 @@ func (operation ReplyToConversationOperation) Invoke(call sdkgo.Call, input Repl
 	}
 	credentials, failure, credentialError := client.resolveCredentialsWithCause(call, operationID)
 	if failure != nil {
-		if !isTransientCredentialFailure(credentialError) {
-			return sdkgo.NewMutationBranch(ReplyToConversationBranchDefect, output, failure, sdkgo.Receipt{})
-		}
 		if err := fence.RecordNotSent(); err != nil {
 			return sdkgo.NewMutationRetry[ConversationReply](frontFailure(sdkgo.FailureAvailability, operationID,
 				"Front credentials were temporarily unavailable and the not-sent checkpoint failed"), 0)
+		}
+		if isTerminalCredentialFailure(credentialError) {
+			return sdkgo.NewMutationBranch(ReplyToConversationBranchDefect, output,
+				frontFailurePointer(sdkgo.FailureAuthentication, operationID, "Reconnect the Front connection before sending the reply or comment"), sdkgo.Receipt{})
 		}
 		return sdkgo.NewMutationRetry[ConversationReply](frontFailure(sdkgo.FailureAvailability, operationID,
 			"Front credentials were temporarily unavailable"), 0)
@@ -138,7 +140,7 @@ func (operation ReplyToConversationOperation) Invoke(call sdkgo.Call, input Repl
 		}
 		return client.uncertainReply(call, output, sdkgo.FailureTransport, "the fenced reply outcome could not be determined")
 	}
-	return client.classifyReplyExchange(call, output, attempt.result, fence)
+	return client.classifyReplyExchange(call, output, attempt.result, credentials, fence)
 }
 
 func (attempt *replySendAttempt) send(requestContext context.Context) error {
@@ -168,8 +170,10 @@ func (client *Client) readBackReply(
 	operationID := ReplyToConversationDefinition.Operation.OperationID
 	credentials, failure, credentialError := client.resolveCredentialsWithCause(call, operationID)
 	if failure != nil {
-		if !isTransientCredentialFailure(credentialError) {
-			return sdkgo.NewMutationBranch(ReplyToConversationBranchDefect, output, failure, sdkgo.Receipt{})
+		if isTerminalCredentialFailure(credentialError) {
+			return sdkgo.NewMutationUncertain(output, frontFailure(sdkgo.FailureAuthentication, operationID,
+				"Front accepted an earlier reply or comment, but its connection needs reconnection before read-back; verify the saved provider ID before retrying manually"),
+				client.receipt(call, marker.ProviderID))
 		}
 		return sdkgo.NewMutationRetry[ConversationReply](frontFailure(sdkgo.FailureAvailability, operationID,
 			"Front credentials were temporarily unavailable during read-back"), 0)
@@ -195,11 +199,15 @@ func (client *Client) readBackReply(
 		// Front may return 404 before an accepted message_uid becomes readable; live timing is unverified.
 		return sdkgo.NewMutationRetry[ConversationReply](result.failure, result.retryAfter)
 	}
-	return client.uncertainReply(call, output, result.failure.Kind, "Front could not confirm an earlier accepted reply or comment")
+	message := "Front could not confirm an earlier accepted reply or comment"
+	if result.failure.Kind == sdkgo.FailureAuthentication {
+		message = "Front rejected credentials during accepted-write read-back; reconnect and verify the saved provider ID before retrying manually"
+	}
+	return sdkgo.NewMutationUncertain(output, frontFailure(result.failure.Kind, operationID, message), client.receipt(call, marker.ProviderID))
 }
 
-func isTransientCredentialFailure(err error) bool {
-	return errors.Is(err, projectconfig.ErrCredentialBrokerUnavailable) || errors.Is(err, context.DeadlineExceeded)
+func isTerminalCredentialFailure(err error) bool {
+	return err == nil || errors.Is(err, sdkgo.ErrReauthorizationRequired)
 }
 
 func (client *Client) uncertainReply(call sdkgo.Call, output ConversationReply, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[ConversationReply] {
@@ -208,7 +216,7 @@ func (client *Client) uncertainReply(call sdkgo.Call, output ConversationReply, 
 }
 
 // classifyReplyExchange maps the sent request: only a provable non-application is retried.
-func (client *Client) classifyReplyExchange(call sdkgo.Call, output ConversationReply, result frontExchange, fence *singledispatch.Fence) sdkgo.MutationAttempt[ConversationReply] {
+func (client *Client) classifyReplyExchange(call sdkgo.Call, output ConversationReply, result frontExchange, credentials Credentials, fence *singledispatch.Fence) sdkgo.MutationAttempt[ConversationReply] {
 	receipt := client.receipt(call, output.ConversationID)
 	if result.response.statusCode >= 200 && result.response.statusCode < 300 {
 		// Front accepted the write even when its body was interrupted or unusable.
@@ -254,6 +262,9 @@ func (client *Client) classifyReplyExchange(call sdkgo.Call, output Conversation
 		}
 		return sdkgo.NewMutationBranch(ReplyToConversationBranchNotFound, output, &failure, receipt)
 	case exchangeRejected:
+		if result.response.statusCode == http.StatusUnauthorized {
+			return client.classifyRejectedReplyCredential(call, output, credentials, fence)
+		}
 		if result.response.statusCode == http.StatusConflict {
 			return client.uncertainReply(call, output, sdkgo.FailureConflict, "Front returned a conflict without a key or unique value for read-back")
 		}
@@ -261,6 +272,44 @@ func (client *Client) classifyReplyExchange(call sdkgo.Call, output Conversation
 	default:
 		return client.uncertainReply(call, output, result.failure.Kind, "the reply or comment may exist")
 	}
+}
+
+func (client *Client) classifyRejectedReplyCredential(call sdkgo.Call, output ConversationReply, rejected Credentials, fence *singledispatch.Fence) sdkgo.MutationAttempt[ConversationReply] {
+	operationID := ReplyToConversationDefinition.Operation.OperationID
+	if _, supportsRefresh := client.credentials.(sdkgo.RejectedCredentialRefreshingProvider[Credentials]); !supportsRefresh {
+		return sdkgo.NewMutationBranch(ReplyToConversationBranchProviderRejected, output,
+			frontFailurePointer(sdkgo.FailureAuthentication, operationID, "Front rejected the API token (HTTP 401); reconnect the Front connection"), client.receipt(call, output.ConversationID))
+	}
+	var refreshContext context.Context = call.Context
+	if deadline, hasDeadline := refreshContext.Deadline(); hasDeadline {
+		var cancel context.CancelFunc
+		refreshContext, cancel = context.WithDeadline(refreshContext, deadline.Add(-100*time.Millisecond))
+		defer cancel()
+	}
+	replacement, err := sdkgo.ResolveCredentialAfterRejection(refreshContext, client.credentials, call, frontCredentialRefreshDriver{})
+	if err == nil && replacement.Validate() == nil && providerhttp.IsHeaderSafeCredential(replacement.APIToken.Reveal()) &&
+		replacement.APIToken.Reveal() != rejected.APIToken.Reveal() {
+		if err := fence.RecordCanResend(); err != nil {
+			return sdkgo.NewMutationRetry[ConversationReply](frontFailure(sdkgo.FailureAvailability, operationID, "the credential resend checkpoint failed"), 0)
+		}
+		return sdkgo.NewMutationRetry[ConversationReply](frontFailure(sdkgo.FailureAuthentication, operationID, "Front rejected the prior API token; retry with its replacement"), 0)
+	}
+	message := "Front rejected the API token (HTTP 401); reconnect the Front connection"
+	if err != nil && !errors.Is(err, sdkgo.ErrReauthorizationRequired) {
+		message = "Front rejected the API token (HTTP 401); credential refresh is temporarily unavailable"
+	}
+	return sdkgo.NewMutationBranch(ReplyToConversationBranchProviderRejected, output,
+		frontFailurePointer(sdkgo.FailureAuthentication, operationID, message), client.receipt(call, output.ConversationID))
+}
+
+type frontCredentialRefreshDriver struct{}
+
+func (frontCredentialRefreshDriver) RefreshRequired(sdkgo.CredentialRefreshState[Credentials]) bool {
+	return false
+}
+
+func (frontCredentialRefreshDriver) Refresh(context.Context, sdkgo.CredentialRefreshState[Credentials]) (sdkgo.CredentialRefreshResult[Credentials], error) {
+	return sdkgo.CredentialRefreshResult[Credentials]{}, sdkgo.ErrReauthorizationRequired
 }
 
 func buildReplyRequest(input ReplyToConversationInput) frontRequest {

@@ -25,17 +25,16 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"net/http/httptrace"
 	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 	"github.com/superdurable/dex-connectors-library/sdkgo/webhooktrigger"
 )
 
@@ -213,9 +212,9 @@ func (client *Client) resolveCredentials(call sdkgo.Call) (Credentials, error) {
 	return credentials, nil
 }
 
-// send repeats once after a 401 and a new token; isDispatched reports a possibly applied write.
+// send repeats once after a 401 and a new token for reads and repeatable writes.
 func (client *Client) send(
-	requestContext context.Context, call sdkgo.Call, credentials *Credentials, request helpScoutRequest, isDispatched *atomic.Bool,
+	requestContext context.Context, call sdkgo.Call, credentials *Credentials, request helpScoutRequest,
 ) (helpScoutResponse, error) {
 	var encodedBody []byte
 	if request.payload != nil {
@@ -230,7 +229,7 @@ func (client *Client) send(
 		target += "?" + request.query.Encode()
 	}
 	for attempt := 0; attempt < 2; attempt++ {
-		response, err := client.sendOnce(requestContext, credentials.AccessToken.Reveal(), request.method, target, encodedBody, isDispatched)
+		response, err := client.sendOnce(requestContext, credentials.AccessToken.Reveal(), request.method, target, encodedBody)
 		if err != nil || response.statusCode != http.StatusUnauthorized || attempt > 0 || !client.canRefreshAfterRejection() {
 			return response, err
 		}
@@ -239,32 +238,21 @@ func (client *Client) send(
 			return response, nil
 		}
 		*credentials = replacement
-		if isDispatched != nil {
-			// Help Scout refused the first request unprocessed, so only the repeat can leave an unknown outcome.
-			isDispatched.Store(false)
-		}
 	}
 	return helpScoutResponse{}, errors.New("Help Scout authenticated request retry was exhausted")
 }
 
 func (client *Client) sendOnce(
-	requestContext context.Context, accessToken string, method string, target string, body []byte, isDispatched *atomic.Bool,
+	requestContext context.Context, accessToken string, method string, target string, body []byte,
 ) (helpScoutResponse, error) {
 	if requestContext == nil {
 		requestContext = context.Background()
 	}
-	tracedContext := httptrace.WithClientTrace(requestContext, &httptrace.ClientTrace{
-		WroteRequest: func(written httptrace.WroteRequestInfo) {
-			if written.Err == nil && isDispatched != nil {
-				isDispatched.Store(true)
-			}
-		},
-	})
 	var requestBody io.Reader
 	if body != nil {
 		requestBody = bytes.NewReader(body)
 	}
-	httpRequest, err := http.NewRequestWithContext(tracedContext, method, target, requestBody)
+	httpRequest, err := http.NewRequestWithContext(requestContext, method, target, requestBody)
 	if err != nil {
 		return helpScoutResponse{}, errHelpScoutRequestInvalid
 	}
@@ -272,6 +260,11 @@ func (client *Client) sendOnce(
 	httpRequest.Header.Set("Accept", "application/json")
 	if body != nil {
 		httpRequest.Header.Set("Content-Type", "application/json; charset=UTF-8")
+	}
+	if method != http.MethodGet {
+		if err := singledispatch.PrepareHTTPWrite(httpRequest); err != nil {
+			return helpScoutResponse{}, errHelpScoutRequestInvalid
+		}
 	}
 	httpResponse, err := client.httpClient.Do(httpRequest)
 	if err != nil {

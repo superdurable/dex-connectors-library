@@ -19,6 +19,8 @@ This example receives signed Calendly webhooks and starts one
    `calendly-scheduled-event` Attribute and completes the Flow. Unwired optional
    branches fail the Flow with the connector's safe failure reason.
 
+A separate [scheduling-link example](../scheduling-link/README.md) exercises the fenced single-use link Mutation. The `workflow_mock_integration_test.go` test starts this invitee Flow with the generated mock connection and checks its recorded event and call input.
+
 ## 1. Generate the Flow Definition
 
 From `connectors/calendly`, generate strict FDG 2.0 with the latest stable
@@ -34,11 +36,7 @@ dexcli visualize ./examples/invitee-recorder/flow/workflow.go \
   --out ./build/invitee-recorder
 ```
 
-The command must report `valid: true` with the three Steps, only the `found`
-`getScheduledEvent` branch routed, and the `invitee-created` binding with its
-`eventTypePicker` unit. Inside this repository it also warns
-`connector_release_required` and `connector_trigger_release_required`, because
-a local module is not a published release.
+The command must report `valid: true`. The Flow has three Steps, routes only the `found` `getScheduledEvent` branch, and declares the `invitee-created` binding with its `eventTypePicker` unit. Inside this repository it may warn `connector_release_required` and `connector_trigger_release_required`, because the local module is not a published release.
 
 ## 2. Start Dex with this connector's release metadata
 
@@ -59,7 +57,7 @@ go run ./cmd/connectorctl ui-artifact \
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/calendly/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/calendly \
-  --version v0.22.1 --tag connectors/calendly/v0.22.1 \
+  --version v0.23.0 --tag connectors/calendly/v0.23.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/calendly-release/connector-ui.tgz \
   --ui-digest /tmp/calendly-release/connector-ui.tgz.sha256 \

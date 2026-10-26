@@ -176,7 +176,7 @@ func TestLostWorkerDuringAddIsReconciledWithoutResendingWithRealDex(t *testing.T
 	require.NoError(t, result.DecodeSingleOutput(&outcome))
 	require.Equal(t, OnboardingHeld, outcome.Action)
 	require.True(t, outcome.WasAdditionReconciled, "the new Worker's attempt found the dispatch marker and looked the hire up")
-	require.Equal(t, "an earlier attempt of this Step may have sent the request, so it is not sent again", outcome.ReviewDetail)
+	require.Equal(t, "an earlier attempt may have sent the request; no employee ID is available for read-back", outcome.ReviewDetail)
 	provider.waitForDelayedRequests(t)
 	require.Equal(t, 1, provider.count("add"), "the attempt on the new Worker did not resend the add")
 	require.Equal(t, 1, provider.employeeCount())
@@ -216,11 +216,25 @@ func TestRateLimitedAddWaitsAndAddsOneEmployeeWithRealDex(t *testing.T) {
 	harness := newOnboardingHarness(t, provider, defaultRequestTimeout)
 
 	outcome := harness.runOnboarding(t, "rate-limited", integrationInput())
-	require.Equal(t, OnboardingHeld, outcome.Action, "a rate-limited 429 clears the dispatch marker, so the retry may send")
+	require.Equal(t, OnboardingHeld, outcome.Action, "a rate-limited 429 records canResend for the next attempt")
 	require.False(t, outcome.WasAdditionReconciled)
 	times := provider.requestTimes("add")
 	require.Len(t, times, 2)
+	require.Equal(t, provider.requests["add"][0].body, provider.requests["add"][1].body)
 	require.GreaterOrEqual(t, times[1].Sub(times[0]), time.Second, "the retry waited for Retry-After")
+	require.Equal(t, 1, provider.employeeCount())
+}
+
+func TestUnavailableAddRetriesOnceWithRealDex(t *testing.T) {
+	provider := newFakeBambooHR(t)
+	provider.unavailableFirstAdd = true
+	harness := newOnboardingHarness(t, provider, defaultRequestTimeout)
+	outcome := harness.runOnboarding(t, "unavailable-add", integrationInput())
+	require.Equal(t, OnboardingHeld, outcome.Action)
+	require.True(t, outcome.WasEmployeeAdded)
+	require.Equal(t, 2, provider.count("add"))
+	require.Equal(t, provider.requests["add"][0].body, provider.requests["add"][1].body)
+	require.JSONEq(t, `{"firstName":"Ava","lastName":"Nguyen","homeEmail":"ava.nguyen@personal.example.com","hireDate":"2026-10-13"}`, provider.lastRequest("add").body)
 	require.Equal(t, 1, provider.employeeCount())
 }
 
@@ -303,6 +317,7 @@ type fakeBambooHR struct {
 	losesFirstAddResponse        bool
 	failsFirstAddWithoutApplying bool
 	rateLimitsFirstAdd           bool
+	unavailableFirstAdd          bool
 	rejectsAdd                   bool
 	delaysFirstUpdate            bool
 	holdsFirstAdd                chan struct{}
@@ -418,6 +433,9 @@ func (provider *fakeBambooHR) addEmployee(response http.ResponseWriter, request 
 	case provider.rateLimitsFirstAdd && attempt == 1:
 		response.Header().Set("Retry-After", "1")
 		response.WriteHeader(http.StatusTooManyRequests)
+		return
+	case provider.unavailableFirstAdd && attempt == 1:
+		response.WriteHeader(http.StatusServiceUnavailable)
 		return
 	case provider.failsFirstAddWithoutApplying && attempt == 1:
 		response.Header().Set("X-BambooHR-Error-Message", "SENTINEL internal error")
@@ -673,7 +691,13 @@ func newOnboardingHarness(t *testing.T, provider *fakeBambooHR, requestTimeout t
 	require.NoError(t, err)
 	connection, err := bamboohr.NewConnection(providerClient, reference)
 	require.NoError(t, err)
+	return newOnboardingHarnessForConnection(t, connection)
+}
+
+func newOnboardingHarnessForConnection(t *testing.T, connection bamboohr.Connection) *onboardingHarness {
+	t.Helper()
 	harness := &onboardingHarness{flow: NewFlow(connection), serverAddress: environmentOr("DEX_FLOW_SERVICE_ADDRESS", "127.0.0.1:8801")}
+	var err error
 	harness.registry, err = dex.NewRegistry([]dex.Flow{harness.flow})
 	require.NoError(t, err)
 	harness.cache, err = blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})

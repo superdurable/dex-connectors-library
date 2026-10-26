@@ -97,7 +97,7 @@ func (operation SearchConversationsOperation) Invoke(call sdkgo.Call, input Sear
 		return credentialQueryAttempt[SearchConversationsOutput](operationID, SearchConversationsBranchDefect, err)
 	}
 	response, err := operation.client.send(call.Context, call, &credentials,
-		helpScoutRequest{method: http.MethodGet, path: "/v2/conversations", query: parameters}, nil)
+		helpScoutRequest{method: http.MethodGet, path: "/v2/conversations", query: parameters})
 	branches := failureBranches{providerRejected: SearchConversationsBranchProviderRejected, invalidResponse: SearchConversationsBranchInvalidResponse}
 	if attempt, isTerminal := classifyQueryExchange[SearchConversationsOutput](operation.client, call, operationID, credentials, response, err, branches, 0); isTerminal {
 		return attempt

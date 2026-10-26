@@ -7,9 +7,8 @@
 // with an absolute change that is safe to repeat and reads the conversation back; and
 // addNote and createSharedDraft add an internal note or a shared reply draft. Hiver
 // documents no idempotency key, so those two run with sync durability and record a Dex
-// dispatch checkpoint before sending; a retry that finds it selects uncertain instead of
-// sending again. Dex may not yet have stored the checkpoint when the request leaves, so a
-// Worker that loses its Dex connection in that instant can still send a second note or draft.
+// single-dispatch fence before sending; a retry without a stored safe-resend marker
+// selects uncertain instead of sending again.
 //
 // The connector sends an admin-created API key as a bearer token to
 // https://api2.hiverhq.com/v1 and spaces its own requests, because Hiver allows one
@@ -19,19 +18,23 @@ package hiver
 
 import (
 	"bytes"
+	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"mime/multipart"
-	"net"
 	"net/http"
+	"net/http/httptrace"
 	"net/url"
 	"regexp"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 const (
@@ -93,10 +96,11 @@ type Client struct {
 }
 
 type hiverRequest struct {
-	method      string
-	path        string
-	query       url.Values
-	jsonPayload any
+	method            string
+	path              string
+	query             url.Values
+	jsonPayload       any
+	correlationCallID sdkgo.CallID
 	// formFields sends a multipart/form-data body, which Hiver documents for notes and shared drafts.
 	formFields []hiverFormField
 }
@@ -121,7 +125,7 @@ const (
 	exchangeNotFound
 	// exchangeRateLimited is a 429, which Hiver returns instead of processing the request.
 	exchangeRateLimited
-	// exchangeNotSent means no request byte reached Hiver: a refused connection or a cancelled wait for a request slot.
+	// exchangeNotSent means no request byte reached Hiver: a traced pre-connection failure or a cancelled request-slot wait.
 	exchangeNotSent
 	// exchangeUnavailable is a 5xx, a 408, or a transport failure after connecting; a write may have been applied.
 	exchangeUnavailable
@@ -136,6 +140,11 @@ type hiverExchange struct {
 	response   hiverResponse
 	failure    sdkgo.Failure
 	retryAfter time.Duration
+}
+
+type dispatchObservation struct {
+	hasObtainedConnection     atomic.Bool
+	hasFailedBeforeConnection atomic.Bool
 }
 
 // New validates configuration and constructs a Hiver client.
@@ -222,22 +231,67 @@ func (client *Client) exchange(call sdkgo.Call, credentials Credentials, operati
 
 // awaitRequestSlot keeps requests one interval apart; a cancelled wait sends nothing.
 func (client *Client) awaitRequestSlot(call sdkgo.Call, operation string) (hiverExchange, bool) {
-	if err := client.pacer.wait(call.Context); err != nil {
+	return client.awaitRequestSlotWithContext(call.Context, operation)
+}
+
+func (client *Client) awaitRequestSlotWithContext(waitContext context.Context, operation string) (hiverExchange, bool) {
+	if err := client.pacer.wait(waitContext); err != nil {
 		return hiverExchange{outcome: exchangeNotSent, failure: hiverFailure(sdkgo.FailureAvailability, operation,
-			"the Step ended while waiting for the connection's next Hiver request slot; no request was sent")}, false
+			"the wait for the connection's next Hiver request slot ended; no request was sent")}, false
 	}
 	return hiverExchange{}, true
 }
 
 // send dispatches one authenticated request and classifies its response without deciding retry policy.
 func (client *Client) send(call sdkgo.Call, credentials Credentials, operation string, request hiverRequest) hiverExchange {
-	httpRequest, err := client.buildRequest(call, credentials, request)
+	requestContext := context.Context(call.Context)
+	if deadline, hasDeadline := call.Context.Deadline(); hasDeadline {
+		remaining := time.Until(deadline)
+		if remaining <= 0 {
+			return hiverExchange{outcome: exchangeNotSent, failure: hiverFailure(sdkgo.FailureAvailability, operation, "the Step deadline passed before the Hiver request was sent")}
+		}
+		var cancel context.CancelFunc
+		requestContext, cancel = context.WithDeadline(call.Context, time.Now().Add(remaining*5/6))
+		defer cancel()
+	}
+	return client.sendWithContext(requestContext, credentials, operation, request, false)
+}
+
+func (client *Client) sendWithContext(requestContext context.Context, credentials Credentials, operation string, request hiverRequest, isFencedWrite bool) hiverExchange {
+	observation := &dispatchObservation{}
+	requestContext = httptrace.WithClientTrace(requestContext, &httptrace.ClientTrace{
+		GotConn: func(httptrace.GotConnInfo) { observation.hasObtainedConnection.Store(true) },
+		DNSDone: func(info httptrace.DNSDoneInfo) {
+			if info.Err != nil {
+				observation.hasFailedBeforeConnection.Store(true)
+			}
+		},
+		ConnectDone: func(_ string, _ string, err error) {
+			if err != nil {
+				observation.hasFailedBeforeConnection.Store(true)
+			}
+		},
+		TLSHandshakeDone: func(_ tls.ConnectionState, err error) {
+			if err != nil {
+				observation.hasFailedBeforeConnection.Store(true)
+			}
+		},
+	})
+	httpRequest, err := client.buildRequest(requestContext, credentials, request)
 	if err != nil {
 		return hiverExchange{outcome: exchangeDefect, failure: hiverFailure(sdkgo.FailureLocalDefect, operation, err.Error())}
 	}
+	if isFencedWrite {
+		if err := singledispatch.PrepareHTTPWrite(httpRequest); err != nil {
+			return hiverExchange{outcome: exchangeNotSent, failure: hiverFailure(sdkgo.FailureLocalDefect, operation, "Hiver write request could not be prepared")}
+		}
+	}
+	if isFencedWrite && requestContext.Err() != nil {
+		return hiverExchange{outcome: exchangeNotSent, failure: hiverFailure(sdkgo.FailureAvailability, operation, "the request deadline passed before the Hiver write was sent")}
+	}
 	httpResponse, err := client.httpClient.Do(httpRequest)
 	if err != nil {
-		if isConnectionNeverEstablished(err) {
+		if observation.hasFailedBeforeConnection.Load() && !observation.hasObtainedConnection.Load() {
 			return hiverExchange{outcome: exchangeNotSent, failure: hiverFailure(sdkgo.FailureTransport, operation, "Hiver could not be reached; no request was sent")}
 		}
 		return hiverExchange{outcome: exchangeUnavailable, failure: hiverFailure(sdkgo.FailureTransport, operation, "Hiver request failed before a response arrived")}
@@ -267,7 +321,7 @@ func (client *Client) send(call sdkgo.Call, credentials Credentials, operation s
 	return hiverExchange{outcome: exchangeSucceeded, response: response}
 }
 
-func (client *Client) buildRequest(call sdkgo.Call, credentials Credentials, request hiverRequest) (*http.Request, error) {
+func (client *Client) buildRequest(requestContext context.Context, credentials Credentials, request hiverRequest) (*http.Request, error) {
 	target := client.apiBaseURL + request.path
 	if len(request.query) != 0 {
 		target += "?" + request.query.Encode()
@@ -276,7 +330,7 @@ func (client *Client) buildRequest(call sdkgo.Call, credentials Credentials, req
 	if err != nil {
 		return nil, errHiverRequestNotBuilt
 	}
-	httpRequest, err := http.NewRequestWithContext(call.Context, request.method, target, body)
+	httpRequest, err := http.NewRequestWithContext(requestContext, request.method, target, body)
 	if err != nil {
 		return nil, errHiverRequestNotBuilt
 	}
@@ -284,6 +338,9 @@ func (client *Client) buildRequest(call sdkgo.Call, credentials Credentials, req
 	httpRequest.Header.Set("Accept", "application/json")
 	if contentType != "" {
 		httpRequest.Header.Set("Content-Type", contentType)
+	}
+	if request.correlationCallID != "" {
+		httpRequest.Header.Set("X-Dex-Call-ID", string(request.correlationCallID))
 	}
 	return httpRequest, nil
 }
@@ -356,12 +413,6 @@ func (client *Client) receipt(call sdkgo.Call, response hiverResponse, objectID 
 		CallID: call.ID, IdempotencyKey: call.IdempotencyKey, Provider: providerName,
 		ProviderRequestID: response.requestID, ProviderObjectID: objectID, ObservedAt: client.now().UTC(),
 	}
-}
-
-// isConnectionNeverEstablished reports a dial failure, after which Hiver cannot have received the request.
-func isConnectionNeverEstablished(err error) bool {
-	var operationError *net.OpError
-	return errors.As(err, &operationError) && operationError.Op == "dial"
 }
 
 func safeRequestID(header http.Header) string {

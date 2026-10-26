@@ -5,6 +5,7 @@ package docs
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"mime/multipart"
@@ -17,6 +18,7 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 const (
@@ -94,6 +96,22 @@ type driveFileListResponse struct {
 	IncompleteSearch bool                `json:"incompleteSearch"`
 }
 
+type createDocumentDispatch struct {
+	client     *Client
+	call       sdkgo.Call
+	credential Credentials
+	request    googleRequest
+	response   googleResponse
+	sendErr    error
+}
+
+func (dispatch *createDocumentDispatch) send(ctx context.Context) error {
+	dispatch.request.requestContext = ctx
+	dispatch.request.isSingleDispatch = true
+	dispatch.response, dispatch.sendErr = dispatch.client.sendRequest(dispatch.call, &dispatch.credential, dispatch.request)
+	return dispatch.sendErr
+}
+
 var createDocumentLookupBranches = readBranches{
 	operationID: createDocumentOperationID, notFound: CreateDocumentBranchProviderRejected,
 	tooLarge: CreateDocumentBranchInvalidResponse, providerRejected: CreateDocumentBranchProviderRejected,
@@ -109,11 +127,8 @@ func (CreateDocumentOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateDocum
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke first looks for a document that an earlier attempt created with the
-// same idempotency key and returns it. Otherwise it records a Dex heartbeat
-// checkpoint and sends one Drive create that tags the document with the key.
-// A later attempt that finds the checkpoint but not the document selects
-// uncertain, and so does every unconfirmed outcome of the create itself.
+// Invoke checks the single-dispatch fence before credentials and Drive lookup.
+// A possibly accepted create is reconciled by its private Drive app property.
 func (operation CreateDocumentOperation) Invoke(call sdkgo.Call, input CreateDocumentInput) sdkgo.MutationAttempt[CreateDocumentOutput] {
 	client := operation.client
 	format, err := validateCreateDocumentInput(input, client.maxTextBytes)
@@ -124,23 +139,66 @@ func (operation CreateDocumentOperation) Invoke(call sdkgo.Call, input CreateDoc
 	if idempotencyKey == "" || len(idempotencyKey) > maxIdempotencyKeyBytes {
 		return sdkgo.NewMutationBranch(CreateDocumentBranchDefect, CreateDocumentOutput{}, docsFailurePointer(sdkgo.FailureLocalDefect, createDocumentOperationID, "idempotency key is missing or too long"), sdkgo.Receipt{})
 	}
+	fence, err := singledispatch.NewFence(call, CreateDocumentDefinition.StepDefaults.ExecuteMethodTimeout)
+	if err != nil {
+		return sdkgo.NewMutationBranch(CreateDocumentBranchDefect, CreateDocumentOutput{}, docsFailurePointer(sdkgo.FailureLocalDefect, createDocumentOperationID, "single-dispatch fence could not be constructed"), sdkgo.Receipt{})
+	}
+	decision := fence.Decide()
 	credential, failure := client.resolveCredential(call, createDocumentOperationID)
 	if failure != nil {
-		return sdkgo.NewMutationBranch(CreateDocumentBranchDefect, CreateDocumentOutput{}, failure, sdkgo.Receipt{})
+		if decision.Kind == singledispatch.SendAllowed {
+			return retryCreateBeforeSend(fence, sdkgo.FailureAuthentication, "connection credentials are unavailable")
+		}
+		return sdkgo.NewMutationRetry[CreateDocumentOutput](docsFailure(sdkgo.FailureAuthentication, createDocumentOperationID, "connection credentials are unavailable for duplicate lookup"), 0)
 	}
+	return client.createDocumentWithFence(call, input, format, idempotencyKey, credential, fence, decision)
+}
+
+func (client *Client) createDocumentWithFence(call sdkgo.Call, input CreateDocumentInput, format TextFormat, idempotencyKey string, credential Credentials, fence *singledispatch.Fence, decision singledispatch.Decision) sdkgo.MutationAttempt[CreateDocumentOutput] {
+	if decision.Kind == singledispatch.ReadBackRequired && decision.Marker.CallID == call.ID && decision.Marker.ProviderID != "" && isDriveID(decision.Marker.ProviderID) {
+		lookupContext, cancelLookup := boundedCreateLookupContext(call)
+		defer cancelLookup()
+		query := url.Values{"fields": {createdFileFields}, "supportsAllDrives": {"true"}}
+		response, outcome := client.sendRead(call, &credential, createDocumentLookupBranches, googleRequest{
+			method: http.MethodGet, target: client.driveBaseURL + "/files/" + url.PathEscape(decision.Marker.ProviderID) + "?" + query.Encode(),
+			responseLimit: client.maxResponseBytes, requestContext: lookupContext,
+		})
+		if outcome == nil {
+			var resource driveFileResource
+			if json.Unmarshal(response.body, &resource) == nil {
+				if document, err := convertCreatedDocument(resource); err == nil && document.DocumentID == decision.Marker.ProviderID {
+					receipt := client.receipt(call, response.requestID, document.DocumentID)
+					return sdkgo.NewMutationBranch(CreateDocumentBranchCreated, CreateDocumentOutput{Document: document, IsFromEarlierAttempt: true}, nil, receipt)
+				}
+			}
+		} else if outcome.branch == "" {
+			return sdkgo.NewMutationRetry[CreateDocumentOutput](outcome.failure, outcome.retryAfter)
+		}
+	}
+	lookupContext, cancelLookup := boundedCreateLookupContext(call)
+	defer cancelLookup()
 	lookupQuery := url.Values{
 		"q": {earlierDocumentQuery(idempotencyKey)}, "fields": {"incompleteSearch,files(" + createdFileFields + ")"},
 		"pageSize": {strconv.Itoa(idempotencyLookupPageSize)}, "spaces": {"drive"},
 	}
 	lookupResponse, outcome := client.sendRead(call, &credential, createDocumentLookupBranches, googleRequest{
-		method: http.MethodGet, target: client.filesListURL(lookupQuery), responseLimit: client.maxResponseBytes,
+		method: http.MethodGet, target: client.filesListURL(lookupQuery), responseLimit: client.maxResponseBytes, requestContext: lookupContext,
 	})
 	if outcome != nil {
+		if decision.Kind == singledispatch.SendAllowed && outcome.branch == "" {
+			return retryCreateBeforeSend(fence, sdkgo.FailureAvailability, "duplicate lookup is unavailable")
+		}
+		if decision.Kind != singledispatch.SendAllowed && outcome.branch != "" {
+			return sdkgo.NewMutationUncertain(CreateDocumentOutput{}, docsFailure(outcome.failure.Kind, createDocumentOperationID, "a prior create cannot be confirmed because duplicate lookup was rejected"), outcome.receipt)
+		}
 		return mutationAttemptFromReadOutcome[CreateDocumentOutput](outcome)
 	}
 	lookupReceipt := client.receipt(call, lookupResponse.requestID, "")
 	earlierDocument, isIncompleteLookup, err := decodeEarlierDocument(lookupResponse.body)
 	if err != nil {
+		if decision.Kind != singledispatch.SendAllowed {
+			return sdkgo.NewMutationUncertain(CreateDocumentOutput{}, docsFailure(sdkgo.FailureProtocol, createDocumentOperationID, "a prior create cannot be confirmed because duplicate lookup was invalid"), lookupReceipt)
+		}
 		return sdkgo.NewMutationBranch(CreateDocumentBranchInvalidResponse, CreateDocumentOutput{}, docsFailurePointer(sdkgo.FailureProtocol, createDocumentOperationID, "provider returned an invalid duplicate-lookup response"), lookupReceipt)
 	}
 	if earlierDocument != nil {
@@ -148,59 +206,123 @@ func (operation CreateDocumentOperation) Invoke(call sdkgo.Call, input CreateDoc
 		return sdkgo.NewMutationBranch(CreateDocumentBranchCreated, CreateDocumentOutput{Document: *earlierDocument, IsFromEarlierAttempt: true}, nil, lookupReceipt)
 	}
 	if isIncompleteLookup {
-		// An incomplete lookup cannot prove that no earlier attempt created the document.
+		if decision.Kind == singledispatch.SendAllowed {
+			return retryCreateBeforeSend(fence, sdkgo.FailureAvailability, "provider did not complete the duplicate lookup")
+		}
 		return sdkgo.NewMutationRetry[CreateDocumentOutput](docsFailure(sdkgo.FailureAvailability, createDocumentOperationID, "provider did not complete the duplicate lookup"), 0)
 	}
-	switch claimSingleDispatch(call) {
-	case singleDispatchNotRecorded:
-		return sdkgo.NewMutationRetry[CreateDocumentOutput](docsFailure(sdkgo.FailureAvailability, createDocumentOperationID, "Dex did not record the dispatch checkpoint; nothing was sent"), 0)
-	case singleDispatchAlreadySent:
+	if decision.Kind != singledispatch.SendAllowed {
 		return sdkgo.NewMutationUncertain(CreateDocumentOutput{}, docsFailure(sdkgo.FailureTransport, createDocumentOperationID,
 			"an earlier attempt of this Step may have created the document, and the duplicate lookup does not show it yet"), lookupReceipt)
 	}
 	request, err := client.buildCreateRequest(input, format, idempotencyKey)
 	if err != nil {
-		releaseSingleDispatch(call)
 		return sdkgo.NewMutationBranch(CreateDocumentBranchDefect, CreateDocumentOutput{}, docsFailurePointer(sdkgo.FailureLocalDefect, createDocumentOperationID, "create request could not be encoded"), sdkgo.Receipt{})
 	}
-	response, err := client.sendRequest(call, &credential, request)
-	return client.createAttemptFromResponse(call, response, err)
+	dispatch := &createDocumentDispatch{client: client, call: call, credential: credential, request: request}
+	err = fence.Dispatch(dispatch.send)
+	if errors.Is(err, singledispatch.ErrCheckpoint) || errors.Is(err, singledispatch.ErrInsufficientTime) {
+		return sdkgo.NewMutationRetry[CreateDocumentOutput](docsFailure(sdkgo.FailureAvailability, createDocumentOperationID, "Dex could not record a dispatch claim or the attempt has too little time"), 0)
+	}
+	return client.createAttemptFromResponse(call, fence, &dispatch.credential, idempotencyKey, dispatch.response, err)
 }
 
-// createAttemptFromResponse retries only an outcome that proves Google created nothing.
-func (client *Client) createAttemptFromResponse(call sdkgo.Call, response googleResponse, sendErr error) sdkgo.MutationAttempt[CreateDocumentOutput] {
+func retryCreateBeforeSend(fence *singledispatch.Fence, failureKind sdkgo.FailureKind, reason string) sdkgo.MutationAttempt[CreateDocumentOutput] {
+	if err := fence.RecordNotSent(); err != nil {
+		reason = errors.Join(errors.New(reason), errors.New("Dex could not record the no-send checkpoint")).Error()
+	}
+	return sdkgo.NewMutationRetry[CreateDocumentOutput](docsFailure(failureKind, createDocumentOperationID, reason), 0)
+}
+
+// createAttemptFromResponse reconciles accepted or ambiguous replies before permitting another send.
+func (client *Client) createAttemptFromResponse(call sdkgo.Call, fence *singledispatch.Fence, credential *Credentials, idempotencyKey string, response googleResponse, sendErr error) sdkgo.MutationAttempt[CreateDocumentOutput] {
 	receipt := client.receipt(call, response.requestID, "")
 	var requestErr *googleRequestError
 	if errors.As(sendErr, &requestErr) && requestErr.kind == sdkgo.FailureLocalDefect {
-		releaseSingleDispatch(call)
 		return sdkgo.NewMutationBranch(CreateDocumentBranchDefect, CreateDocumentOutput{}, docsFailurePointer(requestErr.kind, createDocumentOperationID, requestErr.message), receipt)
-	}
-	if sendErr != nil {
-		return sdkgo.NewMutationUncertain(CreateDocumentOutput{}, docsFailure(sdkgo.FailureTransport, createDocumentOperationID, "provider create outcome is unknown"), receipt)
 	}
 	tokens := providerhttp.ReadErrorTokens(response.body, googleErrorTokenPointers)
 	switch {
 	case response.status >= 200 && response.status < 300:
 		var resource driveFileResource
-		if err := json.Unmarshal(response.body, &resource); err != nil {
-			return sdkgo.NewMutationUncertain(CreateDocumentOutput{}, docsFailure(sdkgo.FailureProtocol, createDocumentOperationID, "provider returned an invalid create response"), receipt)
+		if sendErr == nil && json.Unmarshal(response.body, &resource) == nil {
+			if document, err := convertCreatedDocument(resource); err == nil {
+				receipt.ProviderObjectID = document.DocumentID
+				// The accepted result is known even if its extra checkpoint is lost.
+				_ = fence.RecordProviderID(document.DocumentID)
+				return sdkgo.NewMutationBranch(CreateDocumentBranchCreated, CreateDocumentOutput{Document: document}, nil, receipt)
+			}
 		}
-		document, err := convertCreatedDocument(resource)
-		if err != nil {
-			return sdkgo.NewMutationUncertain(CreateDocumentOutput{}, docsFailure(sdkgo.FailureProtocol, createDocumentOperationID, "provider returned an invalid create response"), receipt)
+		return client.reconcileCreateAfterSend(call, fence, credential, idempotencyKey, receipt, sdkgo.FailureProtocol, "provider returned an unusable accepted create response")
+	case isRateLimitStatus(response.status, tokens) || response.status == http.StatusServiceUnavailable:
+		if document := client.findCreatedDocumentAfterSend(call, credential, idempotencyKey); document != nil {
+			receipt.ProviderObjectID = document.DocumentID
+			// The confirmed result is known even if its extra checkpoint is lost.
+			_ = fence.RecordProviderID(document.DocumentID)
+			return sdkgo.NewMutationBranch(CreateDocumentBranchCreated, CreateDocumentOutput{Document: *document}, nil, receipt)
 		}
-		receipt.ProviderObjectID = document.DocumentID
-		return sdkgo.NewMutationBranch(CreateDocumentBranchCreated, CreateDocumentOutput{Document: document}, nil, receipt)
-	case isRateLimitStatus(response.status, tokens):
-		// Google refused the request before creating a document, so the next attempt may send it.
-		releaseSingleDispatch(call)
+		if err := fence.RecordCanResend(); err != nil {
+			return sdkgo.NewMutationRetry[CreateDocumentOutput](docsFailure(sdkgo.FailureAvailability, createDocumentOperationID, "Dex could not record safe resend after provider rejection"), 0)
+		}
 		delay := providerhttp.ParseRetryAfter(response.header.Get("Retry-After"), client.now())
-		return sdkgo.NewMutationRetry[CreateDocumentOutput](docsFailure(sdkgo.FailureRateLimit, createDocumentOperationID, "provider temporarily rejected the create"), delay)
-	case response.status >= 500 || response.status == http.StatusRequestTimeout:
-		return sdkgo.NewMutationUncertain(CreateDocumentOutput{}, docsFailure(sdkgo.FailureAvailability, createDocumentOperationID, "provider create outcome is unknown"), receipt)
+		return sdkgo.NewMutationRetry[CreateDocumentOutput](docsFailure(statusFailureKind(response.status, tokens), createDocumentOperationID, "provider temporarily rejected the create"), delay)
+	case response.status == http.StatusUnauthorized:
+		refreshed, refreshErr := sdkgo.ResolveCredentialAfterRejection(call.Context, client.credentials, call, client.refreshDriver)
+		if refreshErr != nil || validateResolvedCredentials(refreshed) != nil {
+			return sdkgo.NewMutationBranch(CreateDocumentBranchProviderRejected, CreateDocumentOutput{}, docsFailurePointer(sdkgo.FailureAuthentication, createDocumentOperationID, "provider rejected the create credential"), receipt)
+		}
+		if err := fence.RecordCanResend(); err != nil {
+			return sdkgo.NewMutationRetry[CreateDocumentOutput](docsFailure(sdkgo.FailureAuthentication, createDocumentOperationID, "Dex could not record safe resend after credential refresh"), 0)
+		}
+		return sdkgo.NewMutationRetry[CreateDocumentOutput](docsFailure(sdkgo.FailureAuthentication, createDocumentOperationID, "provider rejected the create credential; refreshed for the next attempt"), 0)
+	case sendErr != nil:
+		if errors.As(sendErr, &requestErr) && requestErr.isProvablyUndispatched {
+			if err := fence.RecordCanResend(); err != nil {
+				return sdkgo.NewMutationRetry[CreateDocumentOutput](docsFailure(sdkgo.FailureTransport, createDocumentOperationID, "Dex could not record a proven no-send"), 0)
+			}
+			return sdkgo.NewMutationRetry[CreateDocumentOutput](docsFailure(sdkgo.FailureTransport, createDocumentOperationID, "provider connection failed before the create was sent"), 0)
+		}
+		return client.reconcileCreateAfterSend(call, fence, credential, idempotencyKey, receipt, sdkgo.FailureTransport, "provider create outcome is unknown")
+	case response.status >= 500 || response.status == http.StatusRequestTimeout || response.status == http.StatusConflict:
+		return client.reconcileCreateAfterSend(call, fence, credential, idempotencyKey, receipt, sdkgo.FailureAvailability, "provider create outcome is unknown")
 	default:
 		return sdkgo.NewMutationBranch(CreateDocumentBranchProviderRejected, CreateDocumentOutput{}, docsFailurePointer(statusFailureKind(response.status, tokens), createDocumentOperationID, "provider rejected the create"), receipt)
 	}
+}
+
+func (client *Client) reconcileCreateAfterSend(call sdkgo.Call, fence *singledispatch.Fence, credential *Credentials, idempotencyKey string, receipt sdkgo.Receipt, failureKind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[CreateDocumentOutput] {
+	if document := client.findCreatedDocumentAfterSend(call, credential, idempotencyKey); document != nil {
+		receipt.ProviderObjectID = document.DocumentID
+		// The confirmed result is known even if its extra checkpoint is lost.
+		_ = fence.RecordProviderID(document.DocumentID)
+		return sdkgo.NewMutationBranch(CreateDocumentBranchCreated, CreateDocumentOutput{Document: *document}, nil, receipt)
+	}
+	return sdkgo.NewMutationUncertain(CreateDocumentOutput{}, docsFailure(failureKind, createDocumentOperationID, message), receipt)
+}
+
+func (client *Client) findCreatedDocumentAfterSend(call sdkgo.Call, credential *Credentials, idempotencyKey string) *CreatedDocument {
+	lookupContext, cancelLookup := boundedCreateLookupContext(call)
+	defer cancelLookup()
+	query := url.Values{"q": {earlierDocumentQuery(idempotencyKey)}, "fields": {"incompleteSearch,files(" + createdFileFields + ")"}, "pageSize": {strconv.Itoa(idempotencyLookupPageSize)}, "spaces": {"drive"}}
+	response, outcome := client.sendRead(call, credential, createDocumentLookupBranches, googleRequest{
+		method: http.MethodGet, target: client.filesListURL(query), responseLimit: client.maxResponseBytes, requestContext: lookupContext,
+	})
+	if outcome != nil {
+		return nil
+	}
+	document, incomplete, err := decodeEarlierDocument(response.body)
+	if err != nil || incomplete {
+		return nil
+	}
+	return document
+}
+
+func boundedCreateLookupContext(call sdkgo.Call) (context.Context, context.CancelFunc) {
+	if deadline, hasDeadline := call.Context.Deadline(); hasDeadline {
+		margin := min(time.Second, max(time.Millisecond, time.Until(deadline)/10))
+		return context.WithDeadline(call.Context, deadline.Add(-margin))
+	}
+	return context.WithTimeout(call.Context, defaultRequestTimeout)
 }
 
 // buildCreateRequest creates an empty document with metadata only, or converts

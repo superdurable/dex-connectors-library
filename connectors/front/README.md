@@ -227,6 +227,10 @@ If that ID was checkpointed and a later Dex attempt occurs, the connector
 reads the resource before reporting `replied`; a transient read failure
 retries the read without another POST. A comment read-back `404` selects
 `uncertain`, because the comment may have been deleted after acceptance.
+If credential resolution fails during this read-back, a reauthorization
+requirement or unusable resolved token selects `uncertain` with the saved
+provider ID in its receipt and a reconnect hint; another credential error
+retries the read without another POST.
 A reply `message_uid` read-back `404` retries the GET without another POST:
 Front may not have created the accepted message yet, although this timing
 remains unverified with a live Front account. If that `404` persists, the
@@ -357,7 +361,7 @@ Failure names only the HTTP status.
 | Answer | Result |
 | --- | --- |
 | 400, 413, 422 | `providerRejected`, `VALIDATION` |
-| 401 | `providerRejected`, `AUTHENTICATION`, such as a deleted token |
+| 401 | `providerRejected`, `AUTHENTICATION`; `replyToConversation` attempts forced credential refresh and permits one fenced Retry with a changed valid token |
 | 403 | `providerRejected`, `AUTHORIZATION`, such as a token without the namespace or permission |
 | 404, 410 | `notFound` where declared, otherwise `providerRejected`; `providerRejected` on an `updateConversation` write after its read found the conversation |
 | 409 | `uncertain`, `CONFLICT` for `replyToConversation`; `providerRejected`, `CONFLICT` for other operations |
@@ -367,8 +371,8 @@ Failure names only the HTTP status.
 | 408, 5xx, transport failure | Retry for reads and repeat-safe writes; `replyToConversation` Retries a 503 or provably unsent failure and selects `uncertain` for other ambiguous sends |
 | oversized, malformed, or credential-reflecting 2xx | `uncertain` for `replyToConversation`; `invalidResponse` for other operations |
 | invalid input | `defect`, with no request |
-| transient credential broker failure | `replyToConversation` records not-sent and Retries; no Front request |
-| reauthorization required, missing connection, or unusable token | `defect` for `replyToConversation` and other operations; no Front request |
+| transient credential resolution failure | Before sending, `replyToConversation` records not-sent and Retries; during accepted-write read-back, it Retries without another POST. Other operations select `defect` |
+| reauthorization required or unusable resolved token | Before sending, `replyToConversation` records not-sent and selects `defect`; during accepted-write read-back, it selects `uncertain` with the saved provider ID and reconnect guidance. Other operations select `defect` |
 
 Front's rate limit is per company: 50, 100, or 200 requests a minute on the
 Starter, Professional, and Enterprise plans, plus a burst allowance. Per

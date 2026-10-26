@@ -49,35 +49,35 @@ func classifyQueryExchange[T any](
 	return sdkgo.NewQueryBranch(branch, zero, &outcome.failure, client.receipt(call, objectID, outcome.logRef)), true
 }
 
-// classifyIdempotentMutationExchange returns false for a 2xx; a repeatable write retries a lost answer.
+// classifyIdempotentMutationExchange returns terminal and retry flags; a repeatable write retries a lost answer.
 func classifyIdempotentMutationExchange[T any](
 	client *Client, call sdkgo.Call, operationID string, credentials Credentials, response helpScoutResponse, err error,
 	branches failureBranches, objectID int64, value T,
-) (sdkgo.MutationAttempt[T], bool) {
+) (sdkgo.MutationAttempt[T], bool, bool) {
 	if err != nil {
 		switch {
 		case errors.Is(err, errHelpScoutRequestInvalid):
 			return sdkgo.NewMutationBranch(sdkgo.DefectBranchID, value,
-				helpScoutFailurePointer(operationID, sdkgo.FailureLocalDefect, errHelpScoutRequestInvalid.Error()), sdkgo.Receipt{}), true
+				helpScoutFailurePointer(operationID, sdkgo.FailureLocalDefect, errHelpScoutRequestInvalid.Error()), sdkgo.Receipt{}), true, false
 		case errors.Is(err, errHelpScoutResponseTooLarge), errors.Is(err, errHelpScoutResponseMalformed):
 			return sdkgo.NewMutationBranch(branches.invalidResponse, value,
-				helpScoutFailurePointer(operationID, responseFailureKind(err), responseFailureMessage(err)), client.receipt(call, objectID, "")), true
+				helpScoutFailurePointer(operationID, responseFailureKind(err), responseFailureMessage(err)), client.receipt(call, objectID, "")), true, false
 		default:
-			return sdkgo.NewMutationRetry[T](helpScoutFailure(operationID, sdkgo.FailureTransport, "Help Scout could not be reached"), 0), true
+			return sdkgo.NewMutationRetry[T](helpScoutFailure(operationID, sdkgo.FailureTransport, "Help Scout could not be reached"), 0), true, true
 		}
 	}
 	if response.statusCode >= 200 && response.statusCode < 300 {
-		return sdkgo.MutationAttempt[T]{}, false
+		return sdkgo.MutationAttempt[T]{}, false, false
 	}
 	outcome := client.classifyFailure(operationID, response, credentials)
 	if outcome.isRetry {
-		return sdkgo.NewMutationRetry[T](outcome.failure, outcome.retryAfter), true
+		return sdkgo.NewMutationRetry[T](outcome.failure, outcome.retryAfter), true, true
 	}
 	branch := branches.providerRejected
 	if (response.statusCode == http.StatusNotFound || response.statusCode == http.StatusGone) && branches.notFound != "" {
 		branch = branches.notFound
 	}
-	return sdkgo.NewMutationBranch(branch, value, &outcome.failure, client.receipt(call, objectID, outcome.logRef)), true
+	return sdkgo.NewMutationBranch(branch, value, &outcome.failure, client.receipt(call, objectID, outcome.logRef)), true, false
 }
 
 // credentialQueryAttempt retries a refresh that may still succeed, such as a token endpoint outage.

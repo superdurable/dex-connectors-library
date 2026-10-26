@@ -5,7 +5,7 @@ metadata:
   displayName: BambooHR
   description: Read BambooHR employee records, find an employee by email, poll employee changes, list time off requests, update employee fields, and add employees, keeping BambooHR's own field names and status values.
   company: BambooHR
-  version: v0.21.2
+  version: v0.22.0
 spec:
   provider: bamboohr
   codegen:
@@ -58,6 +58,24 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: foundDefaultAnswer
+          branch: found
+          description: "Employee 140 is Ava Nguyen; use with employeeId 140 and firstName, lastName, department fields."
+          default: true
+          output: {employeeId: "140", fields: {firstName: Ava, lastName: Nguyen, department: Engineering}}
+        - name: notFoundFailure
+          branch: notFound
+          description: "Employee ID 999 does not exist."
+          failure: {kind: NOT_FOUND, message: "No employee has this internal ID."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "The API user cannot view this employee (HTTP 403)."
+          failure: {kind: AUTHORIZATION, message: "The API user cannot view this employee."}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "BambooHR returned a malformed employee record."
+          failure: {kind: PROTOCOL, message: "BambooHR returned a malformed employee record."}
     - name: findEmployeeByEmail
       goName: FindEmployeeByEmail
       inputType: FindEmployeeByEmailInput
@@ -75,6 +93,29 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: foundDefaultAnswer
+          branch: found
+          description: "Work email ava.nguyen@example.com uniquely matches employee 140, Ava Nguyen."
+          default: true
+          output: {employee: {employeeId: "140", firstName: Ava, lastName: Nguyen, status: Active, workEmail: ava.nguyen@example.com}, candidateCount: 1}
+        - name: notFoundFailure
+          branch: notFound
+          description: "No employee visible to the connection has Sam Park's work or home email sam.park@personal.example.com."
+          failure: {kind: NOT_FOUND, message: "No employee visible to the connection has this email; BambooHR drops employees whose email the connection cannot read."}
+        - name: ambiguousFailure
+          branch: ambiguous
+          description: "Work email shared@example.com exactly matches employees 150 and 151, so neither can be chosen."
+          output: {matches: [{employeeId: "150", firstName: Alex, lastName: Chen, status: Active, workEmail: shared@example.com}, {employeeId: "151", firstName: Robin, lastName: Lee, status: Active, workEmail: shared@example.com}], candidateCount: 2}
+          failure: {kind: CONFLICT, message: "Two employees have this work email; no single employee was chosen."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "The API key is invalid (HTTP 401)."
+          failure: {kind: AUTHENTICATION, message: "The API key is invalid."}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "BambooHR returned a malformed employee list."
+          failure: {kind: PROTOCOL, message: "BambooHR returned a malformed employee list."}
     - name: listEmployeeChanges
       goName: ListEmployeeChanges
       inputType: ListEmployeeChangesInput
@@ -90,6 +131,20 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: listedDefaultAnswer
+          branch: listed
+          description: "After the 2026-10-12 cursor, existing employees 140 and 141 changed; pass the next cursor to poll again."
+          default: true
+          output: {changes: [{employeeId: "140", action: Updated, lastChanged: "2026-10-13T10:00:00Z"}, {employeeId: "141", action: Updated, lastChanged: "2026-10-13T11:00:00Z"}], nextCursor: {since: "2026-10-13T11:00:00Z", afterEmployeeId: "141"}, hasMore: false}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "The API key is invalid (HTTP 401)."
+          failure: {kind: AUTHENTICATION, message: "The API key is invalid."}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "BambooHR returned a malformed change list."
+          failure: {kind: PROTOCOL, message: "BambooHR returned a malformed change list."}
     - name: listTimeOffRequests
       goName: ListTimeOffRequests
       inputType: ListTimeOffRequestsInput
@@ -105,6 +160,24 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      pagination: {inputField: page, nextField: nextPage}
+      mocks:
+        - name: listedDefaultAnswer
+          branch: listed
+          description: "For employee 140 with pageSize 1 and no status filter, a request created between page reads shifts 502 onto page 2; deduplicate the repeated request."
+          default: true
+          pages:
+            - {requests: [{id: 502, employeeId: "140", categoryId: 78, startDate: "2026-10-26", endDate: "2026-10-26", amount: 1, unit: DAYS, status: DENIED, requestedAt: "2026-09-03T15:04:05Z"}], page: 1, totalItems: 2, nextPage: 2}
+            - {requests: [{id: 502, employeeId: "140", categoryId: 78, startDate: "2026-10-26", endDate: "2026-10-26", amount: 1, unit: DAYS, status: DENIED, requestedAt: "2026-09-03T15:04:05Z"}], page: 2, totalItems: 3, nextPage: 3}
+            - {requests: [{id: 501, employeeId: "140", categoryId: 78, startDate: "2026-10-20", endDate: "2026-10-21", amount: 2, unit: DAYS, status: APPROVED, requestedAt: "2026-09-02T15:04:05Z"}], page: 3, totalItems: 3, nextPage: 0}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "BambooHR rejected an invalid time off filter (HTTP 400)."
+          failure: {kind: VALIDATION, message: "BambooHR rejected the time off filter."}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "BambooHR returned a malformed time off page."
+          failure: {kind: PROTOCOL, message: "BambooHR returned a malformed time off page."}
     - name: updateEmployee
       goName: UpdateEmployee
       inputType: UpdateEmployeeInput
@@ -121,19 +194,48 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: updatedDefaultAnswer
+          branch: updated
+          description: "Employee 140 now has department Engineering; use with that employee ID and field update."
+          default: true
+          output: {employee: {employeeId: "140", fields: {department: Engineering}}, writtenFields: [department]}
+        - name: notFoundFailure
+          branch: notFound
+          description: "Employee ID 999 does not exist."
+          failure: {kind: NOT_FOUND, message: "No employee has this internal ID."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "BambooHR rejected a duplicate email (HTTP 409)."
+          failure: {kind: CONFLICT, message: "BambooHR rejected the duplicate email."}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "BambooHR returned a malformed employee record, so the change may have been applied."
+          failure: {kind: PROTOCOL, message: "BambooHR returned a malformed employee record, so the change may have been applied."}
     - name: addEmployee
       goName: AddEmployee
       inputType: AddEmployeeInput
       outputType: AddEmployeeOutput
       kind: mutation
-      description: Add one employee. BambooHR has no idempotency key, so the Step runs with sync durability and sends the request at most once per Step execution.
+      description: Add one employee. BambooHR has no idempotency key, so the shared single-dispatch fence requires sync durability to persist heartbeat checkpoints across retries; 429, 503, and proven unsent requests may be retried.
       idempotency: required
       branches:
         - {id: created, goName: Created, description: BambooHR added the employee and returned its internal ID.}
-        - {id: providerRejected, goName: ProviderRejected, description: "BambooHR conclusively rejected the employee, such as a duplicate email, an invalid value, or an account at its employee limit; no employee was added.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "BambooHR conclusively rejected the employee, such as a duplicate email or invalid field value; no employee was added.", optional: true}
         - {id: uncertain, goName: Uncertain, description: "The request was sent but its outcome cannot be confirmed, so the employee may exist; the connector never resends it.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "A lost dispatch checkpoint could create another employee because BambooHR has no idempotency key or employee lookup by Call ID."}}
+        dispatchFence: true
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "BambooHR does not document whether a 503 means no employee was added, so a fenced resend after 503 could duplicate an employee."}}
+      mocks:
+        - name: createdDefaultAnswer
+          branch: created
+          description: "Creating Sam Park, who is absent from the default employee lookup, returns new employee ID 142."
+          default: true
+          output: {employeeId: "142"}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "Adding an employee with ava.nguyen@example.com as work email is rejected as a duplicate (HTTP 409)."
+          failure: {kind: CONFLICT, message: "BambooHR rejected the duplicate email."}

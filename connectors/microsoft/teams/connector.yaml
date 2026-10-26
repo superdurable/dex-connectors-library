@@ -5,7 +5,7 @@ metadata:
   displayName: Microsoft Teams
   description: Post Microsoft Teams channel messages, thread replies, and chat messages as the signed-in user, each at most once per Step execution, and read a channel message's replies so a Flow can wait for a person's answer.
   company: Microsoft
-  version: v0.22.1
+  version: v0.23.0
 spec:
   provider: microsoft
   codegen:
@@ -153,12 +153,33 @@ spec:
         executeMethodTimeout: 30s
         durability: async
         # Teams allows about one read per second per channel, so the window fits several Retry-After waits.
+      mocks:
+        - name: incidentAcknowledgement
+          branch: read
+          description: "The incident bot's status reply and Ada's acknowledgement in root message 1616990032035; other threads need a script."
+          default: true
+          output:
+            replies:
+              - {id: "1616990032036", replyToId: "1616990032035", messageType: message, createdAt: "2026-10-01T09:31:00Z", sender: {userId: "8ea0e38b-efb3-4757-924a-5f94061cf8c2", displayName: Incident Bot}, importance: normal, contentType: text, text: "Status: SEV2 incident INC-1042 is being investigated. Reply ack in this thread to acknowledge.", webUrl: "https://teams.microsoft.com/l/message/19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2/1616990032036"}
+              - {id: "1616990032040", replyToId: "1616990032035", messageType: message, createdAt: "2026-10-01T09:32:00Z", sender: {userId: "5f1c2d3e-4b5a-4c6d-8e7f-901a2b3c4d5e", displayName: Ada Lovelace}, importance: normal, contentType: text, text: "ACK INC-1042", webUrl: "https://teams.microsoft.com/l/message/19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2/1616990032040"}
+        - name: missingThread
+          branch: notFound
+          description: "A root message ID absent from the selected channel."
+          failure: {kind: NOT_FOUND, message: The thread does not exist.}
+        - name: readDenied
+          branch: providerRejected
+          description: "The connected account lacks channel-message read permission."
+          failure: {kind: AUTHORIZATION, message: Microsoft Graph denied the thread read.}
+        - name: invalidPage
+          branch: invalidResponse
+          description: "Graph returns an unusable reply page for the selected thread."
+          failure: {kind: PROTOCOL, message: The reply page is invalid.}
     - name: postChannelMessage
       goName: PostChannelMessage
       inputType: PostChannelMessageInput
       outputType: PostMessageOutput
       kind: mutation
-      description: "Post one top-level message, with an optional subject, to a channel as the signed-in user. Graph has no idempotency key, so the message is sent at most once per Step execution and an unconfirmed send is confirmed by reading the channel back."
+      description: "Post one top-level message, with an optional subject, to a channel as the signed-in user. Graph has no idempotency key, so a sync single-dispatch fence checkpoints the send across retries; an unconfirmed send is read back without another post."
       idempotency: required
       authorization: required
       branches: &channelPostBranches
@@ -170,26 +191,48 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A lost dispatch checkpoint could publish another channel message because Teams enforces no deduplication key and the next attempt sends without read-back."}}
+        dispatchFence: true
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Graph has no channel-message deduplication key, so bound retries while resolving an unconfirmed post by read-back."}}
+      mocks:
+        - name: incidentPosted
+          branch: sent
+          description: "The signed-in incident account posts INC-1042 in the selected incident channel; other incidents need a script."
+          default: true
+          output: {messageId: "1616990032035", teamId: fbe2bf47-16c8-47cf-b4a5-4b9b187c508b, channelId: "19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2", createdAt: "2026-10-01T09:30:00Z", sender: {userId: "8ea0e38b-efb3-4757-924a-5f94061cf8c2", displayName: Incident Bot}, webUrl: "https://teams.microsoft.com/l/message/19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2/1616990032035"}
+        - name: channelPostDenied
+          branch: providerRejected
+          description: "The signed-in account cannot post to the selected incident channel."
+          failure: {kind: AUTHORIZATION, message: Microsoft Graph denied the channel post.}
     - name: postThreadReply
       goName: PostThreadReply
       inputType: PostThreadReplyInput
       outputType: PostMessageOutput
       kind: mutation
-      description: "Reply once to an existing channel message's thread as the signed-in user. Graph has no idempotency key, so the reply is sent at most once per Step execution and an unconfirmed send is confirmed by reading the thread back."
+      description: "Reply once to an existing channel message's thread as the signed-in user. Graph has no idempotency key, so a sync single-dispatch fence checkpoints the send across retries; an unconfirmed reply is read back without another post."
       idempotency: required
       authorization: required
       branches: *channelPostBranches
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A lost dispatch checkpoint could publish another reply because Teams enforces no deduplication key and the next attempt sends without read-back."}}
+        dispatchFence: true
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Graph has no thread-reply deduplication key, so bound retries while resolving an unconfirmed reply by read-back."}}
+      mocks:
+        - name: incidentStatusReply
+          branch: sent
+          description: "The incident account replies with status to root message 1616990032035; other roots need a script."
+          default: true
+          output: {messageId: "1616990032036", teamId: fbe2bf47-16c8-47cf-b4a5-4b9b187c508b, channelId: "19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2", replyToId: "1616990032035", createdAt: "2026-10-01T09:31:00Z", sender: {userId: "8ea0e38b-efb3-4757-924a-5f94061cf8c2", displayName: Incident Bot}, webUrl: "https://teams.microsoft.com/l/message/19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2/1616990032036"}
+        - name: replyDenied
+          branch: providerRejected
+          description: "The incident account cannot reply to root message 1616990032035."
+          failure: {kind: AUTHORIZATION, message: Microsoft Graph denied the thread reply.}
     - name: postChatMessage
       goName: PostChatMessage
       inputType: PostChatMessageInput
       outputType: PostMessageOutput
       kind: mutation
-      description: "Send one message to an existing one-on-one, group, or meeting chat as the signed-in user, at most once per Step execution. The connection cannot read chat messages, so an unconfirmed send selects uncertain."
+      description: "Send one message to an existing one-on-one, group, or meeting chat as the signed-in user. A sync single-dispatch fence prevents a duplicate across retries; the connection cannot read chat messages, so an unconfirmed send selects uncertain."
       idempotency: required
       authorization: required
       branches:
@@ -200,4 +243,15 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A lost dispatch checkpoint could publish another chat message because Teams has no chat read-back or provider deduplication key."}}
+        dispatchFence: true
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Graph has no chat-message deduplication key or permitted read-back, so bound retries of the unconfirmed write."}}
+      mocks:
+        - name: incidentEscalation
+          branch: sent
+          description: "The incident account escalates INC-1042 to the on-call meeting chat; another chat needs a script."
+          default: true
+          output: {messageId: "1616990032050", chatId: "19:meeting_MjdhNjM4YzUtYzExZi00@thread.v2", createdAt: "2026-10-01T09:40:00Z", sender: {userId: "8ea0e38b-efb3-4757-924a-5f94061cf8c2", displayName: Incident Bot}, webUrl: "https://teams.microsoft.com/l/message/19:meeting_MjdhNjM4YzUtYzExZi00@thread.v2/1616990032050"}
+        - name: chatPostDenied
+          branch: providerRejected
+          description: "The incident account left the selected on-call chat."
+          failure: {kind: AUTHORIZATION, message: Microsoft Graph denied the chat post.}

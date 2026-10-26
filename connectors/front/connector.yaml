@@ -174,8 +174,8 @@ spec:
         - {id: replied, goName: Replied, description: "Front accepted the reply for delivery or created the comment."}
         - {id: notFound, goName: NotFound, description: "The conversation does not exist, was merged, or is not visible to the API token; nothing was sent.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Front conclusively rejected the reply or comment, such as a token without send permission or an unknown author; nothing was sent.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The reply or comment may exist after a lost answer, ambiguous server error, late answer, or 409 conflict; an accepted comment may have been deleted before read-back. The connector never resends without proof of non-application.", optional: true}
-        - {id: defect, goName: Defect, description: "Local input, connection credentials that require reauthorization or are unusable, or the connector definition is invalid; transient credential failures Retry.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The reply or comment may exist after a lost answer, ambiguous server error, late answer, 409 conflict, or terminal credential failure during accepted-write read-back; an accepted comment may have been deleted before read-back. The connector never resends without proof of non-application.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection credentials that require reauthorization or are unusable before sending, or the connector definition is invalid; transient credential failures Retry.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: sync

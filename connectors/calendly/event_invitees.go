@@ -135,7 +135,7 @@ func (operation ListEventInviteesOperation) Invoke(call sdkgo.Call, input ListEv
 	if err != nil {
 		return credentialQueryAttempt[EventInviteePage](operationID, ListEventInviteesBranchDefect, err)
 	}
-	response, err := client.sendCalendlyRequest(call, &credentials, http.MethodGet, "/scheduled_events/"+eventID+"/invitees", input.query(), nil, nil)
+	response, err := client.sendCalendlyRequest(call, &credentials, http.MethodGet, "/scheduled_events/"+eventID+"/invitees", input.query(), nil)
 	branches := queryFailureBranches{
 		notFound: ListEventInviteesBranchNotFound, providerRejected: ListEventInviteesBranchProviderRejected,
 		invalidResponse: ListEventInviteesBranchInvalidResponse,
