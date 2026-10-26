@@ -4,6 +4,7 @@
 package asana_test
 
 import (
+	"context"
 	"net"
 	"net/http"
 	"net/url"
@@ -54,7 +55,7 @@ func TestCreateTaskSendsTheSectionMembershipAndReturnsTheTaskID(t *testing.T) {
 	require.Equal(t, "/tasks", request.path)
 	query, err := url.ParseQuery(request.rawQuery)
 	require.NoError(t, err)
-	require.Equal(t, "name,permalink_url,created_at", query.Get("opt_fields"))
+	require.Equal(t, "gid,name,permalink_url,created_at", query.Get("opt_fields"))
 	require.JSONEq(t, `{"data":{
 		"name":"[REQ-1042] Replace badge reader","notes":"Badge reader at door 4 is offline.\nApproved by Grace.",
 		"memberships":[{"project":"`+testProjectID+`","section":"`+testSectionID+`"}],
@@ -96,7 +97,7 @@ func TestCreateTaskNeverResendsARequestAsanaMayHaveReceived(t *testing.T) {
 		{name: "premium field", status: http.StatusPaymentRequired, body: `{"errors":[{"message":"SENTINEL premium only"}]}`, branch: asana.CreateTaskBranchProviderRejected, kind: sdkgo.FailureAuthorization},
 		{name: "rate limit", status: http.StatusTooManyRequests, body: `{"errors":[{"message":"SENTINEL"}]}`, isRetry: true, kind: sdkgo.FailureRateLimit},
 		{name: "server error", status: http.StatusInternalServerError, body: `{"errors":[{"message":"SENTINEL","phrase":"6 sad squid snuggle softly"}]}`, branch: asana.CreateTaskBranchUncertain, kind: sdkgo.FailureAvailability},
-		{name: "unavailable", status: http.StatusServiceUnavailable, body: `{}`, branch: asana.CreateTaskBranchUncertain, kind: sdkgo.FailureAvailability},
+		{name: "unavailable", status: http.StatusServiceUnavailable, body: `{}`, isRetry: true, kind: sdkgo.FailureAvailability},
 		{name: "gateway timeout", status: http.StatusGatewayTimeout, body: `{}`, branch: asana.CreateTaskBranchUncertain, kind: sdkgo.FailureAvailability},
 		{name: "redirect", status: http.StatusFound, body: `{}`, branch: asana.CreateTaskBranchUncertain, kind: sdkgo.FailureAvailability},
 		{name: "unusable created body", status: http.StatusCreated, body: `{"data":{"gid":"SENTINEL"}}`, branch: asana.CreateTaskBranchUncertain, kind: sdkgo.FailureProtocol},
@@ -133,6 +134,84 @@ func TestCreateTaskTimeoutAfterDispatchIsUncertain(t *testing.T) {
 	require.Equal(t, asana.CreateTaskBranchUncertain, result.Branch)
 	require.Equal(t, sdkgo.FailureTransport, result.Failure.Kind)
 	require.Equal(t, 1, provider.requestCount())
+}
+
+func TestCreateTask503RetriesWithCheckpointAndAcceptedTaskIsReadBack(t *testing.T) {
+	provider := newRecordingAsana(t, func(response http.ResponseWriter, request *http.Request, index int) {
+		switch index {
+		case 0:
+			writeJSON(t, response, http.StatusServiceUnavailable, `{}`)
+		case 1:
+			writeJSON(t, response, http.StatusCreated, createdTaskBody)
+		default:
+			require.Equal(t, http.MethodGet, request.Method)
+			writeJSON(t, response, http.StatusOK, createdTaskBody)
+		}
+	})
+	client := newAsanaClient(t, provider.URL)
+	first := newReplayAsanaDexContext("create-retry", 1, nil)
+	_, err := sdkgo.RunMutation(first, client.CreateTask(), asanaConnection, validCreateTaskInput())
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	second := newReplayAsanaDexContext("create-retry", 2, first.lastHeartbeat())
+	result, err := sdkgo.RunMutation(second, client.CreateTask(), asanaConnection, validCreateTaskInput())
+	require.NoError(t, err)
+	require.Equal(t, asana.CreateTaskBranchCreated, result.Branch)
+	third := newReplayAsanaDexContext("create-retry", 3, second.lastHeartbeat())
+	result, err = sdkgo.RunMutation(third, client.CreateTask(), asanaConnection, validCreateTaskInput())
+	require.NoError(t, err)
+	require.Equal(t, asana.CreateTaskBranchCreated, result.Branch)
+	require.Equal(t, testTaskID, result.Value.TaskID)
+	require.Equal(t, http.MethodGet, provider.request(2).method)
+	require.Equal(t, 3, provider.requestCount())
+}
+
+func TestCreateTaskLostAcceptedIDCheckpointNeverResends(t *testing.T) {
+	provider := newRecordingAsana(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusCreated, createdTaskBody)
+	})
+	client := newAsanaClient(t, provider.URL)
+	first := newReplayAsanaDexContext("create-lost-id", 1, nil)
+	first.keepOnlyFirst = true
+	result, err := sdkgo.RunMutation(first, client.CreateTask(), asanaConnection, validCreateTaskInput())
+	require.NoError(t, err)
+	require.Equal(t, asana.CreateTaskBranchCreated, result.Branch)
+	second := newReplayAsanaDexContext("create-lost-id", 2, first.lastHeartbeat())
+	result, err = sdkgo.RunMutation(second, client.CreateTask(), asanaConnection, validCreateTaskInput())
+	require.NoError(t, err)
+	require.Equal(t, asana.CreateTaskBranchUncertain, result.Branch)
+	require.Equal(t, 1, provider.requestCount())
+	missing := newReplayAsanaDexContext("create-lost-id", 2, nil)
+	result, err = sdkgo.RunMutation(missing, client.CreateTask(), asanaConnection, validCreateTaskInput())
+	require.NoError(t, err)
+	require.Equal(t, asana.CreateTaskBranchUncertain, result.Branch)
+	require.Equal(t, 1, provider.requestCount())
+}
+
+func TestCreateTaskStaleRetryCheckpointNeverResends(t *testing.T) {
+	provider := newRecordingAsana(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusServiceUnavailable, `{}`)
+	})
+	client := newAsanaClient(t, provider.URL)
+	first := newReplayAsanaDexContext("create-stale-retry", 1, nil)
+	_, err := sdkgo.RunMutation(first, client.CreateTask(), asanaConnection, validCreateTaskInput())
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	stale := newReplayAsanaDexContext("create-stale-retry", 3, first.lastHeartbeat())
+	result, err := sdkgo.RunMutation(stale, client.CreateTask(), asanaConnection, validCreateTaskInput())
+	require.NoError(t, err)
+	require.Equal(t, asana.CreateTaskBranchUncertain, result.Branch)
+	require.Equal(t, 1, provider.requestCount())
+}
+
+func TestCreateTaskDoesNotDispatchNearAttemptDeadline(t *testing.T) {
+	provider := newRecordingAsana(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
+	client := newAsanaClient(t, provider.URL)
+	deadlineContext, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+	stepContext := newAsanaDexContext("create-deadline")
+	stepContext.Context = deadlineContext
+	_, err := sdkgo.RunMutation(stepContext, client.CreateTask(), asanaConnection, validCreateTaskInput())
+	requireRetry(t, err, sdkgo.FailureTransport)
+	require.Zero(t, provider.requestCount())
 }
 
 func TestCreateTaskRefusedConnectionRetriesBecauseNothingWasSent(t *testing.T) {

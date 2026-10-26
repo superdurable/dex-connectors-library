@@ -161,3 +161,47 @@ func (*asanaDexContext) GetStepExecutionLocal(string, any) (bool, error) { retur
 func (*asanaDexContext) RecordEvent(string, any) error                   { return nil }
 
 var _ dex.Context = (*asanaDexContext)(nil)
+
+type replayAsanaDexContext struct {
+	*asanaDexContext
+	mutex         sync.Mutex
+	attempt       int32
+	heartbeat     json.RawMessage
+	recordCount   int
+	keepOnlyFirst bool
+}
+
+func newReplayAsanaDexContext(step string, attempt int32, previous json.RawMessage) *replayAsanaDexContext {
+	return &replayAsanaDexContext{asanaDexContext: newAsanaDexContext(step), attempt: attempt, heartbeat: append(json.RawMessage(nil), previous...)}
+}
+
+func (context *replayAsanaDexContext) Attempt() int32 { return context.attempt }
+
+func (context *replayAsanaDexContext) RecordHeartbeat(value any) error {
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	context.mutex.Lock()
+	defer context.mutex.Unlock()
+	context.recordCount++
+	if !context.keepOnlyFirst || context.recordCount == 1 {
+		context.heartbeat = encoded
+	}
+	return nil
+}
+
+func (context *replayAsanaDexContext) GetLastHeartbeatValue(value any) (bool, error) {
+	context.mutex.Lock()
+	defer context.mutex.Unlock()
+	if len(context.heartbeat) == 0 {
+		return false, nil
+	}
+	return true, json.Unmarshal(context.heartbeat, value)
+}
+
+func (context *replayAsanaDexContext) lastHeartbeat() json.RawMessage {
+	context.mutex.Lock()
+	defer context.mutex.Unlock()
+	return append(json.RawMessage(nil), context.heartbeat...)
+}

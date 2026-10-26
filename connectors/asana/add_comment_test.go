@@ -4,6 +4,7 @@
 package asana_test
 
 import (
+	"context"
 	"net/http"
 	"testing"
 	"time"
@@ -45,6 +46,7 @@ func TestAddCommentNeverResendsARequestAsanaMayHaveReceived(t *testing.T) {
 		{name: "missing task", status: http.StatusNotFound, branch: asana.AddCommentBranchNotFound},
 		{name: "permission", status: http.StatusForbidden, branch: asana.AddCommentBranchProviderRejected},
 		{name: "rate limit", status: http.StatusTooManyRequests, isRetry: true},
+		{name: "unavailable", status: http.StatusServiceUnavailable, isRetry: true},
 		{name: "server error", status: http.StatusInternalServerError, branch: asana.AddCommentBranchUncertain},
 		{name: "unusable story", status: http.StatusCreated, branch: asana.AddCommentBranchUncertain},
 	} {
@@ -57,7 +59,11 @@ func TestAddCommentNeverResendsARequestAsanaMayHaveReceived(t *testing.T) {
 				asana.AddCommentInput{TaskID: testTaskID, Text: "Approved."})
 			require.Equal(t, 1, provider.requestCount())
 			if test.isRetry {
-				requireRetry(t, err, sdkgo.FailureRateLimit)
+				kind := sdkgo.FailureRateLimit
+				if test.status == http.StatusServiceUnavailable {
+					kind = sdkgo.FailureAvailability
+				}
+				requireRetry(t, err, kind)
 				return
 			}
 			require.NoError(t, err)
@@ -79,6 +85,67 @@ func TestAddCommentTimeoutAfterDispatchIsUncertain(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, asana.AddCommentBranchUncertain, result.Branch)
 	require.Equal(t, 1, provider.requestCount())
+}
+
+func TestAddComment503RetriesWithCheckpointAndAcceptedStoryIsReadBack(t *testing.T) {
+	storyBody := `{"data":{"gid":"1205000000000001","created_at":"2026-09-30T16:20:00Z","created_by":{"gid":"` + testUserID + `","name":"Ada Lovelace"}}}`
+	provider := newRecordingAsana(t, func(response http.ResponseWriter, request *http.Request, index int) {
+		switch index {
+		case 0:
+			writeJSON(t, response, http.StatusServiceUnavailable, `{}`)
+		case 1:
+			writeJSON(t, response, http.StatusCreated, storyBody)
+		default:
+			require.Equal(t, http.MethodGet, request.Method)
+			writeJSON(t, response, http.StatusOK, storyBody)
+		}
+	})
+	client := newAsanaClient(t, provider.URL)
+	input := asana.AddCommentInput{TaskID: testTaskID, Text: "Approved."}
+	first := newReplayAsanaDexContext("comment-retry", 1, nil)
+	_, err := sdkgo.RunMutation(first, client.AddComment(), asanaConnection, input)
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	second := newReplayAsanaDexContext("comment-retry", 2, first.lastHeartbeat())
+	result, err := sdkgo.RunMutation(second, client.AddComment(), asanaConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, asana.AddCommentBranchAdded, result.Branch)
+	third := newReplayAsanaDexContext("comment-retry", 3, second.lastHeartbeat())
+	result, err = sdkgo.RunMutation(third, client.AddComment(), asanaConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, asana.AddCommentBranchAdded, result.Branch)
+	require.Equal(t, "1205000000000001", result.Value.CommentID)
+	require.Equal(t, http.MethodGet, provider.request(2).method)
+	require.Equal(t, 3, provider.requestCount())
+}
+
+func TestAddCommentLostAcceptedIDCheckpointNeverResends(t *testing.T) {
+	provider := newRecordingAsana(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusCreated, `{"data":{"gid":"1205000000000001"}}`)
+	})
+	client := newAsanaClient(t, provider.URL)
+	input := asana.AddCommentInput{TaskID: testTaskID, Text: "Approved."}
+	first := newReplayAsanaDexContext("comment-lost-id", 1, nil)
+	first.keepOnlyFirst = true
+	result, err := sdkgo.RunMutation(first, client.AddComment(), asanaConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, asana.AddCommentBranchAdded, result.Branch)
+	second := newReplayAsanaDexContext("comment-lost-id", 2, first.lastHeartbeat())
+	result, err = sdkgo.RunMutation(second, client.AddComment(), asanaConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, asana.AddCommentBranchUncertain, result.Branch)
+	require.Equal(t, 1, provider.requestCount())
+}
+
+func TestAddCommentDoesNotDispatchNearAttemptDeadline(t *testing.T) {
+	provider := newRecordingAsana(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
+	client := newAsanaClient(t, provider.URL)
+	deadlineContext, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+	stepContext := newAsanaDexContext("comment-deadline")
+	stepContext.Context = deadlineContext
+	_, err := sdkgo.RunMutation(stepContext, client.AddComment(), asanaConnection, asana.AddCommentInput{TaskID: testTaskID, Text: "Approved."})
+	requireRetry(t, err, sdkgo.FailureTransport)
+	require.Zero(t, provider.requestCount())
 }
 
 func TestAddCommentRejectsInvalidInputWithoutARequest(t *testing.T) {

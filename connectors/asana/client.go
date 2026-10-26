@@ -33,7 +33,8 @@ const (
 	providerName = "asana"
 
 	// operationDeadline keeps every request of one Invoke inside the 30-second Execute timeout.
-	operationDeadline = 25 * time.Second
+	operationDeadline     = 25 * time.Second
+	attemptDeadlineMargin = time.Second
 	// requestTimeout bounds one exchange, so a hung write selects uncertain before Dex times the Step out.
 	requestTimeout = 20 * time.Second
 )
@@ -195,8 +196,17 @@ func (client *Client) startSession(call sdkgo.Call, operationID string) (*operat
 	if err != nil || validateResolvedCredentials(credentials) != nil {
 		return nil, nil, failurePointer(operationID, sdkgo.FailureAuthentication, "Asana connection credentials are unavailable; save a personal access token for the connection")
 	}
-	operationContext, cancel := context.WithTimeout(call.Context, operationDeadline)
+	deadline := client.now().Add(operationDeadline)
+	if attemptDeadline, hasDeadline := call.Context.Deadline(); hasDeadline && attemptDeadline.Add(-attemptDeadlineMargin).Before(deadline) {
+		deadline = attemptDeadline.Add(-attemptDeadlineMargin)
+	}
+	operationContext, cancel := context.WithDeadline(call.Context, deadline)
 	return &operationSession{context: operationContext, call: call, credentials: credentials}, cancel, nil
+}
+
+func (client *Client) canStartRequest(session *operationSession) bool {
+	deadline, hasDeadline := session.context.Deadline()
+	return hasDeadline && client.now().Before(deadline)
 }
 
 // exchange sends one request. A personal access token cannot be refreshed, so a 401 is never resent.
@@ -287,7 +297,7 @@ func (client *Client) classifyRead(operationID string, subject string, result ex
 	}
 }
 
-// classifyUnkeyedWrite retries only a 429 or an undispatched request, when Asana cannot have written.
+// classifyUnkeyedWrite retries 429, 503, or an undispatched request; other ambiguous outcomes remain uncertain.
 func (client *Client) classifyUnkeyedWrite(operationID string, subject string, result exchangeResult) writeClassification {
 	switch {
 	case errors.Is(result.err, errRequestNotBuilt):
@@ -309,6 +319,8 @@ func (client *Client) classifyUnkeyedWrite(operationID string, subject string, r
 		return writeClassification{outcome: writeAccepted}
 	case response.statusCode == http.StatusTooManyRequests:
 		return writeClassification{outcome: writeRetry, retryAfter: client.retryAfter(response), failure: newFailure(operationID, sdkgo.FailureRateLimit, "Asana rate limited the "+subject+" before writing it")}
+	case response.statusCode == http.StatusServiceUnavailable:
+		return writeClassification{outcome: writeRetry, retryAfter: client.retryAfter(response), failure: newFailure(operationID, sdkgo.FailureAvailability, "Asana "+subject+" is temporarily unavailable")}
 	case response.statusCode == http.StatusNotFound:
 		return writeClassification{outcome: writeNotFound, failure: rejectionFailure(operationID, subject, response.statusCode)}
 	case isConclusiveRejectionStatus(response.statusCode):
