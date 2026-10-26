@@ -65,19 +65,18 @@ func (CreateSharedDraftOperation) Definition() sdkgo.MutationDefinition {
 }
 
 // IdempotencyKey uses the stable connector Call ID. Hiver documents no idempotency key, so the
-// key only correlates the Receipt; single dispatch comes from a Dex heartbeat checkpoint instead.
+// key only correlates the Receipt; the shared single-dispatch fence prevents unsafe resends.
 func (CreateSharedDraftOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateSharedDraftInput) sdkgo.IdempotencyKey {
 	return sdkgo.IdempotencyKey(callID)
 }
 
 // Invoke sends POST /v1/inboxes/{inbox_id}/conversations/shared-drafts as multipart/form-data
-// unless an earlier attempt of this Step execution recorded the dispatch checkpoint, in which
-// case it selects uncertain without sending. Hiver never sends the draft to the customer; a
-// Hiver user does. A 429, 503, traced pre-connection failure, or cancelled request-slot wait
-// records a safe-resend marker and retries; other unconfirmed outcomes
-// select uncertain without resending. A missing checkpoint on a later attempt fails closed.
+// through the shared fence. Hiver never sends the draft to the customer; a Hiver
+// user does. A prior possibly sent attempt selects uncertain because Hiver has no
+// draft read-back. Definite 429, 503, and proven unsent outcomes permit one retry.
 func (operation CreateSharedDraftOperation) Invoke(call sdkgo.Call, input CreateSharedDraftInput) sdkgo.MutationAttempt[SharedDraft] {
-	if priorAttempt := previousSingleDispatchAttempt[SharedDraft](call, operation.client, createSharedDraftOperation); priorAttempt != nil {
+	fence, pacerDeadline, priorAttempt := beginSingleDispatch[SharedDraft](call, operation.client, createSharedDraftOperation, CreateSharedDraftBranchDefect)
+	if priorAttempt != nil {
 		return *priorAttempt
 	}
 	if err := validateCreateSharedDraftInput(input); err != nil {
@@ -85,7 +84,7 @@ func (operation CreateSharedDraftOperation) Invoke(call sdkgo.Call, input Create
 	}
 	credentials, failure := operation.client.resolveCredentials(call, createSharedDraftOperation)
 	if failure != nil {
-		return sdkgo.NewMutationBranch(CreateSharedDraftBranchDefect, SharedDraft{}, failure, sdkgo.Receipt{})
+		return retryBeforeSingleDispatch[SharedDraft](fence, *failure)
 	}
 	fields := []hiverFormField{{name: "body", value: input.Body}}
 	if input.HiverMessageID != "" {
@@ -95,7 +94,7 @@ func (operation CreateSharedDraftOperation) Invoke(call sdkgo.Call, input Create
 	}
 	result, attempt := sendOnce[SharedDraft](call, operation.client, credentials, createSharedDraftOperation, hiverRequest{
 		method: http.MethodPost, path: inboxPath(input.InboxID) + "/conversations/shared-drafts", formFields: fields,
-	}, singleDispatchBranches{notFound: CreateSharedDraftBranchNotFound, providerRejected: CreateSharedDraftBranchProviderRejected, defect: CreateSharedDraftBranchDefect})
+	}, singleDispatchBranches{notFound: CreateSharedDraftBranchNotFound, providerRejected: CreateSharedDraftBranchProviderRejected, defect: CreateSharedDraftBranchDefect}, fence, pacerDeadline)
 	if attempt != nil {
 		return *attempt
 	}
@@ -104,6 +103,8 @@ func (operation CreateSharedDraftOperation) Invoke(call sdkgo.Call, input Create
 		return sdkgo.NewMutationUncertain(SharedDraft{}, hiverFailure(sdkgo.FailureProtocol, createSharedDraftOperation,
 			"Hiver accepted the draft but returned an invalid shared draft: "+err.Error()), operation.client.receipt(call, result.response, ""))
 	}
+	// The accepted result is known even if the extra identity checkpoint is lost.
+	_ = fence.RecordProviderID(draft.ID)
 	return sdkgo.NewMutationBranch(CreateSharedDraftBranchCreated, draft, nil, operation.client.receipt(call, result.response, draft.ID))
 }
 

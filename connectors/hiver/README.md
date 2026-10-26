@@ -199,16 +199,18 @@ so the operations take these positions:
   dispatch leaves the conversation as one attempt would. It keeps async
   durability, and every unconfirmed outcome, including a 5xx, a lost response,
   or a read-back that does not show the change yet, is retried.
-- **addNote** and **createSharedDraft** use sync durability because each retry
-  reads a heartbeat checkpoint. Before sending, the operation records the
-  Step's Call ID. A later attempt with a missing, stale, or unreadable marker
-  selects `uncertain` without resolving credentials or sending. A marker with
-  `canResend` permits another attempt after a 429, 503, or a proven pre-send
-  failure. A failed pre-send checkpoint write returns Retry; a failed safe
-  retry checkpoint after dispatch fails closed as `uncertain`.
-- Each request ends before five sixths of the time left on the Step context.
-  A write starts only with at least a tenth of its observed attempt budget
-  left; otherwise it records `canResend` and retries without sending.
+- **addNote** and **createSharedDraft** use the shared
+  [single-dispatch fence](../../sdkgo/README.md#single-dispatch-fence) with sync
+  durability. The fence reads the prior checkpoint before credentials. A
+  missing, foreign, stale, or claimed marker on a later attempt forbids a
+  second send. Only a `notSent` or `canResend` marker from the immediately
+  preceding attempt permits another send. Credential failure and a pacer wait
+  that cannot fit record `notSent` before Retry; definite 429, 503, and traced
+  pre-connection failure record `canResend` before Retry.
+- The pacer wait ends by half the initial attempt budget, before the fence's
+  write deadline. With no note or draft read-back, the fence gives the write
+  at most five sixths of that budget and reserves at least one tenth as
+  minimum send time. An insufficient budget records `notSent` and retries.
 - Hiver [documents 429 and 500 errors](https://developer.hiverhq.com/hiver-api)
   but says nothing about whether a 503 could follow an applied write. The
   connector retries 503 under the connector retry contract; duplicate effects
@@ -228,7 +230,11 @@ Dex does not acknowledge heartbeat persistence when the Worker writes the
 checkpoint. A later attempt with no stored marker therefore fails closed and
 never resends, even if the first request did not leave. A lost `canResend`
 marker can likewise produce `uncertain` for a request Hiver never applied.
-`TestDispatchCheckpointThatDexNeverStoredFailsClosed` covers this case.
+Legacy Hiver checkpoints are invalid to the shared fence; reconcile any
+in-flight calls running the PR's earlier implementation before upgrading.
+`TestSharedFenceRejectsStaleCanResendAfterLostClaim` covers the stale-marker
+case, and `TestSharedFencePacerWaitEndsBeforeStepDeadline` covers the pre-send
+checkpoint.
 
 ## Errors
 
@@ -249,7 +255,8 @@ the HTTP status, such as `Hiver rejected the request (HTTP 400)`.
 | 503 | Retry, after `Retry-After` when present | Retry with `canResend` checkpoint |
 | 408, other 5xx, lost or unreadable response | Retry, after `Retry-After` when present | `uncertain` |
 | oversized, malformed, or credential-reflecting 2xx | `invalidResponse` | `uncertain` |
-| invalid input or connection credentials | `defect`, with no request | `defect`, with no request |
+| invalid input | `defect`, with no request | `defect`, with no request |
+| unavailable connection credentials | `defect`, with no request | `notSent` checkpoint, then Retry |
 
 Hiver documents IDs as JSON strings in some responses and numbers in others;
 the connector accepts both and reports every ID as a string. The Receipt

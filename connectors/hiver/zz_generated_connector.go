@@ -508,7 +508,7 @@ var AddNoteDefinition = sdkgo.MutationDefinition{
 		{ID: AddNoteBranchAdded, Description: "Hiver added the note and returned it."},
 		{ID: AddNoteBranchNotFound, Description: "The conversation or shared inbox does not exist or is not visible to the API key; nothing was added.", Optional: true},
 		{ID: AddNoteBranchProviderRejected, Description: "Hiver conclusively rejected the note; nothing was added.", Optional: true},
-		{ID: AddNoteBranchUncertain, Description: "The note may exist: Hiver's answer was lost, unreadable, 408, another server error besides 503, or an earlier attempt may have sent it. The Step does not send it again.", Optional: true},
+		{ID: AddNoteBranchUncertain, Description: "The note may exist: Hiver's answer was lost, unreadable, 408, 409, another server error besides 503, or an earlier attempt may have sent it. The Step does not send it again.", Optional: true},
 		{ID: AddNoteBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -585,7 +585,7 @@ var CreateSharedDraftDefinition = sdkgo.MutationDefinition{
 		{ID: CreateSharedDraftBranchCreated, Description: "Hiver created the shared draft and returned its ID."},
 		{ID: CreateSharedDraftBranchNotFound, Description: "The message or shared inbox does not exist or is not visible to the API key; no draft was created.", Optional: true},
 		{ID: CreateSharedDraftBranchProviderRejected, Description: "Hiver conclusively rejected the draft; no draft was created.", Optional: true},
-		{ID: CreateSharedDraftBranchUncertain, Description: "The draft may exist: Hiver's answer was lost, unreadable, 408, another server error besides 503, or an earlier attempt may have sent it. The Step does not send it again.", Optional: true},
+		{ID: CreateSharedDraftBranchUncertain, Description: "The draft may exist: Hiver's answer was lost, unreadable, 408, 409, another server error besides 503, or an earlier attempt may have sent it. The Step does not send it again.", Optional: true},
 		{ID: CreateSharedDraftBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

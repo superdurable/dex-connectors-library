@@ -148,10 +148,10 @@ func ListInboxesProviderRejectedFailure() connectormock.Case[hiver.ListInboxesOu
 	return connectormock.Branch(hiver.ListInboxesBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthentication, Message: "Hiver rejected the request (HTTP 401)."})
 }
 
-// ListInboxesInvalidResponseFailure is the manifest mock invalidResponseFailure: Hiver returned a malformed or oversized page.
+// ListInboxesInvalidResponseFailure is the manifest mock invalidResponseFailure: For an empty pageToken, Hiver returned malformed inbox JSON.
 func ListInboxesInvalidResponseFailure() connectormock.Case[hiver.ListInboxesOutput] {
 	var value hiver.ListInboxesOutput
-	return connectormock.Branch(hiver.ListInboxesBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "Hiver returned a malformed or oversized page."})
+	return connectormock.Branch(hiver.ListInboxesBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "Hiver returned malformed inbox JSON."})
 }
 
 // ListInboxesDefault is the manifest default, listedDefaultAnswer, which New installs.
@@ -212,10 +212,10 @@ func ListConversationsProviderRejectedFailure() connectormock.Case[hiver.ListCon
 	return connectormock.Branch(hiver.ListConversationsBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthentication, Message: "Hiver rejected the request (HTTP 401)."})
 }
 
-// ListConversationsInvalidResponseFailure is the manifest mock invalidResponseFailure: Hiver returned a malformed or oversized page.
+// ListConversationsInvalidResponseFailure is the manifest mock invalidResponseFailure: For inboxId 105902, Hiver returned malformed conversation-page JSON.
 func ListConversationsInvalidResponseFailure() connectormock.Case[hiver.ListConversationsOutput] {
 	var value hiver.ListConversationsOutput
-	return connectormock.Branch(hiver.ListConversationsBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "Hiver returned a malformed or oversized page."})
+	return connectormock.Branch(hiver.ListConversationsBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "Hiver returned malformed conversation-page JSON."})
 }
 
 // ListConversationsDefault is the manifest default, listedDefaultAnswer, which New installs.
@@ -271,10 +271,10 @@ func GetConversationProviderRejectedFailure() connectormock.Case[hiver.Conversat
 	return connectormock.Branch(hiver.GetConversationBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthentication, Message: "Hiver rejected the request (HTTP 401)."})
 }
 
-// GetConversationInvalidResponseFailure is the manifest mock invalidResponseFailure: Hiver returned a malformed or oversized conversation.
+// GetConversationInvalidResponseFailure is the manifest mock invalidResponseFailure: For conversationId 573741352, Hiver returned malformed conversation JSON.
 func GetConversationInvalidResponseFailure() connectormock.Case[hiver.ConversationDetails] {
 	var value hiver.ConversationDetails
-	return connectormock.Branch(hiver.GetConversationBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "Hiver returned a malformed or oversized conversation."})
+	return connectormock.Branch(hiver.GetConversationBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "Hiver returned malformed conversation JSON."})
 }
 
 // GetConversationDefault is the manifest default, foundDefaultAnswer, which New installs.
@@ -330,10 +330,10 @@ func UpdateConversationProviderRejectedFailure() connectormock.Case[hiver.Update
 	return connectormock.Branch(hiver.UpdateConversationBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureValidation, Message: "assigneeEmail matches 0 users of the shared inbox instead of one; the change was not sent"})
 }
 
-// UpdateConversationInvalidResponseFailure is the manifest mock invalidResponseFailure: Hiver returned a malformed or oversized user, tag, or conversation response, or rejected the read-back after accepting the change, so part or all of the change may have been applied.
+// UpdateConversationInvalidResponseFailure is the manifest mock invalidResponseFailure: For conversationId 573741352, Hiver returned malformed conversation JSON during read-back after accepting the change.
 func UpdateConversationInvalidResponseFailure() connectormock.Case[hiver.UpdateConversationOutput] {
 	var value hiver.UpdateConversationOutput
-	return connectormock.Branch(hiver.UpdateConversationBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "Hiver returned a malformed or oversized user, tag, or conversation response, or rejected the read-back after accepting the change, so part or all of the change may have been applied."})
+	return connectormock.Branch(hiver.UpdateConversationBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "Hiver returned malformed conversation JSON during read-back after accepting the change."})
 }
 
 // UpdateConversationDefault is the manifest default, updatedDefaultAnswer, which New installs.

@@ -7,7 +7,7 @@
 // with an absolute change that is safe to repeat and reads the conversation back; and
 // addNote and createSharedDraft add an internal note or a shared reply draft. Hiver
 // documents no idempotency key, so those two run with sync durability and record a Dex
-// dispatch checkpoint before sending; a retry without a confirmed safe-resend marker
+// single-dispatch fence before sending; a retry without a stored safe-resend marker
 // selects uncertain instead of sending again.
 //
 // The connector sends an admin-created API key as a bearer token to
@@ -34,6 +34,7 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 const (
@@ -230,9 +231,13 @@ func (client *Client) exchange(call sdkgo.Call, credentials Credentials, operati
 
 // awaitRequestSlot keeps requests one interval apart; a cancelled wait sends nothing.
 func (client *Client) awaitRequestSlot(call sdkgo.Call, operation string) (hiverExchange, bool) {
-	if err := client.pacer.wait(call.Context); err != nil {
+	return client.awaitRequestSlotWithContext(call.Context, operation)
+}
+
+func (client *Client) awaitRequestSlotWithContext(waitContext context.Context, operation string) (hiverExchange, bool) {
+	if err := client.pacer.wait(waitContext); err != nil {
 		return hiverExchange{outcome: exchangeNotSent, failure: hiverFailure(sdkgo.FailureAvailability, operation,
-			"the Step ended while waiting for the connection's next Hiver request slot; no request was sent")}, false
+			"the wait for the connection's next Hiver request slot ended; no request was sent")}, false
 	}
 	return hiverExchange{}, true
 }
@@ -249,6 +254,10 @@ func (client *Client) send(call sdkgo.Call, credentials Credentials, operation s
 		requestContext, cancel = context.WithDeadline(call.Context, time.Now().Add(remaining*5/6))
 		defer cancel()
 	}
+	return client.sendWithContext(requestContext, credentials, operation, request, false)
+}
+
+func (client *Client) sendWithContext(requestContext context.Context, credentials Credentials, operation string, request hiverRequest, isFencedWrite bool) hiverExchange {
 	observation := &dispatchObservation{}
 	requestContext = httptrace.WithClientTrace(requestContext, &httptrace.ClientTrace{
 		GotConn: func(httptrace.GotConnInfo) { observation.hasObtainedConnection.Store(true) },
@@ -271,6 +280,14 @@ func (client *Client) send(call sdkgo.Call, credentials Credentials, operation s
 	httpRequest, err := client.buildRequest(requestContext, credentials, request)
 	if err != nil {
 		return hiverExchange{outcome: exchangeDefect, failure: hiverFailure(sdkgo.FailureLocalDefect, operation, err.Error())}
+	}
+	if isFencedWrite {
+		if err := singledispatch.PrepareHTTPWrite(httpRequest); err != nil {
+			return hiverExchange{outcome: exchangeNotSent, failure: hiverFailure(sdkgo.FailureLocalDefect, operation, "Hiver write request could not be prepared")}
+		}
+	}
+	if isFencedWrite && requestContext.Err() != nil {
+		return hiverExchange{outcome: exchangeNotSent, failure: hiverFailure(sdkgo.FailureAvailability, operation, "the request deadline passed before the Hiver write was sent")}
 	}
 	httpResponse, err := client.httpClient.Do(httpRequest)
 	if err != nil {

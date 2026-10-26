@@ -21,7 +21,7 @@ const noteCreatedBody = `{"data":{"id":"35042650","conversation_id":"573741352",
 	"author":{"id":"540349","email":"agent@acme.example.com"},"mentions":[],"parent_note_id":null,"attachments":[],
 	"created_at":"2026-07-21T14:24:22.000000Z"}}`
 
-func TestAddNotePostsOneMultipartNoteAndRecordsTheDispatchMarker(t *testing.T) {
+func TestAddNotePostsOneMultipartNoteAndRecordsTheFenceClaim(t *testing.T) {
 	provider := newRecordingHiver(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
 		writeJSON(t, response, http.StatusCreated, noteCreatedBody)
 	})
@@ -40,7 +40,8 @@ func TestAddNotePostsOneMultipartNoteAndRecordsTheDispatchMarker(t *testing.T) {
 		CreatedAt: time.Date(2026, 7, 21, 14, 24, 22, 0, time.UTC),
 	}, result.Value.Note)
 	require.Equal(t, "35042650", result.Receipt.ProviderObjectID)
-	require.NotEmpty(t, ctx.recordedHeartbeat, "the dispatch marker is recorded before the send")
+	require.Contains(t, string(ctx.recordedHeartbeat), `"state":"claimed"`)
+	require.Contains(t, string(ctx.recordedHeartbeat), `"providerId":"35042650"`)
 }
 
 func TestCreateSharedDraftPostsOneMultipartDraft(t *testing.T) {
@@ -138,7 +139,7 @@ func TestSingleDispatchOutcomes(t *testing.T) {
 		require.Equal(t, 1, provider.requestCount(), name)
 		if test.isRetry {
 			require.Error(t, err, name)
-			require.Contains(t, string(ctx.recordedHeartbeat), `"canResend":true`, name)
+			require.Contains(t, string(ctx.recordedHeartbeat), `"state":"canResend"`, name)
 			continue
 		}
 		require.NoError(t, err, name)
@@ -164,7 +165,7 @@ func TestAttemptAfterAnUnconfirmedSendSelectsUncertainWithoutSending(t *testing.
 	result, err = sdkgo.RunMutation(first.nextAttempt(), client.CreateSharedDraft(), hiverConnection, input)
 	require.NoError(t, err)
 	require.Equal(t, hiver.CreateSharedDraftBranchUncertain, result.Branch)
-	require.Equal(t, "an earlier attempt of this Step may have sent the request, so it is not sent again", result.Failure.Message)
+	require.Equal(t, "an earlier attempt may have sent the request, so it is not sent again", result.Failure.Message)
 	require.Equal(t, 1, provider.requestCount(), "the next attempt found the marker and sent nothing")
 }
 
@@ -187,13 +188,13 @@ func TestPriorDispatchPrecedesCredentialResolution(t *testing.T) {
 func TestTooLittleAttemptTimeRecordsNotSentBeforeRetry(t *testing.T) {
 	provider := newRecordingHiver(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request expected") })
 	stepContext := newHiverDexContext("note")
-	deadlineContext, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	deadlineContext, cancel := context.WithDeadline(context.Background(), time.Now().Add(-time.Millisecond))
 	defer cancel()
 	stepContext.Context = deadlineContext
 	_, err := sdkgo.RunMutation(stepContext, newHiverClient(t, provider.URL).AddNote(), hiverConnection,
 		hiver.AddNoteInput{InboxID: "105902", ConversationID: "573741352", Content: "Triaged."})
 	require.Error(t, err)
-	require.Contains(t, string(stepContext.recordedHeartbeat), `"canResend":true`)
+	require.Contains(t, string(stepContext.recordedHeartbeat), `"state":"notSent"`)
 	require.Zero(t, provider.requestCount())
 }
 
@@ -210,7 +211,7 @@ func TestDraftServiceUnavailableRetriesWithSameCallID(t *testing.T) {
 	first := newHiverDexContext("draft")
 	_, err := sdkgo.RunMutation(first, client.CreateSharedDraft(), hiverConnection, input)
 	require.Error(t, err)
-	require.Contains(t, string(first.recordedHeartbeat), `"canResend":true`)
+	require.Contains(t, string(first.recordedHeartbeat), `"state":"canResend"`)
 	result, err := sdkgo.RunMutation(first.nextAttempt(), client.CreateSharedDraft(), hiverConnection, input)
 	require.NoError(t, err)
 	require.Equal(t, hiver.CreateSharedDraftBranchCreated, result.Branch)
@@ -266,7 +267,7 @@ func TestTracedDialFailureRecordsSafeRetry(t *testing.T) {
 	_, err = sdkgo.RunMutation(stepContext, client.AddNote(), hiverConnection,
 		hiver.AddNoteInput{InboxID: "105902", ConversationID: "573741352", Content: "Triaged."})
 	require.Error(t, err)
-	require.Contains(t, string(stepContext.recordedHeartbeat), `"canResend":true`)
+	require.Contains(t, string(stepContext.recordedHeartbeat), `"state":"canResend"`)
 }
 
 type failingRoundTrip func(*http.Request) (*http.Response, error)
