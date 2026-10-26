@@ -5,7 +5,7 @@ metadata:
   displayName: HubSpot
   description: Search, read, upsert, and update HubSpot CRM contacts, companies, and deals.
   company: HubSpot
-  version: v0.22.0
+  version: v0.23.0
 spec:
   provider: hubspot
   codegen:
@@ -152,6 +152,31 @@ spec:
         executeMethodTimeout: 30s
         durability: async
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+      pagination: {inputField: after, nextField: nextAfter}
+      mocks:
+        - name: recentOpenDeals
+          branch: searched
+          description: Three sorted pages with a repeated newest deal and an older open deal.
+          default: true
+          pages:
+            - objectType: deals
+              total: 2
+              objects:
+                - {objectType: deals, id: "9001", properties: {dealname: Analytical Engines renewal, dealstage: appointmentscheduled, pipeline: default, hs_object_id: "9001", createdate: "2026-10-01T09:00:00.000Z", hs_lastmodifieddate: "2026-10-25T10:00:00.000Z"}, createdAt: "2026-10-01T09:00:00Z", updatedAt: "2026-10-25T10:00:00Z"}
+              nextAfter: "1"
+            - objectType: deals
+              total: 2
+              objects:
+                - {objectType: deals, id: "9001", properties: {dealname: Analytical Engines renewal, dealstage: appointmentscheduled, pipeline: default, hs_object_id: "9001", createdate: "2026-10-01T09:00:00.000Z", hs_lastmodifieddate: "2026-10-25T10:00:00.000Z"}, createdAt: "2026-10-01T09:00:00Z", updatedAt: "2026-10-25T10:00:00Z"}
+              nextAfter: "2"
+            - objectType: deals
+              total: 2
+              objects:
+                - {objectType: deals, id: "9004", properties: {dealname: Earlier consultation, dealstage: appointmentscheduled, pipeline: default, hs_object_id: "9004", createdate: "2026-10-10T09:00:00.000Z", hs_lastmodifieddate: "2026-10-20T10:00:00.000Z"}, createdAt: "2026-10-10T09:00:00Z", updatedAt: "2026-10-20T10:00:00Z"}
+        - name: searchRejected
+          branch: providerRejected
+          description: HubSpot rejects an unavailable CRM property filter.
+          failure: {kind: VALIDATION, message: HubSpot rejected the CRM search filter.}
     - name: getObject
       goName: GetObject
       inputType: GetObjectInput
@@ -166,6 +191,20 @@ spec:
         - {id: invalidResponse, goName: InvalidResponse, description: HubSpot returned an invalid or oversized record response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution: *hubspotExecution
+      mocks:
+        - name: qualifiedDeal
+          branch: found
+          description: The selected deal read back at stage qualifiedtobuy; an application configured with another stage fails on it and needs a scripted answer.
+          default: true
+          output: {objectType: deals, id: "9001", properties: {dealname: Analytical Engines renewal, dealstage: qualifiedtobuy, pipeline: default, hs_object_id: "9001", createdate: "2026-10-01T09:00:00.000Z", hs_lastmodifieddate: "2026-10-25T10:05:00.000Z"}, createdAt: "2026-10-01T09:00:00Z", updatedAt: "2026-10-25T10:05:00Z"}
+        - name: objectMissing
+          branch: notFound
+          description: The requested CRM record was deleted or is unavailable.
+          failure: {kind: NOT_FOUND, message: HubSpot could not find the CRM record.}
+        - name: objectReadRejected
+          branch: providerRejected
+          description: HubSpot denies access to the requested record.
+          failure: {kind: AUTHORIZATION, message: HubSpot rejected the CRM record read.}
     - name: upsertObject
       goName: UpsertObject
       inputType: UpsertObjectInput
@@ -180,6 +219,22 @@ spec:
         - {id: invalidResponse, goName: InvalidResponse, description: HubSpot applied or rejected the upsert but returned an invalid or oversized response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution: *hubspotExecution
+      mocks:
+        - name: upsertedLead
+          branch: upserted
+          description: The lead contact was updated under its unique email.
+          default: true
+          output:
+            object: {objectType: contacts, id: "501", properties: {email: ada@example.com, firstname: Ada, lastname: Lovelace, company: Analytical Engines, hubspot_owner_id: "77", hs_object_id: "501", createdate: "2026-09-15T08:00:00.000Z", lastmodifieddate: "2026-10-25T10:04:00.000Z"}, createdAt: "2026-09-15T08:00:00Z", updatedAt: "2026-10-25T10:04:00Z"}
+            created: false
+        - name: upsertConflict
+          branch: conflict
+          description: Another contact already owns a conflicting unique email.
+          failure: {kind: CONFLICT, message: Another HubSpot contact owns the email.}
+        - name: upsertRejected
+          branch: providerRejected
+          description: HubSpot rejects an invalid contact property.
+          failure: {kind: VALIDATION, message: HubSpot rejected the contact properties.}
     - name: updateObject
       goName: UpdateObject
       inputType: UpdateObjectInput
@@ -195,3 +250,21 @@ spec:
         - {id: invalidResponse, goName: InvalidResponse, description: HubSpot applied or rejected the update but returned an invalid or oversized response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution: *hubspotExecution
+      mocks:
+        - name: advancedDeal
+          branch: updated
+          description: The selected deal now at stage qualifiedtobuy; script another stage when the application configures one.
+          default: true
+          output: {objectType: deals, id: "9001", properties: {dealname: Analytical Engines renewal, dealstage: qualifiedtobuy, pipeline: default, hs_object_id: "9001", createdate: "2026-10-01T09:00:00.000Z", hs_lastmodifieddate: "2026-10-25T10:05:00.000Z"}, createdAt: "2026-10-01T09:00:00Z", updatedAt: "2026-10-25T10:05:00Z"}
+        - name: dealMissing
+          branch: notFound
+          description: The selected deal was removed before its stage update.
+          failure: {kind: NOT_FOUND, message: HubSpot could not find the deal.}
+        - name: dealConflict
+          branch: conflict
+          description: The requested stage conflicts with the deal's state.
+          failure: {kind: CONFLICT, message: HubSpot rejected the conflicting stage update.}
+        - name: updateRejected
+          branch: providerRejected
+          description: HubSpot rejects an invalid deal stage.
+          failure: {kind: VALIDATION, message: HubSpot rejected the deal stage update.}
