@@ -5,7 +5,7 @@ metadata:
   displayName: DocuSign eSignature
   description: "Send DocuSign eSignature envelopes from templates, guarded against duplicates on retry, read envelope and recipient status, void an envelope as compensation, record the signed combined PDF's digest outside Dex payloads, and receive HMAC-verified Connect envelope-completed, envelope-declined, and envelope-voided events."
   company: DocuSign
-  version: v0.22.1
+  version: v0.23.0
 spec:
   provider: docusign
   codegen:
@@ -147,6 +147,16 @@ spec:
         executeMethodTimeout: 60s
         durability: sync
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 65m, reason: {kind: duplicateWriteRisk, explanation: "A repeated envelope POST could create another envelope when custom-field lookup is inconclusive; DocuSign does not enforce the field as a key."}}
+      mocks:
+        - name: meridianAgreementSent
+          branch: created
+          description: "Creating template 8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a for Priya sends the Meridian agreement."
+          default: true
+          output: {envelopeId: 93be49ab-0000-0000-0000-000000000001, status: sent, statusChangedAt: "2026-10-26T12:00:00Z"}
+        - name: unknownTemplate
+          branch: providerRejected
+          description: "Creating from unknown template 8c9f5a8b-1111-2222-3333-4f5e6d7c8b9b receives a conclusive template rejection."
+          failure: {kind: NOT_FOUND, message: "DocuSign found no template with that ID."}
     - name: getEnvelope
       goName: GetEnvelope
       inputType: GetEnvelopeInput
@@ -165,6 +175,20 @@ spec:
         executeMethodTimeout: 30s
         durability: async
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 0, totalDuration: 65m}
+      mocks:
+        - name: completedMeridianAgreement
+          branch: found
+          description: "Reading envelope 93be49ab-0000-0000-0000-000000000001 after Priya signs finds it completed."
+          default: true
+          output: {envelopeId: 93be49ab-0000-0000-0000-000000000001, status: completed, emailSubject: "Meridian Corp: MSA", createdAt: "2026-10-26T12:00:00Z", sentAt: "2026-10-26T12:00:00Z", completedAt: "2026-10-26T12:15:00Z"}
+        - name: unknownEnvelope
+          branch: notFound
+          description: "Reading envelope 93be49ab-0000-0000-0000-000000000404 receives HTTP 404."
+          failure: {kind: NOT_FOUND, message: "DocuSign found no envelope with that ID."}
+        - name: accountAccessDenied
+          branch: providerRejected
+          description: "Reading envelope 93be49ab-0000-0000-0000-000000000403 without account access receives HTTP 403."
+          failure: {kind: AUTHORIZATION, message: "DocuSign denied access to the envelope."}
     - name: listEnvelopeRecipients
       goName: ListEnvelopeRecipients
       inputType: ListEnvelopeRecipientsInput
@@ -183,6 +207,20 @@ spec:
         executeMethodTimeout: 30s
         durability: async
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 0, totalDuration: 65m}
+      mocks:
+        - name: meridianSigner
+          branch: listed
+          description: "Listing recipients of envelope 93be49ab-0000-0000-0000-000000000001 finds Priya's completed signature."
+          default: true
+          output: {envelopeId: 93be49ab-0000-0000-0000-000000000001, currentRoutingOrder: 1, recipients: [{recipientId: "1", type: signer, name: Priya Raman, email: "priya@meridian.example.com", roleName: Customer, routingOrder: 1, status: completed, sentAt: "2026-10-26T12:00:00Z", signedAt: "2026-10-26T12:15:00Z"}]}
+        - name: unknownEnvelope
+          branch: notFound
+          description: "Listing recipients of envelope 93be49ab-0000-0000-0000-000000000404 receives HTTP 404."
+          failure: {kind: NOT_FOUND, message: "DocuSign found no envelope with that ID."}
+        - name: accountAccessDenied
+          branch: providerRejected
+          description: "Listing recipients of envelope 93be49ab-0000-0000-0000-000000000403 without account access receives HTTP 403."
+          failure: {kind: AUTHORIZATION, message: "DocuSign denied access to the recipients."}
     - name: voidEnvelope
       goName: VoidEnvelope
       inputType: VoidEnvelopeInput
@@ -202,6 +240,25 @@ spec:
         executeMethodTimeout: 30s
         durability: async
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 0, totalDuration: 65m}
+      mocks:
+        - name: expiredAgreementVoided
+          branch: voided
+          description: "Voiding expired envelope 93be49ab-0000-0000-0000-000000000002 succeeds."
+          default: true
+          output: {envelopeId: 93be49ab-0000-0000-0000-000000000002}
+        - name: completedAgreementCannotBeVoided
+          branch: notVoidable
+          description: "Voiding completed envelope 93be49ab-0000-0000-0000-000000000001 receives a status refusal and read-back confirms completed."
+          output: {envelopeId: 93be49ab-0000-0000-0000-000000000001, status: completed}
+          failure: {kind: CONFLICT, message: "DocuSign cannot void a completed envelope."}
+        - name: unknownEnvelope
+          branch: notFound
+          description: "Voiding envelope 93be49ab-0000-0000-0000-000000000404 receives HTTP 404."
+          failure: {kind: NOT_FOUND, message: "DocuSign found no envelope with that ID."}
+        - name: senderPermissionDenied
+          branch: providerRejected
+          description: "Voiding envelope 93be49ab-0000-0000-0000-000000000403 without sender permission receives HTTP 403."
+          failure: {kind: AUTHORIZATION, message: "DocuSign denied permission to void the envelope."}
     - name: downloadCombinedDocument
       goName: DownloadCombinedDocument
       inputType: DownloadCombinedDocumentInput
@@ -222,3 +279,21 @@ spec:
         heartbeatTimeout: 30s
         durability: async
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 0, totalDuration: 65m}
+      mocks:
+        - name: signedMeridianPDF
+          branch: downloaded
+          description: "Downloading envelope 93be49ab-0000-0000-0000-000000000001 with its certificate returns the stored signed MSA digest."
+          default: true
+          output: {envelopeId: 93be49ab-0000-0000-0000-000000000001, contentType: application/pdf, byteCount: 54, sha256: "0eafa3ee6557dd3e42fb1ff761e387c0e8dd8bd8475387ccd8d6191948369682", includesCertificate: true, storedLocation: signed-meridian-msa.pdf}
+        - name: unknownEnvelope
+          branch: notFound
+          description: "Downloading envelope 93be49ab-0000-0000-0000-000000000404 receives HTTP 404."
+          failure: {kind: NOT_FOUND, message: "DocuSign found no document for that envelope."}
+        - name: oversizedPDF
+          branch: tooLarge
+          description: "Downloading envelope 93be49ab-0000-0000-0000-000000000413 exceeds maxDocumentBytes and stores nothing."
+          failure: {kind: RESPONSE_TOO_LARGE, message: "DocuSign's combined PDF exceeded the configured limit."}
+        - name: accountAccessDenied
+          branch: providerRejected
+          description: "Downloading envelope 93be49ab-0000-0000-0000-000000000403 without account access receives HTTP 403."
+          failure: {kind: AUTHORIZATION, message: "DocuSign denied access to the document."}

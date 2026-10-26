@@ -279,6 +279,27 @@ No DocuSign account was used. These rely on documentation fetched on
 - Connect retry timing and whether a retried JSON SIM message is byte-identical;
 - the Developer Console and Admin page paths in the setup guidance.
 
+## Mocks
+
+`docusignmock` answers every operation without DocuSign credentials. Its
+defaults share a sent Meridian agreement that is completed when the status
+poll reads it, with a signed PDF digest on download. The void default names a
+separate expired envelope. Script answers for other templates, recipients,
+envelopes, or timing; optional cases cover conclusive provider outcomes.
+The mock connection serves operation Steps, while the existing provider
+integration test covers Connect delivery. See
+[connector mocks](../../sdkgo/README.md#connector-mocks).
+
+The [runnable real-Dex test](examples/envelope-signing/workflow_mock_integration_test.go)
+uses the defaults:
+
+```go
+	mock := docusignmock.New(t, envelopesigning.ConnectionName)
+	harness := startSigningHarnessWithConnection(t, mock.Connection(), envelopesigning.SigningPolicy{
+		StatusPollInterval: time.Second, SigningDeadline: time.Minute, VoidReason: "The signing deadline passed.",
+	})
+```
+
 ## Verification
 
 ```bash

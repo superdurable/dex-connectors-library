@@ -169,6 +169,13 @@ func startSigningHarness(t *testing.T, fake *fakeDocuSign, logs *recordedLogs, d
 	store, err := newDirectoryDocumentStore(documents)
 	require.NoError(t, err)
 	connection := newExampleConnection(t, fake, docusign.WithCombinedDocumentStore(store), docusign.WithLogger(logs.logger()))
+	harness := startSigningHarnessWithConnection(t, connection, policy)
+	harness.endpoint = newConnectEndpoint(t, connection, newEnvelopeEventTarget(harness.client, harness.flow, logs.logger()))
+	return harness
+}
+
+func startSigningHarnessWithConnection(t *testing.T, connection docusign.Connection, policy envelopesigning.SigningPolicy) *signingHarness {
+	t.Helper()
 	flow, err := envelopesigning.NewEnvelopeSigningFlow(connection, policy)
 	require.NoError(t, err)
 	registry, err := dex.NewRegistry([]dex.Flow{flow})
@@ -183,7 +190,6 @@ func startSigningHarness(t *testing.T, fake *fakeDocuSign, logs *recordedLogs, d
 		require.NoError(t, errors.Join(stopWorker(harness.worker), harness.client.Close(), cache.Close()))
 		<-harness.workerResult
 	})
-	harness.endpoint = newConnectEndpoint(t, connection, newEnvelopeEventTarget(harness.client, flow, logs.logger()))
 	return harness
 }
 
