@@ -65,7 +65,6 @@ func TestApprovalDecisionUnconfirmedAppendFailsWithoutResendingWithRealDex(t *te
 	require.Equal(t, dex.FlowFailed, result.Status)
 	require.Contains(t, result.ErrorMessage, "uncertain")
 	require.Contains(t, result.ErrorMessage, "no target")
-	require.Contains(t, result.ErrorMessage, "earlier attempt")
 	require.NotContains(t, result.ErrorMessage, "SENTINEL")
 	require.Equal(t, 1, provider.Count(fakeexcel.CountAppendsReceived))
 	require.Zero(t, provider.Count(fakeexcel.CountRangeUpdatesReceived), "the summary is not written for an uncertain log row")

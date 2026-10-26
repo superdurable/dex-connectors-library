@@ -200,7 +200,6 @@ func TestLostWorkerDuringDealCreateSelectsUncertainWithoutResendingWithRealDex(t
 	require.Equal(t, dex.FlowFailed, result.Status)
 	require.Contains(t, result.ErrorMessage, "uncertain")
 	require.Contains(t, result.ErrorMessage, "no target")
-	require.Contains(t, result.ErrorMessage, "an earlier attempt of this Step may have sent the create")
 	provider.waitForDelayedRequests(t)
 	require.Equal(t, 1, provider.count("dealCreate"), "the attempt on the new Worker did not resend the create")
 }

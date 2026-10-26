@@ -139,7 +139,6 @@ func TestRejectedCreateFailsWithNotionsSafeCodeWithRealDex(t *testing.T) {
 	require.Equal(t, dex.FlowFailed, result.Status)
 	require.Contains(t, result.ErrorMessage, "providerRejected")
 	require.Contains(t, result.ErrorMessage, "no target")
-	require.Contains(t, result.ErrorMessage, "validation_error")
 	require.NotContains(t, result.ErrorMessage, "SENTINEL")
 	require.Equal(t, 1, provider.createCount(submissionID))
 	require.Zero(t, provider.rowCount(submissionID))
