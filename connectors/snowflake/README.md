@@ -26,6 +26,26 @@ The connector uses the SQL API over HTTPS, not the Go driver, because the API's 
 lets a Flow wait durably between short, idempotent requests. Every request goes to
 `https://<accountIdentifier>.snowflakecomputing.com/api/v2/statements`.
 
+## Mocks
+
+`snowflakemock.New` returns a typed connection. The defaults describe the
+account-usage SELECT for `acct_003` since `2026-01-01`: Snowflake accepts it,
+returns one aggregate row, and can accept cancellation while it is running.
+Script other account IDs, dates, or statement handles. Named cases cover SQL
+rejection, a running read, truncation, a failed statement, and an unknown handle.
+
+The [runnable mock integration test](examples/account-usage-summary/flow/workflow_mock_integration_test.go)
+uses the defaults on a real Dex Worker:
+
+```go
+mock := snowflakemock.New(t, ConnectionName)
+harness := newUsageHarnessForConnection(t, mock.Connection(), 5)
+input := Input{AccountID: "acct_003", Since: "2026-01-01"}
+record := harness.runSummary(t, "mock-default", input)
+require.Equal(t, input, record.Request)
+require.Equal(t, PhaseCompleted, record.Phase)
+```
+
 ## Connection setup
 
 Dex Web **Connections** shows these fields. Each description in `connector.yaml` names the

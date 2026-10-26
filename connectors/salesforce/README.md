@@ -23,6 +23,40 @@ authorized user. The connector never deletes records. This release has no
 Triggers: Change Data Capture and Platform Events need a streaming
 subscription design that is still open.
 
+## Mocks
+
+`salesforcemock.New` returns a typed connection. The write and read defaults describe Contact `003RM000001AbcdYAC`: an
+update links external ID `ERP-88213` and title `CTO`, an upsert updates the
+same Contact, and a read returns those fields. The query default models a
+broad Contact query without LIMIT: 401 distinct records over three pages at
+the default 200-record batch size, with full `nextRecordsUrl` cursors. The
+example scripts its `LIMIT 5` email lookup as one matching Contact. Script
+different contacts or values. Named cases cover missing records, invalid SOQL,
+duplicate external IDs, rejected fields, and denied access.
+
+The [runnable mock integration test](examples/record-sync/flow/workflow_mock_integration_test.go)
+scripts the one-page lookup and uses the other defaults on a real Dex Worker:
+
+```go
+mock := salesforcemock.New(t, ConnectionName)
+mock.QueryRecords().Respond(salesforcemock.QueryRecordsFound(salesforce.QueryRecordsOutput{
+	Records: []salesforce.Record{{
+		Type: "Contact", ID: "003RM000001AbcdYAC",
+		Fields: map[string]json.RawMessage{
+			"Id": json.RawMessage(`"003RM000001AbcdYAC"`), "ERP_Id__c": json.RawMessage(`null`),
+		},
+	}},
+	TotalSize: 1, IsDone: true,
+}, nil))
+flow, harness := newSalesforceIntegrationHarnessForConnection(t, mock.Connection())
+harness.startWorker(t)
+ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+defer cancel()
+input := Input{MatchValue: "priya@meridian.example.com", ExternalID: "ERP-88213", Fields: map[string]string{"Title": "CTO"}}
+run := runRecordSync(t, ctx, harness.client, flow, fmt.Sprintf("salesforce-mock-%d", time.Now().UnixNano()), input)
+require.Equal(t, dex.FlowCompleted, run.status, run.errorMessage)
+```
+
 ## Authorization
 
 A connection selects one method:

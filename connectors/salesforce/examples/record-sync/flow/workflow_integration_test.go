@@ -415,6 +415,11 @@ func newSalesforceIntegrationHarness(t *testing.T, instanceURL string) (*Flow, *
 	require.NoError(t, err)
 	connection, err := salesforce.NewConnection(providerClient, reference)
 	require.NoError(t, err)
+	return newSalesforceIntegrationHarnessForConnection(t, connection)
+}
+
+func newSalesforceIntegrationHarnessForConnection(t *testing.T, connection salesforce.Connection) (*Flow, *salesforceIntegrationHarness) {
+	t.Helper()
 	flow := NewFlow(connection, sdkgo.ConnectorLoadedConfiguration[SyncConfiguration]{
 		Reference: SyncConfigurationRef(), Value: SyncConfiguration{ExternalIDField: externalIDField},
 	})

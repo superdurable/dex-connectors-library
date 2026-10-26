@@ -31,6 +31,31 @@ which this release does not offer: XOAUTH2 and OAUTHBEARER are out of scope.
 This release has no Triggers and no Studio pickers; see
 [Not in this release](#not-in-this-release).
 
+## Mocks
+
+`emailmock.New` returns a typed connection. The defaults describe one mailbox:
+Jane's refund request at INBOX UID 100 is read, answered, marked seen and
+answered, then moved to Archive. The search has three newest-first pages and
+a newer lookalike sender, which the example must skip. The send default
+describes a separate new-message path to Jane. Script other mailboxes,
+customers, or message contents. Named cases cover missing messages, rejected
+logins or recipients, a missing reply address, and refused archive or flag
+changes. SMTP uncertainty remains a branch without a mock answer.
+
+The [runnable mock integration test](examples/customer-reply/flow/workflow_mock_integration_test.go)
+uses the defaults on a real Dex Worker:
+
+```go
+mock := emailmock.New(t, ConnectionName)
+harness := newReplyHarnessForConnection(t, mock.Connection())
+input := Input{
+	CustomerEmail:     "jane@acme.example.com",
+	ReplyText:         "Hi Jane,\n\nThe duplicate charge on order 88213 was refunded.",
+	NewMessageSubject: "Your refund for order 88213", ArchiveMailbox: "Archive",
+}
+outcome := harness.runReply(t, "mock-default", input)
+```
+
 ## Connection setup
 
 A connection is one mailbox. Dex Web **Connections** shows these fields, and

@@ -5,7 +5,7 @@ metadata:
   displayName: Email (IMAP and SMTP)
   description: Search, read, flag, and move messages in any IMAP mailbox and send new messages or threaded replies over SMTP, for mail providers other than Gmail and Microsoft 365.
   company: Super Durable
-  version: v0.21.2
+  version: v0.22.0
 spec:
   provider: email
   codegen:
@@ -107,6 +107,55 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      pagination: {inputField: olderThanUid, nextField: nextOlderThanUid}
+      mocks:
+        - name: customerInboxPages
+          branch: searched
+          description: "Searching INBOX for jane@acme.example.com yields three newest-first pages with a lookalike sender before Jane's refund request."
+          default: true
+          pages:
+            - mailbox: INBOX
+              uidValidity: 42
+              messages:
+                - {reference: {mailbox: INBOX, uidValidity: 42, uid: 109}, messageId: lookalike-109@acme.example.com.au, from: {name: Jane Lookalike, address: jane@acme.example.com.au}, subject: Refund request, receivedAt: "2026-01-28T10:00:00Z", sizeBytes: 245}
+                - {reference: {mailbox: INBOX, uidValidity: 42, uid: 108}, messageId: lookalike-108@acme.example.com.au, from: {name: Jane Lookalike, address: jane@acme.example.com.au}, subject: Refund request, receivedAt: "2026-01-28T10:00:00Z", sizeBytes: 245}
+                - {reference: {mailbox: INBOX, uidValidity: 42, uid: 107}, messageId: lookalike-107@acme.example.com.au, from: {name: Jane Lookalike, address: jane@acme.example.com.au}, subject: Refund request, receivedAt: "2026-01-28T10:00:00Z", sizeBytes: 245}
+                - {reference: {mailbox: INBOX, uidValidity: 42, uid: 106}, messageId: lookalike-106@acme.example.com.au, from: {name: Jane Lookalike, address: jane@acme.example.com.au}, subject: Refund request, receivedAt: "2026-01-28T10:00:00Z", sizeBytes: 245}
+                - {reference: {mailbox: INBOX, uidValidity: 42, uid: 105}, messageId: lookalike-105@acme.example.com.au, from: {name: Jane Lookalike, address: jane@acme.example.com.au}, subject: Refund request, receivedAt: "2026-01-28T10:00:00Z", sizeBytes: 245}
+                - {reference: {mailbox: INBOX, uidValidity: 42, uid: 104}, messageId: lookalike-104@acme.example.com.au, from: {name: Jane Lookalike, address: jane@acme.example.com.au}, subject: Refund request, receivedAt: "2026-01-28T10:00:00Z", sizeBytes: 245}
+                - {reference: {mailbox: INBOX, uidValidity: 42, uid: 103}, messageId: lookalike-103@acme.example.com.au, from: {name: Jane Lookalike, address: jane@acme.example.com.au}, subject: Refund request, receivedAt: "2026-01-28T10:00:00Z", sizeBytes: 245}
+                - {reference: {mailbox: INBOX, uidValidity: 42, uid: 102}, messageId: lookalike-102@acme.example.com.au, from: {name: Jane Lookalike, address: jane@acme.example.com.au}, subject: Refund request, receivedAt: "2026-01-28T10:00:00Z", sizeBytes: 245}
+                - {reference: {mailbox: INBOX, uidValidity: 42, uid: 101}, messageId: lookalike-101@acme.example.com.au, from: {name: Jane Lookalike, address: jane@acme.example.com.au}, subject: Refund request, receivedAt: "2026-01-28T10:00:00Z", sizeBytes: 245}
+                - {reference: {mailbox: INBOX, uidValidity: 42, uid: 100}, messageId: latest@acme.example.com, from: {name: Jane Smith, address: jane@acme.example.com}, replyTo: [{name: Jane Smith, address: jane@acme.example.com}], subject: Refund request for order 88213, receivedAt: "2026-01-28T09:00:00Z", sizeBytes: 380}
+              totalMatched: 21
+              hasMore: true
+              nextOlderThanUid: 100
+            - mailbox: INBOX
+              uidValidity: 42
+              messages:
+                - {reference: {mailbox: INBOX, uidValidity: 42, uid: 99}, messageId: lookalike-99@acme.example.com.au, from: {name: Jane Lookalike, address: jane@acme.example.com.au}, subject: Refund request, receivedAt: "2026-01-28T08:00:00Z", sizeBytes: 245}
+                - {reference: {mailbox: INBOX, uidValidity: 42, uid: 98}, messageId: lookalike-98@acme.example.com.au, from: {name: Jane Lookalike, address: jane@acme.example.com.au}, subject: Refund request, receivedAt: "2026-01-28T08:00:00Z", sizeBytes: 245}
+                - {reference: {mailbox: INBOX, uidValidity: 42, uid: 97}, messageId: lookalike-97@acme.example.com.au, from: {name: Jane Lookalike, address: jane@acme.example.com.au}, subject: Refund request, receivedAt: "2026-01-28T08:00:00Z", sizeBytes: 245}
+                - {reference: {mailbox: INBOX, uidValidity: 42, uid: 96}, messageId: lookalike-96@acme.example.com.au, from: {name: Jane Lookalike, address: jane@acme.example.com.au}, subject: Refund request, receivedAt: "2026-01-28T08:00:00Z", sizeBytes: 245}
+                - {reference: {mailbox: INBOX, uidValidity: 42, uid: 95}, messageId: lookalike-95@acme.example.com.au, from: {name: Jane Lookalike, address: jane@acme.example.com.au}, subject: Refund request, receivedAt: "2026-01-28T08:00:00Z", sizeBytes: 245}
+                - {reference: {mailbox: INBOX, uidValidity: 42, uid: 94}, messageId: lookalike-94@acme.example.com.au, from: {name: Jane Lookalike, address: jane@acme.example.com.au}, subject: Refund request, receivedAt: "2026-01-28T08:00:00Z", sizeBytes: 245}
+                - {reference: {mailbox: INBOX, uidValidity: 42, uid: 93}, messageId: lookalike-93@acme.example.com.au, from: {name: Jane Lookalike, address: jane@acme.example.com.au}, subject: Refund request, receivedAt: "2026-01-28T08:00:00Z", sizeBytes: 245}
+                - {reference: {mailbox: INBOX, uidValidity: 42, uid: 92}, messageId: lookalike-92@acme.example.com.au, from: {name: Jane Lookalike, address: jane@acme.example.com.au}, subject: Refund request, receivedAt: "2026-01-28T08:00:00Z", sizeBytes: 245}
+                - {reference: {mailbox: INBOX, uidValidity: 42, uid: 91}, messageId: lookalike-91@acme.example.com.au, from: {name: Jane Lookalike, address: jane@acme.example.com.au}, subject: Refund request, receivedAt: "2026-01-28T08:00:00Z", sizeBytes: 245}
+                - {reference: {mailbox: INBOX, uidValidity: 42, uid: 90}, messageId: lookalike-90@acme.example.com.au, from: {name: Jane Lookalike, address: jane@acme.example.com.au}, subject: Refund request, receivedAt: "2026-01-28T08:00:00Z", sizeBytes: 245}
+              totalMatched: 11
+              hasMore: true
+              nextOlderThanUid: 90
+            - mailbox: INBOX
+              uidValidity: 42
+              messages:
+                - {reference: {mailbox: INBOX, uidValidity: 42, uid: 89}, messageId: lookalike-89@acme.example.com.au, from: {name: Jane Lookalike, address: jane@acme.example.com.au}, subject: Refund request, receivedAt: "2026-01-28T08:00:00Z", sizeBytes: 245}
+              totalMatched: 1
+              hasMore: false
+        - name: rejectedIMAPLogin
+          branch: providerRejected
+          description: "Searching INBOX with a wrong app password receives an IMAP authentication rejection."
+          failure: {kind: AUTHENTICATION, message: "The IMAP login was refused."}
     - name: getMessage
       goName: GetMessage
       inputType: GetMessageInput
@@ -123,6 +172,30 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: customerRefundRequest
+          branch: found
+          description: "Reading INBOX UID 100 returns Jane's refund request and plain-text body without marking it seen."
+          default: true
+          output:
+            reference: {mailbox: INBOX, uidValidity: 42, uid: 100}
+            messageId: latest@acme.example.com
+            from: {name: Jane Smith, address: jane@acme.example.com}
+            replyTo: [{name: Jane Smith, address: jane@acme.example.com}]
+            subject: Refund request for order 88213
+            receivedAt: "2026-01-28T09:00:00Z"
+            sizeBytes: 380
+            references: [older@acme.example.com]
+            text: I was charged twice for order 88213.
+            textSource: plain
+        - name: missingUID
+          branch: notFound
+          description: "Reading an INBOX UID removed by another mail client selects notFound."
+          failure: {kind: NOT_FOUND, message: "The message UID no longer exists."}
+        - name: rejectedReadLogin
+          branch: providerRejected
+          description: "Reading INBOX UID 100 with a wrong app password receives an IMAP login rejection."
+          failure: {kind: AUTHENTICATION, message: "The IMAP login was refused."}
     - name: sendMessage
       goName: SendMessage
       inputType: SendMessageInput
@@ -140,6 +213,16 @@ spec:
         heartbeatTimeout: 150s
         durability: sync
         retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 10m, reason: {kind: duplicateWriteRisk, explanation: "A repeated SMTP submission could send the email twice because Message-ID is not a server deduplication key and no sent-mail read-back exists."}}
+      mocks:
+        - name: newCustomerMessage
+          branch: sent
+          description: "A new message to jane@acme.example.com about order 88213 is accepted by SMTP."
+          default: true
+          output: {messageId: dex-new-message@example.com, from: support@example.com, recipients: [jane@acme.example.com], subject: Your refund for order 88213, sentAt: "2026-01-28T10:05:00Z"}
+        - name: recipientRejected
+          branch: providerRejected
+          description: "SMTP refuses a new message to a blocked recipient before accepting the message."
+          failure: {kind: PROVIDER_REJECTION, message: "SMTP refused the recipient; nothing was sent."}
     - name: replyToMessage
       goName: ReplyToMessage
       inputType: ReplyToMessageInput
@@ -159,6 +242,24 @@ spec:
         heartbeatTimeout: 150s
         durability: sync
         retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 10m, reason: {kind: duplicateWriteRisk, explanation: "A repeated SMTP submission could send the reply twice because Message-ID is not a server deduplication key and no sent-mail read-back exists."}}
+      mocks:
+        - name: threadedRefundReply
+          branch: sent
+          description: "Replying to INBOX UID 100 sends one threaded refund answer to Jane."
+          default: true
+          output: {messageId: dex-refund-reply@example.com, from: support@example.com, recipients: [jane@acme.example.com], subject: "Re: Refund request for order 88213", inReplyTo: latest@acme.example.com, references: [older@acme.example.com, latest@acme.example.com], sentAt: "2026-01-28T10:05:00Z"}
+        - name: missingSourceMessage
+          branch: notFound
+          description: "Replying to a source UID deleted from INBOX selects notFound before SMTP."
+          failure: {kind: NOT_FOUND, message: "The source message no longer exists."}
+        - name: rejectedReplyRecipient
+          branch: providerRejected
+          description: "SMTP refuses the reply to a blocked address before accepting it."
+          failure: {kind: PROVIDER_REJECTION, message: "SMTP refused the reply recipient; nothing was sent."}
+        - name: missingReplyAddress
+          branch: invalidResponse
+          description: "Replying to a source message with no usable From or Reply-To address sends nothing."
+          failure: {kind: PROTOCOL, message: "The source message has no usable reply address."}
     - name: moveMessage
       goName: MoveMessage
       inputType: MoveMessageInput
@@ -174,6 +275,20 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: archivedCustomerRequest
+          branch: moved
+          description: "Moving answered INBOX UID 100 to Archive returns its destination UID."
+          default: true
+          output: {destination: {mailbox: Archive, uidValidity: 43, uid: 50}}
+        - name: missingSourceAndArchive
+          branch: notFound
+          description: "Moving a missing INBOX UID with no matching Message-ID in Archive selects notFound."
+          failure: {kind: NOT_FOUND, message: "The message is in neither mailbox."}
+        - name: archiveUnavailable
+          branch: providerRejected
+          description: "Moving INBOX UID 100 to a nonexistent Archive mailbox receives IMAP NO [TRYCREATE]."
+          failure: {kind: NOT_FOUND, message: "The destination mailbox does not exist."}
     - name: setFlags
       goName: SetFlags
       inputType: SetFlagsInput
@@ -189,3 +304,17 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: markedCustomerRequest
+          branch: updated
+          description: "Setting INBOX UID 100 seen and answered returns those absolute flags."
+          default: true
+          output: {message: {mailbox: INBOX, uidValidity: 42, uid: 100}, isSeen: true, isFlagged: false, isAnswered: true}
+        - name: missingFlagTarget
+          branch: notFound
+          description: "Setting flags on an INBOX UID deleted by another mail client selects notFound."
+          failure: {kind: NOT_FOUND, message: "The message UID no longer exists."}
+        - name: readOnlyMailbox
+          branch: providerRejected
+          description: "Setting flags in a read-only INBOX is refused by IMAP."
+          failure: {kind: PROVIDER_REJECTION, message: "The mailbox is read-only."}

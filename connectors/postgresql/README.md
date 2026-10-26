@@ -19,6 +19,26 @@ and closes the connection. The connector keeps no pool, so a rotated password
 takes effect on the next Step. It supports PostgreSQL 12 and later and was
 verified against PostgreSQL 17.
 
+## Mocks
+
+`postgresqlmock.New` returns a typed connection. Its query default models no
+existing refund for `order-88213`; its execute default records that order's
+`250.00` refund with reference `SUP-88213`. Script other orders or statements.
+Named cases cover truncation, a missing table, a write limit, and a duplicate
+order. See [`sdkgo/connectormock`](../../sdkgo/README.md#connector-mocks).
+
+The [runnable mock integration test](examples/record-refund/flow/workflow_mock_integration_test.go)
+uses these defaults on a real Dex Worker:
+
+```go
+mock := postgresqlmock.New(t, ConnectionName)
+harness := startTestWorkerForConnection(t, mock.Connection())
+input := Input{OrderID: "order-88213", AmountUSD: "250.00", ExternalReference: "SUP-88213"}
+flowID, result := harness.runRefundFlow(t, input)
+outcome := harness.requireRecordedOutcome(t, flowID, result)
+require.Equal(t, StatusRecorded, outcome.Status)
+```
+
 ## Connection setup
 
 Dex Web **Connections** shows these fields. Every field description in

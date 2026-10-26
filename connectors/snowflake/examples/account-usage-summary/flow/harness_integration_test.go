@@ -55,8 +55,14 @@ func newUsageHarness(t *testing.T, provider *fakesnowflake.Server, maximumRunnin
 	require.NoError(t, err)
 	connection, err := snowflake.NewConnection(providerClient, reference)
 	require.NoError(t, err)
+	return newUsageHarnessForConnection(t, connection, maximumRunningReads)
+}
+
+func newUsageHarnessForConnection(t *testing.T, connection snowflake.Connection, maximumRunningReads int) *usageHarness {
+	t.Helper()
 	policy := StatusPolicy{CheckInterval: time.Second, MaximumRunningReads: maximumRunningReads}
 	harness := &usageHarness{flow: NewFlow(connection, &policy), serverAddress: environmentOr("DEX_FLOW_SERVICE_ADDRESS", "127.0.0.1:8801")}
+	var err error
 	harness.registry, err = dex.NewRegistry([]dex.Flow{harness.flow})
 	require.NoError(t, err)
 	harness.cache, err = blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})

@@ -5,7 +5,7 @@ metadata:
   displayName: PostgreSQL
   description: Run one parameterized read-only query, or one transactional write statement, against a PostgreSQL database.
   company: PostgreSQL
-  version: v0.21.2
+  version: v0.22.0
 spec:
   provider: postgresql
   codegen:
@@ -98,6 +98,22 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: noRecordedRefund
+          branch: completed
+          description: "The order-88213 refund lookup finds no ledger row, allowing the example to insert it."
+          default: true
+          output: {columns: [{name: refund_id, typeName: int8, typeOid: 20}, {name: order_id, typeName: text, typeOid: 25}, {name: amount_usd, typeName: numeric, typeOid: 1700}, {name: external_reference, typeName: text, typeOid: 25}, {name: idempotency_key, typeName: uuid, typeOid: 2950}, {name: recorded_at, typeName: timestamptz, typeOid: 1184}], rows: []}
+        - name: truncatedLookup
+          branch: truncated
+          description: "The six-column refund lookup exceeds maxRows and returns only the first row."
+          output: {columns: [{name: refund_id, typeName: int8, typeOid: 20}, {name: order_id, typeName: text, typeOid: 25}, {name: amount_usd, typeName: numeric, typeOid: 1700}, {name: external_reference, typeName: text, typeOid: 25}, {name: idempotency_key, typeName: uuid, typeOid: 2950}, {name: recorded_at, typeName: timestamptz, typeOid: 1184}], rows: [{refund_id: "1", order_id: order-88213, amount_usd: "250.00", external_reference: SUP-88213, idempotency_key: 00000000-0000-4000-8000-000000000001, recorded_at: "2026-10-26T12:00:00Z"}], truncated: true}
+          failure: {kind: RESPONSE_TOO_LARGE, message: "The query exceeded maxRows."}
+        - name: missingLedgerTable
+          branch: providerRejected
+          description: "A refund lookup against a missing refund_ledger table receives SQLSTATE 42P01."
+          output: {columns: [], rows: []}
+          failure: {kind: NOT_FOUND, message: "PostgreSQL could not find refund_ledger."}
     - name: execute
       goName: ExecuteStatement
       inputType: ExecuteStatementInput
@@ -115,3 +131,23 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: recordedRefund
+          branch: completed
+          description: "The idempotent INSERT for order-88213 commits one $250.00 refund with ticket SUP-88213."
+          default: true
+          output:
+            command: INSERT
+            rowsAffected: 1
+            columns: [{name: refund_id, typeName: int8, typeOid: 20}, {name: order_id, typeName: text, typeOid: 25}, {name: amount_usd, typeName: numeric, typeOid: 1700}, {name: external_reference, typeName: text, typeOid: 25}, {name: idempotency_key, typeName: uuid, typeOid: 2950}, {name: recorded_at, typeName: timestamptz, typeOid: 1184}]
+            rows: [{refund_id: "1", order_id: order-88213, amount_usd: "250.00", external_reference: SUP-88213, idempotency_key: 00000000-0000-4000-8000-000000000001, recorded_at: "2026-10-26T12:00:00Z"}]
+        - name: affectedRowLimit
+          branch: limitExceeded
+          description: "An UPDATE affecting two rows with maxRowsAffected 1 rolls back."
+          output: {columns: [], rows: []}
+          failure: {kind: CONFLICT, message: "The write exceeded maxRowsAffected and rolled back."}
+        - name: duplicateOrder
+          branch: providerRejected
+          description: "An INSERT for an already refunded order receives SQLSTATE 23505 before commit."
+          output: {columns: [], rows: []}
+          failure: {kind: CONFLICT, message: "PostgreSQL rejected the duplicate order."}

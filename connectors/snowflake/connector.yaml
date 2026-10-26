@@ -5,7 +5,7 @@ metadata:
   displayName: Snowflake
   description: Submit one parameterized SQL statement to a Snowflake warehouse through the SQL API, read its status and result partitions, and cancel it.
   company: Snowflake
-  version: v0.21.2
+  version: v0.22.0
 spec:
   provider: snowflake
   codegen:
@@ -118,6 +118,16 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: acceptedAccountUsageQuery
+          branch: submitted
+          description: "The account-usage SELECT for acct_003 since 2026-01-01 is accepted and assigned one handle."
+          default: true
+          output: {statementHandle: 00000000-0000-4000-8000-000000000003, submittedAt: "2026-10-26T09:00:00Z"}
+        - name: invalidSQL
+          branch: providerRejected
+          description: "A SELECT with an unknown column receives a Snowflake SQL compilation error."
+          failure: {kind: VALIDATION, message: "Snowflake rejected the statement at compilation."}
     - name: getStatementResult
       goName: GetStatementResult
       inputType: GetStatementResultInput
@@ -135,6 +145,32 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: completedAccountUsageQuery
+          branch: completed
+          description: "Reading partition zero of the acct_003 usage query returns one aggregate row."
+          default: true
+          output:
+            statementHandle: 00000000-0000-4000-8000-000000000003
+            columns: [{name: EVENT_COUNT, type: fixed, precision: 18}, {name: CREDITS_USED, type: fixed, precision: 38, scale: 4}, {name: LAST_EVENT_AT, type: timestamp_ntz, scale: 9, nullable: true}]
+            rows: [{EVENT_COUNT: "128", CREDITS_USED: "42.5000", LAST_EVENT_AT: "2026-01-01T00:00:00.5"}]
+            partition: 0
+            partitionCount: 1
+            totalRowCount: 1
+        - name: queryStillRunning
+          branch: running
+          description: "A status read of the submitted account-usage query receives HTTP 202 while it runs."
+          output: {statementHandle: 00000000-0000-4000-8000-000000000003, columns: [], rows: [], partition: 0}
+        - name: oversizedPartition
+          branch: truncated
+          description: "A result partition exceeding maxRows returns only its first row."
+          output: {statementHandle: 00000000-0000-4000-8000-000000000003, columns: [{name: EVENT_COUNT, type: fixed, precision: 18}], rows: [{EVENT_COUNT: "128"}], partition: 0, partitionCount: 1, totalRowCount: 2, truncated: true}
+          failure: {kind: RESPONSE_TOO_LARGE, message: "The result partition exceeded maxRows."}
+        - name: failedStatement
+          branch: providerRejected
+          description: "Reading a statement that failed with SQLSTATE 22018 selects providerRejected."
+          output: {statementHandle: 00000000-0000-4000-8000-000000000003, columns: [], rows: [], partition: 0}
+          failure: {kind: VALIDATION, message: "Snowflake could not convert the statement value."}
     - name: cancelStatement
       goName: CancelStatement
       inputType: CancelStatementInput
@@ -149,3 +185,13 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: canceledAccountUsageQuery
+          branch: canceled
+          description: "Canceling the still-running acct_003 usage query accepts its statement handle."
+          default: true
+          output: {statementHandle: 00000000-0000-4000-8000-000000000003}
+        - name: unknownStatementHandle
+          branch: providerRejected
+          description: "Canceling an unknown UUID-shaped statement handle receives Snowflake code 000709."
+          failure: {kind: NOT_FOUND, message: "Snowflake could not find the statement."}
