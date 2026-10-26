@@ -39,6 +39,11 @@ func startTestWorker(t *testing.T, config mysql.Config, password string) *testWo
 	require.NoError(t, err)
 	connection, err := mysql.NewConnection(client, sdkgo.ConnectionRef{Provider: "mysql", Name: ConnectionName})
 	require.NoError(t, err)
+	return startTestWorkerWithConnection(t, connection)
+}
+
+func startTestWorkerWithConnection(t *testing.T, connection mysql.Connection) *testWorker {
+	t.Helper()
 	flow := NewFlow(connection)
 	registry, err := dex.NewRegistry([]dex.Flow{flow})
 	require.NoError(t, err)

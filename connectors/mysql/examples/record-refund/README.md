@@ -65,7 +65,7 @@ repository root:
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/mysql/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/mysql \
-  --version v0.21.2 --tag connectors/mysql/v0.21.2 \
+  --version v0.22.0 --tag connectors/mysql/v0.22.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/mysql-refund/release/connector-release.json \
   --digest-output /tmp/mysql-refund/release/connector-release.json.sha256

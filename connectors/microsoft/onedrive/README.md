@@ -335,3 +335,14 @@ about nine seconds):
 ```bash
 GOWORK=off go test -tags=integration ./... -count=1 -v
 ```
+
+## Mocks
+
+`onedrivemock` describes one copy of `Ops Policy.txt`: the source lookup and text, the ensured destination folder, the uploaded copy, and its metadata read-back. Named mocks cover missing items, unsupported or oversized text, conflicts, quota exhaustion, and permission denials. The [text copy example](examples/text-copy/flow/workflow_mock_integration_test.go) checks all five operations through a real Dex Worker.
+
+```go
+mock := onedrivemock.New(t, ConnectionName)
+harness := newTextCopyHarnessWithConnection(t, mock.Connection(), "source-folder", "destination-folder")
+```
+
+Install this release with `go get github.com/superdurable/dex-connectors-library/connectors/microsoft/onedrive@v0.23.0`.

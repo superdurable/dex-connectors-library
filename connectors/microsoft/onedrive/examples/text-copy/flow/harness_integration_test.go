@@ -77,9 +77,14 @@ func newTextCopyHarness(t *testing.T, fixture *graphFixture) *textCopyHarness {
 	require.NoError(t, err)
 	connection, err := onedrive.NewConnection(providerClient, reference)
 	require.NoError(t, err)
+	return newTextCopyHarnessWithConnection(t, connection, fixture.policiesFolderID, fixture.reportsFolderID)
+}
+
+func newTextCopyHarnessWithConnection(t *testing.T, connection onedrive.Connection, sourceFolderID, destinationFolderID string) *textCopyHarness {
+	t.Helper()
 	flow := NewFlow(connection,
-		sdkgo.ConnectorLoadedConfiguration[LocationConfiguration]{Reference: SourceLocationConfigurationRef(), Value: LocationConfiguration{DriveID: sourceDriveID, FolderID: fixture.policiesFolderID}},
-		sdkgo.ConnectorLoadedConfiguration[LocationConfiguration]{Reference: DestinationLocationConfigurationRef(), Value: LocationConfiguration{DriveID: destinationDrive, FolderID: fixture.reportsFolderID}},
+		sdkgo.ConnectorLoadedConfiguration[LocationConfiguration]{Reference: SourceLocationConfigurationRef(), Value: LocationConfiguration{DriveID: sourceDriveID, FolderID: sourceFolderID}},
+		sdkgo.ConnectorLoadedConfiguration[LocationConfiguration]{Reference: DestinationLocationConfigurationRef(), Value: LocationConfiguration{DriveID: destinationDrive, FolderID: destinationFolderID}},
 	)
 	registry, err := dex.NewRegistry([]dex.Flow{flow})
 	require.NoError(t, err)

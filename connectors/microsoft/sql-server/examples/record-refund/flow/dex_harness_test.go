@@ -39,6 +39,11 @@ func startTestWorker(t *testing.T, config sqlserver.Config, password string) *te
 	require.NoError(t, err)
 	connection, err := sqlserver.NewConnection(client, sdkgo.ConnectionRef{Provider: "microsoft-sql-server", Name: ConnectionName})
 	require.NoError(t, err)
+	return startTestWorkerWithConnection(t, connection)
+}
+
+func startTestWorkerWithConnection(t *testing.T, connection sqlserver.Connection) *testWorker {
+	t.Helper()
 	flow := NewFlow(connection)
 	registry, err := dex.NewRegistry([]dex.Flow{flow})
 	require.NoError(t, err)
