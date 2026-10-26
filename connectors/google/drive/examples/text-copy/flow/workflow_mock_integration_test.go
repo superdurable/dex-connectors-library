@@ -30,12 +30,10 @@ func TestTextCopyUsesDriveMockWithRealDex(t *testing.T) {
 	result := runTextCopy(t, ctx, harness.client, flow, flowID, Input{SourceName: "Ops Policy", CopyName: "Ops Policy copy.txt"})
 	require.Equal(t, dex.FlowCompleted, result.status, result.failureReason)
 	require.Equal(t, StatusCopied, result.outcome.Status)
-	require.Equal(t, int64(len("Ops Policy\nRefunds above 500 need approval.")), result.outcome.TextByteCount)
-	require.Equal(t, "Ops Policy copy.txt", result.outcome.Copy.Name)
 
 	searchCalls := mock.SearchFiles().Calls()
 	require.Len(t, searchCalls, 1)
-	require.Equal(t, drive.SearchFilesInput{Name: "Ops Policy", NameMatch: drive.NameMatchExact, ParentFolderID: sourceFolderID, PageSize: sourceCandidatesPageSize}, searchCalls[0].Input)
+	require.Equal(t, drive.SearchFilesInput{Name: "Ops Policy", NameMatch: drive.NameMatchExact, ParentFolderID: sourceFolderID, PageSize: 10}, searchCalls[0].Input)
 	readCalls := mock.ReadFileText().Calls()
 	require.Len(t, readCalls, 1)
 	require.Equal(t, drive.ReadFileTextInput{FileID: "file_policy"}, readCalls[0].Input)

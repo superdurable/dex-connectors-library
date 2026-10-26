@@ -58,11 +58,12 @@ expire, so a token without a recorded expiry is refreshed
 (`RefreshWhenExpiryMissing`). `invalid_grant`, `invalid_client`,
 `unauthorized_client`, missing refresh material, an invalid service-account
 key or delegated user, and a returned scope list without both Drive scopes
-require reauthorization. A Google 5xx is always retryable. If Google omits a new
-refresh token, the prior value is kept. After a 401 the connector asks once for
-a refresh, which the project connection performs only when the stored expiry
-has passed, and then resends once; otherwise the 401 selects
-`providerRejected`. There is never a refresh loop.
+require reauthorization. A Google 5xx on a read is retryable; an ambiguous
+upload 5xx requires read-back. If Google omits a new refresh token, the prior
+value is kept. After a read 401 the connector asks once for a refresh and
+resends once. After an upload 401, it forces a refresh and retries the Step on
+the next attempt; if refresh cannot help, the 401 selects `providerRejected`.
+There is never a refresh loop.
 
 The driver never owns persistence. The project connection that
 `NewProjectConnection` opens admits one refresh per credential generation
@@ -154,22 +155,25 @@ does not document an idempotency key. `uploadFile` records the SDK's stable
 Call ID as a private app property, `dexIdempotencyKey`, and uses the shared
 single-dispatch fence. Each attempt reads the prior heartbeat checkpoint before
 credentials or provider lookups. Sync Execute durability makes the checkpoint
-visible to later attempts. The operation:
+visible to later attempts. Applications must not override `uploadFile` Execute
+durability to async. The operation:
 
-1. [searches by the private app property](https://developers.google.com/workspace/drive/api/guides/search-files)
+1. reads a checkpointed provider file ID directly when present, or
+   [searches by the private app property](https://developers.google.com/workspace/drive/api/guides/search-files)
    for a file from an earlier attempt or an ambiguous accepted upload;
 2. sends a multipart upload only when the fence permits a send and the lookup
    finds no file;
 3. reads back an ambiguous sent upload before selecting `uncertain`.
 
 An accepted 2xx response with a valid file ID completes and checkpoints that
-ID. An unusable 2xx body, dropped response, 500, 502, 504, or 409 triggers
+ID. An unusable 2xx body, dropped response, other 5xx, or 409 triggers
 read-back. A confirmed file completes without resending. A transient read-back
 failure retries the Step; a conclusive read-back that cannot confirm the
 upload selects `uncertain`. A 429, 503, or documented 403 rate-limit response
 records a resend checkpoint and retries with the same key. The next attempt
 looks up the key before sending. A missing or stale checkpoint never permits a
-resend. Requests end within the observed Step deadline. These response
+resend. Read requests reserve up to one second before the observed Step
+deadline; the fenced upload uses its shorter write window. These response
 classifications follow Google's [Drive error guidance](https://developers.google.com/workspace/drive/api/guides/handle-errors);
 the exact write-acceptance timing of a 503 remains unverified against a live
 Drive account.
@@ -228,7 +232,8 @@ hour. Error responses are read with their own 64 KiB bound and classified by
 status, so a small `maxTextBytes` never turns a 404 or 503 into `tooLarge`.
 Failures carry only a safe message and kind, never provider error text, file
 content, or credentials. A credential that cannot be resolved or refreshed
-selects `defect`, as in the other Google connectors. Only each operation's
+selects `defect` on reads; `uploadFile` records a not-sent checkpoint and
+retries credential resolution. Only each operation's
 happy-path branch is required; every other branch is optional and fails the
 Flow when unwired.
 
