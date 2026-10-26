@@ -109,6 +109,19 @@ func TestSlowTriageCommentIsSentOnceWithRealDex(t *testing.T) {
 	require.Len(t, provider.conversation(scenario.triagedID).comments, 1)
 }
 
+func TestTriageCommentRetries503OnceWithRealDex(t *testing.T) {
+	provider := newFakeFront(t)
+	scenario := seedTriageScenario(provider)
+	provider.shouldRejectFirstComment503 = true
+	harness := newTriageHarness(t, provider, defaultRequestTimeout, conversationtriage.RoutingConfiguration{TagID: fakeTriageTagID})
+
+	triage := harness.runTriage(t, "comment-503", scenario.triagedID)
+	require.Equal(t, "completed", triage.Stage)
+	require.Equal(t, 2, provider.count("comment"))
+	require.Len(t, provider.conversation(scenario.triagedID).comments, 1)
+	require.Equal(t, provider.lastRequest("comment").body, provider.requestsFor("comment")[0].body)
+}
+
 // TestLostWorkerDuringCommentFailsWithoutResendingWithRealDex replaces the Worker after Front received the comment.
 func TestLostWorkerDuringCommentFailsWithoutResendingWithRealDex(t *testing.T) {
 	provider := newFakeFront(t)
@@ -171,7 +184,7 @@ func TestRejectedCommentFailsTheFlowWithoutFrontTextWithRealDex(t *testing.T) {
 
 	result := harness.waitForFlow(t, flowID)
 	require.Equal(t, dex.FlowFailed, result.Status, "an unwired optional providerRejected branch fails the Flow")
-	require.Contains(t, result.ErrorMessage, `"providerRejected"`)
+	require.Contains(t, result.ErrorMessage, "selected branch providerRejected with no target")
 	require.NotContains(t, result.ErrorMessage, providerSentinel)
 	require.NotContains(t, result.ErrorMessage, fakeAPIToken)
 	require.Equal(t, 1, provider.count("comment"), "a conclusive rejection is not retried")
@@ -220,6 +233,13 @@ func newTriageHarness(
 	require.NoError(t, err)
 	connection, err := front.NewConnection(providerClient, reference)
 	require.NoError(t, err)
+	return newTriageHarnessForConnection(t, connection, routing)
+}
+
+func newTriageHarnessForConnection(
+	t *testing.T, connection front.Connection, routing conversationtriage.RoutingConfiguration,
+) *triageHarness {
+	t.Helper()
 	search := sdkgo.ConnectorLoadedConfiguration[conversationtriage.SearchConfiguration]{
 		Reference: conversationtriage.SearchConfigurationRef(), Value: conversationtriage.SearchConfiguration{InboxID: fakeInboxID},
 	}
@@ -227,6 +247,7 @@ func newTriageHarness(
 		Reference: conversationtriage.RoutingConfigurationRef(), Value: routing,
 	}
 	harness := &triageHarness{flow: conversationtriage.NewFlow(connection, search, loadedRouting), serverAddress: dexAddress()}
+	var err error
 	harness.registry, err = dex.NewRegistry([]dex.Flow{harness.flow})
 	require.NoError(t, err)
 	harness.cache, err = blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})

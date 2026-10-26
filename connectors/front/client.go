@@ -4,9 +4,8 @@
 // Package front connects Dex applications to the Front Core API.
 //
 // Queries search conversations, read one conversation with its newest messages and internal comments,
-// and find a contact by email. Mutations send a reply or add an internal comment once per Step execution,
-// guarded by a Dex checkpoint that narrows but does not close the duplicate window after a lost Worker,
-// and set a conversation's status or ticket status, assignee, and tags, safely repeatable.
+// and find a contact by email. The reply/comment mutation uses a single-dispatch fence that fails
+// closed after an ambiguous send. Conversation status, assignee, and tag changes safely repeat.
 //
 // A connection holds one Front API token, sent as a bearer token only to https://api2.frontapp.com. The
 // connector takes and returns Front's own conversation statuses, ticket status IDs, and teammate, inbox,
@@ -30,6 +29,7 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 const (
@@ -153,6 +153,18 @@ func (client *Client) resolveCredentials(call sdkgo.Call, operationID string) (C
 func (client *Client) exchange(
 	requestContext context.Context, credentials Credentials, operationID string, request frontRequest,
 ) frontExchange {
+	return client.exchangeWithWritePreparation(requestContext, credentials, operationID, request, false)
+}
+
+func (client *Client) exchangeFencedWrite(
+	requestContext context.Context, credentials Credentials, operationID string, request frontRequest,
+) frontExchange {
+	return client.exchangeWithWritePreparation(requestContext, credentials, operationID, request, true)
+}
+
+func (client *Client) exchangeWithWritePreparation(
+	requestContext context.Context, credentials Credentials, operationID string, request frontRequest, shouldPrepareWrite bool,
+) frontExchange {
 	if requestContext == nil {
 		requestContext = context.Background()
 	}
@@ -164,9 +176,14 @@ func (client *Client) exchange(
 	if err != nil {
 		return frontExchange{outcome: exchangeDefect, failure: frontFailure(sdkgo.FailureLocalDefect, operationID, err.Error())}
 	}
+	if shouldPrepareWrite {
+		if err := singledispatch.PrepareHTTPWrite(httpRequest); err != nil {
+			return frontExchange{outcome: exchangeDefect, failure: frontFailure(sdkgo.FailureLocalDefect, operationID, "the Front write request could not be prepared")}
+		}
+	}
 	httpResponse, err := client.httpClient.Do(httpRequest)
 	if err != nil {
-		if observation.isProvablyUndispatched() || isConnectionNeverEstablished(err) {
+		if observation.isProvablyUndispatched() {
 			return frontExchange{outcome: exchangeNotSent, failure: frontFailure(sdkgo.FailureTransport, operationID, "Front could not be reached; no request was sent")}
 		}
 		return frontExchange{outcome: exchangeUnconfirmed, failure: frontFailure(sdkgo.FailureTransport, operationID, "the Front request may have been sent, but no answer arrived")}

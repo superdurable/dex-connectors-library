@@ -11,7 +11,7 @@ The Front connector connects a Dex application to the
 | --- | --- | --- | --- |
 | `searchConversations` | Query | One page of up to 100 conversations by text, inbox, tag, status filters, recipient email, assignee, and recent activity | `searched` |
 | `getConversation` | Query | One conversation with up to 25 of its newest messages and 25 newest internal comments | `found` |
-| `replyToConversation` | Mutation | One reply that Front delivers to the recipients, or one internal comment, sent behind a dispatch checkpoint that narrows but does not close the duplicate window | `replied` |
+| `replyToConversation` | Mutation | One reply that Front delivers to the recipients, or one internal comment, protected by the shared single-dispatch fence | `replied` |
 | `updateConversation` | Mutation | Sets the status or ticket status and the assignee and adds or removes tags; safe to repeat | `updated` |
 | `findContactByEmail` | Query | The contact whose email handle equals one address | `found` |
 
@@ -199,38 +199,66 @@ as `messageUid`; `GET /messages/alt:uid:{uid}` reads the message once Front
 has created it, and a channel can still fail to deliver it later. A comment
 answers `201`, and the Result returns its `commentId`.
 
-Front documents no idempotency key, and messages and comments carry no
-client-supplied ID that a later attempt could find, so the operation is
-single-dispatch:
+Front's [reply](https://dev.frontapp.com/reference/create-message-reply) and
+[comment](https://dev.frontapp.com/reference/add-comment) request fields have
+no documented idempotency key or client-supplied lookup value. A lost answer
+therefore cannot be matched to one write by listing the conversation's messages
+or comments. The shared `singledispatch.Fence` records an attempt-scoped claim
+under sync durability before one POST. A missing, stale, or unreadable claim
+fails closed. A `429`, `503`, or traced DNS/connect/TLS failure before a
+connection was obtained records `canResend` and permits only the next attempt
+to retry; Front's non-application of a `503` remains **unverified against a live
+Front account**. Other ambiguous sent failures, including `408`, other `5xx`,
+and transport loss, select `uncertain`. A `409` also selects `uncertain` because
+no key or unique value can confirm the conflicting write. A `404` or
+merged-conversation `301` selects `notFound`; other definite `4xx` rejections
+select `providerRejected`.
 
-- it runs with sync durability, so Dex does not dispatch the Step a second
-  time while a slow Front answers;
-- it records a Dex heartbeat checkpoint before the request leaves the Worker.
-  A later attempt of the same Step execution that finds the checkpoint selects
-  `uncertain` without sending;
-- the request must answer three seconds before the attempt's deadline, at
-  most the 30-second Execute timeout, and it is not sent when less than five
-  seconds would remain;
-- only a `429`, which Front answers before applying the request, or a
-  connection that provably never opened, a failed DNS lookup, connect, or TLS
-  handshake with no connection obtained, returns Retry and clears the
-  checkpoint. A `5xx`, a `408`, a timeout, or any other transport failure
-  selects `uncertain`, so an HTTP client whose transport drops the request's
-  trace cannot turn a lost answer into a second send;
-- a `404`, or a `301` for a merged conversation, selects `notFound`, and any
-  other `4xx` selects `providerRejected`. Nothing was added.
+The fence bounds each request to 7/12 of the smaller of the 30-second Execute
+timeout and the remaining Step deadline, and refuses a send without one tenth
+of the initial budget remaining before its request deadline. Any 2xx answer
+is accepted and never resent. An unreadable body or missing provider ID
+selects `uncertain`; a returned ID can be read back. An accepted reply's
+`message_uid` can be read at
+`GET /messages/alt:uid:{uid}` as [Front documents](https://dev.frontapp.com/reference/messages),
+and an accepted comment's ID can be read at
+[`GET /comments/{id}`](https://dev.frontapp.com/reference/get-comment).
+If that ID was checkpointed and a later Dex attempt occurs, the connector
+reads the resource before reporting `replied`; a transient read failure
+retries the read without another POST. A lost answer without an ID remains
+`uncertain` because content and author are not unique identifiers.
 
-The checkpoint narrows the duplicate window but does not close it. Dex accepts
-the checkpoint when the Worker writes it to its stream, before the request
-leaves; a Worker lost in that instant, before Dex stored the checkpoint, could
-still send twice, and a crash after the checkpoint but before the request left
-reports `uncertain` for a request Front never received.
+The previous connector-local checkpoint encoded `isFrontReplyDispatched`.
+An in-flight retry with that old marker fails closed under the shared fence;
+reconcile that Flow manually before retrying it after this upgrade.
 
 The real-Dex tests in
 [`examples/conversation-triage`](examples/conversation-triage/main_integration_test.go)
-prove it with a fake Front that answers after nine seconds, one comment POST
-under sync, and with a Worker lost while Front holds the comment: the attempt
-on the new Worker selects `uncertain` without a second POST.
+cover a fake Front that answers after nine seconds, a `503` then acceptance
+with two comment POSTs, and a Worker lost while Front holds the comment: the
+new Worker selects `uncertain` without a second POST.
+
+## Mocks
+
+`frontmock` supplies one consistent default world for all five operations:
+Jane's `cnv_100` conversation has an inbound message, `crd_100` is her
+contact, search includes `cnv_200` as another open conversation, the triage
+comment becomes `com_100`, and routing assigns `tea_leela` and adds
+`tag_triaged`. Each optional business branch also has a named mock. The
+[real-Dex mock test](examples/conversation-triage/workflow_mock_integration_test.go)
+starts the runnable Flow with this connection:
+
+```go
+	mock := frontmock.New(t, conversationtriage.ConnectionName)
+	harness := newTriageHarnessForConnection(t, mock.Connection(), conversationtriage.RoutingConfiguration{
+		AssigneeID: "tea_leela", TagID: "tag_triaged",
+	})
+	triage := harness.runTriage(t, "mock-default", "cnv_100")
+```
+
+The test checks the Flow's derived triage record and every operation's call
+count and literal input, especially the comment text built from the read and
+search results. Its integration build tag leaves execution to CI.
 
 ### updateConversation
 

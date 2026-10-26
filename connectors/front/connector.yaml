@@ -5,7 +5,7 @@ metadata:
   displayName: Front
   description: "Search, read, reply to, comment on, and update Front conversations and find contacts by email, keeping Front's own conversation statuses, ticket status IDs, and tag and teammate IDs."
   company: Front
-  version: v0.21.2
+  version: v0.22.0
 spec:
   provider: front
   codegen:
@@ -100,6 +100,25 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: matchingConversations
+          branch: searched
+          description: "The first search page for jane@acme.example.com contains cnv_100 and cnv_200 in the same inbox."
+          default: true
+          output:
+            conversations:
+              - {id: cnv_100, type: conversation, subject: "Order 88213", status: unassigned, createdAt: "2026-01-02T03:04:05Z"}
+              - {id: cnv_200, type: conversation, subject: "Earlier order question", status: unassigned, createdAt: "2026-01-01T03:04:05Z"}
+            totalCount: 2
+            query: "inbox:inb_support is:open recipient:jane@acme.example.com"
+        - name: invalidToken
+          branch: providerRejected
+          description: "The API token is invalid for a conversation search (HTTP 401)."
+          failure: {kind: AUTHENTICATION, message: "Front rejected the API token (HTTP 401)."}
+        - name: oversizedPage
+          branch: invalidResponse
+          description: "The matching conversation page exceeds maxResponseBytes."
+          failure: {kind: RESPONSE_TOO_LARGE, message: "The Front response exceeds maxResponseBytes."}
     - name: getConversation
       goName: GetConversation
       inputType: GetConversationInput
@@ -117,23 +136,65 @@ spec:
       execution:
         executeMethodTimeout: 45s
         durability: async
+      mocks:
+        - name: triageConversation
+          branch: found
+          description: "cnv_100 contains Jane's newest inbound message and no earlier triage comment."
+          default: true
+          output:
+            conversation: {id: cnv_100, type: conversation, subject: "Order 88213", status: unassigned, createdAt: "2026-01-02T03:04:05Z"}
+            messages:
+              - {id: msg_100, type: email, isInbound: true, body: "Any update on my refund?", createdAt: "2026-01-02T03:04:05Z", recipients: [{handle: "jane@acme.example.com", role: from}]}
+            comments: []
+        - name: mergedConversation
+          branch: merged
+          description: "cnv_100 was merged into cnv_200 (HTTP 301)."
+          output: {mergedIntoConversationId: cnv_200}
+          failure: {kind: NOT_FOUND, message: "The conversation was merged into cnv_200."}
+        - name: missingConversation
+          branch: notFound
+          description: "cnv_100 does not exist or is hidden from the token (HTTP 404)."
+          failure: {kind: NOT_FOUND, message: "Front found no such conversation (HTTP 404)."}
+        - name: deniedConversationRead
+          branch: providerRejected
+          description: "The token cannot read cnv_100's messages (HTTP 403)."
+          failure: {kind: AUTHORIZATION, message: "Front denied message read access (HTTP 403)."}
+        - name: oversizedConversation
+          branch: invalidResponse
+          description: "cnv_100's message page exceeds maxResponseBytes."
+          failure: {kind: RESPONSE_TOO_LARGE, message: "The Front response exceeds maxResponseBytes."}
     - name: replyToConversation
       goName: ReplyToConversation
       inputType: ReplyToConversationInput
       outputType: ConversationReply
       kind: mutation
-      description: "Send one reply that Front delivers to the conversation's recipients, or add one internal comment that only teammates see. Front has no idempotency key, so the Step runs with sync durability and records a Dex checkpoint before it sends, which keeps a later attempt from sending again; a Worker lost before Dex stores the checkpoint can still send twice."
+      description: "Send one reply that Front delivers to the conversation's recipients, or add one internal comment that only teammates see. Front has no idempotency key or client-supplied lookup value, so the shared single-dispatch fence needs sync durability for visible heartbeat checkpoints across attempts."
       idempotency: required
       branches:
         - {id: replied, goName: Replied, description: "Front accepted the reply for delivery or created the comment."}
         - {id: notFound, goName: NotFound, description: "The conversation does not exist, was merged, or is not visible to the API token; nothing was sent.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Front conclusively rejected the reply or comment, such as a token without send permission or an unknown author; nothing was sent.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The request may have reached Front, but its answer was lost, was a server error, or arrived too late, so the reply or comment may exist; the connector never sends it again.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The request may have reached Front, but its answer was lost, was an ambiguous server error, or arrived too late, so the reply or comment may exist; the connector never sends it again without proof of non-application.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "A lost dispatch checkpoint could send the reply twice because Front has no provider idempotency key or reply read-back."}}
+        dispatchFence: true
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "Front has no key or client-supplied lookup value to confirm a lost reply answer; keep retries bounded while the fence fails closed."}}
+      mocks:
+        - name: triageComment
+          branch: replied
+          description: "The internal triage comment on cnv_100 was created as com_100."
+          default: true
+          output: {conversationId: cnv_100, isInternalNote: true, commentId: com_100}
+        - name: missingConversation
+          branch: notFound
+          description: "cnv_100 does not exist, so Front created no comment (HTTP 404)."
+          failure: {kind: NOT_FOUND, message: "Front found no such conversation (HTTP 404)."}
+        - name: deniedCommentWrite
+          branch: providerRejected
+          description: "The token lacks comments:write for cnv_100 (HTTP 403)."
+          failure: {kind: AUTHORIZATION, message: "Front denied comment write access (HTTP 403)."}
     - name: updateConversation
       goName: UpdateConversation
       inputType: UpdateConversationInput
@@ -150,6 +211,25 @@ spec:
       execution:
         executeMethodTimeout: 60s
         durability: async
+      mocks:
+        - name: routedConversation
+          branch: updated
+          description: "cnv_100 is assigned to tea_leela and tagged tag_triaged after routing."
+          default: true
+          output:
+            conversation: {id: cnv_100, type: conversation, subject: "Order 88213", status: assigned, assignee: {id: tea_leela}, tags: [{id: tag_triaged, name: triaged}], createdAt: "2026-01-02T03:04:05Z"}
+        - name: missingConversation
+          branch: notFound
+          description: "cnv_100 no longer exists when routing starts (HTTP 404)."
+          failure: {kind: NOT_FOUND, message: "Front found no such conversation (HTTP 404)."}
+        - name: invalidTag
+          branch: providerRejected
+          description: "Front rejected tag_missing in a routing update (HTTP 400)."
+          failure: {kind: VALIDATION, message: "Front rejected the tag ID (HTTP 400)."}
+        - name: oversizedReadBack
+          branch: invalidResponse
+          description: "The read-back of cnv_100 exceeds maxResponseBytes after routing."
+          failure: {kind: RESPONSE_TOO_LARGE, message: "The Front response exceeds maxResponseBytes."}
     - name: findContactByEmail
       goName: FindContactByEmail
       inputType: FindContactByEmailInput
@@ -166,3 +246,23 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: requesterContact
+          branch: found
+          description: "jane@acme.example.com belongs to crd_100, the requester on cnv_100."
+          default: true
+          output:
+            contacts:
+              - {id: crd_100, name: Jane Smith, handles: [{handle: "jane@acme.example.com", source: email}]}
+        - name: missingContact
+          branch: notFound
+          description: "No contact owns the jane@acme.example.com email handle (HTTP 404)."
+          failure: {kind: NOT_FOUND, message: "Front found no contact for this email (HTTP 404)."}
+        - name: deniedContactRead
+          branch: providerRejected
+          description: "The token lacks contacts:read (HTTP 403)."
+          failure: {kind: AUTHORIZATION, message: "Front denied contact read access (HTTP 403)."}
+        - name: oversizedContact
+          branch: invalidResponse
+          description: "The jane@acme.example.com contact exceeds maxResponseBytes."
+          failure: {kind: RESPONSE_TOO_LARGE, message: "The Front response exceeds maxResponseBytes."}

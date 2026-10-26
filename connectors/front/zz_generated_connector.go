@@ -361,7 +361,7 @@ var ReplyToConversationDefinition = sdkgo.MutationDefinition{
 		{ID: ReplyToConversationBranchReplied, Description: "Front accepted the reply for delivery or created the comment."},
 		{ID: ReplyToConversationBranchNotFound, Description: "The conversation does not exist, was merged, or is not visible to the API token; nothing was sent.", Optional: true},
 		{ID: ReplyToConversationBranchProviderRejected, Description: "Front conclusively rejected the reply or comment, such as a token without send permission or an unknown author; nothing was sent.", Optional: true},
-		{ID: ReplyToConversationBranchUncertain, Description: "The request may have reached Front, but its answer was lost, was a server error, or arrived too late, so the reply or comment may exist; the connector never sends it again.", Optional: true},
+		{ID: ReplyToConversationBranchUncertain, Description: "The request may have reached Front, but its answer was lost, was an ambiguous server error, or arrived too late, so the reply or comment may exist; the connector never sends it again without proof of non-application.", Optional: true},
 		{ID: ReplyToConversationBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

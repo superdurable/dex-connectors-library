@@ -43,11 +43,12 @@ type fakeFront struct {
 	contacts        map[string]string
 	requests        []fakeRecordedRequest
 
-	shouldDelayFirstComment    bool
-	holdsFirstComment          chan struct{}
-	shouldRejectComment        bool
-	shouldRateLimitFirstSearch bool
-	shouldDelayFirstTagWrite   bool
+	shouldDelayFirstComment     bool
+	shouldRejectFirstComment503 bool
+	holdsFirstComment           chan struct{}
+	shouldRejectComment         bool
+	shouldRateLimitFirstSearch  bool
+	shouldDelayFirstTagWrite    bool
 }
 
 type fakeConversation struct {
@@ -237,6 +238,10 @@ func (provider *fakeFront) listComments(response http.ResponseWriter, conversati
 
 // addComment applies a comment; the scripted first attempt answers late or is held until the test releases it.
 func (provider *fakeFront) addComment(response http.ResponseWriter, body []byte, conversationID string, attempt int) {
+	if attempt == 1 && provider.shouldRejectFirstComment503 {
+		provider.writeError(response, http.StatusServiceUnavailable)
+		return
+	}
 	var comment struct {
 		Body string `json:"body"`
 	}
@@ -449,6 +454,18 @@ func (provider *fakeFront) lastRequest(name string) fakeRecordedRequest {
 	}
 	provider.t.Fatalf("no %s request was recorded", name)
 	return fakeRecordedRequest{}
+}
+
+func (provider *fakeFront) requestsFor(name string) []fakeRecordedRequest {
+	provider.mutex.Lock()
+	defer provider.mutex.Unlock()
+	requests := []fakeRecordedRequest{}
+	for _, request := range provider.requests {
+		if request.name == name {
+			requests = append(requests, request)
+		}
+	}
+	return requests
 }
 
 func (provider *fakeFront) requestTimes(name string) []time.Time {
