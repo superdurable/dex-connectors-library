@@ -5,7 +5,7 @@ metadata:
   displayName: MySQL
   description: Run one parameterized read-only query, or one transactional write statement, against a MySQL or MariaDB database.
   company: MySQL
-  version: v0.21.2
+  version: v0.22.0
 spec:
   provider: mysql
   codegen:
@@ -98,6 +98,21 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: completedDefaultAnswer
+          branch: completed
+          description: "Querying refund_ledger for order 88213 returns its recorded refund."
+          default: true
+          output: {"columns":[{"name":"refund_id","typeName":"UNSIGNED BIGINT"},{"name":"order_id","typeName":"VARCHAR"},{"name":"amount_usd","typeName":"DECIMAL"},{"name":"external_reference","typeName":"VARCHAR"},{"name":"idempotency_key","typeName":"CHAR"},{"name":"recorded_at","typeName":"TIMESTAMP"}],"rows":[{"refund_id":"1","order_id":"88213","amount_usd":"250.00","external_reference":"tkt_5488","idempotency_key":"6f1c2a9e-0000-4000-8000-000000000001","recorded_at":"2026-10-01T12:00:00.25Z"}]}
+        - name: rowLimit
+          branch: truncated
+          description: "Querying refund_ledger for order 88213 with maxRows 1 below the result size returns a truncated row set."
+          output: {"columns":[{"name":"refund_id","typeName":"UNSIGNED BIGINT"},{"name":"order_id","typeName":"VARCHAR"},{"name":"amount_usd","typeName":"DECIMAL"},{"name":"external_reference","typeName":"VARCHAR"},{"name":"idempotency_key","typeName":"CHAR"},{"name":"recorded_at","typeName":"TIMESTAMP"}],"rows":[{"refund_id":"1","order_id":"88213","amount_usd":"250.00","external_reference":"tkt_5488","idempotency_key":"6f1c2a9e-0000-4000-8000-000000000001","recorded_at":"2026-10-01T12:00:00.25Z"}],"truncated":true}
+          failure: {"kind":"RESPONSE_TOO_LARGE","message":"Querying refund_ledger for order 88213 with maxRows 1 below the result size returns a truncated row set."}
+        - name: missingTable
+          branch: providerRejected
+          description: "Querying a missing refund_ledger table is rejected."
+          failure: {"kind":"NOT_FOUND","message":"Querying a missing refund_ledger table is rejected."}
     - name: execute
       goName: ExecuteStatement
       inputType: ExecuteStatementInput
@@ -115,3 +130,17 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: completedDefaultAnswer
+          branch: completed
+          description: "Inserting refund order 88213 after another Flow won the race changes no rows."
+          default: true
+          output: {"rowsAffected":0,"columns":[],"rows":[],"lastInsertId":"1","warningCount":0}
+        - name: rowLimit
+          branch: limitExceeded
+          description: "Updating more rows than maxRowsAffected rolls back the statement."
+          failure: {"kind":"CONFLICT","message":"Updating more rows than maxRowsAffected rolls back the statement."}
+        - name: duplicateKey
+          branch: providerRejected
+          description: "Inserting a duplicate unique key is rejected before commit."
+          failure: {"kind":"CONFLICT","message":"Inserting a duplicate unique key is rejected before commit."}

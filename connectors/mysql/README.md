@@ -451,3 +451,19 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=live ./... -cou
 - There are no Triggers and no Connector Studio units. Studio setup commands
   are HTTPS `GET` requests, so a table or column picker cannot be declared for
   a database.
+
+## Mocks
+
+`mysqlmock` provides a committed refund row for the order `88213` and a no-op insert after another Flow won the race. Named `rowLimit`, `missingTable`, and `duplicateKey` cases cover definite limits and rejections. The [record refund example](examples/record-refund/flow/workflow_mock_integration_test.go) scripts the first query as empty with six columns, then checks the Flow's write and read-back calls against a real Dex Worker.
+
+```go
+mock := mysqlmock.New(t, ConnectionName)
+mock.QueryRows().Respond(mysqlmock.QueryRowsCompleted(mysql.RowSet{Columns: []mysql.Column{
+	{Name: "refund_id", TypeName: "UNSIGNED BIGINT"}, {Name: "order_id", TypeName: "VARCHAR"},
+	{Name: "amount_usd", TypeName: "DECIMAL"}, {Name: "external_reference", TypeName: "VARCHAR"},
+	{Name: "idempotency_key", TypeName: "CHAR"}, {Name: "recorded_at", TypeName: "TIMESTAMP"},
+}, Rows: []map[string]any{}}, nil))
+harness := startTestWorkerWithConnection(t, mock.Connection())
+```
+
+Install this release with `go get github.com/superdurable/dex-connectors-library/connectors/mysql@v0.22.0`.
