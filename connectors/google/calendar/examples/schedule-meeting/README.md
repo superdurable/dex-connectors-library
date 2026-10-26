@@ -26,8 +26,9 @@ The conflict check compares instants, never text: an event whose description
 says "2:00 PM PST" but whose instant is 11:00 in Los Angeles does not conflict,
 and transparent and cancelled events are free. An all-day event is read in the
 calendar's zone from `ListEventsOutput.TimeZone`. Repeated event IDs across
-pages count once. The scan stops after ten pages or on a repeated cursor and
-fails the Flow instead of inviting guests from an incomplete window.
+pages count once. The scan stops after ten pages, on a repeated cursor, or on
+a page with more than 250 events, and fails the Flow instead of inviting guests
+from an incomplete window.
 
 Only the happy-path branches are wired. `incomplete` free/busy, provider
 rejection, invalid responses, a create `conflict`, a missing event, and local

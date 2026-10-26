@@ -507,7 +507,7 @@ func verifyHoldMatchesRequest(hold calendar.Event, request MeetingRequest) error
 }
 
 // dex:group group-id:meeting group-label:"Meeting"
-// dex:explanation text:"Complete as a conflict when another busy event overlaps the hold, otherwise invite."
+// dex:explanation text:"List the next page while the window has one, then complete as a conflict when another busy event overlaps the hold, otherwise invite."
 type evaluateMeetingWindow struct {
 	dex.StepDefaultsNoWaitFor[calendar.ListEventsResult]
 }
