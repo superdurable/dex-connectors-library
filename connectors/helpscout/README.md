@@ -11,7 +11,7 @@ The Help Scout connector connects a Dex application to the
 | --- | --- | --- | --- |
 | `searchConversations` | Query | One page of up to 25 conversations filtered by inbox, status, tag, customer email, and modification time | `searched` |
 | `getConversation` | Query | One conversation with up to 25 of its newest threads | `found` |
-| `replyToConversation` | Mutation | One customer reply, which Help Scout emails, or one internal note, sent at most once per Step execution | `replied` |
+| `replyToConversation` | Mutation | One customer reply, which Help Scout emails, or one internal note, fenced across retries | `replied` |
 | `updateConversation` | Mutation | Sets the status or assignee and adds or removes tags; safe to repeat | `updated` |
 | `findCustomerByEmail` | Query | Every customer profile with one email address | `found` |
 | `conversationEvent` | Trigger | A signed conversation webhook, such as `convo.created` or `convo.customer.reply.created` | |
@@ -58,9 +58,10 @@ to `https://api.helpscout.net/v2/oauth2/token`, as Help Scout documents, and
 records the expiry from `expires_in` (two days). The driver obtains a new token
 when the stored one is absent, as before the first call, or within five minutes
 of expiry; a token without a recorded expiry is kept. After a `401` the
-connector asks once for a new token, which project storage obtains only when
-the recorded expiry has passed, and then repeats the request once; otherwise
-the `401` selects `providerRejected`. `invalid_client`
+connector asks once for a new token for reads and repeatable writes, which
+project storage obtains only when the recorded expiry has passed, and then
+repeats that request once. A `401` on `replyToConversation` selects
+`providerRejected` without an in-attempt resend. `invalid_client`
 and `unauthorized_client` mean the App ID or App Secret must be replaced and
 select `defect`; any other token failure returns Retry.
 
@@ -128,32 +129,33 @@ primary customer. `status` optionally sets the conversation status with the
 thread; otherwise a reply reactivates it. Help Scout answers `201` with the
 new thread's ID in `Resource-Id`.
 
-Help Scout documents no idempotency key, and threads carry no client-supplied
-ID or metadata that a later attempt could find, so a read-before-write cannot
-tell this Step's thread from an identical one, and it cannot see a thread
-whose request is still in flight. The operation is therefore single-dispatch:
+Help Scout documents no idempotency key or client-supplied thread marker. The
+operation uses the Connector SDK's single-dispatch fence with sync durability:
 
-- it runs with sync durability, so Dex does not dispatch the Step a second
-  time while a slow Help Scout answers;
-- it records a Dex heartbeat checkpoint before the request leaves the Worker.
-  A later attempt of the same Step execution that finds the checkpoint selects
-  `uncertain` without sending;
-- the request must answer three seconds before the attempt's deadline, at
-  most the 30-second Execute timeout, and it is not sent when less than five
-  seconds would remain. An application override to async durability therefore
-  sends nothing in Dex's short local attempt;
-- only a `429`, the `504` that Help Scout documents as an internal timeout that
-  is safe to retry, or a request that never left the process returns Retry and
-  clears the checkpoint. A `5xx` other than `504`, a `3xx`, a `408`, a timeout,
-  or a lost answer after the request was written selects `uncertain`;
+- the fence reads the prior Dex heartbeat before credentials or a provider
+  lookup and permits a send only on attempt one or immediately after a
+  checkpoint proving the preceding attempt did not apply;
+- the request ends within the observed attempt deadline, with time left for
+  classification; a short budget records `notSent` and returns Retry;
+- a `429`, `503`, Help Scout's documented safe-to-retry `504`, or a traced
+  DNS, connect, or TLS failure before a connection was obtained records
+  `canResend` and returns Retry. A missing or stale checkpoint fails closed;
+- a `201` with a valid `Resource-Id` records the thread ID. If Dex retries
+  after acceptance, the connector lists that conversation's thread pages
+  and confirms the ID without another POST. A temporary read failure returns
+  Retry; an inconclusive read selects `uncertain`;
+- an accepted response without a valid ID, ambiguous transport failure,
+  `3xx`, `408`, or other `5xx` selects `uncertain` without another POST;
 - a `404`, including a merged conversation, selects `notFound`, and any other
   `4xx`, such as `412` for a conversation locked at 100 threads or by age,
   selects `providerRejected`. Nothing was added.
 
-The real-Dex tests in `mutation_dispatch_integration_test.go` prove it with a
-fake Help Scout that answers after nine seconds: one POST under sync, one
-POST under an async override, and an `uncertain` result without a second POST
-when Dex retries the Step after the reply was sent.
+The real-Dex tests in `mutation_dispatch_integration_test.go` cover a slow
+reply, a `503` followed by success, and an accepted reply read back after a
+Dex retry. The runnable example also covers a `503` followed by one note.
+Help Scout's [status guide](https://developer.helpscout.com/mailbox-api/overview/status_codes/)
+describes `503` as unable to process the request and `504` as safe to retry;
+live behavior after a lost response or `503` has not been verified.
 
 ### updateConversation
 
@@ -183,6 +185,22 @@ search, which Help Scout documents as matching emails that contain the
 address. It returns up to 50 profiles, with `hasMore` when Help Scout has more,
 and selects `notFound` when there are none. Help Scout can hold several
 profiles for one person, so every match is returned and the Flow decides.
+
+## Mocks
+
+`helpscoutmock.New` supplies a consistent support inbox with conversation
+501, Jane's customer profile, repeat conversation 502, a triage note, and the
+resulting tags. Each operation has a happy default and scripted definite
+business outcomes. The runnable example's real-Dex mock test starts with:
+
+```go
+	mock := helpscoutmock.New(t, conversationtriage.ConnectionName)
+	flow := conversationtriage.NewFlow(mock.Connection())
+	client := startWorkerAndClient(t, flow)
+```
+
+The test checks every recorded operation input and count, including the note
+text the Flow builds from the customer and repeat-conversation records.
 
 ## Trigger
 
@@ -276,15 +294,15 @@ and the Receipt carries Help Scout's `logRef` for support.
 | Answer | Result |
 | --- | --- |
 | 400, 413, 415, 422 | `providerRejected`, `VALIDATION` |
-| 401, after one new token and resend only when the stored token has expired | `providerRejected`, `AUTHENTICATION` |
+| 401, after one token refresh on reads or repeatable writes | `providerRejected`, `AUTHENTICATION`; the fenced reply does not resend in the attempt |
 | 403 | `providerRejected`, `AUTHORIZATION`, such as an account without API access or payment |
 | 404, 410 | `notFound` where declared, otherwise `providerRejected` |
-| 409 | `providerRejected`, `CONFLICT` |
+| 409 | `providerRejected`, `CONFLICT`; the fenced reply selects `uncertain` without a thread ID |
 | 412, 423 | `providerRejected`, a locked conversation or customer |
-| 301 | `merged` for `getConversation`, `notFound` for the Mutations |
-| other 3xx | `providerRejected`, `PROTOCOL`; redirects are never followed |
+| 301 | `merged` for `getConversation`; a reply selects `uncertain` if its POST receives one |
+| other 3xx | `providerRejected`, `PROTOCOL` on reads and repeatable writes; `uncertain` on a reply |
 | 408, 429, 5xx, transport failure | Retry, after `X-RateLimit-Retry-After` or `Retry-After`; see the reply's exceptions above |
-| oversized, malformed, or credential-reflecting 2xx | `invalidResponse` |
+| oversized, malformed, or credential-reflecting 2xx | `invalidResponse`; a reply uses `Resource-Id` to confirm acceptance, or selects `uncertain` without it |
 | invalid input or credentials | `defect`, with no request |
 
 ## Security boundary
@@ -299,8 +317,8 @@ and the Receipt carries Help Scout's `logRef` for support.
 
 ## Unverified live behavior
 
-These rely on Help Scout's documentation fetched on 2026-09-30 and
-2026-10-01, not on a live account:
+These rely on Help Scout's documentation fetched on 2026-09-30,
+2026-10-01, and 2026-10-26, not on a live account:
 
 - the token endpoint's error code and status for a wrong App Secret or a
   deleted app (the connector treats only `invalid_client` and
@@ -313,7 +331,9 @@ These rely on Help Scout's documentation fetched on 2026-09-30 and
   other endpoint is documented to;
 - whether the reply `text` is stored as given or escaped, and how line breaks
   render;
-- whether a `504` on a reply truly never creates the thread, as documented;
+- whether a `503` or `504` on a reply truly never creates the thread as the
+  status guide implies or states; whether a newly accepted thread appears
+  promptly in `GET /v2/conversations/{id}/threads`;
 - whether the v2 `tag` filter accepts one tag name exactly as `tag:"..."`
   search does, and whether `PATCH /status` accepts `spam`;
 - whether the `/v3/customers` `email` filter is an exact match, and whether

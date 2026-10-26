@@ -36,6 +36,7 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 	"github.com/superdurable/dex-connectors-library/sdkgo/webhooktrigger"
 )
 
@@ -272,6 +273,11 @@ func (client *Client) sendOnce(
 	httpRequest.Header.Set("Accept", "application/json")
 	if body != nil {
 		httpRequest.Header.Set("Content-Type", "application/json; charset=UTF-8")
+	}
+	if method != http.MethodGet {
+		if err := singledispatch.PrepareHTTPWrite(httpRequest); err != nil {
+			return helpScoutResponse{}, errHelpScoutRequestInvalid
+		}
 	}
 	httpResponse, err := client.httpClient.Do(httpRequest)
 	if err != nil {

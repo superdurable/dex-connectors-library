@@ -143,10 +143,11 @@ func conversationWebhookBody(conversationID int64, mailboxID int64, status strin
 // fakeHelpScout answers every request the triage Flow sends, keeping each conversation's tags and notes.
 type fakeHelpScout struct {
 	*httptest.Server
-	mu       sync.Mutex
-	tags     map[int64][]string
-	notes    map[int64][]string
-	requests map[string]int
+	mu            sync.Mutex
+	tags          map[int64][]string
+	notes         map[int64][]string
+	requests      map[string]int
+	failFirstNote bool
 }
 
 func newFakeHelpScout(t *testing.T) *fakeHelpScout {
@@ -233,6 +234,11 @@ func (fake *fakeHelpScout) serveConversation(response http.ResponseWriter, reque
 		writeJSON(response, http.StatusOK, fmt.Sprintf(`{"_embedded":{"threads":[{"id":%d,"type":"customer","status":"active","state":"published","body":"I was charged twice.","createdBy":{"id":238604,"type":"customer","email":%q},"createdAt":"2026-09-30T11:58:00Z"}]},"_links":{"self":{"href":"x"}}}`,
 			conversationID*10, customerEmail))
 	case request.Method == http.MethodPost && len(parts) == 2 && parts[1] == "notes":
+		if fake.failFirstNote {
+			fake.failFirstNote = false
+			response.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
 		var note struct {
 			Text string `json:"text"`
 		}
