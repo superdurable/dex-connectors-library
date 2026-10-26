@@ -28,7 +28,7 @@ import (
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
-func TestThreadApprovalExampleCompletesOnceAndFailsUnwiredUncertainOutcomeWithRealDex(t *testing.T) {
+func TestThreadApprovalExampleCompletesOnceAndNeverResendsAmbiguousOrAcceptedPostsWithRealDex(t *testing.T) {
 	provider := newSlackProvider(t)
 	defer provider.Close()
 	flow, harness := newSlackIntegrationHarness(t, provider.URL)
@@ -70,7 +70,7 @@ func TestThreadApprovalExampleCompletesOnceAndFailsUnwiredUncertainOutcomeWithRe
 
 	result, err := harness.client.WaitForFlow(ctx, successFlowID, dex.WaitForFlowOptions{NeedsResults: true})
 	require.NoError(t, err)
-	require.Equal(t, dex.FlowCompleted, result.Status)
+	require.Equal(t, dex.FlowCompleted, result.Status, "flow error: %s; post count: %d", result.ErrorMessage, provider.postCount("1.0"))
 	var completedState ThreadState
 	require.NoError(t, result.DecodeSingleOutput(&completedState))
 	require.Equal(t, StatusCompleted, completedState.Status)
@@ -94,6 +94,23 @@ func TestThreadApprovalExampleCompletesOnceAndFailsUnwiredUncertainOutcomeWithRe
 	require.NoError(t, err)
 	require.Equal(t, dex.FlowFailed, uncertainResult.Status)
 	require.Equal(t, 1, provider.postCount("3.0"))
+
+	acceptedRoot := slack.MessageEvent{
+		TeamID: teamID, ChannelID: "C1", Timestamp: "5.0", ThreadTimestamp: "5.0", UserID: "U1", Text: "request approval",
+	}
+	acceptedFlowID := startSlackThreadFlow(t, ctx, harness.client, flow, "Ev-root-accepted-"+testRunID, acceptedRoot)
+	waitForSlackStatus(t, ctx, harness.client, flow, acceptedFlowID, StatusWaitingForReply)
+	acceptedReply := sdkgo.TriggerEvent[slack.MessageEvent]{
+		ID: "Ev-reply-accepted-" + testRunID, OccurredAt: time.Unix(6, 0).UTC(),
+		Payload: slack.MessageEvent{
+			TeamID: teamID, ChannelID: "C1", Timestamp: "6.0", ThreadTimestamp: "5.0", UserID: "U2", Text: "approve",
+		},
+	}
+	require.NoError(t, replyTarget.HandleTrigger(ctx, acceptedReply))
+	acceptedResult, err := harness.client.WaitForFlow(ctx, acceptedFlowID, dex.WaitForFlowOptions{})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowFailed, acceptedResult.Status)
+	require.Equal(t, 1, provider.postCount("5.0"))
 }
 
 func startSlackThreadFlow(
@@ -170,6 +187,10 @@ func (provider *slackProvider) serveHTTP(response http.ResponseWriter, request *
 		if threadTimestamp == "3.0" {
 			response.WriteHeader(http.StatusInternalServerError)
 			writeSlackProviderResponse(response, `{"ok":false,"error":"fatal_error"}`)
+			return
+		}
+		if threadTimestamp == "5.0" {
+			writeSlackProviderResponse(response, `{"ok":true,"message":{"text":"Integration complete."}}`)
 			return
 		}
 		writeSlackProviderResponse(response, `{"ok":true,"channel":"C1","ts":"2.1","message":{"ts":"2.1","thread_ts":"1.0","user":"UBOT","text":"Processing complete"}}`)
