@@ -5,7 +5,7 @@ metadata:
   displayName: Amazon S3
   description: List, inspect, and read bounded text from objects in Amazon S3 or an S3-compatible store such as Cloudflare R2 or MinIO, and store objects with retry-safe overwrite or create-only writes.
   company: Amazon
-  version: v0.21.2
+  version: v0.22.0
 spec:
   provider: amazon-s3
   codegen:
@@ -97,6 +97,7 @@ spec:
       description: List one bounded page of a bucket's object keys and common prefixes under an optional prefix and delimiter, in key order, continuing with an opaque continuation token.
       idempotency: none
       authorization: required
+      pagination: {inputField: continuationToken, nextField: nextContinuationToken}
       branches:
         - {id: found, goName: Found, description: "The page holds objects or common prefixes, or more pages remain."}
         - {id: notFound, goName: NotFound, description: No object matched the prefix and no further page remains., optional: true}
@@ -106,6 +107,24 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: archivedReports
+          branch: found
+          description: Listing reports/ in acme-reports returns three ordered pages including ops-weekly.md.
+          default: true
+          pages:
+            - {bucket: acme-reports, prefix: reports/, objects: [{key: reports/ops-weekly.md, sizeBytes: 72, eTag: '"eccaf41434e0ed82b7154a7fd586cc58"', lastModified: "2026-10-25T09:00:00Z"}], isTruncated: true, nextContinuationToken: page-2}
+            - {bucket: acme-reports, prefix: reports/, objects: [{key: reports/q1.md, sizeBytes: 31, lastModified: "2026-09-01T09:00:00Z"}], isTruncated: true, nextContinuationToken: page-3}
+            - {bucket: acme-reports, prefix: reports/, objects: [{key: reports/team.md, sizeBytes: 48, lastModified: "2026-08-01T09:00:00Z"}], isTruncated: false}
+        - name: noReports
+          branch: notFound
+          description: Listing reports/missing/ in acme-reports finds no objects or further pages.
+          output: {bucket: acme-reports, prefix: reports/missing/, isTruncated: false}
+          failure: {kind: NOT_FOUND, message: No objects matched the prefix.}
+        - name: listDenied
+          branch: providerRejected
+          description: "Listing reports/ without s3:ListBucket permission is denied."
+          failure: {kind: AUTHORIZATION, message: S3 denied the bucket listing.}
     - name: headObject
       goName: HeadObject
       inputType: HeadObjectInput
@@ -123,6 +142,21 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: archivedReportMetadata
+          branch: found
+          description: Reading metadata for reports/ops-weekly.md returns its saved size, ETag, and content type.
+          default: true
+          output: {bucket: acme-reports, key: reports/ops-weekly.md, sizeBytes: 72, eTag: '"eccaf41434e0ed82b7154a7fd586cc58"', contentType: text/markdown; charset=utf-8, lastModified: "2026-10-25T09:00:00Z", metadata: {report-id: ops-weekly, generator: dex-s3-report-archive, dex-idempotency-key: 8a62f575-7f36-5370-af29-4aadf17e894c}}
+        - name: missingReportMetadata
+          branch: notFound
+          description: Reading metadata for reports/missing.md finds no object.
+          output: {bucket: acme-reports, key: reports/missing.md}
+          failure: {kind: NOT_FOUND, message: The object was not found.}
+        - name: metadataDenied
+          branch: providerRejected
+          description: "Reading reports/ops-weekly.md metadata without s3:GetObject permission is denied."
+          failure: {kind: AUTHORIZATION, message: S3 denied the metadata read.}
     - name: getObjectText
       goName: GetObjectText
       inputType: GetObjectTextInput
@@ -142,6 +176,31 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: archivedReportText
+          branch: read
+          description: Reading reports/ops-weekly.md returns the generated Ops weekly Markdown report.
+          default: true
+          output: {bucket: acme-reports, key: reports/ops-weekly.md, contentType: text/markdown; charset=utf-8, eTag: '"eccaf41434e0ed82b7154a7fd586cc58"', lastModified: "2026-10-25T09:00:00Z", sizeBytes: 72, text: "# Ops weekly\n\nReport ID: ops-weekly\n\n- Refunds above 500 need approval.\n"}
+        - name: missingReportText
+          branch: notFound
+          description: Reading reports/missing.md finds no object.
+          output: {bucket: acme-reports, key: reports/missing.md}
+          failure: {kind: NOT_FOUND, message: The object was not found.}
+        - name: binaryReport
+          branch: unsupportedContent
+          description: Reading reports/diagram.pdf refuses its application/pdf content type.
+          output: {bucket: acme-reports, key: reports/diagram.pdf, contentType: application/pdf, sizeBytes: 2048}
+          failure: {kind: VALIDATION, message: The object is not UTF-8 text.}
+        - name: oversizedReport
+          branch: tooLarge
+          description: Reading reports/archive-large.md refuses an object larger than maxTextBytes.
+          output: {bucket: acme-reports, key: reports/archive-large.md, contentType: text/markdown, sizeBytes: 5242880}
+          failure: {kind: RESPONSE_TOO_LARGE, message: The object exceeds maxTextBytes.}
+        - name: textReadDenied
+          branch: providerRejected
+          description: "Reading reports/ops-weekly.md without s3:GetObject permission is denied."
+          failure: {kind: AUTHORIZATION, message: S3 denied the object read.}
     - name: putObject
       goName: PutObject
       inputType: PutObjectInput
@@ -158,3 +217,18 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: storedOpsReport
+          branch: stored
+          description: Storing reports/ops-weekly.md in acme-reports saves the generated Ops weekly report.
+          default: true
+          output: {bucket: acme-reports, key: reports/ops-weekly.md, eTag: '"eccaf41434e0ed82b7154a7fd586cc58"', sizeBytes: 72, contentType: text/markdown; charset=utf-8}
+        - name: reportAlreadyExists
+          branch: alreadyExists
+          description: Creating reports/ops-weekly.md when another report already occupies the key returns that object.
+          output: {bucket: acme-reports, key: reports/ops-weekly.md, eTag: '"existing-report"', sizeBytes: 43, contentType: text/markdown; charset=utf-8, lastModified: "2026-10-24T09:00:00Z"}
+          failure: {kind: CONFLICT, message: Another object already occupies the key.}
+        - name: storeDenied
+          branch: providerRejected
+          description: "Storing reports/ops-weekly.md without s3:PutObject permission is denied."
+          failure: {kind: AUTHORIZATION, message: S3 denied the object write.}

@@ -62,6 +62,11 @@ func newReportArchiveHarness(t *testing.T, providerClient *s3.Client) (*Flow, *r
 	t.Helper()
 	connection, err := s3.NewConnection(providerClient, exampleConnection)
 	require.NoError(t, err)
+	return newReportArchiveHarnessWithConnection(t, connection)
+}
+
+func newReportArchiveHarnessWithConnection(t *testing.T, connection s3.Connection) (*Flow, *reportArchiveHarness) {
+	t.Helper()
 	flow := NewFlow(connection)
 	registry, err := dex.NewRegistry([]dex.Flow{flow})
 	require.NoError(t, err)
