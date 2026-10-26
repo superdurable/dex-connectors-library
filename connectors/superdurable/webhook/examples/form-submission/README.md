@@ -85,7 +85,8 @@ Open the Dex Web URL that dexcli prints, select **Connectors**, and select
 - `deliveryUrl`: the HTTPS URL of the service that receives forwarded
   submissions, such as an HTTPS request inspector you control. A forwarded
   submission can arrive more than once with the same `webhook-id` after a
-  `409`, a `5xx`, a timeout, or a lost response, so the receiver follows the
+  `408`, `409`, `425`, `429`, or `5xx` answer, a timeout, or a lost response,
+  so the receiver follows the
   [receiver contract](../../README.md#the-sendevent-mutation): it records the
   `webhook-id` in the transaction that applies the event and answers `2xx`
   for an id it already applied. Leave it

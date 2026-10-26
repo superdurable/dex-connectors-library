@@ -119,9 +119,9 @@ func TestForwardSubmissionRetriesALostReceiverAnswerWithRealDex(t *testing.T) {
 	require.True(t, deliveries[1].isSignatureValid)
 }
 
-func TestForwardSubmissionRetriesAnInFlightDuplicateAnswered409WithRealDex(t *testing.T) {
+func TestForwardSubmissionRetriesAScripted409AfterALostAnswerWithRealDex(t *testing.T) {
 	receiver := newForwardingReceiver(t)
-	receiver.secondDeliveryStatus = http.StatusConflict // the receiver still applies the first request
+	receiver.secondDeliveryStatus = http.StatusConflict // a scripted answer; no receiver transaction is modeled
 	receiver.dropFirstResponse = true
 	logs := newRecordedLogs(t)
 	connection := newExampleConnection(t, receiver.URL+"/forward", webhook.WithHTTPClient(receiver.Client()), webhook.WithLogger(logs.logger()))

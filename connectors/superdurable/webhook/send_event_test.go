@@ -225,13 +225,14 @@ func TestSendEventMapsReceiverStatusesToBranches(t *testing.T) {
 }
 
 func TestSendEventRetriesReceiverFailuresWithTheSameWebhookID(t *testing.T) {
-	for _, statusCode := range []int{http.StatusInternalServerError, http.StatusBadGateway, http.StatusServiceUnavailable} {
+	for _, statusCode := range []int{http.StatusTooEarly, http.StatusInternalServerError, http.StatusBadGateway, http.StatusServiceUnavailable} {
 		for _, test := range []struct {
 			name          string
 			retryAfter    string
 			expectedDelay time.Duration
 		}{
 			{name: "with Retry-After", retryAfter: "7", expectedDelay: 7 * time.Second},
+			{name: "with a Retry-After beyond one hour", retryAfter: "7200", expectedDelay: time.Hour},
 			{name: "without Retry-After"},
 		} {
 			t.Run(strconv.Itoa(statusCode)+" "+test.name, func(t *testing.T) {
@@ -382,9 +383,9 @@ func TestSendEventRetriesA409WithTheSameWebhookIDAfterTheCappedRetryAfter(t *tes
 	}
 }
 
-func TestSendEventDeliversOnceAfterAnInFlightDuplicateIsAnswered409(t *testing.T) {
+func TestSendEventDeliversAfterALostAnswerAndAScripted409(t *testing.T) {
 	receiver := newFakeReceiver(t, standardKey(t), http.StatusOK)
-	// Lost answer, then 409 while the first request applies, then 2xx once applied.
+	// Scripted answers only: lost, 409, then 2xx. No receiver transaction is modeled.
 	receiver.scriptedAnswers = []int{droppedAnswer, http.StatusConflict, http.StatusOK}
 	client := newSendingClientWithClock(t, receiver.URL, standardSecret, receiver.Client(), advancingClock())
 	_, err := sendEvent(t, client, "forward", forwardedPayload)
@@ -392,7 +393,7 @@ func TestSendEventDeliversOnceAfterAnInFlightDuplicateIsAnswered409(t *testing.T
 	require.ErrorAs(t, err, &retry, "the first answer was lost")
 	require.Equal(t, sdkgo.FailureTransport, retry.Failure.Kind)
 	_, err = sendEvent(t, client, "forward", forwardedPayload)
-	require.ErrorAs(t, err, &retry, "an in-flight duplicate answered 409 is retried")
+	require.ErrorAs(t, err, &retry, "a 409 is retried")
 	require.Equal(t, sdkgo.FailureConflict, retry.Failure.Kind)
 
 	result, err := sendEvent(t, client, "forward", forwardedPayload)

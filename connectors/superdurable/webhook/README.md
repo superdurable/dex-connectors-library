@@ -200,18 +200,18 @@ the project configuration that the application loads. `configuration` may be
 | Outcome | Result |
 | --- | --- |
 | `2xx` | `delivered`, with the status code |
-| `408` or `429` | Retry with the same `webhook-id`, after `Retry-After` when sent |
+| `408`, `425` (Too Early), or `429` | Retry with the same `webhook-id`, after `Retry-After` when sent |
 | `409`, such as a receiver's answer for a `webhook-id` still in flight | Retry with the same `webhook-id`, after `Retry-After` when sent |
 | Connection refused, DNS or TLS failure before the request was written | Retry with the same `webhook-id` |
 | The project's credential broker is temporarily unavailable, so the signing secret cannot be read | Retry; nothing was sent |
-| A redirect or a `4xx` other than `408`, `409`, and `429` | `rejected` (optional), with the status code |
+| A redirect or a `4xx` other than `408`, `409`, `425`, and `429` | `rejected` (optional), with the status code |
 | `5xx`, timeout, or a lost connection after the request was written | Retry with the same `webhook-id`, after `Retry-After` when sent |
 | Blank `deliveryUrl`, a missing, blank, or unusable secret, or an invalid payload | `defect` (optional), before any request |
 
-`sendEvent` delivers at least once. After a `409`, a `5xx`, a timeout, or a
-lost connection or response, the Step sends the event again with the same
-`webhook-id`, so a receiver that already applied the first request sees the
-event a second time. A retry can also arrive while the first request is still
+`sendEvent` delivers at least once. After a `408`, `409`, `425`, `429`, or
+`5xx` answer, a timeout, or a lost connection or response, the Step sends the
+event again with the same `webhook-id`, so a receiver that already applied the
+first request sees the event a second time. A retry can also arrive while the first request is still
 being processed. To apply each event once, the receiver:
 
 - records the `webhook-id` in the same database transaction that applies the
@@ -220,9 +220,12 @@ being processed. To apply each event once, the receiver:
   event that failed to apply. A receiver that cannot do this answers an id that
   is still in flight with a retryable status such as `409` or `503`;
 - answers `2xx` for an id it has already applied, without applying it again;
-- keeps each id for at least the sender's retry window: two minutes from the
-  first attempt under the manifest retry policy, or the retry policy's
-  `TotalDuration` when the application sets a `StepOptionsOverride`.
+- keeps each id for at least the Step's effective retry window, measured from
+  the first attempt. Under the manifest retry policy that is two minutes. A
+  `StepOptionsOverride` whose `ExecuteRetry` is set replaces that policy: its
+  `TotalDuration` is then the window, and a zero `TotalDuration` uses the Dex
+  server default of four hours, so keep ids for at least four hours in that
+  case.
 
 Standard Webhooks [recommends using this header as the idempotency key](https://github.com/standard-webhooks/standard-webhooks/blob/main/spec/standard-webhooks.md#verifying-signatures),
 keeps the ID the same across retries, and [counts only a `2xx` answer as a
@@ -235,7 +238,10 @@ earlier attempt applied the event, and receivers commonly answer `409` for a
 repeated id that is still being processed, so it retries the `409` with the
 same `webhook-id`, after `Retry-After` capped at one hour when sent. A receiver
 that keeps answering `409`, including for a real conflict, exhausts the retry
-budget and fails the Flow.
+budget and fails the Flow. A `425 Too Early` asks the client to send the
+request again outside TLS early data
+([RFC 8470](https://www.rfc-editor.org/rfc/rfc8470.html#section-5.2)), so it
+is retried the same way.
 
 A blank `deliveryUrl` selects `defect` with the guidance to set it in Dex Web
 Connectors. Construction fails for a `deliveryUrl` that is not an absolute
