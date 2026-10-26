@@ -203,21 +203,30 @@ these positions:
   applied. It keeps async durability, and every unconfirmed outcome, including
   a 5xx or a lost response, is retried.
 - **createTicket** and **addNote** run with sync durability, so Dex never sends
-  a second attempt while the first is in flight. Before sending, the operation
-  records a heartbeat checkpoint naming the Call ID and attempt. A 429, 503,
-  or traced DNS, connect, or TLS failure before connection records which next
-  attempt may retry. A missing or stale checkpoint on a later attempt selects
-  `uncertain` without sending; Dex does not acknowledge heartbeat persistence.
-- A request starts only when at least two seconds remain on the Step context.
-  Its context ends one second before the observed Execute deadline, leaving
-  time to record the outcome. A skipped request permits only the next attempt.
+  a second attempt while the first is in flight. The operation first checks the
+  previous heartbeat, resolves credentials, then records the current Call ID
+  and attempt before sending. A 429, 503, or traced DNS, connect, or TLS failure
+  before connection records which next attempt may retry. A missing or stale
+  checkpoint on a later attempt selects `uncertain` without sending; Dex does
+  not acknowledge heartbeat persistence.
+- A write starts only when its request window retains at least one tenth of
+  the attempt budget, capped by the 30-second Execute timeout. A full attempt
+  therefore needs at least three seconds for the request, plus one second
+  reserved before the observed Step deadline to record the outcome. A skipped
+  request records a permit for only the next attempt and returns Retry.
+- A transient credential-store read failure returns Retry without sending and
+  records a next-attempt permit. A missing or invalid credential selects
+  `defect` on the first attempt; after a permitted retry it returns Retry, so
+  credential trouble cannot hide a possibly accepted earlier write.
 - A 408, a 5xx other than 503, a lost or unreadable response, and an invalid or oversized
   2xx select `uncertain`: the ticket or note may exist, and the connector never
   resends it. The example leaves `uncertain` unwired, so the Flow fails;
   an operator can inspect Freshdesk before deciding what to do next.
 
-[Freshdesk API v2](https://developers.freshdesk.com/api/) documents ticket
-search, ticket custom fields, and paginated conversation reads, but does not
+[Freshdesk API v2](https://developers.freshdesk.com/api/#create_ticket) documents ticket
+creation; [filter tickets](https://developers.freshdesk.com/api/#filter_tickets)
+and [ticket notes](https://developers.freshdesk.com/api/#list_all_ticket_notes)
+document search and conversation reads. The API does not
 document a per-request idempotency key, a ticket lookup by connector Call ID,
 or a conversation marker field. Ticket search indexing can lag by minutes.
 An account-specific ticket custom field would change the customer's ticket
@@ -249,7 +258,8 @@ token that contains the API key is dropped.
 | 503 | Retry, after `Retry-After` when present | Retry after a next-attempt checkpoint |
 | 408, other 5xx, lost or unreadable response | Retry, after `Retry-After` when present | `uncertain` |
 | oversized, malformed, or credential-reflecting 2xx | `invalidResponse` | `uncertain` |
-| invalid input or connection credentials | `defect`, with no request | `defect`, with no request |
+| invalid input or terminal connection credentials | `defect`, with no request | `defect` on the first attempt; Retry after a permitted retry |
+| transient credential-store failure | Retry, with no request | Retry with a next-attempt permit, with no request |
 
 The Receipt carries the Call ID, the ticket or conversation ID, and
 Freshdesk's `X-Request-Id` header when present.

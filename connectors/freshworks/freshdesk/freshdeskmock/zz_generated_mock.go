@@ -120,12 +120,12 @@ func SearchTicketsRetry(failure sdkgo.Failure, after time.Duration) connectormoc
 	return connectormock.Retry[freshdesk.SearchTicketsOutput](failure, after)
 }
 
-// SearchTicketsCustomerIssuePages is the manifest mock customerIssuePages: For requester jane@acme.example.com and tag billing-double-charge, page 1 is empty, page 2 finds ticket 1201, and page 3 repeats it; other searches need a script.
+// SearchTicketsCustomerIssuePages is the manifest mock customerIssuePages: For requester jane@acme.example.com and tag billing-double-charge, page 1 has no tickets for that requester, page 2 finds ticket 1201, and page 3 has none; other searches need a script.
 func SearchTicketsCustomerIssuePages() connectormock.Case[freshdesk.SearchTicketsOutput] {
 	pages := []freshdesk.SearchTicketsOutput{
-		connectormock.MustDecodeOutput[freshdesk.SearchTicketsOutput](`{"tickets":[],"totalMatched":2,"nextPage":2}`),
-		connectormock.MustDecodeOutput[freshdesk.SearchTicketsOutput](`{"tickets":[{"id":1201,"subject":"Double charge on order 88213","status":3,"priority":1,"requesterId":6007738334,"createdAt":"2026-01-26T14:02:00Z","updatedAt":"2026-01-28T08:45:00Z"}],"totalMatched":2,"nextPage":3}`),
-		connectormock.MustDecodeOutput[freshdesk.SearchTicketsOutput](`{"tickets":[{"id":1201,"subject":"Double charge on order 88213","status":3,"priority":1,"requesterId":6007738334,"createdAt":"2026-01-26T14:02:00Z","updatedAt":"2026-01-28T08:45:00Z"}],"totalMatched":2,"nextPage":0}`),
+		connectormock.MustDecodeOutput[freshdesk.SearchTicketsOutput](`{"tickets":[],"totalMatched":61,"nextPage":2}`),
+		connectormock.MustDecodeOutput[freshdesk.SearchTicketsOutput](`{"tickets":[{"id":1201,"subject":"Double charge on order 88213","status":3,"priority":1,"requesterId":6007738334,"createdAt":"2026-01-26T14:02:00Z","updatedAt":"2026-01-28T08:45:00Z"}],"totalMatched":61,"nextPage":3}`),
+		connectormock.MustDecodeOutput[freshdesk.SearchTicketsOutput](`{"tickets":[],"totalMatched":61,"nextPage":0}`),
 	}
 	pageNumber := connectormock.CursorPageNumber[freshdesk.SearchTicketsInput]("page", "nextPage", pages)
 	return connectormock.Paged(freshdesk.SearchTicketsBranchSearched, pageNumber, pages...)

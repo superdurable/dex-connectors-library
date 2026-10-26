@@ -61,18 +61,15 @@ spec:
       mocks:
         - name: customerIssuePages
           branch: searched
-          description: "For requester jane@acme.example.com and tag billing-double-charge, page 1 is empty, page 2 finds ticket 1201, and page 3 repeats it; other searches need a script."
+          description: "For requester jane@acme.example.com and tag billing-double-charge, page 1 has no tickets for that requester, page 2 finds ticket 1201, and page 3 has none; other searches need a script."
           default: true
           pages:
-            - {tickets: [], totalMatched: 2, nextPage: 2}
+            - {tickets: [], totalMatched: 61, nextPage: 2}
             - tickets:
                 - {id: 1201, subject: Double charge on order 88213, status: 3, priority: 1, requesterId: 6007738334, createdAt: "2026-01-26T14:02:00Z", updatedAt: "2026-01-28T08:45:00Z"}
-              totalMatched: 2
+              totalMatched: 61
               nextPage: 3
-            - tickets:
-                - {id: 1201, subject: Double charge on order 88213, status: 3, priority: 1, requesterId: 6007738334, createdAt: "2026-01-26T14:02:00Z", updatedAt: "2026-01-28T08:45:00Z"}
-              totalMatched: 2
-              nextPage: 0
+            - {tickets: [], totalMatched: 61, nextPage: 0}
         - name: searchRejected
           branch: providerRejected
           description: "A search for an unknown status is rejected by Freshdesk."
@@ -123,7 +120,7 @@ spec:
       inputType: CreateTicketInput
       outputType: CreateTicketOutput
       kind: mutation
-      description: Create one ticket for a requester email. Freshdesk has no idempotency key, so the Step runs with sync durability and sends the request at most once per Step execution.
+      description: Create one ticket for a requester email. The Step runs with sync durability; 429, 503, and traced pre-connection failures permit one next-attempt resend, while other dispatched outcomes are never resent.
       idempotency: required
       branches:
         - {id: created, goName: Created, description: Freshdesk created the ticket and returned it.}
@@ -133,7 +130,7 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "A possibly accepted ticket POST remains uncertain because Freshdesk documents no idempotency key or ticket lookup by Call ID."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "Freshdesk does not document whether a 503 means no ticket was accepted, so retrying that response could duplicate a ticket."}}
       mocks:
         - name: createdCustomerIssue
           branch: created
@@ -185,7 +182,7 @@ spec:
       inputType: AddNoteInput
       outputType: AddNoteOutput
       kind: mutation
-      description: Add one private note or one public reply to a ticket. Freshdesk has no idempotency key, so the Step runs with sync durability and sends the request at most once per Step execution.
+      description: Add one private note or one public reply to a ticket. The Step runs with sync durability; 429, 503, and traced pre-connection failures permit one next-attempt resend, while other dispatched outcomes are never resent.
       idempotency: required
       branches:
         - {id: added, goName: Added, description: Freshdesk added the note or reply and returned it.}
@@ -196,7 +193,7 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "A possibly accepted note remains uncertain because Freshdesk documents no idempotency key or note lookup by Call ID."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "Freshdesk does not document whether a 503 means no note or reply was accepted, so retrying that response could duplicate it."}}
       mocks:
         - name: customerIssuePrivateNote
           branch: added

@@ -26,8 +26,8 @@ const (
 	singleDispatchNotRecorded
 )
 
-// claimSingleDispatch records the marker before the first send; a later attempt that finds it must not resend.
-func claimSingleDispatch(call sdkgo.Call) singleDispatchClaim {
+// inspectSingleDispatch checks the previous marker before credentials can hide an earlier send.
+func inspectSingleDispatch(call sdkgo.Call) singleDispatchClaim {
 	var marker singleDispatchMarker
 	isMarkerFound, err := call.Context.GetLastHeartbeatValue(&marker)
 	if err != nil || (isMarkerFound && (marker.DispatchedCallID != call.ID || marker.RetryAttempt != call.Context.Attempt())) {
@@ -36,7 +36,13 @@ func claimSingleDispatch(call sdkgo.Call) singleDispatchClaim {
 	if !isMarkerFound && call.Context.Attempt() != 1 {
 		return singleDispatchAlreadySent
 	}
+	return singleDispatchGranted
+}
+
+// recordSingleDispatch checkpoints this attempt before its non-idempotent request.
+func recordSingleDispatch(call sdkgo.Call) singleDispatchClaim {
 	if err := call.Context.RecordHeartbeat(singleDispatchMarker{DispatchedCallID: call.ID, DispatchedAttempt: call.Context.Attempt()}); err != nil {
+		permitSingleDispatchRetry(call)
 		return singleDispatchNotRecorded
 	}
 	return singleDispatchGranted
@@ -69,7 +75,7 @@ func singleDispatchAttemptBeforeSend[OUT any](claim singleDispatchClaim, operati
 	}
 }
 
-// singleDispatchAttemptForExchange maps a sent request: only a provable non-application is retried.
+// singleDispatchAttemptForExchange retries 429, 503, and proven unsent requests with a next-attempt permit.
 func singleDispatchAttemptForExchange[OUT any](call sdkgo.Call, result freshdeskExchange, receipt sdkgo.Receipt, branches singleDispatchBranches) (sdkgo.MutationAttempt[OUT], bool) {
 	var zero OUT
 	switch result.outcome {

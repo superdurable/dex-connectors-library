@@ -15,8 +15,15 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/freshworks/freshdesk"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
+
+type failingFreshdeskCredentials struct{ err error }
+
+func (provider failingFreshdeskCredentials) Resolve(sdkgo.Call) (freshdesk.Credentials, error) {
+	return freshdesk.Credentials{}, provider.err
+}
 
 func TestNewValidatesDomainOptionsAndLimits(t *testing.T) {
 	credentials := testCredentialProvider()
@@ -216,6 +223,38 @@ func TestUnusableCredentialsSelectDefectBeforeAnyRequest(t *testing.T) {
 			require.Equal(t, freshdesk.GetTicketBranchDefect, result.Branch)
 			require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
 			require.Equal(t, "connection credentials are unavailable", result.Failure.Message)
+			require.Zero(t, provider.requestCount())
+		})
+	}
+}
+
+func TestCredentialResolutionClassifiesTerminalAndTransientFailures(t *testing.T) {
+	provider := newRecordingFreshdesk(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
+	for _, test := range []struct {
+		name       string
+		credential error
+		isRetry    bool
+	}{
+		{name: "missing object", credential: projectconfig.ErrObjectNotFound},
+		{name: "reauthorization", credential: sdkgo.ErrReauthorizationRequired},
+		{name: "unselected connection", credential: projectconfig.ErrConnectionNotSelected},
+		{name: "broker rejection", credential: projectconfig.ErrCredentialBrokerRejected},
+		{name: "transient store read", credential: errors.New("temporary credential store failure"), isRetry: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			client, err := freshdesk.New(freshdesk.Config{Domain: testDomain}, failingFreshdeskCredentials{err: test.credential},
+				freshdesk.WithAPIBaseURL(provider.URL+"/api/v2"))
+			require.NoError(t, err)
+			result, err := sdkgo.RunQuery(newFreshdeskDexContext("credential-"+test.name), client.GetTicket(), freshdeskConnection, freshdesk.GetTicketInput{TicketID: 35436})
+			if test.isRetry {
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry)
+				require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, freshdesk.GetTicketBranchDefect, result.Branch)
+				require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
+			}
 			require.Zero(t, provider.requestCount())
 		})
 	}

@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/freshworks/freshdesk"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -95,7 +96,7 @@ func TestCreateTicketNeverResendsARequestWhoseOutcomeIsUnknown(t *testing.T) {
 			provider := newRecordingFreshdesk(t, func(response http.ResponseWriter, _ *http.Request, _ int) { test.reply(response) })
 			ctx := newFreshdeskDexContext("create-" + test.name)
 			result, err := sdkgo.RunMutation(ctx, newFreshdeskClient(t, provider.URL).CreateTicket(), freshdeskConnection, validCreateTicketInput())
-			require.NoError(t, err, "only a provable non-application is retried")
+			require.NoError(t, err, "ambiguous dispatched outcomes are not retried")
 			require.Equal(t, test.branch, result.Branch)
 			require.Equal(t, test.kind, result.Failure.Kind)
 			encoded, err := json.Marshal(result)
@@ -168,6 +169,86 @@ func TestCreateTicketAfterAnEarlierDispatchSendsNothing(t *testing.T) {
 	require.Zero(t, provider.requestCount())
 }
 
+func TestCreateTicketReadsTheDispatchCheckpointBeforeResolvingCredentials(t *testing.T) {
+	provider := newRecordingFreshdesk(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusCreated, ticketBodyJSON(1201, 2, nil))
+	})
+	first := newFreshdeskDexContext("create-credential-rotation")
+	_, err := sdkgo.RunMutation(first, newFreshdeskClient(t, provider.URL).CreateTicket(), freshdeskConnection, validCreateTicketInput())
+	require.NoError(t, err)
+	client, err := freshdesk.New(freshdesk.Config{Domain: testDomain}, failingFreshdeskCredentials{err: projectconfig.ErrObjectNotFound},
+		freshdesk.WithAPIBaseURL(provider.URL+"/api/v2"))
+	require.NoError(t, err)
+	result, err := sdkgo.RunMutation(first.nextAttempt(), client.CreateTicket(), freshdeskConnection, validCreateTicketInput())
+	require.NoError(t, err)
+	require.Equal(t, freshdesk.CreateTicketBranchUncertain, result.Branch)
+	require.Equal(t, 1, provider.requestCount())
+}
+
+func TestCreateTicketKeepsThePermitAfterCredentialResolutionFails(t *testing.T) {
+	provider := newRecordingFreshdesk(t, func(response http.ResponseWriter, _ *http.Request, index int) {
+		if index == 0 {
+			writeJSON(t, response, http.StatusServiceUnavailable, `{"code":"service_unavailable"}`)
+			return
+		}
+		writeJSON(t, response, http.StatusCreated, ticketBodyJSON(1204, 2, nil))
+	})
+	first := newFreshdeskDexContext("create-credential-retry")
+	_, err := sdkgo.RunMutation(first, newFreshdeskClient(t, provider.URL).CreateTicket(), freshdeskConnection, validCreateTicketInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	client, err := freshdesk.New(freshdesk.Config{Domain: testDomain}, failingFreshdeskCredentials{err: projectconfig.ErrObjectNotFound},
+		freshdesk.WithAPIBaseURL(provider.URL+"/api/v2"))
+	require.NoError(t, err)
+	second := first.nextAttempt()
+	_, err = sdkgo.RunMutation(second, client.CreateTicket(), freshdeskConnection, validCreateTicketInput())
+	require.ErrorAs(t, err, &retry, "a permitted later attempt cannot report a credential defect")
+	require.Contains(t, string(second.recordedHeartbeat), `"freshdeskRetryAttempt":3`)
+	require.Equal(t, 1, provider.requestCount())
+	third := second.nextAttempt()
+	result, err := sdkgo.RunMutation(third, newFreshdeskClient(t, provider.URL).CreateTicket(), freshdeskConnection, validCreateTicketInput())
+	require.NoError(t, err)
+	require.Equal(t, freshdesk.CreateTicketBranchCreated, result.Branch)
+	require.Equal(t, 2, provider.requestCount())
+}
+
+func TestCreateTicketRetriesTransientCredentialReadBeforeSending(t *testing.T) {
+	provider := newRecordingFreshdesk(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusCreated, ticketBodyJSON(1201, 2, nil))
+	})
+	client, err := freshdesk.New(freshdesk.Config{Domain: testDomain}, failingFreshdeskCredentials{err: errors.New("temporary credential store failure")},
+		freshdesk.WithAPIBaseURL(provider.URL+"/api/v2"))
+	require.NoError(t, err)
+	first := newFreshdeskDexContext("create-transient-credential")
+	_, err = sdkgo.RunMutation(first, client.CreateTicket(), freshdeskConnection, validCreateTicketInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+	require.Contains(t, string(first.recordedHeartbeat), `"freshdeskRetryAttempt":2`)
+	require.Zero(t, provider.requestCount())
+	result, err := sdkgo.RunMutation(first.nextAttempt(), newFreshdeskClient(t, provider.URL).CreateTicket(), freshdeskConnection, validCreateTicketInput())
+	require.NoError(t, err)
+	require.Equal(t, freshdesk.CreateTicketBranchCreated, result.Branch)
+	require.Equal(t, 1, provider.requestCount())
+}
+
+func TestCreateTicketPermitsNextAttemptAfterFailedDispatchCheckpoint(t *testing.T) {
+	provider := newRecordingFreshdesk(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusCreated, ticketBodyJSON(1201, 2, nil))
+	})
+	first := newFreshdeskDexContext("create-checkpoint-failure")
+	first.rejectNextHeartbeat = true
+	_, err := sdkgo.RunMutation(first, newFreshdeskClient(t, provider.URL).CreateTicket(), freshdeskConnection, validCreateTicketInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	require.Contains(t, string(first.recordedHeartbeat), `"freshdeskRetryAttempt":2`)
+	require.Zero(t, provider.requestCount())
+	result, err := sdkgo.RunMutation(first.nextAttempt(), newFreshdeskClient(t, provider.URL).CreateTicket(), freshdeskConnection, validCreateTicketInput())
+	require.NoError(t, err)
+	require.Equal(t, freshdesk.CreateTicketBranchCreated, result.Branch)
+	require.Equal(t, 1, provider.requestCount())
+}
+
 func TestCreateTicketRetriesServiceUnavailableOnlyOnTheNextAttempt(t *testing.T) {
 	provider := newRecordingFreshdesk(t, func(response http.ResponseWriter, _ *http.Request, index int) {
 		if index == 0 {
@@ -197,34 +278,65 @@ func TestCreateTicketRetriesServiceUnavailableOnlyOnTheNextAttempt(t *testing.T)
 	require.Equal(t, 2, provider.requestCount())
 }
 
+type shortenedAttemptCredentialProvider struct {
+	stepContext *freshdeskDexContext
+	cancel      context.CancelFunc
+}
+
+func (provider *shortenedAttemptCredentialProvider) Resolve(call sdkgo.Call) (freshdesk.Credentials, error) {
+	credentials, err := testCredentialProvider().Resolve(call)
+	provider.stepContext.Context, provider.cancel = context.WithTimeout(context.Background(), 2500*time.Millisecond)
+	return credentials, err
+}
+
 func TestCreateTicketSkipsRequestWithoutAttemptTime(t *testing.T) {
-	provider := newRecordingFreshdesk(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
-	stepContext, cancel := context.WithTimeout(context.Background(), time.Second)
+	provider := newRecordingFreshdesk(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusCreated, ticketBodyJSON(1201, 2, nil))
+	})
+	stepContext, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	ctx := newFreshdeskDexContext("create-deadline")
 	ctx.Context = stepContext
-	_, err := sdkgo.RunMutation(ctx, newFreshdeskClient(t, provider.URL).CreateTicket(), freshdeskConnection, validCreateTicketInput())
+	credentials := &shortenedAttemptCredentialProvider{stepContext: ctx}
+	client, err := freshdesk.New(freshdesk.Config{Domain: testDomain}, credentials,
+		freshdesk.WithAPIBaseURL(provider.URL+"/api/v2"))
+	require.NoError(t, err)
+	_, err = sdkgo.RunMutation(ctx, client.CreateTicket(), freshdeskConnection, validCreateTicketInput())
+	defer credentials.cancel()
 	var retry *sdkgo.RetryError
 	require.ErrorAs(t, err, &retry)
 	require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+	require.Contains(t, string(ctx.recordedHeartbeat), `"freshdeskRetryAttempt":2`)
 	require.Zero(t, provider.requestCount())
+	next := ctx.nextAttempt()
+	next.Context = context.Background()
+	result, err := sdkgo.RunMutation(next, newFreshdeskClient(t, provider.URL).CreateTicket(), freshdeskConnection, validCreateTicketInput())
+	require.NoError(t, err)
+	require.Equal(t, freshdesk.CreateTicketBranchCreated, result.Branch)
+	require.Equal(t, 1, provider.requestCount())
 }
 
-type untracedDialFailureTransport struct{}
+type untracedDialFailureTransport struct{ requests int }
 
-func (untracedDialFailureTransport) RoundTrip(*http.Request) (*http.Response, error) {
+func (transport *untracedDialFailureTransport) RoundTrip(*http.Request) (*http.Response, error) {
+	transport.requests++
 	return nil, &net.OpError{Op: "dial", Err: errors.New("untraced dial failure")}
 }
 
 func TestCreateTicketDoesNotRetryAnUntracedDialError(t *testing.T) {
+	transport := &untracedDialFailureTransport{}
 	client, err := freshdesk.New(freshdesk.Config{Domain: testDomain}, testCredentialProvider(),
-		freshdesk.WithHTTPClient(&http.Client{Transport: untracedDialFailureTransport{}}))
+		freshdesk.WithHTTPClient(&http.Client{Transport: transport}))
 	require.NoError(t, err)
 	ctx := newFreshdeskDexContext("create-untraced")
 	result, err := sdkgo.RunMutation(ctx, client.CreateTicket(), freshdeskConnection, validCreateTicketInput())
 	require.NoError(t, err)
 	require.Equal(t, freshdesk.CreateTicketBranchUncertain, result.Branch)
 	require.Equal(t, sdkgo.FailureTransport, result.Failure.Kind)
+	replayed, err := sdkgo.RunMutation(ctx.nextAttempt(), client.CreateTicket(), freshdeskConnection, validCreateTicketInput())
+	require.NoError(t, err)
+	require.Equal(t, freshdesk.CreateTicketBranchUncertain, replayed.Branch)
+	require.Equal(t, 1, transport.requests)
 }
 
 func TestCreateTicketCutsAnAcceptedBodyBeforeTheAttemptDeadlineWithoutResending(t *testing.T) {
@@ -236,7 +348,7 @@ func TestCreateTicketCutsAnAcceptedBodyBeforeTheAttemptDeadlineWithoutResending(
 		response.(http.Flusher).Flush()
 		<-request.Context().Done()
 	})
-	stepContext, cancel := context.WithTimeout(context.Background(), 2500*time.Millisecond)
+	stepContext, cancel := context.WithTimeout(context.Background(), 4*time.Second)
 	defer cancel()
 	first := newFreshdeskDexContext("create-accepted-body-cut")
 	first.Context = stepContext

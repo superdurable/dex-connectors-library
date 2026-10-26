@@ -4,8 +4,8 @@
 // Package freshdesk implements Freshdesk ticket operations as Dex connector Steps:
 // searchTickets and getTicket read tickets, updateTicket changes ticket fields and
 // tags so that a repeated attempt writes nothing twice, and createTicket and addNote
-// create a ticket or add one note or reply, sending each request at most once per
-// Step execution because Freshdesk documents no idempotency key.
+// create a ticket or add one note or reply. A 429, 503, or proven unsent request
+// may retry in the next attempt; other dispatched outcomes are never resent.
 //
 // The connector authenticates with an agent's API key over HTTP Basic, the key as
 // the user name and X as the password, and sends every request to
@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -36,7 +37,9 @@ const (
 	providerName = "freshdesk"
 
 	// defaultRequestTimeout keeps an operation's two requests inside the 30-second Execute timeout.
-	defaultRequestTimeout = 12 * time.Second
+	defaultRequestTimeout      = 12 * time.Second
+	minimumOrdinaryRequestTime = 2 * time.Second
+	requestCompletionMargin    = time.Second
 
 	// requestIDHeader is not in Freshdesk's API documentation, so the Receipt carries it only when present.
 	requestIDHeader = "X-Request-Id"
@@ -193,23 +196,51 @@ func (client *Client) UpdateTicket() UpdateTicketOperation {
 // AddNote returns the addNote Mutation bound to this client.
 func (client *Client) AddNote() AddNoteOperation { return AddNoteOperation{client: client} }
 
-// resolveCredentials returns a header-safe API key, or a safe defect Failure.
-func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Credentials, *sdkgo.Failure) {
+// resolveCredentials classifies unavailable credentials without exposing provider errors or secrets.
+func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Credentials, *sdkgo.Failure, bool) {
 	credentials, err := client.credentials.Resolve(call)
-	if err != nil || validateResolvedCredentials(credentials) != nil {
-		return Credentials{}, freshdeskFailurePointer(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable")
+	if err != nil {
+		if isTerminalCredentialError(err) {
+			return Credentials{}, freshdeskFailurePointer(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable"), false
+		}
+		return Credentials{}, freshdeskFailurePointer(sdkgo.FailureAvailability, operation, "connection credentials could not be read; no request was sent"), true
 	}
-	return credentials, nil
+	if validateResolvedCredentials(credentials) != nil {
+		return Credentials{}, freshdeskFailurePointer(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable"), false
+	}
+	return credentials, nil, false
+}
+
+// isTerminalCredentialError identifies a credential state that retry alone cannot repair.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, sdkgo.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrConnectionNotSelected) || errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
+}
+
+type freshdeskWriteBudget struct {
+	minimumRequestTime time.Duration
+}
+
+func newFreshdeskWriteBudget(stepContext context.Context, executeTimeout time.Duration) freshdeskWriteBudget {
+	available := executeTimeout
+	if deadline, hasDeadline := stepContext.Deadline(); hasDeadline {
+		available = min(available, time.Until(deadline))
+	}
+	return freshdeskWriteBudget{minimumRequestTime: max(available, 0) / 10}
 }
 
 // exchange sends one authenticated request and classifies its response without deciding retry policy.
-func (client *Client) exchange(call sdkgo.Call, credentials Credentials, operation string, request freshdeskRequest) freshdeskExchange {
+func (client *Client) exchange(call sdkgo.Call, credentials Credentials, operation string, request freshdeskRequest, writeBudget ...freshdeskWriteBudget) freshdeskExchange {
 	var requestContext context.Context = call.Context
 	if deadline, hasDeadline := requestContext.Deadline(); hasDeadline {
-		if time.Until(deadline) <= 2*time.Second {
+		minimumRequestTime := minimumOrdinaryRequestTime
+		if len(writeBudget) != 0 {
+			minimumRequestTime = writeBudget[0].minimumRequestTime
+		}
+		if time.Until(deadline) <= requestCompletionMargin+minimumRequestTime {
 			return freshdeskExchange{outcome: exchangeNotSent, failure: freshdeskFailure(sdkgo.FailureAvailability, operation, "too little attempt time remained, so the request was not sent")}
 		}
-		boundedContext, cancel := context.WithDeadline(requestContext, deadline.Add(-time.Second))
+		boundedContext, cancel := context.WithDeadline(requestContext, deadline.Add(-requestCompletionMargin))
 		defer cancel()
 		requestContext = boundedContext
 	}

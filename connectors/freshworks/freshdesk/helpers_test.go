@@ -153,12 +153,13 @@ func ticketBodyJSON(id int64, status int, tags []string) string {
 // freshdeskDexContext is a dex.Context whose heartbeat reads the previous attempt's value, as Dex supplies it.
 type freshdeskDexContext struct {
 	context.Context
-	step              string
-	previousHeartbeat json.RawMessage
-	recordedHeartbeat json.RawMessage
-	heartbeatCount    int
-	rejectsHeartbeat  bool
-	attempt           int32
+	step                string
+	previousHeartbeat   json.RawMessage
+	recordedHeartbeat   json.RawMessage
+	heartbeatCount      int
+	rejectsHeartbeat    bool
+	rejectNextHeartbeat bool
+	attempt             int32
 }
 
 func newFreshdeskDexContext(step string) *freshdeskDexContext {
@@ -190,6 +191,10 @@ func (*freshdeskDexContext) GetStepExecutionLocal(string, any) (bool, error) {
 func (*freshdeskDexContext) RecordEvent(string, any) error { return nil }
 
 func (context *freshdeskDexContext) RecordHeartbeat(value any) error {
+	if context.rejectNextHeartbeat {
+		context.rejectNextHeartbeat = false
+		return errors.New("heartbeat stream closed once")
+	}
 	if context.rejectsHeartbeat {
 		return errors.New("heartbeat stream closed")
 	}

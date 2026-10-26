@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/freshworks/freshdesk"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
 func TestAddNoteAddsAPrivateNoteByDefault(t *testing.T) {
@@ -121,4 +122,21 @@ func TestAddNoteRetriesServiceUnavailableWithoutDuplicateReply(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, freshdesk.AddNoteBranchUncertain, result.Branch)
 	require.Equal(t, 2, provider.requestCount())
+}
+
+func TestAddNoteReadsTheDispatchCheckpointBeforeResolvingCredentials(t *testing.T) {
+	provider := newRecordingFreshdesk(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusCreated, `{"id":7,"ticket_id":141,"body_text":"We are working on this issue.","created_at":"2026-01-27T10:00:00Z"}`)
+	})
+	input := freshdesk.AddNoteInput{TicketID: 141, Body: "We are working on this issue.", IsPublicReply: true}
+	first := newFreshdeskDexContext("reply-credential-rotation")
+	_, err := sdkgo.RunMutation(first, newFreshdeskClient(t, provider.URL).AddNote(), freshdeskConnection, input)
+	require.NoError(t, err)
+	client, err := freshdesk.New(freshdesk.Config{Domain: testDomain}, failingFreshdeskCredentials{err: projectconfig.ErrObjectNotFound},
+		freshdesk.WithAPIBaseURL(provider.URL+"/api/v2"))
+	require.NoError(t, err)
+	result, err := sdkgo.RunMutation(first.nextAttempt(), client.AddNote(), freshdeskConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, freshdesk.AddNoteBranchUncertain, result.Branch)
+	require.Equal(t, 1, provider.requestCount())
 }
