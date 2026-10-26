@@ -447,10 +447,14 @@ func stepOptions(defaults StepDefaults, override *dex.StepOptions) (*dex.StepOpt
 	if override != nil && hasWaitForOptions(override) {
 		return nil, fmt.Errorf("execute-only connector Step rejects WaitFor options")
 	}
+	executeRetry := cloneRetryPolicy(defaults.ExecuteRetry)
+	if executeRetry == nil {
+		executeRetry = DefaultConnectorStepExecuteRetryPolicy()
+	}
 	merged := &dex.StepOptions{
 		ExecuteMethodTimeout: defaults.ExecuteMethodTimeout,
 		HeartbeatTimeout:     defaults.HeartbeatTimeout,
-		ExecuteRetry:         cloneRetryPolicy(defaults.ExecuteRetry),
+		ExecuteRetry:         executeRetry,
 		ExecuteDurability:    defaults.ExecuteDurability,
 	}
 	if override != nil {

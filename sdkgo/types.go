@@ -103,7 +103,7 @@ type StepDefaults struct {
 	ExecuteMethodTimeout time.Duration `json:"executeMethodTimeout" yaml:"executeMethodTimeout"`
 	// HeartbeatTimeout sets the heartbeat timeout; zero uses the Dex default.
 	HeartbeatTimeout time.Duration `json:"heartbeatTimeout,omitempty" yaml:"heartbeatTimeout,omitempty"`
-	// ExecuteRetry sets the Dex Execute retry policy; nil uses the Dex default.
+	// ExecuteRetry sets the Dex Execute retry policy; nil uses DefaultConnectorStepExecuteRetryPolicy.
 	ExecuteRetry *dex.RetryPolicy `json:"executeRetry,omitempty" yaml:"executeRetry,omitempty"`
 	// ExecuteDurability selects the Dex Execute durability mode.
 	ExecuteDurability dex.StepDurability `json:"executeDurability" yaml:"executeDurability"`

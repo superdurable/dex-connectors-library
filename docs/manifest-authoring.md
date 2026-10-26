@@ -21,10 +21,20 @@ An operation declares:
   connection, or `none` for public operations;
 - Dex Execute timeout, retry, heartbeat, and durability defaults.
 
+The SDK uses a one-hour Execute retry budget when a definition has no retry
+policy: one-second initial delay, coefficient 2, five-minute maximum delay,
+and unlimited attempts. Explicit manifest policies still take precedence, and
+applications can override them per Step. A later manifest change is planned
+to let authors omit `retry` and require a validated reason for a shorter
+policy: `billedOperation`, `personWaiting`, or `duplicateWriteRisk`. That
+manifest validation is not yet implemented; manifests still must declare
+`retry` today.
+
 Declare a branch for each definite business outcome the application may need
 to handle, such as `notFound` or `providerRejected`. Return Retry for transient
 failures that are safe to repeat; the Step retries until its budget runs out,
-then the Flow fails for platform debugging. `uncertain` is limited to a write
+then the Flow fails unless `ExecuteFailure` routes to a recovery Step.
+`uncertain` is limited to a write
 that may have reached the provider, has no safe repeat mechanism (a provider
 idempotency key, stable deduplication ID, absolute replacement, upsert, or
 delete), and cannot be confirmed by read-back. A transport failure before the

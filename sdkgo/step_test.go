@@ -66,6 +66,14 @@ func (factoryTarget) Execute(dex.Context, sdkgo.QueryResult[string]) (*dex.StepD
 	return dex.GracefulComplete(nil), nil
 }
 
+type factoryMutationTarget struct {
+	dex.StepDefaultsNoWaitFor[sdkgo.MutationResult[string]]
+}
+
+func (factoryMutationTarget) Execute(dex.Context, sdkgo.MutationResult[string]) (*dex.StepDecision, error) {
+	return dex.GracefulComplete(nil), nil
+}
+
 type factoryFailureTarget struct {
 	dex.StepDefaultsNoWaitFor[string]
 }
@@ -126,6 +134,62 @@ func TestFactoryMapsOperationInputBeforeInvokingProvider(t *testing.T) {
 	require.NotNil(t, decision)
 	require.Equal(t, 1, mapperCalls)
 	require.Equal(t, 1, operation.calls)
+}
+
+func TestDefaultConnectorStepExecuteRetryPolicyReturnsIndependentValues(t *testing.T) {
+	first := sdkgo.DefaultConnectorStepExecuteRetryPolicy()
+	second := sdkgo.DefaultConnectorStepExecuteRetryPolicy()
+	require.Equal(t, &dex.RetryPolicy{
+		InitialInterval: time.Second, BackoffCoefficient: 2, MaximumInterval: 5 * time.Minute,
+		MaximumAttempts: 0, TotalDuration: time.Hour,
+	}, first)
+	require.NotSame(t, first, second)
+	first.TotalDuration = time.Minute
+	require.Equal(t, time.Hour, second.TotalDuration)
+}
+
+func TestFactoryExecuteRetryPolicyPrecedence(t *testing.T) {
+	definition := queryDefinition(testQueryRef)
+	operation := &factoryQuery{definition: definition}
+	config := sdkgo.QueryStepConfig[string, string, string]{
+		StepType: "RetryPolicyQuery", Annotations: sdkgo.StepAnnotations{GroupID: "test", GroupLabel: "Test", Explanation: "test query"},
+		Operation: operation, Connection: testConnection,
+		MapToOperationInput: func(input string) string { return input }, Branches: queryFactoryTargets(),
+	}
+
+	queryStep := sdkgo.MustNewQueryStep(config)
+	require.Equal(t, sdkgo.DefaultConnectorStepExecuteRetryPolicy(), queryStep.GetStepOptions().ExecuteRetry)
+
+	mutationStep := sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[string, string, string]{
+		StepType: "RetryPolicyMutation", Annotations: sdkgo.StepAnnotations{GroupID: "test", GroupLabel: "Test", Explanation: "test mutation"},
+		Operation: &mutationOperation{}, Connection: testConnection,
+		MapToOperationInput: func(input string) string { return input },
+		Branches: []sdkgo.BranchTarget[sdkgo.MutationResult[string]]{
+			sdkgo.GoToBranch(testMutationSucceeded, factoryMutationTarget{}),
+			sdkgo.GoToBranch(testMutationRejected, factoryMutationTarget{}),
+			sdkgo.GoToBranch(testMutationUncertain, factoryMutationTarget{}),
+			sdkgo.GoToBranch(testMutationDefect, factoryMutationTarget{}),
+		},
+	})
+	require.Equal(t, sdkgo.DefaultConnectorStepExecuteRetryPolicy(), mutationStep.GetStepOptions().ExecuteRetry)
+
+	nilDefinitionOverride := &dex.RetryPolicy{TotalDuration: 30 * time.Minute}
+	config.StepOptionsOverride = &dex.StepOptions{ExecuteRetry: nilDefinitionOverride}
+	queryStep = sdkgo.MustNewQueryStep(config)
+	require.Equal(t, nilDefinitionOverride, queryStep.GetStepOptions().ExecuteRetry)
+	require.Zero(t, queryStep.GetStepOptions().ExecuteRetry.MaximumInterval)
+	config.StepOptionsOverride = nil
+
+	explicit := &dex.RetryPolicy{InitialInterval: 2 * time.Second, MaximumAttempts: 3, TotalDuration: 5 * time.Minute}
+	definition.StepDefaults.ExecuteRetry = explicit
+	operation.definition = definition
+	queryStep = sdkgo.MustNewQueryStep(config)
+	require.Equal(t, explicit, queryStep.GetStepOptions().ExecuteRetry)
+
+	override := &dex.RetryPolicy{InitialInterval: 3 * time.Second, MaximumAttempts: 7, TotalDuration: 10 * time.Minute}
+	config.StepOptionsOverride = &dex.StepOptions{ExecuteRetry: override}
+	queryStep = sdkgo.MustNewQueryStep(config)
+	require.Equal(t, override, queryStep.GetStepOptions().ExecuteRetry)
 }
 
 func TestFactoryUsesConfiguredResourcesAndOverlaysExecuteOptions(t *testing.T) {
