@@ -79,23 +79,32 @@ func (CreateTicketOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateTicketI
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke sends POST /api/v2/tickets at most once per Step execution. Only a 429 or a connection
-// that never opened is retried; any other unconfirmed outcome selects uncertain without resending.
+// Invoke sends POST /api/v2/tickets. A 429, 503, or traced pre-connection failure retries only
+// in the next attempt; other unconfirmed dispatched outcomes select uncertain without resending.
 func (operation CreateTicketOperation) Invoke(call sdkgo.Call, input CreateTicketInput) sdkgo.MutationAttempt[CreateTicketOutput] {
 	if err := validateCreateTicketInput(input); err != nil {
 		return sdkgo.NewMutationBranch(CreateTicketBranchDefect, CreateTicketOutput{}, freshdeskFailurePointer(sdkgo.FailureValidation, createTicketOperation, err.Error()), sdkgo.Receipt{})
 	}
-	credentials, failure := operation.client.resolveCredentials(call, createTicketOperation)
+	writeBudget := newFreshdeskWriteBudget(call.Context, CreateTicketDefinition.StepDefaults.ExecuteMethodTimeout)
+	if attempt, isTerminal := singleDispatchAttemptBeforeSend[CreateTicketOutput](inspectSingleDispatch(call), createTicketOperation,
+		operation.client.receipt(call, freshdeskResponse{}, 0)); isTerminal {
+		return attempt
+	}
+	credentials, failure, isTransient := operation.client.resolveCredentials(call, createTicketOperation)
 	if failure != nil {
+		if isTransient || call.Context.Attempt() > 1 {
+			permitSingleDispatchRetry(call)
+			return sdkgo.NewMutationRetry[CreateTicketOutput](*failure, 0)
+		}
 		return sdkgo.NewMutationBranch(CreateTicketBranchDefect, CreateTicketOutput{}, failure, sdkgo.Receipt{})
 	}
-	if attempt, isTerminal := singleDispatchAttemptBeforeSend[CreateTicketOutput](claimSingleDispatch(call), createTicketOperation,
+	if attempt, isTerminal := singleDispatchAttemptBeforeSend[CreateTicketOutput](recordSingleDispatch(call), createTicketOperation,
 		operation.client.receipt(call, freshdeskResponse{}, 0)); isTerminal {
 		return attempt
 	}
 	result := operation.client.exchange(call, credentials, createTicketOperation, freshdeskRequest{
 		method: http.MethodPost, path: "/tickets", payload: buildCreateTicketRequest(input),
-	})
+	}, writeBudget)
 	receipt := operation.client.receipt(call, result.response, 0)
 	if attempt, isTerminal := singleDispatchAttemptForExchange[CreateTicketOutput](call, result, receipt, singleDispatchBranches{
 		providerRejected: CreateTicketBranchProviderRejected, defect: CreateTicketBranchDefect,

@@ -203,7 +203,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			StepType: openIssueTicketStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
 				GroupID: "freshdesk", GroupLabel: "Freshdesk",
-				Explanation: "Open a ticket with the customer's message and priority, sending the request at most once.",
+				Explanation: "Open a ticket with the customer's message and priority; only a safe retry can send again.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToCreateTicketInput,
 			Created: sdkgo.GoTo(recordOpenedTicket{}),
@@ -213,7 +213,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			StepType: addTriageNoteStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
 				GroupID: "freshdesk", GroupLabel: "Freshdesk",
-				Explanation: "Add one private triage note, sending the request at most once.",
+				Explanation: "Add one private triage note; only a safe retry can send again.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToAddNoteInput,
 			Added: sdkgo.GoTo(completeTriage{}),

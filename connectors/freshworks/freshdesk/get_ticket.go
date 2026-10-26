@@ -57,8 +57,11 @@ func (operation GetTicketOperation) Invoke(call sdkgo.Call, input GetTicketInput
 	if err := validateGetTicketInput(input); err != nil {
 		return sdkgo.NewQueryBranch(GetTicketBranchDefect, TicketDetails{}, freshdeskFailurePointer(sdkgo.FailureValidation, getTicketOperation, err.Error()), sdkgo.Receipt{})
 	}
-	credentials, failure := operation.client.resolveCredentials(call, getTicketOperation)
+	credentials, failure, isTransient := operation.client.resolveCredentials(call, getTicketOperation)
 	if failure != nil {
+		if isTransient {
+			return sdkgo.NewQueryRetry[TicketDetails](*failure, 0)
+		}
 		return sdkgo.NewQueryBranch(GetTicketBranchDefect, TicketDetails{}, failure, sdkgo.Receipt{})
 	}
 	ticketResult := operation.client.exchange(call, credentials, getTicketOperation, freshdeskRequest{
@@ -97,7 +100,7 @@ func getTicketAttemptForExchange(result freshdeskExchange, receipt sdkgo.Receipt
 	switch result.outcome {
 	case exchangeSucceeded:
 		return sdkgo.QueryAttempt[TicketDetails]{}, false
-	case exchangeRateLimited, exchangeNotSent, exchangeUnavailable:
+	case exchangeRateLimited, exchangeNotSent, exchangeUnavailable, exchangeServiceUnavailable:
 		return sdkgo.NewQueryRetry[TicketDetails](result.failure, result.retryAfter), true
 	case exchangeNotFound:
 		return sdkgo.NewQueryBranch(GetTicketBranchNotFound, TicketDetails{}, &result.failure, receipt), true

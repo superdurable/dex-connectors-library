@@ -72,8 +72,11 @@ func (operation UpdateTicketOperation) Invoke(call sdkgo.Call, input UpdateTicke
 	if err := validateUpdateTicketInput(input); err != nil {
 		return sdkgo.NewMutationBranch(UpdateTicketBranchDefect, UpdateTicketOutput{}, freshdeskFailurePointer(sdkgo.FailureValidation, updateTicketOperation, err.Error()), sdkgo.Receipt{})
 	}
-	credentials, failure := operation.client.resolveCredentials(call, updateTicketOperation)
+	credentials, failure, isTransient := operation.client.resolveCredentials(call, updateTicketOperation)
 	if failure != nil {
+		if isTransient {
+			return sdkgo.NewMutationRetry[UpdateTicketOutput](*failure, 0)
+		}
 		return sdkgo.NewMutationBranch(UpdateTicketBranchDefect, UpdateTicketOutput{}, failure, sdkgo.Receipt{})
 	}
 	readResult := operation.client.exchange(call, credentials, updateTicketOperation, freshdeskRequest{method: http.MethodGet, path: ticketPath(input.TicketID)})
@@ -109,7 +112,7 @@ func updateTicketAttemptForExchange(result freshdeskExchange, receipt sdkgo.Rece
 	switch result.outcome {
 	case exchangeSucceeded:
 		return sdkgo.MutationAttempt[UpdateTicketOutput]{}, false
-	case exchangeRateLimited, exchangeNotSent, exchangeUnavailable:
+	case exchangeRateLimited, exchangeNotSent, exchangeUnavailable, exchangeServiceUnavailable:
 		return sdkgo.NewMutationRetry[UpdateTicketOutput](result.failure, result.retryAfter), true
 	case exchangeNotFound:
 		return sdkgo.NewMutationBranch(UpdateTicketBranchNotFound, value, &result.failure, receipt), true

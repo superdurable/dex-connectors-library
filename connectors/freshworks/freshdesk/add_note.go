@@ -54,18 +54,26 @@ func (AddNoteOperation) IdempotencyKey(callID sdkgo.CallID, _ AddNoteInput) sdkg
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke sends POST /api/v2/tickets/{id}/notes or /reply at most once per Step execution. Only a
-// 429 or a connection that never opened is retried; any other unconfirmed outcome selects
-// uncertain without resending, because a repeated reply is a second email to the requester.
+// Invoke sends POST /api/v2/tickets/{id}/notes or /reply. A 429, 503, or traced pre-connection
+// failure retries in the next attempt; other unconfirmed dispatched outcomes select uncertain.
 func (operation AddNoteOperation) Invoke(call sdkgo.Call, input AddNoteInput) sdkgo.MutationAttempt[AddNoteOutput] {
 	if err := validateAddNoteInput(input); err != nil {
 		return sdkgo.NewMutationBranch(AddNoteBranchDefect, AddNoteOutput{}, freshdeskFailurePointer(sdkgo.FailureValidation, addNoteOperation, err.Error()), sdkgo.Receipt{})
 	}
-	credentials, failure := operation.client.resolveCredentials(call, addNoteOperation)
+	writeBudget := newFreshdeskWriteBudget(call.Context, AddNoteDefinition.StepDefaults.ExecuteMethodTimeout)
+	if attempt, isTerminal := singleDispatchAttemptBeforeSend[AddNoteOutput](inspectSingleDispatch(call), addNoteOperation,
+		operation.client.receipt(call, freshdeskResponse{}, 0)); isTerminal {
+		return attempt
+	}
+	credentials, failure, isTransient := operation.client.resolveCredentials(call, addNoteOperation)
 	if failure != nil {
+		if isTransient || call.Context.Attempt() > 1 {
+			permitSingleDispatchRetry(call)
+			return sdkgo.NewMutationRetry[AddNoteOutput](*failure, 0)
+		}
 		return sdkgo.NewMutationBranch(AddNoteBranchDefect, AddNoteOutput{}, failure, sdkgo.Receipt{})
 	}
-	if attempt, isTerminal := singleDispatchAttemptBeforeSend[AddNoteOutput](claimSingleDispatch(call), addNoteOperation,
+	if attempt, isTerminal := singleDispatchAttemptBeforeSend[AddNoteOutput](recordSingleDispatch(call), addNoteOperation,
 		operation.client.receipt(call, freshdeskResponse{}, 0)); isTerminal {
 		return attempt
 	}
@@ -75,7 +83,7 @@ func (operation AddNoteOperation) Invoke(call sdkgo.Call, input AddNoteInput) sd
 		request = freshdeskRequest{method: http.MethodPost, path: ticketPath(input.TicketID) + "/reply",
 			payload: publicReplyRequestWire{Body: plainTextToFreshdeskHTML(input.Body)}}
 	}
-	result := operation.client.exchange(call, credentials, addNoteOperation, request)
+	result := operation.client.exchange(call, credentials, addNoteOperation, request, writeBudget)
 	receipt := operation.client.receipt(call, result.response, 0)
 	if attempt, isTerminal := singleDispatchAttemptForExchange[AddNoteOutput](call, result, receipt, singleDispatchBranches{
 		notFound: AddNoteBranchNotFound, providerRejected: AddNoteBranchProviderRejected, defect: AddNoteBranchDefect,

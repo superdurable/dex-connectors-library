@@ -230,6 +230,18 @@ func TestRateLimitedCreateWaitsAndCreatesOneTicketWithRealDex(t *testing.T) {
 	require.Equal(t, 1, provider.ticketCount())
 }
 
+func TestServiceUnavailableCreateRetriesAndCreatesOneTicketWithRealDex(t *testing.T) {
+	provider := newFakeFreshdesk(t)
+	provider.serviceUnavailableFirstCreate = true
+	harness := newTriageHarness(t, provider, defaultRequestTimeout)
+
+	outcome := harness.runTriage(t, "service-unavailable", integrationIssueInput())
+	require.Equal(t, TriageTicketOpened, outcome.Action)
+	require.Equal(t, 2, provider.count("create"))
+	require.Equal(t, 1, provider.ticketCount())
+	require.Equal(t, provider.requestsFor("create")[0].body, provider.requestsFor("create")[1].body)
+}
+
 // TestLostWorkerDuringCreateSelectsUncertainWithoutResendingWithRealDex replaces the Worker while
 // Freshdesk holds the create; the next attempt finds the dispatch marker and sends nothing.
 func TestLostWorkerDuringCreateSelectsUncertainWithoutResendingWithRealDex(t *testing.T) {
@@ -315,15 +327,16 @@ type fakeFreshdesk struct {
 	counts             map[string]int
 	requests           map[string][]fakeRecordedRequest
 
-	delaysFirstCreate        bool
-	delaysFirstNote          bool
-	delaysFirstUpdate        bool
-	losesFirstCreateResponse bool
-	losesFirstUpdateResponse bool
-	losesFirstNoteResponse   bool
-	rateLimitsFirstCreate    bool
-	rejectsCreate            bool
-	holdsFirstCreate         chan struct{}
+	delaysFirstCreate             bool
+	delaysFirstNote               bool
+	delaysFirstUpdate             bool
+	losesFirstCreateResponse      bool
+	losesFirstUpdateResponse      bool
+	losesFirstNoteResponse        bool
+	rateLimitsFirstCreate         bool
+	serviceUnavailableFirstCreate bool
+	rejectsCreate                 bool
+	holdsFirstCreate              chan struct{}
 }
 
 type fakeTicket struct {
@@ -516,6 +529,10 @@ func (provider *fakeFreshdesk) createTicket(response http.ResponseWriter, reques
 	if provider.rateLimitsFirstCreate && attempt == 1 {
 		response.Header().Set("Retry-After", "1")
 		provider.writeJSON(response, http.StatusTooManyRequests, `{"code":"too_many_requests","message":"SENTINEL"}`)
+		return
+	}
+	if provider.serviceUnavailableFirstCreate && attempt == 1 {
+		provider.writeJSON(response, http.StatusServiceUnavailable, `{"code":"service_unavailable"}`)
 		return
 	}
 	if attempt == 1 && (provider.delaysFirstCreate || provider.holdsFirstCreate != nil) {
@@ -821,6 +838,12 @@ func (provider *fakeFreshdesk) lastRequest(name string) fakeRecordedRequest {
 	return requests[len(requests)-1]
 }
 
+func (provider *fakeFreshdesk) requestsFor(name string) []fakeRecordedRequest {
+	provider.mutex.Lock()
+	defer provider.mutex.Unlock()
+	return append([]fakeRecordedRequest(nil), provider.requests[name]...)
+}
+
 func (provider *fakeFreshdesk) queryValues(name string, key string) []string {
 	provider.mutex.Lock()
 	defer provider.mutex.Unlock()
@@ -890,7 +913,13 @@ func newTriageHarness(t *testing.T, provider *fakeFreshdesk, requestTimeout time
 	require.NoError(t, err)
 	connection, err := freshdesk.NewConnection(providerClient, reference)
 	require.NoError(t, err)
+	return newTriageHarnessForConnection(t, connection)
+}
+
+func newTriageHarnessForConnection(t *testing.T, connection freshdesk.Connection) *triageHarness {
+	t.Helper()
 	harness := &triageHarness{flow: NewFlow(connection), serverAddress: environmentOr("DEX_FLOW_SERVICE_ADDRESS", "127.0.0.1:8801")}
+	var err error
 	harness.registry, err = dex.NewRegistry([]dex.Flow{harness.flow})
 	require.NoError(t, err)
 	harness.cache, err = blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})

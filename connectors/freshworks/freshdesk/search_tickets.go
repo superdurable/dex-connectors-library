@@ -87,8 +87,11 @@ func (operation SearchTicketsOperation) Invoke(call sdkgo.Call, input SearchTick
 	if err != nil {
 		return sdkgo.NewQueryBranch(SearchTicketsBranchDefect, SearchTicketsOutput{}, freshdeskFailurePointer(sdkgo.FailureValidation, searchTicketsOperation, err.Error()), sdkgo.Receipt{})
 	}
-	credentials, failure := operation.client.resolveCredentials(call, searchTicketsOperation)
+	credentials, failure, isTransient := operation.client.resolveCredentials(call, searchTicketsOperation)
 	if failure != nil {
+		if isTransient {
+			return sdkgo.NewQueryRetry[SearchTicketsOutput](*failure, 0)
+		}
 		return sdkgo.NewQueryBranch(SearchTicketsBranchDefect, SearchTicketsOutput{}, failure, sdkgo.Receipt{})
 	}
 	var requesterIDs map[int64]bool
@@ -128,7 +131,7 @@ func searchTicketsAttemptForExchange(result freshdeskExchange, receipt sdkgo.Rec
 	switch result.outcome {
 	case exchangeSucceeded:
 		return sdkgo.QueryAttempt[SearchTicketsOutput]{}, false
-	case exchangeRateLimited, exchangeNotSent, exchangeUnavailable:
+	case exchangeRateLimited, exchangeNotSent, exchangeUnavailable, exchangeServiceUnavailable:
 		return sdkgo.NewQueryRetry[SearchTicketsOutput](result.failure, result.retryAfter), true
 	case exchangeInvalid:
 		return sdkgo.NewQueryBranch(SearchTicketsBranchInvalidResponse, SearchTicketsOutput{}, &result.failure, receipt), true
