@@ -58,7 +58,7 @@ func TestDuplicateDispatchDecisionsPerOperation(t *testing.T) {
 	}{
 		// A read can repeat freely.
 		{"listThreadReplies", teams.ListThreadRepliesDefinition.Branches, teams.ListThreadRepliesDefinition.StepDefaults, false, dex.StepDurabilityAsync},
-		// Only the heartbeat checkpoint prevents a second message, and an async backup attempt cannot see it.
+		// The shared fence requires sync durability to make its heartbeat visible across attempts.
 		{"postChannelMessage", teams.PostChannelMessageDefinition.Branches, teams.PostChannelMessageDefinition.StepDefaults, true, dex.StepDurabilitySync},
 		{"postThreadReply", teams.PostThreadReplyDefinition.Branches, teams.PostThreadReplyDefinition.StepDefaults, true, dex.StepDurabilitySync},
 		{"postChatMessage", teams.PostChatMessageDefinition.Branches, teams.PostChatMessageDefinition.StepDefaults, true, dex.StepDurabilitySync},

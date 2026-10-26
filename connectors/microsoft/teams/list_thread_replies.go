@@ -67,7 +67,10 @@ func (operation ListThreadRepliesOperation) Invoke(call sdkgo.Call, input ListTh
 	}
 	session, cancel, failure := client.startSession(call, listThreadRepliesOperationID)
 	if failure != nil {
-		return sdkgo.NewQueryBranch(ListThreadRepliesBranchDefect, ListThreadRepliesOutput{}, failure, sdkgo.Receipt{})
+		if failure.isReauthorizationRequired {
+			return sdkgo.NewQueryBranch(ListThreadRepliesBranchDefect, ListThreadRepliesOutput{}, &failure.failure, sdkgo.Receipt{})
+		}
+		return sdkgo.NewQueryRetry[ListThreadRepliesOutput](failure.failure, 0)
 	}
 	defer cancel()
 	result := client.exchange(session, request)

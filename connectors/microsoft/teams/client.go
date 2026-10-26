@@ -7,11 +7,10 @@
 //
 // Microsoft Graph accepts no idempotency key or client-supplied message ID
 // for chatMessage, so every post runs with sync Execute durability and records
-// a Dex heartbeat checkpoint before it is dispatched. An attempt that finds
-// the checkpoint never posts again: a channel post or thread reply looks for
-// its own message among the newest messages it would have created and reports
-// it as sent, and otherwise selects uncertain. A chat message cannot be read
-// back with the connection's permissions, so it selects uncertain.
+// a Dex heartbeat claim through the shared single-dispatch fence. A retry
+// sends only after the immediately preceding attempt proved the write was not
+// applied. Otherwise a channel post or thread reply reads back; an unconfirmed
+// chat message selects uncertain.
 //
 // Graph allows application permissions for channel posts only for message
 // migration, so the connector posts as the signed-in user.
@@ -35,6 +34,7 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 const (
@@ -118,6 +118,11 @@ type operationSession struct {
 	context     context.Context
 	call        sdkgo.Call
 	credentials Credentials
+}
+
+type sessionFailure struct {
+	failure                   sdkgo.Failure
+	isReauthorizationRequired bool
 }
 
 type readOutcome uint8
@@ -229,17 +234,26 @@ func (client *Client) PostChatMessage() PostChatMessageOperation {
 }
 
 // startSession resolves the credential; the caller must call the returned cancel.
-func (client *Client) startSession(call sdkgo.Call, operationID string) (*operationSession, context.CancelFunc, *sdkgo.Failure) {
+func (client *Client) startSession(call sdkgo.Call, operationID string) (*operationSession, context.CancelFunc, *sessionFailure) {
 	operationContext, cancel := context.WithTimeout(call.Context, operationDeadline)
-	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
-	if err != nil || validateResolvedCredentials(credentials) != nil {
+	credentials, err := sdkgo.ResolveCredential(operationContext, client.credentials, call, client.refreshDriver)
+	validationErr := validateResolvedCredentials(credentials)
+	if err != nil || validationErr != nil {
 		cancel()
-		return nil, nil, failurePointer(operationID, sdkgo.FailureAuthentication, "Microsoft Teams connection credentials are unavailable; reconnect the connection")
+		isReauthorizationRequired := sdkgo.IsReauthorizationRequired(err) || (err == nil && validationErr != nil)
+		message := "Microsoft Teams connection credentials are temporarily unavailable"
+		if isReauthorizationRequired {
+			message = "Microsoft Teams connection credentials are unavailable; reconnect the connection"
+		}
+		return nil, nil, &sessionFailure{
+			failure:                   newFailure(operationID, sdkgo.FailureAuthentication, message),
+			isReauthorizationRequired: isReauthorizationRequired,
+		}
 	}
 	return &operationSession{context: operationContext, call: call, credentials: credentials}, cancel, nil
 }
 
-// exchange refreshes and resends once after a 401; Graph rejects an unauthenticated request before acting.
+// exchange refreshes and resends reads once after a 401.
 func (client *Client) exchange(session *operationSession, request graphRequest) exchangeResult {
 	var encodedPayload []byte
 	if request.payload != nil {
@@ -251,7 +265,7 @@ func (client *Client) exchange(session *operationSession, request graphRequest) 
 	}
 	target := client.requestURL(request)
 	for attempt := 0; ; attempt++ {
-		result := client.exchangeOnce(session, request.method, target, encodedPayload)
+		result := client.exchangeOnce(session, session.context, request.method, target, encodedPayload)
 		if result.err != nil || result.response.statusCode != http.StatusUnauthorized || attempt > 0 {
 			return result
 		}
@@ -266,6 +280,15 @@ func (client *Client) exchange(session *operationSession, request graphRequest) 
 	}
 }
 
+// exchangeFencedWrite sends exactly one POST under the fence's request deadline.
+func (client *Client) exchangeFencedWrite(session *operationSession, post messagePost, requestContext context.Context) exchangeResult {
+	payload, err := json.Marshal(post.content.body)
+	if err != nil {
+		return exchangeResult{err: errRequestNotBuilt}
+	}
+	return client.exchangeOnce(session, requestContext, http.MethodPost, client.endpoint+post.path, payload)
+}
+
 func (client *Client) requestURL(request graphRequest) string {
 	if request.absoluteURL != "" {
 		return request.absoluteURL
@@ -277,8 +300,8 @@ func (client *Client) requestURL(request graphRequest) string {
 	return target
 }
 
-func (client *Client) exchangeOnce(session *operationSession, method string, target string, payload []byte) exchangeResult {
-	requestContext, cancel := context.WithTimeout(session.context, requestTimeout)
+func (client *Client) exchangeOnce(session *operationSession, parentContext context.Context, method string, target string, payload []byte) exchangeResult {
+	requestContext, cancel := context.WithTimeout(parentContext, requestTimeout)
 	defer cancel()
 	observation := &dispatchObservation{}
 	requestContext = httptrace.WithClientTrace(requestContext, observation.clientTrace())
@@ -297,6 +320,11 @@ func (client *Client) exchangeOnce(session *operationSession, method string, tar
 	request.Header.Set(clientRequestIDHeader, string(session.call.ID))
 	if payload != nil {
 		request.Header.Set("Content-Type", "application/json")
+	}
+	if method == http.MethodPost {
+		if err := singledispatch.PrepareHTTPWrite(request); err != nil {
+			return exchangeResult{err: errRequestNotBuilt}
+		}
 	}
 	httpResponse, err := client.httpClient.Do(request)
 	if err != nil {
@@ -377,6 +405,8 @@ func (client *Client) classifyWrite(operationID string, subject string, result e
 		return writeClassification{outcome: writeAccepted}
 	case response.statusCode == http.StatusTooManyRequests:
 		return writeClassification{outcome: writeNotApplied, retryAfter: client.retryAfter(response), failure: newFailure(operationID, sdkgo.FailureRateLimit, "Microsoft Graph throttled the "+subject+" before storing it")}
+	case response.statusCode == http.StatusServiceUnavailable:
+		return writeClassification{outcome: writeNotApplied, retryAfter: client.retryAfter(response), failure: newFailure(operationID, sdkgo.FailureAvailability, "Microsoft Graph could not accept the "+subject+" while unavailable (HTTP 503)")}
 	case isConclusiveRejectionStatus(response.statusCode):
 		return writeClassification{outcome: writeRejected, failure: rejectionFailure(operationID, subject, response)}
 	default:
@@ -450,12 +480,13 @@ func statusFailureKind(statusCode int) sdkgo.FailureKind {
 
 func isSuccessStatus(statusCode int) bool { return statusCode >= 200 && statusCode < 300 }
 
-// isConclusiveRejectionStatus reports a 4xx other than 408 and 429, or a 501: Graph refused before storing anything.
+// isConclusiveRejectionStatus reports a 4xx other than 408, 409 and 429, or a 501: Graph refused before storing anything.
 func isConclusiveRejectionStatus(statusCode int) bool {
 	if statusCode == http.StatusNotImplemented {
 		return true
 	}
-	return statusCode >= 400 && statusCode < 500 && statusCode != http.StatusRequestTimeout && statusCode != http.StatusTooManyRequests
+	return statusCode >= 400 && statusCode < 500 && statusCode != http.StatusRequestTimeout &&
+		statusCode != http.StatusConflict && statusCode != http.StatusTooManyRequests
 }
 
 // isSafeProviderToken accepts a bounded printable ASCII value such as a request ID.
