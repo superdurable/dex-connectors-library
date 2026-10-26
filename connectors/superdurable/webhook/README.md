@@ -270,6 +270,21 @@ the endpoint and starts one `WebhookFormSubmission` Flow per verified
 submission. The Flow records the submission and forwards it to `deliveryUrl`
 with `sendEvent`.
 
+## Mocks
+
+The generated `webhookmock` package answers an unscripted `sendEvent` call as
+an accepted form submission (`evt_mock_1`, HTTP 202). The `submissionRejected`
+case models a receiver returning HTTP 422. Pass the mock connection to the
+example Flow to verify forwarding without a receiver or signing credentials:
+
+```go
+mock := webhookmock.New(t, ConnectionName)
+flow := NewFlow(mock.Connection())
+```
+
+This snippet comes from
+[`workflow_mock_integration_test.go`](examples/form-submission/flow/workflow_mock_integration_test.go).
+
 ## Verification
 
 The module requires `sdkgo v0.30.0`. Run its checks standalone, as CI does:
