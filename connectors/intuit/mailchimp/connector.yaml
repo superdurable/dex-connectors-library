@@ -5,7 +5,7 @@ metadata:
   displayName: Mailchimp
   description: Read, upsert, tag, and list Mailchimp audience contacts without resubscribing anyone who unsubscribed, and send an existing campaign at most once after reading its status.
   company: Intuit
-  version: v0.21.2
+  version: v0.22.0
 spec:
   provider: mailchimp
   codegen:
@@ -54,6 +54,20 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: subscribedBen
+          branch: found
+          description: "The audience 57afe96172 member ben@example.com is subscribed and tagged for the spring launch."
+          default: true
+          output: {subscriberHash: 2c66f6142933ed5a97948f89cb1c7be0, emailAddress: "ben@example.com", contactId: "contact-ben", fullName: Ben Carter, status: subscribed, emailType: html, mergeFields: {FNAME: Ben}, tags: [spring-launch, vip], tagCount: 2, listId: "57afe96172", lastChangedAt: "2026-10-25T10:00:00Z"}
+        - name: memberMissing
+          branch: notFound
+          description: "A getMember request for absent@example.com in audience 57afe96172 finds no contact."
+          failure: {kind: NOT_FOUND, message: "Mailchimp could not find the contact."}
+        - name: memberReadForbidden
+          branch: providerRejected
+          description: "A getMember request for ben@example.com with an API key lacking audience access is rejected."
+          failure: {kind: AUTHORIZATION, message: "Mailchimp denied access to the audience."}
     - name: listMembers
       goName: ListMembers
       inputType: ListMembersInput
@@ -71,6 +85,24 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      pagination: {inputField: offset, nextField: nextOffset}
+      mocks:
+        - name: subscribedAudience
+          branch: listed
+          description: "A listMembers request with pageSize 1 for subscribed contacts in audience 57afe96172 returns three one-contact pages, oldest first."
+          default: true
+          pages:
+            - {members: [{subscriberHash: 2c66f6142933ed5a97948f89cb1c7be0, emailAddress: "ben@example.com", contactId: "contact-ben", fullName: Ben Carter, status: subscribed, emailType: html, mergeFields: {FNAME: Ben}, tags: [spring-launch, vip], tagCount: 2, listId: "57afe96172", lastChangedAt: "2026-10-25T10:00:00Z"}], totalItems: 3, nextOffset: 1}
+            - {members: [{subscriberHash: "5156901e497275d2675eb7a3859eb159", emailAddress: "ed@example.com", status: subscribed, listId: "57afe96172", tagCount: 0}], totalItems: 3, nextOffset: 2}
+            - {members: [{subscriberHash: "f96c806856eae660aa058bd8039a64ef", emailAddress: "fay@example.com", status: subscribed, listId: "57afe96172", tagCount: 0}], totalItems: 3, nextOffset: 0}
+        - name: audienceMissing
+          branch: notFound
+          description: "A listMembers request for deleted audience 0000000000 finds no audience."
+          failure: {kind: NOT_FOUND, message: "Mailchimp could not find the audience."}
+        - name: memberListKeyRevoked
+          branch: providerRejected
+          description: "A listMembers request for audience 57afe96172 with a revoked API key is rejected."
+          failure: {kind: AUTHENTICATION, message: "Mailchimp rejected the API key."}
     - name: upsertMember
       goName: UpsertMember
       inputType: UpsertMemberInput
@@ -87,6 +119,16 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: upsertedBen
+          branch: upserted
+          description: "An upsertMember request for ben@example.com in audience 57afe96172 keeps the subscribed contact."
+          default: true
+          output: {member: {subscriberHash: 2c66f6142933ed5a97948f89cb1c7be0, emailAddress: "ben@example.com", contactId: "contact-ben", fullName: Ben Carter, status: subscribed, emailType: html, mergeFields: {FNAME: Ben}, tags: [spring-launch, vip], tagCount: 2, listId: "57afe96172", lastChangedAt: "2026-10-25T10:00:00Z"}}
+        - name: permanentlyDeletedAddress
+          branch: providerRejected
+          description: "An upsertMember request for deleted@example.com is rejected because the address was permanently deleted."
+          failure: {kind: VALIDATION, message: "Mailchimp cannot add a permanently deleted address."}
     - name: updateMemberTags
       goName: UpdateMemberTags
       inputType: UpdateMemberTagsInput
@@ -104,6 +146,20 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: taggedBen
+          branch: updated
+          description: "An updateMemberTags request adding spring-launch to ben@example.com in audience 57afe96172 succeeds."
+          default: true
+          output: {subscriberHash: 2c66f6142933ed5a97948f89cb1c7be0, activeTags: [spring-launch]}
+        - name: taggingMissingMember
+          branch: notFound
+          description: "An updateMemberTags request for absent@example.com in audience 57afe96172 finds no contact."
+          failure: {kind: NOT_FOUND, message: "Mailchimp could not find the contact to tag."}
+        - name: taggingForbidden
+          branch: providerRejected
+          description: "An updateMemberTags request for ben@example.com with an API key of a Viewer-role user is rejected."
+          failure: {kind: AUTHORIZATION, message: "Mailchimp denied tag updates."}
     - name: sendCampaign
       goName: SendCampaign
       inputType: SendCampaignInput
@@ -125,3 +181,26 @@ spec:
       execution:
         executeMethodTimeout: 60s
         durability: sync
+      mocks:
+        - name: sentSpringCampaign
+          branch: sent
+          description: "A sendCampaign request for draft 42694e9e57 targeting audience 57afe96172 is accepted once."
+          default: true
+          output: {campaign: {id: "42694e9e57", type: regular, status: save, title: Spring launch, subjectLine: Spring news, listId: "57afe96172", listName: Spring audience, recipientCount: 3, emailsSent: 0, createdAt: "2026-10-24T10:00:00Z"}}
+        - name: springCampaignAlreadySent
+          branch: alreadySent
+          description: "A sendCampaign request for 42694e9e57 after its first accepted send finds it already sending."
+          output: {campaign: {id: "42694e9e57", type: regular, status: sending, title: Spring launch, listId: "57afe96172", recipientCount: 3}}
+        - name: scheduledCampaignNotSendable
+          branch: notSendable
+          description: "A sendCampaign request for scheduled campaign 42694e9e57 cannot send it as a draft."
+          output: {campaign: {id: "42694e9e57", type: regular, status: schedule, title: Spring launch, listId: "57afe96172", recipientCount: 3}}
+          failure: {kind: CONFLICT, message: "Mailchimp campaign is not a sendable draft."}
+        - name: campaignMissing
+          branch: notFound
+          description: "A sendCampaign request for absent campaign 0000000000 finds no campaign."
+          failure: {kind: NOT_FOUND, message: "Mailchimp could not find the campaign."}
+        - name: campaignChecklistRejected
+          branch: providerRejected
+          description: "A sendCampaign request for draft 42694e9e57 with a failed send checklist is rejected."
+          failure: {kind: VALIDATION, message: "Mailchimp rejected the campaign send checklist."}
