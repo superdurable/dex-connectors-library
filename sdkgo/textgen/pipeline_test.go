@@ -50,6 +50,18 @@ type testResponse struct {
 	Error     json.RawMessage `json:"error,omitempty"`
 }
 
+type singleUseSchemaMarshaler struct {
+	callCount *int
+}
+
+func (marshaler singleUseSchemaMarshaler) MarshalJSON() ([]byte, error) {
+	*marshaler.callCount = *marshaler.callCount + 1
+	if *marshaler.callCount > 1 {
+		return nil, errors.New("schema value was marshaled more than once")
+	}
+	return []byte(`"shipped"`), nil
+}
+
 // newTestWireFormat declares every feature and sends the validated request as JSON to /generate.
 func newTestWireFormat(isStreaming bool) textgen.WireFormat {
 	return textgen.WireFormat{
@@ -651,6 +663,25 @@ func TestStructuredAnswerCheckMatchesRealResponsePath(t *testing.T) {
 	test.provider.EnqueueReplies(doneReply(`{"status":"pending"}`))
 	result := test.requireBranch(t, request, textgen.InvalidResponseBranchID, sdkgo.FailureProtocol)
 	require.Equal(t, "structured output does not match its schema "+err.Error(), result.Failure.Message)
+}
+
+func TestTextGenerationQueryCanonicalizesStructuredSchemaOnce(t *testing.T) {
+	test := newPipelineTest(t, nil)
+	test.provider.EnqueueReplies(doneReply(`{"status":"shipped"}`))
+	request := userRequest()
+	marshalCallCount := 0
+	request.StructuredOutput = &textgen.StructuredOutput{Name: "answer", Schema: map[string]any{
+		"type": "object", "additionalProperties": false, "required": []string{"status"},
+		"properties": map[string]any{"status": map[string]any{
+			"type": "string", "const": singleUseSchemaMarshaler{callCount: &marshalCallCount},
+		}},
+	}}
+
+	result := test.requireBranch(t, request, textgen.GeneratedBranchID, "")
+
+	require.Equal(t, `{"status":"shipped"}`, result.Value.Text)
+	require.Equal(t, 1, marshalCallCount)
+	require.Len(t, test.provider.Requests(), 1)
 }
 
 func TestTextGenerationQueryAddsTheJSONObjectInstruction(t *testing.T) {

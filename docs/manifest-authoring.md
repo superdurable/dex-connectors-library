@@ -835,10 +835,9 @@ mock of each shape:
 - `default: true` marks the mock that answers every call a test does not
   script. Every operation has exactly one default, selecting a required
   happy-path branch without a failure. An unscripted Mutation call uses that
-  answer instead of failing the test, so a test does not notice an unexpected,
-  repeated, or missing send unless it asserts `Calls()` or makes the mock
-  `Strict()`. Assert `Calls()` in every Mutation test: the number of calls, and
-  each call's input and branch.
+  answer instead of failing the test. `Strict()` catches unscripted extra calls;
+  it cannot detect a missing call. Assert `Calls()` in every Mutation test to
+  detect missing calls and verify the count, each input, and each branch.
 - Outputs are YAML written as the operation output's JSON. Quote a string
   that YAML would read as a number, a boolean, or a date, such as `"007"`.
 
@@ -886,11 +885,13 @@ operation without one and a failure mock for each optional branch other than
 `defect` and `uncertain` that has none. The default contains an output
 placeholder, or three placeholder pages for a paginated Query. The pages'
 cursor placeholders follow the type that the output's Go struct declares for
-the cursor field in the Go package beside the manifest: a string cursor gets
-strings and a number cursor gets numbers. The command stops without editing
-the manifest when it cannot read that type, and then you write the paginated
-default by hand. Replace the placeholders with realistic answers before
-committing; they decode strictly into the output type but need not pass its
+the cursor field in the active Go files beside the manifest: a string cursor
+gets strings and a number cursor gets numbers. A `json:",string"` cursor gets
+quoted JSON values on the first two pages and `null` on the ending page. The
+command stops without editing the manifest when it cannot read the type or
+finds duplicate active declarations; then write the paginated default by hand.
+Replace the placeholders with realistic answers before committing; they decode
+strictly into the output type but need not pass its
 `Validate` method. The command edits only the lines it inserts, reports the
 placeholders, and adds nothing on a second run. Review the scaffolded failure
 kinds and messages before committing them.

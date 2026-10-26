@@ -5,8 +5,10 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -91,6 +93,106 @@ func TestScaffoldWritesPlaceholdersOfTheDeclaredCursorType(t *testing.T) {
 			require.NoError(t, manifest.ValidateMockCoverage())
 		})
 	}
+}
+
+func TestScaffoldWritesStringEncodedCursorWireValues(t *testing.T) {
+	testCases := []struct {
+		name   string
+		source string
+		pages  []string
+		decode func(*testing.T, []byte, int)
+	}{
+		{
+			name:   "integer cursor",
+			source: "type WidgetPage struct {\n\tNextPage int `json:\"nextPage,string\"`\n}\n",
+			pages:  []string{`{"nextPage":"2"}`, `{"nextPage":"3"}`, `{"nextPage":null}`},
+			decode: func(t *testing.T, encoded []byte, pageIndex int) {
+				var page struct {
+					NextPage int `json:"nextPage,string"`
+				}
+				require.NoError(t, json.Unmarshal(encoded, &page))
+				require.Equal(t, []int{2, 3, 0}[pageIndex], page.NextPage)
+			},
+		},
+		{
+			name:   "integer cursor with implicit JSON name",
+			source: "type WidgetPage struct {\n\tNextPage int `json:\",string\"`\n}\n",
+			pages:  []string{`{"nextPage":"2"}`, `{"nextPage":"3"}`, `{"nextPage":null}`},
+			decode: func(t *testing.T, encoded []byte, pageIndex int) {
+				var page struct {
+					NextPage int `json:",string"`
+				}
+				require.NoError(t, json.Unmarshal(encoded, &page))
+				require.Equal(t, []int{2, 3, 0}[pageIndex], page.NextPage)
+			},
+		},
+		{
+			name:   "string cursor",
+			source: "type WidgetPage struct {\n\tNextPage string `json:\"nextPage,string\"`\n}\n",
+			pages:  []string{`{"nextPage":"\"page-2\""}`, `{"nextPage":"\"page-3\""}`, `{"nextPage":null}`},
+			decode: func(t *testing.T, encoded []byte, pageIndex int) {
+				var page struct {
+					NextPage string `json:"nextPage,string"`
+				}
+				require.NoError(t, json.Unmarshal(encoded, &page))
+				require.Equal(t, []string{"page-2", "page-3", ""}[pageIndex], page.NextPage)
+			},
+		},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			manifestPath := writeMockFixtureConnector(t, t.TempDir())
+			writeWidgetPageSource(t, manifestPath, testCase.source)
+			require.NoError(t, os.WriteFile(manifestPath, []byte(removeAllMocks(t, manifestPath)), 0o600))
+
+			require.NoError(t, scaffoldMocks(manifestPath, &bytes.Buffer{}))
+
+			manifest, err := load(manifestPath)
+			require.NoError(t, err)
+			pages := manifest.Spec.Operations[1].Mocks[0].Pages
+			require.Equal(t, testCase.pages, pageJSON(manifest.Spec.Operations[1].Mocks[0]))
+			for pageIndex, page := range pages {
+				testCase.decode(t, []byte(page.JSON()), pageIndex)
+			}
+		})
+	}
+}
+
+func TestScaffoldUsesOnlyTheCurrentPlatformCursorType(t *testing.T) {
+	manifestPath := writeMockFixtureConnector(t, t.TempDir())
+	directory := filepath.Dir(manifestPath)
+	require.NoError(t, os.Remove(filepath.Join(directory, "widget_page.go")))
+	otherPlatform := "linux"
+	if runtime.GOOS == "linux" {
+		otherPlatform = "darwin"
+	}
+	require.NoError(t, os.WriteFile(filepath.Join(directory, "widget_page_"+runtime.GOOS+".go"),
+		[]byte("package mockfixture\n\ntype WidgetPage struct { NextPage int `json:\"nextPage\"` }\n"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(directory, "widget_page_"+otherPlatform+".go"),
+		[]byte("package mockfixture\n\ntype WidgetPage struct { NextPage string `json:\"nextPage\"` }\n"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(directory, "widget_page_ignored.go"),
+		[]byte("//go:build ignore\n\npackage mockfixture\n\ntype WidgetPage struct { NextPage string `json:\"nextPage\"` }\n"), 0o600))
+	require.NoError(t, os.WriteFile(manifestPath, []byte(removeAllMocks(t, manifestPath)), 0o600))
+
+	require.NoError(t, scaffoldMocks(manifestPath, &bytes.Buffer{}))
+
+	manifest, err := load(manifestPath)
+	require.NoError(t, err)
+	require.Equal(t, []string{`{"nextPage":2}`, `{"nextPage":3}`, `{"nextPage":0}`}, pageJSON(manifest.Spec.Operations[1].Mocks[0]))
+}
+
+func TestScaffoldRejectsDuplicateActiveTypeDeclarations(t *testing.T) {
+	manifestPath := writeMockFixtureConnector(t, t.TempDir())
+	directory := filepath.Dir(manifestPath)
+	require.NoError(t, os.WriteFile(filepath.Join(directory, "duplicate.go"),
+		[]byte("package mockfixture\n\ntype WidgetPage struct { NextPage string `json:\"nextPage\"` }\n"), 0o600))
+	stripped := removeAllMocks(t, manifestPath)
+	require.NoError(t, os.WriteFile(manifestPath, []byte(stripped), 0o600))
+
+	require.ErrorContains(t, scaffoldMocks(manifestPath, &bytes.Buffer{}), "type WidgetPage is declared more than once in active Go files")
+	current, err := os.ReadFile(manifestPath)
+	require.NoError(t, err)
+	require.Equal(t, stripped, string(current))
 }
 
 func TestScaffoldReportsACursorWhoseTypeItCannotRead(t *testing.T) {

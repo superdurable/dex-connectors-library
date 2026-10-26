@@ -724,9 +724,9 @@ Scripting:
   in order, repeating the last. `Strict()` ignores every `Default`. A
   generated mock package installs the manifest default, so an unscripted
   Mutation call is answered with the happy path instead of failing the test.
-  A test then notices an unexpected, repeated, or missing send only when it
-  asserts `Calls()` or makes the mock `Strict()`; assert `Calls()` in Mutation
-  tests.
+  `Strict()` catches unscripted extra calls but cannot detect a missing call.
+  Assert `Calls()` in Mutation tests to detect missing calls and verify the
+  count, each input, and each branch.
 - A call that nothing answers fails the test with `t.Errorf` and selects
   `defect`. A case that cannot be valid, such as an undeclared branch, fails the
   test when it is scripted and selects `defect` when it answers. A mock stops

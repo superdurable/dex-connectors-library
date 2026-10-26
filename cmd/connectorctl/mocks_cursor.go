@@ -4,11 +4,12 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"go/ast"
+	"go/build"
 	"go/parser"
 	"go/token"
-	"os"
 	"path/filepath"
 	"reflect"
 	"slices"
@@ -37,9 +38,17 @@ func scaffoldCursorPlaceholders(connectorDirectory string, operation schema.Oper
 	if err != nil {
 		return cursorPlaceholders{}, fmt.Errorf("%s: read the Go types of the pagination cursor: %w", operation.Name, err)
 	}
-	cursorType, isFound := cursorFieldType(declarations, operation.OutputType, operation.Pagination.NextField)
+	cursorType, isStringEncoded, isFound := cursorFieldType(declarations, operation.OutputType, operation.Pagination.NextField)
 	if isFound {
 		if placeholders, isSupported := placeholdersForCursorType(declarations, cursorType); isSupported {
+			if isStringEncoded {
+				// Null ends the listing and decodes to zero even with encoding/json's string option.
+				return cursorPlaceholders{
+					firstNext:  strconv.Quote(placeholders.firstNext),
+					secondNext: strconv.Quote(placeholders.secondNext),
+					last:       "null",
+				}, nil
+			}
 			return placeholders, nil
 		}
 	}
@@ -47,19 +56,19 @@ func scaffoldCursorPlaceholders(connectorDirectory string, operation schema.Oper
 		operation.Name, operation.Pagination.NextField, operation.OutputType)
 }
 
-// readTypeDeclarations maps each type declared by the package's non-test Go files to its type expression.
+// readTypeDeclarations maps types in the package's active non-test Go files to their expressions.
 func readTypeDeclarations(directory string) (map[string]ast.Expr, error) {
-	entries, err := os.ReadDir(directory)
+	packageFiles, err := build.Default.ImportDir(directory, 0)
 	if err != nil {
-		return nil, err
+		var noGoFiles *build.NoGoError
+		if !errors.As(err, &noGoFiles) {
+			return nil, err
+		}
+		return map[string]ast.Expr{}, nil
 	}
 	declarations := map[string]ast.Expr{}
 	fileSet := token.NewFileSet()
-	for _, entry := range entries {
-		name := entry.Name()
-		if entry.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
-			continue
-		}
+	for _, name := range append(packageFiles.GoFiles, packageFiles.CgoFiles...) {
 		file, err := parser.ParseFile(fileSet, filepath.Join(directory, name), nil, parser.SkipObjectResolution)
 		if err != nil {
 			return nil, err
@@ -71,6 +80,9 @@ func readTypeDeclarations(directory string) (map[string]ast.Expr, error) {
 			}
 			for _, spec := range general.Specs {
 				typeSpec := spec.(*ast.TypeSpec)
+				if _, exists := declarations[typeSpec.Name.Name]; exists {
+					return nil, fmt.Errorf("type %s is declared more than once in active Go files", typeSpec.Name.Name)
+				}
 				declarations[typeSpec.Name.Name] = typeSpec.Type
 			}
 		}
@@ -79,31 +91,40 @@ func readTypeDeclarations(directory string) (map[string]ast.Expr, error) {
 }
 
 // cursorFieldType returns the declared type of the exported field of outputType whose JSON name is jsonName.
-func cursorFieldType(declarations map[string]ast.Expr, outputType, jsonName string) (ast.Expr, bool) {
+func cursorFieldType(declarations map[string]ast.Expr, outputType, jsonName string) (ast.Expr, bool, bool) {
 	structType, isStruct := declarations[outputType].(*ast.StructType)
 	if !isStruct {
-		return nil, false
+		return nil, false, false
 	}
 	for _, field := range structType.Fields.List {
 		for _, name := range field.Names {
-			if ast.IsExported(name.Name) && hasJSONName(field, name.Name, jsonName) {
-				return field.Type, true
+			if ast.IsExported(name.Name) {
+				matches, isStringEncoded := matchesJSONField(field, name.Name, jsonName)
+				if matches {
+					return field.Type, isStringEncoded, true
+				}
 			}
 		}
 	}
-	return nil, false
+	return nil, false, false
 }
 
-// hasJSONName reports whether encoding/json reads jsonName into the field, by tag or case-insensitive Go name.
-func hasJSONName(field *ast.Field, goName, jsonName string) bool {
+// matchesJSONField reports whether encoding/json reads jsonName into the field and applies its string option.
+func matchesJSONField(field *ast.Field, goName, jsonName string) (bool, bool) {
 	if field.Tag != nil {
 		if tag, err := strconv.Unquote(field.Tag.Value); err == nil {
-			if tagName, _, _ := strings.Cut(reflect.StructTag(tag).Get("json"), ","); tagName != "" {
-				return tagName == jsonName
+			jsonTag := reflect.StructTag(tag).Get("json")
+			tagName, options, _ := strings.Cut(jsonTag, ",")
+			if tagName == "-" {
+				return false, false
 			}
+			if tagName != "" {
+				return tagName == jsonName, slices.Contains(strings.Split(options, ","), "string")
+			}
+			return strings.EqualFold(goName, jsonName), slices.Contains(strings.Split(options, ","), "string")
 		}
 	}
-	return strings.EqualFold(goName, jsonName)
+	return strings.EqualFold(goName, jsonName), false
 }
 
 // placeholdersForCursorType follows pointers and local named types to a string or a number.
